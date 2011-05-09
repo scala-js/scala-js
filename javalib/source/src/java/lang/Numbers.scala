@@ -1,17 +1,35 @@
 package java.lang
 
 abstract class Number extends Object {
+  protected[lang] val isInt: scala.Boolean
+
   def byteValue(): scala.Byte = intValue.toByte
   def shortValue(): scala.Short = intValue.toShort
   def intValue(): scala.Int
   def longValue(): scala.Long
   def floatValue(): scala.Float
   def doubleValue(): scala.Double
+
+  protected def scala_==(other: Object): scala.Boolean = equals(other)
+  /*other match {
+    case num:Number if isInt == num.isInt =>
+      if (isInt)
+        this.intValue == num.intValue
+      else
+        this.floatValue == num.floatValue
+
+    case chr:Character if isInt =>
+      this.intValue == chr.charValue.toInt
+
+    case _ => equals(other)
+  }*/
 }
 
 ////////////////// Byte //////////////////
 
 final class Byte(private val value: scala.Byte) extends Number {
+  protected[lang] val isInt = true
+
   override def byteValue() = value
   override def shortValue() = value.toShort
   def intValue() = value.toInt
@@ -35,6 +53,8 @@ object Byte {
 ////////////////// Short //////////////////
 
 final class Short(private val value: scala.Short) extends Number {
+  protected[lang] val isInt = true
+
   override def byteValue() = value.toByte
   override def shortValue() = value
   def intValue() = value.toInt
@@ -58,6 +78,8 @@ object Short {
 ////////////////// Integer //////////////////
 
 final class Integer(private val value: scala.Int) extends Number {
+  protected[lang] val isInt = true
+
   def intValue() = value
   def longValue() = value.toLong
   def floatValue() = value.toFloat
@@ -87,6 +109,8 @@ object Integer {
 ////////////////// Long //////////////////
 
 final class Long(private val value: scala.Long) extends Number {
+  protected[lang] val isInt = true
+
   override def byteValue() = value.toByte
   override def shortValue() = value.toByte
   def intValue() = value.toInt
@@ -114,6 +138,8 @@ object Long {
 ////////////////// Float //////////////////
 
 final class Float(private val value: scala.Float) extends Number {
+  protected[lang] val isInt = false
+
   override def byteValue() = value.toByte
   override def shortValue() = value.toShort
   def intValue() = value.toInt
@@ -157,6 +183,8 @@ object Float {
 ////////////////// Double //////////////////
 
 final class Double(private val value: scala.Double) extends Number {
+  protected[lang] val isInt = false
+
   override def byteValue() = value.toByte
   override def shortValue() = value.toShort
   def intValue() = value.toInt
