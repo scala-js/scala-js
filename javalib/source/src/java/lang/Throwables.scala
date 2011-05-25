@@ -46,6 +46,12 @@ class UnsupportedOperationException(message: String, cause: Throwable) extends R
   def this(cause: Throwable) = this(null, cause)
 }
 
+class ClassCastException(message: String, cause: Throwable) extends RuntimeException(message, cause) {
+  def this() = this(null, null)
+  def this(message: String) = this(message, null)
+  def this(cause: Throwable) = this(null, cause)
+}
+
 class IndexOutOfBoundsException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
