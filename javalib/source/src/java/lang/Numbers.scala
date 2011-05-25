@@ -1,7 +1,7 @@
 package java.lang
 
 abstract class Number extends Object {
-  protected[lang] val isInt: scala.Boolean
+  //protected[lang] val isInt: scala.Boolean
 
   def byteValue(): scala.Byte = intValue.toByte
   def shortValue(): scala.Short = intValue.toShort
