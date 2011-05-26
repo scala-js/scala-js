@@ -73,6 +73,8 @@ object Short {
   def valueOf(shortValue: scala.Short) = new Short(shortValue)
   def parseShort(s: String): scala.Short = Integer.parseInt(s).toShort
   def toString(s: scala.Short) = Integer.valueOf(s.toInt).toString
+
+  def reverseBytes(i: scala.Short): scala.Short = sys.error("unimplemented")
 }
 
 ////////////////// Integer //////////////////
@@ -100,6 +102,9 @@ object Integer {
   def parseInt(s: String, radix: scala.Int): scala.Int = sys.error("unimplemented")
 
   def toString(i: scala.Int) = valueOf(i).toString
+
+  def bitCount(i: scala.Int): scala.Int = sys.error("unimplemented")
+  def reverseBytes(i: scala.Int): scala.Int = sys.error("unimplemented")
 
   def toBinaryString(i: scala.Int): String = sys.error("unimplemented")
   def toHexString(i: scala.Int): String = sys.error("unimplemented")
@@ -129,6 +134,9 @@ object Long {
   def valueOf(longValue: scala.Long) = new Long(longValue)
   def parseLong(s: String): scala.Long = Integer.parseInt(s).toLong
   def toString(l: scala.Long) = Integer.valueOf(l.toInt).toString
+
+  def bitCount(i: scala.Long): scala.Long = sys.error("unimplemented")
+  def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
 
   def toBinaryString(l: scala.Long): String = sys.error("unimplemented")
   def toHexString(l: scala.Long): String = sys.error("unimplemented")
