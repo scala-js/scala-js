@@ -105,6 +105,8 @@ object Integer {
 
   def bitCount(i: scala.Int): scala.Int = sys.error("unimplemented")
   def reverseBytes(i: scala.Int): scala.Int = sys.error("unimplemented")
+  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
+  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
 
   def toBinaryString(i: scala.Int): String = sys.error("unimplemented")
   def toHexString(i: scala.Int): String = sys.error("unimplemented")
@@ -137,6 +139,8 @@ object Long {
 
   def bitCount(i: scala.Long): scala.Long = sys.error("unimplemented")
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
+  def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
+  def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
 
   def toBinaryString(l: scala.Long): String = sys.error("unimplemented")
   def toHexString(l: scala.Long): String = sys.error("unimplemented")
@@ -186,6 +190,9 @@ object Float {
 
   def isNaN(v: scala.Float): scala.Boolean = sys.error("unimplemented")
   def isInfinite(v: scala.Float): scala.Boolean = sys.error("unimplemented")
+
+  def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
+  def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
 }
 
 ////////////////// Double //////////////////
@@ -229,4 +236,7 @@ object Double {
 
   def isNaN(v: scala.Double): scala.Boolean = sys.error("unimplemented")
   def isInfinite(v: scala.Double): scala.Boolean = sys.error("unimplemented")
+
+  def longBitsToDouble(bits: scala.Long): scala.Double = sys.error("unimplemented")
+  def doubleToLongBits(value: scala.Double): scala.Long = sys.error("unimplemented")
 }
