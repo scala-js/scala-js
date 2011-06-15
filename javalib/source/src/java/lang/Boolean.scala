@@ -1,7 +1,10 @@
 package java.lang
 
-class Boolean(value: scala.Boolean) {
+class Boolean(private val value: scala.Boolean) {
   def booleanValue(): scala.Boolean = value
+
+  override def equals(that: Any) =
+    that.isInstanceOf[Boolean] && (value == that.asInstanceOf[Boolean].value)
 
   override def toString: String = if (value) "true" else "false"
 

@@ -3,16 +3,8 @@ package java.lang
 class Character(value: scala.Char) {
   def charValue(): scala.Char = value
 
-  protected def scala_==(other: Object): scala.Boolean = equals(other)
-  /*other match {
-    case chr:Character =>
-      this.charValue == chr.charValue
-
-    case num:Number if num.isInt =>
-      this.charValue.toInt == num.intValue
-
-    case _ => equals(other)
-  }*/
+  override def equals(that: Any) =
+    that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
   @native override def toString: String = sys.error("stub")
 }

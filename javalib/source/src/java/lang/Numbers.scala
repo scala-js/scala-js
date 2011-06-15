@@ -37,6 +37,9 @@ final class Byte(private val value: scala.Byte) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
 
+  override def equals(that: Any) =
+    that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
+
   override def toString = new Integer(value.toInt).toString
 }
 
@@ -62,6 +65,9 @@ final class Short(private val value: scala.Short) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
 
+  override def equals(that: Any) =
+    that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
+
   override def toString = new Integer(value.toInt).toString
 }
 
@@ -86,6 +92,9 @@ final class Integer(private val value: scala.Int) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
+
+  override def equals(that: Any) =
+    that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
 
   @native override def toString: String = sys.error("stub")
 }
@@ -125,6 +134,9 @@ final class Long(private val value: scala.Long) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
 
+  override def equals(that: Any) =
+    that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
+
   override def toString = new Integer(value.toInt).toString
 }
 
@@ -158,6 +170,9 @@ final class Float(private val value: scala.Float) extends Number {
   def longValue() = value.toLong
   def floatValue() = value
   def doubleValue() = value.toDouble
+
+  override def equals(that: Any) =
+    that.isInstanceOf[Float] && (value == that.asInstanceOf[Float].value)
 
   @native override def toString: String = sys.error("stub")
 
@@ -206,6 +221,9 @@ final class Double(private val value: scala.Double) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value
+
+  override def equals(that: Any) =
+    that.isInstanceOf[Double] && (value == that.asInstanceOf[Double].value)
 
   override def toString = new Float(value.toFloat).toString
 
