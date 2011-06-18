@@ -10,6 +10,10 @@ class Throwable(message: String, cause: Throwable) {
   def printStackTrace(): Unit = ()
   def getCause: Throwable = cause
   def fillInStackTrace(): Throwable = this
+
+  override def toString() =
+    if (message eq null) getClass.getName
+    else getClass.getName + ": " + message
 }
 
 class Error(message: String, cause: Throwable) extends Throwable(message, cause) {
