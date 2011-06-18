@@ -12,7 +12,7 @@ class Boolean(private val value: scala.Boolean) {
 }
 
 object Boolean {
-  val TYPE = null
+  val TYPE = classOf[scala.Boolean]
   val TRUE = new Boolean(true)
   val FALSE = new Boolean(false)
 

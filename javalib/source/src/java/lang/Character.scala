@@ -10,7 +10,7 @@ class Character(value: scala.Char) {
 }
 
 object Character {
-  val TYPE = null
+  val TYPE = classOf[scala.Char]
   val MIN_VALUE: scala.Char = 0
   val MAX_VALUE: scala.Char = 0xff
 

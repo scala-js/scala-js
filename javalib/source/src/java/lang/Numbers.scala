@@ -44,7 +44,7 @@ final class Byte(private val value: scala.Byte) extends Number {
 }
 
 object Byte {
-  val TYPE = null
+  val TYPE = classOf[scala.Byte]
   val MIN_VALUE: scala.Byte = -128
   val MAX_VALUE: scala.Byte = 127
 
@@ -72,7 +72,7 @@ final class Short(private val value: scala.Short) extends Number {
 }
 
 object Short {
-  val TYPE = null
+  val TYPE = classOf[scala.Short]
   val MIN_VALUE: scala.Short = -32768
   val MAX_VALUE: scala.Short = 32767
 
@@ -100,7 +100,7 @@ final class Integer(private val value: scala.Int) extends Number {
 }
 
 object Integer {
-  val TYPE = null
+  val TYPE = classOf[scala.Int]
   val MIN_VALUE: scala.Int = -2147483648
   val MAX_VALUE: scala.Int = 2147483647
 
@@ -141,7 +141,7 @@ final class Long(private val value: scala.Long) extends Number {
 }
 
 object Long {
-  val TYPE = null
+  val TYPE = classOf[scala.Long]
   val MIN_VALUE: scala.Long = -9223372036854775808L
   val MAX_VALUE: scala.Long = 9223372036854775807L
 
@@ -180,7 +180,7 @@ final class Float(private val value: scala.Float) extends Number {
 }
 
 object Float {
-  val TYPE = null
+  val TYPE = classOf[scala.Float]
   val POSITIVE_INFINITY = 0.0f // 1.0f / 0.0f
   val NEGATIVE_INFINITY = 0.0f // -1.0f / 0.0f
   val NaN = 0.0f // 0.0f / 0.0f
@@ -231,7 +231,7 @@ final class Double(private val value: scala.Double) extends Number {
 }
 
 object Double {
-  val TYPE = null
+  val TYPE = classOf[scala.Double]
   val POSITIVE_INFINITY = 0.0d // 1.0 / 0.0
   val NEGATIVE_INFINITY = 0.0d // -1.0 / 0.0
   val NaN = 0.0d // 0.0d / 0.0
