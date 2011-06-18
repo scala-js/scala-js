@@ -6,18 +6,24 @@ object System {
   var err: java.io.PrintStream = StandardErrPrintStream
   var in: java.io.InputStream = null
 
-  def getProperty(key: String): String = sys.error("unimplemented")
-  def getProperty(key: String, default: String): String = sys.error("unimplemented")
-  def currentTimeMillis(): scala.Long = sys.error("unimplemented")
-  def exit(status: scala.Int): Unit = sys.error("unimplemented")
-  def getenv(): java.util.Map[String,String] = sys.error("unimplemented")
-  def getenv(name: String): String = sys.error("unimplemented")
-  def getProperties(): java.util.Properties = sys.error("unimplemented")
-  def clearProperty(key: String): String = sys.error("unimplemented")
-  def setProperty(key: String, value: String): String = sys.error("unimplemented")
-  def arraycopy(src: Object, srcPos: scala.Int, dest: Object, destPos: scala.Int, length: scala.Int): Unit = sys.error("unimplemented")
-  def identityHashCode(x: Object): scala.Int = sys.error("unimplemented")
-  def gc(): Unit = {}
+  @native def currentTimeMillis(): scala.Long
+
+  @native def arraycopy(src: Object, srcPos: scala.Int,
+      dest: Object, destPos: scala.Int, length: scala.Int): Unit
+
+  @native def identityHashCode(x: Object): scala.Int
+
+  def getProperties(): java.util.Properties = sys.error("System.getProperties() not implemented")
+  def getProperty(key: String): String = sys.error("System.getProperty() not implemented")
+  def getProperty(key: String, default: String): String = sys.error("System.getProperty() not implemented")
+  def clearProperty(key: String): String = sys.error("System.clearProperty() not implemented")
+  def setProperty(key: String, value: String): String = sys.error("System.setProperty() not implemented")
+
+  def getenv(): java.util.Map[String,String] = sys.error("System.getenv() not implemented")
+  def getenv(name: String): String = sys.error("System.getenv() not implemented")
+
+  def exit(status: scala.Int) = Runtime.getRuntime().exit(status)
+  def gc() = Runtime.getRuntime().gc()
 }
 
 private[lang] object StandardOutPrintStream extends io.PrintStream(StandardOut, true) {
