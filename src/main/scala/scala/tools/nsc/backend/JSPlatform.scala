@@ -19,5 +19,8 @@ trait JSPlatform extends JavaPlatform {
 
   import global._
 
-  override def platformPhases = List(genJSCode)
+  override def platformPhases = List(
+    flatten,
+    genJSCode
+  )
 }

@@ -11,6 +11,5 @@ package js
  *
  *  @author Sébastien Doeraene
  */
-class JSTrees {
-
+object JSTrees {
 }
