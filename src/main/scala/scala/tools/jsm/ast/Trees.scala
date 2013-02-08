@@ -6,8 +6,6 @@
 package scala.tools.jsm
 package ast
 
-import scala.util.parsing.input.{ Position, NoPosition }
-
 /** JavaScript ASTs
  *
  *  @author Sébastien Doeraene
@@ -15,19 +13,28 @@ import scala.util.parsing.input.{ Position, NoPosition }
 object Trees {
   import Names._
 
-  abstract class Tree {
+  type Position = scala.util.parsing.input.Position
+  val NoPosition = scala.util.parsing.input.NoPosition
+
+  abstract sealed class Tree {
     def pos: Position
+  }
+
+  case object EmptyTree extends Tree {
+    def pos = NoPosition
   }
 
   // Definitions
 
-  case class VarDef(name: IdentifierName)(implicit val pos: Position) extends Tree
+  case class VarDef(name: IdentifierName, rhs: Tree)(implicit val pos: Position) extends Tree
 
   case class FunDef(name: IdentifierName, args: List[IdentifierName], body: Tree)(implicit val pos: Position) extends Tree
 
   // Statement-only language constructs
 
-  case class Block(stats: List[Tree])(implicit val pos: Position) extends Tree
+  case class Skip()(implicit val pos: Position) extends Tree
+
+  case class Block(stats: List[Tree], expr: Tree)(implicit val pos: Position) extends Tree
 
   case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
@@ -37,7 +44,9 @@ object Trees {
 
   case class While(cond: Tree, body: Tree)(implicit val pos: Position) extends Tree
 
-  case class Try(block: Tree, errVar: IdentifierName, handler: Tree)(implicit val pos: Position) extends Tree
+  case class Try(block: Tree, errVar: IdentifierName, handler: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
+
+  case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
 
   case class Break()(implicit val pos: Position) extends Tree
 
@@ -46,6 +55,8 @@ object Trees {
   // Expressions
 
   case class Ident(name: IdentifierName)(implicit val pos: Position) extends Tree
+
+  case class PropIdent(name: PropertyName)(implicit val pos: Position) extends Tree
 
   case class Select(qualifier: Tree, item: Tree)(implicit val pos: Position) extends Tree
 
@@ -63,11 +74,19 @@ object Trees {
 
   // Literals
 
-  case class IntLiteral(value: Long)(implicit val pos: Position) extends Tree
+  sealed trait Literal extends Tree
 
-  case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Tree
+  case class Undefined()(implicit val pos: Position) extends Literal
 
-  case class StringLiteral(value: String)(implicit val pos: Position) extends Tree
+  case class Null()(implicit val pos: Position) extends Literal
+
+  case class BooleanLiteral(value: Boolean)(implicit val pos: Position) extends Literal
+
+  case class IntLiteral(value: Long)(implicit val pos: Position) extends Literal
+
+  case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal
+
+  case class StringLiteral(value: String)(implicit val pos: Position) extends Literal
 
   // Compounds
 

@@ -64,7 +64,7 @@ object Printers {
 
     def printBlock(tree: Tree) {
       tree match {
-        case Block(_) =>
+        case Block(_, _) =>
           printTree(tree)
         case _ =>
           printColumn(List(tree), "{", ";", "}")
@@ -73,8 +73,14 @@ object Printers {
 
     def printTree(tree: Tree) {
       tree match {
-        case VarDef(name) =>
+        case EmptyTree =>
+          print("<empty>")
+
+        case VarDef(name, EmptyTree) =>
           print("var ", name, ";")
+
+        case VarDef(name, rhs) =>
+          print("var ", name, " = ", rhs, ";")
 
         case FunDef(name, args, body) =>
           print("function ", name, "(")
@@ -84,8 +90,11 @@ object Printers {
 
         // Statement-only language constructs
 
-        case Block(stats) =>
-          printColumn(stats, "{", ";", "}")
+        case Skip() =>
+          print("<skip>")
+
+        case Block(stats, expr) =>
+          printColumn(stats :+ expr, "{", ";", "}")
 
         case Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
@@ -103,11 +112,20 @@ object Printers {
           print("while (", cond, ") ")
           printBlock(body)
 
-        case Try(block, errVar, handler) =>
+        case Try(block, errVar, handler, finalizer) =>
           print("try ")
           printBlock(block)
-          print(" catch (", errVar, ") ")
-          printBlock(handler)
+          if (handler != EmptyTree) {
+            print(" catch (", errVar, ") ")
+            printBlock(handler)
+          }
+          if (finalizer != EmptyTree) {
+            print(" finally ")
+            printBlock(finalizer)
+          }
+
+        case Throw(expr) =>
+          print("throw ", expr)
 
         case Break() =>
           print("break")
@@ -118,6 +136,9 @@ object Printers {
         // Expressions
 
         case Ident(name) =>
+          printName(name)
+
+        case PropIdent(name) =>
           printName(name)
 
         case Select(qualifier, item) =>
@@ -147,6 +168,12 @@ object Printers {
           print("this")
 
         // Literals
+
+        case Undefined() =>
+          print("undefined")
+
+        case Null() =>
+          print("null")
 
         case IntLiteral(value) =>
           print(value)
