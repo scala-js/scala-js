@@ -105,4 +105,20 @@ object Trees {
   case class SetterDef(name: PropertyName, arg: IdentifierName, body: Tree)(implicit val pos: Position) extends Tree
 
   case class Super()(implicit val pos: Position) extends Tree
+
+  // Some derivatives
+
+  object ApplyMethod {
+    def apply(receiver: Tree, method: PropIdent, args: List[Tree])(implicit pos: Position) =
+      Apply(Select(receiver, method), args)
+
+    def unapply(tree: Apply): Option[(Tree, PropIdent, List[Tree])] = {
+      tree match {
+        case Apply(Select(receiver, method : PropIdent), args) =>
+          Some((receiver, method, args))
+        case _ =>
+          None
+      }
+    }
+  }
 }

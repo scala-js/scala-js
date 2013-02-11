@@ -26,18 +26,18 @@ trait JSEncoding extends SubComponent {
       "$jstype$" + sym.fullName
     else if (sym.isModule)
       throw new AssertionError("varForSymbol for module requested" + sym)
-    else if (sym.isStaticMember)
-      throw new AssertionError("varForSymbol for static member requested" + sym)
     else if (sym.isLabel)
       "$jslabel$" + nameString + "$" + sym.id
     else if (nameString endsWith " ")
       "$jsendspace$" + nameString.substring(0, nameString.length-1)
+    else if (sym.isMethod)
+      nameString
     else if (sym.owner.isClass /*&& !(nameString endsWith " ")*/)
       "$jsfield$" + nameString
     else if (sym.owner.isMethod && (!sym.isValueParameter))
       nameString + "$jsid$" + sym.id
     else
-      nameString.toString
+      nameString
 
     name + suffixFor(sym)
   }
