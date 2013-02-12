@@ -12,10 +12,11 @@ package js
  *  @author Sébastien Doeraene
  */
 trait JSEncoding extends SubComponent {
+  val global: scalajs.JSGlobal
+
   import global._
 
-  import scala.tools.jsm.ast.{ Trees => js }
-  import js.{ Position => JSPosition }
+  type JSPosition = Position
 
   def encodeLabelSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol")

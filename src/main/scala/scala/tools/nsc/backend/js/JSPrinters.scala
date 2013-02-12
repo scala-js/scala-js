@@ -1,30 +1,29 @@
-/* JSM - JavaScript manipulation library
- * Copyright 2013 LAMP/EPFL
- * @author  Sébastien Doeraene
+/* NSC -- new Scala compiler
+ * Copyright 2005-2013 LAMP/EPFL
+ * @author  Martin Odersky
  */
 
-package scala.tools.jsm
-package ast
+package scala.tools.nsc
+package backend
+package js
 
 import java.io.PrintWriter
 
-import Trees._
-
-object Printers {
+trait JSPrinters { self: scalajs.JSGlobal =>
   /** Basically copied from scala.reflect.internal.Printers */
-  trait IndentationManager {
+  trait JSIndentationManager {
     val out: PrintWriter
 
     protected var indentMargin = 0
     protected val indentStep = 2
     protected var indentString = "                                        " // 40
 
-    protected def doPrintPositions = false // settings.Xprintpos.value
+    protected def doPrintPositions = settings.Xprintpos.value
 
     def indent() = indentMargin += indentStep
     def undent() = indentMargin -= indentStep
 
-    def printPosition(tree: Tree) = if (doPrintPositions) print(tree.pos)
+    def printPosition(tree: js.Tree) = if (doPrintPositions) print(tree.pos.show)
 
     def println() {
       out.println()
@@ -42,78 +41,78 @@ object Printers {
       }
     }
 
-    def printColumn(ts: List[Tree], start: String, sep: String, end: String) {
+    def printColumn(ts: List[js.Tree], start: String, sep: String, end: String) {
       print(start); indent; println()
       printSeq(ts){print(_)}{print(sep); println()}; undent; println(); print(end)
     }
 
-    def printRow(ts: List[Tree], start: String, sep: String, end: String) {
+    def printRow(ts: List[js.Tree], start: String, sep: String, end: String) {
       print(start); printSeq(ts){print(_)}{print(sep)}; print(end)
     }
 
-    def printRow(ts: List[Tree], sep: String) { printRow(ts, "", sep, "") }
+    def printRow(ts: List[js.Tree], sep: String) { printRow(ts, "", sep, "") }
 
     def print(args: Any*): Unit
   }
 
-  class TreePrinter(val out: PrintWriter) extends IndentationManager {
-    def printBlock(tree: Tree) {
+  class JSTreePrinter(val out: PrintWriter) extends JSIndentationManager {
+    def printBlock(tree: js.Tree) {
       tree match {
-        case Block(_, _) =>
+        case js.Block(_, _) =>
           printTree(tree)
         case _ =>
           printColumn(List(tree), "{", ";", "}")
       }
     }
 
-    def printTree(tree: Tree) {
+    def printTree(tree: js.Tree) {
       tree match {
-        case EmptyTree =>
+        case js.EmptyTree =>
           print("<empty>")
 
         // Identifiers
 
-        case Ident(name) =>
+        case js.Ident(name) =>
           print(name)
 
         // Definitions
 
-        case VarDef(ident, EmptyTree) =>
+        case js.VarDef(ident, js.EmptyTree) =>
           print("var ", ident)
 
-        case VarDef(ident, rhs) =>
+        case js.VarDef(ident, rhs) =>
           print("var ", ident, " = ", rhs)
 
-        case FunDef(name, args, body) =>
+        case js.FunDef(name, args, body) =>
           print("function ", name)
           printRow(args, "(", ", ", ") ")
           printBlock(body)
 
         // Statement-only language constructs
 
-        case Skip() =>
+        case js.Skip() =>
           print("<skip>")
 
-        case Block(stats, expr) =>
+        case js.Block(stats, expr) =>
           printColumn(stats :+ expr, "{", ";", "}")
 
-        case Assign(lhs, rhs) =>
+        case js.Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
 
-        case Return(expr) =>
+        case js.Return(expr) =>
           print("return ", expr)
 
-        case If(cond, thenp, elsep) =>
+        case js.If(cond, thenp, elsep) =>
           print("if (", cond, ") ")
           printBlock(thenp)
           print(" else ")
           printBlock(elsep)
 
-        case While(cond, body) =>
+        case js.While(cond, body) =>
           print("while (", cond, ") ")
           printBlock(body)
 
-        case Try(block, errVar, handler, finalizer) =>
+        case js.Try(block, errVar, handler, finalizer) =>
           print("try ")
           printBlock(block)
           if (handler != EmptyTree) {
@@ -125,68 +124,68 @@ object Printers {
             printBlock(finalizer)
           }
 
-        case Throw(expr) =>
+        case js.Throw(expr) =>
           print("throw ", expr)
 
-        case Break() =>
+        case js.Break() =>
           print("break")
 
-        case Continue() =>
+        case js.Continue() =>
           print("continue")
 
         // Expressions
 
-        case DotSelect(qualifier, item) =>
+        case js.DotSelect(qualifier, item) =>
           print(qualifier, ".", item)
 
-        case BracketSelect(qualifier, item) =>
+        case js.BracketSelect(qualifier, item) =>
           print(qualifier, "[", item, "]")
 
-        case Apply(fun, args) =>
+        case js.Apply(fun, args) =>
           print(fun)
           printRow(args, "(", ", ", ")")
 
-        case Function(args, body) =>
+        case js.Function(args, body) =>
           printRow(args, "function(", ", ", ") ")
           printBlock(body)
 
-        case UnaryOp(op, lhs) =>
+        case js.UnaryOp(op, lhs) =>
           print(op, lhs)
 
-        case BinaryOp(op, lhs, rhs) =>
+        case js.BinaryOp(op, lhs, rhs) =>
           print(lhs, " ", op, " ", rhs)
 
-        case New(fun, args) =>
+        case js.New(fun, args) =>
           print("new ", fun)
           printRow(args, "(", ", ", ")")
 
-        case This() =>
+        case js.This() =>
           print("this")
 
         // Literals
 
-        case Undefined() =>
+        case js.Undefined() =>
           print("undefined")
 
-        case Null() =>
+        case js.Null() =>
           print("null")
 
-        case IntLiteral(value) =>
+        case js.IntLiteral(value) =>
           print(value)
 
-        case DoubleLiteral(value) =>
+        case js.DoubleLiteral(value) =>
           print(value)
 
-        case StringLiteral(value) =>
+        case js.StringLiteral(value) =>
           // TODO quote
           print("\"", value, "\"")
 
         // Compounds
 
-        case ArrayConstr(items) =>
+        case js.ArrayConstr(items) =>
           printRow(items, "[", ", ", "]")
 
-        case ObjectConstr(fields) =>
+        case js.ObjectConstr(fields) =>
           print("{"); indent; println()
           printSeq(fields) {
             case (name, value) => print(name, ": ", value)
@@ -197,7 +196,7 @@ object Printers {
 
         // Classes - from ECMAScript 6, can be desugared into other concepts
 
-        case ClassDef(name, parents, defs) =>
+        case js.ClassDef(name, parents, defs) =>
           print("class ", name)
           if (!parents.isEmpty) {
             print(" extends ")
@@ -207,26 +206,26 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
-        case MethodDef(name, args, body) =>
+        case js.MethodDef(name, args, body) =>
           print(name)
           printRow(args, "(", ", ", ") ")
           printBlock(body)
 
-        case GetterDef(name, body) =>
+        case js.GetterDef(name, body) =>
           // TODO
           print("<getter>")
 
-        case SetterDef(name, arg, body) =>
+        case js.SetterDef(name, arg, body) =>
           // TODO
           print("<setter>")
 
-        case Super() =>
+        case js.Super() =>
           print("super")
       }
     }
 
     def print(args: Any*): Unit = args foreach {
-      case tree: Tree =>
+      case tree: js.Tree =>
         printPosition(tree)
         printTree(tree)
       case arg =>

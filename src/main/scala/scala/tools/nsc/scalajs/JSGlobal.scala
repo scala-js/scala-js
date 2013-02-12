@@ -7,7 +7,7 @@ package scala.tools.nsc
 package scalajs
 
 import backend.JSPlatform
-import backend.js.GenJSCode
+import backend.js._
 
 import util.returning
 
@@ -15,7 +15,9 @@ import util.returning
  *
  *  @author Sébastien Doeraene
  */
-trait JSGlobal extends Global {
+trait JSGlobal extends Global
+                  with JSTrees
+                  with JSPrinters {
   /** Platform */
   override lazy val platform: ThisPlatform =
     new { val global: JSGlobal.this.type = JSGlobal.this } with JSPlatform

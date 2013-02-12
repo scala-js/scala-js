@@ -37,9 +37,6 @@ abstract class GenJSCode extends SubComponent
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) {
 
-    import scala.tools.jsm.ast.{ Trees => js }
-    import js.{ Position => JSPosition }
-
     override def name = phaseName
     override def description = "Generate JavaScript code from ASTs"
     override def erasedTypes = true
@@ -58,13 +55,7 @@ abstract class GenJSCode extends SubComponent
     // Some bridges with JS code -----------------------------------------------
 
     implicit class PositionJSHelper(pos: Position) {
-      def toJSPos: JSPosition = {
-        new JSPosition {
-          override def line = pos.line
-          override def column = pos.column
-          override protected def lineContents = pos.lineContent
-        }
-      }
+      def toJSPos: JSPosition = pos
     }
 
     // Top-level apply ---------------------------------------------------------
@@ -121,7 +112,7 @@ abstract class GenJSCode extends SubComponent
       currentClassSym = null
 
       val result = js.ClassDef(typeVar, Nil, generatedMethods.toList)
-      new scala.tools.jsm.ast.Printers.TreePrinter(
+      new JSTreePrinter(
           new java.io.PrintWriter(Console.out, true)).printTree(result)
       result
     }
