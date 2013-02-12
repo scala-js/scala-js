@@ -16,26 +16,24 @@ trait JSEncoding extends SubComponent {
 
   import global._
 
-  type JSPosition = Position
-
-  def encodeLabelSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol")
     js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id)
   }
 
-  def encodeFieldSym(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
+  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol")
 
     js.PropertyName("$jsfield$" + sym.name.toString)
   }
 
-  def encodeMethodSym(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
+  def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol")
     js.PropertyName(sym.name.toString + makeParamsString(sym))
   }
 
-  def encodeLocalSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.owner.isMethod && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol")
 
@@ -43,22 +41,22 @@ trait JSEncoding extends SubComponent {
     else js.Ident(sym.name.toString + "$jsid$" + sym.id)
   }
 
-  def encodeClassSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isClass, "encodeClassSym called with non-class symbol")
     js.Ident("$jsclass$" + mangleFullName(sym) + suffixFor(sym))
   }
 
-  def encodeClassOfSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeClassOfSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isClass, "encodeClassOfSym called with non-class symbol")
     js.Ident("$jsclassof$" + mangleFullName(sym) + suffixFor(sym))
   }
 
-  def encodeModuleSymInternal(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isModule, "encodeModuleSymInternal called with non-module symbol")
     js.Ident("$jsmodulevar$" + mangleFullName(sym) + "$")
   }
 
-  def encodeModuleSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isModule, "encodeModuleSym called with non-module symbol")
     js.Ident("$jsmodule$" + mangleFullName(sym) + "$")
   }

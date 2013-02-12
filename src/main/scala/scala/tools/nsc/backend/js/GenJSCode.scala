@@ -52,12 +52,6 @@ abstract class GenJSCode extends SubComponent
     var currentMethodSym: Symbol = _
     var isModuleInitialized: Boolean = false // see genApply for super calls
 
-    // Some bridges with JS code -----------------------------------------------
-
-    implicit class PositionJSHelper(pos: Position) {
-      def toJSPos: JSPosition = pos
-    }
-
     // Top-level apply ---------------------------------------------------------
 
     override def apply(cunit: CompilationUnit) {
@@ -84,7 +78,7 @@ abstract class GenJSCode extends SubComponent
     // Generate a class --------------------------------------------------------
 
     def genClass(cd: ClassDef): js.ClassDef = {
-      implicit val jspos = cd.pos.toJSPos
+      implicit val jspos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
 
@@ -120,7 +114,7 @@ abstract class GenJSCode extends SubComponent
     // Generate a method -------------------------------------------------------
 
     def genMethod(dd: DefDef): js.MethodDef = {
-      implicit val jspos = dd.pos.toJSPos
+      implicit val jspos = dd.pos
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       currentMethodSym = dd.symbol
 
@@ -132,7 +126,7 @@ abstract class GenJSCode extends SubComponent
 
       val jsParams =
         for (param <- params)
-          yield encodeLocalSym(param.symbol)(param.pos.toJSPos)
+          yield encodeLocalSym(param.symbol)(param.pos)
 
       val isNative = currentMethodSym.hasAnnotation(definitions.NativeAttr)
       val isAbstractMethod =
@@ -142,7 +136,7 @@ abstract class GenJSCode extends SubComponent
         if (!isNative && !isAbstractMethod) {
           val returnType = toTypeKind(currentMethodSym.tpe.resultType)
           if (returnType == UNDEFINED) genStat(rhs)
-          else js.Return(genExpr(rhs))(rhs.pos.toJSPos)
+          else js.Return(genExpr(rhs))(rhs.pos)
         } else {
           js.EmptyTree
         }
@@ -157,7 +151,7 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate code for a statement */
     def genStat(tree: Tree): js.Tree = {
-      implicit val pos = tree.pos.toJSPos
+      implicit val pos = tree.pos
 
       tree match {
         case Assign(lhs @ Select(qualifier, _), rhs) =>
@@ -197,7 +191,7 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate code for an expression */
     def genExpr(tree: Tree): js.Tree = {
-      implicit val pos = tree.pos.toJSPos
+      implicit val pos = tree.pos
 
       tree match {
         case lblDf: LabelDef =>
@@ -363,7 +357,7 @@ abstract class GenJSCode extends SubComponent
      *  as the continuation of the label-def.
      */
     def genLabelDef(tree: LabelDef): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
       val LabelDef(name, params, rhs) = tree
 
       if (settings.debug.value)
@@ -382,7 +376,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genTry(tree: Try): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genExpr(block)
@@ -394,7 +388,7 @@ abstract class GenJSCode extends SubComponent
         } else {
           val elseHandler: js.Tree = js.Throw(exceptVar)
           catches.foldRight(elseHandler) { (caseDef, elsep) =>
-            implicit val jspos = caseDef.pos.toJSPos
+            implicit val jspos = caseDef.pos
             val CaseDef(pat, _, body) = caseDef
 
             // Extract exception type and variable
@@ -435,7 +429,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genApply(tree: Tree): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       tree match {
         // isInstanceOf or asInstanceOf
@@ -487,7 +481,7 @@ abstract class GenJSCode extends SubComponent
             log("Call to super: " + tree)
 
           // TODO Do we need to take care of sup/mix?
-          //val superClass = varForSymbol(sup.symbol.superClass)(sup.pos.toJSPos)
+          //val superClass = varForSymbol(sup.symbol.superClass)(sup.pos)
 
           val callee = js.Select(js.Super(), encodeMethodSym(fun.symbol))
           val arguments = args map genExpr
@@ -563,7 +557,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
-        implicit pos: JSPosition): js.Tree = {
+        implicit pos: Position): js.Tree = {
       def int0 = js.IntLiteral(0)
       def int1 = js.IntLiteral(1)
       def float0 = js.DoubleLiteral(0.0)
@@ -581,7 +575,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genCast(from: Type, to: Type, value: js.Tree, cast: Boolean)(
-        implicit pos: JSPosition): js.Tree = {
+        implicit pos: Position): js.Tree = {
       val classConstant = genClassConstant(to)
       if (cast) {
         genBuiltinApply("AsInstance", value, classConstant)
@@ -591,20 +585,20 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
-        implicit pos: JSPosition): js.Tree = {
+        implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
       val classVar = encodeClassOfSym(clazz)
       val instance = js.New(typeVar, Nil)
       js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
     }
 
-    def genNew(clazz: Symbol)(implicit pos: JSPosition): js.Tree = {
+    def genNew(clazz: Symbol)(implicit pos: Position): js.Tree = {
       val ctor = ???
       genNew(clazz, ctor, Nil)
     }
 
     def genNewArray(elementKind: TypeKind, dimensions: Int,
-        arguments: List[js.Tree])(implicit pos: JSPosition): js.Tree = {
+        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val argsLength = arguments.length
 
       if (argsLength > dimensions)
@@ -628,7 +622,7 @@ abstract class GenJSCode extends SubComponent
     private def genPrimitiveOp(tree: Apply): js.Tree = {
       import scalaPrimitives._
 
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val sym = tree.symbol
       val Apply(fun @ Select(receiver, _), args) = tree
@@ -655,7 +649,7 @@ abstract class GenJSCode extends SubComponent
     private def genSimpleOp(tree: Apply, args: List[Tree], code: Int): js.Tree = {
       import scalaPrimitives._
 
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val sources = args map genExpr
 
@@ -723,7 +717,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     def genEqEqPrimitive(l: Tree, r: Tree, lsrc: js.Tree, rsrc: js.Tree)(
-        implicit pos: JSPosition): js.Tree = {
+        implicit pos: Position): js.Tree = {
       /** True if the equality comparison is between values that require the use of the rich equality
         * comparator (scala.runtime.Comparator.equals). This is the case when either side of the
         * comparison might have a run-time type subtype of java.lang.Number or java.lang.Character.
@@ -739,7 +733,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genStringConcat(tree: Apply, receiver: Tree, args: List[Tree]): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val List(arg) = args
 
@@ -767,7 +761,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val instance = genLoadModule(ScalaRunTimeModule)
       val arguments = List(genExpr(receiver))
@@ -779,7 +773,7 @@ abstract class GenJSCode extends SubComponent
     private def genArrayOp(tree: Tree, code: Int): js.Tree = {
       import scalaPrimitives._
 
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val Apply(Select(arrayObj, _), args) = tree
       val arrayValue = genExpr(arrayObj)
@@ -808,7 +802,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genSynchronized(tree: Apply): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val Apply(Select(receiver, _), args) = tree
       val receiverExpr = genExpr(receiver)
@@ -822,7 +816,7 @@ abstract class GenJSCode extends SubComponent
     private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
       import scalaPrimitives._
 
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val source = genExpr(receiver)
 
@@ -838,7 +832,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genApplyDynamic(tree: Tree, nobox: Boolean = false): js.Tree = {
-      implicit val jspos = tree.pos.toJSPos
+      implicit val jspos = tree.pos
 
       val sym = tree.symbol
       val ApplyDynamic(receiver, args) = tree
@@ -889,7 +883,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate a literal "zero" for the requested type */
-    def genZeroOf(tpe: Type)(implicit pos: JSPosition): js.Tree = toTypeKind(tpe) match {
+    def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
       case UNDEFINED => js.Undefined()
       case BOOL => js.BooleanLiteral(false)
       case INT(_) => js.IntLiteral(0)
@@ -899,18 +893,18 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate loading of a module value */
-    private def genLoadModule(sym: Symbol)(implicit pos: JSPosition) = {
+    private def genLoadModule(sym: Symbol)(implicit pos: Position) = {
       val symbol = if (sym.isModuleClass) sym.companionModule else sym
       js.Apply(encodeModuleSym(symbol), Nil)
     }
 
     /** Generate access to a static member */
-    private def genStaticMember(sym: Symbol)(implicit pos: JSPosition) = {
+    private def genStaticMember(sym: Symbol)(implicit pos: Position) = {
       js.Select(genLoadModule(sym.owner), encodeFieldSym(sym))
     }
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
-    private def genClassConstant(tpe: Type)(implicit pos: JSPosition): js.Tree = {
+    private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree = {
       toTypeKind(tpe) match {
         case array : ARRAY =>
           val elementClass = encodeClassOfSym(array.elementKind.toType.typeSymbol)
@@ -922,7 +916,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate a call to a runtime builtin helper */
-    def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: JSPosition) = {
+    def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: Position) = {
       js.Apply(js.Ident(funName), args.toList)
     }
   }
