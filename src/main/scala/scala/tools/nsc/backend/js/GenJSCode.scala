@@ -116,7 +116,7 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
-      val typeVar = varForType(currentClassSym)
+      val typeVar = encodeClassSym(currentClassSym)
 
       currentClassSym = null
 
@@ -141,7 +141,7 @@ abstract class GenJSCode extends SubComponent
 
       val jsParams =
         for (param <- params)
-          yield varForSymbol(param.symbol)(param.pos.toJSPos)
+          yield encodeLocalSym(param.symbol)(param.pos.toJSPos)
 
       val isNative = currentMethodSym.hasAnnotation(definitions.NativeAttr)
       val isAbstractMethod =
@@ -157,7 +157,7 @@ abstract class GenJSCode extends SubComponent
         }
       }
 
-      val methodPropIdent = propForSymbol(currentMethodSym)
+      val methodPropIdent = encodeMethodSym(currentMethodSym)
 
       currentMethodSym = null
 
@@ -176,14 +176,14 @@ abstract class GenJSCode extends SubComponent
             if (sym.isStaticMember) {
               genStaticMember(sym)
             } else {
-              js.Select(genExpr(qualifier), propForSymbol(sym))
+              js.Select(genExpr(qualifier), encodeFieldSym(sym))
             }
 
           js.Assign(member, genExpr(rhs))
 
         case Assign(lhs, rhs) =>
           val sym = lhs.symbol
-          js.Assign(varForSymbol(sym), genExpr(rhs))
+          js.Assign(encodeLocalSym(sym), genExpr(rhs))
 
         case _ =>
           exprToStat(genExpr(tree))
@@ -221,7 +221,7 @@ abstract class GenJSCode extends SubComponent
           val lhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
             else genExpr(rhs)
-          statToExpr(js.VarDef(varForSymbol(sym), lhsTree))
+          statToExpr(js.VarDef(encodeLocalSym(sym), lhsTree))
 
         case If(cond, thenp, elsep) =>
           js.If(genExpr(cond), genExpr(thenp), genExpr(elsep))
@@ -275,7 +275,7 @@ abstract class GenJSCode extends SubComponent
           } else if (sym.isStaticMember) {
             genStaticMember(sym)
           } else {
-            js.Select(genExpr(qualifier), propForSymbol(sym))
+            js.Select(genExpr(qualifier), encodeFieldSym(sym))
           }
 
         case Ident(name) =>
@@ -285,7 +285,7 @@ abstract class GenJSCode extends SubComponent
               assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
               genLoadModule(sym)
             } else {
-              varForSymbol(sym)
+              encodeLocalSym(sym)
             }
           } else {
             sys.error("Cannot use package as value: " + tree)
@@ -379,10 +379,10 @@ abstract class GenJSCode extends SubComponent
         log("Encountered a label def: " + tree)
 
       val sym = tree.symbol
-      val procVar = varForSymbol(sym)
+      val procVar = encodeLabelSym(sym)
 
       val body = genExpr(rhs)
-      val arguments = params map { ident => varForSymbol(ident.symbol) }
+      val arguments = params map { ident => encodeLocalSym(ident.symbol) }
 
       val defineProc = js.FunDef(procVar, arguments, body)
       val call = js.Apply(procVar, arguments)
@@ -413,7 +413,7 @@ abstract class GenJSCode extends SubComponent
               case Ident(nme.WILDCARD) =>
                 (ThrowableClass.tpe, None)
               case Bind(_, _) =>
-                (pat.symbol.tpe, Some(varForSymbol(pat.symbol)))
+                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol)))
             })
 
             // Generate the body that must be executed if the exception matches
@@ -498,7 +498,7 @@ abstract class GenJSCode extends SubComponent
           // TODO Do we need to take care of sup/mix?
           //val superClass = varForSymbol(sup.symbol.superClass)(sup.pos.toJSPos)
 
-          val callee = js.Select(js.Super(), propForSymbol(fun.symbol))
+          val callee = js.Select(js.Super(), encodeMethodSym(fun.symbol))
           val arguments = args map genExpr
           val superCall = js.Apply(callee, arguments)
 
@@ -512,7 +512,7 @@ abstract class GenJSCode extends SubComponent
               currentMethodSym.isClassConstructor) {
             isModuleInitialized = true
             val module = currentClassSym.companionModule
-            val initModule = js.Assign(varForModuleInternal(module), js.This())
+            val initModule = js.Assign(encodeModuleSymInternal(module), js.This())
 
             js.Block(List(superCall, initModule), js.This())
           } else
@@ -552,7 +552,7 @@ abstract class GenJSCode extends SubComponent
             if (settings.verbose.value)
               println("warning: jump found at "+tree.pos+", doing my best ...")
 
-            val procVar = varForSymbol(sym)
+            val procVar = encodeLabelSym(sym)
             val arguments = args map genExpr
             js.Apply(procVar, arguments)
           } else if (isPrimitive(sym)) {
@@ -566,7 +566,7 @@ abstract class GenJSCode extends SubComponent
             val instance = genExpr(receiver)
             val arguments = args map genExpr
 
-            js.Apply(js.Select(instance, propForSymbol(fun.symbol)), arguments)
+            js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)), arguments)
           }
       }
     }
@@ -601,10 +601,10 @@ abstract class GenJSCode extends SubComponent
 
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: JSPosition): js.Tree = {
-      val typeVar = varForType(clazz)
-      val classVar = varForClass(clazz)
+      val typeVar = encodeClassSym(clazz)
+      val classVar = encodeClassOfSym(clazz)
       val instance = js.New(typeVar, Nil)
-      js.Apply(js.Select(instance, propForSymbol(ctor)), arguments)
+      js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
     }
 
     def genNew(clazz: Symbol)(implicit pos: JSPosition): js.Tree = {
@@ -755,9 +755,9 @@ abstract class GenJSCode extends SubComponent
       val instance = genExpr(receiver)
       val boxed = makeBox(instance, receiver.tpe)
 
-      val stringInstance = js.ApplyMethod(boxed, propForSymbol(Object_toString), Nil)
+      val stringInstance = js.ApplyMethod(boxed, encodeMethodSym(Object_toString), Nil)
 
-      js.ApplyMethod(stringInstance, propForSymbol(String_+), List(genExpr(args.head)))
+      js.ApplyMethod(stringInstance, encodeMethodSym(String_+), List(genExpr(args.head)))
     }
 
     private def makeBox(expr: js.Tree, tpe: Type): js.Tree =
@@ -772,17 +772,17 @@ abstract class GenJSCode extends SubComponent
       val module = tpe.typeSymbol.companionModule
       val boxSymbol = definitions.getMember(module, function)
       js.ApplyMethod(genLoadModule(module),
-          propForSymbol(boxSymbol), List(expr))
+          encodeMethodSym(boxSymbol), List(expr))
     }
 
     private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
       implicit val jspos = tree.pos.toJSPos
 
-      val instance = varForSymbol(ScalaRunTimeModule)
+      val instance = genLoadModule(ScalaRunTimeModule)
       val arguments = List(genExpr(receiver))
       val sym = getMember(ScalaRunTimeModule, stringToTermName("hash"))
 
-      js.ApplyMethod(instance, propForSymbol(sym), arguments)
+      js.ApplyMethod(instance, encodeMethodSym(sym), arguments)
     }
 
     private def genArrayOp(tree: Tree, code: Int): js.Tree = {
@@ -854,7 +854,7 @@ abstract class GenJSCode extends SubComponent
 
       val instance = genExpr(receiver)
       val arguments = genApplyDynamicArgs(sym, args)
-      val apply = js.Apply(js.Select(instance, propForSymbol(sym)), arguments)
+      val apply = js.Apply(js.Select(instance, encodeMethodSym(sym)), arguments)
 
       val returnType = returnTypeOf(sym)
       if (nobox || !isPrimitiveKind(toTypeKind(returnType)))
@@ -910,23 +910,23 @@ abstract class GenJSCode extends SubComponent
     /** Generate loading of a module value */
     private def genLoadModule(sym: Symbol)(implicit pos: JSPosition) = {
       val symbol = if (sym.isModuleClass) sym.companionModule else sym
-      js.Apply(varForModule(symbol), Nil)
+      js.Apply(encodeModuleSym(symbol), Nil)
     }
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: JSPosition) = {
-      js.Select(genLoadModule(sym.owner), propForSymbol(sym))
+      js.Select(genLoadModule(sym.owner), encodeFieldSym(sym))
     }
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
     private def genClassConstant(tpe: Type)(implicit pos: JSPosition): js.Tree = {
       toTypeKind(tpe) match {
         case array : ARRAY =>
-          val elementClass = varForClass(array.elementKind.toType.typeSymbol)
+          val elementClass = encodeClassOfSym(array.elementKind.toType.typeSymbol)
           genBuiltinApply("MultiArrayClassOf", elementClass,
               js.IntLiteral(array.dimensions))
 
-        case _ => varForClass(tpe.typeSymbol)
+        case _ => encodeClassOfSym(tpe.typeSymbol)
       }
     }
 

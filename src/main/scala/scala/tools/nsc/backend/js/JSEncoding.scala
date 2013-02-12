@@ -17,50 +17,50 @@ trait JSEncoding extends SubComponent {
   import scala.tools.jsm.ast.{ Trees => js }
   import js.{ Position => JSPosition }
 
-  private def strForSymbol(sym: Symbol): String = {
-    require(sym.isTerm, "strForSymbol requires a term symbol")
-
-    val nameString = sym.name.toString
-
-    val name = if (sym.isModule)
-      throw new AssertionError("varForSymbol for module requested" + sym)
-    else if (sym.isLabel)
-      "$jslabel$" + nameString + "$" + sym.id
-    else if (nameString endsWith " ")
-      "$jsendspace$" + nameString.substring(0, nameString.length-1)
-    else if (sym.isMethod)
-      nameString
-    else if (sym.owner.isClass /*&& !(nameString endsWith " ")*/)
-      "$jsfield$" + nameString
-    else if (sym.owner.isMethod && (!sym.isValueParameter))
-      nameString + "$jsid$" + sym.id
-    else
-      nameString
-
-    name + suffixFor(sym)
+  def encodeLabelSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.isLabel, "encodeLabelSym called with non-label symbol")
+    js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id)
   }
 
-  def varForSymbol(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    js.Ident(strForSymbol(sym))
+  def encodeFieldSym(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
+    require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
+        "encodeFieldSym called with non-field symbol")
+
+    js.PropertyName("$jsfield$" + sym.name.toString)
   }
 
-  def propForSymbol(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
-    js.PropertyName(strForSymbol(sym))
+  def encodeMethodSym(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
+    require(sym.isMethod, "encodeMethodSym called with non-method symbol")
+
+    // TODO encode signature
+    js.PropertyName(sym.name.toString)
   }
 
-  def varForType(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    js.Ident("$jstype$" + mangleFullName(sym) + suffixFor(sym))
+  def encodeLocalSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.owner.isMethod && sym.isTerm && !sym.isMethod && !sym.isModule,
+        "encodeLocalSym called with non-local symbol")
+
+    if (sym.isValueParameter) js.Ident(sym.name.toString)
+    else js.Ident(sym.name.toString + "$jsid$" + sym.id)
   }
 
-  def varForClass(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeClassSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.isClass, "encodeClassSym called with non-class symbol")
     js.Ident("$jsclass$" + mangleFullName(sym) + suffixFor(sym))
   }
 
-  def varForModuleInternal(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeClassOfSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.isClass, "encodeClassOfSym called with non-class symbol")
+    js.Ident("$jsclassof$" + mangleFullName(sym) + suffixFor(sym))
+  }
+
+  def encodeModuleSymInternal(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.isModule, "encodeModuleSymInternal called with non-module symbol")
     js.Ident("$jsmodulevar$" + mangleFullName(sym) + "$")
   }
 
-  def varForModule(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+  def encodeModuleSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    require(sym.isModule, "encodeModuleSym called with non-module symbol")
     js.Ident("$jsmodule$" + mangleFullName(sym) + "$")
   }
 
