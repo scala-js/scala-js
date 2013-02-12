@@ -31,9 +31,7 @@ trait JSEncoding extends SubComponent {
 
   def encodeMethodSym(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol")
-
-    // TODO encode signature
-    js.PropertyName(sym.name.toString)
+    js.PropertyName(sym.name.toString + makeParamsString(sym))
   }
 
   def encodeLocalSym(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
@@ -69,4 +67,30 @@ trait JSEncoding extends SubComponent {
 
   private def suffixFor(sym: Symbol) =
     if (sym.hasModuleFlag && !sym.isMethod && !sym.isImplClass) "$" else ""
+
+  // Encoding of method signatures
+
+  private def makeParamsString(sym: Symbol): String = {
+    sym.tpe match {
+      case MethodType(params, resultType) =>
+        makeParamsString(params.toList map (_.tpe), resultType)
+
+      case NullaryMethodType(resultType) =>
+        makeParamsString(Nil, resultType)
+
+      case _ => abort("Expected a method type for " + sym)
+    }
+  }
+
+  private def makeParamsString(paramTypes: List[Type], resultType: Type): String =
+    makeParamsString(paramTypes map typeFullName, typeFullName(resultType))
+
+  private def makeParamsString(paramTypeNames: List[String], resultTypeName: String) =
+    paramTypeNames.mkString("(", ",", ")") + ":" + resultTypeName
+
+  private def typeFullName(tpe: Type): String = tpe match {
+    case TypeRef(_, definitions.ArrayClass, List(elementType)) =>
+      typeFullName(elementType) + "[]"
+    case _ => tpe.typeSymbol.fullName
+  }
 }
