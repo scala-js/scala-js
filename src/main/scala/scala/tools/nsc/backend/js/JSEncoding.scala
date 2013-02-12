@@ -16,15 +16,13 @@ trait JSEncoding extends SubComponent {
 
   import scala.tools.jsm.ast.{ Trees => js }
   import js.{ Position => JSPosition }
-  import scala.tools.jsm.Names
-  import Names.{ IdentifierName => JSIdentName, PropertyName => JSPropName }
 
   private def strForSymbol(sym: Symbol): String = {
+    require(sym.isTerm, "strForSymbol requires a term symbol")
+
     val nameString = sym.name.toString
 
-    val name = if (sym.name.isTypeName)
-      "$jstype$" + sym.fullName
-    else if (sym.isModule)
+    val name = if (sym.isModule)
       throw new AssertionError("varForSymbol for module requested" + sym)
     else if (sym.isLabel)
       "$jslabel$" + nameString + "$" + sym.id
@@ -43,31 +41,32 @@ trait JSEncoding extends SubComponent {
   }
 
   def varForSymbol(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    makeIdent(strForSymbol(sym))
+    js.Ident(strForSymbol(sym))
   }
 
-  def propForSymbol(sym: Symbol)(implicit pos: JSPosition): js.PropIdent = {
-    makeProp(strForSymbol(sym))
+  def propForSymbol(sym: Symbol)(implicit pos: JSPosition): js.PropertyName = {
+    js.PropertyName(strForSymbol(sym))
+  }
+
+  def varForType(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
+    js.Ident("$jstype$" + mangleFullName(sym) + suffixFor(sym))
   }
 
   def varForClass(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    makeIdent("$jsclass$" + sym.fullName + suffixFor(sym))
+    js.Ident("$jsclass$" + mangleFullName(sym) + suffixFor(sym))
   }
 
   def varForModuleInternal(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    makeIdent("$jsmodulevar$" + sym.fullName + "$")
+    js.Ident("$jsmodulevar$" + mangleFullName(sym) + "$")
   }
 
   def varForModule(sym: Symbol)(implicit pos: JSPosition): js.Ident = {
-    makeIdent("$jsmodule$" + sym.fullName + "$")
+    js.Ident("$jsmodule$" + mangleFullName(sym) + "$")
   }
+
+  private def mangleFullName(sym: Symbol) =
+    sym.fullName.replaceAllLiterally(".", "$dot")
 
   private def suffixFor(sym: Symbol) =
     if (sym.hasModuleFlag && !sym.isMethod && !sym.isImplClass) "$" else ""
-
-  private def makeIdent(name: String)(implicit pos: JSPosition): js.Ident =
-    js.Ident(new JSIdentName(name))
-
-  private def makeProp(name: String)(implicit pos: JSPosition): js.PropIdent =
-    js.PropIdent(new JSPropName(name))
 }

@@ -9,7 +9,6 @@ package ast
 import java.io.PrintWriter
 
 import Trees._
-import Names._
 
 object Printers {
   /** Basically copied from scala.reflect.internal.Printers */
@@ -58,10 +57,6 @@ object Printers {
   }
 
   class TreePrinter(val out: PrintWriter) extends IndentationManager {
-    def printName(name: Name) {
-      out.print(name.quoted)
-    }
-
     def printBlock(tree: Tree) {
       tree match {
         case Block(_, _) =>
@@ -76,16 +71,22 @@ object Printers {
         case EmptyTree =>
           print("<empty>")
 
-        case VarDef(name, EmptyTree) =>
-          print("var ", name, ";")
+        // Identifiers
 
-        case VarDef(name, rhs) =>
-          print("var ", name, " = ", rhs, ";")
+        case Ident(name) =>
+          print(name)
+
+        // Definitions
+
+        case VarDef(ident, EmptyTree) =>
+          print("var ", ident)
+
+        case VarDef(ident, rhs) =>
+          print("var ", ident, " = ", rhs)
 
         case FunDef(name, args, body) =>
-          print("function ", name, "(")
-          printSeq(args){printName}{print(", ")}
-          print(") ")
+          print("function ", name)
+          printRow(args, "(", ", ", ") ")
           printBlock(body)
 
         // Statement-only language constructs
@@ -135,23 +136,18 @@ object Printers {
 
         // Expressions
 
-        case Ident(name) =>
-          printName(name)
-
-        case PropIdent(name) =>
-          printName(name)
-
-        case Select(qualifier, item) =>
+        case DotSelect(qualifier, item) =>
           print(qualifier, ".", item)
+
+        case BracketSelect(qualifier, item) =>
+          print(qualifier, "[", item, "]")
 
         case Apply(fun, args) =>
           print(fun)
           printRow(args, "(", ", ", ")")
 
         case Function(args, body) =>
-          print("function ", "(")
-          printSeq(args){printName}{print(", ")}
-          print(") ")
+          printRow(args, "function(", ", ", ") ")
           printBlock(body)
 
         case UnaryOp(op, lhs) =>
@@ -212,9 +208,8 @@ object Printers {
           println()
 
         case MethodDef(name, args, body) =>
-          print(name, "(")
-          printSeq(args){printName}{print(", ")}
-          print(") ")
+          print(name)
+          printRow(args, "(", ", ", ") ")
           printBlock(body)
 
         case GetterDef(name, body) =>
@@ -234,8 +229,6 @@ object Printers {
       case tree: Tree =>
         printPosition(tree)
         printTree(tree)
-      case name: Name =>
-        printName(name)
       case arg =>
         out.print(if (arg == null) "null" else arg.toString)
     }

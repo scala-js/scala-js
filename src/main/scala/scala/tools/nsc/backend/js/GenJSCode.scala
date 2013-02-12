@@ -37,11 +37,8 @@ abstract class GenJSCode extends SubComponent
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) {
 
-    import scala.tools.jsm.{ Names => JSNames }
-    import JSNames.{ IdentifierName => JSIdentName, PropertyName => JSPropName }
     import scala.tools.jsm.ast.{ Trees => js }
-
-    import scala.util.parsing.input.{ Position => JSPosition }
+    import js.{ Position => JSPosition }
 
     override def name = phaseName
     override def description = "Generate JavaScript code from ASTs"
@@ -69,12 +66,6 @@ abstract class GenJSCode extends SubComponent
         }
       }
     }
-
-    def identName(name: TermName) =
-      JSNames.identName(name.toString)
-
-    def propName(name: TermName) =
-      JSNames.propName(name.toString)
 
     // Top-level apply ---------------------------------------------------------
 
@@ -125,9 +116,11 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
+      val typeVar = varForType(currentClassSym)
+
       currentClassSym = null
 
-      val result = js.ClassDef(identName(name), Nil, generatedMethods.toList)
+      val result = js.ClassDef(typeVar, Nil, generatedMethods.toList)
       new scala.tools.jsm.ast.Printers.TreePrinter(
           new java.io.PrintWriter(Console.out, true)).printTree(result)
       result
@@ -148,7 +141,7 @@ abstract class GenJSCode extends SubComponent
 
       val jsParams =
         for (param <- params)
-          yield identName(param.name)
+          yield varForSymbol(param.symbol)(param.pos.toJSPos)
 
       val isNative = currentMethodSym.hasAnnotation(definitions.NativeAttr)
       val isAbstractMethod =
@@ -158,7 +151,7 @@ abstract class GenJSCode extends SubComponent
         if (!isNative && !isAbstractMethod) {
           val returnType = toTypeKind(currentMethodSym.tpe.resultType)
           if (returnType == UNDEFINED) genStat(rhs)
-          else genExpr(rhs)
+          else js.Return(genExpr(rhs))(rhs.pos.toJSPos)
         } else {
           js.EmptyTree
         }
@@ -168,7 +161,7 @@ abstract class GenJSCode extends SubComponent
 
       currentMethodSym = null
 
-      js.MethodDef(methodPropIdent.name, jsParams, body)
+      js.MethodDef(methodPropIdent, jsParams, body)
     }
 
     /** Generate code for a statement */
@@ -228,7 +221,7 @@ abstract class GenJSCode extends SubComponent
           val lhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
             else genExpr(rhs)
-          statToExpr(js.VarDef(identName(name), lhsTree))
+          statToExpr(js.VarDef(varForSymbol(sym), lhsTree))
 
         case If(cond, thenp, elsep) =>
           js.If(genExpr(cond), genExpr(thenp), genExpr(elsep))
@@ -391,7 +384,7 @@ abstract class GenJSCode extends SubComponent
       val body = genExpr(rhs)
       val arguments = params map { ident => varForSymbol(ident.symbol) }
 
-      val defineProc = js.FunDef(procVar.name, arguments map (_.name), body)
+      val defineProc = js.FunDef(procVar, arguments, body)
       val call = js.Apply(procVar, arguments)
 
       js.Block(List(defineProc), call)
@@ -402,7 +395,7 @@ abstract class GenJSCode extends SubComponent
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genExpr(block)
-      val exceptVar = js.Ident(new JSIdentName("$jsexc$"))
+      val exceptVar = js.Ident("$jsexc$")
 
       val handlerAST = {
         if (catches.isEmpty) {
@@ -427,7 +420,7 @@ abstract class GenJSCode extends SubComponent
             val bodyWithBoundVar = (boundVar match {
               case None => genExpr(body)
               case Some(bv) =>
-                js.Block(List(js.VarDef(bv.name, exceptVar)), genExpr(body))
+                js.Block(List(js.VarDef(bv, exceptVar)), genExpr(body))
             })
 
             // Generate the test
@@ -447,7 +440,7 @@ abstract class GenJSCode extends SubComponent
         case ast => ast
       }
 
-      js.Try(blockAST, exceptVar.name, handlerAST, finalizerAST)
+      js.Try(blockAST, exceptVar, handlerAST, finalizerAST)
     }
 
     def genApply(tree: Tree): js.Tree = {
@@ -608,9 +601,9 @@ abstract class GenJSCode extends SubComponent
 
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: JSPosition): js.Tree = {
-      val typeVar = varForSymbol(clazz)
+      val typeVar = varForType(clazz)
       val classVar = varForClass(clazz)
-      val instance = js.New(typeVar.name, Nil)
+      val instance = js.New(typeVar, Nil)
       js.Apply(js.Select(instance, propForSymbol(ctor)), arguments)
     }
 
@@ -807,7 +800,7 @@ abstract class GenJSCode extends SubComponent
           assert(args.length == 1,
                  "Too many arguments for array get operation: " + tree)
 
-        js.Select(arrayValue, arguments(0))
+        js.BracketSelect(arrayValue, arguments(0))
       }
       else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
@@ -815,11 +808,11 @@ abstract class GenJSCode extends SubComponent
           assert(args.length == 2,
                  "Too many arguments for array set operation: " + tree)
 
-        statToExpr(js.Assign(js.Select(arrayValue, arguments(0)), arguments(1)))
+        statToExpr(js.Assign(js.BracketSelect(arrayValue, arguments(0)), arguments(1)))
       }
       else {
         // length of the array
-        js.Select(arrayValue, js.PropIdent(new JSPropName("length")))
+        js.Select(arrayValue, js.Ident("length"))
       }
     }
 
@@ -832,8 +825,7 @@ abstract class GenJSCode extends SubComponent
 
       val proc = js.Function(Nil, body)
 
-      js.ApplyMethod(receiverExpr,
-          js.PropIdent(new JSPropName("synchronized")), List(proc))
+      js.ApplyMethod(receiverExpr, js.Ident("synchronized"), List(proc))
     }
 
     private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
@@ -940,7 +932,7 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate a call to a runtime builtin helper */
     def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: JSPosition) = {
-      js.Apply(js.Ident(identName(funName)), args.toList)
+      js.Apply(js.Ident(funName), args.toList)
     }
   }
 }
