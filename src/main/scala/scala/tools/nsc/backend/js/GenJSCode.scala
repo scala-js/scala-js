@@ -135,7 +135,9 @@ abstract class GenJSCode extends SubComponent
       val body = {
         if (!isNative && !isAbstractMethod) {
           val returnType = toTypeKind(currentMethodSym.tpe.resultType)
-          if (returnType == UNDEFINED) genStat(rhs)
+          if (currentMethodSym.isConstructor)
+            js.Block(List(genStat(rhs)), js.Return(js.This()))
+          else if (returnType == UNDEFINED) genStat(rhs)
           else js.Return(genExpr(rhs))(rhs.pos)
         } else {
           js.EmptyTree
