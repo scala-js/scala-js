@@ -169,5 +169,184 @@ trait JSTrees { self: scalajs.JSGlobal =>
         }
       }
     }
+
+    // Transformer
+
+    class Transformer {
+      def transformStat(tree: Tree): Tree = {
+        implicit val pos = tree.pos
+
+        tree match {
+          // Definitions
+
+          case VarDef(ident, rhs) =>
+            VarDef(ident, transformExpr(rhs))
+
+          case FunDef(name, args, body) =>
+            FunDef(name, args, transformStat(body))
+
+          // Statement-only language constructs
+
+          case Block(stats, stat) =>
+            Block(stats map transformStat, transformStat(stat))
+
+          case Assign(lhs, rhs) =>
+            Assign(transformExpr(lhs), transformExpr(rhs))
+
+          case Return(expr) =>
+            Return(transformExpr(expr))
+
+          case If(cond, thenp, elsep) =>
+            If(transformExpr(cond), transformStat(thenp), transformStat(elsep))
+
+          case While(cond, body) =>
+            While(transformExpr(cond), transformStat(body))
+
+          case Try(block, errVar, handler, finalizer) =>
+            Try(transformStat(block), errVar, transformStat(handler), transformStat(finalizer))
+
+          case Throw(expr) =>
+            Throw(transformExpr(expr))
+
+          // Expressions
+
+          case DotSelect(qualifier, item) =>
+            DotSelect(transformExpr(qualifier), item)
+
+          case BracketSelect(qualifier, item) =>
+            BracketSelect(transformExpr(qualifier), transformExpr(item))
+
+          case Apply(fun, args) =>
+            Apply(transformExpr(fun), args map transformExpr)
+
+          case Function(args, body) =>
+            Function(args, transformStat(body))
+
+          case UnaryOp(op, lhs) =>
+            UnaryOp(op, transformExpr(lhs))
+
+          case BinaryOp(op, lhs, rhs) =>
+            BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+
+          case New(fun, args) =>
+            New(fun, args map transformExpr)
+
+          // Compounds
+
+          case ArrayConstr(items) =>
+            ArrayConstr(items map transformExpr)
+
+          case ObjectConstr(fields) =>
+            ObjectConstr(fields map {
+              case (name, value) => (name, transformExpr(value))
+            })
+
+          // Classes
+
+          case ClassDef(name, parents, defs) =>
+            ClassDef(name, parents map transformExpr, defs map transformDef)
+
+          case _ =>
+            tree
+        }
+      }
+
+      def transformExpr(tree: Tree): Tree = {
+        implicit val pos = tree.pos
+
+        tree match {
+          // Things that really should always be statements
+          // But actually it could be meaningful to have them as expressions
+
+          case VarDef(ident, rhs) =>
+            VarDef(ident, transformExpr(rhs))
+
+          case FunDef(name, args, body) =>
+            FunDef(name, args, transformStat(body))
+
+          case Assign(lhs, rhs) =>
+            Assign(transformExpr(lhs), transformExpr(rhs))
+
+          case While(cond, body) =>
+            While(transformExpr(cond), transformStat(body))
+
+          // Language constructs that are statement-only in standard JavaScript
+
+          case Block(stats, expr) =>
+            Block(stats map transformStat, transformExpr(expr))
+
+          case Return(expr) =>
+            Return(transformExpr(expr))
+
+          case If(cond, thenp, elsep) =>
+            If(transformExpr(cond), transformExpr(thenp), transformExpr(elsep))
+
+          case Try(block, errVar, handler, finalizer) =>
+            Try(transformExpr(block), errVar, transformExpr(handler), transformStat(finalizer))
+
+          case Throw(expr) =>
+            Throw(transformExpr(expr))
+
+          // Expressions
+
+          case DotSelect(qualifier, item) =>
+            DotSelect(transformExpr(qualifier), item)
+
+          case BracketSelect(qualifier, item) =>
+            BracketSelect(transformExpr(qualifier), transformExpr(item))
+
+          case Apply(fun, args) =>
+            Apply(transformExpr(fun), args map transformExpr)
+
+          case Function(args, body) =>
+            Function(args, transformStat(body))
+
+          case UnaryOp(op, lhs) =>
+            UnaryOp(op, transformExpr(lhs))
+
+          case BinaryOp(op, lhs, rhs) =>
+            BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+
+          case New(fun, args) =>
+            New(fun, args map transformExpr)
+
+          // Compounds
+
+          case ArrayConstr(items) =>
+            ArrayConstr(items map transformExpr)
+
+          case ObjectConstr(fields) =>
+            ObjectConstr(fields map {
+              case (name, value) => (name, transformExpr(value))
+            })
+
+          // Classes
+
+          case ClassDef(name, parents, defs) =>
+            ClassDef(name, parents map transformExpr, defs map transformDef)
+
+          case _ =>
+            tree
+        }
+      }
+
+      def transformDef(tree: Tree): Tree = {
+        implicit val pos = tree.pos
+
+        tree match {
+          case MethodDef(name, args, body) =>
+            MethodDef(name, args, transformStat(body))
+
+          case GetterDef(name, body) =>
+            GetterDef(name, transformStat(body))
+
+          case SetterDef(name, arg, body) =>
+            SetterDef(name, arg, transformStat(body))
+
+          case _ =>
+            tree
+        }
+      }
+    }
   }
 }

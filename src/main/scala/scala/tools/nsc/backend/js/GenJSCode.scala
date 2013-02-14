@@ -17,7 +17,8 @@ import scalajs.JSGlobal
  */
 abstract class GenJSCode extends SubComponent
                             with TypeKinds
-                            with JSEncoding {
+                            with JSEncoding
+                            with JSDesugaring {
   val global: JSGlobal
 
   import global._
@@ -43,7 +44,7 @@ abstract class GenJSCode extends SubComponent
 
     // Accumulator for the generated classes -----------------------------------
 
-    val generatedClasses = new ListBuffer[js.ClassDef]
+    val generatedClasses = new ListBuffer[js.Tree]
 
     // Some state --------------------------------------------------------------
 
@@ -77,7 +78,7 @@ abstract class GenJSCode extends SubComponent
 
     // Generate a class --------------------------------------------------------
 
-    def genClass(cd: ClassDef): js.ClassDef = {
+    def genClass(cd: ClassDef): js.Tree = {
       implicit val jspos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
@@ -108,7 +109,11 @@ abstract class GenJSCode extends SubComponent
       val result = js.ClassDef(typeVar, Nil, generatedMethods.toList)
       new JSTreePrinter(
           new java.io.PrintWriter(Console.out, true)).printTree(result)
-      result
+
+      val result2 = desugarJavaScript(result)
+      new JSTreePrinter(
+          new java.io.PrintWriter(Console.out, true)).printTree(result2)
+      result2
     }
 
     // Generate a method -------------------------------------------------------
