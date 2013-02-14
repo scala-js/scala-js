@@ -65,6 +65,9 @@ trait JSDesugaring extends SubComponent {
 
         // Statement-only language constructs
 
+        case js.Skip() =>
+          tree
+
         case js.Block(stats, stat) =>
           val newStats = (stats :+ stat) map transformStat
           // Flatten subblocks

@@ -87,6 +87,8 @@ abstract class GenJSCode extends SubComponent
 
       val generatedMethods = new ListBuffer[js.MethodDef]
 
+      generatedMethods += genConstructor(cd)
+
       def gen(tree: Tree) {
         tree match {
           case EmptyTree => ()
@@ -114,6 +116,36 @@ abstract class GenJSCode extends SubComponent
       new JSTreePrinter(
           new java.io.PrintWriter(Console.out, true)).printTree(result2)
       result2
+    }
+
+    // Generate the constructor of a class -------------------------------------
+
+    def genConstructor(cd: ClassDef): js.MethodDef = {
+      /** Non-method term members are fields, except for module members. Module
+       *  members can only happen on .NET (no flatten) for inner traits. There,
+       *  a module symbol is generated (transformInfo in mixin) which is used
+       *  as owner for the members of the implementation class (so that the
+       *  backend emits them as static).
+       *  No code is needed for this module symbol.
+       */
+      val createFieldsStats = {
+        for {
+          f <- currentClassSym.info.decls
+          if !f.isMethod && f.isTerm && !f.isModule
+        } yield {
+          implicit val pos = f.pos
+          val fieldName = encodeFieldSym(f)
+          js.Assign(js.Select(js.This(), fieldName), genZeroOf(f.tpe))
+        }
+      }.toList
+
+      {
+        implicit val pos = cd.pos
+        val superCall =
+          js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
+        js.MethodDef(js.PropertyName("constructor"), Nil,
+            js.Block(superCall :: createFieldsStats, js.Skip()))
+      }
     }
 
     // Generate a method -------------------------------------------------------
