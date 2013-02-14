@@ -378,7 +378,7 @@ trait JSDesugaring extends SubComponent {
 
         // Classes
 
-        case js.ClassDef(name, parents, defs) =>
+        case js.ClassDef(name, parent, defs) =>
           ???
 
         case _ =>

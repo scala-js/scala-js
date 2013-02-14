@@ -196,11 +196,10 @@ trait JSPrinters { self: scalajs.JSGlobal =>
 
         // Classes - from ECMAScript 6, can be desugared into other concepts
 
-        case js.ClassDef(name, parents, defs) =>
+        case js.ClassDef(name, parent, defs) =>
           print("class ", name)
-          if (!parents.isEmpty) {
-            print(" extends ")
-            printSeq(parents){printTree}{print(", ")}
+          if (parent != js.EmptyTree) {
+            print(" extends ", parent)
           }
           print(" ")
           printColumn(defs, "{", "", "}")

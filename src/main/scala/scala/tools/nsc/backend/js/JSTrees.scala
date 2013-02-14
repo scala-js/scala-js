@@ -126,7 +126,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     // Classes - from ECMAScript 6, can be desugared into other concepts
 
-    case class ClassDef(name: Ident, parents: List[Tree], defs: List[Tree])(implicit val pos: Position) extends Tree
+    case class ClassDef(name: Ident, parent: Tree, defs: List[Tree])(implicit val pos: Position) extends Tree
 
     case class MethodDef(name: PropertyName, args: List[Ident], body: Tree)(implicit val pos: Position) extends Tree
 
@@ -243,8 +243,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           // Classes
 
-          case ClassDef(name, parents, defs) =>
-            ClassDef(name, parents map transformExpr, defs map transformDef)
+          case ClassDef(name, parent, defs) =>
+            ClassDef(name, transformExpr(parent), defs map transformDef)
 
           case _ =>
             tree
@@ -322,8 +322,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           // Classes
 
-          case ClassDef(name, parents, defs) =>
-            ClassDef(name, parents map transformExpr, defs map transformDef)
+          case ClassDef(name, parent, defs) =>
+            ClassDef(name, transformExpr(parent), defs map transformDef)
 
           case _ =>
             tree

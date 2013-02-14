@@ -24,7 +24,7 @@ abstract class GenJSCode extends SubComponent
   import global._
 
   import definitions.{
-    ClassCastExceptionClass, ThrowableClass,
+    ObjectClass, ClassCastExceptionClass, ThrowableClass,
     ScalaRunTimeModule,
     Object_isInstanceOf, Object_asInstanceOf, Object_toString, String_+,
     boxedClass, isBox, isUnbox, getMember
@@ -85,6 +85,13 @@ abstract class GenJSCode extends SubComponent
 
       println(cd)
 
+      val parent = if (currentClassSym.isInterface)
+        js.EmptyTree
+      else if (currentClassSym.superClass == NoSymbol)
+        encodeClassSym(ObjectClass)
+      else
+        encodeClassSym(currentClassSym.superClass)
+
       val generatedMethods = new ListBuffer[js.MethodDef]
 
       generatedMethods += genConstructor(cd)
@@ -108,7 +115,7 @@ abstract class GenJSCode extends SubComponent
 
       currentClassSym = null
 
-      val result = js.ClassDef(typeVar, Nil, generatedMethods.toList)
+      val result = js.ClassDef(typeVar, parent, generatedMethods.toList)
       new JSTreePrinter(
           new java.io.PrintWriter(Console.out, true)).printTree(result)
 
