@@ -66,6 +66,14 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class Block(stats: List[Tree], expr: Tree)(implicit val pos: Position) extends Tree
 
+    object Block {
+      def apply(stats: List[Tree])(implicit pos: Position): Tree = stats match {
+        case Nil => Skip()
+        case only :: Nil => only
+        case _ => Block(stats.init, stats.last)
+      }
+    }
+
     case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
     case class Return(expr: Tree)(implicit val pos: Position) extends Tree

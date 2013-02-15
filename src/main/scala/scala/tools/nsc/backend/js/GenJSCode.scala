@@ -151,7 +151,7 @@ abstract class GenJSCode extends SubComponent
         val superCall =
           js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
         js.MethodDef(js.PropertyName("constructor"), Nil,
-            js.Block(superCall :: createFieldsStats, js.Skip()))
+            js.Block(superCall :: createFieldsStats))
       }
     }
 
@@ -223,16 +223,8 @@ abstract class GenJSCode extends SubComponent
 
     /** Turn a JavaScript expression into a statement */
     def exprToStat(tree: js.Tree): js.Tree = {
-      implicit val jspos = tree.pos
-
-      tree match {
-        case _ : js.Literal | _ : js.This | _ : js.Super =>
-          js.Skip()
-        case js.Block(List(stat), _ : js.Literal) =>
-          stat
-        case _ =>
-          tree
-      }
+      // Any JavaScript expression is also a statement
+      tree
     }
 
     /** Generate code for an expression */

@@ -34,17 +34,15 @@ trait JSDesugaring extends SubComponent {
       implicit val pos = tree.pos
 
       tree match {
-        // Anything pure can be discarded
-
-        case _ if isPureExpression(tree) =>
-          js.Skip()
-
         // Inside a FunDef, we can reset the synthetic var counter
 
         case js.FunDef(name, args, body) =>
           resetSyntheticVarCounterIn(super.transformStat(tree))
 
-        // Definitions and assignments
+        // Statement-only language constructs
+
+        case js.Skip() =>
+          tree
 
         case js.VarDef(_, js.EmptyTree) =>
           tree
@@ -71,99 +69,31 @@ trait JSDesugaring extends SubComponent {
         case js.Assign(_ : js.Ident, rhs) =>
           unnestExprInto(tree, rhs)
 
-        // Statement-only language constructs
-
-        case js.Skip() =>
-          tree
-
-        case js.Block(stats, stat) =>
-          val newStats = (stats :+ stat) map transformStat
-          // Flatten subblocks
-          val flattenedStats = newStats flatMap {
-            case js.Skip() => Nil
-            case js.Block(subStats, subStat) => subStats :+ subStat
-            case other => other :: Nil
-          }
-          flattenedStats match {
-            case Nil => js.Skip()
-            case only :: Nil => only
-            case _ => js.Block(flattenedStats.init, flattenedStats.last)
-          }
-
-        case js.Return(expr) =>
-          unnestExprInto(js.Return(js.EmptyTree), expr)
-
-        case js.If(cond, thenp, elsep) =>
-          expressify(cond) { newCond =>
-            js.If(transformExpr(newCond),
-                transformStat(thenp), transformStat(elsep))
-          }
-
         case js.While(cond, body) =>
           if (isExpression(cond)) super.transformStat(tree)
-          else ??? // we can't just 'expressify' here
-
-        case js.Throw(expr) =>
-          expressify(expr) { newExpr =>
-            js.Throw(transformExpr(newExpr))
-          }
-
-        // Applications
-
-        case js.Apply(fun, args) =>
-          expressify(fun :: args) { newFunAndArgs =>
-            val newFun :: newArgs = newFunAndArgs
-            js.Apply(transformExpr(newFun), newArgs map transformExpr)
-          }
-
-        case js.New(fun, args) =>
-          js.New(fun, args map transformExpr)
-
-        // Operators (if we reach here their operands are not pure)
-
-        case js.DotSelect(qualifier, item) =>
-          expressify(qualifier) { newQualifier =>
-            js.DotSelect(transformExpr(newQualifier), item)
-          }
-
-        case js.BracketSelect(qualifier, item) =>
-          expressify(qualifier, item) { (newQualifier, newItem) =>
-            js.BracketSelect(transformExpr(newQualifier), transformExpr(newItem))
-          }
-
-        case js.UnaryOp(op, lhs) =>
-          expressify(lhs) { newLhs =>
-            js.UnaryOp(op, transformExpr(newLhs))
-          }
-
-        case js.BinaryOp(op, lhs, rhs) =>
-          expressify(lhs, rhs) { (newLhs, newRhs) =>
-            js.BinaryOp(op, transformExpr(newLhs), transformExpr(newRhs))
-          }
-
-        // Compounds (if we reach here their items are not pure)
-
-        case js.ArrayConstr(items) =>
-          expressify(items) { newItems =>
-            js.ArrayConstr(newItems map transformExpr)
-          }
-
-        case js.ObjectConstr(fields) =>
-          val names = fields map (_._1)
-          val items = fields map (_._2)
-          expressify(items) { newItems =>
-            js.ObjectConstr(names.zip(newItems) map {
-              case (name, value) => (name, transformExpr(value))
+          else {
+            // we cannot just 'expressify' here
+            js.While(js.BooleanLiteral(true), {
+              transformStat {
+                js.If(cond, body, js.Break())
+              }
             })
           }
+
+        // Return can be an expression, but can be unnested into, which is better
+
+        case js.Return(expr) =>
+          unnestExprInto(tree, expr)
 
         // Classes - that's another story
 
         case classDef : js.ClassDef =>
           transformClass(classDef)
 
+        // Anything else is an expression => unnestExprInto(js.EmptyTree, _)
+
         case _ =>
-          abort("Illegal tree in JSDesugar.transformStat(): " + tree)
+          unnestExprInto(js.EmptyTree, tree)
       }
     }
 
@@ -176,7 +106,7 @@ trait JSDesugaring extends SubComponent {
       }
     }
 
-    /** Extract evaluation of unpure expressions in temporary variables
+    /** Extract evaluation of expressions with idents in temporary variables
      *  TODO Figure out a better name for this function
      */
     def expressify(args: List[js.Tree])(
@@ -194,11 +124,11 @@ trait JSDesugaring extends SubComponent {
             "Reached computeTemps with no temp to compute")
 
         val computeTemps =
-          for ((arg, true, temp) <- argsInfo) yield
-            transformStat(js.VarDef(temp.asInstanceOf[js.Ident], arg)(arg.pos))
+          for ((arg, true, temp : js.Ident) <- argsInfo) yield
+            unnestExprInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
 
         val newStatement = makeStat(argsInfo map (_._3))
-        js.Block(computeTemps, newStatement)(newStatement.pos)
+        flattenBlock(computeTemps :+ newStatement)(newStatement.pos)
       }
     }
 
@@ -208,7 +138,8 @@ trait JSDesugaring extends SubComponent {
       if (isExpression(arg)) makeStat(arg)
       else {
         val temp = newSyntheticVar()(arg.pos)
-        val computeTemp = transformStat(js.VarDef(temp, arg)(arg.pos))
+        val computeTemp =
+          unnestExprInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
         val newStatement = makeStat(temp)
         js.Block(List(computeTemp), newStatement)(newStatement.pos)
       }
@@ -287,7 +218,8 @@ trait JSDesugaring extends SubComponent {
      *      x = y + 3
      *    }
      *
-     *  lhs can be either a js.VarDef, a js.Assign or a js.Return
+     *  lhs can be either a js.EmptyTree, a js.VarDef, a js.Assign or a
+     *  js.Return
      */
     def unnestExprInto(lhs: js.Tree, rhs: js.Tree): js.Tree = {
       implicit val rhsPos = rhs.pos
@@ -298,108 +230,109 @@ trait JSDesugaring extends SubComponent {
         // Base case, rhs is already a regular JS expression
 
         case _ if isExpression(rhs) =>
+          val newRhs = transformExpr(rhs)
           (lhs: @unchecked) match {
-            case js.VarDef(ident, _) => js.VarDef(ident, rhs)
-            case js.Assign(ident, _) => js.Assign(ident, rhs)
-            case js.Return(_) => js.Return(rhs)
+            case js.EmptyTree =>
+              if (isPureExpression(newRhs)) js.Skip()
+              else newRhs
+            case js.VarDef(ident, _) => js.VarDef(ident, newRhs)
+            case js.Assign(ident, _) => js.Assign(ident, newRhs)
+            case js.Return(_) => js.Return(newRhs)
           }
 
         // Language constructs that are statement-only in standard JavaScript
 
         case js.Block(stats, expr) =>
-          transformStat {
-            js.Block(stats, unnestExprInto(lhs, expr))
-          }
+          flattenBlock((stats map transformStat) :+ redo(expr))
 
         case js.Return(expr) =>
-          transformStat(rhs)
+          expressify(expr) { newExpr =>
+            js.Return(transformExpr(newExpr))
+          }
 
         case js.If(cond, thenp, elsep) =>
-          transformStat {
-            js.If(cond, unnestExprInto(lhs, thenp), unnestExprInto(lhs, elsep))
+          expressify(cond) { newCond =>
+            js.If(transformExpr(newCond), redo(thenp), redo(elsep))
           }
 
         case js.Try(block, errVar, handler, finalizer) =>
-          transformStat {
-            js.Try(unnestExprInto(lhs, block), errVar,
-                unnestExprInto(lhs, handler), finalizer)
-          }
+          js.Try(redo(block), errVar, redo(handler), transformStat(finalizer))
 
         case js.Throw(expr) =>
-          transformStat(rhs)
+          expressify(expr) { newExpr =>
+            js.Throw(transformExpr(newExpr))
+          }
 
         // Applications (if we reach here their arguments are not expressions)
 
         case js.Apply(fun, args) =>
-          redo {
-            expressify(fun :: args) { newFunAndArgs =>
-              val newFun :: newArgs = newFunAndArgs
-              js.Apply(transformExpr(newFun), newArgs map transformExpr)
-            }
+          expressify(fun :: args) { newFunAndArgs =>
+            val newFun :: newArgs = newFunAndArgs
+            redo(js.Apply(newFun, newArgs))
           }
 
         case js.New(fun, args) =>
-          redo {
-            js.New(fun, args map transformExpr)
+          expressify(args) { newArgs =>
+            redo(js.New(fun, args))
           }
 
         // Operators (if we reach here their operands are not expressions)
 
         case js.DotSelect(qualifier, item) =>
-          redo {
-            expressify(qualifier) { newQualifier =>
-              js.DotSelect(transformExpr(newQualifier), item)
-            }
+          expressify(qualifier) { newQualifier =>
+            redo(js.DotSelect(newQualifier, item))
           }
 
         case js.BracketSelect(qualifier, item) =>
-          redo {
-            expressify(qualifier, item) { (newQualifier, newItem) =>
-              js.BracketSelect(transformExpr(newQualifier), transformExpr(newItem))
-            }
+          expressify(qualifier, item) { (newQualifier, newItem) =>
+            redo(js.BracketSelect(newQualifier, newItem))
           }
 
         case js.UnaryOp(op, lhs) =>
-          redo {
-            expressify(lhs) { newLhs =>
-              js.UnaryOp(op, transformExpr(newLhs))
-            }
+          expressify(lhs) { newLhs =>
+            redo(js.UnaryOp(op, newLhs))
           }
 
         case js.BinaryOp(op, lhs, rhs) =>
-          redo {
-            expressify(lhs, rhs) { (newLhs, newRhs) =>
-              js.BinaryOp(op, transformExpr(newLhs), transformExpr(newRhs))
-            }
+          expressify(lhs, rhs) { (newLhs, newRhs) =>
+            redo(js.BinaryOp(op, newLhs, newRhs))
           }
 
         // Compounds (if we reach here their items are not expressions)
 
         case js.ArrayConstr(items) =>
-          redo {
-            expressify(items) { newItems =>
-              js.ArrayConstr(newItems map transformExpr)
-            }
+          expressify(items) { newItems =>
+            redo(js.ArrayConstr(newItems))
           }
 
         case js.ObjectConstr(fields) =>
-          redo {
-            val names = fields map (_._1)
-            val items = fields map (_._2)
-            expressify(items) { newItems =>
-              js.ObjectConstr(names.zip(newItems) map {
-                case (name, value) => (name, transformExpr(value))
-              })
-            }
+          val names = fields map (_._1)
+          val items = fields map (_._2)
+          expressify(items) { newItems =>
+            redo(js.ObjectConstr(names.zip(newItems)))
           }
 
         // Classes
 
-        case js.ClassDef(name, parent, defs) =>
+        case js.ClassDef(name, parent, defs) if lhs != js.EmptyTree =>
           ???
 
         case _ =>
-          abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+          if (lhs == js.EmptyTree) transformStat(rhs)
+          else abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+      }
+    }
+
+    def flattenBlock(stats: List[js.Tree])(implicit pos: Position): js.Tree = {
+      val flattenedStats = stats flatMap {
+        case js.Skip() => Nil
+        case js.Block(subStats, subStat) => subStats :+ subStat
+        case other => other :: Nil
+      }
+      flattenedStats match {
+        case Nil => js.Skip()
+        case only :: Nil => only
+        case _ => js.Block(flattenedStats.init, flattenedStats.last)
       }
     }
 
@@ -418,10 +351,11 @@ trait JSDesugaring extends SubComponent {
         if name.name != "constructor"
       } yield genAddMethodDefToPrototype(tree, m)
 
+      val result = transformStat(flattenBlock(typeFunctionDef :: methodsDefs))
+
       currentClassDef = savedCurrentClassDef
 
-      val newClassDefStats = typeFunctionDef :: methodsDefs
-      js.Block(newClassDefStats.init, newClassDefStats.last)
+      result
     }
 
     /** Transform 'super' */
@@ -447,7 +381,7 @@ trait JSDesugaring extends SubComponent {
       {
         implicit val pos = tree.pos
         val typeVar = tree.name
-        val funDef = js.FunDef(typeVar, args, transformStat(body))
+        val funDef = js.FunDef(typeVar, args, body)
         val inheritProto =
           js.Assign(
               js.DotSelect(typeVar, js.Ident("prototype")),
@@ -456,7 +390,7 @@ trait JSDesugaring extends SubComponent {
         val reassignConstructor =
           genAddToPrototype(tree, js.Ident("constructor"), typeVar)
 
-        js.Block(List(funDef, inheritProto), reassignConstructor)
+        flattenBlock(List(funDef, inheritProto, reassignConstructor))
       }
     }
 
@@ -464,7 +398,7 @@ trait JSDesugaring extends SubComponent {
     def genAddMethodDefToPrototype(cd: js.ClassDef,
         method: js.MethodDef): js.Tree = {
       implicit val pos = method.pos
-      val methodFun = js.Function(method.args, transformStat(method.body))
+      val methodFun = js.Function(method.args, method.body)
       genAddToPrototype(cd, method.name, methodFun)
     }
 
