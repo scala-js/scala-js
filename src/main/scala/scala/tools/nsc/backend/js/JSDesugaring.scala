@@ -8,6 +8,8 @@ trait JSDesugaring extends SubComponent {
   import global._
 
   class JSDesugar extends js.Transformer {
+    // Synthetic variables
+
     var syntheticVarCounter: Int = 0
 
     def newSyntheticVar()(implicit pos: Position): js.Ident = {
@@ -21,6 +23,12 @@ trait JSDesugaring extends SubComponent {
       try f
       finally syntheticVarCounter = savedCounter
     }
+
+    // Current class (for resolving super, essentially)
+
+    var currentClassDef: js.ClassDef = null
+
+    // Now the work
 
     override def transformStat(tree: js.Tree): js.Tree = {
       implicit val pos = tree.pos
@@ -156,6 +164,15 @@ trait JSDesugaring extends SubComponent {
 
         case _ =>
           abort("Illegal tree in JSDesugar.transformStat(): " + tree)
+      }
+    }
+
+    override def transformExpr(tree: js.Tree): js.Tree = {
+      tree match {
+        case sup @ js.Super() =>
+          transformSuper(sup)
+        case _ =>
+          super.transformExpr(tree)
       }
     }
 
@@ -386,11 +403,77 @@ trait JSDesugaring extends SubComponent {
       }
     }
 
+    // Classes -----------------------------------------------------------------
+
     /** Desugar an ECMAScript 6 class into ECMAScript 5 constructs */
     def transformClass(tree: js.ClassDef): js.Tree = {
       implicit val pos = tree.pos
-      // TODO
-      super.transformStat(tree)
+
+      val savedCurrentClassDef = currentClassDef
+      currentClassDef = tree
+
+      val typeFunctionDef = genTypeFunctionDef(tree)
+      val methodsDefs = for {
+        m @ js.MethodDef(name, _, _) <- tree.defs
+        if name.name != "constructor"
+      } yield genAddMethodDefToPrototype(tree, m)
+
+      currentClassDef = savedCurrentClassDef
+
+      val newClassDefStats = typeFunctionDef :: methodsDefs
+      js.Block(newClassDefStats.init, newClassDefStats.last)
+    }
+
+    /** Transform 'super' */
+    def transformSuper(sup: js.Super): js.Tree = {
+      implicit val pos = sup.pos
+      js.DotSelect(currentClassDef.parent, js.Ident("prototype"))
+    }
+
+    /** Generate the type function definition for a class */
+    def genTypeFunctionDef(tree: js.ClassDef): js.Tree = {
+      val constructors = for {
+        constr @ js.MethodDef(js.Ident("constructor"), _, _) <- tree.defs
+      } yield constr
+
+      val constructor = constructors.headOption.getOrElse {
+        implicit val pos = tree.pos
+        js.MethodDef(js.Ident("constructor"), Nil,
+            js.ApplyMethod(js.Super(), js.Ident("constructor"), Nil))
+      }
+
+      val js.MethodDef(_, args, body) = constructor
+
+      {
+        implicit val pos = tree.pos
+        val typeVar = tree.name
+        val funDef = js.FunDef(typeVar, args, transformStat(body))
+        val inheritProto =
+          js.Assign(
+              js.DotSelect(typeVar, js.Ident("prototype")),
+              js.ApplyMethod(js.Ident("Object"), js.Ident("create"),
+                  List(js.DotSelect(tree.parent, js.Ident("prototype")))))
+        val reassignConstructor =
+          genAddToPrototype(tree, js.Ident("constructor"), typeVar)
+
+        js.Block(List(funDef, inheritProto), reassignConstructor)
+      }
+    }
+
+    /** Generate the addition to the prototype of a method definition */
+    def genAddMethodDefToPrototype(cd: js.ClassDef,
+        method: js.MethodDef): js.Tree = {
+      implicit val pos = method.pos
+      val methodFun = js.Function(method.args, transformStat(method.body))
+      genAddToPrototype(cd, method.name, methodFun)
+    }
+
+    /** Generate `classVar.prototype.name = value` */
+    def genAddToPrototype(cd: js.ClassDef, name: js.PropertyName,
+        value: js.Tree)(implicit pos: Position = value.pos): js.Tree = {
+      js.Assign(
+          js.Select(js.DotSelect(cd.name, js.Ident("prototype")), name),
+          value)
     }
   }
 
