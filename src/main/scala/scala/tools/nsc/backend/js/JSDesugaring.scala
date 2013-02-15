@@ -98,9 +98,19 @@ trait JSDesugaring extends SubComponent {
     }
 
     override def transformExpr(tree: js.Tree): js.Tree = {
+      implicit val pos = tree.pos
+
       tree match {
-        case sup @ js.Super() =>
-          transformSuper(sup)
+        case js.Apply(sel @ js.Select(sup @ js.Super(), method), args) =>
+          val newSup = js.DotSelect(
+              currentClassDef.parent, js.Ident("prototype")(sup.pos))(sup.pos)
+          val newSel = js.Select(newSup, method)(sel.pos)
+          val newApply = js.ApplyMethod(newSel, js.Ident("call"), js.This() :: args)
+          transformExpr(newApply)
+
+        case js.Super() =>
+          abort("Illegal super in JSDesugar: " + tree)
+
         case _ =>
           super.transformExpr(tree)
       }
@@ -356,12 +366,6 @@ trait JSDesugaring extends SubComponent {
       currentClassDef = savedCurrentClassDef
 
       result
-    }
-
-    /** Transform 'super' */
-    def transformSuper(sup: js.Super): js.Tree = {
-      implicit val pos = sup.pos
-      js.DotSelect(currentClassDef.parent, js.Ident("prototype"))
     }
 
     /** Generate the type function definition for a class */
