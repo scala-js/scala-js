@@ -91,7 +91,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         // Statement-only language constructs
 
         case js.Skip() =>
-          print("<skip>")
+          print("/*<skip>*/")
 
         case js.Block(stats, expr) =>
           printColumn(stats :+ expr, "{", ";", "}")
