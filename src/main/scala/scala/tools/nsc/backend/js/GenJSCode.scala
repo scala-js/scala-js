@@ -65,7 +65,13 @@ abstract class GenJSCode extends SubComponent
             case EmptyTree => ()
             case PackageDef(_, stats) => stats foreach gen
             case cd: ClassDef =>
-              generatedClasses += cd.symbol -> genClass(cd)
+              val generatedClass = genClass(cd)
+              val sym = cd.symbol
+              val wholeTree =
+                if (sym.isModuleClass && sym.companionModule != NoSymbol) {
+                  js.Block(List(generatedClass), genModuleAccessor(sym))(tree.pos)
+                } else generatedClass
+              generatedClasses += sym -> wholeTree
           }
         }
 
@@ -191,6 +197,29 @@ abstract class GenJSCode extends SubComponent
 
       js.MethodDef(methodPropIdent, jsParams, body)
     }
+
+    // Generate a module accessor ----------------------------------------------
+
+    def genModuleAccessor(sym: Symbol): js.Tree = {
+      implicit val pos = sym.pos
+
+      val internalVar = encodeModuleSymInternal(sym.companionModule)
+      val varDef = js.VarDef(internalVar, js.Null())
+
+      val funBody: js.Tree = {
+        js.Block(List(
+            js.If(js.BinaryOp("===", internalVar, js.Null()),
+                js.Assign(internalVar, genNew(sym, sym.primaryConstructor, Nil)),
+                js.Skip())),
+            js.Return(internalVar))
+      }
+
+      val funDef = js.FunDef(encodeModuleSym(sym.companionModule), Nil, funBody)
+
+      js.Block(List(varDef), funDef)
+    }
+
+    // Code generation ---------------------------------------------------------
 
     /** Generate code for a statement */
     def genStat(tree: Tree): js.Tree = {
