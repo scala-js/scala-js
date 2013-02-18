@@ -88,8 +88,6 @@ abstract class GenJSCode extends SubComponent
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
 
-      println(cd)
-
       val parent = if (currentClassSym.isInterface)
         js.EmptyTree
       else if (currentClassSym.superClass == NoSymbol)
@@ -120,14 +118,8 @@ abstract class GenJSCode extends SubComponent
 
       currentClassSym = null
 
-      val result = js.ClassDef(typeVar, parent, generatedMethods.toList)
-      new JSTreePrinter(
-          new java.io.PrintWriter(Console.out, true)).printTree(result)
-
-      val result2 = desugarJavaScript(result)
-      new JSTreePrinter(
-          new java.io.PrintWriter(Console.out, true)).printTree(result2)
-      result2
+      val sugaredClass = js.ClassDef(typeVar, parent, generatedMethods.toList)
+      desugarJavaScript(sugaredClass)
     }
 
     // Generate the constructor of a class -------------------------------------
