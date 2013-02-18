@@ -18,7 +18,8 @@ import scalajs.JSGlobal
 abstract class GenJSCode extends SubComponent
                             with TypeKinds
                             with JSEncoding
-                            with JSDesugaring {
+                            with JSDesugaring
+                            with GenJSFiles {
   val global: JSGlobal
 
   import global._
@@ -44,7 +45,7 @@ abstract class GenJSCode extends SubComponent
 
     // Accumulator for the generated classes -----------------------------------
 
-    val generatedClasses = new ListBuffer[js.Tree]
+    val generatedClasses = new ListBuffer[(Symbol, js.Tree)]
 
     // Some state --------------------------------------------------------------
 
@@ -61,13 +62,17 @@ abstract class GenJSCode extends SubComponent
 
         def gen(tree: Tree) {
           tree match {
-            case EmptyTree            => ()
+            case EmptyTree => ()
             case PackageDef(_, stats) => stats foreach gen
-            case cd: ClassDef         => genClass(cd)
+            case cd: ClassDef =>
+              generatedClasses += cd.symbol -> genClass(cd)
           }
         }
 
         gen(cunit.body)
+
+        for ((classSymbol, tree) <- generatedClasses)
+          genJSFile(cunit, classSymbol, tree)
       } finally {
         generatedClasses.clear()
         currentCUnit = null
