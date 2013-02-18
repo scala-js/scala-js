@@ -322,7 +322,8 @@ abstract class GenJSCode extends SubComponent
             case FloatTag | DoubleTag =>
               js.DoubleLiteral(value.doubleValue)
             case StringTag =>
-              js.StringLiteral(value.stringValue)
+              this.genBuiltinApply("MakeNativeStrWrapper",
+                  js.StringLiteral(value.stringValue))
             case NullTag =>
               js.Null()
             case ClazzTag =>
