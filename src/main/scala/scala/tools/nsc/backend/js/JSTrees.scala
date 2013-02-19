@@ -17,6 +17,15 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     abstract sealed class Tree {
       def pos: Position
+
+      override def toString() = {
+        val baos = new java.io.ByteArrayOutputStream()
+        val writer = new java.io.PrintWriter(baos)
+        val printer = new JSTreePrinter(writer)
+        printer.printTree(this)
+        writer.close()
+        baos.toString()
+      }
     }
 
     case object EmptyTree extends Tree {
