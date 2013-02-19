@@ -112,7 +112,7 @@ abstract class GenJSCode extends SubComponent
             abort("Modules should have been eliminated by refchecks: " + tree)
           case ValDef(mods, name, tpt, rhs) =>
             () // fields are added in constructors
-          case dd: DefDef => generatedMethods += genMethod(dd)
+          case dd: DefDef => generatedMethods ++= genMethod(dd)
           case Template(_, _, body) => body foreach gen
           case _ => abort("Illegal tree in gen: " + tree)
         }
@@ -160,7 +160,7 @@ abstract class GenJSCode extends SubComponent
 
     // Generate a method -------------------------------------------------------
 
-    def genMethod(dd: DefDef): js.MethodDef = {
+    def genMethod(dd: DefDef): Option[js.MethodDef] = {
       implicit val jspos = dd.pos
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       currentMethodSym = dd.symbol
@@ -195,7 +195,8 @@ abstract class GenJSCode extends SubComponent
 
       currentMethodSym = null
 
-      js.MethodDef(methodPropIdent, jsParams, body)
+      if (body == js.EmptyTree) None
+      else Some(js.MethodDef(methodPropIdent, jsParams, body))
     }
 
     // Generate a module accessor ----------------------------------------------
