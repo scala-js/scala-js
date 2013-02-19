@@ -723,13 +723,13 @@ abstract class GenJSCode extends SubComponent
         case List(source) =>
           (code match {
             case POS =>
-              source // nothing to do
+              js.UnaryOp("+", source)
             case NEG =>
-              js.UnaryOp("~", source)
+              js.UnaryOp("-", source)
             case NOT =>
-              genBuiltinApply("BinNot", source)
+              js.UnaryOp("~", source)
             case ZNOT =>
-              genBuiltinApply("Not", source)
+              js.UnaryOp("!", source)
             case _ =>
               abort("Unknown unary operation code: " + code)
           })
@@ -751,17 +751,18 @@ abstract class GenJSCode extends SubComponent
             case SUB => js.BinaryOp("-", lsrc, rsrc)
             case MUL => js.BinaryOp("*", lsrc, rsrc)
             case DIV =>
+              val actualDiv = js.BinaryOp("/", lsrc, rsrc)
               (leftKind: @unchecked) match {
-                case _:INT => genBuiltinApply("IntDiv", lsrc, rsrc)
-                case _:FLOAT => js.BinaryOp("/", lsrc, rsrc)
+                case _:INT => js.BinaryOp("|", actualDiv, js.IntLiteral(0))
+                case _:FLOAT => actualDiv
               }
             case MOD => js.BinaryOp("%", lsrc, rsrc)
-            case OR => genBuiltinApply("BinOr", lsrc, rsrc)
-            case XOR => genBuiltinApply("BinXor", lsrc, rsrc)
-            case AND => genBuiltinApply("BinAnd", lsrc, rsrc)
-            case LSL => genBuiltinApply("LSL", lsrc, rsrc)
-            case LSR => genBuiltinApply("LSR", lsrc, rsrc)
-            case ASR => genBuiltinApply("ASR", lsrc, rsrc)
+            case OR => js.BinaryOp("|", lsrc, rsrc)
+            case XOR => js.BinaryOp("^", lsrc, rsrc)
+            case AND => js.BinaryOp("&", lsrc, rsrc)
+            case LSL => js.BinaryOp("<<", lsrc, rsrc)
+            case LSR => js.BinaryOp(">>>", lsrc, rsrc)
+            case ASR => js.BinaryOp(">>", lsrc, rsrc)
             case LT => js.BinaryOp("<", lsrc, rsrc)
             case LE => js.BinaryOp("<=", lsrc, rsrc)
             case GT => js.BinaryOp(">", lsrc, rsrc)
