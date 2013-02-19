@@ -266,7 +266,11 @@ trait JSDesugaring extends SubComponent {
           }
 
         case js.Try(block, errVar, handler, finalizer) =>
-          js.Try(redo(block), errVar, redo(handler), transformStat(finalizer))
+          val newHandler =
+            if (handler == js.EmptyTree) handler else redo(handler)
+          val newFinalizer =
+            if (finalizer == js.EmptyTree) finalizer else transformStat(finalizer)
+          js.Try(redo(block), errVar, newHandler, newFinalizer)
 
         case js.Throw(expr) =>
           expressify(expr) { newExpr =>
@@ -328,8 +332,15 @@ trait JSDesugaring extends SubComponent {
           ???
 
         case _ =>
-          if (lhs == js.EmptyTree) transformStat(rhs)
-          else abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+          if (lhs == js.EmptyTree) {
+            rhs match {
+              case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
+                  _:js.While =>
+                transformStat(rhs)
+              case _ =>
+                abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+            }
+          } else abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
       }
     }
 
