@@ -33,7 +33,8 @@ object Array {
   @native def setFloat(array: AnyRef, index: Int, value: Float): Unit
   @native def setDouble(array: AnyRef, index: Int, value: Double): Unit
   
-  @native private def newArray(componentType: Class[_], length: Int): AnyRef
+  @native private def newArray(componentType: Class[_], length: Int): AnyRef =
+    sys.error("stub")
   @native private def multiNewArray(componentType: Class[_],
-      dimensions: scala.Array[Int]): AnyRef
+      dimensions: scala.Array[Int]): AnyRef = sys.error("stub")
 }

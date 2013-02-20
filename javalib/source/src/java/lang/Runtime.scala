@@ -13,7 +13,7 @@ class Runtime private {
     halt0(status)
   }
 
-  @native private def halt0(status: Int): Unit
+  @native private def halt0(status: Int): Unit = sys.error("stub")
 
   def availableProcessors() = 1
   def freeMemory(): scala.Long = sys.error("Runtime.freeMemory() not implemented")
