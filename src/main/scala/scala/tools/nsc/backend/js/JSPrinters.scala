@@ -170,6 +170,9 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.Null() =>
           print("null")
 
+        case js.BooleanLiteral(value) =>
+          print(if (value) "true" else "false")
+
         case js.IntLiteral(value) =>
           print(value)
 
@@ -220,6 +223,9 @@ trait JSPrinters { self: scalajs.JSGlobal =>
 
         case js.Super() =>
           print("super")
+
+        case _ =>
+          abort("Do not know how to print tree of class "+tree.getClass)
       }
     }
 

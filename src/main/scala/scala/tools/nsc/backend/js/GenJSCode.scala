@@ -103,7 +103,8 @@ abstract class GenJSCode extends SubComponent
 
       val generatedMethods = new ListBuffer[js.MethodDef]
 
-      generatedMethods += genConstructor(cd)
+      if (!currentClassSym.isInterface)
+        generatedMethods += genConstructor(cd)
 
       def gen(tree: Tree) {
         tree match {

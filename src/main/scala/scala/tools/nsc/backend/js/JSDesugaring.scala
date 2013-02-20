@@ -338,9 +338,13 @@ trait JSDesugaring extends SubComponent {
                   _:js.While =>
                 transformStat(rhs)
               case _ =>
-                abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+                abort("Illegal tree in JSDesugar.unnestExprInto():\n" +
+                    "lhs = " + lhs + "\n" + "rhs = " + rhs)
             }
-          } else abort("Illegal tree in JSDesugar.unnestExprInto(): " + rhs)
+          } else {
+            abort("Illegal tree in JSDesugar.unnestExprInto():\n" +
+                "lhs = " + lhs + "\n" + "rhs = " + rhs)
+          }
       }
     }
 
@@ -388,7 +392,8 @@ trait JSDesugaring extends SubComponent {
       val constructor = constructors.headOption.getOrElse {
         implicit val pos = tree.pos
         js.MethodDef(js.Ident("constructor"), Nil,
-            js.ApplyMethod(js.Super(), js.Ident("constructor"), Nil))
+            if (tree.parent == js.EmptyTree) js.Skip()
+            else js.ApplyMethod(js.Super(), js.Ident("constructor"), Nil))
       }
 
       val js.MethodDef(_, args, body) = constructor
@@ -398,7 +403,8 @@ trait JSDesugaring extends SubComponent {
         val typeVar = tree.name
         val funDef = js.FunDef(typeVar, args, body)
         val inheritProto =
-          js.Assign(
+          if (tree.parent == js.EmptyTree) js.Skip()
+          else js.Assign(
               js.DotSelect(typeVar, js.Ident("prototype")),
               js.ApplyMethod(js.Ident("Object"), js.Ident("create"),
                   List(js.DotSelect(tree.parent, js.Ident("prototype")))))
