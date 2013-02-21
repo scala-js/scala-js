@@ -115,11 +115,11 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.Try(block, errVar, handler, finalizer) =>
           print("try ")
           printBlock(block)
-          if (handler != EmptyTree) {
+          if (handler != js.EmptyTree) {
             print(" catch (", errVar, ") ")
             printBlock(handler)
           }
-          if (finalizer != EmptyTree) {
+          if (finalizer != js.EmptyTree) {
             print(" finally ")
             printBlock(finalizer)
           }
@@ -146,14 +146,16 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           printRow(args, "(", ", ", ")")
 
         case js.Function(args, body) =>
+          print("(")
           printRow(args, "function(", ", ", ") ")
           printBlock(body)
+          print(")")
 
         case js.UnaryOp(op, lhs) =>
-          print(op, lhs)
+          print("(", op, lhs, ")")
 
         case js.BinaryOp(op, lhs, rhs) =>
-          print(lhs, " ", op, " ", rhs)
+          print("(", lhs, " ", op, " ", rhs, ")")
 
         case js.New(fun, args) =>
           print("new ", fun)
@@ -220,6 +222,9 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.SetterDef(name, arg, body) =>
           // TODO
           print("<setter>")
+
+        case js.CustomDef(name, rhs) =>
+          print(name, ": ", rhs)
 
         case js.Super() =>
           print("super")

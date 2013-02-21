@@ -286,8 +286,9 @@ trait JSDesugaring extends SubComponent {
           }
 
         case js.New(fun, args) =>
-          expressify(args) { newArgs =>
-            redo(js.New(fun, args))
+          expressify(fun :: args) { newFunAndArgs =>
+            val newFun :: newArgs = newFunAndArgs
+            redo(js.New(newFun, newArgs))
           }
 
         // Operators (if we reach here their operands are not expressions)
@@ -376,7 +377,12 @@ trait JSDesugaring extends SubComponent {
         if name.name != "constructor"
       } yield genAddMethodDefToPrototype(tree, m)
 
-      val result = transformStat(flattenBlock(typeFunctionDef :: methodsDefs))
+      val customDefs = for {
+        d @ js.CustomDef(name, rhs) <- tree.defs
+      } yield genAddCustomDefToPrototype(tree, d)
+
+      val result = transformStat(flattenBlock(
+          typeFunctionDef :: customDefs ::: methodsDefs))
 
       currentClassDef = savedCurrentClassDef
 
@@ -421,6 +427,13 @@ trait JSDesugaring extends SubComponent {
       implicit val pos = method.pos
       val methodFun = js.Function(method.args, method.body)
       genAddToPrototype(cd, method.name, methodFun)
+    }
+
+    /** Generate the addition to the prototype of a custom definition */
+    def genAddCustomDefToPrototype(cd: js.ClassDef,
+        customDef: js.CustomDef): js.Tree = {
+      implicit val pos = customDef.pos
+      genAddToPrototype(cd, customDef.name, customDef.rhs)
     }
 
     /** Generate `classVar.prototype.name = value` */

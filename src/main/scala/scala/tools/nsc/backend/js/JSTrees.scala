@@ -113,7 +113,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class BinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
-    case class New(fun: Ident, args: List[Tree])(implicit val pos: Position) extends Tree
+    case class New(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree
 
     case class This()(implicit val pos: Position) extends Tree
 
@@ -150,6 +150,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
     case class GetterDef(name: PropertyName, body: Tree)(implicit val pos: Position) extends Tree
 
     case class SetterDef(name: PropertyName, arg: Ident, body: Tree)(implicit val pos: Position) extends Tree
+
+    case class CustomDef(name: PropertyName, rhs: Tree)(implicit val pos: Position) extends Tree
 
     case class Super()(implicit val pos: Position) extends Tree
 
@@ -359,6 +361,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case SetterDef(name, arg, body) =>
             SetterDef(name, arg, transformStat(body))
+
+          case CustomDef(name, rhs) =>
+            CustomDef(name, transformExpr(rhs))
 
           case _ =>
             tree

@@ -65,13 +65,19 @@ abstract class GenJSCode extends SubComponent
             case EmptyTree => ()
             case PackageDef(_, stats) => stats foreach gen
             case cd: ClassDef =>
-              val generatedClass = genClass(cd)
+              implicit val pos = tree.pos
               val sym = cd.symbol
-              val wholeTree =
+              val body = if (sym.isInterface) {
+                genInterface(cd)
+              } else {
+                val generatedClass = genClass(cd)
                 if (sym.isModuleClass && sym.companionModule != NoSymbol) {
-                  js.Block(List(generatedClass), genModuleAccessor(sym))(tree.pos)
+                  js.Block(List(generatedClass), genModuleAccessor(sym))
                 } else generatedClass
-              generatedClasses += sym -> wholeTree
+              }
+              val wholeTree = js.Apply(
+                  js.Function(List(environment), body), List(environment))
+              generatedClasses += sym -> desugarJavaScript(wholeTree)
           }
         }
 
@@ -94,14 +100,11 @@ abstract class GenJSCode extends SubComponent
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
 
-      val parent = if (currentClassSym.isInterface)
-        js.EmptyTree
-      else if (currentClassSym.superClass == NoSymbol)
-        encodeClassSym(ObjectClass)
-      else
-        encodeClassSym(currentClassSym.superClass)
+      val superClass =
+        if (currentClassSym.superClass == NoSymbol) ObjectClass
+        else currentClassSym.superClass
 
-      val generatedMethods = new ListBuffer[js.MethodDef]
+      val generatedMethods = new ListBuffer[js.Tree]
 
       if (!currentClassSym.isInterface)
         generatedMethods += genConstructor(cd)
@@ -121,12 +124,46 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
-      val typeVar = encodeClassSym(currentClassSym)
+      val typeVar = js.Ident("Class")
+      val classDefinition = js.ClassDef(typeVar,
+          encodeClassSym(superClass), generatedMethods.toList)
+
+      val createClassStat = {
+        val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
+        val typeArg = typeVar
+        val parentArg = js.StringLiteral(encodeFullName(superClass))
+        val ancestorsArg = js.ObjectConstr(
+            for (ancestor <- currentClassSym :: currentClassSym.ancestors)
+              yield (js.StringLiteral(encodeFullName(ancestor)),
+                  js.BooleanLiteral(true)))
+
+        js.ApplyMethod(environment, js.PropertyName("createClass"),
+            List(nameArg, typeArg, parentArg, ancestorsArg))
+      }
 
       currentClassSym = null
 
-      val sugaredClass = js.ClassDef(typeVar, parent, generatedMethods.toList)
-      desugarJavaScript(sugaredClass)
+      js.Block(List(classDefinition), createClassStat)
+    }
+
+    // Generate an interface ---------------------------------------------------
+
+    def genInterface(cd: ClassDef): js.Tree = {
+      implicit val pos = cd.pos
+      val sym = cd.symbol
+
+      val createInterfaceStat = {
+        val nameArg = js.StringLiteral(encodeFullName(sym))
+        val ancestorsArg = js.ObjectConstr(
+            for (ancestor <- sym :: sym.ancestors)
+              yield (js.StringLiteral(encodeFullName(ancestor)),
+                  js.BooleanLiteral(true)))
+
+        js.ApplyMethod(environment, js.PropertyName("createInterface"),
+            List(nameArg, ancestorsArg))
+      }
+
+      createInterfaceStat
     }
 
     // Generate the constructor of a class -------------------------------------
@@ -161,7 +198,7 @@ abstract class GenJSCode extends SubComponent
 
     // Generate a method -------------------------------------------------------
 
-    def genMethod(dd: DefDef): Option[js.MethodDef] = {
+    def genMethod(dd: DefDef): Option[js.Tree] = {
       implicit val jspos = dd.pos
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       currentMethodSym = dd.symbol
@@ -180,24 +217,32 @@ abstract class GenJSCode extends SubComponent
       val isAbstractMethod =
         (currentMethodSym.isDeferred || currentMethodSym.owner.isInterface)
 
-      val body = {
-        if (!isNative && !isAbstractMethod) {
-          val returnType = toTypeKind(currentMethodSym.tpe.resultType)
-          if (currentMethodSym.isConstructor)
-            js.Block(List(genStat(rhs)), js.Return(js.This()))
-          else if (returnType == UNDEFINED) genStat(rhs)
-          else js.Return(genExpr(rhs))(rhs.pos)
+      val methodPropIdent = encodeMethodSym(currentMethodSym)
+
+      val result = {
+        if (isNative) {
+          val nativeID = encodeFullName(currentClassSym) +
+            " :: " + methodPropIdent.name
+          Some(js.CustomDef(methodPropIdent,
+              js.Select(js.DotSelect(environment, js.Ident("natives")),
+                  js.PropertyName(nativeID))))
+        } else if (isAbstractMethod) {
+          None
         } else {
-          js.EmptyTree
+          val returnType = toTypeKind(currentMethodSym.tpe.resultType)
+          val body = {
+            if (currentMethodSym.isConstructor)
+              js.Block(List(genStat(rhs)), js.Return(js.This()))
+            else if (returnType == UNDEFINED) genStat(rhs)
+            else js.Return(genExpr(rhs))(rhs.pos)
+          }
+          Some(js.MethodDef(methodPropIdent, jsParams, body))
         }
       }
 
-      val methodPropIdent = encodeMethodSym(currentMethodSym)
-
       currentMethodSym = null
 
-      if (body == js.EmptyTree) None
-      else Some(js.MethodDef(methodPropIdent, jsParams, body))
+      result
     }
 
     // Generate a module accessor ----------------------------------------------
@@ -205,20 +250,16 @@ abstract class GenJSCode extends SubComponent
     def genModuleAccessor(sym: Symbol): js.Tree = {
       implicit val pos = sym.pos
 
-      val internalVar = encodeModuleSymInternal(sym.companionModule)
-      val varDef = js.VarDef(internalVar, js.Null())
+      val nameArg = js.StringLiteral(encodeFullName(sym.companionModule))
+      val typeArg = js.Ident("Class")
 
-      val funBody: js.Tree = {
-        js.Block(List(
-            js.If(js.BinaryOp("===", internalVar, js.Null()),
-                js.Assign(internalVar, genNew(sym, sym.primaryConstructor, Nil)),
-                js.Skip())),
-            js.Return(internalVar))
-      }
+      val constructorArg = if (sym.isImplClass)
+        js.PropertyName("<init>():java.lang.Object")
+      else
+        encodeMethodSym(sym.primaryConstructor)
 
-      val funDef = js.FunDef(encodeModuleSym(sym.companionModule), Nil, funBody)
-
-      js.Block(List(varDef), funDef)
+      js.ApplyMethod(environment, js.Ident("registerModule"),
+          List(nameArg, typeArg, constructorArg))
     }
 
     // Code generation ---------------------------------------------------------
@@ -643,11 +684,11 @@ abstract class GenJSCode extends SubComponent
 
     def genCast(from: Type, to: Type, value: js.Tree, cast: Boolean)(
         implicit pos: Position): js.Tree = {
-      val classConstant = genClassConstant(to)
+      val toFullName = js.StringLiteral(encodeFullName(to))
       if (cast) {
-        genBuiltinApply("AsInstance", value, classConstant)
+        genBuiltinApply("AsInstance", value, toFullName)
       } else {
-        genBuiltinApply("IsInstance", value, classConstant)
+        genBuiltinApply("IsInstance", value, toFullName)
       }
     }
 
@@ -963,12 +1004,21 @@ abstract class GenJSCode extends SubComponent
     /** Generate loading of a module value */
     private def genLoadModule(sym: Symbol)(implicit pos: Position) = {
       val symbol = if (sym.isModuleClass) sym.companionModule else sym
-      js.Apply(encodeModuleSym(symbol), Nil)
+      encodeModuleSym(symbol)
     }
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {
-      js.Select(genLoadModule(sym.owner), encodeFieldSym(sym))
+      /* Actually, there is no static member in Scala JS. If we come here, that
+       * is because we found the symbol in a Java-emitted .class in the
+       * classpath. But the corresponding implementation in Scala JS will
+       * actually be a val in the companion module.
+       * So we cheat here. This is a workaround for not having separate
+       * compilation yet.
+       */
+      val instance = genLoadModule(sym.owner)
+      val method = encodeStaticMemberSym(sym)
+      js.ApplyMethod(instance, method, Nil)
     }
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
@@ -984,8 +1034,9 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate a call to a runtime builtin helper */
-    def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: Position) = {
-      js.Apply(js.Ident(funName), args.toList)
+    def genBuiltinApply(funName0: String, args: js.Tree*)(implicit pos: Position) = {
+      val funName = funName0.head.toLower + funName0.tail
+      js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
   }
 }
