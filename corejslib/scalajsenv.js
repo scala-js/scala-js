@@ -24,7 +24,14 @@ function $ScalaJSEnvironmentClass() {
       }
     };
     typeFunction.prototype.$classData = data;
-    this.classes[name] = data;
+
+    Object.defineProperty(this.classes, name, {
+      __proto__: null,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+      value: data
+    });
   };
 
   this.createInterface = function(name, ancestors) {
@@ -38,18 +45,40 @@ function $ScalaJSEnvironmentClass() {
         return this._class;
       }
     };
-    this.classes[name] = data;
+
+    Object.defineProperty(this.classes, name, {
+      __proto__: null,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+      value: data
+    });
   };
 
-  this.registerModule = function(name, typeFunction, constructorName) {
-    this.modules[name] = {
+  this.registerClass = function(name, createFunction) {
+    var self = this;
+    Object.defineProperty(this.classes, name, {
+      __proto__: null,
+      enumerable: true,
+      configurable: true,
+      get: function() {
+        createFunction(self); // hopefully this calls createClass(name) ...
+        return this[name];    // ... otherwise this will recurse infinitely
+      }
+    });
+  }
+
+  this.registerModule = function(name, className, constructorName) {
+    var self = this;
+    var data = {
       _instance: undefined,
       get instance() {
         if (this._instance === undefined)
-          this._instance = new typeFunction()[constructorName]();
+          this._instance = new self.classes[className].type()[constructorName]();
         return this._instance
       }
     };
+    this.modules[name] = data;
   }
 
   this.createClassInstance = function(data) {

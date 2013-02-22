@@ -141,9 +141,18 @@ abstract class GenJSCode extends SubComponent
             List(nameArg, typeArg, parentArg, ancestorsArg))
       }
 
+      val createClassFun = js.Function(List(environment),
+          js.Block(List(classDefinition), createClassStat))
+
+      val registerClassStat = {
+        val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
+        js.ApplyMethod(environment, js.PropertyName("registerClass"),
+            List(nameArg, createClassFun))
+      }
+
       currentClassSym = null
 
-      js.Block(List(classDefinition), createClassStat)
+      registerClassStat
     }
 
     // Generate an interface ---------------------------------------------------
@@ -251,7 +260,7 @@ abstract class GenJSCode extends SubComponent
       implicit val pos = sym.pos
 
       val nameArg = js.StringLiteral(encodeFullName(sym.companionModule))
-      val typeArg = js.Ident("Class")
+      val classNameArg = js.StringLiteral(encodeFullName(sym))
 
       val constructorArg = if (sym.isImplClass)
         js.PropertyName("<init>():java.lang.Object")
@@ -259,7 +268,7 @@ abstract class GenJSCode extends SubComponent
         encodeMethodSym(sym.primaryConstructor)
 
       js.ApplyMethod(environment, js.Ident("registerModule"),
-          List(nameArg, typeArg, constructorArg))
+          List(nameArg, classNameArg, constructorArg))
     }
 
     // Code generation ---------------------------------------------------------
