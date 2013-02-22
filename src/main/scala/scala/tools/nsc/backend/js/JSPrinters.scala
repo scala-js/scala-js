@@ -133,6 +133,40 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.Continue() =>
           print("continue")
 
+        case js.Switch(selector, cases, default) =>
+          print("switch (", selector, ") ")
+          print("{"); indent
+          for ((value, body) <- cases) {
+            println()
+            print("case ", value, ":"); indent; println()
+            print(body, ";")
+            undent
+          }
+          if (default != js.EmptyTree) {
+            println()
+            print("default:"); indent; println()
+            print(default, ";")
+            undent
+          }
+          undent; println(); print("}")
+
+        case js.Match(selector, cases, default) =>
+          print("match (", selector, ") ")
+          print("{"); indent
+          for ((value, body) <- cases) {
+            println()
+            print("case ", value, ":"); indent; println()
+            print(body, ";")
+            undent
+          }
+          if (default != js.EmptyTree) {
+            println()
+            print("default:"); indent; println()
+            print(default, ";")
+            undent
+          }
+          undent; println(); print("}")
+
         // Expressions
 
         case js.DotSelect(qualifier, item) =>

@@ -99,6 +99,11 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class Continue()(implicit val pos: Position) extends Tree
 
+    case class Switch(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
+
+    /** Like match in Scala (i.e., a break-free switch) */
+    case class Match(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
+
     // Expressions
 
     case class DotSelect(qualifier: Tree, item: Ident)(implicit val pos: Position) extends Tree
@@ -227,6 +232,16 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case Throw(expr) =>
             Throw(transformExpr(expr))
 
+          case Switch(selector, cases, default) =>
+            Switch(transformExpr(selector),
+                cases map (c => (transformExpr(c._1), transformStat(c._2))),
+                transformStat(default))
+
+          case Match(selector, cases, default) =>
+            Match(transformExpr(selector),
+                cases map (c => (transformExpr(c._1), transformStat(c._2))),
+                transformStat(default))
+
           // Expressions
 
           case DotSelect(qualifier, item) =>
@@ -305,6 +320,17 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case Throw(expr) =>
             Throw(transformExpr(expr))
+
+          case Switch(selector, cases, default) =>
+            /* Given that there are 'break's in JS switches, a switch
+             * expression can definitely have no meaning whatsoever.
+             */
+            abort("A switch expression has no meaning: " + tree)
+
+          case Match(selector, cases, default) =>
+            Match(transformExpr(selector),
+                cases map (c => (transformExpr(c._1), transformExpr(c._2))),
+                transformExpr(default))
 
           // Expressions
 

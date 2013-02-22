@@ -728,9 +728,44 @@ abstract class GenJSCode extends SubComponent
           js.IntLiteral(dimensions), js.ArrayConstr(arguments))
     }
 
-    def genArrayValue(tree: Tree): js.Tree = ???
+    def genArrayValue(tree: Tree): js.Tree = {
+      implicit val pos = tree.pos
+      val ArrayValue(tpt @ TypeTree(), elems) = tree
 
-    def genMatch(tree: Tree): js.Tree = ???
+      val componentClass = genClassConstant(toTypeKind(tpt.tpe).toType)
+      val nativeArray = js.ArrayConstr(elems map genExpr)
+
+      genBuiltinApply("MakeNativeArrayWrapper",
+          componentClass, nativeArray)
+    }
+
+    def genMatch(tree: Tree): js.Tree = {
+      implicit val pos = tree.pos
+      val Match(selector, cases) = tree
+
+      val expr = genExpr(selector)
+
+      var clauses: List[(js.Tree, js.Tree)] = Nil
+      var elseClause: js.Tree = js.EmptyTree
+
+      for (caze @ CaseDef(pat, guard, body) <- cases) {
+        assert(guard == EmptyTree)
+
+        val bodyAST = genExpr(body)
+
+        pat match {
+          case lit: Literal =>
+            clauses = (genExpr(lit), bodyAST) :: clauses
+          case Ident(nme.WILDCARD) =>
+            elseClause = bodyAST
+          case _ =>
+            abort("Invalid case statement in switch-like pattern match: " +
+                tree + " at: " + (tree.pos))
+        }
+      }
+
+      js.Match(expr, clauses.reverse, elseClause)
+    }
 
     private def isPrimitive(sym: Symbol) = {
       (scalaPrimitives.isPrimitive(sym) && (sym ne definitions.String_+))

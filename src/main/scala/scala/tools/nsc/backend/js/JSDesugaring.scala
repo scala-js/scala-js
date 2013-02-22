@@ -80,6 +80,11 @@ trait JSDesugaring extends SubComponent {
             })
           }
 
+        case js.Switch(selector, cases, body) =>
+          expressify(selector) { newSelector =>
+            super.transformStat(js.Switch(newSelector, cases, body))
+          }
+
         // Return can be an expression, but can be unnested into, which is better
 
         case js.Return(expr) =>
@@ -277,6 +282,17 @@ trait JSDesugaring extends SubComponent {
             js.Throw(transformExpr(newExpr))
           }
 
+        case js.Match(selector, cases, default) =>
+          expressify(selector) { newSelector =>
+            val newCases =
+              for ((value, body) <- cases)
+                yield (transformExpr(value),
+                    js.Block(List(redo(body)), js.Break()))
+            val newDefault =
+              if (default == js.EmptyTree) default else redo(default)
+            js.Switch(newSelector, newCases, newDefault)
+          }
+
         // Applications (if we reach here their arguments are not expressions)
 
         case js.Apply(fun, args) =>
@@ -336,7 +352,7 @@ trait JSDesugaring extends SubComponent {
           if (lhs == js.EmptyTree) {
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While =>
+                  _:js.While | _:js.Switch =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.unnestExprInto():\n" +
