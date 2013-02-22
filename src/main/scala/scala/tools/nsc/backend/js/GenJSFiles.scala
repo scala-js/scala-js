@@ -18,6 +18,7 @@ trait GenJSFiles extends SubComponent {
     try {
       val printer = new JSTreePrinter(output)
       printer.printTree(tree)
+      printer.print(";")
       printer.println()
     } finally {
       output.close()
