@@ -102,7 +102,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
     case class Switch(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
 
     /** Like match in Scala (i.e., a break-free switch) */
-    case class Match(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
+    case class Match(selector: Tree, cases: List[(List[Tree], Tree)], default: Tree)(implicit val pos: Position) extends Tree
 
     // Expressions
 
@@ -239,7 +239,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case Match(selector, cases, default) =>
             Match(transformExpr(selector),
-                cases map (c => (transformExpr(c._1), transformStat(c._2))),
+                cases map (c => (c._1 map transformExpr, transformStat(c._2))),
                 transformStat(default))
 
           // Expressions
@@ -329,7 +329,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case Match(selector, cases, default) =>
             Match(transformExpr(selector),
-                cases map (c => (transformExpr(c._1), transformExpr(c._2))),
+                cases map (c => (c._1 map transformExpr, transformExpr(c._2))),
                 transformExpr(default))
 
           // Expressions

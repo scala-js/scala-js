@@ -288,10 +288,16 @@ trait JSDesugaring extends SubComponent {
 
         case js.Match(selector, cases, default) =>
           expressify(selector) { newSelector =>
-            val newCases =
-              for ((value, body) <- cases)
-                yield (transformExpr(value),
-                    js.Block(List(redo(body)), js.Break()))
+            val newCases = {
+              for {
+                (values, body) <- cases
+                newValues = (values map transformExpr)
+                newBody = js.Block(List(redo(body)), js.Break())
+                caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
+              } yield {
+                caze
+              }
+            }
             val newDefault =
               if (default == js.EmptyTree) default else redo(default)
             js.Switch(newSelector, newCases, newDefault)

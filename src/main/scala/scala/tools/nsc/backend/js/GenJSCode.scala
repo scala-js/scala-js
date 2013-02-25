@@ -750,7 +750,7 @@ abstract class GenJSCode extends SubComponent
 
       val expr = genExpr(selector)
 
-      var clauses: List[(js.Tree, js.Tree)] = Nil
+      var clauses: List[(List[js.Tree], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -760,9 +760,19 @@ abstract class GenJSCode extends SubComponent
 
         pat match {
           case lit: Literal =>
-            clauses = (genExpr(lit), bodyAST) :: clauses
+            clauses = (List(genExpr(lit)), bodyAST) :: clauses
           case Ident(nme.WILDCARD) =>
             elseClause = bodyAST
+          case Alternative(alts) =>
+            val genAlts = {
+              alts map {
+                case lit: Literal => genExpr(lit)
+                case _ =>
+                  abort("Invalid case in alternative in switch-like pattern match: " +
+                      tree + " at: " + tree.pos)
+              }
+            }
+            clauses = (genAlts, bodyAST) :: clauses
           case _ =>
             abort("Invalid case statement in switch-like pattern match: " +
                 tree + " at: " + (tree.pos))
