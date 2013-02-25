@@ -216,8 +216,22 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print(value)
 
         case js.StringLiteral(value) =>
-          // TODO quote
-          print("\"", value, "\"")
+          // TODO Quote better than that (non printable characters, Unicode, etc.)
+          print("\"")
+          value foreach {
+            case '\\' => print("\\\\")
+            case '"' => print("\\\"")
+            case '\u0007' => print("\\a")
+            case '\u0008' => print("\\b")
+            case '\u0009' => print("\\t")
+            case '\u000A' => print("\\n")
+            case '\u000B' => print("\\v")
+            case '\u000C' => print("\\f")
+            case '\u000D' => print("\\r")
+            case c => print(c)
+          }
+          print("\"")
+
 
         // Compounds
 
