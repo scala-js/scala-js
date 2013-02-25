@@ -25,7 +25,7 @@ trait JSGlobal extends Global
   // phaseName = "jscode"
   object genJSCode extends {
     val global: JSGlobal.this.type = JSGlobal.this
-    val runsAfter = List("dce")
+    val runsAfter = List("mixin")
     val runsRightAfter = None
   } with GenJSCode
 
@@ -46,5 +46,13 @@ trait JSGlobal extends Global
       def name = "terminal"
       def apply(unit: CompilationUnit) {}
     }
+  }
+
+  override protected def computeInternalPhases() {
+    super.computeInternalPhases()
+
+    // Remove some phases not used by the JS backend
+    phasesSet --= Seq(cleanup, genicode, inliner, inlineExceptionHandlers,
+        closureElimination, deadCode)
   }
 }

@@ -56,6 +56,11 @@ abstract class GenJSCode extends SubComponent
 
     // Top-level apply ---------------------------------------------------------
 
+    override def run() {
+      scalaPrimitives.init()
+      super.run()
+    }
+
     override def apply(cunit: CompilationUnit) {
       try {
         currentCUnit = cunit
