@@ -76,7 +76,7 @@ abstract class GenJSCode extends SubComponent
                 genInterface(cd)
               } else {
                 val generatedClass = genClass(cd)
-                if (sym.isModuleClass && sym.companionModule != NoSymbol) {
+                if (sym.isModuleClass && !sym.isLifted) {
                   js.Block(List(generatedClass), genModuleAccessor(sym))
                 } else generatedClass
               }
@@ -264,7 +264,14 @@ abstract class GenJSCode extends SubComponent
     def genModuleAccessor(sym: Symbol): js.Tree = {
       implicit val pos = sym.pos
 
-      val nameArg = js.StringLiteral(encodeFullName(sym.companionModule))
+      /* For whatever reason, a module nested in another module will be
+       * lifted as a top-level module, with its module class, but
+       * sym.companionModule will be NoSymbol.
+       */
+      val symForNameArg =
+        if (sym.companionModule != NoSymbol) sym.companionModule else sym
+
+      val nameArg = js.StringLiteral(encodeFullName(symForNameArg))
       val classNameArg = js.StringLiteral(encodeFullName(sym))
 
       val constructorArg = if (sym.isImplClass)
