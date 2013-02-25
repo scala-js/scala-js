@@ -189,6 +189,10 @@ trait JSDesugaring extends SubComponent {
         case js.ObjectConstr(items) =>
           items forall (item => test(item._2))
 
+        // Assume that super calls preserve pureness, otherwise it blows up
+        case js.DotSelect(js.Super(), _) => true
+        case js.BracketSelect(js.Super(), item) => test(item)
+
         // Expressions that are never pure
         case js.DotSelect(qualifier, item) =>
           allowUnpure && test(qualifier)
