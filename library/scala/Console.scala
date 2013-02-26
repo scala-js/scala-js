@@ -74,8 +74,8 @@ object Console {
 
   private val outVar = new DynamicVariable[PrintStream](java.lang.System.out)
   private val errVar = new DynamicVariable[PrintStream](java.lang.System.err)
-  private val inVar = new DynamicVariable[BufferedReader](
-    new BufferedReader(new InputStreamReader(java.lang.System.in)))
+  private val inVar = new DynamicVariable[BufferedReader](null)
+    //new BufferedReader(new InputStreamReader(java.lang.System.in)))
 
   /** The default output, can be overridden by `setOut` */
   def out = outVar.value
