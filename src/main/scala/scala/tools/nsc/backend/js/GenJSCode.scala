@@ -977,15 +977,10 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genSynchronized(tree: Apply): js.Tree = {
-      implicit val jspos = tree.pos
-
-      val Apply(Select(receiver, _), args) = tree
-      val receiverExpr = genExpr(receiver)
-      val body = genExpr(args.head)
-
-      val proc = js.Function(Nil, body)
-
-      js.ApplyMethod(receiverExpr, js.Ident("synchronized"), List(proc))
+      /* JavaScript is single-threaded. I believe we can drop the
+       * synchronization altogether.
+       */
+      genExpr(tree.args.head)
     }
 
     private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
