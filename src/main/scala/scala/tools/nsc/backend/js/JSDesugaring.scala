@@ -305,6 +305,20 @@ trait JSDesugaring extends SubComponent {
 
         // Applications (if we reach here their arguments are not expressions)
 
+        case js.ApplyMethod(receiver, methodName, args) =>
+          /* We must special-case this because the top-level select must not
+           * be deconstructed. Thanks to JavaScript having different semantics
+           * for
+           * var f = x.m; f(y)
+           * than for
+           * x.m(y)
+           * Namely, in the former case, `this` is not bound correctly
+           */
+          expressify(receiver :: args) { newReceiverAndArgs =>
+            val newReceiver :: newArgs = newReceiverAndArgs
+            redo(js.ApplyMethod(newReceiver, methodName, newArgs))
+          }
+
         case js.Apply(fun, args) =>
           expressify(fun :: args) { newFunAndArgs =>
             val newFun :: newArgs = newFunAndArgs
