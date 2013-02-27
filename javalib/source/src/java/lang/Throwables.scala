@@ -44,6 +44,12 @@ class RuntimeException(message: String, cause: Throwable) extends Exception(mess
   def this(cause: Throwable) = this(null, cause)
 }
 
+class SecurityException(message: String, cause: Throwable) extends RuntimeException(message, cause) {
+  def this() = this(null, null)
+  def this(message: String) = this(message, null)
+  def this(cause: Throwable) = this(null, cause)
+}
+
 class UnsupportedOperationException(message: String, cause: Throwable) extends RuntimeException(message, cause) {
   def this() = this(null, null)
   def this(message: String) = this(message, null)
