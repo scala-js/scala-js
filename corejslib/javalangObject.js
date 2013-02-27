@@ -34,6 +34,11 @@
     return this === rhs;
   }
 
+  ObjectClass.prototype["hashCode():scala.Int"] = function() {
+    // TODO
+    return 42;
+  }
+
   $env.createClass("java.lang.Object", ObjectClass, null, {
     "java.lang.Object": true
   });

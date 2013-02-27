@@ -186,6 +186,18 @@ function $ScalaJSEnvironmentClass() {
 
     return result;
   };
+
+  this.anyEqEq = function(lhs, rhs) {
+    return this.modules["scala.runtime.BoxesRunTime$"].instance[
+      "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
+  }
+
+  this.anyRefEqEq = function(lhs, rhs) {
+    if (lhs === null)
+      return rhs === null;
+    else
+      return lhs["equals(java.lang.Object):scala.Boolean"](rhs);
+  }
 }
 
 var $ScalaJSEnvironment = new $ScalaJSEnvironmentClass();
