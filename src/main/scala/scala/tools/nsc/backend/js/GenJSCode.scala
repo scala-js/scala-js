@@ -496,10 +496,17 @@ abstract class GenJSCode extends SubComponent
       val procVar = encodeLabelSym(sym)
 
       val body = genExpr(rhs)
-      val arguments = params map { ident => encodeLocalSym(ident.symbol) }
 
-      val defineProc = js.FunDef(procVar, arguments, body)
-      val call = js.Apply(procVar, arguments)
+      val hasThisParam = !params.isEmpty && params.head.name == nme.THIS
+      val formalArgs = params map { ident => encodeLocalSym(ident.symbol) }
+
+      val actualArgs =
+        if (hasThisParam) js.This() :: formalArgs.tail
+        else formalArgs
+
+      val defineProc = js.FunDef(procVar, formalArgs, body)
+      val call = js.ApplyMethod(procVar, js.Ident("call"),
+          js.This() :: actualArgs)
 
       js.Block(List(defineProc), call)
     }
@@ -668,7 +675,7 @@ abstract class GenJSCode extends SubComponent
 
             val procVar = encodeLabelSym(sym)
             val arguments = args map genExpr
-            js.Apply(procVar, arguments)
+            js.ApplyMethod(procVar, js.Ident("call"), js.This() :: arguments)
           } else if (isPrimitive(sym)) {
             // primitive operation
             genPrimitiveOp(app)
