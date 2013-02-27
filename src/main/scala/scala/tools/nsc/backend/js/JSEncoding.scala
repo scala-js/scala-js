@@ -11,7 +11,7 @@ package js
  *
  *  @author Sébastien Doeraene
  */
-trait JSEncoding extends SubComponent {
+trait JSEncoding extends SubComponent { self: GenJSCode =>
   val global: scalajs.JSGlobal
 
   import global._
@@ -54,29 +54,58 @@ trait JSEncoding extends SubComponent {
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
-    js.DotSelect(getClassData(sym), js.Ident("type"))
+    js.DotSelect(encodeClassDataOfSym(sym), js.Ident("type"))
   }
 
-  def encodeClassOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isClass, "encodeClassOfSym called with non-class symbol: " + sym)
-    js.DotSelect(getClassData(sym), js.Ident("class"))
+  def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
+    js.DotSelect(encodeClassDataOfType(tpe), js.Ident("class"))
   }
 
   def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModule, "encodeModuleSymInternal called with non-module symbol: " + sym)
-    js.DotSelect(getModuleData(sym), js.Ident("_instance"))
+    js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("_instance"))
   }
 
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModule, "encodeModuleSym called with non-module symbol: " + sym)
-    js.DotSelect(getModuleData(sym), js.Ident("instance"))
+    js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("instance"))
   }
 
-  private def getClassData(sym: Symbol)(implicit pos: Position): js.Tree = {
-    getClassOrModuleData(sym, dictName = "classes")
+  def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
+    toTypeKind(tpe) match {
+      case array : ARRAY =>
+        var result = encodeClassDataOfSym(array.elementKind.toType.typeSymbol)
+        for (i <- 0 until array.dimensions)
+          result = js.DotSelect(result, js.Ident("array"))
+        result
+
+      case _ => encodeClassDataOfSym(tpe.typeSymbol)
+    }
   }
 
-  private def getModuleData(sym: Symbol)(implicit pos: Position): js.Tree = {
+  private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+    import definitions._
+
+    if (sym.isPrimitiveValueClass) {
+      val primitiveName = sym match {
+        case UnitClass     => "void"
+        case BooleanClass  => "boolean"
+        case CharClass     => "char"
+        case ByteClass     => "byte"
+        case ShortClass    => "short"
+        case IntClass      => "int"
+        case LongClass     => "long"
+        case FloatClass    => "float"
+        case DoubleClass   => "double"
+      }
+      js.BracketSelect(js.DotSelect(environment, js.Ident("primitives")),
+          js.StringLiteral(primitiveName))
+    } else {
+      getClassOrModuleData(sym, dictName = "classes")
+    }
+  }
+
+  def encodeModuleDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     getClassOrModuleData(sym, dictName = "modules")
   }
 

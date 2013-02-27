@@ -648,7 +648,7 @@ abstract class GenJSCode extends SubComponent
 
           (generatedType: @unchecked) match {
             case arr @ ARRAY(elem) =>
-              genNewArray(arr.elementKind, arr.dimensions, arguments)
+              genNewArray(tpt.tpe, arr.dimensions, arguments)
 
             case rt @ REFERENCE(cls) =>
               genNew(cls, ctor, arguments)
@@ -716,7 +716,6 @@ abstract class GenJSCode extends SubComponent
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
-      val classVar = encodeClassOfSym(clazz)
       val instance = js.New(typeVar, Nil)
       js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
     }
@@ -726,7 +725,7 @@ abstract class GenJSCode extends SubComponent
       genNew(clazz, ctor, Nil)
     }
 
-    def genNewArray(elementKind: TypeKind, dimensions: Int,
+    def genNewArray(arrayType: Type, dimensions: Int,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val argsLength = arguments.length
 
@@ -734,21 +733,21 @@ abstract class GenJSCode extends SubComponent
         abort("too many arguments for array constructor: found " + argsLength +
           " but array has only " + dimensions + " dimension(s)")
 
-      val componentClass = elementKind.toType
+      val arrayClassData = encodeClassDataOfType(arrayType)
 
-      genBuiltinApply("NewArrayObject", genClassConstant(componentClass),
-          js.IntLiteral(dimensions), js.ArrayConstr(arguments))
+      genBuiltinApply("NewArrayObject", arrayClassData,
+          js.ArrayConstr(arguments))
     }
 
     def genArrayValue(tree: Tree): js.Tree = {
       implicit val pos = tree.pos
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
-      val componentClass = genClassConstant(toTypeKind(tpt.tpe).toType)
+      val arrayClassData = encodeClassDataOfType(tree.tpe)
       val nativeArray = js.ArrayConstr(elems map genExpr)
 
       genBuiltinApply("MakeNativeArrayWrapper",
-          componentClass, nativeArray)
+          arrayClassData, nativeArray)
     }
 
     def genMatch(tree: Tree): js.Tree = {
@@ -960,7 +959,7 @@ abstract class GenJSCode extends SubComponent
           assert(args.length == 1,
                  "Too many arguments for array get operation: " + tree)
 
-        js.BracketSelect(arrayValue, arguments(0))
+        js.ApplyMethod(arrayValue, js.Ident("get"), arguments)
       }
       else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
@@ -968,11 +967,11 @@ abstract class GenJSCode extends SubComponent
           assert(args.length == 2,
                  "Too many arguments for array set operation: " + tree)
 
-        statToExpr(js.Assign(js.BracketSelect(arrayValue, arguments(0)), arguments(1)))
+        statToExpr(js.ApplyMethod(arrayValue, js.Ident("set"), arguments))
       }
       else {
         // length of the array
-        js.Select(arrayValue, js.Ident("length"))
+        js.ApplyMethod(arrayValue, js.Ident("length"), Nil)
       }
     }
 
@@ -1084,14 +1083,7 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
     private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree = {
-      toTypeKind(tpe) match {
-        case array : ARRAY =>
-          val elementClass = encodeClassOfSym(array.elementKind.toType.typeSymbol)
-          genBuiltinApply("MultiArrayClassOf", elementClass,
-              js.IntLiteral(array.dimensions))
-
-        case _ => encodeClassOfSym(tpe.typeSymbol)
-      }
+      encodeClassOfType(tpe)
     }
 
     /** Generate a call to a runtime builtin helper */

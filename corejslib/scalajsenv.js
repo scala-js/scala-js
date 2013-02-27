@@ -4,55 +4,87 @@
 
 function $ScalaJSEnvironmentClass() {
   // Fields
+  this.primitives = {};
   this.classes = {};
   this.modules = {};
   this.natives = {};
 
   // Core mechanism
 
-  this.createClass = function(name, typeFunction, parent, ancestors) {
+  this.createType = function(name, typeFunction, parent, ancestors, isPrimitive,
+                             isInterface, isArray, componentData, zero,
+                             arrayEncodedName) {
     var data = {
       name: name,
       type: typeFunction,
       parent: parent,
+      parentData: parent === null ? null : this.classes[parent],
       ancestors: ancestors,
+      isPrimitive: isPrimitive,
+      isInterface: isInterface,
+      isArray: isArray,
+      componentData: componentData,
+      zero: zero,
+      arrayEncodedName: arrayEncodedName,
       _class: undefined,
       get class() {
         if (this._class === undefined)
           this._class = $ScalaJSEnvironment.createClassInstance(this);
         return this._class;
+      },
+      _array: undefined,
+      get array() {
+        if (this._array === undefined)
+          this._array = $ScalaJSEnvironment.createArrayClass(this);
+        return this._array;
       }
     };
-    typeFunction.prototype.$classData = data;
 
-    Object.defineProperty(this.classes, name, {
-      __proto__: null,
-      enumerable: true,
-      configurable: false,
-      writable: false,
-      value: data
-    });
+    if (typeFunction !== undefined)
+      typeFunction.prototype.$classData = data;
+
+    if (!isPrimitive && !isArray) {
+      Object.defineProperty(this.classes, name, {
+        __proto__: null,
+        enumerable: true,
+        configurable: false,
+        writable: false,
+        value: data
+      });
+    } else if (isPrimitive) {
+      Object.defineProperty(this.primitives, name, {
+        __proto__: null,
+        enumerable: true,
+        configurable: false,
+        writable: false,
+        value: data
+      });
+    }
+
+    return data;
+  }
+
+  this.createClass = function(name, typeFunction, parent, ancestors) {
+    return this.createType(name, typeFunction, parent, ancestors,
+                           false, false, false, null, null, "L" + name + ";");
+  };
+
+  this.createPrimitiveType = function(name, zero, arrayEncodedName) {
+    return this.createType(name, undefined, null, [name],
+                           true, false, false, null, zero, arrayEncodedName);
+  };
+
+  this.createArrayClass = function(componentData) {
+    var name = "[" + componentData.arrayEncodedName;
+    var typeFunction = this.createArrayTypeFunction(name, componentData);
+    return this.createType(name, typeFunction, "java.lang.Object",
+                           [name, "java.lang.Object"],
+                           false, false, true, componentData, null, name);
   };
 
   this.createInterface = function(name, ancestors) {
-    var data = {
-      name: name,
-      ancestors: ancestors,
-      _class: undefined,
-      get class() {
-        if (this._class === undefined)
-          this._class = $ScalaJSEnvironment.createClassInstance(this);
-        return this._class;
-      }
-    };
-
-    Object.defineProperty(this.classes, name, {
-      __proto__: null,
-      enumerable: true,
-      configurable: false,
-      writable: false,
-      value: data
-    });
+    return this.createType(name, undefined, null, ancestors,
+                           false, true, false, null, null, "L" + name + ";");
   };
 
   this.registerClass = function(name, createFunction) {
@@ -90,10 +122,25 @@ function $ScalaJSEnvironmentClass() {
     this.natives[fullName] = nativeFunction;
   }
 
+  // Create primitive types
+
+  this.createPrimitiveType("void", undefined, "V");
+  this.createPrimitiveType("boolean", false, "Z");
+  this.createPrimitiveType("char", 0, "C");
+  this.createPrimitiveType("byte", 0, "B");
+  this.createPrimitiveType("short", 0, "S");
+  this.createPrimitiveType("int", 0, "I");
+  this.createPrimitiveType("long", 0, "J");
+  this.createPrimitiveType("float", 0.0, "F");
+  this.createPrimitiveType("double", 0.0, "D");
+
   // Runtime functions
 
   // Defined in javalangString.js
   // this.makeNativeStrWrapper = function(nativeStr) {...};
+
+  // Defined in javalangArray.js
+  // this.createArrayTypeFunction = function(name, componentData) {...};
 
   this.isInstance = function(instance, classFullName) {
     if ((typeof(instance) !== "object") || (instance === null))
@@ -115,6 +162,29 @@ function $ScalaJSEnvironmentClass() {
         "<init>(java.lang.String):java.lang.ClassCastException"](
           this.makeNativeStrWrapper(
             instance + " is not an instance of " + classFullName));
+  };
+
+  this.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
+    return new arrayClassData.type(nativeArray);
+  };
+
+  this.newArrayObject = function(arrayClassData, lengths) {
+    return this.newArrayObjectInternal(arrayClassData, lengths, 0);
+  };
+
+  this.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
+    var result = new arrayClassData.type(lengths[lengthIndex]);
+
+    if (lengthIndex < lengths.length-1) {
+      var subArrayClassData = arrayClassData.componentData;
+      var subLengthIndex = lengthIndex+1;
+      for (var i = 0; i < result.length(); i++) {
+        result.set(i, this.newArrayObjectInternal(
+          subArrayClassData, lengths, subLengthIndex));
+      }
+    }
+
+    return result;
   };
 }
 

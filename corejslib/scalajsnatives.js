@@ -51,6 +51,18 @@
     return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
   });
 
+  // java.lang.System
+
+  $env.registerNative("java.lang.System$ :: arraycopy(java.lang.Object,scala.Int,java.lang.Object,scala.Int,scala.Int):scala.Unit",
+    function(src, srcPos, dest, destPos, count) {
+      // TODO Throw errors properly
+      var srcUnderlying = src.underlying;
+      var destUnderlying = dest.underlying;
+      for (var i = 0; i < count; i++) {
+        destUnderlying[destPos+i] = srcUnderlying[srcPos+i];
+      }
+    });
+
   // java.lang.StandardOutPrintStream$
 
   $env.registerNative("java.lang.StandardOutPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
