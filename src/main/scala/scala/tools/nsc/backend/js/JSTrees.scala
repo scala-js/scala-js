@@ -91,6 +91,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class While(cond: Tree, body: Tree)(implicit val pos: Position) extends Tree
 
+    case class DoWhile(body: Tree, cond: Tree)(implicit val pos: Position) extends Tree
+
     case class Try(block: Tree, errVar: Ident, handler: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
 
     case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
@@ -226,6 +228,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case While(cond, body) =>
             While(transformExpr(cond), transformStat(body))
 
+          case DoWhile(body, cond) =>
+            DoWhile(transformStat(body), transformExpr(cond))
+
           case Try(block, errVar, handler, finalizer) =>
             Try(transformStat(block), errVar, transformStat(handler), transformStat(finalizer))
 
@@ -303,6 +308,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case While(cond, body) =>
             While(transformExpr(cond), transformStat(body))
+
+          case DoWhile(body, cond) =>
+            DoWhile(transformStat(body), transformExpr(cond))
 
           // Language constructs that are statement-only in standard JavaScript
 

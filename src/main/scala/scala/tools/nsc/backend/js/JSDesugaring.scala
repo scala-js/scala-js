@@ -80,6 +80,17 @@ trait JSDesugaring extends SubComponent {
             })
           }
 
+        case js.DoWhile(body, cond) =>
+          if (isExpression(cond)) super.transformStat(tree)
+          else {
+            // we cannot just 'expressify' here
+            js.While(js.BooleanLiteral(true), {
+              transformStat {
+                js.Block(List(body), js.If(cond, js.Skip(), js.Break()))
+              }
+            })
+          }
+
         case js.Switch(selector, cases, body) =>
           expressify(selector) { newSelector =>
             super.transformStat(js.Switch(newSelector, cases, body))
@@ -269,6 +280,9 @@ trait JSDesugaring extends SubComponent {
             js.Return(transformExpr(newExpr))
           }
 
+        case js.Break() | js.Continue() =>
+          rhs
+
         case js.If(cond, thenp, elsep) =>
           expressify(cond) { newCond =>
             js.If(transformExpr(newCond), redo(thenp), redo(elsep))
@@ -376,7 +390,7 @@ trait JSDesugaring extends SubComponent {
           if (lhs == js.EmptyTree) {
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While | _:js.Switch =>
+                  _:js.While | _:js.DoWhile | _:js.Switch =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.unnestExprInto():\n" +

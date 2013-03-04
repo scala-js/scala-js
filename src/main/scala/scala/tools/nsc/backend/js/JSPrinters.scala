@@ -112,6 +112,11 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print("while (", cond, ") ")
           printBlock(body)
 
+        case js.DoWhile(body, cond) =>
+          print("do ")
+          printBlock(body)
+          print(" while (", cond, ")")
+
         case js.Try(block, errVar, handler, finalizer) =>
           print("try ")
           printBlock(block)

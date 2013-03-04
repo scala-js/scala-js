@@ -486,29 +486,75 @@ abstract class GenJSCode extends SubComponent
      *  as the continuation of the label-def.
      */
     def genLabelDef(tree: LabelDef): js.Tree = {
-      implicit val jspos = tree.pos
-      val LabelDef(name, params, rhs) = tree
-
-      if (settings.debug.value)
-        log("Encountered a label def: " + tree)
-
+      implicit val pos = tree.pos
       val sym = tree.symbol
-      val procVar = encodeLabelSym(sym)
 
-      val body = genExpr(rhs)
+      tree match {
+        // while (cond) { body }
+        case LabelDef(lname, Nil,
+            If(cond,
+                Block(List(body), Apply(target @ Ident(lname2), Nil)),
+                Literal(_))) if (target.symbol == sym) =>
+          statToExpr(js.While(genExpr(cond), genStat(body)))
 
-      val hasThisParam = !params.isEmpty && params.head.name == nme.THIS
-      val formalArgs = params map { ident => encodeLocalSym(ident.symbol) }
+        // while (cond) { body }; result
+        case LabelDef(lname, Nil,
+            Block(List(
+                If(cond,
+                    Block(List(body), Apply(target @ Ident(lname2), Nil)),
+                    Literal(_))),
+                result)) if (target.symbol == sym) =>
+          js.Block(List(js.While(genExpr(cond), genStat(body))),
+              genExpr(result))
 
-      val actualArgs =
-        if (hasThisParam) js.This() :: formalArgs.tail
-        else formalArgs
+        // while (true) { body }
+        case LabelDef(lname, Nil,
+            Block(List(body),
+                Apply(target @ Ident(lname2), Nil))) if (target.symbol == sym) =>
+          statToExpr(js.While(js.BooleanLiteral(true), genStat(body)))
 
-      val defineProc = js.FunDef(procVar, formalArgs, body)
-      val call = js.ApplyMethod(procVar, js.Ident("call"),
-          js.This() :: actualArgs)
+        // do { body } while (cond)
+        case LabelDef(lname, Nil,
+            Block(List(body),
+                If(cond,
+                    Apply(target @ Ident(lname2), Nil),
+                    Literal(_)))) if (target.symbol == sym) =>
+          statToExpr(js.DoWhile(genStat(body), genExpr(cond)))
 
-      js.Block(List(defineProc), call)
+        // do { body } while (cond); result
+        case LabelDef(lname, Nil,
+            Block(List(
+                body,
+                If(cond,
+                    Apply(target @ Ident(lname2), Nil),
+                    Literal(_))),
+                result)) if (target.symbol == sym) =>
+          js.Block(List(js.DoWhile(genStat(body), genExpr(cond))),
+              genExpr(result))
+
+        case _ =>
+          val LabelDef(name, params, rhs) = tree
+
+          if (settings.debug.value)
+            log("Encountered a label def: " + tree)
+
+          val procVar = encodeLabelSym(sym)
+
+          val body = genExpr(rhs)
+
+          val hasThisParam = !params.isEmpty && params.head.name == nme.THIS
+          val formalArgs = params map { ident => encodeLocalSym(ident.symbol) }
+
+          val actualArgs =
+            if (hasThisParam) js.This() :: formalArgs.tail
+            else formalArgs
+
+          val defineProc = js.FunDef(procVar, formalArgs, body)
+          val call = js.ApplyMethod(procVar, js.Ident("call"),
+              js.This() :: actualArgs)
+
+          js.Block(List(defineProc), call)
+      }
     }
 
     def genTry(tree: Try): js.Tree = {
