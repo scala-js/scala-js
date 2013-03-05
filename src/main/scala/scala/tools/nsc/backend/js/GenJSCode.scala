@@ -31,6 +31,8 @@ abstract class GenJSCode extends SubComponent
     boxedClass, isBox, isUnbox, getMember
   }
 
+  import treeInfo.hasSynthCaseSymbol
+
   import platform.isMaybeBoxed
 
   val phaseName = "jscode"
@@ -351,6 +353,9 @@ abstract class GenJSCode extends SubComponent
     def genExpr(tree: Tree): js.Tree = {
       implicit val pos = tree.pos
 
+      def isCaseLabelDef(tree: Tree) =
+        tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree)
+
       tree match {
         case lblDf: LabelDef =>
           genLabelDef(lblDf)
@@ -455,6 +460,24 @@ abstract class GenJSCode extends SubComponent
             case EnumTag =>
               genStaticMember(value.symbolValue)
           }
+
+        // a translated match
+        case Block(stats, expr) if (expr +: stats) exists isCaseLabelDef =>
+          /* The assumption is once we encounter a case, the remainder of the
+           * block will consist of cases.
+           * The prologue may be empty, usually it is the valdef that stores
+           * the scrut.
+           */
+          val (prologue, cases) = stats span (s => !isCaseLabelDef(s))
+          assert((expr +: cases) forall isCaseLabelDef,
+              "Assumption on the form of translated matches broken: " + tree)
+
+          val translatedMatch =
+            genTranslatedMatch(cases map (_.asInstanceOf[LabelDef]),
+                expr.asInstanceOf[LabelDef])
+
+          if (prologue.isEmpty) translatedMatch
+          else js.Block(prologue map genStat, translatedMatch)
 
         case Block(stats, expr) =>
           val statements = stats map genStat
@@ -564,27 +587,7 @@ abstract class GenJSCode extends SubComponent
               genExpr(result))
 
         case _ =>
-          val LabelDef(name, params, rhs) = tree
-
-          if (settings.debug.value)
-            log("Encountered a label def: " + tree)
-
-          val procVar = encodeLabelSym(sym)
-
-          val body = genExpr(rhs)
-
-          val hasThisParam = !params.isEmpty && params.head.name == nme.THIS
-          val formalArgs = params map { ident => encodeLocalSym(ident.symbol) }
-
-          val actualArgs =
-            if (hasThisParam) js.This() :: formalArgs.tail
-            else formalArgs
-
-          val defineProc = js.FunDef(procVar, formalArgs, body)
-          val call = js.ApplyMethod(procVar, js.Ident("call"),
-              js.This() :: actualArgs)
-
-          js.Block(List(defineProc), call)
+          abort("Found unknown label def at "+tree.pos+": "+tree)
       }
     }
 
@@ -791,13 +794,21 @@ abstract class GenJSCode extends SubComponent
                       yield js.Assign(formalArg, tempArg)
                   js.Block(tempAssignments ::: trueAssignments, tailJump)
               }
-            } else {
-              if (settings.verbose.value)
-                println("warning: jump found at "+tree.pos+", doing my best ...")
+            } else if (sym.name.toString() startsWith "matchEnd") {
+              // jump to the end of a generated match
+              val isResultUnit = toTypeKind(sym.info.resultType) == UNDEFINED
+              val labelIdent = encodeLabelSym(sym)
+              val jumpStat = js.Break(Some(labelIdent))
+              val List(matchResult) = args
 
-              val procVar = encodeLabelSym(sym)
-              val arguments = args map genExpr
-              js.ApplyMethod(procVar, js.Ident("call"), js.This() :: arguments)
+              if (isResultUnit) {
+                js.Block(List(genStat(matchResult)), jumpStat)
+              } else {
+                val resultVar = js.Ident("result$"+labelIdent.name)
+                js.Block(List(js.Assign(resultVar, genExpr(matchResult)), jumpStat))
+              }
+            } else {
+              abort("Found unknown label apply at "+tree.pos+": "+tree)
             }
           } else if (isPrimitive(sym)) {
             // primitive operation
@@ -886,19 +897,39 @@ abstract class GenJSCode extends SubComponent
 
       val expr = genExpr(selector)
 
+      val List(defaultBody0) = for {
+        CaseDef(Ident(nme.WILDCARD), EmptyTree, body) <- cases
+      } yield body
+
+      val (defaultBody, defaultLabelSym) = defaultBody0 match {
+        case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(defaultBody0) =>
+          (rhs, defaultBody0.symbol)
+        case _ =>
+          (defaultBody0, NoSymbol)
+      }
+
       var clauses: List[(List[js.Tree], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
         assert(guard == EmptyTree)
 
-        val bodyAST = genExpr(body)
+        def genBody() = body match {
+          // Yes, this will duplicate the default body in the output
+          case If(cond, thenp, app @ Apply(_, Nil)) if app.symbol == defaultLabelSym =>
+            js.If(genExpr(cond), genExpr(thenp), genExpr(defaultBody))(body.pos)
+          case If(cond, thenp, Block(List(app @ Apply(_, Nil)), _)) if app.symbol == defaultLabelSym =>
+            js.If(genExpr(cond), genExpr(thenp), genExpr(defaultBody))(body.pos)
+
+          case _ =>
+            genExpr(body)
+        }
 
         pat match {
           case lit: Literal =>
-            clauses = (List(genExpr(lit)), bodyAST) :: clauses
+            clauses = (List(genExpr(lit)), genBody()) :: clauses
           case Ident(nme.WILDCARD) =>
-            elseClause = bodyAST
+            elseClause = genExpr(defaultBody)
           case Alternative(alts) =>
             val genAlts = {
               alts map {
@@ -908,7 +939,7 @@ abstract class GenJSCode extends SubComponent
                       tree + " at: " + tree.pos)
               }
             }
-            clauses = (genAlts, bodyAST) :: clauses
+            clauses = (genAlts, genBody()) :: clauses
           case _ =>
             abort("Invalid case statement in switch-like pattern match: " +
                 tree + " at: " + (tree.pos))
@@ -916,6 +947,45 @@ abstract class GenJSCode extends SubComponent
       }
 
       js.Match(expr, clauses.reverse, elseClause)
+    }
+
+    def genTranslatedMatch(cases: List[LabelDef],
+        matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
+
+      val isResultUnit = toTypeKind(matchEnd.tpe) == UNDEFINED
+      val resultVar = js.Ident("result$"+encodeLabelSym(matchEnd.symbol).name)
+
+      val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
+
+      val translatedCases = for {
+        (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
+      } yield {
+        def genCaseBody(tree: Tree): js.Tree = {
+          implicit val pos = tree.pos
+          tree match {
+            case If(cond, thenp, app @ Apply(_, Nil)) if app.symbol == nextCaseSym =>
+              js.If(genExpr(cond), genCaseBody(thenp), js.Skip())
+
+            case Block(stats, expr) =>
+              js.Block(stats map genStat, genCaseBody(expr))
+
+            case _ =>
+              if (isResultUnit) genStat(tree)
+              else js.Assign(resultVar, genExpr(tree))
+          }
+        }
+
+        genCaseBody(rhs)
+      }
+
+      val matchLoop = js.DoWhile(js.Block(translatedCases),
+          js.BooleanLiteral(false), Some(encodeLabelSym(matchEnd.symbol)))
+
+      if (isResultUnit) {
+        statToExpr(matchLoop)
+      } else {
+        js.Block(List(js.VarDef(resultVar, js.EmptyTree), matchLoop), resultVar)
+      }
     }
 
     private def isPrimitive(sym: Symbol) = {
