@@ -53,6 +53,9 @@ abstract class GenJSCode extends SubComponent
     var currentClassSym: Symbol = _
     var currentMethodSym: Symbol = _
     var isModuleInitialized: Boolean = false // see genApply for super calls
+    var methodHasTailJump: Boolean = false
+    var methodTailJumpThisSym: Symbol = _
+    var methodTailJumpLabelSym: Symbol = _
 
     // Top-level apply ---------------------------------------------------------
 
@@ -218,6 +221,9 @@ abstract class GenJSCode extends SubComponent
       currentMethodSym = dd.symbol
 
       isModuleInitialized = false
+      methodHasTailJump = false
+      methodTailJumpThisSym = NoSymbol
+      methodTailJumpLabelSym = NoSymbol
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
@@ -247,8 +253,8 @@ abstract class GenJSCode extends SubComponent
           val body = {
             if (currentMethodSym.isConstructor)
               js.Block(List(genStat(rhs)), js.Return(js.This()))
-            else if (returnType == UNDEFINED) genStat(rhs)
-            else js.Return(genExpr(rhs))(rhs.pos)
+            else
+              genMethodBody(rhs, toTypeKind(currentMethodSym.tpe.resultType))
           }
           Some(js.MethodDef(methodPropIdent, jsParams, body))
         }
@@ -284,6 +290,30 @@ abstract class GenJSCode extends SubComponent
     }
 
     // Code generation ---------------------------------------------------------
+
+    /** Generate the body of a (non-constructor) method */
+    def genMethodBody(tree: Tree, resultTypeKind: TypeKind): js.Tree = {
+      implicit val pos = tree.pos
+
+      tree match {
+        case Block(
+            List(thisDef @ ValDef(_, nme.THIS, _, _)),
+            ld @ LabelDef(labelName, paramThis :: params, rhs)) =>
+          // This method has tail jumps
+          methodHasTailJump = true
+          methodTailJumpThisSym = thisDef.symbol
+          methodTailJumpLabelSym = ld.symbol
+          js.Block(
+              List(js.VarDef(encodeLocalSym(methodTailJumpThisSym), js.This())),
+              js.While(js.BooleanLiteral(true), js.Return(genExpr(rhs)),
+                  Some(js.Ident("tailCallLoop"))))
+
+        case _ =>
+          val bodyIsStat = resultTypeKind == UNDEFINED
+          if (bodyIsStat) genStat(tree)
+          else js.Return(genExpr(tree))
+      }
+    }
 
     /** Generate code for a statement */
     def genStat(tree: Tree): js.Tree = {
@@ -326,8 +356,7 @@ abstract class GenJSCode extends SubComponent
           genLabelDef(lblDf)
 
         case ValDef(_, nme.THIS, _, _) =>
-          debuglog("skipping trivial assign to _$this: " + tree)
-          js.Undefined()
+          abort("ValDef(_, nme.THIS, _, _) found at: " + tree.pos)
 
         case ValDef(_, name, _, rhs) =>
           val sym = tree.symbol
@@ -367,6 +396,8 @@ abstract class GenJSCode extends SubComponent
               " compilation unit:" + currentCUnit)
           if (symIsModuleClass && tree.symbol != currentClassSym) {
             genLoadModule(tree.symbol)
+          } else if (methodHasTailJump) {
+            encodeLocalSym(methodTailJumpThisSym)
           } else {
             js.This()
           }
@@ -662,12 +693,25 @@ abstract class GenJSCode extends SubComponent
           if (settings.debug.value)
             log("Call to super: " + tree)
 
-          // TODO Do we need to take care of sup/mix?
-          //val superClass = varForSymbol(sup.symbol.superClass)(sup.pos)
+          // TODO Do we need to take care of mix?
 
-          val callee = js.Select(js.Super(), encodeMethodSym(fun.symbol))
-          val arguments = args map genExpr
-          val superCall = js.Apply(callee, arguments)
+          /* We produce a desugared JavaScript super call immediately,
+           * because we might have to use the special `methodTailJumpThisSym`
+           * instead of the js.This() that would be output by the JavaScript
+           * desugaring.
+           */
+          val superCall = {
+            val superClass = encodeClassSym(
+                if (sup.symbol.superClass == NoSymbol) ObjectClass
+                else sup.symbol.superClass)(sup.pos)
+            val superProto = js.DotSelect(superClass, js.Ident("prototype")(sup.pos))(sup.pos)
+            val callee = js.Select(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
+            val thisArg =
+              if (methodHasTailJump) encodeLocalSym(methodTailJumpThisSym)(sup.pos)
+              else js.This()(sup.pos)
+            val arguments = thisArg :: (args map genExpr)
+            js.ApplyMethod(callee, js.Ident("call"), arguments)
+          }
 
           def isStaticModule(sym: Symbol): Boolean =
             (sym.isModuleClass && !sym.isImplClass && !sym.isLifted &&
@@ -716,12 +760,45 @@ abstract class GenJSCode extends SubComponent
           val sym = fun.symbol
 
           if (sym.isLabel) {  // jump to a label
-            if (settings.verbose.value)
-              println("warning: jump found at "+tree.pos+", doing my best ...")
+            if (sym == methodTailJumpLabelSym) {
+              // tail call
+              val formalArgs = methodTailJumpThisSym :: currentMethodSym.paramss.head
+              val actualArgs = args map genExpr
+              val triplets = {
+                for {
+                  (formalArgSym, actualArg) <- formalArgs zip actualArgs
+                  formalArg = encodeLocalSym(formalArgSym)
+                  if actualArg != formalArg
+                } yield {
+                  (formalArg, js.Ident("temp$" + formalArg.name), actualArg)
+                }
+              }
 
-            val procVar = encodeLabelSym(sym)
-            val arguments = args map genExpr
-            js.ApplyMethod(procVar, js.Ident("call"), js.This() :: arguments)
+              val tailJump = js.Continue(Some(js.Ident("tailCallLoop")))
+
+              triplets match {
+                case Nil => tailJump
+
+                case (formalArg, _, actualArg) :: Nil =>
+                  js.Block(List(js.Assign(formalArg, actualArg)), tailJump)
+
+                case _ =>
+                  val tempAssignments =
+                    for ((_, tempArg, actualArg) <- triplets)
+                      yield js.Assign(tempArg, actualArg)
+                  val trueAssignments =
+                    for ((formalArg, tempArg, _) <- triplets)
+                      yield js.Assign(formalArg, tempArg)
+                  js.Block(tempAssignments ::: trueAssignments, tailJump)
+              }
+            } else {
+              if (settings.verbose.value)
+                println("warning: jump found at "+tree.pos+", doing my best ...")
+
+              val procVar = encodeLabelSym(sym)
+              val arguments = args map genExpr
+              js.ApplyMethod(procVar, js.Ident("call"), js.This() :: arguments)
+            }
           } else if (isPrimitive(sym)) {
             // primitive operation
             genPrimitiveOp(app)
