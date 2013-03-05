@@ -89,17 +89,17 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class If(cond: Tree, thenp: Tree, elsep: Tree)(implicit val pos: Position) extends Tree
 
-    case class While(cond: Tree, body: Tree)(implicit val pos: Position) extends Tree
+    case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
-    case class DoWhile(body: Tree, cond: Tree)(implicit val pos: Position) extends Tree
+    case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
     case class Try(block: Tree, errVar: Ident, handler: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
 
     case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
 
-    case class Break()(implicit val pos: Position) extends Tree
+    case class Break(label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
-    case class Continue()(implicit val pos: Position) extends Tree
+    case class Continue(label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
     case class Switch(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
 
@@ -225,11 +225,11 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case If(cond, thenp, elsep) =>
             If(transformExpr(cond), transformStat(thenp), transformStat(elsep))
 
-          case While(cond, body) =>
-            While(transformExpr(cond), transformStat(body))
+          case While(cond, body, label) =>
+            While(transformExpr(cond), transformStat(body), label)
 
-          case DoWhile(body, cond) =>
-            DoWhile(transformStat(body), transformExpr(cond))
+          case DoWhile(body, cond, label) =>
+            DoWhile(transformStat(body), transformExpr(cond), label)
 
           case Try(block, errVar, handler, finalizer) =>
             Try(transformStat(block), errVar, transformStat(handler), transformStat(finalizer))
@@ -306,11 +306,11 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
 
-          case While(cond, body) =>
-            While(transformExpr(cond), transformStat(body))
+          case While(cond, body, label) =>
+            While(transformExpr(cond), transformStat(body), label)
 
-          case DoWhile(body, cond) =>
-            DoWhile(transformStat(body), transformExpr(cond))
+          case DoWhile(body, cond, label) =>
+            DoWhile(transformStat(body), transformExpr(cond), label)
 
           // Language constructs that are statement-only in standard JavaScript
 

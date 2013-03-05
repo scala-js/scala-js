@@ -69,7 +69,7 @@ trait JSDesugaring extends SubComponent {
         case js.Assign(_ : js.Ident, rhs) =>
           unnestExprInto(tree, rhs)
 
-        case js.While(cond, body) =>
+        case js.While(cond, body, label) =>
           if (isExpression(cond)) super.transformStat(tree)
           else {
             // we cannot just 'expressify' here
@@ -77,11 +77,12 @@ trait JSDesugaring extends SubComponent {
               transformStat {
                 js.If(cond, body, js.Break())
               }
-            })
+            }, label)
           }
 
-        case js.DoWhile(body, cond) =>
+        case js.DoWhile(body, cond, label) =>
           if (isExpression(cond)) super.transformStat(tree)
+          else if (label.isDefined) ???
           else {
             // we cannot just 'expressify' here
             js.While(js.BooleanLiteral(true), {
@@ -276,11 +277,9 @@ trait JSDesugaring extends SubComponent {
           flattenBlock((stats map transformStat) :+ redo(expr))
 
         case js.Return(expr) =>
-          expressify(expr) { newExpr =>
-            js.Return(transformExpr(newExpr))
-          }
+          unnestExprInto(rhs, expr)
 
-        case js.Break() | js.Continue() =>
+        case js.Break(_) | js.Continue(_) =>
           rhs
 
         case js.If(cond, thenp, elsep) =>

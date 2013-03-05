@@ -108,11 +108,15 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print(" else ")
           printBlock(elsep)
 
-        case js.While(cond, body) =>
+        case js.While(cond, body, label) =>
+          if (label.isDefined)
+            print(label.get, ": ")
           print("while (", cond, ") ")
           printBlock(body)
 
-        case js.DoWhile(body, cond) =>
+        case js.DoWhile(body, cond, label) =>
+          if (label.isDefined)
+            print(label.get, ": ")
           print("do ")
           printBlock(body)
           print(" while (", cond, ")")
@@ -132,11 +136,13 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.Throw(expr) =>
           print("throw ", expr)
 
-        case js.Break() =>
-          print("break")
+        case js.Break(label) =>
+          if (label.isEmpty) print("break")
+          else print("break ", label.get)
 
-        case js.Continue() =>
-          print("continue")
+        case js.Continue(label) =>
+          if (label.isEmpty) print("continue")
+          else print("continue ", label.get)
 
         case js.Switch(selector, cases, default) =>
           print("switch (", selector, ") ")
