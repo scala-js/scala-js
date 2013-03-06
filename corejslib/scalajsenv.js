@@ -13,7 +13,7 @@ function $ScalaJSEnvironmentClass() {
 
   this.createType = function(name, typeFunction, parent, ancestors, isPrimitive,
                              isInterface, isArray, componentData, zero,
-                             arrayEncodedName) {
+                             arrayEncodedName, displayName) {
     var data = {
       name: name,
       type: typeFunction,
@@ -26,6 +26,7 @@ function $ScalaJSEnvironmentClass() {
       componentData: componentData,
       zero: zero,
       arrayEncodedName: arrayEncodedName,
+      displayName: displayName,
       _class: undefined,
       get class() {
         if (this._class === undefined)
@@ -69,22 +70,35 @@ function $ScalaJSEnvironmentClass() {
                            false, false, false, null, null, "L" + name + ";");
   };
 
-  this.createPrimitiveType = function(name, zero, arrayEncodedName) {
-    return this.createType(name, undefined, null, [name],
-                           true, false, false, null, zero, arrayEncodedName);
+  this.createPrimitiveType = function(name, zero, arrayEncodedName,
+                                      displayName) {
+    var ancestors = {};
+    ancestors[name] = true;
+    return this.createType(name, undefined, null, ancestors,
+                           true, false, false, null, zero,
+                           arrayEncodedName, displayName);
   };
 
   this.createArrayClass = function(componentData) {
-    var name = "[" + componentData.arrayEncodedName;
+    var name = componentData.name + "[]";
+    var encodedName = "[" + componentData.arrayEncodedName;
     var typeFunction = this.createArrayTypeFunction(name, componentData);
+
+    var compAncestors = componentData.ancestors;
+    var ancestors = {"java.lang.Object": true};
+    for (var compAncestor in compAncestors)
+      ancestors[compAncestor+"[]"] = true;
+
     return this.createType(name, typeFunction, "java.lang.Object",
-                           [name, "java.lang.Object"],
-                           false, false, true, componentData, null, name);
+                           ancestors,
+                           false, false, true, componentData, null,
+                           encodedName, encodedName);
   };
 
   this.createInterface = function(name, ancestors) {
     return this.createType(name, undefined, null, ancestors,
-                           false, true, false, null, null, "L" + name + ";");
+                           false, true, false, null, null,
+                           "L" + name + ";", name);
   };
 
   this.registerClass = function(name, createFunction) {
@@ -124,15 +138,15 @@ function $ScalaJSEnvironmentClass() {
 
   // Create primitive types
 
-  this.createPrimitiveType("void", undefined, "V");
-  this.createPrimitiveType("boolean", false, "Z");
-  this.createPrimitiveType("char", 0, "C");
-  this.createPrimitiveType("byte", 0, "B");
-  this.createPrimitiveType("short", 0, "S");
-  this.createPrimitiveType("int", 0, "I");
-  this.createPrimitiveType("long", 0, "J");
-  this.createPrimitiveType("float", 0.0, "F");
-  this.createPrimitiveType("double", 0.0, "D");
+  this.createPrimitiveType("scala.Unit", undefined, "V", "void");
+  this.createPrimitiveType("scala.Boolean", false, "Z", "boolean");
+  this.createPrimitiveType("scala.Char", 0, "C", "char");
+  this.createPrimitiveType("scala.Byte", 0, "B", "byte");
+  this.createPrimitiveType("scala.Short", 0, "S", "short");
+  this.createPrimitiveType("scala.Int", 0, "I", "int");
+  this.createPrimitiveType("scala.Long", 0, "J", "long");
+  this.createPrimitiveType("scala.Float", 0.0, "F", "float");
+  this.createPrimitiveType("scala.Double", 0.0, "D", "double");
 
   // Runtime functions
 

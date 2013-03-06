@@ -84,25 +84,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    import definitions._
-
-    if (sym.isPrimitiveValueClass) {
-      val primitiveName = sym match {
-        case UnitClass     => "void"
-        case BooleanClass  => "boolean"
-        case CharClass     => "char"
-        case ByteClass     => "byte"
-        case ShortClass    => "short"
-        case IntClass      => "int"
-        case LongClass     => "long"
-        case FloatClass    => "float"
-        case DoubleClass   => "double"
-      }
-      js.BracketSelect(js.DotSelect(environment, js.Ident("primitives")),
-          js.StringLiteral(primitiveName))
-    } else {
-      getClassOrModuleData(sym, dictName = "classes")
-    }
+    getClassOrModuleData(sym,
+        dictName = if (sym.isPrimitiveValueClass) "primitives" else "classes")
   }
 
   def encodeModuleDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {

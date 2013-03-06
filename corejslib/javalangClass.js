@@ -19,13 +19,13 @@
   }
 
   ClassClass.prototype["getName():java.lang.String"] = function() {
-    return $env.makeNativeStrWrapper(this.$data.name);
+    return $env.makeNativeStrWrapper(this.$data.displayName);
   }
 
   ClassClass.prototype.getName = ClassClass.prototype["getName():java.lang.String"];
 
   ClassClass.prototype["toString():java.lang.String"] = function() {
-    var nativeResult = this.$data.name;
+    var nativeResult = this.$data.displayName;
     if (this.$data.isInterface)
       nativeResult = "interface "+nativeResult;
     else if (!this.$data.isPrimitive)
