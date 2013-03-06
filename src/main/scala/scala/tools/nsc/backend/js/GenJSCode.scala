@@ -58,6 +58,7 @@ abstract class GenJSCode extends SubComponent
     var methodHasTailJump: Boolean = false
     var methodTailJumpThisSym: Symbol = _
     var methodTailJumpLabelSym: Symbol = _
+    var methodTailJumpFormalArgs: List[Symbol] = _
 
     // Top-level apply ---------------------------------------------------------
 
@@ -226,14 +227,15 @@ abstract class GenJSCode extends SubComponent
       methodHasTailJump = false
       methodTailJumpThisSym = NoSymbol
       methodTailJumpLabelSym = NoSymbol
+      methodTailJumpFormalArgs = Nil
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
-      val params = if(vparamss.isEmpty) Nil else vparamss.head
+      val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
       val jsParams =
         for (param <- params)
-          yield encodeLocalSym(param.symbol)(param.pos)
+          yield encodeLocalSym(param)(param.pos)
 
       val isNative = currentMethodSym.hasAnnotation(definitions.NativeAttr)
       val isAbstractMethod =
@@ -256,7 +258,7 @@ abstract class GenJSCode extends SubComponent
             if (currentMethodSym.isConstructor)
               js.Block(List(genStat(rhs)), js.Return(js.This()))
             else
-              genMethodBody(rhs, toTypeKind(currentMethodSym.tpe.resultType))
+              genMethodBody(rhs, params, toTypeKind(currentMethodSym.tpe.resultType))
           }
           Some(js.MethodDef(methodPropIdent, jsParams, body))
         }
@@ -294,21 +296,36 @@ abstract class GenJSCode extends SubComponent
     // Code generation ---------------------------------------------------------
 
     /** Generate the body of a (non-constructor) method */
-    def genMethodBody(tree: Tree, resultTypeKind: TypeKind): js.Tree = {
+    def genMethodBody(tree: Tree, paramsSyms: List[Symbol], resultTypeKind: TypeKind): js.Tree = {
       implicit val pos = tree.pos
 
       tree match {
         case Block(
-            List(thisDef @ ValDef(_, nme.THIS, _, _)),
-            ld @ LabelDef(labelName, paramThis :: params, rhs)) =>
+            List(thisDef @ ValDef(_, nme.THIS, _, initialThis)),
+            ld @ LabelDef(labelName, _, rhs)) =>
           // This method has tail jumps
           methodHasTailJump = true
-          methodTailJumpThisSym = thisDef.symbol
           methodTailJumpLabelSym = ld.symbol
-          js.Block(
-              List(js.VarDef(encodeLocalSym(methodTailJumpThisSym), js.This())),
-              js.While(js.BooleanLiteral(true), js.Return(genExpr(rhs)),
-                  Some(js.Ident("tailCallLoop"))))
+          initialThis match {
+            case This(_) =>
+              methodTailJumpThisSym = thisDef.symbol
+              methodTailJumpFormalArgs = thisDef.symbol :: paramsSyms
+            case Ident(_) =>
+              methodTailJumpThisSym = NoSymbol
+              methodTailJumpFormalArgs = paramsSyms
+          }
+
+          val theLoop =
+            js.While(js.BooleanLiteral(true), js.Return(genExpr(rhs)),
+                Some(js.Ident("tailCallLoop")))
+
+          if (methodTailJumpThisSym == NoSymbol) {
+            theLoop
+          } else {
+            js.Block(List(
+                js.VarDef(encodeLocalSym(methodTailJumpThisSym), js.This())),
+                theLoop)
+          }
 
         case _ =>
           val bodyIsStat = resultTypeKind == UNDEFINED
@@ -401,7 +418,7 @@ abstract class GenJSCode extends SubComponent
               " compilation unit:" + currentCUnit)
           if (symIsModuleClass && tree.symbol != currentClassSym) {
             genLoadModule(tree.symbol)
-          } else if (methodHasTailJump) {
+          } else if (methodTailJumpThisSym != NoSymbol) {
             encodeLocalSym(methodTailJumpThisSym)
           } else {
             js.This()
@@ -710,8 +727,8 @@ abstract class GenJSCode extends SubComponent
             val superProto = js.DotSelect(superClass, js.Ident("prototype")(sup.pos))(sup.pos)
             val callee = js.Select(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
             val thisArg =
-              if (methodHasTailJump) encodeLocalSym(methodTailJumpThisSym)(sup.pos)
-              else js.This()(sup.pos)
+              if (methodTailJumpThisSym == NoSymbol) js.This()(sup.pos)
+              else encodeLocalSym(methodTailJumpThisSym)(sup.pos)
             val arguments = thisArg :: (args map genExpr)
             js.ApplyMethod(callee, js.Ident("call"), arguments)
           }
@@ -765,7 +782,7 @@ abstract class GenJSCode extends SubComponent
           if (sym.isLabel) {  // jump to a label
             if (sym == methodTailJumpLabelSym) {
               // tail call
-              val formalArgs = methodTailJumpThisSym :: currentMethodSym.paramss.head
+              val formalArgs = methodTailJumpFormalArgs
               val actualArgs = args map genExpr
               val triplets = {
                 for {
