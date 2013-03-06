@@ -361,6 +361,16 @@ trait JSDesugaring extends SubComponent {
             redo(js.UnaryOp(op, newLhs))
           }
 
+        case js.BinaryOp("&&", lhs, rhs) =>
+          redo {
+            js.If(lhs, rhs, js.BooleanLiteral(false))
+          }
+
+        case js.BinaryOp("||", lhs, rhs) =>
+          redo {
+            js.If(lhs, js.BooleanLiteral(true), rhs)
+          }
+
         case js.BinaryOp(op, lhs, rhs) =>
           expressify(lhs, rhs) { (newLhs, newRhs) =>
             redo(js.BinaryOp(op, newLhs, newRhs))
