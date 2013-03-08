@@ -32,6 +32,18 @@
     return "<not a native string>";
   }
 
+  StringClass.prototype["length():scala.Int"] = function() {
+    return this.toNativeString.length;
+  }
+
+  StringClass.prototype["charAt(scala.Int):scala.Char"] = function(index) {
+    return this.toNativeString.charCodeAt(index);
+  }
+
+  StringClass.prototype["codePointAt(scala.Int):scala.Int"] = function(index) {
+    return this.toNativeString.charCodeAt(index);
+  }
+
   $env.createClass("java.lang.String", StringClass, "java.lang.Object", {
     "java.lang.Object": true,
     "java.lang.String": true
