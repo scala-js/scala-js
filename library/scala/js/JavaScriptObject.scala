@@ -10,14 +10,26 @@
 
 package scala.js
 
-import scala.language.dynamics
+import scala.language.{ dynamics, implicitConversions }
 
 class JavaScriptObject private (private val underlying: AnyRef) extends scala.Dynamic {
-  @native def applyDynamic(name: String)(args: Any*): Any
-  @native def selectDynamic(name: String): Any
-  @native def updateDynamic(name: String)(value: Any): Unit
+  @native def applyDynamic(name: String)(args: JavaScriptObject*): JavaScriptObject
+  @native def selectDynamic(name: String): JavaScriptObject
+  @native def updateDynamic(name: String)(value: JavaScriptObject): Unit
+
+  @native override def toString(): String
 }
 
 object JavaScriptObject {
   @native def window: JavaScriptObject
+
+  @native implicit def fromBoolean(value: Boolean): JavaScriptObject
+  @native implicit def fromInt(value: Int): JavaScriptObject
+  @native implicit def fromString(value: String): JavaScriptObject
+  @native implicit def fromObject(value: AnyRef): JavaScriptObject
+
+  @native def toBoolean(value: JavaScriptObject): Boolean
+  @native def toInt(value: JavaScriptObject): Int
+  @native def toString(value: JavaScriptObject): String
+  @native def toObject(value: JavaScriptObject): AnyRef
 }

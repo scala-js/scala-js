@@ -154,87 +154,91 @@
 
   // JavaScript Dynamic objects
 
-  function scalaValueToJSValue(scalaValue) {
-    if (scalaValue === null)
+  function unboxJSValue(boxed) {
+    if (boxed === null)
       return null;
+    else
+      return boxed["$jsfield$underlying "];
+  }
 
-    var classData = scalaValue.$classData;
-    var className = classData.name;
-
-    switch (className) {
-      case 'java.lang.Boolean':
-        return $env.modules["scala.Boolean$"].instance["unbox(java.lang.Boolean):scala.Boolean"](scalaValue);
-
-      case 'java.lang.Integer':
-        return $env.modules["scala.Int$"].instance["box(java.lang.Int):scala.Integer"](scalaValue);
-
-      // TODO Other boxed values
-
-      case 'java.lang.String':
-        return scalaValue.toNativeString();
-
-      default:
-        if ($env.isInstance(scalaValue, "scala.js.JavaScriptObject"))
-          return scalaValue["$jsfield$underlying "];
-        else
-          return scalaValue;
+  function boxJSValue(unboxed) {
+    if (unboxed === null)
+      return null;
+    else {
+      return new $env.classes["scala.js.JavaScriptObject"].type()[
+        "<init>(java.lang.Object):scala.js.JavaScriptObject"](unboxed);
     }
   }
 
-  function jsValueToScalaValue(jsValue) {
-    switch (typeof(jsValue)) {
-      case 'undefined':
-        return $env.modules["scala.runtime.BoxedUnit$"].instance[
-          "UNIT():scala.runtime.BoxedUnit"]();
+  $env.registerNative("scala.js.JavaScriptObject :: applyDynamic(java.lang.String,scala.collection.Seq):scala.js.JavaScriptObject", function(fun, argsSeq) {
+    var thisValue = unboxJSValue(this);
 
-      case 'null':
-        return null;
-
-      case 'boolean':
-        return $env.modules["scala.Boolean$"].instance["box(scala.Boolean):java.lang.Boolean"](jsValue);
-
-      case 'number':
-        // TODO How do we handle floats, shorts, etc.?
-        return $env.modules["scala.Int$"].instance["box(scala.Int):java.lang.Integer"](jsValue);
-
-      case 'string':
-        return $env.makeNativeStrWrapper(jsValue);
-
-      case 'function':
-        throw "jsValueToScalaValue() not implemented for 'function'";
-
-      default:
-        if (jsValue.$classData === undefined) {
-          return new $env.classes["scala.js.JavaScriptObject"].type()[
-            "<init>(java.lang.Object):scala.js.JavaScriptObject"](jsValue);
-        } else {
-          return jsValue;
-        }
-    }
-  }
-
-  $env.registerNative("scala.js.JavaScriptObject :: applyDynamic(java.lang.String,scala.collection.Seq):java.lang.Object", function(fun, argsSeq) {
-    var thisValue = this["$jsfield$underlying "];
     var argc = argsSeq["size():scala.Int"]();
     var args = new Array(argc);
     for (var i = 0; i < argc; i++) {
-      args[i] = scalaValueToJSValue(argsSeq["apply(scala.Int):java.lang.Object"](i));
+      args[i] = unboxJSValue(argsSeq["apply(scala.Int):java.lang.Object"](i));
     }
-    var method = thisValue[fun];
-    return jsValueToScalaValue(method.apply(thisValue, args));
+    var method = thisValue[fun.toNativeString()];
+    return boxJSValue(method.apply(thisValue, args));
   });
 
-  $env.registerNative("scala.js.JavaScriptObject :: selectDynamic(java.lang.String):java.lang.Object", function(property) {
-    var thisValue = this["$jsfield$underlying "];
-    return jsValueToScalaValue(thisValue[property]);
+  $env.registerNative("scala.js.JavaScriptObject :: selectDynamic(java.lang.String):scala.js.JavaScriptObject", function(property) {
+    return boxJSValue(unboxJSValue(this)[property.toNativeString()]);
   });
 
-  $env.registerNative("scala.js.JavaScriptObject :: updateDynamic(java.lang.String,java.lang.Object):scala.Unit", function(property, value) {
-    var thisValue = this["$jsfield$underlying "];
-    thisValue[property] = scalaValueToJSValue(value);
+  $env.registerNative("scala.js.JavaScriptObject :: updateDynamic(java.lang.String,scala.js.JavaScriptObject):scala.Unit", function(property, value) {
+    unboxJSValue(this)[property.toNativeString()] = unboxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject :: toString():java.lang.String", function() {
+    return $env.makeNativeStrWrapper(unboxJSValue(this).toString());
   });
 
   $env.registerNative("scala.js.JavaScriptObject$ :: window():scala.js.JavaScriptObject", function() {
-    return jsValueToScalaValue(window);
+    return boxJSValue(window);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromBoolean(scala.Boolean):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromInt(scala.Int):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromString(java.lang.String):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value.toNativeString());
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromObject(java.lang.Object):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: toBoolean(scala.js.JavaScriptObject):scala.Boolean", function(value) {
+    var result = unboxJSValue(value);
+    if (typeof(result) !== 'boolean')
+      throw "not a boolean";
+    return result;
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: toInt(scala.js.JavaScriptObject):scala.Int", function(value) {
+    var result = unboxJSValue(value);
+    if (typeof(result) !== 'number')
+      throw "not an integer";
+    return Math.round(result);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: toString(scala.js.JavaScriptObject):java.lang.String", function(value) {
+    var result = unboxJSValue(value);
+    if (typeof(result) !== 'string')
+      throw "not a string";
+    return $env.makeNativeStrWrapper(result);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: toObject(scala.js.JavaScriptObject):java.lang.Object", function(value) {
+    var result = unboxJSValue(value);
+    if ((typeof(result) !== 'object') || (result.$classData === undefined))
+      throw "not a Scala object";
+    return result;
   });
 })($ScalaJSEnvironment);
