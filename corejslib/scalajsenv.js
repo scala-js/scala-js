@@ -67,7 +67,8 @@ function $ScalaJSEnvironmentClass() {
 
   this.createClass = function(name, typeFunction, parent, ancestors) {
     return this.createType(name, typeFunction, parent, ancestors,
-                           false, false, false, null, null, "L" + name + ";");
+                           false, false, false, null, null,
+                           "L" + name + ";", name);
   };
 
   this.createPrimitiveType = function(name, zero, arrayEncodedName,
