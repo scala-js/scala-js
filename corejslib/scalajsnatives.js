@@ -151,4 +151,90 @@
   $env.registerNative("java.lang.StandardErrPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
     console.log("err: " + x.toNativeString());
   });
+
+  // JavaScript Dynamic objects
+
+  function scalaValueToJSValue(scalaValue) {
+    if (scalaValue === null)
+      return null;
+
+    var classData = scalaValue.$classData;
+    var className = classData.name;
+
+    switch (className) {
+      case 'java.lang.Boolean':
+        return $env.modules["scala.Boolean$"].instance["unbox(java.lang.Boolean):scala.Boolean"](scalaValue);
+
+      case 'java.lang.Integer':
+        return $env.modules["scala.Int$"].instance["box(java.lang.Int):scala.Integer"](scalaValue);
+
+      // TODO Other boxed values
+
+      case 'java.lang.String':
+        return scalaValue.toNativeString();
+
+      default:
+        if ($env.isInstance(scalaValue, "scala.js.JavaScriptObject"))
+          return scalaValue["$jsfield$underlying "];
+        else
+          return scalaValue;
+    }
+  }
+
+  function jsValueToScalaValue(jsValue) {
+    switch (typeof(jsValue)) {
+      case 'undefined':
+        return $env.modules["scala.runtime.BoxedUnit$"].instance[
+          "UNIT():scala.runtime.BoxedUnit"]();
+
+      case 'null':
+        return null;
+
+      case 'boolean':
+        return $env.modules["scala.Boolean$"].instance["box(scala.Boolean):java.lang.Boolean"](jsValue);
+
+      case 'number':
+        // TODO How do we handle floats, shorts, etc.?
+        return $env.modules["scala.Int$"].instance["box(scala.Int):java.lang.Integer"](jsValue);
+
+      case 'string':
+        return $env.makeNativeStrWrapper(jsValue);
+
+      case 'function':
+        throw "jsValueToScalaValue() not implemented for 'function'";
+
+      default:
+        if (jsValue.$classData === undefined) {
+          return new $env.classes["scala.js.JavaScriptObject"].type()[
+            "<init>(java.lang.Object):scala.js.JavaScriptObject"](jsValue);
+        } else {
+          return jsValue;
+        }
+    }
+  }
+
+  $env.registerNative("scala.js.JavaScriptObject :: applyDynamic(java.lang.String,scala.collection.Seq):java.lang.Object", function(fun, argsSeq) {
+    var thisValue = this["$jsfield$underlying "];
+    var argc = argsSeq["size():scala.Int"]();
+    var args = new Array(argc);
+    for (var i = 0; i < argc; i++) {
+      args[i] = scalaValueToJSValue(argsSeq["apply(scala.Int):java.lang.Object"](i));
+    }
+    var method = thisValue[fun];
+    return jsValueToScalaValue(method.apply(thisValue, args));
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject :: selectDynamic(java.lang.String):java.lang.Object", function(property) {
+    var thisValue = this["$jsfield$underlying "];
+    return jsValueToScalaValue(thisValue[property]);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject :: updateDynamic(java.lang.String,java.lang.Object):scala.Unit", function(property, value) {
+    var thisValue = this["$jsfield$underlying "];
+    thisValue[property] = scalaValueToJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: window():scala.js.JavaScriptObject", function() {
+    return jsValueToScalaValue(window);
+  });
 })($ScalaJSEnvironment);
