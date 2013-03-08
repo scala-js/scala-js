@@ -170,14 +170,18 @@
     }
   }
 
+  function unboxJSValueSeq(boxedSeq) {
+    var size = boxedSeq["size():scala.Int"]();
+    var result = new Array(size);
+    for (var i = 0; i < size; i++) {
+      result[i] = unboxJSValue(boxedSeq["apply(scala.Int):java.lang.Object"](i));
+    }
+    return result;
+  }
+
   $env.registerNative("scala.js.JavaScriptObject :: applyDynamic(java.lang.String,scala.collection.Seq):scala.js.JavaScriptObject", function(fun, argsSeq) {
     var thisValue = unboxJSValue(this);
-
-    var argc = argsSeq["size():scala.Int"]();
-    var args = new Array(argc);
-    for (var i = 0; i < argc; i++) {
-      args[i] = unboxJSValue(argsSeq["apply(scala.Int):java.lang.Object"](i));
-    }
+    var args = unboxJSValueSeq(argsSeq);
     var method = thisValue[fun.toNativeString()];
     return boxJSValue(method.apply(thisValue, args));
   });
@@ -188,6 +192,12 @@
 
   $env.registerNative("scala.js.JavaScriptObject :: updateDynamic(java.lang.String,scala.js.JavaScriptObject):scala.Unit", function(property, value) {
     unboxJSValue(this)[property.toNativeString()] = unboxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject :: apply(scala.collection.Seq):scala.js.JavaScriptObject", function(argsSeq) {
+    var thisValue = unboxJSValue(this);
+    var args = unboxJSValueSeq(argsSeq);
+    return boxJSValue(thisValue.apply(window, args));
   });
 
   $env.registerNative("scala.js.JavaScriptObject :: toString():java.lang.String", function() {

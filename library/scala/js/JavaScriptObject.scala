@@ -16,6 +16,7 @@ class JavaScriptObject private (private val underlying: AnyRef) extends scala.Dy
   @native def applyDynamic(name: String)(args: JavaScriptObject*): JavaScriptObject
   @native def selectDynamic(name: String): JavaScriptObject
   @native def updateDynamic(name: String)(value: JavaScriptObject): Unit
+  @native def apply(args: JavaScriptObject*): JavaScriptObject
 
   @native override def toString(): String
 }
