@@ -204,15 +204,47 @@
     return $env.makeNativeStrWrapper(unboxJSValue(this).toString());
   });
 
+  $env.registerNative("scala.js.JavaScriptObject$ :: newEmpty():scala.js.JavaScriptObject", function() {
+    return boxJSValue({});
+  });
+
   $env.registerNative("scala.js.JavaScriptObject$ :: window():scala.js.JavaScriptObject", function() {
     return boxJSValue(window);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromUnit(scala.runtime.BoxedUnit):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(undefined);
   });
 
   $env.registerNative("scala.js.JavaScriptObject$ :: fromBoolean(scala.Boolean):scala.js.JavaScriptObject", function(value) {
     return boxJSValue(value);
   });
 
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromChar(scala.Char):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromByte(scala.Byte):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromShort(scala.Short):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
   $env.registerNative("scala.js.JavaScriptObject$ :: fromInt(scala.Int):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromLong(scala.Long):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromFloat(scala.Float):scala.js.JavaScriptObject", function(value) {
+    return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromDouble(scala.Double):scala.js.JavaScriptObject", function(value) {
     return boxJSValue(value);
   });
 
@@ -222,6 +254,32 @@
 
   $env.registerNative("scala.js.JavaScriptObject$ :: fromObject(java.lang.Object):scala.js.JavaScriptObject", function(value) {
     return boxJSValue(value);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromArray(scala.js.JavaScriptObject[]):scala.js.JavaScriptObject", function(value) {
+    var sourceArray = value.underlying
+    var result = new Array(sourceArray.length)
+    for (var i = 0; i < sourceArray.length; i++)
+      result[i] = unboxJSValue(sourceArray[i]);
+    return boxJSValue(result);
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromFunction0(scala.Function0):scala.js.JavaScriptObject", function(f) {
+    return boxJSValue(function() {
+      return unboxJSValue(f["apply():java.lang.Object"]());
+    });
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromFunction1(scala.Function1):scala.js.JavaScriptObject", function(f) {
+    return boxJSValue(function(arg1) {
+      return unboxJSValue(f["apply(java.lang.Object):java.lang.Object"](boxJSValue(arg1)));
+    });
+  });
+
+  $env.registerNative("scala.js.JavaScriptObject$ :: fromFunction2(scala.Function2):scala.js.JavaScriptObject", function(f) {
+    return boxJSValue(function(arg1, arg2) {
+      return unboxJSValue(f["apply(java.lang.Object,java.lang.Object):java.lang.Object"](boxJSValue(arg1), boxJSValue(arg2)));
+    });
   });
 
   $env.registerNative("scala.js.JavaScriptObject$ :: toBoolean(scala.js.JavaScriptObject):scala.Boolean", function(value) {
