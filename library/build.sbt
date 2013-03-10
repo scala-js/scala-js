@@ -1,0 +1,1 @@
+sourcesJS <<= sources in Compile
