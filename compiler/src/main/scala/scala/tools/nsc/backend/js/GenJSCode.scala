@@ -95,7 +95,7 @@ abstract class GenJSCode extends SubComponent
         gen(cunit.body)
 
         for ((classSymbol, tree) <- generatedClasses)
-          genJSFile(cunit, classSymbol, tree)
+          genJSFiles(cunit, classSymbol, tree)
       } finally {
         generatedClasses.clear()
         currentCUnit = null
