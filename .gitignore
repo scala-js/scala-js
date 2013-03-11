@@ -1,5 +1,5 @@
 target/
-/.cache
-/.classpath
-/.project
-/.settings/
+.cache
+.classpath
+.project
+.settings/
