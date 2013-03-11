@@ -21,7 +21,23 @@ object ScalaJSBuild extends Build {
   lazy val root = Project(
       id = "scalajs",
       base = file("."),
-      settings = defaultSettings
+      settings = defaultSettings ++ Seq(
+          packageJS in Compile <<= (
+              target, name,
+              packageJS in (corejslib, Compile),
+              packageJS in (javalib, Compile),
+              packageJS in (scalalib, Compile),
+              packageJS in (libraryAux, Compile),
+              packageJS in (library, Compile)
+          ) map { (target, name, corejslib, javalib, scalalib, libraryAux, library) =>
+            val allJSFiles =
+              Seq(corejslib, javalib, scalalib, libraryAux, library)
+            val output = target / (name + "-runtime.js")
+            target.mkdir()
+            cat(allJSFiles) #> output ! ;
+            output
+          }
+      )
   ).aggregate(
       compiler, corejslib, javalib, scalalib, libraryAux, library
   )
