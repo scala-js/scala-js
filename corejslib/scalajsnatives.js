@@ -143,13 +143,21 @@
   // java.lang.StandardOutPrintStream$
 
   $env.registerNative("java.lang.StandardOutPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
-    console.log("out: " + x.toNativeString());
+    if (typeof(console) !== 'undefined') {
+      var nativeStr = x.toNativeString();
+      if (nativeStr != '\n')
+        console.log(nativeStr);
+    }
   });
 
   // java.lang.StandardErrPrintStream$
 
   $env.registerNative("java.lang.StandardErrPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
-    console.log("err: " + x.toNativeString());
+    if (typeof(console) !== 'undefined') {
+      var nativeStr = x.toNativeString();
+      if (nativeStr != '\n')
+        console.error(nativeStr);
+    }
   });
 
   // JavaScript Dynamic objects
