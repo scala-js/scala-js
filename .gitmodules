@@ -4,3 +4,4 @@
 [submodule "scalalib/source"]
 	path = scalalib/source
 	url = git://github.com/scala/scala.git
+	ignore = all
