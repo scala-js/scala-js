@@ -13,32 +13,34 @@
 
     function Class() {
       ObjectClass.prototype.constructor.call(this);
-      this[" elem"] = zero;
+      this.$jsfield$elem = zero;
     }
     Class.prototype = Object.create(ObjectClass.prototype);
     Class.prototype.constructor = Class;
 
     Class.prototype["<init>("+elemTypeName+"):"+name] = function(elem) {
       ObjectClass.prototype["<init>():java.lang.Object"].call(this);
-      this[" elem"] = elem;
+      this.$jsfield$elem = elem;
       return this;
     }
 
     if (isObject) {
       Class.prototype["toString():java.lang.String"] = function() {
-        return this[" elem"]["toString():java.lang.String"]();
+        return this.$jsfield$elem["toString():java.lang.String"]();
       }
     } else {
       Class.prototype["toString():java.lang.String"] = function() {
-        return $env.makeNativeStrWrapper(this[" elem"].toString());
+        return $env.makeNativeStrWrapper(this.$jsfield$elem.toString());
       }
     }
 
-    $env.createClass(name, Class, "java.lang.Object", {
-      name: true,
+    var ancestors = {
       "java.io.Serializable": true,
       "java.lang.Object": true
-    });
+    };
+    ancestors[name] = true;
+
+    $env.createClass(name, Class, "java.lang.Object", ancestors);
   }
 
   for (var volatile = 0; volatile < 2; volatile++) {
