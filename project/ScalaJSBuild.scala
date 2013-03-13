@@ -62,22 +62,45 @@ object ScalaJSBuild extends Build {
       sourcesJS <<= sources in Compile,
 
       compileJS in Compile <<= (
-          fullClasspath in Compile, runner,
+          javaHome, fullClasspath in Compile, runner,
           sourcesJS, target in Compile
-      ) map { (cp, runner, sources, target) =>
+      ) map { (javaHome, cp, runner, sources, target) =>
         val logger = ConsoleLogger()
-        Run.executeTrapExit({
-          //Run.run("scala.tools.nsc.scalajs.Main", cp map (_.data),
-          //    sources.map(_.getAbsolutePath()), logger)(runner)
-          val out = target / "jsclasses"
-          out.mkdir()
-          Process("java" ::
-              ("-Xbootclasspath/a:" + cp.map(_.data.getAbsolutePath()).mkString(":")) ::
-              "scala.tools.nsc.scalajs.Main" ::
-              "-d" :: out.getAbsolutePath() ::
-              //"-verbose" ::
-              sources.map(_.getAbsolutePath()).toList) !
-        }, logger)
+
+        def doCompileJS(sourcesArgs: List[String]) = {
+          Run.executeTrapExit({
+            val out = target / "jsclasses"
+            out.mkdir()
+            val classpath = cp.map(
+                _.data.getAbsolutePath()).mkString(java.io.File.pathSeparator)
+            Fork.java(javaHome,
+                ("-Xbootclasspath/a:" + classpath) ::
+                "scala.tools.nsc.scalajs.Main" ::
+                "-d" :: out.getAbsolutePath() ::
+                //"-verbose" ::
+                sourcesArgs,
+                logger)
+            /*Run.run("scala.tools.nsc.scalajs.Main", cp map (_.data),
+                "-d" :: out.getAbsolutePath() ::
+                sources.map(_.getAbsolutePath()).toList,
+                logger)(runner)*/
+          }, logger)
+        }
+
+        val sourcesArgs = sources.map(_.getAbsolutePath()).toList
+
+        /* Crude way of overcoming the Windows limitation on command line
+         * length.
+         */
+        if ((System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
+            (sourcesArgs.map(_.length).sum > 1536)) {
+          IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
+            IO.writeLines(sourceListFile, sourcesArgs)
+            doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
+          }
+        } else {
+          doCompileJS(sourcesArgs)
+        }
       },
 
       packageJS in Compile <<= (
