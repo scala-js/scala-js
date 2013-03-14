@@ -64,6 +64,7 @@ abstract class GenJSCode extends SubComponent
 
     override def run() {
       scalaPrimitives.init()
+      jsPrimitives.init()
       super.run()
     }
 
@@ -835,10 +836,15 @@ abstract class GenJSCode extends SubComponent
               log("Gen CALL_METHOD with sym: " + sym + " isStaticSymbol: " + sym.isStaticMember);
 
             val Select(receiver, _) = fun
-            val instance = genExpr(receiver)
-            val arguments = args map genExpr
 
-            js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)), arguments)
+            if (isRawJSType(receiver.tpe)) {
+              genPrimitiveJSCall(app)
+            } else {
+              val instance = genExpr(receiver)
+              val arguments = args map genExpr
+
+              js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)), arguments)
+            }
           }
       }
     }
@@ -865,9 +871,11 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       val toFullName = js.StringLiteral(encodeFullName(to))
       if (cast) {
-        genBuiltinApply("AsInstance", value, toFullName)
+        if (isRawJSType(to)) value
+        else genBuiltinApply("AsInstance", value, toFullName)
       } else {
-        genBuiltinApply("IsInstance", value, toFullName)
+        if (isRawJSType(to)) abort("isInstanceOf["+to+"]")
+        else genBuiltinApply("IsInstance", value, toFullName)
       }
     }
 
@@ -1031,6 +1039,8 @@ abstract class GenJSCode extends SubComponent
         genSynchronized(tree)
       else if (isCoercion(code))
         genCoercion(tree, receiver, code)
+      else if (jsPrimitives.isJavaScriptPrimitive(code))
+        genJSPrimitive(tree, receiver, args, code)
       else
         abort("Primitive operation not handled yet: " + sym.fullName + "(" +
             fun.symbol.simpleName + ") " + " at: " + (tree.pos))
@@ -1268,6 +1278,77 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
+    private def genJSPrimitive(tree: Apply, receiver: Tree, args: List[Tree], code: Int): js.Tree = {
+      import jsPrimitives._
+
+      implicit val pos = tree.pos
+
+      val genArgs = args map genExpr
+
+      genArgs match {
+        case Nil =>
+          code match {
+            case WINDOW => js.Ident("window")
+            case EMPTY_OBJ => js.ObjectConstr(Nil)
+          }
+
+        case List(arg) =>
+          code match {
+            case V2JS => js.Undefined()
+            case Z2JS => arg
+            case N2JS => arg
+            case S2JS =>
+              arg match {
+                case js.ApplyMethod(environment, js.Ident("makeNativeStrWrapper"), List(arg0)) => arg0
+                case _ => js.ApplyMethod(arg, js.Ident("toNativeString"), Nil)
+              }
+
+            case JS2Z => arg
+            case JS2N => arg
+            case JS2S => genBuiltinApply("MakeNativeStrWrapper", arg)
+
+            case ANY2DYN => arg
+          }
+      }
+    }
+
+    private def genPrimitiveJSCall(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+      val Apply(fun @ Select(receiver, _), args) = tree
+
+      val funName = sym.nameString
+      val argc = args.length
+
+      funName match {
+        case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
+          assert(argc == 0)
+          js.UnaryOp(funName.substring(funName.length-1), genExpr(receiver))
+
+        case "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | ">>>" |
+             "&" | "|" | "^" | "&&" | "||" =>
+          assert(argc == 1)
+          js.BinaryOp(funName, genExpr(receiver), genExpr(args.head))
+
+        case "apply" =>
+          js.Apply(genExpr(receiver), args map genExpr)
+
+        case _ =>
+          if (args.isEmpty && sym.isGetter) {
+            js.Select(genExpr(receiver), js.PropertyName(funName))
+          } else if (args.size == 1 && sym.isSetter) {
+            statToExpr(js.Assign(
+                js.Select(genExpr(receiver),
+                    js.PropertyName(funName.substring(0, funName.length-2))),
+                genExpr(args.head)))
+          } else {
+            js.ApplyMethod(genExpr(receiver), js.PropertyName(funName),
+                args map genExpr)
+          }
+      }
+    }
+
     /** Generate a literal "zero" for the requested type */
     def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
       case UNDEFINED => js.Undefined()
@@ -1308,5 +1389,8 @@ abstract class GenJSCode extends SubComponent
       val funName = funName0.head.toLower + funName0.tail
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
+
+    def isRawJSType(tpe: Type): Boolean =
+      beforePhase(currentRun.typerPhase)(tpe <:< jsDefinitions.MaybeJSAnyTpe)
   }
 }

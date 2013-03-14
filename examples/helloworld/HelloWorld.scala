@@ -1,10 +1,11 @@
 package helloworld
 
-import scala.js.{ JavaScriptObject => JSO }
+import scala.js.{ JavaScriptObject => JSO, _ }
 
 object HelloWorld extends App {
   sayHelloFromDOM()
   sayHelloFromJQuery()
+  sayHelloFromTypedJQuery()
 
   def sayHelloFromDOM() {
     val document = JSO.window.document
@@ -24,5 +25,34 @@ object HelloWorld extends App {
     jQuery("<p>", Map(
         "html" -> "Hello world! <i>-- jQuery</i>"
     )).appendTo(playground);
+  }
+
+  abstract class JSWindow extends JSObject {
+    val jQuery: JSJQueryStatic
+    val $: JSJQueryStatic
+
+    def alert(msg: JSString): Unit
+  }
+
+  trait JSJQueryStatic extends JSObject {
+    def apply(selector: JSString): JSJQuery
+  }
+
+  trait JSJQuery extends JSObject {
+    def text(value: JSString): JSJQuery
+    def text(): JSString
+
+    def html(value: JSString): JSJQuery
+    def html(): JSString
+
+    def appendTo(parent: JSJQuery): JSJQuery
+  }
+
+  def sayHelloFromTypedJQuery(): String = {
+    val window = JSDynamic.window.asInstanceOf[JSWindow]
+    val jQuery = window.$
+    val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
+    newP.appendTo(jQuery("#playground"))
+    newP.text()
   }
 }

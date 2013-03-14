@@ -17,10 +17,16 @@ import util.returning
  */
 trait JSGlobal extends Global
                   with JSTrees
-                  with JSPrinters {
+                  with JSPrinters
+                  with JSDefinitions {
   /** Platform */
   override lazy val platform: ThisPlatform =
     new { val global: JSGlobal.this.type = JSGlobal.this } with JSPlatform
+
+  /** JavaScript primitives, used in jscode */
+  object jsPrimitives extends {
+    val global: JSGlobal.this.type = JSGlobal.this
+  } with JSPrimitives
 
   // phaseName = "jscode"
   object genJSCode extends {
