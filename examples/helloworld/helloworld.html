@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Hello world - Scala-JS example</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+
+<div id="playground">
+</div>
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+
+<script type="text/javascript" src="../../target/scalajs-runtime.js"></script>
+<script type="text/javascript" src="./target/helloworld.js"></script>
+
+<script type="text/javascript">
+//<![CDATA[
+$(function() {
+  var mainInstance = $ScalaJSEnvironment.modules["helloworld.HelloWorld$"].instance;
+  var mainArgs = $ScalaJSEnvironment.makeNativeArrayWrapper(
+    $ScalaJSEnvironment.classes["java.lang.String"].array, []);
+  mainInstance["main(java.lang.String[]):scala.Unit"](mainArgs);
+});
+//]]>
+</script>
+
+</body>
+</html>

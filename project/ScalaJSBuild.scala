@@ -157,4 +157,21 @@ object ScalaJSBuild extends Build {
       base = file("library"),
       settings = defaultSettings ++ compileJSSettings
   ).dependsOn(compiler)
+
+  // Examples
+
+  lazy val examples = Project(
+      id = "examples",
+      base = file("examples")
+  ).aggregate(exampleHelloWorld)
+
+  lazy val exampleHelloWorld = Project(
+      id = "helloworld",
+      base = file("examples") / "helloworld",
+      settings = defaultSettings ++ compileJSSettings ++ Seq(
+          unmanagedClasspath in Compile <+= (target in library) map { libTarget =>
+            Attributed.blank(libTarget / "jsclasses")
+          }
+      )
+  ).dependsOn(compiler)
 }
