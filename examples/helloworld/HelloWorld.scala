@@ -1,14 +1,15 @@
 package helloworld
 
-import scala.js.{ JavaScriptObject => JSO, _ }
+import scala.js._
 
 object HelloWorld extends App {
   sayHelloFromDOM()
+  sayHelloFromTypedDOM()
   sayHelloFromJQuery()
   sayHelloFromTypedJQuery()
 
   def sayHelloFromDOM() {
-    val document = JSO.window.document
+    val document = JSDynamic.window.document
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
@@ -18,20 +19,48 @@ object HelloWorld extends App {
     playground.appendChild(newP)
   }
 
+  def sayHelloFromTypedDOM() {
+    val window = JSDynamic.window.asInstanceOf[JSWindow]
+    val document = window.document
+    val playground = document.getElementById("playground")
+
+    val newP = document.createElement("p")
+    newP.innerHTML = "Hello world! <i>-- typed DOM</i>"
+    playground.appendChild(newP)
+  }
+
   def sayHelloFromJQuery() {
     // val $ is fine too, but not very recommended in Scala code
-    val jQuery = JSO.window.$
+    val jQuery = JSDynamic.window.$
     val playground = jQuery("#playground")
-    jQuery("<p>", Map(
-        "html" -> "Hello world! <i>-- jQuery</i>"
-    )).appendTo(playground);
+    jQuery("<p>").html("Hello world! <i>-- jQuery</i>").appendTo(playground);
+  }
+
+  def sayHelloFromTypedJQuery() {
+    val window = JSDynamic.window.asInstanceOf[JSWindow]
+    val jQuery = window.$
+    val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
+    newP.appendTo(jQuery("#playground"))
   }
 
   abstract class JSWindow extends JSObject {
-    val jQuery: JSJQueryStatic
-    val $: JSJQueryStatic
+    val document: DOMDocument
 
     def alert(msg: JSString): Unit
+
+    val jQuery: JSJQueryStatic
+    val $: JSJQueryStatic
+  }
+
+  trait DOMDocument extends JSObject {
+    def getElementById(id: JSString): DOMElement
+    def createElement(tag: JSString): DOMElement
+  }
+
+  trait DOMElement extends JSObject {
+    var innerHTML: JSString
+
+    def appendChild(child: DOMElement): Unit
   }
 
   trait JSJQueryStatic extends JSObject {
@@ -46,13 +75,5 @@ object HelloWorld extends App {
     def html(): JSString
 
     def appendTo(parent: JSJQuery): JSJQuery
-  }
-
-  def sayHelloFromTypedJQuery(): String = {
-    val window = JSDynamic.window.asInstanceOf[JSWindow]
-    val jQuery = window.$
-    val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
-    newP.appendTo(jQuery("#playground"))
-    newP.text()
   }
 }

@@ -28,6 +28,9 @@ trait JSDefinitions { self: SymbolTable =>
 
     lazy val JSAnyClass       = getRequiredClass("scala.js.JSAny")
     lazy val JSDynamicClass   = getRequiredClass("scala.js.JSDynamic")
+      lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
+      lazy val JSDynamic_updateDynamic = getMemberMethod(JSDynamicClass, newTermName("updateDynamic"))
+      lazy val JSDynamic_applyDynamic  = getMemberMethod(JSDynamicClass, newTermName("applyDynamic"))
     lazy val JSNumberClass    = getRequiredClass("scala.js.JSNumber")
     lazy val JSBooleanClass   = getRequiredClass("scala.js.JSBoolean")
     lazy val JSStringClass    = getRequiredClass("scala.js.JSString")

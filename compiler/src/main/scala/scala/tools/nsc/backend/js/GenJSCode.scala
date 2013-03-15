@@ -1278,14 +1278,19 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
-    private def genJSPrimitive(tree: Apply, receiver: Tree, args: List[Tree], code: Int): js.Tree = {
+    private def genJSPrimitive(tree: Apply, receiver0: Tree,
+        args: List[Tree], code: Int): js.Tree = {
       import jsPrimitives._
 
       implicit val pos = tree.pos
 
-      val genArgs = args map genExpr
+      def receiver = genExpr(receiver0)
+      val genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
-      genArgs match {
+      if (code == DYNAPPLY) {
+        val methodName :: actualArgs = genArgs
+        js.DynamicApplyMethod(receiver, methodName, actualArgs)
+      } else (genArgs match {
         case Nil =>
           code match {
             case WINDOW => js.Ident("window")
@@ -1308,44 +1313,83 @@ abstract class GenJSCode extends SubComponent
             case JS2S => genBuiltinApply("MakeNativeStrWrapper", arg)
 
             case ANY2DYN => arg
+
+            case DYNSELECT =>
+              js.DynamicSelect(receiver, arg)
           }
-      }
+
+        case List(arg1, arg2) =>
+          code match {
+            case DYNUPDATE =>
+              js.Assign(js.DynamicSelect(receiver, arg1), arg2)
+          }
+      })
     }
 
     private def genPrimitiveJSCall(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
 
       val sym = tree.symbol
-      val Apply(fun @ Select(receiver, _), args) = tree
+      val Apply(fun @ Select(receiver0, _), args0) = tree
 
       val funName = sym.nameString
+      val receiver = genExpr(receiver0)
+      val args = genPrimitiveJSArgs(sym, args0)
       val argc = args.length
 
       funName match {
         case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
           assert(argc == 0)
-          js.UnaryOp(funName.substring(funName.length-1), genExpr(receiver))
+          js.UnaryOp(funName.substring(funName.length-1), receiver)
 
         case "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | ">>>" |
              "&" | "|" | "^" | "&&" | "||" =>
           assert(argc == 1)
-          js.BinaryOp(funName, genExpr(receiver), genExpr(args.head))
+          js.BinaryOp(funName, receiver, args.head)
 
         case "apply" =>
-          js.Apply(genExpr(receiver), args map genExpr)
+          js.Apply(receiver, args)
 
         case _ =>
-          if (args.isEmpty && sym.isGetter) {
-            js.Select(genExpr(receiver), js.PropertyName(funName))
-          } else if (args.size == 1 && sym.isSetter) {
+          if (argc == 0 && sym.isGetter) {
+            js.Select(receiver, js.PropertyName(funName))
+          } else if (argc == 1 && sym.isSetter) {
             statToExpr(js.Assign(
-                js.Select(genExpr(receiver),
+                js.Select(receiver,
                     js.PropertyName(funName.substring(0, funName.length-2))),
-                genExpr(args.head)))
+                args.head))
           } else {
-            js.ApplyMethod(genExpr(receiver), js.PropertyName(funName),
-                args map genExpr)
+            js.ApplyMethod(receiver, js.PropertyName(funName), args)
           }
+      }
+    }
+
+    private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree]): List[js.Tree] = {
+      val wereRepeated = afterPhase(currentRun.typerPhase) {
+        for {
+          params <- sym.tpe.paramss
+          param <- params
+        } yield definitions.isScalaRepeatedParamType(param.tpe)
+      }
+
+      args zip wereRepeated flatMap {
+        case (arg, wasRepeated) =>
+          if (wasRepeated) genPrimitiveJSRepeatedParam(arg)
+          else List(genExpr(arg))
+      }
+    }
+
+    private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.Tree] = {
+      arg match {
+        case Apply(wrapRefArray_?, List(
+            Apply(TypeApply(asInstanceOf_? @ Select(
+                ArrayValue(tpt, elems), _), _), _)))
+        if (wrapRefArray_?.symbol == definitions.Predef_wrapRefArray) &&
+            (asInstanceOf_?.symbol == Object_asInstanceOf) =>
+          elems map genExpr
+
+        case _ =>
+          abort("Passing a seq:_* to a JavaScript method is not supported: "+arg)
       }
     }
 

@@ -46,9 +46,9 @@ object JSAny {
 }
 
 sealed trait JSDynamic extends JSAny with scala.Dynamic {
-  def applyDynamic(name: String)(args: JSAny*): JSDynamic
-  def selectDynamic(name: String): JSDynamic
-  def updateDynamic(name: String)(value: JSAny): Unit
+  def applyDynamic(name: JSString)(args: JSAny*): JSDynamic
+  def selectDynamic(name: JSString): JSDynamic
+  def updateDynamic(name: JSString)(value: JSAny): Unit
   def apply(args: JSAny*): JSDynamic
 
   def +(that: JSNumber): JSNumber

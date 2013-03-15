@@ -182,13 +182,45 @@ trait JSTrees { self: scalajs.JSGlobal =>
       }
     }
 
+    object DynamicSelect {
+      def apply(qualifier: Tree, item: Tree)(implicit pos: Position) = {
+        item match {
+          case StringLiteral(name) if isValidIdentifier(name) =>
+            DotSelect(qualifier, Ident(name)(item.pos))
+          case _ =>
+            BracketSelect(qualifier, item)
+        }
+      }
+
+      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
+        case DotSelect(qualifier, item) =>
+          Some((qualifier, StringLiteral(item.name)(item.pos)))
+        case BracketSelect(qualifier, item) => Some((qualifier, item))
+        case _ => None
+      }
+    }
+
     object ApplyMethod {
       def apply(receiver: Tree, method: PropertyName, args: List[Tree])(implicit pos: Position) =
         Apply(Select(receiver, method), args)
 
       def unapply(tree: Apply): Option[(Tree, PropertyName, List[Tree])] = {
         tree match {
-          case Apply(Select(receiver, method : PropertyName), args) =>
+          case Apply(Select(receiver, method), args) =>
+            Some((receiver, method, args))
+          case _ =>
+            None
+        }
+      }
+    }
+
+    object DynamicApplyMethod {
+      def apply(receiver: Tree, method: Tree, args: List[Tree])(implicit pos: Position) =
+        Apply(DynamicSelect(receiver, method), args)
+
+      def unapply(tree: Apply): Option[(Tree, Tree, List[Tree])] = {
+        tree match {
+          case Apply(DynamicSelect(receiver, method), args) =>
             Some((receiver, method, args))
           case _ =>
             None

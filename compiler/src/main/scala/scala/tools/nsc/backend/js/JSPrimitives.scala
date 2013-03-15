@@ -32,6 +32,10 @@ abstract class JSPrimitives {
   val WINDOW = 321
   val EMPTY_OBJ = 322
 
+  val DYNSELECT = 330
+  val DYNUPDATE = 331
+  val DYNAPPLY = 332
+
   def init() {
     if (!isScalaJSDefined)
       return
@@ -53,8 +57,12 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamic_fromAny, ANY2DYN)
     addPrimitive(JSDynamic_window, WINDOW)
     addPrimitive(JSObject_newEmpty, EMPTY_OBJ)
+
+    addPrimitive(JSDynamic_selectDynamic, DYNSELECT)
+    addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)
+    addPrimitive(JSDynamic_applyDynamic, DYNAPPLY)
   }
 
   def isJavaScriptPrimitive(code: Int) =
-    code >= 300 && code < 330
+    code >= 300 && code < 340
 }
