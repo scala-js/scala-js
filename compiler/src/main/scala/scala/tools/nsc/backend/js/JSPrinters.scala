@@ -73,7 +73,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         // Identifiers
 
         case js.Ident(name) =>
-          print(name)
+          printInASCIIWithEscapes(name)
 
         // Definitions
 
@@ -227,20 +227,8 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print(value)
 
         case js.StringLiteral(value) =>
-          // TODO Quote better than that (non printable characters, Unicode, etc.)
           print("\"")
-          value foreach {
-            case '\\' => print("\\\\")
-            case '"' => print("\\\"")
-            case '\u0007' => print("\\a")
-            case '\u0008' => print("\\b")
-            case '\u0009' => print("\\t")
-            case '\u000A' => print("\\n")
-            case '\u000B' => print("\\v")
-            case '\u000C' => print("\\f")
-            case '\u000D' => print("\\r")
-            case c => print(c)
-          }
+          printInASCIIWithEscapes(value)
           print("\"")
 
 
@@ -291,6 +279,35 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case _ =>
           abort("Do not know how to print tree of class "+tree.getClass)
       }
+    }
+
+    def printInASCIIWithEscapes(str: String) {
+      codePointsOf(str) foreach {
+        case '\\' => print("\\\\")
+        case '"' => print("\\\"")
+        case '\u0007' => print("\\a")
+        case '\u0008' => print("\\b")
+        case '\u0009' => print("\\t")
+        case '\u000A' => print("\\n")
+        case '\u000B' => print("\\v")
+        case '\u000C' => print("\\f")
+        case '\u000D' => print("\\r")
+        case c =>
+          if (c >= 32 && c <= 126) print(c.toChar) // ASCII printable characters
+          else print(f"\\u$c%04x")
+      }
+    }
+
+    def codePointsOf(s: String): List[Int] = {
+      @annotation.tailrec
+      def loop(idx: Int, found: List[Int]): List[Int] = {
+        if (idx >= s.length) found.reverse
+        else {
+          val point = s.codePointAt(idx)
+          loop(idx + java.lang.Character.charCount(point), point :: found)
+        }
+      }
+      loop(0, Nil)
     }
 
     def print(args: Any*): Unit = args foreach {

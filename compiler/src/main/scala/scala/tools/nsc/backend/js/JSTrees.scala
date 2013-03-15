@@ -53,11 +53,10 @@ trait JSTrees { self: scalajs.JSGlobal =>
     }
 
     final def isValidIdentifier(name: String): Boolean = {
-      !name.head.isDigit && name.tail.forall(isIdentChar)
+      val c = name.head
+      (c == '$' || c == '_' || c.isUnicodeIdentifierStart) &&
+          name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart)
     }
-
-    private def isIdentChar(c: Char) =
-      c.isLetterOrDigit || c == '$' || c == '_'
 
     @inline final def requireValidIdent(name: String) {
       require(isValidIdentifier(name), s"${name} is not a valid identifier")
