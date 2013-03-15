@@ -1350,6 +1350,10 @@ abstract class GenJSCode extends SubComponent
         case "apply" =>
           js.Apply(receiver, args)
 
+        case "toString" if args.isEmpty =>
+          genBuiltinApply("makeNativeStrWrapper",
+              js.ApplyMethod(receiver, js.Ident("toString"), Nil))
+
         case _ =>
           if (argc == 0 && sym.isGetter) {
             js.Select(receiver, js.PropertyName(funName))

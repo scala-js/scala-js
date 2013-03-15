@@ -13,8 +13,6 @@ package scala.js
 import scala.language.{ dynamics, implicitConversions }
 
 sealed trait JSAny extends AnyRef {
-  override def toString(): String
-
   def unary_+(): JSNumber
   def unary_-(): JSNumber
   def unary_~(): JSNumber
