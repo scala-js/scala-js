@@ -228,6 +228,12 @@ trait JSTrees { self: scalajs.JSGlobal =>
       }
     }
 
+    // Utils
+
+    def captureWithin(arg: Ident, expr: Tree)(body: Tree)(implicit pos: Position): Tree = {
+      Apply(Function(List(arg), Return(body)), List(expr))
+    }
+
     // Transformer
 
     class Transformer {

@@ -1308,6 +1308,20 @@ abstract class GenJSCode extends SubComponent
                 case _ => js.ApplyMethod(arg, js.Ident("toNativeString"), Nil)
               }
 
+            case F2JS =>
+              val inputTpe = args.head.tpe
+              val applyMeth = definitions.getMemberMethod(inputTpe.typeSymbol,
+                  newTermName("apply"))
+              val arity = applyMeth.tpe.params.size
+              val theFunction = js.Ident("$this")
+              val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
+              js.captureWithin(theFunction, arg) {
+                js.Function(arguments, {
+                  js.Return(js.ApplyMethod(theFunction,
+                      encodeMethodSym(applyMeth), arguments))
+                })
+              }
+
             case JS2Z => arg
             case JS2N => arg
             case JS2S => genBuiltinApply("MakeNativeStrWrapper", arg)

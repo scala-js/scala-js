@@ -41,6 +41,10 @@ object JSAny {
   implicit def fromDouble(value: Double): JSNumber = sys.error("stub")
 
   implicit def fromString(s: String): JSString = sys.error("stub")
+
+  implicit def fromFunction0[R <: JSAny](f: Function0[R]): JSFunction0[R] = sys.error("stub")
+  implicit def fromFunction1[T1 <: JSAny, R <: JSAny](f: Function1[T1, R]): JSFunction1[T1, R] = sys.error("stub")
+  implicit def fromFunction2[T1 <: JSAny, T2 <: JSAny, R <: JSAny](f: Function2[T1, T2, R]): JSFunction2[T1, T2, R] = sys.error("stub")
 }
 
 sealed trait JSDynamic extends JSAny with scala.Dynamic {
@@ -144,4 +148,14 @@ object JSObject {
   def newEmpty: JSObject = sys.error("stub")
 }
 
-trait JSFunction extends JSObject
+trait JSFunction0[+R <: JSAny] extends JSObject {
+  def apply(): R
+}
+
+trait JSFunction1[-T1 <: JSAny, +R <: JSAny] extends JSObject {
+  def apply(arg1: T1): R
+}
+
+trait JSFunction2[-T1 <: JSAny, -T2 <: JSAny, +R <: JSAny] extends JSObject {
+  def apply(arg1: T1, arg2: T2): R
+}

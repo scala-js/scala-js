@@ -22,6 +22,7 @@ abstract class JSPrimitives {
   //val C2JS = 302
   val N2JS = 303
   val S2JS = 304
+  val F2JS = 305
 
   val JS2Z = 311
   //val JS2C = 312
@@ -49,6 +50,10 @@ abstract class JSPrimitives {
     addPrimitive(JSAny_fromFloat, N2JS)
     addPrimitive(JSAny_fromDouble, N2JS)
     addPrimitive(JSAny_fromString, S2JS)
+
+    addPrimitive(JSAny_fromFunction0, F2JS)
+    addPrimitive(JSAny_fromFunction1, F2JS)
+    addPrimitive(JSAny_fromFunction2, F2JS)
 
     addPrimitive(JSBoolean_toBoolean, JS2Z)
     addPrimitive(JSNumber_toDouble, JS2N)
