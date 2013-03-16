@@ -1290,6 +1290,8 @@ abstract class GenJSCode extends SubComponent
       if (code == DYNAPPLY) {
         val methodName :: actualArgs = genArgs
         js.DynamicApplyMethod(receiver, methodName, actualArgs)
+      } else if (code == ARR_CREATE) {
+        js.ArrayConstr(genArgs)
       } else (genArgs match {
         case Nil =>
           code match {
@@ -1330,12 +1332,20 @@ abstract class GenJSCode extends SubComponent
 
             case DYNSELECT =>
               js.DynamicSelect(receiver, arg)
+
+            case ARR_NEW =>
+              js.New(js.Ident("Array"), List(arg))
+            case ARR_GET =>
+              js.BracketSelect(receiver, arg)
           }
 
         case List(arg1, arg2) =>
           code match {
             case DYNUPDATE =>
-              js.Assign(js.DynamicSelect(receiver, arg1), arg2)
+              statToExpr(js.Assign(js.DynamicSelect(receiver, arg1), arg2))
+
+            case ARR_SET =>
+              statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
           }
       })
     }
@@ -1452,7 +1462,16 @@ abstract class GenJSCode extends SubComponent
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
 
-    def isRawJSType(tpe: Type): Boolean =
-      beforePhase(currentRun.typerPhase)(tpe <:< jsDefinitions.MaybeJSAnyTpe)
+    def isRawJSType(tpe: Type): Boolean = {
+      beforePhase(currentRun.typerPhase) {
+        // TODO This is ugly, I have to figure out something better!
+        // At least I should construct an ExistentialType ...
+        def instantiateType(tpe: Type): Type = {
+          if (!tpe.takesTypeArgs) tpe
+          else appliedType(tpe, tpe.typeParams map (_.typeConstructor))
+        }
+        instantiateType(tpe) <:< jsDefinitions.MaybeJSAnyTpe
+      }
+    }
   }
 }

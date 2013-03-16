@@ -11,6 +11,7 @@
 package scala.js
 
 import scala.language.{ dynamics, implicitConversions }
+import scala.reflect.ClassTag
 
 sealed trait JSAny extends AnyRef {
   def unary_+(): JSNumber
@@ -41,6 +42,18 @@ object JSAny {
   implicit def fromDouble(value: Double): JSNumber = sys.error("stub")
 
   implicit def fromString(s: String): JSString = sys.error("stub")
+
+  implicit def fromArray[B <: JSAny, A](array: Array[A])(
+      implicit ev: A => B): JSArray[B] = {
+    val length = array.length
+    val result = JSArray.newArray[B](length)
+    var i = 0
+    while (i < length) {
+      result(i) = array(i)
+      i += 1
+    }
+    result
+  }
 
   implicit def fromFunction0[R <: JSAny](f: Function0[R]): JSFunction0[R] = sys.error("stub")
   implicit def fromFunction1[T1 <: JSAny, R <: JSAny](f: Function1[T1, R]): JSFunction1[T1, R] = sys.error("stub")
@@ -146,6 +159,31 @@ abstract class JSObject extends JSAny
 
 object JSObject {
   def newEmpty: JSObject = sys.error("stub")
+}
+
+sealed trait JSArray[A <: JSAny] extends JSObject {
+  def apply(index: JSNumber): A
+  def update(index: JSNumber, value: A): Unit
+
+  val length: JSNumber
+}
+
+object JSArray {
+  def newArray[A <: JSAny](length: JSNumber): JSArray[A] = sys.error("stub")
+
+  def apply[A <: JSAny](elements: A*): JSArray[A] = sys.error("stub")
+
+  implicit def toArray[B : ClassTag, A <: JSAny](array: JSArray[A])(
+      implicit ev: A => B): Array[B] = {
+    val length = array.length.toInt
+    val result = new Array[B](length)
+    var i = 0
+    while (i < length) {
+      result(i) = array(i)
+      i += 1
+    }
+    result
+  }
 }
 
 trait JSFunction0[+R <: JSAny] extends JSObject {

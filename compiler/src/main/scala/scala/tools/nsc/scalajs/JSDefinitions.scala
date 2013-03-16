@@ -37,6 +37,10 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val JSUndefinedClass = getRequiredClass("scala.js.JSUndefined")
     lazy val JSObjectClass    = getRequiredClass("scala.js.JSObject")
 
+    lazy val JSArrayClass = getRequiredClass("scala.js.JSArray")
+      lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
+      lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
+
     lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor
     lazy val JSDynamicTpe   = JSDynamicClass.toTypeConstructor
     lazy val JSNumberTpe    = JSNumberClass.toTypeConstructor
@@ -75,5 +79,9 @@ trait JSDefinitions { self: SymbolTable =>
 
     lazy val JSObjectModule = JSObjectClass.companionModule
       lazy val JSObject_newEmpty = getMemberMethod(JSObjectModule, newTermName("newEmpty"))
+
+    lazy val JSArrayModule = JSArrayClass.companionModule
+      lazy val JSArray_newArray = getMemberMethod(JSArrayModule, newTermName("newArray"))
+      lazy val JSArray_create   = getMemberMethod(JSArrayModule, newTermName("apply"))
   }
 }

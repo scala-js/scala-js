@@ -37,6 +37,11 @@ abstract class JSPrimitives {
   val DYNUPDATE = 331
   val DYNAPPLY = 332
 
+  val ARR_NEW = 333
+  val ARR_CREATE = 334
+  val ARR_GET = 335
+  val ARR_SET = 336
+
   def init() {
     if (!isScalaJSDefined)
       return
@@ -66,6 +71,11 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamic_selectDynamic, DYNSELECT)
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)
     addPrimitive(JSDynamic_applyDynamic, DYNAPPLY)
+
+    addPrimitive(JSArray_newArray, ARR_NEW)
+    addPrimitive(JSArray_create, ARR_CREATE)
+    addPrimitive(JSArray_apply, ARR_GET)
+    addPrimitive(JSArray_update, ARR_SET)
   }
 
   def isJavaScriptPrimitive(code: Int) =
