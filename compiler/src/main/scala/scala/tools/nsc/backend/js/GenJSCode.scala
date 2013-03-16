@@ -1462,15 +1462,13 @@ abstract class GenJSCode extends SubComponent
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
 
+    /** Test whether the given type represents a raw JavaScript type
+     *
+     *  I.e., test whether the type extends scala.js.JSAny
+     */
     def isRawJSType(tpe: Type): Boolean = {
-      beforePhase(currentRun.typerPhase) {
-        // TODO This is ugly, I have to figure out something better!
-        // At least I should construct an ExistentialType ...
-        def instantiateType(tpe: Type): Type = {
-          if (!tpe.takesTypeArgs) tpe
-          else appliedType(tpe, tpe.typeParams map (_.typeConstructor))
-        }
-        instantiateType(tpe) <:< jsDefinitions.MaybeJSAnyTpe
+      jsDefinitions.isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
+        tpe.typeSymbol isSubClass jsDefinitions.JSAnyClass
       }
     }
   }
