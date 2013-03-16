@@ -469,8 +469,7 @@ abstract class GenJSCode extends SubComponent
             case FloatTag | DoubleTag =>
               js.DoubleLiteral(value.doubleValue)
             case StringTag =>
-              this.genBuiltinApply("MakeNativeStrWrapper",
-                  js.StringLiteral(value.stringValue))
+              MakeNativeStrWrapper(js.StringLiteral(value.stringValue))
             case NullTag =>
               js.Null()
             case ClazzTag =>
@@ -646,8 +645,7 @@ abstract class GenJSCode extends SubComponent
             if (tpe == ThrowableClass.tpe) {
               bodyWithBoundVar
             } else {
-              val cond = genBuiltinApply("IsInstance",
-                  exceptVar, genClassConstant(tpe))
+              val cond = genIsInstanceOf(ThrowableClass.tpe, tpe, exceptVar)
               js.If(cond, bodyWithBoundVar, elsep)
             }
           }
@@ -705,9 +703,11 @@ abstract class GenJSCode extends SubComponent
             source
           }
           else if (r.isValueType)
-            genCast(from, boxedClass(to.typeSymbol).tpe, source, false)
+            genIsInstanceOf(from, boxedClass(to.typeSymbol).tpe, source)
+          else if (cast)
+            genAsInstanceOf(from, to, source)
           else
-            genCast(from, to, source, cast)
+            genIsInstanceOf(from, to, source)
 
         // 'super' call
         case Apply(fun @ Select(sup @ Super(_, mix), _), args) =>
@@ -867,15 +867,25 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
-    def genCast(from: Type, to: Type, value: js.Tree, cast: Boolean)(
-        implicit pos: Position): js.Tree = {
-      val toFullName = js.StringLiteral(encodeFullName(to))
-      if (cast) {
-        if (isRawJSType(to)) value
-        else genBuiltinApply("AsInstance", value, toFullName)
+    def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
+        implicit pos: Position = value.pos): js.Tree = {
+      if (isRawJSType(to)) {
+        // isInstanceOf is not supported for raw JavaScript types
+        abort("isInstanceOf["+to+"]")
       } else {
-        if (isRawJSType(to)) abort("isInstanceOf["+to+"]")
-        else genBuiltinApply("IsInstance", value, toFullName)
+        genBuiltinApply("isInstance", value,
+            js.StringLiteral(encodeFullName(to)))
+      }
+    }
+
+    def genAsInstanceOf(from: Type, to: Type, value: js.Tree)(
+        implicit pos: Position = value.pos): js.Tree = {
+      if (isRawJSType(to)) {
+        // asInstanceOf on JavaScript is completely erased
+        value
+      } else {
+        genBuiltinApply("asInstance", value,
+            js.StringLiteral(encodeFullName(to)))
       }
     }
 
@@ -901,7 +911,7 @@ abstract class GenJSCode extends SubComponent
 
       val arrayClassData = encodeClassDataOfType(arrayType)
 
-      genBuiltinApply("NewArrayObject", arrayClassData,
+      genBuiltinApply("newArrayObject", arrayClassData,
           js.ArrayConstr(arguments))
     }
 
@@ -912,7 +922,7 @@ abstract class GenJSCode extends SubComponent
       val arrayClassData = encodeClassDataOfType(tree.tpe)
       val nativeArray = js.ArrayConstr(elems map genExpr)
 
-      genBuiltinApply("MakeNativeArrayWrapper",
+      genBuiltinApply("makeNativeArrayWrapper",
           arrayClassData, nativeArray)
     }
 
@@ -1129,7 +1139,7 @@ abstract class GenJSCode extends SubComponent
         !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
 
-      val function = if (mustUseAnyComparator) "AnyEqEq" else "AnyRefEqEq"
+      val function = if (mustUseAnyComparator) "anyEqEq" else "anyRefEqEq"
       genBuiltinApply(function, lsrc, rsrc)
     }
 
@@ -1306,7 +1316,12 @@ abstract class GenJSCode extends SubComponent
             case N2JS => arg
             case S2JS =>
               arg match {
-                case js.ApplyMethod(environment, js.Ident("makeNativeStrWrapper"), List(arg0)) => arg0
+                /* This "optimization" that might appear as negligible is
+                 * actually triggered by two very common cases:
+                 * - A string literal used where a JSString is required
+                 * - A call to jsObj.toString() where a JSString is required
+                 */
+                case MakeNativeStrWrapper(arg0) => arg0
                 case _ => js.ApplyMethod(arg, js.Ident("toNativeString"), Nil)
               }
 
@@ -1326,7 +1341,7 @@ abstract class GenJSCode extends SubComponent
 
             case JS2Z => arg
             case JS2N => arg
-            case JS2S => genBuiltinApply("MakeNativeStrWrapper", arg)
+            case JS2S => MakeNativeStrWrapper(arg)
 
             case ANY2DYN => arg
 
@@ -1375,7 +1390,7 @@ abstract class GenJSCode extends SubComponent
           js.Apply(receiver, args)
 
         case "toString" if args.isEmpty =>
-          genBuiltinApply("makeNativeStrWrapper",
+          MakeNativeStrWrapper(
               js.ApplyMethod(receiver, js.Ident("toString"), Nil))
 
         case _ =>
@@ -1457,9 +1472,27 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate a call to a runtime builtin helper */
-    def genBuiltinApply(funName0: String, args: js.Tree*)(implicit pos: Position) = {
-      val funName = funName0.head.toLower + funName0.tail
+    def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: Position) = {
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
+    }
+
+    /** Builder and extractor object for env.makeNativeStrWrapper */
+    object MakeNativeStrWrapper {
+      private val wrapperFunName = "makeNativeStrWrapper"
+
+      def apply(nativeStr: js.Tree)(implicit pos: Position = nativeStr.pos) = {
+        js.ApplyMethod(environment, js.Ident(wrapperFunName), List(nativeStr))
+      }
+
+      def unapply(tree: js.Apply): Option[js.Tree] = {
+        tree match {
+          case js.ApplyMethod(js.Ident(`ScalaJSEnvironmentName`),
+              js.Ident(`wrapperFunName`), List(nativeStr)) =>
+            Some(nativeStr)
+          case _ =>
+            None
+        }
+      }
     }
 
     /** Test whether the given type represents a raw JavaScript type

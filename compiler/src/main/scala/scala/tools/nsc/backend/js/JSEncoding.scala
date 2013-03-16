@@ -16,8 +16,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   import global._
 
+  final val ScalaJSEnvironmentName = "$ScalaJSEnvironment"
+
   def environment(implicit pos: Position): js.Ident = {
-    js.Ident("$ScalaJSEnvironment")
+    js.Ident(ScalaJSEnvironmentName)
   }
 
   def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
