@@ -1218,10 +1218,10 @@ abstract class GenJSCode extends SubComponent
 
       (code: @scala.annotation.switch) match {
         case B2F | B2D | S2F | S2D | C2F | C2D | I2F | I2D | L2F | L2D =>
-          genBuiltinApply("IntToFloat", source)
+          source
 
         case F2B | F2S | F2C | F2I | F2L | D2B | D2S | D2C | D2I | D2L =>
-          genBuiltinApply("FloatToInt", source)
+          js.ApplyMethod(js.Ident("Math"), js.Ident("round"), List(source))
 
         case _ => source
       }
