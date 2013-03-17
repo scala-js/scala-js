@@ -746,25 +746,29 @@ abstract class GenJSCode extends SubComponent
             superCall
 
         // 'new' constructor call
-        case Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) =>
+        case app @ Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) =>
           val ctor = fun.symbol
           if (settings.debug.value)
             assert(ctor.isClassConstructor,
                    "'new' call to non-constructor: " + ctor.name)
 
-          val arguments = args map genExpr
+          if (isRawJSType(tpt.tpe)) {
+            genPrimitiveJSNew(app)
+          } else {
+            val arguments = args map genExpr
 
-          val generatedType = toTypeKind(tpt.tpe)
-          if (settings.debug.value)
-            assert(generatedType.isReferenceType || generatedType.isArrayType,
-                 "Non reference type cannot be instantiated: " + generatedType)
+            val generatedType = toTypeKind(tpt.tpe)
+            if (settings.debug.value)
+              assert(generatedType.isReferenceType || generatedType.isArrayType,
+                   "Non reference type cannot be instantiated: " + generatedType)
 
-          (generatedType: @unchecked) match {
-            case arr @ ARRAY(elem) =>
-              genNewArray(tpt.tpe, arr.dimensions, arguments)
+            (generatedType: @unchecked) match {
+              case arr @ ARRAY(elem) =>
+                genNewArray(tpt.tpe, arr.dimensions, arguments)
 
-            case rt @ REFERENCE(cls) =>
-              genNew(cls, ctor, arguments)
+              case rt @ REFERENCE(cls) =>
+                genNew(cls, ctor, arguments)
+            }
           }
 
         case Apply(fun @ _, List(dynapply:ApplyDynamic))
@@ -1301,7 +1305,6 @@ abstract class GenJSCode extends SubComponent
         case Nil =>
           code match {
             case WINDOW => js.Ident("window")
-            case EMPTY_OBJ => js.ObjectConstr(Nil)
           }
 
         case List(arg) =>
@@ -1344,9 +1347,6 @@ abstract class GenJSCode extends SubComponent
               js.DynamicSelect(receiver, arg)
             case DICT_SELECT =>
               js.BracketSelect(receiver, arg)
-
-            case ARR_NEW =>
-              js.New(js.Ident("Array"), List(arg))
           }
 
         case List(arg1, arg2) =>
@@ -1398,6 +1398,29 @@ abstract class GenJSCode extends SubComponent
           } else {
             js.ApplyMethod(receiver, js.PropertyName(funName), args)
           }
+      }
+    }
+
+    private def genPrimitiveJSNew(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+
+      val Apply(fun @ Select(New(tpt), _), args0) = tree
+      val cls = tpt.tpe.typeSymbol
+      val ctor = fun.symbol
+
+      val args = genPrimitiveJSArgs(ctor, args0)
+
+      if (cls == JSObjectClass && args.isEmpty) js.ObjectConstr(Nil)
+      else js.New(genPrimitiveJSClass(cls), args)
+    }
+
+    private def genPrimitiveJSClass(sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+      // TODO Improve this (idea: annotation on the class? optional annot?)
+      sym match {
+        case JSObjectClass => js.Ident("Object")
+        case JSArrayClass => js.Ident("Array")
+        case _ => js.Ident(sym.nameString)
       }
     }
 

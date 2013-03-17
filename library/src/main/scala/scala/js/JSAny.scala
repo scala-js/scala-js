@@ -14,19 +14,19 @@ import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
 
 sealed trait JSAny extends AnyRef {
-  def unary_+(): JSNumber
-  def unary_-(): JSNumber
-  def unary_~(): JSNumber
+  def unary_+(): JSNumber = sys.error("stub")
+  def unary_-(): JSNumber = sys.error("stub")
+  def unary_~(): JSNumber = sys.error("stub")
 
-  def unary_!(): JSBoolean
+  def unary_!(): JSBoolean = sys.error("stub")
 
-  def +(that: JSString): JSString
-  def +(that: JSDynamic): JSAny // JSNumber v JSString
+  def +(that: JSString): JSString = sys.error("stub")
+  def +(that: JSDynamic): JSAny = sys.error("stub") // JSNumber v JSString
 
-  def &&[A <: JSAny](that: A): that.type
+  def &&[A <: JSAny](that: A): that.type = sys.error("stub")
 
-  // def ||[A <: JSAny](that: A): this.type v that.type
-  def ||(that: JSAny): JSAny
+  // def ||[A <: JSAny](that: A): this.type v that.type = sys.error("stub")
+  def ||(that: JSAny): JSAny = sys.error("stub")
 }
 
 object JSAny {
@@ -46,7 +46,7 @@ object JSAny {
   implicit def fromArray[B <: JSAny, A](array: Array[A])(
       implicit ev: A => B): JSArray[B] = {
     val length = array.length
-    val result = JSArray.newArray[B](length)
+    val result = new JSArray[B](length)
     var i = 0
     while (i < length) {
       result(i) = array(i)
@@ -107,7 +107,7 @@ sealed trait JSDictionary extends JSAny {
 }
 
 object JSDictionary {
-  def empty: JSDictionary = sys.error("stub")
+  def empty: JSDictionary = new JSObject
 
   def apply(properties: (JSString, JSAny)*): JSDictionary =
     apply(properties)
@@ -177,7 +177,7 @@ object JSBoolean {
 
 sealed trait JSString extends JSAny {
   def +(that: JSAny): JSString
-  override def +(that: JSDynamic): JSString
+  override def +(that: JSDynamic): JSString = sys.error("stub")
 
   def ||(that: JSString): JSString
 }
@@ -188,22 +188,20 @@ object JSString {
 
 sealed trait JSUndefined extends JSAny with NotNull
 
-abstract class JSObject extends JSAny
-
-object JSObject {
-  def newEmpty: JSObject = sys.error("stub")
+class JSObject extends JSAny {
+  def this(value: JSAny) = this()
 }
 
-sealed trait JSArray[A <: JSAny] extends JSObject {
-  def apply(index: JSNumber): A
-  def update(index: JSNumber, value: A): Unit
+final class JSArray[A <: JSAny](_len: JSNumber) extends JSObject {
+  def this() = this(0)
 
-  val length: JSNumber
+  def apply(index: JSNumber): A = sys.error("stub")
+  def update(index: JSNumber, value: A): Unit = sys.error("stub")
+
+  val length: JSNumber = sys.error("stub")
 }
 
 object JSArray {
-  def newArray[A <: JSAny](length: JSNumber): JSArray[A] = sys.error("stub")
-
   def apply[A <: JSAny](elements: A*): JSArray[A] = sys.error("stub")
 
   implicit def toArray[B : ClassTag, A <: JSAny](array: JSArray[A])(

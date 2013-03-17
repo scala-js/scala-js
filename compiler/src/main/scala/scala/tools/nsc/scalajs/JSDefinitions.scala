@@ -80,14 +80,7 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val JSStringModule = JSStringClass.companionModule
       lazy val JSString_toScalaString = getMemberMethod(JSStringModule, newTermName("toScalaString"))
 
-    lazy val JSObjectModule = JSObjectClass.companionModule
-      lazy val JSObject_newEmpty = getMemberMethod(JSObjectModule, newTermName("newEmpty"))
-
-    lazy val JSDictionaryModule = JSDictionaryClass.companionModule
-      lazy val JSDictionary_empty = getMemberMethod(JSDictionaryModule, newTermName("empty"))
-
     lazy val JSArrayModule = JSArrayClass.companionModule
-      lazy val JSArray_newArray = getMemberMethod(JSArrayModule, newTermName("newArray"))
-      lazy val JSArray_create   = getMemberMethod(JSArrayModule, newTermName("apply"))
+      lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
   }
 }
