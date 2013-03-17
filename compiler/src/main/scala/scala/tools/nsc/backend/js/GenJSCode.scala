@@ -23,13 +23,8 @@ abstract class GenJSCode extends SubComponent
   val global: JSGlobal
 
   import global._
-
-  import definitions.{
-    ObjectClass, ClassCastExceptionClass, ThrowableClass,
-    ScalaRunTimeModule,
-    Object_isInstanceOf, Object_asInstanceOf, Object_toString, String_+,
-    boxedClass, isBox, isUnbox, getMember
-  }
+  import definitions._
+  import jsDefinitions._
 
   import treeInfo.hasSynthCaseSymbol
 
@@ -238,7 +233,7 @@ abstract class GenJSCode extends SubComponent
         for (param <- params)
           yield encodeLocalSym(param)(param.pos)
 
-      val isNative = currentMethodSym.hasAnnotation(definitions.NativeAttr)
+      val isNative = currentMethodSym.hasAnnotation(NativeAttr)
       val isAbstractMethod =
         (currentMethodSym.isDeferred || currentMethodSym.owner.isInterface)
 
@@ -1024,7 +1019,7 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def isPrimitive(sym: Symbol) = {
-      (scalaPrimitives.isPrimitive(sym) && (sym ne definitions.String_+))
+      (scalaPrimitives.isPrimitive(sym) && (sym ne String_+))
     }
 
     private def genPrimitiveOp(tree: Apply): js.Tree = {
@@ -1166,7 +1161,7 @@ abstract class GenJSCode extends SubComponent
       implicit val pos = expr.pos
 
       val module = tpe.typeSymbol.companionModule
-      val boxSymbol = definitions.getMember(module, function)
+      val boxSymbol = getMember(module, function)
       js.ApplyMethod(genLoadModule(module),
           encodeMethodSym(boxSymbol), List(expr))
     }
@@ -1327,7 +1322,7 @@ abstract class GenJSCode extends SubComponent
 
             case F2JS =>
               val inputTpe = args.head.tpe
-              val applyMeth = definitions.getMemberMethod(inputTpe.typeSymbol,
+              val applyMeth = getMemberMethod(inputTpe.typeSymbol,
                   newTermName("apply"))
               val arity = applyMeth.tpe.params.size
               val theFunction = js.Ident("$this")
@@ -1412,7 +1407,7 @@ abstract class GenJSCode extends SubComponent
         for {
           params <- sym.tpe.paramss
           param <- params
-        } yield definitions.isScalaRepeatedParamType(param.tpe)
+        } yield isScalaRepeatedParamType(param.tpe)
       }
 
       args zip wereRepeated flatMap {
@@ -1427,7 +1422,7 @@ abstract class GenJSCode extends SubComponent
         case Apply(wrapRefArray_?, List(
             Apply(TypeApply(asInstanceOf_? @ Select(
                 ArrayValue(tpt, elems), _), _), _)))
-        if (wrapRefArray_?.symbol == definitions.Predef_wrapRefArray) &&
+        if (wrapRefArray_?.symbol == Predef_wrapRefArray) &&
             (asInstanceOf_?.symbol == Object_asInstanceOf) =>
           elems map genExpr
 
@@ -1500,8 +1495,8 @@ abstract class GenJSCode extends SubComponent
      *  I.e., test whether the type extends scala.js.JSAny
      */
     def isRawJSType(tpe: Type): Boolean = {
-      jsDefinitions.isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
-        tpe.typeSymbol isSubClass jsDefinitions.JSAnyClass
+      isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
+        tpe.typeSymbol isSubClass JSAnyClass
       }
     }
   }
