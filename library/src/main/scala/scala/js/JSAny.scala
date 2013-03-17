@@ -100,6 +100,39 @@ object JSDynamic {
   def window: JSDynamic = sys.error("stub")
 }
 
+/** Dictionary "view" of a JavaScript value */
+sealed trait JSDictionary extends JSAny {
+  def apply(key: JSString): JSAny
+  def update(key: JSString, value: JSAny)
+}
+
+object JSDictionary {
+  def empty: JSDictionary = sys.error("stub")
+
+  def apply(properties: (JSString, JSAny)*): JSDictionary =
+    apply(properties)
+
+  def apply(properties: TraversableOnce[(JSString, JSAny)]): JSDictionary = {
+    val result = empty
+    for ((key, value) <- properties)
+      result(key) = value
+    result
+  }
+
+  def apply[A <% JSString, B <% JSAny](properties: (A, B)*): JSDictionary =
+    apply(properties)
+
+  def apply[A <% JSString, B <% JSAny](
+      properties: TraversableOnce[(A, B)]): JSDictionary = {
+    val result = empty
+    for ((key, value) <- properties)
+      result(key) = value
+    result
+  }
+
+  implicit def fromAny(value: JSAny): JSDictionary = value.asInstanceOf
+}
+
 sealed trait JSNumber extends JSAny {
   def +(that: JSNumber): JSNumber
 

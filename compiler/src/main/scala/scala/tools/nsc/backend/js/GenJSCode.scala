@@ -1342,19 +1342,18 @@ abstract class GenJSCode extends SubComponent
 
             case DYNSELECT =>
               js.DynamicSelect(receiver, arg)
+            case DICT_SELECT =>
+              js.BracketSelect(receiver, arg)
 
             case ARR_NEW =>
               js.New(js.Ident("Array"), List(arg))
-            case ARR_GET =>
-              js.BracketSelect(receiver, arg)
           }
 
         case List(arg1, arg2) =>
           code match {
             case DYNUPDATE =>
               statToExpr(js.Assign(js.DynamicSelect(receiver, arg1), arg2))
-
-            case ARR_SET =>
+            case DICT_UPDATE =>
               statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
           }
       })
