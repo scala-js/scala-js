@@ -1448,6 +1448,9 @@ abstract class GenJSCode extends SubComponent
             (asInstanceOf_?.symbol == Object_asInstanceOf) =>
           elems map genExpr
 
+        case Select(_, _) if arg.symbol == NilModule =>
+          Nil
+
         case _ =>
           abort("Passing a seq:_* to a JavaScript method is not supported: "+arg)
       }
