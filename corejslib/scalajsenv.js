@@ -151,6 +151,11 @@ function $ScalaJSEnvironmentClass() {
 
   // Runtime functions
 
+  this.isScalaJSObject = function(instance) {
+    return (typeof(instance) === "object") && (instance !== null) &&
+      !!instance.$classData;
+  }
+
   // Defined in javalangString.js
   // this.makeNativeStrWrapper = function(nativeStr) {...};
 
@@ -158,15 +163,8 @@ function $ScalaJSEnvironmentClass() {
   // this.createArrayTypeFunction = function(name, componentData) {...};
 
   this.isInstance = function(instance, classFullName) {
-    if ((typeof(instance) !== "object") || (instance === null))
-      return false;
-    else {
-      var classData = instance.$classData;
-      if (classData === undefined)
-        return false;
-      else
-        return classData.ancestors[classFullName] ? true : false;
-    }
+    return this.isScalaJSObject(instance) &&
+      !!instance.$classData.ancestors[classFullName];
   };
 
   this.asInstance = function(instance, classFullName) {
@@ -203,15 +201,66 @@ function $ScalaJSEnvironmentClass() {
   };
 
   this.anyEqEq = function(lhs, rhs) {
-    return this.modules["scala.runtime.BoxesRunTime$"].instance[
-      "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
+    if (this.isScalaJSObject(lhs)) {
+      return this.modules["scala.runtime.BoxesRunTime$"].instance[
+        "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
+    } else {
+      return lhs === rhs;
+    }
   }
 
   this.anyRefEqEq = function(lhs, rhs) {
+    // Called only if lhs' static type is a strict subtype of java.lang.Object
     if (lhs === null)
       return rhs === null;
     else
       return lhs["equals(java.lang.Object):scala.Boolean"](rhs);
+  }
+
+  this.objectGetClass = function(instance) {
+    if (this.isScalaJSObject(instance))
+      return instance["getClass():java.lang.Class"]();
+    else
+      return null; // Exception?
+  }
+
+  this.objectClone = function(instance) {
+    // TODO
+    throw new this.classes["scala.NotImplementedError"].type()[
+      "<init>():scala.NotImplementedError"]();
+  }
+
+  this.objectFinalize = function(instance) {
+    // TODO?
+  }
+
+  this.objectNotify = function(instance) {
+    // TODO?
+  }
+
+  this.objectNotifyAll = function(instance) {
+    // TODO?
+  }
+
+  this.objectEquals = function(instance, rhs) {
+    if (this.isScalaJSObject(instance) || (instance === null))
+      return instance["equals(java.lang.Object):scala.Boolean"]();
+    else
+      return instance === rhs;
+  }
+
+  this.objectHashCode = function(instance) {
+    if (this.isScalaJSObject(instance))
+      return instance["hashCode():scala.Int"]();
+    else
+      return 42; // TODO
+  }
+
+  this.objectToString = function(instance) {
+    if (this.isScalaJSObject(instance))
+      return instance["toString():java.lang.String"]();
+    else
+      return this.makeNativeStrWrapper(instance.toString());
   }
 }
 

@@ -842,11 +842,28 @@ abstract class GenJSCode extends SubComponent
               val instance = genExpr(receiver)
               val arguments = args map genExpr
 
-              js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)), arguments)
+              if (receiver.tpe =:= ObjectTpe) {
+                val helper = ObjectMemberMethodToHelperMethodName(fun.symbol)
+                genBuiltinApply(helper, (instance :: arguments):_*)
+              } else {
+                js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)),
+                    arguments)
+              }
             }
           }
       }
     }
+
+    lazy val ObjectMemberMethodToHelperMethodName = Map[Symbol, String](
+      Object_getClass  -> "objectGetClass",
+      Object_clone     -> "objectClone",
+      Object_finalize  -> "objectFinalize",
+      Object_notify    -> "objectNotify",
+      Object_notifyAll -> "objectNotifyAll",
+      Object_equals    -> "objectEquals",
+      Object_hashCode  -> "objectHashCode",
+      Object_toString  -> "objectToString"
+    )
 
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
         implicit pos: Position): js.Tree = {
@@ -1083,7 +1100,8 @@ abstract class GenJSCode extends SubComponent
           lazy val leftKind = toTypeKind(args.head.tpe)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
-            if (eqeq && leftKind.isReferenceType) {
+            if (eqeq && leftKind.isReferenceType &&
+                !isRawJSType(args(0).tpe) && !isRawJSType(args(1).tpe)) {
               val body = genEqEqPrimitive(args(0), args(1), lsrc, rsrc)
               if (not) js.UnaryOp("!", body) else body
             } else
