@@ -149,6 +149,17 @@ function $ScalaJSEnvironmentClass() {
   this.createPrimitiveType("scala.Float", 0.0, "F", "float");
   this.createPrimitiveType("scala.Double", 0.0, "D", "double");
 
+  // Create dummy class for java.lang.String
+
+  function StringClass() {
+    throw "The pseudo StringClass constructor should never be called"
+  }
+
+  this.createClass("java.lang.String", StringClass, "java.lang.Object", {
+    "java.lang.Object": true,
+    "java.lang.String": true
+  });
+
   // Runtime functions
 
   this.isScalaJSObject = function(instance) {
@@ -156,30 +167,50 @@ function $ScalaJSEnvironmentClass() {
       !!instance.$classData;
   }
 
-  // Defined in javalangString.js
-  // this.makeNativeStrWrapper = function(nativeStr) {...};
-
   // Defined in javalangArray.js
   // this.createArrayTypeFunction = function(name, componentData) {...};
 
+  var StringAncestors = {
+    "java.lang.String": true,
+    "java.io.Serializable": true,
+    "java.lang.CharSequence": true,
+    "java.lang.Comparable": true,
+    "java.lang.Object": true
+  };
+
   this.isInstance = function(instance, classFullName) {
-    return this.isScalaJSObject(instance) &&
-      !!instance.$classData.ancestors[classFullName];
+    if (this.isScalaJSObject(instance)) {
+      return !!instance.$classData.ancestors[classFullName];
+    } else if (typeof(instance) === "string") {
+      return !!StringAncestors[classFullName];
+    } else {
+      return false;
+    }
   };
 
   this.asInstance = function(instance, classFullName) {
     if ((instance === null) || this.isInstance(instance, classFullName))
       return instance;
     else
-      throw new this.classes["java.lang.ClassCastException"].type()[
-        "<init>(java.lang.String):java.lang.ClassCastException"](
-          this.makeNativeStrWrapper(
-            instance + " is not an instance of " + classFullName));
+      this.throwClassCastException(instance, classFullName);
   };
+
+  this.asInstanceString = function(instance) {
+    if ((instance === null) || (typeof(instance) === "string"))
+      return instance;
+    else
+      this.throwClassCastException(instance, "java.lang.String");
+  };
+
+  this.throwClassCastException = function(instance, classFullName) {
+    throw new this.classes["java.lang.ClassCastException"].type()[
+      "<init>(java.lang.String):java.lang.ClassCastException"](
+        instance + " is not an instance of " + classFullName);
+  }
 
   this.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
     return new arrayClassData.type(nativeArray);
-  };
+  }
 
   this.newArrayObject = function(arrayClassData, lengths) {
     return this.newArrayObjectInternal(arrayClassData, lengths, 0);
@@ -210,16 +241,17 @@ function $ScalaJSEnvironmentClass() {
   }
 
   this.anyRefEqEq = function(lhs, rhs) {
-    // Called only if lhs' static type is a strict subtype of java.lang.Object
-    if (lhs === null)
-      return rhs === null;
-    else
+    if (this.isScalaJSObject(lhs))
       return lhs["equals(java.lang.Object):scala.Boolean"](rhs);
+    else
+      return lhs === rhs;
   }
 
   this.objectGetClass = function(instance) {
-    if (this.isScalaJSObject(instance))
+    if (this.isScalaJSObject(instance) || (instance === null))
       return instance["getClass():java.lang.Class"]();
+    else if (typeof(instance) === "string")
+      return this.classes["java.lang.String"].class;
     else
       return null; // Exception?
   }
@@ -254,13 +286,6 @@ function $ScalaJSEnvironmentClass() {
       return instance["hashCode():scala.Int"]();
     else
       return 42; // TODO
-  }
-
-  this.objectToString = function(instance) {
-    if (this.isScalaJSObject(instance))
-      return instance["toString():java.lang.String"]();
-    else
-      return this.makeNativeStrWrapper(instance.toString());
   }
 }
 

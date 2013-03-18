@@ -196,6 +196,9 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           printBlock(body)
           print(")")
 
+        case js.UnaryOp("typeof", lhs) =>
+          print("typeof(", lhs, ")")
+
         case js.UnaryOp(op, lhs) =>
           print("(", op, lhs, ")")
 

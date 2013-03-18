@@ -6,57 +6,57 @@
   // java.lang.Boolean
 
   $env.registerNative("java.lang.Boolean :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   // java.lang.Character
 
   $env.registerNative("java.lang.Character :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(String.fromCharCode(this["charValue():scala.Char"]()));
+    return String.fromCharCode(this["charValue():scala.Char"]());
   });
 
   // java.lang.Byte
 
   $env.registerNative("java.lang.Byte :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   // java.lang.Short
 
   $env.registerNative("java.lang.Short :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   // java.lang.Integer
 
   $env.registerNative("java.lang.Integer :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   $env.registerNative("java.lang.Integer$ :: parseInt(java.lang.String):scala.Int", function(str) {
-    return parseInt(str.toNativeString());
+    return parseInt(str);
   });
 
   // java.lang.Long
 
   $env.registerNative("java.lang.Long :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   // java.lang.Float
 
   $env.registerNative("java.lang.Float :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   $env.registerNative("java.lang.Float$ :: parseFloat(java.lang.String):scala.Int", function(str) {
-    return parseFloat(str.toNativeString());
+    return parseFloat(str);
   });
 
   // java.lang.Double
 
   $env.registerNative("java.lang.Double :: toString():java.lang.String", function() {
-    return $env.makeNativeStrWrapper(this["$jsfield$value "].toString());
+    return this["$jsfield$value "].toString();
   });
 
   // java.lang.System
@@ -84,8 +84,7 @@
     // Well, it is not possible to implement this, right?
     throw new this.classes["java.lang.SecurityException"].type()[
       "<init>(java.lang.String):java.lang.SecurityException"](
-        this.makeNativeStrWrapper(
-          "Cannot terminate a JavaScript program"));
+        "Cannot terminate a JavaScript program");
   });
 
   // java.lang.Runtime
@@ -143,20 +142,14 @@
   // java.lang.StandardOutPrintStream$
 
   $env.registerNative("java.lang.StandardOutPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
-    if (typeof(console) !== 'undefined') {
-      var nativeStr = x.toNativeString();
-      if (nativeStr != '\n')
-        console.log(nativeStr);
-    }
+    if ((typeof(console) !== 'undefined') && (x != '\n'))
+      console.log(x);
   });
 
   // java.lang.StandardErrPrintStream$
 
   $env.registerNative("java.lang.StandardErrPrintStream$ :: writeString(java.lang.String):scala.Unit", function(x) {
-    if (typeof(console) !== 'undefined') {
-      var nativeStr = x.toNativeString();
-      if (nativeStr != '\n')
-        console.error(nativeStr);
-    }
+    if ((typeof(console) !== 'undefined') && (x != '\n'))
+      console.error(x);
   });
 })($ScalaJSEnvironment);

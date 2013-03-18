@@ -464,7 +464,7 @@ abstract class GenJSCode extends SubComponent
             case FloatTag | DoubleTag =>
               js.DoubleLiteral(value.doubleValue)
             case StringTag =>
-              MakeNativeStrWrapper(js.StringLiteral(value.stringValue))
+              js.StringLiteral(value.stringValue)
             case NullTag =>
               js.Null()
             case ClazzTag =>
@@ -752,7 +752,9 @@ abstract class GenJSCode extends SubComponent
             assert(ctor.isClassConstructor,
                    "'new' call to non-constructor: " + ctor.name)
 
-          if (isRawJSType(tpt.tpe)) {
+          if (isStringType(tpt.tpe)) {
+            genNewString(app)
+          } else if (isRawJSType(tpt.tpe)) {
             genPrimitiveJSNew(app)
           } else {
             val arguments = args map genExpr
@@ -836,24 +838,25 @@ abstract class GenJSCode extends SubComponent
 
             val Select(receiver, _) = fun
 
-            if (isRawJSType(receiver.tpe)) {
+            if (fun.symbol == Object_toString) {
+              js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
+            } else if (ObjectMemberMethodToHelperMethodName contains fun.symbol) {
+              val helper = ObjectMemberMethodToHelperMethodName(fun.symbol)
+              val arguments = (receiver :: args) map genExpr
+              genBuiltinApply(helper, arguments:_*)
+            } else if (isRawJSType(receiver.tpe)) {
               genPrimitiveJSCall(app)
             } else {
               val instance = genExpr(receiver)
               val arguments = args map genExpr
 
-              if (receiver.tpe =:= ObjectTpe) {
-                val helper = ObjectMemberMethodToHelperMethodName(fun.symbol)
-                genBuiltinApply(helper, (instance :: arguments):_*)
-              } else {
-                js.Apply(js.Select(instance, encodeMethodSym(fun.symbol)),
-                    arguments)
-              }
+              js.ApplyMethod(instance, encodeMethodSym(fun.symbol), arguments)
             }
           }
       }
     }
 
+    // TODO Make this primitives?
     lazy val ObjectMemberMethodToHelperMethodName = Map[Symbol, String](
       Object_getClass  -> "objectGetClass",
       Object_clone     -> "objectClone",
@@ -861,8 +864,7 @@ abstract class GenJSCode extends SubComponent
       Object_notify    -> "objectNotify",
       Object_notifyAll -> "objectNotifyAll",
       Object_equals    -> "objectEquals",
-      Object_hashCode  -> "objectHashCode",
-      Object_toString  -> "objectToString"
+      Object_hashCode  -> "objectHashCode"
     )
 
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
@@ -885,7 +887,10 @@ abstract class GenJSCode extends SubComponent
 
     def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isRawJSType(to)) {
+      if (isStringType(to)) {
+        js.BinaryOp("===", js.UnaryOp("typeof", value),
+            js.StringLiteral("string"))
+      } else if (isRawJSType(to)) {
         // isInstanceOf is not supported for raw JavaScript types
         abort("isInstanceOf["+to+"]")
       } else {
@@ -896,7 +901,9 @@ abstract class GenJSCode extends SubComponent
 
     def genAsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isRawJSType(to)) {
+      if (isStringType(to)) {
+        genBuiltinApply("asInstanceString", value)
+      } else if (isRawJSType(to)) {
         // asInstanceOf on JavaScript is completely erased
         value
       } else {
@@ -1161,16 +1168,16 @@ abstract class GenJSCode extends SubComponent
     }
 
     private def genStringConcat(tree: Apply, receiver: Tree, args: List[Tree]): js.Tree = {
-      implicit val jspos = tree.pos
+      implicit val pos = tree.pos
 
-      val List(arg) = args
+      val List(lhs, rhs) = for {
+        op <- receiver :: args
+      } yield {
+        if (isStringType(op.tpe)) genExpr(op)
+        else js.ApplyMethod(genExpr(op), js.Ident("toString"), Nil)
+      }
 
-      val instance = genExpr(receiver)
-      val boxed = makeBox(instance, receiver.tpe)
-
-      val stringInstance = js.ApplyMethod(boxed, encodeMethodSym(Object_toString), Nil)
-
-      js.ApplyMethod(stringInstance, encodeMethodSym(String_+), List(genExpr(args.head)))
+      js.BinaryOp("+", lhs, rhs)
     }
 
     private def makeBox(expr: js.Tree, tpe: Type): js.Tree =
@@ -1330,16 +1337,7 @@ abstract class GenJSCode extends SubComponent
             case V2JS => js.Undefined()
             case Z2JS => arg
             case N2JS => arg
-            case S2JS =>
-              arg match {
-                /* This "optimization" that might appear as negligible is
-                 * actually triggered by two very common cases:
-                 * - A string literal used where a JSString is required
-                 * - A call to jsObj.toString() where a JSString is required
-                 */
-                case MakeNativeStrWrapper(arg0) => arg0
-                case _ => js.ApplyMethod(arg, js.Ident("toNativeString"), Nil)
-              }
+            case S2JS => arg
 
             case F2JS =>
               val inputTpe = args.head.tpe
@@ -1357,7 +1355,7 @@ abstract class GenJSCode extends SubComponent
 
             case JS2Z => arg
             case JS2N => arg
-            case JS2S => MakeNativeStrWrapper(arg)
+            case JS2S => arg
 
             case ANY2DYN => arg
 
@@ -1388,6 +1386,8 @@ abstract class GenJSCode extends SubComponent
       val args = genPrimitiveJSArgs(sym, args0)
       val argc = args.length
 
+      val isString = isStringType(receiver0.tpe)
+
       funName match {
         case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
           assert(argc == 0)
@@ -1401,9 +1401,11 @@ abstract class GenJSCode extends SubComponent
         case "apply" =>
           js.Apply(receiver, args)
 
-        case "toString" if args.isEmpty =>
-          MakeNativeStrWrapper(
-              js.ApplyMethod(receiver, js.Ident("toString"), Nil))
+        case "charAt" | "codePointAt" if isString =>
+          js.ApplyMethod(receiver, js.Ident("charCodeAt"), args)
+
+        case "length" if isString =>
+          js.DotSelect(receiver, js.Ident("length"))
 
         case _ =>
           if (argc == 0 && sym.isGetter) {
@@ -1416,6 +1418,22 @@ abstract class GenJSCode extends SubComponent
           } else {
             js.ApplyMethod(receiver, js.PropertyName(funName), args)
           }
+      }
+    }
+
+    private def genNewString(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun @ Select(_, _), args0) = tree
+
+      val ctor = fun.symbol
+      val args = genPrimitiveJSArgs(ctor, args0)
+
+      (args0 map (_.tpe)) match {
+        case Nil => js.StringLiteral("")
+        case List(tpe) if isStringType(tpe) => args.head
+        case _ =>
+          // TODO
+          js.Throw(js.StringLiteral("new String() not implemented"))
       }
     }
 
@@ -1514,33 +1532,18 @@ abstract class GenJSCode extends SubComponent
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
 
-    /** Builder and extractor object for env.makeNativeStrWrapper */
-    object MakeNativeStrWrapper {
-      private val wrapperFunName = "makeNativeStrWrapper"
-
-      def apply(nativeStr: js.Tree)(implicit pos: Position = nativeStr.pos) = {
-        js.ApplyMethod(environment, js.Ident(wrapperFunName), List(nativeStr))
-      }
-
-      def unapply(tree: js.Apply): Option[js.Tree] = {
-        tree match {
-          case js.ApplyMethod(js.Ident(`ScalaJSEnvironmentName`),
-              js.Ident(`wrapperFunName`), List(nativeStr)) =>
-            Some(nativeStr)
-          case _ =>
-            None
-        }
-      }
-    }
-
     /** Test whether the given type represents a raw JavaScript type
      *
      *  I.e., test whether the type extends scala.js.JSAny
      */
     def isRawJSType(tpe: Type): Boolean = {
-      isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
+      isStringType(tpe) ||
+      (isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
         tpe.typeSymbol isSubClass JSAnyClass
-      }
+      })
     }
+
+    private def isStringType(tpe: Type): Boolean =
+      tpe.typeSymbol == StringClass
   }
 }

@@ -19,19 +19,19 @@
   }
 
   ClassClass.prototype["getName():java.lang.String"] = function() {
-    return $env.makeNativeStrWrapper(this.$data.displayName);
+    return this.$data.displayName;
   }
 
   ClassClass.prototype.getName = ClassClass.prototype["getName():java.lang.String"];
 
   ClassClass.prototype["toString():java.lang.String"] = function() {
-    var nativeResult = this.$data.displayName;
+    var displayName = this.$data.displayName;
     if (this.$data.isInterface)
-      nativeResult = "interface "+nativeResult;
+      return "interface "+displayName;
     else if (!this.$data.isPrimitive)
-      nativeResult = "class "+nativeResult;
-
-    return $env.makeNativeStrWrapper(nativeResult);
+      return "class "+displayName;
+    else
+      return displayName;
   }
 
   ClassClass.prototype["isInstance(java.lang.Object):scala.Boolean"] = function(obj) {

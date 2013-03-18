@@ -21,13 +21,13 @@
    *  getClass().getName() + '@' + Integer.toHexString(hashCode())
    */
   ObjectClass.prototype["toString():java.lang.String"] = function() {
-    var nativeClassName = this.getClass().getName().toNativeString();
+    var nativeClassName = this.getClass().getName();
     var hashCode = this["hashCode():scala.Int"]();
-    return $env.makeNativeStrWrapper(nativeClassName + '@' + hashCode);
+    return nativeClassName + '@' + hashCode;
   }
 
   ObjectClass.prototype.toString = function() {
-    return this["toString():java.lang.String"]().toNativeString();
+    return this["toString():java.lang.String"]();
   }
 
   ObjectClass.prototype["equals(java.lang.Object):scala.Boolean"] = function(rhs) {
