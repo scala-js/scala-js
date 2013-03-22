@@ -217,6 +217,16 @@ object JSArray {
   }
 }
 
+class Date extends JSObject {
+  def this(milliseconds: JSNumber) = this()
+  def this(dateString: JSString) = this()
+  def this(year: JSNumber, month: JSNumber, day: JSNumber = 1,
+      hours: JSNumber = 0, minutes: JSNumber = 0, seconds: JSNumber = 0,
+      milliseconds: JSNumber = 0) = this()
+
+  def getTime(): JSNumber = sys.error("stub")
+}
+
 trait JSFunction0[+R <: JSAny] extends JSObject {
   def apply(): R
 }

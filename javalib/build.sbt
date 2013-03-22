@@ -1,3 +1,8 @@
-sourcesJS <<= baseDirectory map (base => ((base / "source" / "src") ** "*.scala").get)
+sourcesJS <<= (baseDirectory, baseDirectory in library) map {
+  (base, libraryBase) =>
+    ((base / "source" / "src") ** "*.scala").get ++ Seq(
+        libraryBase / "src" / "main" / "scala" / "scala" / "js" / "JSAny.scala"
+    )
+}
 
 sources in Compile := Seq()

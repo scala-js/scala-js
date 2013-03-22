@@ -6,6 +6,10 @@ object ScalaJSBuild extends Build {
 
   val scalajsScalaVersion = "2.10.0"
 
+  val sourcesJS = TaskKey[Seq[File]]("sources-js")
+  val compileJS = TaskKey[Unit]("compile-js")
+  val packageJS = TaskKey[File]("package-js")
+
   val defaultSettings = Defaults.defaultSettings ++ Seq(
       scalaVersion := scalajsScalaVersion,
       scalacOptions ++= Seq(
@@ -53,10 +57,6 @@ object ScalaJSBuild extends Build {
           mainClass := Some("scala.tools.nsc.scalajs.Main")
       )
   )
-
-  val sourcesJS = TaskKey[Seq[File]]("sources-js")
-  val compileJS = TaskKey[Unit]("compile-js")
-  val packageJS = TaskKey[File]("package-js")
 
   val compileJSSettings = Seq(
       sourcesJS <<= sources in Compile,
@@ -121,7 +121,7 @@ object ScalaJSBuild extends Build {
               baseDirectory, target in Compile, name
           ) map { (baseDirectory, target, name) =>
             // hard-coded because order matters!
-            val fileNames = Seq("scalajsenv.js", "scalajsnatives.js",
+            val fileNames = Seq("scalajsenv.js",
                 "javalangObject.js", "javalangClass.js",
                 "javalangArray.js", "RefTypes.js")
 
@@ -137,7 +137,19 @@ object ScalaJSBuild extends Build {
   lazy val javalib = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
-      settings = defaultSettings ++ compileJSSettings
+      settings = defaultSettings ++ compileJSSettings ++ Seq(
+          // Override packageJS to exclude scala.js._
+          packageJS in Compile <<= (
+              compileJS in Compile, target in Compile, name
+          ) map { (compilationResult, target, name) =>
+            val allJSFiles =
+              ((target / "jsclasses" ** "*.js") ---
+                  (target / "jsclasses" / "scala" / "js" ** "*.js")).get
+            val output = target / (name + ".js")
+            cat(allJSFiles) #> output ! ;
+            output
+          }
+      )
   ).dependsOn(compiler)
 
   lazy val scalalib = Project(
