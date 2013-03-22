@@ -1,5 +1,8 @@
 package java.lang
 
+import scala.js._
+import JSDynamic.window
+
 abstract class Number extends Object {
   //protected[lang] val isInt: scala.Boolean
 
@@ -40,7 +43,7 @@ final class Byte(private val value: scala.Byte) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
 
-  override def toString = new Integer(value.toInt).toString
+  override def toString = (value:JSNumber).toString
 }
 
 object Byte {
@@ -68,7 +71,7 @@ final class Short(private val value: scala.Short) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
 
-  override def toString = new Integer(value.toInt).toString
+  override def toString = (value:JSNumber).toString
 }
 
 object Short {
@@ -96,7 +99,7 @@ final class Integer(private val value: scala.Int) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
 
-  @native override def toString: String = sys.error("stub")
+  override def toString = (value:JSNumber).toString
 }
 
 object Integer {
@@ -106,9 +109,11 @@ object Integer {
 
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
-  @native def parseInt(s: String): scala.Int = sys.error("stub")
+  def parseInt(s: String): scala.Int =
+    window.parseInt(s).asInstanceOf[JSNumber].toInt
 
-  def parseInt(s: String, radix: scala.Int): scala.Int = sys.error("unimplemented")
+  def parseInt(s: String, radix: scala.Int): scala.Int =
+    window.parseInt(s, radix).asInstanceOf[JSNumber].toInt
 
   def toString(i: scala.Int) = valueOf(i).toString
 
@@ -137,7 +142,7 @@ final class Long(private val value: scala.Long) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
 
-  override def toString = new Integer(value.toInt).toString
+  override def toString = (value:JSNumber).toString
 }
 
 object Long {
@@ -174,7 +179,7 @@ final class Float(private val value: scala.Float) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Float] && (value == that.asInstanceOf[Float].value)
 
-  @native override def toString: String = sys.error("stub")
+  override def toString = (value:JSNumber).toString
 
   def isNaN: scala.Boolean = Float.isNaN(value)
 }
@@ -193,7 +198,8 @@ object Float {
 
   def valueOf(floatValue: scala.Float) = new Float(floatValue)
 
-  @native def parseFloat(s: String): scala.Float = sys.error("stub")
+  def parseFloat(s: String): scala.Float =
+    window.parseFloat(s).asInstanceOf[JSNumber].toFloat
 
   def toString(f: scala.Float) = valueOf(f).toString
 
@@ -225,7 +231,7 @@ final class Double(private val value: scala.Double) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Double] && (value == that.asInstanceOf[Double].value)
 
-  override def toString = new Float(value.toFloat).toString
+  override def toString = (value:JSNumber).toString
 
   def isNaN: scala.Boolean = Double.isNaN(value)
 }

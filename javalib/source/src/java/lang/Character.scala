@@ -1,12 +1,15 @@
 package java.lang
 
+import scala.js._
+
 class Character(value: scala.Char) {
   def charValue(): scala.Char = value
 
   override def equals(that: Any) =
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
-  @native override def toString: String = sys.error("stub")
+  override def toString: String =
+    JSDynamic.window.String.fromCharCode(value.toInt).asInstanceOf[JSString]
 }
 
 object Character {
