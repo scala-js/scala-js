@@ -4,7 +4,7 @@ import Process.cat
 
 object ScalaJSBuild extends Build {
 
-  val scalajsScalaVersion = "2.10.0"
+  val scalajsScalaVersion = "2.10.1"
 
   val sourcesJS = TaskKey[Seq[File]]("sources-js")
   val compileJS = TaskKey[Unit]("compile-js")
