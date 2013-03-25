@@ -1408,7 +1408,13 @@ abstract class GenJSCode extends SubComponent
           js.DotSelect(receiver, js.Ident("length"))
 
         case _ =>
-          if (argc == 0 && sym.isGetter) {
+          def wasNullaryMethod(sym: Symbol) = {
+            beforePhase(currentRun.uncurryPhase) {
+              sym.tpe.isInstanceOf[NullaryMethodType]
+            }
+          }
+
+          if (argc == 0 && (sym.isGetter || wasNullaryMethod(sym))) {
             js.Select(receiver, js.PropertyName(funName))
           } else if (argc == 1 && sym.isSetter) {
             statToExpr(js.Assign(
