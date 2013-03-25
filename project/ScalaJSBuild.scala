@@ -175,15 +175,23 @@ object ScalaJSBuild extends Build {
   lazy val examples = Project(
       id = "examples",
       base = file("examples")
-  ).aggregate(exampleHelloWorld)
+  ).aggregate(exampleHelloWorld, exampleReversi)
+
+  lazy val exampleSettings = Seq(
+      unmanagedClasspath in Compile <+= (target in library) map { libTarget =>
+        Attributed.blank(libTarget / "jsclasses")
+      }
+  )
 
   lazy val exampleHelloWorld = Project(
       id = "helloworld",
       base = file("examples") / "helloworld",
-      settings = defaultSettings ++ compileJSSettings ++ Seq(
-          unmanagedClasspath in Compile <+= (target in library) map { libTarget =>
-            Attributed.blank(libTarget / "jsclasses")
-          }
-      )
+      settings = defaultSettings ++ compileJSSettings ++ exampleSettings
+  ).dependsOn(compiler)
+
+  lazy val exampleReversi = Project(
+      id = "reversi",
+      base = file("examples") / "reversi",
+      settings = defaultSettings ++ compileJSSettings ++ exampleSettings
   ).dependsOn(compiler)
 }

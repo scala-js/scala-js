@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Reversi - Scala-JS example</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body>
+
+<h1>Reversi - Scala-JS example</h1>
+
+<p>Somewhat inspired by
+<a href="http://davidbau.com/reversi/">http://davidbau.com/reversi/</a></p>
+
+<div id="playground">
+</div>
+
+<script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+
+<script type="text/javascript" src="../../target/scalajs-runtime.js"></script>
+<script type="text/javascript" src="./target/reversi.js"></script>
+
+<script type="text/javascript">
+//<![CDATA[
+$(function() {
+  var mainInstance = new $ScalaJSEnvironment.classes["reversi.Reversi"].type(
+    )["<init>(reversi.JQueryStatic,reversi.JQuery):reversi.Reversi"](
+      jQuery, jQuery("#playground"));
+  mainInstance["startGame():scala.Unit"]();
+});
+//]]>
+</script>
+
+</body>
+</html>
