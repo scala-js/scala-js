@@ -44,6 +44,8 @@ abstract class JSTypefileParser {
     debuglog("[class] >> " + root.fullName)
 
     pushBusy(root) {
+      definitions.init()
+
       val fileBytes = file.toByteArray
       val clazz = if (root.isModule) root.companionClass else root
       // WARNING! do no use clazz.companionModule to find staticModule.
