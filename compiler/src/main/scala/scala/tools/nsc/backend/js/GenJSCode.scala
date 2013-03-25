@@ -78,7 +78,7 @@ abstract class GenJSCode extends SubComponent
                 genInterface(cd)
               } else {
                 val generatedClass = genClass(cd)
-                if (sym.isModuleClass && !sym.isLifted) {
+                if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass) {
                   js.Block(List(generatedClass), genModuleAccessor(sym))
                 } else generatedClass
               }
