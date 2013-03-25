@@ -64,12 +64,14 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModule, "encodeModuleSymInternal called with non-module symbol: " + sym)
+    require(sym.isModuleOrModuleClass,
+        "encodeModuleSymInternal called with non-module symbol: " + sym)
     js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("_instance"))
   }
 
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModule, "encodeModuleSym called with non-module symbol: " + sym)
+    require(sym.isModuleOrModuleClass,
+        "encodeModuleSym called with non-module symbol: " + sym)
     js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("instance"))
   }
 

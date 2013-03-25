@@ -1504,8 +1504,7 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate loading of a module value */
     private def genLoadModule(sym: Symbol)(implicit pos: Position) = {
-      val symbol = if (sym.isModuleClass) sym.companionModule else sym
-      encodeModuleSym(symbol)
+      encodeModuleSym(sym)
     }
 
     /** Generate access to a static member */
