@@ -19,7 +19,7 @@ object System {
     val jsDest = reflect.Array.getUnderlying(dest)
     var i = 0
     while (i < length) {
-      jsSrc(srcPos+i) = jsDest(destPos+i)
+      jsDest(destPos+i) = jsSrc(srcPos+i)
       i += 1
     }
   }
