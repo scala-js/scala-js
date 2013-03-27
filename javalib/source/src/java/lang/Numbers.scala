@@ -122,9 +122,9 @@ object Integer {
   def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
   def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
 
-  def toBinaryString(i: scala.Int): String = sys.error("unimplemented")
-  def toHexString(i: scala.Int): String = sys.error("unimplemented")
-  def toOctalString(i: scala.Int): String = sys.error("unimplemented")
+  def toBinaryString(i: scala.Int): String = (i:JSNumber).toString(2)
+  def toHexString(i: scala.Int): String = (i:JSNumber).toString(16)
+  def toOctalString(i: scala.Int): String = (i:JSNumber).toString(8)
 }
 
 ////////////////// Long //////////////////

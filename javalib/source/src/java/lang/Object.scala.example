@@ -1,0 +1,29 @@
+package java.lang
+
+import scala.js._
+
+class Object {
+  final def getClass(): Class[_] =
+    this.asInstanceOf[JSDynamic].$classData.`class`.asInstanceOf[Class[_]]
+
+  def hashCode(): scala.Int =
+    42 // TODO
+
+  def equals(that: Object): scala.Boolean =
+    this eq that
+
+  protected def clone(): Object =
+    if (isInstanceOf[Cloneable]) ???
+    else throw new CloneNotSupportedException()
+
+  override def toString(): String =
+    getClass().getName() + "@" + Integer.toHexString(hashCode())
+
+  final def notify(): Unit = ()
+  final def notifyAll(): Unit = ()
+  final def wait(timeout: scala.Long): Unit = ()
+  final def wait(timeout: scala.Long, nanos: scala.Int): Unit = ()
+  final def wait(): Unit = ()
+
+  protected def finalize(): Unit = ()
+}

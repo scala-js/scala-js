@@ -62,6 +62,10 @@ class ClassCastException(message: String, cause: Throwable) extends RuntimeExcep
   def this(cause: Throwable) = this(null, cause)
 }
 
+class CloneNotSupportedException(s: String) extends Exception(s) {
+  def this() = this(null)
+}
+
 class IndexOutOfBoundsException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }

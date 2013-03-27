@@ -1,7 +1,6 @@
 package java.lang.reflect
 
 import scala.js._
-import JSDynamic.window
 
 import java.lang.Class
 
@@ -41,19 +40,19 @@ object Array {
   def setDouble(array: AnyRef, index: Int, value: Double): Unit = getUnderlying[JSAny](array)(index) = value
 
   private def newArray(componentType: Class[_], length: Int): AnyRef = {
-    window.$ScalaJSEnvironment.newArrayObject(
-        componentType.asInstanceOf[JSDynamic].$data.array, JSArray(length:JSNumber))
+    componentType.env.newArrayObject(
+        componentType.data.array, JSArray(length:JSNumber))
   }
 
   private def multiNewArray(componentType: Class[_],
       dimensions: scala.Array[Int]): AnyRef = {
     val lengths = getUnderlying[JSNumber](dimensions)
-    var arrayClassData = componentType.asInstanceOf[JSDynamic].$data
+    var arrayClassData = componentType.data
     var i = 0
     while (i < lengths.length) {
       arrayClassData = arrayClassData.array
       i += 1
     }
-    window.$ScalaJSEnvironment.newArrayObject(arrayClassData, lengths)
+    componentType.env.newArrayObject(arrayClassData, lengths)
   }
 }
