@@ -17,12 +17,21 @@ Build is done with [sbt](http://www.scala-sbt.org/). Use
     sbt> package-js
 
 to compile the compiler and the standard library. Afterwards, you can
-compile the example application Hello World:
+compile the example applications:
 
-    sbt> helloworld/package-js
+    sbt> examples/package-js
 
-You can "execute" that application by opening the file
-`examples/helloworld/helloworld.html` in your favorite browser.
+You can "execute" the example applications by opening their respective HTML
+files in your favorite browser.
+
+Currently, two examples are provided:
+
+*   `examples/helloworld/helloworld.html`, saying Hello World in four different
+    ways (using DOM or jQuery, and using the untyped or typed interface to
+    JavaScript).
+*   `examples/reversi/reversi.html`, an implementation of a
+    [Reversi](http://en.wikipedia.org/wiki/Reversi) game. Note that it uses the
+    HTML5 Canvas element, so it won't work with Internet Explorer 8 or below.
 
 ## License
 
