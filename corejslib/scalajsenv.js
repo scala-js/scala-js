@@ -1,6 +1,6 @@
-/* ------------------
- * The top-level ScalaJS environment
- * ------------------ */
+/* ---------------------------------- *
+ * The top-level Scala.js environment *
+ * ---------------------------------- */
 
 function $ScalaJSEnvironmentClass() {
   // Fields

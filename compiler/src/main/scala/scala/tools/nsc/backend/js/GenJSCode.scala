@@ -1515,9 +1515,9 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {
-      /* Actually, there is no static member in Scala JS. If we come here, that
+      /* Actually, there is no static member in Scala.js. If we come here, that
        * is because we found the symbol in a Java-emitted .class in the
-       * classpath. But the corresponding implementation in Scala JS will
+       * classpath. But the corresponding implementation in Scala.js will
        * actually be a val in the companion module.
        * So we cheat here. This is a workaround for not having separate
        * compilation yet.

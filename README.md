@@ -1,4 +1,4 @@
-# Scala-JS, a JavaScript backend for Scala
+# Scala.js, a JavaScript backend for Scala
 
 This project aims at providing a JavaScript backend for Scala.
 
@@ -35,5 +35,5 @@ Currently, two examples are provided:
 
 ## License
 
-Scala-JS is distributed under the
+Scala.js is distributed under the
 [Scala License](http://www.scala-lang.org/node/146).

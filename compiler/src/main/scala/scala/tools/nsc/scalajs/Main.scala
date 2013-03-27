@@ -20,7 +20,7 @@ object Main extends Driver with EvalLoop {
 
   val versionString = "version 0.1"
 
-  override val versionMsg = "ScalaJS compiler " +
+  override val versionMsg = "Scala.js compiler " +
     versionString + " -- " +
     copyrightString
 
