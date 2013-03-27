@@ -122,8 +122,7 @@ object ScalaJSBuild extends Build {
           ) map { (baseDirectory, target, name) =>
             // hard-coded because order matters!
             val fileNames = Seq("scalajsenv.js",
-                "javalangObject.js", "javalangClass.js",
-                "javalangArray.js", "RefTypes.js")
+                "javalangObject.js", "RefTypes.js")
 
             val allJSFiles = fileNames map (baseDirectory / _)
             val output = target / (name + ".js")

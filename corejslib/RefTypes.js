@@ -24,14 +24,8 @@
       return this;
     }
 
-    if (isObject) {
-      Class.prototype["toString():java.lang.String"] = function() {
-        return this.$jsfield$elem["toString():java.lang.String"]();
-      }
-    } else {
-      Class.prototype["toString():java.lang.String"] = function() {
-        return $env.makeNativeStrWrapper(this.$jsfield$elem.toString());
-      }
+    Class.prototype["toString():java.lang.String"] = function() {
+      return this.$jsfield$elem.toString();
     }
 
     var ancestors = {

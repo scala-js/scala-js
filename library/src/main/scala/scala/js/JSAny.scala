@@ -159,6 +159,8 @@ sealed trait JSNumber extends JSAny {
   def ^(that: JSDynamic): JSNumber
 
   def ||(that: JSNumber): JSNumber
+
+  def toString(base: JSNumber): JSString
 }
 
 object JSNumber {
