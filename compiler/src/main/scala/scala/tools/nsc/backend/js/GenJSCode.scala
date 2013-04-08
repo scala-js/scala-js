@@ -402,8 +402,8 @@ abstract class GenJSCode extends SubComponent
         case app: Apply =>
           genApply(app)
 
-        case ApplyDynamic(qual, args) =>
-          sys.error("No ApplyDynamic support yet.")
+        case app : ApplyDynamic =>
+          genApplyDynamic(app, nobox = false)
 
         case This(qual) =>
           val symIsModuleClass = tree.symbol.isModuleClass
@@ -1261,15 +1261,17 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
-    private def genApplyDynamic(tree: Tree, nobox: Boolean = false): js.Tree = {
-      implicit val jspos = tree.pos
+    private def genApplyDynamic(tree: ApplyDynamic,
+        nobox: Boolean = false): js.Tree = {
+
+      implicit val pos = tree.pos
 
       val sym = tree.symbol
       val ApplyDynamic(receiver, args) = tree
 
       val instance = genExpr(receiver)
       val arguments = genApplyDynamicArgs(sym, args)
-      val apply = js.Apply(js.Select(instance, encodeMethodSym(sym)), arguments)
+      val apply = js.ApplyMethod(instance, encodeMethodSym(sym), arguments)
 
       val returnType = returnTypeOf(sym)
       if (nobox || !isPrimitiveKind(toTypeKind(returnType)))
@@ -1278,7 +1280,9 @@ abstract class GenJSCode extends SubComponent
         makeBox(apply, returnType)
     }
 
-    private def genApplyDynamicArgs(sym: Symbol, args: List[Tree]): List[js.Tree] = {
+    private def genApplyDynamicArgs(sym: Symbol,
+        args: List[Tree]): List[js.Tree] = {
+
       val types = sym.tpe match {
         case MethodType(params, _) => params map (_.tpe)
         case NullaryMethodType(_) => Nil
