@@ -18,6 +18,7 @@ import scalajs.JSGlobal
 abstract class GenJSCode extends SubComponent
                             with TypeKinds
                             with JSEncoding
+                            with JSBridges
                             with JSDesugaring
                             with GenJSFiles {
   val global: JSGlobal
@@ -131,9 +132,11 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
+      val bridges = genBridgesForClass(currentClassSym)
+
       val typeVar = js.Ident("Class")
       val classDefinition = js.ClassDef(typeVar,
-          encodeClassSym(superClass), generatedMethods.toList)
+          encodeClassSym(superClass), generatedMethods.toList ++ bridges)
 
       val createClassStat = {
         val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
