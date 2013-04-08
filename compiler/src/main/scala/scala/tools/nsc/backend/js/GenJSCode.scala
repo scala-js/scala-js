@@ -1122,6 +1122,7 @@ abstract class GenJSCode extends SubComponent
             case DIV =>
               val actualDiv = js.BinaryOp("/", lsrc, rsrc)
               (leftKind: @unchecked) match {
+                case LongKind => genBuiltinApply("truncateToLong", actualDiv)
                 case _:INT => js.BinaryOp("|", actualDiv, js.IntLiteral(0))
                 case _:FLOAT => actualDiv
               }
@@ -1254,8 +1255,11 @@ abstract class GenJSCode extends SubComponent
         case B2F | B2D | S2F | S2D | C2F | C2D | I2F | I2D | L2F | L2D =>
           source
 
-        case F2B | F2S | F2C | F2I | F2L | D2B | D2S | D2C | D2I | D2L =>
-          js.ApplyMethod(js.Ident("Math"), js.Ident("round"), List(source))
+        case F2B | F2S | F2C | F2I | D2B | D2S | D2C | D2I =>
+          js.BinaryOp("|", source, js.IntLiteral(0))
+
+        case F2L | D2L =>
+          genBuiltinApply("truncateToLong", source)
 
         case _ => source
       }

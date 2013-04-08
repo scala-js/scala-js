@@ -324,6 +324,10 @@ function $ScalaJSEnvironmentClass() {
     else
       return 42; // TODO
   }
+
+  this.truncateToLong = function(value) {
+    return value < 0 ? Math.ceil(value) : Math.floor(value);
+  }
 }
 
 var $ScalaJSEnvironment = new $ScalaJSEnvironmentClass();
