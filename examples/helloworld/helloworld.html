@@ -20,7 +20,7 @@ $(function() {
   var mainInstance = $ScalaJSEnvironment.modules["helloworld.HelloWorld$"].instance;
   var mainArgs = $ScalaJSEnvironment.makeNativeArrayWrapper(
     $ScalaJSEnvironment.classes["java.lang.String"].array, []);
-  mainInstance["main(java.lang.String[]):scala.Unit"](mainArgs);
+  mainInstance.main(mainArgs);
 });
 //]]>
 </script>

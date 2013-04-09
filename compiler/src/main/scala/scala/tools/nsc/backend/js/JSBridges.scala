@@ -7,6 +7,7 @@ package scala.tools.nsc
 package backend
 package js
 
+import scala.math.PartialOrdering
 import scala.reflect.internal.Flags
 
 /** Generation of bridges for JavaScript
@@ -17,6 +18,8 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   val global: scalajs.JSGlobal
 
   import global._
+  import definitions._
+  import jsDefinitions._
 
   private def isCandidateForBridge(sym: Symbol): Boolean =
     sym.isMethod && !sym.isConstructor && !sym.isBridge && sym.isPublic
@@ -45,29 +48,181 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     val cases = for {
       (argc, methods) <- altsByArgCount
     } yield {
-      (js.IntLiteral(argc), genBridgeSameArgc(methods))
+      (js.IntLiteral(argc), genBridgeSameArgc(methods, 0))
     }
 
     val body = {
       if (cases.size == 1) cases.head._2
       else {
         js.Switch(js.DotSelect(js.Ident("arguments"), js.Ident("length")),
-            cases, genThrowTypeError(alts))
+            cases, genThrowTypeError())
       }
     }
 
     js.MethodDef(js.PropertyName(name.toString()), formalsArgs, body)
   }
 
-  private def genBridgeSameArgc(alts: List[Symbol]): js.Tree = {
-    // TODO Discriminate by runtime type tests
-    genTieBreak(alts)
+  private def genBridgeSameArgc(alts: List[Symbol], paramIndex: Int): js.Tree = {
+    implicit val pos = alts.head.pos
+
+    val remainingParamLists = alts map (_.tpe.params.drop(paramIndex))
+
+    if (alts.size == 1) genApplyForSym(alts.head)
+    if (remainingParamLists.head.isEmpty) genTieBreak(alts)
+    else {
+      val altsByTypeTest = groupByWithoutHashCode(alts) {
+        alt => typeTestForTpe(alt.tpe.params(paramIndex).tpe)
+      }
+
+      if (altsByTypeTest.size == 1) {
+        // Testing this parameter is not doing any us good
+        genBridgeSameArgc(alts, paramIndex+1)
+      } else {
+        // Sort them so that, e.g., isInstanceOf[String]
+        // comes before isInstanceOf[Object]
+        val sortedAltsByTypeTest = topoSortDistinctsBy(
+            altsByTypeTest)(_._1)(RTTypeTest.Ordering)
+
+        val defaultCase = genThrowTypeError()
+
+        sortedAltsByTypeTest.foldRight[js.Tree](defaultCase) { (elem, elsep) =>
+          val (typeTest, subAlts) = elem
+          implicit val pos = subAlts.head.pos
+
+          def param = genFormalArg(paramIndex+1)
+          val genSubAlts = genBridgeSameArgc(subAlts, paramIndex+1)
+
+          typeTest match {
+            case TypeOfTypeTest(typeString) =>
+              js.If(
+                  js.BinaryOp("===", js.UnaryOp("typeof", param),
+                      js.StringLiteral(typeString)),
+                  genSubAlts, elsep)
+
+            case InstanceOfTypeTest(tpe) =>
+              js.If(genIsInstance(param, tpe), genSubAlts, elsep)
+
+            case NoTypeTest =>
+              genSubAlts // note: elsep is discarded, obviously
+          }
+        }
+      }
+    }
+  }
+
+  private def genIsInstance(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    js.ApplyMethod(environment, js.Ident("isInstance"),
+        List(value, js.StringLiteral(encodeFullName(tpe))))
   }
 
   private def genTieBreak(alts: List[Symbol]): js.Tree = {
     // TODO For now we just emit all calls (the first one wins)
     implicit val pos = alts.head.pos
     js.Block(alts map genApplyForSym)
+  }
+
+  private sealed abstract class RTTypeTest
+
+  private final case class TypeOfTypeTest(typeString: String) extends RTTypeTest
+
+  private final case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
+    override def equals(that: Any): Boolean = {
+      that match {
+        case InstanceOfTypeTest(thatTpe) => tpe =:= thatTpe
+        case _ => false
+      }
+    }
+  }
+
+  private case object NoTypeTest extends RTTypeTest
+
+  private object RTTypeTest {
+    implicit object Ordering extends PartialOrdering[RTTypeTest] {
+      override def tryCompare(lhs: RTTypeTest, rhs: RTTypeTest): Option[Int] = {
+        if (lteq(lhs, rhs)) if (lteq(rhs, lhs)) Some(0) else Some(-1)
+        else                if (lteq(rhs, lhs)) Some(1) else None
+      }
+
+      override def lteq(lhs: RTTypeTest, rhs: RTTypeTest): Boolean = {
+        (lhs, rhs) match {
+          case (_, NoTypeTest) => true
+          case (NoTypeTest, _) => false
+
+          case (TypeOfTypeTest(s1), TypeOfTypeTest(s2)) =>
+            s1 <= s2
+
+          case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
+            t1 <:< t2
+
+          case (_:TypeOfTypeTest, _:InstanceOfTypeTest) => true
+          case (_:InstanceOfTypeTest, _:TypeOfTypeTest) => false
+        }
+      }
+
+      override def equiv(lhs: RTTypeTest, rhs: RTTypeTest): Boolean = {
+        lhs == rhs
+      }
+    }
+  }
+
+  // Group-by that does not rely on hashCode(), only equals() - O(n²)
+  private def groupByWithoutHashCode[A, B](
+      coll: List[A])(f: A => B): List[(B, List[A])] = {
+
+    import scala.collection.mutable.ArrayBuffer
+    val m = new ArrayBuffer[(B, List[A])]
+    m.sizeHint(coll.length)
+
+    for (elem <- coll) {
+      val key = f(elem)
+      val index = m.indexWhere(_._1 == key)
+      if (index < 0) m += ((key, List(elem)))
+      else m(index) = (key, elem :: m(index)._2)
+    }
+
+    m.toList
+  }
+
+  // Very simple O(n²) topological sort for elements assumed to be distinct
+  private def topoSortDistinctsBy[A <: AnyRef, B](coll: List[A])(f: A => B)(
+      implicit ord: PartialOrdering[B]): List[A] = {
+
+    @scala.annotation.tailrec
+    def loop(coll: List[A], acc: List[A]): List[A] = {
+      if (coll.isEmpty) acc
+      else if (coll.tail.isEmpty) coll.head :: acc
+      else {
+        val (lhs, rhs) = coll.span(x => !coll.forall(
+            y => (x eq y) || !ord.lteq(f(x), f(y))))
+        assert(!rhs.isEmpty, s"cycle while ordering $coll")
+        loop(lhs ::: rhs.tail, rhs.head :: acc)
+      }
+    }
+
+    loop(coll, Nil)
+  }
+
+  private def typeTestForTpe(tpe: Type): RTTypeTest = {
+    toTypeKind(tpe) match {
+      case UNDEFINED => TypeOfTypeTest("undefined")
+      case _:INT | _:FLOAT => TypeOfTypeTest("number")
+      case BOOL => TypeOfTypeTest("boolean")
+
+      case REFERENCE(cls) =>
+        if (cls == StringClass) TypeOfTypeTest("string")
+        else if (isRawJSType(tpe)) {
+          cls match {
+            case JSNumberClass => TypeOfTypeTest("number")
+            case JSBooleanClass => TypeOfTypeTest("boolean")
+            case JSStringClass => TypeOfTypeTest("string")
+            case JSUndefinedClass => TypeOfTypeTest("undefined")
+            case _ => NoTypeTest
+          }
+        } else InstanceOfTypeTest(tpe)
+
+      case ARRAY(_) => InstanceOfTypeTest(tpe)
+    }
   }
 
   private def genApplyForSym(sym: Symbol): js.Tree = {
@@ -78,7 +233,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     }
   }
 
-  private def genThrowTypeError(alts: List[Symbol])(
+  private def genThrowTypeError()(
       implicit pos: Position): js.Tree = {
     js.Throw(js.StringLiteral("No matching overload"))
   }

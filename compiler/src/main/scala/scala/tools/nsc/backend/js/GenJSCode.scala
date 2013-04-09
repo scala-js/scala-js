@@ -1547,19 +1547,19 @@ abstract class GenJSCode extends SubComponent
     def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: Position) = {
       js.ApplyMethod(environment, js.Ident(funName), args.toList)
     }
-
-    /** Test whether the given type represents a raw JavaScript type
-     *
-     *  I.e., test whether the type extends scala.js.JSAny
-     */
-    def isRawJSType(tpe: Type): Boolean = {
-      isStringType(tpe) ||
-      (isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
-        tpe.typeSymbol isSubClass JSAnyClass
-      })
-    }
-
-    private def isStringType(tpe: Type): Boolean =
-      tpe.typeSymbol == StringClass
   }
+
+  /** Test whether the given type represents a raw JavaScript type
+   *
+   *  I.e., test whether the type extends scala.js.JSAny
+   */
+  def isRawJSType(tpe: Type): Boolean = {
+    isStringType(tpe) ||
+    (isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
+      tpe.typeSymbol isSubClass JSAnyClass
+    })
+  }
+
+  private def isStringType(tpe: Type): Boolean =
+    tpe.typeSymbol == StringClass
 }
