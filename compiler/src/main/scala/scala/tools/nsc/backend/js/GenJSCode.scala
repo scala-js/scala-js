@@ -112,20 +112,24 @@ abstract class GenJSCode extends SubComponent
         if (currentClassSym.superClass == NoSymbol) ObjectClass
         else currentClassSym.superClass
 
-      val generatedMethods = new ListBuffer[js.Tree]
+      val generatedMembers = new ListBuffer[js.Tree]
 
       if (!currentClassSym.isInterface)
-        generatedMethods += genConstructor(cd)
+        generatedMembers += genConstructor(cd)
 
       def gen(tree: Tree) {
         tree match {
           case EmptyTree => ()
-          case _: ModuleDef =>
-            abort("Modules should have been eliminated by refchecks: " + tree)
-          case ValDef(mods, name, tpt, rhs) =>
-            () // fields are added in constructors
-          case dd: DefDef => generatedMethods ++= genMethod(dd)
           case Template(_, _, body) => body foreach gen
+
+          case ValDef(mods, name, tpt, rhs) =>
+            val sym = tree.symbol
+            generatedMembers +=
+              js.CustomDef(encodeFieldSym(sym), genZeroOf(sym.tpe))
+
+          case dd: DefDef =>
+            generatedMembers ++= genMethod(dd)
+
           case _ => abort("Illegal tree in gen: " + tree)
         }
       }
@@ -136,7 +140,7 @@ abstract class GenJSCode extends SubComponent
 
       val typeVar = js.Ident("Class")
       val classDefinition = js.ClassDef(typeVar,
-          encodeClassSym(superClass), generatedMethods.toList ++ bridges)
+          encodeClassSym(superClass), generatedMembers.toList ++ bridges)
 
       val createClassStat = {
         val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
@@ -188,31 +192,10 @@ abstract class GenJSCode extends SubComponent
     // Generate the constructor of a class -------------------------------------
 
     def genConstructor(cd: ClassDef): js.MethodDef = {
-      /** Non-method term members are fields, except for module members. Module
-       *  members can only happen on .NET (no flatten) for inner traits. There,
-       *  a module symbol is generated (transformInfo in mixin) which is used
-       *  as owner for the members of the implementation class (so that the
-       *  backend emits them as static).
-       *  No code is needed for this module symbol.
-       */
-      val createFieldsStats = {
-        for {
-          f <- currentClassSym.info.decls
-          if !f.isMethod && f.isTerm && !f.isModule
-        } yield {
-          implicit val pos = f.pos
-          val fieldName = encodeFieldSym(f)
-          js.Assign(js.Select(js.This(), fieldName), genZeroOf(f.tpe))
-        }
-      }.toList
-
-      {
-        implicit val pos = cd.pos
-        val superCall =
-          js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
-        js.MethodDef(js.PropertyName("constructor"), Nil,
-            js.Block(superCall :: createFieldsStats))
-      }
+      implicit val pos = cd.pos
+      val superCall =
+        js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
+      js.MethodDef(js.PropertyName("constructor"), Nil, superCall)
     }
 
     // Generate a method -------------------------------------------------------

@@ -31,7 +31,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
 
-    js.PropertyName("$jsfield$" + sym.name.toString)
+    val name0 = sym.name.toString
+    val name =
+      if (name0.charAt(name0.length()-1) != ' ') name0
+      else name0.substring(0, name0.length()-1)
+    js.PropertyName("$jsfield$" + name)
   }
 
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
