@@ -115,13 +115,13 @@ function $ScalaJSEnvironmentClass() {
     });
   }
 
-  this.registerModule = function(name, className, constructorName) {
+  this.registerModule = function(name, className) {
     var self = this;
     var data = {
       _instance: undefined,
       get instance() {
         if (this._instance === undefined)
-          this._instance = new self.classes[className].type()[constructorName]();
+          this._instance = new self.classes[className].type()["<init>"]();
         return this._instance
       }
     };

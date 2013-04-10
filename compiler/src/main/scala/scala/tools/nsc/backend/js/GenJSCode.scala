@@ -283,13 +283,8 @@ abstract class GenJSCode extends SubComponent
       val nameArg = js.StringLiteral(encodeFullName(symForNameArg))
       val classNameArg = js.StringLiteral(encodeFullName(sym))
 
-      val constructorArg = if (sym.isImplClass)
-        js.PropertyName("<init>():java.lang.Object")
-      else
-        encodeMethodSym(sym.primaryConstructor)
-
       js.ApplyMethod(environment, js.Ident("registerModule"),
-          List(nameArg, classNameArg, constructorArg))
+          List(nameArg, classNameArg))
     }
 
     // Code generation ---------------------------------------------------------

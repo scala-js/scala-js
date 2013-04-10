@@ -11,6 +11,11 @@
     return this;
   }
 
+  // Bridge for <init>()
+  ObjectClass.prototype["<init>"] = function() {
+    return this["<init>():java.lang.Object"]();
+  }
+
   ObjectClass.prototype["getClass():java.lang.Class"] = function() {
     return this.$classData.class;
   }

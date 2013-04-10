@@ -22,7 +22,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   import jsDefinitions._
 
   private def isCandidateForBridge(sym: Symbol): Boolean =
-    sym.isMethod && !sym.isConstructor && !sym.isBridge && sym.isPublic
+    sym.isMethod && !sym.isBridge && sym.isPublic
 
   def genBridgesForClass(sym: Symbol): List[js.Tree] = {
     val declaredMethods = sym.info.decls.filter(isCandidateForBridge)
