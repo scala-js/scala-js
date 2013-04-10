@@ -63,7 +63,12 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
       }
     }
 
-    js.MethodDef(js.PropertyName(name.toString()), formalsArgs, body)
+    val jsName = name.toString() match {
+      case "<init>" => "constructor"
+      case "constructor" => "$constructor"
+      case x => x
+    }
+    js.MethodDef(js.PropertyName(jsName), formalsArgs, body)
   }
 
   private def genBridgeSameArgc(alts: List[Symbol], paramIndex: Int): js.Tree = {

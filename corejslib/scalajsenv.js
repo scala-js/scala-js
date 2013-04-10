@@ -121,7 +121,7 @@ function $ScalaJSEnvironmentClass() {
       _instance: undefined,
       get instance() {
         if (this._instance === undefined)
-          this._instance = new self.classes[className].type()["<init>"]();
+          this._instance = new self.classes[className].type();
         return this._instance
       }
     };
@@ -129,8 +129,10 @@ function $ScalaJSEnvironmentClass() {
   }
 
   this.createClassInstance = function(data) {
-    return new this.classes["java.lang.Class"].type()[
-      "<init>(scala.js.JSDynamic,scala.js.JSDynamic):java.lang.Class"](this, data);
+    /* Keep the full mangled name here because the constructor is private
+     * and hence does not appear in the JavaScript bridge. */
+    return Object.create(this.classes["java.lang.Class"].type.prototype)
+      ["<init>(scala.js.JSDynamic,scala.js.JSDynamic):java.lang.Class"](this, data);
   }
 
   this.registerNative = function(fullName, nativeFunction) {
@@ -167,8 +169,6 @@ function $ScalaJSEnvironmentClass() {
     var mangledName = componentData.name + "[]";
 
     function ArrayClass(arg) {
-      ObjectClass.prototype.constructor.call(this);
-
       if (typeof(arg) === "number") {
         // arg is the length of the array
         this.underlying = new Array(arg);
@@ -240,9 +240,8 @@ function $ScalaJSEnvironmentClass() {
   };
 
   this.throwClassCastException = function(instance, classFullName) {
-    throw new this.classes["java.lang.ClassCastException"].type()[
-      "<init>(java.lang.String):java.lang.ClassCastException"](
-        instance + " is not an instance of " + classFullName);
+    throw new this.classes["java.lang.ClassCastException"].type(
+      instance + " is not an instance of " + classFullName);
   }
 
   this.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
@@ -295,8 +294,7 @@ function $ScalaJSEnvironmentClass() {
 
   this.objectClone = function(instance) {
     // TODO
-    throw new this.classes["scala.NotImplementedError"].type()[
-      "<init>():scala.NotImplementedError"]();
+    throw new this.classes["scala.NotImplementedError"].type();
   }
 
   this.objectFinalize = function(instance) {

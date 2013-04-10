@@ -23,7 +23,7 @@
 //<![CDATA[
 $(function() {
   var mainInstance = new $ScalaJSEnvironment.classes["reversi.Reversi"].type(
-    )["<init>"](jQuery, jQuery("#playground"));
+    jQuery, jQuery("#playground"));
   mainInstance.startGame();
 });
 //]]>

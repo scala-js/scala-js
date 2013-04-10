@@ -114,9 +114,6 @@ abstract class GenJSCode extends SubComponent
 
       val generatedMembers = new ListBuffer[js.Tree]
 
-      if (!currentClassSym.isInterface)
-        generatedMembers += genConstructor(cd)
-
       def gen(tree: Tree) {
         tree match {
           case EmptyTree => ()
@@ -187,15 +184,6 @@ abstract class GenJSCode extends SubComponent
       }
 
       createInterfaceStat
-    }
-
-    // Generate the constructor of a class -------------------------------------
-
-    def genConstructor(cd: ClassDef): js.MethodDef = {
-      implicit val pos = cd.pos
-      val superCall =
-        js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
-      js.MethodDef(js.PropertyName("constructor"), Nil, superCall)
     }
 
     // Generate a method -------------------------------------------------------
@@ -896,8 +884,10 @@ abstract class GenJSCode extends SubComponent
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
-      val instance = js.New(typeVar, Nil)
-      js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
+      val instance = js.ApplyMethod(
+          js.Ident("Object"), js.Ident("create"),
+          List(js.DotSelect(typeVar, js.Ident("prototype"))))
+      js.ApplyMethod(instance, encodeMethodSym(ctor), arguments)
     }
 
     def genNew(clazz: Symbol)(implicit pos: Position): js.Tree = {

@@ -4,16 +4,12 @@
 
 (function ($env) {
   function ObjectClass() {
+    return this["<init>():java.lang.Object"]();
   }
   ObjectClass.prototype.constructor = ObjectClass;
 
   ObjectClass.prototype["<init>():java.lang.Object"] = function() {
     return this;
-  }
-
-  // Bridge for <init>()
-  ObjectClass.prototype["<init>"] = function() {
-    return this["<init>():java.lang.Object"]();
   }
 
   ObjectClass.prototype["getClass():java.lang.Class"] = function() {
@@ -46,11 +42,9 @@
 
   ObjectClass.prototype["clone():java.lang.Object"] = function() {
     if ($env.isInstance(this, "java.lang.Cloneable")) {
-      throw new this.classes["scala.NotImplementedError"].type()[
-        "<init>():scala.NotImplementedError"]();
+      throw new this.classes["scala.NotImplementedError"].type();
     } else {
-      throw new this.classes["java.lang.CloneNotSupportedException"].type()[
-        "<init>():java.lang.CloneNotSupportedException"]();
+      throw new this.classes["java.lang.CloneNotSupportedException"].type();
     }
   }
 
