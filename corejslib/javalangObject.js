@@ -15,13 +15,28 @@
     return this.$classData.class;
   }
 
+  // Bridge for getClass()
+  ObjectClass.prototype.getClass = function() {
+    return this["getClass():java.lang.Class"]();
+  }
+
   ObjectClass.prototype["hashCode():scala.Int"] = function() {
     // TODO
     return 42;
   }
 
+  // Bridge for hashCode()
+  ObjectClass.prototype.hashCode = function() {
+    return this["hashCode():scala.Int"]();
+  }
+
   ObjectClass.prototype["equals(java.lang.Object):scala.Boolean"] = function(rhs) {
     return this === rhs;
+  }
+
+  // Bridge for equals(Object)
+  ObjectClass.prototype.equals = function(that) {
+    return this["equals(java.lang.Object):scala.Boolean"](that);
   }
 
   ObjectClass.prototype["clone():java.lang.Object"] = function() {
@@ -32,6 +47,11 @@
       throw new this.classes["java.lang.CloneNotSupportedException"].type()[
         "<init>():java.lang.CloneNotSupportedException"]();
     }
+  }
+
+  // Bridge for clone()
+  ObjectClass.prototype.clone = function() {
+    return this["clone():java.lang.Object"]();
   }
 
   ObjectClass.prototype["toString():java.lang.String"] = function() {
