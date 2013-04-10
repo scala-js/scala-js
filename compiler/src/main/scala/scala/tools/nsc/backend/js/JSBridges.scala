@@ -26,17 +26,21 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
 
   def genBridgesForClass(sym: Symbol): List[js.Tree] = {
     val declaredMethods = sym.info.decls.filter(isCandidateForBridge)
-    val newlyDeclaredMethods =
-      declaredMethods.filterNot(_.isOverridingSymbol)
+    val newlyDeclaredMethods = declaredMethods.filterNot(
+        x => x.isOverridingSymbol && x.nextOverriddenSymbol.isPublic)
     val newlyDeclaredMethodNames =
       newlyDeclaredMethods.map(_.name).toList.distinct
     newlyDeclaredMethodNames map (genBridge(sym, _))
   }
 
   private def genBridge(classSym: Symbol, name: TermName): js.Tree = {
-    val overloaded = classSym.info.member(name)
-    val alts = overloaded.alternatives.filter(isCandidateForBridge)
-    assert(!alts.isEmpty)
+    val alts0 = classSym.info.member(name).alternatives
+    val alts1 = alts0.filter(isCandidateForBridge)
+    val alts = alts1.filterNot(
+        x => alts1.exists(y => (y ne x) && (y.tpe <:< x.tpe)))
+    assert(!alts.isEmpty,
+        s"Ended up with no alternatives for ${classSym.fullName}::$name. " +
+        s"Original set was ${alts0} with types ${alts0.map(_.tpe)}")
 
     implicit val pos = alts.head.pos
 
