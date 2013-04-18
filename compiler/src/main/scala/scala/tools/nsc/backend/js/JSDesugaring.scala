@@ -1,11 +1,92 @@
+/* NSC -- new Scala compiler
+ * Copyright 2005-2013 LAMP/EPFL
+ * @author  Martin Odersky
+ */
+
 package scala.tools.nsc
 package backend
 package js
 
+/** Desugaring of an Extended-JS to regular ES5 JavaScript
+ *
+ *  Extended-JS is a non-existent language that is a superset of JavaScript
+ *  with Scala-esque constructs. Most notably, most constructs can be used in
+ *  expression position. Extended-JS also features ES6-like classes.
+ *
+ *  GenJSCode emits Extended-JS because it is *much* easier not to deal with
+ *  the expression position issue in there. But of course, in the end, we need
+ *  to output genuine JavaScript code.
+ *
+ *  JSDesugaring desugars a statement of Extended-JS into genuine ES5
+ *  JavaScript code.
+ *
+ *  The general idea is two-folded:
+ *  1) Unnest complex constructs in "argument position":
+ *     When a complex construct is used in a non-rhs expression position
+ *     (argument to a function, operand, condition of an if, etc.), that we
+ *     call "argument position", declare a variable before the statement,
+ *     assign the complex construct to it and then use that variable in the
+ *     argument position instead.
+ *  2) Push LHS's inside complex RHS's:
+ *     When an rhs is a complex construct, push the lhs inside the complex
+ *     construct. Are considered lhs:
+ *     * js.Assign, i.e., `x =`
+ *     * js.VarDef, i.e., `var x =`
+ *     * js.Return, i.e., `return`
+ *     * (js.EmptyTree is also used as a trick for code reuse)
+ *     In fact, think that, in this context, LHS means: what to do with the
+ *     result of evaluating the RHS.
+ *
+ *  --------------------------------------------------------------------------
+ *
+ *  Typical example, consider the method call:
+ *
+ *  obj.meth({
+ *    var x = foo(42);
+ *    x*x
+ *  });
+ *
+ *  According to rule 1), the block that is passed as a parameter to obj.meth
+ *  is first extracted in a synthetic var:
+ *
+ *  var x$1 = {
+ *    var x = foo(42);
+ *    x*x
+ *  }
+ *  obj.meth(x$1);
+ *
+ *  Then, according to rule 2), the lhs `var x$1 =` is pushed inside the block:
+ *
+ *  {
+ *    var x = foo(42);
+ *    var x$1 = x*x;
+ *  }
+ *  obj.meth(x$1);
+ *
+ *  Because bare blocks are non-significant in JS, this is equivalent to
+ *
+ *  var x = foo(42);
+ *  var x$1 = x*x;
+ *  obj.meth(x$1);
+ *
+ *  --------------------------------------------------------------------------
+ *
+ *  JSDesugaring does all this in a single pass, but it helps to think that:
+ *  * Rule 1) is implemented by unnest(), and used most notably in
+ *    * transformStat() for statement-only constructs
+ *    * pushLhsInto() for statement-or-expression constructs
+ *  * Rule 2) is implemented by pushLhsInto()
+ *  * Class desugaring is in transformClass() and its helpers
+ */
 trait JSDesugaring extends SubComponent {
   val global: scalajs.JSGlobal
 
   import global._
+
+  /** Desugar a statement of Extended-JS into genuine ES5 JavaScript */
+  def desugarJavaScript(tree: js.Tree): js.Tree = {
+    new JSDesugar().transformStat(tree)
+  }
 
   class JSDesugar extends js.Transformer {
     // Synthetic variables
@@ -30,6 +111,7 @@ trait JSDesugaring extends SubComponent {
 
     // Now the work
 
+    /** Desugar a statement of Extended-JS into ES5 JS */
     override def transformStat(tree: js.Tree): js.Tree = {
       implicit val pos = tree.pos
 
@@ -39,7 +121,7 @@ trait JSDesugaring extends SubComponent {
         case js.FunDef(name, args, body) =>
           resetSyntheticVarCounterIn(super.transformStat(tree))
 
-        // Statement-only language constructs
+        // Statement-only (I mean, even in Extended-JS) language constructs
 
         case js.Skip() =>
           tree
@@ -48,17 +130,17 @@ trait JSDesugaring extends SubComponent {
           tree
 
         case js.VarDef(_, rhs) =>
-          unnestExprInto(tree, rhs)
+          pushLhsInto(tree, rhs)
 
         case js.Assign(select @ js.DotSelect(qualifier, item), rhs) =>
-          expressify(qualifier, rhs) { (newQualifier, newRhs) =>
+          unnest(qualifier, rhs) { (newQualifier, newRhs) =>
             js.Assign(
                 js.DotSelect(transformExpr(newQualifier), item)(select.pos),
                 transformExpr(newRhs))
           }
 
         case js.Assign(select @ js.BracketSelect(qualifier, item), rhs) =>
-          expressify(List(qualifier, item, rhs)) {
+          unnest(List(qualifier, item, rhs)) {
             case List(newQualifier, newItem, newRhs) =>
               js.Assign(
                   js.BracketSelect(transformExpr(newQualifier),
@@ -67,12 +149,14 @@ trait JSDesugaring extends SubComponent {
           }
 
         case js.Assign(_ : js.Ident, rhs) =>
-          unnestExprInto(tree, rhs)
+          pushLhsInto(tree, rhs)
 
         case js.While(cond, body, label) =>
+          /* We cannot simply unnest(cond) here, because that would eject the
+           * evaluation of the condition out of the loop.
+           */
           if (isExpression(cond)) super.transformStat(tree)
           else {
-            // we cannot just 'expressify' here
             js.While(js.BooleanLiteral(true), {
               transformStat {
                 js.If(cond, body, js.Break())
@@ -81,36 +165,44 @@ trait JSDesugaring extends SubComponent {
           }
 
         case js.DoWhile(body, cond, label) =>
+          /* We cannot simply unnest(cond) here, because that would eject the
+           * evaluation of the condition out of the loop.
+           */
           if (isExpression(cond)) super.transformStat(tree)
-          else if (label.isDefined) ???
           else {
-            // we cannot just 'expressify' here
+            // TODO I think this breaks 'continue' statements for this loop
             js.While(js.BooleanLiteral(true), {
               transformStat {
                 js.Block(List(body), js.If(cond, js.Skip(), js.Break()))
               }
-            })
+            }, label)
           }
 
         case js.Switch(selector, cases, body) =>
-          expressify(selector) { newSelector =>
+          unnest(selector) { newSelector =>
             super.transformStat(js.Switch(newSelector, cases, body))
           }
 
-        // Return can be an expression, but can be unnested into, which is better
+        // Treat 'return' as an LHS
 
         case js.Return(expr) =>
-          unnestExprInto(tree, expr)
+          pushLhsInto(tree, expr)
 
         // Classes - that's another story
 
         case classDef : js.ClassDef =>
           transformClass(classDef)
 
-        // Anything else is an expression => unnestExprInto(js.EmptyTree, _)
+        /* Anything else is an expression => pushLhsInto(js.EmptyTree, _)
+         * In order not to duplicate all the code of pushLhsInto() here, we
+         * use a trick: js.EmptyTree is a dummy LHS that says "do nothing
+         * with the result of the rhs".
+         * This is exactly what an expression statement is doing: it evaluates
+         * the expression, but does nothing with its result.
+         */
 
         case _ =>
-          unnestExprInto(js.EmptyTree, tree)
+          pushLhsInto(js.EmptyTree, tree)
       }
     }
 
@@ -118,6 +210,7 @@ trait JSDesugaring extends SubComponent {
       implicit val pos = tree.pos
 
       tree match {
+        /** Super call */
         case js.Apply(sel @ js.Select(sup @ js.Super(), method), args) =>
           val newSup = js.DotSelect(
               currentClassDef.parent, js.Ident("prototype")(sup.pos))(sup.pos)
@@ -133,10 +226,23 @@ trait JSDesugaring extends SubComponent {
       }
     }
 
-    /** Extract evaluation of expressions with idents in temporary variables
-     *  TODO Figure out a better name for this function
+    /** Unnest complex constructs in argument position in temporary variables
+     *
+     *  If all the arguments are JS expressions, there is nothing to do.
+     *  Any argument that is not a JS expression must be unnested and stored
+     *  in a temporary variable before the statement produced by `makeStat`.
+     *
+     *  But *this changes the evaluation order!* In order not to lose it, it
+     *  is necessary to also unnest arguments that are expressions but that
+     *  could have side-effects or even whose evaluation could be influenced
+     *  by the side-effects of another unnested argument.
+     *
+     *  Without deep effect analysis, which we do not do, we need to take
+     *  a very pessimistic approach, and unnest any expression that contains
+     *  an identifier.
+     *  Hence the predicate `isPureExpressionWithoutIdent`.
      */
-    def expressify(args: List[js.Tree])(
+    def unnest(args: List[js.Tree])(
         makeStat: List[js.Tree] => js.Tree): js.Tree = {
       if (args forall isExpression) makeStat(args)
       else {
@@ -152,7 +258,7 @@ trait JSDesugaring extends SubComponent {
 
         val computeTemps =
           for ((arg, true, temp : js.Ident) <- argsInfo) yield
-            unnestExprInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
+            pushLhsInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
 
         val newStatement = makeStat(argsInfo map (_._3))
         flattenBlock(computeTemps :+ newStatement)(newStatement.pos)
@@ -160,22 +266,22 @@ trait JSDesugaring extends SubComponent {
     }
 
     /** Same as above, for a single argument */
-    def expressify(arg: js.Tree)(
+    def unnest(arg: js.Tree)(
         makeStat: js.Tree => js.Tree): js.Tree = {
       if (isExpression(arg)) makeStat(arg)
       else {
         val temp = newSyntheticVar()(arg.pos)
         val computeTemp =
-          unnestExprInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
+          pushLhsInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
         val newStatement = makeStat(temp)
         js.Block(List(computeTemp), newStatement)(newStatement.pos)
       }
     }
 
     /** Same as above, for two arguments */
-    def expressify(lhs: js.Tree, rhs: js.Tree)(
+    def unnest(lhs: js.Tree, rhs: js.Tree)(
         makeStat: (js.Tree, js.Tree) => js.Tree): js.Tree = {
-      expressify(List(lhs, rhs)) {
+      unnest(List(lhs, rhs)) {
         case List(newLhs, newRhs) => makeStat(newLhs, newRhs)
       }
     }
@@ -213,7 +319,7 @@ trait JSDesugaring extends SubComponent {
         case js.Apply(fun, args) =>
           allowUnpure && test(fun) && (args forall test)
         case js.New(fun, args) =>
-          allowUnpure && (args forall test)
+          allowUnpure && test(fun) && (args forall test)
 
         // Non-expressions
         case _ => false
@@ -237,25 +343,15 @@ trait JSDesugaring extends SubComponent {
     def isPureExpressionWithoutIdent(tree: js.Tree): Boolean =
       isExpressionInternal(tree, allowIdents = false, allowUnpure = false)
 
-    /** Unnest an rhs into an atomic lhs
-     *  Example: turn
-     *    x = {
-     *      var y = 5;
-     *      y + 3
-     *    }
-     *  into
-     *    {
-     *      var y = 5;
-     *      x = y + 3
-     *    }
-     *
+    /** Push an lhs into a (potentially complex) rhs
      *  lhs can be either a js.EmptyTree, a js.VarDef, a js.Assign or a
      *  js.Return
      */
-    def unnestExprInto(lhs: js.Tree, rhs: js.Tree): js.Tree = {
+    def pushLhsInto(lhs: js.Tree, rhs: js.Tree): js.Tree = {
       implicit val rhsPos = rhs.pos
 
-      @inline def redo(newRhs: js.Tree) = unnestExprInto(lhs, newRhs)
+      /** Push the current lhs further into a deeper rhs */
+      @inline def redo(newRhs: js.Tree) = pushLhsInto(lhs, newRhs)
 
       rhs match {
         // Base case, rhs is already a regular JS expression
@@ -277,13 +373,14 @@ trait JSDesugaring extends SubComponent {
           flattenBlock((stats map transformStat) :+ redo(expr))
 
         case js.Return(expr) =>
-          unnestExprInto(rhs, expr)
+          pushLhsInto(rhs, expr)
 
+        // TODO Move this case in transformStat()?
         case js.Break(_) | js.Continue(_) =>
           rhs
 
         case js.If(cond, thenp, elsep) =>
-          expressify(cond) { newCond =>
+          unnest(cond) { newCond =>
             js.If(transformExpr(newCond), redo(thenp), redo(elsep))
           }
 
@@ -294,18 +391,32 @@ trait JSDesugaring extends SubComponent {
             if (finalizer == js.EmptyTree) finalizer else transformStat(finalizer)
           js.Try(redo(block), errVar, newHandler, newFinalizer)
 
+        // TODO Treat throw as an LHS?
         case js.Throw(expr) =>
-          expressify(expr) { newExpr =>
+          unnest(expr) { newExpr =>
             js.Throw(transformExpr(newExpr))
           }
 
+        /** Matches are desugared into switches
+         *
+         *  A match is different from a switch in two respects, both linked
+         *  to match being designed to be used in expression position in
+         *  Extended-JS.
+         *
+         *  * There is no fall-through from one case to the next one, hence,
+         *    no break statement.
+         *  * Match supports _alternatives_ explicitly (with a switch, one
+         *    would use the fall-through behavior to implement alternatives).
+         */
         case js.Match(selector, cases, default) =>
-          expressify(selector) { newSelector =>
+          unnest(selector) { newSelector =>
             val newCases = {
               for {
                 (values, body) <- cases
                 newValues = (values map transformExpr)
+                // add the break statement
                 newBody = js.Block(List(redo(body)), js.Break())
+                // desugar alternatives into several cases falling through
                 caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
               } yield {
                 caze
@@ -325,21 +436,21 @@ trait JSDesugaring extends SubComponent {
            * var f = x.m; f(y)
            * than for
            * x.m(y)
-           * Namely, in the former case, `this` is not bound correctly
+           * Namely, in the former case, `this` is not bound to `x`
            */
-          expressify(receiver :: args) { newReceiverAndArgs =>
+          unnest(receiver :: args) { newReceiverAndArgs =>
             val newReceiver :: newArgs = newReceiverAndArgs
             redo(js.ApplyMethod(newReceiver, methodName, newArgs))
           }
 
         case js.Apply(fun, args) =>
-          expressify(fun :: args) { newFunAndArgs =>
+          unnest(fun :: args) { newFunAndArgs =>
             val newFun :: newArgs = newFunAndArgs
             redo(js.Apply(newFun, newArgs))
           }
 
         case js.New(fun, args) =>
-          expressify(fun :: args) { newFunAndArgs =>
+          unnest(fun :: args) { newFunAndArgs =>
             val newFun :: newArgs = newFunAndArgs
             redo(js.New(newFun, newArgs))
           }
@@ -347,17 +458,17 @@ trait JSDesugaring extends SubComponent {
         // Operators (if we reach here their operands are not expressions)
 
         case js.DotSelect(qualifier, item) =>
-          expressify(qualifier) { newQualifier =>
+          unnest(qualifier) { newQualifier =>
             redo(js.DotSelect(newQualifier, item))
           }
 
         case js.BracketSelect(qualifier, item) =>
-          expressify(qualifier, item) { (newQualifier, newItem) =>
+          unnest(qualifier, item) { (newQualifier, newItem) =>
             redo(js.BracketSelect(newQualifier, newItem))
           }
 
         case js.UnaryOp(op, lhs) =>
-          expressify(lhs) { newLhs =>
+          unnest(lhs) { newLhs =>
             redo(js.UnaryOp(op, newLhs))
           }
 
@@ -372,21 +483,21 @@ trait JSDesugaring extends SubComponent {
           }
 
         case js.BinaryOp(op, lhs, rhs) =>
-          expressify(lhs, rhs) { (newLhs, newRhs) =>
+          unnest(lhs, rhs) { (newLhs, newRhs) =>
             redo(js.BinaryOp(op, newLhs, newRhs))
           }
 
         // Compounds (if we reach here their items are not expressions)
 
         case js.ArrayConstr(items) =>
-          expressify(items) { newItems =>
+          unnest(items) { newItems =>
             redo(js.ArrayConstr(newItems))
           }
 
         case js.ObjectConstr(fields) =>
           val names = fields map (_._1)
           val items = fields map (_._2)
-          expressify(items) { newItems =>
+          unnest(items) { newItems =>
             redo(js.ObjectConstr(names.zip(newItems)))
           }
 
@@ -397,21 +508,27 @@ trait JSDesugaring extends SubComponent {
 
         case _ =>
           if (lhs == js.EmptyTree) {
+            /* Go "back" to transformStat() after having dived into
+             * expression statements. Remember that (lhs == js.EmptyTree)
+             * is a trick that we use to "add" all the code of pushLhsInto()
+             * to transformStat().
+             */
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
                   _:js.While | _:js.DoWhile | _:js.Switch =>
                 transformStat(rhs)
               case _ =>
-                abort("Illegal tree in JSDesugar.unnestExprInto():\n" +
+                abort("Illegal tree in JSDesugar.pushLhsInto():\n" +
                     "lhs = " + lhs + "\n" + "rhs = " + rhs)
             }
           } else {
-            abort("Illegal tree in JSDesugar.unnestExprInto():\n" +
+            abort("Illegal tree in JSDesugar.pushLhsInto():\n" +
                 "lhs = " + lhs + "\n" + "rhs = " + rhs)
           }
       }
     }
 
+    /** js.Block constructor that flattens any nested block */
     def flattenBlock(stats: List[js.Tree])(implicit pos: Position): js.Tree = {
       val flattenedStats = stats flatMap {
         case js.Skip() => Nil
@@ -506,9 +623,5 @@ trait JSDesugaring extends SubComponent {
           js.Select(js.DotSelect(cd.name, js.Ident("prototype")), name),
           value)
     }
-  }
-
-  def desugarJavaScript(tree: js.Tree): js.Tree = {
-    new JSDesugar().transformStat(tree)
   }
 }
