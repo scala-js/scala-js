@@ -9,6 +9,9 @@ package js
 
 /** JavaScript ASTs
  *
+ *  The classes defined here can also represent Extended-JS, as explained
+ *  in JSDesugaring.
+ *
  *  @author Sébastien Doeraene
  */
 trait JSTrees { self: scalajs.JSGlobal =>

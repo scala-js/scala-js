@@ -8,6 +8,10 @@ package scalajs
 
 import scala.reflect.internal.SymbolTable
 
+/** Core definitions for Scala.js
+ *
+ *  @author Sébastien Doeraene
+ */
 trait JSDefinitions { self: SymbolTable =>
   object jsDefinitions extends JSDefinitionsClass
 

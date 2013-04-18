@@ -51,6 +51,7 @@ trait JSPlatform extends JavaPlatform {
     if (bin.name endsWith ".jstype") new JSTypefileLoader(bin)
     else new loaders.ClassfileLoader(bin)
 
+  /** A SymbolLoader for .jstype files */
   class JSTypefileLoader(val typefile: AbstractFile) extends loaders.SymbolLoader with FlagAssigningCompleter {
     import loaders._
 

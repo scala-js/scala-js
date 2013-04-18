@@ -9,6 +9,11 @@ package js
 
 /** Encoding of symbol names for JavaScript
  *
+ *  Some issues that this encoding solves:
+ *  * Overloading: encode the full signature in the JS name
+ *  * Same scope for fields and methods of a class
+ *  * Global access to classes and modules (by their full name)
+ *
  *  @author Sébastien Doeraene
  */
 trait JSEncoding extends SubComponent { self: GenJSCode =>
@@ -16,8 +21,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   import global._
 
+  /** Name given to the Scala.js environment variable */
   final val ScalaJSEnvironmentName = "$ScalaJSEnvironment"
 
+  /** The current Scala.js environment */
   def environment(implicit pos: Position): js.Ident = {
     js.Ident(ScalaJSEnvironmentName)
   }
