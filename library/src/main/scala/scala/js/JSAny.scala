@@ -97,7 +97,8 @@ sealed trait JSDynamic extends JSAny with scala.Dynamic {
 object JSDynamic {
   implicit def fromAny(value: JSAny): JSDynamic = sys.error("stub")
 
-  def window: JSDynamic = sys.error("stub")
+  /** Dynamic view of the global scope */
+  def global: JSDynamic = sys.error("stub")
 }
 
 /** Dictionary "view" of a JavaScript value */
@@ -193,6 +194,13 @@ sealed trait JSUndefined extends JSAny with NotNull
 class JSObject extends JSAny {
   def this(value: JSAny) = this()
 }
+
+/** Marker trait for static modules representing the JS global scope
+ *  When calling method on a top-level object or package object that is a
+ *  subtype of JSGlobalScope, the receiver is dropped, and the JS global
+ *  scope is used instead.
+ */
+trait JSGlobalScope extends JSObject
 
 final class JSArray[A <: JSAny](_len: JSNumber) extends JSObject {
   def this() = this(0)

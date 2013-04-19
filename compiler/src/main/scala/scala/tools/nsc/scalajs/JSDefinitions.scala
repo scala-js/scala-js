@@ -44,6 +44,8 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val JSUndefinedClass = getRequiredClass("scala.js.JSUndefined")
     lazy val JSObjectClass    = getRequiredClass("scala.js.JSObject")
 
+    lazy val JSGlobalScopeClass = getRequiredClass("scala.js.JSGlobalScope")
+
     lazy val JSArrayClass = getRequiredClass("scala.js.JSArray")
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
@@ -55,6 +57,8 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val JSStringTpe    = JSStringClass.toTypeConstructor
     lazy val JSUndefinedTpe = JSUndefinedClass.toTypeConstructor
     lazy val JSObjectTpe    = JSObjectClass.toTypeConstructor
+
+    lazy val JSGlobalScopeTpe = JSGlobalScopeClass.toTypeConstructor
 
     lazy val JSAnyModule = JSAnyClass.companionModule
       lazy val JSAny_fromUnit    = getMemberMethod(JSAnyModule, newTermName("fromUnit"))
@@ -73,7 +77,7 @@ trait JSDefinitions { self: SymbolTable =>
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
       lazy val JSDynamic_fromAny = getMemberMethod(JSDynamicModule, newTermName("fromAny"))
-      lazy val JSDynamic_window  = getMemberMethod(JSDynamicModule, newTermName("window"))
+      lazy val JSDynamic_global  = getMemberMethod(JSDynamicModule, newTermName("global"))
 
     lazy val JSNumberModule = JSNumberClass.companionModule
       lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))

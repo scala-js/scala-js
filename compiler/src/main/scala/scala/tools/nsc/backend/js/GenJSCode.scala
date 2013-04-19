@@ -1634,7 +1634,7 @@ abstract class GenJSCode extends SubComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case WINDOW => js.Ident("window")
+            case GETGLOBAL => js.DotSelect(environment, js.Ident("global"))
           }
 
         case List(arg) =>
@@ -1851,8 +1851,16 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate loading of a module value */
-    private def genLoadModule(sym: Symbol)(implicit pos: Position) = {
-      encodeModuleSym(sym)
+    private def genLoadModule(sym: Symbol)(implicit pos: Position): js.Tree = {
+      val isGlobalScope =
+        isScalaJSDefined &&
+        sym.isModuleOrModuleClass &&
+        beforePhase(currentRun.erasurePhase) {
+          sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
+        }
+
+      if (isGlobalScope) js.DotSelect(environment, js.Ident("global"))
+      else encodeModuleSym(sym)
     }
 
     /** Generate access to a static member */

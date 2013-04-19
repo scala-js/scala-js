@@ -22,7 +22,6 @@ case object Black extends Player {
 }
 
 class Reversi(jQuery: JQueryStatic, playground: JQuery) {
-  private val window = JSDynamic.window.asInstanceOf[Window]
 
   // A conversion I use often
   implicit def function0UnitToJS(f: () => Unit): JSFunction0[JSUndefined] = {

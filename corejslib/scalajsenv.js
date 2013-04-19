@@ -2,8 +2,9 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
-function $ScalaJSEnvironmentClass() {
+function $ScalaJSEnvironmentClass(global) {
   // Fields
+  this.global = global;
   this.primitives = {};
   this.classes = {};
   this.modules = {};
@@ -328,4 +329,4 @@ function $ScalaJSEnvironmentClass() {
   }
 }
 
-var $ScalaJSEnvironment = new $ScalaJSEnvironmentClass();
+var $ScalaJSEnvironment = new $ScalaJSEnvironmentClass(this);

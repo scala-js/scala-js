@@ -11,7 +11,7 @@ object HelloWorld {
   }
 
   def sayHelloFromDOM() {
-    val document = JSDynamic.window.document
+    val document = JSDynamic.global.document
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
@@ -22,7 +22,7 @@ object HelloWorld {
   }
 
   def sayHelloFromTypedDOM() {
-    val document = JSDynamic.window.asInstanceOf[Window].document
+    val document = JSDynamic.global.asInstanceOf[Window].document
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
@@ -32,13 +32,13 @@ object HelloWorld {
 
   def sayHelloFromJQuery() {
     // val $ is fine too, but not very recommended in Scala code
-    val jQuery = JSDynamic.window.$
+    val jQuery = JSDynamic.global.$
     val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
 
   def sayHelloFromTypedJQuery() {
-    val jQuery = JSDynamic.window.asInstanceOf[Window].$
+    val jQuery = JSDynamic.global.asInstanceOf[Window].$
     val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
