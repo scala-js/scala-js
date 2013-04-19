@@ -9,7 +9,7 @@ class Character(value: scala.Char) {
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
   override def toString: String =
-    JSDynamic.window.String.fromCharCode(value.toInt).asInstanceOf[JSString]
+    JSDynamic.global.String.fromCharCode(value.toInt).asInstanceOf[JSString]
 }
 
 object Character {

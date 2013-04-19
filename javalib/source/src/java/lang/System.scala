@@ -2,7 +2,7 @@ package java
 package lang
 
 import scala.js._
-import JSDynamic.window
+import JSDynamic.global
 
 object System {
   var out: java.io.PrintStream = StandardOutPrintStream
@@ -44,15 +44,15 @@ object System {
 
 private[lang] object StandardOutPrintStream extends io.PrintStream(StandardOut, true) {
   override protected[lang] def writeString(s: String): Unit = {
-    if (window.console && ((s != "\n"):JSBoolean))
-      window.console.log(s)
+    if (global.console && ((s != "\n"):JSBoolean))
+      global.console.log(s)
   }
 }
 
 private[lang] object StandardErrPrintStream extends io.PrintStream(StandardErr, true) {
   override protected[lang] def writeString(s: String): Unit = {
-    if (window.console && ((s != "\n"):JSBoolean))
-      window.console.error(s)
+    if (global.console && ((s != "\n"):JSBoolean))
+      global.console.error(s)
   }
 }
 

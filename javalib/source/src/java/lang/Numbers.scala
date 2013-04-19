@@ -1,7 +1,7 @@
 package java.lang
 
+import scala.js
 import scala.js._
-import JSDynamic.window
 
 abstract class Number extends Object {
   //protected[lang] val isInt: scala.Boolean
@@ -110,10 +110,10 @@ object Integer {
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
   def parseInt(s: String): scala.Int =
-    window.parseInt(s).asInstanceOf[JSNumber].toInt
+    js.parseInt(s).asInstanceOf[JSNumber].toInt
 
   def parseInt(s: String, radix: scala.Int): scala.Int =
-    window.parseInt(s, radix).asInstanceOf[JSNumber].toInt
+    js.parseInt(s, radix).asInstanceOf[JSNumber].toInt
 
   def toString(i: scala.Int) = valueOf(i).toString
 
@@ -199,7 +199,7 @@ object Float {
   def valueOf(floatValue: scala.Float) = new Float(floatValue)
 
   def parseFloat(s: String): scala.Float =
-    window.parseFloat(s).asInstanceOf[JSNumber].toFloat
+    js.parseFloat(s).asInstanceOf[JSNumber].toFloat
 
   def toString(f: scala.Float) = valueOf(f).toString
 

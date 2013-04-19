@@ -2,7 +2,6 @@ package java
 package lang
 
 import scala.js._
-import JSDynamic.window
 
 object Math {
   private trait MathStatic extends JSObject {
@@ -28,7 +27,7 @@ object Math {
     def tan(a: JSNumber): JSNumber
   }
 
-  private val JSMath = window.Math.asInstanceOf[MathStatic]
+  private val JSMath = JSDynamic.global.Math.asInstanceOf[MathStatic]
 
   val E: scala.Double = JSMath.E.asInstanceOf[JSNumber]
   val PI: scala.Double = JSMath.PI.asInstanceOf[JSNumber]
