@@ -892,11 +892,11 @@ abstract class GenJSCode extends SubComponent
          *  result, because that is what earlier phases of the compiler
          *  expect. But then that result is often unboxed immediately.
          *  This case catches this, and short-circuit the generation of the
-         *  ApplyDynamic by explicitly asking *not* to box its result.
+         *  ApplyDynamic by explicitly asking it *not* to box its result.
          */
         case Apply(fun @ _, List(dynapply:ApplyDynamic))
         if (isUnbox(fun.symbol) &&
-            hasPrimitiveReturnType(dynapply.symbol)) =>
+            isBoxedForApplyDynamic(dynapply.symbol.tpe.resultType)) =>
           genApplyDynamic(dynapply, nobox = true)
 
         /** All other Applys, which cannot be refined by pattern matching
@@ -1440,24 +1440,6 @@ abstract class GenJSCode extends SubComponent
       js.BinaryOp("+", lhs, rhs)
     }
 
-    /** Gen a boxing operation (tpe is the primitive type) */
-    private def makeBox(expr: js.Tree, tpe: Type): js.Tree =
-      makeBoxUnbox(expr, tpe, newTermName("box"))
-
-    /** Gen an unboxing operation (tpe is the primitive type) */
-    private def makeUnbox(expr: js.Tree, tpe: Type): js.Tree =
-      makeBoxUnbox(expr, tpe, newTermName("unbox"))
-
-    /** Common implementation for `makeBox()` and `makeUnbox()` */
-    private def makeBoxUnbox(expr: js.Tree, tpe: Type, function: TermName): js.Tree = {
-      implicit val pos = expr.pos
-
-      val module = tpe.typeSymbol.companionModule
-      val boxSymbol = getMember(module, function)
-      js.ApplyMethod(genLoadModule(module),
-          encodeMethodSym(boxSymbol), List(expr))
-    }
-
     /** Gen JS code for a call to Any.## */
     private def genScalaHash(tree: Apply, receiver: Tree): js.Tree = {
       implicit val jspos = tree.pos
@@ -1552,66 +1534,46 @@ abstract class GenJSCode extends SubComponent
       val ApplyDynamic(receiver, args) = tree
 
       val instance = genExpr(receiver)
-      val arguments = genApplyDynamicArgs(sym, args)
+
+      val arguments = args zip sym.tpe.params map { case (arg, param) =>
+        if (isBoxedForApplyDynamic(param.tpe)) {
+          arg match {
+            case Apply(_, List(result)) if isBox(arg.symbol) => genExpr(result)
+            case _ => makeUnbox(genExpr(arg), param.tpe)
+          }
+        } else {
+          genExpr(arg)
+        }
+      }
+
       val apply = js.ApplyMethod(instance, encodeMethodSym(sym), arguments)
 
-      val returnType = returnTypeOf(sym)
-      if (nobox || !isPrimitiveKind(toTypeKind(returnType)))
+      if (nobox || !isBoxedForApplyDynamic(sym.tpe.resultType))
         apply
       else
-        makeBox(apply, returnType)
+        makeBox(apply, sym.tpe.resultType)
     }
 
-    /** Helper for genApplyDynamic
-     *  TODO Simplify and inline into genApplyDynamic
-     */
-    private def genApplyDynamicArgs(sym: Symbol,
-        args: List[Tree]): List[js.Tree] = {
+    /** Test whether the given type is artificially boxed for ApplyDynamic */
+    private def isBoxedForApplyDynamic(tpe: Type) =
+      tpe.typeSymbol.isPrimitiveValueClass
 
-      val types = sym.tpe match {
-        case MethodType(params, _) => params map (_.tpe)
-        case NullaryMethodType(_) => Nil
-      }
+    /** Gen a boxing operation (tpe is the primitive type) */
+    private def makeBox(expr: js.Tree, tpe: Type): js.Tree =
+      makeBoxUnbox(expr, tpe, newTermName("box"))
 
-      args zip types map { case (arg, tpe) =>
-        if (isPrimitiveKind(toTypeKind(tpe)))
-          unboxDynamicParam(arg, tpe)
-        else
-          genExpr(arg)
-      }
-    }
+    /** Gen an unboxing operation (tpe is the primitive type) */
+    private def makeUnbox(expr: js.Tree, tpe: Type): js.Tree =
+      makeBoxUnbox(expr, tpe, newTermName("unbox"))
 
-    /** Test whether the given type kind is a primitive type
-     *  TODO Can't this replaced by kind.isValueType?
-     */
-    private def isPrimitiveKind(kind: TypeKind) = kind match {
-      case BOOL | _:INT | _:FLOAT => true
-      case _ => false
-    }
+    /** Common implementation for `makeBox()` and `makeUnbox()` */
+    private def makeBoxUnbox(expr: js.Tree, tpe: Type, function: TermName): js.Tree = {
+      implicit val pos = expr.pos
 
-    /** Get the type of the result of a method symbol
-     *  TODO Isn't this equivalent to sym.tpe.resultType?
-     */
-    private def returnTypeOf(sym: Symbol) = sym.tpe match {
-      case MethodType(_, tpe) => tpe
-      case NullaryMethodType(tpe) => tpe
-    }
-
-    /** Test whether the given method symbol has a primitive result type
-     *  TODO Do we even need this? Isn't it clearer to inline it where we
-     *  use it?
-     */
-    private def hasPrimitiveReturnType(sym: Symbol) =
-      isPrimitiveKind(toTypeKind(returnTypeOf(sym)))
-
-    /** Unbox an actual parameter given to an ApplyDynamic
-     *  TODO Inline this in genApplyDynamicArgs?
-     */
-    private def unboxDynamicParam(tree: Tree, tpe: Type): js.Tree = {
-      (tree: @unchecked) match {
-        case Apply(_, List(result)) if (isBox(tree.symbol)) => genExpr(result)
-        case _ => makeUnbox(genExpr(tree), tpe)
-      }
+      val module = tpe.typeSymbol.companionModule
+      val boxSymbol = getMember(module, function)
+      js.ApplyMethod(genLoadModule(module),
+          encodeMethodSym(boxSymbol), List(expr))
     }
 
     /** Gen JS code for a Scala.js-specific primitive method */
