@@ -186,18 +186,6 @@ function $ScalaJSEnvironmentClass(global) {
     ArrayClass.prototype = Object.create(ObjectClass.prototype);
     ArrayClass.prototype.constructor = ArrayClass;
 
-    ArrayClass.prototype.length = function() {
-      return this.underlying.length;
-    }
-
-    ArrayClass.prototype.get = function(index) {
-      return this.underlying[index];
-    }
-
-    ArrayClass.prototype.set = function(index, value) {
-      this.underlying[index] = value;
-    }
-
     return ArrayClass;
   }
 

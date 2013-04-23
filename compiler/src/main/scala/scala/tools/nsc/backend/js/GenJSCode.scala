@@ -1455,31 +1455,31 @@ abstract class GenJSCode extends SubComponent
     private def genArrayOp(tree: Tree, code: Int): js.Tree = {
       import scalaPrimitives._
 
-      implicit val jspos = tree.pos
+      implicit val pos = tree.pos
 
       val Apply(Select(arrayObj, _), args) = tree
-      val arrayValue = genExpr(arrayObj)
+      val arrayValue = js.DotSelect(genExpr(arrayObj), js.Ident("underlying"))
       val arguments = args map genExpr
 
       if (scalaPrimitives.isArrayGet(code)) {
         // get an item of the array
         if (settings.debug.value)
           assert(args.length == 1,
-                 "Too many arguments for array get operation: " + tree)
+              s"Array get requires 1 argument, found ${args.length} in $tree")
 
-        js.ApplyMethod(arrayValue, js.Ident("get"), arguments)
-      }
-      else if (scalaPrimitives.isArraySet(code)) {
+        js.BracketSelect(arrayValue, arguments(0))
+      } else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
         if (settings.debug.value)
           assert(args.length == 2,
-                 "Too many arguments for array set operation: " + tree)
+              s"Array set requires 2 arguments, found ${args.length} in $tree")
 
-        statToExpr(js.ApplyMethod(arrayValue, js.Ident("set"), arguments))
-      }
-      else {
+        statToExpr {
+          js.Assign(js.BracketSelect(arrayValue, arguments(0)), arguments(1))
+        }
+      } else {
         // length of the array
-        js.ApplyMethod(arrayValue, js.Ident("length"), Nil)
+        js.DotSelect(arrayValue, js.Ident("length"))
       }
     }
 
