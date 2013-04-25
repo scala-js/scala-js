@@ -21,8 +21,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   import global._
 
-  /** Name given to the Scala.js environment variable */
-  final val ScalaJSEnvironmentName = "$ScalaJSEnvironment"
+  /** Full name (global name) of the Scala.js environment */
+  final val ScalaJSEnvironmentFullName = "$ScalaJSEnvironment"
+
+  /** Name given to the local Scala.js environment variable */
+  final val ScalaJSEnvironmentName = "$"
 
   /** The current Scala.js environment */
   def environment(implicit pos: Position): js.Ident = {

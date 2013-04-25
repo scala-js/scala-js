@@ -75,7 +75,7 @@ abstract class GenJSCode extends SubComponent
      *  Each generated class/interface definition is then wrapped in a
      *  closure:
      *
-     *     (function($ScalaJSEnvironment) {
+     *     (function($) {
      *       ...
      *     })($ScalaJSEnvironment);
      *
@@ -102,7 +102,8 @@ abstract class GenJSCode extends SubComponent
                 } else generatedClass
               }
               val wholeTree = js.Apply(
-                  js.Function(List(environment), body), List(environment))
+                  js.Function(List(environment), body),
+                  List(js.Ident(ScalaJSEnvironmentFullName)))
               generatedClasses += sym -> desugarJavaScript(wholeTree)
           }
         }
