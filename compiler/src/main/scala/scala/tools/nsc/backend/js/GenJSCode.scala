@@ -145,15 +145,16 @@ abstract class GenJSCode extends SubComponent
 
       val generatedMembers = new ListBuffer[js.Tree]
 
+      if (!currentClassSym.isInterface)
+        generatedMembers += genConstructor(cd)
+
       def gen(tree: Tree) {
         tree match {
           case EmptyTree => ()
           case Template(_, _, body) => body foreach gen
 
           case ValDef(mods, name, tpt, rhs) =>
-            val sym = tree.symbol
-            generatedMembers +=
-              js.CustomDef(encodeFieldSym(sym), genZeroOf(sym.tpe))
+            () // fields are added in the constructor (genConstructor(cd))
 
           case dd: DefDef =>
             generatedMembers ++= genMethod(dd)
@@ -164,15 +165,52 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
-      val bridges = genBridgesForClass(currentClassSym)
+      // Generate the bridges, then steal the constructor bridges (1 at most)
+      val bridges0 = genBridgesForClass(currentClassSym)
+      val (constructorBridges0, bridges) = bridges0.partition {
+        case js.MethodDef(js.PropertyName(name), _, _) => name == nme.CONSTRUCTOR.toString()
+        case _ => false
+      }
+      assert(constructorBridges0.size <= 1)
+
+      val constructorBridge = {
+        if (!currentClassSym.isImplClass) constructorBridges0.headOption
+        else {
+          // Make up
+          Some(js.MethodDef(js.PropertyName("<init>"), Nil, js.Skip()))
+        }
+      }
 
       val typeVar = js.Ident("Class")
       val classDefinition = js.ClassDef(typeVar,
           encodeClassSym(superClass), generatedMembers.toList ++ bridges)
 
+      /* function JSClass(<args of the constructor bridge>) {
+       *   Class.call(this);
+       *   <body of the constructor bridge>
+       * }
+       * JSClass.prototype = Class.prototype;
+       */
+      val jsConstructorVar = js.Ident("JSClass")
+      val createJSConstructorStat = constructorBridge match {
+        case Some(js.MethodDef(_, args, body)) =>
+          js.Block(List(
+              js.FunDef(jsConstructorVar, args, js.Block(List(
+                  js.ApplyMethod(typeVar, js.Ident("call"), List(js.This())),
+                  body))),
+              js.Assign(
+                  js.DotSelect(jsConstructorVar, js.Ident("prototype")),
+                  js.DotSelect(typeVar, js.Ident("prototype")))
+              ))
+
+        case _ =>
+          js.Assign(jsConstructorVar, js.Undefined())
+      }
+
       val createClassStat = {
         val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
         val typeArg = typeVar
+        val jsConstructorArg = jsConstructorVar
         val parentArg = js.StringLiteral(encodeFullName(superClass))
         val ancestorsArg = js.ObjectConstr(
             for (ancestor <- currentClassSym :: currentClassSym.ancestors)
@@ -180,11 +218,12 @@ abstract class GenJSCode extends SubComponent
                   js.BooleanLiteral(true)))
 
         js.ApplyMethod(environment, js.PropertyName("createClass"),
-            List(nameArg, typeArg, parentArg, ancestorsArg))
+            List(nameArg, typeArg, jsConstructorArg, parentArg, ancestorsArg))
       }
 
       val createClassFun = js.Function(List(environment),
-          js.Block(List(classDefinition), createClassStat))
+          js.Block(List(classDefinition, createJSConstructorStat),
+              createClassStat))
 
       val registerClassStat = {
         val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
@@ -219,6 +258,34 @@ abstract class GenJSCode extends SubComponent
       }
 
       createInterfaceStat
+    }
+
+    // Generate the constructor of a class -------------------------------------
+
+    /** Gen JS code for the constructor of a class
+     *  The constructor calls the super constructor, then creates all the
+     *  fields of the object by assigning them to the zero of their type.
+     */
+    def genConstructor(cd: ClassDef): js.MethodDef = {
+      // Non-method term members are fields, except for module members.
+      val createFieldsStats = {
+        for {
+          f <- currentClassSym.info.decls
+          if !f.isMethod && f.isTerm && !f.isModule
+        } yield {
+          implicit val pos = f.pos
+          val fieldName = encodeFieldSym(f)
+          js.Assign(js.Select(js.This(), fieldName), genZeroOf(f.tpe))
+        }
+      }.toList
+
+      {
+        implicit val pos = cd.pos
+        val superCall =
+          js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
+        js.MethodDef(js.PropertyName("constructor"), Nil,
+            js.Block(superCall :: createFieldsStats))
+      }
     }
 
     // Generate a method -------------------------------------------------------
@@ -1102,10 +1169,8 @@ abstract class GenJSCode extends SubComponent
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
-      val instance = js.ApplyMethod(
-          js.Ident("Object"), js.Ident("create"),
-          List(js.DotSelect(typeVar, js.Ident("prototype"))))
-      js.ApplyMethod(instance, encodeMethodSym(ctor), arguments)
+      val instance = js.New(typeVar, Nil)
+      js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)

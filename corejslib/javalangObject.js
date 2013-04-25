@@ -5,7 +5,6 @@
 (function ($env) {
   $env.registerClass("java.lang.Object", function($env) {
     function ObjectClass() {
-      return this["<init>():java.lang.Object"]();
     }
     ObjectClass.prototype.constructor = ObjectClass;
 
@@ -43,9 +42,9 @@
 
     ObjectClass.prototype["clone():java.lang.Object"] = function() {
       if ($env.isInstance(this, "java.lang.Cloneable")) {
-        throw new this.classes["scala.NotImplementedError"].type();
+        throw new this.classes["scala.NotImplementedError"].jsconstructor();
       } else {
-        throw new this.classes["java.lang.CloneNotSupportedException"].type();
+        throw new this.classes["java.lang.CloneNotSupportedException"].jsconstructor();
       }
     }
 
@@ -74,7 +73,14 @@
 
     ObjectClass.prototype["finalize():scala.Unit"] = function() {}
 
-    $env.createClass("java.lang.Object", ObjectClass, null, {
+    // Constructor bridge
+    function JSObjectClass() {
+      ObjectClass.call(this);
+      return this["<init>():java.lang.Object"]();
+    }
+    JSObjectClass.prototype = ObjectClass.prototype;
+
+    $env.createClass("java.lang.Object", ObjectClass, JSObjectClass, null, {
       "java.lang.Object": true
     });
   });

@@ -8,6 +8,7 @@
     var name = "scala.runtime." +
       (isVolatile ? "Volatile" : "") + elemShortName + "Ref";
     var elemTypeName = isObject ? "java.lang.Object" : "scala."+elemShortName;
+    var constructorName = "<init>("+elemTypeName+"):"+name;
 
     $env.registerClass(name, function($env) {
       var ObjectClass = $env.c["java.lang.Object"];
@@ -19,7 +20,7 @@
       Class.prototype = Object.create(ObjectClass.prototype);
       Class.prototype.constructor = Class;
 
-      Class.prototype["<init>("+elemTypeName+"):"+name] = function(elem) {
+      Class.prototype[constructorName] = function(elem) {
         ObjectClass.prototype["<init>():java.lang.Object"].call(this);
         this.$jsfield$elem = elem;
         return this;
@@ -29,13 +30,19 @@
         return this.$jsfield$elem.toString();
       }
 
+      function JSClass(elem) {
+        Class.call(this);
+        return this[constructorName](elem);
+      }
+      JSClass.prototype = Class.prototype;
+
       var ancestors = {
         "java.io.Serializable": true,
         "java.lang.Object": true
       };
       ancestors[name] = true;
 
-      $env.createClass(name, Class, "java.lang.Object", ancestors);
+      $env.createClass(name, Class, JSClass, "java.lang.Object", ancestors);
     });
   }
 

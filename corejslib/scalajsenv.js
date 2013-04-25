@@ -36,14 +36,16 @@ function $ScalaJSEnvironmentClass(global) {
     });
   }
 
-  this.createType = function(name, constructor, parent, ancestors, isPrimitive,
+  this.createType = function(name, constructor, jsconstructor,
+                             parent, ancestors, isPrimitive,
                              isInterface, isArray, componentData, zero,
                              arrayEncodedName, displayName) {
     var self = this;
 
     var data = {
       name: name,
-      type: constructor,
+      constructor: constructor,
+      jsconstructor: jsconstructor,
       parent: parent,
       parentData: parent === null ? null : this.classes[parent],
       ancestors: ancestors,
@@ -92,8 +94,10 @@ function $ScalaJSEnvironmentClass(global) {
     return data;
   }
 
-  this.createClass = function(name, typeFunction, parent, ancestors) {
-    return this.createType(name, typeFunction, parent, ancestors,
+  this.createClass = function(name, constructor, jsconstructor,
+                              parent, ancestors) {
+    return this.createType(name, constructor, jsconstructor,
+                           parent, ancestors,
                            false, false, false, null, null,
                            "L" + name + ";", name);
   };
@@ -102,7 +106,8 @@ function $ScalaJSEnvironmentClass(global) {
                                       displayName) {
     var ancestors = {};
     ancestors[name] = true;
-    return this.createType(name, undefined, null, ancestors,
+    return this.createType(name, undefined, undefined,
+                           null, ancestors,
                            true, false, false, null, zero,
                            arrayEncodedName, displayName);
   };
@@ -110,27 +115,27 @@ function $ScalaJSEnvironmentClass(global) {
   this.createArrayClass = function(componentData) {
     var name = componentData.name + "[]";
     var encodedName = "[" + componentData.arrayEncodedName;
-    var typeFunction = this.createArrayTypeFunction(name, componentData);
+    var constructor = this.createArrayTypeFunction(name, componentData);
 
     var compAncestors = componentData.ancestors;
     var ancestors = {"java.lang.Object": true};
     for (var compAncestor in compAncestors)
       ancestors[compAncestor+"[]"] = true;
 
-    return this.createType(name, typeFunction, "java.lang.Object",
-                           ancestors,
+    return this.createType(name, constructor, constructor,
+                           "java.lang.Object", ancestors,
                            false, false, true, componentData, null,
                            encodedName, encodedName);
   };
 
   this.createInterface = function(name, ancestors) {
-    return this.createType(name, undefined, null, ancestors,
+    return this.createType(name, undefined, undefined,
+                           null, ancestors,
                            false, true, false, null, null,
                            "L" + name + ";", name);
   };
 
   this.registerClass = function(name, createFunction) {
-    //console.log('registerClass: ' + name);
     var self = this;
     Object.defineProperty(this.classes, name, {
       __proto__: null,
@@ -143,7 +148,7 @@ function $ScalaJSEnvironmentClass(global) {
     });
 
     defineLazyField(this.c, name, function() {
-      return self.classes[name].type;
+      return self.classes[name].constructor;
     });
   }
 
@@ -153,8 +158,8 @@ function $ScalaJSEnvironmentClass(global) {
       _instance: undefined,
       get instance() {
         if (this._instance === undefined)
-          this._instance = new self.classes[className].type();
-        return this._instance
+          this._instance = new self.classes[className].jsconstructor();
+        return this._instance;
       }
     };
     this.modules[name] = data;
@@ -167,7 +172,7 @@ function $ScalaJSEnvironmentClass(global) {
   this.createClassInstance = function(data) {
     /* Keep the full mangled name here because the constructor is private
      * and hence does not appear in the JavaScript bridge. */
-    return Object.create(this.classes["java.lang.Class"].type.prototype)
+    return new this.c["java.lang.Class"]()
       ["<init>(scala.js.JSDynamic,scala.js.JSDynamic):java.lang.Class"](this, data);
   }
 
@@ -194,7 +199,7 @@ function $ScalaJSEnvironmentClass(global) {
       throw "The pseudo StringClass constructor should never be called"
     }
 
-    $.createClass("java.lang.String", StringClass, "java.lang.Object", {
+    $.createClass("java.lang.String", StringClass, undefined, "java.lang.Object", {
       "java.lang.Object": true,
       "java.lang.String": true
     });
@@ -207,6 +212,9 @@ function $ScalaJSEnvironmentClass(global) {
     var mangledName = componentData.name + "[]";
 
     function ArrayClass(arg) {
+      ObjectClass.call(this);
+      ObjectClass.prototype["<init>():java.lang.Object"].call(this);
+
       if (typeof(arg) === "number") {
         // arg is the length of the array
         this.underlying = new Array(arg);
@@ -217,8 +225,6 @@ function $ScalaJSEnvironmentClass(global) {
         // arg is a native array that we wrap
         this.underlying = arg;
       }
-
-      ObjectClass.prototype["<init>():java.lang.Object"].call(this);
     }
     ArrayClass.prototype = Object.create(ObjectClass.prototype);
     ArrayClass.prototype.constructor = ArrayClass;
@@ -266,12 +272,13 @@ function $ScalaJSEnvironmentClass(global) {
   };
 
   this.throwClassCastException = function(instance, classFullName) {
-    throw new this.classes["java.lang.ClassCastException"].type(
-      instance + " is not an instance of " + classFullName);
+    throw new this.c["java.lang.ClassCastException"]()[
+      "<init>(java.lang.String):java.lang.ClassCastException"](
+        instance + " is not an instance of " + classFullName);
   }
 
   this.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
-    return new arrayClassData.type(nativeArray);
+    return new arrayClassData.constructor(nativeArray);
   }
 
   this.newArrayObject = function(arrayClassData, lengths) {
@@ -279,7 +286,7 @@ function $ScalaJSEnvironmentClass(global) {
   };
 
   this.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
-    var result = new arrayClassData.type(lengths[lengthIndex]);
+    var result = new arrayClassData.constructor(lengths[lengthIndex]);
 
     if (lengthIndex < lengths.length-1) {
       var subArrayClassData = arrayClassData.componentData;
@@ -295,7 +302,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.anyEqEq = function(lhs, rhs) {
     if (this.isScalaJSObject(lhs)) {
-      return this.modules["scala.runtime.BoxesRunTime$"].instance[
+      return this.m["scala.runtime.BoxesRunTime$"][
         "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
     } else {
       return lhs === rhs;
@@ -320,7 +327,8 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.objectClone = function(instance) {
     // TODO
-    throw new this.classes["scala.NotImplementedError"].type();
+    throw new this.c["scala.NotImplementedError"]()[
+      "<init>():scala.NotImplementedError"]();
   }
 
   this.objectFinalize = function(instance) {
