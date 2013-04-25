@@ -1597,7 +1597,7 @@ abstract class GenJSCode extends SubComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case GETGLOBAL => js.DotSelect(environment, js.Ident("global"))
+            case GETGLOBAL => envField("g")
           }
 
         case List(arg) =>
@@ -1822,7 +1822,7 @@ abstract class GenJSCode extends SubComponent
           sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
         }
 
-      if (isGlobalScope) js.DotSelect(environment, js.Ident("global"))
+      if (isGlobalScope) envField("g")
       else encodeModuleSym(sym)
     }
 

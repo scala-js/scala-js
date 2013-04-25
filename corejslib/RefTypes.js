@@ -3,50 +3,52 @@
  * ------------------ */
 
 (function ($env) {
-  var ObjectClass = $env.classes["java.lang.Object"].type;
-
-  function createRefType(elemShortName, isVolatile, zero) {
+  function registerRefType(elemShortName, isVolatile, zero) {
     var isObject = elemShortName === "Object";
     var name = "scala.runtime." +
       (isVolatile ? "Volatile" : "") + elemShortName + "Ref";
     var elemTypeName = isObject ? "java.lang.Object" : "scala."+elemShortName;
 
-    function Class() {
-      ObjectClass.prototype.constructor.call(this);
-      this.$jsfield$elem = zero;
-    }
-    Class.prototype = Object.create(ObjectClass.prototype);
-    Class.prototype.constructor = Class;
+    $env.registerClass(name, function($env) {
+      var ObjectClass = $env.c["java.lang.Object"];
 
-    Class.prototype["<init>("+elemTypeName+"):"+name] = function(elem) {
-      ObjectClass.prototype["<init>():java.lang.Object"].call(this);
-      this.$jsfield$elem = elem;
-      return this;
-    }
+      function Class() {
+        ObjectClass.prototype.constructor.call(this);
+        this.$jsfield$elem = zero;
+      }
+      Class.prototype = Object.create(ObjectClass.prototype);
+      Class.prototype.constructor = Class;
 
-    Class.prototype["toString():java.lang.String"] = function() {
-      return this.$jsfield$elem.toString();
-    }
+      Class.prototype["<init>("+elemTypeName+"):"+name] = function(elem) {
+        ObjectClass.prototype["<init>():java.lang.Object"].call(this);
+        this.$jsfield$elem = elem;
+        return this;
+      }
 
-    var ancestors = {
-      "java.io.Serializable": true,
-      "java.lang.Object": true
-    };
-    ancestors[name] = true;
+      Class.prototype["toString():java.lang.String"] = function() {
+        return this.$jsfield$elem.toString();
+      }
 
-    $env.createClass(name, Class, "java.lang.Object", ancestors);
+      var ancestors = {
+        "java.io.Serializable": true,
+        "java.lang.Object": true
+      };
+      ancestors[name] = true;
+
+      $env.createClass(name, Class, "java.lang.Object", ancestors);
+    });
   }
 
   for (var volatile = 0; volatile < 2; volatile++) {
     var isVolatile = volatile != 0;
-    createRefType("Boolean", isVolatile, false);
-    createRefType("Char", isVolatile, 0);
-    createRefType("Byte", isVolatile, 0);
-    createRefType("Short", isVolatile, 0);
-    createRefType("Int", isVolatile, 0);
-    createRefType("Long", isVolatile, 0);
-    createRefType("Float", isVolatile, 0.0);
-    createRefType("Double", isVolatile, 0.0);
-    createRefType("Object", isVolatile, null);
+    registerRefType("Boolean", isVolatile, false);
+    registerRefType("Char", isVolatile, 0);
+    registerRefType("Byte", isVolatile, 0);
+    registerRefType("Short", isVolatile, 0);
+    registerRefType("Int", isVolatile, 0);
+    registerRefType("Long", isVolatile, 0);
+    registerRefType("Float", isVolatile, 0.0);
+    registerRefType("Double", isVolatile, 0.0);
+    registerRefType("Object", isVolatile, null);
   }
 })($ScalaJSEnvironment);

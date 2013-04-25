@@ -32,6 +32,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(ScalaJSEnvironmentName)
   }
 
+  /** Select a given field of the current Scala.js environment */
+  def envField(name: String)(implicit pos: Position): js.Tree = {
+    js.DotSelect(environment, js.Ident(name))
+  }
+
   def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
     js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id)
@@ -70,7 +75,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
-    js.DotSelect(encodeClassDataOfSym(sym), js.Ident("type"))
+    js.BracketSelect(envField("c"), encodeFullNameLit(sym))
   }
 
   def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
@@ -86,7 +91,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSym called with non-module symbol: " + sym)
-    js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("instance"))
+    js.BracketSelect(envField("m"), encodeFullNameLit(sym))
   }
 
   def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
@@ -115,6 +120,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.BracketSelect(js.DotSelect(environment, js.Ident(dictName)),
         js.StringLiteral(encodeFullName(sym)))
   }
+
+  def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral =
+    js.StringLiteral(encodeFullName(sym))
 
   def encodeFullName(sym: Symbol): String =
     sym.fullName + suffixFor(sym)

@@ -10,14 +10,40 @@ function $ScalaJSEnvironmentClass(global) {
   this.modules = {};
   this.natives = {};
 
+  // Short fields used a lot by the codegen
+  this.g = global; // Global scope
+  this.c = {};     // Constructors
+  this.m = {};     // Module instances
+
   // Core mechanism
 
-  this.createType = function(name, typeFunction, parent, ancestors, isPrimitive,
+  function defineLazyField(obj, propName, computeFun) {
+    Object.defineProperty(obj, propName, {
+      __proto__: null,
+      enumerable: true,
+      configurable: true,
+      get: function() {
+        var value = computeFun.call(obj);
+        Object.defineProperty(obj, propName, {
+          __proto__: null,
+          enumerable: true,
+          configurable: false,
+          writable: false,
+          value: value
+        });
+        return value;
+      }
+    });
+  }
+
+  this.createType = function(name, constructor, parent, ancestors, isPrimitive,
                              isInterface, isArray, componentData, zero,
                              arrayEncodedName, displayName) {
+    var self = this;
+
     var data = {
       name: name,
-      type: typeFunction,
+      type: constructor,
       parent: parent,
       parentData: parent === null ? null : this.classes[parent],
       ancestors: ancestors,
@@ -31,19 +57,19 @@ function $ScalaJSEnvironmentClass(global) {
       _class: undefined,
       get class() {
         if (this._class === undefined)
-          this._class = $ScalaJSEnvironment.createClassInstance(this);
+          this._class = self.createClassInstance(this);
         return this._class;
       },
       _array: undefined,
       get array() {
         if (this._array === undefined)
-          this._array = $ScalaJSEnvironment.createArrayClass(this);
+          this._array = self.createArrayClass(this);
         return this._array;
       }
     };
 
-    if (typeFunction !== undefined)
-      typeFunction.prototype.$classData = data;
+    if (constructor !== undefined)
+      constructor.prototype.$classData = data;
 
     if (!isPrimitive && !isArray) {
       Object.defineProperty(this.classes, name, {
@@ -104,6 +130,7 @@ function $ScalaJSEnvironmentClass(global) {
   };
 
   this.registerClass = function(name, createFunction) {
+    //console.log('registerClass: ' + name);
     var self = this;
     Object.defineProperty(this.classes, name, {
       __proto__: null,
@@ -113,6 +140,10 @@ function $ScalaJSEnvironmentClass(global) {
         createFunction(self); // hopefully this calls createClass(name) ...
         return this[name];    // ... otherwise this will recurse infinitely
       }
+    });
+
+    defineLazyField(this.c, name, function() {
+      return self.classes[name].type;
     });
   }
 
@@ -127,6 +158,10 @@ function $ScalaJSEnvironmentClass(global) {
       }
     };
     this.modules[name] = data;
+
+    defineLazyField(this.m, name, function() {
+      return self.modules[name].instance;
+    });
   }
 
   this.createClassInstance = function(data) {
@@ -154,19 +189,21 @@ function $ScalaJSEnvironmentClass(global) {
 
   // Create dummy class for java.lang.String
 
-  function StringClass() {
-    throw "The pseudo StringClass constructor should never be called"
-  }
+  this.registerClass("java.lang.String", function($) {
+    function StringClass() {
+      throw "The pseudo StringClass constructor should never be called"
+    }
 
-  this.createClass("java.lang.String", StringClass, "java.lang.Object", {
-    "java.lang.Object": true,
-    "java.lang.String": true
+    $.createClass("java.lang.String", StringClass, "java.lang.Object", {
+      "java.lang.Object": true,
+      "java.lang.String": true
+    });
   });
 
   // Array type factory
 
   this.createArrayTypeFunction = function(name, componentData) {
-    var ObjectClass = this.classes["java.lang.Object"].type;
+    var ObjectClass = this.c["java.lang.Object"];
     var mangledName = componentData.name + "[]";
 
     function ArrayClass(arg) {
