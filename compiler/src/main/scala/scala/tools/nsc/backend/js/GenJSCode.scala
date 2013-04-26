@@ -1071,6 +1071,14 @@ abstract class GenJSCode extends SubComponent
           if (isPrimitive(sym)) {
             // primitive operation
             genPrimitiveOp(app)
+          } else if (isBox(sym)) {
+            /** Box a primitive value */
+            val arg = args.head
+            makeBox(genExpr(arg), arg.tpe)
+          } else if (isUnbox(sym)) {
+            /** Unbox a primitive value */
+            val arg = args.head
+            makeUnbox(genExpr(arg), tree.tpe)
           } else {
             /** Actual method call
              *  But even these are further refined into:
@@ -1628,21 +1636,25 @@ abstract class GenJSCode extends SubComponent
       tpe.typeSymbol.isPrimitiveValueClass
 
     /** Gen a boxing operation (tpe is the primitive type) */
-    private def makeBox(expr: js.Tree, tpe: Type): js.Tree =
-      makeBoxUnbox(expr, tpe, newTermName("box"))
+    private def makeBox(expr: js.Tree, tpe: Type)(
+        implicit pos: Position): js.Tree =
+      makeBoxUnbox(expr, tpe, "b")
 
     /** Gen an unboxing operation (tpe is the primitive type) */
-    private def makeUnbox(expr: js.Tree, tpe: Type): js.Tree =
-      makeBoxUnbox(expr, tpe, newTermName("unbox"))
+    private def makeUnbox(expr: js.Tree, tpe: Type)(
+        implicit pos: Position): js.Tree =
+      makeBoxUnbox(expr, tpe, "u")
 
     /** Common implementation for `makeBox()` and `makeUnbox()` */
-    private def makeBoxUnbox(expr: js.Tree, tpe: Type, function: TermName): js.Tree = {
-      implicit val pos = expr.pos
+    private def makeBoxUnbox(expr: js.Tree, tpe: Type, functionPrefix: String)(
+        implicit pos: Position): js.Tree = {
 
-      val module = tpe.typeSymbol.companionModule
-      val boxSymbol = getMember(module, function)
-      js.ApplyMethod(genLoadModule(module),
-          encodeMethodSym(boxSymbol), List(expr))
+      val boxFunName = toTypeKind(tpe) match {
+        case kind: ValueTypeKind => functionPrefix + kind.primitiveCharCode
+        case _ =>
+          abort(s"makeBoxUnbox requires a primitive type, found $tpe at $pos")
+      }
+      genBuiltinApply(boxFunName, expr)
     }
 
     /** Gen JS code for a Scala.js-specific primitive method */

@@ -359,6 +359,69 @@ function $ScalaJSEnvironmentClass(global) {
   this.truncateToLong = function(value) {
     return value < 0 ? Math.ceil(value) : Math.floor(value);
   }
+
+  // Boxes - inline all the way through java.lang.X.valueOf()
+
+  this.bV = function() {
+    return this.m["scala.runtime.BoxedUnit"].$jsfield$UNIT;
+  }
+  this.bZ = function(value) {
+    if (value)
+      return this.m["java.lang.Boolean"].$jsfield$TRUE;
+    else
+      return this.m["java.lang.Boolean"].$jsfield$FALSE;
+  }
+  this.bC = function(value) {
+    return new this.c["java.lang.Character"]()["<init>(C)Ljava.lang.Character;"](value);
+  }
+  this.bB = function(value) {
+    return new this.c["java.lang.Byte"]()["<init>(B)Ljava.lang.Byte;"](value);
+  }
+  this.bS = function(value) {
+    return new this.c["java.lang.Short"]()["<init>(S)Ljava.lang.Short;"](value);
+  }
+  this.bI = function(value) {
+    return new this.c["java.lang.Integer"]()["<init>(I)Ljava.lang.Integer;"](value);
+  }
+  this.bJ = function(value) {
+    return new this.c["java.lang.Long"]()["<init>(J)Ljava.lang.Long;"](value);
+  }
+  this.bF = function(value) {
+    return new this.c["java.lang.Float"]()["<init>(F)Ljava.lang.Float;"](value);
+  }
+  this.bD = function(value) {
+    return new this.c["java.lang.Double"]()["<init>(D)Ljava.lang.Double;"](value);
+  }
+
+  // Unboxes - inline all the way through obj.xValue()
+
+  this.uV = function(value) {
+    return undefined;
+  }
+  this.uZ = function(value) {
+    return this.asInstance(value, "java.lang.Boolean").$jsfield$value;
+  }
+  this.uC = function(value) {
+    return this.asInstance(value, "java.lang.Character").$jsfield$value;
+  }
+  this.uB = function(value) {
+    return this.asInstance(value, "java.lang.Byte").$jsfield$value;
+  }
+  this.uS = function(value) {
+    return this.asInstance(value, "java.lang.Short").$jsfield$value;
+  }
+  this.uI = function(value) {
+    return this.asInstance(value, "java.lang.Integer").$jsfield$value;
+  }
+  this.uJ = function(value) {
+    return this.asInstance(value, "java.lang.Long").$jsfield$value;
+  }
+  this.uF = function(value) {
+    return this.asInstance(value, "java.lang.Float").$jsfield$value;
+  }
+  this.uD = function(value) {
+    return this.asInstance(value, "java.lang.Double").$jsfield$value;
+  }
 }
 
 var $ScalaJSEnvironment = new $ScalaJSEnvironmentClass(this);
