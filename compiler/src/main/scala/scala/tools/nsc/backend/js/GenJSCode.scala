@@ -380,15 +380,18 @@ abstract class GenJSCode extends SubComponent
       /* For whatever reason, a module nested in another module will be
        * lifted as a top-level module, with its module class, but
        * sym.companionModule will be NoSymbol.
+       * This makes it awkward to get its full name without $ using
+       * standard methods of JSEncoding.
+       * Instead, we drop manually the trailing $ of the class full name.
        */
-      val symForNameArg =
-        if (sym.companionModule != NoSymbol) sym.companionModule else sym
+      val className = encodeFullName(sym)
+      val moduleName = dropTrailingDollar(className)
 
-      val nameArg = js.StringLiteral(encodeFullName(symForNameArg))
-      val classNameArg = js.StringLiteral(encodeFullName(sym))
+      val moduleNameArg = js.StringLiteral(moduleName)
+      val classNameArg = js.StringLiteral(className)
 
       js.ApplyMethod(environment, js.Ident("registerModule"),
-          List(nameArg, classNameArg))
+          List(moduleNameArg, classNameArg))
     }
 
     // Code generation ---------------------------------------------------------
@@ -1879,7 +1882,14 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Generate loading of a module value */
-    private def genLoadModule(sym: Symbol)(implicit pos: Position): js.Tree = {
+    private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
+      /* Sometimes we receive a module class here.
+       * We must select its companion module if it exists.
+       */
+      val sym =
+        if (sym0.isModuleClass && sym0.companionModule != NoSymbol) sym0.companionModule
+        else sym0
+
       val isGlobalScope =
         isScalaJSDefined &&
         sym.isModuleOrModuleClass &&

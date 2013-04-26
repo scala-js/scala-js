@@ -37,6 +37,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.DotSelect(environment, js.Ident(name))
   }
 
+  /** Drop the trailing $ in a string if there is one */
+  def dropTrailingDollar(name: String): String =
+    if (name.charAt(name.length-1) != '$') name
+    else name.substring(0, name.length-1)
+
   def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
     js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id)
@@ -134,7 +139,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def suffixFor(sym: Symbol) =
-    if (sym.hasModuleFlag && !sym.isMethod && !sym.isImplClass) "$" else ""
+    if (sym.isModuleClass && !sym.isImplClass) "$" else ""
 
   // Encoding of method signatures
 

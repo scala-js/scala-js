@@ -302,7 +302,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.anyEqEq = function(lhs, rhs) {
     if (this.isScalaJSObject(lhs)) {
-      return this.m["scala.runtime.BoxesRunTime$"][
+      return this.m["scala.runtime.BoxesRunTime"][
         "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
     } else {
       return lhs === rhs;
