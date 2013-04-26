@@ -60,13 +60,13 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    js.PropertyName(sym.name.toString + makeParamsString(sym))
+    js.PropertyName(sym.name.decoded + makeParamsString(sym))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
-    js.PropertyName(sym.name.toString +
+    js.PropertyName(sym.name.decoded +
         makeParamsString(Nil, internalName(sym.tpe)))
   }
 
@@ -130,7 +130,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.StringLiteral(encodeFullName(sym))
 
   def encodeFullName(sym: Symbol): String =
-    sym.fullName + suffixFor(sym)
+    sym.fullNameAsName('.').decoded + suffixFor(sym)
 
   def encodeFullName(tpe: Type): String = tpe match {
     case TypeRef(_, definitions.ArrayClass, List(elementType)) =>
