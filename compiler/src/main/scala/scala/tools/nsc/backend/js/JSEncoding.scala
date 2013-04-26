@@ -67,7 +67,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
     js.PropertyName(sym.name.toString +
-        makeParamsString(Nil, sym.tpe))
+        makeParamsString(Nil, internalName(sym.tpe)))
   }
 
   def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
@@ -144,22 +144,40 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   // Encoding of method signatures
 
   private def makeParamsString(sym: Symbol): String = {
-    sym.tpe match {
-      case MethodType(params, resultType) =>
-        makeParamsString(params map (_.tpe), resultType)
-
-      case NullaryMethodType(resultType) =>
-        makeParamsString(Nil, resultType)
-
-      case _ => abort("Expected a method type for " + sym)
-    }
+    val tpe = sym.tpe
+    makeParamsString(tpe.params map (p => internalName(p.tpe)),
+        internalName(tpe.resultType))
   }
 
-  private def makeParamsString(paramTypes: List[Type], resultType: Type): String =
-    makeParamsString(paramTypes map typeFullName, typeFullName(resultType))
-
   private def makeParamsString(paramTypeNames: List[String], resultTypeName: String) =
-    paramTypeNames.mkString("(", ",", ")") + ":" + resultTypeName
+    paramTypeNames.mkString("(", "", ")") + resultTypeName
 
-  private def typeFullName(tpe: Type): String = encodeFullName(tpe)
+  /** Compute the internal name for a type
+   *  The internal name is inspired by the encoding of the JVM:
+   *  - I for Int, Z for Boolean, V for Unit, etc. for primitive types
+   *  - Lclassname; where classname is the full name of a class
+   *  - [elem for arrays
+   *  but it is tweaked for further compression in the context of Scala.js:
+   *  - O for java.lang.Object and T for java.lang.String
+   *  - Also we keep . instead of / to separate package names
+   *
+   *  It might be worth investigating other special cases for classes of the
+   *  Scala language: Function types, Tuple types?
+   */
+  private def internalName(tpe: Type): String = internalName(toTypeKind(tpe))
+
+  private def internalName(kind: TypeKind): String = kind match {
+    case kind: ValueTypeKind => kind.primitiveCharCode
+    case REFERENCE(cls) =>
+      /* Give shorter names to classes used *very* often:
+       * - Object, since it is the erasure of most type parameters
+       * - String, if only for the ubiquitous toString()
+       */
+      cls match {
+        case definitions.ObjectClass => "O" // or A, for Any?
+        case definitions.StringClass => "T" // S is taken, use T for Text
+        case _ => "L"+encodeFullName(cls)+";"
+      }
+    case ARRAY(elem) => "["+internalName(elem)
+  }
 }

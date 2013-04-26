@@ -173,7 +173,7 @@ function $ScalaJSEnvironmentClass(global) {
     /* Keep the full mangled name here because the constructor is private
      * and hence does not appear in the JavaScript bridge. */
     return new this.c["java.lang.Class"]()
-      ["<init>(scala.js.JSDynamic,scala.js.JSDynamic):java.lang.Class"](this, data);
+      ["<init>(Lscala.js.JSDynamic;Lscala.js.JSDynamic;)Ljava.lang.Class;"](this, data);
   }
 
   this.registerNative = function(fullName, nativeFunction) {
@@ -213,7 +213,7 @@ function $ScalaJSEnvironmentClass(global) {
 
     function ArrayClass(arg) {
       ObjectClass.call(this);
-      ObjectClass.prototype["<init>():java.lang.Object"].call(this);
+      ObjectClass.prototype["<init>()O"].call(this);
 
       if (typeof(arg) === "number") {
         // arg is the length of the array
@@ -273,7 +273,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.throwClassCastException = function(instance, classFullName) {
     throw new this.c["java.lang.ClassCastException"]()[
-      "<init>(java.lang.String):java.lang.ClassCastException"](
+      "<init>(T)Ljava.lang.ClassCastException;"](
         instance + " is not an instance of " + classFullName);
   }
 
@@ -302,8 +302,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.anyEqEq = function(lhs, rhs) {
     if (this.isScalaJSObject(lhs)) {
-      return this.m["scala.runtime.BoxesRunTime"][
-        "equals(java.lang.Object,java.lang.Object):scala.Boolean"](lhs, rhs);
+      return this.m["scala.runtime.BoxesRunTime"]["equals(OO)Z"](lhs, rhs);
     } else {
       return lhs === rhs;
     }
@@ -311,14 +310,14 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.anyRefEqEq = function(lhs, rhs) {
     if (this.isScalaJSObject(lhs))
-      return lhs["equals(java.lang.Object):scala.Boolean"](rhs);
+      return lhs["equals(O)Z"](rhs);
     else
       return lhs === rhs;
   }
 
   this.objectGetClass = function(instance) {
     if (this.isScalaJSObject(instance) || (instance === null))
-      return instance["getClass():java.lang.Class"]();
+      return instance["getClass()Ljava.lang.Class;"]();
     else if (typeof(instance) === "string")
       return this.classes["java.lang.String"].class;
     else
@@ -328,7 +327,7 @@ function $ScalaJSEnvironmentClass(global) {
   this.objectClone = function(instance) {
     // TODO
     throw new this.c["scala.NotImplementedError"]()[
-      "<init>():scala.NotImplementedError"]();
+      "<init>()Lscala.NotImplementedError;"]();
   }
 
   this.objectFinalize = function(instance) {
@@ -345,14 +344,14 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.objectEquals = function(instance, rhs) {
     if (this.isScalaJSObject(instance) || (instance === null))
-      return instance["equals(java.lang.Object):scala.Boolean"]();
+      return instance["equals(O)Z"]();
     else
       return instance === rhs;
   }
 
   this.objectHashCode = function(instance) {
     if (this.isScalaJSObject(instance))
-      return instance["hashCode():scala.Int"]();
+      return instance["hashCode()I"]();
     else
       return 42; // TODO
   }

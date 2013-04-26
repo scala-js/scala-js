@@ -67,8 +67,14 @@ trait TypeKinds extends SubComponent {
     }
 
     def toType: Type
+  }
 
-    def primitiveCharCode = toType.typeSymbol match {
+  sealed abstract class ValueTypeKind(cls: Symbol) extends TypeKind {
+    override def isValueType = true
+
+    def toType = cls.tpe
+
+    val primitiveCharCode = cls match {
       case UnitClass     => "V"
       case BooleanClass  => "Z"
       case CharClass     => "C"
@@ -80,12 +86,6 @@ trait TypeKinds extends SubComponent {
       case DoubleClass   => "D"
       case x => abort("Unknown primitive type: " + x.fullName)
     }
-  }
-
-  sealed abstract class ValueTypeKind(cls: Symbol) extends TypeKind {
-    override def isValueType = true
-
-    def toType = cls.tpe
   }
 
   /** The undefined value */

@@ -8,39 +8,39 @@
     }
     ObjectClass.prototype.constructor = ObjectClass;
 
-    ObjectClass.prototype["<init>():java.lang.Object"] = function() {
+    ObjectClass.prototype["<init>()O"] = function() {
       return this;
     }
 
-    ObjectClass.prototype["getClass():java.lang.Class"] = function() {
+    ObjectClass.prototype["getClass()Ljava.lang.Class;"] = function() {
       return this.$classData.class;
     }
 
     // Bridge for getClass()
     ObjectClass.prototype.getClass = function() {
-      return this["getClass():java.lang.Class"]();
+      return this["getClass()Ljava.lang.Class;"]();
     }
 
-    ObjectClass.prototype["hashCode():scala.Int"] = function() {
+    ObjectClass.prototype["hashCode()I"] = function() {
       // TODO
       return 42;
     }
 
     // Bridge for hashCode()
     ObjectClass.prototype.hashCode = function() {
-      return this["hashCode():scala.Int"]();
+      return this["hashCode()I"]();
     }
 
-    ObjectClass.prototype["equals(java.lang.Object):scala.Boolean"] = function(rhs) {
+    ObjectClass.prototype["equals(O)Z"] = function(rhs) {
       return this === rhs;
     }
 
     // Bridge for equals(Object)
     ObjectClass.prototype.equals = function(that) {
-      return this["equals(java.lang.Object):scala.Boolean"](that);
+      return this["equals(O)Z"](that);
     }
 
-    ObjectClass.prototype["clone():java.lang.Object"] = function() {
+    ObjectClass.prototype["clone()O"] = function() {
       if ($env.isInstance(this, "java.lang.Cloneable")) {
         throw new this.classes["scala.NotImplementedError"].jsconstructor();
       } else {
@@ -50,33 +50,33 @@
 
     // Bridge for clone()
     ObjectClass.prototype.clone = function() {
-      return this["clone():java.lang.Object"]();
+      return this["clone()O"]();
     }
 
-    ObjectClass.prototype["toString():java.lang.String"] = function() {
+    ObjectClass.prototype["toString()T"] = function() {
       // getClass().getName() + "@" + Integer.toHexString(hashCode())
-      var className = this["getClass():java.lang.Class"]()["getName():java.lang.String"]();
-      var hashCode = this["hashCode():scala.Int"]();
+      var className = this["getClass()Ljava.lang.Class;"]()["getName()T"]();
+      var hashCode = this["hashCode()I"]();
       return className + '@' + hashCode.toString(16);
     }
 
     // Bridge for toString()
     ObjectClass.prototype.toString = function() {
-      return this["toString():java.lang.String"]();
+      return this["toString()T"]();
     }
 
-    ObjectClass.prototype["notify():scala.Unit"] = function() {}
-    ObjectClass.prototype["notifyAll():scala.Unit"] = function() {}
-    ObjectClass.prototype["wait(scala.Long):scala.Unit"] = function() {}
-    ObjectClass.prototype["wait(scala.Long,scala.Int):scala.Unit"] = function() {}
-    ObjectClass.prototype["wait():scala.Unit"] = function() {}
+    ObjectClass.prototype["notify()V"] = function() {}
+    ObjectClass.prototype["notifyAll()V"] = function() {}
+    ObjectClass.prototype["wait(J)V"] = function() {}
+    ObjectClass.prototype["wait(JI)V"] = function() {}
+    ObjectClass.prototype["wait()V"] = function() {}
 
-    ObjectClass.prototype["finalize():scala.Unit"] = function() {}
+    ObjectClass.prototype["finalize()V"] = function() {}
 
     // Constructor bridge
     function JSObjectClass() {
       ObjectClass.call(this);
-      return this["<init>():java.lang.Object"]();
+      return this["<init>()O"]();
     }
     JSObjectClass.prototype = ObjectClass.prototype;
 

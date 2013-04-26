@@ -3,12 +3,11 @@
  * ------------------ */
 
 (function ($env) {
-  function registerRefType(elemShortName, isVolatile, zero) {
+  function registerRefType(elemShortName, elemCodeName, isVolatile, zero) {
     var isObject = elemShortName === "Object";
     var name = "scala.runtime." +
       (isVolatile ? "Volatile" : "") + elemShortName + "Ref";
-    var elemTypeName = isObject ? "java.lang.Object" : "scala."+elemShortName;
-    var constructorName = "<init>("+elemTypeName+"):"+name;
+    var constructorName = "<init>("+elemCodeName+")L"+name+";";
 
     $env.registerClass(name, function($env) {
       var ObjectClass = $env.c["java.lang.Object"];
@@ -48,14 +47,14 @@
 
   for (var volatile = 0; volatile < 2; volatile++) {
     var isVolatile = volatile != 0;
-    registerRefType("Boolean", isVolatile, false);
-    registerRefType("Char", isVolatile, 0);
-    registerRefType("Byte", isVolatile, 0);
-    registerRefType("Short", isVolatile, 0);
-    registerRefType("Int", isVolatile, 0);
-    registerRefType("Long", isVolatile, 0);
-    registerRefType("Float", isVolatile, 0.0);
-    registerRefType("Double", isVolatile, 0.0);
-    registerRefType("Object", isVolatile, null);
+    registerRefType("Boolean", "Z", isVolatile, false);
+    registerRefType("Char", "C", isVolatile, 0);
+    registerRefType("Byte", "B", isVolatile, 0);
+    registerRefType("Short", "S", isVolatile, 0);
+    registerRefType("Int", "I", isVolatile, 0);
+    registerRefType("Long", "J", isVolatile, 0);
+    registerRefType("Float", "F", isVolatile, 0.0);
+    registerRefType("Double", "D", isVolatile, 0.0);
+    registerRefType("Object", "O", isVolatile, null);
   }
 })($ScalaJSEnvironment);
