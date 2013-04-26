@@ -146,7 +146,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def makeParamsString(sym: Symbol): String = {
     val tpe = sym.tpe
     makeParamsString(tpe.params map (p => internalName(p.tpe)),
-        internalName(tpe.resultType))
+        if (sym.isClassConstructor) "" else internalName(tpe.resultType))
   }
 
   private def makeParamsString(paramTypeNames: List[String], resultTypeName: String) =

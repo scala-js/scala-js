@@ -8,7 +8,7 @@
     }
     ObjectClass.prototype.constructor = ObjectClass;
 
-    ObjectClass.prototype["<init>()O"] = function() {
+    ObjectClass.prototype["<init>()"] = function() {
       return this;
     }
 
@@ -76,7 +76,7 @@
     // Constructor bridge
     function JSObjectClass() {
       ObjectClass.call(this);
-      return this["<init>()O"]();
+      return this["<init>()"]();
     }
     JSObjectClass.prototype = ObjectClass.prototype;
 

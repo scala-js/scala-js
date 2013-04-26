@@ -173,7 +173,7 @@ function $ScalaJSEnvironmentClass(global) {
     /* Keep the full mangled name here because the constructor is private
      * and hence does not appear in the JavaScript bridge. */
     return new this.c["java.lang.Class"]()
-      ["<init>(Lscala.js.JSDynamic;Lscala.js.JSDynamic;)Ljava.lang.Class;"](this, data);
+      ["<init>(Lscala.js.JSDynamic;Lscala.js.JSDynamic;)"](this, data);
   }
 
   this.registerNative = function(fullName, nativeFunction) {
@@ -213,7 +213,7 @@ function $ScalaJSEnvironmentClass(global) {
 
     function ArrayClass(arg) {
       ObjectClass.call(this);
-      ObjectClass.prototype["<init>()O"].call(this);
+      ObjectClass.prototype["<init>()"].call(this);
 
       if (typeof(arg) === "number") {
         // arg is the length of the array
@@ -272,9 +272,8 @@ function $ScalaJSEnvironmentClass(global) {
   };
 
   this.throwClassCastException = function(instance, classFullName) {
-    throw new this.c["java.lang.ClassCastException"]()[
-      "<init>(T)Ljava.lang.ClassCastException;"](
-        instance + " is not an instance of " + classFullName);
+    throw new this.c["java.lang.ClassCastException"]()["<init>(T)"](
+      instance + " is not an instance of " + classFullName);
   }
 
   this.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
@@ -326,8 +325,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.objectClone = function(instance) {
     // TODO
-    throw new this.c["scala.NotImplementedError"]()[
-      "<init>()Lscala.NotImplementedError;"]();
+    throw new this.c["scala.NotImplementedError"]()["<init>()"]();
   }
 
   this.objectFinalize = function(instance) {
@@ -372,25 +370,25 @@ function $ScalaJSEnvironmentClass(global) {
       return this.m["java.lang.Boolean"].$jsfield$FALSE;
   }
   this.bC = function(value) {
-    return new this.c["java.lang.Character"]()["<init>(C)Ljava.lang.Character;"](value);
+    return new this.c["java.lang.Character"]()["<init>(C)"](value);
   }
   this.bB = function(value) {
-    return new this.c["java.lang.Byte"]()["<init>(B)Ljava.lang.Byte;"](value);
+    return new this.c["java.lang.Byte"]()["<init>(B)"](value);
   }
   this.bS = function(value) {
-    return new this.c["java.lang.Short"]()["<init>(S)Ljava.lang.Short;"](value);
+    return new this.c["java.lang.Short"]()["<init>(S)"](value);
   }
   this.bI = function(value) {
-    return new this.c["java.lang.Integer"]()["<init>(I)Ljava.lang.Integer;"](value);
+    return new this.c["java.lang.Integer"]()["<init>(I)"](value);
   }
   this.bJ = function(value) {
-    return new this.c["java.lang.Long"]()["<init>(J)Ljava.lang.Long;"](value);
+    return new this.c["java.lang.Long"]()["<init>(J)"](value);
   }
   this.bF = function(value) {
-    return new this.c["java.lang.Float"]()["<init>(F)Ljava.lang.Float;"](value);
+    return new this.c["java.lang.Float"]()["<init>(F)"](value);
   }
   this.bD = function(value) {
-    return new this.c["java.lang.Double"]()["<init>(D)Ljava.lang.Double;"](value);
+    return new this.c["java.lang.Double"]()["<init>(D)"](value);
   }
 
   // Unboxes - inline all the way through obj.xValue()
