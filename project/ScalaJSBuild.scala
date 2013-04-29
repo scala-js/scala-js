@@ -77,6 +77,7 @@ object ScalaJSBuild extends Build {
                 _.data.getAbsolutePath()).mkString(java.io.File.pathSeparator)
             Fork.java(javaHome,
                 ("-Xbootclasspath/a:" + classpath) ::
+                "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
                 "-d" :: out.getAbsolutePath() ::
                 //"-verbose" ::
@@ -110,7 +111,7 @@ object ScalaJSBuild extends Build {
       ) map { (compilationResult, target) =>
         val allJSFiles = (target / "jsclasses" ** "*.js").get
         val output = target / (packageName + ".js")
-        cat(allJSFiles) #> output ! ;
+        catFiles(allJSFiles, output)
         output
       }
   )
@@ -130,7 +131,7 @@ object ScalaJSBuild extends Build {
             val allJSFiles = fileNames map (baseDirectory / _)
             val output = target / ("scalajs-corejslib.js")
             target.mkdir()
-            cat(allJSFiles) #> output ! ;
+            catFiles(allJSFiles, output)
             output
           }
       )
@@ -149,7 +150,7 @@ object ScalaJSBuild extends Build {
               ((target / "jsclasses" ** "*.js") ---
                   (target / "jsclasses" / "scala" / "js" ** "*.js")).get
             val output = target / ("scalajs-javalib.js")
-            cat(allJSFiles) #> output ! ;
+            catFiles(allJSFiles, output)
             output
           }
       )
@@ -210,4 +211,25 @@ object ScalaJSBuild extends Build {
           name := "Reversi - Scala.js example"
       )
   ).dependsOn(compiler)
+
+  // Utils
+
+  /** `cat` utility methods from files to one file.
+   *  Unlike Process.cat(), it does not create one thread per file, which
+   *  makes this implementation viable for cat'ing a large number of files.
+   *  Also, it uses java.nio.channels.FileChannel operations directly, which
+   *  is likely to be faster on most systems for file-to-file copy.
+   */
+  def catFiles(inputs: Seq[File], output: File) {
+    val outputChannel = new java.io.FileOutputStream(output).getChannel()
+    try {
+      for (input <- inputs) {
+        val inputChannel = new java.io.FileInputStream(input).getChannel()
+        try inputChannel.transferTo(0, inputChannel.size, outputChannel)
+        finally inputChannel.close()
+      }
+    } finally {
+      outputChannel.close()
+    }
+  }
 }
