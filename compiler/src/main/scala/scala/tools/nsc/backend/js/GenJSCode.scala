@@ -1838,11 +1838,26 @@ abstract class GenJSCode extends SubComponent
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
       // TODO Improve this (idea: annotation on the class? optional annot?)
-      sym match {
+      val className = sym match {
         case JSObjectClass => js.Ident("Object")
         case JSArrayClass => js.Ident("Array")
         case _ => js.Ident(sym.nameString)
       }
+      genSelectInGlobalScope(className)
+    }
+
+    /** Gen JS code representing a JS module (var of the global scope) */
+    private def genPrimitiveJSModule(sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+      // TODO Improve this (idea: annotation on the class? optional annot?)
+      val moduleName = js.Ident(sym.nameString)
+      genSelectInGlobalScope(moduleName)
+    }
+
+    /** Gen JS code selecting a field of the global scope */
+    private def genSelectInGlobalScope(property: js.PropertyName)(
+        implicit pos: Position): js.Tree = {
+      js.Select(envField("g"), property)
     }
 
     /** Gen actual actual arguments to a primitive JS call
@@ -1904,12 +1919,13 @@ abstract class GenJSCode extends SubComponent
 
       val isGlobalScope =
         isScalaJSDefined &&
-        sym.isModuleOrModuleClass &&
+        sym.isModuleOrModuleClass && // TODO Why? Is this ever false?
         beforePhase(currentRun.erasurePhase) {
           sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
         }
 
       if (isGlobalScope) envField("g")
+      else if (isRawJSType(sym.tpe)) genPrimitiveJSModule(sym)
       else encodeModuleSym(sym)
     }
 

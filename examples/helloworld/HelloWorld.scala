@@ -22,7 +22,7 @@ object HelloWorld {
   }
 
   def sayHelloFromTypedDOM() {
-    val document = JSDynamic.global.asInstanceOf[Window].document
+    val document = window.document
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
@@ -32,48 +32,45 @@ object HelloWorld {
 
   def sayHelloFromJQuery() {
     // val $ is fine too, but not very recommended in Scala code
-    val jQuery = JSDynamic.global.$
+    val jQuery = JSDynamic.global.jQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
 
   def sayHelloFromTypedJQuery() {
-    val jQuery = JSDynamic.global.asInstanceOf[Window].$
+    val jQuery = helloworld.jQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
+}
 
-  trait Window extends JSObject {
-    val document: DOMDocument
+object window extends JSGlobalScope {
+  val document: DOMDocument = ???
 
-    def alert(msg: JSString): Unit
+  def alert(msg: JSString): Unit = ???
+}
 
-    val jQuery: JQueryStatic
-    val $: JQueryStatic
-  }
+trait DOMDocument extends JSObject {
+  def getElementById(id: JSString): DOMElement
+  def createElement(tag: JSString): DOMElement
+}
 
-  trait DOMDocument extends JSObject {
-    def getElementById(id: JSString): DOMElement
-    def createElement(tag: JSString): DOMElement
-  }
+trait DOMElement extends JSObject {
+  var innerHTML: JSString
 
-  trait DOMElement extends JSObject {
-    var innerHTML: JSString
+  def appendChild(child: DOMElement): Unit
+}
 
-    def appendChild(child: DOMElement): Unit
-  }
+object jQuery extends JSObject {
+  def apply(selector: JSString): JQuery = ???
+}
 
-  trait JQueryStatic extends JSObject {
-    def apply(selector: JSString): JQuery
-  }
+trait JQuery extends JSObject {
+  def text(value: JSString): JQuery
+  def text(): JSString
 
-  trait JQuery extends JSObject {
-    def text(value: JSString): JQuery
-    def text(): JSString
+  def html(value: JSString): JQuery
+  def html(): JSString
 
-    def html(value: JSString): JQuery
-    def html(): JSString
-
-    def appendTo(parent: JQuery): JQuery
-  }
+  def appendTo(parent: JQuery): JQuery
 }
