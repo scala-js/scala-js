@@ -43,10 +43,9 @@ object Any {
 
   implicit def fromString(s: java.lang.String): String = sys.error("stub")
 
-  implicit def fromArray[B <: Any, A](array: scala.Array[A])(
-      implicit ev: A => B): Array[B] = {
+  implicit def fromArray[A](array: scala.Array[A]): Array[A] = {
     val length = array.length
-    val result = new Array[B](length)
+    val result = new Array[A](length)
     var i = 0
     while (i < length) {
       result(i) = array(i)
@@ -55,9 +54,9 @@ object Any {
     result
   }
 
-  implicit def fromFunction0[R <: Any](f: scala.Function0[R]): Function0[R] = sys.error("stub")
-  implicit def fromFunction1[T1 <: Any, R <: Any](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
-  implicit def fromFunction2[T1 <: Any, T2 <: Any, R <: Any](f: scala.Function2[T1, T2, R]): Function2[T1, T2, R] = sys.error("stub")
+  implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")
+  implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
+  implicit def fromFunction2[T1, T2, R](f: scala.Function2[T1, T2, R]): Function2[T1, T2, R] = sys.error("stub")
 }
 
 sealed trait Dynamic extends Any with scala.Dynamic {
@@ -202,7 +201,7 @@ class Object extends Any {
  */
 trait GlobalScope extends Object
 
-final class Array[A <: Any](_len: Number) extends Object {
+final class Array[A](_len: Number) extends Object {
   def this() = this(0)
 
   def apply(index: Number): A = sys.error("stub")
@@ -212,12 +211,11 @@ final class Array[A <: Any](_len: Number) extends Object {
 }
 
 object Array {
-  def apply[A <: Any](elements: A*): Array[A] = sys.error("stub")
+  def apply[A](elements: A*): Array[A] = sys.error("stub")
 
-  implicit def toArray[B : ClassTag, A <: Any](array: Array[A])(
-      implicit ev: A => B): scala.Array[B] = {
+  implicit def toArray[A : ClassTag](array: Array[A]): scala.Array[A] = {
     val length = array.length.toInt
-    val result = new scala.Array[B](length)
+    val result = new scala.Array[A](length)
     var i = 0
     while (i < length) {
       result(i) = array(i)
@@ -237,14 +235,14 @@ class Date extends Object {
   def getTime(): Number = sys.error("stub")
 }
 
-trait Function0[+R <: Any] extends Object {
+trait Function0[+R] extends Object {
   def apply(): R
 }
 
-trait Function1[-T1 <: Any, +R <: Any] extends Object {
+trait Function1[-T1, +R] extends Object {
   def apply(arg1: T1): R
 }
 
-trait Function2[-T1 <: Any, -T2 <: Any, +R <: Any] extends Object {
+trait Function2[-T1, -T2, +R] extends Object {
   def apply(arg1: T1, arg2: T2): R
 }

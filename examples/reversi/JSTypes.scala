@@ -44,10 +44,10 @@ trait JQuery extends js.Object {
   def addClass(classes: js.String): JQuery
   def removeClass(classes: js.String): JQuery
 
-  def each(callback: js.Function2[js.Number, js.Dynamic, js.Any]): JQuery
+  def each[U](callback: js.Function2[js.Number, js.Dynamic, U]): JQuery
 
-  def click(handler: js.Function0[js.Any]): JQuery
-  def click(handler: js.Function1[JQueryEvent, js.Any]): JQuery
+  def click[U](handler: js.Function0[U]): JQuery
+  def click[U](handler: js.Function1[JQueryEvent, U]): JQuery
 }
 
 trait JQueryOffset extends js.Object {

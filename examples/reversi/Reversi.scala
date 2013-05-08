@@ -23,11 +23,6 @@ case object Black extends Player {
 
 class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
-  // A conversion I use often
-  implicit def function0UnitToJS(f: () => Unit): js.Function0[js.Undefined] = {
-    () => f(); ():js.Undefined
-  }
-
   // The Model -----------------------------------------------------------------
 
   val BoardSize = 8 // size of a Reversi board
@@ -135,8 +130,6 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
       if (inBounds(x, y))
         clickSquare(board(x)(y))
-
-      ():js.Undefined
     }
 
     // Build the status bar
