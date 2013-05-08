@@ -10,13 +10,13 @@
 
 package scala
 
-package object js extends JSGlobalScope {
-  val NaN: JSNumber = sys.error("stub")
-  val Infinity: JSNumber = sys.error("stub")
+package object js extends js.GlobalScope {
+  val NaN: Number = sys.error("stub")
+  val Infinity: Number = sys.error("stub")
 
-  def eval(s: JSString): JSAny = sys.error("stub")
+  def eval(s: String): Any = sys.error("stub")
 
-  def parseInt(s: JSString): JSNumber = sys.error("stub")
-  def parseInt(s: JSString, radix: JSNumber): JSNumber = sys.error("stub")
-  def parseFloat(s: JSString): JSNumber = sys.error("stub")
+  def parseInt(s: String): Number = sys.error("stub")
+  def parseInt(s: String, radix: Number): Number = sys.error("stub")
+  def parseFloat(s: String): Number = sys.error("stub")
 }

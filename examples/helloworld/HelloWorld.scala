@@ -1,6 +1,6 @@
 package helloworld
 
-import scala.js._
+import scala.js
 
 object HelloWorld {
   def main(args: Array[String]) {
@@ -11,7 +11,7 @@ object HelloWorld {
   }
 
   def sayHelloFromDOM() {
-    val document = JSDynamic.global.document
+    val document = js.Dynamic.global.document
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
@@ -32,7 +32,7 @@ object HelloWorld {
 
   def sayHelloFromJQuery() {
     // val $ is fine too, but not very recommended in Scala code
-    val jQuery = JSDynamic.global.jQuery
+    val jQuery = js.Dynamic.global.jQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
@@ -44,33 +44,33 @@ object HelloWorld {
   }
 }
 
-object window extends JSGlobalScope {
+object window extends js.GlobalScope {
   val document: DOMDocument = ???
 
-  def alert(msg: JSString): Unit = ???
+  def alert(msg: js.String): Unit = ???
 }
 
-trait DOMDocument extends JSObject {
-  def getElementById(id: JSString): DOMElement
-  def createElement(tag: JSString): DOMElement
+trait DOMDocument extends js.Object {
+  def getElementById(id: js.String): DOMElement
+  def createElement(tag: js.String): DOMElement
 }
 
-trait DOMElement extends JSObject {
-  var innerHTML: JSString
+trait DOMElement extends js.Object {
+  var innerHTML: js.String
 
   def appendChild(child: DOMElement): Unit
 }
 
-object jQuery extends JSObject {
-  def apply(selector: JSString): JQuery = ???
+object jQuery extends js.Object {
+  def apply(selector: js.String): JQuery = ???
 }
 
-trait JQuery extends JSObject {
-  def text(value: JSString): JQuery
-  def text(): JSString
+trait JQuery extends js.Object {
+  def text(value: js.String): JQuery
+  def text(): js.String
 
-  def html(value: JSString): JQuery
-  def html(): JSString
+  def html(value: js.String): JQuery
+  def html(): js.String
 
   def appendTo(parent: JQuery): JQuery
 }

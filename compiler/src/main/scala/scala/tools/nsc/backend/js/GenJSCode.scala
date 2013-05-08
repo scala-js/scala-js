@@ -1668,11 +1668,11 @@ abstract class GenJSCode extends SubComponent
       val genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
       if (code == DYNAPPLY) {
-        // JSDynamic.applyDynamic(methodName)(actualArgs:_*)
+        // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
         val methodName :: actualArgs = genArgs
         js.DynamicApplyMethod(receiver, methodName, actualArgs)
       } else if (code == ARR_CREATE) {
-        // JSArray.create(elements:_*)
+        // js.Array.create(elements:_*)
         js.ArrayConstr(genArgs)
       } else (genArgs match {
         case Nil =>
@@ -1687,7 +1687,7 @@ abstract class GenJSCode extends SubComponent
             case N2JS => arg
             case S2JS => arg
 
-            /** Convert a Scala FunctionN f to a JS JSFunctionN
+            /** Convert a scala.FunctionN f to a js.FunctionN
              *  Basically it binds the appropriate `apply` method of f to f.
              *  (function($this) {
              *    return function(args...) {
@@ -1718,26 +1718,26 @@ abstract class GenJSCode extends SubComponent
             case ANY2DYN => arg
 
             case DYNSELECT =>
-              // JSDynamic.selectDynamic(arg)
+              // js.Dynamic.selectDynamic(arg)
               js.DynamicSelect(receiver, arg)
             case DICT_SELECT =>
-              // JSDictionary.apply(arg)
+              // js.Dictionary.apply(arg)
               js.BracketSelect(receiver, arg)
           }
 
         case List(arg1, arg2) =>
           code match {
             case DYNUPDATE =>
-              // JSDynamic.updateDynamic(arg1)(arg2)
+              // js.Dynamic.updateDynamic(arg1)(arg2)
               statToExpr(js.Assign(js.DynamicSelect(receiver, arg1), arg2))
             case DICT_UPDATE =>
-              // JSDictionary.update(arg1, arg2)
+              // js.Dictionary.update(arg1, arg2)
               statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
           }
       })
     }
 
-    /** Gen JS code for a primitive JS call (to a method of a subclass of JSAny)
+    /** Gen JS code for a primitive JS call (to a method of a subclass of js.Any)
      *  This is the typed Scala.js to JS bridge feature. Basically it boils
      *  down to calling the method without name mangling. But other aspects
      *  come into play:
@@ -1820,7 +1820,7 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
-    /** Gen JS code for a new of a JS class (subclass of JSAny) */
+    /** Gen JS code for a new of a JS class (subclass of js.Any) */
     private def genPrimitiveJSNew(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
 
@@ -1834,22 +1834,20 @@ abstract class GenJSCode extends SubComponent
       else js.New(genPrimitiveJSClass(cls), args)
     }
 
-    /** Gen JS code representing a JS class (subclass of JSAny) */
+    /** Gen JS code representing a JS class (subclass of js.Any) */
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      // TODO Improve this (idea: annotation on the class? optional annot?)
-      val className = sym match {
-        case JSObjectClass => js.Ident("Object")
-        case JSArrayClass => js.Ident("Array")
-        case _ => js.Ident(sym.nameString)
-      }
+      /* TODO Improve this, so that the JS name is not bound to the Scala name
+       * (idea: annotation on the class? optional annot?) */
+      val className = js.Ident(sym.nameString)
       genSelectInGlobalScope(className)
     }
 
     /** Gen JS code representing a JS module (var of the global scope) */
     private def genPrimitiveJSModule(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      // TODO Improve this (idea: annotation on the class? optional annot?)
+      /* TODO Improve this, so that the JS name is not bound to the Scala name
+       * (idea: annotation on the class? optional annot?) */
       val moduleName = js.Ident(sym.nameString)
       genSelectInGlobalScope(moduleName)
     }
@@ -1956,7 +1954,7 @@ abstract class GenJSCode extends SubComponent
 
   /** Test whether the given type represents a raw JavaScript type
    *
-   *  I.e., test whether the type extends scala.js.JSAny
+   *  I.e., test whether the type extends scala.js.Any
    */
   def isRawJSType(tpe: Type): Boolean = {
     isStringType(tpe) ||

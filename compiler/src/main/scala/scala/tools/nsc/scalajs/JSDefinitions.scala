@@ -26,27 +26,27 @@ trait JSDefinitions { self: SymbolTable =>
   }
 
   class JSDefinitionsClass {
-    lazy val MaybeJSAnyClass = getClassIfDefined("scala.js.JSAny")
+    lazy val MaybeJSAnyClass = getClassIfDefined("scala.js.Any")
     lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
-    lazy val JSAnyClass       = getRequiredClass("scala.js.JSAny")
-    lazy val JSDynamicClass   = getRequiredClass("scala.js.JSDynamic")
+    lazy val JSAnyClass       = getRequiredClass("scala.js.Any")
+    lazy val JSDynamicClass   = getRequiredClass("scala.js.Dynamic")
       lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
       lazy val JSDynamic_updateDynamic = getMemberMethod(JSDynamicClass, newTermName("updateDynamic"))
       lazy val JSDynamic_applyDynamic  = getMemberMethod(JSDynamicClass, newTermName("applyDynamic"))
-    lazy val JSDictionaryClass = getRequiredClass("scala.js.JSDictionary")
+    lazy val JSDictionaryClass = getRequiredClass("scala.js.Dictionary")
       lazy val JSDictionary_apply  = getMemberMethod(JSDictionaryClass, newTermName("apply"))
       lazy val JSDictionary_update = getMemberMethod(JSDictionaryClass, newTermName("update"))
-    lazy val JSNumberClass    = getRequiredClass("scala.js.JSNumber")
-    lazy val JSBooleanClass   = getRequiredClass("scala.js.JSBoolean")
-    lazy val JSStringClass    = getRequiredClass("scala.js.JSString")
-    lazy val JSUndefinedClass = getRequiredClass("scala.js.JSUndefined")
-    lazy val JSObjectClass    = getRequiredClass("scala.js.JSObject")
+    lazy val JSNumberClass    = getRequiredClass("scala.js.Number")
+    lazy val JSBooleanClass   = getRequiredClass("scala.js.Boolean")
+    lazy val JSStringClass    = getRequiredClass("scala.js.String")
+    lazy val JSUndefinedClass = getRequiredClass("scala.js.Undefined")
+    lazy val JSObjectClass    = getRequiredClass("scala.js.Object")
 
-    lazy val JSGlobalScopeClass = getRequiredClass("scala.js.JSGlobalScope")
+    lazy val JSGlobalScopeClass = getRequiredClass("scala.js.GlobalScope")
 
-    lazy val JSArrayClass = getRequiredClass("scala.js.JSArray")
+    lazy val JSArrayClass = getRequiredClass("scala.js.Array")
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 

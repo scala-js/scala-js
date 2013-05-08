@@ -173,7 +173,7 @@ function $ScalaJSEnvironmentClass(global) {
     /* Keep the full mangled name here because the constructor is private
      * and hence does not appear in the JavaScript bridge. */
     return new this.c["java.lang.Class"]()
-      ["<init>(Lscala.js.JSDynamic;Lscala.js.JSDynamic;)"](this, data);
+      ["<init>(Lscala.js.Dynamic;Lscala.js.Dynamic;)"](this, data);
   }
 
   this.registerNative = function(fullName, nativeFunction) {

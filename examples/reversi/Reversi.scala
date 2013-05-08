@@ -3,7 +3,7 @@ package reversi
 import scala.language.implicitConversions
 
 import scala.annotation.tailrec
-import scala.js._
+import scala.js
 
 sealed abstract class OptPlayer
 
@@ -24,8 +24,8 @@ case object Black extends Player {
 class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   // A conversion I use often
-  implicit def function0UnitToJS(f: () => Unit): JSFunction0[JSUndefined] = {
-    () => f(); ():JSUndefined
+  implicit def function0UnitToJS(f: () => Unit): js.Function0[js.Undefined] = {
+    () => f(); ():js.Undefined
   }
 
   // The Model -----------------------------------------------------------------
@@ -64,13 +64,13 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   buildUI()
 
   def createResetButton() = {
-    jQuery("<input>", JSDictionary(
+    jQuery("<input>", js.Dictionary(
         "type" -> "button", "value" -> "Reset"
     )).click(reset _)
   }
 
   def createPassButton() = {
-    jQuery("<input>", JSDictionary(
+    jQuery("<input>", js.Dictionary(
         "type" -> "button", "value" -> "Pass"
     )).click(pass _)
   }
@@ -96,8 +96,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
     /** Draw the specified square on the board canvas */
     def drawSquare(square: Square) {
-      val x: JSNumber = square.x * SquareSizePx
-      val y: JSNumber = square.y * SquareSizePx
+      val x: js.Number = square.x * SquareSizePx
+      val y: js.Number = square.y * SquareSizePx
 
       // Background
       context.fillStyle = "green"
@@ -136,7 +136,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
       if (inBounds(x, y))
         clickSquare(board(x)(y))
 
-      ():JSUndefined
+      ():js.Undefined
     }
 
     // Build the status bar

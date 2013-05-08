@@ -1,82 +1,82 @@
 package reversi
 
-import scala.js._
+import scala.js
 
-trait Window extends JSObject {
+trait Window extends js.Object {
   val document: DOMDocument
 
-  def alert(msg: JSString): Unit
+  def alert(msg: js.String): Unit
 }
 
-trait DOMDocument extends JSObject {
-  def getElementById(id: JSString): DOMElement
-  def createElement(tag: JSString): DOMElement
+trait DOMDocument extends js.Object {
+  def getElementById(id: js.String): DOMElement
+  def createElement(tag: js.String): DOMElement
 }
 
-trait DOMElement extends JSObject {
-  var innerHTML: JSString
+trait DOMElement extends js.Object {
+  var innerHTML: js.String
 
   def appendChild(child: DOMElement): Unit
 }
 
-trait JQueryStatic extends JSObject {
-  def apply(arg: JSAny): JQuery
-  def apply(arg: JSAny, attributes: JSDictionary): JQuery
+trait JQueryStatic extends js.Object {
+  def apply(arg: js.Any): JQuery
+  def apply(arg: js.Any, attributes: js.Dictionary): JQuery
 }
 
-trait JQuery extends JSObject {
-  def get(index: JSNumber): DOMElement
+trait JQuery extends js.Object {
+  def get(index: js.Number): DOMElement
 
-  def text(value: JSString): JQuery
-  def text(): JSString
+  def text(value: js.String): JQuery
+  def text(): js.String
 
-  def html(value: JSString): JQuery
-  def html(): JSString
+  def html(value: js.String): JQuery
+  def html(): js.String
 
-  def prop(property: JSString): JSAny
-  def prop(property: JSString, value: JSAny): JQuery
+  def prop(property: js.String): js.Any
+  def prop(property: js.String, value: js.Any): JQuery
 
   def offset(): JQueryOffset
 
   def appendTo(parent: JQuery): JQuery
   def append(children: JQuery): JQuery
 
-  def addClass(classes: JSString): JQuery
-  def removeClass(classes: JSString): JQuery
+  def addClass(classes: js.String): JQuery
+  def removeClass(classes: js.String): JQuery
 
-  def each(callback: JSFunction2[JSNumber, JSDynamic, JSAny]): JQuery
+  def each(callback: js.Function2[js.Number, js.Dynamic, js.Any]): JQuery
 
-  def click(handler: JSFunction0[JSAny]): JQuery
-  def click(handler: JSFunction1[JQueryEvent, JSAny]): JQuery
+  def click(handler: js.Function0[js.Any]): JQuery
+  def click(handler: js.Function1[JQueryEvent, js.Any]): JQuery
 }
 
-trait JQueryOffset extends JSObject {
-  val top: JSNumber
-  val left: JSNumber
+trait JQueryOffset extends js.Object {
+  val top: js.Number
+  val left: js.Number
 }
 
-trait JQueryEvent extends JSObject {
-  val pageX: JSNumber
-  val pageY: JSNumber
+trait JQueryEvent extends js.Object {
+  val pageX: js.Number
+  val pageY: js.Number
 }
 
 trait HTMLCanvasElement extends DOMElement {
-  def getContext(kind: JSString): JSAny // depends on the kind
+  def getContext(kind: js.String): js.Any // depends on the kind
 }
 
-trait CanvasRenderingContext2D extends JSObject {
+trait CanvasRenderingContext2D extends js.Object {
   val canvas: HTMLCanvasElement
 
-  var fillStyle: JSString
-  var lineWidth: JSNumber
+  var fillStyle: js.String
+  var lineWidth: js.Number
 
-  def fillRect(x: JSNumber, y: JSNumber, w: JSNumber, h: JSNumber)
-  def strokeRect(x: JSNumber, y: JSNumber, w: JSNumber, h: JSNumber)
+  def fillRect(x: js.Number, y: js.Number, w: js.Number, h: js.Number)
+  def strokeRect(x: js.Number, y: js.Number, w: js.Number, h: js.Number)
 
   def beginPath()
   def fill()
   def stroke()
 
-  def arc(x: JSNumber, y: JSNumber, radius: JSNumber,
-      startAngle: JSNumber, endAngle: JSNumber, anticlockwise: JSBoolean)
+  def arc(x: js.Number, y: js.Number, radius: js.Number,
+      startAngle: js.Number, endAngle: js.Number, anticlockwise: js.Boolean)
 }
