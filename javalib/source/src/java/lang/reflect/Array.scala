@@ -5,7 +5,7 @@ import scala.js
 import java.lang.Class
 
 object Array {
-  private[lang] def getUnderlying[A <: js.Any](array: AnyRef): js.Array[A] =
+  private[lang] def getUnderlying[A](array: AnyRef): js.Array[A] =
     array.asInstanceOf[js.Dynamic].underlying.asInstanceOf[js.Array[A]]
 
   def newInstance(componentType: Class[_], length: Int) =
@@ -28,7 +28,7 @@ object Array {
   def getFloat(array: AnyRef, index: Int): Float = getUnderlying[js.Number](array)(index).toFloat
   def getDouble(array: AnyRef, index: Int): Double = getUnderlying[js.Number](array)(index).toDouble
 
-  def set(array: AnyRef, index: Int, value: Any): Unit = getUnderlying[js.Any](array)(index) = value.asInstanceOf[js.Any]
+  def set(array: AnyRef, index: Int, value: Any): Unit = getUnderlying[Any](array)(index) = value
 
   def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit = getUnderlying[js.Any](array)(index) = value
   def setByte(array: AnyRef, index: Int, value: Byte): Unit = getUnderlying[js.Any](array)(index) = value

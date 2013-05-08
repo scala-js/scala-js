@@ -15,8 +15,8 @@ object System {
 
   def arraycopy(src: Object, srcPos: scala.Int,
       dest: Object, destPos: scala.Int, length: scala.Int): Unit = {
-    val jsSrc = reflect.Array.getUnderlying(src)
-    val jsDest = reflect.Array.getUnderlying(dest)
+    val jsSrc = reflect.Array.getUnderlying[Any](src)
+    val jsDest = reflect.Array.getUnderlying[Any](dest)
     var i = 0
     while (i < length) {
       jsDest(destPos+i) = jsSrc(srcPos+i)
