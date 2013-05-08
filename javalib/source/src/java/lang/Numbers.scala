@@ -1,7 +1,6 @@
 package java.lang
 
 import scala.js
-import scala.js._
 
 abstract class Number extends Object {
   //protected[lang] val isInt: scala.Boolean
@@ -43,7 +42,7 @@ final class Byte(private val value: scala.Byte) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 }
 
 object Byte {
@@ -71,7 +70,7 @@ final class Short(private val value: scala.Short) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 }
 
 object Short {
@@ -99,7 +98,7 @@ final class Integer(private val value: scala.Int) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 }
 
 object Integer {
@@ -110,10 +109,10 @@ object Integer {
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
   def parseInt(s: String): scala.Int =
-    js.parseInt(s).asInstanceOf[JSNumber].toInt
+    js.parseInt(s).toInt
 
   def parseInt(s: String, radix: scala.Int): scala.Int =
-    js.parseInt(s, radix).asInstanceOf[JSNumber].toInt
+    js.parseInt(s, radix).toInt
 
   def toString(i: scala.Int) = valueOf(i).toString
 
@@ -122,9 +121,9 @@ object Integer {
   def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
   def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
 
-  def toBinaryString(i: scala.Int): String = (i:JSNumber).toString(2)
-  def toHexString(i: scala.Int): String = (i:JSNumber).toString(16)
-  def toOctalString(i: scala.Int): String = (i:JSNumber).toString(8)
+  def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
+  def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
+  def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)
 }
 
 ////////////////// Long //////////////////
@@ -142,7 +141,7 @@ final class Long(private val value: scala.Long) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 }
 
 object Long {
@@ -179,7 +178,7 @@ final class Float(private val value: scala.Float) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Float] && (value == that.asInstanceOf[Float].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 
   def isNaN: scala.Boolean = Float.isNaN(value)
 }
@@ -199,7 +198,7 @@ object Float {
   def valueOf(floatValue: scala.Float) = new Float(floatValue)
 
   def parseFloat(s: String): scala.Float =
-    js.parseFloat(s).asInstanceOf[JSNumber].toFloat
+    js.parseFloat(s).toFloat
 
   def toString(f: scala.Float) = valueOf(f).toString
 
@@ -231,7 +230,7 @@ final class Double(private val value: scala.Double) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Double] && (value == that.asInstanceOf[Double].value)
 
-  override def toString = (value:JSNumber).toString
+  override def toString = (value:js.Number).toString
 
   def isNaN: scala.Boolean = Double.isNaN(value)
 }

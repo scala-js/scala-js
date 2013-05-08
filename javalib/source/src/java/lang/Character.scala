@@ -1,6 +1,6 @@
 package java.lang
 
-import scala.js._
+import scala.js
 
 class Character(value: scala.Char) {
   def charValue(): scala.Char = value
@@ -9,7 +9,7 @@ class Character(value: scala.Char) {
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
   override def toString: String =
-    JSDynamic.global.String.fromCharCode(value.toInt).asInstanceOf[JSString]
+    js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
 }
 
 object Character {

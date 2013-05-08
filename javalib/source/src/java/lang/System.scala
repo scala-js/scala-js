@@ -1,8 +1,8 @@
 package java
 package lang
 
-import scala.js._
-import JSDynamic.global
+import scala.js
+import js.Dynamic.global
 
 object System {
   var out: java.io.PrintStream = StandardOutPrintStream
@@ -10,7 +10,7 @@ object System {
   var in: java.io.InputStream = null
 
   def currentTimeMillis(): scala.Long = {
-    (new Date).getTime().toLong
+    (new js.Date).getTime().toLong
   }
 
   def arraycopy(src: Object, srcPos: scala.Int,
@@ -44,14 +44,14 @@ object System {
 
 private[lang] object StandardOutPrintStream extends io.PrintStream(StandardOut, true) {
   override protected[lang] def writeString(s: String): Unit = {
-    if (global.console && ((s != "\n"):JSBoolean))
+    if (global.console && ((s != "\n"):js.Boolean))
       global.console.log(s)
   }
 }
 
 private[lang] object StandardErrPrintStream extends io.PrintStream(StandardErr, true) {
   override protected[lang] def writeString(s: String): Unit = {
-    if (global.console && ((s != "\n"):JSBoolean))
+    if (global.console && ((s != "\n"):js.Boolean))
       global.console.error(s)
   }
 }

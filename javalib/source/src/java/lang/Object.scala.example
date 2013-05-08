@@ -1,10 +1,10 @@
 package java.lang
 
-import scala.js._
+import scala.js
 
 class Object {
   final def getClass(): Class[_] =
-    this.asInstanceOf[JSDynamic].$classData.`class`.asInstanceOf[Class[_]]
+    this.asInstanceOf[js.Dynamic].$classData.`class`.asInstanceOf[Class[_]]
 
   def hashCode(): scala.Int =
     42 // TODO

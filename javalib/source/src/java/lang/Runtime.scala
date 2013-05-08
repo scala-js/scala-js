@@ -1,8 +1,6 @@
 package java
 package lang
 
-import scala.js._
-
 class Runtime private {
   def exit(status: Int) {
     halt0(status)
