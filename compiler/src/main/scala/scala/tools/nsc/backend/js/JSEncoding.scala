@@ -84,7 +84,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
-    js.DotSelect(encodeClassDataOfType(tpe), js.Ident("class"))
+    js.DotSelect(encodeClassDataOfType(tpe), js.Ident("cls"))
   }
 
   def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {

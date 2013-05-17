@@ -13,7 +13,7 @@
     }
 
     ObjectClass.prototype["getClass()Ljava.lang.Class;"] = function() {
-      return this.$classData.class;
+      return this.$classData.cls;
     }
 
     // Bridge for getClass()

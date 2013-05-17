@@ -57,7 +57,7 @@ function $ScalaJSEnvironmentClass(global) {
       arrayEncodedName: arrayEncodedName,
       displayName: displayName,
       _class: undefined,
-      get class() {
+      get cls() {
         if (this._class === undefined)
           this._class = self.createClassInstance(this);
         return this._class;
@@ -318,7 +318,7 @@ function $ScalaJSEnvironmentClass(global) {
     if (this.isScalaJSObject(instance) || (instance === null))
       return instance["getClass()Ljava.lang.Class;"]();
     else if (typeof(instance) === "string")
-      return this.classes["java.lang.String"].class;
+      return this.classes["java.lang.String"].cls;
     else
       return null; // Exception?
   }
