@@ -31,9 +31,9 @@ final class Class[A] private(private[lang] val env: js.Dynamic,
 
   def getSuperClass(): Class[_ >: A] =
     if (!data.parentData) null
-    else data.parentData.`class`.asInstanceOf[Class[_ >: A]]
+    else data.parentData.cls.asInstanceOf[Class[_ >: A]]
 
   def getComponentType(): Class[_] =
-    if (isArray()) data.componentData.`class`.asInstanceOf[Class[_]]
+    if (isArray()) data.componentData.cls.asInstanceOf[Class[_]]
     else null
 }

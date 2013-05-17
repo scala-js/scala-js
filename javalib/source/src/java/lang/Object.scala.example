@@ -4,7 +4,7 @@ import scala.js
 
 class Object {
   final def getClass(): Class[_] =
-    this.asInstanceOf[js.Dynamic].$classData.`class`.asInstanceOf[Class[_]]
+    this.asInstanceOf[js.Dynamic].$classData.cls.asInstanceOf[Class[_]]
 
   def hashCode(): scala.Int =
     42 // TODO
