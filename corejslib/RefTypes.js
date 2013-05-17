@@ -45,8 +45,8 @@
     });
   }
 
-  for (var volatile = 0; volatile < 2; volatile++) {
-    var isVolatile = volatile != 0;
+  for (var volat = 0; volat < 2; volat++) {
+    var isVolatile = volat != 0;
     registerRefType("Boolean", "Z", isVolatile, false);
     registerRefType("Char", "C", isVolatile, 0);
     registerRefType("Byte", "B", isVolatile, 0);

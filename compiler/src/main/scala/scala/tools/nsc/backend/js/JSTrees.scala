@@ -58,12 +58,36 @@ trait JSTrees { self: scalajs.JSGlobal =>
     final def isValidIdentifier(name: String): Boolean = {
       val c = name.head
       (c == '$' || c == '_' || c.isUnicodeIdentifierStart) &&
-          name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart)
+          name.tail.forall(c => (c == '$') || c.isUnicodeIdentifierPart) &&
+          (!isKeyword(name))
     }
 
     @inline final def requireValidIdent(name: String) {
       require(isValidIdentifier(name), s"${name} is not a valid identifier")
     }
+
+    final val isKeyword: Set[String] = Set(
+        // Value keywords
+        "true", "false", "null", "undefined",
+
+        // Current JavaScript keywords
+        "break", "case", "catch", "continue", "debugger", "default", "delete",
+        "do", "else", "finally", "for", "function", "if", "in", "instanceof",
+        "new", "return", "switch", "this", "throw", "try", "typeof", "var",
+        "void", "while", "with",
+
+        // Future reserved keywords
+        "class", "const", "enum", "export", "extends", "import", "super",
+
+        // Future reserved keywords in Strict mode
+        "implements", "interface", "let", "package", "private", "protected",
+        "public", "static", "yield",
+
+        // Other reserved keywords found on the Web but not in the spec
+        "abstract", "boolean", "byte", "char", "double", "final", "float",
+        "goto", "int", "long", "native", "short", "synchronized", "throws",
+        "transient", "volatile"
+    )
 
     // Definitions
 
