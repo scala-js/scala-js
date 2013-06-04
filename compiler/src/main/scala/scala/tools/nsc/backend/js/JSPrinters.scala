@@ -8,6 +8,9 @@ package backend
 package js
 
 import java.io.PrintWriter
+import scala.collection.mutable.{ ListBuffer, HashMap, Stack }
+
+import scala.reflect.internal.util.SourceFile
 
 trait JSPrinters { self: scalajs.JSGlobal =>
   /** Basically copied from scala.reflect.internal.Printers */
@@ -318,7 +321,204 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         printPosition(tree)
         printTree(tree)
       case arg =>
-        out.print(if (arg == null) "null" else arg.toString)
+        printString(if (arg == null) "null" else arg.toString)
+    }
+
+    protected def printString(s: String): Unit = {
+      out.print(s)
+    }
+
+    def close(): Unit = ()
+  }
+
+  private val Base64Map =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+      "abcdefghijklmnopqrstuvwxyz" +
+      "0123456789+/"
+
+  class SourceMapWriter(val out: PrintWriter, val generatedFile: String) {
+    private val sources = new ListBuffer[String]
+    private val _srcToIndex = new HashMap[SourceFile, Int]
+
+    private val nodePosStack = new Stack[Position]
+    nodePosStack.push(NoPosition)
+
+    private var lineCountInGenerated = 0
+    private var lastColumnInGenerated = 0
+    private var firstSegmentOfLine = true
+    private var lastSource: SourceFile = null
+    private var lastSourceIndex = 0
+    private var lastLine: Int = 0
+    private var lastColumn: Int = 0
+
+    private var pendingColumnInGenerated: Int = -1
+    private var pendingPos: Position = NoPosition
+
+    writeHeader()
+
+    private def sourceToIndex(source: SourceFile) =
+      _srcToIndex.getOrElseUpdate(source, (sources += source.path).size-1)
+
+    private def writeHeader(): Unit = {
+      out.println("{")
+      out.println("\"version\": 3,")
+      out.println("\"file\": " + jsonString(generatedFile) + ",")
+      out.print("\"mappings\": \"")
+    }
+
+    def nextLine(): Unit = {
+      writePendingSegment()
+      out.print(';')
+      lineCountInGenerated += 1
+      lastColumnInGenerated = 0
+      firstSegmentOfLine = true
+      pendingColumnInGenerated = -1
+      pendingPos = nodePosStack.top
+    }
+
+    def startNode(column: Int, originalPos: Position): Unit = {
+      nodePosStack.push(originalPos)
+      startSegment(column, originalPos)
+    }
+
+    def endNode(column: Int): Unit = {
+      nodePosStack.pop()
+      startSegment(column, nodePosStack.top)
+    }
+
+    private def startSegment(startColumn: Int, originalPos: Position): Unit = {
+      // There is no point in outputting a segment with the same original pos
+      if (originalPos == pendingPos)
+        return
+
+      // Write pending segment if it covers a non-empty range
+      if (startColumn != pendingColumnInGenerated)
+        writePendingSegment()
+
+      // New pending
+      pendingColumnInGenerated = startColumn
+      pendingPos = originalPos
+    }
+
+    private def writePendingSegment() {
+      if (pendingColumnInGenerated < 0)
+        return
+
+      // Segments of a line are separated by ','
+      if (firstSegmentOfLine) firstSegmentOfLine = false
+      else out.print(',')
+
+      // Generated column field
+      writeBase64VLQ(pendingColumnInGenerated-lastColumnInGenerated)
+      lastColumnInGenerated = pendingColumnInGenerated
+
+      // If the position is NoPosition, stop here
+      if (!pendingPos.isDefined)
+        return
+
+      // Extract relevant properties of pendingPos
+      val source = pendingPos.source
+      val line = pendingPos.line-1
+      val column = pendingPos.column-1
+
+      // Source index field
+      if (source eq lastSource) { // highly likely
+        writeBase64VLQ0()
+      } else {
+        val sourceIndex = sourceToIndex(source)
+        writeBase64VLQ(sourceIndex-lastSourceIndex)
+        lastSourceIndex = sourceIndex
+      }
+
+      // Line field
+      writeBase64VLQ(line - lastLine)
+      lastLine = line
+
+      // Column field
+      writeBase64VLQ(column - lastColumn)
+      lastColumn = column
+
+      // We do not use the "name" field
+    }
+
+    def close(): Unit = {
+      writePendingSegment()
+
+      out.println("\",")
+      out.println(
+          sources.map(jsonString(_)).mkString("\"sources\": [", ", ", "],"))
+      out.println("\"names\": [],")
+      out.println("\"lineCount\": "+lineCountInGenerated)
+      out.println("}")
+    }
+
+    /** Write the Base 64 VLQ of an integer to the mappings
+     *  Inspired by the implementation in Closure Compiler:
+     *  http://code.google.com/p/closure-compiler/source/browse/src/com/google/debugging/sourcemap/Base64VLQ.java
+     */
+    private def writeBase64VLQ(value0: Int): Unit = {
+      // Sign is encoded in the least significant bit
+      var value =
+        if (value0 < 0) ((-value0) << 1) + 1
+        else value0 << 1
+
+      // Some constants
+      // Each base-64 digit covers 6 bits, but 1 is used for the continuation
+      val VLQBaseShift = 5
+      val VLQBase = 1 << VLQBaseShift
+      val VLQBaseMask = VLQBase - 1
+      val VLQContinuationBit = VLQBase
+
+      // Write as many base-64 digits as necessary to encode value
+      do {
+        var digit = value & VLQBaseMask
+        value = value >>> VLQBaseShift
+        if (value != 0)
+          digit |= VLQContinuationBit
+        out.print(Base64Map.charAt(digit))
+      } while (value != 0)
+    }
+
+    private def writeBase64VLQ0(): Unit =
+      out.print('A')
+
+    private def jsonString(s: String) =
+      "\"" + s + "\"" // FIXME
+  }
+
+  class JSTreePrinterWithSourceMap(_out: PrintWriter,
+      val sourceMapOut: PrintWriter,
+      generatedFile: String) extends JSTreePrinter(_out) {
+
+    private val sourceMap = new SourceMapWriter(sourceMapOut, generatedFile)
+    private var column = 0
+
+    override def printTree(tree: js.Tree): Unit = {
+      val pos = tree.pos
+      if (pos.isDefined)
+        sourceMap.startNode(column, pos)
+
+      super.printTree(tree)
+
+      if (pos.isDefined)
+        sourceMap.endNode(column)
+    }
+
+    override def println(): Unit = {
+      super.println()
+      sourceMap.nextLine()
+      column = this.indentMargin
+    }
+
+    override def printString(s: String): Unit = {
+      // assume no EOL char in s, and assume s only has ASCII characters
+      super.printString(s)
+      column += s.length()
+    }
+
+    override def close(): Unit = {
+      sourceMap.close()
+      super.close()
     }
   }
 }

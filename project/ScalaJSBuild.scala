@@ -2,6 +2,8 @@ import sbt._
 import Keys._
 import Process.cat
 
+import SourceMapCat.catJSFilesAndTheirSourceMaps
+
 object ScalaJSBuild extends Build {
 
   val scalajsScalaVersion = "2.10.1"
@@ -39,7 +41,7 @@ object ScalaJSBuild extends Build {
               Seq(corejslib, javalib, scalalib, libraryAux, library)
             val output = target / ("scalajs-runtime.js")
             target.mkdir()
-            cat(allJSFiles) #> output ! ;
+            catJSFilesAndTheirSourceMaps(allJSFiles, output)
             output
           }
       )
@@ -111,7 +113,7 @@ object ScalaJSBuild extends Build {
       ) map { (compilationResult, target) =>
         val allJSFiles = (target / "jsclasses" ** "*.js").get
         val output = target / (packageName + ".js")
-        catFiles(allJSFiles, output)
+        catJSFilesAndTheirSourceMaps(allJSFiles, output)
         output
       }
   )
@@ -131,7 +133,7 @@ object ScalaJSBuild extends Build {
             val allJSFiles = fileNames map (baseDirectory / _)
             val output = target / ("scalajs-corejslib.js")
             target.mkdir()
-            catFiles(allJSFiles, output)
+            catJSFilesAndTheirSourceMaps(allJSFiles, output)
             output
           }
       )
@@ -150,7 +152,7 @@ object ScalaJSBuild extends Build {
               ((target / "jsclasses" ** "*.js") ---
                   (target / "jsclasses" / "scala" / "js" ** "*.js")).get
             val output = target / ("scalajs-javalib.js")
-            catFiles(allJSFiles, output)
+            catJSFilesAndTheirSourceMaps(allJSFiles, output)
             output
           }
       )
@@ -211,25 +213,4 @@ object ScalaJSBuild extends Build {
           name := "Reversi - Scala.js example"
       )
   ).dependsOn(compiler)
-
-  // Utils
-
-  /** `cat` utility methods from files to one file.
-   *  Unlike Process.cat(), it does not create one thread per file, which
-   *  makes this implementation viable for cat'ing a large number of files.
-   *  Also, it uses java.nio.channels.FileChannel operations directly, which
-   *  is likely to be faster on most systems for file-to-file copy.
-   */
-  def catFiles(inputs: Seq[File], output: File) {
-    val outputChannel = new java.io.FileOutputStream(output).getChannel()
-    try {
-      for (input <- inputs) {
-        val inputChannel = new java.io.FileInputStream(input).getChannel()
-        try inputChannel.transferTo(0, inputChannel.size, outputChannel)
-        finally inputChannel.close()
-      }
-    } finally {
-      outputChannel.close()
-    }
-  }
 }

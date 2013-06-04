@@ -5,7 +5,7 @@ package js
 import scala.tools.nsc.io.AbstractFile
 import scala.reflect.internal.pickling.PickleBuffer
 
-import java.io.DataOutputStream
+import java.io.PrintWriter
 
 /** Send JS ASTs to files */
 trait GenJSFiles extends SubComponent {
@@ -48,14 +48,35 @@ trait GenJSFiles extends SubComponent {
   private def genJSFile(cunit: CompilationUnit, jsClassName: String,
       tree: js.Tree) {
     val outfile = getFileFor(cunit, jsClassName, ".js")
-    val output = new java.io.PrintWriter(outfile.bufferedOutput)
+    val output = new PrintWriter(outfile.bufferedOutput)
+    var sourceMapFile: AbstractFile = null
+    var sourceMapOutput: PrintWriter = null
     try {
-      val printer = new JSTreePrinter(output)
+      val printer =
+        if (true) { // TODO Some option
+          // With source map
+          sourceMapFile = getFileFor(cunit, jsClassName, ".js.map")
+          sourceMapOutput = new PrintWriter(sourceMapFile.bufferedOutput)
+          new JSTreePrinterWithSourceMap(output, sourceMapOutput, outfile.path)
+        } else {
+          // Without source map
+          new JSTreePrinter(output)
+        }
+
       printer.printTree(tree)
       printer.print(";")
       printer.println()
+
+      if (sourceMapFile ne null) {
+        printer.print(s"//@ sourceMappingURL=${sourceMapFile.name}")
+        printer.println()
+      }
+
+      printer.close()
     } finally {
       output.close()
+      if (sourceMapOutput ne null)
+        sourceMapOutput.close()
     }
   }
 
