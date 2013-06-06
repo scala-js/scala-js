@@ -29,12 +29,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   /** The current Scala.js environment */
   def environment(implicit pos: Position): js.Ident = {
-    js.Ident(ScalaJSEnvironmentName)
+    js.Ident(ScalaJSEnvironmentName, Some(ScalaJSEnvironmentFullName))
   }
 
   /** Select a given field of the current Scala.js environment */
   def envField(name: String)(implicit pos: Position): js.Tree = {
-    js.DotSelect(environment, js.Ident(name))
+    js.DotSelect(environment, js.Ident(name, Some(name)))
   }
 
   /** Drop the trailing $ in a string if there is one */
@@ -44,7 +44,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id)
+    js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id,
+        Some(sym.originalName.decoded))
   }
 
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
@@ -55,27 +56,31 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val name =
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
-    js.PropertyName("$jsfield$" + name)
+    js.PropertyName("$jsfield$" + name, Some(sym.originalName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
-    js.PropertyName(sym.name.decoded + makeParamsString(sym))
+    val paramsString = makeParamsString(sym)
+    js.PropertyName(sym.name.decoded + paramsString,
+        Some(sym.originalName.decoded + paramsString))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
-    js.PropertyName(sym.name.decoded +
-        makeParamsString(Nil, internalName(sym.tpe)))
+    js.PropertyName(
+        sym.name.decoded + makeParamsString(Nil, internalName(sym.tpe)),
+        Some(sym.originalName.decoded))
   }
 
   def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol: " + sym)
 
-    if (sym.isValueParameter) js.Ident("arg$" + sym.name.toString)
-    else js.Ident(sym.name.toString + "$jsid$" + sym.id)
+    val origName = Some(sym.originalName.decoded)
+    if (sym.isValueParameter) js.Ident("arg$" + sym.name.toString, origName)
+    else js.Ident(sym.name.toString + "$jsid$" + sym.id, origName)
   }
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
@@ -126,8 +131,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         js.StringLiteral(encodeFullName(sym)))
   }
 
-  def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral =
-    js.StringLiteral(encodeFullName(sym))
+  def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral = {
+    val encodedFullName = encodeFullName(sym)
+    js.StringLiteral(encodedFullName, Some(encodedFullName))
+  }
+
+  def encodeFullNameLit(tpe: Type)(implicit pos: Position): js.StringLiteral = {
+    val encodedFullName = encodeFullName(tpe)
+    js.StringLiteral(encodedFullName, Some(encodedFullName))
+  }
 
   def encodeFullName(sym: Symbol): String =
     sym.fullNameAsName('.').decoded + suffixFor(sym)

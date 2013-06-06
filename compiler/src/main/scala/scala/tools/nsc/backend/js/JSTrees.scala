@@ -39,20 +39,31 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     sealed trait PropertyName extends Tree {
       def name: String
+      def originalName: Option[String]
     }
 
     object PropertyName {
-      def apply(name: String)(implicit pos: Position): PropertyName = {
-        if (isValidIdentifier(name)) Ident(name)
-        else StringLiteral(name)
+      def apply(name: String, originalName: Option[String])(
+          implicit pos: Position): PropertyName = {
+        if (isValidIdentifier(name)) Ident(name, originalName)
+        else StringLiteral(name, originalName)
       }
 
-      def unapply(tree: PropertyName): Some[String] =
-        Some(tree.name)
+      def apply(name: String)(implicit pos: Position): PropertyName =
+        apply(name, Some(name))
+
+      def unapply(tree: PropertyName): Some[(String, Option[String])] =
+        Some((tree.name, tree.originalName))
     }
 
-    case class Ident(name: String)(implicit val pos: Position) extends Tree with PropertyName {
+    case class Ident(name: String, originalName: Option[String])(
+        implicit val pos: Position) extends Tree with PropertyName {
       requireValidIdent(name)
+    }
+
+    object Ident {
+      def apply(name: String)(implicit pos: Position): Ident =
+        new Ident(name, Some(name))
     }
 
     final def isValidIdentifier(name: String): Boolean = {
@@ -164,8 +175,14 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal
 
-    case class StringLiteral(value: String)(implicit val pos: Position) extends Literal with PropertyName {
+    case class StringLiteral(value: String, originalName: Option[String])(
+        implicit val pos: Position) extends Literal with PropertyName {
       override def name = value
+    }
+
+    object StringLiteral {
+      def apply(value: String)(implicit pos: Position): StringLiteral =
+        new StringLiteral(value, None)
     }
 
     // Compounds
@@ -195,8 +212,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
         item match {
           case ident : Ident =>
             DotSelect(qualifier, ident)
-          case StringLiteral(name) =>
-            if (isValidIdentifier(name)) DotSelect(qualifier, Ident(name)(item.pos))
+          case StringLiteral(name, originalName) =>
+            if (isValidIdentifier(name)) DotSelect(qualifier, Ident(name, originalName)(item.pos))
             else BracketSelect(qualifier, item)
         }
       }
@@ -211,8 +228,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
     object DynamicSelect {
       def apply(qualifier: Tree, item: Tree)(implicit pos: Position) = {
         item match {
-          case StringLiteral(name) if isValidIdentifier(name) =>
-            DotSelect(qualifier, Ident(name)(item.pos))
+          case StringLiteral(name, originalName) if isValidIdentifier(name) =>
+            DotSelect(qualifier, Ident(name, originalName)(item.pos))
           case _ =>
             BracketSelect(qualifier, item)
         }
@@ -220,7 +237,7 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
       def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
         case DotSelect(qualifier, item) =>
-          Some((qualifier, StringLiteral(item.name)(item.pos)))
+          Some((qualifier, StringLiteral(item.name, item.originalName)(item.pos)))
         case BracketSelect(qualifier, item) => Some((qualifier, item))
         case _ => None
       }

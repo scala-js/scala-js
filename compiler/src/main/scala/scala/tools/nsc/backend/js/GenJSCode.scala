@@ -138,6 +138,7 @@ abstract class GenJSCode extends SubComponent
       implicit val jspos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
+      val originalClassName = Some(currentClassSym.fullNameAsName('.').decoded)
 
       val superClass =
         if (currentClassSym.superClass == NoSymbol) ObjectClass
@@ -168,7 +169,8 @@ abstract class GenJSCode extends SubComponent
       // Generate the bridges, then steal the constructor bridges (1 at most)
       val bridges0 = genBridgesForClass(currentClassSym)
       val (constructorBridges0, bridges) = bridges0.partition {
-        case js.MethodDef(js.PropertyName(name), _, _) => name == nme.CONSTRUCTOR.toString()
+        case js.MethodDef(js.PropertyName(name, _), _, _) =>
+          name == nme.CONSTRUCTOR.toString()
         case _ => false
       }
       assert(constructorBridges0.size <= 1)
@@ -181,7 +183,7 @@ abstract class GenJSCode extends SubComponent
         }
       }
 
-      val typeVar = js.Ident("Class")
+      val typeVar = js.Ident("Class", originalClassName)
       val classDefinition = js.ClassDef(typeVar,
           encodeClassSym(superClass), generatedMembers.toList ++ bridges)
 
@@ -191,7 +193,7 @@ abstract class GenJSCode extends SubComponent
        * }
        * JSClass.prototype = Class.prototype;
        */
-      val jsConstructorVar = js.Ident("JSClass")
+      val jsConstructorVar = js.Ident("JSClass", originalClassName)
       val createJSConstructorStat = constructorBridge match {
         case Some(js.MethodDef(_, args, body)) =>
           js.Block(List(
@@ -208,14 +210,13 @@ abstract class GenJSCode extends SubComponent
       }
 
       val createClassStat = {
-        val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
+        val nameArg = encodeFullNameLit(currentClassSym)
         val typeArg = typeVar
         val jsConstructorArg = jsConstructorVar
-        val parentArg = js.StringLiteral(encodeFullName(superClass))
+        val parentArg = encodeFullNameLit(superClass)
         val ancestorsArg = js.ObjectConstr(
             for (ancestor <- currentClassSym :: currentClassSym.ancestors)
-              yield (js.StringLiteral(encodeFullName(ancestor)),
-                  js.BooleanLiteral(true)))
+              yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
 
         js.ApplyMethod(environment, js.PropertyName("createClass"),
             List(nameArg, typeArg, jsConstructorArg, parentArg, ancestorsArg))
@@ -226,7 +227,7 @@ abstract class GenJSCode extends SubComponent
               createClassStat))
 
       val registerClassStat = {
-        val nameArg = js.StringLiteral(encodeFullName(currentClassSym))
+        val nameArg = encodeFullNameLit(currentClassSym)
         js.ApplyMethod(environment, js.PropertyName("registerClass"),
             List(nameArg, createClassFun))
       }
@@ -247,11 +248,10 @@ abstract class GenJSCode extends SubComponent
       val sym = cd.symbol
 
       val createInterfaceStat = {
-        val nameArg = js.StringLiteral(encodeFullName(sym))
+        val nameArg = encodeFullNameLit(sym)
         val ancestorsArg = js.ObjectConstr(
             for (ancestor <- sym :: sym.ancestors)
-              yield (js.StringLiteral(encodeFullName(ancestor)),
-                  js.BooleanLiteral(true)))
+              yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
 
         js.ApplyMethod(environment, js.PropertyName("createInterface"),
             List(nameArg, ancestorsArg))
@@ -387,8 +387,8 @@ abstract class GenJSCode extends SubComponent
       val className = encodeFullName(sym)
       val moduleName = dropTrailingDollar(className)
 
-      val moduleNameArg = js.StringLiteral(moduleName)
-      val classNameArg = js.StringLiteral(className)
+      val moduleNameArg = js.StringLiteral(moduleName, Some(className))
+      val classNameArg = js.StringLiteral(className, Some(className))
 
       js.ApplyMethod(environment, js.Ident("registerModule"),
           List(moduleNameArg, classNameArg))
@@ -1012,7 +1012,7 @@ abstract class GenJSCode extends SubComponent
                   formalArg = encodeLocalSym(formalArgSym)
                   if actualArg != formalArg
                 } yield {
-                  (formalArg, js.Ident("temp$" + formalArg.name), actualArg)
+                  (formalArg, js.Ident("temp$" + formalArg.name, None), actualArg)
                 }
               }
 
@@ -1056,7 +1056,7 @@ abstract class GenJSCode extends SubComponent
               if (isResultUnit) {
                 js.Block(List(genStat(matchResult)), jumpStat)
               } else {
-                val resultVar = js.Ident("result$"+labelIdent.name)
+                val resultVar = js.Ident("result$"+labelIdent.name, None)
                 js.Block(List(js.Assign(resultVar, genExpr(matchResult)), jumpStat))
               }
             } else {
@@ -1152,8 +1152,7 @@ abstract class GenJSCode extends SubComponent
         // isInstanceOf is not supported for raw JavaScript types
         abort("isInstanceOf["+to+"]")
       } else {
-        genBuiltinApply("isInstance", value,
-            js.StringLiteral(encodeFullName(to)))
+        genBuiltinApply("isInstance", value, encodeFullNameLit(to))
       }
     }
 
@@ -1166,8 +1165,7 @@ abstract class GenJSCode extends SubComponent
         // asInstanceOf on JavaScript is completely erased
         value
       } else {
-        genBuiltinApply("asInstance", value,
-            js.StringLiteral(encodeFullName(to)))
+        genBuiltinApply("asInstance", value, encodeFullNameLit(to))
       }
     }
 
@@ -1338,7 +1336,8 @@ abstract class GenJSCode extends SubComponent
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
 
       val isResultUnit = toTypeKind(matchEnd.tpe) == UNDEFINED
-      val resultVar = js.Ident("result$"+encodeLabelSym(matchEnd.symbol).name)
+      val resultVar =
+        js.Ident("result$"+encodeLabelSym(matchEnd.symbol).name, None)
 
       val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 

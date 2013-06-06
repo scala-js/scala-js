@@ -95,7 +95,7 @@ trait JSDesugaring extends SubComponent {
 
     def newSyntheticVar()(implicit pos: Position): js.Ident = {
       syntheticVarCounter += 1
-      js.Ident("jsx$" + syntheticVarCounter)
+      js.Ident("jsx$" + syntheticVarCounter, None)
     }
 
     def resetSyntheticVarCounterIn[A](f: => A): A = {
@@ -572,7 +572,7 @@ trait JSDesugaring extends SubComponent {
     /** Generate the type function definition for a class */
     def genTypeFunctionDef(tree: js.ClassDef): js.Tree = {
       val constructors = for {
-        constr @ js.MethodDef(js.Ident("constructor"), _, _) <- tree.defs
+        constr @ js.MethodDef(js.Ident("constructor", _), _, _) <- tree.defs
       } yield constr
 
       val constructor = constructors.headOption.getOrElse {

@@ -75,7 +75,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
 
         // Identifiers
 
-        case js.Ident(name) =>
+        case js.Ident(name, _) =>
           printInASCIIWithEscapes(name)
 
         // Definitions
@@ -232,7 +232,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.DoubleLiteral(value) =>
           print(value)
 
-        case js.StringLiteral(value) =>
+        case js.StringLiteral(value, _) =>
           print("\"")
           printInASCIIWithEscapes(value)
           print("\"")
@@ -340,8 +340,11 @@ trait JSPrinters { self: scalajs.JSGlobal =>
     private val sources = new ListBuffer[String]
     private val _srcToIndex = new HashMap[SourceFile, Int]
 
-    private val nodePosStack = new Stack[Position]
-    nodePosStack.push(NoPosition)
+    private val names = new ListBuffer[String]
+    private val _nameToIndex = new HashMap[String, Int]
+
+    private val nodePosStack = new Stack[(Position, Option[String])]
+    nodePosStack.push((NoPosition, None))
 
     private var lineCountInGenerated = 0
     private var lastColumnInGenerated = 0
@@ -350,14 +353,19 @@ trait JSPrinters { self: scalajs.JSGlobal =>
     private var lastSourceIndex = 0
     private var lastLine: Int = 0
     private var lastColumn: Int = 0
+    private var lastNameIndex: Int = 0
 
     private var pendingColumnInGenerated: Int = -1
     private var pendingPos: Position = NoPosition
+    private var pendingName: Option[String] = None
 
     writeHeader()
 
     private def sourceToIndex(source: SourceFile) =
       _srcToIndex.getOrElseUpdate(source, (sources += source.path).size-1)
+
+    private def nameToIndex(name: String) =
+      _nameToIndex.getOrElseUpdate(name, (names += name).size-1)
 
     private def writeHeader(): Unit = {
       out.println("{")
@@ -373,22 +381,25 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       lastColumnInGenerated = 0
       firstSegmentOfLine = true
       pendingColumnInGenerated = -1
-      pendingPos = nodePosStack.top
+      pendingPos = nodePosStack.top._1
+      pendingName = nodePosStack.top._2
     }
 
-    def startNode(column: Int, originalPos: Position): Unit = {
-      nodePosStack.push(originalPos)
-      startSegment(column, originalPos)
+    def startNode(column: Int, originalPos: Position,
+        originalName: Option[String] = None): Unit = {
+      nodePosStack.push((originalPos, originalName))
+      startSegment(column, originalPos, originalName)
     }
 
     def endNode(column: Int): Unit = {
       nodePosStack.pop()
-      startSegment(column, nodePosStack.top)
+      startSegment(column, nodePosStack.top._1, nodePosStack.top._2)
     }
 
-    private def startSegment(startColumn: Int, originalPos: Position): Unit = {
-      // There is no point in outputting a segment with the same original pos
-      if (originalPos == pendingPos)
+    private def startSegment(startColumn: Int, originalPos: Position,
+        originalName: Option[String]): Unit = {
+      // There is no point in outputting a segment with the same information
+      if ((originalPos == pendingPos) && (originalName == pendingName))
         return
 
       // Write pending segment if it covers a non-empty range
@@ -398,6 +409,9 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       // New pending
       pendingColumnInGenerated = startColumn
       pendingPos = originalPos
+      pendingName =
+        if (startColumn != pendingColumnInGenerated) originalName
+        else pendingName orElse originalName
     }
 
     private def writePendingSegment() {
@@ -438,7 +452,12 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       writeBase64VLQ(column - lastColumn)
       lastColumn = column
 
-      // We do not use the "name" field
+      // Name field
+      if (pendingName.isDefined) {
+        val nameIndex = nameToIndex(pendingName.get)
+        writeBase64VLQ(nameIndex-lastNameIndex)
+        lastNameIndex = nameIndex
+      }
     }
 
     def close(): Unit = {
@@ -447,7 +466,8 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       out.println("\",")
       out.println(
           sources.map(jsonString(_)).mkString("\"sources\": [", ", ", "],"))
-      out.println("\"names\": [],")
+      out.println(
+          names.map(jsonString(_)).mkString("\"names\": [", ", ", "],"))
       out.println("\"lineCount\": "+lineCountInGenerated)
       out.println("}")
     }
@@ -495,8 +515,13 @@ trait JSPrinters { self: scalajs.JSGlobal =>
 
     override def printTree(tree: js.Tree): Unit = {
       val pos = tree.pos
-      if (pos.isDefined)
-        sourceMap.startNode(column, pos)
+      if (pos.isDefined) {
+        val originalName = tree match {
+          case js.PropertyName(_, origName) => origName
+          case _ => None
+        }
+        sourceMap.startNode(column, pos, originalName)
+      }
 
       super.printTree(tree)
 
