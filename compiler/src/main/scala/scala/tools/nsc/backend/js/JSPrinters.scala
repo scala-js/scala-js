@@ -8,7 +8,7 @@ package backend
 package js
 
 import java.io.PrintWriter
-import scala.collection.mutable.{ ListBuffer, HashMap, Stack }
+import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
 import scala.reflect.internal.util.SourceFile
 
@@ -76,7 +76,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         // Identifiers
 
         case js.Ident(name, _) =>
-          printInASCIIWithEscapes(name)
+          print(escapeJS(name))
 
         // Definitions
 
@@ -233,10 +233,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print(value)
 
         case js.StringLiteral(value, _) =>
-          print("\"")
-          printInASCIIWithEscapes(value)
-          print("\"")
-
+          print("\"", escapeJS(value), "\"")
 
         // Compounds
 
@@ -287,35 +284,6 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       }
     }
 
-    def printInASCIIWithEscapes(str: String) {
-      codePointsOf(str) foreach {
-        case '\\' => print("\\\\")
-        case '"' => print("\\\"")
-        case '\u0007' => print("\\a")
-        case '\u0008' => print("\\b")
-        case '\u0009' => print("\\t")
-        case '\u000A' => print("\\n")
-        case '\u000B' => print("\\v")
-        case '\u000C' => print("\\f")
-        case '\u000D' => print("\\r")
-        case c =>
-          if (c >= 32 && c <= 126) print(c.toChar) // ASCII printable characters
-          else print(f"\\u$c%04x")
-      }
-    }
-
-    def codePointsOf(s: String): List[Int] = {
-      @annotation.tailrec
-      def loop(idx: Int, found: List[Int]): List[Int] = {
-        if (idx >= s.length) found.reverse
-        else {
-          val point = s.codePointAt(idx)
-          loop(idx + java.lang.Character.charCount(point), point :: found)
-        }
-      }
-      loop(0, Nil)
-    }
-
     def print(args: Any*): Unit = args foreach {
       case tree: js.Tree =>
         printPosition(tree)
@@ -329,6 +297,37 @@ trait JSPrinters { self: scalajs.JSGlobal =>
     }
 
     def close(): Unit = ()
+  }
+
+  private def escapeJS(str: String): String = {
+    val builder = new StringBuilder
+    codePointsOf(str) foreach {
+      case '\\' => builder.append("\\\\")
+      case '"' => builder.append("\\\"")
+      case '\u0007' => builder.append("\\a")
+      case '\u0008' => builder.append("\\b")
+      case '\u0009' => builder.append("\\t")
+      case '\u000A' => builder.append("\\n")
+      case '\u000B' => builder.append("\\v")
+      case '\u000C' => builder.append("\\f")
+      case '\u000D' => builder.append("\\r")
+      case c =>
+        if (c >= 32 && c <= 126) builder.append(c.toChar) // ASCII printable characters
+        else builder.append(f"\\u$c%04x")
+    }
+    builder.result()
+  }
+
+  private def codePointsOf(s: String): List[Int] = {
+    @annotation.tailrec
+    def loop(idx: Int, found: List[Int]): List[Int] = {
+      if (idx >= s.length) found.reverse
+      else {
+        val point = s.codePointAt(idx)
+        loop(idx + java.lang.Character.charCount(point), point :: found)
+      }
+    }
+    loop(0, Nil)
   }
 
   private val Base64Map =
@@ -503,7 +502,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       out.print('A')
 
     private def jsonString(s: String) =
-      "\"" + s + "\"" // FIXME
+      "\"" + escapeJS(s) + "\""
   }
 
   class JSTreePrinterWithSourceMap(_out: PrintWriter,
