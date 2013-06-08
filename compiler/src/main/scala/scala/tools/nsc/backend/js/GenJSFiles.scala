@@ -57,7 +57,7 @@ trait GenJSFiles extends SubComponent {
           // With source map
           sourceMapFile = getFileFor(cunit, jsClassName, ".js.map")
           sourceMapOutput = new PrintWriter(sourceMapFile.bufferedOutput)
-          new JSTreePrinterWithSourceMap(output, sourceMapOutput, outfile.path)
+          new JSTreePrinterWithSourceMap(output, sourceMapOutput, outfile.name)
         } else {
           // Without source map
           new JSTreePrinter(output)

@@ -361,7 +361,21 @@ trait JSPrinters { self: scalajs.JSGlobal =>
     writeHeader()
 
     private def sourceToIndex(source: SourceFile) =
-      _srcToIndex.getOrElseUpdate(source, (sources += source.path).size-1)
+      _srcToIndex.getOrElseUpdate(source,
+          (sources += sourceToURI(source)).size-1)
+
+    /** Relatively hacky way to get a Web-friendly URI to the source file */
+    private def sourceToURI(source: SourceFile): String = {
+      source.file.file match {
+        case null => source.path
+        case file =>
+          val uri = file.toURI.toASCIIString
+          if (uri.startsWith("file:/") && uri.charAt(6) != '/')
+            "file:///" + uri.substring(6)
+          else
+            uri
+      }
+    }
 
     private def nameToIndex(name: String) =
       _nameToIndex.getOrElseUpdate(name, (names += name).size-1)
