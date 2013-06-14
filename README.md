@@ -2,6 +2,10 @@
 
 This project aims at providing a JavaScript backend for Scala.
 
+## Mailing list
+
+[https://groups.google.com/forum/?fromgroups#!forum/scala-js](https://groups.google.com/forum/?fromgroups#!forum/scala-js)
+
 ## Get it
 
 Get the code with git. Beware that this repo contains two submodules, which
