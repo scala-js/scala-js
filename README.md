@@ -1,6 +1,8 @@
-# Scala.js, a JavaScript backend for Scala
+# Scala.js, a Scala to JavaScript compiler
 
-This project aims at providing a JavaScript backend for Scala.
+This project aims at providing a Scala to JavaScript compiler, so that one
+can write the client-side of a Web application in Scala, and have it compiled
+into JavaScript code.
 
 ## Mailing list
 
