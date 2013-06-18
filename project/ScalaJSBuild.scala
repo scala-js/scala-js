@@ -8,7 +8,6 @@ object ScalaJSBuild extends Build {
 
   val scalajsScalaVersion = "2.10.1"
 
-  val compileJS = TaskKey[Unit]("compile-js")
   val packageJS = TaskKey[File]("package-js")
 
   val defaultSettings = Defaults.defaultSettings ++ Seq(
@@ -73,7 +72,7 @@ object ScalaJSBuild extends Build {
     getBinaryDependentTarget(target, binaryVersion) / "classes"
 
   def compileJSSettings(packageName: String) = Seq(
-      compileJS in Compile <<= (
+      compile in Compile <<= (
           javaHome, dependencyClasspath in Compile, runner,
           sources in Compile, target in Compile, scalaBinaryVersion
       ) map { (javaHome, cp, runner, sources, target, binaryVersion) =>
@@ -114,19 +113,13 @@ object ScalaJSBuild extends Build {
         } else {
           doCompileJS(sourcesArgs)
         }
+
+        // We do not have dependency analysis for Scala.js code
+        sbt.inc.Analysis.Empty
       },
 
-      compile in Compile := (
-        // Do nothing, and return an empty analysis
-        sbt.inc.Analysis.Empty
-      ),
-
-      packageBin in Compile <<= (
-          (packageBin in Compile).dependsOn(compileJS in Compile)
-      ),
-
       packageJS in Compile <<= (
-          compileJS in Compile, target in Compile, scalaBinaryVersion
+          compile in Compile, target in Compile, scalaBinaryVersion
       ) map { (compilationResult, target, binaryVersion) =>
         val allJSFiles =
           (getBinaryDependentClasses(target, binaryVersion) ** "*.js").get
@@ -142,6 +135,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Scala.js core JS runtime",
           publishArtifact in Compile := false,
+
           packageJS in Compile <<= (
               baseDirectory, target in Compile
           ) map { (baseDirectory, target) =>
@@ -167,7 +161,7 @@ object ScalaJSBuild extends Build {
 
           // Override packageJS to exclude scala.js._
           packageJS in Compile <<= (
-              compileJS in Compile, target in Compile, scalaBinaryVersion
+              compile in Compile, target in Compile, scalaBinaryVersion
           ) map { (compilationResult, target, binaryVersion) =>
             val classesDir = getBinaryDependentClasses(target, binaryVersion)
             val allJSFiles =
