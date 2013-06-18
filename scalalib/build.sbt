@@ -1,3 +1,3 @@
-sourcesJS <<= baseDirectory map (base => ((base / "source" / "src" / "library") ** "*.scala").get)
-
-sources in Compile := Seq()
+unmanagedSourceDirectories in Compile <<= baseDirectory(base =>
+    Seq(base / "source" / "src" / "library")
+)
