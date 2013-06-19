@@ -160,21 +160,9 @@ object ScalaJSBuild extends Build {
       base = file("javalib"),
       settings = defaultSettings ++ compileJSSettings("scalajs-javalib") ++ Seq(
           name := "Java library for Scala.js",
-          publishArtifact in Compile := false,
-
-          // Override packageJS to exclude scala.js._
-          packageJS in Compile <<= (
-              compile in Compile, target in Compile, classDirectory in Compile
-          ) map { (compilationResult, target, classDir) =>
-            val allJSFiles =
-              ((classDir ** "*.js") ---
-                  (classDir / "scala" / "js" ** "*.js")).get
-            val output = target / ("scalajs-javalib.js")
-            catJSFilesAndTheirSourceMaps(allJSFiles, output)
-            output
-          }
+          publishArtifact in Compile := false
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler, library)
 
   lazy val scalalib = Project(
       id = "scalajs-scalalib",
