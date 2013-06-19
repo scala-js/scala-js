@@ -72,6 +72,10 @@ object ScalaJSBuild extends Build {
 
         val logger = s.log
 
+        logger.info(
+            "Compiling %d Scala.js sources to %s..." format (
+            sources.size, classesDirectory))
+
         def isCompilerJar(item: File): Boolean = {
           val compilerModuleNames =
             Seq("scala-library", "scala-compiler", "scala-reflect",
