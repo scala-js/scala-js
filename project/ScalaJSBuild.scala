@@ -2,26 +2,30 @@ import sbt._
 import Keys._
 import Process.cat
 
+import ch.epfl.lamp.sbtscalajs._
+import ScalaJSPlugin._
+import ScalaJSKeys._
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 
 object ScalaJSBuild extends Build {
 
   val scalajsScalaVersion = "2.10.1"
 
-  val packageJS = TaskKey[File]("package-js")
+  val commonSettings = Defaults.defaultSettings ++ Seq(
+      organization := "ch.epfl.lamp",
+      version := "0.1-SNAPSHOT",
 
-  val defaultSettings = Defaults.defaultSettings ++ Seq(
+      normalizedName ~= { _.replace("scala.js", "scalajs") }
+  )
+
+  val defaultSettings = commonSettings ++ Seq(
       scalaVersion := scalajsScalaVersion,
       scalacOptions ++= Seq(
           "-deprecation",
           "-unchecked",
           "-feature",
           "-encoding", "utf8"
-      ),
-      organization := "ch.epfl.lamp",
-      version := "0.1-SNAPSHOT",
-
-      normalizedName ~= { _.replace("scala.js", "scalajs") }
+      )
   )
 
   lazy val root = Project(
@@ -47,7 +51,7 @@ object ScalaJSBuild extends Build {
           }
       )
   ).aggregate(
-      compiler, library
+      compiler, plugin, library
   )
 
   lazy val compiler = Project(
@@ -64,76 +68,18 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  def compileJSSettings(packageName: String) = Seq(
-      compile in Compile <<= (
-          javaHome, streams, compileInputs in Compile
-      ) map { (javaHome, s, inputs) =>
-        import inputs.config._
-
-        val logger = s.log
-
-        logger.info(
-            "Compiling %d Scala.js sources to %s..." format (
-            sources.size, classesDirectory))
-
-        def isCompilerJar(item: File): Boolean = {
-          val compilerModuleNames =
-            Seq("scala-library", "scala-compiler", "scala-reflect",
-                "scalajs-compiler")
-          val name = item.getName
-          name.endsWith(".jar") && compilerModuleNames.exists(name.startsWith)
-        }
-
-        def cpToString(cp: Seq[File]) =
-          cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
-
-        val (compilerCp, cp) = classpath.partition(isCompilerJar)
-        val compilerCpStr = cpToString(compilerCp)
-        val cpStr = cpToString(cp)
-
-        def doCompileJS(sourcesArgs: List[String]) = {
-          Run.executeTrapExit({
-            classesDirectory.mkdir()
-
-            Fork.java(javaHome,
-                ("-Xbootclasspath/a:" + compilerCpStr) ::
-                "-Xmx512M" ::
-                "scala.tools.nsc.scalajs.Main" ::
-                "-cp" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
-                options ++:
-                sourcesArgs,
-                logger)
-          }, logger)
-        }
-
-        val sourcesArgs = sources.map(_.getAbsolutePath()).toList
-
-        /* Crude way of overcoming the Windows limitation on command line
-         * length.
-         */
-        if ((System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
-            (sourcesArgs.map(_.length).sum > 1536)) {
-          IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
-            IO.writeLines(sourceListFile, sourcesArgs)
-            doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
-          }
-        } else {
-          doCompileJS(sourcesArgs)
-        }
-
-        // We do not have dependency analysis for Scala.js code
-        sbt.inc.Analysis.Empty
-      },
-
-      packageJS in Compile <<= (
-          compile in Compile, target in Compile, classDirectory in Compile
-      ) map { (compilationResult, target, classDir) =>
-        val allJSFiles = (classDir ** "*.js").get
-        val output = target / (packageName + ".js")
-        catJSFilesAndTheirSourceMaps(allJSFiles, output)
-        output
-      }
+  lazy val plugin = Project(
+      id = "scalajs-sbt-plugin",
+      base = file("sbt-plugin"),
+      settings = commonSettings ++ Seq(
+          name := "Scala.js sbt plugin",
+          sbtPlugin := true,
+          scalaVersion := "2.9.2",
+          scalaBinaryVersion <<= scalaVersion,
+          libraryDependencies ++= Seq(
+              "com.google.javascript" % "closure-compiler" % "v20130603"
+          )
+      )
   )
 
   lazy val corejslib = Project(
@@ -162,7 +108,7 @@ object ScalaJSBuild extends Build {
   lazy val javalib = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
-      settings = defaultSettings ++ compileJSSettings("scalajs-javalib") ++ Seq(
+      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false
       )
@@ -171,7 +117,7 @@ object ScalaJSBuild extends Build {
   lazy val scalalib = Project(
       id = "scalajs-scalalib",
       base = file("scalalib"),
-      settings = defaultSettings ++ compileJSSettings("scalajs-scalalib") ++ Seq(
+      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
 
@@ -184,7 +130,7 @@ object ScalaJSBuild extends Build {
   lazy val libraryAux = Project(
       id = "scalajs-library-aux",
       base = file("library-aux"),
-      settings = defaultSettings ++ compileJSSettings("scalajs-library-aux") ++ Seq(
+      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false
       )
@@ -193,7 +139,7 @@ object ScalaJSBuild extends Build {
   lazy val library = Project(
       id = "scalajs-library",
       base = file("library"),
-      settings = defaultSettings ++ compileJSSettings("scalajs-library") ++ Seq(
+      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
           name := "Scala.js library"
       )
   ).dependsOn(compiler)
@@ -208,7 +154,7 @@ object ScalaJSBuild extends Build {
       )
   ).aggregate(exampleHelloWorld, exampleReversi)
 
-  lazy val exampleSettings = Seq(
+  lazy val exampleSettings = defaultSettings ++ baseScalaJSSettings ++ Seq(
       /* Add the library classpath this way to escape the dependency between
        * tasks. This avoids to recompile the library every time we compile an
        * example. This is all about working around the lack of dependency
@@ -224,16 +170,18 @@ object ScalaJSBuild extends Build {
   lazy val exampleHelloWorld = Project(
       id = "helloworld",
       base = file("examples") / "helloworld",
-      settings = defaultSettings ++ compileJSSettings("helloworld") ++ exampleSettings ++ Seq(
-          name := "Hello World - Scala.js example"
+      settings = exampleSettings ++ Seq(
+          name := "Hello World - Scala.js example",
+          moduleName := "helloworld"
       )
   ).dependsOn(compiler)
 
   lazy val exampleReversi = Project(
       id = "reversi",
       base = file("examples") / "reversi",
-      settings = defaultSettings ++ compileJSSettings("reversi") ++ exampleSettings ++ Seq(
-          name := "Reversi - Scala.js example"
+      settings = exampleSettings ++ Seq(
+          name := "Reversi - Scala.js example",
+          moduleName := "reversi"
       )
   ).dependsOn(compiler)
 }

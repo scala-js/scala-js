@@ -1,3 +1,5 @@
+package ch.epfl.lamp.sbtscalajs
+
 import sbt._
 
 import java.io.PrintWriter
