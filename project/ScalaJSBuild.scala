@@ -63,37 +63,28 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  // Surely there exists a better way to construct these paths, no?
-
-  private def getBinaryDependentTarget(target: File, binaryVersion: String): File =
-    target / ("scala-"+binaryVersion)
-
-  private def getBinaryDependentClasses(target: File, binaryVersion: String): File =
-    getBinaryDependentTarget(target, binaryVersion) / "classes"
-
   def compileJSSettings(packageName: String) = Seq(
       compile in Compile <<= (
           javaHome, dependencyClasspath in Compile, runner,
-          sources in Compile, target in Compile, scalaBinaryVersion
-      ) map { (javaHome, cp, runner, sources, target, binaryVersion) =>
+          sources in Compile, classDirectory in Compile
+      ) map { (javaHome, cp, runner, sources, classDir) =>
         val logger = ConsoleLogger()
 
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
-            val out = getBinaryDependentClasses(target, binaryVersion)
-            out.mkdir()
+            classDir.mkdir()
             val classpath = cp.map(
                 _.data.getAbsolutePath()).mkString(java.io.File.pathSeparator)
             Fork.java(javaHome,
                 ("-Xbootclasspath/a:" + classpath) ::
                 "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
-                "-d" :: out.getAbsolutePath() ::
+                "-d" :: classDir.getAbsolutePath() ::
                 //"-verbose" ::
                 sourcesArgs,
                 logger)
             /*Run.run("scala.tools.nsc.scalajs.Main", cp map (_.data),
-                "-d" :: out.getAbsolutePath() ::
+                "-d" :: classDir.getAbsolutePath() ::
                 sources.map(_.getAbsolutePath()).toList,
                 logger)(runner)*/
           }, logger)
@@ -119,10 +110,9 @@ object ScalaJSBuild extends Build {
       },
 
       packageJS in Compile <<= (
-          compile in Compile, target in Compile, scalaBinaryVersion
-      ) map { (compilationResult, target, binaryVersion) =>
-        val allJSFiles =
-          (getBinaryDependentClasses(target, binaryVersion) ** "*.js").get
+          compile in Compile, target in Compile, classDirectory in Compile
+      ) map { (compilationResult, target, classDir) =>
+        val allJSFiles = (classDir ** "*.js").get
         val output = target / (packageName + ".js")
         catJSFilesAndTheirSourceMaps(allJSFiles, output)
         output
@@ -161,12 +151,11 @@ object ScalaJSBuild extends Build {
 
           // Override packageJS to exclude scala.js._
           packageJS in Compile <<= (
-              compile in Compile, target in Compile, scalaBinaryVersion
-          ) map { (compilationResult, target, binaryVersion) =>
-            val classesDir = getBinaryDependentClasses(target, binaryVersion)
+              compile in Compile, target in Compile, classDirectory in Compile
+          ) map { (compilationResult, target, classDir) =>
             val allJSFiles =
-              ((classesDir ** "*.js") ---
-                  (classesDir / "scala" / "js" ** "*.js")).get
+              ((classDir ** "*.js") ---
+                  (classDir / "scala" / "js" ** "*.js")).get
             val output = target / ("scalajs-javalib.js")
             catJSFilesAndTheirSourceMaps(allJSFiles, output)
             output
@@ -217,9 +206,9 @@ object ScalaJSBuild extends Build {
        * analysis.
        */
       unmanagedClasspath in Compile <+= (
-          target in library, scalaBinaryVersion
-      ) map { (libTarget, binaryVersion) =>
-        Attributed.blank(getBinaryDependentClasses(libTarget, binaryVersion))
+          classDirectory in (library, Compile)
+      ) map { classDir =>
+        Attributed.blank(classDir)
       }
   )
 
