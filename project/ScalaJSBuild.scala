@@ -65,28 +65,27 @@ object ScalaJSBuild extends Build {
 
   def compileJSSettings(packageName: String) = Seq(
       compile in Compile <<= (
-          javaHome, dependencyClasspath in Compile, runner,
-          sources in Compile, classDirectory in Compile
-      ) map { (javaHome, cp, runner, sources, classDir) =>
-        val logger = ConsoleLogger()
+          javaHome, streams, compileInputs in Compile
+      ) map { (javaHome, s, inputs) =>
+        import inputs.config._
+
+        val logger = s.log
 
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
-            classDir.mkdir()
-            val classpath = cp.map(
-                _.data.getAbsolutePath()).mkString(java.io.File.pathSeparator)
+            classesDirectory.mkdir()
+            val classpathString =
+              classpath.filterNot(_ == classesDirectory)
+                       .map(_.getAbsolutePath())
+                       .mkString(java.io.File.pathSeparator)
             Fork.java(javaHome,
-                ("-Xbootclasspath/a:" + classpath) ::
+                ("-Xbootclasspath/a:" + classpathString) ::
                 "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
-                "-d" :: classDir.getAbsolutePath() ::
-                //"-verbose" ::
+                "-d" :: classesDirectory.getAbsolutePath() ::
+                options ++:
                 sourcesArgs,
                 logger)
-            /*Run.run("scala.tools.nsc.scalajs.Main", cp map (_.data),
-                "-d" :: classDir.getAbsolutePath() ::
-                sources.map(_.getAbsolutePath()).toList,
-                logger)(runner)*/
           }, logger)
         }
 
@@ -168,7 +167,11 @@ object ScalaJSBuild extends Build {
       base = file("scalalib"),
       settings = defaultSettings ++ compileJSSettings("scalajs-scalalib") ++ Seq(
           name := "Scala library for Scala.js",
-          publishArtifact in Compile := false
+          publishArtifact in Compile := false,
+
+          // The Scala lib is full of warnings we don't want to see
+          scalacOptions ~= (_.filterNot(
+              Set("-deprecation", "-unchecked", "-feature") contains _))
       )
   ).dependsOn(compiler)
 
