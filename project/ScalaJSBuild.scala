@@ -59,7 +59,8 @@ object ScalaJSBuild extends Build {
               "org.scala-lang" % "scala-compiler" % scalajsScalaVersion,
               "org.scala-lang" % "scala-reflect" % scalajsScalaVersion
           ),
-          mainClass := Some("scala.tools.nsc.scalajs.Main")
+          mainClass := Some("scala.tools.nsc.scalajs.Main"),
+          exportJars := true
       )
   )
 
@@ -71,17 +72,30 @@ object ScalaJSBuild extends Build {
 
         val logger = s.log
 
+        def isCompilerJar(item: File): Boolean = {
+          val compilerModuleNames =
+            Seq("scala-library", "scala-compiler", "scala-reflect",
+                "scalajs-compiler")
+          val name = item.getName
+          name.endsWith(".jar") && compilerModuleNames.exists(name.startsWith)
+        }
+
+        def cpToString(cp: Seq[File]) =
+          cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
+
+        val (compilerCp, cp) = classpath.partition(isCompilerJar)
+        val compilerCpStr = cpToString(compilerCp)
+        val cpStr = cpToString(cp)
+
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
             classesDirectory.mkdir()
-            val classpathString =
-              classpath.filterNot(_ == classesDirectory)
-                       .map(_.getAbsolutePath())
-                       .mkString(java.io.File.pathSeparator)
+
             Fork.java(javaHome,
-                ("-Xbootclasspath/a:" + classpathString) ::
+                ("-Xbootclasspath/a:" + compilerCpStr) ::
                 "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
+                "-cp" :: cpStr ::
                 "-d" :: classesDirectory.getAbsolutePath() ::
                 options ++:
                 sourcesArgs,
