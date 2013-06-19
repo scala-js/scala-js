@@ -16,19 +16,25 @@ you need to clone too. So after cloning this repo, cd into it and do:
     $ git submodule init
     $ git submodule update
 
-## Test it
+## Compile and publish it locally (install)
 
-Build is done with [sbt](http://www.scala-sbt.org/). Use
+Scala.js uses [sbt](http://www.scala-sbt.org/) for its build process.
+In order to use it locally, you need to 1) package the Scala.js runtime, and
+2) publish the compiler, library and sbt plugin locally.
+
+Don't worry, this is super-easy:
 
     sbt> package-js
+    sbt> publish-local
 
-to compile the compiler and the standard library. Afterwards, you can
-compile the example applications:
+## Test the examples
+
+You can compile the example applications with:
 
     sbt> examples/package-js
 
-You can "execute" the example applications by opening their respective HTML
-files in your favorite browser.
+Then, you can "execute" them by opening their respective HTML files in your
+favorite browser.
 
 Currently, two examples are provided:
 
@@ -38,6 +44,13 @@ Currently, two examples are provided:
 *   `examples/reversi/reversi.html`, an implementation of a
     [Reversi](http://en.wikipedia.org/wiki/Reversi) game. Note that it uses the
     HTML5 Canvas element, so it won't work with Internet Explorer 8 or below.
+
+## Get started with your own project
+
+We provide an
+[exampe application](https://github.com/sjrd/scala-js-example-app) which you
+can fork to kick off your own project. Its readme provides further
+explanations on how to do so.
 
 ## License
 
