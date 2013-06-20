@@ -7,6 +7,7 @@ package scala.tools.nsc
 package backend
 package js
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 import scalajs.JSGlobal
@@ -40,10 +41,6 @@ abstract class GenJSCode extends SubComponent
     override def name = phaseName
     override def description = "Generate JavaScript code from ASTs"
     override def erasedTypes = true
-
-    // Accumulator for the generated classes -----------------------------------
-
-    val generatedClasses = new ListBuffer[(Symbol, js.Tree)]
 
     // Some state --------------------------------------------------------------
 
@@ -86,26 +83,7 @@ abstract class GenJSCode extends SubComponent
       try {
         currentCUnit = cunit
 
-        def gen(tree: Tree) {
-          tree match {
-            case EmptyTree => ()
-            case PackageDef(_, stats) => stats foreach gen
-            case cd: ClassDef =>
-              implicit val pos = tree.pos
-              val sym = cd.symbol
-              val body = if (sym.isInterface) {
-                genInterface(cd)
-              } else {
-                val generatedClass = genClass(cd)
-                if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass) {
-                  js.Block(List(generatedClass), genModuleAccessor(sym))
-                } else generatedClass
-              }
-              generatedClasses += sym -> body
-          }
-        }
-
-        gen(cunit.body)
+        val generatedBundles = mutable.Map.empty[Symbol, ListBuffer[js.Tree]]
 
         def representativeTopLevelClass(classSymbol: Symbol): Symbol = {
           val topLevel = beforePhase(currentRun.flattenPhase) {
@@ -119,22 +97,50 @@ abstract class GenJSCode extends SubComponent
             topLevel
         }
 
-        val bundles = generatedClasses.toList.groupBy {
-          x => representativeTopLevelClass(x._1)
+        def gen(tree: Tree) {
+          tree match {
+            case EmptyTree => ()
+            case PackageDef(_, stats) => stats foreach gen
+            case cd: ClassDef =>
+              implicit val pos = tree.pos
+              val sym = cd.symbol
+
+              /* Always get the bundle, so that it is created even if it would
+               * be empty. This is needed for pickles to be emitted.
+               */
+              val representative = representativeTopLevelClass(sym)
+              val bundle = generatedBundles.getOrElseUpdate(
+                  representative, new ListBuffer)
+
+              // Do not actually emit code for raw JS types
+              if (!isRawJSType(sym.tpe)) {
+                if (sym.isInterface) {
+                  bundle += genInterface(cd)
+                } else {
+                  bundle += genClass(cd)
+                  if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass)
+                    bundle += genModuleAccessor(sym)
+                }
+              }
+          }
         }
 
-        for ((representative, classes) <- bundles) {
-          implicit val pos = representative.pos
-          val bundleTree = js.Apply(
-              js.Function(List(environment),
-                  js.Block(classes.map(_._2))),
-              List(js.Ident(ScalaJSEnvironmentFullName)))
+        gen(cunit.body)
 
-          val desugaredTree = desugarJavaScript(bundleTree)
-          genJSFiles(cunit, representative, desugaredTree)
+        for ((representative, classes) <- generatedBundles) {
+          implicit val pos = representative.pos
+          val bundleTree =
+            if (classes.isEmpty) js.EmptyTree
+            else {
+              val tree = js.Apply(
+                  js.Function(List(environment), js.Block(classes.toList)),
+                  List(js.Ident(ScalaJSEnvironmentFullName)))
+              desugarJavaScript(tree)
+            }
+
+          genJSFiles(cunit, representative, bundleTree)
         }
       } finally {
-        generatedClasses.clear()
         currentCUnit = null
         currentClassSym = null
         currentMethodSym = null

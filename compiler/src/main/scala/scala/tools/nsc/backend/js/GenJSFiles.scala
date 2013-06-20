@@ -16,7 +16,8 @@ trait GenJSFiles extends SubComponent {
   def genJSFiles(cunit: CompilationUnit, representative: Symbol, tree: js.Tree) {
     val jsClassName = representative.fullName
 
-    genJSFile(cunit, jsClassName, tree)
+    if (tree != js.EmptyTree)
+      genJSFile(cunit, jsClassName, tree)
 
     val pickleSym =
       if (representative.isModuleClass) representative.companionModule
