@@ -48,7 +48,13 @@ object ScalaJSBuild extends Build {
             target.mkdir()
             catJSFilesAndTheirSourceMaps(allJSFiles, output)
             output
-          }
+          },
+
+          clean <<= clean.dependsOn(
+              // compiler, library and sbt-plugin are aggregated
+              clean in corejslib, clean in javalib, clean in scalalib,
+              clean in libraryAux, clean in examples,
+              clean in exampleHelloWorld, clean in exampleReversi)
       )
   ).aggregate(
       compiler, plugin, library
