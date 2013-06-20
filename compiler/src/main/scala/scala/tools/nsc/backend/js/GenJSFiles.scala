@@ -13,35 +13,20 @@ trait GenJSFiles extends SubComponent {
 
   import global._
 
-  def genJSFiles(cunit: CompilationUnit, classSym: Symbol, tree: js.Tree) {
-    val jsClassName =
-      if (classSym.hasModuleFlag && !classSym.isImplClass) classSym.fullName+"$"
-      else classSym.fullName
-    val isModuleName = jsClassName.endsWith("$")
+  def genJSFiles(cunit: CompilationUnit, representative: Symbol, tree: js.Tree) {
+    val jsClassName = representative.fullName
 
     genJSFile(cunit, jsClassName, tree)
 
-    def shouldEmitPickle(): Boolean = {
-      /* This should return
-       * (!isModuleName || (classSym.linkedClassOfClass == NoSymbol))
-       * but this condition will sometimes crash with an assertion error for
-       * package object classes.
-       * Hence we always return true. This might emit the same pickle twice.
-       */
-      true
-    }
+    val pickleSym =
+      if (representative.isModuleClass) representative.companionModule
+      else representative
 
-    if (shouldEmitPickle()) {
-      val pickleSym = if (isModuleName) classSym.companionModule else classSym
-      currentRun.symData.get(pickleSym) match {
-        case Some(pickleBuffer) =>
-          val nonModuleClassName =
-            if (isModuleName) jsClassName.substring(0, jsClassName.length()-1)
-            else jsClassName
-          genJSTypeFile(cunit, nonModuleClassName, pickleBuffer)
+    currentRun.symData.get(pickleSym) match {
+      case Some(pickleBuffer) =>
+        genJSTypeFile(cunit, jsClassName, pickleBuffer)
 
-        case None => ()
-      }
+      case None => ()
     }
   }
 

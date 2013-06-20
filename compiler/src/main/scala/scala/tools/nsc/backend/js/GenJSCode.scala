@@ -101,17 +101,38 @@ abstract class GenJSCode extends SubComponent
                   js.Block(List(generatedClass), genModuleAccessor(sym))
                 } else generatedClass
               }
-              val wholeTree = js.Apply(
-                  js.Function(List(environment), body),
-                  List(js.Ident(ScalaJSEnvironmentFullName)))
-              generatedClasses += sym -> desugarJavaScript(wholeTree)
+              generatedClasses += sym -> body
           }
         }
 
         gen(cunit.body)
 
-        for ((classSymbol, tree) <- generatedClasses)
-          genJSFiles(cunit, classSymbol, tree)
+        def representativeTopLevelClass(classSymbol: Symbol): Symbol = {
+          val topLevel = beforePhase(currentRun.flattenPhase) {
+            classSymbol.enclosingTopLevelClass
+          }
+          if (topLevel.isImplClass)
+            topLevel.owner.info.decl(tpnme.interfaceName(topLevel.name))
+          else if (topLevel.isModuleClass && (topLevel.linkedClassOfClass != NoSymbol))
+            topLevel.linkedClassOfClass
+          else
+            topLevel
+        }
+
+        val bundles = generatedClasses.toList.groupBy {
+          x => representativeTopLevelClass(x._1)
+        }
+
+        for ((representative, classes) <- bundles) {
+          implicit val pos = representative.pos
+          val bundleTree = js.Apply(
+              js.Function(List(environment),
+                  js.Block(classes.map(_._2))),
+              List(js.Ident(ScalaJSEnvironmentFullName)))
+
+          val desugaredTree = desugarJavaScript(bundleTree)
+          genJSFiles(cunit, representative, desugaredTree)
+        }
       } finally {
         generatedClasses.clear()
         currentCUnit = null
