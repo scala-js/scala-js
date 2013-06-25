@@ -15,9 +15,7 @@ object HelloWorld {
     val playground = document.getElementById("playground")
 
     val newP = document.createElement("p")
-    // This should work, but that seems to be a typer bug in updateDynamic()
-    //newP.innerHTML = "Hello world! <i>-- DOM</i>"
-    newP.updateDynamic("innerHTML")("Hello world! <i>-- DOM</i>")
+    newP.innerHTML = "Hello world! <i>-- DOM</i>"
     playground.appendChild(newP)
   }
 

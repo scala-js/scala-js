@@ -60,9 +60,9 @@ object Any {
 }
 
 sealed trait Dynamic extends Any with scala.Dynamic {
-  def applyDynamic(name: String)(args: Any*): Dynamic
-  def selectDynamic(name: String): Dynamic
-  def updateDynamic(name: String)(value: Any): Unit
+  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic
+  def selectDynamic(name: java.lang.String): Dynamic
+  def updateDynamic(name: java.lang.String)(value: Any): Unit
   def apply(args: Any*): Dynamic
 
   def +(that: Number): Number
