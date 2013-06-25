@@ -69,14 +69,21 @@ abstract class GenJSCode extends SubComponent
      *  For every class, it calls `genClass()`. If it is a module class, it
      *  also calls `genModuleAccessor()`.
      *
-     *  Each generated class/interface definition is then wrapped in a
-     *  closure:
+     *  Classes representing raw JS types and primitive types, as well as the
+     *  scala.Array class, are not actually emitted.
+     *
+     *  Emitted class and interface definitions are grouped into bundles
+     *  according to their so-called representative, which is basically their
+     *  enclosing top-level class/trait/object. Companions are also grouped
+     *  together.
+     *
+     *  Each bundle is then wrapped in a closure:
      *
      *     (function($) {
      *       ...
      *     })($ScalaJSEnvironment);
      *
-     *  That closure is desugared with `JSDesugaring`, and then sent to disc
+     *  which is desugared with `JSDesugaring`, and then sent to disc
      *  with `GenJSFiles`.
      */
     override def apply(cunit: CompilationUnit) {
@@ -112,8 +119,14 @@ abstract class GenJSCode extends SubComponent
               val bundle = generatedBundles.getOrElseUpdate(
                   representative, new ListBuffer)
 
-              // Do not actually emit code for raw JS types
-              if (!isRawJSType(sym.tpe)) {
+              /* Do not actually emit code for raw JS types, primitive types
+               * nor scala.Array.
+               */
+              val isPrimitive =
+                isRawJSType(sym.tpe) || isPrimitiveValueClass(sym) ||
+                (sym == ArrayClass)
+
+              if (!isPrimitive) {
                 if (sym.isInterface) {
                   bundle += genInterface(cd)
                 } else {
@@ -361,7 +374,10 @@ abstract class GenJSCode extends SubComponent
       val methodPropIdent = encodeMethodSym(currentMethodSym)
 
       val result = {
-        if (isNative) {
+        if (isPrimitive(currentMethodSym)) {
+          // Do not output code for primitive methods, it won't be called
+          None
+        } else if (isNative) {
           val nativeID = encodeFullName(currentClassSym) +
             " :: " + methodPropIdent.name
           Some(js.CustomDef(methodPropIdent,
