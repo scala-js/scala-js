@@ -11,7 +11,8 @@ into JavaScript code.
 ## Get it
 
 Get the code with git. Beware that this repo contains two submodules, which
-you need to clone too. So after cloning this repo, cd into it and do:
+you need to clone too. To do this, add the `--recursive` option when cloning.
+If you've already cloned this repo, cd into it and do:
 
     $ git submodule init
     $ git submodule update
