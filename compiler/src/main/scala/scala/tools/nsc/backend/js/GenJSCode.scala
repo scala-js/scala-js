@@ -427,7 +427,7 @@ abstract class GenJSCode extends SubComponent
        * standard methods of JSEncoding.
        * Instead, we drop manually the trailing $ of the class full name.
        */
-      val className = encodeFullName(sym)
+      val className = encodeFullName(sym, '.')
       val moduleName = dropTrailingDollar(className)
 
       val moduleNameArg = js.StringLiteral(moduleName, Some(className))

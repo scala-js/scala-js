@@ -122,7 +122,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   private def genIsInstance(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
     js.ApplyMethod(environment, js.Ident("isInstance"),
-        List(value, js.StringLiteral(encodeFullName(tpe))))
+        List(value, encodeFullNameLit(tpe)))
   }
 
   private def genTieBreak(alts: List[Symbol]): js.Tree = {

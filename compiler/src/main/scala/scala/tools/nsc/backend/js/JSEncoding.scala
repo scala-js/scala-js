@@ -21,6 +21,18 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   import global._
 
+  /** Outer separator character */
+  final val OuterSep = '\uFE34'
+
+  /** Inner separator character */
+  final val InnerSep = '\uFE33'
+
+  /** Outer separator character as a string */
+  final val OuterSepStr = OuterSep.toString
+
+  /** Inner separator character as a string */
+  final val InnerSepStr = InnerSep.toString
+
   /** Full name (global name) of the Scala.js environment */
   final val ScalaJSEnvironmentFullName = "$ScalaJSEnvironment"
 
@@ -48,7 +60,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         Some(sym.originalName.decoded))
   }
 
-  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
+  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
 
@@ -56,21 +68,24 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val name =
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
-    js.PropertyName("$jsfield$" + name, Some(sym.originalName.decoded))
+    js.Ident("$jsfield$" + name, Some(sym.originalName.decoded))
   }
 
-  def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
+  def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
+    val encodedName =
+      if (sym.isClassConstructor) "init" + InnerSep
+      else sym.name.toString
     val paramsString = makeParamsString(sym)
-    js.PropertyName(sym.name.decoded + paramsString,
+    js.Ident(encodedName + paramsString,
         Some(sym.originalName.decoded + paramsString))
   }
 
-  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.PropertyName = {
+  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
-    js.PropertyName(
-        sym.name.decoded + makeParamsString(Nil, internalName(sym.tpe)),
+    js.Ident(
+        sym.name.toString + makeParamsString(List(internalName(sym.tpe))),
         Some(sym.originalName.decoded))
   }
 
@@ -128,26 +143,26 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def getClassOrModuleData(sym: Symbol, dictName: String)(
       implicit pos: Position): js.Tree = {
     js.BracketSelect(js.DotSelect(environment, js.Ident(dictName)),
-        js.StringLiteral(encodeFullName(sym)))
+        encodeFullNameLit(sym))
   }
 
   def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral = {
-    val encodedFullName = encodeFullName(sym)
+    val encodedFullName = encodeFullName(sym, '.')
     js.StringLiteral(encodedFullName, Some(encodedFullName))
   }
 
   def encodeFullNameLit(tpe: Type)(implicit pos: Position): js.StringLiteral = {
-    val encodedFullName = encodeFullName(tpe)
+    val encodedFullName = encodeFullName(tpe, '.')
     js.StringLiteral(encodedFullName, Some(encodedFullName))
   }
 
-  def encodeFullName(sym: Symbol): String =
-    sym.fullNameAsName('.').decoded + suffixFor(sym)
+  def encodeFullName(sym: Symbol, separator: Char = InnerSep): String =
+    sym.fullNameAsName(separator).toString + suffixFor(sym)
 
-  def encodeFullName(tpe: Type): String = tpe match {
+  private def encodeFullName(tpe: Type, separator: Char): String = tpe match {
     case TypeRef(_, definitions.ArrayClass, List(elementType)) =>
-      encodeFullName(elementType) + "[]"
-    case _ => encodeFullName(tpe.typeSymbol)
+      encodeFullName(elementType, separator) + "[]"
+    case _ => encodeFullName(tpe.typeSymbol, separator)
   }
 
   private def suffixFor(sym: Symbol) =
@@ -157,21 +172,23 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   private def makeParamsString(sym: Symbol): String = {
     val tpe = sym.tpe
-    makeParamsString(tpe.params map (p => internalName(p.tpe)),
-        if (sym.isClassConstructor) "" else internalName(tpe.resultType))
+    val paramTypeNames = tpe.params map (p => internalName(p.tpe))
+    makeParamsString(
+        if (sym.isClassConstructor) paramTypeNames
+        else paramTypeNames :+ internalName(tpe.resultType))
   }
 
-  private def makeParamsString(paramTypeNames: List[String], resultTypeName: String) =
-    paramTypeNames.mkString("(", "", ")") + resultTypeName
+  private def makeParamsString(paramAndResultTypeNames: List[String]) =
+    paramAndResultTypeNames.mkString(OuterSepStr, OuterSepStr, "")
 
   /** Compute the internal name for a type
-   *  The internal name is inspired by the encoding of the JVM:
+   *  The internal name is inspired by the encoding of the JVM, with some
+   *  tweaks to use only valid JS identifier characters
    *  - I for Int, Z for Boolean, V for Unit, etc. for primitive types
-   *  - Lclassname; where classname is the full name of a class
-   *  - [elem for arrays
-   *  but it is tweaked for further compression in the context of Scala.js:
+   *  - Lclassname where classname is the full name of a class
+   *  - Aelem for arrays
+   *  and for further default compression in the context of Scala.js:
    *  - O for java.lang.Object and T for java.lang.String
-   *  - Also we keep . instead of / to separate package names
    *
    *  It might be worth investigating other special cases for classes of the
    *  Scala language: Function types, Tuple types?
@@ -186,10 +203,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
        * - String, if only for the ubiquitous toString()
        */
       cls match {
-        case definitions.ObjectClass => "O" // or A, for Any?
+        case definitions.ObjectClass => "O"
         case definitions.StringClass => "T" // S is taken, use T for Text
-        case _ => "L"+encodeFullName(cls)+";"
+        case _ => "L"+encodeFullName(cls)
       }
-    case ARRAY(elem) => "["+internalName(elem)
+    case ARRAY(elem) => "A"+internalName(elem)
   }
 }

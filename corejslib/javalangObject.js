@@ -8,75 +8,75 @@
     }
     ObjectClass.prototype.constructor = ObjectClass;
 
-    ObjectClass.prototype["<init>()"] = function() {
+    ObjectClass.prototype.init\ufe33\ufe34 = function() {
       return this;
     }
 
-    ObjectClass.prototype["getClass()Ljava.lang.Class;"] = function() {
+    ObjectClass.prototype.getClass\ufe34java\ufe33lang\ufe33Class = function() {
       return this.$classData.cls;
     }
 
     // Bridge for getClass()
     ObjectClass.prototype.getClass = function() {
-      return this["getClass()Ljava.lang.Class;"]();
+      return this.getClass\ufe34java\ufe33lang\ufe33Class();
     }
 
-    ObjectClass.prototype["hashCode()I"] = function() {
+    ObjectClass.prototype.hashCode\ufe34I = function() {
       // TODO
       return 42;
     }
 
     // Bridge for hashCode()
     ObjectClass.prototype.hashCode = function() {
-      return this["hashCode()I"]();
+      return this.hashCode\ufe34I();
     }
 
-    ObjectClass.prototype["equals(O)Z"] = function(rhs) {
+    ObjectClass.prototype.equals\ufe34O\ufe34Z = function(rhs) {
       return this === rhs;
     }
 
     // Bridge for equals(Object)
     ObjectClass.prototype.equals = function(that) {
-      return this["equals(O)Z"](that);
+      return this.equals\ufe34O\ufe34Z(that);
     }
 
-    ObjectClass.prototype["clone()O"] = function() {
+    ObjectClass.prototype.clone\ufe34O = function() {
       if ($env.isInstance(this, "java.lang.Cloneable")) {
-        throw new this.classes["scala.NotImplementedError"].jsconstructor();
+        throw new this.c["scala.NotImplementedError"]().init\ufe33\ufe34;
       } else {
-        throw new this.classes["java.lang.CloneNotSupportedException"].jsconstructor();
+        throw new this.c["java.lang.CloneNotSupportedException"]().init\ufe33\ufe34;
       }
     }
 
     // Bridge for clone()
     ObjectClass.prototype.clone = function() {
-      return this["clone()O"]();
+      return this.clone\ufe34O();
     }
 
-    ObjectClass.prototype["toString()T"] = function() {
+    ObjectClass.prototype.toString\ufe34T = function() {
       // getClass().getName() + "@" + Integer.toHexString(hashCode())
-      var className = this["getClass()Ljava.lang.Class;"]()["getName()T"]();
-      var hashCode = this["hashCode()I"]();
+      var className = this.getClass\ufe34java\ufe33lang\ufe33Class().getName\ufe34T();
+      var hashCode = this.hashCode\ufe34I();
       return className + '@' + hashCode.toString(16);
     }
 
     // Bridge for toString()
     ObjectClass.prototype.toString = function() {
-      return this["toString()T"]();
+      return this.toString\ufe34T();
     }
 
-    ObjectClass.prototype["notify()V"] = function() {}
-    ObjectClass.prototype["notifyAll()V"] = function() {}
-    ObjectClass.prototype["wait(J)V"] = function() {}
-    ObjectClass.prototype["wait(JI)V"] = function() {}
-    ObjectClass.prototype["wait()V"] = function() {}
+    ObjectClass.prototype.notify\ufe34V = function() {}
+    ObjectClass.prototype.notifyAll\ufe34V = function() {}
+    ObjectClass.prototype.wait\ufe34J\ufe34V = function() {}
+    ObjectClass.prototype.wait\ufe34J\ufe34I\ufe34V = function() {}
+    ObjectClass.prototype.wait\ufe34V = function() {}
 
-    ObjectClass.prototype["finalize()V"] = function() {}
+    ObjectClass.prototype.finalize\ufe34V = function() {}
 
     // Constructor bridge
     function JSObjectClass() {
       ObjectClass.call(this);
-      return this["<init>()"]();
+      return this.init\ufe33\ufe34();
     }
     JSObjectClass.prototype = ObjectClass.prototype;
 
