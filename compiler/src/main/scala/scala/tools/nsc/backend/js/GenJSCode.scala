@@ -25,6 +25,7 @@ abstract class GenJSCode extends SubComponent
   val global: JSGlobal
 
   import global._
+  import rootMirror._
   import definitions._
   import jsDefinitions._
 
@@ -1698,6 +1699,13 @@ abstract class GenJSCode extends SubComponent
       genBuiltinApply(boxFunName, expr)
     }
 
+    /** java.lang.reflect.Array module */
+    lazy val ReflectArrayModuleClass = {
+      val module = getModuleIfDefined("java.lang.reflect.Array")
+      if (module == NoSymbol) NoSymbol
+      else module.moduleClass
+    }
+
     /** Gen JS code for a Scala.js-specific primitive method */
     private def genJSPrimitive(tree: Apply, receiver0: Tree,
         args: List[Tree], code: Int): js.Tree = {
@@ -1708,10 +1716,22 @@ abstract class GenJSCode extends SubComponent
       def receiver = genExpr(receiver0)
       val genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
+      /* The implementations of java.lang.Class and java.lang.reflect.Array
+       * use fields and methods of the Scala.js global environment through
+       * js.Dynamic calls.
+       * These must be emitted as dot-selects when possible.
+       */
+      def shouldUseDynamicSelect: Boolean =
+        currentClassSym == ClassClass || currentClassSym == ReflectArrayModuleClass
+
+      def maybeDynamicSelect(receiver: js.Tree, item: js.Tree): js.Tree =
+        if (shouldUseDynamicSelect) js.DynamicSelect(receiver, item)
+        else js.BracketSelect(receiver, item)
+
       if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
         val methodName :: actualArgs = genArgs
-        js.DynamicApplyMethod(receiver, methodName, actualArgs)
+        js.Apply(maybeDynamicSelect(receiver, methodName), actualArgs)
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements:_*)
         js.ArrayConstr(genArgs)
@@ -1760,7 +1780,7 @@ abstract class GenJSCode extends SubComponent
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
-              js.DynamicSelect(receiver, arg)
+              maybeDynamicSelect(receiver, arg)
             case DICT_SELECT =>
               // js.Dictionary.apply(arg)
               js.BracketSelect(receiver, arg)
@@ -1770,7 +1790,7 @@ abstract class GenJSCode extends SubComponent
           code match {
             case DYNUPDATE =>
               // js.Dynamic.updateDynamic(arg1)(arg2)
-              statToExpr(js.Assign(js.DynamicSelect(receiver, arg1), arg2))
+              statToExpr(js.Assign(maybeDynamicSelect(receiver, arg1), arg2))
             case DICT_UPDATE =>
               // js.Dictionary.update(arg1, arg2)
               statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
@@ -1830,14 +1850,14 @@ abstract class GenJSCode extends SubComponent
           }
 
           if (argc == 0 && (sym.isGetter || wasNullaryMethod(sym))) {
-            js.Select(receiver, js.PropertyName(funName))
+            js.BracketSelect(receiver, js.StringLiteral(funName))
           } else if (argc == 1 && sym.isSetter) {
             statToExpr(js.Assign(
-                js.Select(receiver,
-                    js.PropertyName(funName.substring(0, funName.length-2))),
+                js.BracketSelect(receiver,
+                    js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
           } else {
-            js.ApplyMethod(receiver, js.PropertyName(funName), args)
+            js.ApplyMethod(receiver, js.StringLiteral(funName), args)
           }
       }
     }
@@ -1880,7 +1900,7 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       /* TODO Improve this, so that the JS name is not bound to the Scala name
        * (idea: annotation on the class? optional annot?) */
-      val className = js.Ident(sym.nameString)
+      val className = js.StringLiteral(sym.nameString)
       genSelectInGlobalScope(className)
     }
 
@@ -1889,14 +1909,14 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       /* TODO Improve this, so that the JS name is not bound to the Scala name
        * (idea: annotation on the class? optional annot?) */
-      val moduleName = js.Ident(sym.nameString)
+      val moduleName = js.StringLiteral(sym.nameString)
       genSelectInGlobalScope(moduleName)
     }
 
     /** Gen JS code selecting a field of the global scope */
-    private def genSelectInGlobalScope(property: js.PropertyName)(
+    private def genSelectInGlobalScope(property: js.StringLiteral)(
         implicit pos: Position): js.Tree = {
-      js.Select(envField("g"), property)
+      js.BracketSelect(envField("g"), property)
     }
 
     /** Gen actual actual arguments to a primitive JS call

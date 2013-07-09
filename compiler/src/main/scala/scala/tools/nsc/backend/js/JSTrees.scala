@@ -212,9 +212,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
         item match {
           case ident : Ident =>
             DotSelect(qualifier, ident)
-          case StringLiteral(name, originalName) =>
-            if (isValidIdentifier(name)) DotSelect(qualifier, Ident(name, originalName)(item.pos))
-            else BracketSelect(qualifier, item)
+          case lit : StringLiteral =>
+            BracketSelect(qualifier, item)
         }
       }
 
