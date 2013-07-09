@@ -257,7 +257,7 @@ abstract class GenJSCode extends SubComponent
             for (ancestor <- currentClassSym :: currentClassSym.ancestors)
               yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
 
-        js.ApplyMethod(environment, js.PropertyName("createClass"),
+        js.ApplyMethod(environment, js.Ident("createClass"),
             List(nameArg, typeArg, jsConstructorArg, parentArg, ancestorsArg))
       }
 
@@ -267,7 +267,7 @@ abstract class GenJSCode extends SubComponent
 
       val registerClassStat = {
         val nameArg = encodeFullNameLit(currentClassSym)
-        js.ApplyMethod(environment, js.PropertyName("registerClass"),
+        js.ApplyMethod(environment, js.Ident("registerClass"),
             List(nameArg, createClassFun))
       }
 
@@ -292,7 +292,7 @@ abstract class GenJSCode extends SubComponent
             for (ancestor <- sym :: sym.ancestors)
               yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
 
-        js.ApplyMethod(environment, js.PropertyName("createInterface"),
+        js.ApplyMethod(environment, js.Ident("createInterface"),
             List(nameArg, ancestorsArg))
       }
 
@@ -314,15 +314,15 @@ abstract class GenJSCode extends SubComponent
         } yield {
           implicit val pos = f.pos
           val fieldName = encodeFieldSym(f)
-          js.Assign(js.Select(js.This(), fieldName), genZeroOf(f.tpe))
+          js.Assign(js.DotSelect(js.This(), fieldName), genZeroOf(f.tpe))
         }
       }.toList
 
       {
         implicit val pos = cd.pos
         val superCall =
-          js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
-        js.MethodDef(js.PropertyName("constructor"), Nil,
+          js.ApplyMethod(js.Super(), js.Ident("constructor"), Nil)
+        js.MethodDef(js.Ident("constructor"), Nil,
             js.Block(superCall :: createFieldsStats))
       }
     }
@@ -380,8 +380,8 @@ abstract class GenJSCode extends SubComponent
           val nativeID = encodeFullName(currentClassSym) +
             " :: " + methodPropIdent.name
           Some(js.CustomDef(methodPropIdent,
-              js.Select(js.DotSelect(environment, js.Ident("natives")),
-                  js.PropertyName(nativeID))))
+              js.BracketSelect(js.DotSelect(environment, js.Ident("natives")),
+                  js.StringLiteral(nativeID, Some(nativeID)))))
         } else if (isAbstractMethod) {
           None
         } else {
@@ -510,7 +510,7 @@ abstract class GenJSCode extends SubComponent
             if (sym.isStaticMember) {
               genStaticMember(sym)
             } else {
-              js.Select(genExpr(qualifier), encodeFieldSym(sym))
+              js.DotSelect(genExpr(qualifier), encodeFieldSym(sym))
             }
 
           js.Assign(member, genExpr(rhs))
@@ -618,7 +618,7 @@ abstract class GenJSCode extends SubComponent
           } else if (sym.isStaticMember) {
             genStaticMember(sym)
           } else {
-            js.Select(genExpr(qualifier), encodeFieldSym(sym))
+            js.DotSelect(genExpr(qualifier), encodeFieldSym(sym))
           }
 
         case Ident(name) =>
@@ -942,7 +942,7 @@ abstract class GenJSCode extends SubComponent
                 if (sup.symbol.superClass == NoSymbol) ObjectClass
                 else sup.symbol.superClass)(sup.pos)
             val superProto = js.DotSelect(superClass, js.Ident("prototype")(sup.pos))(sup.pos)
-            val callee = js.Select(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
+            val callee = js.DotSelect(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
             val thisArg =
               if (methodTailJumpThisSym == NoSymbol) js.This()(sup.pos)
               else encodeLocalSym(methodTailJumpThisSym)(sup.pos)
@@ -1221,7 +1221,7 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
       val instance = js.New(typeVar, Nil)
-      js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
+      js.Apply(js.DotSelect(instance, encodeMethodSym(ctor)), arguments)
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
