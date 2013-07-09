@@ -209,8 +209,7 @@ abstract class GenJSCode extends SubComponent
       // Generate the bridges, then steal the constructor bridges (1 at most)
       val bridges0 = genBridgesForClass(currentClassSym)
       val (constructorBridges0, bridges) = bridges0.partition {
-        case js.MethodDef(js.PropertyName(name, _), _, _) =>
-          name == nme.CONSTRUCTOR.toString()
+        case js.MethodDef(js.Ident("init\ufe33", _), _, _) => true
         case _ => false
       }
       assert(constructorBridges0.size <= 1)
@@ -219,7 +218,7 @@ abstract class GenJSCode extends SubComponent
         if (!currentClassSym.isImplClass) constructorBridges0.headOption
         else {
           // Make up
-          Some(js.MethodDef(js.PropertyName("<init>"), Nil, js.Skip()))
+          Some(js.MethodDef(js.Ident("irrelevant"), Nil, js.Skip()))
         }
       }
 
