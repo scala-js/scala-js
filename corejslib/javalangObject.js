@@ -3,7 +3,7 @@
  * ------------------ */
 
 (function ($env) {
-  $env.registerClass("java.lang.Object", function($env) {
+  $env.registerClass("java.lang.Object", {java\ufe33lang\ufe33Object:0}, function($env) {
     function ObjectClass() {
     }
     ObjectClass.prototype.constructor = ObjectClass;

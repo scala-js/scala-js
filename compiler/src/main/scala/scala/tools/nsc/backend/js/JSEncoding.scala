@@ -100,7 +100,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
-    js.BracketSelect(envField("c"), encodeFullNameLit(sym))
+    js.DotSelect(envField("c"), encodeFullNameIdent(sym))
   }
 
   def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
@@ -116,7 +116,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSym called with non-module symbol: " + sym)
-    js.BracketSelect(envField("m"), encodeFullNameLit(sym))
+    js.DotSelect(envField("m"), encodeFullNameIdent(sym))
   }
 
   def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
@@ -144,6 +144,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       implicit pos: Position): js.Tree = {
     js.BracketSelect(js.DotSelect(environment, js.Ident(dictName)),
         encodeFullNameLit(sym))
+  }
+
+  def encodeFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
+    js.Ident(encodeFullName(sym), Some(encodeFullName(sym, '.')))
   }
 
   def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral = {

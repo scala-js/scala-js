@@ -268,8 +268,10 @@ abstract class GenJSCode extends SubComponent
 
       val registerClassStat = {
         val nameArg = encodeFullNameLit(currentClassSym)
+        val propNameObjArg = js.ObjectConstr(List(
+            (encodeFullNameIdent(currentClassSym), js.IntLiteral(0))))
         js.ApplyMethod(environment, js.Ident("registerClass"),
-            List(nameArg, createClassFun))
+            List(nameArg, propNameObjArg, createClassFun))
       }
 
       currentClassSym = null
@@ -414,8 +416,7 @@ abstract class GenJSCode extends SubComponent
      *  accessors and the actual creation of the module when needed.
      *
      *  Since modules have exactly one public, parameterless constructor, the
-     *  Scala.js environment can create them using the JS bridge for the
-     *  constructor.
+     *  constructor name is always the same and need not be given.
      */
     def genModuleAccessor(sym: Symbol): js.Tree = {
       implicit val pos = sym.pos
@@ -429,12 +430,15 @@ abstract class GenJSCode extends SubComponent
        */
       val className = encodeFullName(sym, '.')
       val moduleName = dropTrailingDollar(className)
+      val propName = dropTrailingDollar(encodeFullName(sym))
 
       val moduleNameArg = js.StringLiteral(moduleName, Some(className))
+      val propNameObjArg = js.ObjectConstr(List(
+          (js.Ident(propName), js.IntLiteral(0))))
       val classNameArg = js.StringLiteral(className, Some(className))
 
       js.ApplyMethod(environment, js.Ident("registerModule"),
-          List(moduleNameArg, classNameArg))
+          List(moduleNameArg, propNameObjArg, classNameArg))
     }
 
     // Code generation ---------------------------------------------------------

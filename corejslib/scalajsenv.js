@@ -135,8 +135,9 @@ function $ScalaJSEnvironmentClass(global) {
                            "L" + name + ";", name);
   };
 
-  this.registerClass = function(name, createFunction) {
+  this.registerClass = function(name, propNameObj, createFunction) {
     var self = this;
+    var propName = this.propertyName(propNameObj);
     Object.defineProperty(this.classes, name, {
       __proto__: null,
       enumerable: true,
@@ -147,13 +148,20 @@ function $ScalaJSEnvironmentClass(global) {
       }
     });
 
-    defineLazyField(this.c, name, function() {
+    defineLazyField(this.c, propName, function() {
       return self.classes[name].constructor;
     });
+
+    if (name !== propName) {
+      defineLazyField(this.c, name, function() {
+        return self.classes[name].constructor;
+      });
+    }
   }
 
-  this.registerModule = function(name, className) {
+  this.registerModule = function(name, propNameObj, className) {
     var self = this;
+    var propName = this.propertyName(propNameObj);
     var data = {
       _instance: undefined,
       get instance() {
@@ -164,9 +172,15 @@ function $ScalaJSEnvironmentClass(global) {
     };
     this.modules[name] = data;
 
-    defineLazyField(this.m, name, function() {
+    defineLazyField(this.m, propName, function() {
       return self.modules[name].instance;
     });
+
+    if (name !== propName) {
+      defineLazyField(this.m, name, function() {
+        return self.modules[name].instance;
+      });
+    }
   }
 
   this.createClassInstance = function(data) {
@@ -177,6 +191,22 @@ function $ScalaJSEnvironmentClass(global) {
 
   this.registerNative = function(fullName, nativeFunction) {
     this.natives[fullName] = nativeFunction;
+  }
+
+  /** Encode a property name for runtime manipulation
+   *  Usage:
+   *    env.propertyName({someProp:0})
+   *  Returns:
+   *    "someProp"
+   *  Useful when the property is renamed by a global optimizer (like Closure)
+   *  but we must still get hold of a string of that name for runtime
+   * reflection.
+   */
+  this.propertyName = function(obj) {
+    var result;
+    for (var prop in obj)
+      result = prop;
+    return result;
   }
 
   // Create primitive types
@@ -193,7 +223,7 @@ function $ScalaJSEnvironmentClass(global) {
 
   // Create dummy class for java.lang.String
 
-  this.registerClass("java.lang.String", function($) {
+  this.registerClass("java.lang.String", {java\ufe33lang\ufe33String:0}, function($) {
     function StringClass() {
       throw "The pseudo StringClass constructor should never be called"
     }
