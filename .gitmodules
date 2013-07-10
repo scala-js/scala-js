@@ -1,6 +1,3 @@
-[submodule "javalib/source"]
-	path = javalib/source
-	url = https://github.com/sjrd/scala-javalib.git
 [submodule "scalalib/source"]
 	path = scalalib/source
 	url = https://github.com/scala/scala.git
