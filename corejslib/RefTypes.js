@@ -2,12 +2,12 @@
  * Ref types in scala.runtime._
  * ------------------ */
 
-(function ($env) {
+(function() {
   function registerRefType(baseName, elemCodeName, zero, propNameObj) {
     var name = "scala.runtime." + baseName + "Ref";
 
-    $env.registerClass(name, propNameObj, function($env) {
-      var ObjectClass = $env.c["java.lang.Object"];
+    ScalaJS.registerClass(name, propNameObj, function() {
+      var ObjectClass = ScalaJS.c["java.lang.Object"];
 
       function Class() {
         ObjectClass.prototype.constructor.call(this);
@@ -50,7 +50,7 @@
       };
       ancestors[name] = true;
 
-      $env.createClass(name, Class, JSClass, "java.lang.Object", ancestors);
+      ScalaJS.createClass(name, Class, JSClass, "java.lang.Object", ancestors);
     });
   }
 
@@ -73,4 +73,4 @@
   registerRefType("VolatileFloat",   "F", 0.0,   {scala\ufe33runtime\ufe33VolatileFloatRef:0});
   registerRefType("VolatileDouble",  "D", 0.0,   {scala\ufe33runtime\ufe33VolatileDoubleRef:0});
   registerRefType("VolatileObject",  "O", null,  {scala\ufe33runtime\ufe33VolatileObjectRef:0});
-})($ScalaJSEnvironment);
+})();

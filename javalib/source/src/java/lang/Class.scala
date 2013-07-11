@@ -2,8 +2,7 @@ package java.lang
 
 import scala.js
 
-final class Class[A] private(private[lang] val env: js.Dynamic,
-    private[lang] val data: js.Dynamic) extends Object {
+final class Class[A] private(private[lang] val data: js.Dynamic) extends Object {
 
   override def toString(): String = {
     (if (isInterface()) "interface " else
@@ -11,7 +10,7 @@ final class Class[A] private(private[lang] val env: js.Dynamic,
   }
 
   def isInstance(obj: Object): scala.Boolean =
-    env.isInstance(obj.asInstanceOf[js.Any], data.name).asInstanceOf[js.Boolean]
+    js.Dynamic.global.ScalaJS.isInstance(obj.asInstanceOf[js.Any], data.name).asInstanceOf[js.Boolean]
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
     !(!that.data.ancestors.selectDynamic(this.data.name.asInstanceOf[js.String]))

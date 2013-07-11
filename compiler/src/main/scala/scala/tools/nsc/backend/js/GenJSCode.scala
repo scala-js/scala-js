@@ -147,8 +147,8 @@ abstract class GenJSCode extends SubComponent
             if (classes.isEmpty) js.EmptyTree
             else {
               val tree = js.Apply(
-                  js.Function(List(environment), js.Block(classes.toList)),
-                  List(js.Ident(ScalaJSEnvironmentFullName)))
+                  js.Function(Nil, js.Block(classes.toList)),
+                  Nil)
               desugarJavaScript(tree)
             }
 
@@ -262,7 +262,7 @@ abstract class GenJSCode extends SubComponent
             List(nameArg, typeArg, jsConstructorArg, parentArg, ancestorsArg))
       }
 
-      val createClassFun = js.Function(List(environment),
+      val createClassFun = js.Function(Nil,
           js.Block(List(classDefinition, createJSConstructorStat),
               createClassStat))
 
@@ -1728,9 +1728,20 @@ abstract class GenJSCode extends SubComponent
       def shouldUseDynamicSelect: Boolean =
         currentClassSym == ClassClass || currentClassSym == ReflectArrayModuleClass
 
-      def maybeDynamicSelect(receiver: js.Tree, item: js.Tree): js.Tree =
-        if (shouldUseDynamicSelect) js.DynamicSelect(receiver, item)
-        else js.BracketSelect(receiver, item)
+      def maybeDynamicSelect(receiver: js.Tree, item: js.Tree): js.Tree = {
+        if (shouldUseDynamicSelect) {
+          // Now that's a cute hack ...
+          js.DynamicSelect(receiver, item) match {
+            case js.DotSelect(
+                js.DotSelect(js.Ident(ScalaJSEnvironmentName, _), js.Ident("g", _)),
+                globalVar) =>
+              globalVar
+            case x => x
+          }
+        } else {
+          js.BracketSelect(receiver, item)
+        }
+      }
 
       if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)

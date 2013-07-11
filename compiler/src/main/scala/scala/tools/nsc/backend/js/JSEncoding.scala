@@ -34,10 +34,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   final val InnerSepStr = InnerSep.toString
 
   /** Full name (global name) of the Scala.js environment */
-  final val ScalaJSEnvironmentFullName = "$ScalaJSEnvironment"
+  final val ScalaJSEnvironmentFullName = "ScalaJS"
 
   /** Name given to the local Scala.js environment variable */
-  final val ScalaJSEnvironmentName = "$"
+  final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** The current Scala.js environment */
   def environment(implicit pos: Position): js.Ident = {

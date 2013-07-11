@@ -40,7 +40,7 @@ object Array {
   def setDouble(array: AnyRef, index: Int, value: Double): Unit = getUnderlying[js.Any](array)(index) = value
 
   private def newArray(componentType: Class[_], length: Int): AnyRef = {
-    componentType.env.newArrayObject(
+    js.Dynamic.global.ScalaJS.newArrayObject(
         componentType.data.array, js.Array(length:js.Number))
   }
 
@@ -53,6 +53,6 @@ object Array {
       arrayClassData = arrayClassData.array
       i += 1
     }
-    componentType.env.newArrayObject(arrayClassData, lengths)
+    js.Dynamic.global.ScalaJS.newArrayObject(arrayClassData, lengths)
   }
 }

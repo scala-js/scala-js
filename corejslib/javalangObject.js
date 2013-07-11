@@ -2,8 +2,8 @@
  * java.lang.Object
  * ------------------ */
 
-(function ($env) {
-  $env.registerClass("java.lang.Object", {java\ufe33lang\ufe33Object:0}, function($env) {
+(function() {
+  ScalaJS.registerClass("java.lang.Object", {java\ufe33lang\ufe33Object:0}, function() {
     function ObjectClass() {
     }
     ObjectClass.prototype.constructor = ObjectClass;
@@ -41,10 +41,10 @@
     }
 
     ObjectClass.prototype.clone\ufe34O = function() {
-      if ($env.isInstance(this, "java.lang.Cloneable")) {
-        throw new this.c["scala.NotImplementedError"]().init\ufe33\ufe34;
+      if (ScalaJS.isInstance(this, "java.lang.Cloneable")) {
+        throw new ScalaJS.c["scala.NotImplementedError"]().init\ufe33\ufe34;
       } else {
-        throw new this.c["java.lang.CloneNotSupportedException"]().init\ufe33\ufe34;
+        throw new ScalaJS.c["java.lang.CloneNotSupportedException"]().init\ufe33\ufe34;
       }
     }
 
@@ -80,8 +80,8 @@
     }
     JSObjectClass.prototype = ObjectClass.prototype;
 
-    $env.createClass("java.lang.Object", ObjectClass, JSObjectClass, null, {
+    ScalaJS.createClass("java.lang.Object", ObjectClass, JSObjectClass, null, {
       "java.lang.Object": true
     });
   });
-})($ScalaJSEnvironment);
+})();
