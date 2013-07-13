@@ -69,8 +69,8 @@ abstract class GenJSCode extends SubComponent
      *  For every class, it calls `genClass()`. If it is a module class, it
      *  also calls `genModuleAccessor()`.
      *
-     *  Classes representing raw JS types and primitive types, as well as the
-     *  scala.Array class, are not actually emitted.
+     *  Classes representing primitive types, as well as the scala.Array
+     *  class, are not actually emitted.
      *
      *  Emitted class and interface definitions are grouped into bundles
      *  according to their so-called representative, which is basically their
@@ -119,20 +119,20 @@ abstract class GenJSCode extends SubComponent
               val bundle = generatedBundles.getOrElseUpdate(
                   representative, new ListBuffer)
 
-              /* Do not actually emit code for raw JS types, primitive types
-               * nor scala.Array.
+              /* Do not actually emit code for primitive types nor scala.Array.
                */
               val isPrimitive =
-                isRawJSType(sym.tpe) || isPrimitiveValueClass(sym) ||
-                (sym == ArrayClass)
+                isPrimitiveValueClass(sym) || (sym == ArrayClass)
 
               if (!isPrimitive) {
                 if (sym.isInterface) {
                   bundle += genInterface(cd)
                 } else {
                   bundle += genClass(cd)
-                  if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass)
-                    bundle += genModuleAccessor(sym)
+                  if (!isRawJSType(sym.tpe)) {
+                    if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass)
+                      bundle += genModuleAccessor(sym)
+                  }
                 }
               }
           }
@@ -173,6 +173,10 @@ abstract class GenJSCode extends SubComponent
      *  The class definition itself is wrapped inside a closure which is
      *  only registered to the Scala.js environment using `registerClass`. It
      *  is not automatically created, only on demand.
+     *
+     *  For classes representing raw JS types (i.e., <: js.Any), the class is
+     *  not actually emitted. It is only registered with undefined
+     *  constructors, to support reflection.
      */
     def genClass(cd: ClassDef): js.Tree = {
       implicit val jspos = cd.pos
@@ -184,9 +188,11 @@ abstract class GenJSCode extends SubComponent
         if (currentClassSym.superClass == NoSymbol) ObjectClass
         else currentClassSym.superClass
 
+      val rawJSType = isRawJSType(currentClassSym.tpe)
+
       val generatedMembers = new ListBuffer[js.Tree]
 
-      if (!currentClassSym.isInterface)
+      if (!rawJSType && !currentClassSym.isInterface)
         generatedMembers += genConstructor(cd)
 
       def gen(tree: Tree) {
@@ -204,10 +210,13 @@ abstract class GenJSCode extends SubComponent
         }
       }
 
-      gen(impl)
+      if (!rawJSType)
+        gen(impl)
 
       // Generate the bridges, then steal the constructor bridges (1 at most)
-      val bridges0 = genBridgesForClass(currentClassSym)
+      val bridges0 =
+        if (rawJSType) Nil
+        else genBridgesForClass(currentClassSym)
       val (constructorBridges0, bridges) = bridges0.partition {
         case js.MethodDef(js.PropertyName(name, _), _, _) =>
           name == nme.CONSTRUCTOR.toString()
@@ -216,7 +225,8 @@ abstract class GenJSCode extends SubComponent
       assert(constructorBridges0.size <= 1)
 
       val constructorBridge = {
-        if (!currentClassSym.isImplClass) constructorBridges0.headOption
+        if (rawJSType) None
+        else if (!currentClassSym.isImplClass) constructorBridges0.headOption
         else {
           // Make up
           Some(js.MethodDef(js.PropertyName("<init>"), Nil, js.Skip()))
@@ -224,8 +234,13 @@ abstract class GenJSCode extends SubComponent
       }
 
       val typeVar = js.Ident("Class", originalClassName)
-      val classDefinition = js.ClassDef(typeVar,
-          encodeClassSym(superClass), generatedMembers.toList ++ bridges)
+      val classDefinition = {
+        if (rawJSType)
+          js.VarDef(typeVar, js.Undefined())
+        else
+          js.ClassDef(typeVar, encodeClassSym(superClass),
+              generatedMembers.toList ++ bridges)
+      }
 
       /* function JSClass(<args of the constructor bridge>) {
        *   Class.call(this);
@@ -246,7 +261,7 @@ abstract class GenJSCode extends SubComponent
               ))
 
         case _ =>
-          js.Assign(jsConstructorVar, js.Undefined())
+          js.VarDef(jsConstructorVar, js.Undefined())
       }
 
       val createClassStat = {
