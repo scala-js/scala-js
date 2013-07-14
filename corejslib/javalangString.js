@@ -34,8 +34,7 @@ ScalaJS.asArrayOf.java\ufe33lang\ufe33String = (function(obj, depth) {
 ScalaJS.data.java\ufe33lang\ufe33String = {
   constr: undefined,   // java.lang.String does not really
   jsconstr: undefined, //   have a constructor
-  //parentData: ScalaJS.data.java\ufe33lang\ufe33Object,
-  parentData: undefined,
+  parentData: ScalaJS.data.java\ufe33lang\ufe33Object,
   ancestors: {
     java\ufe33lang\ufe33String: true,
     java\ufe33io\ufe33Serializable: true,

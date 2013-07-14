@@ -418,10 +418,9 @@ abstract class GenJSCode extends SubComponent
               else envField("classes") DOT classIdent),*/
           "constr" -> js.Undefined(),
           "jsconstr" -> js.Undefined(),
-          /*"parentData" -> (
+          "parentData" -> (
               if (isInterface) js.Undefined()
-              else envField("data") DOT encodeFullNameIdent(superClass)),*/
-          "parentData" -> js.Undefined(),
+              else envField("data") DOT encodeFullNameIdent(superClass)),
           "ancestors" -> ancestorsRecord,
           "isPrimitive" -> js.BooleanLiteral(false),
           "isInterface" -> js.BooleanLiteral(isInterface),
