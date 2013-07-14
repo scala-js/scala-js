@@ -41,7 +41,7 @@ object Array {
 
   private def newArray(componentType: Class[_], length: Int): AnyRef = {
     js.Dynamic.global.ScalaJS.newArrayObject(
-        componentType.data.array, js.Array(length:js.Number))
+        componentType.data.getArrayOf(), js.Array(length:js.Number))
   }
 
   private def multiNewArray(componentType: Class[_],
@@ -50,7 +50,7 @@ object Array {
     var arrayClassData = componentType.data
     var i = 0
     while (i < lengths.length) {
-      arrayClassData = arrayClassData.array
+      arrayClassData = arrayClassData.getArrayOf()
       i += 1
     }
     js.Dynamic.global.ScalaJS.newArrayObject(arrayClassData, lengths)

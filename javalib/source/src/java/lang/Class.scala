@@ -10,16 +10,18 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
   }
 
   def isInstance(obj: Object): scala.Boolean =
-    js.Dynamic.global.ScalaJS.isInstance(obj.asInstanceOf[js.Any], data.name).asInstanceOf[js.Boolean]
+    js.Dynamic.global.ScalaJS.dynamicIsInstanceOf(
+        obj.asInstanceOf[js.Any], data).asInstanceOf[js.Boolean]
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
-    !(!that.data.ancestors.selectDynamic(this.data.name.asInstanceOf[js.String]))
+    js.Dynamic.global.ScalaJS.dynamicIsAssignableFrom(
+        this.data, that.data).asInstanceOf[js.Boolean]
 
   def isInterface(): scala.Boolean =
     data.isInterface.asInstanceOf[js.Boolean]
 
   def isArray(): scala.Boolean =
-    data.isArray.asInstanceOf[js.Boolean]
+    data.isArrayClass.asInstanceOf[js.Boolean]
 
   def isPrimitive(): scala.Boolean =
     data.isPrimitive.asInstanceOf[js.Boolean]
@@ -30,9 +32,9 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
 
   def getSuperClass(): Class[_ >: A] =
     if (!data.parentData) null
-    else data.parentData.cls.asInstanceOf[Class[_ >: A]]
+    else data.parentData.getClassOf().asInstanceOf[Class[_ >: A]]
 
   def getComponentType(): Class[_] =
-    if (isArray()) data.componentData.cls.asInstanceOf[Class[_]]
+    if (isArray()) data.componentData.getClassOf().asInstanceOf[Class[_]]
     else null
 }

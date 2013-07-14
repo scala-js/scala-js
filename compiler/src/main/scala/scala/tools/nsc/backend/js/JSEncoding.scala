@@ -104,19 +104,42 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
-    js.DotSelect(encodeClassDataOfType(tpe), js.Ident("cls"))
+    js.ApplyMethod(encodeClassDataOfType(tpe), js.Ident("getClassOf"), Nil)
   }
 
   def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSymInternal called with non-module symbol: " + sym)
-    js.DotSelect(encodeModuleDataOfSym(sym), js.Ident("_instance"))
+    js.DotSelect(envField("moduleInstances"), encodeFullNameIdent(sym))
   }
 
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSym called with non-module symbol: " + sym)
-    js.DotSelect(envField("m"), encodeFullNameIdent(sym))
+    js.Apply(js.DotSelect(envField("modules"), encodeFullNameIdent(sym)), Nil)
+  }
+
+  def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    encodeIsAsInstanceOf("is")(value, tpe)
+  }
+
+  def encodeAsInstanceOf(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    encodeIsAsInstanceOf("as")(value, tpe)
+  }
+
+  private def encodeIsAsInstanceOf(prefix: String)(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    toTypeKind(tpe) match {
+      case array : ARRAY =>
+        js.ApplyMethod(envField(prefix+"ArrayOf"),
+            encodeFullNameIdent(array.elementKind.toType.typeSymbol),
+            List(value, js.IntLiteral(array.dimensions)))
+      case _ =>
+        js.ApplyMethod(envField(prefix),
+            encodeFullNameIdent(tpe.typeSymbol), List(value))
+    }
   }
 
   def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
@@ -124,7 +147,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       case array : ARRAY =>
         var result = encodeClassDataOfSym(array.elementKind.toType.typeSymbol)
         for (i <- 0 until array.dimensions)
-          result = js.DotSelect(result, js.Ident("array"))
+          result = js.ApplyMethod(result, js.Ident("getArrayOf"), Nil)
         result
 
       case _ => encodeClassDataOfSym(tpe.typeSymbol)
@@ -132,32 +155,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    getClassOrModuleData(sym,
-        dictName = if (sym.isPrimitiveValueClass) "primitives" else "classes")
-  }
-
-  def encodeModuleDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    getClassOrModuleData(sym, dictName = "modules")
-  }
-
-  private def getClassOrModuleData(sym: Symbol, dictName: String)(
-      implicit pos: Position): js.Tree = {
-    js.BracketSelect(js.DotSelect(environment, js.Ident(dictName)),
-        encodeFullNameLit(sym))
+    js.DotSelect(envField("data"), encodeFullNameIdent(sym))
   }
 
   def encodeFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
     js.Ident(encodeFullName(sym), Some(encodeFullName(sym, '.')))
-  }
-
-  def encodeFullNameLit(sym: Symbol)(implicit pos: Position): js.StringLiteral = {
-    val encodedFullName = encodeFullName(sym, '.')
-    js.StringLiteral(encodedFullName, Some(encodedFullName))
-  }
-
-  def encodeFullNameLit(tpe: Type)(implicit pos: Position): js.StringLiteral = {
-    val encodedFullName = encodeFullName(tpe, '.')
-    js.StringLiteral(encodedFullName, Some(encodedFullName))
   }
 
   def encodeFullName(sym: Symbol, separator: Char = InnerSep): String =

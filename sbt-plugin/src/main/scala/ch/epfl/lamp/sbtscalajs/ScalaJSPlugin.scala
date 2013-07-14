@@ -12,6 +12,10 @@ object ScalaJSPlugin extends Plugin {
 
   import ScalaJSKeys._
 
+  def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
+    files.sortBy(_.name)
+  }
+
   val baseScalaJSSettings: Seq[Setting[_]] = Seq(
       // you had better use the same version of Scala as Scala.js
       scalaVersion := "2.10.1",
@@ -82,8 +86,9 @@ object ScalaJSPlugin extends Plugin {
           crossTarget in Compile, moduleName
       ) map { (compilationResult, classDir, target, modName) =>
         val allJSFiles = (classDir ** "*.js").get
+        val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
         val output = target / (modName + ".js")
-        catJSFilesAndTheirSourceMaps(allJSFiles, output)
+        catJSFilesAndTheirSourceMaps(sortedJSFiles, output)
         output
       }
   )
