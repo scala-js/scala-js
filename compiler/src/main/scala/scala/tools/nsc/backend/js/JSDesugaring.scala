@@ -137,6 +137,9 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         case js.VarDef(_, rhs) =>
           pushLhsInto(tree, rhs)
 
+        case js.LabeledStat(label, body) =>
+          super.transformStat(tree)
+
         case js.Assign(select @ js.DotSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs) =>
             js.Assign(
@@ -526,7 +529,8 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
              */
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment =>
+                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment |
+                  _:js.LabeledStat =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.pushLhsInto():\n" +

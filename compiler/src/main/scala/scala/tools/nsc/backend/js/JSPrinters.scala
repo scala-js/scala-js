@@ -126,6 +126,10 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         case js.Block(stats, expr) =>
           printColumn(stats :+ expr, "{", ";", "}")
 
+        case js.LabeledStat(label, body) =>
+          print(label, ": ")
+          printBlock(body)
+
         case js.Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
 

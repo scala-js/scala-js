@@ -352,7 +352,7 @@ abstract class GenJSCode extends SubComponent
           }
         })
       }
-      
+
       val createIsArrayOfStat = {
         val obj = js.Ident("obj")
         val depth = js.Ident("depth")
@@ -362,7 +362,7 @@ abstract class GenJSCode extends SubComponent
               (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent))))
         })
       }
-      
+
       val createAsArrayOfStat = {
         val obj = js.Ident("obj")
         val depth = js.Ident("depth")
@@ -1523,8 +1523,7 @@ abstract class GenJSCode extends SubComponent
      *    simply replaced by `skip`.
      *
      *  To implement jumps to `matchEnd`, we enclose all the cases in one big
-     *  labeled do..while(false) loop. Jumps are then compiled as `break`s out
-     *  of that loop.
+     *  labeled block. Jumps are then compiled as `break`s out of that block.
      */
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
@@ -1556,13 +1555,16 @@ abstract class GenJSCode extends SubComponent
         genCaseBody(rhs)
       }
 
-      val matchLoop = js.DoWhile(js.Block(translatedCases),
-          js.BooleanLiteral(false), Some(encodeLabelSym(matchEnd.symbol)))
+      val matchBlock = js.LabeledStat(
+          encodeLabelSym(matchEnd.symbol), js.Block(translatedCases))
 
       if (isResultUnit) {
-        statToExpr(matchLoop)
+        statToExpr(matchBlock)
       } else {
-        js.Block(List(js.VarDef(resultVar, js.EmptyTree), matchLoop), resultVar)
+        js.Block(
+            js.VarDef(resultVar, js.EmptyTree),
+            matchBlock,
+            resultVar)
       }
     }
 

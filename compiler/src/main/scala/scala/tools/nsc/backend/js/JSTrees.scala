@@ -129,6 +129,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
         apply(stats.toList)
     }
 
+    case class LabeledStat(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
+
     case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
     case class Return(expr: Tree)(implicit val pos: Position) extends Tree
@@ -322,6 +324,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case Block(stats, stat) =>
             Block(stats map transformStat, transformStat(stat))
 
+          case LabeledStat(label, body) =>
+            LabeledStat(label, transformStat(body))
+
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
 
@@ -409,6 +414,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case FunDef(name, args, body) =>
             FunDef(name, args, transformStat(body))
+
+          case LabeledStat(label, body) =>
+            ??? // no way this has any kind of meaning as expression
 
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
