@@ -1200,7 +1200,7 @@ abstract class GenJSCode extends SubComponent
                 case _ =>
                   val tempAssignments =
                     for ((_, tempArg, actualArg) <- triplets)
-                      yield js.Assign(tempArg, actualArg)
+                      yield js.VarDef(tempArg, actualArg)
                   val trueAssignments =
                     for ((formalArg, tempArg, _) <- triplets)
                       yield js.Assign(formalArg, tempArg)
