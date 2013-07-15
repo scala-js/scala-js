@@ -386,56 +386,29 @@ abstract class GenJSCode extends SubComponent
 
       implicit val pos = cd.pos
       val sym = cd.symbol
+
       val isInterface = sym.isInterface
 
-      val superClass =
-        if (sym.superClass == NoSymbol) ObjectClass
-        else sym.superClass
+      val parentData = {
+        if (isInterface) js.Undefined()
+        else envField("data") DOT encodeFullNameIdent(
+            if (sym.superClass == NoSymbol) ObjectClass else sym.superClass)
+      }
 
       val ancestorsRecord = js.ObjectConstr(
           for (ancestor <- sym :: sym.ancestors)
             yield (encodeFullNameIdent(ancestor), js.BooleanLiteral(true)))
 
-      val displayName = sym.fullName
       val classIdent = encodeFullNameIdent(sym)
-      val classDataVar = envField("data") DOT classIdent
 
-      def makeLazyGetter(field: String)(value: js.Tree): js.Tree = {
-        val thisField = classDataVar DOT field
-        js.Function(Nil, js.Block(
-            IF (!thisField) {
-              thisField := value
-            },
-            js.Return(thisField)))
-      }
-
-      js.ObjectLiteral(
-          /*"constr" -> (
-              if (isInterface) js.Undefined()
-              else envField("c") DOT classIdent),
-          "jsconstr" -> (
-              if (isInterface) js.Undefined()
-              else envField("classes") DOT classIdent),*/
-          "constr" -> js.Undefined(),
-          "jsconstr" -> js.Undefined(),
-          "parentData" -> (
-              if (isInterface) js.Undefined()
-              else envField("data") DOT encodeFullNameIdent(superClass)),
-          "ancestors" -> ancestorsRecord,
-          "isPrimitive" -> js.BooleanLiteral(false),
-          "isInterface" -> js.BooleanLiteral(isInterface),
-          "isArrayClass" -> js.BooleanLiteral(false),
-          "componentData" -> js.Null(),
-          "zero" -> js.Null(),
-          "arrayEncodedName" -> js.StringLiteral("L"+displayName+";"),
-          "displayName" -> js.StringLiteral(displayName),
-          "_classOf" -> js.Undefined(),
-          "getClassOf" -> envField("classOfGetter"),
-          "_arrayOf" -> js.Undefined(),
-          "getArrayOf" -> envField("arrayOfGetter"),
-          "isInstance" -> (envField("is") DOT classIdent),
-          "isArrayOf" -> (envField("isArrayOf") DOT classIdent)
-      )
+      js.New(envField("ClassTypeData"), List(
+          js.BooleanLiteral(isInterface),
+          js.StringLiteral(sym.fullName),
+          parentData,
+          ancestorsRecord,
+          envField("is") DOT classIdent,
+          envField("isArrayOf") DOT classIdent
+      ))
     }
 
     // Generate the constructor of a class -------------------------------------

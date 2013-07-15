@@ -31,28 +31,15 @@ ScalaJS.asArrayOf.java\ufe33lang\ufe33String = (function(obj, depth) {
   }
 });
 
-ScalaJS.data.java\ufe33lang\ufe33String = {
-  constr: undefined,   // java.lang.String does not really
-  jsconstr: undefined, //   have a constructor
-  parentData: ScalaJS.data.java\ufe33lang\ufe33Object,
-  ancestors: {
-    java\ufe33lang\ufe33String: true,
-    java\ufe33io\ufe33Serializable: true,
-    java\ufe33lang\ufe33CharSequence: true,
-    java\ufe33lang\ufe33Comparable: true,
-    java\ufe33lang\ufe33Object: true
-  },
-  isPrimitive: false,
-  isInterface: false,
-  isArrayClass: false,
-  componentData: null,
-  zero: null,
-  arrayEncodedName: "Ljava.lang.String;",
-  displayName: "java.lang.String",
-  _classOf: undefined,
-  getClassOf: ScalaJS.classOfGetter,
-  _arrayOf: undefined,
-  getArrayOf: ScalaJS.arrayOfGetter,
-  isInstance: ScalaJS.is.java\ufe33lang\ufe33String,
-  isArrayOf: ScalaJS.isArrayOf.java\ufe33lang\ufe33String
-};
+ScalaJS.data.java\ufe33lang\ufe33String =
+  new ScalaJS.ClassTypeData(
+    false, "java.lang.String", ScalaJS.data.java\ufe33lang\ufe33Object,
+    {
+      java\ufe33lang\ufe33String: true,
+      java\ufe33io\ufe33Serializable: true,
+      java\ufe33lang\ufe33CharSequence: true,
+      java\ufe33lang\ufe33Comparable: true,
+      java\ufe33lang\ufe33Object: true
+    },
+    ScalaJS.is.java\ufe33lang\ufe33String,
+    ScalaJS.isArrayOf.java\ufe33lang\ufe33String);

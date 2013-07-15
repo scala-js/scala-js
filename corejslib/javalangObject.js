@@ -107,7 +107,7 @@
     if (!data)
       return false;
     var arrayDepth = data.arrayDepth || 0;
-    
+
     if (arrayDepth < depth)
       return false; // because Array[A] </: Array[Array[A]]
     else if (arrayDepth > depth)
@@ -126,27 +126,11 @@
 
   // Data
 
-  ScalaJS.data.java\ufe33lang\ufe33Object = {
-    constr: ScalaJS.c.java\ufe33lang\ufe33Object,
-    jsconstr: ScalaJS.classes.java\ufe33lang\ufe33Object,
-    parentData: null,
-    ancestors: {
-      java\ufe33lang\ufe33Object: true
-    },
-    isPrimitive: false,
-    isInterface: false,
-    isArrayClass: false,
-    componentData: null,
-    zero: null,
-    arrayEncodedName: "Ljava.lang.Object;",
-    displayName: "java.lang.Object",
-    _classOf: undefined,
-    getClassOf: ScalaJS.classOfGetter,
-    _arrayOf: undefined,
-    getArrayOf: ScalaJS.arrayOfGetter,
-    isInstance: ScalaJS.is.java\ufe33lang\ufe33Object,
-    isArrayOf: ScalaJS.isArrayOf.java\ufe33lang\ufe33Object
-  };
+  ScalaJS.data.java\ufe33lang\ufe33Object =
+    new ScalaJS.ClassTypeData(
+      false, "java.lang.Object", null, {},
+      ScalaJS.is.java\ufe33lang\ufe33Object,
+      ScalaJS.isArrayOf.java\ufe33lang\ufe33Object);
 
   ScalaJS.c.java\ufe33lang\ufe33Object.prototype.$classData =
     ScalaJS.data.java\ufe33lang\ufe33Object;
