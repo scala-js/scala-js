@@ -126,9 +126,11 @@ abstract class GenJSCode extends SubComponent
               if (!isPrimitive) {
                 val tree = if (sym.isInterface) {
                   genInterface(cd)
+                } else if (sym.isImplClass) {
+                  genImplClass(cd)
                 } else {
                   val classDef = genClass(cd)
-                  if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass)
+                  if (sym.isModuleClass && !sym.isLifted)
                     js.Block(classDef, genModuleAccessor(sym))
                   else
                     classDef
@@ -310,6 +312,56 @@ abstract class GenJSCode extends SubComponent
       }
 
       js.Block(instanceTestMethods, createDataStat)
+    }
+
+    // Generate an implementation class of a trait -----------------------------
+
+    /** Gen JS code for an implementation class (of a trait)
+     */
+    def genImplClass(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val ClassDef(mods, name, _, impl) = cd
+      val sym = cd.symbol
+      currentClassSym = sym
+
+      val generatedMembers = new ListBuffer[js.Tree]
+
+      def gen(tree: Tree) {
+        tree match {
+          case EmptyTree => ()
+          case Template(_, _, body) => body foreach gen
+
+          case dd: DefDef =>
+            generatedMembers ++= genMethod(dd)
+
+          case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
+        }
+      }
+
+      gen(impl)
+
+      val implModuleFields = for (member <- generatedMembers.result()) yield {
+        member match {
+          case js.MethodDef(name, params, body) =>
+            name -> js.Function(params, body)
+          case js.CustomDef(name, rhs) =>
+            name -> rhs
+          case _ =>
+            abort("Illegal member in impl class: " + member)
+        }
+      }
+
+      val fieldCreations =
+        for ((name, value) <- implModuleFields) yield
+          js.Assign(js.Select(envField("impls"), name), value)
+
+      val implDefinition = js.Block(fieldCreations)
+
+      currentClassSym = null
+
+      implDefinition
     }
 
     // Commons for genClass and genInterface -----------------------------------

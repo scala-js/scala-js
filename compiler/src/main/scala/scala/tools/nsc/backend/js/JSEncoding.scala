@@ -116,7 +116,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSym called with non-module symbol: " + sym)
-    js.Apply(js.DotSelect(envField("modules"), encodeFullNameIdent(sym)), Nil)
+
+    val isImplClass =
+      if (sym.isModule) sym.moduleClass.isImplClass
+      else sym.isImplClass
+
+    if (isImplClass)
+      envField("impls")
+    else
+      js.Apply(js.DotSelect(envField("modules"), encodeFullNameIdent(sym)), Nil)
   }
 
   def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
