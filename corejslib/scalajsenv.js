@@ -256,8 +256,19 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
 },
 
 /** @constructor */
-ScalaJS.ClassTypeData = function(isInterface, fullName, parentData, ancestors,
-                                 isInstance, isArrayOf) {
+ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
+                                 parentData, ancestors, isInstance, isArrayOf) {
+  var internalName = ScalaJS.propertyName(internalNameObj);
+
+  isInstance = isInstance || function(obj) {
+    return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
+  };
+
+  isArrayOf = isArrayOf || function(obj, depth) {
+    return !!(obj && obj.$classData && (obj.$classData.arrayDepth === depth)
+      && obj.$classData.arrayBase.ancestors[internalName])
+  };
+
   this.constr = undefined;
   this.parentData = parentData;
   this.ancestors = ancestors;

@@ -440,6 +440,7 @@ abstract class GenJSCode extends SubComponent
       val sym = cd.symbol
 
       val isInterface = sym.isInterface
+      val isAncestorOfString = StringClass.ancestors contains sym
 
       val parentData = {
         if (isInterface) js.Undefined()
@@ -454,12 +455,15 @@ abstract class GenJSCode extends SubComponent
       val classIdent = encodeFullNameIdent(sym)
 
       js.New(envField("ClassTypeData"), List(
+          js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
           js.BooleanLiteral(isInterface),
           js.StringLiteral(sym.fullName),
           parentData,
-          ancestorsRecord,
-          envField("is") DOT classIdent,
-          envField("isArrayOf") DOT classIdent
+          ancestorsRecord
+      ) ++ (
+          // Ancestors of string have a non-standard isInstanceOf test
+          if (isAncestorOfString) List(envField("is") DOT classIdent)
+          else Nil
       ))
     }
 

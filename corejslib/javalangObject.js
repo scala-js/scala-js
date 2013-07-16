@@ -128,6 +128,7 @@
 
   ScalaJS.data.java\ufe33lang\ufe33Object =
     new ScalaJS.ClassTypeData(
+      {java\ufe33lang\ufe33Object:0},
       false, "java.lang.Object", null, {},
       ScalaJS.is.java\ufe33lang\ufe33Object,
       ScalaJS.isArrayOf.java\ufe33lang\ufe33Object);

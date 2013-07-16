@@ -33,6 +33,7 @@ ScalaJS.asArrayOf.java\ufe33lang\ufe33String = (function(obj, depth) {
 
 ScalaJS.data.java\ufe33lang\ufe33String =
   new ScalaJS.ClassTypeData(
+    {java\ufe33lang\ufe33String:0},
     false, "java.lang.String", ScalaJS.data.java\ufe33lang\ufe33Object,
     {
       java\ufe33lang\ufe33String: true,
@@ -41,5 +42,4 @@ ScalaJS.data.java\ufe33lang\ufe33String =
       java\ufe33lang\ufe33Comparable: true,
       java\ufe33lang\ufe33Object: true
     },
-    ScalaJS.is.java\ufe33lang\ufe33String,
-    ScalaJS.isArrayOf.java\ufe33lang\ufe33String);
+    ScalaJS.is.java\ufe33lang\ufe33String);
