@@ -556,6 +556,8 @@ abstract class GenJSCode extends SubComponent
                   js.StringLiteral(nativeID, Some(nativeID)))))
         } else if (isAbstractMethod) {
           None
+        } else if (isTrivialConstructor(currentMethodSym, params, rhs)) {
+          None
         } else {
           val returnType = toTypeKind(currentMethodSym.tpe.resultType)
           val body = {
@@ -571,6 +573,33 @@ abstract class GenJSCode extends SubComponent
       currentMethodSym = null
 
       result
+    }
+
+    private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
+        rhs: Tree): Boolean = {
+      if (!sym.isClassConstructor) {
+        false
+      } else {
+        rhs match {
+          // Shape of a constructor that only calls super
+          case Block(List(Apply(fun @ Select(_:Super, _), args)), Literal(_)) =>
+            val callee = fun.symbol
+            implicit val dummyPos = NoPosition
+
+            // Does the callee have the same signature as sym
+            if (encodeMethodSym(sym) == encodeMethodSym(callee)) {
+              // Test whether args are trivial forwarders
+              assert(args.size == params.size, "Argument count mismatch")
+              params.zip(args) forall { case (param, arg) =>
+                arg.symbol == param
+              }
+            } else {
+              false
+            }
+
+          case _ => false
+        }
+      }
     }
 
     // Generate a module accessor ----------------------------------------------
