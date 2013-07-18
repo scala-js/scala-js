@@ -28,7 +28,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  lazy val root = Project(
+  lazy val root: Project = Project(
       id = "scalajs",
       base = file("."),
       settings = defaultSettings ++ Seq(
@@ -170,7 +170,7 @@ object ScalaJSBuild extends Build {
 
   // Examples
 
-  lazy val examples = Project(
+  lazy val examples: Project = Project(
       id = "examples",
       base = file("examples"),
       settings = defaultSettings ++ Seq(
@@ -188,6 +188,20 @@ object ScalaJSBuild extends Build {
           classDirectory in (library, Compile)
       ) map { classDir =>
         Attributed.blank(classDir)
+      },
+
+      // Add the Scala.js runtime - same reason not to use root/package-js
+      unmanagedSources in (Compile, optimizeJS) <+= (
+          target in root
+      ) map { rootTarget =>
+        rootTarget / "scalajs-runtime.js"
+      },
+
+      // Add the startup.js file of this example project
+      unmanagedSources in (Compile, optimizeJS) <+= (
+          baseDirectory
+      ) map { base =>
+        base / "startup.js"
       }
   )
 
