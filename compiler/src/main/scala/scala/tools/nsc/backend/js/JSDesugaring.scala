@@ -78,7 +78,7 @@ package js
  *  * Rule 2) is implemented by pushLhsInto()
  *  * Class desugaring is in transformClass() and its helpers
  */
-trait JSDesugaring extends SubComponent {
+trait JSDesugaring extends SubComponent { self: GenJSCode =>
   val global: scalajs.JSGlobal
 
   import global._
@@ -116,6 +116,11 @@ trait JSDesugaring extends SubComponent {
       implicit val pos = tree.pos
 
       tree match {
+        // Comments
+
+        case js.DocComment(text) =>
+          tree
+
         // Inside a FunDef, we can reset the synthetic var counter
 
         case js.FunDef(name, args, body) =>
@@ -131,6 +136,9 @@ trait JSDesugaring extends SubComponent {
 
         case js.VarDef(_, rhs) =>
           pushLhsInto(tree, rhs)
+
+        case js.LabeledStat(label, body) =>
+          super.transformStat(tree)
 
         case js.Assign(select @ js.DotSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs) =>
@@ -290,6 +298,12 @@ trait JSDesugaring extends SubComponent {
     private def isExpressionInternal(tree: js.Tree,
         allowIdents: Boolean, allowUnpure: Boolean): Boolean = {
       def test(tree: js.Tree): Boolean = tree match {
+        // Special case for fields of ScalaJS and their fields
+        case js.Ident(ScalaJSEnvironmentName, _) => true
+        case js.DotSelect(js.Ident(ScalaJSEnvironmentName, _), _) => true
+        case js.DotSelect(js.DotSelect(
+            js.Ident(ScalaJSEnvironmentName, _), _), _) => true
+
         // Atomic expressions
         case _ : js.Ident => allowIdents
         case _ : js.Literal => true
@@ -515,7 +529,8 @@ trait JSDesugaring extends SubComponent {
              */
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While | _:js.DoWhile | _:js.Switch =>
+                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment |
+                  _:js.LabeledStat =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.pushLhsInto():\n" +
@@ -587,17 +602,18 @@ trait JSDesugaring extends SubComponent {
       {
         implicit val pos = tree.pos
         val typeVar = tree.name
-        val funDef = js.FunDef(typeVar, args, body)
-        val inheritProto =
+        val docComment = js.DocComment("@constructor")
+        val funDef = js.Assign(typeVar, js.Function(args, body))
+        val chainProto =
           if (tree.parent == js.EmptyTree) js.Skip()
           else js.Assign(
               js.DotSelect(typeVar, js.Ident("prototype")),
-              js.ApplyMethod(js.Ident("Object"), js.Ident("create"),
-                  List(js.DotSelect(tree.parent, js.Ident("prototype")))))
+              js.New(tree.parent, Nil))
         val reassignConstructor =
           genAddToPrototype(tree, js.Ident("constructor"), typeVar)
 
-        flattenBlock(List(funDef, inheritProto, reassignConstructor))
+        flattenBlock(List(
+            docComment, funDef, chainProto, reassignConstructor))
       }
     }
 

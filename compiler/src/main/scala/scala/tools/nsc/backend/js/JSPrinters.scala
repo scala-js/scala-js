@@ -36,21 +36,34 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         out.write(indentString, 0, indentMargin)
     }
 
-    def printSeq[a](ls: List[a])(printelem: a => Unit)(printsep: => Unit) {
+    def printSeq[a](ls: List[a])(printelem: a => Unit)(printsep: Boolean => Unit) {
       ls match {
         case List() =>
         case List(x) => printelem(x)
-        case x :: rest => printelem(x); printsep; printSeq(rest)(printelem)(printsep)
+        case x :: rest =>
+          printelem(x)
+          printsep(!x.isInstanceOf[js.DocComment])
+          printSeq(rest)(printelem)(printsep)
       }
     }
 
     def printColumn(ts: List[js.Tree], start: String, sep: String, end: String) {
       print(start); indent; println()
-      printSeq(ts){print(_)}{print(sep); println()}; undent; println(); print(end)
+      printSeq(ts){print(_)}{ needsSep =>
+        if (needsSep)
+          print(sep)
+        println()
+      }
+      undent; println(); print(end)
     }
 
     def printRow(ts: List[js.Tree], start: String, sep: String, end: String) {
-      print(start); printSeq(ts){print(_)}{print(sep)}; print(end)
+      print(start)
+      printSeq(ts){print(_)}{ needsSep =>
+        if (needsSep)
+          print(sep)
+      }
+      print(end)
     }
 
     def printRow(ts: List[js.Tree], sep: String) { printRow(ts, "", sep, "") }
@@ -72,6 +85,20 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       tree match {
         case js.EmptyTree =>
           print("<empty>")
+
+        // Comments
+
+        case js.DocComment(text) =>
+          val lines = text.split("\n").toList
+          if (lines.tail.isEmpty) {
+            print("/** ", lines.head, " */")
+          } else {
+            print("/** ", lines.head); println()
+            for (line <- lines.tail) {
+              print(" *  ", line); println()
+            }
+            print(" */")
+          }
 
         // Identifiers
 
@@ -98,6 +125,10 @@ trait JSPrinters { self: scalajs.JSGlobal =>
 
         case js.Block(stats, expr) =>
           printColumn(stats :+ expr, "{", ";", "}")
+
+        case js.LabeledStat(label, body) =>
+          print(label, ": ")
+          printBlock(body)
 
         case js.Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
@@ -244,8 +275,10 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           print("{"); indent; println()
           printSeq(fields) {
             case (name, value) => print(name, ": ", value)
-          } {
-            print(","); println()
+          } { needsSep =>
+            if (needsSep)
+              print(",")
+            println()
           }
           undent; println(); print("}")
 

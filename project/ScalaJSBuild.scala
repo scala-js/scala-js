@@ -28,7 +28,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  lazy val root = Project(
+  lazy val root: Project = Project(
       id = "scalajs",
       base = file("."),
       settings = defaultSettings ++ Seq(
@@ -37,16 +37,21 @@ object ScalaJSBuild extends Build {
           packageJS in Compile <<= (
               target,
               packageJS in (corejslib, Compile),
-              packageJS in (javalib, Compile),
-              packageJS in (scalalib, Compile),
-              packageJS in (libraryAux, Compile),
-              packageJS in (library, Compile)
-          ) map { (target, corejslib, javalib, scalalib, libraryAux, library) =>
+              compile in (javalib, Compile),
+              compile in (scalalib, Compile),
+              compile in (libraryAux, Compile),
+              compile in (library, Compile),
+              classDirectory in (javalib, Compile),
+              classDirectory in (scalalib, Compile),
+              classDirectory in (libraryAux, Compile),
+              classDirectory in (library, Compile)
+          ) map { (target, corejslib, i1, i2, i3, i4, d1, d2, d3, d4) =>
             val allJSFiles =
-              Seq(corejslib, javalib, scalalib, libraryAux, library)
+              (d1**"*.js" +++ d2**"*.js" +++ d3**"*.js" +++ d4**"*.js").get
+            val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
             val output = target / ("scalajs-runtime.js")
             target.mkdir()
-            catJSFilesAndTheirSourceMaps(allJSFiles, output)
+            catJSFilesAndTheirSourceMaps(corejslib +: sortedJSFiles, output)
             output
           },
 
@@ -100,7 +105,8 @@ object ScalaJSBuild extends Build {
           ) map { (baseDirectory, target) =>
             // hard-coded because order matters!
             val fileNames =
-              Seq("scalajsenv.js", "javalangObject.js", "RefTypes.js")
+              Seq("scalajsenv.js", "javalangObject.js",
+                  "javalangString.js", "DummyParents.js")
 
             val allJSFiles = fileNames map (baseDirectory / _)
             val output = target / ("scalajs-corejslib.js")
@@ -129,7 +135,19 @@ object ScalaJSBuild extends Build {
 
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
-              Set("-deprecation", "-unchecked", "-feature") contains _))
+              Set("-deprecation", "-unchecked", "-feature") contains _)),
+
+          // Exclude files that are overridden in library
+          excludeFilter in (Compile, unmanagedSources) ~= { superFilter =>
+            superFilter || new SimpleFileFilter({ f =>
+              val path = f.getPath.replace(java.io.File.separator, "/")
+              (path.endsWith("/scala/package.scala")
+                  || path.endsWith("/scala/Predef.scala")
+                  || path.endsWith("/scala/Console.scala")
+                  || path.endsWith("/scala/compat/Platform.scala")
+                  || path.endsWith("/scala/runtime/BoxesRunTime.scala"))
+            })
+          }
       )
   ).dependsOn(compiler)
 
@@ -152,7 +170,7 @@ object ScalaJSBuild extends Build {
 
   // Examples
 
-  lazy val examples = Project(
+  lazy val examples: Project = Project(
       id = "examples",
       base = file("examples"),
       settings = defaultSettings ++ Seq(
@@ -170,6 +188,20 @@ object ScalaJSBuild extends Build {
           classDirectory in (library, Compile)
       ) map { classDir =>
         Attributed.blank(classDir)
+      },
+
+      // Add the Scala.js runtime - same reason not to use root/package-js
+      unmanagedSources in (Compile, optimizeJS) <+= (
+          target in root
+      ) map { rootTarget =>
+        rootTarget / "scalajs-runtime.js"
+      },
+
+      // Add the startup.js file of this example project
+      unmanagedSources in (Compile, optimizeJS) <+= (
+          baseDirectory
+      ) map { base =>
+        base / "startup.js"
       }
   )
 

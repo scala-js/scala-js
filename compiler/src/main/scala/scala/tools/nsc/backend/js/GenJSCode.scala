@@ -25,6 +25,7 @@ abstract class GenJSCode extends SubComponent
   val global: JSGlobal
 
   import global._
+  import rootMirror._
   import definitions._
   import jsDefinitions._
 
@@ -90,7 +91,8 @@ abstract class GenJSCode extends SubComponent
       try {
         currentCUnit = cunit
 
-        val generatedBundles = mutable.Map.empty[Symbol, ListBuffer[js.Tree]]
+        val representatives = ListBuffer.empty[Symbol]
+        val generatedClasses = ListBuffer.empty[(Symbol, js.Tree)]
 
         def representativeTopLevelClass(classSymbol: Symbol): Symbol = {
           val topLevel = beforePhase(currentRun.flattenPhase) {
@@ -112,12 +114,7 @@ abstract class GenJSCode extends SubComponent
               implicit val pos = tree.pos
               val sym = cd.symbol
 
-              /* Always get the bundle, so that it is created even if it would
-               * be empty. This is needed for pickles to be emitted.
-               */
-              val representative = representativeTopLevelClass(sym)
-              val bundle = generatedBundles.getOrElseUpdate(
-                  representative, new ListBuffer)
+              representatives += representativeTopLevelClass(sym)
 
               /* Do not actually emit code for primitive types nor scala.Array.
                */
@@ -125,33 +122,33 @@ abstract class GenJSCode extends SubComponent
                 isPrimitiveValueClass(sym) || (sym == ArrayClass)
 
               if (!isPrimitive) {
-                if (sym.isInterface) {
-                  bundle += genInterface(cd)
+                val tree = if (sym.isInterface) {
+                  genInterface(cd)
+                } else if (sym.isImplClass) {
+                  genImplClass(cd)
+                } else if (isRawJSType(sym.tpe)) {
+                  genRawJSClassData(cd)
                 } else {
-                  bundle += genClass(cd)
-                  if (!isRawJSType(sym.tpe)) {
-                    if ((sym.isModuleClass && !sym.isLifted) || sym.isImplClass)
-                      bundle += genModuleAccessor(sym)
-                  }
+                  val classDef = genClass(cd)
+                  if (sym.isModuleClass && !sym.isLifted)
+                    js.Block(classDef, genModuleAccessor(sym))
+                  else
+                    classDef
                 }
+                val scopedTree = js.Apply(js.Function(Nil, tree), Nil)
+                generatedClasses += sym -> scopedTree
               }
           }
         }
 
         gen(cunit.body)
 
-        for ((representative, classes) <- generatedBundles) {
-          implicit val pos = representative.pos
-          val bundleTree =
-            if (classes.isEmpty) js.EmptyTree
-            else {
-              val tree = js.Apply(
-                  js.Function(List(environment), js.Block(classes.toList)),
-                  List(js.Ident(ScalaJSEnvironmentFullName)))
-              desugarJavaScript(tree)
-            }
+        for (representative <- representatives)
+          genJSTypeFile(cunit, representative)
 
-          genJSFiles(cunit, representative, bundleTree)
+        for ((sym, tree) <- generatedClasses) {
+          val desugared = desugarJavaScript(tree)
+          genJSFile(cunit, sym, desugared)
         }
       } finally {
         currentCUnit = null
@@ -173,26 +170,26 @@ abstract class GenJSCode extends SubComponent
      *  The class definition itself is wrapped inside a closure which is
      *  only registered to the Scala.js environment using `registerClass`. It
      *  is not automatically created, only on demand.
-     *
-     *  For classes representing raw JS types (i.e., <: js.Any), the class is
-     *  not actually emitted. It is only registered with undefined
-     *  constructors, to support reflection.
      */
     def genClass(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
       implicit val jspos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       currentClassSym = cd.symbol
+
+      val displayName = currentClassSym.fullName
       val originalClassName = Some(currentClassSym.fullNameAsName('.').decoded)
+      val classIdent = encodeFullNameIdent(currentClassSym)
 
       val superClass =
         if (currentClassSym.superClass == NoSymbol) ObjectClass
         else currentClassSym.superClass
-
-      val rawJSType = isRawJSType(currentClassSym.tpe)
+      val superClassIdent = encodeFullNameIdent(superClass)
 
       val generatedMembers = new ListBuffer[js.Tree]
 
-      if (!rawJSType && !currentClassSym.isInterface)
+      if (!currentClassSym.isInterface)
         generatedMembers += genConstructor(cd)
 
       def gen(tree: Tree) {
@@ -210,86 +207,105 @@ abstract class GenJSCode extends SubComponent
         }
       }
 
-      if (!rawJSType)
-        gen(impl)
+      gen(impl)
 
       // Generate the bridges, then steal the constructor bridges (1 at most)
-      val bridges0 =
-        if (rawJSType) Nil
-        else genBridgesForClass(currentClassSym)
+      val bridges0 = genBridgesForClass(currentClassSym)
       val (constructorBridges0, bridges) = bridges0.partition {
-        case js.MethodDef(js.PropertyName(name, _), _, _) =>
-          name == nme.CONSTRUCTOR.toString()
+        case js.MethodDef(js.Ident("init\ufe33", _), _, _) => true
         case _ => false
       }
       assert(constructorBridges0.size <= 1)
 
       val constructorBridge = {
-        if (rawJSType) None
-        else if (!currentClassSym.isImplClass) constructorBridges0.headOption
+        if (!currentClassSym.isImplClass) constructorBridges0.headOption
         else {
           // Make up
-          Some(js.MethodDef(js.PropertyName("<init>"), Nil, js.Skip()))
+          Some(js.MethodDef(js.Ident("irrelevant"), Nil, js.Skip()))
         }
       }
 
-      val typeVar = js.Ident("Class", originalClassName)
-      val classDefinition = {
-        if (rawJSType)
-          js.VarDef(typeVar, js.Undefined())
-        else
-          js.ClassDef(typeVar, encodeClassSym(superClass),
-              generatedMembers.toList ++ bridges)
+      val typeVar = envField("c") DOT classIdent
+      val classDefinition = js.ClassDef(typeVar,
+          envField("inheritable") DOT superClassIdent,
+          generatedMembers.toList ++ bridges)
+
+      def protoField(name: String) =
+        typeVar DOT "prototype" DOT js.Ident(name)
+
+      // Inheritable constructor
+
+      val createInheritableConstructor = {
+        val inheritableConstructorVar = envField("inheritable") DOT classIdent
+        js.Block(
+            js.DocComment("@constructor"),
+            inheritableConstructorVar := js.Function(Nil, js.Skip()),
+            inheritableConstructorVar DOT "prototype" := typeVar DOT "prototype")
       }
 
-      /* function JSClass(<args of the constructor bridge>) {
-       *   Class.call(this);
+      /* ScalaJS.classes.classIdent = function(<args of the constructor bridge>) {
+       *   ScalaJS.c.classIdent.call(this);
        *   <body of the constructor bridge>
        * }
-       * JSClass.prototype = Class.prototype;
+       * ScalaJS.classes.prototype = Class.prototype;
        */
-      val jsConstructorVar = js.Ident("JSClass", originalClassName)
+      val jsConstructorVar = envField("classes") DOT classIdent
       val createJSConstructorStat = constructorBridge match {
         case Some(js.MethodDef(_, args, body)) =>
           js.Block(List(
-              js.FunDef(jsConstructorVar, args, js.Block(List(
+              js.DocComment("@constructor"),
+              jsConstructorVar := js.Function(args, js.Block(List(
                   js.ApplyMethod(typeVar, js.Ident("call"), List(js.This())),
-                  body))),
-              js.Assign(
-                  js.DotSelect(jsConstructorVar, js.Ident("prototype")),
-                  js.DotSelect(typeVar, js.Ident("prototype")))
-              ))
+                  body)))),
+              jsConstructorVar DOT "prototype" := typeVar DOT "prototype")
 
         case _ =>
-          js.VarDef(jsConstructorVar, js.Undefined())
+          js.Skip()
       }
 
-      val createClassStat = {
-        val nameArg = encodeFullNameLit(currentClassSym)
-        val typeArg = typeVar
-        val jsConstructorArg = jsConstructorVar
-        val parentArg = encodeFullNameLit(superClass)
-        val ancestorsArg = js.ObjectConstr(
-            for (ancestor <- currentClassSym :: currentClassSym.ancestors)
-              yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
+      // Instance tests
 
-        js.ApplyMethod(environment, js.PropertyName("createClass"),
-            List(nameArg, typeArg, jsConstructorArg, parentArg, ancestorsArg))
+      val instanceTestMethods = genInstanceTestMethods(cd)
+
+      // Data
+
+      val createDataStat = {
+        val classDataVar = envField("data") DOT classIdent
+
+        js.Block(
+            classDataVar := genDataRecord(cd),
+            typeVar DOT "prototype" DOT "$classData" := classDataVar)
       }
 
-      val createClassFun = js.Function(List(environment),
-          js.Block(List(classDefinition, createJSConstructorStat),
-              createClassStat))
+      // Bring it all together
 
-      val registerClassStat = {
-        val nameArg = encodeFullNameLit(currentClassSym)
-        js.ApplyMethod(environment, js.PropertyName("registerClass"),
-            List(nameArg, createClassFun))
-      }
+      val everything = js.Block(
+          classDefinition,
+          createInheritableConstructor,
+          createJSConstructorStat,
+          instanceTestMethods,
+          createDataStat)
 
       currentClassSym = null
 
-      registerClassStat
+      everything
+    }
+
+    // Generate the class data of a raw JS class -------------------------------
+
+    /** Gen JS code creating the class data of a raw JS class
+     */
+    def genRawJSClassData(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val ClassDef(mods, name, _, impl) = cd
+      val sym = cd.symbol
+
+      val classIdent = encodeFullNameIdent(sym)
+
+      val classDataVar = envField("data") DOT classIdent
+      classDataVar := genDataRecord(cd)
     }
 
     // Generate an interface ---------------------------------------------------
@@ -299,20 +315,173 @@ abstract class GenJSCode extends SubComponent
      *  runtime. They exist solely for reflection purposes.
      */
     def genInterface(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
       implicit val pos = cd.pos
       val sym = cd.symbol
 
-      val createInterfaceStat = {
-        val nameArg = encodeFullNameLit(sym)
-        val ancestorsArg = js.ObjectConstr(
-            for (ancestor <- sym :: sym.ancestors)
-              yield (encodeFullNameLit(ancestor), js.BooleanLiteral(true)))
+      val classIdent = encodeFullNameIdent(sym)
 
-        js.ApplyMethod(environment, js.PropertyName("createInterface"),
-            List(nameArg, ancestorsArg))
+      val instanceTestMethods = genInstanceTestMethods(cd)
+
+      val createDataStat = {
+        envField("data") DOT classIdent := genDataRecord(cd)
       }
 
-      createInterfaceStat
+      js.Block(instanceTestMethods, createDataStat)
+    }
+
+    // Generate an implementation class of a trait -----------------------------
+
+    /** Gen JS code for an implementation class (of a trait)
+     */
+    def genImplClass(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val ClassDef(mods, name, _, impl) = cd
+      val sym = cd.symbol
+      currentClassSym = sym
+
+      val generatedMembers = new ListBuffer[js.Tree]
+
+      def gen(tree: Tree) {
+        tree match {
+          case EmptyTree => ()
+          case Template(_, _, body) => body foreach gen
+
+          case dd: DefDef =>
+            generatedMembers ++= genMethod(dd)
+
+          case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
+        }
+      }
+
+      gen(impl)
+
+      val implModuleFields = for (member <- generatedMembers.result()) yield {
+        member match {
+          case js.MethodDef(name, params, body) =>
+            name -> js.Function(params, body)
+          case js.CustomDef(name, rhs) =>
+            name -> rhs
+          case _ =>
+            abort("Illegal member in impl class: " + member)
+        }
+      }
+
+      val fieldCreations =
+        for ((name, value) <- implModuleFields) yield
+          js.Assign(js.Select(envField("impls"), name), value)
+
+      val implDefinition = js.Block(fieldCreations)
+
+      currentClassSym = null
+
+      implDefinition
+    }
+
+    // Commons for genClass, genRawJSClassData and genInterface ----------------
+
+    def genInstanceTestMethods(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val sym = cd.symbol
+
+      val displayName = sym.fullName
+      val classIdent = encodeFullNameIdent(sym)
+
+      val isAncestorOfString =
+        StringClass.ancestors contains sym
+
+      val createIsStat = {
+        val obj = js.Ident("obj")
+        envField("is") DOT classIdent := js.Function(List(obj), js.Return {
+          var test = (obj && (obj DOT "$classData") &&
+              (obj DOT "$classData" DOT "ancestors" DOT classIdent))
+
+          if (isAncestorOfString)
+            test = test || (
+                js.UnaryOp("typeof", obj) === js.StringLiteral("string"))
+
+          !(!test)
+        })
+      }
+
+      val createAsStat = {
+        val obj = js.Ident("obj")
+        envField("as") DOT classIdent := js.Function(List(obj), js.Block {
+          IF (js.ApplyMethod(envField("is"), classIdent, List(obj)) ||
+              (obj === js.Null())) {
+            js.Return(obj)
+          } ELSE {
+            genBuiltinApply("throwClassCastException", obj,
+                js.StringLiteral(displayName))
+          }
+        })
+      }
+
+      val createIsArrayOfStat = {
+        val obj = js.Ident("obj")
+        val depth = js.Ident("depth")
+        envField("isArrayOf") DOT classIdent := js.Function(List(obj, depth), js.Block {
+          js.Return(!(!(obj && (obj DOT "$classData") &&
+              ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
+              (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent))))
+        })
+      }
+
+      val createAsArrayOfStat = {
+        val obj = js.Ident("obj")
+        val depth = js.Ident("depth")
+        envField("asArrayOf") DOT classIdent := js.Function(List(obj, depth), js.Block {
+          IF (js.ApplyMethod(envField("isArrayOf"), classIdent, List(obj, depth)) ||
+              (obj === js.Null())) {
+            js.Return(obj)
+          } ELSE {
+            genBuiltinApply("throwArrayCastException", obj,
+                js.StringLiteral("L"+displayName+";"), depth)
+          }
+        })
+      }
+
+      js.Block(createIsStat, createAsStat,
+          createIsArrayOfStat, createAsArrayOfStat)
+    }
+
+    def genDataRecord(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val sym = cd.symbol
+
+      val isInterface = sym.isInterface
+      val isAncestorOfString = StringClass.ancestors contains sym
+
+      val parentData = {
+        if (isInterface) js.Undefined()
+        else envField("data") DOT encodeFullNameIdent(
+            if (sym.superClass == NoSymbol) ObjectClass else sym.superClass)
+      }
+
+      val ancestorsRecord = js.ObjectConstr(
+          for (ancestor <- sym :: sym.ancestors)
+            yield (encodeFullNameIdent(ancestor), js.BooleanLiteral(true)))
+
+      val classIdent = encodeFullNameIdent(sym)
+
+      js.New(envField("ClassTypeData"), List(
+          js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
+          js.BooleanLiteral(isInterface),
+          js.StringLiteral(sym.fullName),
+          parentData,
+          ancestorsRecord
+      ) ++ (
+          // Ancestors of string have a non-standard isInstanceOf test
+          if (isAncestorOfString) List(envField("is") DOT classIdent)
+          else Nil
+      ))
     }
 
     // Generate the constructor of a class -------------------------------------
@@ -330,15 +499,19 @@ abstract class GenJSCode extends SubComponent
         } yield {
           implicit val pos = f.pos
           val fieldName = encodeFieldSym(f)
-          js.Assign(js.Select(js.This(), fieldName), genZeroOf(f.tpe))
+          js.Assign(js.DotSelect(js.This(), fieldName), genZeroOf(f.tpe))
         }
       }.toList
 
       {
         implicit val pos = cd.pos
+        val superClass =
+          if (currentClassSym.superClass == NoSymbol) ObjectClass
+          else currentClassSym.superClass
         val superCall =
-          js.ApplyMethod(js.Super(), js.PropertyName("constructor"), Nil)
-        js.MethodDef(js.PropertyName("constructor"), Nil,
+          js.ApplyMethod(encodeClassSym(superClass),
+              js.Ident("call"), List(js.This()))
+        js.MethodDef(js.Ident("constructor"), Nil,
             js.Block(superCall :: createFieldsStats))
       }
     }
@@ -396,9 +569,11 @@ abstract class GenJSCode extends SubComponent
           val nativeID = encodeFullName(currentClassSym) +
             " :: " + methodPropIdent.name
           Some(js.CustomDef(methodPropIdent,
-              js.Select(js.DotSelect(environment, js.Ident("natives")),
-                  js.PropertyName(nativeID))))
+              js.BracketSelect(js.DotSelect(environment, js.Ident("natives")),
+                  js.StringLiteral(nativeID, Some(nativeID)))))
         } else if (isAbstractMethod) {
+          None
+        } else if (isTrivialConstructor(currentMethodSym, params, rhs)) {
           None
         } else {
           val returnType = toTypeKind(currentMethodSym.tpe.resultType)
@@ -417,6 +592,33 @@ abstract class GenJSCode extends SubComponent
       result
     }
 
+    private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
+        rhs: Tree): Boolean = {
+      if (!sym.isClassConstructor) {
+        false
+      } else {
+        rhs match {
+          // Shape of a constructor that only calls super
+          case Block(List(Apply(fun @ Select(_:Super, _), args)), Literal(_)) =>
+            val callee = fun.symbol
+            implicit val dummyPos = NoPosition
+
+            // Does the callee have the same signature as sym
+            if (encodeMethodSym(sym) == encodeMethodSym(callee)) {
+              // Test whether args are trivial forwarders
+              assert(args.size == params.size, "Argument count mismatch")
+              params.zip(args) forall { case (param, arg) =>
+                arg.symbol == param
+              }
+            } else {
+              false
+            }
+
+          case _ => false
+        }
+      }
+    }
+
     // Generate a module accessor ----------------------------------------------
 
     /** Gen JS code for a module accessor
@@ -429,10 +631,11 @@ abstract class GenJSCode extends SubComponent
      *  accessors and the actual creation of the module when needed.
      *
      *  Since modules have exactly one public, parameterless constructor, the
-     *  Scala.js environment can create them using the JS bridge for the
-     *  constructor.
+     *  constructor name is always the same and need not be given.
      */
     def genModuleAccessor(sym: Symbol): js.Tree = {
+      import js.TreeDSL._
+
       implicit val pos = sym.pos
 
       /* For whatever reason, a module nested in another module will be
@@ -442,14 +645,27 @@ abstract class GenJSCode extends SubComponent
        * standard methods of JSEncoding.
        * Instead, we drop manually the trailing $ of the class full name.
        */
-      val className = encodeFullName(sym)
-      val moduleName = dropTrailingDollar(className)
+      val moduleName = dropTrailingDollar(encodeFullName(sym))
+      val moduleIdent = js.Ident(moduleName, Some(moduleName))
+      val moduleInstance = envField("moduleInstances") DOT moduleIdent
 
-      val moduleNameArg = js.StringLiteral(moduleName, Some(className))
-      val classNameArg = js.StringLiteral(className, Some(className))
+      val createModuleInstanceField = {
+        moduleInstance := js.Undefined()
+      }
 
-      js.ApplyMethod(environment, js.Ident("registerModule"),
-          List(moduleNameArg, classNameArg))
+      val createAccessor = {
+        envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
+            IF (!(moduleInstance)) {
+              moduleInstance := js.ApplyMethod(
+                  js.New(encodeClassSym(sym), Nil),
+                  js.Ident("init\ufe33\ufe34"),
+                  Nil)
+            },
+            js.Return(moduleInstance)
+        ))
+      }
+
+      js.Block(createModuleInstanceField, createAccessor)
     }
 
     // Code generation ---------------------------------------------------------
@@ -526,7 +742,7 @@ abstract class GenJSCode extends SubComponent
             if (sym.isStaticMember) {
               genStaticMember(sym)
             } else {
-              js.Select(genExpr(qualifier), encodeFieldSym(sym))
+              js.DotSelect(genExpr(qualifier), encodeFieldSym(sym))
             }
 
           js.Assign(member, genExpr(rhs))
@@ -634,7 +850,7 @@ abstract class GenJSCode extends SubComponent
           } else if (sym.isStaticMember) {
             genStaticMember(sym)
           } else {
-            js.Select(genExpr(qualifier), encodeFieldSym(sym))
+            js.DotSelect(genExpr(qualifier), encodeFieldSym(sym))
           }
 
         case Ident(name) =>
@@ -958,7 +1174,7 @@ abstract class GenJSCode extends SubComponent
                 if (sup.symbol.superClass == NoSymbol) ObjectClass
                 else sup.symbol.superClass)(sup.pos)
             val superProto = js.DotSelect(superClass, js.Ident("prototype")(sup.pos))(sup.pos)
-            val callee = js.Select(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
+            val callee = js.DotSelect(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
             val thisArg =
               if (methodTailJumpThisSym == NoSymbol) js.This()(sup.pos)
               else encodeLocalSym(methodTailJumpThisSym)(sup.pos)
@@ -1086,7 +1302,7 @@ abstract class GenJSCode extends SubComponent
                 case _ =>
                   val tempAssignments =
                     for ((_, tempArg, actualArg) <- triplets)
-                      yield js.Assign(tempArg, actualArg)
+                      yield js.VarDef(tempArg, actualArg)
                   val trueAssignments =
                     for ((formalArg, tempArg, _) <- triplets)
                       yield js.Assign(formalArg, tempArg)
@@ -1203,27 +1419,22 @@ abstract class GenJSCode extends SubComponent
     /** Gen JS code for an isInstanceOf test (for reference types only) */
     def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isStringType(to)) {
-        js.BinaryOp("===", js.UnaryOp("typeof", value),
-            js.StringLiteral("string"))
-      } else if (isRawJSType(to)) {
+      if (isRawJSType(to) && !isStringType(to)) {
         // isInstanceOf is not supported for raw JavaScript types
         abort("isInstanceOf["+to+"]")
       } else {
-        genBuiltinApply("isInstance", value, encodeFullNameLit(to))
+        encodeIsInstanceOf(value, to)
       }
     }
 
     /** Gen JS code for an asInstanceOf cast (for reference types only) */
     def genAsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isStringType(to)) {
-        genBuiltinApply("asInstanceString", value)
-      } else if (isRawJSType(to)) {
+      if (isRawJSType(to) && !isStringType(to)) {
         // asInstanceOf on JavaScript is completely erased
         value
       } else {
-        genBuiltinApply("asInstance", value, encodeFullNameLit(to))
+        encodeAsInstanceOf(value, to)
       }
     }
 
@@ -1237,7 +1448,7 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       val typeVar = encodeClassSym(clazz)
       val instance = js.New(typeVar, Nil)
-      js.Apply(js.Select(instance, encodeMethodSym(ctor)), arguments)
+      js.Apply(js.DotSelect(instance, encodeMethodSym(ctor)), arguments)
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
@@ -1387,8 +1598,7 @@ abstract class GenJSCode extends SubComponent
      *    simply replaced by `skip`.
      *
      *  To implement jumps to `matchEnd`, we enclose all the cases in one big
-     *  labeled do..while(false) loop. Jumps are then compiled as `break`s out
-     *  of that loop.
+     *  labeled block. Jumps are then compiled as `break`s out of that block.
      */
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
@@ -1420,13 +1630,16 @@ abstract class GenJSCode extends SubComponent
         genCaseBody(rhs)
       }
 
-      val matchLoop = js.DoWhile(js.Block(translatedCases),
-          js.BooleanLiteral(false), Some(encodeLabelSym(matchEnd.symbol)))
+      val matchBlock = js.LabeledStat(
+          encodeLabelSym(matchEnd.symbol), js.Block(translatedCases))
 
       if (isResultUnit) {
-        statToExpr(matchLoop)
+        statToExpr(matchBlock)
       } else {
-        js.Block(List(js.VarDef(resultVar, js.EmptyTree), matchLoop), resultVar)
+        js.Block(
+            js.VarDef(resultVar, js.EmptyTree),
+            matchBlock,
+            resultVar)
       }
     }
 
@@ -1714,6 +1927,13 @@ abstract class GenJSCode extends SubComponent
       genBuiltinApply(boxFunName, expr)
     }
 
+    /** java.lang.reflect.Array module */
+    lazy val ReflectArrayModuleClass = {
+      val module = getModuleIfDefined("java.lang.reflect.Array")
+      if (module == NoSymbol) NoSymbol
+      else module.moduleClass
+    }
+
     /** Gen JS code for a Scala.js-specific primitive method */
     private def genJSPrimitive(tree: Apply, receiver0: Tree,
         args: List[Tree], code: Int): js.Tree = {
@@ -1724,10 +1944,33 @@ abstract class GenJSCode extends SubComponent
       def receiver = genExpr(receiver0)
       val genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
+      /* The implementations of java.lang.Class and java.lang.reflect.Array
+       * use fields and methods of the Scala.js global environment through
+       * js.Dynamic calls.
+       * These must be emitted as dot-selects when possible.
+       */
+      def shouldUseDynamicSelect: Boolean =
+        currentClassSym == ClassClass || currentClassSym == ReflectArrayModuleClass
+
+      def maybeDynamicSelect(receiver: js.Tree, item: js.Tree): js.Tree = {
+        if (shouldUseDynamicSelect) {
+          // Now that's a cute hack ...
+          js.DynamicSelect(receiver, item) match {
+            case js.DotSelect(
+                js.DotSelect(js.Ident(ScalaJSEnvironmentName, _), js.Ident("g", _)),
+                globalVar) =>
+              globalVar
+            case x => x
+          }
+        } else {
+          js.BracketSelect(receiver, item)
+        }
+      }
+
       if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
         val methodName :: actualArgs = genArgs
-        js.DynamicApplyMethod(receiver, methodName, actualArgs)
+        js.Apply(maybeDynamicSelect(receiver, methodName), actualArgs)
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements:_*)
         js.ArrayConstr(genArgs)
@@ -1776,7 +2019,7 @@ abstract class GenJSCode extends SubComponent
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
-              js.DynamicSelect(receiver, arg)
+              maybeDynamicSelect(receiver, arg)
             case DICT_SELECT =>
               // js.Dictionary.apply(arg)
               js.BracketSelect(receiver, arg)
@@ -1786,7 +2029,7 @@ abstract class GenJSCode extends SubComponent
           code match {
             case DYNUPDATE =>
               // js.Dynamic.updateDynamic(arg1)(arg2)
-              statToExpr(js.Assign(js.DynamicSelect(receiver, arg1), arg2))
+              statToExpr(js.Assign(maybeDynamicSelect(receiver, arg1), arg2))
             case DICT_UPDATE =>
               // js.Dictionary.update(arg1, arg2)
               statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
@@ -1846,14 +2089,14 @@ abstract class GenJSCode extends SubComponent
           }
 
           if (argc == 0 && (sym.isGetter || wasNullaryMethod(sym))) {
-            js.Select(receiver, js.PropertyName(funName))
+            js.BracketSelect(receiver, js.StringLiteral(funName))
           } else if (argc == 1 && sym.isSetter) {
             statToExpr(js.Assign(
-                js.Select(receiver,
-                    js.PropertyName(funName.substring(0, funName.length-2))),
+                js.BracketSelect(receiver,
+                    js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
           } else {
-            js.ApplyMethod(receiver, js.PropertyName(funName), args)
+            js.ApplyMethod(receiver, js.StringLiteral(funName), args)
           }
       }
     }
@@ -1896,7 +2139,7 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       /* TODO Improve this, so that the JS name is not bound to the Scala name
        * (idea: annotation on the class? optional annot?) */
-      val className = js.Ident(sym.nameString)
+      val className = js.StringLiteral(sym.nameString)
       genSelectInGlobalScope(className)
     }
 
@@ -1905,14 +2148,14 @@ abstract class GenJSCode extends SubComponent
         implicit pos: Position): js.Tree = {
       /* TODO Improve this, so that the JS name is not bound to the Scala name
        * (idea: annotation on the class? optional annot?) */
-      val moduleName = js.Ident(sym.nameString)
+      val moduleName = js.StringLiteral(sym.nameString)
       genSelectInGlobalScope(moduleName)
     }
 
     /** Gen JS code selecting a field of the global scope */
-    private def genSelectInGlobalScope(property: js.PropertyName)(
+    private def genSelectInGlobalScope(property: js.StringLiteral)(
         implicit pos: Position): js.Tree = {
-      js.Select(envField("g"), property)
+      js.BracketSelect(envField("g"), property)
     }
 
     /** Gen actual actual arguments to a primitive JS call

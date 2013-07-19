@@ -5,12 +5,43 @@ import Keys._
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 
+import com.google.javascript.jscomp.{
+  SourceFile => ClosureSource,
+  Compiler => ClosureCompiler,
+  CompilerOptions => ClosureOptions,
+  _
+}
+import scala.collection.JavaConversions._
+
 object ScalaJSPlugin extends Plugin {
   object ScalaJSKeys {
     val packageJS = TaskKey[File]("package-js")
+    val optimizeJS = TaskKey[File]("optimize-js")
   }
 
   import ScalaJSKeys._
+
+  def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
+    files.sortBy(_.name)
+  }
+
+  private val ScalaJSExterns = """
+    /** @constructor */
+    function Object() {}
+    Object.protoype.toString = function() {};
+    /** @constructor */
+    function Array() {}
+    Array.prototype.length = 0;
+    /** @constructor */
+    function Function() {}
+    Function.prototype.constructor = function() {};
+    Function.prototype.call = function() {};
+    Function.prototype.apply = function() {};
+    var Math = {
+      ceil: function() {},
+      floor: function() {}
+    }
+    """
 
   val baseScalaJSSettings: Seq[Setting[_]] = Seq(
       // you had better use the same version of Scala as Scala.js
@@ -82,8 +113,72 @@ object ScalaJSPlugin extends Plugin {
           crossTarget in Compile, moduleName
       ) map { (compilationResult, classDir, target, modName) =>
         val allJSFiles = (classDir ** "*.js").get
+        val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
         val output = target / (modName + ".js")
-        catJSFilesAndTheirSourceMaps(allJSFiles, output)
+        catJSFilesAndTheirSourceMaps(sortedJSFiles, output)
+        output
+      },
+
+      // TODO Leverage the sbt-js plugin from Untyped
+
+      unmanagedSources in (Compile, optimizeJS) := Seq(),
+
+      managedSources in (Compile, optimizeJS) <<= (
+          packageJS in Compile
+      ) map { Seq(_) },
+
+      sources in (Compile, optimizeJS) <<= (
+          managedSources in (Compile, optimizeJS),
+          unmanagedSources in (Compile, optimizeJS)
+      ) map { (managed, unmanaged) =>
+        val all = managed ++ unmanaged
+        val (runtime, others) = all.partition(_.getName == "scalajs-runtime.js")
+        runtime ++ others
+      },
+
+      optimizeJS in Compile <<= (
+          streams, sources in (Compile, optimizeJS),
+          crossTarget in Compile, moduleName
+      ) map { (s, allJSFiles, target, modName) =>
+        val logger = s.log
+
+        logger.info("Running Closure with files:")
+        for (file <- allJSFiles)
+          logger.info("  "+file)
+
+        val closureSources = allJSFiles map ClosureSource.fromFile
+        val closureExterns = List(
+            ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns))
+        val output = target / (modName + "-opt.js")
+
+        IO.createDirectory(new File(output.getParent))
+
+        val options = new ClosureOptions
+        options.prettyPrint = true
+        CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
+        options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+
+        val compiler = new ClosureCompiler
+        val result = compiler.compile(
+            closureExterns, closureSources, options)
+
+        val errors = result.errors.toList
+        val warnings = result.warnings.toList
+
+        if (!errors.isEmpty) {
+          logger.error(errors.length + " Closure errors:")
+          errors.foreach(err => logger.error(err.toString))
+
+          IO.write(output, "")
+        } else {
+          if (!warnings.isEmpty) {
+            logger.warn(warnings.length + " Closure warnings:")
+            warnings.foreach(err => logger.warn(err.toString))
+          }
+
+          IO.write(output, compiler.toSource)
+        }
+
         output
       }
   )

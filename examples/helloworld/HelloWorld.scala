@@ -3,7 +3,7 @@ package helloworld
 import scala.js
 
 object HelloWorld {
-  def main(args: Array[String]) {
+  def main() {
     sayHelloFromDOM()
     sayHelloFromTypedDOM()
     sayHelloFromJQuery()

@@ -10,7 +10,7 @@ into JavaScript code.
 
 ## Get it
 
-Get the code with git. Beware that this repo contains two submodules, which
+Get the code with git. Beware that this repo contains one submodule, which
 you need to clone too. To do this, add the `--recursive` option when cloning.
 If you've already cloned this repo, cd into it and do:
 
@@ -32,10 +32,16 @@ Don't worry, this is super-easy:
 
 You can compile the example applications with:
 
-    sbt> examples/package-js
+    sbt> examples/optimize-js
 
 Then, you can "execute" them by opening their respective HTML files in your
-favorite browser.
+favorite browser. Since optimizing the JavaScript takes time (tens of seconds
+to several minutes, depending on your hardware), it is also possible not to
+optimize JS by doing instead:
+
+    sbt> examples/package-js
+
+In this case, you have to open the `-dev` version of the HTML files.
 
 Currently, two examples are provided:
 

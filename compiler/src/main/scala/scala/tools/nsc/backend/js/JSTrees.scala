@@ -7,6 +7,8 @@ package scala.tools.nsc
 package backend
 package js
 
+import scala.language.implicitConversions
+
 /** JavaScript ASTs
  *
  *  The classes defined here can also represent Extended-JS, as explained
@@ -34,6 +36,10 @@ trait JSTrees { self: scalajs.JSGlobal =>
     case object EmptyTree extends Tree {
       def pos = NoPosition
     }
+
+    // Comments
+
+    case class DocComment(text: String)(implicit val pos: Position) extends Tree
 
     // Identifiers and properties
 
@@ -118,7 +124,12 @@ trait JSTrees { self: scalajs.JSGlobal =>
         case only :: Nil => only
         case _ => Block(stats.init, stats.last)
       }
+
+      def apply(stats: Tree*)(implicit pos: Position): Tree =
+        apply(stats.toList)
     }
+
+    case class LabeledStat(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
 
     case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
@@ -193,7 +204,16 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     // Classes - from ECMAScript 6, can be desugared into other concepts
 
-    case class ClassDef(name: Ident, parent: Tree, defs: List[Tree])(implicit val pos: Position) extends Tree
+    case class ClassDef(name: Tree, parent: Tree, defs: List[Tree])(implicit val pos: Position) extends Tree {
+      checkNameLoop(name)
+
+      private def checkNameLoop(tree: Tree): Unit = tree match {
+        case Ident(_, _) => ()
+        case DotSelect(lhs, _) => checkNameLoop(lhs)
+        case _ =>
+          require(false, s"$name is not a valid class name")
+      }
+    }
 
     case class MethodDef(name: PropertyName, args: List[Ident], body: Tree)(implicit val pos: Position) extends Tree
 
@@ -212,9 +232,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
         item match {
           case ident : Ident =>
             DotSelect(qualifier, ident)
-          case StringLiteral(name, originalName) =>
-            if (isValidIdentifier(name)) DotSelect(qualifier, Ident(name, originalName)(item.pos))
-            else BracketSelect(qualifier, item)
+          case lit : StringLiteral =>
+            BracketSelect(qualifier, item)
         }
       }
 
@@ -271,6 +290,14 @@ trait JSTrees { self: scalajs.JSGlobal =>
       }
     }
 
+    object ObjectLiteral {
+      def apply(items: (String, Tree)*)(implicit pos: Position): ObjectConstr = {
+        js.ObjectConstr(items.toList map {
+          case (propName, value) => (js.PropertyName(propName), value)
+        })
+      }
+    }
+
     // Utils
 
     def captureWithin(arg: Ident, expr: Tree)(body: Tree)(implicit pos: Position): Tree = {
@@ -296,6 +323,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case Block(stats, stat) =>
             Block(stats map transformStat, transformStat(stat))
+
+          case LabeledStat(label, body) =>
+            LabeledStat(label, transformStat(body))
 
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
@@ -364,7 +394,8 @@ trait JSTrees { self: scalajs.JSGlobal =>
           // Classes
 
           case ClassDef(name, parent, defs) =>
-            ClassDef(name, transformExpr(parent), defs map transformDef)
+            ClassDef(transformExpr(name), transformExpr(parent),
+                defs map transformDef)
 
           case _ =>
             tree
@@ -383,6 +414,9 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case FunDef(name, args, body) =>
             FunDef(name, args, transformStat(body))
+
+          case LabeledStat(label, body) =>
+            ??? // no way this has any kind of meaning as expression
 
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
@@ -483,6 +517,48 @@ trait JSTrees { self: scalajs.JSGlobal =>
           case _ =>
             tree
         }
+      }
+    }
+
+    object TreeDSL {
+      implicit class TreeOps(self: Tree) {
+        /** Select a member */
+        def DOT(field: Ident)(implicit pos: Position): DotSelect =
+          DotSelect(self, field)
+
+        /** Select a member */
+        def DOT(field: String)(implicit pos: Position): DotSelect =
+          DotSelect(self, Ident(field))
+
+        // Some operators that we use
+
+        def ===(that: Tree)(implicit pos: Position): Tree =
+          BinaryOp("===", self, that)
+
+        def unary_!()(implicit pos: Position): Tree =
+          UnaryOp("!", self)
+        def &&(that: Tree)(implicit pos: Position): Tree =
+          BinaryOp("&&", self, that)
+        def ||(that: Tree)(implicit pos: Position): Tree =
+          BinaryOp("||", self, that)
+
+        // Other constructs
+
+        def :=(that: Tree)(implicit pos: Position): Tree =
+          Assign(self, that)
+      }
+
+      def IF(cond: Tree)(thenp: Tree)(implicit pos: Position): IfPart =
+        new IfPart(cond, thenp)
+
+      class IfPart(cond: Tree, thenp: Tree)(implicit pos: Position) {
+        def ELSE(elsep: Tree): Tree =
+          If(cond, thenp, elsep)
+      }
+
+      object IfPart {
+        implicit def withoutElse(ifPart: IfPart)(implicit pos: Position): Tree =
+          ifPart ELSE js.Skip()
       }
     }
   }

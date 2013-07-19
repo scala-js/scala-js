@@ -2,86 +2,137 @@
  * java.lang.Object
  * ------------------ */
 
-(function ($env) {
-  $env.registerClass("java.lang.Object", function($env) {
-    function ObjectClass() {
+(function() {
+  /** @constructor */
+  ScalaJS.c.java\ufe33lang\ufe33Object = function() {
+  };
+
+  /** @constructor */
+  ScalaJS.inheritable.java\ufe33lang\ufe33Object = function() {};
+  ScalaJS.inheritable.java\ufe33lang\ufe33Object.prototype =
+    ScalaJS.c.java\ufe33lang\ufe33Object.prototype;
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.init\ufe33\ufe34 = function() {
+    return this;
+  }
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.getClass\ufe34java\ufe33lang\ufe33Class = function() {
+    return this.$classData.getClassOf();
+  }
+
+  // Bridge for getClass()
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.getClass = function() {
+    return this.getClass\ufe34java\ufe33lang\ufe33Class();
+  }
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.hashCode\ufe34I = function() {
+    // TODO
+    return 42;
+  }
+
+  // Bridge for hashCode()
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.hashCode = function() {
+    return this.hashCode\ufe34I();
+  }
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.equals\ufe34O\ufe34Z = function(rhs) {
+    return this === rhs;
+  }
+
+  // Bridge for equals(Object)
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.equals = function(that) {
+    return this.equals\ufe34O\ufe34Z(that);
+  }
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone\ufe34O = function() {
+    if (ScalaJS.is.java\ufe33lang\ufe33Cloneable(this)) {
+      throw new ScalaJS.c.scala\ufe33NotImplementedError().init\ufe33\ufe34();
+    } else {
+      throw new ScalaJS.c.java\ufe33lang\ufe33CloneNotSupportedException().init\ufe33\ufe34();
     }
-    ObjectClass.prototype.constructor = ObjectClass;
+  }
 
-    ObjectClass.prototype["<init>()"] = function() {
-      return this;
-    }
+  // Bridge for clone()
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone = function() {
+    return this.clone\ufe34O();
+  }
 
-    ObjectClass.prototype["getClass()Ljava.lang.Class;"] = function() {
-      return this.$classData.cls;
-    }
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.toString\ufe34T = function() {
+    // getClass().getName() + "@" + Integer.toHexString(hashCode())
+    var className = this.getClass\ufe34java\ufe33lang\ufe33Class().getName\ufe34T();
+    var hashCode = this.hashCode\ufe34I();
+    return className + '@' + hashCode.toString(16);
+  }
 
-    // Bridge for getClass()
-    ObjectClass.prototype.getClass = function() {
-      return this["getClass()Ljava.lang.Class;"]();
-    }
+  // Bridge for toString()
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.toString = function() {
+    return this.toString\ufe34T();
+  }
 
-    ObjectClass.prototype["hashCode()I"] = function() {
-      // TODO
-      return 42;
-    }
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.notify\ufe34V = function() {}
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.notifyAll\ufe34V = function() {}
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34J\ufe34V = function() {}
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34J\ufe34I\ufe34V = function() {}
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34V = function() {}
 
-    // Bridge for hashCode()
-    ObjectClass.prototype.hashCode = function() {
-      return this["hashCode()I"]();
-    }
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.finalize\ufe34V = function() {}
 
-    ObjectClass.prototype["equals(O)Z"] = function(rhs) {
-      return this === rhs;
-    }
+  // Constructor bridge
 
-    // Bridge for equals(Object)
-    ObjectClass.prototype.equals = function(that) {
-      return this["equals(O)Z"](that);
-    }
+  /** @constructor */
+  ScalaJS.classes.java\ufe33lang\ufe33Object = function() {
+    ScalaJS.c.java\ufe33lang\ufe33Object.call(this);
+    return this.init\ufe33\ufe34();
+  }
+  ScalaJS.classes.java\ufe33lang\ufe33Object.prototype =
+    ScalaJS.c.java\ufe33lang\ufe33Object.prototype;
 
-    ObjectClass.prototype["clone()O"] = function() {
-      if ($env.isInstance(this, "java.lang.Cloneable")) {
-        throw new this.classes["scala.NotImplementedError"].jsconstructor();
-      } else {
-        throw new this.classes["java.lang.CloneNotSupportedException"].jsconstructor();
-      }
-    }
+  // Instance tests
 
-    // Bridge for clone()
-    ObjectClass.prototype.clone = function() {
-      return this["clone()O"]();
-    }
+  ScalaJS.is.java\ufe33lang\ufe33Object = function(obj) {
+    return !!((obj && obj.$classData &&
+      obj.$classData.ancestors.java\ufe33lang\ufe33Object) ||
+      (typeof(obj) === "string"));
+  };
 
-    ObjectClass.prototype["toString()T"] = function() {
-      // getClass().getName() + "@" + Integer.toHexString(hashCode())
-      var className = this["getClass()Ljava.lang.Class;"]()["getName()T"]();
-      var hashCode = this["hashCode()I"]();
-      return className + '@' + hashCode.toString(16);
-    }
+  ScalaJS.as.java\ufe33lang\ufe33Object = function(obj) {
+    if (ScalaJS.is.java\ufe33lang\ufe33Object(obj) || obj === null)
+      return obj;
+    else
+      ScalaJS.throwClassCastException(obj, "java.lang.Object");
+  };
 
-    // Bridge for toString()
-    ObjectClass.prototype.toString = function() {
-      return this["toString()T"]();
-    }
+  ScalaJS.isArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
+    var data = obj && obj.$classData;
+    if (!data)
+      return false;
+    var arrayDepth = data.arrayDepth || 0;
 
-    ObjectClass.prototype["notify()V"] = function() {}
-    ObjectClass.prototype["notifyAll()V"] = function() {}
-    ObjectClass.prototype["wait(J)V"] = function() {}
-    ObjectClass.prototype["wait(JI)V"] = function() {}
-    ObjectClass.prototype["wait()V"] = function() {}
-
-    ObjectClass.prototype["finalize()V"] = function() {}
-
-    // Constructor bridge
-    function JSObjectClass() {
-      ObjectClass.call(this);
-      return this["<init>()"]();
-    }
-    JSObjectClass.prototype = ObjectClass.prototype;
-
-    $env.createClass("java.lang.Object", ObjectClass, JSObjectClass, null, {
-      "java.lang.Object": true
-    });
+    if (arrayDepth < depth)
+      return false; // because Array[A] </: Array[Array[A]]
+    else if (arrayDepth > depth)
+      return true; // because Array[Array[A]] <: Array[Object]
+    else
+      return !data.arrayBase.isPrimitive; // because Array[Int] </: Array[Object]
   });
-})($ScalaJSEnvironment);
+
+  ScalaJS.asArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
+    if ((ScalaJS.isArrayOf.java\ufe33lang\ufe33Object(obj, depth) || (obj === null))) {
+      return obj
+    } else {
+      ScalaJS.throwArrayCastException(obj, "Ljava.lang.Object;", depth)
+    }
+  });
+
+  // Data
+
+  ScalaJS.data.java\ufe33lang\ufe33Object =
+    new ScalaJS.ClassTypeData(
+      {java\ufe33lang\ufe33Object:0},
+      false, "java.lang.Object", null, {},
+      ScalaJS.is.java\ufe33lang\ufe33Object,
+      ScalaJS.isArrayOf.java\ufe33lang\ufe33Object);
+
+  ScalaJS.c.java\ufe33lang\ufe33Object.prototype.$classData =
+    ScalaJS.data.java\ufe33lang\ufe33Object;
+})();

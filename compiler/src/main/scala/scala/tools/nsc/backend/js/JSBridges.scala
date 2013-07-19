@@ -64,11 +64,13 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
       }
     }
 
-    val jsName = name.decoded match {
+    val jsName = name.toString match {
+      case "<init>" => "init\ufe33" // will be stolen by the JS constructor
       case "constructor" => "$constructor"
+      case x if js.isKeyword(x) => "$" + x
       case x => x
     }
-    js.MethodDef(js.PropertyName(jsName), formalsArgs, body)
+    js.MethodDef(js.Ident(jsName), formalsArgs, body)
   }
 
   private def genBridgeSameArgc(alts: List[Symbol], paramIndex: Int): js.Tree = {
@@ -121,14 +123,13 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
 
   private def genIsInstance(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
-    js.ApplyMethod(environment, js.Ident("isInstance"),
-        List(value, js.StringLiteral(encodeFullName(tpe))))
+    encodeIsInstanceOf(value, tpe)
   }
 
   private def genTieBreak(alts: List[Symbol]): js.Tree = {
-    // TODO For now we just emit all calls (the first one wins)
+    // TODO For now we just emit the first one
     implicit val pos = alts.head.pos
-    js.Block(alts map genApplyForSym)
+    js.Block(genApplyForSym(alts.head))
   }
 
   private sealed abstract class RTTypeTest
