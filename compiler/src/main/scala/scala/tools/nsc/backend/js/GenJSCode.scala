@@ -2090,7 +2090,7 @@ abstract class GenJSCode extends SubComponent
 
           if (argc == 0 && (sym.isGetter || wasNullaryMethod(sym))) {
             js.BracketSelect(receiver, js.StringLiteral(funName))
-          } else if (argc == 1 && sym.isSetter) {
+          } else if (argc == 1 && funName.endsWith("_=")) {
             statToExpr(js.Assign(
                 js.BracketSelect(receiver,
                     js.StringLiteral(funName.substring(0, funName.length-2))),
