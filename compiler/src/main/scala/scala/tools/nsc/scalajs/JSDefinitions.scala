@@ -78,8 +78,9 @@ trait JSDefinitions { self: SymbolTable =>
       lazy val JSAny_fromFunction2 = getMemberMethod(JSAnyModule, newTermName("fromFunction2"))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
-      lazy val JSDynamic_fromAny = getMemberMethod(JSDynamicModule, newTermName("fromAny"))
-      lazy val JSDynamic_global  = getMemberMethod(JSDynamicModule, newTermName("global"))
+      lazy val JSDynamic_fromAny     = getMemberMethod(JSDynamicModule, newTermName("fromAny"))
+      lazy val JSDynamic_global      = getMemberMethod(JSDynamicModule, newTermName("global"))
+      lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
 
     lazy val JSNumberModule = JSNumberClass.companionModule
       lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))

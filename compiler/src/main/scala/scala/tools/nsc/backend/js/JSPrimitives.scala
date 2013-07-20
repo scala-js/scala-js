@@ -33,6 +33,7 @@ abstract class JSPrimitives {
 
   val ANY2DYN = 320   // Conversion from JSAny to JSDynamic
   val GETGLOBAL = 321 // Get the top-level object (`window` in browsers)
+  val DYNNEW = 322    // Instantiate a new JavaScript object
 
   val DYNSELECT = 330 // JSDynamic.selectDynamic
   val DYNUPDATE = 331 // JSDynamic.updateDynamic
@@ -70,6 +71,7 @@ abstract class JSPrimitives {
 
     addPrimitive(JSDynamic_fromAny, ANY2DYN)
     addPrimitive(JSDynamic_global, GETGLOBAL)
+    addPrimitive(JSDynamic_newInstance, DYNNEW)
 
     addPrimitive(JSDynamic_selectDynamic, DYNSELECT)
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)

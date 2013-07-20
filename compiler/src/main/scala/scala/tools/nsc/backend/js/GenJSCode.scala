@@ -1967,7 +1967,11 @@ abstract class GenJSCode extends SubComponent
         }
       }
 
-      if (code == DYNAPPLY) {
+      if (code == DYNNEW) {
+        // js.Dynamic.newInstance(clazz)(actualArgs:_*)
+        val jsClass :: actualArgs = genArgs
+        js.New(jsClass, actualArgs)
+      } else if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
         val methodName :: actualArgs = genArgs
         js.Apply(maybeDynamicSelect(receiver, methodName), actualArgs)

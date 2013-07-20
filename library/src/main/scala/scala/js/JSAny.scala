@@ -102,6 +102,9 @@ object Dynamic {
 
   /** Dynamic view of the global scope */
   def global: Dynamic = sys.error("stub")
+
+  /** Instantiate a new object of a JavaScript class */
+  def newInstance(clazz: Dynamic)(args: Any*): Dynamic = sys.error("stub")
 }
 
 /** Dictionary "view" of a JavaScript value */
