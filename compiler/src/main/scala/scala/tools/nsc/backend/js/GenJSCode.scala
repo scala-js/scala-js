@@ -2137,19 +2137,27 @@ abstract class GenJSCode extends SubComponent
     /** Gen JS code representing a JS class (subclass of js.Any) */
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      /* TODO Improve this, so that the JS name is not bound to the Scala name
-       * (idea: annotation on the class? optional annot?) */
-      val className = js.StringLiteral(sym.nameString)
-      genSelectInGlobalScope(className)
+      genGlobalJSObject(sym)
     }
 
     /** Gen JS code representing a JS module (var of the global scope) */
     private def genPrimitiveJSModule(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      /* TODO Improve this, so that the JS name is not bound to the Scala name
-       * (idea: annotation on the class? optional annot?) */
-      val moduleName = js.StringLiteral(sym.nameString)
-      genSelectInGlobalScope(moduleName)
+      genGlobalJSObject(sym)
+    }
+
+    /** Gen JS code representing a JS object (class or module) in global scope
+     */
+    private def genGlobalJSObject(sym: Symbol)(
+        implicit pos: Position): js.Tree = {
+      jsNameOf(sym) map { str =>
+        str.split('.').foldLeft(envField("g")) { (memo, chunk) =>
+          js.BracketSelect(memo, js.StringLiteral(chunk, Some(chunk)))
+        }
+      } getOrElse {
+        js.BracketSelect(envField("g"),
+            js.StringLiteral(sym.nameString, Some(sym.nameString)))
+      }
     }
 
     /** Gen JS code selecting a field of the global scope */
@@ -2265,4 +2273,12 @@ abstract class GenJSCode extends SubComponent
 
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass
+
+  /** Get JS name of Symbol if it was specified with JSName annotation */
+  def jsNameOf(sym: Symbol): Option[String] = {
+    if (isScalaJSDefined)
+      sym.getAnnotation(JSNameAnnotation) flatMap (_ stringArg 0)
+    else
+      None
+  }
 }

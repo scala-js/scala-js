@@ -1,6 +1,7 @@
 package helloworld
 
 import scala.js
+import scala.js.annotation.JSName
 
 object HelloWorld {
   def main() {
@@ -36,7 +37,7 @@ object HelloWorld {
   }
 
   def sayHelloFromTypedJQuery() {
-    val jQuery = helloworld.jQuery
+    val jQuery = helloworld.JQuery
     val newP = jQuery("<p>").html("Hello world! <i>-- typed jQuery</i>")
     newP.appendTo(jQuery("#playground"))
   }
@@ -59,7 +60,8 @@ trait DOMElement extends js.Object {
   def appendChild(child: DOMElement): Unit
 }
 
-object jQuery extends js.Object {
+@JSName("jQuery")
+object JQuery extends js.Object {
   def apply(selector: js.String): JQuery = ???
 }
 
