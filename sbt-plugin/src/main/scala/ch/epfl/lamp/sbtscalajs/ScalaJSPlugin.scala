@@ -19,6 +19,7 @@ object ScalaJSPlugin extends Plugin {
     val optimizeJS = TaskKey[File]("optimize-js")
 
     val optimizeJSPrettyPrint = SettingKey[Boolean]("optimize-js-pretty-print")
+    val optimizeJSExterns = TaskKey[Seq[File]]("optimize-js-externs")
   }
 
   import ScalaJSKeys._
@@ -140,11 +141,13 @@ object ScalaJSPlugin extends Plugin {
 
       optimizeJSPrettyPrint := false,
 
+      optimizeJSExterns := Seq(),
+
       optimizeJS in Compile <<= (
           streams, sources in (Compile, optimizeJS),
-          optimizeJSPrettyPrint in Compile,
+          optimizeJSPrettyPrint in Compile, optimizeJSExterns in Compile,
           crossTarget in Compile, moduleName
-      ) map { (s, allJSFiles, prettyPrint, target, modName) =>
+      ) map { (s, allJSFiles, prettyPrint, externs, target, modName) =>
         val logger = s.log
 
         logger.info("Running Closure with files:")
@@ -152,8 +155,9 @@ object ScalaJSPlugin extends Plugin {
           logger.info("  "+file)
 
         val closureSources = allJSFiles map ClosureSource.fromFile
-        val closureExterns = List(
-            ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns))
+        val closureExterns = (
+            ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
+            externs.map(ClosureSource.fromFile(_)))
         val output = target / (modName + "-opt.js")
 
         IO.createDirectory(new File(output.getParent))
