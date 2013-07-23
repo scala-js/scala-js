@@ -17,6 +17,8 @@ object ScalaJSPlugin extends Plugin {
   object ScalaJSKeys {
     val packageJS = TaskKey[File]("package-js")
     val optimizeJS = TaskKey[File]("optimize-js")
+
+    val optimizeJSPrettyPrint = SettingKey[Boolean]("optimize-js-pretty-print")
   }
 
   import ScalaJSKeys._
@@ -136,10 +138,13 @@ object ScalaJSPlugin extends Plugin {
         runtime ++ others
       },
 
+      optimizeJSPrettyPrint := false,
+
       optimizeJS in Compile <<= (
           streams, sources in (Compile, optimizeJS),
+          optimizeJSPrettyPrint in Compile,
           crossTarget in Compile, moduleName
-      ) map { (s, allJSFiles, target, modName) =>
+      ) map { (s, allJSFiles, prettyPrint, target, modName) =>
         val logger = s.log
 
         logger.info("Running Closure with files:")
@@ -154,7 +159,7 @@ object ScalaJSPlugin extends Plugin {
         IO.createDirectory(new File(output.getParent))
 
         val options = new ClosureOptions
-        options.prettyPrint = true
+        options.prettyPrint = prettyPrint
         CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
         options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
 
