@@ -12,6 +12,7 @@ package scala.js
 
 import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
+import scala.collection.mutable
 
 sealed trait Any extends scala.AnyRef {
   def unary_+(): Number = sys.error("stub")
@@ -232,6 +233,9 @@ object Array {
     }
     result
   }
+
+  implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
+    genericArrayOps(toArray(array))
 }
 
 class Date extends Object {
