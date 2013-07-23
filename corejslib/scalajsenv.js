@@ -171,6 +171,13 @@ var ScalaJS = {
     return value < 0 ? Math.ceil(value) : Math.floor(value);
   },
 
+  propertiesOf: function(obj) {
+    var result = new Array();
+    for (var prop in obj)
+      result["push"](prop.toString());
+    return result;
+  },
+
   // Boxes - inline all the way through java.lang.X.valueOf()
 
   bV: function() {

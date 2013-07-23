@@ -2027,6 +2027,10 @@ abstract class GenJSCode extends SubComponent
             case DICT_SELECT =>
               // js.Dictionary.apply(arg)
               js.BracketSelect(receiver, arg)
+
+            case DICT_PROPS =>
+              // js.Dictionary.propertiesOf(arg)
+              genBuiltinApply("propertiesOf", arg)
           }
 
         case List(arg1, arg2) =>

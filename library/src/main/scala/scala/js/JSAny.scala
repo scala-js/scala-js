@@ -137,6 +137,8 @@ object Dictionary {
     result
   }
 
+  def propertiesOf(obj: Any): Array[String] = sys.error("stub")
+
   implicit def fromAny(value: Any): Dictionary = value.asInstanceOf
 }
 

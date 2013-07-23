@@ -85,6 +85,9 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val JSNumberModule = JSNumberClass.companionModule
       lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))
 
+    lazy val JSDictionaryModule = JSDictionaryClass.companionModule
+      lazy val JSDictionary_propertiesOf = getMemberMethod(JSDictionaryModule, newTermName("propertiesOf"))
+
     lazy val JSBooleanModule = JSBooleanClass.companionModule
       lazy val JSBoolean_toBoolean = getMemberMethod(JSBooleanModule, newTermName("toBoolean"))
 

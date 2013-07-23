@@ -41,8 +41,9 @@ abstract class JSPrimitives {
 
   val DICT_SELECT = 333 // JSDictionary.apply
   val DICT_UPDATE = 334 // JSDictionary.update
+  val DICT_PROPS = 335  // JSDictionary.propertiesOf
 
-  val ARR_CREATE = 335      // JSArray.create (array literal syntax)
+  val ARR_CREATE = 336      // JSArray.create (array literal syntax)
   val ARR_GET = DICT_SELECT // JSArray.apply
   val ARR_SET = DICT_UPDATE // JSArray.update
 
@@ -79,6 +80,8 @@ abstract class JSPrimitives {
 
     addPrimitive(JSDictionary_apply, DICT_SELECT)
     addPrimitive(JSDictionary_update, DICT_UPDATE)
+
+    addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)
 
     addPrimitive(JSArray_create, ARR_CREATE)
     addPrimitive(JSArray_apply, ARR_GET)
