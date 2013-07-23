@@ -2084,10 +2084,10 @@ abstract class GenJSCode extends SubComponent
           js.Apply(receiver, args)
 
         case "charAt" | "codePointAt" if isString =>
-          js.ApplyMethod(receiver, js.Ident("charCodeAt"), args)
+          js.ApplyMethod(receiver, js.StringLiteral("charCodeAt"), args)
 
         case "length" if isString =>
-          js.DotSelect(receiver, js.Ident("length"))
+          js.BracketSelect(receiver, js.StringLiteral("length"))
 
         case _ =>
           def wasNullaryMethod(sym: Symbol) = {
