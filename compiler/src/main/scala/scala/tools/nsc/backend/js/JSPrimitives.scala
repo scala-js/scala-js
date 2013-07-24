@@ -31,21 +31,21 @@ abstract class JSPrimitives {
   val JS2N = 313 // Number (any numeric type)
   val JS2S = 314 // String
 
-  val ANY2DYN = 320   // Conversion from JSAny to JSDynamic
+  val ANY2DYN = 320   // Conversion from js.Any to js.Dynamic
   val GETGLOBAL = 321 // Get the top-level object (`window` in browsers)
   val DYNNEW = 322    // Instantiate a new JavaScript object
 
-  val DYNSELECT = 330 // JSDynamic.selectDynamic
-  val DYNUPDATE = 331 // JSDynamic.updateDynamic
-  val DYNAPPLY = 332  // JSDynamic.applyDynamic
+  val DYNSELECT = 330 // js.Dynamic.selectDynamic
+  val DYNUPDATE = 331 // js.Dynamic.updateDynamic
+  val DYNAPPLY = 332  // js.Dynamic.applyDynamic
 
-  val DICT_SELECT = 333 // JSDictionary.apply
-  val DICT_UPDATE = 334 // JSDictionary.update
-  val DICT_PROPS = 335  // JSDictionary.propertiesOf
+  val DICT_SELECT = 333 // js.Dictionary.apply
+  val DICT_UPDATE = 334 // js.Dictionary.update
+  val DICT_PROPS = 335  // js.Dictionary.propertiesOf
 
-  val ARR_CREATE = 336      // JSArray.create (array literal syntax)
-  val ARR_GET = DICT_SELECT // JSArray.apply
-  val ARR_SET = DICT_UPDATE // JSArray.update
+  val ARR_CREATE = 336      // js.Array.apply (array literal syntax)
+  val ARR_GET = DICT_SELECT // js.Array.apply
+  val ARR_SET = DICT_UPDATE // js.Array.update
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -62,9 +62,8 @@ abstract class JSPrimitives {
     addPrimitive(JSAny_fromDouble, N2JS)
     addPrimitive(JSAny_fromString, S2JS)
 
-    addPrimitive(JSAny_fromFunction0, F2JS)
-    addPrimitive(JSAny_fromFunction1, F2JS)
-    addPrimitive(JSAny_fromFunction2, F2JS)
+    for (i <- 0 to 5)
+      addPrimitive(JSAny_fromFunction(i), F2JS)
 
     addPrimitive(JSBoolean_toBoolean, JS2Z)
     addPrimitive(JSNumber_toDouble, JS2N)

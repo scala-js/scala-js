@@ -11,12 +11,20 @@
 package scala
 
 package object js extends js.GlobalScope {
-  val NaN: Number = sys.error("stub")
-  val Infinity: Number = sys.error("stub")
+  val NaN: Number = ???
+  val Infinity: Number = ???
 
-  def eval(s: String): Any = sys.error("stub")
+  def eval(x: String): Any = ???
 
-  def parseInt(s: String): Number = sys.error("stub")
-  def parseInt(s: String, radix: Number): Number = sys.error("stub")
-  def parseFloat(s: String): Number = sys.error("stub")
+  def parseInt(s: String, radix: Number): Number = ???
+  def parseInt(s: String): Number = ???
+  def parseFloat(string: String): Number = ???
+
+  def isNaN(number: Number): Boolean = ???
+  def isFinite(number: Number): Boolean = ???
+
+  def decodeURI(encodedURI: String): String = ???
+  def decodeURIComponent(encodedURIComponent: String): String = ???
+  def encodeURI(uri: String): String = ???
+  def encodeURIComponent(uriComponent: String): String = ???
 }

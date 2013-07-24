@@ -55,9 +55,26 @@ object Any {
     result
   }
 
+  implicit def toArray[A : ClassTag](array: Array[A]): scala.Array[A] = {
+    val length = array.length.toInt
+    val result = new scala.Array[A](length)
+    var i = 0
+    while (i < length) {
+      result(i) = array(i)
+      i += 1
+    }
+    result
+  }
+
+  implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
+    genericArrayOps(toArray(array))
+
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
   implicit def fromFunction2[T1, T2, R](f: scala.Function2[T1, T2, R]): Function2[T1, T2, R] = sys.error("stub")
+  implicit def fromFunction3[T1, T2, T3, R](f: scala.Function3[T1, T2, T3, R]): Function3[T1, T2, T3, R] = sys.error("stub")
+  implicit def fromFunction4[T1, T2, T3, T4, R](f: scala.Function4[T1, T2, T3, T4, R]): Function4[T1, T2, T3, T4, R] = sys.error("stub")
+  implicit def fromFunction5[T1, T2, T3, T4, T5, R](f: scala.Function5[T1, T2, T3, T4, T5, R]): Function5[T1, T2, T3, T4, T5, R] = sys.error("stub")
 }
 
 sealed trait Dynamic extends Any with scala.Dynamic {
@@ -111,7 +128,7 @@ object Dynamic {
 /** Dictionary "view" of a JavaScript value */
 sealed trait Dictionary extends Any {
   def apply(key: String): Any
-  def update(key: String, value: Any)
+  def update(key: String, value: Any): Unit
 }
 
 object Dictionary {
@@ -170,11 +187,22 @@ sealed trait Number extends Any {
 
   def ||(that: Number): Number
 
-  def toString(base: Number): String
+  def toString(radix: Number): String = ???
+  def toFixed(fractionDigits: Number): String = ???
+  def toFixed(): String = ???
+  def toExponential(fractionDigits: Number): String = ???
+  def toExponential(): String = ???
+  def toPrecision(precision: Number): String = ???
 }
 
-object Number {
+object Number extends Object {
   implicit def toDouble(value: Number): scala.Double = sys.error("stub")
+
+  val MAX_VALUE: js.Number = ???
+  val MIN_VALUE: js.Number = ???
+  val NaN: js.Number = ???
+  val NEGATIVE_INFINITY: js.Number = ???
+  val POSITIVE_INFINITY: js.Number = ???
 }
 
 sealed trait Boolean extends Any {
@@ -183,7 +211,7 @@ sealed trait Boolean extends Any {
   def unary_!(): Boolean
 }
 
-object Boolean {
+object Boolean extends Object {
   implicit def toBoolean(value: Boolean): scala.Boolean = sys.error("stub")
 }
 
@@ -192,70 +220,79 @@ sealed trait String extends Any {
   override def +(that: Dynamic): String = sys.error("stub")
 
   def ||(that: String): String
+
+  val length: Number = ???
+
+  def charAt(pos: Number): String = ???
+  def charCodeAt(index: Number): Number = ???
+  def concat(strings: String*): String = ???
+  def indexOf(searchString: String, position: Number): Number = ???
+  def indexOf(searchString: String): Number = ???
+  def lastIndexOf(searchString: String, position: Number): Number = ???
+  def lastIndexOf(searchString: String): Number = ???
+  def localeCompare(that: String): Number = ???
+  def `match`(regexp: String): Array[String] = ???
+  def `match`(regexp: RegExp): Array[String] = ???
+  def replace(searchValue: String, replaceValue: String): String = ???
+  def replace(searchValue: String, replaceValue: Any): String = ???
+  def replace(searchValue: RegExp, replaceValue: String): String = ???
+  def replace(searchValue: RegExp, replaceValue: Any): String = ???
+  def search(regexp: String): Number = ???
+  def search(regexp: RegExp): Number = ???
+  def slice(start: Number, end: Number): String = ???
+  def slice(start: Number): String = ???
+  def split(separator: String, limit: Number): Array[String] = ???
+  def split(separator: String): Array[String] = ???
+  def split(separator: RegExp, limit: Number): Array[String] = ???
+  def split(separator: RegExp): Array[String] = ???
+  def substring(start: Number, end: Number): String = ???
+  def substring(start: Number): String = ???
+  def toLowerCase(): String = ???
+  def toLocaleLowerCase(): String = ???
+  def toUpperCase(): String = ???
+  def toLocaleUpperCase(): String = ???
+  def trim(): String = ???
 }
 
-object String {
+object String extends Object {
   implicit def toScalaString(value: String): java.lang.String = sys.error("stub")
+
+  def fromCharCode(codes: js.Number*): js.String = ???
 }
 
 sealed trait Undefined extends Any with NotNull
 
 class Object extends Any {
   def this(value: Any) = this()
+
+  def toLocaleString(): String = ???
+  def valueOf(): Any = ???
+  def hasOwnProperty(v: String): Boolean = ???
+  def isPrototypeOf(v: Object): Boolean = ???
+  def propertyIsEnumerable(v: String): Boolean = ???
 }
 
-/** Marker trait for static modules representing the JS global scope
- *  When calling method on a top-level object or package object that is a
- *  subtype of GlobalScope, the receiver is dropped, and the JS global
- *  scope is used instead.
- */
-trait GlobalScope extends Object
+object Object extends Object {
+  def apply(): Object = ???
+  def apply(value: Any): Object = ???
 
-final class Array[A](_len: Number) extends Object {
-  def this() = this(0)
+  def getPrototypeOf(o: Object): Any = ???
+  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = ???
+  def getOwnPropertyNames(o: Object): Array[String] = ???
 
-  def apply(index: Number): A = sys.error("stub")
-  def update(index: Number, value: A): Unit = sys.error("stub")
+  def create(o: Object, properties: Any): Object = ???
+  def create(o: Object): Object = ???
 
-  val length: Number = sys.error("stub")
-}
+  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = ???
+  def defineProperties(o: Object, properties: Any): o.type = ???
 
-object Array {
-  def apply[A](elements: A*): Array[A] = sys.error("stub")
+  def seal(o: Object): o.type = ???
+  def freeze(o: Object): o.type = ???
+  def preventExtensions(o: Object): o.type = ???
 
-  implicit def toArray[A : ClassTag](array: Array[A]): scala.Array[A] = {
-    val length = array.length.toInt
-    val result = new scala.Array[A](length)
-    var i = 0
-    while (i < length) {
-      result(i) = array(i)
-      i += 1
-    }
-    result
-  }
+  def isSealed(o: Object): Boolean = ???
+  def isFrozen(o: Object): Boolean = ???
+  def isExtensible(o: Object): Boolean = ???
 
-  implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
-    genericArrayOps(toArray(array))
-}
-
-class Date extends Object {
-  def this(milliseconds: Number) = this()
-  def this(dateString: String) = this()
-  def this(year: Number, month: Number, day: Number = 1,
-      hours: Number = 0, minutes: Number = 0, seconds: Number = 0,
-      milliseconds: Number = 0) = this()
-
-  def getTime(): Number = sys.error("stub")
-}
-
-trait Function0[+R] extends Object {
-  def apply(): R
-}
-
-trait Function1[-T1, +R] extends Object {
-  def apply(arg1: T1): R
-}
-
-trait Function2[-T1, -T2, +R] extends Object {
-  def apply(arg1: T1, arg2: T2): R
+  def keys(o: Object): Array[String] = ???
 }
