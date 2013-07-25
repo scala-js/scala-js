@@ -102,9 +102,10 @@ var ScalaJS = {
     if (lengthIndex < lengths.length-1) {
       var subArrayClassData = arrayClassData.componentData;
       var subLengthIndex = lengthIndex+1;
-      for (var i = 0; i < result.length(); i++) {
-        result.set(i, ScalaJS.newArrayObjectInternal(
-          subArrayClassData, lengths, subLengthIndex));
+      var underlying = result.underlying;
+      for (var i = 0; i < underlying.length; i++) {
+        underlying[i] = ScalaJS.newArrayObjectInternal(
+          subArrayClassData, lengths, subLengthIndex);
       }
     }
 
