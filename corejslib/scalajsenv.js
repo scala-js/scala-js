@@ -156,7 +156,7 @@ var ScalaJS = {
 
   objectEquals: function(instance, rhs) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.equals\ufe34O\ufe34Z();
+      return instance.equals\ufe34O\ufe34Z(rhs);
     else
       return instance === rhs;
   },
