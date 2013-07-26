@@ -124,9 +124,24 @@ object Integer {
     ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
-  def reverseBytes(i: scala.Int): scala.Int = sys.error("unimplemented")
-  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
-  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = sys.error("unimplemented")
+  def reverseBytes(i: scala.Int): scala.Int = {
+    val byte3 = i >>> 24
+    val byte2 = (i >>> 8) & 0xFF00
+    val byte1 = (i << 8) & 0xFF0000
+    val byte0 = (i << 24)
+    byte0 | byte1 | byte2 | byte3
+  }
+
+  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = {
+    (i << distance) | (i >>> (32-distance))
+  }
+
+  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = {
+    (i >>> distance) | (i << (32-distance))
+  }
+
+  def signum(i: scala.Int): scala.Int =
+    if (i == 0) 0 else if (i < 0) -1 else 1
 
   def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
   def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
@@ -164,6 +179,9 @@ object Long {
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
+
+  def signum(i: scala.Long): scala.Long =
+    if (i == 0) 0 else if (i < 0) -1 else 1
 
   def toBinaryString(l: scala.Long): String = sys.error("unimplemented")
   def toHexString(l: scala.Long): String = sys.error("unimplemented")
