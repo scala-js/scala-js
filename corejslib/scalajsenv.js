@@ -168,6 +168,36 @@ var ScalaJS = {
       return 42; // TODO
   },
 
+  comparableCompareTo: function(instance, rhs) {
+    if (typeof(instance) === "string") {
+      ScalaJS.as.java\ufe33lang\ufe33String(rhs);
+      return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
+    } else {
+      return instance.compareTo\ufe34O\ufe34I(rhs);
+    }
+  },
+
+  charSequenceLength: function(instance) {
+    if (typeof(instance) === "string")
+      return instance.length;
+    else
+      return instance.length\ufe34I();
+  },
+
+  charSequenceCharAt: function(instance, index) {
+    if (typeof(instance) === "string")
+      return instance.charCodeAt(index);
+    else
+      return instance.charAt\ufe34I\ufe34C(index);
+  },
+
+  charSequenceSubSequence: function(instance, start, end) {
+    if (typeof(instance) === "string")
+      return instance.substring(start, end);
+    else
+      return instance.subSequence\ufe34I\ufe34I\ufe34java\ufe33lang\ufe33CharSequence(start, end);
+  },
+
   truncateToLong: function(value) {
     return value < 0 ? Math.ceil(value) : Math.floor(value);
   },

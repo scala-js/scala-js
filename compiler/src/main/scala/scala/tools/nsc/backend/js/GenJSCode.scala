@@ -1358,6 +1358,8 @@ abstract class GenJSCode extends SubComponent
              *  But even these are further refined into:
              *  * Methods of java.lang.Object (because things typed as such
              *    at compile-time are sometimes raw JS values at runtime).
+             *  * Methods of ancestors of java.lang.String (because they could
+             *    be a primitive string at runtime).
              *  * Calls to primitive JS methods (Scala.js -> JS bridge)
              *  * Regular method call
              */
@@ -1366,10 +1368,10 @@ abstract class GenJSCode extends SubComponent
 
             val Select(receiver, _) = fun
 
-            if (fun.symbol == Object_toString) {
+            if (ToStringMaybeOnString contains fun.symbol) {
               js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
-            } else if (ObjectMemberMethodToHelperMethodName contains fun.symbol) {
-              val helper = ObjectMemberMethodToHelperMethodName(fun.symbol)
+            } else if (MethodWithHelperInEnv contains fun.symbol) {
+              val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genBuiltinApply(helper, arguments:_*)
             } else if (isRawJSType(receiver.tpe)) {
@@ -1384,16 +1386,34 @@ abstract class GenJSCode extends SubComponent
       }
     }
 
+    private lazy val ToStringMaybeOnString = Set[Symbol](
+      Object_toString,
+      getMemberMethod(CharSequenceClass, nme.toString_),
+      getMemberMethod(StringClass, nme.toString_)
+    )
+
     // TODO Make these primitives?
-    lazy val ObjectMemberMethodToHelperMethodName = Map[Symbol, String](
+    private lazy val MethodWithHelperInEnv = Map[Symbol, String](
       Object_getClass  -> "objectGetClass",
       Object_clone     -> "objectClone",
       Object_finalize  -> "objectFinalize",
       Object_notify    -> "objectNotify",
       Object_notifyAll -> "objectNotifyAll",
       Object_equals    -> "objectEquals",
-      Object_hashCode  -> "objectHashCode"
+      Object_hashCode  -> "objectHashCode",
+
+      getMemberMethod(CharSequenceClass, newTermName("length")) -> "charSequenceLength",
+      getMemberMethod(CharSequenceClass, newTermName("charAt")) -> "charSequenceCharAt",
+      getMemberMethod(CharSequenceClass, newTermName("subSequence")) -> "charSequenceSubSequence",
+
+      getMemberMethod(ComparableClass, newTermName("compareTo")) -> "comparableCompareTo",
+
+      getMemberMethod(StringClass, nme.equals_) -> "objectEquals",
+      getMemberMethod(StringClass, nme.hashCode_) -> "objectHashCode",
+      getMemberMethod(StringClass, newTermName("compareTo")) -> "comparableCompareTo"
     )
+
+    private lazy val CharSequenceClass = requiredClass[java.lang.CharSequence]
 
     /** Gen JS code for a conversion between primitive value types */
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
@@ -2070,6 +2090,16 @@ abstract class GenJSCode extends SubComponent
 
       val isString = isStringType(receiver0.tpe)
 
+      def paramType(index: Int) = sym.tpe.params(index).tpe
+
+      def charToString(arg: js.Tree) = {
+        val jsString = js.BracketSelect(envField("g"), js.StringLiteral("String"))
+        js.ApplyMethod(jsString, js.StringLiteral("fromCharCode"), List(arg))
+      }
+
+      def charSeqToString(arg: js.Tree) =
+        js.ApplyMethod(arg, js.Ident("toString"), Nil)
+
       funName match {
         case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
           assert(argc == 0)
@@ -2085,9 +2115,40 @@ abstract class GenJSCode extends SubComponent
 
         case "charAt" | "codePointAt" if isString =>
           js.ApplyMethod(receiver, js.StringLiteral("charCodeAt"), args)
-
         case "length" if isString =>
           js.BracketSelect(receiver, js.StringLiteral("length"))
+        case "isEmpty" if isString =>
+          js.UnaryOp("!", js.BracketSelect(receiver, js.StringLiteral("length")))
+        case "indexOf" | "lastIndexOf" if isString && !isStringType(paramType(0)) =>
+          js.ApplyMethod(receiver, js.StringLiteral(funName),
+              charToString(args.head) :: args.tail)
+        case "subSequence" if isString =>
+          js.ApplyMethod(receiver, js.StringLiteral("substring"), args)
+        case "intern" if isString =>
+          receiver
+
+        case "replace" if isString =>
+          val argsAsStrings =
+            if (paramType(0).typeSymbol == CharSequenceClass)
+              args map charSeqToString
+            else
+              args map charToString
+          js.ApplyMethod(receiver, js.StringLiteral("replace"), argsAsStrings)
+
+        case "matches" if isString =>
+          // Made-up of Pattern.matches(args.head, receiver)
+          val PatternModuleClass =
+            requiredClass[java.util.regex.Pattern].companionModule.moduleClass
+          val PatternModule = genLoadModule(PatternModuleClass)
+          val matchesMethod =
+            getMemberMethod(PatternModuleClass, newTermName("matches"))
+          js.ApplyMethod(PatternModule, encodeMethodSym(matchesMethod), List(
+              args.head, receiver))
+
+        case "split" if isString =>
+          val stringArrayClassData = encodeClassDataOfType(StringArray)
+          genBuiltinApply("makeNativeArrayWrapper", stringArrayClassData,
+              js.ApplyMethod(receiver, js.StringLiteral("split"), args))
 
         case _ =>
           def wasNullaryMethod(sym: Symbol) = {
