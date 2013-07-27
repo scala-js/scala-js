@@ -31,6 +31,9 @@ object Math {
   def sqrt(a: scala.Double): scala.Double = js.Math.sqrt(a)
   def pow(a: scala.Double, b: scala.Double): scala.Double = js.Math.pow(a, b)
 
+  def exp(a: scala.Double): scala.Double = js.Math.exp(a)
+  def log(a: scala.Double): scala.Double = js.Math.log(a)
+
   def sin(a: scala.Double): scala.Double = js.Math.sin(a)
   def cos(a: scala.Double): scala.Double = js.Math.cos(a)
   def tan(a: scala.Double): scala.Double = js.Math.tan(a)
