@@ -2146,9 +2146,18 @@ abstract class GenJSCode extends SubComponent
               args.head, receiver))
 
         case "split" if isString =>
-          val stringArrayClassData = encodeClassDataOfType(StringArray)
-          genBuiltinApply("makeNativeArrayWrapper", stringArrayClassData,
-              js.ApplyMethod(receiver, js.StringLiteral("split"), args))
+          // Made-up of Pattern.compile(args.head).split(receiver, args.tail)
+          val PatternClass = requiredClass[java.util.regex.Pattern]
+          val PatternModuleClass = PatternClass.companionModule.moduleClass
+          val PatternModule = genLoadModule(PatternModuleClass)
+          val compileMethod = getMemberMethod(PatternModuleClass,
+              newTermName("compile")).suchThat(_.tpe.params.size == 1)
+          val pattern = js.ApplyMethod(PatternModule,
+              encodeMethodSym(compileMethod), List(args.head))
+          val splitMethod = getMemberMethod(PatternClass,
+              newTermName("split")).suchThat(_.tpe.params.size == args.size)
+          js.ApplyMethod(pattern, encodeMethodSym(splitMethod),
+              receiver :: args.tail)
 
         case _ =>
           def wasNullaryMethod(sym: Symbol) = {
