@@ -179,21 +179,21 @@ var ScalaJS = {
 
   charSequenceLength: function(instance) {
     if (typeof(instance) === "string")
-      return instance.length;
+      return instance["length"];
     else
       return instance.length\ufe34I();
   },
 
   charSequenceCharAt: function(instance, index) {
     if (typeof(instance) === "string")
-      return instance.charCodeAt(index);
+      return instance["charCodeAt"](index);
     else
       return instance.charAt\ufe34I\ufe34C(index);
   },
 
   charSequenceSubSequence: function(instance, start, end) {
     if (typeof(instance) === "string")
-      return instance.substring(start, end);
+      return instance["substring"](start, end);
     else
       return instance.subSequence\ufe34I\ufe34I\ufe34java\ufe33lang\ufe33CharSequence(start, end);
   },
