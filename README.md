@@ -4,9 +4,10 @@ This project aims at providing a Scala to JavaScript compiler, so that one
 can write the client-side of a Web application in Scala, and have it compiled
 into JavaScript code.
 
-## Mailing list
+## Resources
 
-[https://groups.google.com/forum/?fromgroups#!forum/scala-js](https://groups.google.com/forum/?fromgroups#!forum/scala-js)
+*   [Website](http://lampwww.epfl.ch/~doeraene/scala-js/)
+*   [Mailing list](https://groups.google.com/forum/?fromgroups#!forum/scala-js)
 
 ## Get it
 
