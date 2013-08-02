@@ -2239,11 +2239,10 @@ abstract class GenJSCode extends SubComponent
     /** Expand the elements of an actual repeated argument */
     private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.Tree] = {
       arg match {
-        case Apply(wrapRefArray_?, List(
-            Apply(TypeApply(asInstanceOf_? @ Select(
-                ArrayValue(tpt, elems), _), _), _)))
-        if (wrapRefArray_?.symbol == Predef_wrapRefArray) &&
-            (asInstanceOf_?.symbol == Object_asInstanceOf) =>
+        case MaybeAsInstanceOf(
+            Apply(wrapRefArray_?, List(
+                MaybeAsInstanceOf(ArrayValue(tpt, elems)))))
+        if wrapRefArray_?.symbol == Predef_wrapRefArray =>
           elems map genExpr
 
         case Select(_, _) if arg.symbol == NilModule =>
@@ -2252,6 +2251,16 @@ abstract class GenJSCode extends SubComponent
         case _ =>
           // TODO This can be supported using Function.prototype.apply
           abort("Passing a seq:_* to a JavaScript method is not supported: "+arg)
+      }
+    }
+
+    object MaybeAsInstanceOf {
+      def unapply(tree: Tree): Some[Tree] = tree match {
+        case Apply(TypeApply(asInstanceOf_? @ Select(base, _), _), _)
+        if asInstanceOf_?.symbol == Object_asInstanceOf =>
+          Some(base)
+        case _ =>
+          Some(tree)
       }
     }
 
