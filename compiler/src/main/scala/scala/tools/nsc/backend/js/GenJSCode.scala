@@ -64,28 +64,24 @@ abstract class GenJSCode extends SubComponent
 
     /** Generate JS code for a compilation unit
      *  This method iterates over all the class and interface definitions
-     *  found in the compilation unit.
-     *
-     *  For every interface, it calls `genInterface()`.
-     *  For every class, it calls `genClass()`. If it is a module class, it
-     *  also calls `genModuleAccessor()`.
+     *  found in the compilation unit and emits their code (.js) and type
+     *  definitions (.jstype).
      *
      *  Classes representing primitive types, as well as the scala.Array
      *  class, are not actually emitted.
      *
-     *  Emitted class and interface definitions are grouped into bundles
-     *  according to their so-called representative, which is basically their
-     *  enclosing top-level class/trait/object. Companions are also grouped
-     *  together.
+     *  Other ClassDefs are emitted according to their nature:
+     *  * Interface               -> `genInterface()`
+     *  * Implementation class    -> `genImplClass()`
+     *  * Raw JS type (<: js.Any) -> `genRawJSClassData()`
+     *  * Normal class            -> `genClass()`
+     *                               + `genModuleAccessor()` if module class
      *
-     *  Each bundle is then wrapped in a closure:
+     *  The resulting tree is desugared with `JSDesugaring`, and then sent to
+     *  disc with `GenJSFiles`.
      *
-     *     (function($) {
-     *       ...
-     *     })($ScalaJSEnvironment);
-     *
-     *  which is desugared with `JSDesugaring`, and then sent to disc
-     *  with `GenJSFiles`.
+     *  Type definitions (i.e., pickles) for top-level representatives are also
+     *  emitted.
      */
     override def apply(cunit: CompilationUnit) {
       try {
@@ -160,37 +156,36 @@ abstract class GenJSCode extends SubComponent
     // Generate a class --------------------------------------------------------
 
     /** Gen JS code for a class definition (maybe a module class)
-     *  It emits an ES6 class declaration with all the fields (ValDefs) and
-     *  methods (DefDefs) in the class as JS fields and methods.
-     *  The constructors are emitted as regular JS methods with name '<init>'.
-     *
-     *  In addition, bridges for JS-friendly (non-mangled) method names are
-     *  generated with `JSBridges`.
-     *
-     *  The class definition itself is wrapped inside a closure which is
-     *  only registered to the Scala.js environment using `registerClass`. It
-     *  is not automatically created, only on demand.
+     *  It emits:
+     *  * An ES6 class declaration with:
+     *    - A constructor creating all the fields (ValDefs)
+     *    - Methods (DefDefs), including the Scala constructor
+     *    - JS-friendly bridges for all public methods (with non-mangled names)
+     *  * An inheritable constructor, used to create the prototype of subclasses
+     *  * A JS-friendly constructor bridge, if there is a public constructor
+     *  * Functions for instance tests
+     *  * The class data record
      */
     def genClass(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val jspos = cd.pos
+      implicit val pos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
-      currentClassSym = cd.symbol
+      val sym = cd.symbol
+      currentClassSym = sym
 
-      val displayName = currentClassSym.fullName
-      val originalClassName = Some(currentClassSym.fullNameAsName('.').decoded)
-      val classIdent = encodeFullNameIdent(currentClassSym)
+      assert(!sym.isInterface && !sym.isImplClass,
+          "genClass() must be called only for normal classes: "+sym)
+      assert(sym.superClass != NoSymbol, sym)
 
-      val superClass =
-        if (currentClassSym.superClass == NoSymbol) ObjectClass
-        else currentClassSym.superClass
-      val superClassIdent = encodeFullNameIdent(superClass)
+      val classIdent = encodeFullNameIdent(sym)
+      val classVar = envField("c") DOT classIdent
+
+      // Generate members (constructor + methods)
 
       val generatedMembers = new ListBuffer[js.Tree]
 
-      if (!currentClassSym.isInterface)
-        generatedMembers += genConstructor(cd)
+      generatedMembers += genConstructor(cd)
 
       def gen(tree: Tree) {
         tree match {
@@ -203,61 +198,56 @@ abstract class GenJSCode extends SubComponent
           case dd: DefDef =>
             generatedMembers ++= genMethod(dd)
 
-          case _ => abort("Illegal tree in gen: " + tree)
+          case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
       }
 
       gen(impl)
 
       // Generate the bridges, then steal the constructor bridges (1 at most)
-      val bridges0 = genBridgesForClass(currentClassSym)
+      val bridges0 = genBridgesForClass(sym)
       val (constructorBridges0, bridges) = bridges0.partition {
         case js.MethodDef(js.Ident("init\ufe33", _), _, _) => true
         case _ => false
       }
       assert(constructorBridges0.size <= 1)
+      val constructorBridge = constructorBridges0.headOption
 
-      val constructorBridge = {
-        if (!currentClassSym.isImplClass) constructorBridges0.headOption
-        else {
-          // Make up
-          Some(js.MethodDef(js.Ident("irrelevant"), Nil, js.Skip()))
-        }
-      }
-
-      val typeVar = envField("c") DOT classIdent
-      val classDefinition = js.ClassDef(typeVar,
-          envField("inheritable") DOT superClassIdent,
+      // The actual class definition
+      val classDefinition = js.ClassDef(classVar,
+          envField("inheritable") DOT encodeFullNameIdent(sym.superClass),
           generatedMembers.toList ++ bridges)
 
-      def protoField(name: String) =
-        typeVar DOT "prototype" DOT js.Ident(name)
-
-      // Inheritable constructor
-
+      /* Inheritable constructor
+       *
+       * ScalaJS.inheritable.classIdent = function() {};
+       * ScalaJS.inheritable.classIdent.prototype = ScalaJS.c.classIdent.prototype;
+       */
       val createInheritableConstructor = {
         val inheritableConstructorVar = envField("inheritable") DOT classIdent
         js.Block(
             js.DocComment("@constructor"),
             inheritableConstructorVar := js.Function(Nil, js.Skip()),
-            inheritableConstructorVar DOT "prototype" := typeVar DOT "prototype")
+            inheritableConstructorVar DOT "prototype" := classVar DOT "prototype")
       }
 
-      /* ScalaJS.classes.classIdent = function(<args of the constructor bridge>) {
+      /* JS-friendly constructor
+       *
+       * ScalaJS.classes.classIdent = function(<args of the constructor bridge>) {
        *   ScalaJS.c.classIdent.call(this);
        *   <body of the constructor bridge>
        * }
        * ScalaJS.classes.prototype = Class.prototype;
        */
-      val jsConstructorVar = envField("classes") DOT classIdent
       val createJSConstructorStat = constructorBridge match {
         case Some(js.MethodDef(_, args, body)) =>
-          js.Block(List(
+          val jsConstructorVar = envField("classes") DOT classIdent
+          js.Block(
               js.DocComment("@constructor"),
-              jsConstructorVar := js.Function(args, js.Block(List(
-                  js.ApplyMethod(typeVar, js.Ident("call"), List(js.This())),
-                  body)))),
-              jsConstructorVar DOT "prototype" := typeVar DOT "prototype")
+              jsConstructorVar := js.Function(args, js.Block(
+                  js.ApplyMethod(classVar, js.Ident("call"), List(js.This())),
+                  body)),
+              jsConstructorVar DOT "prototype" := classVar DOT "prototype")
 
         case _ =>
           js.Skip()
@@ -274,7 +264,7 @@ abstract class GenJSCode extends SubComponent
 
         js.Block(
             classDataVar := genDataRecord(cd),
-            typeVar DOT "prototype" DOT "$classData" := classDataVar)
+            classVar DOT "prototype" DOT "$classData" := classDataVar)
       }
 
       // Bring it all together
