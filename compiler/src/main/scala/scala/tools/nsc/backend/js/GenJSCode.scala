@@ -1347,7 +1347,7 @@ abstract class GenJSCode extends SubComponent
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genBuiltinApply(helper, arguments:_*)
-            } else if (isRawJSType(receiver.tpe)) {
+            } else if (isRawJSType(receiver.tpe) || isStringType(receiver.tpe)) {
               genPrimitiveJSCall(app)
             } else {
               val instance = genExpr(receiver)
@@ -1412,7 +1412,7 @@ abstract class GenJSCode extends SubComponent
     /** Gen JS code for an isInstanceOf test (for reference types only) */
     def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isRawJSType(to) && !isStringType(to)) {
+      if (isRawJSType(to)) {
         // isInstanceOf is not supported for raw JavaScript types
         abort("isInstanceOf["+to+"]")
       } else {
@@ -1423,7 +1423,7 @@ abstract class GenJSCode extends SubComponent
     /** Gen JS code for an asInstanceOf cast (for reference types only) */
     def genAsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
-      if (isRawJSType(to) && !isStringType(to)) {
+      if (isRawJSType(to)) {
         // asInstanceOf on JavaScript is completely erased
         value
       } else {
@@ -2325,7 +2325,6 @@ abstract class GenJSCode extends SubComponent
    *  I.e., test whether the type extends scala.js.Any
    */
   def isRawJSType(tpe: Type): Boolean = {
-    isStringType(tpe) ||
     (isScalaJSDefined && beforePhase(currentRun.erasurePhase) {
       tpe.typeSymbol isSubClass JSAnyClass
     })
