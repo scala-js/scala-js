@@ -343,7 +343,7 @@ abstract class GenJSCode extends SubComponent
       val sym = cd.symbol
       currentClassSym = sym
 
-      val generatedMembers = new ListBuffer[js.Tree]
+      val generatedMethods = new ListBuffer[js.MethodDef]
 
       def gen(tree: Tree) {
         tree match {
@@ -351,7 +351,7 @@ abstract class GenJSCode extends SubComponent
           case Template(_, _, body) => body foreach gen
 
           case dd: DefDef =>
-            generatedMembers ++= genMethod(dd)
+            generatedMethods ++= genMethod(dd)
 
           case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
         }
@@ -359,16 +359,9 @@ abstract class GenJSCode extends SubComponent
 
       gen(impl)
 
-      val implModuleFields = for (member <- generatedMembers.result()) yield {
-        member match {
-          case js.MethodDef(name, params, body) =>
-            name -> js.Function(params, body)
-          case js.CustomDef(name, rhs) =>
-            name -> rhs
-          case _ =>
-            abort("Illegal member in impl class: " + member)
-        }
-      }
+      val implModuleFields =
+        for (js.MethodDef(name, params, body) <- generatedMethods.result())
+          yield name -> js.Function(params, body)
 
       val fieldCreations =
         for ((name, value) <- implModuleFields) yield
@@ -524,22 +517,24 @@ abstract class GenJSCode extends SubComponent
      *  of the Scala method, as described in `JSEncoding`, to support
      *  overloading.
      *
-     *  Abstract methods are not emitted at all. An alternative might to
-     *  generate a method throwing a java.lang.AbstractMethodError.
-     *
-     *  Methods marked with @native are not emitted. Instead, their body is
-     *  lookup up in the global repository for natives available in the
-     *  Scala.js environment.
+     *  Some methods are not emitted at all:
+     *  * Primitives, since they are never actually called
+     *  * Abstract methods (alternative: throw a java.lang.AbstractMethodError)
+     *  * Trivial constructors, which only call their super constructor, with
+     *    the same signature, and the same arguments. The JVM needs these
+     *    constructors, but not JavaScript. Since there are lots of them, we
+     *    take the trouble of recognizing and removing them.
      *
      *  Constructors are emitted by generating their body as a statement, then
      *  return `this`.
      *
      *  Other (normal) methods are emitted with `genMethodBody()`.
      */
-    def genMethod(dd: DefDef): Option[js.Tree] = {
-      implicit val jspos = dd.pos
+    def genMethod(dd: DefDef): Option[js.MethodDef] = {
+      implicit val pos = dd.pos
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
-      currentMethodSym = dd.symbol
+      val sym = dd.symbol
+      currentMethodSym = sym
 
       isModuleInitialized = false
       methodHasTailJump = false
@@ -551,39 +546,27 @@ abstract class GenJSCode extends SubComponent
           "Malformed parameter list: " + vparamss)
       val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
-      val jsParams =
-        for (param <- params)
-          yield encodeLocalSym(param)(param.pos)
-
-      val isNative = currentMethodSym.hasAnnotation(NativeAttr)
-      val isAbstractMethod =
-        (currentMethodSym.isDeferred || currentMethodSym.owner.isInterface)
-
-      val methodPropIdent = encodeMethodSym(currentMethodSym)
+      assert(!sym.owner.isInterface,
+          "genMethod() must not be called for methods in interfaces: "+sym)
 
       val result = {
-        if (isPrimitive(currentMethodSym)) {
-          // Do not output code for primitive methods, it won't be called
-          None
-        } else if (isNative) {
-          val nativeID = encodeFullName(currentClassSym) +
-            " :: " + methodPropIdent.name
-          Some(js.CustomDef(methodPropIdent,
-              js.BracketSelect(js.DotSelect(environment, js.Ident("natives")),
-                  js.StringLiteral(nativeID, Some(nativeID)))))
-        } else if (isAbstractMethod) {
-          None
-        } else if (isTrivialConstructor(currentMethodSym, params, rhs)) {
+        if (isPrimitive(sym)
+            || sym.isDeferred // abstract method
+            || isTrivialConstructor(sym, params, rhs)) {
           None
         } else {
-          val returnType = toTypeKind(currentMethodSym.tpe.resultType)
+          val jsParams =
+            for (param <- params)
+              yield encodeLocalSym(param)(param.pos)
+
           val body = {
-            if (currentMethodSym.isConstructor)
+            if (sym.isConstructor)
               js.Block(List(genStat(rhs)), js.Return(js.This()))
             else
-              genMethodBody(rhs, params, toTypeKind(currentMethodSym.tpe.resultType))
+              genMethodBody(rhs, params, toTypeKind(sym.tpe.resultType))
           }
-          Some(js.MethodDef(methodPropIdent, jsParams, body))
+
+          Some(js.MethodDef(encodeMethodSym(sym), jsParams, body))
         }
       }
 

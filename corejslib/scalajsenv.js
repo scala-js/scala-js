@@ -16,7 +16,6 @@ var ScalaJS = {
   as: {},              // asInstanceOf methods
   isArrayOf: {},       // isInstanceOfArrayOf methods
   asArrayOf: {},       // asInstanceOfArrayOf methods
-  natives: {},         // Native methods registry
 
   // Core mechanism
 
