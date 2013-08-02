@@ -50,6 +50,9 @@ trait JSDefinitions { self: SymbolTable =>
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 
+    lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
+    lazy val JavaScriptExceptionClass = getClassIfDefined("scala.js.JavaScriptException")
+
     lazy val JSNameAnnotation = getRequiredClass("scala.js.annotation.JSName")
 
     lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor

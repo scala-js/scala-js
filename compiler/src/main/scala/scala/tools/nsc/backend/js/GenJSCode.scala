@@ -1020,12 +1020,21 @@ abstract class GenJSCode extends SubComponent
       val blockAST = genExpr(block)
       val exceptVar = js.Ident("$jsexc$")
 
+      def isAncestorOfJavaScriptException(tpe: Type) = {
+        // A bit awkward because JSException might not be in the classpath
+        val sym = tpe.typeSymbol
+        (sym == JavaScriptExceptionClass ||
+            RuntimeExceptionClass.ancestors.contains(sym))
+      }
+
       val handlerAST = {
         if (catches.isEmpty) {
           js.EmptyTree
         } else {
+          var mightCatchJavaScriptException = false
+
           val elseHandler: js.Tree = js.Throw(exceptVar)
-          catches.foldRight(elseHandler) { (caseDef, elsep) =>
+          val handler0 = catches.foldRight(elseHandler) { (caseDef, elsep) =>
             implicit val jspos = caseDef.pos
             val CaseDef(pat, _, body) = caseDef
 
@@ -1048,11 +1057,23 @@ abstract class GenJSCode extends SubComponent
 
             // Generate the test
             if (tpe == ThrowableClass.tpe) {
+              mightCatchJavaScriptException = true
               bodyWithBoundVar
             } else {
+              mightCatchJavaScriptException ||=
+                isAncestorOfJavaScriptException(tpe)
               val cond = genIsInstanceOf(ThrowableClass.tpe, tpe, exceptVar)
               js.If(cond, bodyWithBoundVar, elsep)
             }
+          }
+
+          if (mightCatchJavaScriptException) {
+            js.Block(
+                js.Assign(exceptVar,
+                    genBuiltinApply("wrapJavaScriptException", exceptVar)),
+                handler0)
+          } else {
+            handler0
           }
         }
       }
