@@ -10,7 +10,7 @@
 
 package scala.js
 
-class Array[A] protected () extends Object {
+class Array[A] extends Object {
   def this(arrayLength: Number) = this()
 
   // Do not expose this one - use js.Array(item1, item2, ...) instead

@@ -66,6 +66,12 @@ object Any {
     result
   }
 
+  def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] = {
+    val result = new Array[A]
+    col.foreach(x => result.push(x))
+    result
+  }
+
   implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
     genericArrayOps(toArray(array))
 

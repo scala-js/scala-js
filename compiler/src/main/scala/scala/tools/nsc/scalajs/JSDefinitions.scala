@@ -76,6 +76,8 @@ trait JSDefinitions { self: SymbolTable =>
       lazy val JSAny_fromDouble  = getMemberMethod(JSAnyModule, newTermName("fromDouble"))
       lazy val JSAny_fromString  = getMemberMethod(JSAnyModule, newTermName("fromString"))
 
+      lazy val JSAny_fromTraversableOnce = getMemberMethod(JSAnyModule, newTermName("fromTraversableOnce"))
+
       def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
