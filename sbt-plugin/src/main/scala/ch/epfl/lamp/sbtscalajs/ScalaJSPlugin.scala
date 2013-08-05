@@ -18,6 +18,8 @@ object ScalaJSPlugin extends Plugin {
     val packageJS = TaskKey[File]("package-js")
     val optimizeJS = TaskKey[File]("optimize-js")
 
+    val excludeDefaultScalaLibrary = SettingKey[Boolean]("exclude-default-scala-library")
+
     val optimizeJSPrettyPrint = SettingKey[Boolean]("optimize-js-pretty-print")
     val optimizeJSExterns = TaskKey[Seq[File]]("optimize-js-externs")
   }
@@ -50,9 +52,12 @@ object ScalaJSPlugin extends Plugin {
       // you had better use the same version of Scala as Scala.js
       scalaVersion := "2.10.1",
 
+      excludeDefaultScalaLibrary := false,
+
       compile in Compile <<= (
-          javaHome, streams, compileInputs in Compile
-      ) map { (javaHome, s, inputs) =>
+          javaHome, streams, compileInputs in Compile,
+          excludeDefaultScalaLibrary in Compile
+      ) map { (javaHome, s, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
 
         val logger = s.log
@@ -76,12 +81,16 @@ object ScalaJSPlugin extends Plugin {
         val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
 
+        val javaClasspath =
+          if (excludeDefaultScalaLibrary) List("-cp", compilerCpStr)
+          else List("-Xbootclasspath/a:" + compilerCpStr)
+
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
             classesDirectory.mkdir()
 
             Fork.java(javaHome,
-                ("-Xbootclasspath/a:" + compilerCpStr) ::
+                javaClasspath :::
                 "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
                 "-cp" :: cpStr ::
