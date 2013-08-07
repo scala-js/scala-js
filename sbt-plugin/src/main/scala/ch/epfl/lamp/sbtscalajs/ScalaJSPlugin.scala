@@ -55,7 +55,8 @@ object ScalaJSPlugin extends Plugin {
       excludeDefaultScalaLibrary := false,
 
       compile in Compile <<= (
-          javaHome, streams, compileInputs in Compile, excludeDefaultScalaLibrary in Compile
+          javaHome, streams, compileInputs in Compile,
+          excludeDefaultScalaLibrary in Compile
       ) map { (javaHome, s, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
 
@@ -80,7 +81,9 @@ object ScalaJSPlugin extends Plugin {
         val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
 
-        val javaClasspath = if (excludeDefaultScalaLibrary) List("-cp", compilerCpStr) else List("-Xbootclasspath/a:" + compilerCpStr)
+        val javaClasspath =
+          if (excludeDefaultScalaLibrary) List("-cp", compilerCpStr)
+          else List("-Xbootclasspath/a:" + compilerCpStr)
 
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
