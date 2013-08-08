@@ -131,8 +131,7 @@ abstract class GenJSCode extends SubComponent
                   else
                     classDef
                 }
-                val scopedTree = js.Apply(js.Function(Nil, tree), Nil)
-                generatedClasses += sym -> scopedTree
+                generatedClasses += sym -> tree
               }
           }
         }
@@ -622,23 +621,40 @@ abstract class GenJSCode extends SubComponent
       val moduleIdent = js.Ident(moduleName, Some(moduleName))
       val moduleInstance = envField("moduleInstances") DOT moduleIdent
 
-      val createModuleInstanceField = {
-        moduleInstance := js.Undefined()
-      }
+      if (isScalaJSDefined && !sym.getAnnotation(JSEagerLoadingAnnotation).isEmpty) {
+        val createModuleInstanceField = {
+          moduleInstance := js.ApplyMethod(
+            js.New(encodeClassSym(sym), Nil),
+            js.Ident("init\ufe33\ufe34"),
+            Nil)
+        }
 
-      val createAccessor = {
-        envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
-            IF (!(moduleInstance)) {
-              moduleInstance := js.ApplyMethod(
-                  js.New(encodeClassSym(sym), Nil),
-                  js.Ident("init\ufe33\ufe34"),
-                  Nil)
-            },
+        val createAccessor = {
+          envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
             js.Return(moduleInstance)
-        ))
-      }
+          ))
+        }
 
-      js.Block(createModuleInstanceField, createAccessor)
+        js.Block(createModuleInstanceField, createAccessor)
+      } else {
+        val createModuleInstanceField = {
+          moduleInstance := js.Undefined()
+        }
+
+        val createAccessor = {
+          envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
+              IF (!(moduleInstance)) {
+                moduleInstance := js.ApplyMethod(
+                    js.New(encodeClassSym(sym), Nil),
+                    js.Ident("init\ufe33\ufe34"),
+                    Nil)
+              },
+              js.Return(moduleInstance)
+          ))
+        }
+
+        js.Block(createModuleInstanceField, createAccessor)
+      }
     }
 
     // Code generation ---------------------------------------------------------
@@ -2211,12 +2227,13 @@ abstract class GenJSCode extends SubComponent
                     js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
           } else {
+            val transformedFunName = jsNameOf(sym).getOrElse(funName)
             argArray match {
               case js.ArrayConstr(args) =>
-                js.ApplyMethod(receiver, js.StringLiteral(funName), args)
+                js.ApplyMethod(receiver, js.StringLiteral(transformedFunName), args)
               case _ =>
                 genBuiltinApply("applyMethodWithVarargs",
-                    receiver, js.StringLiteral(funName), argArray)
+                    receiver, js.StringLiteral(transformedFunName), argArray)
             }
           }
       }
