@@ -621,23 +621,40 @@ abstract class GenJSCode extends SubComponent
       val moduleIdent = js.Ident(moduleName, Some(moduleName))
       val moduleInstance = envField("moduleInstances") DOT moduleIdent
 
-      val createModuleInstanceField = {
-        moduleInstance := js.Undefined()
-      }
+      if (isScalaJSDefined && !sym.getAnnotation(JSEagerLoadingAnnotation).isEmpty) {
+        val createModuleInstanceField = {
+          moduleInstance := js.ApplyMethod(
+            js.New(encodeClassSym(sym), Nil),
+            js.Ident("init\ufe33\ufe34"),
+            Nil)
+        }
 
-      val createAccessor = {
-        envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
-            IF (!(moduleInstance)) {
-              moduleInstance := js.ApplyMethod(
-                  js.New(encodeClassSym(sym), Nil),
-                  js.Ident("init\ufe33\ufe34"),
-                  Nil)
-            },
+        val createAccessor = {
+          envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
             js.Return(moduleInstance)
-        ))
-      }
+          ))
+        }
 
-      js.Block(createModuleInstanceField, createAccessor)
+        js.Block(createModuleInstanceField, createAccessor)
+      } else {
+        val createModuleInstanceField = {
+          moduleInstance := js.Undefined()
+        }
+
+        val createAccessor = {
+          envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
+              IF (!(moduleInstance)) {
+                moduleInstance := js.ApplyMethod(
+                    js.New(encodeClassSym(sym), Nil),
+                    js.Ident("init\ufe33\ufe34"),
+                    Nil)
+              },
+              js.Return(moduleInstance)
+          ))
+        }
+
+        js.Block(createModuleInstanceField, createAccessor)
+      }
     }
 
     // Code generation ---------------------------------------------------------
