@@ -40,9 +40,7 @@ trait GenJSFiles extends SubComponent {
           new JSTreePrinter(output)
         }
 
-      printer.printTree(tree)
-      printer.print(";")
-      printer.println()
+      printer.printTopLevelTree(tree)
 
       if (sourceMapFile ne null) {
         printer.print(s"//@ sourceMappingURL=${sourceMapFile.name}")

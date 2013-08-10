@@ -131,8 +131,7 @@ abstract class GenJSCode extends SubComponent
                   else
                     classDef
                 }
-                val scopedTree = js.Apply(js.Function(Nil, tree), Nil)
-                generatedClasses += sym -> scopedTree
+                generatedClasses += sym -> tree
               }
           }
         }

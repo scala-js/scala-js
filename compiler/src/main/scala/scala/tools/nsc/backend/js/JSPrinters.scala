@@ -81,6 +81,19 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       }
     }
 
+    def printTopLevelTree(tree: js.Tree) {
+      tree match {
+        case js.Block(stats, expr) =>
+          for (stat <- stats :+ expr)
+            printTopLevelTree(stat)
+        case _ =>
+          printTree(tree)
+          if (!tree.isInstanceOf[js.DocComment])
+            print(";")
+          println()
+      }
+    }
+
     def printTree(tree: js.Tree) {
       tree match {
         case js.EmptyTree =>
