@@ -2210,12 +2210,13 @@ abstract class GenJSCode extends SubComponent
                     js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
           } else {
+            val jsFunName = jsNameOf(sym).getOrElse(funName)
             argArray match {
               case js.ArrayConstr(args) =>
-                js.ApplyMethod(receiver, js.StringLiteral(funName), args)
+                js.ApplyMethod(receiver, js.StringLiteral(jsFunName), args)
               case _ =>
                 genBuiltinApply("applyMethodWithVarargs",
-                    receiver, js.StringLiteral(funName), argArray)
+                    receiver, js.StringLiteral(jsFunName), argArray)
             }
           }
       }
