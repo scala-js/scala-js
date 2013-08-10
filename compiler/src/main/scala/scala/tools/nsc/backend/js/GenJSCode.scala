@@ -550,7 +550,7 @@ abstract class GenJSCode extends SubComponent
               yield encodeLocalSym(param)(param.pos)
 
           val body = {
-            if (sym.isConstructor)
+            if (sym.isClassConstructor)
               js.Block(List(genStat(rhs)), js.Return(js.This()))
             else
               genMethodBody(rhs, params, toTypeKind(sym.tpe.resultType))
