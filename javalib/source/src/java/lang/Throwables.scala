@@ -89,3 +89,13 @@ class IllegalArgumentException(message: String) extends RuntimeException(message
 class NumberFormatException(message: String) extends IllegalArgumentException(message) {
   def this() = this(null)
 }
+
+class ReflectiveOperationException(message: String, cause: Throwable) extends Exception(message, cause) {
+  def this() = this(null, null)
+  def this(message: String) = this(message, null)
+  def this(cause: Throwable) = this(null, cause)
+}
+
+class NoSuchMethodException(message: String) extends ReflectiveOperationException(message) {
+  def this() = this(null)
+}

@@ -147,7 +147,14 @@ object ScalaJSBuild extends Build {
                   || path.endsWith("/scala/compat/Platform.scala")
                   || path.endsWith("/scala/runtime/BoxesRunTime.scala"))
             })
-          }
+          },
+
+          // Continuation plugin
+          autoCompilerPlugins := true,
+          libraryDependencies <<= (scalaVersion, libraryDependencies) { (ver, deps) =>
+            deps :+ compilerPlugin("org.scala-lang.plugins" % "continuations" % ver)
+          },
+          scalacOptions += "-P:continuations:enable"
       )
   ).dependsOn(compiler)
 
