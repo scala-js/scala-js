@@ -221,6 +221,7 @@ object Boolean extends Object {
 
 sealed trait String extends Any {
   def +(that: Any): String
+  override def +(that: String): String = sys.error("stub")
   override def +(that: Dynamic): String = sys.error("stub")
 
   def ||(that: String): String
