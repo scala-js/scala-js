@@ -2057,8 +2057,6 @@ abstract class GenJSCode extends SubComponent
             case JS2N => arg
             case JS2S => arg
 
-            case ANY2DYN => arg
-
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
               maybeDynamicSelect(receiver, arg)

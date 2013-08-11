@@ -122,8 +122,6 @@ sealed trait Dynamic extends Any with scala.Dynamic {
 }
 
 object Dynamic {
-  implicit def fromAny(value: Any): Dynamic = sys.error("stub")
-
   /** Dynamic view of the global scope */
   def global: Dynamic = sys.error("stub")
 

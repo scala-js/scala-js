@@ -31,9 +31,8 @@ abstract class JSPrimitives {
   val JS2N = 313 // Number (any numeric type)
   val JS2S = 314 // String
 
-  val ANY2DYN = 320   // Conversion from js.Any to js.Dynamic
-  val GETGLOBAL = 321 // Get the top-level object (`window` in browsers)
-  val DYNNEW = 322    // Instantiate a new JavaScript object
+  val GETGLOBAL = 320 // Get the top-level object (`window` in browsers)
+  val DYNNEW = 321    // Instantiate a new JavaScript object
 
   val DYNSELECT = 330 // js.Dynamic.selectDynamic
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
@@ -69,7 +68,6 @@ abstract class JSPrimitives {
     addPrimitive(JSNumber_toDouble, JS2N)
     addPrimitive(JSString_toScalaString, JS2S)
 
-    addPrimitive(JSDynamic_fromAny, ANY2DYN)
     addPrimitive(JSDynamic_global, GETGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)
 
