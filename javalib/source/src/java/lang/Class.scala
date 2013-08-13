@@ -37,4 +37,6 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
   def getComponentType(): Class[_] =
     if (isArray()) data.componentData.getClassOf().asInstanceOf[Class[_]]
     else null
+
+  def getEnclosingClass(): Class[_] = null
 }
