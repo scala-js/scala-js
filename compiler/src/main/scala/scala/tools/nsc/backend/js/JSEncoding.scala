@@ -110,7 +110,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleOrModuleClass,
         "encodeModuleSymInternal called with non-module symbol: " + sym)
-    js.DotSelect(envField("moduleInstances"), encodeFullNameIdent(sym))
+    js.DotSelect(envField("moduleInstances"),
+        encodeModuleFullNameIdent(sym))
   }
 
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
@@ -124,7 +125,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     if (isImplClass)
       envField("impls")
     else
-      js.Apply(js.DotSelect(envField("modules"), encodeFullNameIdent(sym)), Nil)
+      js.Apply(js.DotSelect(envField("modules"),
+          encodeModuleFullNameIdent(sym)), Nil)
   }
 
   def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
@@ -170,8 +172,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(encodeFullName(sym), Some(encodeFullName(sym, '.')))
   }
 
+  def encodeModuleFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
+    js.Ident(encodeModuleFullName(sym), Some(encodeModuleFullName(sym, '.')))
+  }
+
   def encodeFullName(sym: Symbol, separator: Char = InnerSep): String =
     sym.fullNameAsName(separator).toString + suffixFor(sym)
+
+  def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
+    sym.fullNameAsName(separator).toString
 
   private def encodeFullName(tpe: Type, separator: Char): String = tpe match {
     case TypeRef(_, definitions.ArrayClass, List(elementType)) =>
