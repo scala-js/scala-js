@@ -56,7 +56,7 @@ Currently, two examples are provided:
 ## Get started with your own project
 
 We provide an
-[exampe application](https://github.com/sjrd/scala-js-example-app) which you
+[example application](https://github.com/sjrd/scala-js-example-app) which you
 can fork to kick off your own project. Its readme provides further
 explanations on how to do so.
 
