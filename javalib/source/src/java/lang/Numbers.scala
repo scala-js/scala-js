@@ -143,6 +143,17 @@ object Integer {
   def signum(i: scala.Int): scala.Int =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
+  def numberOfLeadingZeros(i: scala.Int): scala.Int = {
+    // See http://aggregate.org/MAGIC/#Leading%20Zero%20Count
+    var x = i
+    x |= (x >>> 1)
+    x |= (x >>> 2)
+    x |= (x >>> 4)
+    x |= (x >>> 8)
+    x |= (x >>> 16)
+    32 - bitCount(x)
+  }
+
   def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
   def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
   def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)
