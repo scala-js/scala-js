@@ -1315,10 +1315,10 @@ abstract class GenJSCode extends SubComponent
              *  loop surrounding the match.
              */
             if (sym.name.toString() startsWith "matchEnd") {
-              val isResultUnit = toTypeKind(sym.info.resultType) == UNDEFINED
               val labelIdent = encodeLabelSym(sym)
               val jumpStat = js.Break(Some(labelIdent))
               val List(matchResult) = args
+              val isResultUnit = toTypeKind(matchResult.tpe) == UNDEFINED
 
               if (isResultUnit) {
                 js.Block(List(genStat(matchResult)), jumpStat)
@@ -1585,11 +1585,14 @@ abstract class GenJSCode extends SubComponent
      *    {
      *      var matchResult: T = _
      *      arbiter match {
-     *        case Case1 => matchResult = expr
+     *        case Case1 => expr
      *        ...
      *      } // of type Unit
      *      matchResult
      *    }
+     *  Inside <expr>, a jump to matchEnd() is translated to assigning its
+     *  argument to matchResult before jumping.
+     *
      *  We do this because it is hard to give meaning to jumps within an
      *  expression context when translating them in JS (even our extended
      *  JS which supports complex constructs in expression position).
@@ -1635,8 +1638,7 @@ abstract class GenJSCode extends SubComponent
               js.Block(stats map genStat, genCaseBody(expr))
 
             case _ =>
-              if (isResultUnit) genStat(tree)
-              else js.Assign(resultVar, genExpr(tree))
+              genStat(tree)
           }
         }
 
