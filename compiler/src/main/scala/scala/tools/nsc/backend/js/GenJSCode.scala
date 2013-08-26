@@ -1721,6 +1721,7 @@ abstract class GenJSCode extends SubComponent
         // Binary operation
         case List(lsrc, rsrc) =>
           lazy val leftKind = toTypeKind(args.head.tpe)
+          lazy val resultKind = toTypeKind(tree.tpe)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
             if (eqeq && leftKind.isReferenceType &&
@@ -1737,7 +1738,7 @@ abstract class GenJSCode extends SubComponent
             case MUL => js.BinaryOp("*", lsrc, rsrc)
             case DIV =>
               val actualDiv = js.BinaryOp("/", lsrc, rsrc)
-              (leftKind: @unchecked) match {
+              (resultKind: @unchecked) match {
                 case LongKind => genBuiltinApply("truncateToLong", actualDiv)
                 case _:INT => js.BinaryOp("|", actualDiv, js.IntLiteral(0))
                 case _:FLOAT => actualDiv
