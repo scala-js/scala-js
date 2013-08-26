@@ -1606,8 +1606,9 @@ abstract class GenJSCode extends SubComponent
      *  * Jumps to case label-defs are restricted to jumping to the very next
      *    case, and only in positions denoted by <jump> in:
      *    <case-body> ::=
-     *        If(_, <case-body>, <jump>)
+     *        If(_, <case-body>, <case-body>)
      *      | Block(_, <case-body>)
+     *      | <jump>
      *      | _
      *    These restrictions, together with the fact that we are in statement
      *    position (thanks to the above transformation), mean that they can be
@@ -1631,11 +1632,14 @@ abstract class GenJSCode extends SubComponent
         def genCaseBody(tree: Tree): js.Tree = {
           implicit val pos = tree.pos
           tree match {
-            case If(cond, thenp, app @ Apply(_, Nil)) if app.symbol == nextCaseSym =>
-              js.If(genExpr(cond), genCaseBody(thenp), js.Skip())
+            case If(cond, thenp, elsep) =>
+              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))
 
             case Block(stats, expr) =>
               js.Block(stats map genStat, genCaseBody(expr))
+
+            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+              js.Skip()
 
             case _ =>
               genStat(tree)
