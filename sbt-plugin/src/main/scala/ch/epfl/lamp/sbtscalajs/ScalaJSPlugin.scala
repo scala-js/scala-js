@@ -3,6 +3,8 @@ package ch.epfl.lamp.sbtscalajs
 import sbt._
 import Keys._
 
+import scala.collection.mutable
+
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 
 import com.google.javascript.jscomp.{
@@ -129,36 +131,91 @@ object ScalaJSPlugin extends Plugin {
       },
 
       packageJS in Compile <<= (
-          streams, fullClasspath in Compile,
+          streams, fullClasspath in Compile, cacheDirectory,
           crossTarget in Compile, moduleName
-      ) map { (s, fullCp, target, modName) =>
-        val output = target / (modName + ".js")
-        s.log.info("Packaging %s..." format (output))
+      ) map { (s, fullCp, topCacheDir, target, modName) =>
+        val taskCacheDir = topCacheDir / "package-js"
+        IO.createDirectory(taskCacheDir)
 
-        val tempDir = target / "package-js"
-        IO.createDirectory(tempDir)
+        val taskExtractDir = target / "package-js"
+        IO.createDirectory(taskExtractDir)
 
-        val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+        def fileID(file: File) =
+          file.name + "-" + Integer.toString(file.getPath.##, 16)
 
-        for (cpFile <- fullCp.map(_.data).reverse) {
+        // List cp directories, and jars to extract and where
+
+        val cpDirectories = new mutable.ListBuffer[File]
+        val jars = mutable.Set.empty[File]
+
+        for (cpFile <- fullCp.map(_.data)) {
           if (cpFile.isDirectory) {
-            s.log.info("Copying %s..." format cpFile)
-            for (f <- (cpFile ** usefulFilesFilter).get) {
-              val relative = file(IO.relativize(cpFile, f).get)
-              val dest = IO.resolve(tempDir, relative)
-              IO.copyFile(f, dest, preserveLastModified = true)
-            }
+            cpDirectories += cpFile
           } else if (cpFile.isFile && !isScalaJSCompilerJar(cpFile)) {
-            s.log.info("Extracting %s..." format cpFile)
-            IO.unzip(cpFile, tempDir, filter = usefulFilesFilter,
-                preserveLastModified = true)
+            val extractDir = taskExtractDir / fileID(cpFile)
+            jars += cpFile
+            cpDirectories += extractDir
           }
         }
 
-        s.log.info("Packaging...")
-        val allJSFiles = (tempDir ** "*.js").get
-        val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
-        catJSFilesAndTheirSourceMaps(sortedJSFiles, output)
+        // Extract jars
+
+        val cachedExtractJars = FileFunction.cached(taskCacheDir / "extract-jars")(
+            FilesInfo.lastModified, FilesInfo.exists) { (inReport, outReport) =>
+
+          val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+
+          for (jar <- inReport.modified -- inReport.removed) {
+            s.log.info("Extracting %s..." format jar)
+            val extractDir = taskExtractDir / fileID(jar)
+            if (extractDir.exists)
+              IO.delete(extractDir)
+
+            IO.createDirectory(extractDir)
+            IO.unzip(jar, extractDir, filter = usefulFilesFilter,
+                preserveLastModified = true)
+          }
+
+          for (jar <- inReport.removed) {
+            val extractDir = taskExtractDir / fileID(jar)
+            if (extractDir.exists)
+              IO.delete(extractDir)
+          }
+
+          (taskExtractDir ** usefulFilesFilter).get.toSet
+        }
+
+        cachedExtractJars(jars.toSet)
+
+        // List input files (files in earlier dirs shadow files in later dirs)
+
+        val existingPaths = mutable.Set.empty[String]
+        val inputs = new mutable.ListBuffer[File]
+
+        for (dir <- cpDirectories) {
+          for (file <- (dir ** "*.js").get) {
+            val path = IO.relativize(dir, file).get
+            if (!existingPaths.contains(path)) {
+              inputs += file
+              existingPaths += path
+            }
+          }
+        }
+
+        // Actual packaging (cat'ing inputs)
+
+        val output = target / (modName + ".js")
+
+        val cachedPackage = FileFunction.cached(taskCacheDir / "package",
+            FilesInfo.lastModified, FilesInfo.exists) { inputs =>
+          s.log.info("Packaging %s..." format output)
+          val sortedInputs = sortScalaJSOutputFiles(inputs.toSeq)
+          catJSFilesAndTheirSourceMaps(sortedInputs, output)
+          Set(output)
+        }
+
+        cachedPackage(inputs.toSet)
+
         output
       },
 
