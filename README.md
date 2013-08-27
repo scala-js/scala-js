@@ -21,12 +21,11 @@ If you've already cloned this repo, cd into it and do:
 ## Compile and publish it locally (install)
 
 Scala.js uses [sbt](http://www.scala-sbt.org/) for its build process.
-In order to use it locally, you need to 1) package the Scala.js runtime, and
-2) publish the compiler, library and sbt plugin locally.
+In order to use it locally, you need to publish the compiler, library and
+sbt plugin locally.
 
 Don't worry, this is super-easy:
 
-    sbt> package-js
     sbt> publish-local
 
 ## Test the examples

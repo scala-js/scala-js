@@ -65,7 +65,7 @@ object ScalaJSBuild extends Build {
       compiler, plugin, library
   )
 
-  lazy val compiler = Project(
+  lazy val compiler: Project = Project(
       id = "scalajs-compiler",
       base = file("compiler"),
       settings = defaultSettings ++ Seq(
@@ -79,7 +79,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  lazy val plugin = Project(
+  lazy val plugin: Project = Project(
       id = "scalajs-sbt-plugin",
       base = file("sbt-plugin"),
       settings = commonSettings ++ Seq(
@@ -93,7 +93,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  lazy val corejslib = Project(
+  lazy val corejslib: Project = Project(
       id = "scalajs-corejslib",
       base = file("corejslib"),
       settings = defaultSettings ++ Seq(
@@ -117,7 +117,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  lazy val javalib = Project(
+  lazy val javalib: Project = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
       settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
@@ -126,7 +126,7 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler, library)
 
-  lazy val scalalib = Project(
+  lazy val scalalib: Project = Project(
       id = "scalajs-scalalib",
       base = file("scalalib"),
       settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
@@ -158,7 +158,7 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler)
 
-  lazy val libraryAux = Project(
+  lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
       base = file("library-aux"),
       settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
@@ -167,11 +167,29 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler)
 
-  lazy val library = Project(
+  lazy val library: Project = Project(
       id = "scalajs-library",
       base = file("library"),
       settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
-          name := "Scala.js library"
+          name := "Scala.js library",
+
+          mappings in (Compile, packageBin) <++= (
+              compile in (javalib, Compile), classDirectory in (javalib, Compile),
+              compile in (scalalib, Compile), classDirectory in (scalalib, Compile),
+              compile in (libraryAux, Compile), classDirectory in (libraryAux, Compile)
+          ) map { (_, javalibCD, _, scalalibCD, _, libraryAuxCD) =>
+            val filter = ("*.js": NameFilter) | "*.js.map"
+            val javalibMappings = (javalibCD ** filter) x relativeTo(javalibCD)
+            val scalalibMappings = (scalalibCD ** filter) x relativeTo(scalalibCD)
+            val libraryAuxMappings = (libraryAuxCD ** filter) x relativeTo(libraryAuxCD)
+            javalibMappings ++ scalalibMappings ++ libraryAuxMappings
+          },
+
+          mappings in (Compile, packageBin) <+= (
+              packageJS in (corejslib, Compile)
+          ) map { (corejslibFile) =>
+            corejslibFile -> "scalajs-corejslib.js"
+          }
       )
   ).dependsOn(compiler)
 
@@ -192,16 +210,9 @@ object ScalaJSBuild extends Build {
        * analysis.
        */
       unmanagedClasspath in Compile <+= (
-          classDirectory in (library, Compile)
-      ) map { classDir =>
-        Attributed.blank(classDir)
-      },
-
-      // Add the Scala.js runtime - same reason not to use root/package-js
-      unmanagedSources in (Compile, optimizeJS) <+= (
-          target in root
-      ) map { rootTarget =>
-        rootTarget / "scalajs-runtime.js"
+          artifactPath in (library, Compile, packageBin)
+      ) map { libraryJar =>
+        Attributed.blank(libraryJar)
       },
 
       // Add the startup.js file of this example project

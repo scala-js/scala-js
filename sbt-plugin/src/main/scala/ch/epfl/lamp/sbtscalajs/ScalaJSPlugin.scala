@@ -26,8 +26,24 @@ object ScalaJSPlugin extends Plugin {
 
   import ScalaJSKeys._
 
+  def isScalaJSCompilerJar(item: File): Boolean = {
+    val compilerModuleNames =
+      Seq("scala-library", "scala-compiler", "scala-reflect",
+          "scalajs-compiler")
+    val name = item.getName
+    name.endsWith(".jar") && compilerModuleNames.exists(name.startsWith)
+  }
+
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
-    files.sortBy(_.name)
+    files sortWith { (lhs, rhs) =>
+      val corejslibName = "scalajs-corejslib.js"
+      val lhsName = lhs.name
+      val rhsName = rhs.name
+
+      if (rhsName == corejslibName) false
+      else if (lhsName == corejslibName) true
+      else lhsName.compareTo(rhsName) < 0
+    }
   }
 
   private val ScalaJSExterns = """
@@ -66,18 +82,10 @@ object ScalaJSPlugin extends Plugin {
             "Compiling %d Scala.js sources to %s..." format (
             sources.size, classesDirectory))
 
-        def isCompilerJar(item: File): Boolean = {
-          val compilerModuleNames =
-            Seq("scala-library", "scala-compiler", "scala-reflect",
-                "scalajs-compiler")
-          val name = item.getName
-          name.endsWith(".jar") && compilerModuleNames.exists(name.startsWith)
-        }
-
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
 
-        val (compilerCp, cp) = classpath.partition(isCompilerJar)
+        val (compilerCp, cp) = classpath.partition(isScalaJSCompilerJar)
         val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
 
@@ -121,12 +129,35 @@ object ScalaJSPlugin extends Plugin {
       },
 
       packageJS in Compile <<= (
-          compile in Compile, classDirectory in Compile,
+          streams, fullClasspath in Compile,
           crossTarget in Compile, moduleName
-      ) map { (compilationResult, classDir, target, modName) =>
-        val allJSFiles = (classDir ** "*.js").get
-        val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
+      ) map { (s, fullCp, target, modName) =>
         val output = target / (modName + ".js")
+        s.log.info("Packaging %s..." format (output))
+
+        val tempDir = target / "package-js"
+        IO.createDirectory(tempDir)
+
+        val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+
+        for (cpFile <- fullCp.map(_.data).reverse) {
+          if (cpFile.isDirectory) {
+            s.log.info("Copying %s..." format cpFile)
+            for (f <- (cpFile ** usefulFilesFilter).get) {
+              val relative = file(IO.relativize(cpFile, f).get)
+              val dest = IO.resolve(tempDir, relative)
+              IO.copyFile(f, dest, preserveLastModified = true)
+            }
+          } else if (cpFile.isFile && !isScalaJSCompilerJar(cpFile)) {
+            s.log.info("Extracting %s..." format cpFile)
+            IO.unzip(cpFile, tempDir, filter = usefulFilesFilter,
+                preserveLastModified = true)
+          }
+        }
+
+        s.log.info("Packaging...")
+        val allJSFiles = (tempDir ** "*.js").get
+        val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
         catJSFilesAndTheirSourceMaps(sortedJSFiles, output)
         output
       },
@@ -135,17 +166,14 @@ object ScalaJSPlugin extends Plugin {
 
       unmanagedSources in (Compile, optimizeJS) := Seq(),
 
-      managedSources in (Compile, optimizeJS) <<= (
-          packageJS in Compile
-      ) map { Seq(_) },
+      managedSources in (Compile, optimizeJS) := Seq(),
 
       sources in (Compile, optimizeJS) <<= (
+          packageJS in Compile,
           managedSources in (Compile, optimizeJS),
           unmanagedSources in (Compile, optimizeJS)
-      ) map { (managed, unmanaged) =>
-        val all = managed ++ unmanaged
-        val (runtime, others) = all.partition(_.getName == "scalajs-runtime.js")
-        runtime ++ others
+      ) map { (pack, managed, unmanaged) =>
+        (pack +: managed) ++ unmanaged
       },
 
       optimizeJSPrettyPrint := false,
