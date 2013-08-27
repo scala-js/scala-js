@@ -34,26 +34,6 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Scala.js",
           publishArtifact in Compile := false,
-          packageJS in Compile <<= (
-              target,
-              packageJS in (corejslib, Compile),
-              compile in (javalib, Compile),
-              compile in (scalalib, Compile),
-              compile in (libraryAux, Compile),
-              compile in (library, Compile),
-              classDirectory in (javalib, Compile),
-              classDirectory in (scalalib, Compile),
-              classDirectory in (libraryAux, Compile),
-              classDirectory in (library, Compile)
-          ) map { (target, corejslib, i1, i2, i3, i4, d1, d2, d3, d4) =>
-            val allJSFiles =
-              (d1**"*.js" +++ d2**"*.js" +++ d3**"*.js" +++ d4**"*.js").get
-            val sortedJSFiles = sortScalaJSOutputFiles(allJSFiles)
-            val output = target / ("scalajs-runtime.js")
-            target.mkdir()
-            catJSFilesAndTheirSourceMaps(corejslib +: sortedJSFiles, output)
-            output
-          },
 
           clean <<= clean.dependsOn(
               // compiler, library and sbt-plugin are aggregated
