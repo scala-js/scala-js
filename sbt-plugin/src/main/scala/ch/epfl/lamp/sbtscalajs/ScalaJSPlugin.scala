@@ -264,49 +264,57 @@ object ScalaJSPlugin extends Plugin {
       optimizeJSExterns := Seq(),
 
       optimizeJS in Compile <<= (
-          streams, sources in (Compile, optimizeJS),
+          streams, cacheDirectory, sources in (Compile, optimizeJS),
           optimizeJSPrettyPrint in Compile, optimizeJSExterns in Compile,
           crossTarget in Compile, moduleName
-      ) map { (s, allJSFiles, prettyPrint, externs, target, modName) =>
+      ) map { (s, cacheDir, allJSFiles, prettyPrint, externs, target, modName) =>
         val logger = s.log
-
-        logger.info("Running Closure with files:")
-        for (file <- allJSFiles)
-          logger.info("  "+file)
-
-        val closureSources = allJSFiles map ClosureSource.fromFile
-        val closureExterns = (
-            ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
-            externs.map(ClosureSource.fromFile(_)))
         val output = target / (modName + "-opt.js")
 
-        IO.createDirectory(new File(output.getParent))
+        val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
-        val options = new ClosureOptions
-        options.prettyPrint = prettyPrint
-        CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
-        options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+          logger.info("Running Closure with files:")
+          for (file <- allJSFiles)
+            logger.info("  "+file)
 
-        val compiler = new ClosureCompiler
-        val result = compiler.compile(
-            closureExterns, closureSources, options)
+          val closureSources = allJSFiles map ClosureSource.fromFile
+          val closureExterns = (
+              ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
+              externs.map(ClosureSource.fromFile(_)))
 
-        val errors = result.errors.toList
-        val warnings = result.warnings.toList
+          IO.createDirectory(new File(output.getParent))
 
-        if (!errors.isEmpty) {
-          logger.error(errors.length + " Closure errors:")
-          errors.foreach(err => logger.error(err.toString))
+          val options = new ClosureOptions
+          options.prettyPrint = prettyPrint
+          CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
+          options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
 
-          IO.write(output, "")
-        } else {
-          if (!warnings.isEmpty) {
-            logger.warn(warnings.length + " Closure warnings:")
-            warnings.foreach(err => logger.warn(err.toString))
+          val compiler = new ClosureCompiler
+          val result = compiler.compile(
+              closureExterns, closureSources, options)
+
+          val errors = result.errors.toList
+          val warnings = result.warnings.toList
+
+          if (!errors.isEmpty) {
+            logger.error(errors.length + " Closure errors:")
+            errors.foreach(err => logger.error(err.toString))
+
+            IO.write(output, "")
+          } else {
+            if (!warnings.isEmpty) {
+              logger.warn(warnings.length + " Closure warnings:")
+              warnings.foreach(err => logger.warn(err.toString))
+            }
+
+            IO.write(output, compiler.toSource)
           }
 
-          IO.write(output, compiler.toSource)
+          Set(output)
         }
+
+        cachedOptimizeJS(allJSFiles.toSet)
 
         output
       }
