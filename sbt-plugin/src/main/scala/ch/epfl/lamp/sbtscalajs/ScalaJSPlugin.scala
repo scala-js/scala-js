@@ -28,13 +28,14 @@ object ScalaJSPlugin extends Plugin {
 
   import ScalaJSKeys._
 
-  def isScalaJSCompilerJar(item: File): Boolean = {
-    val compilerModuleNames =
-      Seq("scala-library", "scala-compiler", "scala-reflect",
-          "scalajs-compiler")
-    val name = item.getName
-    name.endsWith(".jar") && compilerModuleNames.exists(name.startsWith)
+  private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
+    item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
   }
+
+  private val isScalaLibraryJar = isJarWithPrefix("scala-library") _
+
+  val isScalaJSCompilerJar = isJarWithPrefix(
+      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler") _
 
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
     files sortWith { (lhs, rhs) =>
@@ -87,20 +88,19 @@ object ScalaJSPlugin extends Plugin {
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
 
-        val (compilerCp, cp) = classpath.partition(isScalaJSCompilerJar)
+        val (compilerCp, cp0) = classpath.partition(isScalaJSCompilerJar)
+        val cp =
+          if (excludeDefaultScalaLibrary) cp0
+          else cp0 ++ compilerCp.filter(isScalaLibraryJar)
         val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
-
-        val javaClasspath =
-          if (excludeDefaultScalaLibrary) List("-cp", compilerCpStr)
-          else List("-Xbootclasspath/a:" + compilerCpStr)
 
         def doCompileJS(sourcesArgs: List[String]) = {
           Run.executeTrapExit({
             classesDirectory.mkdir()
 
             Fork.java(javaHome,
-                javaClasspath :::
+                "-cp" :: compilerCpStr ::
                 "-Xmx512M" ::
                 "scala.tools.nsc.scalajs.Main" ::
                 "-cp" :: cpStr ::
