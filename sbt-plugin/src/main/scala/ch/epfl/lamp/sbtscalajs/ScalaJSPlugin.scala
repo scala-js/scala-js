@@ -74,16 +74,14 @@ object ScalaJSPlugin extends Plugin {
       excludeDefaultScalaLibrary := false,
 
       compile in Compile <<= (
-          javaHome, streams, compileInputs in Compile,
+          javaHome, streams, cacheDirectory, compileInputs in Compile,
           excludeDefaultScalaLibrary in Compile
-      ) map { (javaHome, s, inputs, excludeDefaultScalaLibrary) =>
+      ) map { (javaHome, s, cacheDir, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
 
         val logger = s.log
 
-        logger.info(
-            "Compiling %d Scala.js sources to %s..." format (
-            sources.size, classesDirectory))
+        // Discover classpaths
 
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
@@ -92,39 +90,67 @@ object ScalaJSPlugin extends Plugin {
         val cp =
           if (excludeDefaultScalaLibrary) cp0
           else cp0 ++ compilerCp.filter(isScalaLibraryJar)
+
         val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
 
-        def doCompileJS(sourcesArgs: List[String]) = {
-          Run.executeTrapExit({
-            classesDirectory.mkdir()
+        // List all my dependencies (recompile if any of these changes)
 
-            Fork.java(javaHome,
-                "-cp" :: compilerCpStr ::
-                "-Xmx512M" ::
-                "scala.tools.nsc.scalajs.Main" ::
-                "-cp" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
-                options ++:
-                sourcesArgs,
-                logger)
-          }, logger)
+        val isClassOrJstypeFile = ("*.class": NameFilter) | "*.jstype"
+        val allMyDependencies = classpath filterNot (_ == classesDirectory) flatMap { cpFile =>
+          if (cpFile.isDirectory) (cpFile ** isClassOrJstypeFile).get
+          else Seq(cpFile)
         }
 
-        val sourcesArgs = sources.map(_.getAbsolutePath()).toList
+        // Compile
 
-        /* Crude way of overcoming the Windows limitation on command line
-         * length.
-         */
-        if ((System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
-            (sourcesArgs.map(_.length).sum > 1536)) {
-          IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
-            IO.writeLines(sourceListFile, sourcesArgs)
-            doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
+        val cachedCompile = FileFunction.cached(cacheDir / "compile-js",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+
+          logger.info(
+              "Compiling %d Scala.js sources to %s..." format (
+              sources.size, classesDirectory))
+
+          if (classesDirectory.exists)
+            IO.delete(classesDirectory)
+          IO.createDirectory(classesDirectory)
+
+          def doCompileJS(sourcesArgs: List[String]) = {
+            Run.executeTrapExit({
+              classesDirectory.mkdir()
+
+              Fork.java(javaHome,
+                  "-cp" :: compilerCpStr ::
+                  "-Xmx512M" ::
+                  "scala.tools.nsc.scalajs.Main" ::
+                  "-cp" :: cpStr ::
+                  "-d" :: classesDirectory.getAbsolutePath() ::
+                  options ++:
+                  sourcesArgs,
+                  logger)
+            }, logger)
           }
-        } else {
-          doCompileJS(sourcesArgs)
+
+          val sourcesArgs = sources.map(_.getAbsolutePath()).toList
+
+          /* Crude way of overcoming the Windows limitation on command line
+           * length.
+           */
+          if ((System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
+              (sourcesArgs.map(_.length).sum > 1536)) {
+            IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
+              IO.writeLines(sourceListFile, sourcesArgs)
+              doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
+            }
+          } else {
+            doCompileJS(sourcesArgs)
+          }
+
+          // Output is all files in classesDirectory
+          (classesDirectory ** AllPassFilter).get.toSet
         }
+
+        cachedCompile((sources ++ allMyDependencies).toSet)
 
         // We do not have dependency analysis for Scala.js code
         sbt.inc.Analysis.Empty
