@@ -15,6 +15,8 @@ import com.google.javascript.jscomp.{
 }
 import scala.collection.JavaConversions._
 
+import org.mozilla.{ javascript => rhino }
+
 object ScalaJSPlugin extends Plugin {
   object ScalaJSKeys {
     val packageJS = TaskKey[File]("package-js")
@@ -331,6 +333,43 @@ object ScalaJSPlugin extends Plugin {
         cachedOptimizeJS(allJSFiles.toSet)
 
         output
+      },
+
+      sources in Runtime <<= sources in (Compile, packageJS),
+
+      run <<= inputTask { argTaskIgnored =>
+        (
+            streams in Runtime,
+            sources in Runtime
+        ) map { (s, inputs) =>
+          s.log.info("Running ...")
+
+          object Console {
+            def log(x: Any): Unit = s.log.info(x.toString)
+            def info(x: Any): Unit = s.log.info(x.toString)
+            def warn(x: Any): Unit = s.log.warn(x.toString)
+            def error(x: Any): Unit = s.log.error(x.toString)
+          }
+
+          val ctx = rhino.Context.enter()
+          try {
+            val scope = ctx.initStandardObjects()
+
+            rhino.ScriptableObject.putProperty(scope, "console",
+                rhino.Context.javaToJS(Console, scope))
+
+            for (input <- inputs) {
+              val reader = new java.io.FileReader(input)
+              try {
+                ctx.evaluateReader(scope, reader, input.getAbsolutePath, 1, null)
+              } finally {
+                reader.close()
+              }
+            }
+          } finally {
+            rhino.Context.exit()
+          }
+        }
       }
   )
 

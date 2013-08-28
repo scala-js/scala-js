@@ -68,7 +68,8 @@ object ScalaJSBuild extends Build {
           scalaVersion := "2.9.2",
           scalaBinaryVersion <<= scalaVersion,
           libraryDependencies ++= Seq(
-              "com.google.javascript" % "closure-compiler" % "v20130603"
+              "com.google.javascript" % "closure-compiler" % "v20130603",
+              "org.mozilla" % "rhino" % "1.7R4"
           )
       )
   )
