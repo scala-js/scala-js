@@ -156,14 +156,15 @@ object ScalaJSPlugin extends Plugin {
         sbt.inc.Analysis.Empty
       },
 
-      packageJS in Compile <<= (
-          streams, fullClasspath in Compile, cacheDirectory,
-          crossTarget in Compile, moduleName
-      ) map { (s, fullCp, topCacheDir, target, modName) =>
+      unmanagedSources in (Compile, packageJS) := Seq(),
+
+      managedSources in (Compile, packageJS) <<= (
+          streams, fullClasspath in Compile, cacheDirectory in Compile
+      ) map { (s, fullCp, topCacheDir) =>
         val taskCacheDir = topCacheDir / "package-js"
         IO.createDirectory(taskCacheDir)
 
-        val taskExtractDir = target / "package-js"
+        val taskExtractDir = taskCacheDir / "extracted-jars"
         IO.createDirectory(taskExtractDir)
 
         def fileID(file: File) =
@@ -192,7 +193,7 @@ object ScalaJSPlugin extends Plugin {
           val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
 
           for (jar <- inReport.modified -- inReport.removed) {
-            s.log.info("Extracting %s..." format jar)
+            s.log.info("Extracting %s ..." format jar)
             val extractDir = taskExtractDir / fileID(jar)
             if (extractDir.exists)
               IO.delete(extractDir)
@@ -228,15 +229,30 @@ object ScalaJSPlugin extends Plugin {
           }
         }
 
-        // Actual packaging (cat'ing inputs)
+        // Return a sorted list of the inputs
 
+        sortScalaJSOutputFiles(inputs.result())
+      },
+
+      sources in (Compile, packageJS) <<= (
+          managedSources in (Compile, packageJS),
+          unmanagedSources in (Compile, packageJS)
+      ) map { (managed, unmanaged) =>
+        managed ++ unmanaged
+      },
+
+      packageJS in Compile <<= (
+          streams, cacheDirectory in Compile,
+          sources in (Compile, packageJS),
+          crossTarget in Compile, moduleName
+      ) map { (s, cacheDir, inputs, target, modName) =>
         val output = target / (modName + ".js")
+        val taskCacheDir = cacheDir / "package-js"
 
         val cachedPackage = FileFunction.cached(taskCacheDir / "package",
-            FilesInfo.lastModified, FilesInfo.exists) { inputs =>
-          s.log.info("Packaging %s..." format output)
-          val sortedInputs = sortScalaJSOutputFiles(inputs.toSeq)
-          catJSFilesAndTheirSourceMaps(sortedInputs, output)
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info("Packaging %s ..." format output)
+          catJSFilesAndTheirSourceMaps(inputs, output)
           Set(output)
         }
 
@@ -252,11 +268,11 @@ object ScalaJSPlugin extends Plugin {
       managedSources in (Compile, optimizeJS) := Seq(),
 
       sources in (Compile, optimizeJS) <<= (
-          packageJS in Compile,
+          sources in (Compile, packageJS),
           managedSources in (Compile, optimizeJS),
           unmanagedSources in (Compile, optimizeJS)
-      ) map { (pack, managed, unmanaged) =>
-        (pack +: managed) ++ unmanaged
+      ) map { (inputs, managed, unmanaged) =>
+        inputs ++ managed ++ unmanaged
       },
 
       optimizeJSPrettyPrint := false,
@@ -274,9 +290,7 @@ object ScalaJSPlugin extends Plugin {
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
-          logger.info("Running Closure with files:")
-          for (file <- allJSFiles)
-            logger.info("  "+file)
+          logger.info("Optimizing %s ..." format output)
 
           val closureSources = allJSFiles map ClosureSource.fromFile
           val closureExterns = (
