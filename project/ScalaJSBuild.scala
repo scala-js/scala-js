@@ -196,7 +196,7 @@ object ScalaJSBuild extends Build {
       },
 
       // Add the startup.js file of this example project
-      unmanagedSources in (Compile, optimizeJS) <+= (
+      unmanagedSources in (Compile, packageJS) <+= (
           baseDirectory
       ) map { base =>
         base / "startup.js"
