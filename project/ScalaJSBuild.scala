@@ -101,7 +101,7 @@ object ScalaJSBuild extends Build {
   lazy val javalib: Project = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
-      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false
       )
@@ -110,7 +110,7 @@ object ScalaJSBuild extends Build {
   lazy val scalalib: Project = Project(
       id = "scalajs-scalalib",
       base = file("scalalib"),
-      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
 
@@ -142,7 +142,7 @@ object ScalaJSBuild extends Build {
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
       base = file("library-aux"),
-      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false
       )
@@ -151,7 +151,7 @@ object ScalaJSBuild extends Build {
   lazy val library: Project = Project(
       id = "scalajs-library",
       base = file("library"),
-      settings = defaultSettings ++ baseScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
           name := "Scala.js library",
 
           mappings in (Compile, packageBin) <++= (
@@ -184,7 +184,7 @@ object ScalaJSBuild extends Build {
       )
   ).aggregate(exampleHelloWorld, exampleReversi)
 
-  lazy val exampleSettings = defaultSettings ++ baseScalaJSSettings ++ Seq(
+  lazy val exampleSettings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
       /* Add the library classpath this way to escape the dependency between
        * tasks. This avoids to recompile the library every time we compile an
        * example. This is all about working around the lack of dependency

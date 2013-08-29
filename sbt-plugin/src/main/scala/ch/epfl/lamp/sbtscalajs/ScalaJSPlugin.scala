@@ -69,15 +69,10 @@ object ScalaJSPlugin extends Plugin {
     }
     """
 
-  val baseScalaJSSettings: Seq[Setting[_]] = Seq(
-      // you had better use the same version of Scala as Scala.js
-      scalaVersion := "2.10.1",
-
-      excludeDefaultScalaLibrary := false,
-
-      compile in Compile <<= (
-          javaHome, streams, cacheDirectory, compileInputs in Compile,
-          excludeDefaultScalaLibrary in Compile
+  val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
+      compile <<= (
+          javaHome, streams, cacheDirectory, compileInputs,
+          excludeDefaultScalaLibrary
       ) map { (javaHome, s, cacheDir, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
 
@@ -158,10 +153,10 @@ object ScalaJSPlugin extends Plugin {
         sbt.inc.Analysis.Empty
       },
 
-      unmanagedSources in (Compile, packageJS) := Seq(),
+      unmanagedSources in packageJS := Seq(),
 
-      managedSources in (Compile, packageJS) <<= (
-          streams, fullClasspath in Compile, cacheDirectory in Compile
+      managedSources in packageJS <<= (
+          streams, fullClasspath, cacheDirectory
       ) map { (s, fullCp, topCacheDir) =>
         val taskCacheDir = topCacheDir / "package-js"
         IO.createDirectory(taskCacheDir)
@@ -236,17 +231,16 @@ object ScalaJSPlugin extends Plugin {
         sortScalaJSOutputFiles(inputs.result())
       },
 
-      sources in (Compile, packageJS) <<= (
-          managedSources in (Compile, packageJS),
-          unmanagedSources in (Compile, packageJS)
+      sources in packageJS <<= (
+          managedSources in packageJS, unmanagedSources in packageJS
       ) map { (managed, unmanaged) =>
         managed ++ unmanaged
       },
 
-      packageJS in Compile <<= (
-          streams, cacheDirectory in Compile,
-          sources in (Compile, packageJS),
-          crossTarget in Compile, moduleName
+      packageJS <<= (
+          streams, cacheDirectory,
+          sources in packageJS,
+          crossTarget, moduleName
       ) map { (s, cacheDir, inputs, target, modName) =>
         val output = target / (modName + ".js")
         val taskCacheDir = cacheDir / "package-js"
@@ -265,26 +259,22 @@ object ScalaJSPlugin extends Plugin {
 
       // TODO Leverage the sbt-js plugin from Untyped
 
-      unmanagedSources in (Compile, optimizeJS) := Seq(),
+      unmanagedSources in optimizeJS := Seq(),
 
-      managedSources in (Compile, optimizeJS) := Seq(),
+      managedSources in optimizeJS := Seq(),
 
-      sources in (Compile, optimizeJS) <<= (
-          sources in (Compile, packageJS),
-          managedSources in (Compile, optimizeJS),
-          unmanagedSources in (Compile, optimizeJS)
+      sources in optimizeJS <<= (
+          sources in packageJS,
+          managedSources in optimizeJS,
+          unmanagedSources in optimizeJS
       ) map { (inputs, managed, unmanaged) =>
         inputs ++ managed ++ unmanaged
       },
 
-      optimizeJSPrettyPrint := false,
-
-      optimizeJSExterns := Seq(),
-
-      optimizeJS in Compile <<= (
-          streams, cacheDirectory, sources in (Compile, optimizeJS),
-          optimizeJSPrettyPrint in Compile, optimizeJSExterns in Compile,
-          crossTarget in Compile, moduleName
+      optimizeJS <<= (
+          streams, cacheDirectory, sources in optimizeJS,
+          optimizeJSPrettyPrint, optimizeJSExterns,
+          crossTarget, moduleName
       ) map { (s, cacheDir, allJSFiles, prettyPrint, externs, target, modName) =>
         val logger = s.log
         val output = target / (modName + "-opt.js")
@@ -333,47 +323,80 @@ object ScalaJSPlugin extends Plugin {
         cachedOptimizeJS(allJSFiles.toSet)
 
         output
-      },
-
-      sources in Runtime <<= sources in (Compile, packageJS),
-
-      run <<= inputTask { argTaskIgnored =>
-        (
-            streams in Runtime,
-            sources in Runtime
-        ) map { (s, inputs) =>
-          s.log.info("Running ...")
-
-          object Console {
-            def log(x: Any): Unit = s.log.info(x.toString)
-            def info(x: Any): Unit = s.log.info(x.toString)
-            def warn(x: Any): Unit = s.log.warn(x.toString)
-            def error(x: Any): Unit = s.log.error(x.toString)
-          }
-
-          val ctx = rhino.Context.enter()
-          try {
-            val scope = ctx.initStandardObjects()
-
-            rhino.ScriptableObject.putProperty(scope, "console",
-                rhino.Context.javaToJS(Console, scope))
-
-            for (input <- inputs) {
-              val reader = new java.io.FileReader(input)
-              try {
-                ctx.evaluateReader(scope, reader, input.getAbsolutePath, 1, null)
-              } finally {
-                reader.close()
-              }
-            }
-          } finally {
-            rhino.Context.exit()
-          }
-        }
       }
   )
 
-  val scalaJSSettings: Seq[Setting[_]] = baseScalaJSSettings ++ Seq(
+  def scalaJSRunJavaScriptTask(streams: TaskKey[TaskStreams],
+      sources: TaskKey[Seq[File]]) = {
+
+    (streams, sources) map { (s, inputs) =>
+      s.log.info("Running ...")
+      scalaJSRunJavaScript(s.log, inputs)
+    }
+  }
+
+  private class LoggingConsole(logger: Logger) {
+    def log(x: Any): Unit = logger.info(x.toString)
+    def info(x: Any): Unit = logger.info(x.toString)
+    def warn(x: Any): Unit = logger.warn(x.toString)
+    def error(x: Any): Unit = logger.error(x.toString)
+  }
+
+  def scalaJSRunJavaScript(logger: Logger, inputs: Seq[File]): Unit = {
+    val ctx = rhino.Context.enter()
+    try {
+      val scope = ctx.initStandardObjects()
+
+      rhino.ScriptableObject.putProperty(scope, "console",
+          rhino.Context.javaToJS(new LoggingConsole(logger), scope))
+
+      for (input <- inputs) {
+        val reader = new java.io.FileReader(input)
+        try {
+          ctx.evaluateReader(scope, reader, input.getAbsolutePath, 1, null)
+        } finally {
+          reader.close()
+        }
+      }
+    } finally {
+      rhino.Context.exit()
+    }
+  }
+
+  val scalaJSRunSettings = Seq(
+      sources in run <<= sources in packageJS,
+
+      run <<= inputTask { argTaskIgnored =>
+        scalaJSRunJavaScriptTask(streams, sources in run)
+      }
+  )
+
+  val scalaJSCompileSettings = scalaJSConfigSettings ++ scalaJSRunSettings
+
+  val scalaJSTestSettings = scalaJSConfigSettings ++ Seq(
+      sources in test <<= sources in packageJS,
+
+      test <<= scalaJSRunJavaScriptTask(streams, sources in test)
+  )
+
+  val scalaJSDefaultConfigs = (
+      inConfig(Compile)(scalaJSCompileSettings) ++
+      inConfig(Test)(scalaJSTestSettings)
+  )
+
+  val scalaJSProjectBaseSettings = Seq(
+      excludeDefaultScalaLibrary := false,
+
+      optimizeJSPrettyPrint := false,
+      optimizeJSExterns := Seq()
+  )
+
+  val scalaJSAbstractSettings: Seq[Setting[_]] = (
+      scalaJSProjectBaseSettings ++
+      scalaJSDefaultConfigs
+  )
+
+  val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
       // you had better use the same version of Scala as Scala.js
       scalaVersion := "2.10.1",
 
