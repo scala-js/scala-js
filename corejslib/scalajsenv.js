@@ -36,10 +36,6 @@ var ScalaJS = {
     }
   },
 
-  registerNative: function(fullName, nativeFunction) {
-    ScalaJS.natives[fullName] = nativeFunction;
-  },
-
   /** Encode a property name for runtime manipulation
    *  Usage:
    *    env.propertyName({someProp:0})
