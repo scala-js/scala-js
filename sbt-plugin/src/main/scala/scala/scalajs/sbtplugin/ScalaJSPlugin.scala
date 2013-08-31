@@ -27,7 +27,7 @@ import org.mozilla.{ javascript => rhino }
 object ScalaJSPlugin extends Plugin {
   val scalaJSVersion = "0.2-SNAPSHOT"
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
-  val scalaJSScalaVersion = "2.10.2"
+  val scalaJSScalaVersion = "2.11.0-M7"
 
   object ScalaJSKeys {
     val packageJS = taskKey[Seq[File]]("Package all the compiled .js files")
@@ -56,7 +56,8 @@ object ScalaJSPlugin extends Plugin {
       "scala-library", "scala-reflect") _
 
   val isScalaJSCompilerJar = isJarWithPrefix(
-      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler") _
+      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
+      "scala-parser-combinators", "scala-xml") _
 
   private val isWindows =
     System.getProperty("os.name").toLowerCase().indexOf("win") >= 0

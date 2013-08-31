@@ -4,7 +4,7 @@ script:
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${TRAVIS_BRANCH}" == "master" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt publish; fi
 scala:
-  - 2.10.2
+  - 2.11.0-M7
 jdk:
   - oraclejdk7
   - openjdk7

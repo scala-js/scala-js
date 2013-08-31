@@ -1261,7 +1261,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          *  ApplyDynamic by explicitly asking it *not* to box its result.
          */
         case Apply(fun @ _, List(dynapply:ApplyDynamic))
-        if (isUnbox(fun.symbol) &&
+        if (currentRun.runDefinitions.isUnbox(fun.symbol) &&
             isBoxedForApplyDynamic(dynapply.symbol.tpe.resultType)) =>
           genApplyDynamic(dynapply, nobox = true)
 
@@ -1351,11 +1351,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (scalaPrimitives.isPrimitive(sym)) {
             // primitive operation
             genPrimitiveOp(app)
-          } else if (isBox(sym)) {
+          } else if (currentRun.runDefinitions.isBox(sym)) {
             /** Box a primitive value */
             val arg = args.head
             makeBox(genExpr(arg), arg.tpe)
-          } else if (isUnbox(sym)) {
+          } else if (currentRun.runDefinitions.isUnbox(sym)) {
             /** Unbox a primitive value */
             val arg = args.head
             makeUnbox(genExpr(arg), tree.tpe)
@@ -1903,7 +1903,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
         if (isBoxedForApplyDynamic(param.tpe)) {
           arg match {
-            case Apply(_, List(result)) if isBox(arg.symbol) => genExpr(result)
+            case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) => genExpr(result)
             case _ => makeUnbox(genExpr(arg), param.tpe)
           }
         } else {
@@ -2112,7 +2112,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      val funName = sym.originalName.decoded
+      val funName = sym.unexpandedName.decoded
       val receiver = genExpr(receiver0)
       val argArray = genPrimitiveJSArgs(sym, args0)
 
@@ -2236,13 +2236,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case _ =>
           def isJSGetter = {
-            sym.tpe.params.isEmpty && beforePhase(currentRun.uncurryPhase) {
+            sym.tpe.params.isEmpty && enteringPhase(currentRun.uncurryPhase) {
               sym.tpe.isInstanceOf[NullaryMethodType]
             }
           }
 
           def isJSSetter = {
-            funName.endsWith("_=") && beforePhase(currentRun.uncurryPhase) {
+            funName.endsWith("_=") && enteringPhase(currentRun.uncurryPhase) {
               sym.tpe.paramss match {
                 case List(List(arg)) => !isScalaRepeatedParamType(arg.tpe)
                 case _ => false
@@ -2355,7 +2355,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): js.Tree = {
-      val wereRepeated = afterPhase(currentRun.typerPhase) {
+      val wereRepeated = exitingPhase(currentRun.typerPhase) {
         for {
           params <- sym.tpe.paramss
           param <- params
@@ -2625,7 +2625,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(
           paramAccessors.size == ctorParams.size ||
           (paramAccessors.size == ctorParams.size-1 &&
-              ctorParams.head.originalName == newTermName("arg$outer")),
+              ctorParams.head.unexpandedName == newTermName("arg$outer")),
           s"Have param accessors $paramAccessors but "+
           s"ctor params $ctorParams in anon function $cd")
       val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
@@ -2646,7 +2646,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Fourth step: patch the body to unbox parameters and box result
 
       val js.MethodDef(_, params, body) = applyMethod
-      val functionType = beforePhase(currentRun.posterasurePhase) {
+      val functionType = enteringPhase(currentRun.posterasurePhase) {
         applyDef.symbol.tpe
       }
 
@@ -2657,14 +2657,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val unboxParams = for {
           (paramIdent, paramSym) <- params zip functionType.params
-          paramTpe = beforePhase(currentRun.posterasurePhase)(paramSym.tpe)
+          paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
           if needsBoxingOrUnboxing(paramTpe)
         } yield {
           val unboxedParam = paramTpe match {
             case _ if isPrimitiveValueType(paramTpe) =>
               makeUnbox(paramIdent, paramTpe)
-            case ErasedValueType(boxedTpe) =>
-              val boxedClass = boxedTpe.typeSymbol
+            case ErasedValueType(boxedClass, _) =>
               val unboxMethod = boxedClass.derivedValueClassUnbox
               js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
           }
@@ -2680,10 +2679,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val boxedExpr = resultType match {
                   case _ if isPrimitiveValueType(resultType) =>
                     makeBox(expr, resultType)
-                  case ErasedValueType(boxedTpe) =>
-                    val boxedTpeSym = boxedTpe.typeSymbol
-                    val ctor = boxedTpeSym.primaryConstructor
-                    genNew(boxedTpeSym, ctor, List(expr))
+                  case ErasedValueType(boxedClass, _) =>
+                    val ctor = boxedClass.primaryConstructor
+                    genNew(boxedClass, ctor, List(expr))
                 }
                 js.Return(boxedExpr)
               case _ =>
@@ -2740,7 +2738,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val isGlobalScope =
         isScalaJSDefined &&
-        beforePhase(currentRun.erasurePhase) {
+        enteringPhase(currentRun.erasurePhase) {
           sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
         }
 
@@ -2788,9 +2786,9 @@ abstract class GenJSCode extends plugins.PluginComponent
   def jsNameOf(sym: Symbol): String = {
     if (isScalaJSDefined) {
       sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
-          sym.originalName.decoded)
+          sym.unexpandedName.decoded)
     } else {
-      sym.originalName.decoded
+      sym.unexpandedName.decoded
     }
   }
 
