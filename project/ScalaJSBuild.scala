@@ -15,7 +15,7 @@ object ScalaJSBuild extends Build {
       organization := "ch.epfl.lamp",
       version := "0.1-SNAPSHOT",
 
-      normalizedName ~= { _.replace("scala.js", "scalajs") }
+      normalizedName ~= { _.replace("scala.js", "scalajs").replace("scala-js", "scalajs") }
   )
 
   val defaultSettings = commonSettings ++ Seq(
@@ -65,8 +65,7 @@ object ScalaJSBuild extends Build {
       settings = commonSettings ++ Seq(
           name := "Scala.js sbt plugin",
           sbtPlugin := true,
-          scalaVersion := "2.9.2",
-          scalaBinaryVersion <<= scalaVersion,
+          scalaBinaryVersion <<= scalaVersion(CrossVersion.binaryScalaVersion),
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "org.mozilla" % "rhino" % "1.7R4"

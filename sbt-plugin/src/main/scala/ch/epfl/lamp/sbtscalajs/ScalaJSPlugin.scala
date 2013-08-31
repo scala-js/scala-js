@@ -71,7 +71,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       compile <<= (
-          javaHome, streams, cacheDirectory, compileInputs,
+          javaHome, streams, cacheDirectory, compileInputs in compile,
           excludeDefaultScalaLibrary
       ) map { (javaHome, s, cacheDir, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
