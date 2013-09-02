@@ -6,6 +6,7 @@ import Keys._
 import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
+import RhinoBasedRun._
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -335,47 +336,20 @@ object ScalaJSPlugin extends Plugin {
   )
 
   def scalaJSRunJavaScriptTask(streams: TaskKey[TaskStreams],
-      sources: TaskKey[Seq[File]]) = {
+      sources: TaskKey[Seq[File]], classpath: TaskKey[Classpath]) = {
 
-    (streams, sources) map { (s, inputs) =>
+    (streams, sources, classpath) map { (s, inputs, cp) =>
       s.log.info("Running ...")
-      scalaJSRunJavaScript(s.log, inputs)
-    }
-  }
-
-  private class LoggingConsole(logger: Logger) {
-    def log(x: Any): Unit = logger.info(x.toString)
-    def info(x: Any): Unit = logger.info(x.toString)
-    def warn(x: Any): Unit = logger.warn(x.toString)
-    def error(x: Any): Unit = logger.error(x.toString)
-  }
-
-  def scalaJSRunJavaScript(logger: Logger, inputs: Seq[File]): Unit = {
-    val ctx = rhino.Context.enter()
-    try {
-      val scope = ctx.initStandardObjects()
-
-      rhino.ScriptableObject.putProperty(scope, "console",
-          rhino.Context.javaToJS(new LoggingConsole(logger), scope))
-
-      for (input <- inputs) {
-        val reader = new java.io.FileReader(input)
-        try {
-          ctx.evaluateReader(scope, reader, input.getAbsolutePath, 1, null)
-        } finally {
-          reader.close()
-        }
-      }
-    } finally {
-      rhino.Context.exit()
+      scalaJSRunJavaScript(s.log, inputs, true, cp.map(_.data))
     }
   }
 
   val scalaJSRunSettings = Seq(
       sources in run <<= sources in packageJS,
+      fullClasspath in run <<= fullClasspath in packageJS,
 
       run <<= inputTask { argTaskIgnored =>
-        scalaJSRunJavaScriptTask(streams, sources in run)
+        scalaJSRunJavaScriptTask(streams, sources in run, fullClasspath in run)
       }
   )
 
@@ -383,8 +357,10 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSTestSettings = scalaJSConfigSettings ++ Seq(
       sources in test <<= sources in packageJS,
+      fullClasspath in test <<= fullClasspath in packageJS,
 
-      test <<= scalaJSRunJavaScriptTask(streams, sources in test)
+      test <<= scalaJSRunJavaScriptTask(streams, sources in test,
+          fullClasspath in test)
   )
 
   val scalaJSDefaultConfigs = (
