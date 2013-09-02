@@ -153,9 +153,7 @@ object ScalaJSPlugin extends Plugin {
         sbt.inc.Analysis.Empty
       },
 
-      unmanagedSources in packageJS := Seq(),
-
-      managedSources in packageJS <<= (
+      fullClasspath in packageJS <<= (
           streams, fullClasspath, cacheDirectory
       ) map { (s, fullCp, topCacheDir) =>
         val taskCacheDir = topCacheDir / "package-js"
@@ -169,16 +167,18 @@ object ScalaJSPlugin extends Plugin {
 
         // List cp directories, and jars to extract and where
 
-        val cpDirectories = new mutable.ListBuffer[File]
+        val cpDirectories = new mutable.ListBuffer[Attributed[File]]
         val jars = mutable.Set.empty[File]
 
-        for (cpFile <- fullCp.map(_.data)) {
+        for (cpEntry <- fullCp) {
+          val cpFile = cpEntry.data
+
           if (cpFile.isDirectory) {
-            cpDirectories += cpFile
+            cpDirectories += cpEntry
           } else if (cpFile.isFile && !isScalaJSCompilerJar(cpFile)) {
             val extractDir = taskExtractDir / fileID(cpFile)
             jars += cpFile
-            cpDirectories += extractDir
+            cpDirectories += Attributed.blank(extractDir)
           }
         }
 
@@ -211,12 +211,20 @@ object ScalaJSPlugin extends Plugin {
 
         cachedExtractJars(jars.toSet)
 
+        cpDirectories
+      },
+
+      unmanagedSources in packageJS := Seq(),
+
+      managedSources in packageJS <<= (
+          streams, fullClasspath in packageJS, cacheDirectory
+      ) map { (s, cpDirectories, topCacheDir) =>
         // List input files (files in earlier dirs shadow files in later dirs)
 
         val existingPaths = mutable.Set.empty[String]
         val inputs = new mutable.ListBuffer[File]
 
-        for (dir <- cpDirectories) {
+        for (dir <- cpDirectories.map(_.data)) {
           for (file <- (dir ** "*.js").get) {
             val path = IO.relativize(dir, file).get
             if (!existingPaths.contains(path)) {
