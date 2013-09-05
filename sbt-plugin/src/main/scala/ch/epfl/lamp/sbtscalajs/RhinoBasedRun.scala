@@ -115,8 +115,7 @@ object RhinoBasedRun {
     override def getIds() = fields.keys.toArray
 
     override def getDefaultValue(hint: java.lang.Class[_]) = {
-      val arg = if (hint eq null) "undefined" else hint.getName
-      throw ScriptRuntime.typeError1("msg.default.value", arg)
+      base.getDefaultValue(hint)
     }
 
     override def hasInstance(instance: Scriptable) = false
