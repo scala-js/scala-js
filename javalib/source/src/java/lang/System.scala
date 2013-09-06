@@ -42,17 +42,42 @@ object System {
   def gc() = Runtime.getRuntime().gc()
 }
 
-private[lang] object StandardOutPrintStream extends io.PrintStream(StandardOut, true) {
+private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
+  private var buffer: js.String = ""
+
   override protected[lang] def writeString(s: String): Unit = {
-    if (global.console && ((s != "\n"):js.Boolean))
-      global.console.log(s)
+    var rest: js.String = s
+    while (!(!rest)) {
+      val nlPos = rest.indexOf("\n")
+      if (nlPos < 0) {
+        buffer += rest
+        rest = ""
+      } else {
+        doWriteLine(buffer + rest.substring(0, nlPos))
+        buffer = ""
+        rest = rest.substring(nlPos+1)
+      }
+    }
+  }
+
+  protected def doWriteLine(line: String): Unit
+}
+
+private[lang] object StandardOutPrintStream
+extends io.PrintStream(StandardOut, true) with JSConsoleBasedPrintStream {
+
+  override protected def doWriteLine(line: String): Unit = {
+    if (!(!global.console))
+      global.console.log(line)
   }
 }
 
-private[lang] object StandardErrPrintStream extends io.PrintStream(StandardErr, true) {
-  override protected[lang] def writeString(s: String): Unit = {
-    if (global.console && ((s != "\n"):js.Boolean))
-      global.console.error(s)
+private[lang] object StandardErrPrintStream
+extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
+
+  override protected def doWriteLine(line: String): Unit = {
+    if (!(!global.console))
+      global.console.error(line)
   }
 }
 
