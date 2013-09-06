@@ -122,6 +122,7 @@ object ScalaJSBuild extends Build {
             superFilter || new SimpleFileFilter({ f =>
               val path = f.getPath.replace(java.io.File.separator, "/")
               (path.endsWith("/scala/package.scala")
+                  || path.endsWith("/scala/App.scala")
                   || path.endsWith("/scala/Console.scala")
                   || path.endsWith("/scala/compat/Platform.scala")
                   || path.endsWith("/scala/runtime/BoxesRunTime.scala"))
