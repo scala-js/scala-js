@@ -42,7 +42,7 @@ final class Byte(private val value: scala.Byte) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = (value:js.Number).toString()
 }
 
 object Byte {
@@ -70,7 +70,7 @@ final class Short(private val value: scala.Short) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = (value:js.Number).toString()
 }
 
 object Short {
@@ -82,7 +82,8 @@ object Short {
   def parseShort(s: String): scala.Short = Integer.parseInt(s).toShort
   def toString(s: scala.Short) = Integer.valueOf(s.toInt).toString
 
-  def reverseBytes(i: scala.Short): scala.Short = sys.error("unimplemented")
+  def reverseBytes(i: scala.Short): scala.Short =
+    (((i >>> 8) & 0xff) + ((i & 0xff) << 8)).toShort
 }
 
 ////////////////// Integer //////////////////
@@ -98,7 +99,7 @@ final class Integer(private val value: scala.Int) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = (value:js.Number).toString()
 }
 
 object Integer {
@@ -174,7 +175,7 @@ final class Long(private val value: scala.Long) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = (value:js.Number).toString()
 }
 
 object Long {
@@ -194,9 +195,9 @@ object Long {
   def signum(i: scala.Long): scala.Long =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
-  def toBinaryString(l: scala.Long): String = sys.error("unimplemented")
-  def toHexString(l: scala.Long): String = sys.error("unimplemented")
-  def toOctalString(l: scala.Long): String = sys.error("unimplemented")
+  def toBinaryString(l: scala.Long): String = (l: js.Number).toString(2)
+  def toHexString(l: scala.Long): String = (l: js.Number).toString(16)
+  def toOctalString(l: scala.Long): String = (l: js.Number).toString(8)
 }
 
 ////////////////// Float //////////////////
@@ -214,19 +215,22 @@ final class Float(private val value: scala.Float) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Float] && (value == that.asInstanceOf[Float].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = {
+    val s = (value: js.Number).toString()
+    if (s.indexOf(".") < 0) s + ".0" else s
+  }
 
   def isNaN: scala.Boolean = Float.isNaN(value)
 }
 
 object Float {
   val TYPE = classOf[scala.Float]
-  val POSITIVE_INFINITY = 0.0f // 1.0f / 0.0f
-  val NEGATIVE_INFINITY = 0.0f // -1.0f / 0.0f
-  val NaN = 0.0f // 0.0f / 0.0f
-  val MAX_VALUE = 0.0f // 0x1.fffffeP+127f
+  val POSITIVE_INFINITY = js.Number.POSITIVE_INFINITY.toFloat
+  val NEGATIVE_INFINITY = js.Number.NEGATIVE_INFINITY.toFloat
+  val NaN = js.Number.NaN.toFloat
+  val MAX_VALUE = js.Number.MAX_VALUE.toFloat // 0x1.fffffeP+127f
   val MIN_NORMAL = 0.0f // 0x1.0p-126f
-  val MIN_VALUE = 0.0f // 0x0.000002P-126f
+  val MIN_VALUE = js.Number.MIN_VALUE.toFloat // 0x0.000002P-126f
   val MAX_EXPONENT = 127
   val MIN_EXPONENT = -126
   val SIZE = 32
@@ -244,8 +248,9 @@ object Float {
     else 1
   }
 
-  def isNaN(v: scala.Float): scala.Boolean = sys.error("unimplemented")
-  def isInfinite(v: scala.Float): scala.Boolean = sys.error("unimplemented")
+  def isNaN(v: scala.Float): scala.Boolean = js.isNaN(v)
+  def isInfinite(v: scala.Float): scala.Boolean =
+    !js.isFinite(v) && !js.isNaN(v)
 
   def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
   def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
@@ -266,19 +271,22 @@ final class Double(private val value: scala.Double) extends Number {
   override def equals(that: Any) =
     that.isInstanceOf[Double] && (value == that.asInstanceOf[Double].value)
 
-  override def toString = (value:js.Number).toString
+  override def toString = {
+    val s = (value: js.Number).toString()
+    if (s.indexOf(".") < 0) s + ".0" else s
+  }
 
   def isNaN: scala.Boolean = Double.isNaN(value)
 }
 
 object Double {
   val TYPE = classOf[scala.Double]
-  val POSITIVE_INFINITY = 0.0d // 1.0 / 0.0
-  val NEGATIVE_INFINITY = 0.0d // -1.0 / 0.0
-  val NaN = 0.0d // 0.0d / 0.0
-  val MAX_VALUE = 0.0d // 0x1.fffffffffffffP+1023
+  val POSITIVE_INFINITY = js.Number.POSITIVE_INFINITY.toDouble
+  val NEGATIVE_INFINITY = js.Number.NEGATIVE_INFINITY.toDouble
+  val NaN = js.Number.NaN.toDouble
+  val MAX_VALUE = js.Number.MAX_VALUE // 0x1.fffffffffffffP+1023
   val MIN_NORMAL = 0.0d // 0x1.0p-1022
-  val MIN_VALUE = 0.0d // 0x0.0000000000001P-1022
+  val MIN_VALUE = js.Number.MIN_VALUE // 0x0.0000000000001P-1022
   val MAX_EXPONENT = 1023
   val MIN_EXPONENT = -1022
   val SIZE = 64
@@ -293,8 +301,9 @@ object Double {
     else 1
   }
 
-  def isNaN(v: scala.Double): scala.Boolean = sys.error("unimplemented")
-  def isInfinite(v: scala.Double): scala.Boolean = sys.error("unimplemented")
+  def isNaN(v: scala.Double): scala.Boolean = js.isNaN(v)
+  def isInfinite(v: scala.Double): scala.Boolean =
+    !js.isFinite(v) && !js.isNaN(v)
 
   def longBitsToDouble(bits: scala.Long): scala.Double = sys.error("unimplemented")
   def doubleToLongBits(value: scala.Double): scala.Long = sys.error("unimplemented")
