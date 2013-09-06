@@ -945,44 +945,45 @@ abstract class GenJSCode extends SubComponent
         // while (cond) { body }
         case LabelDef(lname, Nil,
             If(cond,
-                Block(List(body), Apply(target @ Ident(lname2), Nil)),
+                Block(bodyStats, Apply(target @ Ident(lname2), Nil)),
                 Literal(_))) if (target.symbol == sym) =>
-          statToExpr(js.While(genExpr(cond), genStat(body)))
+          statToExpr(js.While(genExpr(cond), js.Block(bodyStats map genStat)))
 
         // while (cond) { body }; result
         case LabelDef(lname, Nil,
             Block(List(
                 If(cond,
-                    Block(List(body), Apply(target @ Ident(lname2), Nil)),
+                    Block(bodyStats, Apply(target @ Ident(lname2), Nil)),
                     Literal(_))),
                 result)) if (target.symbol == sym) =>
-          js.Block(List(js.While(genExpr(cond), genStat(body))),
-              genExpr(result))
+          js.Block(List(js.While(genExpr(cond),
+              js.Block(bodyStats map genStat))), genExpr(result))
 
         // while (true) { body }
         case LabelDef(lname, Nil,
-            Block(List(body),
+            Block(bodyStats,
                 Apply(target @ Ident(lname2), Nil))) if (target.symbol == sym) =>
-          statToExpr(js.While(js.BooleanLiteral(true), genStat(body)))
+          statToExpr(js.While(js.BooleanLiteral(true),
+              js.Block(bodyStats map genStat)))
 
         // do { body } while (cond)
         case LabelDef(lname, Nil,
-            Block(List(body),
+            Block(bodyStats,
                 If(cond,
                     Apply(target @ Ident(lname2), Nil),
                     Literal(_)))) if (target.symbol == sym) =>
-          statToExpr(js.DoWhile(genStat(body), genExpr(cond)))
+          statToExpr(js.DoWhile(js.Block(bodyStats map genStat), genExpr(cond)))
 
         // do { body } while (cond); result
         case LabelDef(lname, Nil,
-            Block(List(
-                body,
+            Block(
+                bodyStats :+
                 If(cond,
                     Apply(target @ Ident(lname2), Nil),
-                    Literal(_))),
+                    Literal(_)),
                 result)) if (target.symbol == sym) =>
-          js.Block(List(js.DoWhile(genStat(body), genExpr(cond))),
-              genExpr(result))
+          js.Block(List(js.DoWhile(js.Block(bodyStats map genStat),
+              genExpr(cond))), genExpr(result))
 
         case _ =>
           abort("Found unknown label def at "+tree.pos+": "+tree)
