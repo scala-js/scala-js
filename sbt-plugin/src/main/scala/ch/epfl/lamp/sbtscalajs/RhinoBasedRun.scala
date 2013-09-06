@@ -136,14 +136,20 @@ object RhinoBasedRun {
       ScriptableObject.putProperty(scope, "console",
           Context.javaToJS(new LoggingConsole(logger), scope))
 
-      if (!useLazyScalaJSScopes ||
-          !inputs.exists(_.getName == "scalajs-corejslib.js")) {
-        // Easy, just evaluate all input files, in order
-        for (input <- inputs)
-          ctx.evaluateFile(scope, input)
-      } else {
-        // The smart thing that hijacks ScalaJS-related things
-        runJavaScriptWithLazyScalaJSScopes(ctx, scope, inputs, scalaJSClasspath)
+      try {
+        if (!useLazyScalaJSScopes ||
+            !inputs.exists(_.getName == "scalajs-corejslib.js")) {
+          // Easy, just evaluate all input files, in order
+          for (input <- inputs)
+            ctx.evaluateFile(scope, input)
+        } else {
+          // The smart thing that hijacks ScalaJS-related things
+          runJavaScriptWithLazyScalaJSScopes(ctx, scope, inputs, scalaJSClasspath)
+        }
+      } catch {
+        case e: Exception =>
+          e.printStackTrace() // print the stack trace while we're in the Context
+          throw new RuntimeException("Exception while running JS code", e)
       }
     } finally {
       Context.exit()
