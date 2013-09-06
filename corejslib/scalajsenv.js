@@ -66,7 +66,7 @@ var ScalaJS = {
     if (lhsData.isPrimitive || rhsData.isPrimitive)
       return lhsData === rhsData;
     if (rhsData === ScalaJS.data.java\ufe33lang\ufe33String)
-      return ScalaJS.dynamicIsInstanceOf(lhsData, "some string");
+      return ScalaJS.dynamicIsInstanceOf("some string", lhsData);
     else
       return ScalaJS.dynamicIsInstanceOf({$classData: rhsData}, lhsData);
   },
