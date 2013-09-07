@@ -346,8 +346,11 @@ trait JSPrinters { self: scalajs.JSGlobal =>
   }
 
   private def escapeJS(str: String): String = {
+    /* Note that Java and JavaScript happen to use the same encoding for
+     * Unicode, namely UTF-16, which means that 1 char from Java always equals
+     * 1 char in JavaScript. */
     val builder = new StringBuilder
-    codePointsOf(str) foreach {
+    str foreach {
       case '\\' => builder.append("\\\\")
       case '"' => builder.append("\\\"")
       case '\u0007' => builder.append("\\a")
@@ -362,18 +365,6 @@ trait JSPrinters { self: scalajs.JSGlobal =>
         else builder.append(f"\\u$c%04x")
     }
     builder.result()
-  }
-
-  private def codePointsOf(s: String): List[Int] = {
-    @annotation.tailrec
-    def loop(idx: Int, found: List[Int]): List[Int] = {
-      if (idx >= s.length) found.reverse
-      else {
-        val point = s.codePointAt(idx)
-        loop(idx + java.lang.Character.charCount(point), point :: found)
-      }
-    }
-    loop(0, Nil)
   }
 
   private val Base64Map =
