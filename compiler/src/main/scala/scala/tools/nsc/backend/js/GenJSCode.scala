@@ -2157,6 +2157,8 @@ abstract class GenJSCode extends SubComponent
           js.ApplyMethod(receiver, js.StringLiteral("substring"), args)
         case "intern" if isString =>
           receiver
+        case "compareTo" if isString =>
+          genBuiltinApply("comparableCompareTo", receiver, args.head)
 
         case "replace" if isString =>
           val argsAsStrings =
