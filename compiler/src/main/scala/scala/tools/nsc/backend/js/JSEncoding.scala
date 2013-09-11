@@ -60,6 +60,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         Some(sym.originalName.decoded))
   }
 
+  private lazy val allRefClasses: Set[Symbol] = {
+    import definitions._
+    (Set(ObjectRefClass, VolatileObjectRefClass) ++
+        refClass.values ++ volatileRefClass.values)
+  }
+
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
@@ -68,7 +74,20 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val name =
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
-    js.Ident("$jsfield$" + name, Some(sym.originalName.decoded))
+
+    /* We have to special-case fields of Ref types (IntRef, ObjectRef, etc.)
+     * because they are emitted as private by our .scala source files, but
+     * they are considered public at use site since their symbols come from
+     * Java-emitted .class files.
+     */
+    val idSuffix =
+      if (sym.isPrivate || allRefClasses.contains(sym.owner))
+        sym.owner.ancestors.count(!_.isInterface).toString
+      else
+        "f"
+
+    val encodedName = name + "$" + idSuffix
+    js.Ident(encodedName, Some(sym.originalName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {

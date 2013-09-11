@@ -240,13 +240,13 @@ var ScalaJS = {
   // Boxes - inline all the way through java.lang.X.valueOf()
 
   bV: function() {
-    return ScalaJS.modules.scala\ufe33runtime\ufe33BoxedUnit().$jsfield$UNIT;
+    return ScalaJS.modules.scala\ufe33runtime\ufe33BoxedUnit().UNIT$1;
   },
   bZ: function(value) {
     if (value)
-      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().$jsfield$TRUE;
+      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().TRUE$1;
     else
-      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().$jsfield$FALSE;
+      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().FALSE$1;
   },
   bC: function(value) {
     return new ScalaJS.c.java\ufe33lang\ufe33Character().init\ufe33\ufe34C(value);
@@ -276,28 +276,28 @@ var ScalaJS = {
     return undefined;
   },
   uZ: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Boolean(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Boolean(value).value$1;
   },
   uC: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Character(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Character(value).value$1;
   },
   uB: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Byte(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Byte(value).value$1;
   },
   uS: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Short(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Short(value).value$2;
   },
   uI: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Integer(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Integer(value).value$2;
   },
   uJ: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Long(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Long(value).value$2;
   },
   uF: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Float(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Float(value).value$2;
   },
   uD: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Double(value).$jsfield$value;
+    return ScalaJS.as.java\ufe33lang\ufe33Double(value).value$2;
   }
 }
 
