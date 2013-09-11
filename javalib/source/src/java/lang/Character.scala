@@ -33,6 +33,13 @@ object Character {
 
   val MAX_RADIX: scala.Int = 0
 
+  val MIN_HIGH_SURROGATE: scala.Char = '\uD800'
+  val MAX_HIGH_SURROGATE: scala.Char = '\uDBFF'
+  val MIN_LOW_SURROGATE: scala.Char = '\uDC00'
+  val MAX_LOW_SURROGATE: scala.Char = '\uDFFF'
+  val MIN_SURROGATE: scala.Char = MIN_HIGH_SURROGATE
+  val MAX_SURROGATE: scala.Char = MAX_LOW_SURROGATE
+
   /* Tests */
   def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
   def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
@@ -43,8 +50,14 @@ object Character {
   def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isWhitespace(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isHighSurrogate(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLowSurrogate(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+
+  def isHighSurrogate(c: scala.Char): scala.Boolean =
+    (c >= MIN_HIGH_SURROGATE) && (c <= MAX_HIGH_SURROGATE)
+  def isLowSurrogate(c: scala.Char): scala.Boolean =
+    (c >= MIN_LOW_SURROGATE) && (c <= MAX_LOW_SURROGATE)
+  def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
+    isHighSurrogate(high) && isLowSurrogate(low)
+
   def isUnicodeIdentifierStart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isUnicodeIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isIdentifierIgnorable(c: scala.Char): scala.Boolean = sys.error("unimplemented")
