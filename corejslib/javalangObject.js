@@ -45,7 +45,13 @@ ScalaJS.c.java\ufe33lang\ufe33Object.prototype.equals = function(that) {
 
 ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone\ufe34O = function() {
   if (ScalaJS.is.java\ufe33lang\ufe33Cloneable(this)) {
-    throw new ScalaJS.c.scala\ufe33NotImplementedError().init\ufe33\ufe34();
+    function Clone(from) {
+      for (var field in from)
+        if (from["hasOwnProperty"](field))
+          this[field] = from[field];
+    }
+    Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](this);
+    return new Clone(this);
   } else {
     throw new ScalaJS.c.java\ufe33lang\ufe33CloneNotSupportedException().init\ufe33\ufe34();
   }

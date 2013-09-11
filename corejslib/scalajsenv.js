@@ -166,8 +166,10 @@ var ScalaJS = {
   },
 
   objectClone: function(instance) {
-    // TODO
-    throw new ScalaJS.c.scala\ufe33NotImplementedError().init\ufe33\ufe34();
+    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+      return instance.clone\ufe34O();
+    else
+      throw new ScalaJS.c.java\ufe33lang\ufe33CloneNotSupportedException().init\ufe33\ufe34();
   },
 
   objectFinalize: function(instance) {
@@ -374,6 +376,10 @@ ScalaJS.ArrayTypeData = function(componentData) {
   ArrayClass.prototype = new ScalaJS.inheritable.java\ufe33lang\ufe33Object;
   ArrayClass.prototype.constructor = ArrayClass;
   ArrayClass.prototype.$classData = this;
+
+  ArrayClass.prototype.clone\ufe34O = function() {
+    return new ArrayClass(this.underlying["slice"](0));
+  };
 
   // The data
 
