@@ -11,9 +11,12 @@ class Throwable(message: String, cause: Throwable) {
   def getCause: Throwable = cause
   def fillInStackTrace(): Throwable = this
 
-  override def toString() =
-    if (message eq null) getClass.getName
-    else getClass.getName + ": " + message
+  override def toString() = {
+    val className = getClass.getName
+    val message = getMessage()
+    if (message eq null) className
+    else className + ": " + message
+  }
 }
 
 class Error(message: String, cause: Throwable) extends Throwable(message, cause) {
