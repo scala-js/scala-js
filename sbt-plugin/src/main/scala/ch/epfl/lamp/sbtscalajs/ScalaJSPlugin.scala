@@ -115,22 +115,23 @@ object ScalaJSPlugin extends Plugin {
           IO.createDirectory(classesDirectory)
 
           def doCompileJS(sourcesArgs: List[String]) = {
-            Run.executeTrapExit({
-              classesDirectory.mkdir()
+            classesDirectory.mkdir()
 
-              val forkOptions = ForkOptions(
-                  javaHome = javaHome,
-                  outputStrategy = Some(LoggedOutput(logger)))
+            val forkOptions = ForkOptions(
+                javaHome = javaHome,
+                outputStrategy = Some(LoggedOutput(logger)))
 
-              Fork.java(forkOptions,
-                  "-cp" :: compilerCpStr ::
-                  "-Xmx512M" ::
-                  "scala.tools.nsc.scalajs.Main" ::
-                  "-cp" :: cpStr ::
-                  "-d" :: classesDirectory.getAbsolutePath() ::
-                  options ++:
-                  sourcesArgs)
-            }, logger)
+            val exitCode = Fork.java(forkOptions,
+                "-cp" :: compilerCpStr ::
+                "-Xmx512M" ::
+                "scala.tools.nsc.scalajs.Main" ::
+                "-cp" :: cpStr ::
+                "-d" :: classesDirectory.getAbsolutePath() ::
+                options ++:
+                sourcesArgs)
+
+            if (exitCode != 0)
+              sys.error("Compilation failed")
           }
 
           val sourcesArgs = sources.map(_.getAbsolutePath()).toList
