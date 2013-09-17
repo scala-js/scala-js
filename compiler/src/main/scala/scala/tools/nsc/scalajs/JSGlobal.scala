@@ -32,27 +32,9 @@ trait JSGlobal extends Global
   object genJSCode extends {
     val global: JSGlobal.this.type = JSGlobal.this
     val runsAfter = List("mixin")
+    override val runsBefore = List("terminal")
     val runsRightAfter = None
   } with GenJSCode
-
-  // phaseName = "terminal" (unfortunately we need to copy it from Global)
-  object jsTerminal extends {
-    val global: JSGlobal.this.type = JSGlobal.this
-    val phaseName = "terminal"
-    val runsAfter = List("jvm", "msil", "jscode") // added "jscode"
-    val runsRightAfter = None
-  } with SubComponent {
-    private var cache: Option[GlobalPhase] = None
-    def reset(): Unit = cache = None
-
-    def newPhase(prev: Phase): GlobalPhase =
-      cache getOrElse returning(new TerminalPhase(prev))(x => cache = Some(x))
-
-    class TerminalPhase(prev: Phase) extends GlobalPhase(prev) {
-      def name = "terminal"
-      def apply(unit: CompilationUnit) {}
-    }
-  }
 
   override protected def computeInternalPhases() {
     super.computeInternalPhases()
