@@ -64,10 +64,6 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.constructor = function() {};
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
-    var Math = {
-      ceil: function() {},
-      floor: function() {}
-    }
     """
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(

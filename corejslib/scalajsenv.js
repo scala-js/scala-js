@@ -229,7 +229,8 @@ var ScalaJS = {
   },
 
   truncateToLong: function(value) {
-    return value < 0 ? Math.ceil(value) : Math.floor(value);
+    return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
+                     : ScalaJS.g["Math"]["floor"](value);
   },
 
   propertiesOf: function(obj) {
