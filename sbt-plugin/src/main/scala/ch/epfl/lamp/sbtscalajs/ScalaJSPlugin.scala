@@ -66,12 +66,17 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.apply = function() {};
     """
 
-  val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
-      compile <<= (
-          javaHome, streams, compileInputs in compile,
-          excludeDefaultScalaLibrary
-      ) map { (javaHome, s, inputs, excludeDefaultScalaLibrary) =>
+  val scalaJSConfigSettings: Seq[Setting[_]] = inTask(compile)(
+      Defaults.runnerTask
+  ) ++ Seq(
+      trapExit in compile := true,
+      javaOptions in compile += "-Xmx512M",
+
+      compile := {
+        val inputs = (compileInputs in compile).value
         import inputs.config._
+
+        val s = streams.value
 
         val logger = s.log
         val cacheDir = s.cacheDirectory
@@ -83,10 +88,9 @@ object ScalaJSPlugin extends Plugin {
 
         val (compilerCp, cp0) = classpath.partition(isScalaJSCompilerJar)
         val cp =
-          if (excludeDefaultScalaLibrary) cp0
+          if (excludeDefaultScalaLibrary.value) cp0
           else cp0 ++ compilerCp.filter(isScalaLibraryJar)
 
-        val compilerCpStr = cpToString(compilerCp)
         val cpStr = cpToString(cp)
 
         // List all my dependencies (recompile if any of these changes)
@@ -110,32 +114,39 @@ object ScalaJSPlugin extends Plugin {
             IO.delete(classesDirectory)
           IO.createDirectory(classesDirectory)
 
-          def doCompileJS(sourcesArgs: List[String]) = {
-            classesDirectory.mkdir()
+          val sourcesArgs = sources.map(_.getAbsolutePath()).toList
 
-            val forkOptions = ForkOptions(
-                javaHome = javaHome,
-                outputStrategy = Some(LoggedOutput(logger)))
+          /* run.run() below in doCompileJS() will emit a call to its
+           * logger.info("Running scala.tools.nsc.scalajs.Main [...]")
+           * which we do not want to see. We use this patched logger to
+           * filter out that particular message.
+           */
+          val patchedLogger = new Logger {
+            def log(level: Level.Value, message: => String) = {
+              val msg = message
+              if (level != Level.Info ||
+                  !msg.startsWith("Running scala.tools.nsc.scalajs.Main"))
+                logger.log(level, msg)
+            }
+            def success(message: => String) = logger.success(message)
+            def trace(t: => Throwable) = logger.trace(t)
+          }
 
-            val exitCode = Fork.java(forkOptions,
-                "-cp" :: compilerCpStr ::
-                "-Xmx512M" ::
-                "scala.tools.nsc.scalajs.Main" ::
+          def doCompileJS(sourcesArgs: List[String]): Unit = {
+            val run = (runner in compile).value
+            run.run("scala.tools.nsc.scalajs.Main", compilerCp,
                 "-cp" :: cpStr ::
                 "-d" :: classesDirectory.getAbsolutePath() ::
                 options ++:
-                sourcesArgs)
-
-            if (exitCode != 0)
-              sys.error("Compilation failed")
+                sourcesArgs,
+                patchedLogger) foreach sys.error
           }
-
-          val sourcesArgs = sources.map(_.getAbsolutePath()).toList
 
           /* Crude way of overcoming the Windows limitation on command line
            * length.
            */
-          if ((System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
+          if ((fork in compile).value &&
+              (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
               (sourcesArgs.map(_.length).sum > 1536)) {
             IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
               IO.writeLines(sourceListFile, sourcesArgs)
