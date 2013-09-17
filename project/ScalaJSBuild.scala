@@ -81,8 +81,8 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
 
           packageJS in Compile <<= (
-              baseDirectory, target in Compile
-          ) map { (baseDirectory, target) =>
+              cacheDirectory, baseDirectory, target in Compile
+          ) map { (cacheDir, baseDirectory, target) =>
             // hard-coded because order matters!
             val fileNames =
               Seq("scalajsenv.js", "javalangObject.js",
@@ -90,8 +90,14 @@ object ScalaJSBuild extends Build {
 
             val allJSFiles = fileNames map (baseDirectory / _)
             val output = target / ("scalajs-corejslib.js")
-            target.mkdir()
-            catJSFilesAndTheirSourceMaps(allJSFiles, output)
+
+            FileFunction.cached(cacheDir / "package-js",
+                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+              target.mkdir()
+              catJSFilesAndTheirSourceMaps(allJSFiles, output)
+              Set(output)
+            } (allJSFiles.toSet)
+
             output
           }
       )
