@@ -1,5 +1,7 @@
 package ch.epfl.lamp.sbtscalajs
 
+import scala.language.implicitConversions
+
 import sbt._
 
 import scala.collection.mutable

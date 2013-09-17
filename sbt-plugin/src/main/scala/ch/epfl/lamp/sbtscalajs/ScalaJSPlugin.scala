@@ -72,12 +72,13 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       compile <<= (
-          javaHome, streams, cacheDirectory, compileInputs in compile,
+          javaHome, streams, compileInputs in compile,
           excludeDefaultScalaLibrary
-      ) map { (javaHome, s, cacheDir, inputs, excludeDefaultScalaLibrary) =>
+      ) map { (javaHome, s, inputs, excludeDefaultScalaLibrary) =>
         import inputs.config._
 
         val logger = s.log
+        val cacheDir = s.cacheDirectory
 
         // Discover classpaths
 
@@ -117,15 +118,18 @@ object ScalaJSPlugin extends Plugin {
             Run.executeTrapExit({
               classesDirectory.mkdir()
 
-              Fork.java(javaHome,
+              val forkOptions = ForkOptions(
+                  javaHome = javaHome,
+                  outputStrategy = Some(LoggedOutput(logger)))
+
+              Fork.java(forkOptions,
                   "-cp" :: compilerCpStr ::
                   "-Xmx512M" ::
                   "scala.tools.nsc.scalajs.Main" ::
                   "-cp" :: cpStr ::
                   "-d" :: classesDirectory.getAbsolutePath() ::
                   options ++:
-                  sourcesArgs,
-                  logger)
+                  sourcesArgs)
             }, logger)
           }
 
@@ -155,9 +159,9 @@ object ScalaJSPlugin extends Plugin {
       },
 
       fullClasspath in packageJS <<= (
-          streams, fullClasspath, cacheDirectory
-      ) map { (s, fullCp, topCacheDir) =>
-        val taskCacheDir = topCacheDir / "package-js"
+          streams, fullClasspath
+      ) map { (s, fullCp) =>
+        val taskCacheDir = s.cacheDirectory / "package-js"
         IO.createDirectory(taskCacheDir)
 
         val taskExtractDir = taskCacheDir / "extracted-jars"
@@ -218,8 +222,8 @@ object ScalaJSPlugin extends Plugin {
       unmanagedSources in packageJS := Seq(),
 
       managedSources in packageJS <<= (
-          streams, fullClasspath in packageJS, cacheDirectory
-      ) map { (s, cpDirectories, topCacheDir) =>
+          fullClasspath in packageJS
+      ) map { (cpDirectories) =>
         // List input files (files in earlier dirs shadow files in later dirs)
 
         val existingPaths = mutable.Set.empty[String]
@@ -247,12 +251,12 @@ object ScalaJSPlugin extends Plugin {
       },
 
       packageJS <<= (
-          streams, cacheDirectory,
+          streams,
           sources in packageJS,
           crossTarget, moduleName
-      ) map { (s, cacheDir, inputs, target, modName) =>
+      ) map { (s, inputs, target, modName) =>
         val output = target / (modName + ".js")
-        val taskCacheDir = cacheDir / "package-js"
+        val taskCacheDir = s.cacheDirectory / "package-js"
 
         val cachedPackage = FileFunction.cached(taskCacheDir / "package",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
@@ -281,11 +285,12 @@ object ScalaJSPlugin extends Plugin {
       },
 
       optimizeJS <<= (
-          streams, cacheDirectory, sources in optimizeJS,
+          streams, sources in optimizeJS,
           optimizeJSPrettyPrint, optimizeJSExterns,
           crossTarget, moduleName
-      ) map { (s, cacheDir, allJSFiles, prettyPrint, externs, target, modName) =>
+      ) map { (s, allJSFiles, prettyPrint, externs, target, modName) =>
         val logger = s.log
+        val cacheDir = s.cacheDirectory
         val output = target / (modName + "-opt.js")
 
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
@@ -348,8 +353,9 @@ object ScalaJSPlugin extends Plugin {
       sources in run <<= sources in packageJS,
       fullClasspath in run <<= fullClasspath in packageJS,
 
-      run <<= inputTask { argTaskIgnored =>
-        scalaJSRunJavaScriptTask(streams, sources in run, fullClasspath in run)
+      run := {
+        scalaJSRunJavaScriptTask(streams, sources in run,
+            fullClasspath in run).value
       }
   )
 
