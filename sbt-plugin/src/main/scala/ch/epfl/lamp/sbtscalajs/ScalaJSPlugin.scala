@@ -40,6 +40,9 @@ object ScalaJSPlugin extends Plugin {
   val isScalaJSCompilerJar = isJarWithPrefix(
       "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler") _
 
+  private val isWindows =
+    System.getProperty("os.name").toLowerCase().indexOf("win") >= 0
+
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
     files sortWith { (lhs, rhs) =>
       val corejslibName = "scalajs-corejslib.js"
@@ -69,6 +72,7 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSConfigSettings: Seq[Setting[_]] = inTask(compile)(
       Defaults.runnerTask
   ) ++ Seq(
+      fork in compile := isWindows, // not forking does not seem to work on Win
       trapExit in compile := true,
       javaOptions in compile += "-Xmx512M",
 
@@ -145,8 +149,7 @@ object ScalaJSPlugin extends Plugin {
           /* Crude way of overcoming the Windows limitation on command line
            * length.
            */
-          if ((fork in compile).value &&
-              (System.getProperty("os.name").toLowerCase().indexOf("win") >= 0) &&
+          if ((fork in compile).value && isWindows &&
               (sourcesArgs.map(_.length).sum > 1536)) {
             IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
               IO.writeLines(sourceListFile, sourcesArgs)
