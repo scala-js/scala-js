@@ -49,25 +49,25 @@ package js
  *  According to rule 1), the block that is passed as a parameter to obj.meth
  *  is first extracted in a synthetic var:
  *
- *  var x$1 = {
+ *  var x\$1 = {
  *    var x = foo(42);
  *    x*x
  *  }
- *  obj.meth(x$1);
+ *  obj.meth(x\$1);
  *
- *  Then, according to rule 2), the lhs `var x$1 =` is pushed inside the block:
+ *  Then, according to rule 2), the lhs `var x\$1 =` is pushed inside the block:
  *
  *  {
  *    var x = foo(42);
- *    var x$1 = x*x;
+ *    var x\$1 = x*x;
  *  }
- *  obj.meth(x$1);
+ *  obj.meth(x\$1);
  *
  *  Because bare blocks are non-significant in JS, this is equivalent to
  *
  *  var x = foo(42);
- *  var x$1 = x*x;
- *  obj.meth(x$1);
+ *  var x\$1 = x*x;
+ *  obj.meth(x\$1);
  *
  *  --------------------------------------------------------------------------
  *
