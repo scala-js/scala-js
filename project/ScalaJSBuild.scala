@@ -28,6 +28,9 @@ object ScalaJSBuild extends Build {
       )
   )
 
+  // Used when compiling the compiler, adding it to scalacOptions does not help
+  scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
+
   lazy val root: Project = Project(
       id = "scalajs",
       base = file("."),
