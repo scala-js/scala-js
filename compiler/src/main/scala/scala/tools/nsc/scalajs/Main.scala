@@ -61,8 +61,12 @@ object Main extends Driver with EvalLoop {
       def fileSet(files : List[String]) = Set.empty ++ (files map AbstractFile.getFile)
 
       val buildManager = settings.Ybuilderdebug.value match {
-        case "simple"   => new SimpleBuildManager(settings)
-        case _          => new RefinedBuildManager(settings)
+        case "simple" => new SimpleBuildManager(settings)
+        case _ =>
+          // Trick to silence the deprecation warning on RefinedBuildManager
+          @deprecated("ignore", "2.10.0")
+          def newRefinedBuildManager() = new RefinedBuildManager(settings)
+          newRefinedBuildManager()
       }
       buildManager.addSourceFiles(fileSet(command.files))
 
