@@ -26,20 +26,20 @@ sbt plugin locally.
 
 Don't worry, this is super-easy:
 
-    sbt> publish-local
+    sbt> publishLocal
 
 ## Test the examples
 
 You can compile the example applications with:
 
-    sbt> examples/optimize-js
+    sbt> examples/optimizeJS
 
 Then, you can "execute" them by opening their respective HTML files in your
 favorite browser. Since optimizing the JavaScript takes time (tens of seconds
 to several minutes, depending on your hardware), it is also possible not to
 optimize JS by doing instead:
 
-    sbt> examples/package-js
+    sbt> examples/packageJS
 
 In this case, you have to open the `-dev` version of the HTML files.
 

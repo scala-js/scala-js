@@ -20,13 +20,16 @@ import org.mozilla.{ javascript => rhino }
 
 object ScalaJSPlugin extends Plugin {
   object ScalaJSKeys {
-    val packageJS = TaskKey[File]("package-js")
-    val optimizeJS = TaskKey[File]("optimize-js")
+    val packageJS = taskKey[File]("Package the compiled .js files in one file")
+    val optimizeJS = taskKey[File]("Package and optimize the compiled .js files in one file")
 
-    val excludeDefaultScalaLibrary = SettingKey[Boolean]("exclude-default-scala-library")
+    val excludeDefaultScalaLibrary = settingKey[Boolean](
+        "Exclude the default Scala library from the classpath sent to Scala.js")
 
-    val optimizeJSPrettyPrint = SettingKey[Boolean]("optimize-js-pretty-print")
-    val optimizeJSExterns = TaskKey[Seq[File]]("optimize-js-externs")
+    val optimizeJSPrettyPrint = settingKey[Boolean](
+        "Pretty-print the output of optimizeJS")
+    val optimizeJSExterns = taskKey[Seq[File]](
+        "Extern files to use with optimizeJS")
   }
 
   import ScalaJSKeys._
