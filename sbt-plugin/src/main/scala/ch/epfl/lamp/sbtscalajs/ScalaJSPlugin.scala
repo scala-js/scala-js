@@ -399,7 +399,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
       // you had better use the same version of Scala as Scala.js
-      scalaVersion := "2.10.1",
+      scalaVersion := "2.10.2",
 
       // you will need the Scala.js compiler on the classpath
       libraryDependencies += "ch.epfl.lamp" %% "scalajs-compiler" % "0.1-SNAPSHOT",

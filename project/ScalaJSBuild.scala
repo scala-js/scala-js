@@ -9,7 +9,7 @@ import SourceMapCat.catJSFilesAndTheirSourceMaps
 
 object ScalaJSBuild extends Build {
 
-  val scalajsScalaVersion = "2.10.1"
+  val scalajsScalaVersion = "2.10.2"
 
   val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "ch.epfl.lamp",
