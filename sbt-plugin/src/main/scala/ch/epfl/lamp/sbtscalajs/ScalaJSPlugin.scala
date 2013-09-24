@@ -84,7 +84,6 @@ object ScalaJSPlugin extends Plugin {
         import inputs.config._
 
         val s = streams.value
-
         val logger = s.log
         val cacheDir = s.cacheDirectory
 
@@ -172,9 +171,10 @@ object ScalaJSPlugin extends Plugin {
         sbt.inc.Analysis.Empty
       },
 
-      fullClasspath in packageJS <<= (
-          streams, fullClasspath
-      ) map { (s, fullCp) =>
+      fullClasspath in packageJS := {
+        val s = streams.value
+        val originalFullClasspath = fullClasspath.value
+
         val taskCacheDir = s.cacheDirectory / "package-js"
         IO.createDirectory(taskCacheDir)
 
@@ -189,7 +189,7 @@ object ScalaJSPlugin extends Plugin {
         val cpDirectories = new mutable.ListBuffer[Attributed[File]]
         val jars = mutable.Set.empty[File]
 
-        for (cpEntry <- fullCp) {
+        for (cpEntry <- originalFullClasspath) {
           val cpFile = cpEntry.data
 
           if (cpFile.isDirectory) {
@@ -235,15 +235,14 @@ object ScalaJSPlugin extends Plugin {
 
       unmanagedSources in packageJS := Seq(),
 
-      managedSources in packageJS <<= (
-          fullClasspath in packageJS
-      ) map { (cpDirectories) =>
+      managedSources in packageJS := {
         // List input files (files in earlier dirs shadow files in later dirs)
+        val cp = (fullClasspath in packageJS).value
 
         val existingPaths = mutable.Set.empty[String]
         val inputs = new mutable.ListBuffer[File]
 
-        for (dir <- cpDirectories.map(_.data)) {
+        for (dir <- cp.map(_.data)) {
           for (file <- (dir ** "*.js").get) {
             val path = IO.relativize(dir, file).get
             if (!existingPaths.contains(path)) {
@@ -258,18 +257,15 @@ object ScalaJSPlugin extends Plugin {
         sortScalaJSOutputFiles(inputs.result())
       },
 
-      sources in packageJS <<= (
-          managedSources in packageJS, unmanagedSources in packageJS
-      ) map { (managed, unmanaged) =>
-        managed ++ unmanaged
+      sources in packageJS := {
+        ((managedSources in packageJS).value ++
+            (unmanagedSources in packageJS).value)
       },
 
-      packageJS <<= (
-          streams,
-          sources in packageJS,
-          crossTarget, moduleName
-      ) map { (s, inputs, target, modName) =>
-        val output = target / (modName + ".js")
+      packageJS := {
+        val s = streams.value
+        val inputs = (sources in packageJS).value
+        val output = crossTarget.value / (moduleName.value + ".js")
         val taskCacheDir = s.cacheDirectory / "package-js"
 
         val cachedPackage = FileFunction.cached(taskCacheDir / "package",
@@ -290,22 +286,18 @@ object ScalaJSPlugin extends Plugin {
 
       managedSources in optimizeJS := Seq(),
 
-      sources in optimizeJS <<= (
-          sources in packageJS,
-          managedSources in optimizeJS,
-          unmanagedSources in optimizeJS
-      ) map { (inputs, managed, unmanaged) =>
-        inputs ++ managed ++ unmanaged
+      sources in optimizeJS := {
+        ((sources in packageJS).value ++
+            (managedSources in optimizeJS).value ++
+            (unmanagedSources in optimizeJS).value)
       },
 
-      optimizeJS <<= (
-          streams, sources in optimizeJS,
-          optimizeJSPrettyPrint, optimizeJSExterns,
-          crossTarget, moduleName
-      ) map { (s, allJSFiles, prettyPrint, externs, target, modName) =>
+      optimizeJS := {
+        val s = streams.value
         val logger = s.log
         val cacheDir = s.cacheDirectory
-        val output = target / (modName + "-opt.js")
+        val allJSFiles = (sources in optimizeJS).value
+        val output = crossTarget.value / (moduleName.value + "-opt.js")
 
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
@@ -315,12 +307,12 @@ object ScalaJSPlugin extends Plugin {
           val closureSources = allJSFiles map ClosureSource.fromFile
           val closureExterns = (
               ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
-              externs.map(ClosureSource.fromFile(_)))
+              optimizeJSExterns.value.map(ClosureSource.fromFile(_)))
 
           IO.createDirectory(new File(output.getParent))
 
           val options = new ClosureOptions
-          options.prettyPrint = prettyPrint
+          options.prettyPrint = optimizeJSPrettyPrint.value
           CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
           options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
 
@@ -355,17 +347,16 @@ object ScalaJSPlugin extends Plugin {
   )
 
   def scalaJSRunJavaScriptTask(streams: TaskKey[TaskStreams],
-      sources: TaskKey[Seq[File]], classpath: TaskKey[Classpath]) = {
-
-    (streams, sources, classpath) map { (s, inputs, cp) =>
-      s.log.info("Running ...")
-      scalaJSRunJavaScript(s.log, inputs, true, cp.map(_.data))
-    }
+      sources: TaskKey[Seq[File]], classpath: TaskKey[Classpath]) = Def.task {
+    val s = streams.value
+    s.log.info("Running ...")
+    scalaJSRunJavaScript(s.log, sources.value, true,
+        classpath.value.map(_.data))
   }
 
   val scalaJSRunSettings = Seq(
-      sources in run <<= sources in packageJS,
-      fullClasspath in run <<= fullClasspath in packageJS,
+      sources in run := (sources in packageJS).value,
+      fullClasspath in run := (fullClasspath in packageJS).value,
 
       run := {
         scalaJSRunJavaScriptTask(streams, sources in run,
@@ -376,11 +367,13 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSCompileSettings = scalaJSConfigSettings ++ scalaJSRunSettings
 
   val scalaJSTestSettings = scalaJSConfigSettings ++ Seq(
-      sources in test <<= sources in packageJS,
-      fullClasspath in test <<= fullClasspath in packageJS,
+      sources in test := (sources in packageJS).value,
+      fullClasspath in test := (fullClasspath in packageJS).value,
 
-      test <<= scalaJSRunJavaScriptTask(streams, sources in test,
-          fullClasspath in test)
+      test := {
+        scalaJSRunJavaScriptTask(streams, sources in test,
+            fullClasspath in test).value
+      }
   )
 
   val scalaJSDefaultConfigs = (

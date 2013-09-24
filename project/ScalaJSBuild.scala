@@ -15,7 +15,9 @@ object ScalaJSBuild extends Build {
       organization := "ch.epfl.lamp",
       version := "0.1-SNAPSHOT",
 
-      normalizedName ~= { _.replace("scala.js", "scalajs").replace("scala-js", "scalajs") }
+      normalizedName ~= {
+        _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
+      }
   )
 
   val defaultSettings = commonSettings ++ Seq(
@@ -38,11 +40,11 @@ object ScalaJSBuild extends Build {
           name := "Scala.js",
           publishArtifact in Compile := false,
 
-          clean <<= clean.dependsOn(
+          clean := clean.dependsOn(
               // compiler, library and sbt-plugin are aggregated
               clean in corejslib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in examples,
-              clean in exampleHelloWorld, clean in exampleReversi)
+              clean in exampleHelloWorld, clean in exampleReversi).value
       )
   ).aggregate(
       compiler, plugin, library
@@ -68,7 +70,8 @@ object ScalaJSBuild extends Build {
       settings = commonSettings ++ Seq(
           name := "Scala.js sbt plugin",
           sbtPlugin := true,
-          scalaBinaryVersion <<= scalaVersion(CrossVersion.binaryScalaVersion),
+          scalaBinaryVersion :=
+            CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "org.mozilla" % "rhino" % "1.7R4"
@@ -83,20 +86,21 @@ object ScalaJSBuild extends Build {
           name := "Scala.js core JS runtime",
           publishArtifact in Compile := false,
 
-          packageJS in Compile <<= (
-              streams, baseDirectory, target in Compile
-          ) map { (s, baseDirectory, target) =>
+          packageJS in Compile := {
+            val s = streams.value
+            val targetDir = (target in Compile).value
+
             // hard-coded because order matters!
             val fileNames =
               Seq("scalajsenv.js", "javalangObject.js",
                   "javalangString.js", "DummyParents.js")
 
-            val allJSFiles = fileNames map (baseDirectory / _)
-            val output = target / ("scalajs-corejslib.js")
+            val allJSFiles = fileNames map (baseDirectory.value / _)
+            val output = targetDir / ("scalajs-corejslib.js")
 
             FileFunction.cached(s.cacheDirectory / "package-js",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-              target.mkdir()
+              targetDir.mkdir()
               catJSFilesAndTheirSourceMaps(allJSFiles, output)
               Set(output)
             } (allJSFiles.toSet)
@@ -140,9 +144,8 @@ object ScalaJSBuild extends Build {
 
           // Continuation plugin
           autoCompilerPlugins := true,
-          libraryDependencies <<= (scalaVersion, libraryDependencies) { (ver, deps) =>
-            deps :+ compilerPlugin("org.scala-lang.plugins" % "continuations" % ver)
-          },
+          libraryDependencies += compilerPlugin(
+              "org.scala-lang.plugins" % "continuations" % scalaVersion.value),
           scalacOptions += "-P:continuations:enable"
       )
   ).dependsOn(compiler)
@@ -160,26 +163,24 @@ object ScalaJSBuild extends Build {
       id = "scalajs-library",
       base = file("library"),
       settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
-          name := "Scala.js library",
-
-          mappings in (Compile, packageBin) <++= (
-              compile in (javalib, Compile), classDirectory in (javalib, Compile),
-              compile in (scalalib, Compile), classDirectory in (scalalib, Compile),
-              compile in (libraryAux, Compile), classDirectory in (libraryAux, Compile)
-          ) map { (_, javalibCD, _, scalalibCD, _, libraryAuxCD) =>
+          name := "Scala.js library"
+      ) ++ inConfig(Compile)(Seq(
+          /* Add the .js and .js.map files from other lib projects
+           * (but not .jstype files)
+           */
+          mappings in packageBin ++= {
+            val allProducts = (
+                (products in javalib).value ++
+                (products in scalalib).value ++
+                (products in libraryAux).value)
             val filter = ("*.js": NameFilter) | "*.js.map"
-            val javalibMappings = (javalibCD ** filter) x relativeTo(javalibCD)
-            val scalalibMappings = (scalalibCD ** filter) x relativeTo(scalalibCD)
-            val libraryAuxMappings = (libraryAuxCD ** filter) x relativeTo(libraryAuxCD)
-            javalibMappings ++ scalalibMappings ++ libraryAuxMappings
+            allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
           },
 
-          mappings in (Compile, packageBin) <+= (
-              packageJS in (corejslib, Compile)
-          ) map { (corejslibFile) =>
-            corejslibFile -> "scalajs-corejslib.js"
-          }
-      )
+          // Add the core JS library
+          mappings in packageBin +=
+            (packageJS in corejslib).value -> "scalajs-corejslib.js"
+      ))
   ).dependsOn(compiler)
 
   // Examples
@@ -194,22 +195,17 @@ object ScalaJSBuild extends Build {
 
   lazy val exampleSettings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
       /* Add the library classpath this way to escape the dependency between
-       * tasks. This avoids to recompile the library every time we compile an
-       * example. This is all about working around the lack of dependency
-       * analysis.
+       * tasks. This avoids to recompile the library every time we make a
+       * change in the compiler, and we want to test it on an example.
        */
-      unmanagedClasspath in Compile <+= (
-          artifactPath in (library, Compile, packageBin)
-      ) map { libraryJar =>
+      unmanagedClasspath in Compile += {
+        val libraryJar = (artifactPath in (library, Compile, packageBin)).value
         Attributed.blank(libraryJar)
       },
 
       // Add the startup.js file of this example project
-      unmanagedSources in (Compile, packageJS) <+= (
-          baseDirectory
-      ) map { base =>
-        base / "startup.js"
-      }
+      unmanagedSources in (Compile, packageJS) +=
+        baseDirectory.value / "startup.js"
   )
 
   lazy val exampleHelloWorld = Project(
