@@ -1002,11 +1002,6 @@ abstract class GenJSCode extends SubComponent
      *      throw e; // default, re-throw
      *    }
      *  }
-     *
-     *  TODO JavaScript-generated exceptions are not handled properly here.
-     *  We should probably have a method jsExceptionToScalaException(e) in
-     *  the Scala.js environment and call that as the first instruction of the
-     *  catch.
      */
     def genTry(tree: Try): js.Tree = {
       implicit val jspos = tree.pos
