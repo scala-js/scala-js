@@ -319,9 +319,6 @@ trait JSPrinters { self: scalajs.JSGlobal =>
           // TODO
           print("<setter>")
 
-        case js.CustomDef(name, rhs) =>
-          print(name, ": ", rhs)
-
         case js.Super() =>
           print("super")
 

@@ -572,12 +572,8 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         if name.name != "constructor"
       } yield genAddMethodDefToPrototype(tree, m)
 
-      val customDefs = for {
-        d @ js.CustomDef(name, rhs) <- tree.defs
-      } yield genAddCustomDefToPrototype(tree, d)
-
       val result = transformStat(flattenBlock(
-          typeFunctionDef :: customDefs ::: methodsDefs))
+          typeFunctionDef :: methodsDefs))
 
       currentClassDef = savedCurrentClassDef
 
@@ -623,13 +619,6 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
       implicit val pos = method.pos
       val methodFun = js.Function(method.args, method.body)
       genAddToPrototype(cd, method.name, methodFun)
-    }
-
-    /** Generate the addition to the prototype of a custom definition */
-    def genAddCustomDefToPrototype(cd: js.ClassDef,
-        customDef: js.CustomDef): js.Tree = {
-      implicit val pos = customDef.pos
-      genAddToPrototype(cd, customDef.name, customDef.rhs)
     }
 
     /** Generate `classVar.prototype.name = value` */

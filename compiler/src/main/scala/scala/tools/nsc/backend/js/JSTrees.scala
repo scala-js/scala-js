@@ -221,8 +221,6 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
     case class SetterDef(name: PropertyName, arg: Ident, body: Tree)(implicit val pos: Position) extends Tree
 
-    case class CustomDef(name: PropertyName, rhs: Tree)(implicit val pos: Position) extends Tree
-
     case class Super()(implicit val pos: Position) extends Tree
 
     // Some derivatives
@@ -510,9 +508,6 @@ trait JSTrees { self: scalajs.JSGlobal =>
 
           case SetterDef(name, arg, body) =>
             SetterDef(name, arg, transformStat(body))
-
-          case CustomDef(name, rhs) =>
-            CustomDef(name, transformExpr(rhs))
 
           case _ =>
             tree
