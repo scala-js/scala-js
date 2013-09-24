@@ -126,7 +126,7 @@ abstract class GenJSCode extends SubComponent
                   genRawJSClassData(cd)
                 } else {
                   val classDef = genClass(cd)
-                  if (sym.isModuleClass && !sym.isLifted)
+                  if (isStaticModule(sym))
                     js.Block(classDef, genModuleAccessor(sym))
                   else
                     classDef
@@ -177,7 +177,7 @@ abstract class GenJSCode extends SubComponent
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
-      val classIdent = encodeFullNameIdent(sym)
+      val classIdent = encodeClassFullNameIdent(sym)
       val classVar = envField("c") DOT classIdent
 
       // Generate members (constructor + methods)
@@ -214,7 +214,7 @@ abstract class GenJSCode extends SubComponent
 
       // The actual class definition
       val classDefinition = js.ClassDef(classVar,
-          envField("inheritable") DOT encodeFullNameIdent(sym.superClass),
+          envField("inheritable") DOT encodeClassFullNameIdent(sym.superClass),
           generatedMembers.toList ++ bridges)
 
       /* Inheritable constructor
@@ -291,7 +291,7 @@ abstract class GenJSCode extends SubComponent
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
 
-      val classIdent = encodeFullNameIdent(sym)
+      val classIdent = encodeClassFullNameIdent(sym)
 
       val classDataVar = envField("data") DOT classIdent
       classDataVar := genDataRecord(cd)
@@ -309,7 +309,7 @@ abstract class GenJSCode extends SubComponent
       implicit val pos = cd.pos
       val sym = cd.symbol
 
-      val classIdent = encodeFullNameIdent(sym)
+      val classIdent = encodeClassFullNameIdent(sym)
 
       val instanceTestMethods = genInstanceTestMethods(cd)
 
@@ -372,7 +372,7 @@ abstract class GenJSCode extends SubComponent
       val sym = cd.symbol
 
       val displayName = sym.fullName
-      val classIdent = encodeFullNameIdent(sym)
+      val classIdent = encodeClassFullNameIdent(sym)
 
       val isAncestorOfString =
         StringClass.ancestors contains sym
@@ -443,15 +443,15 @@ abstract class GenJSCode extends SubComponent
 
       val parentData = {
         if (isInterface) js.Undefined()
-        else envField("data") DOT encodeFullNameIdent(
+        else envField("data") DOT encodeClassFullNameIdent(
             if (sym.superClass == NoSymbol) ObjectClass else sym.superClass)
       }
 
       val ancestorsRecord = js.ObjectConstr(
           for (ancestor <- sym :: sym.ancestors)
-            yield (encodeFullNameIdent(ancestor), js.BooleanLiteral(true)))
+            yield (encodeClassFullNameIdent(ancestor), js.BooleanLiteral(true)))
 
-      val classIdent = encodeFullNameIdent(sym)
+      val classIdent = encodeClassFullNameIdent(sym)
 
       js.New(envField("ClassTypeData"), List(
           js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
@@ -608,18 +608,13 @@ abstract class GenJSCode extends SubComponent
     def genModuleAccessor(sym: Symbol): js.Tree = {
       import js.TreeDSL._
 
+      require(sym.isModuleClass,
+          "genModuleAccessor called with non-moduleClass symbol: " + sym)
+
       implicit val pos = sym.pos
 
-      /* For whatever reason, a module nested in another module will be
-       * lifted as a top-level module, with its module class, but
-       * sym.companionModule will be NoSymbol.
-       * This makes it awkward to get its full name without $ using
-       * standard methods of JSEncoding.
-       * Instead, we drop manually the trailing $ of the class full name.
-       */
-      val moduleName = dropTrailingDollar(encodeFullName(sym))
-      val moduleIdent = js.Ident(moduleName, Some(moduleName))
-      val moduleInstance = envField("moduleInstances") DOT moduleIdent
+      val moduleIdent = encodeModuleFullNameIdent(sym)
+      val moduleInstance = encodeModuleSymInstance(sym)
 
       val createModuleInstanceField = {
         moduleInstance := js.Undefined()
@@ -1176,21 +1171,17 @@ abstract class GenJSCode extends SubComponent
             js.ApplyMethod(callee, js.Ident("call"), arguments)
           }
 
-          def isStaticModule(sym: Symbol): Boolean =
-            (sym.isModuleClass && !sym.isImplClass && !sym.isLifted &&
-                sym.companionModule != NoSymbol)
-
           // We initialize the module instance just after the super constructor
           // call.
           if (isStaticModule(currentClassSym) && !isModuleInitialized &&
               currentMethodSym.isClassConstructor) {
             isModuleInitialized = true
-            val module = currentClassSym.companionModule
-            val initModule = js.Assign(encodeModuleSymInternal(module), js.This())
-
+            val initModule = js.Assign(
+                encodeModuleSymInstance(currentClassSym), js.This())
             js.Block(List(superCall, initModule), js.This())
-          } else
+          } else {
             superCall
+          }
 
         /** Constructor call (new)
          *  Further refined into:
@@ -2218,7 +2209,7 @@ abstract class GenJSCode extends SubComponent
                     js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
           } else {
-            val jsFunName = jsNameOf(sym).getOrElse(funName)
+            val jsFunName = jsNameOf(sym)
             argArray match {
               case js.ArrayConstr(args) =>
                 js.ApplyMethod(receiver, js.StringLiteral(jsFunName), args)
@@ -2283,20 +2274,9 @@ abstract class GenJSCode extends SubComponent
      */
     private def genGlobalJSObject(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      jsNameOf(sym) map { str =>
-        str.split('.').foldLeft(envField("g")) { (memo, chunk) =>
-          js.BracketSelect(memo, js.StringLiteral(chunk, Some(chunk)))
-        }
-      } getOrElse {
-        js.BracketSelect(envField("g"),
-            js.StringLiteral(sym.nameString, Some(sym.nameString)))
+      jsNameOf(sym).split('.').foldLeft(envField("g")) { (memo, chunk) =>
+        js.BracketSelect(memo, js.StringLiteral(chunk, Some(chunk)))
       }
-    }
-
-    /** Gen JS code selecting a field of the global scope */
-    private def genSelectInGlobalScope(property: js.StringLiteral)(
-        implicit pos: Position): js.Tree = {
-      js.BracketSelect(envField("g"), property)
     }
 
     /** Gen actual actual arguments to a primitive JS call
@@ -2420,18 +2400,16 @@ abstract class GenJSCode extends SubComponent
       case ARRAY(_) => js.Null()
     }
 
-    /** Generate loading of a module value */
+    /** Generate loading of a module value
+     *  Can be given either the module symbol, or its module class symbol.
+     */
     private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
-      /* Sometimes we receive a module class here.
-       * We must select its companion module if it exists.
-       */
-      val sym =
-        if (sym0.isModuleClass && sym0.companionModule != NoSymbol) sym0.companionModule
-        else sym0
+      require(sym0.isModuleOrModuleClass,
+          "genLoadModule called with non-module symbol: " + sym0)
+      val sym = if (sym0.isModule) sym0.moduleClass else sym0
 
       val isGlobalScope =
         isScalaJSDefined &&
-        sym.isModuleOrModuleClass && // TODO Why? Is this ever false?
         beforePhase(currentRun.erasurePhase) {
           sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
         }
@@ -2480,10 +2458,13 @@ abstract class GenJSCode extends SubComponent
     tpe.typeSymbol == StringClass
 
   /** Get JS name of Symbol if it was specified with JSName annotation */
-  def jsNameOf(sym: Symbol): Option[String] = {
+  def jsNameOf(sym: Symbol): String = {
     if (isScalaJSDefined)
-      sym.getAnnotation(JSNameAnnotation) flatMap (_ stringArg 0)
+      sym.getAnnotation(JSNameAnnotation) flatMap (_ stringArg 0) getOrElse sym.nameString
     else
-      None
+      sym.nameString
   }
+
+  private def isStaticModule(sym: Symbol): Boolean =
+    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
 }

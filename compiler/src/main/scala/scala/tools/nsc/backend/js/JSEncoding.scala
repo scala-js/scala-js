@@ -49,11 +49,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.DotSelect(environment, js.Ident(name, Some(name)))
   }
 
-  /** Drop the trailing $ in a string if there is one */
-  def dropTrailingDollar(name: String): String =
-    if (name.charAt(name.length-1) != '$') name
-    else name.substring(0, name.length-1)
-
   def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
     js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id,
@@ -95,7 +90,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val encodedName =
       if (sym.isClassConstructor) "init" + InnerSep
       else if (!sym.owner.isImplClass) sym.name.toString
-      else encodeFullName(sym.owner) + OuterSep + sym.name.toString
+      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
         Some(sym.originalName.decoded + paramsString))
@@ -120,29 +115,25 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
-    js.DotSelect(envField("c"), encodeFullNameIdent(sym))
+    js.DotSelect(envField("c"), encodeClassFullNameIdent(sym))
   }
 
   def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
     js.ApplyMethod(encodeClassDataOfType(tpe), js.Ident("getClassOf"), Nil)
   }
 
-  def encodeModuleSymInternal(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModuleOrModuleClass,
-        "encodeModuleSymInternal called with non-module symbol: " + sym)
+  def encodeModuleSymInstance(sym: Symbol)(implicit pos: Position): js.Tree = {
+    require(sym.isModuleClass,
+        "encodeModuleSymInstance called with non-moduleClass symbol: " + sym)
     js.DotSelect(envField("moduleInstances"),
         encodeModuleFullNameIdent(sym))
   }
 
   def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModuleOrModuleClass,
-        "encodeModuleSym called with non-module symbol: " + sym)
+    require(sym.isModuleClass,
+        "encodeModuleSym called with non-moduleClass symbol: " + sym)
 
-    val isImplClass =
-      if (sym.isModule) sym.moduleClass.isImplClass
-      else sym.isImplClass
-
-    if (isImplClass)
+    if (sym.isImplClass)
       envField("impls")
     else
       js.Apply(js.DotSelect(envField("modules"),
@@ -164,11 +155,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     toTypeKind(tpe) match {
       case array : ARRAY =>
         js.ApplyMethod(envField(prefix+"ArrayOf"),
-            encodeFullNameIdent(array.elementKind.toType.typeSymbol),
+            encodeClassFullNameIdent(array.elementKind.toType.typeSymbol),
             List(value, js.IntLiteral(array.dimensions)))
       case _ =>
         js.ApplyMethod(envField(prefix),
-            encodeFullNameIdent(tpe.typeSymbol), List(value))
+            encodeClassFullNameIdent(tpe.typeSymbol), List(value))
     }
   }
 
@@ -185,31 +176,24 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    js.DotSelect(envField("data"), encodeFullNameIdent(sym))
+    js.DotSelect(envField("data"), encodeClassFullNameIdent(sym))
   }
 
-  def encodeFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
-    js.Ident(encodeFullName(sym), Some(encodeFullName(sym, '.')))
+  def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
+    js.Ident(encodeClassFullName(sym), Some(encodeClassFullName(sym, '.')))
   }
 
   def encodeModuleFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
     js.Ident(encodeModuleFullName(sym), Some(encodeModuleFullName(sym, '.')))
   }
 
-  def encodeFullName(sym: Symbol, separator: Char = InnerSep): String =
-    sym.fullNameAsName(separator).toString + suffixFor(sym)
+  def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
+    val base = sym.fullNameAsName(separator).toString
+    if (sym.isModuleClass) base + "$" else base
+  }
 
   def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
     sym.fullNameAsName(separator).toString
-
-  private def encodeFullName(tpe: Type, separator: Char): String = tpe match {
-    case TypeRef(_, definitions.ArrayClass, List(elementType)) =>
-      encodeFullName(elementType, separator) + "[]"
-    case _ => encodeFullName(tpe.typeSymbol, separator)
-  }
-
-  private def suffixFor(sym: Symbol) =
-    if (sym.isModuleClass && !sym.isImplClass) "$" else ""
 
   // Encoding of method signatures
 
@@ -248,7 +232,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       cls match {
         case definitions.ObjectClass => "O"
         case definitions.StringClass => "T" // S is taken, use T for Text
-        case _ => "L"+encodeFullName(cls)
+        case _ => "L"+encodeClassFullName(cls)
       }
     case ARRAY(elem) => "A"+internalName(elem)
   }
