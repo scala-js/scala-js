@@ -186,7 +186,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
     val base = sym.fullNameAsName(separator).toString
-    if (sym.isModuleClass) base + "$" else base
+    if (sym.isModuleClass && !sym.isImplClass) base + "$" else base
   }
 
   def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
