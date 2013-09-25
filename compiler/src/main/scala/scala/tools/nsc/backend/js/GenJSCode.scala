@@ -398,7 +398,7 @@ abstract class GenJSCode extends SubComponent
               (obj === js.Null())) {
             js.Return(obj)
           } ELSE {
-            genBuiltinApply("throwClassCastException", obj,
+            genCallHelper("throwClassCastException", obj,
                 js.StringLiteral(displayName))
           }
         })
@@ -422,7 +422,7 @@ abstract class GenJSCode extends SubComponent
               (obj === js.Null())) {
             js.Return(obj)
           } ELSE {
-            genBuiltinApply("throwArrayCastException", obj,
+            genCallHelper("throwArrayCastException", obj,
                 js.StringLiteral("L"+displayName+";"), depth)
           }
         })
@@ -1060,7 +1060,7 @@ abstract class GenJSCode extends SubComponent
           if (mightCatchJavaScriptException) {
             js.Block(
                 js.Assign(exceptVar,
-                    genBuiltinApply("wrapJavaScriptException", exceptVar)),
+                    genCallHelper("wrapJavaScriptException", exceptVar)),
                 handler0)
           } else {
             handler0
@@ -1353,7 +1353,7 @@ abstract class GenJSCode extends SubComponent
             } else if (MethodWithHelperInEnv contains fun.symbol) {
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
-              genBuiltinApply(helper, arguments:_*)
+              genCallHelper(helper, arguments:_*)
             } else if (isRawJSType(receiver.tpe) || isStringType(receiver.tpe)) {
               genPrimitiveJSCall(app)
             } else {
@@ -1468,7 +1468,7 @@ abstract class GenJSCode extends SubComponent
 
       val arrayClassData = encodeClassDataOfType(arrayType)
 
-      genBuiltinApply("newArrayObject", arrayClassData,
+      genCallHelper("newArrayObject", arrayClassData,
           js.ArrayConstr(arguments))
     }
 
@@ -1483,7 +1483,7 @@ abstract class GenJSCode extends SubComponent
       val arrayClassData = encodeClassDataOfType(tree.tpe)
       val nativeArray = js.ArrayConstr(elems map genExpr)
 
-      genBuiltinApply("makeNativeArrayWrapper",
+      genCallHelper("makeNativeArrayWrapper",
           arrayClassData, nativeArray)
     }
 
@@ -1726,7 +1726,7 @@ abstract class GenJSCode extends SubComponent
             case DIV =>
               val actualDiv = js.BinaryOp("/", lsrc, rsrc)
               (resultKind: @unchecked) match {
-                case LongKind => genBuiltinApply("truncateToLong", actualDiv)
+                case LongKind => genCallHelper("truncateToLong", actualDiv)
                 case _:INT => js.BinaryOp("|", actualDiv, js.IntLiteral(0))
                 case _:FLOAT => actualDiv
               }
@@ -1770,7 +1770,7 @@ abstract class GenJSCode extends SubComponent
       }
 
       val function = if (mustUseAnyComparator) "anyEqEq" else "anyRefEqEq"
-      genBuiltinApply(function, lsrc, rsrc)
+      genCallHelper(function, lsrc, rsrc)
     }
 
     /** Gen JS code for string concatenation
@@ -1857,7 +1857,7 @@ abstract class GenJSCode extends SubComponent
           js.BinaryOp("|", source, js.IntLiteral(0))
 
         case F2L | D2L =>
-          genBuiltinApply("truncateToLong", source)
+          genCallHelper("truncateToLong", source)
 
         case _ => source
       }
@@ -1922,12 +1922,12 @@ abstract class GenJSCode extends SubComponent
     private def makeBoxUnbox(expr: js.Tree, tpe: Type, functionPrefix: String)(
         implicit pos: Position): js.Tree = {
 
-      val boxFunName = toTypeKind(tpe) match {
+      val boxHelperName = toTypeKind(tpe) match {
         case kind: ValueTypeKind => functionPrefix + kind.primitiveCharCode
         case _ =>
           abort(s"makeBoxUnbox requires a primitive type, found $tpe at $pos")
       }
-      genBuiltinApply(boxFunName, expr)
+      genCallHelper(boxHelperName, expr)
     }
 
     /** java.lang.reflect.Array module */
@@ -1990,7 +1990,7 @@ abstract class GenJSCode extends SubComponent
           case js.ArrayConstr(actualArgs) =>
             js.New(jsClass, actualArgs)
           case _ =>
-            genBuiltinApply("newInstanceWithVarargs",
+            genCallHelper("newInstanceWithVarargs",
                 jsClass, actualArgArray)
         }
       } else if (code == DYNAPPLY) {
@@ -2000,7 +2000,7 @@ abstract class GenJSCode extends SubComponent
           case js.ArrayConstr(actualArgs) =>
             js.Apply(maybeDynamicSelect(receiver, methodName), actualArgs)
           case _ =>
-            genBuiltinApply("applyMethodWithVarargs",
+            genCallHelper("applyMethodWithVarargs",
                 receiver, methodName, actualArgArray)
         }
       } else if (code == ARR_CREATE) {
@@ -2056,7 +2056,7 @@ abstract class GenJSCode extends SubComponent
 
             case DICT_PROPS =>
               // js.Dictionary.propertiesOf(arg)
-              genBuiltinApply("propertiesOf", arg)
+              genCallHelper("propertiesOf", arg)
           }
 
         case List(arg1, arg2) =>
@@ -2140,7 +2140,7 @@ abstract class GenJSCode extends SubComponent
         case "intern" if isString =>
           receiver
         case "compareTo" if isString =>
-          genBuiltinApply("comparableCompareTo", receiver, args.head)
+          genCallHelper("comparableCompareTo", receiver, args.head)
 
         case "replace" if isString =>
           val argsAsStrings =
@@ -2205,7 +2205,7 @@ abstract class GenJSCode extends SubComponent
               case js.ArrayConstr(args) =>
                 js.ApplyMethod(receiver, js.StringLiteral(jsFunName), args)
               case _ =>
-                genBuiltinApply("applyMethodWithVarargs",
+                genCallHelper("applyMethodWithVarargs",
                     receiver, js.StringLiteral(jsFunName), argArray)
             }
           }
@@ -2244,7 +2244,7 @@ abstract class GenJSCode extends SubComponent
           if (cls == JSObjectClass && args.isEmpty) js.ObjectConstr(Nil)
           else js.New(genPrimitiveJSClass(cls), args)
         case argArray =>
-          genBuiltinApply("newInstanceWithVarargs",
+          genCallHelper("newInstanceWithVarargs",
               genPrimitiveJSClass(cls), argArray)
       }
     }
@@ -2436,9 +2436,9 @@ abstract class GenJSCode extends SubComponent
       encodeClassOfType(tpe)
     }
 
-    /** Generate a call to a runtime builtin helper */
-    def genBuiltinApply(funName: String, args: js.Tree*)(implicit pos: Position) = {
-      js.ApplyMethod(environment, js.Ident(funName), args.toList)
+    /** Generate a call to a helper function in the environment */
+    def genCallHelper(helperName: String, args: js.Tree*)(implicit pos: Position) = {
+      js.ApplyMethod(environment, js.Ident(helperName), args.toList)
     }
   }
 
