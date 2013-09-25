@@ -1439,10 +1439,12 @@ abstract class GenJSCode extends SubComponent
     }
 
     /** Gen JS code for a call to a Scala class constructor
-     *  Because the actual JS constructor of classes is the JS bridge for the
-     *  constructors, we bypass it using Object.create.
-     *  We call the <init> method representing the constructor on the resulting
-     *  instance. Since this method returns `this`, we simply chain the calls.
+     *  This first calls the only JS constructor for the class, which creates
+     *  the fields of the instance, initialized to the zero of their respective
+     *  types.
+     *  Then we call the <init> method containing the code of the particular
+     *  overload of the Scala constructors. Since this method returns `this`,
+     *  we simply chain the calls.
      */
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
