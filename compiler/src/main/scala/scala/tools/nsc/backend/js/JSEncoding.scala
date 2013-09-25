@@ -33,15 +33,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   /** Inner separator character as a string */
   final val InnerSepStr = InnerSep.toString
 
-  /** Full name (global name) of the Scala.js environment */
-  final val ScalaJSEnvironmentFullName = "ScalaJS"
-
   /** Name given to the local Scala.js environment variable */
   final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** The current Scala.js environment */
   def environment(implicit pos: Position): js.Ident = {
-    js.Ident(ScalaJSEnvironmentName, Some(ScalaJSEnvironmentFullName))
+    js.Ident(ScalaJSEnvironmentName, Some(ScalaJSEnvironmentName))
   }
 
   /** Select a given field of the current Scala.js environment */
