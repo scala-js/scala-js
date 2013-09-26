@@ -488,6 +488,7 @@ trait JSPrinters { self: scalajs.JSGlobal =>
       } else {
         val sourceIndex = sourceToIndex(source)
         writeBase64VLQ(sourceIndex-lastSourceIndex)
+        lastSource = source
         lastSourceIndex = sourceIndex
       }
 
