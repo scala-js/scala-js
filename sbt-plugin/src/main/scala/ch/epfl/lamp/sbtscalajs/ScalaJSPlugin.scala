@@ -38,7 +38,8 @@ object ScalaJSPlugin extends Plugin {
     item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
   }
 
-  private val isScalaLibraryJar = isJarWithPrefix("scala-library") _
+  private val isScalaLibraryJar = isJarWithPrefix(
+      "scala-library", "scala-reflect") _
 
   val isScalaJSCompilerJar = isJarWithPrefix(
       "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler") _
