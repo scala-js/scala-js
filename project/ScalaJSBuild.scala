@@ -105,7 +105,7 @@ object ScalaJSBuild extends Build {
               Set(output)
             } (allJSFiles.toSet)
 
-            output
+            Seq(output)
           }
       )
   )
@@ -179,7 +179,7 @@ object ScalaJSBuild extends Build {
 
           // Add the core JS library
           mappings in packageBin +=
-            (packageJS in corejslib).value -> "scalajs-corejslib.js"
+            (packageJS in corejslib).value.head -> "scalajs-corejslib.js"
       ))
   ).dependsOn(compiler)
 
