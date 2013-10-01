@@ -2148,7 +2148,10 @@ abstract class GenJSCode extends SubComponent
               args map charSeqToString
             else
               args map charToString
-          js.ApplyMethod(receiver, js.StringLiteral("replace"), argsAsStrings)
+          js.ApplyMethod(
+              js.ApplyMethod(receiver,
+                  js.StringLiteral("split"), List(argsAsStrings(0))),
+              js.StringLiteral("join"), List(argsAsStrings(1)))
 
         case "matches" if isString =>
           // Made-up of Pattern.matches(args.head, receiver)
