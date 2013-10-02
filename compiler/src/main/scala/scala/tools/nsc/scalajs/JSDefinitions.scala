@@ -53,7 +53,8 @@ trait JSDefinitions { self: SymbolTable =>
     lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.js.JavaScriptException")
 
-    lazy val JSNameAnnotation = getRequiredClass("scala.js.annotation.JSName")
+    lazy val JSNameAnnotation          = getRequiredClass("scala.js.annotation.JSName")
+    lazy val JSBracketAccessAnnotation = getRequiredClass("scala.js.annotation.JSBracketAccess")
 
     lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor
     lazy val JSDynamicTpe   = JSDynamicClass.toTypeConstructor

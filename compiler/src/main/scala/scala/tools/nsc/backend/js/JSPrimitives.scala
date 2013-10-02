@@ -38,13 +38,9 @@ abstract class JSPrimitives {
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
   val DYNAPPLY = 332  // js.Dynamic.applyDynamic
 
-  val DICT_SELECT = 333 // js.Dictionary.apply
-  val DICT_UPDATE = 334 // js.Dictionary.update
-  val DICT_PROPS = 335  // js.Dictionary.propertiesOf
+  val DICT_PROPS = 333 // js.Dictionary.propertiesOf
 
-  val ARR_CREATE = 336      // js.Array.apply (array literal syntax)
-  val ARR_GET = DICT_SELECT // js.Array.apply
-  val ARR_SET = DICT_UPDATE // js.Array.update
+  val ARR_CREATE = 334 // js.Array.apply (array literal syntax)
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -75,14 +71,9 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)
     addPrimitive(JSDynamic_applyDynamic, DYNAPPLY)
 
-    addPrimitive(JSDictionary_apply, DICT_SELECT)
-    addPrimitive(JSDictionary_update, DICT_UPDATE)
-
     addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)
 
     addPrimitive(JSArray_create, ARR_CREATE)
-    addPrimitive(JSArray_apply, ARR_GET)
-    addPrimitive(JSArray_update, ARR_SET)
   }
 
   def isJavaScriptPrimitive(code: Int) =

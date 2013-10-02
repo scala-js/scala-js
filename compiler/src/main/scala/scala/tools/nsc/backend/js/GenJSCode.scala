@@ -2050,9 +2050,6 @@ abstract class GenJSCode extends SubComponent
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
               maybeDynamicSelect(receiver, arg)
-            case DICT_SELECT =>
-              // js.Dictionary.apply(arg)
-              js.BracketSelect(receiver, arg)
 
             case DICT_PROPS =>
               // js.Dictionary.propertiesOf(arg)
@@ -2064,9 +2061,6 @@ abstract class GenJSCode extends SubComponent
             case DYNUPDATE =>
               // js.Dynamic.updateDynamic(arg1)(arg2)
               statToExpr(js.Assign(maybeDynamicSelect(receiver, arg1), arg2))
-            case DICT_UPDATE =>
-              // js.Dictionary.update(arg1, arg2)
-              statToExpr(js.Assign(js.BracketSelect(receiver, arg1), arg2))
           }
       })
     }
@@ -2097,6 +2091,12 @@ abstract class GenJSCode extends SubComponent
       lazy val js.ArrayConstr(args) = argArray
       lazy val argc = args.length
 
+      def hasExplicitJSEncoding = {
+        isScalaJSDefined && (
+            sym.hasAnnotation(JSNameAnnotation) ||
+            sym.hasAnnotation(JSBracketAccessAnnotation))
+      }
+
       val isString = isStringType(receiver0.tpe)
 
       def paramType(index: Int) = sym.tpe.params(index).tpe
@@ -2119,7 +2119,7 @@ abstract class GenJSCode extends SubComponent
           assert(argc == 1)
           js.BinaryOp(funName, receiver, args.head)
 
-        case "apply" =>
+        case "apply" if !hasExplicitJSEncoding =>
           argArray match {
             case js.ArrayConstr(args) => js.Apply(receiver, args)
             case _ => js.ApplyMethod(receiver, js.StringLiteral("apply"),
@@ -2193,6 +2193,10 @@ abstract class GenJSCode extends SubComponent
             }
           }
 
+          def isJSBracketAccess = {
+            isScalaJSDefined && sym.hasAnnotation(JSBracketAccessAnnotation)
+          }
+
           if (isJSGetter) {
             assert(argc == 0)
             js.BracketSelect(receiver, js.StringLiteral(funName))
@@ -2202,6 +2206,17 @@ abstract class GenJSCode extends SubComponent
                 js.BracketSelect(receiver,
                     js.StringLiteral(funName.substring(0, funName.length-2))),
                 args.head))
+          } else if (isJSBracketAccess) {
+            assert(argArray.isInstanceOf[js.ArrayConstr] && (argc == 1 || argc == 2),
+                s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
+            args match {
+              case List(keyArg) =>
+                js.BracketSelect(receiver, keyArg)
+              case List(keyArg, valueArg) =>
+                statToExpr(js.Assign(
+                    js.BracketSelect(receiver, keyArg),
+                    valueArg))
+            }
           } else {
             val jsFunName = jsNameOf(sym)
             argArray match {

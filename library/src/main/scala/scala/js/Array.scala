@@ -10,16 +10,20 @@
 
 package scala.js
 
+import annotation.JSBracketAccess
+
 class Array[A] extends Object {
   def this(arrayLength: Number) = this()
 
   // Do not expose this one - use js.Array(item1, item2, ...) instead
   // def this(items: A*) = this()
 
-  val length: Number = sys.error("stub")
+  def length: Number = ???
 
-  def apply(index: Number): A = sys.error("stub")
-  def update(index: Number, value: A): Unit = sys.error("stub")
+  @JSBracketAccess
+  def apply(index: Number): A = ???
+  @JSBracketAccess
+  def update(index: Number, value: A): Unit = ???
 
   def concat(items: Array[A]*): Array[A] = ???
   def concat(item: A, items: A*): Array[A] = ???

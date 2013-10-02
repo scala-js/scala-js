@@ -10,6 +10,8 @@
 
 package scala.js
 
+import annotation.JSBracketAccess
+
 import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
 import scala.collection.mutable
@@ -131,7 +133,9 @@ object Dynamic {
 
 /** Dictionary "view" of a JavaScript value */
 sealed trait Dictionary extends Any {
+  @JSBracketAccess
   def apply(key: String): Any
+  @JSBracketAccess
   def update(key: String, value: Any): Unit
 }
 
