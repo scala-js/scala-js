@@ -30,6 +30,13 @@ object ScalaJSBuild extends Build {
       )
   )
 
+  val myScalaJSSettings = scalaJSAbstractSettings ++ Seq(
+      /* Not forking does not like having the compiler changing all the time.
+       * So in this build we fork when compiling.
+       */
+      fork in (Compile, compile) := true
+  )
+
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
@@ -113,7 +120,7 @@ object ScalaJSBuild extends Build {
   lazy val javalib: Project = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
-      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false
       )
@@ -122,7 +129,7 @@ object ScalaJSBuild extends Build {
   lazy val scalalib: Project = Project(
       id = "scalajs-scalalib",
       base = file("scalalib"),
-      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
 
@@ -153,7 +160,7 @@ object ScalaJSBuild extends Build {
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
       base = file("library-aux"),
-      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false
       )
@@ -162,7 +169,7 @@ object ScalaJSBuild extends Build {
   lazy val library: Project = Project(
       id = "scalajs-library",
       base = file("library"),
-      settings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library"
       ) ++ inConfig(Compile)(Seq(
           /* Add the .js and .js.map files from other lib projects
@@ -193,7 +200,7 @@ object ScalaJSBuild extends Build {
       )
   ).aggregate(exampleHelloWorld, exampleReversi)
 
-  lazy val exampleSettings = defaultSettings ++ scalaJSAbstractSettings ++ Seq(
+  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ Seq(
       /* Add the library classpath this way to escape the dependency between
        * tasks. This avoids to recompile the library every time we make a
        * change in the compiler, and we want to test it on an example.
