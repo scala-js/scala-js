@@ -2089,7 +2089,7 @@ abstract class GenJSCode extends SubComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      val funName = sym.nameString
+      val funName = sym.originalName.decoded
       val receiver = genExpr(receiver0)
       val argArray = genPrimitiveJSArgs(sym, args0)
 
@@ -2460,10 +2460,12 @@ abstract class GenJSCode extends SubComponent
 
   /** Get JS name of Symbol if it was specified with JSName annotation */
   def jsNameOf(sym: Symbol): String = {
-    if (isScalaJSDefined)
-      sym.getAnnotation(JSNameAnnotation) flatMap (_ stringArg 0) getOrElse sym.nameString
-    else
-      sym.nameString
+    if (isScalaJSDefined) {
+      sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
+          sym.originalName.decoded)
+    } else {
+      sym.originalName.decoded
+    }
   }
 
   private def isStaticModule(sym: Symbol): Boolean =
