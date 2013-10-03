@@ -86,7 +86,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName =
       if (sym.isClassConstructor) "init" + InnerSep
-      else if (!sym.owner.isImplClass) sym.name.toString
+      else if (!foreignIsImplClass(sym.owner)) sym.name.toString
       else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
@@ -130,12 +130,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isModuleClass,
         "encodeModuleSym called with non-moduleClass symbol: " + sym)
 
-    if (sym.isImplClass)
+    if (foreignIsImplClass(sym))
       envField("impls")
     else
       js.Apply(js.DotSelect(envField("modules"),
           encodeModuleFullNameIdent(sym)), Nil)
   }
+
+  private def foreignIsImplClass(sym: Symbol): Boolean =
+    sym.isModuleClass && nme.isImplClassName(sym.name)
 
   def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
@@ -186,7 +189,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
     val base = sym.fullNameAsName(separator).toString
-    if (sym.isModuleClass && !sym.isImplClass) base + "$" else base
+    if (sym.isModuleClass && !foreignIsImplClass(sym)) base + "$" else base
   }
 
   def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
