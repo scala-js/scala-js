@@ -45,8 +45,8 @@ object System {
 private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
   private var buffer: js.String = ""
 
-  override protected[lang] def writeString(s: String): Unit = {
-    var rest: js.String = s
+  override def print(s: String): Unit = {
+    var rest: js.String = if (s eq null) "null" else s
     while (!(!rest)) {
       val nlPos = rest.indexOf("\n")
       if (nlPos < 0) {
@@ -82,9 +82,9 @@ extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
 }
 
 private[lang] object StandardOut extends io.OutputStream {
-  def write(b: Int) = StandardOutPrintStream.writeString(b.toChar.toString)
+  def write(b: Int) = StandardOutPrintStream.print(b.toChar.toString)
 }
 
 private[lang] object StandardErr extends io.OutputStream {
-  def write(b: Int) = StandardErrPrintStream.writeString(b.toChar.toString)
+  def write(b: Int) = StandardErrPrintStream.print(b.toChar.toString)
 }

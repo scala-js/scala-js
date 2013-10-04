@@ -31,7 +31,7 @@ class PrintStream(_out: OutputStream, autoFlush: Boolean, ecoding: String)
   def print(s: String): Unit = if (s eq null) print("null") else writeString(s)
   def print(o: Object): Unit = if (o eq null) print("null") else print(o.toString)
 
-  protected def writeString(s: String) = {
+  private def writeString(s: String) = {
     val bytes = new Array[Byte](s.length)
     for (i <- 0 until s.length)
       bytes(i) = s.charAt(i).toByte
