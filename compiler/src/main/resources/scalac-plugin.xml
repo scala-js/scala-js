@@ -1,0 +1,4 @@
+<plugin>
+  <name>scalajs</name>
+  <classname>scala.tools.nsc.scalajs.ScalaJSPlugin</classname>
+</plugin>

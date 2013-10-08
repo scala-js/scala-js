@@ -124,6 +124,8 @@ object ScalaJSBuild extends Build {
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
           scalacOptions += "-Yskip:cleanup,icode,jvm"
+      ) ++ (
+          scalaJSExternalCompileSettings
       )
   ).dependsOn(compiler, library)
 
@@ -158,6 +160,8 @@ object ScalaJSBuild extends Build {
           libraryDependencies += compilerPlugin(
               "org.scala-lang.plugins" % "continuations" % scalaVersion.value),
           scalacOptions += "-P:continuations:enable"
+      ) ++ (
+          scalaJSExternalCompileSettings
       )
   ).dependsOn(compiler)
 
@@ -168,7 +172,8 @@ object ScalaJSBuild extends Build {
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
           scalacOptions += "-Yskip:cleanup,icode,jvm"
-
+      ) ++ (
+          scalaJSExternalCompileSettings
       )
   ).dependsOn(compiler)
 
@@ -177,6 +182,8 @@ object ScalaJSBuild extends Build {
       base = file("library"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library"
+      ) ++ inConfig(Compile)(
+          scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
           /* Add the .js and .js.map files from other lib projects
            * (but not .jstype files)
@@ -207,6 +214,8 @@ object ScalaJSBuild extends Build {
   ).aggregate(exampleHelloWorld, exampleReversi)
 
   lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      autoCompilerPlugins := true,
+
       /* Add the library classpath this way to escape the dependency between
        * tasks. This avoids to recompile the library every time we make a
        * change in the compiler, and we want to test it on an example.
@@ -228,7 +237,7 @@ object ScalaJSBuild extends Build {
           name := "Hello World - Scala.js example",
           moduleName := "helloworld"
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler % "plugin")
 
   lazy val exampleReversi = Project(
       id = "reversi",
@@ -237,5 +246,5 @@ object ScalaJSBuild extends Build {
           name := "Reversi - Scala.js example",
           moduleName := "reversi"
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler % "plugin")
 }

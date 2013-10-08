@@ -77,6 +77,111 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.apply = function() {};
     """
 
+  val scalaJSExternalCompileConfigSettings: Seq[Setting[_]] = inTask(compile)(
+      Defaults.runnerTask
+  ) ++ Seq(
+      fork in compile := true,
+      trapExit in compile := true,
+      javaOptions in compile += "-Xmx512M",
+
+      compile := {
+        val inputs = (compileInputs in compile).value
+        import inputs.config._
+
+        val s = streams.value
+        val logger = s.log
+        val cacheDir = s.cacheDirectory
+
+        // Discover classpaths
+
+        def cpToString(cp: Seq[File]) =
+          cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
+
+        val (compilerCp, cp0) = classpath.partition(isScalaJSCompilerJar)
+        val cp =
+          if (excludeDefaultScalaLibrary.value) cp0
+          else cp0 ++ compilerCp.filter(isScalaLibraryJar)
+
+        val cpStr = cpToString(cp)
+
+        // List all my dependencies (recompile if any of these changes)
+
+        val isClassOrJstypeFile = ("*.class": NameFilter) | "*.jstype"
+        val allMyDependencies = classpath filterNot (_ == classesDirectory) flatMap { cpFile =>
+          if (cpFile.isDirectory) (cpFile ** isClassOrJstypeFile).get
+          else Seq(cpFile)
+        }
+
+        // Compile
+
+        val cachedCompile = FileFunction.cached(cacheDir / "compile-js",
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+
+          logger.info(
+              "Compiling %d Scala.js sources to %s..." format (
+              sources.size, classesDirectory))
+
+          if (classesDirectory.exists)
+            IO.delete(classesDirectory)
+          IO.createDirectory(classesDirectory)
+
+          val sourcesArgs = sources.map(_.getAbsolutePath()).toList
+
+          /* run.run() below in doCompileJS() will emit a call to its
+           * logger.info("Running scala.tools.nsc.scalajs.Main [...]")
+           * which we do not want to see. We use this patched logger to
+           * filter out that particular message.
+           */
+          val patchedLogger = new Logger {
+            def log(level: Level.Value, message: => String) = {
+              val msg = message
+              if (level != Level.Info ||
+                  !msg.startsWith("Running scala.tools.nsc.scalajs.Main"))
+                logger.log(level, msg)
+            }
+            def success(message: => String) = logger.success(message)
+            def trace(t: => Throwable) = logger.trace(t)
+          }
+
+          def doCompileJS(sourcesArgs: List[String]): Unit = {
+            val run = (runner in compile).value
+            run.run("scala.tools.nsc.scalajs.Main", compilerCp,
+                "-cp" :: cpStr ::
+                "-d" :: classesDirectory.getAbsolutePath() ::
+                options ++:
+                sourcesArgs,
+                patchedLogger) foreach sys.error
+          }
+
+          /* Crude way of overcoming the Windows limitation on command line
+           * length.
+           */
+          if ((fork in compile).value && isWindows &&
+              (sourcesArgs.map(_.length).sum > 1536)) {
+            IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
+              IO.writeLines(sourceListFile, sourcesArgs)
+              doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
+            }
+          } else {
+            doCompileJS(sourcesArgs)
+          }
+
+          // Output is all files in classesDirectory
+          (classesDirectory ** AllPassFilter).get.toSet
+        }
+
+        cachedCompile((sources ++ allMyDependencies).toSet)
+
+        // We do not have dependency analysis for Scala.js code
+        sbt.inc.Analysis.Empty
+      }
+  )
+
+  val scalaJSExternalCompileSettings = (
+      inConfig(Compile)(scalaJSExternalCompileConfigSettings) ++
+      inConfig(Test)(scalaJSExternalCompileConfigSettings)
+  )
+
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[Seq[File]],
       outputSuffix: String): Seq[Setting[_]] = Seq(
@@ -194,105 +299,7 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  val scalaJSConfigSettings: Seq[Setting[_]] = inTask(compile)(
-      Defaults.runnerTask
-  ) ++ Seq(
-      fork in compile := isWindows, // not forking does not seem to work on Win
-      trapExit in compile := true,
-      javaOptions in compile += "-Xmx512M",
-
-      compile := {
-        val inputs = (compileInputs in compile).value
-        import inputs.config._
-
-        val s = streams.value
-        val logger = s.log
-        val cacheDir = s.cacheDirectory
-
-        // Discover classpaths
-
-        def cpToString(cp: Seq[File]) =
-          cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
-
-        val (compilerCp, cp0) = classpath.partition(isScalaJSCompilerJar)
-        val cp =
-          if (excludeDefaultScalaLibrary.value) cp0
-          else cp0 ++ compilerCp.filter(isScalaLibraryJar)
-
-        val cpStr = cpToString(cp)
-
-        // List all my dependencies (recompile if any of these changes)
-
-        val isClassOrJstypeFile = ("*.class": NameFilter) | "*.jstype"
-        val allMyDependencies = classpath filterNot (_ == classesDirectory) flatMap { cpFile =>
-          if (cpFile.isDirectory) (cpFile ** isClassOrJstypeFile).get
-          else Seq(cpFile)
-        }
-
-        // Compile
-
-        val cachedCompile = FileFunction.cached(cacheDir / "compile-js",
-            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-
-          logger.info(
-              "Compiling %d Scala.js sources to %s..." format (
-              sources.size, classesDirectory))
-
-          if (classesDirectory.exists)
-            IO.delete(classesDirectory)
-          IO.createDirectory(classesDirectory)
-
-          val sourcesArgs = sources.map(_.getAbsolutePath()).toList
-
-          /* run.run() below in doCompileJS() will emit a call to its
-           * logger.info("Running scala.tools.nsc.scalajs.Main [...]")
-           * which we do not want to see. We use this patched logger to
-           * filter out that particular message.
-           */
-          val patchedLogger = new Logger {
-            def log(level: Level.Value, message: => String) = {
-              val msg = message
-              if (level != Level.Info ||
-                  !msg.startsWith("Running scala.tools.nsc.scalajs.Main"))
-                logger.log(level, msg)
-            }
-            def success(message: => String) = logger.success(message)
-            def trace(t: => Throwable) = logger.trace(t)
-          }
-
-          def doCompileJS(sourcesArgs: List[String]): Unit = {
-            val run = (runner in compile).value
-            run.run("scala.tools.nsc.scalajs.Main", compilerCp,
-                "-cp" :: cpStr ::
-                "-d" :: classesDirectory.getAbsolutePath() ::
-                options ++:
-                sourcesArgs,
-                patchedLogger) foreach sys.error
-          }
-
-          /* Crude way of overcoming the Windows limitation on command line
-           * length.
-           */
-          if ((fork in compile).value && isWindows &&
-              (sourcesArgs.map(_.length).sum > 1536)) {
-            IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
-              IO.writeLines(sourceListFile, sourcesArgs)
-              doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
-            }
-          } else {
-            doCompileJS(sourcesArgs)
-          }
-
-          // Output is all files in classesDirectory
-          (classesDirectory ** AllPassFilter).get.toSet
-        }
-
-        cachedCompile((sources ++ allMyDependencies).toSet)
-
-        // We do not have dependency analysis for Scala.js code
-        sbt.inc.Analysis.Empty
-      }
-  ) ++ (
+  val scalaJSConfigSettings: Seq[Setting[_]] = (
       packageClasspathJSTasks(externalDependencyClasspath,
           packageExternalDepsJS, "-extdeps") ++
       packageClasspathJSTasks(internalDependencyClasspath,
@@ -428,8 +435,9 @@ object ScalaJSPlugin extends Plugin {
       // you had better use the same version of Scala as Scala.js
       scalaVersion := "2.10.2",
 
-      // you will need the Scala.js compiler on the classpath
-      libraryDependencies += "ch.epfl.lamp" %% "scalajs-compiler" % "0.1-SNAPSHOT",
+      // you will need the Scala.js compiler plugin
+      autoCompilerPlugins := true,
+      addCompilerPlugin("ch.epfl.lamp" %% "scalajs-compiler" % "0.1-SNAPSHOT"),
 
       // and of course the Scala.js library
       libraryDependencies += "ch.epfl.lamp" %% "scalajs-library" % "0.1-SNAPSHOT"
