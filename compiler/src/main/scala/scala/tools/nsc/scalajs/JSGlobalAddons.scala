@@ -6,7 +6,6 @@
 package scala.tools.nsc
 package scalajs
 
-import backend.JSPlatform
 import backend.js._
 
 trait JSGlobalAddons extends JSTrees with JSPrinters with JSDefinitions {

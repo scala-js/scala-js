@@ -12,16 +12,6 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  def genJSTypeFile(cunit: CompilationUnit, representative: Symbol) {
-    val pickleSym =
-      if (representative.isModuleClass) representative.companionModule
-      else representative
-
-    currentRun.symData.get(pickleSym) foreach { pickleBuffer =>
-      genJSTypeFile(cunit, representative, pickleBuffer)
-    }
-  }
-
   def genJSFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree) {
     val outfile = getFileFor(cunit, sym, ".js", true)
     val output = new PrintWriter(outfile.bufferedOutput)
@@ -51,17 +41,6 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       output.close()
       if (sourceMapOutput ne null)
         sourceMapOutput.close()
-    }
-  }
-
-  private def genJSTypeFile(cunit: CompilationUnit, sym: Symbol,
-      pickleBuffer: PickleBuffer) {
-    val outfile = getFileFor(cunit, sym, ".jstype", false)
-    val output = outfile.bufferedOutput
-    try {
-      output.write(pickleBuffer.bytes, 0, pickleBuffer.writeIndex)
-    } finally {
-      output.close()
     }
   }
 

@@ -122,7 +122,8 @@ object ScalaJSBuild extends Build {
       base = file("javalib"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
-          publishArtifact in Compile := false
+          publishArtifact in Compile := false,
+          scalacOptions += "-Yskip:cleanup,icode,jvm"
       )
   ).dependsOn(compiler, library)
 
@@ -136,6 +137,9 @@ object ScalaJSBuild extends Build {
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
               Set("-deprecation", "-unchecked", "-feature") contains _)),
+
+          // Do not generate .class files
+          scalacOptions += "-Yskip:cleanup,icode,jvm",
 
           // Exclude files that are overridden in library
           excludeFilter in (Compile, unmanagedSources) ~= { superFilter =>
@@ -162,7 +166,9 @@ object ScalaJSBuild extends Build {
       base = file("library-aux"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
-          publishArtifact in Compile := false
+          publishArtifact in Compile := false,
+          scalacOptions += "-Yskip:cleanup,icode,jvm"
+
       )
   ).dependsOn(compiler)
 

@@ -90,20 +90,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       try {
         currentCUnit = cunit
 
-        val representatives = ListBuffer.empty[Symbol]
         val generatedClasses = ListBuffer.empty[(Symbol, js.Tree)]
-
-        def representativeTopLevelClass(classSymbol: Symbol): Symbol = {
-          val topLevel = beforePhase(currentRun.flattenPhase) {
-            classSymbol.enclosingTopLevelClass
-          }
-          if (topLevel.isImplClass)
-            topLevel.owner.info.decl(tpnme.interfaceName(topLevel.name))
-          else if (topLevel.isModuleClass && (topLevel.linkedClassOfClass != NoSymbol))
-            topLevel.linkedClassOfClass
-          else
-            topLevel
-        }
 
         def gen(tree: Tree) {
           tree match {
@@ -112,8 +99,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case cd: ClassDef =>
               implicit val pos = tree.pos
               val sym = cd.symbol
-
-              representatives += representativeTopLevelClass(sym)
 
               /* Do not actually emit code for primitive types nor scala.Array.
                */
@@ -140,9 +125,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         gen(cunit.body)
-
-        for (representative <- representatives)
-          genJSTypeFile(cunit, representative)
 
         for ((sym, tree) <- generatedClasses) {
           val desugared = desugarJavaScript(tree)
