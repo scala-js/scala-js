@@ -15,9 +15,8 @@ import scala.reflect.internal.Flags
  *  @author Sébastien Doeraene
  */
 trait JSBridges extends SubComponent { self: GenJSCode =>
-  val global: scalajs.JSGlobal
-
   import global._
+  import jsAddons._
   import definitions._
   import jsDefinitions._
   import scalaPrimitives.isPrimitive

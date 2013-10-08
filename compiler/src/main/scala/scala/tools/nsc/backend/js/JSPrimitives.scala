@@ -11,9 +11,16 @@ import scalajs._
 /** Extension of ScalaPrimitives for primitives only relevant to the JS backend
  */
 abstract class JSPrimitives {
-  val global: JSGlobal
+  val global: Global
+
+  type ThisJSGlobalAddons = JSGlobalAddons {
+    val global: JSPrimitives.this.global.type
+  }
+
+  val jsAddons: ThisJSGlobalAddons
 
   import global._
+  import jsAddons._
   import jsDefinitions._
   import scalaPrimitives._
 

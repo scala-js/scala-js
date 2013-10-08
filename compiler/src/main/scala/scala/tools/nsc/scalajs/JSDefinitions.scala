@@ -12,7 +12,9 @@ import scala.reflect.internal.SymbolTable
  *
  *  @author Sébastien Doeraene
  */
-trait JSDefinitions { self: SymbolTable =>
+trait JSDefinitions { self: JSGlobalAddons =>
+  import global._
+
   object jsDefinitions extends JSDefinitionsClass
 
   import definitions._

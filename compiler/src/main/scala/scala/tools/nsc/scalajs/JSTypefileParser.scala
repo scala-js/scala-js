@@ -15,7 +15,7 @@ import io.AbstractFile
  *  @version 1.0
  */
 abstract class JSTypefileParser {
-  val global: JSGlobal
+  val global: Global
 
   import global._
 

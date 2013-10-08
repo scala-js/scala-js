@@ -15,25 +15,29 @@ import util.returning
  *
  *  @author Sébastien Doeraene
  */
-trait JSGlobal extends Global
-                  with JSTrees
-                  with JSPrinters
-                  with JSDefinitions {
-  /** Platform */
-  override lazy val platform: ThisPlatform =
-    new { val global: JSGlobal.this.type = JSGlobal.this } with JSPlatform
-
-  /** JavaScript primitives, used in jscode */
-  object jsPrimitives extends {
+trait JSGlobal extends Global {
+  /** Addons for JavaScript platform */
+  object jsAddons extends {
     val global: JSGlobal.this.type = JSGlobal.this
-  } with JSPrimitives
+  } with JSGlobalAddons
+
+  /** Platform */
+  override lazy val platform: ThisPlatform = {
+    new {
+      val global: JSGlobal.this.type = JSGlobal.this
+    } with JSPlatform {
+      override def platformPhases: List[SubComponent] =
+        super.platformPhases :+ genJSCode
+    }
+  }
 
   // phaseName = "jscode"
   object genJSCode extends {
     val global: JSGlobal.this.type = JSGlobal.this
+    val jsAddons: JSGlobal.this.jsAddons.type = JSGlobal.this.jsAddons
     val runsAfter = List("mixin")
     override val runsBefore = List("terminal")
-    val runsRightAfter = None
+    override val runsRightAfter = None
   } with GenJSCode
 
   override protected def computeInternalPhases() {

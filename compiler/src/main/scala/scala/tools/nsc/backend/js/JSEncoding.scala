@@ -17,9 +17,8 @@ package js
  *  @author Sébastien Doeraene
  */
 trait JSEncoding extends SubComponent { self: GenJSCode =>
-  val global: scalajs.JSGlobal
-
   import global._
+  import jsAddons._
 
   /** Outer separator character */
   final val OuterSep = '\uFE34'

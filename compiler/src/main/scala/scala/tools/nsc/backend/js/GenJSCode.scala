@@ -10,21 +10,24 @@ package js
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-import scalajs.JSGlobal
+import scalajs.JSGlobalAddons
 
 /** Generate JavaScript code and output it to disk
  *
  *  @author Sébastien Doeraene
  */
-abstract class GenJSCode extends SubComponent
+abstract class GenJSCode extends plugins.PluginComponent
                             with TypeKinds
                             with JSEncoding
                             with JSBridges
                             with JSDesugaring
                             with GenJSFiles {
-  val global: JSGlobal
+  val jsAddons: JSGlobalAddons {
+    val global: GenJSCode.this.global.type
+  }
 
   import global._
+  import jsAddons._
   import rootMirror._
   import definitions._
   import jsDefinitions._

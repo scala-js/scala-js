@@ -12,7 +12,9 @@ import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
 import scala.reflect.internal.util.SourceFile
 
-trait JSPrinters { self: scalajs.JSGlobal =>
+trait JSPrinters { self: scalajs.JSGlobalAddons =>
+  import global._
+
   /** Basically copied from scala.reflect.internal.Printers */
   trait JSIndentationManager {
     val out: PrintWriter

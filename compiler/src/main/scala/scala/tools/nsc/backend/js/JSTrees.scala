@@ -16,7 +16,9 @@ import scala.language.implicitConversions
  *
  *  @author Sébastien Doeraene
  */
-trait JSTrees { self: scalajs.JSGlobal =>
+trait JSTrees { self: scalajs.JSGlobalAddons =>
+  import global._
+
   object js {
     // Tree
 

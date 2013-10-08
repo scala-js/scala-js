@@ -79,9 +79,8 @@ package js
  *  * Class desugaring is in transformClass() and its helpers
  */
 trait JSDesugaring extends SubComponent { self: GenJSCode =>
-  val global: scalajs.JSGlobal
-
   import global._
+  import jsAddons._
 
   /** Desugar a statement of Extended-JS into genuine ES5 JavaScript */
   def desugarJavaScript(tree: js.Tree): js.Tree = {

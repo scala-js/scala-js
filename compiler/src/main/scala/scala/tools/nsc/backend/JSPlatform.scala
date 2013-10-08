@@ -6,7 +6,7 @@
 package scala.tools.nsc
 package backend
 
-import scalajs.JSGlobal
+import scalajs.JSGlobalAddons
 
 import io.AbstractFile
 
@@ -25,8 +25,6 @@ import symtab.SymbolLoadersStats._
  *  @author Sébastien Doeraene
  */
 trait JSPlatform extends JavaPlatform {
-  val global: JSGlobal
-
   import global._
 
   private var currentClassPath: Option[MergedClassPath[BinaryRepr]] = None
@@ -42,9 +40,9 @@ trait JSPlatform extends JavaPlatform {
   override def updateClassPath(subst: Map[ClassPath[BinaryRepr], ClassPath[BinaryRepr]]) =
     currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
 
-  override def platformPhases = List(
-    flatten,
-    genJSCode
+  override def platformPhases: List[SubComponent] = List(
+    flatten
+    // genJSCode will be added by JSGlobal
   )
 
   override def newClassLoader(bin: AbstractFile): loaders.SymbolLoader =

@@ -8,10 +8,9 @@ import scala.reflect.internal.pickling.PickleBuffer
 import java.io.PrintWriter
 
 /** Send JS ASTs to files */
-trait GenJSFiles extends SubComponent {
-  val global: scalajs.JSGlobal
-
+trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
+  import jsAddons._
 
   def genJSTypeFile(cunit: CompilationUnit, representative: Symbol) {
     val pickleSym =
