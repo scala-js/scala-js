@@ -1761,15 +1761,22 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for string concatenation
      *  We explicitly call the JS toString() on any non-String argument to
      *  avoid the weird things happening when adding "things" in JS.
+     *  Because any argument can potentially be `null` or `undefined`, we
+     *  cannot really call toString() directly. The helper
+     *  `anyToStringForConcat` handles these cases properly.
      */
-    private def genStringConcat(tree: Apply, receiver: Tree, args: List[Tree]): js.Tree = {
+    private def genStringConcat(tree: Apply, receiver: Tree,
+        args: List[Tree]): js.Tree = {
       implicit val pos = tree.pos
 
       val List(lhs, rhs) = for {
         op <- receiver :: args
       } yield {
-        if (isStringType(op.tpe)) genExpr(op)
-        else js.ApplyMethod(genExpr(op), js.Ident("toString"), Nil)
+        val genOp = genExpr(op)
+        genOp match {
+          case js.StringLiteral(_, _) => genOp
+          case _ => genCallHelper("anyToStringForConcat", genOp)
+        }
       }
 
       js.BinaryOp("+", lhs, rhs)

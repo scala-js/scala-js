@@ -11,7 +11,8 @@ object String {
   def valueOf(value: scala.Long) = new java.lang.Long(value).toString()
   def valueOf(value: scala.Float) = new java.lang.Float(value).toString()
   def valueOf(value: scala.Double) = new java.lang.Double(value).toString()
-  def valueOf(value: java.lang.Object) = value.toString()
+  def valueOf(value: java.lang.Object) =
+    if (value eq null) "null" else value.toString()
 
   // Begin implem of format()
 
