@@ -10,9 +10,10 @@
 
 package scala.js
 
-/** Marker trait for static modules representing the JS global scope
+/** Marker trait for top-level objects representing the JS global scope.
+ *
  *  When calling method on a top-level object or package object that is a
- *  subtype of GlobalScope, the receiver is dropped, and the JS global
+ *  subtype of GlobalScope, the receiver is dropped, and the JavaScript global
  *  scope is used instead.
  */
 trait GlobalScope extends Object

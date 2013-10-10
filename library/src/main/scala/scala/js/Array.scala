@@ -12,16 +12,33 @@ package scala.js
 
 import annotation.JSBracketAccess
 
+/** JavaScript array
+ *
+ *  To construct a new array with uninitialized elements, use the constructor
+ *  of this class. To construct a new array with specified elements, as if
+ *  you used the array literal syntax in JavaScript, use the
+ *  [[Array$.apply Array.apply]] method instead.
+ *
+ *  @tparam A Type of the elements of the array
+ *
+ *  @constructor Creates a new array of length 0.
+ */
 class Array[A] extends Object {
+  /** Creates a new array with the given length.
+   *  @param arrayLength Initial length of the array.
+   */
   def this(arrayLength: Number) = this()
 
   // Do not expose this one - use js.Array(item1, item2, ...) instead
   // def this(items: A*) = this()
 
+  /** Length of the array. */
   def length: Number = ???
 
+  /** Access the element at the given index. */
   @JSBracketAccess
   def apply(index: Number): A = ???
+  /** Set the element at the given index. */
   @JSBracketAccess
   def update(index: Number, value: A): Unit = ???
 
@@ -61,11 +78,14 @@ class Array[A] extends Object {
   def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
 }
 
+/** Factory for [[js.Array]] objects. */
 object Array extends Object {
   // Do not expose this one - use new Array(len) instead
   // def apply[A](arrayLength: Number): Array[A] = ???
 
+  /** Creates a new array with the given items. */
   def apply[A](items: A*): Array[A] = sys.error("stub")
 
+  /** Returns true if the given value is an array. */
   def isArray(arg: Any): Boolean = ???
 }

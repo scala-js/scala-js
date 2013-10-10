@@ -10,4 +10,8 @@
 
 package scala.js.annotation
 
+/** Specifies the JavaScript name of an entity.
+ *
+ *  @see [[http://lampwww.epfl.ch/~doeraene/scala-js/doc/js-interoperability.html Guide to JavaScript interoperability in Scala.js]]
+ */
 class JSName(name: String) extends scala.annotation.StaticAnnotation

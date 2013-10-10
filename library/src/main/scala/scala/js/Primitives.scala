@@ -16,6 +16,11 @@ import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
 import scala.collection.mutable
 
+/** Super-type of all JavaScript values.
+ *
+ *  All values of a subtype of this trait represent JavaScript values, without
+ *  boxing of proxying of any kind.
+ */
 sealed trait Any extends scala.AnyRef {
   def unary_+(): Number = sys.error("stub")
   def unary_-(): Number = sys.error("stub")
@@ -32,6 +37,7 @@ sealed trait Any extends scala.AnyRef {
   def ||(that: Any): Any = sys.error("stub")
 }
 
+/** Provides implicit conversions from Scala values to JavaScript values. */
 object Any {
   implicit def fromUnit(value: Unit): Undefined = sys.error("stub")
 
@@ -85,10 +91,23 @@ object Any {
   implicit def fromFunction5[T1, T2, T3, T4, T5, R](f: scala.Function5[T1, T2, T3, T4, T5, R]): Function5[T1, T2, T3, T4, T5, R] = sys.error("stub")
 }
 
+/** Dynamically typed JavaScript value.
+ *
+ *  Values of this trait accept all possible JavaScript operations in a
+ *  dynamically typed way. You can read and write any field, call any method,
+ *  apply any JavaScript operator to values of this type.
+ */
 sealed trait Dynamic extends Any with scala.Dynamic {
+  /** Calls a method of this object. */
   def applyDynamic(name: java.lang.String)(args: Any*): Dynamic
+
+  /** Reads a field of this object. */
   def selectDynamic(name: java.lang.String): Dynamic
+
+  /** Writes a field of this object. */
   def updateDynamic(name: java.lang.String)(value: Any): Unit
+
+  /** Calls this object as a callable. */
   def apply(args: Any*): Dynamic
 
   def +(that: Number): Number
@@ -123,23 +142,29 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def x_=(value: Any): Dynamic
 }
 
+/** Factory for dynamically typed JavaScript values. */
 object Dynamic {
-  /** Dynamic view of the global scope */
+  /** Dynamic view of the global scope. */
   def global: Dynamic = sys.error("stub")
 
-  /** Instantiate a new object of a JavaScript class */
+  /** Instantiates a new object of a JavaScript class. */
   def newInstance(clazz: Dynamic)(args: Any*): Dynamic = sys.error("stub")
 }
 
 /** Dictionary "view" of a JavaScript value */
 sealed trait Dictionary extends Any {
+  /** Reads a field of this object by its name. */
   @JSBracketAccess
   def apply(key: String): Any
+
+  /** Writes a field of this object by its name. */
   @JSBracketAccess
   def update(key: String, value: Any): Unit
 }
 
+/** Factory for [[js.Dictionary]] instances. */
 object Dictionary {
+  /** Returns a new empty dictionary */
   def empty: Dictionary = new Object
 
   def apply(properties: (String, Any)*): Dictionary =
@@ -163,11 +188,13 @@ object Dictionary {
     result
   }
 
+  /** Returns the names of all the enumerable properties of this object. */
   def propertiesOf(obj: Any): Array[String] = sys.error("stub")
 
   implicit def fromAny(value: Any): Dictionary = value.asInstanceOf
 }
 
+/** Primitive JavaScript number. */
 sealed trait Number extends Any {
   def +(that: Number): Number
 
@@ -203,6 +230,7 @@ sealed trait Number extends Any {
   def toPrecision(precision: Number): String = ???
 }
 
+/** The top-level `Number` JavaScript object */
 object Number extends Object {
   implicit def toDouble(value: Number): scala.Double = sys.error("stub")
 
@@ -213,16 +241,19 @@ object Number extends Object {
   val POSITIVE_INFINITY: js.Number = ???
 }
 
+/** Primitive JavaScript boolean. */
 sealed trait Boolean extends Any {
   def ||(that: Boolean): Boolean
 
   def unary_!(): Boolean
 }
 
+/** The top-level `Boolean` JavaScript object. */
 object Boolean extends Object {
   implicit def toBoolean(value: Boolean): scala.Boolean = sys.error("stub")
 }
 
+/** Primitive JavaScript string. */
 sealed trait String extends Any {
   def +(that: Any): String
   override def +(that: String): String = sys.error("stub")
@@ -263,14 +294,17 @@ sealed trait String extends Any {
   def trim(): String = ???
 }
 
+/** The top-level `String` JavaScript object. */
 object String extends Object {
   implicit def toScalaString(value: String): java.lang.String = sys.error("stub")
 
   def fromCharCode(codes: js.Number*): js.String = ???
 }
 
+/** Primitive JavaScript undefined value. */
 sealed trait Undefined extends Any with NotNull
 
+/** Base class of all JavaScript objects. */
 class Object extends Any {
   def this(value: Any) = this()
 
@@ -281,6 +315,7 @@ class Object extends Any {
   def propertyIsEnumerable(v: String): Boolean = ???
 }
 
+/** The top-level `Object` JavaScript object. */
 object Object extends Object {
   def apply(): Object = ???
   def apply(value: Any): Object = ???

@@ -10,6 +10,8 @@
 
 package scala.js
 
+/** Represents JavaScript `Date` instances.
+ */
 class Date extends Object {
   def this(value: Number) = this()
   def this(value: String) = this()
@@ -87,6 +89,7 @@ class Date extends Object {
   def toJSON(): String = ???
 }
 
+/** Factory for [[js.Date]] objects. */
 object Date extends Object {
   def apply(): String = ???
 
