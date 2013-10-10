@@ -283,6 +283,8 @@ object ScalaJSPlugin extends Plugin {
         val output = crossTarget.value / (moduleName.value + outputSuffix + ".js")
         val taskCacheDir = s.cacheDirectory / "package-js"
 
+        IO.createDirectory(crossTarget.value)
+
         if (inputs.isEmpty) {
           if (!output.isFile || output.length != 0)
             IO.writeLines(output, Nil)
