@@ -1,3 +1,8 @@
+/* Scala.js runtime support
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
 /** @constructor */
 ScalaJS.inheritable.java\ufe33beans\ufe33SimpleBeanInfo = function() {};
 /** @constructor */

@@ -1,6 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
@@ -10,7 +10,7 @@ import backend.js._
 
 import util.returning
 
-/** Additions to Global for the JavaScript backend
+/** A specialized Global that enables the JavaScript backend by default
  *
  *  @author Sébastien Doeraene
  */

@@ -1,3 +1,8 @@
+/* Scala.js runtime support
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
 /* ---------------------------------- *
  * The top-level Scala.js environment *
  * ---------------------------------- */

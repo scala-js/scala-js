@@ -1,6 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
@@ -9,6 +9,8 @@ package backend.js
 import scalajs._
 
 /** Extension of ScalaPrimitives for primitives only relevant to the JS backend
+ *
+ *  @author Sébastie Doeraene
  */
 abstract class JSPrimitives {
   val global: Global

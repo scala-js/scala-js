@@ -1,3 +1,8 @@
+/* Scala.js sbt plugin
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
 package ch.epfl.lamp.sbtscalajs
 
 import scala.language.implicitConversions

@@ -1,12 +1,10 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
 package scalajs
-
-import scala.reflect.internal.SymbolTable
 
 /** Core definitions for Scala.js
  *
@@ -18,14 +16,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
   object jsDefinitions extends JSDefinitionsClass
 
   import definitions._
-
-  import rootMirror.{
-    getClassByName, getRequiredClass, getClassIfDefined,
-    getModuleByName, getRequiredModule, getModuleIfDefined,
-    getRequiredPackage,
-    getPackageObject, getPackageObjectIfDefined,
-    requiredClass, requiredModule
-  }
+  import rootMirror._
 
   class JSDefinitionsClass {
     lazy val MaybeJSAnyClass = getClassIfDefined("scala.js.Any")

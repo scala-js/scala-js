@@ -1,3 +1,8 @@
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
 package scala.tools.nsc
 package backend
 package js
@@ -7,7 +12,10 @@ import scala.reflect.internal.pickling.PickleBuffer
 
 import java.io.PrintWriter
 
-/** Send JS ASTs to files */
+/** Send JS ASTs to files
+ *
+ *  @author Sébastien Doeraene
+ */
 trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._

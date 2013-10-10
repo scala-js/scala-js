@@ -1,6 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
@@ -11,7 +11,7 @@ import java.io.File.pathSeparator
 import scala.tools.nsc.interactive.{ RefinedBuildManager, SimpleBuildManager }
 import scala.tools.nsc.io.AbstractFile
 
-/** The main object a variant of the compiler targeting JavaScript
+/** The main object, a variant of the compiler targeting JavaScript
  *
  *  @author Sébastien Doeraene
  */

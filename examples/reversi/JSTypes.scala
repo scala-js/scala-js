@@ -1,3 +1,8 @@
+/* Scala.js example code
+ * Public domain
+ * @author  Sébastien Doeraene
+ */
+
 package reversi
 
 import scala.js

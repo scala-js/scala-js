@@ -1,3 +1,8 @@
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
 package scala.tools.nsc
 package scalajs
 
@@ -6,6 +11,10 @@ import scala.tools.nsc.plugins.{
 }
 import scala.collection.{ mutable, immutable }
 
+/** Main entry point for the Scala.js compiler plugin
+ *
+ *  @author Sébastien Doeraene
+ */
 class ScalaJSPlugin(val global: Global) extends NscPlugin {
   import global._
 

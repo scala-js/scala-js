@@ -1,6 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
@@ -77,6 +77,8 @@ package js
  *    * pushLhsInto() for statement-or-expression constructs
  *  * Rule 2) is implemented by pushLhsInto()
  *  * Class desugaring is in transformClass() and its helpers
+ *
+ *  @author Sébastien Doeraene
  */
 trait JSDesugaring extends SubComponent { self: GenJSCode =>
   import global._

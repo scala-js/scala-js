@@ -1,6 +1,6 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2013 LAMP/EPFL
- * @author  Martin Odersky
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
  */
 
 package scala.tools.nsc
@@ -12,6 +12,10 @@ import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
 import scala.reflect.internal.util.SourceFile
 
+/** Printers and source map emitters for JavaScript ASTs
+ *
+ *  @author Sébastien Doeraene
+ */
 trait JSPrinters { self: scalajs.JSGlobalAddons =>
   import global._
 
