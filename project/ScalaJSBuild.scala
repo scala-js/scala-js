@@ -1,6 +1,5 @@
 import sbt._
 import Keys._
-import Process.cat
 
 import ch.epfl.lamp.sbtscalajs._
 import ScalaJSPlugin._
@@ -31,10 +30,7 @@ object ScalaJSBuild extends Build {
   )
 
   val myScalaJSSettings = scalaJSAbstractSettings ++ Seq(
-      /* Not forking does not like having the compiler changing all the time.
-       * So in this build we fork when compiling.
-       */
-      fork in (Compile, compile) := true
+      autoCompilerPlugins := true
   )
 
   // Used when compiling the compiler, adding it to scalacOptions does not help
@@ -127,7 +123,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler, library)
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val scalalib: Project = Project(
       id = "scalajs-scalalib",
@@ -163,7 +159,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler % "plugin")
 
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
@@ -175,14 +171,14 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler % "plugin")
 
   lazy val library: Project = Project(
       id = "scalajs-library",
       base = file("library"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library"
-      ) ++ inConfig(Compile)(
+      ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
           /* Add the .js and .js.map files from other lib projects
@@ -201,7 +197,7 @@ object ScalaJSBuild extends Build {
           mappings in packageBin +=
             (packageJS in corejslib).value.head -> "scalajs-corejslib.js"
       ))
-  ).dependsOn(compiler)
+  ).dependsOn(compiler % "plugin")
 
   // Examples
 

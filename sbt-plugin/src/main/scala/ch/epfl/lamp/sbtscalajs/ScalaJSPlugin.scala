@@ -111,19 +111,18 @@ object ScalaJSPlugin extends Plugin {
 
         // List all my dependencies (recompile if any of these changes)
 
-        val isClassOrJstypeFile = ("*.class": NameFilter) | "*.jstype"
         val allMyDependencies = classpath filterNot (_ == classesDirectory) flatMap { cpFile =>
-          if (cpFile.isDirectory) (cpFile ** isClassOrJstypeFile).get
+          if (cpFile.isDirectory) (cpFile ** "*.class").get
           else Seq(cpFile)
         }
 
         // Compile
 
-        val cachedCompile = FileFunction.cached(cacheDir / "compile-js",
+        val cachedCompile = FileFunction.cached(cacheDir / "compile",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
           logger.info(
-              "Compiling %d Scala.js sources to %s..." format (
+              "Compiling %d Scala sources to %s..." format (
               sources.size, classesDirectory))
 
           if (classesDirectory.exists)
@@ -141,16 +140,16 @@ object ScalaJSPlugin extends Plugin {
             def log(level: Level.Value, message: => String) = {
               val msg = message
               if (level != Level.Info ||
-                  !msg.startsWith("Running scala.tools.nsc.scalajs.Main"))
+                  !msg.startsWith("Running scala.tools.nsc.Main"))
                 logger.log(level, msg)
             }
             def success(message: => String) = logger.success(message)
             def trace(t: => Throwable) = logger.trace(t)
           }
 
-          def doCompileJS(sourcesArgs: List[String]): Unit = {
+          def doCompile(sourcesArgs: List[String]): Unit = {
             val run = (runner in compile).value
-            run.run("scala.tools.nsc.scalajs.Main", compilerCp,
+            run.run("scala.tools.nsc.Main", compilerCp,
                 "-cp" :: cpStr ::
                 "-d" :: classesDirectory.getAbsolutePath() ::
                 options ++:
@@ -165,10 +164,10 @@ object ScalaJSPlugin extends Plugin {
               (sourcesArgs.map(_.length).sum > 1536)) {
             IO.withTemporaryFile("sourcesargs", ".txt") { sourceListFile =>
               IO.writeLines(sourceListFile, sourcesArgs)
-              doCompileJS(List("@"+sourceListFile.getAbsolutePath()))
+              doCompile(List("@"+sourceListFile.getAbsolutePath()))
             }
           } else {
-            doCompileJS(sourcesArgs)
+            doCompile(sourcesArgs)
           }
 
           // Output is all files in classesDirectory
@@ -177,7 +176,7 @@ object ScalaJSPlugin extends Plugin {
 
         cachedCompile((sources ++ allMyDependencies).toSet)
 
-        // We do not have dependency analysis for Scala.js code
+        // We do not have dependency analysis when compiling externally
         sbt.inc.Analysis.Empty
       }
   )
@@ -185,6 +184,9 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSExternalCompileSettings = (
       inConfig(Compile)(scalaJSExternalCompileConfigSettings) ++
       inConfig(Test)(scalaJSExternalCompileConfigSettings)
+  ) ++ Seq(
+      libraryDependencies +=
+        "org.scala-lang" % "scala-compiler" % scalaVersion.value
   )
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
