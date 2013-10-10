@@ -392,10 +392,21 @@ object ScalaJSPlugin extends Plugin {
         classpath.value.map(_.data))
   }
 
-  val scalaJSRunSettings = Seq(
-      sources in run := (sources in packageJS).value,
-      fullClasspath in run := (fullClasspath in packageJS).value,
+  def scalaJSRunInputsSettings(scoped: Scoped) = Seq(
+      sources in scoped := (
+          (sources in packageExternalDepsJS).value ++
+          (sources in packageInternalDepsJS).value ++
+          (sources in packageExportedProductsJS).value
+      ),
 
+      fullClasspath in scoped := (
+          (externalDependencyClasspath in packageExternalDepsJS).value ++
+          (internalDependencyClasspath in packageInternalDepsJS).value ++
+          (exportedProducts in packageExportedProductsJS).value
+      )
+  )
+
+  val scalaJSRunSettings = scalaJSRunInputsSettings(run) ++ Seq(
       run := {
         scalaJSRunJavaScriptTask(streams, sources in run,
             fullClasspath in run).value
@@ -404,10 +415,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSCompileSettings = scalaJSConfigSettings ++ scalaJSRunSettings
 
-  val scalaJSTestSettings = scalaJSConfigSettings ++ Seq(
-      sources in test := (sources in packageJS).value,
-      fullClasspath in test := (fullClasspath in packageJS).value,
-
+  val scalaJSTestSettings = scalaJSConfigSettings ++ scalaJSRunInputsSettings(test) ++ Seq(
       test := {
         scalaJSRunJavaScriptTask(streams, sources in test,
             fullClasspath in test).value
