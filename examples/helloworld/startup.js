@@ -1,6 +1,6 @@
 /* Scala.js example code
  * Public domain
- * @author  Sébastien Doeraene
+ * Author: Sébastien Doeraene
  */
 
 $(function() {

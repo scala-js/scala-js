@@ -1,6 +1,6 @@
 /* Scala.js runtime support
  * Copyright 2013 LAMP/EPFL
- * @author  Sébastien Doeraene
+ * Author: Sébastien Doeraene
  */
 
 /** @constructor */
