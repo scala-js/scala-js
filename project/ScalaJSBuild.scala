@@ -11,7 +11,7 @@ object ScalaJSBuild extends Build {
   val scalajsScalaVersion = "2.10.2"
 
   val commonSettings = Defaults.defaultSettings ++ Seq(
-      organization := "ch.epfl.lamp",
+      organization := "org.scala-lang.modules.scalajs",
       version := "0.1-SNAPSHOT",
 
       normalizedName ~= {

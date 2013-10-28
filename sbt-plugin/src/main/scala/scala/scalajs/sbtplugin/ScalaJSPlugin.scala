@@ -454,9 +454,9 @@ object ScalaJSPlugin extends Plugin {
 
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
-      addCompilerPlugin("ch.epfl.lamp" %% "scalajs-compiler" % "0.1-SNAPSHOT"),
+      addCompilerPlugin("org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.1-SNAPSHOT"),
 
       // and of course the Scala.js library
-      libraryDependencies += "ch.epfl.lamp" %% "scalajs-library" % "0.1-SNAPSHOT"
+      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.1-SNAPSHOT"
   )
 }
