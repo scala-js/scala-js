@@ -5,7 +5,7 @@
 
 package reversi
 
-import scala.js
+import scala.scalajs.js
 
 trait Window extends js.Object {
   val document: DOMDocument

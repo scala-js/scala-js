@@ -1,6 +1,6 @@
 package java.lang
 
-import scala.js
+import scala.scalajs.js
 
 abstract class Number extends Object {
   //protected[lang] val isInt: scala.Boolean

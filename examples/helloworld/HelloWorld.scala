@@ -5,8 +5,8 @@
 
 package helloworld
 
-import scala.js
-import scala.js.annotation.JSName
+import scala.scalajs.js
+import js.annotation.JSName
 
 object HelloWorld {
   def main() {

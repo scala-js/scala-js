@@ -1,4 +1,4 @@
 <plugin>
   <name>scalajs</name>
-  <classname>scala.tools.nsc.scalajs.ScalaJSPlugin</classname>
+  <classname>scala.scalajs.compiler.ScalaJSPlugin</classname>
 </plugin>

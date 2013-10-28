@@ -1,6 +1,6 @@
 package java.lang
 
-import scala.js
+import scala.scalajs.js
 
 class Object {
   final def getClass(): Class[_] =

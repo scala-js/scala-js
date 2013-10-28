@@ -1,6 +1,6 @@
 package java.lang
 
-import scala.js
+import scala.scalajs.js
 
 final class Class[A] private(private[lang] val data: js.Dynamic) extends Object {
 

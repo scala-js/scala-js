@@ -1,6 +1,6 @@
 package java.lang.reflect
 
-import scala.js
+import scala.scalajs.js
 
 import java.lang.Class
 

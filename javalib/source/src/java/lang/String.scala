@@ -1,6 +1,7 @@
 package java.lang
 
 import scala.annotation.switch
+import scala.scalajs.js
 
 object String {
   def valueOf(value: scala.Boolean) = new java.lang.Boolean(value).toString()

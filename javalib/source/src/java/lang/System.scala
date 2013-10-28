@@ -1,7 +1,7 @@
 package java
 package lang
 
-import scala.js
+import scala.scalajs.js
 import js.Dynamic.global
 
 object System {

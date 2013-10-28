@@ -1,7 +1,7 @@
 package java
 package lang
 
-import scala.js
+import scala.scalajs.js
 
 object Math {
   val E: scala.Double = js.Math.E

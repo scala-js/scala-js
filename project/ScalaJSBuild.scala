@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 
-import ch.epfl.lamp.sbtscalajs._
+import scala.scalajs.sbtplugin._
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import SourceMapCat.catJSFilesAndTheirSourceMaps
@@ -62,7 +62,6 @@ object ScalaJSBuild extends Build {
               "org.scala-lang" % "scala-compiler" % scalajsScalaVersion,
               "org.scala-lang" % "scala-reflect" % scalajsScalaVersion
           ),
-          mainClass := Some("scala.tools.nsc.scalajs.Main"),
           exportJars := true
       )
   )

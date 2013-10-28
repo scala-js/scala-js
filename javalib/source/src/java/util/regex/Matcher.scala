@@ -2,6 +2,7 @@ package java.util.regex
 
 import scala.language.implicitConversions
 import scala.annotation.switch
+import scala.scalajs.js
 
 final class Matcher private[regex] (
     private var pattern0: Pattern, private var input0: CharSequence) {

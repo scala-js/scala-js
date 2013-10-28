@@ -1,6 +1,6 @@
 package java.lang
 
-import scala.js
+import scala.scalajs.js
 
 class Character(value: scala.Char) {
   def charValue(): scala.Char = value

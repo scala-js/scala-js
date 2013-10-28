@@ -8,7 +8,7 @@ package reversi
 import scala.language.implicitConversions
 
 import scala.annotation.tailrec
-import scala.js
+import scala.scalajs.js
 
 sealed abstract class OptPlayer
 

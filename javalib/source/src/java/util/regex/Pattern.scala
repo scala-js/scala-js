@@ -1,6 +1,7 @@
 package java.util.regex
 
 import scala.annotation.switch
+import scala.scalajs.js
 
 final class Pattern private (pattern0: String, flags0: Int) {
   import Pattern._

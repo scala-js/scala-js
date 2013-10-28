@@ -1,0 +1,238 @@
+/* Scala.js compiler
+ * Copyright 2013 LAMP/EPFL
+ * @author  Sébastien Doeraene
+ */
+
+package scala.scalajs.compiler
+
+import scala.tools.nsc._
+
+/** Encoding of symbol names for JavaScript
+ *
+ *  Some issues that this encoding solves:
+ *  * Overloading: encode the full signature in the JS name
+ *  * Same scope for fields and methods of a class
+ *  * Global access to classes and modules (by their full name)
+ *
+ *  @author Sébastien Doeraene
+ */
+trait JSEncoding extends SubComponent { self: GenJSCode =>
+  import global._
+  import jsAddons._
+
+  /** Outer separator character */
+  final val OuterSep = '\uFE34'
+
+  /** Inner separator character */
+  final val InnerSep = '\uFE33'
+
+  /** Outer separator character as a string */
+  final val OuterSepStr = OuterSep.toString
+
+  /** Inner separator character as a string */
+  final val InnerSepStr = InnerSep.toString
+
+  /** Name given to the local Scala.js environment variable */
+  final val ScalaJSEnvironmentName = "ScalaJS"
+
+  /** The current Scala.js environment */
+  def environment(implicit pos: Position): js.Ident = {
+    js.Ident(ScalaJSEnvironmentName, Some(ScalaJSEnvironmentName))
+  }
+
+  /** Select a given field of the current Scala.js environment */
+  def envField(name: String)(implicit pos: Position): js.Tree = {
+    js.DotSelect(environment, js.Ident(name, Some(name)))
+  }
+
+  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+    require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
+    js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id,
+        Some(sym.originalName.decoded))
+  }
+
+  private lazy val allRefClasses: Set[Symbol] = {
+    import definitions._
+    (Set(ObjectRefClass, VolatileObjectRefClass) ++
+        refClass.values ++ volatileRefClass.values)
+  }
+
+  def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+    require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
+        "encodeFieldSym called with non-field symbol: " + sym)
+
+    val name0 = sym.name.toString
+    val name =
+      if (name0.charAt(name0.length()-1) != ' ') name0
+      else name0.substring(0, name0.length()-1)
+
+    /* We have to special-case fields of Ref types (IntRef, ObjectRef, etc.)
+     * because they are emitted as private by our .scala source files, but
+     * they are considered public at use site since their symbols come from
+     * Java-emitted .class files.
+     */
+    val idSuffix =
+      if (sym.isPrivate || allRefClasses.contains(sym.owner))
+        sym.owner.ancestors.count(!_.isInterface).toString
+      else
+        "f"
+
+    val encodedName = name + "$" + idSuffix
+    js.Ident(encodedName, Some(sym.originalName.decoded))
+  }
+
+  def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+    require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
+    val encodedName =
+      if (sym.isClassConstructor) "init" + InnerSep
+      else if (!foreignIsImplClass(sym.owner)) sym.name.toString
+      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+    val paramsString = makeParamsString(sym)
+    js.Ident(encodedName + paramsString,
+        Some(sym.originalName.decoded + paramsString))
+  }
+
+  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+    require(sym.isStaticMember,
+        "encodeStaticMemberSym called with non-static symbol: " + sym)
+    js.Ident(
+        sym.name.toString + makeParamsString(List(internalName(sym.tpe))),
+        Some(sym.originalName.decoded))
+  }
+
+  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+    require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
+        "encodeLocalSym called with non-local symbol: " + sym)
+
+    val origName = Some(sym.originalName.decoded)
+    if (sym.isValueParameter) js.Ident("arg$" + sym.name.toString, origName)
+    else js.Ident(sym.name.toString + "$jsid$" + sym.id, origName)
+  }
+
+  def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+    require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
+    js.DotSelect(envField("c"), encodeClassFullNameIdent(sym))
+  }
+
+  def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
+    js.ApplyMethod(encodeClassDataOfType(tpe), js.Ident("getClassOf"), Nil)
+  }
+
+  def encodeModuleSymInstance(sym: Symbol)(implicit pos: Position): js.Tree = {
+    require(sym.isModuleClass,
+        "encodeModuleSymInstance called with non-moduleClass symbol: " + sym)
+    js.DotSelect(envField("moduleInstances"),
+        encodeModuleFullNameIdent(sym))
+  }
+
+  def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+    require(sym.isModuleClass,
+        "encodeModuleSym called with non-moduleClass symbol: " + sym)
+
+    if (foreignIsImplClass(sym))
+      envField("impls")
+    else
+      js.Apply(js.DotSelect(envField("modules"),
+          encodeModuleFullNameIdent(sym)), Nil)
+  }
+
+  private def foreignIsImplClass(sym: Symbol): Boolean =
+    sym.isModuleClass && nme.isImplClassName(sym.name)
+
+  def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    encodeIsAsInstanceOf("is")(value, tpe)
+  }
+
+  def encodeAsInstanceOf(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    encodeIsAsInstanceOf("as")(value, tpe)
+  }
+
+  private def encodeIsAsInstanceOf(prefix: String)(value: js.Tree, tpe: Type)(
+      implicit pos: Position): js.Tree = {
+    toTypeKind(tpe) match {
+      case array : ARRAY =>
+        js.ApplyMethod(envField(prefix+"ArrayOf"),
+            encodeClassFullNameIdent(array.elementKind.toType.typeSymbol),
+            List(value, js.IntLiteral(array.dimensions)))
+      case _ =>
+        js.ApplyMethod(envField(prefix),
+            encodeClassFullNameIdent(tpe.typeSymbol), List(value))
+    }
+  }
+
+  def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
+    toTypeKind(tpe) match {
+      case array : ARRAY =>
+        var result = encodeClassDataOfSym(array.elementKind.toType.typeSymbol)
+        for (i <- 0 until array.dimensions)
+          result = js.ApplyMethod(result, js.Ident("getArrayOf"), Nil)
+        result
+
+      case _ => encodeClassDataOfSym(tpe.typeSymbol)
+    }
+  }
+
+  private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+    js.DotSelect(envField("data"), encodeClassFullNameIdent(sym))
+  }
+
+  def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
+    js.Ident(encodeClassFullName(sym), Some(encodeClassFullName(sym, '.')))
+  }
+
+  def encodeModuleFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
+    js.Ident(encodeModuleFullName(sym), Some(encodeModuleFullName(sym, '.')))
+  }
+
+  def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
+    val base = sym.fullNameAsName(separator).toString
+    if (sym.isModuleClass && !foreignIsImplClass(sym)) base + "$" else base
+  }
+
+  def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
+    sym.fullNameAsName(separator).toString
+
+  // Encoding of method signatures
+
+  private def makeParamsString(sym: Symbol): String = {
+    val tpe = sym.tpe
+    val paramTypeNames = tpe.params map (p => internalName(p.tpe))
+    makeParamsString(
+        if (sym.isClassConstructor) paramTypeNames
+        else paramTypeNames :+ internalName(tpe.resultType))
+  }
+
+  private def makeParamsString(paramAndResultTypeNames: List[String]) =
+    paramAndResultTypeNames.mkString(OuterSepStr, OuterSepStr, "")
+
+  /** Compute the internal name for a type
+   *  The internal name is inspired by the encoding of the JVM, with some
+   *  tweaks to use only valid JS identifier characters
+   *  - I for Int, Z for Boolean, V for Unit, etc. for primitive types
+   *  - Lclassname where classname is the full name of a class
+   *  - Aelem for arrays
+   *  and for further default compression in the context of Scala.js:
+   *  - O for java.lang.Object and T for java.lang.String
+   *
+   *  It might be worth investigating other special cases for classes of the
+   *  Scala language: Function types, Tuple types?
+   */
+  private def internalName(tpe: Type): String = internalName(toTypeKind(tpe))
+
+  private def internalName(kind: TypeKind): String = kind match {
+    case kind: ValueTypeKind => kind.primitiveCharCode
+    case REFERENCE(cls) =>
+      /* Give shorter names to classes used *very* often:
+       * - Object, since it is the erasure of most type parameters
+       * - String, if only for the ubiquitous toString()
+       */
+      cls match {
+        case definitions.ObjectClass => "O"
+        case definitions.StringClass => "T" // S is taken, use T for Text
+        case _ => "L"+encodeClassFullName(cls)
+      }
+    case ARRAY(elem) => "A"+internalName(elem)
+  }
+}
