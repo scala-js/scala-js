@@ -9,7 +9,7 @@
 
 var ScalaJS = {
   // Fields
-  g: this,             // Global scope
+  g: (typeof global === "object" && global && global["Object"] === Object) ? global : this, // Global scope
   data: {},            // Data for types
   c: {},               // Scala.js constructors
   inheritable: {},     // Inheritable constructors (without initialization code)

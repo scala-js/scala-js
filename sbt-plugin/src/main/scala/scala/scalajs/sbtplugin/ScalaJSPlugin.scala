@@ -80,6 +80,7 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.constructor = function() {};
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
+    var global = {};
     """
 
   val scalaJSExternalCompileConfigSettings: Seq[Setting[_]] = inTask(compile)(
