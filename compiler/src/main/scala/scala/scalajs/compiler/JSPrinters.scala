@@ -259,7 +259,17 @@ trait JSPrinters { self: JSGlobalAddons =>
           print("(", lhs, " ", op, " ", rhs, ")")
 
         case js.New(fun, args) =>
-          print("new ", fun)
+          def containsOnlySelectsFromAtom(fun: js.Tree): Boolean = fun match {
+            case js.DotSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case js.BracketSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case js.Ident(_, _) => true
+            case js.This() => true
+            case _ => false // in particular, js.Apply
+          }
+          if (containsOnlySelectsFromAtom(fun))
+            print("new ", fun)
+          else
+            print("new (", fun, ")")
           printRow(args, "(", ", ", ")")
 
         case js.This() =>
