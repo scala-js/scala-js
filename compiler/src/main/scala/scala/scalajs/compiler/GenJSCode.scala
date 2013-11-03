@@ -1401,13 +1401,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
     def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
-        implicit pos: Position = value.pos): js.Tree = {
-      if (isRawJSType(to)) {
-        // isInstanceOf is not supported for raw JavaScript types
-        abort("isInstanceOf["+to+"]")
-      } else {
-        encodeIsInstanceOf(value, to)
+      implicit pos: Position = value.pos): js.Tree = {
+
+      import js.TreeDSL._
+      to.typeSymbol match{
+        case JSBooleanClass => js.UnaryOp("typeof", value) === js.StringLiteral("boolean")
+        case JSNumberClass => js.UnaryOp("typeof", value) === js.StringLiteral("number")
+        case JSStringClass => js.UnaryOp("typeof", value) === js.StringLiteral("string")
+        case JSUndefinedClass => js.UnaryOp("typeof", value) === js.StringLiteral("undefined")
+        case _ => js.BinaryOp("instanceof", value, genGlobalJSObject(to.typeSymbol))
       }
+
     }
 
     /** Gen JS code for an asInstanceOf cast (for reference types only) */
