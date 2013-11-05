@@ -54,7 +54,17 @@ abstract class GenJSCode extends plugins.PluginComponent
     var methodTailJumpThisSym: Symbol = _
     var methodTailJumpLabelSym: Symbol = _
     var methodTailJumpFormalArgs: List[Symbol] = _
-
+    val usedNameMap = mutable.Map.empty[String, mutable.Map[Symbol, String]]
+    def freshName(sym: Symbol) = {
+      val nameMap = usedNameMap.getOrElseUpdate(sym.name.toString, mutable.Map.empty)
+      val rawName = sym.name.toString
+      val name =
+        if (nameMap.isEmpty && !js.isKeyword(rawName) && rawName != "arguments") rawName
+        else if (nameMap.contains(sym)) nameMap(sym)
+        else rawName + "$" + nameMap.size
+      nameMap(sym) = name
+      name
+    }
     // Top-level apply ---------------------------------------------------------
 
     override def run() {
@@ -507,7 +517,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
       currentMethodSym = sym
-
+      usedNameMap.clear()
       isModuleInitialized = false
       methodHasTailJump = false
       methodTailJumpThisSym = NoSymbol
@@ -529,7 +539,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         } else {
           val jsParams =
             for (param <- params)
-              yield encodeLocalSym(param)(param.pos)
+              yield encodeLocalSym(param, freshName)(param.pos)
 
           val body = {
             if (sym.isClassConstructor)
@@ -664,7 +674,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             theLoop
           } else {
             js.Block(List(
-                js.VarDef(encodeLocalSym(methodTailJumpThisSym), js.This())),
+                js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName), js.This())),
                 theLoop)
           }
 
@@ -700,7 +710,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** lhs = rhs */
         case Assign(lhs, rhs) =>
           val sym = lhs.symbol
-          js.Assign(encodeLocalSym(sym), genExpr(rhs))
+          js.Assign(encodeLocalSym(sym, freshName), genExpr(rhs))
 
         case _ =>
           exprToStat(genExpr(tree))
@@ -743,7 +753,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val lhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
             else genExpr(rhs)
-          statToExpr(js.VarDef(encodeLocalSym(sym), lhsTree))
+          statToExpr(js.VarDef(encodeLocalSym(sym, freshName), lhsTree))
 
         case If(cond, thenp, elsep) =>
           js.If(genExpr(cond), genExpr(thenp), genExpr(elsep))
@@ -778,7 +788,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (symIsModuleClass && tree.symbol != currentClassSym) {
             genLoadModule(tree.symbol)
           } else if (methodTailJumpThisSym != NoSymbol) {
-            encodeLocalSym(methodTailJumpThisSym)
+            encodeLocalSym(methodTailJumpThisSym, freshName)
           } else {
             js.This()
           }
@@ -810,7 +820,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
               genLoadModule(sym)
             } else {
-              encodeLocalSym(sym)
+              encodeLocalSym(sym, freshName)
             }
           } else {
             sys.error("Cannot use package as value: " + tree)
@@ -1018,7 +1028,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               case Ident(nme.WILDCARD) =>
                 (ThrowableClass.tpe, None)
               case Bind(_, _) =>
-                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol)))
+                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol, freshName)))
             })
 
             // Generate the body that must be executed if the exception matches
@@ -1144,7 +1154,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             val callee = js.DotSelect(superProto, encodeMethodSym(fun.symbol)(fun.pos))(fun.pos)
             val thisArg =
               if (methodTailJumpThisSym == NoSymbol) js.This()(sup.pos)
-              else encodeLocalSym(methodTailJumpThisSym)(sup.pos)
+              else encodeLocalSym(methodTailJumpThisSym, freshName)(sup.pos)
             val arguments = thisArg :: (args map genExpr)
             js.ApplyMethod(callee, js.Ident("call"), arguments)
           }
@@ -1246,7 +1256,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               val triplets = {
                 for {
                   (formalArgSym, actualArg) <- formalArgs zip actualArgs
-                  formalArg = encodeLocalSym(formalArgSym)
+                  formalArg = encodeLocalSym(formalArgSym, freshName)
                   if actualArg != formalArg
                 } yield {
                   (formalArg, js.Ident("temp$" + formalArg.name, None), actualArg)
@@ -1285,7 +1295,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              *  loop surrounding the match.
              */
             if (sym.name.toString() startsWith "matchEnd") {
-              val labelIdent = encodeLabelSym(sym)
+              val labelIdent = encodeLabelSym(sym, freshName)
               val jumpStat = js.Break(Some(labelIdent))
               val List(matchResult) = args
               val isResultUnit = toTypeKind(matchResult.tpe) == UNDEFINED
@@ -1594,7 +1604,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val isResultUnit = toTypeKind(matchEnd.tpe) == UNDEFINED
       val resultVar =
-        js.Ident("result$"+encodeLabelSym(matchEnd.symbol).name, None)
+        js.Ident("result$"+encodeLabelSym(matchEnd.symbol, freshName).name, None)
 
       val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 
@@ -1622,7 +1632,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val matchBlock = js.LabeledStat(
-          encodeLabelSym(matchEnd.symbol), js.Block(translatedCases))
+          encodeLabelSym(matchEnd.symbol, freshName), js.Block(translatedCases))
 
       if (isResultUnit) {
         statToExpr(matchBlock)
