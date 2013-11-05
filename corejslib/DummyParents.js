@@ -4,46 +4,46 @@
  */
 
 /** @constructor */
-ScalaJS.inheritable.java\ufe33beans\ufe33SimpleBeanInfo = function() {};
+ScalaJS.inheritable.java_beans_SimpleBeanInfo = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33io\ufe33FilterInputStream = function() {};
+ScalaJS.inheritable.java_io_FilterInputStream = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33lang\ufe33Thread = function() {};
+ScalaJS.inheritable.java_lang_Thread = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33lang\ufe33ref\ufe33PhantomReference = function() {};
+ScalaJS.inheritable.java_lang_ref_PhantomReference = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33lang\ufe33ref\ufe33SoftReference = function() {};
+ScalaJS.inheritable.java_lang_ref_SoftReference = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33lang\ufe33ref\ufe33WeakReference = function() {};
+ScalaJS.inheritable.java_lang_ref_WeakReference = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33util\ufe33AbstractCollection = function() {};
+ScalaJS.inheritable.java_util_AbstractCollection = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33util\ufe33AbstractList = function() {};
+ScalaJS.inheritable.java_util_AbstractList = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33util\ufe33AbstractMap = function() {};
+ScalaJS.inheritable.java_util_AbstractMap = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33util\ufe33AbstractSet = function() {};
+ScalaJS.inheritable.java_util_AbstractSet = function() {};
 /** @constructor */
-ScalaJS.inheritable.java\ufe33util\ufe33Dictionary = function() {};
+ScalaJS.inheritable.java_util_Dictionary = function() {};
 /** @constructor */
-ScalaJS.inheritable.org\ufe33xml\ufe33sax\ufe33helpers\ufe33DefaultHandler = function() {};
+ScalaJS.inheritable.org_xml_sax_helpers_DefaultHandler = function() {};
 /** @constructor */
-ScalaJS.inheritable.org\ufe33xml\ufe33sax\ufe33helpers\ufe33XMLFilterImpl = function() {};
+ScalaJS.inheritable.org_xml_sax_helpers_XMLFilterImpl = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33collection\ufe33concurrent\ufe33BasicNode = function() {};
+ScalaJS.inheritable.scala_collection_concurrent_BasicNode = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33collection\ufe33concurrent\ufe33CNodeBase = function() {};
+ScalaJS.inheritable.scala_collection_concurrent_CNodeBase = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33collection\ufe33concurrent\ufe33INodeBase = function() {};
+ScalaJS.inheritable.scala_collection_concurrent_INodeBase = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33collection\ufe33concurrent\ufe33MainNode = function() {};
+ScalaJS.inheritable.scala_collection_concurrent_MainNode = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33concurrent\ufe33forkjoin\ufe33ForkJoinTask = function() {};
+ScalaJS.inheritable.scala_concurrent_forkjoin_ForkJoinTask = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33concurrent\ufe33forkjoin\ufe33ForkJoinWorkerThread = function() {};
+ScalaJS.inheritable.scala_concurrent_forkjoin_ForkJoinWorkerThread = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33concurrent\ufe33forkjoin\ufe33RecursiveAction = function() {};
+ScalaJS.inheritable.scala_concurrent_forkjoin_RecursiveAction = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33concurrent\ufe33impl\ufe33AbstractPromise = function() {};
+ScalaJS.inheritable.scala_concurrent_impl_AbstractPromise = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala\ufe33math\ufe33ScalaNumber = function() {};
+ScalaJS.inheritable.scala_math_ScalaNumber = function() {};

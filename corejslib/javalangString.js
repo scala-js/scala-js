@@ -12,11 +12,11 @@
  * Hence, we only define data and instance tests.
  */
 
-ScalaJS.is.java\ufe33lang\ufe33String = (function(obj) {
+ScalaJS.is.java_lang_String = (function(obj) {
   return typeof(obj) === "string"
 });
 
-ScalaJS.as.java\ufe33lang\ufe33String = (function(obj) {
+ScalaJS.as.java_lang_String = (function(obj) {
   if (typeof(obj) === "string" || obj === null) {
     return obj
   } else {
@@ -24,27 +24,27 @@ ScalaJS.as.java\ufe33lang\ufe33String = (function(obj) {
   }
 });
 
-ScalaJS.isArrayOf.java\ufe33lang\ufe33String = (function(obj, depth) {
-  return (!(!(((obj && obj.$classData) && (obj.$classData.arrayDepth === depth)) && obj.$classData.arrayBase.ancestors.java\ufe33lang\ufe33String)))
+ScalaJS.isArrayOf.java_lang_String = (function(obj, depth) {
+  return (!(!(((obj && obj.$classData) && (obj.$classData.arrayDepth === depth)) && obj.$classData.arrayBase.ancestors.java_lang_String)))
 });
 
-ScalaJS.asArrayOf.java\ufe33lang\ufe33String = (function(obj, depth) {
-  if ((ScalaJS.isArrayOf.java\ufe33lang\ufe33String(obj, depth) || (obj === null))) {
+ScalaJS.asArrayOf.java_lang_String = (function(obj, depth) {
+  if ((ScalaJS.isArrayOf.java_lang_String(obj, depth) || (obj === null))) {
     return obj
   } else {
     ScalaJS.throwArrayCastException(obj, "Ljava.lang.String;", depth)
   }
 });
 
-ScalaJS.data.java\ufe33lang\ufe33String =
+ScalaJS.data.java_lang_String =
   new ScalaJS.ClassTypeData(
-    {java\ufe33lang\ufe33String:0},
-    false, "java.lang.String", ScalaJS.data.java\ufe33lang\ufe33Object,
+    {java_lang_String:0},
+    false, "java.lang.String", ScalaJS.data.java_lang_Object,
     {
-      java\ufe33lang\ufe33String: true,
-      java\ufe33io\ufe33Serializable: true,
-      java\ufe33lang\ufe33CharSequence: true,
-      java\ufe33lang\ufe33Comparable: true,
-      java\ufe33lang\ufe33Object: true
+      java_lang_String: true,
+      java_io_Serializable: true,
+      java_lang_CharSequence: true,
+      java_lang_Comparable: true,
+      java_lang_Object: true
     },
-    ScalaJS.is.java\ufe33lang\ufe33String);
+    ScalaJS.is.java_lang_String);

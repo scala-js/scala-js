@@ -8,48 +8,48 @@
  * ------------------ */
 
 /** @constructor */
-ScalaJS.c.java\ufe33lang\ufe33Object = function() {
+ScalaJS.c.java_lang_Object = function() {
 };
 
 /** @constructor */
-ScalaJS.inheritable.java\ufe33lang\ufe33Object = function() {};
-ScalaJS.inheritable.java\ufe33lang\ufe33Object.prototype =
-  ScalaJS.c.java\ufe33lang\ufe33Object.prototype;
+ScalaJS.inheritable.java_lang_Object = function() {};
+ScalaJS.inheritable.java_lang_Object.prototype =
+  ScalaJS.c.java_lang_Object.prototype;
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.init\ufe33\ufe34 = function() {
+ScalaJS.c.java_lang_Object.prototype.init___ = function() {
   return this;
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.getClass\ufe34java\ufe33lang\ufe33Class = function() {
+ScalaJS.c.java_lang_Object.prototype.getClass__java_lang_Class = function() {
   return this.$classData.getClassOf();
 }
 
 // Bridge for getClass()
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.getClass = function() {
-  return this.getClass\ufe34java\ufe33lang\ufe33Class();
+ScalaJS.c.java_lang_Object.prototype.getClass = function() {
+  return this.getClass__java_lang_Class();
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.hashCode\ufe34I = function() {
+ScalaJS.c.java_lang_Object.prototype.hashCode__I = function() {
   // TODO
   return 42;
 }
 
 // Bridge for hashCode()
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.hashCode = function() {
-  return this.hashCode\ufe34I();
+ScalaJS.c.java_lang_Object.prototype.hashCode = function() {
+  return this.hashCode__I();
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.equals\ufe34O\ufe34Z = function(rhs) {
+ScalaJS.c.java_lang_Object.prototype.equals__O__Z = function(rhs) {
   return this === rhs;
 }
 
 // Bridge for equals(Object)
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.equals = function(that) {
-  return this.equals\ufe34O\ufe34Z(that);
+ScalaJS.c.java_lang_Object.prototype.equals = function(that) {
+  return this.equals__O__Z(that);
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone\ufe34O = function() {
-  if (ScalaJS.is.java\ufe33lang\ufe33Cloneable(this)) {
+ScalaJS.c.java_lang_Object.prototype.clone__O = function() {
+  if (ScalaJS.is.java_lang_Cloneable(this)) {
     function Clone(from) {
       for (var field in from)
         if (from["hasOwnProperty"](field))
@@ -58,61 +58,61 @@ ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone\ufe34O = function() {
     Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](this);
     return new Clone(this);
   } else {
-    throw new ScalaJS.c.java\ufe33lang\ufe33CloneNotSupportedException().init\ufe33\ufe34();
+    throw new ScalaJS.c.java_lang_CloneNotSupportedException().init___();
   }
 }
 
 // Bridge for clone()
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.clone = function() {
-  return this.clone\ufe34O();
+ScalaJS.c.java_lang_Object.prototype.clone = function() {
+  return this.clone__O();
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.toString\ufe34T = function() {
+ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
   // getClass().getName() + "@" + Integer.toHexString(hashCode())
-  var className = this.getClass\ufe34java\ufe33lang\ufe33Class().getName\ufe34T();
-  var hashCode = this.hashCode\ufe34I();
+  var className = this.getClass__java_lang_Class().getName__T();
+  var hashCode = this.hashCode__I();
   return className + '@' + hashCode.toString(16);
 }
 
 // Bridge for toString()
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.toString = function() {
-  return this.toString\ufe34T();
+ScalaJS.c.java_lang_Object.prototype.toString = function() {
+  return this.toString__T();
 }
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.notify\ufe34V = function() {}
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.notifyAll\ufe34V = function() {}
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34J\ufe34V = function() {}
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34J\ufe34I\ufe34V = function() {}
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.wait\ufe34V = function() {}
+ScalaJS.c.java_lang_Object.prototype.notify__V = function() {}
+ScalaJS.c.java_lang_Object.prototype.notifyAll__V = function() {}
+ScalaJS.c.java_lang_Object.prototype.wait__J__V = function() {}
+ScalaJS.c.java_lang_Object.prototype.wait__J__I__V = function() {}
+ScalaJS.c.java_lang_Object.prototype.wait__V = function() {}
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.finalize\ufe34V = function() {}
+ScalaJS.c.java_lang_Object.prototype.finalize__V = function() {}
 
 // Constructor bridge
 
 /** @constructor */
-ScalaJS.classes.java\ufe33lang\ufe33Object = function() {
-  ScalaJS.c.java\ufe33lang\ufe33Object.call(this);
-  return this.init\ufe33\ufe34();
+ScalaJS.classes.java_lang_Object = function() {
+  ScalaJS.c.java_lang_Object.call(this);
+  return this.init___();
 }
-ScalaJS.classes.java\ufe33lang\ufe33Object.prototype =
-  ScalaJS.c.java\ufe33lang\ufe33Object.prototype;
+ScalaJS.classes.java_lang_Object.prototype =
+  ScalaJS.c.java_lang_Object.prototype;
 
 // Instance tests
 
-ScalaJS.is.java\ufe33lang\ufe33Object = function(obj) {
+ScalaJS.is.java_lang_Object = function(obj) {
   return !!((obj && obj.$classData &&
-    obj.$classData.ancestors.java\ufe33lang\ufe33Object) ||
+    obj.$classData.ancestors.java_lang_Object) ||
     (typeof(obj) === "string"));
 };
 
-ScalaJS.as.java\ufe33lang\ufe33Object = function(obj) {
-  if (ScalaJS.is.java\ufe33lang\ufe33Object(obj) || obj === null)
+ScalaJS.as.java_lang_Object = function(obj) {
+  if (ScalaJS.is.java_lang_Object(obj) || obj === null)
     return obj;
   else
     ScalaJS.throwClassCastException(obj, "java.lang.Object");
 };
 
-ScalaJS.isArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
+ScalaJS.isArrayOf.java_lang_Object = (function(obj, depth) {
   var data = obj && obj.$classData;
   if (!data)
     return false;
@@ -126,8 +126,8 @@ ScalaJS.isArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
     return !data.arrayBase.isPrimitive; // because Array[Int] </: Array[Object]
 });
 
-ScalaJS.asArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
-  if ((ScalaJS.isArrayOf.java\ufe33lang\ufe33Object(obj, depth) || (obj === null))) {
+ScalaJS.asArrayOf.java_lang_Object = (function(obj, depth) {
+  if ((ScalaJS.isArrayOf.java_lang_Object(obj, depth) || (obj === null))) {
     return obj
   } else {
     ScalaJS.throwArrayCastException(obj, "Ljava.lang.Object;", depth)
@@ -136,12 +136,12 @@ ScalaJS.asArrayOf.java\ufe33lang\ufe33Object = (function(obj, depth) {
 
 // Data
 
-ScalaJS.data.java\ufe33lang\ufe33Object =
+ScalaJS.data.java_lang_Object =
   new ScalaJS.ClassTypeData(
-    {java\ufe33lang\ufe33Object:0},
+    {java_lang_Object:0},
     false, "java.lang.Object", null, {},
-    ScalaJS.is.java\ufe33lang\ufe33Object,
-    ScalaJS.isArrayOf.java\ufe33lang\ufe33Object);
+    ScalaJS.is.java_lang_Object,
+    ScalaJS.isArrayOf.java_lang_Object);
 
-ScalaJS.c.java\ufe33lang\ufe33Object.prototype.$classData =
-  ScalaJS.data.java\ufe33lang\ufe33Object;
+ScalaJS.c.java_lang_Object.prototype.$classData =
+  ScalaJS.data.java_lang_Object;

@@ -189,7 +189,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Generate the bridges, then steal the constructor bridges (1 at most)
       val bridges0 = genBridgesForClass(sym)
       val (constructorBridges0, bridges) = bridges0.partition {
-        case js.MethodDef(js.Ident("init\ufe33", _), _, _) => true
+        case js.MethodDef(js.Ident("init_", _), _, _) => true
         case _ => false
       }
       assert(constructorBridges0.size <= 1)
@@ -608,7 +608,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             IF (!(moduleInstance)) {
               moduleInstance := js.ApplyMethod(
                   js.New(encodeClassSym(sym), Nil),
-                  js.Ident("init\ufe33\ufe34"),
+                  js.Ident("init___"),
                   Nil)
             },
             js.Return(moduleInstance)

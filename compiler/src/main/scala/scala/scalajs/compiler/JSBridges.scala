@@ -63,7 +63,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     }
 
     val jsName = name.toString match {
-      case "<init>" => "init\ufe33" // will be stolen by the JS constructor
+      case "<init>" => "init_" // will be stolen by the JS constructor
       case "constructor" => "$constructor"
       case x if js.isKeyword(x) => "$" + x
       case x => x
