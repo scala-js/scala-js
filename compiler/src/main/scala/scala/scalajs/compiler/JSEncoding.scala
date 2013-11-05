@@ -32,6 +32,14 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   /** Inner separator character as a string */
   final val InnerSepStr = InnerSep.toString
 
+  final val FinalOuter = "__"
+  final val FinalInner = "_"
+  def encode(st: String) = {
+    st.replace("_", "$und")
+      .replace(OuterSepStr, FinalOuter)
+      .replace(InnerSepStr, FinalInner)
+  }
+
   /** Name given to the local Scala.js environment variable */
   final val ScalaJSEnvironmentName = "ScalaJS"
 
@@ -84,9 +92,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName =
-      if (sym.isClassConstructor) "init" + InnerSep
+      if (sym.isClassConstructor) "init" + FinalInner
       else if (!foreignIsImplClass(sym.owner)) sym.name.toString
-      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+      else encodeClassFullName(sym.owner) + FinalOuter + sym.name.toString
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
         Some(sym.originalName.decoded + paramsString))
@@ -187,12 +195,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
-    val base = sym.fullNameAsName(separator).toString
+    val base = encode(sym.fullNameAsName(separator).toString)
     if (sym.isModuleClass && !foreignIsImplClass(sym)) base + "$" else base
   }
 
   def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
-    sym.fullNameAsName(separator).toString
+    encode(sym.fullNameAsName(separator).toString)
 
   // Encoding of method signatures
 
@@ -205,7 +213,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def makeParamsString(paramAndResultTypeNames: List[String]) =
-    paramAndResultTypeNames.mkString(OuterSepStr, OuterSepStr, "")
+    paramAndResultTypeNames.mkString(FinalOuter, FinalOuter, "")
 
   /** Compute the internal name for a type
    *  The internal name is inspired by the encoding of the JVM, with some

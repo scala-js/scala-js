@@ -43,7 +43,7 @@ object RhinoBasedRun {
    *
    *  E.g., ScalaJS.c, which is a scope with the Scala.js classes, can be
    *  turned to a LazyScalaJSScope. Upon first access to a field of ScalaJS.c,
-   *  say ScalaJS.c.scala\ufe33Option, the script defining that particular
+   *  say ScalaJS.c.scala_Option, the script defining that particular
    *  field will be loaded.
    *  This is possible because the relative path to the script can be derived
    *  from the name of the property being accessed.
@@ -82,10 +82,10 @@ object RhinoBasedRun {
     }
 
     private def nameToRelativeFileName(name0: String): String = {
-      val name = name0.replace("\ufe33", "/")
+        val name = name0.replaceAll("(?<!_)_(?!_[^_])", "/")
       if (isModule) name + "$.js"
       else if (!isTraitImpl) name + ".js"
-      else name.split("\ufe34")(0) + ".js"
+      else name.split("__")(0) + ".js"
     }
 
     override def getClassName() = "LazyScalaJSScope"

@@ -70,15 +70,15 @@ var ScalaJS = {
   dynamicIsAssignableFrom: function(lhsData, rhsData) {
     if (lhsData.isPrimitive || rhsData.isPrimitive)
       return lhsData === rhsData;
-    if (rhsData === ScalaJS.data.java\ufe33lang\ufe33String)
+    if (rhsData === ScalaJS.data.java_lang_String)
       return ScalaJS.dynamicIsInstanceOf("some string", lhsData);
     else
       return ScalaJS.dynamicIsInstanceOf({$classData: rhsData}, lhsData);
   },
 
   throwClassCastException: function(instance, classFullName) {
-    throw new ScalaJS.c.java\ufe33lang\ufe33ClassCastException()
-      .init\ufe33\ufe34T(
+    throw new ScalaJS.c.java_lang_ClassCastException()
+      .init___T(
         instance + " is not an instance of " + classFullName);
   },
 
@@ -92,8 +92,8 @@ var ScalaJS = {
     if (ScalaJS.isScalaJSObject(exception))
       return exception;
     else
-      return new ScalaJS.c.scala\ufe33scalajs\ufe33js\ufe33JavaScriptException()
-        .init\ufe33\ufe34Lscala\ufe33scalajs\ufe33js\ufe33Any(exception);
+      return new ScalaJS.c.scala_scalajs_js_JavaScriptException()
+        .init___Lscala_scalajs_js_Any(exception);
   },
 
   makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
@@ -147,8 +147,8 @@ var ScalaJS = {
 
   anyEqEq: function(lhs, rhs) {
     if (ScalaJS.isScalaJSObject(lhs)) {
-      return ScalaJS.modules.scala\ufe33runtime\ufe33BoxesRunTime()
-        .equals\ufe34O\ufe34O\ufe34Z(lhs, rhs);
+      return ScalaJS.modules.scala_runtime_BoxesRunTime()
+        .equals__O__O__Z(lhs, rhs);
     } else {
       return lhs === rhs;
     }
@@ -156,7 +156,7 @@ var ScalaJS = {
 
   anyRefEqEq: function(lhs, rhs) {
     if (ScalaJS.isScalaJSObject(lhs))
-      return lhs.equals\ufe34O\ufe34Z(rhs);
+      return lhs.equals__O__Z(rhs);
     else
       return lhs === rhs;
   },
@@ -170,18 +170,18 @@ var ScalaJS = {
 
   objectGetClass: function(instance) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.getClass\ufe34java\ufe33lang\ufe33Class();
+      return instance.getClass__java_lang_Class();
     else if (typeof(instance) === "string")
-      return ScalaJS.data.java\ufe33lang\ufe33String.getClassOf();
+      return ScalaJS.data.java_lang_String.getClassOf();
     else
       return null; // Exception?
   },
 
   objectClone: function(instance) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.clone\ufe34O();
+      return instance.clone__O();
     else
-      throw new ScalaJS.c.java\ufe33lang\ufe33CloneNotSupportedException().init\ufe33\ufe34();
+      throw new ScalaJS.c.java_lang_CloneNotSupportedException().init___();
   },
 
   objectFinalize: function(instance) {
@@ -198,24 +198,24 @@ var ScalaJS = {
 
   objectEquals: function(instance, rhs) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.equals\ufe34O\ufe34Z(rhs);
+      return instance.equals__O__Z(rhs);
     else
       return instance === rhs;
   },
 
   objectHashCode: function(instance) {
     if (ScalaJS.isScalaJSObject(instance))
-      return instance.hashCode\ufe34I();
+      return instance.hashCode__I();
     else
       return 42; // TODO
   },
 
   comparableCompareTo: function(instance, rhs) {
     if (typeof(instance) === "string") {
-      ScalaJS.as.java\ufe33lang\ufe33String(rhs);
+      ScalaJS.as.java_lang_String(rhs);
       return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
     } else {
-      return instance.compareTo\ufe34O\ufe34I(rhs);
+      return instance.compareTo__O__I(rhs);
     }
   },
 
@@ -223,21 +223,21 @@ var ScalaJS = {
     if (typeof(instance) === "string")
       return instance["length"];
     else
-      return instance.length\ufe34I();
+      return instance.length__I();
   },
 
   charSequenceCharAt: function(instance, index) {
     if (typeof(instance) === "string")
       return instance["charCodeAt"](index);
     else
-      return instance.charAt\ufe34I\ufe34C(index);
+      return instance.charAt__I__C(index);
   },
 
   charSequenceSubSequence: function(instance, start, end) {
     if (typeof(instance) === "string")
       return instance["substring"](start, end);
     else
-      return instance.subSequence\ufe34I\ufe34I\ufe34java\ufe33lang\ufe33CharSequence(start, end);
+      return instance.subSequence__I__I__java_lang_CharSequence(start, end);
   },
 
   truncateToLong: function(value) {
@@ -255,34 +255,34 @@ var ScalaJS = {
   // Boxes - inline all the way through java.lang.X.valueOf()
 
   bV: function() {
-    return ScalaJS.modules.scala\ufe33runtime\ufe33BoxedUnit().UNIT$1;
+    return ScalaJS.modules.scala_runtime_BoxedUnit().UNIT$1;
   },
   bZ: function(value) {
     if (value)
-      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().TRUE$1;
+      return ScalaJS.modules.java_lang_Boolean().TRUE$1;
     else
-      return ScalaJS.modules.java\ufe33lang\ufe33Boolean().FALSE$1;
+      return ScalaJS.modules.java_lang_Boolean().FALSE$1;
   },
   bC: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Character().init\ufe33\ufe34C(value);
+    return new ScalaJS.c.java_lang_Character().init___C(value);
   },
   bB: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Byte().init\ufe33\ufe34B(value);
+    return new ScalaJS.c.java_lang_Byte().init___B(value);
   },
   bS: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Short().init\ufe33\ufe34S(value);
+    return new ScalaJS.c.java_lang_Short().init___S(value);
   },
   bI: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Integer().init\ufe33\ufe34I(value);
+    return new ScalaJS.c.java_lang_Integer().init___I(value);
   },
   bJ: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Long().init\ufe33\ufe34J(value);
+    return new ScalaJS.c.java_lang_Long().init___J(value);
   },
   bF: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Float().init\ufe33\ufe34F(value);
+    return new ScalaJS.c.java_lang_Float().init___F(value);
   },
   bD: function(value) {
-    return new ScalaJS.c.java\ufe33lang\ufe33Double().init\ufe33\ufe34D(value);
+    return new ScalaJS.c.java_lang_Double().init___D(value);
   },
 
   // Unboxes - inline all the way through obj.xValue()
@@ -291,28 +291,28 @@ var ScalaJS = {
     return undefined;
   },
   uZ: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Boolean(value).value$1;
+    return ScalaJS.as.java_lang_Boolean(value).value$1;
   },
   uC: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Character(value).value$1;
+    return ScalaJS.as.java_lang_Character(value).value$1;
   },
   uB: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Byte(value).value$1;
+    return ScalaJS.as.java_lang_Byte(value).value$1;
   },
   uS: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Short(value).value$2;
+    return ScalaJS.as.java_lang_Short(value).value$2;
   },
   uI: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Integer(value).value$2;
+    return ScalaJS.as.java_lang_Integer(value).value$2;
   },
   uJ: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Long(value).value$2;
+    return ScalaJS.as.java_lang_Long(value).value$2;
   },
   uF: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Float(value).value$2;
+    return ScalaJS.as.java_lang_Float(value).value$2;
   },
   uD: function(value) {
-    return ScalaJS.as.java\ufe33lang\ufe33Double(value).value$2;
+    return ScalaJS.as.java_lang_Double(value).value$2;
   }
 }
 
@@ -373,8 +373,8 @@ ScalaJS.ArrayTypeData = function(componentData) {
   var componentZero = componentData.zero;
   /** @constructor */
   var ArrayClass = function(arg) {
-    ScalaJS.c.java\ufe33lang\ufe33Object.call(this);
-    ScalaJS.c.java\ufe33lang\ufe33Object.prototype.init\ufe33\ufe34.call(this);
+    ScalaJS.c.java_lang_Object.call(this);
+    ScalaJS.c.java_lang_Object.prototype.init___.call(this);
 
     if (typeof(arg) === "number") {
       // arg is the length of the array
@@ -386,11 +386,11 @@ ScalaJS.ArrayTypeData = function(componentData) {
       this.underlying = arg;
     }
   }
-  ArrayClass.prototype = new ScalaJS.inheritable.java\ufe33lang\ufe33Object;
+  ArrayClass.prototype = new ScalaJS.inheritable.java_lang_Object;
   ArrayClass.prototype.constructor = ArrayClass;
   ArrayClass.prototype.$classData = this;
 
-  ArrayClass.prototype.clone\ufe34O = function() {
+  ArrayClass.prototype.clone__O = function() {
     return new ArrayClass(this.underlying["slice"](0));
   };
 
@@ -406,8 +406,8 @@ ScalaJS.ArrayTypeData = function(componentData) {
   }
 
   this.constr = ArrayClass;
-  this.parentData = ScalaJS.data.java\ufe33lang\ufe33Object;
-  this.ancestors = {java\ufe33lang\ufe33Object: true};
+  this.parentData = ScalaJS.data.java_lang_Object;
+  this.ancestors = {java_lang_Object: true};
   this.isPrimitive = false;
   this.isInterface = false;
   this.isArrayClass = true;
@@ -426,8 +426,8 @@ ScalaJS.ArrayTypeData = function(componentData) {
 ScalaJS.ClassTypeData.prototype.getClassOf = function() {
   if (!this._classOf)
     this._classOf =
-      new ScalaJS.c.java\ufe33lang\ufe33Class()
-        .init\ufe33\uFE34Lscala\ufe33scalajs\ufe33js\uFE33Dynamic(this);
+      new ScalaJS.c.java_lang_Class()
+        .init___Lscala_scalajs_js_Dynamic(this);
   return this._classOf;
 };
 
@@ -442,46 +442,46 @@ ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
 // Create primitive types
 
-ScalaJS.data.scala\ufe33Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
-ScalaJS.data.scala\ufe33Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.data.scala\ufe33Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char");
-ScalaJS.data.scala\ufe33Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
-ScalaJS.data.scala\ufe33Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short");
-ScalaJS.data.scala\ufe33Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int");
-ScalaJS.data.scala\ufe33Long    = new ScalaJS.PrimitiveTypeData(0, "J", "long");
-ScalaJS.data.scala\ufe33Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
-ScalaJS.data.scala\ufe33Double  = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
+ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
+ScalaJS.data.scala_Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
+ScalaJS.data.scala_Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char");
+ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
+ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short");
+ScalaJS.data.scala_Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int");
+ScalaJS.data.scala_Long    = new ScalaJS.PrimitiveTypeData(0, "J", "long");
+ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
+ScalaJS.data.scala_Double  = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
 
 // Instance tests for array of primitives
 
-ScalaJS.isArrayOf.scala\ufe33Boolean = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Boolean);
-ScalaJS.asArrayOf.scala\ufe33Boolean = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Boolean, "Z");
-ScalaJS.data.scala\ufe33Boolean.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Boolean;
+ScalaJS.isArrayOf.scala_Boolean = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Boolean);
+ScalaJS.asArrayOf.scala_Boolean = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Boolean, "Z");
+ScalaJS.data.scala_Boolean.isArrayOf = ScalaJS.isArrayOf.scala_Boolean;
 
-ScalaJS.isArrayOf.scala\ufe33Char = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Char);
-ScalaJS.asArrayOf.scala\ufe33Char = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Char, "C");
-ScalaJS.data.scala\ufe33Char.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Char;
+ScalaJS.isArrayOf.scala_Char = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Char);
+ScalaJS.asArrayOf.scala_Char = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Char, "C");
+ScalaJS.data.scala_Char.isArrayOf = ScalaJS.isArrayOf.scala_Char;
 
-ScalaJS.isArrayOf.scala\ufe33Byte = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Byte);
-ScalaJS.asArrayOf.scala\ufe33Byte = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Byte, "B");
-ScalaJS.data.scala\ufe33Byte.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Byte;
+ScalaJS.isArrayOf.scala_Byte = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Byte);
+ScalaJS.asArrayOf.scala_Byte = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Byte, "B");
+ScalaJS.data.scala_Byte.isArrayOf = ScalaJS.isArrayOf.scala_Byte;
 
-ScalaJS.isArrayOf.scala\ufe33Short = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Short);
-ScalaJS.asArrayOf.scala\ufe33Short = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Short, "S");
-ScalaJS.data.scala\ufe33Short.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Short;
+ScalaJS.isArrayOf.scala_Short = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Short);
+ScalaJS.asArrayOf.scala_Short = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Short, "S");
+ScalaJS.data.scala_Short.isArrayOf = ScalaJS.isArrayOf.scala_Short;
 
-ScalaJS.isArrayOf.scala\ufe33Int = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Int);
-ScalaJS.asArrayOf.scala\ufe33Int = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Int, "I");
-ScalaJS.data.scala\ufe33Int.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Int;
+ScalaJS.isArrayOf.scala_Int = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Int);
+ScalaJS.asArrayOf.scala_Int = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Int, "I");
+ScalaJS.data.scala_Int.isArrayOf = ScalaJS.isArrayOf.scala_Int;
 
-ScalaJS.isArrayOf.scala\ufe33Long = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Long);
-ScalaJS.asArrayOf.scala\ufe33Long = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Long, "J");
-ScalaJS.data.scala\ufe33Long.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Long;
+ScalaJS.isArrayOf.scala_Long = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Long);
+ScalaJS.asArrayOf.scala_Long = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Long, "J");
+ScalaJS.data.scala_Long.isArrayOf = ScalaJS.isArrayOf.scala_Long;
 
-ScalaJS.isArrayOf.scala\ufe33Float = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Float);
-ScalaJS.asArrayOf.scala\ufe33Float = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Float, "F");
-ScalaJS.data.scala\ufe33Float.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Float;
+ScalaJS.isArrayOf.scala_Float = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Float);
+ScalaJS.asArrayOf.scala_Float = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Float, "F");
+ScalaJS.data.scala_Float.isArrayOf = ScalaJS.isArrayOf.scala_Float;
 
-ScalaJS.isArrayOf.scala\ufe33Double = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala\ufe33Double);
-ScalaJS.asArrayOf.scala\ufe33Double = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala\ufe33Double, "D");
-ScalaJS.data.scala\ufe33Double.isArrayOf = ScalaJS.isArrayOf.scala\ufe33Double;
+ScalaJS.isArrayOf.scala_Double = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Double);
+ScalaJS.asArrayOf.scala_Double = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Double, "D");
+ScalaJS.data.scala_Double.isArrayOf = ScalaJS.isArrayOf.scala_Double;
