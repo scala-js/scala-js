@@ -4,7 +4,7 @@
  */
 
 $(function() {
-  var mainInstance = new ScalaJS.classes.reversi\ufe33Reversi(
+  var mainInstance = new ScalaJS.classes.reversi_Reversi(
     jQuery, jQuery("#playground"));
   mainInstance.startGame();
 });

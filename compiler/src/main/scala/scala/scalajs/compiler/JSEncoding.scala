@@ -20,25 +20,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  /** Outer separator character */
-  final val OuterSep = '\uFE34'
+  /** Outer separator string (between parameter types) */
+  final val OuterSep = "__"
 
-  /** Inner separator character */
-  final val InnerSep = '\uFE33'
-
-  /** Outer separator character as a string */
-  final val OuterSepStr = OuterSep.toString
-
-  /** Inner separator character as a string */
-  final val InnerSepStr = InnerSep.toString
-
-  final val FinalOuter = "__"
-  final val FinalInner = "_"
-  def encode(st: String) = {
-    st.replace("_", "$und")
-      .replace(OuterSepStr, FinalOuter)
-      .replace(InnerSepStr, FinalInner)
-  }
+  /** Inner separator character (replace dots in full names) */
+  final val InnerSep = "_"
 
   /** Name given to the local Scala.js environment variable */
   final val ScalaJSEnvironmentName = "ScalaJS"
@@ -92,9 +78,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName =
-      if (sym.isClassConstructor) "init" + FinalInner
+      if (sym.isClassConstructor) "init" + InnerSep
       else if (!foreignIsImplClass(sym.owner)) sym.name.toString
-      else encodeClassFullName(sym.owner) + FinalOuter + sym.name.toString
+      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
         Some(sym.originalName.decoded + paramsString))
@@ -187,20 +173,23 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
-    js.Ident(encodeClassFullName(sym), Some(encodeClassFullName(sym, '.')))
+    js.Ident(encodeClassFullName(sym), Some(sym.fullName))
   }
 
   def encodeModuleFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
-    js.Ident(encodeModuleFullName(sym), Some(encodeModuleFullName(sym, '.')))
+    js.Ident(encodeModuleFullName(sym), Some(sym.fullName))
   }
 
-  def encodeClassFullName(sym: Symbol, separator: Char = InnerSep): String = {
-    val base = encode(sym.fullNameAsName(separator).toString)
+  def encodeClassFullName(sym: Symbol): String = {
+    val base = encodeFullNameInternal(sym)
     if (sym.isModuleClass && !foreignIsImplClass(sym)) base + "$" else base
   }
 
-  def encodeModuleFullName(sym: Symbol, separator: Char = InnerSep): String =
-    encode(sym.fullNameAsName(separator).toString)
+  def encodeModuleFullName(sym: Symbol): String =
+    encodeFullNameInternal(sym)
+
+  private def encodeFullNameInternal(sym: Symbol): String =
+    sym.fullName.replace("_", "$und").replace(".", "_")
 
   // Encoding of method signatures
 
@@ -213,7 +202,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   private def makeParamsString(paramAndResultTypeNames: List[String]) =
-    paramAndResultTypeNames.mkString(FinalOuter, FinalOuter, "")
+    paramAndResultTypeNames.mkString(OuterSep, OuterSep, "")
 
   /** Compute the internal name for a type
    *  The internal name is inspired by the encoding of the JVM, with some

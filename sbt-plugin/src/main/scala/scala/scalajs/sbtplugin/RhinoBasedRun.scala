@@ -81,11 +81,11 @@ object RhinoBasedRun {
       }
     }
 
-    private def nameToRelativeFileName(name0: String): String = {
-        val name = name0.replaceAll("(?<!_)_(?!_[^_])", "/")
-      if (isModule) name + "$.js"
-      else if (!isTraitImpl) name + ".js"
-      else name.split("__")(0) + ".js"
+    private def nameToRelativeFileName(name: String): String = {
+      val name1 = if (isTraitImpl) name.split("__")(0) else name
+      val name2 = name1.replace("_", "/")
+      if (isModule) name2 + "$.js"
+      else name2 + ".js"
     }
 
     override def getClassName() = "LazyScalaJSScope"

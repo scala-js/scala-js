@@ -4,5 +4,5 @@
  */
 
 $(function() {
-  ScalaJS.modules.helloworld\ufe33HelloWorld().main();
+  ScalaJS.modules.helloworld_HelloWorld().main();
 });
