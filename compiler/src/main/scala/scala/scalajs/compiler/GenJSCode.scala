@@ -1419,8 +1419,22 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
       if (isRawJSType(to)) {
-        // isInstanceOf is not supported for raw JavaScript types
-        abort("isInstanceOf["+to+"]")
+        def genTypeOfTest(typeString: String) = {
+          js.BinaryOp("===", js.UnaryOp("typeof", value),
+              js.StringLiteral(typeString))
+        }
+        to.typeSymbol match {
+          case JSNumberClass    => genTypeOfTest("number")
+          case JSStringClass    => genTypeOfTest("string")
+          case JSBooleanClass   => genTypeOfTest("boolean")
+          case JSUndefinedClass => genTypeOfTest("undefined")
+          case sym if sym.isTrait =>
+            currentCUnit.error(pos,
+                s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
+            js.BooleanLiteral(true)
+          case sym =>
+            js.BinaryOp("instanceof", value, genGlobalJSObject(sym))
+        }
       } else {
         encodeIsInstanceOf(value, to)
       }
