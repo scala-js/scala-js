@@ -39,10 +39,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.DotSelect(environment, js.Ident(name, Some(name)))
   }
 
-  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeLabelSym(sym: Symbol, freshName: Symbol => String)(
+      implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.Ident("$jslabel$" + sym.name.toString + "$" + sym.id,
-        Some(sym.originalName.decoded))
+    js.Ident(freshName(sym), Some(sym.originalName.decoded))
   }
 
   private lazy val allRefClasses: Set[Symbol] = {
@@ -94,13 +94,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         Some(sym.originalName.decoded))
   }
 
-  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
+  def encodeLocalSym(sym: Symbol, freshName: Symbol => String)(
+      implicit pos: Position): js.Ident = {
     require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol: " + sym)
-
-    val origName = Some(sym.originalName.decoded)
-    if (sym.isValueParameter) js.Ident("arg$" + sym.name.toString, origName)
-    else js.Ident(sym.name.toString + "$jsid$" + sym.id, origName)
+    js.Ident(freshName(sym), Some(sym.originalName.decoded))
   }
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
