@@ -57,16 +57,21 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Fresh local name generator ----------------------------------------------
 
-    val usedNameMap = mutable.Map.empty[String, mutable.Map[Symbol, String]]
+    val usedNameMap = mutable.Map.empty[String, Int]
+    val symbolNames = mutable.Map.empty[Symbol, String]
     private val isKeywordOrReserved =
       js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
 
+    def freshName(base: String = "x"): String = {
+      val index = usedNameMap.getOrElse(base, 0) + 1
+      usedNameMap(base) = index
+      if (index == 1 && !isKeywordOrReserved(base)) base
+      else base + "$" + index
+    }
+
     def freshName(sym: Symbol): String = {
-      val rawName = sym.name.toString
-      val nameMap = usedNameMap.getOrElseUpdate(rawName, mutable.Map.empty)
-      nameMap.getOrElseUpdate(sym, {
-        if (nameMap.isEmpty && !isKeywordOrReserved(rawName)) rawName
-        else rawName + "$" + nameMap.size
+      symbolNames.getOrElseUpdate(sym, {
+        freshName(sym.name.toString)
       })
     }
 
@@ -529,6 +534,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       methodTailJumpLabelSym = NoSymbol
       methodTailJumpFormalArgs = Nil
       usedNameMap.clear()
+      symbolNames.clear()
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
@@ -2140,8 +2146,28 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.BinaryOp(funName, receiver, args.head)
 
         case "apply" if !hasExplicitJSEncoding =>
+          /* Protect the receiver so that if the receiver is, e.g.,
+           * path.f
+           * we emit
+           * { var f$1 = path.f; f$1 }(args...)
+           * instead of
+           * path.f(args...)
+           * If we emit the latter, then `this` will be bound to `path` in
+           * `f`, which is sometimes extremely harmful (e.g., for builtin
+           * methods of `window`).
+           */
+          def protectedReceiver = receiver match {
+            case js.DotSelect(_, js.Ident(name, _)) =>
+              val temp = js.Ident(freshName(name), None)
+              js.Block(js.VarDef(temp, receiver), temp)
+            case js.BracketSelect(_, _) =>
+              val temp = js.Ident(freshName(), None)
+              js.Block(js.VarDef(temp, receiver), temp)
+            case _ =>
+              receiver
+          }
           argArray match {
-            case js.ArrayConstr(args) => js.Apply(receiver, args)
+            case js.ArrayConstr(args) => js.Apply(protectedReceiver, args)
             case _ => js.ApplyMethod(receiver, js.StringLiteral("apply"),
                 List(js.Null(), argArray))
           }
