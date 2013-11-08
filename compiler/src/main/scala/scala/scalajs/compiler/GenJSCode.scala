@@ -57,16 +57,18 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Fresh local name generator ----------------------------------------------
 
-    val usedNameMap = mutable.Map.empty[String, Int]
+    val usedNames = mutable.Set.empty[String]
     val symbolNames = mutable.Map.empty[Symbol, String]
     private val isKeywordOrReserved =
       js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
 
     def freshName(base: String = "x"): String = {
-      val index = usedNameMap.getOrElse(base, 0) + 1
-      usedNameMap(base) = index
-      if (index == 1 && !isKeywordOrReserved(base)) base
-      else base + "$" + index
+      var n = 0
+      def longName = base + n
+      while (usedNames.contains(longName) || isKeywordOrReserved(longName)) n += 1
+      
+      usedNameMap.add(longName)
+      longName
     }
 
     def freshName(sym: Symbol): String = {
@@ -533,7 +535,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       methodTailJumpThisSym = NoSymbol
       methodTailJumpLabelSym = NoSymbol
       methodTailJumpFormalArgs = Nil
-      usedNameMap.clear()
+      usedNames.clear()
       symbolNames.clear()
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
