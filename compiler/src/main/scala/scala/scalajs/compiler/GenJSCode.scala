@@ -67,7 +67,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def longName = base + n
       while (usedNames.contains(longName) || isKeywordOrReserved(longName)) n += 1
       
-      usedNameMap.add(longName)
+      usedNames.add(longName)
       longName
     }
 
