@@ -57,20 +57,24 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Fresh local name generator ----------------------------------------------
 
-    val usedNameMap = mutable.Map.empty[String, Int]
-    val symbolNames = mutable.Map.empty[Symbol, String]
+    val usedLocalNames = mutable.Set.empty[String]
+    val localSymbolNames = mutable.Map.empty[Symbol, String]
     private val isKeywordOrReserved =
       js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
 
     def freshName(base: String = "x"): String = {
-      val index = usedNameMap.getOrElse(base, 0) + 1
-      usedNameMap(base) = index
-      if (index == 1 && !isKeywordOrReserved(base)) base
-      else base + "$" + index
+      var suffix = 1
+      var longName = base
+      while (usedLocalNames(longName) || isKeywordOrReserved(longName)) {
+        suffix += 1
+        longName = base+"$"+suffix
+      }
+      usedLocalNames += longName
+      longName
     }
 
     def freshName(sym: Symbol): String = {
-      symbolNames.getOrElseUpdate(sym, {
+      localSymbolNames.getOrElseUpdate(sym, {
         freshName(sym.name.toString)
       })
     }
@@ -533,8 +537,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       methodTailJumpThisSym = NoSymbol
       methodTailJumpLabelSym = NoSymbol
       methodTailJumpFormalArgs = Nil
-      usedNameMap.clear()
-      symbolNames.clear()
+      usedLocalNames.clear()
+      localSymbolNames.clear()
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
