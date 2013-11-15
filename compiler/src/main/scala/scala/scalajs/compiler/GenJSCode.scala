@@ -1960,12 +1960,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       genCallHelper(boxHelperName, expr)
     }
 
-    /** java.lang.reflect.Array module */
-    lazy val ReflectArrayModuleClass = {
-      val module = getModuleIfDefined("java.lang.reflect.Array")
+    private def lookupModuleClass(name: String) = {
+      val module = getModuleIfDefined(name)
       if (module == NoSymbol) NoSymbol
       else module.moduleClass
     }
+
+    lazy val ReflectArrayModuleClass = lookupModuleClass("java.lang.reflect.Array")
+    lazy val UtilArraysModuleClass = lookupModuleClass("java.util.Arrays")
 
     /** Gen JS code for a Scala.js-specific primitive method */
     private def genJSPrimitive(tree: Apply, receiver0: Tree,
@@ -1979,13 +1981,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       lazy val js.ArrayConstr(genArgs) = genArgArray
 
-      /* The implementations of java.lang.Class and java.lang.reflect.Array
-       * use fields and methods of the Scala.js global environment through
-       * js.Dynamic calls.
+      /* The implementations of java.lang.Class, java.lang.reflect.Array
+       * and java.util.Arrays use fields and methods of the Scala.js global
+       * environment through js.Dynamic calls.
        * These must be emitted as dot-selects when possible.
        */
       def shouldUseDynamicSelect: Boolean =
-        currentClassSym == ClassClass || currentClassSym == ReflectArrayModuleClass
+        currentClassSym == ClassClass || currentClassSym == ReflectArrayModuleClass ||
+        currentClassSym == UtilArraysModuleClass
 
       def maybeDynamicSelect(receiver: js.Tree, item: js.Tree): js.Tree = {
         if (shouldUseDynamicSelect) {
