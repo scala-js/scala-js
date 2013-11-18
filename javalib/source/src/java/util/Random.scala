@@ -1,5 +1,7 @@
 package java.util
 
+import scala.scalajs.js.Math
+
 class Random extends AnyRef with java.io.Serializable {
 
   // see nextGaussian()
