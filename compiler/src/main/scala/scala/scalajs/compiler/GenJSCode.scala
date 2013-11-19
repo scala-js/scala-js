@@ -2192,13 +2192,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           val index = js.ApplyMethod(receiver, js.StringLiteral("indexOf"), args)
           js.BinaryOp(">=", index, js.IntLiteral(0))
         case "startsWith" if isString =>
-          val index = js.ApplyMethod(receiver, js.StringLiteral("indexOf"), args)
-          js.BinaryOp("==", index, js.IntLiteral(0))
+          genCallHelper("stringStartsWith", receiver, args.head)
         case "endsWith" if isString =>
-          assert(argc == 1)
-          val index = js.ApplyMethod(receiver, js.StringLiteral("lastIndexOf"), args)
-          val diff = js.BinaryOp("-", stringLength(receiver), stringLength(args.head))
-          js.BinaryOp("==", index, diff)
+          genCallHelper("stringEndsWith", receiver, args.head)
         case "subSequence" if isString =>
           js.ApplyMethod(receiver, js.StringLiteral("substring"), args)
         case "intern" if isString =>
