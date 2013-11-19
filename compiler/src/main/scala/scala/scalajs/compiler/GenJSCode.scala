@@ -2139,6 +2139,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       def charSeqToString(arg: js.Tree) =
         js.ApplyMethod(arg, js.Ident("toString"), Nil)
 
+      def stringLength(arg: js.Tree) =
+        js.BracketSelect(arg, js.StringLiteral("length"))
+
       funName match {
         case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
           assert(argc == 0)
@@ -2185,6 +2188,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         case "indexOf" | "lastIndexOf" if isString && !isStringType(paramType(0)) =>
           js.ApplyMethod(receiver, js.StringLiteral(funName),
               charToString(args.head) :: args.tail)
+        case "contains" if isString =>
+          val index = js.ApplyMethod(receiver, js.StringLiteral("indexOf"), args)
+          js.BinaryOp(">=", index, js.IntLiteral(0))
+        case "startsWith" if isString =>
+          genCallHelper("stringStartsWith", receiver, args.head)
+        case "endsWith" if isString =>
+          genCallHelper("stringEndsWith", receiver, args.head)
         case "subSequence" if isString =>
           js.ApplyMethod(receiver, js.StringLiteral("substring"), args)
         case "intern" if isString =>

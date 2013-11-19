@@ -102,3 +102,22 @@ class ReflectiveOperationException(message: String, cause: Throwable) extends Ex
 class NoSuchMethodException(message: String) extends ReflectiveOperationException(message) {
   def this() = this(null)
 }
+
+class InterruptedException(message: String) extends Exception(message) {
+  def this() = this(null)
+}
+
+class ThreadDeath() extends Error()
+
+class VirtualMachineError(message: String) extends Error(message) {
+  def this() = this(null)
+}
+
+class StackOverflowError(message: String) extends VirtualMachineError(message) {
+  def this() = this(null)
+}
+
+class LinkageError(message: String, cause: Throwable) extends Error(message, cause) {
+  def this(message: String) = this(message, null)
+  def this() = this(null, null)
+}
