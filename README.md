@@ -9,7 +9,16 @@ into JavaScript code.
 *   [Website](http://lampwww.epfl.ch/~doeraene/scala-js/)
 *   [Mailing list](https://groups.google.com/forum/?fromgroups#!forum/scala-js)
 
-## Get it
+## Get started
+
+We provide an
+[example application](https://github.com/sjrd/scala-js-example-app) which you
+can fork to kick off your own project. Its readme provides further
+explanations on how to do so.
+
+## Contribute
+
+### Get the code
 
 Get the code with git. Beware that this repo contains one submodule, which
 you need to clone too. To do this, add the `--recursive` option when cloning.
@@ -18,19 +27,16 @@ If you've already cloned this repo, cd into it and do:
     $ git submodule init
     $ git submodule update
 
-## Compile and publish it locally (install)
+### Compile
 
 Scala.js uses [sbt](http://www.scala-sbt.org/) for its build process.
-In order to use it locally, you need to publish the compiler, library and
-sbt plugin locally.
+To compile your fork, simply run:
 
-Don't worry, this is super-easy:
+    sbt> package
 
-    sbt> publishLocal
+### Test the examples
 
-## Test the examples
-
-You can compile the example applications with:
+After having compiled Scala.js, you can compile the example applications with:
 
     sbt> examples/optimizeJS
 
@@ -52,12 +58,11 @@ Currently, two examples are provided:
     [Reversi](http://en.wikipedia.org/wiki/Reversi) game. Note that it uses the
     HTML5 Canvas element, so it won't work with Internet Explorer 8 or below.
 
-## Get started with your own project
+### Use your fork with your own projects
 
-We provide an
-[example application](https://github.com/sjrd/scala-js-example-app) which you
-can fork to kick off your own project. Its readme provides further
-explanations on how to do so.
+Simply publish it locally with:
+
+    sbt> publishLocal
 
 ## License
 

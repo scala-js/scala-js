@@ -8,19 +8,26 @@ import SourceMapCat.catJSFilesAndTheirSourceMaps
 
 object ScalaJSBuild extends Build {
 
-  val scalajsScalaVersion = "2.10.2"
-
   val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "org.scala-lang.modules.scalajs",
-      version := "0.1-SNAPSHOT",
+      version := scalaJSVersion,
 
       normalizedName ~= {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
-      }
+      },
+
+      publishTo := Some(Resolver.sftp(
+          s"scala-js-$snapshotsOrReleases",
+          "repo.scala-js.org",
+          s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(Resolver.ivyStylePatterns)),
+      publishMavenStyle := false
   )
 
+  private val snapshotsOrReleases =
+    if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
+
   val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := scalajsScalaVersion,
+      scalaVersion := scalaJSScalaVersion,
       scalacOptions ++= Seq(
           "-deprecation",
           "-unchecked",
@@ -47,7 +54,10 @@ object ScalaJSBuild extends Build {
               // compiler, library and sbt-plugin are aggregated
               clean in corejslib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in examples,
-              clean in exampleHelloWorld, clean in exampleReversi).value
+              clean in exampleHelloWorld, clean in exampleReversi).value,
+
+          publish := {},
+          publishLocal := {}
       )
   ).aggregate(
       compiler, plugin, library
@@ -59,8 +69,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Scala.js compiler",
           libraryDependencies ++= Seq(
-              "org.scala-lang" % "scala-compiler" % scalajsScalaVersion,
-              "org.scala-lang" % "scala-reflect" % scalajsScalaVersion
+              "org.scala-lang" % "scala-compiler" % scalaJSScalaVersion,
+              "org.scala-lang" % "scala-reflect" % scalaJSScalaVersion
           ),
           exportJars := true
       )

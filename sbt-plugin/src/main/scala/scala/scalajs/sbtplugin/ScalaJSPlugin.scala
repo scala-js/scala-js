@@ -24,6 +24,10 @@ import scala.collection.JavaConversions._
 import org.mozilla.{ javascript => rhino }
 
 object ScalaJSPlugin extends Plugin {
+  val scalaJSVersion = "0.1-SNAPSHOT"
+  val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
+  val scalaJSScalaVersion = "2.10.2"
+
   object ScalaJSKeys {
     val packageJS = taskKey[Seq[File]]("Package all the compiled .js files")
     val optimizeJS = taskKey[File]("Package and optimize all the compiled .js files in one file")
@@ -449,15 +453,25 @@ object ScalaJSPlugin extends Plugin {
       scalaJSDefaultConfigs
   )
 
+  val scalaJSReleasesResolver = Resolver.url("scala-js-releases",
+      url("http://repo.scala-js.org/repo/releases/"))(Resolver.ivyStylePatterns)
+  val scalaJSSnapshotsResolver = Resolver.url("scala-js-snapshots",
+      url("http://repo.scala-js.org/repo/snapshots/"))(Resolver.ivyStylePatterns)
+
   val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
+      // the resolver to find the compiler and library (and others)
+      resolvers ++= (
+          if (!scalaJSIsSnapshotVersion) Seq(scalaJSReleasesResolver)
+          else Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver)),
+
       // you had better use the same version of Scala as Scala.js
-      scalaVersion := "2.10.2",
+      scalaVersion := scalaJSScalaVersion,
 
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
-      addCompilerPlugin("org.scala-lang.modules.scalajs" %% "scalajs-compiler" % "0.1-SNAPSHOT"),
+      addCompilerPlugin("org.scala-lang.modules.scalajs" %% "scalajs-compiler" % scalaJSVersion),
 
       // and of course the Scala.js library
-      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % "0.1-SNAPSHOT"
+      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % scalaJSVersion
   )
 }
