@@ -8,16 +8,18 @@
 package scala
 
 import scala.scalajs.test.ScalaJSTest
-import scala.scalajs.js.Any.fromInt
 
 object EnumerationTest extends ScalaJSTest {
 
   describe("scala.Enumeration") {
 
-    it("requires reflection for populating the name map") {
+    it("should use explicit naming for enumerated values - #38") {
       object HelpLevel extends Enumeration {
         type HelpLevel = Value
-        val None, Basic, Medium, Full = Value
+        val None = Value("None")
+        val Basic = Value("Basic")
+        val Medium = Value("Medium")
+        val Full = Value("Full")
       }
 
       val h = HelpLevel.None
