@@ -10,6 +10,7 @@ console.log("Starting Scala.js test suite");
 console.log("");
 
 /* Load all test suites ... */
+ScalaJS.modules.scala_scalajs_compiler_InteroperabilityTest();
 ScalaJS.modules.scala_scalajs_compiler_RegressionTest();
 ScalaJS.modules.java_lang_ObjectTest();
 ScalaJS.modules.java_lang_IntegerTest();
