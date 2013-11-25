@@ -53,7 +53,7 @@ object ScalaJSBuild extends Build {
           clean := clean.dependsOn(
               // compiler, library and sbt-plugin are aggregated
               clean in corejslib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in examples,
+              clean in libraryAux, clean in test, clean in examples,
               clean in exampleHelloWorld, clean in exampleReversi).value,
 
           publish := {},
@@ -256,4 +256,17 @@ object ScalaJSBuild extends Build {
           moduleName := "reversi"
       )
   ).dependsOn(compiler % "plugin")
+
+  // Testing
+
+  lazy val test: Project = Project(
+      id = "scalajs-test",
+      base = file("test"),
+      settings = defaultSettings ++ scalaJSSettings ++ Seq(
+          name := "Scala.js test suite",
+          publishArtifact in Compile := false,
+          scalacOptions += "-Yskip:cleanup,icode,jvm"
+      )
+  ).dependsOn(compiler % "plugin")
+
 }
