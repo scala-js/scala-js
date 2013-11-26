@@ -6,7 +6,7 @@ into JavaScript code.
 
 ## Resources
 
-*   [Website](http://lampwww.epfl.ch/~doeraene/scala-js/)
+*   [Website](http://www.scala-js.org/)
 *   [Mailing list](https://groups.google.com/forum/?fromgroups#!forum/scala-js)
 
 ## Get started
