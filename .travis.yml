@@ -1,0 +1,9 @@
+language: scala
+script:
+  - sbt package scalajs-test/test
+scala:
+  - 2.10.2
+jdk:
+  - oraclejdk7
+  - openjdk7
+  - openjdk6
