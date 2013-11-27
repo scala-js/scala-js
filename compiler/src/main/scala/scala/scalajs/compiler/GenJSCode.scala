@@ -2417,7 +2417,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       arg match {
         // foo(arg1, arg2, ..., argN) where N > 0
         case MaybeAsInstanceOf(WrapArray(
-            MaybeAsInstanceOf(ArrayValue(tpt, elems)))) =>
+            MaybeAsInstanceOf(ArrayValue(tpt, elems))))
+            if elems.forall(e => !isPrimitiveValueType(e.tpe)) => // non-optimal fix to #39
           js.ArrayConstr(elems map genExpr)
 
         // foo()
