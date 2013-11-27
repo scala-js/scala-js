@@ -155,7 +155,7 @@ object RhinoBasedRun {
         }
       } catch {
         case e: Exception =>
-          e.printStackTrace() // print the stack trace while we're in the Context
+          logger.trace(e) // print the stack trace while we're in the Context
           throw new RuntimeException("Exception while running JS code", e)
       }
     } finally {
