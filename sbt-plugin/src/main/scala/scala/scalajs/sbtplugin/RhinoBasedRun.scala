@@ -83,7 +83,7 @@ object RhinoBasedRun {
 
     private def nameToRelativeFileName(name: String): String = {
       val name1 = if (isTraitImpl) name.split("__")(0) else name
-      val name2 = name1.replace("_", "/")
+      val name2 = name1.replace("_", "/").replace("$und", "_")
       if (isModule) name2 + "$.js"
       else name2 + ".js"
     }
