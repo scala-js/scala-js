@@ -1,8 +1,24 @@
 # Scala.js, a Scala to JavaScript compiler
 
-This project aims at providing a Scala to JavaScript compiler, so that one
-can write the client-side of a Web application in Scala, and have it compiled
-into JavaScript code.
+Scala.js compiles Scala code to JavaScript, allowing you to write your
+Web application entirely in Scala!
+
+Outstanding features are:
+
+*   Support all of Scala (including macros!),
+    modulo [a few semantic differences](http://www.scala-js.org/doc/semantics.html)
+*   Very good [interoperability with JavaScript code](http://www.scala-js.org/doc/js-interoperability.html).
+    For example, use jQuery and HTML5 from your Scala.js code, either in a
+    typed or untyped way. Or create Scala.js objects and call their methods
+    from JavaScript.
+*   Integrated with [sbt](http://www.scala-sbt.org/)
+    (including support for dependency management and incremental compilation)
+*   Can be used with your favorite IDE for Scala
+*   Generates [Source Maps](http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/)
+    for a smooth debugging experience (step through your Scala code from within
+    your browser supporting source maps)
+*   Integrates [Google Closure Compiler](https://developers.google.com/closure/compiler/)
+    for producing minimal code for production.
 
 ## Resources
 
@@ -11,9 +27,9 @@ into JavaScript code.
 
 ## Get started
 
-We provide an
-[example application](https://github.com/sjrd/scala-js-example-app) which you
-can fork to kick off your own project. Its readme provides further
+We provide a
+[boostrapping application](https://github.com/sjrd/scala-js-example-app)
+which you can fork to kick off your own project. Its readme provides further
 explanations on how to do so.
 
 ## Contribute
@@ -34,11 +50,21 @@ To compile your fork, simply run:
 
     sbt> package
 
+### Run the test suite
+
+Compile and run the test suite with
+
+    sbt> scalajs-test/test
+
+(you must have run `package` before running the test suite)
+
 ### Test the examples
 
 After having compiled Scala.js, you can compile the example applications with:
 
     sbt> examples/optimizeJS
+
+(you must have run `package` before compiling the examples)
 
 Then, you can "execute" them by opening their respective HTML files in your
 favorite browser. Since optimizing the JavaScript takes time (tens of seconds
