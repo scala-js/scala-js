@@ -25,7 +25,7 @@ import scala.collection.JavaConversions._
 import org.mozilla.{ javascript => rhino }
 
 object ScalaJSPlugin extends Plugin {
-  val scalaJSVersion = "0.1-SNAPSHOT"
+  val scalaJSVersion = "0.1"
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
   val scalaJSScalaVersion = "2.10.2"
 
