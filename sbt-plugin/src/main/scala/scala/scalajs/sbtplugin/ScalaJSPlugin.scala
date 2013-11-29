@@ -508,9 +508,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
       // the resolver to find the compiler and library (and others)
-      resolvers ++= (
-          if (!scalaJSIsSnapshotVersion) Seq(scalaJSReleasesResolver)
-          else Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver)),
+      resolvers ++= Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver),
 
       // you had better use the same version of Scala as Scala.js
       scalaVersion := scalaJSScalaVersion,
