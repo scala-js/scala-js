@@ -28,7 +28,7 @@ Outstanding features are:
 ## Get started
 
 We provide a
-[boostrapping application](https://github.com/sjrd/scala-js-example-app)
+[bootstrapping application](https://github.com/sjrd/scala-js-example-app)
 which you can fork to kick off your own project. Its readme provides further
 explanations on how to do so.
 
