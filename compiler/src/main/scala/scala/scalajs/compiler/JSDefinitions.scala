@@ -34,7 +34,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSDictionary_update = getMemberMethod(JSDictionaryClass, newTermName("update"))
     lazy val JSNumberClass    = getRequiredClass("scala.scalajs.js.Number")
     lazy val JSBooleanClass   = getRequiredClass("scala.scalajs.js.Boolean")
-    lazy val JSStringClass    = getRequiredClass("scala.scalajs.js.String")
+    lazy val JSStringClass    = getRequiredClass("java.lang.String")
     lazy val JSUndefinedClass = getRequiredClass("scala.scalajs.js.Undefined")
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
 
@@ -89,7 +89,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSBoolean_toBoolean = getMemberMethod(JSBooleanModule, newTermName("toBoolean"))
 
     lazy val JSStringModule = JSStringClass.companionModule
-      lazy val JSString_toScalaString = getMemberMethod(JSStringModule, newTermName("toScalaString"))
+
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))

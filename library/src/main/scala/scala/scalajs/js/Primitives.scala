@@ -50,7 +50,7 @@ object Any {
   implicit def fromFloat(value: scala.Float): Number = sys.error("stub")
   implicit def fromDouble(value: scala.Double): Number = sys.error("stub")
 
-  implicit def fromString(s: java.lang.String): String = sys.error("stub")
+  implicit def fromString(s: java.lang.String): JsString = sys.error("stub")
 
   implicit def fromArray[A](array: scala.Array[A]): Array[A] = {
     val length = array.length
@@ -258,13 +258,15 @@ sealed trait Boolean extends Any {
 /** The top-level `Boolean` JavaScript object. */
 object Boolean extends Object {
   implicit def toBoolean(value: Boolean): scala.Boolean = sys.error("stub")
+  
 }
 
+
 /** Primitive JavaScript string. */
-sealed trait String extends Any {
+sealed trait JsString extends Any {
   def +(that: Any): String
   override def +(that: String): String = sys.error("stub")
-  override def +(that: Dynamic): String = sys.error("stub")
+  override def +(that: Dynamic): JsString = sys.error("stub")
 
   def ||(that: String): String
 
@@ -301,11 +303,13 @@ sealed trait String extends Any {
   def trim(): String = ???
 }
 
+object JsString{
+  implicit def Stringify(s: String) = s.asInstanceOf[JsString]
+
+}
 /** The top-level `String` JavaScript object. */
 object String extends Object {
-  implicit def toScalaString(value: String): java.lang.String = sys.error("stub")
-
-  def fromCharCode(codes: Number*): String = ???
+  def fromCharCode(codes: Number*): JsString = ???
 }
 
 /** Primitive JavaScript undefined value. */
