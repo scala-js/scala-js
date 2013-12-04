@@ -2,3 +2,30 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
+
+# missing type tags we should support this
+run/abstypetags_core.scala
+
+# HashCode on different numeric types should be the same (?)
+run/hashCodeBoxesRunTime.scala
+
+# should work...
+run/Course-2002-08.scala
+
+# maybe?
+run/future-flatmap-exec-count.scala
+
+#### Filed bugs
+
+# Issue #53
+run/t7899.scala
+
+# Issue #54
+run/bitsets.scala
+
+# Issue #55
+run/array-charSeq.scala
+
+# Issues #56, #57
+run/arrayclone-new.scala
+run/arrayclone-old.scala

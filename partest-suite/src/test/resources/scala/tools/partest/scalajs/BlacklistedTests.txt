@@ -94,6 +94,18 @@ run/t5262.scala
 
 run/SymbolsTest.scala
 run/t4601.scala
+run/colltest.scala
+run/equality.scala
+
+# Uses java.math.BigDecimal / BigInteger
+run/bigDecimalCache.scala 
+run/hashhash.scala
+
+#  This test uses range on Doubles which uses BigDecimal in return
+run/t5857.scala
+
+# Using Threads
+run/t6969.scala
 
 # Taking too much time, because JavaScript is not as fast as the JVM
 
@@ -108,9 +120,17 @@ run/bridges.scala
 run/tailcalls.scala
 run/t4294.scala
 
+# Using scala.Symbol
+
+run/fors.scala
+
 # Using IO
 
 run/Predef.readLine.scala
+
+# Using System.getProperties
+
+run/t6240b.scala
 
 # Using reflection
 
@@ -214,6 +234,14 @@ run/reflection-allmirrors-tostring.scala
 run/valueclasses-typetag-existential.scala
 run/toolbox_console_reporter.scala
 run/reflection-enclosed-inner-inner-basic.scala
+run/t5256b.scala
+run/bytecodecs.scala
+run/elidable.scala
+run/freetypes_false_alarm1.scala
+run/freetypes_false_alarm2.scala
+run/getClassTest-new.scala
+run/idempotency-extractors.scala
+run/idempotency-case-classes.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -294,6 +322,7 @@ run/enums.scala
 
 run/MeterCaseClass.scala
 run/t5608.scala
+run/caseClassHash.scala
 
 # Exceptions that become JavaScriptException
 
@@ -315,6 +344,9 @@ run/collection-conversions.scala
 run/concurrent-map-conversions.scala
 run/t4761.scala
 run/concurrent-stream.scala
+run/t7498.scala
+run/t6448.scala
+run/ctries-old
 
 # Using parser combinators
 
@@ -371,6 +403,63 @@ run/t5655.scala
 run/t5072.scala
 run/repl-colon-type.scala
 run/kind-repl-command.scala
+run/repl-trim-stack-trace.scala
+run/t4594-repl-settings.scala
+run/repl-save.scala
+run/repl-paste-raw.scala
+run/repl-paste-4.scala
+run/t7801.scala
+
+# Using the Repl (scala.tools.partest.ReplTest)
+jvm/interpreter.scala
+jvm/throws-annot-from-java/Test_3.scala
+jvm/xml05.scala
+run/class-symbol-contravariant.scala
+run/lub-visibility.scala
+run/macro-bundle-repl.scala
+run/macro-repl-basic.scala
+run/macro-repl-dontexpand.scala
+run/macro-system-properties.scala
+run/reflection-equality.scala
+run/reflection-repl-elementary.scala
+run/reify_newimpl_26.scala
+run/repl-empty-package/s_2.scala
+run/repl-javap-app.scala
+run/repl-out-dir.scala
+run/repl-term-macros.scala
+run/repl-transcript.scala
+run/repl-type-verbose.scala
+run/t3376.scala
+run/t4025.scala
+run/t4172.scala
+run/t4216.scala
+run/t4542.check
+run/t4542.scala
+run/t4671.check
+run/t4671.scala
+run/t5256d.scala
+run/t5535.scala
+run/t5537.scala
+run/t5789.scala
+run/t6086-repl.scala
+run/t6146b.scala
+run/t6187.scala
+run/t6320.scala
+run/t6329_repl_bug.pending
+run/t6381.scala
+run/t6434.scala
+run/t6439.scala
+run/t6507.scala
+run/t6549.scala
+run/t6937.scala
+run/t7185.scala
+run/t7319.scala
+run/t7482a.scala
+run/t7634.scala
+run/t7747-repl.scala
+run/t7805-repl-i.scala
+run/tpeCache-tyconCache.scala
+
 
 # Using the compiler API
 
@@ -385,6 +474,7 @@ run/existentials-in-compiler.scala
 run/global-showdef.scala
 run/inline-ex-handlers.scala
 run/stream_length.scala
+run/annotatedRetyping.scala
 
 # Warnings emitted by inliner
 
@@ -394,3 +484,6 @@ run/t2106.scala
 
 run/t4317
 run/t4238
+
+# Using arguments to partests
+run/absoverride.scala
