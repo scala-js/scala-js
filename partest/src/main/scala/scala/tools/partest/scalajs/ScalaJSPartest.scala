@@ -59,11 +59,17 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   override def runTestsForFiles(kindFiles: Array[File],
       kind: String): Array[TestState] = {
-    super.runTestsForFiles(kindFiles.filterNot(isBlacklisted), kind)
+    super.runTestsForFiles(kindFiles.filter(shouldUseTest), kind)
   }
 
   private lazy val useBlacklist =
     scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.useblacklist")
+
+  private lazy val testUnknownOnly =
+    scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.testunknownonly")
+
+  private lazy val buglistedTestFileNames =
+    readTestList("/scala/tools/partest/scalajs/BuglistedTests.txt")
 
   private lazy val blacklistedTestFileNames =
     readTestList("/scala/tools/partest/scalajs/BlacklistedTests.txt")
@@ -87,10 +93,14 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     fileNames.toSet
   }
 
-  def isBlacklisted(testFile: File): Boolean = {
+  def shouldUseTest(testFile: File): Boolean = {
     val absPath = testFile.toCanonical.getAbsolutePath
-    if (useBlacklist) blacklistedTestFileNames.contains(absPath)
-    else !whitelistedTestFileNames.contains(absPath)
+    if (testUnknownOnly)
+      (!blacklistedTestFileNames.contains(absPath) &&
+       !whitelistedTestFileNames.contains(absPath) &&
+       !buglistedTestFileNames.contains(absPath))
+    else if (useBlacklist) !blacklistedTestFileNames.contains(absPath)
+    else whitelistedTestFileNames.contains(absPath)
   }
 }
 

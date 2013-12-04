@@ -360,6 +360,9 @@ object ScalaJSBuild extends Build {
 
           fork in Test := true,
           javaOptions in Test += "-Xmx1G",
+          //Uncomment what you need here
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testunknownonly=true",
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
 
           testFrameworks +=
             new TestFramework("scala.tools.partest.scalajs.Framework"),
