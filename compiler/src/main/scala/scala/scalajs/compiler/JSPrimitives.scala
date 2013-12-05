@@ -70,7 +70,6 @@ abstract class JSPrimitives {
 
     addPrimitive(JSBoolean_toBoolean, JS2Z)
     addPrimitive(JSNumber_toDouble, JS2N)
-    addPrimitive(JSString_toScalaString, JS2S)
 
     addPrimitive(JSDynamic_global, GETGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)

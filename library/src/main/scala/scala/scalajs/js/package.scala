@@ -87,4 +87,6 @@ package object js extends js.GlobalScope {
    *  @see [[decodeURIComponent]]
    */
   def encodeURIComponent(uriComponent: String): String = ???
+
+  type String = java.lang.String
 }

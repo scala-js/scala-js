@@ -68,7 +68,7 @@ extends io.PrintStream(StandardOut, true) with JSConsoleBasedPrintStream {
 
   override protected def doWriteLine(line: String): Unit = {
     if (!(!global.console))
-      global.console.log(line)
+      global.console.log(js.Any.fromString(line))
   }
 }
 
@@ -77,7 +77,7 @@ extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
 
   override protected def doWriteLine(line: String): Unit = {
     if (!(!global.console))
-      global.console.error(line)
+      global.console.error(js.Any.fromString(line))
   }
 }
 

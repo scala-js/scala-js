@@ -1,9 +1,13 @@
 package java.lang
-
+import scala.language.implicitConversions
 import scala.annotation.switch
 import scala.scalajs.js
 
 object String {
+
+  implicit def f1(s: java.lang.String) = s.asInstanceOf[scalajs.js.JsString]
+  implicit def f2(s: scalajs.js.JsString) = s.asInstanceOf[java.lang.String]
+
   def valueOf(value: scala.Boolean) = new java.lang.Boolean(value).toString()
   def valueOf(value: scala.Char) = new java.lang.Character(value).toString()
   def valueOf(value: scala.Byte) = new java.lang.Byte(value).toString()
@@ -107,7 +111,7 @@ object String {
               else Integer.toHexString(arg.hashCode)
             case 's' | 'S' =>
               val s: js.String = if (arg eq null) "null" else arg.toString()
-              if (hasPrecision) s.substring(0, precision)
+              if (hasPrecision) s.substring(0, precision.toInt)
               else s
             case 'c' | 'C' =>
               js.String.fromCharCode(numberArg)

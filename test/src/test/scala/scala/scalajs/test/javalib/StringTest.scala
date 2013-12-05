@@ -9,10 +9,11 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
+import scala.scalajs.js.Any._
 import scala.scalajs.test.ScalaJSTest
 
 object StringTest extends ScalaJSTest {
-
+  
   describe("java.lang.String") {
 
     it("should respond to `length`") {
@@ -113,6 +114,17 @@ object StringTest extends ScalaJSTest {
 
     it("should respond to `split`") {
       expect("Scala.js".split("a")).toEqual(js.Array("Sc", "l", ".js"))
+    }
+
+    it("should not complain when pattern matching") {
+      expect(
+        ("hello": js.String) match {
+          case "hello" => true
+        }
+      )
+    }
+    it("JsString methods on java.lang.Strings should work") {
+      expect("hello".search(" "))
     }
 
   }
