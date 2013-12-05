@@ -1,9 +1,17 @@
 language: scala
 script:
   - sbt package scalajs-test/test
+after_success:
+  - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${TRAVIS_BRANCH}" == "master" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt publish; fi
 scala:
   - 2.10.2
 jdk:
   - oraclejdk7
   - openjdk7
-  - openjdk6
+matrix:
+  include:
+    - jdk: openjdk6
+      env:
+        - PUBLISH_ENABLED=true
+        - secure: "gIReAZ60hLtbYTlnNUM508LhhznImVPRO5fHQ/9SY7mqA/ql3EVJ65M43GxzvKjNkZ7thKj1ygYklCQaqXwdszR8xRRM7MNQIUImZhsjXJ0xqorpQf2fmo2sD54Gx/caAI4kx0x/ULm9ZA5QK6hprl8aVqb1o5bYAxfZdx719pE="
+        - secure: "CiwH9VZ0Wl/fGsL6XUbXv92TWr+EnX94ICX2cbwwkvPDxmTrdWf8BZOq7JSrfITYvvW3l5U8YWLjCMpa/Cr2C2BD1QPvNXDoeL9cZXA0I2yquQNEfh12Zg5c5bHRtO+CeRHjq06jjEqojqTzp5MK10YXnfzzQFiZ1lt7c/rwmkU="

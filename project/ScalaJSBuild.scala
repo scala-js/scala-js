@@ -1,6 +1,8 @@
 import sbt._
 import Keys._
 
+import scala.util.Properties
+
 import scala.scalajs.sbtplugin._
 import ScalaJSPlugin._
 import ScalaJSKeys._
@@ -16,10 +18,19 @@ object ScalaJSBuild extends Build {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
       },
 
-      publishTo := Some(Resolver.sftp(
-          s"scala-js-$snapshotsOrReleases",
-          "repo.scala-js.org",
-          s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(Resolver.ivyStylePatterns)),
+      publishTo := {
+        val resolver = Resolver.sftp(
+            s"scala-js-$snapshotsOrReleases",
+            "repo.scala-js.org",
+            s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(Resolver.ivyStylePatterns)
+        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
+          case Seq(Some(user), Some(pass)) =>
+            Some(resolver as (user, pass))
+          case _ =>
+            None
+        }
+      },
+
       publishMavenStyle := false
   )
 
