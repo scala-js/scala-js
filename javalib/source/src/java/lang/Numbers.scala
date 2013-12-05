@@ -155,6 +155,10 @@ object Integer {
     32 - bitCount(x)
   }
 
+  def numberOfTrailingZeros(i: scala.Int): scala.Int =
+    // See http://aggregate.org/MAGIC/#Trailing%20Zero%20Count
+    bitCount((i & -i) - 1)
+
   def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
   def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
   def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)

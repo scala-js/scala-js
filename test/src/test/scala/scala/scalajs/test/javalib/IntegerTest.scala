@@ -33,5 +33,12 @@ object IntegerTest extends ScalaJSTest {
       expect(map(MultipleMoves)).toEqual(1)
     }
 
+    it("should provide `numberOfTrailingZeros`") {
+      expect(Integer.numberOfTrailingZeros(0xa3c49000)).toEqual(12)
+      expect(Integer.numberOfTrailingZeros(0x43f49020)).toEqual(5)
+      expect(Integer.numberOfTrailingZeros(0x43c08000)).toEqual(15)
+      expect(Integer.numberOfTrailingZeros(0)).toEqual(32)
+    }
+
   }
 }
