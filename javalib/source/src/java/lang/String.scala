@@ -77,6 +77,15 @@ object String {
             case _ => arg.asInstanceOf[js.Number] // assume js.Number
           }
 
+          def unsignedArg: js.Number = arg match {
+            case arg: Byte    if arg < 0 => js.Math.pow(2, Byte.SIZE)    + arg.doubleValue()
+            case arg: Short   if arg < 0 => js.Math.pow(2, Short.SIZE)   + arg.doubleValue()
+            case arg: Integer if arg < 0 => js.Math.pow(2, Integer.SIZE) + arg.doubleValue()
+            // FIXME (once long is integrated)
+            case arg: Long    if arg < 0 => js.Math.pow(2, Long.SIZE)    + arg.doubleValue()
+            case arg => numberArg // ignore negative case
+          }
+
           def strRepeat(s: js.String, times: js.Number) = {
             var result: js.String = ""
             var i = times
@@ -87,38 +96,41 @@ object String {
             result
           }
 
-          def with_+(s: js.String): js.String = {
+          def strs(s1: js.String, s2: js.String = "") = (s1, s2)
+ 
+          def with_+(s: js.String) = {
             if ((s:String).charAt(0) != '-') {
-              if (hasFlag("+")) "+" + s
-              else if (hasFlag(" ")) " " + s
-              else s
+              if (hasFlag("+")) strs("+", s)
+              else if (hasFlag(" ")) strs(" ", s)
+              else strs(s)
             } else {
-              if (hasFlag("(")) ("(":js.String) + s.substring(1) + ")"
-              else s
+              if (hasFlag("(")) strs("(", s.substring(1) + ")")
+              else strs(s.substring(1),"-")
             }
           }
 
-          val argStr: js.String = (conversion: @switch) match {
-            case 'b' | 'B' =>
+          val (argStr, prefix) = (conversion: @switch) match {
+            case 'b' | 'B' => strs {
               if (arg eq null) "false"
               else arg.asInstanceOf[Boolean].toString()
-            case 'h' | 'H' =>
+            }
+            case 'h' | 'H' => strs {
               if (arg eq null) "null"
               else Integer.toHexString(arg.hashCode)
-            case 's' | 'S' =>
+            }
+            case 's' | 'S' => strs {
               val s: js.String = if (arg eq null) "null" else arg.toString()
               if (hasPrecision) s.substring(0, precision)
               else s
+            }
             case 'c' | 'C' =>
-              js.String.fromCharCode(numberArg)
+              strs(js.String.fromCharCode(numberArg))
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              val prefix: js.String = if (hasFlag("#")) "0" else ""
-              with_+(prefix + numberArg.toString(8))
+              strs(unsignedArg.toString(8), if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              val prefix: js.String = if (hasFlag("#")) "0x" else ""
-              with_+(prefix + numberArg.toString(16))
+              strs(unsignedArg.toString(16), if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
               with_+(
                   if (hasPrecision) numberArg.toExponential(precision)
@@ -128,27 +140,34 @@ object String {
                   if (hasPrecision) numberArg.toFixed(precision)
                   else numberArg.toFixed())
             case 'n' =>
-              "\n"
+              strs("\n")
           }
 
-          val casedStr =
-            if (conversion >= 'A' && conversion <= 'Z') argStr.toUpperCase()
-            else argStr
+          val prePadLen = argStr.length + prefix.length
 
           val paddedStr = {
-            if (width <= casedStr.length) {
-              casedStr
+            if (width <= prePadLen) {
+              prefix + argStr
             } else {
-              val padLength = width - casedStr.length
-              val padChar: js.String = if (hasFlag("0")) "0" else " "
+              val padZero = hasFlag("0")
+              val padRight = hasFlag("-")
+              val padLength = width - prePadLen
+              val padChar: js.String = if (padZero) "0" else " "
               val padding = strRepeat(padChar, padLength)
 
-              if (hasFlag("-")) casedStr + padding
-              else padding + casedStr
+              if (padZero && padRight)
+                throw new java.util.IllegalFormatFlagsException(flags)
+              else if (padRight) prefix + argStr  + padding
+              else if (padZero)  prefix + padding + argStr
+              else padding + prefix + argStr
             }
           }
 
-          result += paddedStr
+          val casedStr = 
+            if (conversion >= 'A' && conversion <= 'Z') paddedStr.toUpperCase()
+            else paddedStr
+
+          result += casedStr
       }
     }
 

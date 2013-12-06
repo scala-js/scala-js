@@ -49,6 +49,7 @@ object Byte {
   val TYPE = classOf[scala.Byte]
   val MIN_VALUE: scala.Byte = -128
   val MAX_VALUE: scala.Byte = 127
+  val SIZE: Int = 8
 
   def valueOf(byteValue: scala.Byte) = new Byte(byteValue)
   def parseByte(s: String): scala.Byte = Integer.parseInt(s).toByte
@@ -77,6 +78,7 @@ object Short {
   val TYPE = classOf[scala.Short]
   val MIN_VALUE: scala.Short = -32768
   val MAX_VALUE: scala.Short = 32767
+  val SIZE: Int = 16
 
   def valueOf(shortValue: scala.Short) = new Short(shortValue)
   def parseShort(s: String): scala.Short = Integer.parseInt(s).toShort
@@ -106,6 +108,7 @@ object Integer {
   val TYPE = classOf[scala.Int]
   val MIN_VALUE: scala.Int = -2147483648
   val MAX_VALUE: scala.Int = 2147483647
+  val SIZE: Int = 32
 
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
@@ -186,6 +189,7 @@ object Long {
   val TYPE = classOf[scala.Long]
   val MIN_VALUE: scala.Long = -9223372036854775808L
   val MAX_VALUE: scala.Long = 9223372036854775807L
+  val SIZE: Int = 64
 
   def valueOf(longValue: scala.Long) = new Long(longValue)
   def parseLong(s: String): scala.Long = Integer.parseInt(s).toLong

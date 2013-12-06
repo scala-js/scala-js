@@ -115,5 +115,17 @@ object StringTest extends ScalaJSTest {
       expect("Scala.js".split("a")).toEqual(js.Array("Sc", "l", ".js"))
     }
 
+    it("should provide `format`") {
+      expect(String.format("%d", new Integer(5))).toEqual("5")
+      expect(String.format("%05d", new Integer(5))).toEqual("00005")
+      expect(String.format("%0#5x", new Integer(5))).toEqual("0x005")
+      expect(String.format("%#5x", new Integer(5))).toEqual("  0x5")
+      expect(String.format("%#5X", new Integer(5))).toEqual("  0X5")
+      expect(String.format("%5d", new Integer(-10))).toEqual("  -10")
+      expect(String.format("%05d", new Integer(-10))).toEqual("-0010")
+      expect(String.format("%x", new Integer(-3))).toEqual("fffffffd")
+      expect(String.format("%x", new java.lang.Byte(-4.toByte))).toEqual("fc")
+    }
+
   }
 }
