@@ -159,8 +159,12 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.If(cond, thenp, elsep) =>
           print("if (", cond, ") ")
           printBlock(thenp)
-          print(" else ")
-          printBlock(elsep)
+          elsep match {
+            case js.Skip() => ()
+            case _ =>
+              print(" else ")
+              printBlock(elsep)
+          }
 
         case js.While(cond, body, label) =>
           if (label.isDefined)
