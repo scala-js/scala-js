@@ -23,6 +23,7 @@ ScalaJS.modules.scala_scalajs_test_scalalib_EnumerationTest();
 ScalaJS.modules.scala_scalajs_test_jsinterop_ArrayTest();
 ScalaJS.modules.scala_scalajs_test_jsinterop_DictionaryTest();
 ScalaJS.modules.scala_scalajs_test_jsinterop_DynamicTest();
+ScalaJS.modules.scala_scalajs_test_jsinterop_RuntimeLongTest();
 
 /* ... and run them. */
 var jasmineEnv = jasmine.getEnv();
