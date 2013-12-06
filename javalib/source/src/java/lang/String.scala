@@ -77,6 +77,15 @@ object String {
             case _ => arg.asInstanceOf[js.Number] // assume js.Number
           }
 
+          def unsignedArg: js.Number = arg match {
+            case arg: Byte    if arg < 0 => js.Math.pow(2, Byte.SIZE)    + arg.doubleValue()
+            case arg: Short   if arg < 0 => js.Math.pow(2, Short.SIZE)   + arg.doubleValue()
+            case arg: Integer if arg < 0 => js.Math.pow(2, Integer.SIZE) + arg.doubleValue()
+            // FIXME (once long is integrated)
+            case arg: Long    if arg < 0 => js.Math.pow(2, Long.SIZE)    + arg.doubleValue()
+            case arg => numberArg // ignore negative case
+          }
+
           def strRepeat(s: js.String, times: js.Number) = {
             var result: js.String = ""
             var i = times
@@ -119,9 +128,9 @@ object String {
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              strs(numberArg.toString(8), if (hasFlag("#")) "0" else "")
+              strs(unsignedArg.toString(8), if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              strs(numberArg.toString(16), if (hasFlag("#")) "0x" else "")
+              strs(unsignedArg.toString(16), if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
               with_+(
                   if (hasPrecision) numberArg.toExponential(precision)
