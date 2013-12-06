@@ -131,11 +131,11 @@ trait JSTrees { self: JSGlobalAddons =>
         apply(stats.toList)
     }
 
-    case class LabeledStat(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
+    case class Labeled(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
 
     case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
 
-    case class Return(expr: Tree)(implicit val pos: Position) extends Tree
+    case class Return(expr: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
 
     case class If(cond: Tree, thenp: Tree, elsep: Tree)(implicit val pos: Position) extends Tree
 
@@ -324,14 +324,14 @@ trait JSTrees { self: JSGlobalAddons =>
           case Block(stats, stat) =>
             Block(stats map transformStat, transformStat(stat))
 
-          case LabeledStat(label, body) =>
-            LabeledStat(label, transformStat(body))
+          case Labeled(label, body) =>
+            Labeled(label, transformStat(body))
 
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
 
-          case Return(expr) =>
-            Return(transformExpr(expr))
+          case Return(expr, label) =>
+            Return(transformExpr(expr), label)
 
           case If(cond, thenp, elsep) =>
             If(transformExpr(cond), transformStat(thenp), transformStat(elsep))
@@ -347,6 +347,9 @@ trait JSTrees { self: JSGlobalAddons =>
 
           case Throw(expr) =>
             Throw(transformExpr(expr))
+
+          case Break(label) =>
+            Break(label)
 
           case Switch(selector, cases, default) =>
             Switch(transformExpr(selector),
@@ -415,9 +418,6 @@ trait JSTrees { self: JSGlobalAddons =>
           case FunDef(name, args, body) =>
             FunDef(name, args, transformStat(body))
 
-          case LabeledStat(label, body) =>
-            ??? // no way this has any kind of meaning as expression
-
           case Assign(lhs, rhs) =>
             Assign(transformExpr(lhs), transformExpr(rhs))
 
@@ -432,8 +432,11 @@ trait JSTrees { self: JSGlobalAddons =>
           case Block(stats, expr) =>
             Block(stats map transformStat, transformExpr(expr))
 
-          case Return(expr) =>
-            Return(transformExpr(expr))
+          case Labeled(label, body) =>
+            Labeled(label, transformExpr(body))
+
+          case Return(expr, label) =>
+            Return(transformExpr(expr), label)
 
           case If(cond, thenp, elsep) =>
             If(transformExpr(cond), transformExpr(thenp), transformExpr(elsep))
@@ -443,6 +446,9 @@ trait JSTrees { self: JSGlobalAddons =>
 
           case Throw(expr) =>
             Throw(transformExpr(expr))
+
+          case Break(label) =>
+            Break(label)
 
           case Switch(selector, cases, default) =>
             /* Given that there are 'break's in JS switches, a switch

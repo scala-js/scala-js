@@ -145,15 +145,16 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.Block(stats, expr) =>
           printColumn(stats :+ expr, "{", ";", "}")
 
-        case js.LabeledStat(label, body) =>
+        case js.Labeled(label, body) =>
           print(label, ": ")
           printBlock(body)
 
         case js.Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
 
-        case js.Return(expr) =>
-          print("return ", expr)
+        case js.Return(expr, label) =>
+          if (label.isEmpty) print("return ", expr)
+          else print("return(", label.get, ") ", expr)
 
         case js.If(cond, thenp, elsep) =>
           print("if (", cond, ") ")

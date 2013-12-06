@@ -110,6 +110,10 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
 
     var currentClassDef: js.ClassDef = null
 
+    // LHS'es for labeled expressions
+
+    var labeledExprLHSes: Map[js.Ident, js.Tree] = Map.empty
+
     // Now the work
 
     /** Desugar a statement of Extended-JS into ES5 JS */
@@ -137,9 +141,6 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
 
         case js.VarDef(_, rhs) =>
           pushLhsInto(tree, rhs)
-
-        case js.LabeledStat(label, body) =>
-          super.transformStat(tree)
 
         case js.Assign(select @ js.DotSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs) =>
@@ -194,7 +195,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
 
         // Treat 'return' as an LHS
 
-        case js.Return(expr) =>
+        case js.Return(expr, label) =>
           pushLhsInto(tree, expr)
 
         // Classes - that's another story
@@ -379,7 +380,14 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
               else newRhs
             case js.VarDef(ident, _) => js.VarDef(ident, newRhs)
             case js.Assign(ident, _) => js.Assign(ident, newRhs)
-            case js.Return(_) => js.Return(newRhs)
+            case js.Return(_, None) => js.Return(newRhs, None)
+            case js.Return(_, label @ Some(l)) =>
+              labeledExprLHSes(l) match {
+                case newLhs @ js.Return(_, _) =>
+                  pushLhsInto(newLhs, rhs) // no need to break here
+                case newLhs =>
+                  flattenBlock(List(pushLhsInto(newLhs, rhs), js.Break(label)))
+              }
           }
 
         // Language constructs that are statement-only in standard JavaScript
@@ -387,7 +395,19 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         case js.Block(stats, expr) =>
           flattenBlock((stats map transformStat) :+ redo(expr))
 
-        case js.Return(expr) =>
+        case js.Labeled(label, body) =>
+          val savedMap = labeledExprLHSes
+          labeledExprLHSes = labeledExprLHSes + (label -> lhs)
+          try {
+            lhs match {
+              case js.Return(_, _) => redo(body)
+              case _ => js.Labeled(label, redo(body))
+            }
+          } finally {
+            labeledExprLHSes = savedMap
+          }
+
+        case js.Return(expr, _) =>
           pushLhsInto(rhs, expr)
 
         // TODO Move this case in transformStat()?
@@ -530,8 +550,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
              */
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment |
-                  _:js.LabeledStat =>
+                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.pushLhsInto():\n" +

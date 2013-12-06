@@ -1301,27 +1301,12 @@ abstract class GenJSCode extends plugins.PluginComponent
             /** Jump the to the end-label of a pattern match
              *  Such labels have exactly one argument, which is the result of
              *  the pattern match (of type Unit if the match is in statement
-             *  position).
-             *
-             *  If non-unit, the result of the pattern match is stored in the
-             *  dedicated synthetic variable. Otherwise it is emitted as a
-             *  statement (it could have side-effects).
-             *
-             *  Then we jump at the end of the match by `break`ing the labelled
-             *  loop surrounding the match.
+             *  position). We simply `return` the argument as the result of the
+             *  labeled block surrounding the match.
              */
             if (sym.name.toString() startsWith "matchEnd") {
               val labelIdent = encodeLabelSym(sym, freshName)
-              val jumpStat = js.Break(Some(labelIdent))
-              val List(matchResult) = args
-              val isResultUnit = toTypeKind(matchResult.tpe) == UNDEFINED
-
-              if (isResultUnit) {
-                js.Block(List(genStat(matchResult)), jumpStat)
-              } else {
-                val resultVar = js.Ident("result$"+labelIdent.name, None)
-                js.Block(List(js.Assign(resultVar, genExpr(matchResult)), jumpStat))
-              }
+              js.Return(genExpr(args.head), Some(labelIdent))
             } else {
               /* No other label apply should ever happen. If it does, then we
                * have missed a pattern of LabelDef/LabelApply and some new
@@ -1586,29 +1571,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  This implementation relies heavily on the patterns of trees emitted
      *  by the current pattern match phase (as of Scala 2.10).
      *
-     *  For matches in expression position (i.e., whose types is not Unit), a
-     *  synthetic variable is generated that will contain the result of the
-     *  match. Think: a tiny transformation phase that transforms
-     *    arbiter match {
-     *      case Case1 => expr
-     *      ...
-     *    } // of type T
-     *  into
-     *    {
-     *      var matchResult: T = _
-     *      arbiter match {
-     *        case Case1 => expr
-     *        ...
-     *      } // of type Unit
-     *      matchResult
-     *    }
-     *  Inside <expr>, a jump to matchEnd() is translated to assigning its
-     *  argument to matchResult before jumping.
-     *
-     *  We do this because it is hard to give meaning to jumps within an
-     *  expression context when translating them in JS (even our extended
-     *  JS which supports complex constructs in expression position).
-     *
      *  The trees output by the pattern matcher are assumed to follow these
      *  rules:
      *  * Each case LabelDef (in `cases`) must not take any argument.
@@ -1626,15 +1588,13 @@ abstract class GenJSCode extends plugins.PluginComponent
      *    position (thanks to the above transformation), mean that they can be
      *    simply replaced by `skip`.
      *
-     *  To implement jumps to `matchEnd`, we enclose all the cases in one big
-     *  labeled block. Jumps are then compiled as `break`s out of that block.
+     *  To implement jumps to `matchEnd`, which have one argument which is the
+     *  result of the match, we enclose all the cases in one big labeled block.
+     *  Jumps are then compiled as `break`s out of that block if the result has
+     *  type Unit, or `return`s out of the block otherwise.
      */
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
-
-      val isResultUnit = toTypeKind(matchEnd.tpe) == UNDEFINED
-      val resultVar =
-        js.Ident("result$"+encodeLabelSym(matchEnd.symbol, freshName).name, None)
 
       val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 
@@ -1661,17 +1621,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         genCaseBody(rhs)
       }
 
-      val matchBlock = js.LabeledStat(
-          encodeLabelSym(matchEnd.symbol, freshName), js.Block(translatedCases))
-
-      if (isResultUnit) {
-        statToExpr(matchBlock)
-      } else {
-        js.Block(
-            js.VarDef(resultVar, js.EmptyTree),
-            matchBlock,
-            resultVar)
-      }
+      js.Labeled(encodeLabelSym(matchEnd.symbol, freshName),
+          js.Block(translatedCases))
     }
 
     /** Gen JS code for a primitive method call */
