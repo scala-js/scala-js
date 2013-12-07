@@ -118,17 +118,26 @@ trait JSTrees { self: JSGlobalAddons =>
 
     case class Skip()(implicit val pos: Position) extends Tree
 
-    case class Block(stats: List[Tree], expr: Tree)(implicit val pos: Position) extends Tree
+    class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree
 
     object Block {
-      def apply(stats: List[Tree])(implicit pos: Position): Tree = stats match {
-        case Nil => Skip()
-        case only :: Nil => only
-        case _ => Block(stats.init, stats.last)
+      def apply(stats: List[Tree])(implicit pos: Position): Tree = {
+        val flattenedStats = stats flatMap {
+          case Skip() => Nil
+          case Block(subStats) => subStats
+          case other => other :: Nil
+        }
+        flattenedStats match {
+          case Nil => js.Skip()
+          case only :: Nil => only
+          case _ => new Block(flattenedStats)
+        }
       }
 
       def apply(stats: Tree*)(implicit pos: Position): Tree =
         apply(stats.toList)
+
+      def unapply(block: Block): Some[List[Tree]] = Some(block.stats)
     }
 
     case class Labeled(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
@@ -321,8 +330,8 @@ trait JSTrees { self: JSGlobalAddons =>
 
           // Statement-only language constructs
 
-          case Block(stats, stat) =>
-            Block(stats map transformStat, transformStat(stat))
+          case Block(stats) =>
+            Block(stats map transformStat)
 
           case Labeled(label, body) =>
             Labeled(label, transformStat(body))
@@ -429,8 +438,8 @@ trait JSTrees { self: JSGlobalAddons =>
 
           // Language constructs that are statement-only in standard JavaScript
 
-          case Block(stats, expr) =>
-            Block(stats map transformStat, transformExpr(expr))
+          case Block(stats :+ expr) =>
+            Block((stats map transformStat) :+ transformExpr(expr))
 
           case Labeled(label, body) =>
             Labeled(label, transformExpr(body))

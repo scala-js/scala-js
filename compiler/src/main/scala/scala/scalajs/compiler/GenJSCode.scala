@@ -559,7 +559,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val body = {
             if (sym.isClassConstructor)
-              js.Block(List(genStat(rhs)), js.Return(js.This()))
+              js.Block(genStat(rhs), js.Return(js.This()))
             else
               genMethodBody(rhs, params, toTypeKind(sym.tpe.resultType))
           }
@@ -689,8 +689,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (methodTailJumpThisSym == NoSymbol) {
             theLoop
           } else {
-            js.Block(List(
-                js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName), js.This())),
+            js.Block(
+                js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName), js.This()),
                 theLoop)
           }
 
@@ -882,14 +882,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             genTranslatedMatch(cases map (_.asInstanceOf[LabelDef]),
                 expr.asInstanceOf[LabelDef])
 
-          if (prologue.isEmpty) translatedMatch
-          else js.Block(prologue map genStat, translatedMatch)
+          js.Block((prologue map genStat) :+ translatedMatch)
 
         /** Normal block */
         case Block(stats, expr) =>
           val statements = stats map genStat
           val expression = genExpr(expr)
-          js.Block(statements, expression)
+          js.Block(statements :+ expression)
 
         case Typed(Super(_, _), _) =>
           genExpr(This(currentClassSym))
@@ -925,10 +924,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       tree match {
         case _ : js.Apply =>
           tree
-        case js.Block(stats, stat) =>
-          js.Block(stats, statToExpr(stat))
+        case js.Block(stats :+ stat) =>
+          js.Block(stats :+ statToExpr(stat))
         case _ =>
-          js.Block(List(tree), js.Undefined())
+          js.Block(tree, js.Undefined())
       }
     }
 
@@ -960,8 +959,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                     Block(bodyStats, Apply(target @ Ident(lname2), Nil)),
                     Literal(_))),
                 result)) if (target.symbol == sym) =>
-          js.Block(List(js.While(genExpr(cond),
-              js.Block(bodyStats map genStat))), genExpr(result))
+          js.Block(
+              js.While(genExpr(cond), js.Block(bodyStats map genStat)),
+              genExpr(result))
 
         // while (true) { body }
         case LabelDef(lname, Nil,
@@ -986,8 +986,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                     Apply(target @ Ident(lname2), Nil),
                     Literal(_)),
                 result)) if (target.symbol == sym) =>
-          js.Block(List(js.DoWhile(js.Block(bodyStats map genStat),
-              genExpr(cond))), genExpr(result))
+          js.Block(
+              js.DoWhile(js.Block(bodyStats map genStat), genExpr(cond)),
+              genExpr(result))
 
         case _ =>
           abort("Found unknown label def at "+tree.pos+": "+tree)
@@ -1051,7 +1052,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             val bodyWithBoundVar = (boundVar match {
               case None => genExpr(body)
               case Some(bv) =>
-                js.Block(List(js.VarDef(bv, exceptVar)), genExpr(body))
+                js.Block(js.VarDef(bv, exceptVar), genExpr(body))
             })
 
             // Generate the test
@@ -1131,7 +1132,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             } else {
               js.BooleanLiteral(false)
             }
-            js.Block(List(stat), result)
+            js.Block(stat, result)
           }
           else if (r.isValueType && cast) {
             // Erasure should have added an unboxing operation to prevent that.
@@ -1182,7 +1183,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             isModuleInitialized = true
             val initModule = js.Assign(
                 encodeModuleSymInstance(currentClassSym), js.This())
-            js.Block(List(superCall, initModule), js.This())
+            js.Block(superCall, initModule, js.This())
           } else {
             superCall
           }
@@ -1286,7 +1287,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 case Nil => tailJump
 
                 case (formalArg, _, actualArg) :: Nil =>
-                  js.Block(List(js.Assign(formalArg, actualArg)), tailJump)
+                  js.Block(js.Assign(formalArg, actualArg), tailJump)
 
                 case _ =>
                   val tempAssignments =
@@ -1295,7 +1296,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   val trueAssignments =
                     for ((formalArg, tempArg, _) <- triplets)
                       yield js.Assign(formalArg, tempArg)
-                  js.Block(tempAssignments ::: trueAssignments, tailJump)
+                  js.Block(tempAssignments ++ trueAssignments :+ tailJump)
               }
             } else // continues after the comment
             /** Jump the to the end-label of a pattern match
@@ -1608,7 +1609,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))
 
             case Block(stats, expr) =>
-              js.Block(stats map genStat, genCaseBody(expr))
+              js.Block((stats map genStat) :+ genCaseBody(expr))
 
             case Apply(_, Nil) if tree.symbol == nextCaseSym =>
               js.Skip()

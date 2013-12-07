@@ -180,10 +180,13 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
            */
           if (isExpression(cond)) super.transformStat(tree)
           else {
-            // TODO I think this breaks 'continue' statements for this loop
+            /* This breaks 'continue' statements for this loop, but we don't
+             * care because we never emit continue statements for do..while
+             * loops.
+             */
             js.While(js.BooleanLiteral(true), {
               transformStat {
-                js.Block(List(body), js.If(cond, js.Skip(), js.Break()))
+                js.Block(body, js.If(cond, js.Skip(), js.Break()))
               }
             }, label)
           }
@@ -271,7 +274,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
             pushLhsInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
 
         val newStatement = makeStat(argsInfo map (_._3))
-        flattenBlock(computeTemps :+ newStatement)(newStatement.pos)
+        js.Block(computeTemps :+ newStatement)(newStatement.pos)
       }
     }
 
@@ -284,7 +287,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         val computeTemp =
           pushLhsInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
         val newStatement = makeStat(temp)
-        js.Block(List(computeTemp), newStatement)(newStatement.pos)
+        js.Block(computeTemp, newStatement)(newStatement.pos)
       }
     }
 
@@ -386,14 +389,14 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
                 case newLhs @ js.Return(_, _) =>
                   pushLhsInto(newLhs, rhs) // no need to break here
                 case newLhs =>
-                  flattenBlock(List(pushLhsInto(newLhs, rhs), js.Break(label)))
+                  js.Block(pushLhsInto(newLhs, rhs), js.Break(label))
               }
           }
 
         // Language constructs that are statement-only in standard JavaScript
 
-        case js.Block(stats, expr) =>
-          flattenBlock((stats map transformStat) :+ redo(expr))
+        case js.Block(stats :+ expr) =>
+          js.Block((stats map transformStat) :+ redo(expr))
 
         case js.Labeled(label, body) =>
           val savedMap = labeledExprLHSes
@@ -450,7 +453,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
                 (values, body) <- cases
                 newValues = (values map transformExpr)
                 // add the break statement
-                newBody = js.Block(List(redo(body)), js.Break())
+                newBody = js.Block(redo(body), js.Break())
                 // desugar alternatives into several cases falling through
                 caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
               } yield {
@@ -563,20 +566,6 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
       }
     }
 
-    /** js.Block constructor that flattens any nested block */
-    def flattenBlock(stats: List[js.Tree])(implicit pos: Position): js.Tree = {
-      val flattenedStats = stats flatMap {
-        case js.Skip() => Nil
-        case js.Block(subStats, subStat) => subStats :+ subStat
-        case other => other :: Nil
-      }
-      flattenedStats match {
-        case Nil => js.Skip()
-        case only :: Nil => only
-        case _ => js.Block(flattenedStats.init, flattenedStats.last)
-      }
-    }
-
     // Classes -----------------------------------------------------------------
 
     /** Desugar an ECMAScript 6 class into ECMAScript 5 constructs */
@@ -592,8 +581,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         if name.name != "constructor"
       } yield genAddMethodDefToPrototype(tree, m)
 
-      val result = transformStat(flattenBlock(
-          typeFunctionDef :: methodsDefs))
+      val result = transformStat(js.Block(typeFunctionDef :: methodsDefs))
 
       currentClassDef = savedCurrentClassDef
 
@@ -628,8 +616,7 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
         val reassignConstructor =
           genAddToPrototype(tree, js.Ident("constructor"), typeVar)
 
-        flattenBlock(List(
-            docComment, funDef, chainProto, reassignConstructor))
+        js.Block(docComment, funDef, chainProto, reassignConstructor)
       }
     }
 

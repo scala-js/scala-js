@@ -80,7 +80,7 @@ trait JSPrinters { self: JSGlobalAddons =>
   class JSTreePrinter(val out: PrintWriter) extends JSIndentationManager {
     def printBlock(tree: js.Tree) {
       tree match {
-        case js.Block(_, _) =>
+        case js.Block(_) =>
           printTree(tree)
         case _ =>
           printColumn(List(tree), "{", ";", "}")
@@ -89,8 +89,8 @@ trait JSPrinters { self: JSGlobalAddons =>
 
     def printTopLevelTree(tree: js.Tree) {
       tree match {
-        case js.Block(stats, expr) =>
-          for (stat <- stats :+ expr)
+        case js.Block(stats) =>
+          for (stat <- stats)
             printTopLevelTree(stat)
         case _ =>
           printTree(tree)
@@ -142,8 +142,8 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.Skip() =>
           print("/*<skip>*/")
 
-        case js.Block(stats, expr) =>
-          printColumn(stats :+ expr, "{", ";", "}")
+        case js.Block(stats) =>
+          printColumn(stats, "{", ";", "}")
 
         case js.Labeled(label, body) =>
           print(label, ": ")
