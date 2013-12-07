@@ -247,33 +247,44 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
      *
      *  But *this changes the evaluation order!* In order not to lose it, it
      *  is necessary to also unnest arguments that are expressions but that
+     *  are supposed to be evaluated before the argument-to-be-unnested and
      *  could have side-effects or even whose evaluation could be influenced
      *  by the side-effects of another unnested argument.
      *
      *  Without deep effect analysis, which we do not do, we need to take
      *  a very pessimistic approach, and unnest any expression that contains
-     *  an identifier.
+     *  an identifier (except those after the last non-expression argument).
      *  Hence the predicate `isPureExpressionWithoutIdent`.
      */
     def unnest(args: List[js.Tree])(
         makeStat: List[js.Tree] => js.Tree): js.Tree = {
       if (args forall isExpression) makeStat(args)
       else {
-        // ArgInfo ::= (orignalTree, needsTemp: Boolean, tempOrOriginalTree)
-        val argsInfo =
-          for (arg <- args) yield {
-            if (isPureExpressionWithoutIdent(arg)) (arg, false, arg)
-            else (arg, true, newSyntheticVar()(arg.pos))
-          }
+        var computeTemps: List[js.Tree] = Nil
+        var newArgs: List[js.Tree] = Nil
 
-        assert(argsInfo exists (_._2),
+        val (safeArgsRev, unsafeArgsRev) = args.reverse.span(isExpression)
+
+        for (arg <- safeArgsRev)
+          newArgs = arg :: newArgs
+
+        for (arg <- unsafeArgsRev) {
+          if (isPureExpressionWithoutIdent(arg)) {
+            newArgs = arg :: newArgs
+          } else {
+            implicit val pos = arg.pos
+            val temp = newSyntheticVar()
+            val computeTemp =
+              pushLhsInto(js.VarDef(temp, js.EmptyTree), arg)
+            computeTemps = computeTemp :: computeTemps
+            newArgs = temp :: newArgs
+          }
+        }
+
+        assert(computeTemps.nonEmpty,
             "Reached computeTemps with no temp to compute")
 
-        val computeTemps =
-          for ((arg, true, temp : js.Ident) <- argsInfo) yield
-            pushLhsInto(js.VarDef(temp, js.EmptyTree)(arg.pos), arg)
-
-        val newStatement = makeStat(argsInfo map (_._3))
+        val newStatement = makeStat(newArgs)
         js.Block(computeTemps :+ newStatement)(newStatement.pos)
       }
     }
