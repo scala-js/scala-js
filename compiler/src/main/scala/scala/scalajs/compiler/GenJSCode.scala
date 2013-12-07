@@ -1083,7 +1083,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case ast => ast
       }
 
-      js.Try(blockAST, exceptVar, handlerAST, finalizerAST)
+      if (handlerAST == js.EmptyTree && finalizerAST == js.EmptyTree) blockAST
+      else js.Try(blockAST, exceptVar, handlerAST, finalizerAST)
     }
 
     /** Gen JS code for an Apply node (method call)
