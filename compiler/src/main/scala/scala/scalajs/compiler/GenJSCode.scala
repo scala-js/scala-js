@@ -733,10 +733,24 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Turn a JavaScript expression into a statement */
+    /** Turn a JavaScript statement into an expression of type Unit */
+    def statToExpr(tree: js.Tree): js.Tree = {
+      implicit val pos = tree.pos
+      js.Block(tree, js.Undefined())
+    }
+
+    /** Turn a JavaScript expression of type Unit into a statement */
     def exprToStat(tree: js.Tree): js.Tree = {
-      // Any JavaScript expression is also a statement
-      tree
+      /* Any JavaScript expression is also a statement, but at least we get rid
+       * of the stupid js.Block(..., js.Undefined()) that we create ourselves
+       * in statToExpr().
+       */
+      implicit val pos = tree.pos
+      tree match {
+        case js.Block(stats :+ js.Undefined()) => js.Block(stats)
+        case js.Undefined() => js.Skip()
+        case _ => tree
+      }
     }
 
     /** Gen JS code for a tree in expression position (from JS's perspective)
@@ -916,20 +930,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               tree + "/" + tree.getClass + " at: " + tree.pos)
       }
     } // end of GenJSCode.genExpr()
-
-    /** Turn a JavaScript statement into an expression */
-    def statToExpr(tree: js.Tree): js.Tree = {
-      implicit val jspos = tree.pos
-
-      tree match {
-        case _ : js.Apply =>
-          tree
-        case js.Block(stats :+ stat) =>
-          js.Block(stats :+ statToExpr(stat))
-        case _ =>
-          js.Block(tree, js.Undefined())
-      }
-    }
 
     /** Gen JS code for LabelDef
      *  The only LabelDefs that can reach here are the desugaring of
@@ -1124,7 +1124,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.BooleanLiteral(l == r)
           }
           else if (l.isValueType) {
-            val stat = exprToStat(source)
             val result = if (cast) {
               val ctor = ClassCastExceptionClass.info.member(
                   nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
@@ -1132,7 +1131,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             } else {
               js.BooleanLiteral(false)
             }
-            js.Block(stat, result)
+            js.Block(source, result) // eval and discard source
           }
           else if (r.isValueType && cast) {
             // Erasure should have added an unboxing operation to prevent that.
