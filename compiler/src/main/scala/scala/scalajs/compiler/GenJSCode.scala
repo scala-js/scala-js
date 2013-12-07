@@ -2110,20 +2110,18 @@ abstract class GenJSCode extends plugins.PluginComponent
           /* Protect the receiver so that if the receiver is, e.g.,
            * path.f
            * we emit
-           * { var f$1 = path.f; f$1 }(args...)
+           * ScalaJS.protect(path.f)(args...)
            * instead of
            * path.f(args...)
+           * where
+           * ScalaJS.protect = function(x) { return x; }
            * If we emit the latter, then `this` will be bound to `path` in
            * `f`, which is sometimes extremely harmful (e.g., for builtin
            * methods of `window`).
            */
           def protectedReceiver = receiver match {
-            case js.DotSelect(_, js.Ident(name, _)) =>
-              val temp = js.Ident(freshName(name), None)
-              js.Block(js.VarDef(temp, receiver), temp)
-            case js.BracketSelect(_, _) =>
-              val temp = js.Ident(freshName(), None)
-              js.Block(js.VarDef(temp, receiver), temp)
+            case js.DotSelect(_, _) | js.BracketSelect(_, _) =>
+              genCallHelper("protect", receiver)
             case _ =>
               receiver
           }

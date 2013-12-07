@@ -120,6 +120,11 @@ var ScalaJS = {
     return result;
   },
 
+  /** Protect the argument against `this` forgery (see genPrimitiveJSCall()) */
+  protect: function(x) {
+    return x;
+  },
+
   applyMethodWithVarargs: function(instance, methodName, argArray) {
     // Note: cannot be inlined because `instance` would be evaluated twice
     return instance[methodName].apply(instance, argArray);
