@@ -14,7 +14,7 @@ import annotation.JSBracketAccess
 
 import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
-import scala.collection.mutable
+import scala.collection.{ immutable, mutable }
 
 /** Super-type of all JavaScript values.
  *
@@ -82,6 +82,12 @@ object Any {
 
   implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
     genericArrayOps(toArray(array))
+  implicit def stringOps(string: String): immutable.StringOps =
+    new immutable.StringOps(string: java.lang.String)
+  implicit def richDouble(num: Number): scala.runtime.RichDouble =
+    new scala.runtime.RichDouble(num: scala.Double)
+  implicit def richBoolean(b: Boolean): scala.runtime.RichBoolean =
+    new scala.runtime.RichBoolean(b: scala.Boolean)
 
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
