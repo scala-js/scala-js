@@ -82,6 +82,10 @@ object Any {
 
   implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
     genericArrayOps(toArray(array))
+  implicit def stringOps(string: String): collection.immutable.StringOps =
+    string.toString
+  implicit def richDouble(num: Number): scala.runtime.RichDouble =
+    num.toDouble
 
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
