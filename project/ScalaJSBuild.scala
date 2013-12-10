@@ -183,7 +183,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
@@ -195,7 +195,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val library: Project = Project(
       id = "scalajs-library",
