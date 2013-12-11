@@ -93,9 +93,20 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     fileNames.toSet
   }
 
+  /**
+    * specific tests to run. if this is non-empty, only these
+    * tests are ran.
+    * 
+    * from sbt call (e.g.)
+    * testOnly -- run/t7899.scala
+    */
+  val testNames: Array[String]
+
   def shouldUseTest(testFile: File): Boolean = {
     val absPath = testFile.toCanonical.getAbsolutePath
-    if (testUnknownOnly)
+    if (!testNames.isEmpty)
+      testNames.find(absPath.endsWith _).isDefined
+    else if (testUnknownOnly)
       (!blacklistedTestFileNames.contains(absPath) &&
        !whitelistedTestFileNames.contains(absPath) &&
        !buglistedTestFileNames.contains(absPath))
@@ -115,7 +126,8 @@ class ScalaJSSBTRunner(
     testClassLoader: URLClassLoader,
     javaCmd: File,
     javacCmd: File,
-    scalacArgs: Array[String]
+    scalacArgs: Array[String],
+    val testNames: Array[String]
 ) extends SBTRunner(
     partestFingerprint, eventHandler, loggers, srcDir, testClassLoader,
     javaCmd, javacCmd, scalacArgs
