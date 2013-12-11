@@ -195,7 +195,13 @@ object Long {
   def parseLong(s: String): scala.Long = Integer.parseInt(s).toLong
   def toString(l: scala.Long) = Integer.valueOf(l.toInt).toString
 
-  def bitCount(i: scala.Long): scala.Long = sys.error("unimplemented")
+  def bitCount(i: scala.Long): scala.Int = {
+    val t1 = i - ((i >> 1) & 0x5555555555555555L)
+    val t2 = (t1 & 0x3333333333333333L) + ((t1 >> 2) & 0x3333333333333333L)
+    val t3 = (((t2 + (t2 >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56
+    t3.toInt
+  }
+
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
