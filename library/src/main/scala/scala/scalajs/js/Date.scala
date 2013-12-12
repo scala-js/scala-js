@@ -23,7 +23,6 @@ package scala.scalajs.js
  */
 class Date extends Object {
 
-  def millisecond: Number = ???
   def this(value: Number) = this()
   def this(value: String) = this()
 
