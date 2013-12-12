@@ -7,7 +7,11 @@
 \*                                                                      */
 
 
-
+/**
+ * All doc-comments marked as "MDN" are by Mozilla Contributors,
+ * distributed under the Creative Commons Attribution-ShareAlike license from
+ * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+ */
 package scala.scalajs.js
 
 import annotation.JSBracketAccess
@@ -230,21 +234,97 @@ sealed trait Number extends Any {
   def ||(that: Number): Number
 
   def toString(radix: Number): String = ???
+
+  /**
+   * Returns a string representation of number that does not use exponential
+   * notation and has exactly digits digits after the decimal place. The number
+   * is rounded if necessary, and the fractional part is padded with zeros if
+   * necessary so that it has the specified length. If number is greater than
+   * 1e+21, this method simply calls Number.prototype.toString() and returns
+   * a string in exponential notation.
+   *
+   * MDN
+   */
   def toFixed(fractionDigits: Number): String = ???
   def toFixed(): String = ???
+
+  /**
+   * Returns a string representing a Number object in exponential notation with one
+   * digit before the decimal point, rounded to fractionDigits digits after the
+   * decimal point. If the fractionDigits argument is omitted, the number of
+   * digits after the decimal point defaults to the number of digits necessary
+   * to represent the value uniquely.
+   *
+   * If a number has more digits that requested by the fractionDigits parameter,
+   * the number is rounded to the nearest number represented by fractionDigits
+   * digits. See the discussion of rounding in the description of the toFixed()
+   * method, which also applies to toExponential().
+   *
+   * MDN
+   */
   def toExponential(fractionDigits: Number): String = ???
   def toExponential(): String = ???
+
+  /**
+   * Returns a string representing a Number object in fixed-point or exponential
+   * notation rounded to precision significant digits. See the discussion of
+   * rounding in the description of the Number.prototype.toFixed() method, which
+   * also applies to toPrecision.
+   *
+   * If the precision argument is omitted, behaves as Number.prototype.toString().
+   * If it is a non-integer value, it is rounded to the nearest integer.
+   *
+   * MDN
+   */
   def toPrecision(precision: Number): String = ???
+  def toPrecision(): String = ???
 }
 
 /** The top-level `Number` JavaScript object */
 object Number extends Object {
   implicit def toDouble(value: Number): scala.Double = sys.error("stub")
 
+  /**
+   * The Number.MAX_VALUE property represents the maximum numeric value
+   * representable in JavaScript.
+   *
+   * The MAX_VALUE property has a value of approximately 1.79E+308. Values
+   * larger than MAX_VALUE are represented as "Infinity".
+   *
+   * MDN
+   */
   val MAX_VALUE: Number = ???
+  /**
+   * The Number.MIN_VALUE property represents the smallest positive numeric
+   * value representable in JavaScript.
+   *
+   * The MIN_VALUE property is the number closest to 0, not the most negative
+   * number, that JavaScript can represent.
+   *
+   * MIN_VALUE has a value of approximately 5e-324. Values smaller than MIN_VALUE
+   * ("underflow values") are converted to 0.
+   *
+   * MDN
+   */
   val MIN_VALUE: Number = ???
+  /**
+   * The Number.NaN property represents Not-A-Number. Equivalent of NaN.
+   *
+   * MDN
+   */
   val NaN: Number = ???
+
+  /**
+   * The Number.NEGATIVE_INFINITY property represents the negative Infinity value.
+   *
+   * MDN
+   */
   val NEGATIVE_INFINITY: Number = ???
+  /**
+   * The Number.POSITIVE_INFINITY property represents the positive Infinity value.
+   *
+   * MDN
+   */
   val POSITIVE_INFINITY: Number = ???
 }
 
@@ -268,36 +348,222 @@ sealed trait String extends Any {
 
   def ||(that: String): String
 
+  /**
+   * This property returns the number of code units in the string. UTF-16,
+   * the string format used by JavaScript, uses a single 16-bit code unit to
+   * represent the most common characters, but needs to use two code units for
+   * less commonly-used characters, so it's possible for the value returned by
+   * length to not match the actual number of characters in the string.
+   *
+   * For an empty string, length is 0.
+   *
+   * MDN
+   */
   val length: Number = ???
 
+  /**
+   * The chartAt() method returns the specified character from a string.
+   *
+   * Characters in a string are indexed from left to right. The index of the
+   * first character is 0, and the index of the last character in a string
+   * called stringName is stringName.length - 1. If the index you supply is out
+   * of range, JavaScript returns an empty string.
+   *
+   * MDN
+   */
   def charAt(pos: Number): String = ???
+
+  /**
+   * The charCodeAt() method returns the numeric Unicode value of the character
+   * at the given index (except for unicode codepoints > 0x10000).
+   *
+   * MDN
+   */
   def charCodeAt(index: Number): Number = ???
+
+  /**
+   * concat combines the text from one or more strings and returns a new string.
+   * Changes to the text in one string do not affect the other string.
+   * MDN
+   */
   def concat(strings: String*): String = ???
+
+  /**
+   * Returns the index within the calling String object of the first occurrence
+   * of the specified value, starting the search at fromIndex,
+   *
+   * returns -1 if the value is not found.
+   *
+   * MDN
+   */
   def indexOf(searchString: String, position: Number): Number = ???
   def indexOf(searchString: String): Number = ???
+
+  /**
+   * Returns the index within the calling String object of the last occurrence
+   * of the specified value, or -1 if not found. The calling string is searched
+   * backward, starting at fromIndex.
+   *
+   * MDN
+   */
   def lastIndexOf(searchString: String, position: Number): Number = ???
   def lastIndexOf(searchString: String): Number = ???
+
+  /**
+   * Returns a number indicating whether a reference string comes before or
+   * after or is the same as the given string in sort order. The new locales
+   * and options arguments let applications specify the language whose sort
+   * order should be used and customize the behavior of the function. In older
+   * implementations, which ignore the locales and options arguments, the locale
+   * and sort order used are entirely implementation dependent.
+   *
+   * MDN
+   */
   def localeCompare(that: String): Number = ???
+
+  /**
+   * Used to retrieve the matches when matching a string against a regular
+   * expression.
+   *
+   * If the regular expression does not include the g flag, returns the same
+   * result as regexp.exec(string). The returned Array has an extra input
+   * property, which contains the original string that was parsed. In addition,
+   * it has an index property, which represents the zero-based index of the
+   * match in the string.
+   *
+   * If the regular expression includes the g flag, the method returns an Array
+   * containing all matches. If there were no matches, the method returns null.
+   *
+   * MDN
+   */
   def `match`(regexp: String): Array[String] = ???
   def `match`(regexp: RegExp): Array[String] = ???
+
+  /**
+   * Returns a new string with some or all matches of a pattern replaced by a
+   * replacement.  The pattern can be a string or a RegExp, and the replacement
+   * can be a string or a function to be called for each match.
+   *
+   * This method does not change the String object it is called on. It simply
+   * returns a new string.
+   *
+   * To perform a global search and replace, either include the g switch in the
+   * regular expression or if the first parameter is a string, include g in the
+   * flags parameter.
+   *
+   * MDN
+   */
   def replace(searchValue: String, replaceValue: String): String = ???
   def replace(searchValue: String, replaceValue: Any): String = ???
   def replace(searchValue: RegExp, replaceValue: String): String = ???
   def replace(searchValue: RegExp, replaceValue: Any): String = ???
+
+  /**
+   * If successful, search returns the index of the regular expression inside
+   * the string. Otherwise, it returns -1.
+   *
+   * When you want to know whether a pattern is found in a string use search
+   * (similar to the regular expression test method); for more information
+   * (but slower execution) use match (similar to the regular expression exec
+   * method).
+   *
+   * MDN
+   */
   def search(regexp: String): Number = ???
   def search(regexp: RegExp): Number = ???
+
+  /**
+   * slice extracts the text from one string and returns a new string. Changes
+   * to the text in one string do not affect the other string.
+   *
+   * slice extracts up to but not including endSlice. string.slice(1,4) extracts
+   * the second character through the fourth character (characters indexed 1, 2,
+   * and 3).
+   *
+   * As an example, string.slice(2,-1) extracts the third character through the
+   * second to last character in the string.
+   *
+   * MDN
+   */
   def slice(start: Number, end: Number): String = ???
   def slice(start: Number): String = ???
+
+  /**
+   * Splits a String object into an array of strings by separating the string
+   * into substrings.
+   *
+   * When found, separator is removed from the string and the substrings are
+   * returned in an array. If separator is omitted, the array contains one
+   * element consisting of the entire string. If separator is an empty string,
+   * string is converted to an array of characters.
+   *
+   * If separator is a regular expression that contains capturing parentheses,
+   * then each time separator is matched, the results (including any undefined
+   * results) of the capturing parentheses are spliced into the output array.
+   * However, not all browsers support this capability.
+   *
+   * Note: When the string is empty, split returns an array containing one
+   * empty string, rather than an empty array.
+   *
+   * MDN
+   */
   def split(separator: String, limit: Number): Array[String] = ???
   def split(separator: String): Array[String] = ???
   def split(separator: RegExp, limit: Number): Array[String] = ???
   def split(separator: RegExp): Array[String] = ???
+
+  /**
+   * Returns a subset of a string between one index and another, or through
+   * the end of the string.
+   *
+   * MDN
+   */
   def substring(start: Number, end: Number): String = ???
   def substring(start: Number): String = ???
+
+  /**
+   * Returns the calling string value converted to lowercase.
+   *
+   * MDN
+   */
   def toLowerCase(): String = ???
+
+  /**
+   * The toLocaleLowerCase method returns the value of the string converted to
+   * lower case according to any locale-specific case mappings. toLocaleLowerCase
+   * does not affect the value of the string itself. In most cases, this will
+   * produce the same result as toLowerCase(), but for some locales, such as
+   * Turkish, whose case mappings do not follow the default case mappings in Unicode,
+   * there may be a different result.
+   *
+   * MDN
+   */
   def toLocaleLowerCase(): String = ???
+
+  /**
+   * Returns the calling string value converted to uppercase.
+   *
+   * MDN
+   */
   def toUpperCase(): String = ???
+
+  /**
+   * The toLocaleUpperCase method returns the value of the string converted to
+   * upper case according to any locale-specific case mappings. toLocaleUpperCase
+   * does not affect the value of the string itself. In most cases, this will
+   * produce the same result as toUpperCase(), but for some locales, such as
+   * Turkish, whose case mappings do not follow the default case mappings in Unicode,
+   * there may be a different result.
+   *
+   * MDN
+   */
   def toLocaleUpperCase(): String = ???
+
+  /**
+   * Removes whitespace from both ends of the string.
+   *
+   * MDN
+   */
   def trim(): String = ???
 }
 
@@ -317,8 +583,34 @@ class Object extends Any {
 
   def toLocaleString(): String = ???
   def valueOf(): Any = ???
+
+  /**
+   * Every object descended from Object inherits the hasOwnProperty method.
+   * This method can be used to determine whether an object has the specified
+   * property as a direct property of that object; unlike the in operator,
+   * this method does not check down the object's prototype chain.
+   *
+   * MDN
+   */
   def hasOwnProperty(v: String): Boolean = ???
+
+  /**
+   * The isPrototypeOf mehtod allows you to check whether or not an object exists
+   * within another object's prototype chain.
+   *
+   * MDN
+   */
   def isPrototypeOf(v: Object): Boolean = ???
+
+  /**
+   * Every object has a propertyIsEnumerable method. This method can determine
+   * whether the specified property in an object can be enumerated by a for...in
+   * loop, with the exception of properties inherited through the prototype
+   * chain. If the object does not have the specified property, this method
+   * returns false.
+   *
+   * MDN
+   */
   def propertyIsEnumerable(v: String): Boolean = ???
 }
 
@@ -327,23 +619,153 @@ object Object extends Object {
   def apply(): Object = ???
   def apply(value: Any): Object = ???
 
+  /**
+   * The Object.getPrototypeOf() method returns the prototype (i.e. the
+   * internal [[Prototype]]) of the specified object.
+   *
+   * MDN
+   */
   def getPrototypeOf(o: Object): Any = ???
+
+  /**
+   * The Object.getOwnPropertyDescriptor() method returns a property descriptor
+   * for an own property (that is, one directly present on an object, not
+   * present by dint of being along an object's prototype chain) of a given object.
+   *
+   * MDN
+   */
   def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = ???
+
+  /**
+   * Object.getOwnPropertyNames returns an array whose elements are strings
+   * corresponding to the enumerable and non-enumerable properties found
+   * directly upon obj. The ordering of the enumerable properties in the array
+   * is consistent with the ordering exposed by a for...in loop (or by Object.keys)
+   * over the properties of the object. The ordering of the non-enumerable
+   * properties in the array, and among the enumerable properties, is not defined.
+   *
+   * MDN
+   */
   def getOwnPropertyNames(o: Object): Array[String] = ???
 
+  /**
+   * The Object.create() method creates a new object with the specified
+   * prototype object and properties.
+   *
+   * MDN
+   */
   def create(o: Object, properties: Any): Object = ???
   def create(o: Object): Object = ???
 
+  /**
+   * The Object.defineProperty() method defines a new property directly on an
+   * object, or modifies an existing property on an object, and returns the
+   * object.
+   *
+   * This method allows precise addition to or modification of a property on an
+   * object. Normal property addition through assignment creates properties
+   * which show up during property enumeration (for...in loop or Object.keys method),
+   * whose values may be changed, and which may be deleted. This method allows
+   * these extra details to be changed from their defaults.
+   *
+   * Property descriptors present in objects come in two main flavors: data
+   * descriptors and accessor descriptors. A data descriptor is a property
+   * that has a value, which may or may not be writable. An accessor descriptor
+   * is a property described by a getter-setter pair of functions. A descriptor
+   * must be one of these two flavors; it cannot be both.
+   *
+   * MDN
+   */
   def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = ???
+
+  /**
+   * The Object.defineProperties() method defines new or modifies existing
+   * properties directly on an object, returning the object.
+   *
+   * MDN
+   */
   def defineProperties(o: Object, properties: Any): o.type = ???
 
+  /**
+   * The Object.seal() method seals an object, preventing new properties from
+   * being added to it and marking all existing properties as non-configurable.
+   * Values of present properties can still be changed as long as they are
+   * writable.
+   *
+   * MDN
+   */
   def seal(o: Object): o.type = ???
+
+  /**
+   * The Object.freeze() method freezes an object: that is, prevents new properties
+   * from being added to it; prevents existing properties from being removed;
+   * and prevents existing properties, or their enumerability, configurability,
+   * or writability, from being changed. In essence the object is made effectively
+   * immutable. The method returns the object being frozen.
+   *
+   * MDN
+   */
   def freeze(o: Object): o.type = ???
+
+  /**
+   * The Object.preventExtensions() method prevents new properties from ever
+   * being added to an object (i.e. prevents future extensions to the object).
+   *
+   * An object is extensible if new properties can be added to it.  preventExtensions
+   * marks an object as no longer extensible, so that it will never have
+   * properties beyond the ones it had at the time it was marked as non-extensible.
+   * Note that the properties of a non-extensible object, in general, may still be
+   * deleted. Attempting to add new properties to a non-extensible object will
+   * fail, either silently or by throwing a TypeError (most commonly, but not
+   * exclusively, when in strict mode).
+   *
+   * Object.preventExtensions only prevents addition of own properties. Properties
+   * can still be added to the object prototype. However, calling Object.preventExtensions
+   * on an object will also prevent extensions on its __proto__ property.
+   *
+   * MDN
+   */
   def preventExtensions(o: Object): o.type = ???
 
+  /**
+   * Returns true if the object is sealed, otherwise false. An object is sealed
+   * if it is not extensible and if all its properties are non-configurable and
+   * therefore not removable (but not necessarily non-writable).
+   *
+   * MDN
+   */
   def isSealed(o: Object): Boolean = ???
+
+  /**
+   * The Object.isFrozen() determines if an object is frozen.
+   *
+   * An object is frozen if and only if it is not extensible, all its properties
+   * are non-configurable, and all its data properties (that is, properties which
+   * are not accessor properties with getter or setter components) are non-writable.
+   *
+   * MDN
+   */
   def isFrozen(o: Object): Boolean = ???
+
+  /**
+   * Determines if extending of an object is allowed
+   *
+   * Objects are extensible by default: they can have new properties added to
+   * them, and (in engines that support __proto__  their __proto__ property)
+   * can be modified. An object can be marked as non-extensible using
+   * Object.preventExtensions, Object.seal, or Object.freeze
+   *
+   * MDN
+   */
   def isExtensible(o: Object): Boolean = ???
 
+  /**
+   * The Object.keys() method returns an array of a given object's own enumerable
+   * properties, in the same order as that provided by a for...in loop (the
+   * difference being that a for-in loop enumerates properties in the prototype
+   * chain as well).
+   *
+   * MDN
+   */
   def keys(o: Object): Array[String] = ???
 }
