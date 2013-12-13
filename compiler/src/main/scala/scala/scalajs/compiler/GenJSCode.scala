@@ -54,6 +54,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     var methodTailJumpThisSym: Symbol = _
     var methodTailJumpLabelSym: Symbol = _
     var methodTailJumpFormalArgs: List[Symbol] = _
+    var paramAccessorLocals: Map[Symbol, js.Ident] = Map.empty
 
     // Fresh local name generator ----------------------------------------------
 
@@ -78,6 +79,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         freshName(sym.name.toString)
       })
     }
+
+    // Rewriting of anonymous function classes ---------------------------------
+
+    private val translatedAnonFunctions =
+      mutable.Map.empty[Symbol, List[js.Tree] => js.Tree] // ctor args to instance
+    private val instantiatedAnonFunctions =
+      mutable.Set.empty[Symbol]
 
     // Top-level apply ---------------------------------------------------------
 
@@ -117,7 +125,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         def gen(tree: Tree) {
           tree match {
             case EmptyTree => ()
-            case PackageDef(_, stats) => stats foreach gen
+            case PackageDef(_, stats) =>
+              /* We iterate classes in reverse order of definitions so that
+               * anonymous function classes are always translated before the
+               * classes using them.
+               */
+              stats.reverse foreach gen
+
             case cd: ClassDef =>
               implicit val pos = tree.pos
               val sym = cd.symbol
@@ -132,6 +146,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                   genInterface(cd)
                 } else if (sym.isImplClass) {
                   genImplClass(cd)
+                } else if (sym.isAnonymousFunction &&
+                    tryGenAndRecordAnonFunctionClass(cd)) {
+                  js.EmptyTree
                 } else if (isRawJSType(sym.tpe)) {
                   genRawJSClassData(cd)
                 } else {
@@ -141,7 +158,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                   else
                     classDef
                 }
-                generatedClasses += sym -> tree
+                if (tree != js.EmptyTree)
+                  generatedClasses += sym -> tree
               }
           }
         }
@@ -153,6 +171,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           genJSFile(cunit, sym, desugared)
         }
       } finally {
+        translatedAnonFunctions.clear()
+        instantiatedAnonFunctions.clear()
         currentCUnit = null
         currentClassSym = null
         currentMethodSym = null
@@ -537,8 +557,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       methodTailJumpThisSym = NoSymbol
       methodTailJumpLabelSym = NoSymbol
       methodTailJumpFormalArgs = Nil
-      usedLocalNames.clear()
-      localSymbolNames.clear()
+
+      /* Do NOT clear usedLocalNames and localSymbolNames!
+       * genAndRecordAnonFunctionClass() starts populating them before
+       * genMethod() starts.
+       */
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
@@ -569,6 +592,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       currentMethodSym = null
+      usedLocalNames.clear()
+      localSymbolNames.clear()
 
       result
     }
@@ -839,6 +864,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             genLoadModule(sym)
           } else if (sym.isStaticMember) {
             genStaticMember(sym)
+          } else if (paramAccessorLocals contains sym) {
+            paramAccessorLocals(sym)
           } else {
             js.DotSelect(genExpr(qualifier), encodeFieldSym(sym))
           }
@@ -1201,9 +1228,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             assert(ctor.isClassConstructor,
                    "'new' call to non-constructor: " + ctor.name)
 
-          if (isStringType(tpt.tpe)) {
+          val tpe = tpt.tpe
+          if (isStringType(tpe)) {
             genNewString(app)
-          } else if (isRawJSType(tpt.tpe)) {
+          } else if (translatedAnonFunctions contains tpe.typeSymbol) {
+            val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
+            functionMaker(args map genExpr)
+          } else if (isRawJSType(tpe)) {
             genPrimitiveJSNew(app)
           } else {
             val arguments = args map genExpr
@@ -1457,6 +1488,8 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
+      if (clazz.isAnonymousFunction)
+        instantiatedAnonFunctions += clazz
       val typeVar = encodeClassSym(clazz)
       val instance = js.New(typeVar, Nil)
       js.Apply(js.DotSelect(instance, encodeMethodSym(ctor)), arguments)
@@ -2015,17 +2048,28 @@ abstract class GenJSCode extends plugins.PluginComponent
              *  TODO Use the JS function Function.prototype.bind()?
              */
             case F2JS =>
-              val inputTpe = args.head.tpe
-              val applyMeth = getMemberMethod(inputTpe.typeSymbol,
-                  newTermName("apply"))
-              val arity = applyMeth.tpe.params.size
-              val theFunction = js.Ident("$this")
-              val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
-              js.captureWithin(theFunction, arg) {
-                js.Function(arguments, {
-                  js.Return(js.ApplyMethod(theFunction,
-                      encodeMethodSym(applyMeth), arguments))
-                })
+              arg match {
+                /* This case will happend every time we have a Scala lambda
+                 * in js.FunctionN position. We remove the JS function to
+                 * Scala function wrapper, instead of adding a Scala function
+                 * to JS function wrapper.
+                 */
+                case JSFunctionToScala(fun, arity) =>
+                  fun
+
+                case _ =>
+                  val inputTpe = args.head.tpe
+                  val applyMeth = getMemberMethod(inputTpe.typeSymbol,
+                      newTermName("apply"))
+                  val arity = applyMeth.tpe.params.size
+                  val theFunction = js.Ident("$this")
+                  val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
+                  js.captureWithin(theFunction, arg) {
+                    js.Function(arguments, {
+                      js.Return(js.ApplyMethod(theFunction,
+                          encodeMethodSym(applyMeth), arguments))
+                    })
+                  }
               }
 
             case JS2Z => arg
@@ -2419,6 +2463,262 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
       }
     }
+
+    // Synthesizers for raw JS functions ---------------------------------------
+
+    /** Try and gen and record JS code for an anonymous function class.
+     *
+     *  Returns true if the class could be rewritten that way, false otherwise.
+     *
+     *  We make the following assumptions on the form of such classes:
+     *  - It is an anonymous function
+     *    - Includes being anonymous, final, and having exactly one constructor
+     *  - It is not a PartialFunction
+     *  - It has no field other than param accessors
+     *  - It has exactly one constructor
+     *  - It has exactly one non-bridge method apply if it is not specialized,
+     *    or a method apply$...$sp and a forwarder apply if it is specialized.
+     *  - As a precaution: it is synthetic
+     *
+     *  From a class looking like this:
+     *
+     *    final class <anon>(outer, capture1, ..., captureM) extends AbstractionFunctionN[...] {
+     *      def apply(param1, ..., paramN) = {
+     *        <body>
+     *      }
+     *    }
+     *
+     *  we generate:
+     *
+     *    function(outer, capture1, ..., captureM) {
+     *      return function(param1, ..., paramN) {
+     *        <body>
+     *      }
+     *    }
+     *
+     *  so that, at instantiation point, we can write:
+     *
+     *    new AnonFunctionN(functionMaker(captured1, ..., capturedM))
+     *
+     *  Trickier things apply when the function is specialized.
+     */
+    private def tryGenAndRecordAnonFunctionClass(cd: ClassDef): Boolean = {
+      implicit val pos = cd.pos
+      val sym = cd.symbol
+      assert(sym.isAnonymousFunction,
+          s"tryGenAndRecordAnonFunctionClass called with non-anonymous function $cd")
+      currentClassSym = sym
+
+      val (functionMakerBase, arity) =
+        tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
+          return false
+        }
+
+      val functionMaker = { capturedArgs: List[js.Tree] =>
+        JSFunctionToScala(functionMakerBase(capturedArgs), arity)
+      }
+
+      translatedAnonFunctions += sym -> functionMaker
+
+      currentClassSym = null
+      true
+    }
+
+    /** Constructor and extractor object for a tree that converts a JavaScript
+     *  function into a Scala function.
+     */
+    private object JSFunctionToScala {
+      private val AnonFunctionFullNamePrefix =
+        "scala_scalajs_js_runtime_AnonFunction"
+
+      def apply(jsFunction: js.Tree, arity: Int)(
+          implicit pos: Position): js.Tree = {
+        val anonClassIdent = js.Ident(AnonFunctionFullNamePrefix+arity)
+        val anonClassCtor = js.DotSelect(envField("classes"), anonClassIdent)
+        js.New(anonClassCtor, List(jsFunction))
+      }
+
+      def unapply(tree: js.New): Option[(js.Tree, Int)] = tree match {
+        case js.New(
+            js.DotSelect(js.DotSelect(
+                js.Ident(ScalaJSEnvironmentName, _),
+                js.Ident("classes", _)),
+                js.Ident(wrapperName, _)),
+            List(fun))
+        if wrapperName.startsWith(AnonFunctionFullNamePrefix) =>
+          val arityStr = wrapperName.substring(AnonFunctionFullNamePrefix.length)
+          try {
+            Some((fun, arityStr.toInt))
+          } catch {
+            case e: NumberFormatException => None
+          }
+
+        case _ =>
+          None
+      }
+    }
+
+    /** Code common to tryGenAndRecordAnonFunctionClass and
+     *  genAndRecordRawJSFunctionClass.
+     */
+    private def tryGenAndRecordAnonFunctionClassGeneric(cd: ClassDef)(
+        onFailure: (=> String) => Unit): (List[js.Tree] => js.Tree, Int) = {
+      implicit val pos = cd.pos
+      val sym = cd.symbol
+      currentClassSym = sym
+
+      // First checks
+
+      if (sym.isSubClass(PartialFunctionClass))
+        onFailure(s"Cannot rewrite PartialFunction $cd")
+      if (instantiatedAnonFunctions contains sym) {
+        // when the ordering we're given is evil (it happens!)
+        onFailure(s"Abort function rewrite because it was already instantiated: $cd")
+      }
+
+      // First step: find the apply method def, and collect param accessors
+
+      var paramAccessors: List[Symbol] = Nil
+      var applyDef: DefDef = null
+
+      def gen(tree: Tree): Unit = {
+        tree match {
+          case EmptyTree => ()
+          case Template(_, _, body) => body foreach gen
+          case vd @ ValDef(mods, name, tpt, rhs) =>
+            val fsym = vd.symbol
+            assert(fsym.isParamAccessor,
+                s"Found field $fsym which is not a param accessor in anon function $cd")
+            if (fsym.isPrivate) {
+              paramAccessors ::= fsym
+            } else {
+              // Uh oh ... an inner something will try to access my fields
+              onFailure(s"Found a non-private field $fsym in $cd")
+            }
+          case dd: DefDef =>
+            val ddsym = dd.symbol
+            if (ddsym.isClassConstructor) {
+              assert(ddsym.isPrimaryConstructor,
+                  s"Non-primary constructor $ddsym in anon function $cd")
+            } else {
+              val name = dd.name.toString
+              if (name == "apply" || (ddsym.isSpecialized && name.startsWith("apply$"))) {
+                if ((applyDef eq null) || ddsym.isSpecialized)
+                  applyDef = dd
+              } else {
+                // Found a method we cannot encode in the rewriting
+                onFailure(s"Found a non-apply method $ddsym in $cd")
+              }
+            }
+          case _ =>
+            abort("Illegal tree in gen of genAndRecordAnonFunctionClass(): " + tree)
+        }
+      }
+      gen(cd.impl)
+      paramAccessors = paramAccessors.reverse // preserve definition order
+      assert(applyDef ne null,
+          s"Did not find any apply method in anon function $cd")
+
+      // Second step: build the list of useful constructor parameters
+
+      val ctorParams = sym.primaryConstructor.tpe.params
+      assert(
+          paramAccessors.size == ctorParams.size ||
+          (paramAccessors.size == ctorParams.size-1 &&
+              ctorParams.head.originalName == newTermName("arg$outer")),
+          s"Have param accessors $paramAccessors but "+
+          s"ctor params $ctorParams in anon function $cd")
+      val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
+      val usedCtorParams =
+        if (hasUnusedOuterCtorParam) ctorParams.tail
+        else ctorParams
+      val ctorParamIdents = usedCtorParams map { p =>
+        encodeLocalSym(p, freshName)(p.pos) // in the apply method's context
+      }
+
+      // Third step: emit the body of the apply method def
+
+      paramAccessorLocals = (paramAccessors zip ctorParamIdents).toMap
+      val applyMethod = genMethod(applyDef).getOrElse(
+          abort(s"Oops, $applyDef did not produce a method"))
+      paramAccessorLocals = Map.empty
+
+      // Fourth step: patch the body to unbox parameters and box result
+
+      val js.MethodDef(_, params, body) = applyMethod
+      val functionType = beforePhase(currentRun.posterasurePhase) {
+        applyDef.symbol.tpe
+      }
+
+      val patchedBody = {
+        // TODO Clean up this mess!
+        def needsBoxingOrUnboxing(tpe: Type): Boolean =
+          isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
+
+        val unboxParams = for {
+          (paramIdent, paramSym) <- params zip functionType.params
+          paramTpe = beforePhase(currentRun.posterasurePhase)(paramSym.tpe)
+          if needsBoxingOrUnboxing(paramTpe)
+        } yield {
+          val unboxedParam = paramTpe match {
+            case _ if isPrimitiveValueType(paramTpe) =>
+              makeUnbox(paramIdent, paramTpe)
+            case ErasedValueType(boxedTpe) =>
+              val boxedClass = boxedTpe.typeSymbol
+              val unboxMethod = boxedClass.derivedValueClassUnbox
+              js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
+          }
+          js.Assign(paramIdent, unboxedParam)
+        }
+
+        val returnStat = {
+          implicit val pos = body.pos
+          val resultType = functionType.resultType
+          if (needsBoxingOrUnboxing(resultType)) {
+            body match {
+              case js.Return(expr, None) =>
+                val boxedExpr = resultType match {
+                  case _ if isPrimitiveValueType(resultType) =>
+                    makeBox(expr, resultType)
+                  case ErasedValueType(boxedTpe) =>
+                    val boxedTpeSym = boxedTpe.typeSymbol
+                    val ctor = boxedTpeSym.primaryConstructor
+                    genNew(boxedTpeSym, ctor, List(expr))
+                }
+                js.Return(boxedExpr)
+              case _ =>
+                assert(resultType.typeSymbol == UnitClass)
+                js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
+            }
+          } else {
+            body
+          }
+        }
+
+        js.Block(unboxParams :+ returnStat)
+      }
+
+      // Fifth step: build the function maker
+
+      val functionMakerFun =
+        js.Function(ctorParamIdents, {
+          js.Return(js.Function(params, patchedBody))
+        })
+
+      val functionMaker = { capturedArgs0: List[js.Tree] =>
+        val capturedArgs =
+          if (hasUnusedOuterCtorParam) capturedArgs0.tail
+          else capturedArgs0
+        assert(capturedArgs.size == ctorParamIdents.size)
+        js.Apply(functionMakerFun, capturedArgs)
+      }
+
+      val arity = params.size
+
+      (functionMaker, arity)
+    }
+
+    // Utilities ---------------------------------------------------------------
 
     /** Generate a literal "zero" for the requested type */
     def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
