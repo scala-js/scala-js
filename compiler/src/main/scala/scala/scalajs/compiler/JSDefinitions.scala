@@ -44,6 +44,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 
+    lazy val JSFunctionClasses = (0 to 5) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
+
     lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
@@ -59,6 +61,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSObjectTpe    = JSObjectClass.toTypeConstructor
 
     lazy val JSGlobalScopeTpe = JSGlobalScopeClass.toTypeConstructor
+
+    lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
     lazy val JSAnyModule = JSAnyClass.companionModule
       lazy val JSAny_fromUnit    = getMemberMethod(JSAnyModule, newTermName("fromUnit"))
