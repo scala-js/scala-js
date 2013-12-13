@@ -208,7 +208,7 @@ object Dictionary {
   /** Returns the names of all the enumerable properties of this object. */
   def propertiesOf(obj: Any): Array[String] = sys.error("stub")
 
-  implicit def fromAny(value: Any): Dictionary = value.asInstanceOf
+  implicit def fromAny(value: Any): Dictionary = value.asInstanceOf[Dictionary]
 }
 
 /** Primitive JavaScript number. */

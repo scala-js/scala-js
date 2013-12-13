@@ -93,5 +93,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
+
+    lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
   }
 }

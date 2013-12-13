@@ -20,17 +20,25 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
-  val components = List[NscPluginComponent](PluginComponent)
+  val components = List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
 
   /** Addons for JavaScript platform */
   object jsAddons extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
   } with JSGlobalAddons
 
-  object PluginComponent extends {
+  object PrepInteropComponent extends {
+    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+    val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
+    override val runsAfter = List("typer")
+    override val runsBefore = List("pickle")
+  } with PrepJSInterop
+
+  object GenCodeComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     override val runsAfter = List("mixin")
     override val runsBefore = List("cleanup", "terminal")
   } with GenJSCode
+
 }
