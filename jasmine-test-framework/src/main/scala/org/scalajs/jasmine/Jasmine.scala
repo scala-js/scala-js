@@ -5,21 +5,16 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
+package org.scalajs.jasmine
 
-/**
- * This file is loaded first and used for patching the JS environment.
- */
+import scala.scalajs.js
 
-function scalaJSStub(name) {
-  return function() {
-    console.log("Stub for " + name + " called");
-  }
-};
-
-/* Stub-out timer methods used by Jasmine and not provided by Rhino. */
-if (typeof setTimeout == 'undefined') {
-  var setTimeout = scalaJSStub('setTimeout');
-  var clearTimeout = scalaJSStub('clearTimeout');
-  var setInterval = scalaJSStub('setInterval');
-  var clearInterval = scalaJSStub('clearInterval');
+object Jasmine extends js.GlobalScope {
+  def describe(name: String, suite: js.Function0[_]): Unit = ???
+  def it(title: String, test: js.Function0[_]): Unit = ???
+  def xdescribe(name: String, suite: js.Function0[_]): Unit = ???
+  def xit(title: String, test: js.Function0[_]): Unit = ???
+  def beforeEach(block: js.Function0[_]): Unit = ???
+  def afterEach(block: js.Function0[_]): Unit = ???
+  def expect(exp: js.Any): JasmineExpectation = ???
 }

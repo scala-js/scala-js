@@ -8,9 +8,7 @@
 package scala.scalajs.test
 package javalib
 
-import scala.scalajs.test.ScalaJSTest
-
-object ThrowablesTest extends ScalaJSTest {
+object ThrowablesTest extends JasmineTest {
   describe("java.lang.Throwables, java.util.Throwables") {
 
     it("should define all java.lang and java.util Errors/Exceptions") {

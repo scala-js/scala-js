@@ -8,10 +8,10 @@
 package scala.scalajs.test
 package javalib
 
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 import scala.scalajs.js.Any.fromInt
 
-object IntegerTest extends ScalaJSTest {
+object IntegerTest extends JasmineTest {
 
   describe("java.lang.Integer") {
 

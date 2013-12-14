@@ -8,7 +8,6 @@
 package scala.scalajs.test
 package compiler
 
-import scala.scalajs.test.ScalaJSTest
 import scala.scalajs.js
 
 /**
@@ -17,7 +16,7 @@ import scala.scalajs.js
  * see scala.scalajs.test.jsinterop.RuntimeLongTest
  * for a test of the implementation itself
  */
-object LongTest extends ScalaJSTest {
+object LongTest extends JasmineTest {
   
   describe("JavaScript 64-bit long compatibility") {
     it("should correctly handle literals") {

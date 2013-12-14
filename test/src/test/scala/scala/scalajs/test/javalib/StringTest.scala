@@ -9,9 +9,9 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 
-object StringTest extends ScalaJSTest {
+object StringTest extends JasmineTest {
 
   describe("java.lang.String") {
 
