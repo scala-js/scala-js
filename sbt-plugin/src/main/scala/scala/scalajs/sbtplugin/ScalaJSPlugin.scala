@@ -88,6 +88,14 @@ object ScalaJSPlugin extends Plugin {
     var global = {};
     """
 
+  /** A proxy for a Logger that looks like a Mozilla console object */
+  private class LoggingConsole(logger: Logger) {
+    def log(x: Any): Unit = logger.info(x.toString)
+    def info(x: Any): Unit = logger.info(x.toString)
+    def warn(x: Any): Unit = logger.warn(x.toString)
+    def error(x: Any): Unit = logger.error(x.toString)
+  }
+
   val scalaJSExternalCompileConfigSettings: Seq[Setting[_]] = inTask(compile)(
       Defaults.runnerTask
   ) ++ Seq(
@@ -450,7 +458,8 @@ object ScalaJSPlugin extends Plugin {
       sources: TaskKey[Seq[File]], classpath: TaskKey[Classpath]) = Def.task {
     val s = streams.value
     s.log.info("Running ...")
-    scalaJSRunJavaScript(s.log, sources.value, true,
+    val console = new LoggingConsole(s.log)
+    scalaJSRunJavaScript(sources.value, s.log.trace, Some(console), true,
         classpath.value.map(_.data))
   }
 
