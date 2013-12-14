@@ -1,6 +1,6 @@
 language: scala
 script:
-  - sbt package scalajs-test/test
+  - sbt package testing/test scalajs-test/test
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${TRAVIS_BRANCH}" == "master" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt publish; fi
 scala:

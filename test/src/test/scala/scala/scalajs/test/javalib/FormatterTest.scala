@@ -9,12 +9,12 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 
 import java.util.{ Formatter, Formattable, FormattableFlags }
 
 import java.lang.{
-  Double  => JDouble, 
+  Double  => JDouble,
   Float   => JFloat,
   Integer => JInteger,
   Long    => JLong,
@@ -22,9 +22,9 @@ import java.lang.{
   Boolean => JBoolean,
   String  => JString
 }
-  
 
-object FormatterTest extends ScalaJSTest {
+
+object FormatterTest extends JasmineTest {
 
   class HelperClass
   class FormattableClass extends Formattable {

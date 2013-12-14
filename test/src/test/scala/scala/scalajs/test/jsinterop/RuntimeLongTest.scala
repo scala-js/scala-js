@@ -8,14 +8,14 @@
 package scala.scalajs.test
 package jsinterop
 
-import scala.scalajs.test.ScalaJSTest
 import scala.scalajs.runtime.Long
+import org.scalajs.jasmine.JasmineExpectation
 
 /**
  * test the runtime Long implementation directly
  * does not depend on magic compiler Long rewriting
  */
-object RuntimeLongTest extends ScalaJSTest {
+object RuntimeLongTest extends JasmineTest {
 
   /** overload expect for long to add toString */
   def expect(l: Long): JasmineExpectation = expect(l.toHexString)
@@ -52,7 +52,7 @@ object RuntimeLongTest extends ScalaJSTest {
       expect(Long.fromInt(7)  * Long.fromInt(15)).toEqual("0000000000000069")
       expect(Long.fromInt(-7) * Long.fromInt(15)).toEqual("ffffffffffffff97")
       expect(maxInt * maxInt).toEqual(                    "3fffffff00000001")
-      expect(Long.fromHexString("001000000000000e") * 
+      expect(Long.fromHexString("001000000000000e") *
              Long.fromInt(-4)).toEqual("ffbfffffffffffc8")
     }
 
@@ -91,7 +91,7 @@ object RuntimeLongTest extends ScalaJSTest {
       expect(Long.fromInt(5).toDouble).toEqual(5.0)
       expect((maxInt+one).toDouble).toEqual(2147483648.0)
     }
-    
+
     it("should correctly implement fromString") {
       expect(Long.fromString("4")).toEqual(         "0000000000000004")
       expect(Long.fromString("-4")).toEqual(        "fffffffffffffffc")

@@ -62,16 +62,17 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
 
           clean := clean.dependsOn(
-              // compiler, library and sbt-plugin are aggregated
+              // compiler, plugin, library and jasmineTestFramework are aggregated
               clean in corejslib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in test, clean in examples,
-              clean in exampleHelloWorld, clean in exampleReversi).value,
+              clean in exampleHelloWorld, clean in exampleReversi,
+              clean in exampleTesting).value,
 
           publish := {},
           publishLocal := {}
       )
   ).aggregate(
-      compiler, plugin, library
+      compiler, plugin, library, jasmineTestFramework
   )
 
   lazy val compiler: Project = Project(
@@ -223,6 +224,20 @@ object ScalaJSBuild extends Build {
       ))
   ).dependsOn(compiler % "plugin")
 
+  // Test framework
+
+  lazy val jasmineTestFramework = Project(
+      id = "scalajs-jasmine-test-framework",
+      base = file("jasmine-test-framework"),
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+          name := "Scala.js jasmine test framework",
+
+          libraryDependencies ++= Seq(
+            "org.webjars" % "jasmine" % "1.3.1"
+          )
+      )
+  ).dependsOn(compiler % "plugin", library)
+
   // Utils
 
   /* Dirty trick to add our Scala.js library on the classpath without adding a
@@ -230,11 +245,22 @@ object ScalaJSBuild extends Build {
    * time we make a change in the compiler, and we want to test it on an
    * example or with the test suite.
    */
-  def useLibraryButDoNotDependOnIt(config: Configuration) = (
+  def useProjectButDoNotDependOnIt(project: Project, config: Configuration) = (
       unmanagedClasspath in config += {
-        val libraryJar = (artifactPath in (library, Compile, packageBin)).value
+        val libraryJar = (artifactPath in (project, Compile, packageBin)).value
         Attributed.blank(libraryJar)
       })
+
+  def useLibraryButDoNotDependOnIt = Seq(
+      useProjectButDoNotDependOnIt(library, Compile),
+      useProjectButDoNotDependOnIt(library, Test)
+  )
+
+  def useJasmineTestFrameworkButDoNotDependOnIt = Seq(
+      useProjectButDoNotDependOnIt(jasmineTestFramework, Test),
+      libraryDependencies ++=
+        (libraryDependencies in jasmineTestFramework).value map (_ % "test")
+  )
 
   // Examples
 
@@ -246,9 +272,10 @@ object ScalaJSBuild extends Build {
       )
   ).aggregate(exampleHelloWorld, exampleReversi)
 
-  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ Seq(
-      useLibraryButDoNotDependOnIt(Compile),
-
+  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ (
+      useLibraryButDoNotDependOnIt ++
+      useJasmineTestFrameworkButDoNotDependOnIt
+  ) ++ Seq(
       // Add the startup.js file of this example project
       unmanagedSources in (Compile, packageJS) +=
         baseDirectory.value / "startup.js"
@@ -272,32 +299,31 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
-  // Testing
+  lazy val exampleTesting = Project(
+      id = "testing",
+      base = file("examples") / "testing",
+      settings = exampleSettings ++ Seq(
+          name := "Testing - Scala.js example",
+          moduleName := "testing",
 
-  val jasmineVersion = "1.3.1"
+          libraryDependencies ++= Seq(
+            "org.webjars" % "jquery" % "1.10.2" % "test",
+            "org.webjars" % "envjs" % "1.2" % "test"
+          )
+      )
+  ).dependsOn(compiler % "plugin")
+
+  // Testing
 
   lazy val test: Project = Project(
       id = "scalajs-test",
       base = file("test"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ (
+          useLibraryButDoNotDependOnIt ++
+          useJasmineTestFrameworkButDoNotDependOnIt
+      ) ++ Seq(
           name := "Scala.js test suite",
-          publishArtifact in Compile := false,
-          useLibraryButDoNotDependOnIt(Test),
-
-          libraryDependencies += "org.webjars" % "jasmine" % jasmineVersion % "test",
-
-          // We don't need the HTML reporter, since we use the Rhino reporter
-          sources in (Test, packageExternalDepsJS) ~= { srcs =>
-            srcs.filterNot(_.name == "jasmine-html.js")
-          },
-
-          // And a hack to make sure bootstrap.js is included before jasmine.js
-          sources in (Test, Keys.test) ~= { srcs =>
-            val bootstrap: File = srcs.find(_.name == "bootstrap.js").get
-            val (before, after) =
-              srcs.filterNot(_ == bootstrap).span(_.name != "jasmine.js")
-            before ++ Seq(bootstrap) ++ after
-          }
+          publishArtifact in Compile := false
       )
   ).dependsOn(compiler % "plugin")
 
