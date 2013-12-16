@@ -2738,11 +2738,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           "genLoadModule called with non-module symbol: " + sym0)
       val sym = if (sym0.isModule) sym0.moduleClass else sym0
 
-      val isGlobalScope =
-        isScalaJSDefined &&
-        beforePhase(currentRun.erasurePhase) {
-          sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
-        }
+      val isGlobalScope = isScalaJSDefined &&
+        (sym.tpe.typeSymbol isSubClass JSGlobalScopeClass)
 
       if (isGlobalScope) envField("g")
       else if (isRawJSType(sym.tpe)) genPrimitiveJSModule(sym)
