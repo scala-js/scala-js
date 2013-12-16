@@ -15,7 +15,7 @@ import scala.collection.immutable.ListMap
  * This phase does two things:
  * - Annotate subclasses of js.Any to be treated specially
  * - Handle extension methods to subclasses of js.Any
- * 
+ *
  * @author Tobias Schlatter
  */
 abstract class PrepJSInterop extends plugins.PluginComponent with transform.Transform {
@@ -26,7 +26,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
   import global._
   import jsAddons._
   import jsDefinitions._
-  
+
   val phaseName = "jsinterop"
 
   override def newPhase(p: nsc.Phase) = new JSInteropPhase(p)
@@ -39,32 +39,111 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
     new JSInteropTransformer(unit)
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
-    val cpy = treeCopy
 
-    override def transform(tree: Tree): Tree = super.transform(tree) match {
+    var allowJSAny     = true
+    var allowImplDef   = true
+    var jsAnyClassOnly = false
+
+    override def transform(tree: Tree): Tree = tree match {
+      // Catch special case of ClassDef in ModuleDef
+      case cldef: ClassDef if jsAnyClassOnly && isJSAny(cldef) =>
+        transformJSAny(cldef)
+
+      // Catch forbidden implDefs
+      case idef: ImplDef if !allowImplDef =>
+        unit.error(idef.pos, "Traits, classes and objects extending js.Any " +
+            "may not have inner traits, classes or objects")
+        super.transform(tree)
+
+      // Handle js.Anys
       case idef: ImplDef if isJSAny(idef) =>
-        transformImplDef(idef)
-      case _ => tree
+        transformJSAny(idef)
+
+      // Catch ClassDefs to forbid js.Anys
+      case cldef: ClassDef =>
+        disallowJSAny { super.transform(cldef) }
+
+      case _ => super.transform(tree)
     }
 
-    private def isJSAny(implDef: ImplDef) = isScalaJSDefined &&
-      (implDef.symbol.tpe.typeSymbol isSubClass JSAnyClass)
+    private def transformJSAny(implDef: ImplDef) = {
+      implDef match {
+        // Check if we may have a js.Any here
+        case _: ClassDef if !allowJSAny && !jsAnyClassOnly =>
+          unit.error(implDef.pos, "Classes extending js.Any may not be " +
+              "defined inside a class or trait")
 
-    private def transformImplDef(implDef: ImplDef) = {
-      // We cannot use implDef.symbol directly, since the symbol
-      // of a module is not its type's symbol but the value it declares
-      val sym = implDef.symbol.tpe.typeSymbol
+        case _: ModuleDef if !allowJSAny =>
+          unit.error(implDef.pos, "Objects extending js.Any may not be " +
+              "defined inside a class or trait")
 
-      sym.setAnnotations(rawJSAnnot :: sym.annotations)
+        // Check that this is not a class extending js.GlobalScope
+        case _: ClassDef if isJSGlobalScope(implDef) &&
+          implDef.symbol != JSGlobalScopeClass =>
+          unit.error(implDef.pos, "Only objects may extend js.GlobalScope")
 
-      // TODO add extractor methods
+        // Check that primary ctor of a ClassDef is no-arg
+        case cldef: ClassDef if !primCtorNoArg(cldef) =>
+          unit.error(cldef.pos, "The primary constructor of a class extending "+
+              "js.Any may only have a single, empty argument list")
 
-      implDef
+        case _ =>
+          // We cannot use implDef.symbol directly, since the symbol
+          // of a module is not its type's symbol but the value it declares
+          val sym = implDef.symbol.tpe.typeSymbol
+
+          sym.setAnnotations(rawJSAnnot :: sym.annotations)
+
+          // TODO add extractor methods
+
+      }
+
+      val allowJSAnyClass = implDef.isInstanceOf[ModuleDef]
+      disallowImplDef(allowJSAnyClass) { super.transform(implDef) }
     }
 
-    private def rawJSAnnot =
-      Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
-    
+    private def disallowImplDef[T](jsAnyOnly: Boolean)(body: =>T) = {
+      val oldAllowImplDef = allowImplDef
+      val oldJSAnyClassOnly = jsAnyClassOnly
+      allowImplDef = false
+      jsAnyClassOnly = jsAnyOnly
+      val res = disallowJSAny(body)
+      allowImplDef = oldAllowImplDef
+      jsAnyClassOnly = oldJSAnyClassOnly
+      res
+    }
+
+    private def disallowJSAny[T](body: =>T) = {
+      val old = allowJSAny
+      allowJSAny = false
+      val res = body
+      allowJSAny = old
+      res
+    }
+
   }
+
+  private def isJSAny(implDef: ImplDef) = isScalaJSDefined &&
+    (implDef.symbol.tpe.typeSymbol isSubClass JSAnyClass)
+
+  private def isJSGlobalScope(implDef: ImplDef) = isScalaJSDefined &&
+    (implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass)
+
+  private def rawJSAnnot =
+    Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
   
+  /** checks if the primary constructor of the ClassDef `cldef` does not
+   *  take any arguments
+   */
+  private def primCtorNoArg(cldef: ClassDef) =
+    getPrimCtor(cldef.symbol.tpe).map(_.paramss == List(List())).getOrElse(true)
+
+  /** return the MethodSymbol of the primary constructor of the given type
+   *  if it exists
+   */
+  private def getPrimCtor(tpe: Type) =
+    tpe.declaration(nme.CONSTRUCTOR).alternatives.collectFirst {
+      case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
+    }
+
 }
