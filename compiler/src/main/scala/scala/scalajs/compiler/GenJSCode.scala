@@ -1384,9 +1384,22 @@ abstract class GenJSCode extends plugins.PluginComponent
               genPrimitiveJSCall(app)
             } else {
               val instance = genExpr(receiver)
+              val method = encodeMethodSym(fun.symbol)
               val arguments = args map genExpr
 
-              js.ApplyMethod(instance, encodeMethodSym(fun.symbol), arguments)
+              if (fun.symbol.isClassConstructor) {
+                /* See #66: we have to emit a static call to avoid calling a
+                 * constructor with the same signature in a subclass */
+                val methodFun = js.DotSelect(js.DotSelect(js.DotSelect(
+                    envField("c"),
+                    encodeClassFullNameIdent(fun.symbol.owner)),
+                    js.Ident("prototype")),
+                    method)
+                js.ApplyMethod(methodFun, js.Ident("call"),
+                    instance :: arguments)
+              } else {
+                js.ApplyMethod(instance, encodeMethodSym(fun.symbol), arguments)
+              }
             }
           }
       }
