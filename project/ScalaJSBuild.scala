@@ -139,6 +139,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -151,6 +152,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
 
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
@@ -191,6 +193,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -201,7 +204,8 @@ object ScalaJSBuild extends Build {
       id = "scalajs-library",
       base = file("library"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
-          name := "Scala.js library"
+          name := "Scala.js library",
+          scalacOptions += "-Ydelambdafy:method"
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
