@@ -2711,55 +2711,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Fourth step: patch the body to unbox parameters and box result
 
       val js.MethodDef(_, params, body) = applyMethod
-      val functionType = enteringPhase(currentRun.posterasurePhase) {
-        applyDef.symbol.tpe
-      }
-
-      val patchedBody = {
-        // TODO Clean up this mess!
-        def needsBoxingOrUnboxing(tpe: Type): Boolean =
-          isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
-
-        val unboxParams = for {
-          (paramIdent, paramSym) <- params zip functionType.params
-          paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
-          if needsBoxingOrUnboxing(paramTpe)
-        } yield {
-          val unboxedParam = paramTpe match {
-            case _ if isPrimitiveValueType(paramTpe) =>
-              makeUnbox(paramIdent, paramTpe)
-            case ErasedValueType(boxedClass, _) =>
-              val unboxMethod = boxedClass.derivedValueClassUnbox
-              js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
-          }
-          js.Assign(paramIdent, unboxedParam)
-        }
-
-        val returnStat = {
-          implicit val pos = body.pos
-          val resultType = functionType.resultType
-          if (needsBoxingOrUnboxing(resultType)) {
-            body match {
-              case js.Return(expr, None) =>
-                val boxedExpr = resultType match {
-                  case _ if isPrimitiveValueType(resultType) =>
-                    makeBox(expr, resultType)
-                  case ErasedValueType(boxedClass, _) =>
-                    val ctor = boxedClass.primaryConstructor
-                    genNew(boxedClass, ctor, List(expr))
-                }
-                js.Return(boxedExpr)
-              case _ =>
-                assert(resultType.typeSymbol == UnitClass)
-                js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
-            }
-          } else {
-            body
-          }
-        }
-
-        js.Block(unboxParams :+ returnStat)
-      }
+      val patchedBody = patchFunBodyWithBoxes(applyDef.symbol, params, body)
 
       // Fifth step: build the function maker
 
@@ -2811,35 +2763,19 @@ abstract class GenJSCode extends plugins.PluginComponent
           targetTree @ Select(receiver, _), actualArgs)) = originalFunction
 
       val target = targetTree.symbol
-      val functionTpe = originalFunction.tpe
       val params = paramTrees.map(_.symbol)
-      val resultType = functionTpe.typeArgs.last
 
       val genReceiver = genExpr(receiver)
       val isInImplClass = target.owner.isImplClass
 
       val jsFunction = {
-        js.Function(params.map(p => encodeLocalSym(p, freshName)), {
-          val unboxParams = for {
-            param <- params
-            tpe = param.tpe
-            if isPrimitiveValueType(tpe)
-          } yield {
-            val genParam = encodeLocalSym(param, freshName)
-            js.Assign(genParam, makeUnbox(genParam, tpe))
-          }
-
-          val call = js.ApplyMethod(
-              if (isInImplClass) genReceiver else js.This(),
-              encodeMethodSym(target),
-              actualArgs map genExpr)
-
-          val result =
-            if (!isPrimitiveValueType(resultType)) call
-            else makeBox(call, resultType)
-
-          js.Block(unboxParams :+ js.Return(result))
-        })
+        val jsParams = params.map(p => encodeLocalSym(p, freshName))
+        val jsBody = js.Return(js.ApplyMethod(
+            if (isInImplClass) genReceiver else js.This(),
+            encodeMethodSym(target),
+            actualArgs map genExpr))
+        val patchedBody = patchFunBodyWithBoxes(target, jsParams, jsBody)
+        js.Function(jsParams, patchedBody)
       }
 
       val boundFunction = {
@@ -2852,6 +2788,57 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       JSFunctionToScala(boundFunction, params.size)
+    }
+
+    private def patchFunBodyWithBoxes(methodSym: Symbol,
+        params: List[js.Ident], body: js.Tree): js.Tree = {
+      implicit val pos = body.pos
+
+      // TODO Can we do this in a nicer way?
+      def needsBoxingOrUnboxing(tpe: Type): Boolean =
+        isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
+
+      val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
+
+      val unboxParams = for {
+        (paramIdent, paramSym) <- params zip methodType.params
+        paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
+        if needsBoxingOrUnboxing(paramTpe)
+      } yield {
+        val unboxedParam = paramTpe match {
+          case _ if isPrimitiveValueType(paramTpe) =>
+            makeUnbox(paramIdent, paramTpe)
+          case ErasedValueType(boxedClass, _) =>
+            val unboxMethod = boxedClass.derivedValueClassUnbox
+            js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
+        }
+        js.Assign(paramIdent, unboxedParam)
+      }
+
+      val returnStat = {
+        implicit val pos = body.pos
+        val resultType = methodType.resultType
+        if (needsBoxingOrUnboxing(resultType)) {
+          body match {
+            case js.Return(expr, None) =>
+              val boxedExpr = resultType match {
+                case _ if isPrimitiveValueType(resultType) =>
+                  makeBox(expr, resultType)
+                case ErasedValueType(boxedClass, _) =>
+                  val ctor = boxedClass.primaryConstructor
+                  genNew(boxedClass, ctor, List(expr))
+              }
+              js.Return(boxedExpr)
+            case _ =>
+              assert(resultType.typeSymbol == UnitClass)
+              js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
+          }
+        } else {
+          body
+        }
+      }
+
+      js.Block(unboxParams :+ returnStat)
     }
 
     // Utilities ---------------------------------------------------------------
