@@ -31,9 +31,9 @@ object StringTest extends ScalaJSTest {
     }
 
     it("should respond to `compareTo`") {
-      expect("Scala.js".compareTo("Scala")).toBe(1)
+      expect("Scala.js".compareTo("Scala")).toBeGreaterThan(0)
       expect("Scala.js".compareTo("Scala.js")).toBe(0)
-      expect("Scala.js".compareTo("banana")).toBe(-1)
+      expect("Scala.js".compareTo("banana")).toBeLessThan(0)
     }
 
     it("should respond to `isEmpty`") {
