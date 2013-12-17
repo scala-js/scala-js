@@ -3,19 +3,44 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# missing type tags we should support this
-run/abstypetags_core.scala
-
 # HashCode on different numeric types should be the same (?)
 run/hashCodeBoxesRunTime.scala
+
+# Issues with strings
+run/t0325.scala
+
+# Issues with String.format
+run/interpolation.scala
+run/interpolationMultiline1.scala
+
+# Missing functions in java.util.regex.Matcher
+run/ReplacementMatching.scala
+
+# Issues with pattern match
+run/patmat-finally.scala
+
+# Reflective Calls (on primitives?)
+run/issue192.scala
+run/structural.scala
+run/t0432.scala
+run/t1110.scala
 
 # should work...
 run/Course-2002-08.scala
 neg/t7494-multi-right-after
 neg/t7494-right-after-before
+run/iterator-from.scala
+run/lazy-traits.scala
+run/mutable-anyrefmap.scala
+run/number-parsing.scala
+run/OrderingTest.scala
+run/mutable-longmap.scala
+run/richs.scala
+run/runtime.scala
 
 # maybe?
 run/future-flatmap-exec-count.scala
+run/macro-reify-unreify
 
 #### Filed bugs
 
