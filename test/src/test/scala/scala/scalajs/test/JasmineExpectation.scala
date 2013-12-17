@@ -21,6 +21,7 @@ trait JasmineExpectation extends js.Object {
   def toBeTruthy(): Unit
   def toBeFalsy(): Unit
   def toContain(exp: js.Any): Unit
+  def toBeGreaterThan(exp: js.Number): Unit
   def toBeLessThan(exp: js.Number): Unit
   def toBeCloseTo(exp: js.Number): Unit
   def toThrow(): Unit
