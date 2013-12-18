@@ -310,7 +310,7 @@ var ScalaJS = {
     return null === value ? 0 : ScalaJS.as.java_lang_Character(value).value$1;
   },
   uB: function(value) {
-    return null === value ? 0 : ScalaJS.as.java_lang_Byte(value).value$1;
+    return null === value ? 0 : ScalaJS.as.java_lang_Byte(value).value$2;
   },
   uS: function(value) {
     return null === value ? 0 : ScalaJS.as.java_lang_Short(value).value$2;
