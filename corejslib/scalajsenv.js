@@ -304,28 +304,28 @@ var ScalaJS = {
     return undefined;
   },
   uZ: function(value) {
-    return ScalaJS.as.java_lang_Boolean(value).value$1;
+    return null === value ? false : ScalaJS.as.java_lang_Boolean(value).value$1;
   },
   uC: function(value) {
-    return ScalaJS.as.java_lang_Character(value).value$1;
+    return null === value ? 0 : ScalaJS.as.java_lang_Character(value).value$1;
   },
   uB: function(value) {
-    return ScalaJS.as.java_lang_Byte(value).value$1;
+    return null === value ? 0 : ScalaJS.as.java_lang_Byte(value).value$1;
   },
   uS: function(value) {
-    return ScalaJS.as.java_lang_Short(value).value$2;
+    return null === value ? 0 : ScalaJS.as.java_lang_Short(value).value$2;
   },
   uI: function(value) {
-    return ScalaJS.as.java_lang_Integer(value).value$2;
+    return null === value ? 0 : ScalaJS.as.java_lang_Integer(value).value$2;
   },
   uJ: function(value) {
-    return ScalaJS.as.java_lang_Long(value).value$2;
+    return null === value ? 0 : ScalaJS.as.java_lang_Long(value).value$2;
   },
   uF: function(value) {
-    return ScalaJS.as.java_lang_Float(value).value$2;
+    return null === value ? 0.0 : ScalaJS.as.java_lang_Float(value).value$2;
   },
   uD: function(value) {
-    return ScalaJS.as.java_lang_Double(value).value$2;
+    return null === value ? 0.0 : ScalaJS.as.java_lang_Double(value).value$2;
   }
 }
 
