@@ -1423,7 +1423,6 @@ run/longmap.scala
 run/t1524.scala
 run/t6187b.scala
 run/kmpSliceSearch.scala
-run/t3242.scala
 run/t7088.scala
 run/t5804.scala
 run/stringbuilder-drop.scala
@@ -2541,9 +2540,16 @@ run/t3346h.scala
 run/t3346g.scala
 run/t3832.scala
 run/t4742.scala
-run/adding-growing-set.scala
 run/t5377.scala
 run/t5923c.scala
 run/t6188.scala
 run/t6333.scala
 run/t6385.scala
+run/t7899.scala
+run/t7899-regression.scala
+run/t7584b.scala
+run/t7223.scala
+run/t7859
+run/t5866.scala
+run/t7868.scala
+run/t7871

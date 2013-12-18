@@ -91,6 +91,8 @@ run/hashset.scala
 run/t5986.scala
 run/view-iterator-stream.scala
 run/t5262.scala
+run/t5293.scala
+run/t5293-map.scala
 
 run/SymbolsTest.scala
 run/t4601.scala
@@ -98,7 +100,7 @@ run/colltest.scala
 run/equality.scala
 
 # Uses java.math.BigDecimal / BigInteger
-run/bigDecimalCache.scala 
+run/bigDecimalCache.scala
 run/hashhash.scala
 
 #  This test uses range on Doubles which uses BigDecimal in return
@@ -110,6 +112,15 @@ run/t6969.scala
 # Taking too much time, because JavaScript is not as fast as the JVM
 
 run/t3822.scala
+run/collections.scala
+run/t3989.scala
+run/adding-growing-set.scala
+run/t3242.scala
+run/hashCodeDistribution.scala
+run/t408.scala
+run/t6584.scala
+run/t6853.scala
+run/UnrolledBuffer.scala
 
 # Crashes Rhino
 

@@ -17,9 +17,6 @@ run/future-flatmap-exec-count.scala
 
 #### Filed bugs
 
-# Issue #53
-run/t7899.scala
-
 # Issue #54
 run/bitsets.scala
 
