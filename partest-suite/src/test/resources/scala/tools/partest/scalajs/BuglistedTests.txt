@@ -22,7 +22,3 @@ run/bitsets.scala
 
 # Issue #55
 run/array-charSeq.scala
-
-# Issues #56, #57
-run/arrayclone-new.scala
-run/arrayclone-old.scala

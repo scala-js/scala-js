@@ -2553,3 +2553,5 @@ run/t7859
 run/t5866.scala
 run/t7868.scala
 run/t7871
+run/arrayclone-new.scala
+run/arrayclone-old.scala
