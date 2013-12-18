@@ -59,5 +59,14 @@ object RegressionTest extends ScalaJSTest {
       expect(x + "check").toEqual("nullcheck")
     }
 
+    class Bug66A(s: String, e: Object) {
+      def this(e: Object) = this("", e)
+      def this(s: String) = this(s, "")
+    }
+    class Bug66B(s: String, e: Object) extends Bug66A(s)
+
+    it("should emit static calls when forwarding to another constructor - #66") {
+      new Bug66B("", "")
+    }
   }
 }
