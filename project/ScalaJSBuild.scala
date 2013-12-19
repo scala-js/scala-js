@@ -368,6 +368,7 @@ object ScalaJSBuild extends Build {
           //Uncomment what you need here
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.testunknownonly=true",
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testblackbugonly=true",
 
           testFrameworks +=
             new TestFramework("scala.tools.partest.scalajs.Framework"),
