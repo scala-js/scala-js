@@ -324,7 +324,7 @@ object ScalaJSBuild extends Build {
               (baseDirectory in plugin).value /
               "src/main/scala/scala/scalajs/sbtplugin/RhinoBasedRun.scala")
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler, library)
 
   lazy val partestSuite: Project = Project(
       id = "scalajs-partest-suite",
