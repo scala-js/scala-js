@@ -29,7 +29,7 @@ abstract class JSPrimitives {
   val V2JS = 300 // Unit
   val Z2JS = 301 // Boolean
   //val C2JS = 302 // Char
-  val N2JS = 303 // Number (any numeric type)
+  val N2JS = 303 // Number (any numeric type except for Long)
   val S2JS = 304 // String
   val F2JS = 305 // FunctionN
 
@@ -49,6 +49,9 @@ abstract class JSPrimitives {
   val DICT_PROPS = 333 // js.Dictionary.propertiesOf
 
   val ARR_CREATE = 334 // js.Array.apply (array literal syntax)
+  
+  val RTJ2J = 335 // Runtime Long to Long
+  val J2RTJ = 336 // Long to Runtime Long
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -60,7 +63,6 @@ abstract class JSPrimitives {
     addPrimitive(JSAny_fromByte, N2JS)
     addPrimitive(JSAny_fromShort, N2JS)
     addPrimitive(JSAny_fromInt, N2JS)
-    addPrimitive(JSAny_fromLong, N2JS)
     addPrimitive(JSAny_fromFloat, N2JS)
     addPrimitive(JSAny_fromDouble, N2JS)
     addPrimitive(JSAny_fromString, S2JS)
@@ -82,6 +84,9 @@ abstract class JSPrimitives {
     addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)
 
     addPrimitive(JSArray_create, ARR_CREATE)
+
+    addPrimitive(RuntimeLong_from, RTJ2J)
+    addPrimitive(RuntimeLong_to, J2RTJ)
   }
 
   def isJavaScriptPrimitive(code: Int) =

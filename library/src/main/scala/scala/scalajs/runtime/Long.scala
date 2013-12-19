@@ -415,6 +415,9 @@ object Long {
   val zero = Long(0,0,0)
   val one  = Long(1,0,0)
 
+  def toRuntimeLong(x: scala.Long): Long = sys.error("stub")
+  def fromRuntimeLong(x:Long): scala.Long = sys.error("stub")
+  
   def fromHexString(str: String) = {
 	import scalajs.js.parseInt
     assert(str.size == 16)

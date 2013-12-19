@@ -12,6 +12,7 @@ console.log("");
 /* Load all test suites ... */
 ScalaJS.modules.scala_scalajs_test_compiler_InteroperabilityTest();
 ScalaJS.modules.scala_scalajs_test_compiler_RegressionTest();
+ScalaJS.modules.scala_scalajs_test_compiler_LongTest();
 
 ScalaJS.modules.scala_scalajs_test_javalib_ObjectTest();
 ScalaJS.modules.scala_scalajs_test_javalib_IntegerTest();
