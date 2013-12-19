@@ -139,6 +139,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -151,6 +152,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
 
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
@@ -191,6 +193,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
+          scalacOptions += "-Ydelambdafy:method",
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -201,7 +204,8 @@ object ScalaJSBuild extends Build {
       id = "scalajs-library",
       base = file("library"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
-          name := "Scala.js library"
+          name := "Scala.js library",
+          scalacOptions += "-Ydelambdafy:method"
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -301,4 +305,84 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
+  lazy val partest: Project = Project(
+      id = "scalajs-partest",
+      base = file("partest"),
+      settings = defaultSettings ++ Seq(
+          name := "Partest for Scala.js",
+          moduleName := "scalajs-partest",
+
+          resolvers += Resolver.typesafeIvyRepo("releases"),
+
+          libraryDependencies ++= Seq(
+              "org.scala-sbt" % "sbt" % "0.13.0",
+              "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
+              "org.mozilla" % "rhino" % "1.7R4"
+          ),
+
+          sources in Compile += (
+              (baseDirectory in plugin).value /
+              "src/main/scala/scala/scalajs/sbtplugin/RhinoBasedRun.scala")
+      )
+  ).dependsOn(compiler)
+
+  lazy val partestSuite: Project = Project(
+      id = "scalajs-partest-suite",
+      base = file("partest-suite"),
+      settings = defaultSettings ++ Seq(
+          name := "Scala.js partest suite",
+
+          /* Add an extracted version of scalajs-library.jar on the classpath.
+           * The runner will need it, as it cannot cope with .js files in .jar.
+           */
+          dependencyClasspath in Test += {
+            val s = streams.value
+
+            val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
+            val extractDir = taskCacheDir / "scalajs-library"
+
+            val libraryJar =
+              (artifactPath in (library, Compile, packageBin)).value
+
+            val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
+                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+
+              val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+              s.log.info("Extracting %s ..." format libraryJar)
+              if (extractDir.exists)
+                IO.delete(extractDir)
+              IO.createDirectory(extractDir)
+              IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
+                  preserveLastModified = true)
+              (extractDir ** usefulFilesFilter).get.toSet
+            }
+
+            cachedExtractJar(Set(libraryJar))
+
+            Attributed.blank(extractDir)
+          },
+
+          fork in Test := true,
+          javaOptions in Test += "-Xmx1G",
+          //Uncomment what you need here
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testunknownonly=true",
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
+
+          testFrameworks +=
+            new TestFramework("scala.tools.partest.scalajs.Framework"),
+
+          definedTests in Test +=
+            new sbt.TestDefinition(
+                "partest",
+                // marker fingerprint since there are no test classes
+                // to be discovered by sbt:
+                new sbt.testing.AnnotatedFingerprint {
+                  def isModule = true
+                  def annotationName = "partest"
+                },
+                true,
+                Array()
+            )
+      )
+  ).dependsOn(partest % "test")
 }

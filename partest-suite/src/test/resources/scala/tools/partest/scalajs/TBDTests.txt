@@ -1,0 +1,10 @@
+# I don't understand the error
+run/runtime.scala
+run/delambdafy_t6028.scala
+run/delambdafy_t6555.scala
+run/delambdafy_uncurry_byname_inline.scala
+run/delambdafy_uncurry_byname_method.scala
+run/delambdafy_uncurry_inline.scala
+run/delambdafy_uncurry_method.scala
+run/existential-rangepos.scala
+

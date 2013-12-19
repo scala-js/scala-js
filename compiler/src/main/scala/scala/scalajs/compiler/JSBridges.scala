@@ -28,7 +28,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     val newlyDeclaredMethods = declaredMethods.filterNot(
         x => x.isOverridingSymbol && x.nextOverriddenSymbol.isPublic)
     val newlyDeclaredMethodNames =
-      newlyDeclaredMethods.map(_.name).toList.distinct
+      newlyDeclaredMethods.map(_.name.toTermName).toList.distinct
     newlyDeclaredMethodNames map (genBridge(sym, _))
   }
 

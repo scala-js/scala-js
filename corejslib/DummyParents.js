@@ -26,6 +26,8 @@ ScalaJS.inheritable.java_util_AbstractSet = function() {};
 /** @constructor */
 ScalaJS.inheritable.java_util_Dictionary = function() {};
 /** @constructor */
+ScalaJS.inheritable.java_util_concurrent_locks_AbstractQueuedSynchronizer = function() {};
+/** @constructor */
 ScalaJS.inheritable.org_xml_sax_helpers_DefaultHandler = function() {};
 /** @constructor */
 ScalaJS.inheritable.org_xml_sax_helpers_XMLFilterImpl = function() {};

@@ -150,7 +150,12 @@ abstract class GenJSCode extends plugins.PluginComponent
                     tryGenAndRecordAnonFunctionClass(cd)) {
                   js.EmptyTree
                 } else if (isRawJSType(sym.tpe)) {
-                  genRawJSClassData(cd)
+                  if (isRawJSFunctionType(sym.tpe)) {
+                    genAndRecordRawJSFunctionClass(cd)
+                    js.EmptyTree
+                  } else {
+                    genRawJSClassData(cd)
+                  }
                 } else {
                   val classDef = genClass(cd)
                   if (isStaticModule(sym))
@@ -952,6 +957,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         case mtch: Match =>
           genMatch(mtch)
 
+        /** Anonymous function (only with -Ydelambdafy:method) */
+        case fun: Function =>
+          genAnonFunction(fun)
+
         case EmptyTree =>
           // TODO Hum, I do not think this is OK
           js.Undefined()
@@ -1265,7 +1274,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          *  ApplyDynamic by explicitly asking it *not* to box its result.
          */
         case Apply(fun @ _, List(dynapply:ApplyDynamic))
-        if (isUnbox(fun.symbol) &&
+        if (currentRun.runDefinitions.isUnbox(fun.symbol) &&
             isBoxedForApplyDynamic(dynapply.symbol.tpe.resultType)) =>
           genApplyDynamic(dynapply, nobox = true)
 
@@ -1355,11 +1364,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (scalaPrimitives.isPrimitive(sym)) {
             // primitive operation
             genPrimitiveOp(app)
-          } else if (isBox(sym)) {
+          } else if (currentRun.runDefinitions.isBox(sym)) {
             /** Box a primitive value */
             val arg = args.head
             makeBox(genExpr(arg), arg.tpe)
-          } else if (isUnbox(sym)) {
+          } else if (currentRun.runDefinitions.isUnbox(sym)) {
             /** Unbox a primitive value */
             val arg = args.head
             makeUnbox(genExpr(arg), tree.tpe)
@@ -1494,6 +1503,15 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (isRawJSType(to)) {
         // asInstanceOf on JavaScript is completely erased
         value
+      } else if (FunctionClass.seq contains to.typeSymbol) {
+        /* Don't hide a JSFunctionToScala inside a useless cast, otherwise
+         * the optimization avoiding double-wrapping in genApply() will not
+         * be able to kick in.
+         */
+        value match {
+          case JSFunctionToScala(fun, _) => value
+          case _ => encodeAsInstanceOf(value, to)
+        }
       } else {
         encodeAsInstanceOf(value, to)
       }
@@ -2006,7 +2024,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
         if (isBoxedForApplyDynamic(param.tpe)) {
           arg match {
-            case Apply(_, List(result)) if isBox(arg.symbol) => genExpr(result)
+            case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) => genExpr(result)
             case _ => makeUnbox(genExpr(arg), param.tpe)
           }
         } else {
@@ -2218,7 +2236,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      val funName = sym.originalName.decoded
+      val funName = sym.unexpandedName.decoded
       val receiver = genExpr(receiver0)
       val argArray = genPrimitiveJSArgs(sym, args0)
 
@@ -2342,13 +2360,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case _ =>
           def isJSGetter = {
-            sym.tpe.params.isEmpty && beforePhase(currentRun.uncurryPhase) {
+            sym.tpe.params.isEmpty && enteringPhase(currentRun.uncurryPhase) {
               sym.tpe.isInstanceOf[NullaryMethodType]
             }
           }
 
           def isJSSetter = {
-            funName.endsWith("_=") && beforePhase(currentRun.uncurryPhase) {
+            funName.endsWith("_=") && enteringPhase(currentRun.uncurryPhase) {
               sym.tpe.paramss match {
                 case List(List(arg)) => !isScalaRepeatedParamType(arg.tpe)
                 case _ => false
@@ -2461,7 +2479,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): js.Tree = {
-      val wereRepeated = afterPhase(currentRun.typerPhase) {
+      val wereRepeated = exitingPhase(currentRun.typerPhase) {
         for {
           params <- sym.tpe.paramss
           param <- params
@@ -2664,6 +2682,53 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
+    /** Gen and record JS code for a raw JS function class.
+     *
+     *  This is called when emitting a ClassDef that represents an anonymous
+     *  class extending `js.FunctionN`. These are generated by the SAM
+     *  synthesizer when the target type is a `js.FunctionN`. Since JS
+     *  functions are not classes, we deconstruct the ClassDef, then
+     *  reconstruct it to be a genuine raw JS function maker.
+     *
+     *  Compared to `tryGenAndRecordAnonFunctionClass()`, this function must
+     *  always succeed, because we really cannot afford keeping them as
+     *  anonymous classes. The good news is that it can do so, because the
+     *  body of SAM lambdas is hoisted in the enclosing class. Hence, the
+     *  apply() method is just a forwarder to calling that hoisted method.
+     *
+     *  From a class looking like this:
+     *
+     *    final class <anon>(outer, capture1, ..., captureM) extends js.FunctionN[...] {
+     *      def apply(param1, ..., paramN) = {
+     *        outer.lambdaImpl(param1, ..., paramN, capture1, ..., captureM)
+     *      }
+     *    }
+     *
+     *  we generate:
+     *
+     *    function(outer, capture1, ..., captureM) {
+     *      return function(param1, ..., paramN) {
+     *        return outer.lambdaImpl(param1, ..., paramN, capture1, ..., captureM);
+     *      }
+     *    }
+     *
+     *  The function maker is recorded in `translatedAnonFunctions` to be
+     *  fetched later by the translation for New.
+     */
+    def genAndRecordRawJSFunctionClass(cd: ClassDef): Unit = {
+      val sym = cd.symbol
+      assert(isRawJSFunctionType(sym.typeConstructor),
+          s"genAndRecordRawJSFunctionClass called with non-JS function $cd")
+      currentClassSym = sym
+
+      val (functionMaker, _) =
+        tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
+          abort(s"Could not generate raw function maker for JS function: $msg")
+        }
+
+      translatedAnonFunctions += sym -> functionMaker
+    }
+
     /** Code common to tryGenAndRecordAnonFunctionClass and
      *  genAndRecordRawJSFunctionClass.
      */
@@ -2731,7 +2796,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(
           paramAccessors.size == ctorParams.size ||
           (paramAccessors.size == ctorParams.size-1 &&
-              ctorParams.head.originalName == newTermName("arg$outer")),
+              ctorParams.head.unexpandedName == newTermName("arg$outer")),
           s"Have param accessors $paramAccessors but "+
           s"ctor params $ctorParams in anon function $cd")
       val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
@@ -2752,57 +2817,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Fourth step: patch the body to unbox parameters and box result
 
       val js.MethodDef(_, params, body) = applyMethod
-      val functionType = beforePhase(currentRun.posterasurePhase) {
-        applyDef.symbol.tpe
-      }
-
-      val patchedBody = {
-        // TODO Clean up this mess!
-        def needsBoxingOrUnboxing(tpe: Type): Boolean =
-          isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
-
-        val unboxParams = for {
-          (paramIdent, paramSym) <- params zip functionType.params
-          paramTpe = beforePhase(currentRun.posterasurePhase)(paramSym.tpe)
-          if needsBoxingOrUnboxing(paramTpe)
-        } yield {
-          val unboxedParam = paramTpe match {
-            case _ if isPrimitiveValueType(paramTpe) =>
-              makeUnbox(paramIdent, paramTpe)
-            case ErasedValueType(boxedTpe) =>
-              val boxedClass = boxedTpe.typeSymbol
-              val unboxMethod = boxedClass.derivedValueClassUnbox
-              js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
-          }
-          js.Assign(paramIdent, unboxedParam)
-        }
-
-        val returnStat = {
-          implicit val pos = body.pos
-          val resultType = functionType.resultType
-          if (needsBoxingOrUnboxing(resultType)) {
-            body match {
-              case js.Return(expr, None) =>
-                val boxedExpr = resultType match {
-                  case _ if isPrimitiveValueType(resultType) =>
-                    makeBox(expr, resultType)
-                  case ErasedValueType(boxedTpe) =>
-                    val boxedTpeSym = boxedTpe.typeSymbol
-                    val ctor = boxedTpeSym.primaryConstructor
-                    genNew(boxedTpeSym, ctor, List(expr))
-                }
-                js.Return(boxedExpr)
-              case _ =>
-                assert(resultType.typeSymbol == UnitClass)
-                js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
-            }
-          } else {
-            body
-          }
-        }
-
-        js.Block(unboxParams :+ returnStat)
-      }
+      val patchedBody = patchFunBodyWithBoxes(applyDef.symbol, params, body)
 
       // Fifth step: build the function maker
 
@@ -2822,6 +2837,114 @@ abstract class GenJSCode extends plugins.PluginComponent
       val arity = params.size
 
       (functionMaker, arity)
+    }
+
+    /** Generate JS code for an anonymous function
+     *
+     *  Anonymous functions survive until the backend only under
+     *  -Ydelambdafy:method
+     *  and when they do, their body is always of the form
+     *  EnclosingClass.this.someMethod(arg1, ..., argN, capture1, ..., captureM)
+     *  where argI are the formal arguments of the lambda, and captureI are
+     *  local variables or the enclosing def.
+     *
+     *  We translate them by instantiating scala.runtime.AnonFunctionN with a
+     *  JS anonymous function:
+     *
+     *  new ScalaJS.classes.scala_scalajs_js_runtime_AnonFunctionN(
+     *    (function(arg1, ..., argN) {
+     *      return this.someMethod(arg1, ..., argN, capture1, ..., captureM)
+     *    }).bind(this)
+     *  )
+     *
+     *  In addition, input params are unboxed before use, and the result of
+     *  someMethod() is boxed back.
+     *
+     *  Currently, this translation does not take advantage of specialization.
+     */
+    private def genAnonFunction(originalFunction: Function): js.Tree = {
+      import js.TreeDSL._
+      implicit val pos = originalFunction.pos
+      val Function(paramTrees, Apply(
+          targetTree @ Select(receiver, _), actualArgs)) = originalFunction
+
+      val target = targetTree.symbol
+      val params = paramTrees.map(_.symbol)
+
+      val genReceiver = genExpr(receiver)
+      val isInImplClass = target.owner.isImplClass
+
+      val jsFunction = {
+        val jsParams = params.map(p => encodeLocalSym(p, freshName))
+        val jsBody = js.Return(js.ApplyMethod(
+            if (isInImplClass) genReceiver else js.This(),
+            encodeMethodSym(target),
+            actualArgs map genExpr))
+        val patchedBody = patchFunBodyWithBoxes(target, jsParams, jsBody)
+        js.Function(jsParams, patchedBody)
+      }
+
+      val boundFunction = {
+        if (isInImplClass) {
+          jsFunction
+        } else {
+          js.Apply(js.BracketSelect(
+              jsFunction, js.StringLiteral("bind")), List(genReceiver))
+        }
+      }
+
+      JSFunctionToScala(boundFunction, params.size)
+    }
+
+    private def patchFunBodyWithBoxes(methodSym: Symbol,
+        params: List[js.Ident], body: js.Tree): js.Tree = {
+      implicit val pos = body.pos
+
+      // TODO Can we do this in a nicer way?
+      def needsBoxingOrUnboxing(tpe: Type): Boolean =
+        isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
+
+      val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
+
+      val unboxParams = for {
+        (paramIdent, paramSym) <- params zip methodType.params
+        paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
+        if needsBoxingOrUnboxing(paramTpe)
+      } yield {
+        val unboxedParam = paramTpe match {
+          case _ if isPrimitiveValueType(paramTpe) =>
+            makeUnbox(paramIdent, paramTpe)
+          case ErasedValueType(boxedClass, _) =>
+            val unboxMethod = boxedClass.derivedValueClassUnbox
+            js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
+        }
+        js.Assign(paramIdent, unboxedParam)
+      }
+
+      val returnStat = {
+        implicit val pos = body.pos
+        val resultType = methodType.resultType
+        if (needsBoxingOrUnboxing(resultType)) {
+          body match {
+            case js.Return(expr, None) =>
+              val boxedExpr = resultType match {
+                case _ if isPrimitiveValueType(resultType) =>
+                  makeBox(expr, resultType)
+                case ErasedValueType(boxedClass, _) =>
+                  val ctor = boxedClass.primaryConstructor
+                  genNew(boxedClass, ctor, List(expr))
+              }
+              js.Return(boxedExpr)
+            case _ =>
+              assert(resultType.typeSymbol == UnitClass)
+              js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
+          }
+        } else {
+          body
+        }
+      }
+
+      js.Block(unboxParams :+ returnStat)
     }
 
     // Utilities ---------------------------------------------------------------
@@ -2928,6 +3051,21 @@ abstract class GenJSCode extends plugins.PluginComponent
   def isRawJSType(tpe: Type): Boolean =
     tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
 
+  /** Test whether `tpe` is a raw JS function type */
+  private def isRawJSFunctionType(tpe: Type): Boolean = {
+    tpe.typeSymbol.isAnonymousClass && arityOfRawJSFunctionType(tpe) >= 0
+  }
+
+  /** Returns the arity of a raw JS function type
+   *
+   *  I.e., returns N such that `tpe` extends scala.scalajs.js.FunctionN,
+   *  or -1 if it is not a raw JS function type
+   */
+  private def arityOfRawJSFunctionType(tpe: Type): Int = {
+    if (!isScalaJSDefined) -1
+    else JSFunctionClasses.indexWhere(tpe.typeSymbol isSubClass _)
+  }
+
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass
     
@@ -2938,9 +3076,9 @@ abstract class GenJSCode extends plugins.PluginComponent
   def jsNameOf(sym: Symbol): String = {
     if (isScalaJSDefined) {
       sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
-          sym.originalName.decoded)
+          sym.unexpandedName.decoded)
     } else {
-      sym.originalName.decoded
+      sym.unexpandedName.decoded
     }
   }
 
