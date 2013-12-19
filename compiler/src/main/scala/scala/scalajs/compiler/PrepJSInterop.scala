@@ -83,9 +83,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
           unit.error(implDef.pos, "Only objects may extend js.GlobalScope")
 
         // Check that primary ctor of a ClassDef is no-arg
-        case cldef: ClassDef if !primCtorNoArg(cldef) =>
-          unit.error(cldef.pos, "The primary constructor of a class extending "+
-              "js.Any may only have a single, empty argument list")
+        // FIXME temporarily disabled until we have better handling.
+        //case cldef: ClassDef if !primCtorNoArg(cldef) =>
+        //  unit.error(cldef.pos, "The primary constructor of a class extending "+
+        //      "js.Any may only have a single, empty argument list")
 
         case _ =>
           // We cannot use implDef.symbol directly, since the symbol
