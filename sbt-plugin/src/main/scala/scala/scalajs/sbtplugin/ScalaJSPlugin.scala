@@ -443,7 +443,10 @@ object ScalaJSPlugin extends Plugin {
               warnings.foreach(err => logger.warn(err.toString))
             }
 
-            IO.write(output, compiler.toSource)
+            IO.write(output,
+                "(function(){'use strict';" +
+                compiler.toSource +
+                "}).call(this);\n")
           }
 
           Set(output)

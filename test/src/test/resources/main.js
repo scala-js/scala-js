@@ -19,6 +19,7 @@ ScalaJS.modules.scala_scalajs_test_javalib_IntegerTest();
 ScalaJS.modules.scala_scalajs_test_javalib_StringTest();
 ScalaJS.modules.scala_scalajs_test_javalib_ArraysTest();
 ScalaJS.modules.scala_scalajs_test_javalib_LongTest();
+ScalaJS.modules.scala_scalajs_test_javalib_ThrowablesTest();
 
 ScalaJS.modules.scala_scalajs_test_scalalib_EnumerationTest();
 
