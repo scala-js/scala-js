@@ -5,34 +5,13 @@
 # Using Jsoup, what's that?
 pos/cycle-jsoup.scala
 
-# Using .java source files
-pos/signatures
-pos/t1232
-pos/t1263
-pos/t1711
-pos/t1745
-pos/t3249
-pos/t3486
-
-
 #
 # NEG
 #
 
-# Yielding a different error message, but a valid one too
-
-neg/t7251
-
 # Implementation restrictions on the JVM not applying to JavaScript
 
-neg/main1.scala
 neg/t3692-new.scala
-neg/t4749.scala
-neg/t7324.scala
-
-# Warnings emitted by inliner
-
-neg/t3234.scala
 
 # Using the compiler API
 
@@ -41,17 +20,8 @@ neg/t6446-list
 neg/t6446-missing
 neg/t6446-show-phases.scala
 
-neg/t7494-after-terminal
-neg/t7494-before-parser
-neg/t7494-multi-right-after
+# Prints phase list
 neg/t7494-no-options
-neg/t7494-right-after-before
-neg/t7494-right-after-terminal
-
-# Er ... weird thing
-
-neg/t5148.scala
-
 
 #
 # RUN
@@ -78,8 +48,6 @@ run/t3038d.scala
 run/numbereq.scala
 run/shutdownhooks.scala
 run/t4658.scala
-run/comparable-comparator.scala
-run/colltest1.scala
 run/t4201.scala
 run/t5590.scala
 run/deeps.scala
@@ -88,8 +56,6 @@ run/t3895b.scala
 run/t2813.2.scala
 run/t5974.scala
 run/hashset.scala
-run/t5986.scala
-run/view-iterator-stream.scala
 run/t5262.scala
 run/t5293.scala
 run/t5293-map.scala
@@ -486,10 +452,6 @@ run/global-showdef.scala
 run/inline-ex-handlers.scala
 run/stream_length.scala
 run/annotatedRetyping.scala
-
-# Warnings emitted by inliner
-
-run/t2106.scala
 
 # Using .java source files
 
