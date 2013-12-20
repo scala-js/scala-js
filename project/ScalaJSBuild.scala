@@ -185,7 +185,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
@@ -198,7 +198,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val library: Project = Project(
       id = "scalajs-library",
@@ -331,6 +331,7 @@ object ScalaJSBuild extends Build {
       base = file("partest-suite"),
       settings = defaultSettings ++ Seq(
           name := "Scala.js partest suite",
+          useLibraryButDoNotDependOnIt(Test),
 
           /* Add an extracted version of scalajs-library.jar on the classpath.
            * The runner will need it, as it cannot cope with .js files in .jar.

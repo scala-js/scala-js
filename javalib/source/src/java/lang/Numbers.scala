@@ -170,37 +170,37 @@ object Integer {
 ////////////////// Long //////////////////
 
 final class Long(private val value: scala.Long) extends Number {
+  import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
+
   protected[lang] val isInt = true
 
-  override def byteValue() = value.toByte
-  override def shortValue() = value.toByte
-  def intValue() = value.toInt
+  override def byteValue() = toRuntimeLong(value).toByte
+  override def shortValue() = toRuntimeLong(value).toShort
+  def intValue() = toRuntimeLong(value).toInt
   def longValue() = value
-  def floatValue() = value.toFloat
-  def doubleValue() = value.toDouble
+  def floatValue() = toRuntimeLong(value).toFloat
+  def doubleValue() = toRuntimeLong(value).toDouble
 
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
 
-  override def toString = (value:js.Number).toString()
+  override def toString = toRuntimeLong(value).toString()
 }
 
 object Long {
+  import scala.scalajs.runtime.{ Long => RTLong }
+  import RTLong.{fromRuntimeLong, toRuntimeLong}
+
   val TYPE = classOf[scala.Long]
   val MIN_VALUE: scala.Long = -9223372036854775808L
   val MAX_VALUE: scala.Long = 9223372036854775807L
   val SIZE: Int = 64
 
   def valueOf(longValue: scala.Long) = new Long(longValue)
-  def parseLong(s: String): scala.Long = Integer.parseInt(s).toLong
-  def toString(l: scala.Long) = Integer.valueOf(l.toInt).toString
+  def parseLong(s: String): scala.Long = fromRuntimeLong(RTLong.fromString(s))
+  def toString(l: scala.Long) = toRuntimeLong(l).toString
 
-  def bitCount(i: scala.Long): scala.Int = {
-    val t1 = i - ((i >> 1) & 0x5555555555555555L)
-    val t2 = (t1 & 0x3333333333333333L) + ((t1 >> 2) & 0x3333333333333333L)
-    val t3 = (((t2 + (t2 >> 4)) & 0xF0F0F0F0F0F0F0FL) * 0x101010101010101L) >> 56
-    t3.toInt
-  }
+  def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
 
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
@@ -209,9 +209,14 @@ object Long {
   def signum(i: scala.Long): scala.Long =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
-  def toBinaryString(l: scala.Long): String = (l: js.Number).toString(2)
-  def toHexString(l: scala.Long): String = (l: js.Number).toString(16)
-  def toOctalString(l: scala.Long): String = (l: js.Number).toString(8)
+  def toBinaryString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toBinaryString)
+  def toHexString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toHexString)
+  def toOctalString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toOctalString)
+
+  private def dropLZ(s: String) = s.dropWhile(_ == '0').padTo(1, '0')
 }
 
 ////////////////// Float //////////////////
