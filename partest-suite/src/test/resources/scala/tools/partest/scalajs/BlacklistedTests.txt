@@ -59,21 +59,32 @@ run/hashset.scala
 run/t5262.scala
 run/t5293.scala
 run/t5293-map.scala
+run/serialize-stream.scala
+run/sysprops.scala
 
 run/SymbolsTest.scala
 run/t4601.scala
 run/colltest.scala
 run/equality.scala
 
+# Uses java.util.Collections
+run/java-erasure.scala
+
 # Uses java.math.BigDecimal / BigInteger
 run/bigDecimalCache.scala
 run/hashhash.scala
+run/is-valid-num.scala
+run/range.scala
+run/stringinterpolation_macro-run.scala
 
 #  This test uses range on Doubles which uses BigDecimal in return
 run/t5857.scala
 
 # Using Threads
 run/t6969.scala
+run/inner-obj-auto.scala
+run/predef-cycle.scala
+run/t1074.scala
 
 # Taking too much time, because JavaScript is not as fast as the JVM
 
@@ -219,6 +230,64 @@ run/freetypes_false_alarm2.scala
 run/getClassTest-new.scala
 run/idempotency-extractors.scala
 run/idempotency-case-classes.scala
+run/idempotency-this.scala
+run/idempotency-labels.scala
+run/idempotency-lazy-vals.scala
+run/interop_manifests_are_abstypetags.scala
+run/interop_manifests_are_typetags.scala
+run/abstypetags_core.scala
+run/macro-reify-abstypetag-notypeparams
+run/macro-reify-abstypetag-typeparams-tags
+run/macro-reify-abstypetag-typeparams-notags
+run/macro-reify-abstypetag-usetypetag
+run/macro-reify-freevars
+run/macro-reify-splice-outside-reify
+run/macro-reify-nested-a
+run/macro-reify-tagless-a
+run/macro-reify-nested-b
+run/macro-reify-type
+run/macro-reify-typetag-typeparams-tags
+run/macro-reify-typetag-notypeparams
+run/macro-undetparams-implicitval
+run/manifests-new.scala
+run/manifests-old.scala
+run/no-pickle-skolems
+run/position-val-def.scala
+run/reflect-priv-ctor.scala
+run/primitive-sigs-2-new.scala
+run/primitive-sigs-2-old.scala
+run/reflection-enclosed-inner-basic.scala
+run/reflection-enclosed-inner-nested-basic.scala
+run/reflection-constructormirror-inner-good.scala
+run/reflection-constructormirror-nested-badpath.scala
+run/reflection-fancy-java-classes
+run/reflection-fieldsymbol-navigation.scala
+run/reflection-fieldmirror-nmelocalsuffixstring.scala
+run/reflection-fieldmirror-getsetvar.scala
+run/reflection-fieldmirror-privatethis.scala
+run/reflection-implicit.scala
+run/reflection-mem-glbs.scala
+run/reflection-mem-tags.scala
+run/reflection-java-annotations
+run/reflection-java-crtp
+run/reflection-methodsymbol-typeparams.scala
+run/reflection-modulemirror-nested-badpath.scala
+run/reflection-modulemirror-inner-badpath.scala
+run/reflection-modulemirror-nested-good.scala
+run/reflection-modulemirror-toplevel-badpath.scala
+run/reflection-sync-potpourri.scala
+run/reflection-sync-subtypes.scala
+run/reflinit.scala
+run/reflection-valueclasses-derived.scala
+run/reflection-valueclasses-magic.scala
+run/resetattrs-this.scala
+run/runtimeEval2.scala
+run/showraw_aliases.scala
+run/showraw_mods.scala
+run/shortClass.scala
+run/showraw_nosymbol.scala
+run/showraw_tree.scala
+run/showraw_tree_types_untyped.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -289,6 +358,66 @@ run/reify_sort1.scala
 run/reify_properties.scala
 run/reify_generic.scala
 run/reify_newimpl_27.scala
+run/reify-aliases.scala
+run/reify_ann3.scala
+run/reify-staticXXX.scala
+run/reify_ann1b.scala
+run/reify_ann5.scala
+run/reify_anonymous.scala
+run/reify-each-node-type.scala
+run/reify_copypaste2.scala
+run/reify_closure3a.scala
+run/reify_copypaste1.scala
+run/reify_complex.scala
+run/reify_for1.scala
+run/reify_getter.scala
+run/reify_implicits-new.scala
+run/reify_inner1.scala
+run/reify_implicits-old.scala
+run/reify_lazyunit.scala
+run/reify_lazyevaluation.scala
+run/reify_maps_newpatmat.scala
+run/reify_metalevel_breach_+0_refers_to_1.scala
+run/reify_metalevel_breach_-1_refers_to_0_a.scala
+run/reify_metalevel_breach_-1_refers_to_0_b.scala
+run/reify_nested_outer_refers_to_global.scala
+run/reify_newimpl_04.scala
+run/reify_newimpl_14.scala
+run/reify_newimpl_11.scala
+run/reify_newimpl_18.scala
+run/reify_newimpl_19.scala
+run/reify_newimpl_31.scala
+run/reify_newimpl_21.scala
+run/reify_newimpl_36.scala
+run/reify_newimpl_39.scala
+run/reify_newimpl_40.scala
+run/reify_newimpl_49.scala
+run/reify_newimpl_50.scala
+run/reify_newimpl_52.scala
+run/reify_renamed_term_basic.scala
+run/reify_renamed_term_local_to_reifee.scala
+run/reify_renamed_term_overloaded_method.scala
+run/reify_renamed_term_si5841.scala
+run/reify_renamed_type_basic.scala
+run/reify_renamed_type_local_to_reifee.scala
+run/reify_renamed_type_spliceable.scala
+run/reify_typerefs_1a.scala
+run/reify_timeofday.scala
+
+# Using reflection to invoke macros. These tests actually don't require
+# or test reflection, but use it to separate compilation units nicely.
+# It's a pity we cannot use them
+
+run/macro-abort-fresh
+run/macro-def-infer-return-type
+run/macro-expand-varargs-explicit-over-nonvarargs-bad
+run/macro-invalidret-doesnt-conform-to-def-rettype
+run/macro-invalidret-nontypeable
+run/macro-invalidusage-badret
+run/macro-invalidusage-partialapplication
+run/macro-invalidusage-partialapplication-with-tparams
+run/macro-reflective-ma-normal-mdmi
+run/macro-reflective-mamd-normal-mi
 
 # Using Enumeration which uses reflection
 
@@ -300,12 +429,17 @@ run/enums.scala
 run/MeterCaseClass.scala
 run/t5608.scala
 run/caseClassHash.scala
+run/Meter.scala
+run/t1074.scala
 
 # Exceptions that become JavaScriptException
 
 run/pf-catch.scala
 run/exceptions-2.scala
 run/exceptions-nest.scala
+
+# Expecting unsupported exceptions (e.g. ArrayIndexOutOfBounds)
+run/optimizer-array-load.scala
 
 # Playing with classfile format
 
@@ -324,6 +458,9 @@ run/concurrent-stream.scala
 run/t7498.scala
 run/t6448.scala
 run/ctries-old
+run/map_java_conversions.scala
+run/parmap-ops.scala
+run/pc-conversions.scala
 
 # Using parser combinators
 
@@ -386,6 +523,7 @@ run/repl-save.scala
 run/repl-paste-raw.scala
 run/repl-paste-4.scala
 run/t7801.scala
+run/repl-backticks.scala
 
 # Using the Repl (scala.tools.partest.ReplTest)
 jvm/interpreter.scala
@@ -436,6 +574,15 @@ run/t7634.scala
 run/t7747-repl.scala
 run/t7805-repl-i.scala
 run/tpeCache-tyconCache.scala
+run/repl-empty-package
+run/repl-javap-def.scala
+run/repl-javap-fun.scala
+run/repl-javap-mem.scala
+run/repl-javap-memfun.scala
+run/repl-javap-more-fun.scala
+run/repl-javap-outdir
+run/repl-javap.scala
+run/repl-javap-outdir-funs
 
 
 # Using the compiler API
@@ -452,6 +599,19 @@ run/global-showdef.scala
 run/inline-ex-handlers.scala
 run/stream_length.scala
 run/annotatedRetyping.scala
+run/imain.scala
+run/existential-rangepos.scala
+run/delambdafy_uncurry_byname_inline.scala
+run/delambdafy_uncurry_byname_method.scala
+run/delambdafy_uncurry_inline.scala
+run/delambdafy_t6555.scala
+run/delambdafy_uncurry_method.scala
+run/delambdafy_t6028.scala
+run/memberpos.scala
+run/programmatic-main.scala
+run/reflection-names.scala
+run/settings-parse.scala
+run/sm-interpolator.scala
 
 # Using .java source files
 
