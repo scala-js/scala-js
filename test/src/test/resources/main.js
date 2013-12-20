@@ -12,17 +12,20 @@ console.log("");
 /* Load all test suites ... */
 ScalaJS.modules.scala_scalajs_test_compiler_InteroperabilityTest();
 ScalaJS.modules.scala_scalajs_test_compiler_RegressionTest();
+ScalaJS.modules.scala_scalajs_test_compiler_LongTest();
 
 ScalaJS.modules.scala_scalajs_test_javalib_ObjectTest();
 ScalaJS.modules.scala_scalajs_test_javalib_IntegerTest();
 ScalaJS.modules.scala_scalajs_test_javalib_StringTest();
 ScalaJS.modules.scala_scalajs_test_javalib_ArraysTest();
+ScalaJS.modules.scala_scalajs_test_javalib_LongTest();
 
 ScalaJS.modules.scala_scalajs_test_scalalib_EnumerationTest();
 
 ScalaJS.modules.scala_scalajs_test_jsinterop_ArrayTest();
 ScalaJS.modules.scala_scalajs_test_jsinterop_DictionaryTest();
 ScalaJS.modules.scala_scalajs_test_jsinterop_DynamicTest();
+ScalaJS.modules.scala_scalajs_test_jsinterop_RuntimeLongTest();
 
 /* ... and run them. */
 var jasmineEnv = jasmine.getEnv();

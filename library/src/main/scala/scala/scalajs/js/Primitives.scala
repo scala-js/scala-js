@@ -50,7 +50,7 @@ object Any {
   implicit def fromByte(value: scala.Byte): Number = sys.error("stub")
   implicit def fromShort(value: scala.Short): Number = sys.error("stub")
   implicit def fromInt(value: scala.Int): Number = sys.error("stub")
-  implicit def fromLong(value: scala.Long): Number = sys.error("stub")
+  implicit def fromLong(value: scala.Long): Number = value.toDouble
   implicit def fromFloat(value: scala.Float): Number = sys.error("stub")
   implicit def fromDouble(value: scala.Double): Number = sys.error("stub")
 
