@@ -185,7 +185,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val libraryAux: Project = Project(
       id = "scalajs-library-aux",
@@ -198,7 +198,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val library: Project = Project(
       id = "scalajs-library",
@@ -324,7 +324,7 @@ object ScalaJSBuild extends Build {
               (baseDirectory in plugin).value /
               "src/main/scala/scala/scalajs/sbtplugin/RhinoBasedRun.scala")
       )
-  ).dependsOn(compiler)
+  ).dependsOn(compiler, library)
 
   lazy val partestSuite: Project = Project(
       id = "scalajs-partest-suite",
@@ -367,6 +367,7 @@ object ScalaJSBuild extends Build {
           //Uncomment what you need here
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.testunknownonly=true",
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
+          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testblackbugonly=true",
 
           testFrameworks +=
             new TestFramework("scala.tools.partest.scalajs.Framework"),
