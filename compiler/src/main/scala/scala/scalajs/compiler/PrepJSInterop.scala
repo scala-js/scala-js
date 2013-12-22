@@ -68,6 +68,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
+        // Check that we do not have a case modifier
+        case implDef if implDef.mods.hasFlag(Flag.CASE) =>
+          unit.error(implDef.pos, "Classes and objects extending " + 
+              "js.Any may not have a case modifier")
+
         // Check if we may have a js.Any here
         case _: ClassDef if !allowJSAny && !jsAnyClassOnly =>
           unit.error(implDef.pos, "Classes extending js.Any may not be " +
