@@ -68,6 +68,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
+        // Check that we are not an anonymous class
+        case cldef: ClassDef if cldef.symbol.isAnonymousClass =>
+          unit.error(implDef.pos, "Anonymous classes may not " +
+              "extend js.Any")
+
         // Check that we do not have a case modifier
         case implDef if implDef.mods.hasFlag(Flag.CASE) =>
           unit.error(implDef.pos, "Classes and objects extending " + 
