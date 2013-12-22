@@ -2135,7 +2135,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case List(arg) =>
           code match {
-            case V2JS => js.Undefined()
+            case V2JS => statToExpr(exprToStat(arg))
             case Z2JS => arg
             case N2JS => arg
             case S2JS => arg
