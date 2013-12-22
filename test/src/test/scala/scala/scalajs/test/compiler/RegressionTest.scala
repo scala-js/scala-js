@@ -68,5 +68,13 @@ object RegressionTest extends ScalaJSTest {
     it("should emit static calls when forwarding to another constructor - #66") {
       new Bug66B("", "")
     }
+
+    it("should not swallow Unit expressions when converting to js.Undefined - #83") {
+      var effectHappened = false
+      def doEffect(): Unit = effectHappened = true
+      def f(): js.Undefined = doEffect()
+      f()
+      expect(effectHappened).toBeTruthy
+    }
   }
 }
