@@ -68,8 +68,20 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
+        // Check that we are not an anonymous class
+        case cldef: ClassDef
+          if cldef.symbol.isAnonymousClass && !isJSLambda(cldef) =>
+          unit.error(implDef.pos, "Anonymous classes may not " +
+              "extend js.Any")
+
+        // Check that we do not have a case modifier
+        case implDef if implDef.mods.hasFlag(Flag.CASE) =>
+          unit.error(implDef.pos, "Classes and objects extending " + 
+              "js.Any may not have a case modifier")
+
         // Check if we may have a js.Any here
-        case _: ClassDef if !allowJSAny && !jsAnyClassOnly =>
+        case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
+          !isJSLambda(cldef) =>
           unit.error(implDef.pos, "Classes extending js.Any may not be " +
               "defined inside a class or trait")
 
@@ -129,6 +141,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def isJSGlobalScope(implDef: ImplDef) = isScalaJSDefined &&
     (implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass)
+
+  private def isJSLambda(clDef: ImplDef) = isScalaJSDefined &&
+    clDef.symbol.isAnonymousClass && 
+    JSFunctionClasses.exists(clDef.symbol.tpe.typeSymbol isSubClass _)
 
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
