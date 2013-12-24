@@ -11,7 +11,7 @@ package javalib
 import scala.scalajs.js
 import scala.scalajs.test.ScalaJSTest
 
-import java.util.{ Formatter, Formattable }
+import java.util.{ Formatter, Formattable, FormattableFlags }
 
 import java.lang.{
   Double  => JDouble, 
@@ -27,12 +27,41 @@ import java.lang.{
 object FormatterTest extends ScalaJSTest {
 
   class HelperClass
+  class FormattableClass extends Formattable {
+    var frm: Formatter = _
+    var flags: Int = _
+    var width: Int = _
+    var precision: Int = _
+    var calls = 0
+    def formatTo(frm: Formatter, flags: Int, width: Int, precision: Int) = {
+      this.calls += 1
+      this.flags = flags
+      this.width = width
+      this.precision = precision
+      frm.out().append("foobar")
+    }
+
+    def expectCalled(times: Int, flags: Int, width: Int, precision: Int) = {
+      expect(this.calls).toEqual(times)
+      expect(this.flags).toEqual(flags)
+      expect(this.width).toEqual(width)
+      expect(this.precision).toEqual(precision)
+    }
+
+  }
 
   def expectF(format: String, args: AnyRef*) = {
     val fmt = new Formatter()
     val res = fmt.format(format, args:_*).toString()
     fmt.close()
     expect(res)
+  }
+
+  def expectFC(format: String, flags: Int, width: Int, precision: Int) = {
+    val fc = new FormattableClass
+    val exp = expectF(format, fc)
+    fc.expectCalled(1, flags, width, precision)
+    exp
   }
 
   describe("java.util.Formatter") {
@@ -49,6 +78,19 @@ object FormatterTest extends ScalaJSTest {
       expectF("%h", x).toEqual(Integer.toHexString(x.hashCode()))
       expectF("%H", x).toEqual(Integer.toHexString(x.hashCode()).toUpperCase())
       expectF("%h", null).toEqual("null")
+    }
+
+    it("should provide 's' conversion") {
+      expectFC("%s", 0, -1, -1).toEqual("foobar")
+      expectFC("%-s", FormattableFlags.LEFT_JUSTIFY, -1, -1).toEqual("foobar")
+      expectFC("%-10s", FormattableFlags.LEFT_JUSTIFY, 10, -1).toEqual("foobar")
+      expectFC("%#-10.2s", FormattableFlags.LEFT_JUSTIFY |
+               FormattableFlags.ALTERNATE, 10, 2).toEqual("foobar")
+      expectFC("%#10.2S", FormattableFlags.UPPERCASE |
+               FormattableFlags.ALTERNATE, 10, 2).toEqual("foobar")
+      expectF("%10s", "hello").toEqual("     hello")
+      expectF("%-10s", "hello").toEqual("hello     ")
+      expectThrow("%#s", "hello")
     }
 
     it("should provide 'c' conversion") {

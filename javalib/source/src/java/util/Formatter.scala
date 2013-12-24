@@ -72,8 +72,9 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           def hasFlag(flag: js.String) = flags.indexOf(flag) >= 0
 
           val widthStr = matchResult(3)
+          val hasWidth = !(!widthStr)
           val width =
-            if (!(!widthStr)) js.parseInt(widthStr)
+            if (hasWidth) js.parseInt(widthStr)
             else (0: js.Number)
 
           val precisionStr = matchResult(4)
@@ -175,10 +176,22 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               if (arg eq null) "null"
               else Integer.toHexString(arg.hashCode)
             }
-            case 's' | 'S' => pad {
-              val s: js.String = if (arg eq null) "null" else arg.toString()
-              if (hasPrecision) s.substring(0, precision)
-              else s
+            case 's' | 'S' => arg match {
+              case null if !hasFlag("#") => pad("null")
+              case formattable: Formattable =>
+                val flags = (
+                  (if (hasFlag("-"))       FormattableFlags.LEFT_JUSTIFY else 0) |
+                  (if (hasFlag("#"))       FormattableFlags.ALTERNATE    else 0) |
+                  (if (conversion.isUpper) FormattableFlags.UPPERCASE    else 0)
+                )
+
+                formattable.formatTo(this, flags,
+                                     if (hasWidth)     width.toInt     else -1,
+                                     if (hasPrecision) precision.toInt else -1)
+                None // no further processing
+              case t: AnyRef if !hasFlag("#") => pad(t.toString)
+              case _ =>
+                throw new FormatFlagsConversionMismatchException("#", 's')
             }
             case 'c' | 'C' =>
               pad(js.String.fromCharCode(numberArg))
