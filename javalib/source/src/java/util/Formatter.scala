@@ -90,13 +90,24 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             case _ => arg.asInstanceOf[js.Number] // assume js.Number
           }
 
-          def unsignedArg: js.Number = arg match {
-            case arg: Byte    if arg < 0 => js.Math.pow(2, Byte.SIZE)    + arg.doubleValue()
-            case arg: Short   if arg < 0 => js.Math.pow(2, Short.SIZE)   + arg.doubleValue()
-            case arg: Integer if arg < 0 => js.Math.pow(2, Integer.SIZE) + arg.doubleValue()
-            // FIXME (once long is integrated)
-            case arg: Long    if arg < 0 => js.Math.pow(2, Long.SIZE)    + arg.doubleValue()
-            case arg => numberArg // ignore negative case
+          def unsignedArgStr(base: Int): js.String = arg match {
+            case arg: Byte    if arg < 0 =>
+              (js.Math.pow(2, Byte.SIZE)    + arg.doubleValue()).toString(base)
+            case arg: Short   if arg < 0 =>
+              (js.Math.pow(2, Short.SIZE)   + arg.doubleValue()).toString(base)
+            case arg: Integer if arg < 0 =>
+              (js.Math.pow(2, Integer.SIZE) + arg.doubleValue()).toString(base)
+            case arg: Long if base == 8 =>
+              Long.toOctalString(arg)
+            case arg: Long if base == 2 =>
+              Long.toBinaryString(arg)
+            case arg: Long if base == 16 =>
+              Long.toHexString(arg)
+            case arg: Long =>
+              sys.error("shouldn't happen")
+            // ignore negative case of js.Number since we don't know
+            // with what base to convert
+            case arg => numberArg.toString(base)
           }
 
           def strRepeat(s: js.String, times: js.Number) = {
@@ -109,78 +120,115 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             result
           }
 
-          def strs(s1: js.String, s2: js.String = "") = (s1, s2)
- 
-          def with_+(s: js.String) = {
+          def with_+(s: js.String, preventZero: scala.Boolean = false) = {
             if ((s:String).charAt(0) != '-') {
-              if (hasFlag("+")) strs("+", s)
-              else if (hasFlag(" ")) strs(" ", s)
-              else strs(s)
+              if (hasFlag("+"))
+                pad(s, "+", preventZero)
+              else if (hasFlag(" "))
+                pad(s, " ", preventZero)
+              else
+                pad(s, "", preventZero)
             } else {
-              if (hasFlag("(")) strs("(", s.substring(1) + ")")
-              else strs(s.substring(1),"-")
+              if (hasFlag("("))
+                pad(s.substring(1) + ")", "(", preventZero)
+              else
+                pad(s.substring(1),"-", preventZero)
             }
           }
 
-          val (argStr, prefix) = (conversion: @switch) match {
-            case 'b' | 'B' => strs {
-              if (arg eq null) "false"
-              else arg.asInstanceOf[Boolean].toString()
+          def pad(argStr: js.String, prefix: js.String = "",
+                  preventZero: Boolean = false) = {
+            val prePadLen = argStr.length + prefix.length
+
+            val padStr = {
+              if (width <= prePadLen) {
+                prefix + argStr
+              } else {
+                val padRight = hasFlag("-")
+                val padZero = hasFlag("0") && !preventZero
+                val padLength = width - prePadLen
+                val padChar: js.String = if (padZero) "0" else " "
+                val padding = strRepeat(padChar, padLength)
+          
+                if (padZero && padRight)
+                  throw new java.util.IllegalFormatFlagsException(flags)
+                else if (padRight) prefix + argStr  + padding
+                else if (padZero)  prefix + padding + argStr
+                else padding + prefix + argStr
+              }
             }
-            case 'h' | 'H' => strs {
+
+            val casedStr = 
+              if (conversion.isUpper) padStr.toUpperCase()
+              else padStr
+            dest.append(casedStr)
+
+          }
+
+          (conversion: @switch) match {
+            case 'b' | 'B' => pad { arg match {
+              case null => "false"
+              case b: Boolean => String.valueOf(b)
+              case _ => "true"
+            } }
+            case 'h' | 'H' => pad {
               if (arg eq null) "null"
               else Integer.toHexString(arg.hashCode)
             }
-            case 's' | 'S' => strs {
+            case 's' | 'S' => pad {
               val s: js.String = if (arg eq null) "null" else arg.toString()
               if (hasPrecision) s.substring(0, precision)
               else s
             }
             case 'c' | 'C' =>
-              strs(js.String.fromCharCode(numberArg))
+              pad(js.String.fromCharCode(numberArg))
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              strs(unsignedArg.toString(8), if (hasFlag("#")) "0" else "")
+              pad(unsignedArgStr(8), if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              strs(unsignedArg.toString(16), if (hasFlag("#")) "0x" else "")
+              pad(unsignedArgStr(16), if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
-              with_+(
-                  if (hasPrecision) numberArg.toExponential(precision)
-                  else numberArg.toExponential())
-            case 'f' | 'g' | 'G' =>
-              with_+(
-                  if (hasPrecision) numberArg.toFixed(precision)
-                  else numberArg.toFixed())
+              sciNotation(if (hasPrecision) precision else (6: js.Number))
+            case 'g' | 'G' =>
+              val m = js.Math.abs(numberArg)
+              // precision handling according to JavaDoc
+              // precision here means number of significant digits
+              // not digits after decimal point
+              val p =
+                if (!hasPrecision)
+                  6: js.Number
+                else if (precision == (0: js.Number))
+                  1: js.Number
+                else precision
+              // between 1e-4 and 10e(p): display as fixed
+              if (m >= 1e-4 && m < js.Math.pow(10,p)) {
+                val sig = js.Math.ceil(js.Math.log(m) / js.Math.LN10)
+                with_+(numberArg.toFixed(js.Math.max(p - sig,0)))
+              } else sciNotation(p - 1)
+            case 'f' =>
+              with_+ ( {
+                if (hasPrecision)
+                  numberArg.toFixed(precision)
+                else
+                  // JavaDoc: 6 is default precision
+                  numberArg.toFixed(6)
+              }, !js.isFinite(numberArg))
             case 'n' =>
-              strs("\n")
+              pad("\n")
           }
 
-          val prePadLen = argStr.length + prefix.length
-
-          val paddedStr = {
-            if (width <= prePadLen) {
-              prefix + argStr
-            } else {
-              val padZero = hasFlag("0")
-              val padRight = hasFlag("-")
-              val padLength = width - prePadLen
-              val padChar: js.String = if (padZero) "0" else " "
-              val padding = strRepeat(padChar, padLength)
-            
-              if (padZero && padRight)
-                throw new java.util.IllegalFormatFlagsException(flags)
-              else if (padRight) prefix + argStr  + padding
-              else if (padZero)  prefix + padding + argStr
-              else padding + prefix + argStr
-            }
+          def sciNotation(precision: js.Number) = {
+            val exp = numberArg.toExponential(precision)
+            with_+( {
+              // check if we need additional 0 padding in exponent
+              // JavaDoc: at least 2 digits
+              if ("e" == exp.charAt(exp.length - 3))
+                exp.substring(0,exp.length - 1) + "0" +
+                  exp.charAt(exp.length - 1)
+              else exp
+            } , !js.isFinite(numberArg))
           }
-
-          val casedStr = 
-            if (conversion.isUpper) paddedStr.toUpperCase()
-            else paddedStr
-            
-          dest.append(casedStr)
       }
     }
 
