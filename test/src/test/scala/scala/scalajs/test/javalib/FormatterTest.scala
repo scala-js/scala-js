@@ -64,6 +64,11 @@ object FormatterTest extends ScalaJSTest {
     exp
   }
 
+  def expectThrow(format: String, args: AnyRef*) = {
+    val fmt = new Formatter()
+    expect(() => fmt.format(format, args:_*)).toThrow
+  }
+
   describe("java.util.Formatter") {
 
     it("should provide 'b' conversion") {
@@ -161,12 +166,31 @@ object FormatterTest extends ScalaJSTest {
       expectF("%04f",    new JDouble(Double.NaN)).toEqual(" NaN")
     }
 
+    it("should allow positional arguments") {
+      expectF("%2$d %1$d",    new JInteger(1), new JInteger(2)).toEqual("2 1")
+      expectF("%2$d %2$d %d", new JInteger(1), new JInteger(2)).toEqual("2 2 1")
+      expectF("%2$d %<d %d",  new JInteger(1), new JInteger(2)).toEqual("2 2 1")
+    }
+
     it("should fail when called after close") {
       val f = new Formatter()
       f.close()
       expect(() => f.toString()).toThrow
     }
 
+    it("should fail with bad format specifier") {
+      expectThrow("hello world%")
+      expectThrow("%%%")
+      expectThrow("%q")
+      expectThrow("%1")
+      expectThrow("%_f")
+    }
+
+    it("should fail with not enough arguments") {
+      expectThrow("%f")
+      expectThrow("%d%d%d", new JInteger(1), new JInteger(1))
+      expectThrow("%10$d", new JInteger(1))
+    }
 
   }
 

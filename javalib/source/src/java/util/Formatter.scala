@@ -40,11 +40,12 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   private val RegularChunk = new RegExpExtractor(new js.RegExp("""^[^\x25]+"""))
   private val DoublePercent = new RegExpExtractor(new js.RegExp("""^\x25{2}"""))
   private val FormattedChunk = new RegExpExtractor(new js.RegExp(
-      """\x25(?:([1-9]\d*)\$)?([-#+ 0,\(]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
+      """^\x25(?:([1-9]\d*)\$)?([-#+ 0,\(<]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
 
   def format(format_in: String, args: Array[AnyRef]): Formatter = ifNotClosed {
     var fmt: js.String = format_in
     var lastImplicitIndex: js.Number = 0
+    var lastIndex: js.Number = 0 // required for < flag
 
     while (!(!fmt)) {
       fmt match {
@@ -59,17 +60,20 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
         case FormattedChunk(matchResult) =>
           fmt = fmt.substring(matchResult(0).length)
 
+          val flags = matchResult(2)
+          def hasFlag(flag: js.String) = flags.indexOf(flag) >= 0
+
           val indexStr = matchResult(1)
           val index = if (!(!indexStr)) {
             js.parseInt(indexStr)
+          } else if (hasFlag("<")) {
+            lastIndex
           } else {
             lastImplicitIndex += 1
             lastImplicitIndex
           }
+          lastIndex = index
           val arg = args(index-1)
-
-          val flags = matchResult(2)
-          def hasFlag(flag: js.String) = flags.indexOf(flag) >= 0
 
           val widthStr = matchResult(3)
           val hasWidth = !(!widthStr)
