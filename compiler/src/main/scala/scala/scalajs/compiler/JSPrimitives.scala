@@ -49,7 +49,7 @@ abstract class JSPrimitives {
   val DICT_PROPS = 333 // js.Dictionary.propertiesOf
 
   val ARR_CREATE = 334 // js.Array.apply (array literal syntax)
-  
+
   val RTJ2J = 335 // Runtime Long to Long
   val J2RTJ = 336 // Long to Runtime Long
 
@@ -67,7 +67,7 @@ abstract class JSPrimitives {
     addPrimitive(JSAny_fromDouble, N2JS)
     addPrimitive(JSAny_fromString, S2JS)
 
-    for (i <- 0 to 5)
+    for (i <- 0 to 22)
       addPrimitive(JSAny_fromFunction(i), F2JS)
 
     addPrimitive(JSBoolean_toBoolean, JS2Z)
