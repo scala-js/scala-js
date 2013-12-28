@@ -77,6 +77,18 @@ object Any {
     }
     result
   }
+  
+  def stringToCharArray(jsStr: String): scala.Array[Char] = {
+    val str: java.lang.String = jsStr
+    val length = str.length
+    val result = new scala.Array[Char](length)
+    var i = 0
+    while (i < length) {
+      result(i) = str.charAt(i)
+      i += 1
+    }
+    result
+  }
 
   def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] = {
     val result = new Array[A]
