@@ -116,6 +116,10 @@ object StringTest extends ScalaJSTest {
       
     }
     
+    it("should respond to `split` with char as argument") {
+      expect("Scala.js".split('.')).toEqual(js.Array("Scala","js"))
+    }
+    
     it("should respond to `toCharArray`") {
       expect("Scala.js".toCharArray()(5)).toEqual('.')
     }
