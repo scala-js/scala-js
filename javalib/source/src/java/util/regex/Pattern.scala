@@ -11,7 +11,15 @@ final class Pattern private (pattern0: String, flags0: Int) {
 
   private[regex] val jspattern = {
     if ((flags0 & LITERAL) != 0) quote(pattern0)
-    else pattern0
+    else {
+      // This is a hack to support StringLike.split
+      // it replaces occurrences of \Q<char>\E by
+      // quoted(<char>)
+      val m = splitHackPat.exec(pattern0)
+      if (m != null) quote(m(1))
+      else pattern0
+    }
+    
   }
 
   private[regex] val jsflags = {
@@ -96,4 +104,7 @@ object Pattern {
     }
     result
   }
+  
+  /** matches \Q<char>\E to support StringLike.split */
+  private val splitHackPat = new js.RegExp("^\\\\Q(.)\\\\E$")
 }

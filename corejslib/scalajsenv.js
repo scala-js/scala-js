@@ -242,7 +242,7 @@ var ScalaJS = {
     if (typeof(instance) === "string")
       return instance["substring"](start, end);
     else
-      return instance.subSequence__I__I__java_lang_CharSequence(start, end);
+      return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
   stringStartsWith: function(str, prefix) {
