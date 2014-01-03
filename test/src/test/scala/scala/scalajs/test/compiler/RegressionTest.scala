@@ -76,5 +76,12 @@ object RegressionTest extends ScalaJSTest {
       f()
       expect(effectHappened).toBeTruthy
     }
+    
+    it("should correctly call subSequence on non-string CharSequences - #55") {
+      val arr: CharSequence = Array('a','b','c','d')
+      val ss = arr.subSequence(2,3)
+      expect(ss.length()).toEqual(1)
+      expect(ss.charAt(0)).toEqual('c')
+    }
   }
 }

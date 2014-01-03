@@ -2357,6 +2357,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               newTermName("split")).suchThat(_.tpe.params.size == args.size)
           js.ApplyMethod(pattern, encodeMethodSym(splitMethod),
               receiver :: args.tail)
+              
+        case "toCharArray" if isString =>
+          // Call js.Any.stringToCharArray(<the string>)
+          val jsAnyMod = genLoadModule(JSAnyModule)
+          val s2charr = getMemberMethod(JSAnyModule,
+              newTermName("stringToCharArray"))
+          js.ApplyMethod(jsAnyMod, encodeMethodSym(s2charr), receiver :: Nil)
 
         case _ =>
           def isJSGetter = {

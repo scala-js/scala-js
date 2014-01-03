@@ -62,16 +62,16 @@ object Character {
   def isUnicodeIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isIdentifierIgnorable(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isMirrored(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLowerCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isUpperCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def isLowerCase(c: scala.Char): scala.Boolean = toLowerCase(c) == c
+  def isUpperCase(c: scala.Char): scala.Boolean = toUpperCase(c) == c
   def isTitleCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isJavaIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
 
   def getDirectionality(c: scala.Char): scala.Byte = sys.error("unimplemented")
 
   /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = sys.error("unimplemented")
-  def toLowerCase(c: scala.Char): scala.Char = sys.error("unimplemented")
+  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
+  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
   def toTitleCase(c: scala.Char): scala.Char = sys.error("unimplemented")
   def getNumericValue(c: scala.Char): scala.Int = sys.error("unimplemented")
 
