@@ -5,7 +5,7 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package scala.scalajs.test
+package org.scalajs.jasmine
 
 import scala.scalajs.js
 import java.util.regex.Pattern

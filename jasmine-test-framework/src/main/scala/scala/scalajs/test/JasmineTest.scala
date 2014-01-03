@@ -9,8 +9,10 @@ package scala.scalajs.test
 
 import scala.scalajs.js
 import java.util.regex.Pattern
+import org.scalajs.jasmine.Jasmine
+import org.scalajs.jasmine.JasmineExpectation
 
-class ScalaJSTest {
+class JasmineTest extends Test {
   def describe(name: String)(suite: => Unit): Unit = Jasmine.describe(name, suite _)
   def it(title: String)(test: => Unit): Unit = Jasmine.it(title, test _)
   def xdescribe(name: String)(suite: => Unit): Unit = Jasmine.xdescribe(name, suite _)

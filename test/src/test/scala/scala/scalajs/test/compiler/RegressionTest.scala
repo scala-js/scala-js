@@ -9,9 +9,9 @@ package scala.scalajs.test
 package compiler
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 
-object RegressionTest extends ScalaJSTest {
+object RegressionTest extends JasmineTest {
 
   describe("Scala.js compiler regression tests") {
 

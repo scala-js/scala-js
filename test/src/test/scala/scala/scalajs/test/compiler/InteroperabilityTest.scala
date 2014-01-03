@@ -9,7 +9,7 @@ package scala.scalajs.test
 package compiler
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 import scala.scalajs.js.annotation.JSName
 import scala.scalajs.js.annotation.JSBracketAccess
 
@@ -17,7 +17,7 @@ import scala.scalajs.js.annotation.JSBracketAccess
  * Based on examples in:
  * http://lampwww.epfl.ch/~doeraene/scala-js/doc/js-interoperability.html
  */
-object InteroperabilityTest extends ScalaJSTest {
+object InteroperabilityTest extends JasmineTest {
 
   describe("JavaScript interoperability") {
 

@@ -1,3 +1,4 @@
+// format: OFF
 import sbt._
 import Keys._
 
@@ -64,8 +65,9 @@ object ScalaJSBuild extends Build {
           clean := clean.dependsOn(
               // compiler, library and sbt-plugin are aggregated
               clean in corejslib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in test, clean in examples,
-              clean in exampleHelloWorld, clean in exampleReversi).value,
+              clean in libraryAux, clean in jasmineTestFramework,
+              clean in test, clean in examples, clean in exampleHelloWorld,
+              clean in exampleReversi, clean in exampleTesting).value,
 
           publish := {},
           publishLocal := {}
@@ -272,9 +274,37 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
+  lazy val exampleTesting = Project(
+      id = "testing",
+      base = file("examples") / "testing",
+      settings = exampleSettings ++ Seq(
+          name := "Testing - Scala.js example",
+          moduleName := "testing",
+
+          useLibraryButDoNotDependOnIt(Test),
+
+          libraryDependencies ++= Seq(
+            "org.webjars" % "jquery" % "1.10.2" % "test",
+            "org.webjars" % "envjs" % "1.2" % "test"
+          )
+      )
+  ).dependsOn(compiler % "plugin", jasmineTestFramework)
+
   // Testing
 
-  val jasmineVersion = "1.3.1"
+  // Please check this definition. I am not sure if it's correct
+  //
+  lazy val jasmineTestFramework = Project(
+      id = "scalajs-jasmine-test-framework",
+      base = file("jasmine-test-framework"),
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+          name := "Scala.js jasmine test framework",
+
+          libraryDependencies ++= Seq(
+            "org.webjars" % "jasmine" % "1.3.1"
+          )
+      )
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val test: Project = Project(
       id = "scalajs-test",
@@ -282,23 +312,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js test suite",
           publishArtifact in Compile := false,
-          useLibraryButDoNotDependOnIt(Test),
-
-          libraryDependencies += "org.webjars" % "jasmine" % jasmineVersion % "test",
-
-          // We don't need the HTML reporter, since we use the Rhino reporter
-          sources in (Test, packageExternalDepsJS) ~= { srcs =>
-            srcs.filterNot(_.name == "jasmine-html.js")
-          },
-
-          // And a hack to make sure bootstrap.js is included before jasmine.js
-          sources in (Test, Keys.test) ~= { srcs =>
-            val bootstrap: File = srcs.find(_.name == "bootstrap.js").get
-            val (before, after) =
-              srcs.filterNot(_ == bootstrap).span(_.name != "jasmine.js")
-            before ++ Seq(bootstrap) ++ after
-          }
+          useLibraryButDoNotDependOnIt(Test)
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", jasmineTestFramework)
 
 }

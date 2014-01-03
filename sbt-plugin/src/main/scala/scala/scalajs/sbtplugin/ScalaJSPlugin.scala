@@ -2,17 +2,16 @@
  * Copyright 2013 LAMP/EPFL
  * @author  Sébastien Doeraene
  */
-
+// format: OFF
 package scala.scalajs.sbtplugin
 
 import sbt._
-import inc.{ IncOptions, ClassfileManager }
+import sbt.inc.{ IncOptions, ClassfileManager }
 import Keys._
 
 import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
-import RhinoBasedRun._
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -20,9 +19,12 @@ import com.google.javascript.jscomp.{
   CompilerOptions => ClosureOptions,
   _
 }
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
-import org.mozilla.{ javascript => rhino }
+import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
+import environment.rhino.{CodeBlock, Utilities}
+
+import scala.scalajs.test.TestFramework
 
 object ScalaJSPlugin extends Plugin {
   val scalaJSVersion = "0.2-SNAPSHOT"
@@ -44,6 +46,16 @@ object ScalaJSPlugin extends Plugin {
         "Pretty-print the output of optimizeJS")
     val optimizeJSExterns = taskKey[Seq[File]](
         "Extern files to use with optimizeJS")
+
+    val loggingConsole = taskKey[Option[Console]](
+        "The logging console used by the Scala.js jvm environment")
+    val prepareEnvironment = taskKey[ScalaJSEnvironment](
+        "Prepares a jvm environment in where Scala.js files can be run and tested")
+
+    val scalaJSTestBridgeClass = settingKey[String](
+        "The Scala.js class that delegates test calls to the given test framework")
+    val scalaJSTestFramework = settingKey[String](
+        "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
   }
 
   import ScalaJSKeys._
@@ -87,14 +99,6 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.apply = function() {};
     var global = {};
     """
-
-  /** A proxy for a Logger that looks like a Mozilla console object */
-  private class LoggingConsole(logger: Logger) {
-    def log(x: Any): Unit = logger.info(x.toString)
-    def info(x: Any): Unit = logger.info(x.toString)
-    def warn(x: Any): Unit = logger.warn(x.toString)
-    def error(x: Any): Unit = logger.error(x.toString)
-  }
 
   val scalaJSExternalCompileConfigSettings: Seq[Setting[_]] = inTask(compile)(
       Defaults.runnerTask
@@ -426,7 +430,7 @@ object ScalaJSPlugin extends Plugin {
 
           val compiler = new ClosureCompiler
           val result = compiler.compile(
-              closureExterns, closureSources, options)
+              closureExterns.asJava, closureSources.asJava, options)
 
           val errors = result.errors.toList
           val warnings = result.warnings.toList
@@ -457,15 +461,6 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  def scalaJSRunJavaScriptTask(streams: TaskKey[TaskStreams],
-      sources: TaskKey[Seq[File]], classpath: TaskKey[Classpath]) = Def.task {
-    val s = streams.value
-    s.log.info("Running ...")
-    val console = new LoggingConsole(s.log)
-    scalaJSRunJavaScript(sources.value, s.log.trace, Some(console), true,
-        classpath.value.map(_.data))
-  }
-
   def scalaJSRunInputsSettings(scoped: Scoped) = Seq(
       sources in scoped := (
           (sources in packageExternalDepsJS).value ++
@@ -480,23 +475,67 @@ object ScalaJSPlugin extends Plugin {
       )
   )
 
+  def createScalaJSEnvironment(scoped: Scoped):Def.Initialize[Task[ScalaJSEnvironment]] =
+    Def.task {
+      val inputs = (sources in scoped).value
+      val classpath = (fullClasspath in scoped).value.map(_.data)
+      val logger = streams.value.log
+      val console = loggingConsole.value
+
+      new RhinoBasedScalaJSEnvironment(inputs, classpath, console, logger.trace)
+    }
+
   val scalaJSRunSettings = scalaJSRunInputsSettings(run) ++ Seq(
-      run := {
-        scalaJSRunJavaScriptTask(streams, sources in run,
-            fullClasspath in run).value
+      prepareEnvironment <<= createScalaJSEnvironment(run),
+      run <<= {
+
+        import Def.parserToInput
+        val parser = Def.spaceDelimited()
+
+        Def.inputTask {
+
+          val mainClassName = (mainClass in run).value getOrElse sys.error("No main class detected.")
+
+          prepareEnvironment.value.runInContextAndScope { (context, scope) =>
+            new CodeBlock(context, scope) with Utilities {
+
+              val mainModule = getModule(mainClassName)
+
+              callMethod(mainModule, "main", parser.parsed: _*)
+            }
+          }
+        }
       }
   )
 
   val scalaJSCompileSettings = scalaJSConfigSettings ++ scalaJSRunSettings
 
-  val scalaJSTestSettings = scalaJSConfigSettings ++ scalaJSRunInputsSettings(test) ++ Seq(
-      test := {
-        scalaJSRunJavaScriptTask(streams, sources in test,
-            fullClasspath in test).value
+  val scalaJsTestFrameworkSettings = Seq(
+      scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
+      scalaJSTestBridgeClass := "scala.scalajs.test.TestBridge",
+      prepareEnvironment <<= createScalaJSEnvironment(test),
+      loadedTestFrameworks := {
+
+        loadedTestFrameworks.value.updated(
+          sbt.TestFramework(classOf[TestFramework].getName),
+          new TestFramework(
+              environment = prepareEnvironment.value,
+              testRunnerClass = scalaJSTestBridgeClass.value,
+              testFramework = scalaJSTestFramework.value)
+        )
       }
   )
 
+  val scalaJSTestSettings =
+      scalaJSConfigSettings ++
+      scalaJSRunInputsSettings(test) ++
+      scalaJsTestFrameworkSettings
+
+  def defaultLoggingConsole =
+      loggingConsole := Some(new LoggerConsole(streams.value.log))
+
   val scalaJSDefaultConfigs = (
+      Seq(defaultLoggingConsole) ++
       inConfig(Compile)(scalaJSCompileSettings) ++
       inConfig(Test)(scalaJSTestSettings)
   )
