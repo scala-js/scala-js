@@ -2560,6 +2560,7 @@ run/colltest1.scala
 run/t2106.scala
 run/t5986.scala
 run/view-iterator-stream.scala
+run/array-charSeq.scala
 pos/signatures
 pos/t1232
 pos/t1263

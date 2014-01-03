@@ -43,6 +43,3 @@ run/future-flatmap-exec-count.scala
 run/macro-reify-unreify
 
 #### Filed bugs
-
-# Issue #55
-run/array-charSeq.scala
