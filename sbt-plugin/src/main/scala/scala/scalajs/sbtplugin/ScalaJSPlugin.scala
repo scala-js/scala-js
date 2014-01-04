@@ -322,54 +322,7 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  /** Patches the IncOptions so that .js and .js.map files are pruned as needed.
-   *
-   *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .js and .js.map files emitted by the
-   *  Scala.js compiler. This makes sure that, when a .class file must be
-   *  deleted, the corresponding .js and .js.map files are also deleted.
-   */
-  def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
-    val inheritedNewClassfileManager = incOptions.newClassfileManager
-    val newClassfileManager = () => new ClassfileManager {
-      val inherited = inheritedNewClassfileManager()
-
-      def delete(classes: Iterable[File]): Unit = {
-        inherited.delete(classes flatMap { classFile =>
-          var jsFiles: List[File] = Nil
-          val classFileName = classFile.getName
-          if (classFileName endsWith ".class") {
-            val parent = classFile.getParentFile
-            val baseName = classFileName.substring(0, classFileName.length-6)
-            val siblings = parent.listFiles()
-            if (siblings ne null) {
-              for (file <- siblings) {
-                val name = file.getName
-                if (name.length > 5 &&
-                    name.charAt(4) == '-' &&
-                    name.substring(0, 4).forall(Character.isDigit)) {
-                  val nameWithoutPrefix = name.substring(5)
-                  if (nameWithoutPrefix == baseName + ".js" ||
-                      nameWithoutPrefix == baseName + ".js.map") {
-                    jsFiles ::= file
-                  }
-                }
-              }
-            }
-          }
-          classFile :: jsFiles
-        })
-      }
-
-      def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
-      def complete(success: Boolean): Unit = inherited.complete(success)
-    }
-    incOptions.copy(newClassfileManager = newClassfileManager)
-  }
-
-  val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
-      incOptions ~= scalaJSPatchIncOptions
-  ) ++ (
+  val scalaJSConfigSettings: Seq[Setting[_]] = (
       packageClasspathJSTasks(externalDependencyClasspath,
           packageExternalDepsJS, "-extdeps") ++
       packageClasspathJSTasks(internalDependencyClasspath,

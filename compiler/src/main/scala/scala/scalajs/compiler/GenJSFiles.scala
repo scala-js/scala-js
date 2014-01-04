@@ -10,8 +10,10 @@ import scala.tools.nsc.io.AbstractFile
 import scala.reflect.internal.pickling.PickleBuffer
 
 import java.io.{ File, PrintWriter, BufferedOutputStream, FileOutputStream }
+import scala.language.reflectiveCalls
 
-/** Send JS ASTs to files
+/**
+ * Send JS ASTs to files
  *
  *  @author Sébastien Doeraene
  */
@@ -31,7 +33,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
           sourceMapFile = getUniqueFileFor(cunit, sym, ".js.map", true)
           sourceMapOutput = bufferedPrintWriter(sourceMapFile)
           new JSTreePrinterWithSourceMap(output, sourceMapOutput,
-              outfile.getName)
+            outfile.getName)
         } else {
           // Without source map
           new JSTreePrinter(output)
@@ -45,6 +47,8 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       }
 
       printer.close()
+
+      callGeneratedClassCallback(cunit, sym, outfile, Option(sourceMapFile))
     } finally {
       output.close()
       if (sourceMapOutput ne null)
@@ -56,7 +60,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     new PrintWriter(new BufferedOutputStream(new FileOutputStream(file)))
 
   private def getUniqueFileFor(cunit: CompilationUnit, sym: Symbol,
-      suffix: String, withOrderingPrefix: Boolean) = {
+    suffix: String, withOrderingPrefix: Boolean) = {
     val file = getFileFor(cunit, sym, suffix, withOrderingPrefix)
 
     if (withOrderingPrefix && !file.exists) {
@@ -76,7 +80,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   }
 
   private def getFileFor(cunit: CompilationUnit, sym: Symbol,
-      suffix: String, withOrderingPrefix: Boolean) = {
+    suffix: String, withOrderingPrefix: Boolean) = {
     val baseDir: AbstractFile =
       settings.outputDirs.outputDirFor(cunit.source.file)
 
@@ -84,11 +88,10 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
-    if (withOrderingPrefix) {
+    if (withOrderingPrefix)
       filename = getOrderingPrefixFor(sym) + filename
-      if (sym.isModuleClass && !sym.isImplClass)
-        filename = filename + nme.MODULE_SUFFIX_STRING
-    }
+
+    filename = filename + getSymbolSuffix(sym)
 
     new File(dir.file, filename + suffix)
   }
@@ -103,7 +106,55 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     val lhsName = lhs.getName
     val rhsName = rhs.getName
     (lhsName.length > 4 &&
-        lhsName.substring(4) == rhsName.substring(4) &&
-        lhsName.substring(0, 4).forall(Character.isDigit))
+      lhsName.substring(4) == rhsName.substring(4) &&
+      lhsName.substring(0, 4).forall(Character.isDigit))
   }
+
+  private def getSymbolSuffix(sym: Symbol) =
+    if (sym.isModuleClass && !sym.isImplClass) nme.MODULE_SUFFIX_STRING
+    else ""
+
+  /* (source, module, name) */
+  private type GeneratedClassCallback = (File, File, String) => Unit
+  private val generatedClassCallback: Option[GeneratedClassCallback] = {
+
+    val classLoader = global.getClass.getClassLoader
+    val isCallbackGlobal =
+      try {
+        val callbackGlobalClass = classLoader.loadClass("xsbt.CallbackGlobal")
+        callbackGlobalClass.isAssignableFrom(global.getClass)
+      } catch {
+        case _: ClassNotFoundException => // we are not using sbt to compile
+          false
+      }
+
+    type CallbackGlobalLike = {
+      val callback: AnalysisCallbackLike
+    }
+
+    type AnalysisCallbackLike = {
+      def generatedClass(source: File, module: File, name: String): Unit
+    }
+
+    global match {
+      case callbackGlobal: CallbackGlobalLike if (isCallbackGlobal) =>
+        Some(callbackGlobal.callback.generatedClass)
+      case _ => // we can not report the fact that we generated a class
+        None
+    }
+  }
+
+  private def callGeneratedClassCallback(cunit: CompilationUnit, sym: Symbol, javascriptFile: File, sourceMapFile: Option[File]) =
+    for (analysisCallback <- generatedClassCallback) {
+
+      val source = cunit.source.file.file
+      val name = sym.fullName + getSymbolSuffix(sym)
+
+      println(s"Reporting the creation of $javascriptFile for $source with name $name")
+
+      analysisCallback(source, javascriptFile, name)
+
+      for (sourceMapFile <- sourceMapFile)
+        analysisCallback(source, sourceMapFile, name)
+    }
 }
