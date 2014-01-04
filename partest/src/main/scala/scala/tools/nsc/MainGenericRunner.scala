@@ -2,7 +2,12 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import scala.scalajs.sbtplugin.RhinoBasedRun
+import scala.scalajs.sbtplugin.environment.{
+  Console, RhinoBasedScalaJSEnvironment
+}
+import scala.scalajs.sbtplugin.environment.rhino.{
+  CodeBlock, Utilities
+}
 
 import sbt._
 
@@ -10,7 +15,7 @@ import java.io.File
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
 
-class ConsoleConsole {
+class ConsoleConsole extends Console {
   def log(x: Any): Unit = scala.Console.out.println(x.toString)
   def info(x: Any): Unit = scala.Console.out.println(x.toString)
   def warn(x: Any): Unit = scala.Console.err.println(x.toString)
@@ -53,8 +58,15 @@ class MainGenericRunner {
 
     def trace(e: => Throwable): Unit = e.printStackTrace()
 
-    RhinoBasedRun.scalaJSRunJavaScript(inputs, trace, Some(new ConsoleConsole),
-        true, classpath, Some(thingToRun), command.arguments.toArray)
+    val environment = new RhinoBasedScalaJSEnvironment(
+        inputs, classpath, Some(new ConsoleConsole), trace)
+
+    environment.runInContextAndScope { (context, scope) =>
+      new CodeBlock(context, scope) with Utilities {
+        val mainModule = getModule(thingToRun)
+        callMethod(mainModule, "main__AT__V", null) // TODO use command.arguments
+      }
+    }
 
     true
   }

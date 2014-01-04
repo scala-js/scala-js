@@ -9,11 +9,10 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
-
+import scala.scalajs.test.JasmineTest
 import java.util.{ Arrays, Comparator }
 
-object ArraysTest extends ScalaJSTest {
+object ArraysTest extends JasmineTest {
 
   val stringComparator = new Comparator[String]() {
     def compare(s1: String, s2: String) = s1.compareTo(s2)

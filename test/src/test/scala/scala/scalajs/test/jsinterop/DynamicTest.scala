@@ -9,9 +9,9 @@ package scala.scalajs.test
 package jsinterop
 
 import scala.scalajs.js
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 
-object DynamicTest extends ScalaJSTest {
+object DynamicTest extends JasmineTest {
 
   describe("scala.scalajs.js.Dynamic") {
 

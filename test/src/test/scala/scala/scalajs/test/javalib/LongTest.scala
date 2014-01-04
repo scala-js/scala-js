@@ -8,14 +8,13 @@
 package scala.scalajs.test
 package javalib
 
-import scala.scalajs.test.ScalaJSTest
 import java.lang.Long
 
 /**
  * tests the implementation of the java standard library Long
  * requires jsinterop/LongTest to work to make sense
  */
-object LongTest extends ScalaJSTest {
+object LongTest extends JasmineTest {
 
   describe("java.lang.Long") {
     it("should implement bitCount") {

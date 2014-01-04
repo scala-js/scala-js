@@ -8,9 +8,7 @@
 package scala.scalajs.test
 package javalib
 
-import scala.scalajs.test.ScalaJSTest
-
-object ThrowablesTest extends ScalaJSTest {
+object ThrowablesTest extends JasmineTest {
   describe("java.lang.Throwables, java.util.Throwables") {
 
     it("should define all java.lang and java.util Errors/Exceptions") {
@@ -69,10 +67,10 @@ object ThrowablesTest extends ScalaJSTest {
       new ConcurrentModificationException()
       new DuplicateFormatFlagsException("")
       new EmptyStackException()
-      new FormatFlagsConversionMismatchException("", '\0')
+      new FormatFlagsConversionMismatchException("", '\u0000')
       new FormatterClosedException()
       new IllegalFormatCodePointException(0)
-      new IllegalFormatConversionException('\0', new Object().getClass)
+      new IllegalFormatConversionException('\u0000', new Object().getClass)
       new IllegalFormatFlagsException("")
       new IllegalFormatPrecisionException(0)
       new IllegalFormatWidthException(0)

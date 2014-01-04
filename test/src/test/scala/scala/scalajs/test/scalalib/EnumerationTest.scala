@@ -8,9 +8,9 @@
 package scala.scalajs.test
 package scalalib
 
-import scala.scalajs.test.ScalaJSTest
+import scala.scalajs.test.JasmineTest
 
-object EnumerationTest extends ScalaJSTest {
+object EnumerationTest extends JasmineTest {
 
   describe("scala.Enumeration") {
 
