@@ -150,7 +150,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     tryGenAndRecordAnonFunctionClass(cd)) {
                   js.EmptyTree
                 } else if (isRawJSType(sym.tpe)) {
-                  if (isRawJSFunctionType(sym.tpe)) {
+                  if (isRawJSFunctionDef(sym)) {
                     genAndRecordRawJSFunctionClass(cd)
                     js.EmptyTree
                   } else {
@@ -2749,7 +2749,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genAndRecordRawJSFunctionClass(cd: ClassDef): Unit = {
       val sym = cd.symbol
-      assert(isRawJSFunctionType(sym.typeConstructor),
+      assert(isRawJSFunctionDef(sym),
           s"genAndRecordRawJSFunctionClass called with non-JS function $cd")
       currentClassSym = sym
 
@@ -2855,7 +2855,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val functionMakerFun =
         js.Function(ctorParamIdents, {
-          js.Return(js.Function(params, patchedBody))
+          js.Return {
+            if (JSThisFunctionClasses.exists(sym isSubClass _)) {
+              assert(params.nonEmpty, s"Empty param list in ThisFunction: $cd")
+              js.Function(params.tail, js.Block(
+                  js.VarDef(params.head, js.This()),
+                  patchedBody
+              ))
+            } else {
+              js.Function(params, patchedBody)
+            }
+          }
         })
 
       val functionMaker = { capturedArgs0: List[js.Tree] =>
@@ -3083,20 +3093,9 @@ abstract class GenJSCode extends plugins.PluginComponent
   def isRawJSType(tpe: Type): Boolean =
     tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
 
-  /** Test whether `tpe` is a raw JS function type */
-  private def isRawJSFunctionType(tpe: Type): Boolean = {
-    tpe.typeSymbol.isAnonymousClass && arityOfRawJSFunctionType(tpe) >= 0
-  }
-
-  /** Returns the arity of a raw JS function type
-   *
-   *  I.e., returns N such that `tpe` extends scala.scalajs.js.FunctionN,
-   *  or -1 if it is not a raw JS function type
-   */
-  private def arityOfRawJSFunctionType(tpe: Type): Int = {
-    if (!isScalaJSDefined) -1
-    else JSFunctionClasses.indexWhere(tpe.typeSymbol isSubClass _)
-  }
+  /** Test whether `sym` is the symbol of a raw JS function definition */
+  private def isRawJSFunctionDef(sym: Symbol): Boolean =
+    sym.isAnonymousClass && AllJSFunctionClasses.exists(sym isSubClass _)
 
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass

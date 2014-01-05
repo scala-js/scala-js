@@ -45,7 +45,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 
-    lazy val JSFunctionClasses = (0 to 5) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
+    lazy val JSFunctionClasses     = (0 to 22) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
+    lazy val JSThisFunctionClasses = (0 to 21) map (n => getRequiredClass("scala.scalajs.js.ThisFunction"+n))
+    lazy val AllJSFunctionClasses  = JSFunctionClasses ++ JSThisFunctionClasses
 
     lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")

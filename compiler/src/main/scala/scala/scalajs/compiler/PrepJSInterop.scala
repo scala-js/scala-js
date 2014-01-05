@@ -144,7 +144,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def isJSLambda(clDef: ImplDef) = isScalaJSDefined &&
     clDef.symbol.isAnonymousClass && 
-    JSFunctionClasses.exists(clDef.symbol.tpe.typeSymbol isSubClass _)
+    AllJSFunctionClasses.exists(clDef.symbol.tpe.typeSymbol isSubClass _)
 
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
