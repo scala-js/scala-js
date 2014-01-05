@@ -37,6 +37,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSStringClass    = getRequiredClass("scala.scalajs.js.String")
     lazy val JSUndefinedClass = getRequiredClass("scala.scalajs.js.Undefined")
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
+    lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
     lazy val JSGlobalScopeClass = getRequiredClass("scala.scalajs.js.GlobalScope")
 
@@ -96,6 +97,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
+
+    lazy val JSThisFunctionModule = JSThisFunctionClass.companionModule
+      def JSThisFunction_fromFunction(arity: Int) = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
 
     lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
 
