@@ -32,6 +32,7 @@ abstract class JSPrimitives {
   val N2JS = 303 // Number (any numeric type except for Long)
   val S2JS = 304 // String
   val F2JS = 305 // FunctionN
+  val F2JSTHIS = 306 // ThisFunctionN
 
   // Conversions from JS types to Scala types
   val JS2Z = 311 // Boolean
@@ -69,6 +70,8 @@ abstract class JSPrimitives {
 
     for (i <- 0 to 22)
       addPrimitive(JSAny_fromFunction(i), F2JS)
+    for (i <- 1 to 22)
+      addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
 
     addPrimitive(JSBoolean_toBoolean, JS2Z)
     addPrimitive(JSNumber_toDouble, JS2N)
