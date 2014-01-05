@@ -77,7 +77,7 @@ object Any {
     }
     result
   }
-  
+
   def stringToCharArray(jsStr: String): scala.Array[Char] = {
     val str: java.lang.String = jsStr
     val length = str.length
@@ -212,6 +212,33 @@ object Dynamic {
 
   /** Instantiates a new object of a JavaScript class. */
   def newInstance(clazz: Dynamic)(args: Any*): Dynamic = sys.error("stub")
+
+  /** Creates a new object with a literal syntax.
+   *
+   *  For example,
+   *    js.Dynamic.literal(foo = 3, bar = "foobar")
+   *  returns the JavaScript object
+   *    {foo: 3, bar: "foobar"}
+   */
+  object literal extends scala.Dynamic {
+    def applyDynamicNamed(name: java.lang.String)(
+        fields: (java.lang.String, Any)*): Dynamic = {
+      if (name != "apply")
+        throw new AssertionError("js.Dynamic.literal has only an apply() method")
+
+      val result = Object().asInstanceOf[Dynamic]
+      for ((name, value) <- fields)
+        result.updateDynamic(name)(value)
+      result
+    }
+
+    // support for js.Dynamic.literal() with no argument
+    def applyDynamic(name: java.lang.String)(): Dynamic = {
+      if (name != "apply")
+        throw new AssertionError("js.Dynamic.literal has only an apply() method")
+      Object().asInstanceOf[Dynamic]
+    }
+  }
 }
 
 /** Dictionary "view" of a JavaScript value */

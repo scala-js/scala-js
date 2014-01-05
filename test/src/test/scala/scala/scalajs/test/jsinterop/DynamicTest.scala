@@ -34,5 +34,26 @@ object DynamicTest extends JasmineTest {
       val obj = js.Dynamic.newInstance(js.Dynamic.global.DynamicTestClass)("Scala.js")
       expect(obj.x).toEqual("Scala.js")
     }
+
+    it("should provide an object literal construction") {
+      import js.Dynamic.{ literal => obj }
+      val x = obj(foo = 3, bar = "foobar")
+      expect(x.foo).toEqual(3)
+      expect(x.bar).toEqual("foobar")
+      expect(x.unknown).toBeUndefined()
+
+      val y = obj(
+          inner = obj(name = "inner obj"),
+          fun = { () => 42: js.Any }
+      )
+      expect(y.inner.name).toEqual("inner obj")
+      expect(y.fun()).toEqual(42)
+    }
+
+    it("should allow to create an empty object with the literal syntax") {
+      import js.Dynamic.{ literal => obj }
+      val x = obj()
+      expect(x.isInstanceOf[js.Object]).toBeTruthy()
+    }
   }
 }
