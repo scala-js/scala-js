@@ -122,54 +122,68 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val generatedClasses = ListBuffer.empty[(Symbol, js.Tree)]
 
-        def gen(tree: Tree) {
+        def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
-            case EmptyTree => ()
-            case PackageDef(_, stats) =>
-              /* We iterate classes in reverse order of definitions so that
-               * anonymous function classes are always translated before the
-               * classes using them.
-               */
-              stats.reverse foreach gen
+            case EmptyTree => Nil
+            case PackageDef(_, stats) => stats flatMap collectClassDefs
+            case cd: ClassDef => cd :: Nil
+          }
+        }
+        val allClassDefs = collectClassDefs(cunit.body)
 
-            case cd: ClassDef =>
-              implicit val pos = tree.pos
-              val sym = cd.symbol
-
-              /* Do not actually emit code for primitive types nor scala.Array.
-               */
-              val isPrimitive =
-                isPrimitiveValueClass(sym) || (sym == ArrayClass)
-
-              if (!isPrimitive) {
-                val tree = if (sym.isInterface) {
-                  genInterface(cd)
-                } else if (sym.isImplClass) {
-                  genImplClass(cd)
-                } else if (sym.isAnonymousFunction &&
-                    tryGenAndRecordAnonFunctionClass(cd)) {
-                  js.EmptyTree
-                } else if (isRawJSType(sym.tpe)) {
-                  if (isRawJSFunctionDef(sym)) {
-                    genAndRecordRawJSFunctionClass(cd)
-                    js.EmptyTree
-                  } else {
-                    genRawJSClassData(cd)
-                  }
-                } else {
-                  val classDef = genClass(cd)
-                  if (isStaticModule(sym))
-                    js.Block(classDef, genModuleAccessor(sym))
-                  else
-                    classDef
-                }
-                if (tree != js.EmptyTree)
-                  generatedClasses += sym -> tree
-              }
+        /* First gen and record lambdas for js.FunctionN and js.ThisFunctionN.
+         * Since they are SAMs, there cannot be dependencies within this set,
+         * and hence we are sure we can record them before they are used,
+         * which is critical for these.
+         */
+        val nonRawJSFunctionDefs = allClassDefs filterNot { cd =>
+          if (isRawJSFunctionDef(cd.symbol)) {
+            genAndRecordRawJSFunctionClass(cd)
+            true
+          } else {
+            false
           }
         }
 
-        gen(cunit.body)
+        /* Then try to gen and record lambdas for scala.FunctionN.
+         * These may fail, and sometimes because of dependencies. Since there
+         * appears to be more forward dependencies than backward dependencies
+         * (at least for non-nested lambdas, which we cannot translate anyway),
+         * we process class defs in reverse order here.
+         */
+        val fullClassDefs = (nonRawJSFunctionDefs.reverse filterNot { cd =>
+          cd.symbol.isAnonymousFunction && tryGenAndRecordAnonFunctionClass(cd)
+        }).reverse
+
+        /* Finally, we emit true code for the remaining class defs. */
+        for (cd <- fullClassDefs) {
+          implicit val pos = cd.pos
+          val sym = cd.symbol
+
+          /* Do not actually emit code for primitive types nor scala.Array.
+           */
+          val isPrimitive =
+            isPrimitiveValueClass(sym) || (sym == ArrayClass)
+
+          if (!isPrimitive) {
+            val tree = if (sym.isInterface) {
+              genInterface(cd)
+            } else if (sym.isImplClass) {
+              genImplClass(cd)
+            } else if (isRawJSType(sym.tpe)) {
+              assert(!isRawJSFunctionDef(sym),
+                  s"Raw JS function def should have been recorded: $cd")
+              genRawJSClassData(cd)
+            } else {
+              val classDef = genClass(cd)
+              if (isStaticModule(sym))
+                js.Block(classDef, genModuleAccessor(sym))
+              else
+                classDef
+            }
+            generatedClasses += sym -> tree
+          }
+        }
 
         for ((sym, tree) <- generatedClasses) {
           val desugared = desugarJavaScript(tree)
@@ -1529,6 +1543,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       if (clazz.isAnonymousFunction)
         instantiatedAnonFunctions += clazz
+      assert(!isRawJSFunctionDef(clazz),
+          s"Trying to instantiate a raw JS function def $clazz")
       val typeVar = encodeClassSym(clazz)
       val instance = js.New(typeVar, Nil)
       js.Apply(js.DotSelect(instance, encodeMethodSym(ctor)), arguments)
