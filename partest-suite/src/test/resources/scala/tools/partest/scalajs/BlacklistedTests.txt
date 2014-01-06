@@ -102,6 +102,7 @@ run/UnrolledBuffer.scala
 # Crashes Rhino
 
 run/bridges.scala
+run/patmat-exprs.scala
 
 # Using partest properties
 

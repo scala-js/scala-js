@@ -1237,7 +1237,6 @@ run/t5648.scala
 run/retclosure.scala
 run/t2857.scala
 run/t4859.scala
-run/patmat-exprs.scala
 run/t5162.scala
 run/t3038.scala
 run/classof.scala
