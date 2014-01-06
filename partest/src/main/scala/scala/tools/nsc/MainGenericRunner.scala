@@ -33,12 +33,7 @@ class MainGenericRunner {
   }
 
   def process(args: Array[String]): Boolean = {
-    val patchedArgs = {
-      val (scalaArgs, targetAndArguments) = args.toList.span(_ != "Test")
-      scalaArgs ::: "-howtorun:object" :: targetAndArguments
-    }
-
-    val command = new GenericRunnerCommand(patchedArgs, (x: String) => errorFn(x))
+    val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
     import command.{ settings, howToRun, thingToRun }
 
     if (!command.ok) return errorFn("\n" + command.shortUsageMsg)
