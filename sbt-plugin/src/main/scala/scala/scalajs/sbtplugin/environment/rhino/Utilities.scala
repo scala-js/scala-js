@@ -20,33 +20,39 @@ import org.mozilla.javascript.ScriptableObject
 
 trait Utilities { self: CodeBlock =>
 
-  def getObject(base: String, className: String) = {
+  private def getObject(base: String, className: String) = {
     val classNameKey = className.replaceAll("\\.", "_")
 
     val classObject =
       getFrom(scope, s"$base.$classNameKey".split("\\."), scope)
 
     classObject match {
-      case Right(classObject: javascript.Function) =>
+      case Right(classObject) =>
         classObject
-      case Right(noFunction) =>
-        throw new RuntimeException(
-            s"Could not find constructor function, type of element was: ${noFunction.getClass.getName}")
       case Left(key) =>
         throw new RuntimeException(
             s"Could not find $className, undefined key: $key")
     }
   }
 
+  private def getFunctionObject(base: String, className: String) = {
+    getObject(base, className) match {
+      case fun: javascript.Function => fun
+      case noFunction =>
+        throw new RuntimeException(
+            s"Could not find constructor function, type of element was: ${noFunction.getClass.getName}")
+    }
+  }
+
   def toArgs(args: Seq[Any]) = args.map(Context.javaToJS(_, scope)).toArray
 
   def createInstance(className: String, args: Any*) = {
-    val classObject = getObject("ScalaJS.classes", className)
+    val classObject = getFunctionObject("ScalaJS.classes", className)
     classObject.construct(context, scope, toArgs(args))
   }
 
   def getModule(className: String) = {
-    val moduleObject = getObject("ScalaJS.modules", className)
+    val moduleObject = getFunctionObject("ScalaJS.modules", className)
     moduleObject.call(context, scope, scope, Array.empty).asInstanceOf[NativeObject]
   }
 
@@ -62,6 +68,36 @@ trait Utilities { self: CodeBlock =>
         throw new RuntimeException(
             s"$methodName is not a method, type was: ${other.getClass.getName}")
     }
+  }
+
+  def callMainMethod(obj: NativeObject, args: Array[String]): Unit =
+    callMethod(obj, "main__AT__V", toScalaJSArray(args))
+
+  def callMainMethod(moduleName: String, args: Array[String]): Unit =
+    callMainMethod(getModule(moduleName), args)
+
+  def toScalaJSArray[A](array: Array[A]): Scriptable = {
+    val result = createScalaJSArray(
+        array.getClass.getComponentType.getName, array.length)
+
+    val underlying = ScriptableObject.getProperty(
+        result, "underlying").asInstanceOf[Scriptable]
+    for (i <- 0 until array.length) {
+      val item = Context.javaToJS(array(i), scope)
+      ScriptableObject.putProperty(underlying, i, item)
+    }
+
+    result
+  }
+
+  private def createScalaJSArray(componentClassName: String,
+      length: Int): Scriptable = {
+    val elementClassData = getObject("ScalaJS.data", componentClassName)
+    val arrayClassData = ScriptableObject.callMethod(
+        context, elementClassData, "getArrayOf", Array()).asInstanceOf[Scriptable]
+    val constr = ScriptableObject.getProperty(
+        arrayClassData, "constr").asInstanceOf[javascript.Function]
+    constr.construct(context, scope, Array(new Integer(length)))
   }
 
   @tailrec
