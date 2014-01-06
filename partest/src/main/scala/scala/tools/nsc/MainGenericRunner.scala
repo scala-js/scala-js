@@ -63,8 +63,7 @@ class MainGenericRunner {
 
     environment.runInContextAndScope { (context, scope) =>
       new CodeBlock(context, scope) with Utilities {
-        val mainModule = getModule(thingToRun)
-        callMethod(mainModule, "main__AT__V", null) // TODO use command.arguments
+        callMainMethod(thingToRun, command.arguments.toArray)
       }
     }
 

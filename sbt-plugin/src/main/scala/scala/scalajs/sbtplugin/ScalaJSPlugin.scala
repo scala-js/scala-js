@@ -500,12 +500,11 @@ object ScalaJSPlugin extends Plugin {
         Def.inputTask {
           val mainClassName = (mainClass in run).value.getOrElse(
               sys.error("No main class detected."))
-          val args = parser.parsed
+          val args = parser.parsed.toArray
 
           prepareEnvironment.value.runInContextAndScope { (context, scope) =>
             new CodeBlock(context, scope) with Utilities {
-              val mainModule = getModule(mainClassName)
-              callMethod(mainModule, "main__AT__V", null) // TODO use args
+              callMainMethod(mainClassName, args)
             }
           }
         }
