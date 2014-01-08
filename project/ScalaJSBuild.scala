@@ -7,6 +7,7 @@ import scala.scalajs.sbtplugin._
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import SourceMapCat.catJSFilesAndTheirSourceMaps
+import ExternalCompile.scalaJSExternalCompileSettings
 
 object ScalaJSBuild extends Build {
 
