@@ -193,10 +193,16 @@ object ScalaJSPlugin extends Plugin {
             (unmanagedSources in packageJSKey).value)
       },
 
+      moduleName in packageJSKey := moduleName.value,
+
+      artifactPath in packageJSKey :=
+        (crossTarget.value /
+            ((moduleName in packageJSKey).value + outputSuffix + ".js")),
+
       packageJSKey := {
         val s = streams.value
         val inputs = (sources in packageJSKey).value
-        val output = crossTarget.value / (moduleName.value + outputSuffix + ".js")
+        val output = (artifactPath in packageJSKey).value
         val taskCacheDir = s.cacheDirectory / "package-js"
 
         IO.createDirectory(crossTarget.value)
@@ -419,6 +425,11 @@ object ScalaJSPlugin extends Plugin {
       scalaJSConfigSettings ++
       scalaJSRunInputsSettings(test) ++
       scalaJSTestFrameworkSettings
+  ) ++ (
+      Seq(packageExternalDepsJS, packageInternalDepsJS,
+          packageExportedProductsJS) map { packageJSTask =>
+        moduleName in packageJSTask := moduleName.value + "-test"
+      }
   )
 
   def defaultLoggingConsole =
