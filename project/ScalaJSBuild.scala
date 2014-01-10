@@ -7,6 +7,7 @@ import scala.scalajs.sbtplugin._
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import SourceMapCat.catJSFilesAndTheirSourceMaps
+import ExternalCompile.scalaJSExternalCompileSettings
 
 object ScalaJSBuild extends Build {
 
@@ -53,6 +54,39 @@ object ScalaJSBuild extends Build {
 
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
+
+  override lazy val settings = super.settings ++ Seq(
+    /* Friendly error message when we forget to fetch the submodule
+     * or when we forget to update it after changing branch. */
+    {
+      val f = (s: State) => {
+        val logger = s.globalLogging.full
+        import logger.warn
+        val base = s.configuration.baseDirectory()
+        val scalalibHeadFile = base / ".git/modules/scalalib/source/HEAD"
+        if (!scalalibHeadFile.exists()) {
+          warn("It seems you have not fetched the scalalib/source submodule.")
+          warn("This will prevent you from building Scala.js!")
+          warn("You can fix this by doing the following:")
+          warn("  $ git submodule init")
+          warn("  $ git submodule update")
+        } else {
+          val sha = IO.readLines(scalalibHeadFile).headOption
+          if (sha != Some("c243435f113615b2f7407fbd683c93ec16c73749")) {
+            warn("The head of the scala/source submodule is not the one I expected.")
+            warn("This will likely prevent you from building Scala.js and will cause weird errors!")
+            warn("You can fix this by doing the following:")
+            warn("  $ git submodule update")
+          }
+        }
+        s
+      }
+      onLoad in Global := {
+        val previous = (onLoad in Global).value
+        f compose previous
+      }
+    }
+  )
 
   lazy val root: Project = Project(
       id = "scalajs",
