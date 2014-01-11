@@ -80,6 +80,10 @@ run/stringinterpolation_macro-run.scala
 #  This test uses range on Doubles which uses BigDecimal in return
 run/t5857.scala
 
+# Documented sematic difference on numbers (float precision)
+run/interpolation.scala
+run/interpolationMultiline1.scala
+
 # Using Threads
 run/t6969.scala
 run/inner-obj-auto.scala
