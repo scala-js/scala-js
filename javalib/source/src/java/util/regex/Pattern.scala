@@ -34,7 +34,7 @@ final class Pattern private (pattern0: String, flags0: Int) {
   override def toString(): String = pattern0
 
   def matcher(input: CharSequence): Matcher =
-    new Matcher(this, input)
+    new Matcher(this, input, 0, input.length)
 
   def split(input: CharSequence): Array[String] =
     split(input, 0)
