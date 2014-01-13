@@ -39,6 +39,8 @@ final class Byte(private val value: scala.Byte) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
 
+  override def hashCode(): Int = value.##
+
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
 
@@ -67,6 +69,8 @@ final class Short(private val value: scala.Short) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
+
+  override def hashCode(): Int = value.##
 
   override def equals(that: Any) =
     that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
@@ -97,6 +101,8 @@ final class Integer(private val value: scala.Int) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
+
+  override def hashCode(): Int = value.##
 
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
