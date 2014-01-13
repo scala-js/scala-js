@@ -102,6 +102,7 @@ run/t408.scala
 run/t6584.scala
 run/t6853.scala
 run/UnrolledBuffer.scala
+run/mutable-anyrefmap.scala
 
 # Crashes Rhino
 
