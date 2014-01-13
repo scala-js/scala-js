@@ -83,5 +83,10 @@ object RegressionTest extends JasmineTest {
       expect(ss.length()).toEqual(1)
       expect(ss.charAt(0)).toEqual('c')
     }
+
+    it("should correctly concat primitive values to strings - #113") {
+      expect(4 + "foo").toEqual("4foo")
+      expect('a' + "foo").toEqual("afoo")
+    }
   }
 }

@@ -39,6 +39,8 @@ final class Byte(private val value: scala.Byte) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
 
+  override def hashCode(): Int = value.##
+
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
 
@@ -67,6 +69,8 @@ final class Short(private val value: scala.Short) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
+
+  override def hashCode(): Int = value.##
 
   override def equals(that: Any) =
     that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
@@ -97,6 +101,8 @@ final class Integer(private val value: scala.Int) extends Number {
   def longValue() = value.toLong
   def floatValue() = value.toFloat
   def doubleValue() = value.toDouble
+
+  override def hashCode(): Int = value.##
 
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
@@ -231,8 +237,15 @@ final class Float(private val value: scala.Float) extends Number {
   def floatValue() = value
   def doubleValue() = value.toDouble
 
-  override def equals(that: Any) =
-    that.isInstanceOf[Float] && (value == that.asInstanceOf[Float].value)
+  override def equals(that0: Any) = that0.isInstanceOf[Float] && {
+    val that = that0.asInstanceOf[Float]
+
+    isNaN && that.isNaN ||
+    value == that.value && (
+      // check that they have the same sign if they are 0
+      value != 0 || 1 / value == 1 / that.value
+    )
+  }
 
   override def toString = {
     val s = (value: js.Number).toString()
@@ -287,8 +300,15 @@ final class Double(private val value: scala.Double) extends Number {
   def floatValue() = value.toFloat
   def doubleValue() = value
 
-  override def equals(that: Any) =
-    that.isInstanceOf[Double] && (value == that.asInstanceOf[Double].value)
+  override def equals(that0: Any) = that0.isInstanceOf[Double] && {
+    val that = that0.asInstanceOf[Double]
+
+    isNaN && that.isNaN ||
+    value == that.value && (
+      // check that they have the same sign if they are 0
+      value != 0 || 1 / value == 1 / that.value
+    )
+  }
 
   override def toString = {
     val s = (value: js.Number).toString()

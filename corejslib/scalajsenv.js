@@ -166,13 +166,6 @@ var ScalaJS = {
       return lhs === rhs;
   },
 
-  anyToStringForConcat: function(x) {
-    if (x === null || x === undefined)
-      return ""+x;
-    else
-      return x.toString();
-  },
-
   objectGetClass: function(instance) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
       return instance.getClass__java_lang_Class();
