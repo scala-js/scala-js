@@ -13,28 +13,18 @@ run/iterator-from.scala
 run/future-flatmap-exec-count.scala
 run/macro-reify-unreify
 
-#### Filed bugs
-
-# Filed as #104
+# must be re-reported
+# (bug that was reported was fixed, but there is still an issue)
 run/hashCodeBoxesRunTime.scala
+run/richs.scala
+
+#### Filed bugs
 
 # Filed as #105
 run/t0325.scala
-
-# Filed as #108
-run/ReplacementMatching.scala
-
-# Filed as #109
-run/patmat-finally.scala
 
 # Filed as #110
 run/issue192.scala
 run/t1110.scala
 run/t0432.scala
 run/structural.scala
-
-# Filed as #116
-run/number-parsing.scala
-
-# Filed as #117
-run/richs.scala

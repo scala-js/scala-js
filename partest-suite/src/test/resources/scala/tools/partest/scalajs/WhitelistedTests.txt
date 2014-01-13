@@ -2580,3 +2580,6 @@ neg/t7494-right-after-terminal
 run/lazy-traits.scala
 run/OrderingTest.scala
 run/runtime.scala
+run/ReplacementMatching.scala
+run/patmat-finally.scala
+run/number-parsing.scala
