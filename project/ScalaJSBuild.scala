@@ -1,6 +1,8 @@
 import sbt._
 import Keys._
 
+import PublishToBintray.publishToBintraySettings
+
 import scala.util.Properties
 
 import scala.scalajs.sbtplugin._
@@ -19,24 +21,37 @@ object ScalaJSBuild extends Build {
         _.replace("scala.js", "scalajs").replace("scala-js", "scalajs")
       },
 
-      publishTo := {
-        val resolver = Resolver.sftp(
-            s"scala-js-$snapshotsOrReleases",
-            "repo.scala-js.org",
-            s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(Resolver.ivyStylePatterns)
-        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
-          case Seq(Some(user), Some(pass)) =>
-            Some(resolver as (user, pass))
-          case _ =>
-            None
-        }
-      },
-
-      publishMavenStyle := false
+      homepage := Some(url("http://scala-js.org/")),
+      licenses += ("BSD New",
+          url("https://github.com/scala-js/scala-js/blob/master/LICENSE"))
   )
 
   private val snapshotsOrReleases =
     if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
+
+  private def publishToScalaJSRepoSettings = Seq(
+      publishTo := {
+        Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
+          case Seq(Some(user), Some(pass)) =>
+            Some(Resolver.sftp(
+                s"scala-js-$snapshotsOrReleases",
+                "repo.scala-js.org",
+                s"/home/scalajsrepo/www/repo/$snapshotsOrReleases")(
+                Resolver.ivyStylePatterns) as (user, pass))
+          case _ =>
+            None
+        }
+      }
+  )
+
+  val publishSettings = (
+      if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
+        publishToBintraySettings
+      else
+        publishToScalaJSRepoSettings
+  ) ++ Seq(
+      publishMavenStyle := false
+  )
 
   val defaultSettings = commonSettings ++ Seq(
       scalaVersion := scalaJSScalaVersion,
@@ -112,7 +127,7 @@ object ScalaJSBuild extends Build {
   lazy val compiler: Project = Project(
       id = "scalajs-compiler",
       base = file("compiler"),
-      settings = defaultSettings ++ Seq(
+      settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaJSScalaVersion,
@@ -125,7 +140,7 @@ object ScalaJSBuild extends Build {
   lazy val plugin: Project = Project(
       id = "scalajs-sbt-plugin",
       base = file("sbt-plugin"),
-      settings = commonSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js sbt plugin",
           sbtPlugin := true,
           scalaBinaryVersion :=
@@ -238,7 +253,7 @@ object ScalaJSBuild extends Build {
   lazy val library: Project = Project(
       id = "scalajs-library",
       base = file("library"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
           scalacOptions += "-Ydelambdafy:method"
       ) ++ (
@@ -267,7 +282,7 @@ object ScalaJSBuild extends Build {
   lazy val jasmineTestFramework = Project(
       id = "scalajs-jasmine-test-framework",
       base = file("jasmine-test-framework"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js jasmine test framework",
 
           libraryDependencies ++= Seq(

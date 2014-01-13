@@ -10,6 +10,8 @@ import scala.collection.mutable.ListBuffer
 
 import scala.tools.nsc._
 
+import scala.annotation.tailrec
+
 /** Generate JavaScript code and output it to disk
  *
  *  @author Sébastien Doeraene
@@ -1024,6 +1026,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           statToExpr(js.While(js.BooleanLiteral(true),
               js.Block(bodyStats map genStat)))
 
+        // while (false) { body }
+        case LabelDef(lname, Nil, Literal(Constant(()))) =>
+          js.Skip()
+
         // do { body } while (cond)
         case LabelDef(lname, Nil,
             Block(bodyStats,
@@ -1904,15 +1910,27 @@ abstract class GenJSCode extends plugins.PluginComponent
         args: List[Tree]): js.Tree = {
       implicit val pos = tree.pos
 
-      val List(lhs, rhs) = for {
-        op <- receiver :: args
-      } yield {
-        val genOp = genExpr(op)
-        genOp match {
-          case js.StringLiteral(_, _) => genOp
-          case _ => genCallHelper("anyToStringForConcat", genOp)
-        }
+      /** whether the given tree will always evaluate to a string */
+      @tailrec
+      def isAlwaysString(t: js.Tree): Boolean = t match {
+        case js.StringLiteral(_, _)   => true
+        case js.BinaryOp("+", lhs, _) => isAlwaysString(lhs)
+        case _ => false
       }
+
+      val jsRec = genExpr(receiver)
+
+      val lhs = {
+        // Box the receiver if it is a primitive value
+        if (receiver.tpe.typeSymbol.isPrimitiveValueClass)
+          makeBox(jsRec, receiver.tpe)
+        // Optimize away the "" + if not required
+        else if (isAlwaysString(jsRec))
+          jsRec
+        else
+          js.BinaryOp("+", js.StringLiteral("", None), jsRec)
+      }
+      val rhs = genExpr(args.head)
 
       js.BinaryOp("+", lhs, rhs)
     }

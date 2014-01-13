@@ -456,9 +456,11 @@ object ScalaJSPlugin extends Plugin {
   )
 
   val scalaJSReleasesResolver = Resolver.url("scala-js-releases",
-      url("http://repo.scala-js.org/repo/releases/"))(Resolver.ivyStylePatterns)
+      url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
+      Resolver.ivyStylePatterns)
   val scalaJSSnapshotsResolver = Resolver.url("scala-js-snapshots",
-      url("http://repo.scala-js.org/repo/snapshots/"))(Resolver.ivyStylePatterns)
+      url("http://repo.scala-js.org/repo/snapshots/"))(
+      Resolver.ivyStylePatterns)
 
   val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
       // the resolver to find the compiler and library (and others)
