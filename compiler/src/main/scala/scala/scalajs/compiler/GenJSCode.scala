@@ -1001,6 +1001,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           statToExpr(js.While(js.BooleanLiteral(true),
               js.Block(bodyStats map genStat)))
 
+        // while (false) { body }
+        case LabelDef(lname, Nil, Literal(Constant(()))) =>
+          js.Skip()
+
         // do { body } while (cond)
         case LabelDef(lname, Nil,
             Block(bodyStats,
