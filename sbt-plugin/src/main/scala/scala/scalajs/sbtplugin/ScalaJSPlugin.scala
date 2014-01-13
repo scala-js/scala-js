@@ -56,6 +56,9 @@ object ScalaJSPlugin extends Plugin {
     val prepareEnvironment = taskKey[ScalaJSEnvironment](
         "Prepares a jvm environment in where Scala.js files can be run and tested")
 
+    val scalaJSSetupRunner = settingKey[Boolean](
+        "Configure the run task to run the main object with the Scala.js environment")
+
     val scalaJSTestBridgeClass = settingKey[String](
         "The Scala.js class that delegates test calls to the given test framework")
     val scalaJSTestFramework = settingKey[String](
@@ -382,24 +385,18 @@ object ScalaJSPlugin extends Plugin {
       new RhinoBasedScalaJSEnvironment(inputs, classpath, console, logger.trace)
     }
 
+  lazy val scalaJSRunnerTask = Def.task[ScalaRun] {
+    new ScalaJSEnvRun(prepareEnvironment.value)
+  }
+
   val scalaJSRunSettings = scalaJSRunInputsSettings(run) ++ Seq(
       prepareEnvironment <<= createScalaJSEnvironment(run),
-
-      run <<= {
-        import Def.parserToInput
-        val parser = Def.spaceDelimited()
-
-        Def.inputTask {
-          val mainClassName = (mainClass in run).value.getOrElse(
-              sys.error("No main class detected."))
-          val args = parser.parsed.toArray
-
-          prepareEnvironment.value.runInContextAndScope { (context, scope) =>
-            new CodeBlock(context, scope) with Utilities {
-              callMainMethod(mainClassName, args)
-            }
-          }
-        }
+      scalaJSSetupRunner := true,
+      runner in run <<= Def.taskDyn {
+        if (scalaJSSetupRunner.value)
+          scalaJSRunnerTask
+        else
+          runner in run
       }
   )
 
