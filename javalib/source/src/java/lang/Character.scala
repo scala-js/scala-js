@@ -66,7 +66,7 @@ object Character {
   def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isWhitespace(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
   def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
 
   def isHighSurrogate(c: scala.Char): scala.Boolean =
