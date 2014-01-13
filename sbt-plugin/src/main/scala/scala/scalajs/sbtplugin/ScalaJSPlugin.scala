@@ -411,13 +411,24 @@ object ScalaJSPlugin extends Plugin {
       prepareEnvironment <<= createScalaJSEnvironment(test),
 
       loadedTestFrameworks := {
-        loadedTestFrameworks.value.updated(
-            sbt.TestFramework(classOf[TestFramework].getName),
-            new TestFramework(
-                environment = prepareEnvironment.value,
-                testRunnerClass = scalaJSTestBridgeClass.value,
-                testFramework = scalaJSTestFramework.value)
-        )
+        val loader = testLoader.value
+        val isTestFrameworkDefined = try {
+          Class.forName(scalaJSTestFramework.value, false, loader)
+          true
+        } catch {
+          case _: ClassNotFoundException => false
+        }
+        if (isTestFrameworkDefined) {
+          loadedTestFrameworks.value.updated(
+              sbt.TestFramework(classOf[TestFramework].getName),
+              new TestFramework(
+                  environment = prepareEnvironment.value,
+                  testRunnerClass = scalaJSTestBridgeClass.value,
+                  testFramework = scalaJSTestFramework.value)
+          )
+        } else {
+          loadedTestFrameworks.value
+        }
       }
   )
 
