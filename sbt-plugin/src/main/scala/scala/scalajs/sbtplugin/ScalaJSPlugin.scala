@@ -53,8 +53,11 @@ object ScalaJSPlugin extends Plugin {
 
     val loggingConsole = taskKey[Option[Console]](
         "The logging console used by the Scala.js jvm environment")
-    val prepareEnvironment = taskKey[ScalaJSEnvironment](
-        "Prepares a jvm environment in where Scala.js files can be run and tested")
+    val scalaJSEnvironment = taskKey[ScalaJSEnvironment](
+        "A JVM-like environment where Scala.js files can be run and tested")
+
+    val scalaJSSetupRunner = settingKey[Boolean](
+        "Configure the run task to run the main object with the Scala.js environment")
 
     val scalaJSTestBridgeClass = settingKey[String](
         "The Scala.js class that delegates test calls to the given test framework")
@@ -269,6 +272,31 @@ object ScalaJSPlugin extends Plugin {
     incOptions.copy(newClassfileManager = newClassfileManager)
   }
 
+  val scalaJSEnvironmentTask = Def.task[ScalaJSEnvironment] {
+    val inputs = (sources in scalaJSEnvironment).value
+    val classpath = (fullClasspath in scalaJSEnvironment).value.map(_.data)
+    val logger = streams.value.log
+    val console = loggingConsole.value
+
+    new RhinoBasedScalaJSEnvironment(inputs, classpath, console, logger.trace)
+  }
+
+  val scalaJSEnvironmentSettings = Seq(
+      sources in scalaJSEnvironment := (
+          (sources in packageExternalDepsJS).value ++
+          (sources in packageInternalDepsJS).value ++
+          (sources in packageExportedProductsJS).value
+      ),
+
+      fullClasspath in scalaJSEnvironment := (
+          (externalDependencyClasspath in packageExternalDepsJS).value ++
+          (internalDependencyClasspath in packageInternalDepsJS).value ++
+          (exportedProducts in packageExportedProductsJS).value
+      ),
+
+      scalaJSEnvironment <<= scalaJSEnvironmentTask
+  )
+
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
@@ -278,6 +306,8 @@ object ScalaJSPlugin extends Plugin {
           packageInternalDepsJS, "-intdeps") ++
       packageClasspathJSTasks(exportedProducts,
           packageExportedProductsJS, "")
+  ) ++ (
+      scalaJSEnvironmentSettings
   ) ++ Seq(
       managedSources in packageJS := Seq(),
       unmanagedSources in packageJS := Seq(),
@@ -359,72 +389,53 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  def scalaJSRunInputsSettings(scoped: Scoped) = Seq(
-      sources in scoped := (
-          (sources in packageExternalDepsJS).value ++
-          (sources in packageInternalDepsJS).value ++
-          (sources in packageExportedProductsJS).value
-      ),
+  lazy val scalaJSRunnerTask = Def.task[ScalaRun] {
+    new ScalaJSEnvRun(scalaJSEnvironment.value)
+  }
 
-      fullClasspath in scoped := (
-          (externalDependencyClasspath in packageExternalDepsJS).value ++
-          (internalDependencyClasspath in packageInternalDepsJS).value ++
-          (exportedProducts in packageExportedProductsJS).value
-      )
-  )
-
-  def createScalaJSEnvironment(scoped: Scoped): Def.Initialize[Task[ScalaJSEnvironment]] =
-    Def.task {
-      val inputs = (sources in scoped).value
-      val classpath = (fullClasspath in scoped).value.map(_.data)
-      val logger = streams.value.log
-      val console = loggingConsole.value
-
-      new RhinoBasedScalaJSEnvironment(inputs, classpath, console, logger.trace)
-    }
-
-  val scalaJSRunSettings = scalaJSRunInputsSettings(run) ++ Seq(
-      prepareEnvironment <<= createScalaJSEnvironment(run),
-
-      run <<= {
-        import Def.parserToInput
-        val parser = Def.spaceDelimited()
-
-        Def.inputTask {
-          val mainClassName = (mainClass in run).value.getOrElse(
-              sys.error("No main class detected."))
-          val args = parser.parsed.toArray
-
-          prepareEnvironment.value.runInContextAndScope { (context, scope) =>
-            new CodeBlock(context, scope) with Utilities {
-              callMainMethod(mainClassName, args)
-            }
-          }
-        }
+  val scalaJSRunSettings = Seq(
+      scalaJSSetupRunner := true,
+      runner in run <<= Def.taskDyn {
+        if (scalaJSSetupRunner.value)
+          scalaJSRunnerTask
+        else
+          runner in run
       }
   )
 
-  val scalaJSCompileSettings = scalaJSConfigSettings ++ scalaJSRunSettings
+  val scalaJSCompileSettings = (
+      scalaJSConfigSettings ++
+      scalaJSRunSettings
+  )
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
       scalaJSTestBridgeClass := "scala.scalajs.test.TestBridge",
-      prepareEnvironment <<= createScalaJSEnvironment(test),
 
       loadedTestFrameworks := {
-        loadedTestFrameworks.value.updated(
-            sbt.TestFramework(classOf[TestFramework].getName),
-            new TestFramework(
-                environment = prepareEnvironment.value,
-                testRunnerClass = scalaJSTestBridgeClass.value,
-                testFramework = scalaJSTestFramework.value)
-        )
+        val loader = testLoader.value
+        val isTestFrameworkDefined = try {
+          Class.forName(scalaJSTestFramework.value, false, loader)
+          true
+        } catch {
+          case _: ClassNotFoundException => false
+        }
+        if (isTestFrameworkDefined) {
+          loadedTestFrameworks.value.updated(
+              sbt.TestFramework(classOf[TestFramework].getName),
+              new TestFramework(
+                  environment = scalaJSEnvironment.value,
+                  testRunnerClass = scalaJSTestBridgeClass.value,
+                  testFramework = scalaJSTestFramework.value)
+          )
+        } else {
+          loadedTestFrameworks.value
+        }
       }
   )
 
   val scalaJSTestSettings = (
       scalaJSConfigSettings ++
-      scalaJSRunInputsSettings(test) ++
       scalaJSTestFrameworkSettings
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,

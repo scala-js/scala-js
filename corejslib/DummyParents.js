@@ -46,6 +46,4 @@ ScalaJS.inheritable.scala_concurrent_forkjoin_ForkJoinWorkerThread = function() 
 /** @constructor */
 ScalaJS.inheritable.scala_concurrent_forkjoin_RecursiveAction = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_concurrent_impl_AbstractPromise = function() {};
-/** @constructor */
 ScalaJS.inheritable.scala_math_ScalaNumber = function() {};
