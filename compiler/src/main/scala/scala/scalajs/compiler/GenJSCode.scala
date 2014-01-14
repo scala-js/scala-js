@@ -88,6 +88,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       mutable.Map.empty[Symbol, List[js.Tree] => js.Tree] // ctor args to instance
     private val instantiatedAnonFunctions =
       mutable.Set.empty[Symbol]
+    private val undefinedDefaultParams =
+      mutable.Set.empty[Symbol]
 
     // Top-level apply ---------------------------------------------------------
 
@@ -175,6 +177,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
+        undefinedDefaultParams.clear()
         currentCUnit = null
         currentClassSym = null
         currentMethodSym = null
@@ -807,10 +810,20 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
           val sym = tree.symbol
-          val lhsTree =
+          val rhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
             else genExpr(rhs)
-          statToExpr(js.VarDef(encodeLocalSym(sym, freshName), lhsTree))
+
+          rhsTree match {
+            case js.UndefinedParam() =>
+              // This is an intermediate assignment for default params on a
+              // js.Any. Add the symbol to the corresponding set to inform
+              // the Indent resolver how to replace it and don't emit the symbol
+              undefinedDefaultParams += sym
+              statToExpr(js.Skip())
+            case _ =>
+              statToExpr(js.VarDef(encodeLocalSym(sym, freshName), rhsTree))
+          }
 
         case If(cond, thenp, elsep) =>
           js.If(genExpr(cond), genExpr(thenp), genExpr(elsep))
@@ -878,6 +891,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             if (sym.isModule) {
               assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
               genLoadModule(sym)
+            } else if (undefinedDefaultParams contains sym) {
+              // This is a default parameter whose assignment was moved to
+              // a local variable. Put a literal undefined param again
+              js.UndefinedParam()
             } else {
               encodeLocalSym(sym, freshName)
             }
@@ -2436,7 +2453,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             isScalaJSDefined && sym.hasAnnotation(JSBracketAccessAnnotation)
           }
 
-          if (isJSGetter) {
+          if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
+            js.UndefinedParam()
+          } else if (isJSGetter) {
             assert(argc == 0)
             js.BracketSelect(receiver, js.StringLiteral(funName))
           } else if (isJSSetter) {
@@ -2570,6 +2589,30 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
       closeReversedPartUnderConstruction()
+
+      // Find js.UndefinedParam at the end of the argument list. No check is
+      // performed whether they may be there, since they will only be placed
+      // where default arguments can be anyway
+      reversedParts = reversedParts match {
+        case Nil => Nil
+        case js.ArrayConstr(params) :: others =>
+          val nparams =
+            params.reverse.dropWhile(_.isInstanceOf[js.UndefinedParam]).reverse
+          js.ArrayConstr(nparams) :: others
+        case parts => parts
+      }
+
+      // Find remaining js.UndefinedParam and replace by js.Undefined. This can
+      // happen with named arguments or when multiple argument lists are present
+      reversedParts = reversedParts map {
+        case js.ArrayConstr(params) =>
+          val nparams = params map {
+            case js.UndefinedParam() => js.Undefined()
+            case param => param
+          }
+          js.ArrayConstr(nparams)
+        case part => part
+      }
 
       reversedParts match {
         case Nil => js.ArrayConstr(Nil)
