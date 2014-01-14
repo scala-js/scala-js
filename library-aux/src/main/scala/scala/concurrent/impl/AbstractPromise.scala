@@ -1,4 +1,4 @@
-package scala.concurrent.impl;
+package scala.concurrent.impl
 
 /**
  * JavaScript specific implementation of AbstractPromise
