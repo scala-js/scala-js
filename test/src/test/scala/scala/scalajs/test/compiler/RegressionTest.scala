@@ -88,5 +88,15 @@ object RegressionTest extends JasmineTest {
       expect(4 + "foo").toEqual("4foo")
       expect('a' + "foo").toEqual("afoo")
     }
+
+    it("should resolve overloads on scala.Function.apply when converting to js.Function - #125") {
+      class Fct extends Function1[Int,Any] {
+        def apply(n: Int) = n
+      }
+
+      val scalaFunction = new Fct
+      val jsFunction: js.Any = scalaFunction
+      val thisFunction: js.ThisFunction = scalaFunction
+    }
   }
 }

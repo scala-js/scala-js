@@ -2152,6 +2152,34 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case List(arg) =>
+
+          /** get the apply method of a class extending FunctionN
+           *
+           *  only use when implementing a fromFunctionN primitive
+           *  as it uses the tree
+           */
+          def getFunApply(clSym: Symbol) = {
+            // Fetch symbol and resolve overload if necessary
+            val sym = getMemberMethod(clSym, newTermName("apply"))
+
+            if (sym.isOverloaded) {
+              // The symbol is overloaded. Figure out the arity
+              // from the name of the primitive function we are
+              // implementing. Then chose the overload with the right
+              // number of Object arguments
+              val funName = tree.fun.symbol.name.encoded
+              assert(funName.startsWith("fromFunction"))
+              val arity = funName.substring(12).toInt
+
+              sym.alternatives.find { s =>
+                val ps = s.paramss
+                ps.size == 1 &&
+                ps.head.size == arity &&
+                ps.head.forall(_.tpe.typeSymbol == ObjectClass)
+              }.get
+            } else sym
+          }
+
           code match {
             case V2JS => statToExpr(exprToStat(arg))
             case Z2JS => arg
@@ -2180,8 +2208,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
                 case _ =>
                   val inputTpe = args.head.tpe
-                  val applyMeth = getMemberMethod(inputTpe.typeSymbol,
-                      newTermName("apply"))
+                  val applyMeth = getFunApply(inputTpe.typeSymbol)
                   val arity = applyMeth.tpe.params.size
                   val theFunction = js.Ident("$this")
                   val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
@@ -2203,8 +2230,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              */
             case F2JSTHIS =>
               val inputTpe = args.head.tpe
-              val applyMeth = getMemberMethod(inputTpe.typeSymbol,
-                  newTermName("apply"))
+              val applyMeth = getFunApply(inputTpe.typeSymbol)
               val arity = applyMeth.tpe.params.size
               val theFunction = js.Ident("f")
               val arguments = (1 until arity).toList map (x => js.Ident("arg"+x))
