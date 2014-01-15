@@ -158,6 +158,49 @@ object InteroperabilityTest extends JasmineTest {
       expect(check(0x600d)).toEqual(0x600d)
     }
 
+    it("should properly handle default parameters") {
+      /** Trait with different method signatures, all forwarded to the same
+       *  JS raw function that returns the argument list for inspection
+       */
+      trait InteroperabilityTestDefaultParam extends js.Object {
+        @JSName("fun")
+        def simple(x: js.Number, y: js.Number = 5): js.Any = ???
+        @JSName("fun")
+        def named(
+            x: js.Number = 1,
+            y: js.Number = 1,
+            z: js.Number = 1): js.Any = ???
+        @JSName("fun")
+        def multi(x: js.Number = 1)
+          (ys: js.Number*)(z: js.Number = 1): js.Any = ???
+      }
+
+      val obj = js.eval("""
+        var interoperabilityTestDefaultParam = {
+          fun: function() { return arguments; }
+        };
+        interoperabilityTestDefaultParam;
+      """).asInstanceOf[InteroperabilityTestDefaultParam]
+
+      // Helpers
+      import js.Dynamic.{literal => args}
+      val undef = (): js.Undefined
+
+      expect(obj.simple(1)).toEqual(args(`0` = 1))
+      expect(obj.simple(1,5)).toEqual(args(`0` = 1, `1` = 5))
+      expect(obj.named(y = 5)).toEqual(args(`0` = undef, `1` = 5))
+      expect(obj.named(x = 5)).toEqual(args(`0` = 5))
+      expect(obj.multi()(1,2,3,4)()).toEqual(args(
+          `0` = undef,
+          `1` = 1,
+          `2` = 2,
+          `3` = 3,
+          `4` = 4))
+      expect(obj.multi(2)()(5)).toEqual(args(
+          `0` = 2,
+          `1` = 5))
+    }
+
   }
 }
 
