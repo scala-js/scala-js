@@ -222,7 +222,19 @@ object Long {
   def toOctalString(l: scala.Long): String =
     dropLZ(toRuntimeLong(l).toOctalString)
 
-  private def dropLZ(s: String) = s.dropWhile(_ == '0').padTo(1, '0')
+  /** Drop leading zeros
+   *
+   * This method was:
+   *
+   *     s.dropWhile(_ == '0').padTo(1, '0')
+   *
+   * but generated too much JS code
+   */
+  private def dropLZ(s: js.String) = {
+    var i = 0
+    while ("0" == s.charAt(i)) { i += 1 }
+    s.substring(Math.min(i,s.length - 1))
+  }
 }
 
 ////////////////// Float //////////////////

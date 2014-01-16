@@ -285,6 +285,9 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.Undefined() =>
           print("undefined")
 
+        case js.UndefinedParam() =>
+          print("<undefined param>")
+
         case js.Null() =>
           print("null")
 

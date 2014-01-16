@@ -189,6 +189,8 @@ trait JSTrees { self: JSGlobalAddons =>
 
     case class Undefined()(implicit val pos: Position) extends Literal
 
+    case class UndefinedParam()(implicit val pos: Position) extends Literal
+
     case class Null()(implicit val pos: Position) extends Literal
 
     case class BooleanLiteral(value: Boolean)(implicit val pos: Position) extends Literal
