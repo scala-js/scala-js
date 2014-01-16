@@ -177,7 +177,7 @@ object Integer {
 
 final class Long(private val value: scala.Long) extends Number {
   import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
-  
+
   protected[lang] val isInt = true
 
   override def byteValue() = toRuntimeLong(value).toByte
@@ -196,7 +196,7 @@ final class Long(private val value: scala.Long) extends Number {
 object Long {
   import scala.scalajs.runtime.{ Long => RTLong }
   import RTLong.{fromRuntimeLong, toRuntimeLong}
-  
+
   val TYPE = classOf[scala.Long]
   val MIN_VALUE: scala.Long = -9223372036854775808L
   val MAX_VALUE: scala.Long = 9223372036854775807L
@@ -222,7 +222,19 @@ object Long {
   def toOctalString(l: scala.Long): String =
     dropLZ(toRuntimeLong(l).toOctalString)
 
-  private def dropLZ(s: String) = s.dropWhile(_ == '0').padTo(1, '0')
+  /** Drop leading zeros
+   *
+   * This method was:
+   *
+   *     s.dropWhile(_ == '0').padTo(1, '0')
+   *
+   * but generated too much JS code
+   */
+  private def dropLZ(s: js.String) = {
+    var i = 0
+    while ("0" == s.charAt(i)) { i += 1 }
+    s.substring(Math.min(i,s.length - 1))
+  }
 }
 
 ////////////////// Float //////////////////
