@@ -7,7 +7,8 @@ trait JasmineExpectation extends js.Object {
   def toBe(exp: js.Any): Unit
   def toEqual(exp: js.Any): Unit
   def toMatch(exp: Pattern): Unit
-  def toMatch(exp: String): Unit = toMatch(Pattern.compile(exp))
+  // TODO why was there an implementation here?
+  def toMatch(exp: String): Unit// = toMatch(Pattern.compile(exp))
   def toBeDefined(): Unit
   def toBeUndefined(): Unit
   def toBeNull(): Unit

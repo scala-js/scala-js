@@ -18,13 +18,13 @@ class Error extends Object {
   def this(message: String) = this()
 
 
-  val name: String = ???
+  val name: String
   /**
    * Human-readable description of the error
    *
    * MDN
    */
-  val message: String = ???
+  val message: String
 }
 
 object Error extends Object {

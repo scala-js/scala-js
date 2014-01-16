@@ -40,9 +40,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
-    var allowJSAny     = true
-    var allowImplDef   = true
-    var jsAnyClassOnly = false
+    var inJSAnyMod = false
+    var inJSAnyCls = false
+    var inScalaCls = false
+
+    def jsAnyClassOnly = !inJSAnyCls && allowJSAny
+    def allowImplDef   = !inJSAnyCls && !inJSAnyMod
+    def allowJSAny     = !inScalaCls
+    def inJSAny        = inJSAnyMod || inJSAnyCls
 
     override def transform(tree: Tree): Tree = tree match {
       // Catch special case of ClassDef in ModuleDef
@@ -59,13 +64,21 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
 
-      // Catch ClassDefs to forbid js.Anys
+      // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
-        disallowJSAny { super.transform(cldef) }
+        enterScalaCls { super.transform(cldef) }
+
+      // Catch ValorDefDef in js.Any Class
+      case vddef: ValOrDefDef if inJSAnyCls =>
+        transformValOrDefDef(vddef)
 
       case _ => super.transform(tree)
     }
 
+    /**
+     * Performs checks and rewrites specific to classes / objects extending
+     * js.Any
+     */
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
         // Check that we are not an anonymous class
@@ -105,30 +118,132 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
           sym.setAnnotations(rawJSAnnot :: sym.annotations)
 
-          // TODO add extractor methods
-
       }
 
-      val allowJSAnyClass = implDef.isInstanceOf[ModuleDef]
-      disallowImplDef(allowJSAnyClass) { super.transform(implDef) }
+      if (implDef.isInstanceOf[ModuleDef])
+        enterJSAnyMod { super.transform(implDef) }
+      else
+        enterJSAnyCls { super.transform(implDef) }
     }
 
-    private def disallowImplDef[T](jsAnyOnly: Boolean)(body: =>T) = {
-      val oldAllowImplDef = allowImplDef
-      val oldJSAnyClassOnly = jsAnyClassOnly
-      allowImplDef = false
-      jsAnyClassOnly = jsAnyOnly
-      val res = disallowJSAny(body)
-      allowImplDef = oldAllowImplDef
-      jsAnyClassOnly = oldJSAnyClassOnly
+    /** transform a ValOrDefDef of a js.Any class
+     *  checks that it's body is empty and adds a stub
+     */
+    private def transformValOrDefDef(tree: ValOrDefDef) = {
+      val sym = tree.symbol
+
+      if (sym.hasAnnotation(nativeAnnotCls)) {
+        // Native methods are not allowed
+        unit.error(tree.pos, "Methods in a js.Any may not be native")
+        super.transform(tree)
+      } else if (sym.isPrimaryConstructor || sym.isValueParameter) {
+        // Ignore (i.e. allow) primary ctor and parameters
+        super.transform(tree)
+      } else if (sym.isConstructor) {
+        // Force secondary ctor to have only this() inside
+        // Future proofing: Allow arguments to this. Other checks will take care
+        // of the correctness of the primary constructor
+        tree.rhs match {
+          case Block(List(Apply(trg,_)), Literal(Constant(())))
+            if trg.symbol.isPrimaryConstructor &&
+               trg.symbol.owner == sym.owner =>
+            // everything is fine here
+          case _ =>
+            unit.error(tree.pos, "A secondary constructor of a class " +
+                "extending js.Any may only call the primary constructor")
+        }
+        super.transform(tree)
+      } else if (sym.isDeferred) {
+        // Symbol is deferred. This is what it should be.
+        // Generate method body to keep later phases happy
+
+        assert(tree.rhs.isEmpty)
+
+        // Create stub body
+        val stub = typer.typed {
+          reify(_root_.scala.sys.error("Scala.js raw JS method stub")).tree
+        }
+
+        tree match {
+          case ValDef(mods, name, tpt, rhs) =>
+            updateMappedSymFlags(sym)
+            treeCopy.ValDef(tree, mods, name, tpt, stub)
+          case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+            updateMappedSymFlags(sym)
+            treeCopy.DefDef(tree, mods, name, tparams, vparamss, tpt, stub)
+        }
+      } else {
+        unit.error(tree.pos, "Traits, classes and objects extending js.Any " +
+            "may not have any concrete members")
+        super.transform(tree)
+      }
+    }
+
+    /** correctly sets flags (deferred and override) of the symbol of a method
+     *  that we rewrote
+     */
+    private def updateMappedSymFlags(sym: Symbol) = {
+      val clazz = sym.owner
+      val needOverride =
+        clazz.tpe.baseClasses exists { hasMatchingSym(clazz, _, sym) }
+
+      if (needOverride)
+        sym.setFlag(Flag.OVERRIDE)
+
+      sym.resetFlag(Flag.DEFERRED)
+    }
+
+    /** Returns whether there is a symbol declared in class `inclazz`
+     * (which must be different from `clazz`) whose name and type
+     * seen as a member of `class.thisType` matches `member`'s.
+     *
+     * Copied from RefChecks.scala and adapted
+     */
+    private def hasMatchingSym(
+        clazz: Symbol, inclazz: Symbol, member: Symbol) = {
+      val isVarargs = definitions.hasRepeatedParam(member.tpe)
+      lazy val varargsType = toJavaRepeatedParam(member.tpe)
+
+      def isSignatureMatch(sym: Symbol) = !sym.isTerm || {
+        val symtpe            = clazz.thisType memberType sym
+        def matches(tp: Type) = tp matches symtpe
+
+        matches(member.tpe) || (isVarargs && matches(varargsType))
+      }
+
+      def classDecls   = inclazz.info.nonPrivateDecl(member.name)
+      def matchingSyms = classDecls filter (sym => isSignatureMatch(sym))
+
+        (inclazz != clazz) && (matchingSyms != NoSymbol)
+      }
+
+    /**
+     * stolen from RefCheck
+     */
+    private val toJavaRepeatedParam = new SubstSymMap(
+      definitions.RepeatedParamClass -> definitions.JavaRepeatedParamClass)
+
+    private def enterJSAnyCls[T](body: =>T) = {
+      val old = inJSAnyCls
+      inJSAnyCls = true
+      val res = body
+      inJSAnyCls = old
       res
     }
 
-    private def disallowJSAny[T](body: =>T) = {
-      val old = allowJSAny
-      allowJSAny = false
+    private def enterJSAnyMod[T](body: =>T) = {
+      val old = inJSAnyMod
+      inJSAnyMod = true
       val res = body
-      allowJSAny = old
+      inJSAnyMod = old
+      res
+    }
+
+    private def enterScalaCls[T](body: =>T) = {
+      val old = inScalaCls
+      inScalaCls = true
+      val res = body
+      inScalaCls = old
       res
     }
 
@@ -142,7 +257,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
-  
+
+  private def nativeAnnotCls = rootMirror.getRequiredClass("scala.native")
+
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
    */

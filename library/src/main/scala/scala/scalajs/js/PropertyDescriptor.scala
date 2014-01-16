@@ -11,10 +11,10 @@
 package scala.scalajs.js
 
 trait PropertyDescriptor extends Object {
-  var configurable: Boolean = _
-  var enumerable: Boolean = _
-  var value: Any = _
-  var writable: Boolean = _
-  var get: Function0[Any] = _
-  var set: Function1[Any, Any] = _
+  var configurable: Boolean
+  var enumerable: Boolean
+  var value: Any
+  var writable: Boolean
+  var get: Function0[Any]
+  var set: Function1[Any, Any]
 }
