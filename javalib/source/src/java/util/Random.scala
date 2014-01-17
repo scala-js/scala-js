@@ -31,7 +31,7 @@ class Random extends AnyRef with java.io.Serializable {
   def nextInt(n: Int): Int =
     (Math.floor(nextDouble() * n)).toInt
 
-  def nextLong(): Long = ??? // do not pretend we can implement this
+  def nextLong(): Long = (Math.floor(nextDouble() * 18446744073709551616.0) - 9223372036854775808.0).toLong
 
   def nextFloat(): Float = nextDouble().toFloat
 
