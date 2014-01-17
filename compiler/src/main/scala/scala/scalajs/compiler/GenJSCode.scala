@@ -10,6 +10,8 @@ import scala.collection.mutable.ListBuffer
 
 import scala.tools.nsc._
 
+import scala.annotation.tailrec
+
 /** Generate JavaScript code and output it to disk
  *
  *  @author Sébastien Doeraene
@@ -85,6 +87,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     private val translatedAnonFunctions =
       mutable.Map.empty[Symbol, List[js.Tree] => js.Tree] // ctor args to instance
     private val instantiatedAnonFunctions =
+      mutable.Set.empty[Symbol]
+    private val undefinedDefaultParams =
       mutable.Set.empty[Symbol]
 
     // Top-level apply ---------------------------------------------------------
@@ -173,6 +177,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
+        undefinedDefaultParams.clear()
         currentCUnit = null
         currentClassSym = null
         currentMethodSym = null
@@ -805,10 +810,20 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
           val sym = tree.symbol
-          val lhsTree =
+          val rhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
             else genExpr(rhs)
-          statToExpr(js.VarDef(encodeLocalSym(sym, freshName), lhsTree))
+
+          rhsTree match {
+            case js.UndefinedParam() =>
+              // This is an intermediate assignment for default params on a
+              // js.Any. Add the symbol to the corresponding set to inform
+              // the Indent resolver how to replace it and don't emit the symbol
+              undefinedDefaultParams += sym
+              statToExpr(js.Skip())
+            case _ =>
+              statToExpr(js.VarDef(encodeLocalSym(sym, freshName), rhsTree))
+          }
 
         case If(cond, thenp, elsep) =>
           js.If(genExpr(cond), genExpr(thenp), genExpr(elsep))
@@ -876,6 +891,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             if (sym.isModule) {
               assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
               genLoadModule(sym)
+            } else if (undefinedDefaultParams contains sym) {
+              // This is a default parameter whose assignment was moved to
+              // a local variable. Put a literal undefined param again
+              js.UndefinedParam()
             } else {
               encodeLocalSym(sym, freshName)
             }
@@ -1000,6 +1019,10 @@ abstract class GenJSCode extends plugins.PluginComponent
                 Apply(target @ Ident(lname2), Nil))) if (target.symbol == sym) =>
           statToExpr(js.While(js.BooleanLiteral(true),
               js.Block(bodyStats map genStat)))
+
+        // while (false) { body }
+        case LabelDef(lname, Nil, Literal(Constant(()))) =>
+          js.Skip()
 
         // do { body } while (cond)
         case LabelDef(lname, Nil,
@@ -1870,15 +1893,27 @@ abstract class GenJSCode extends plugins.PluginComponent
         args: List[Tree]): js.Tree = {
       implicit val pos = tree.pos
 
-      val List(lhs, rhs) = for {
-        op <- receiver :: args
-      } yield {
-        val genOp = genExpr(op)
-        genOp match {
-          case js.StringLiteral(_, _) => genOp
-          case _ => genCallHelper("anyToStringForConcat", genOp)
-        }
+      /** whether the given tree will always evaluate to a string */
+      @tailrec
+      def isAlwaysString(t: js.Tree): Boolean = t match {
+        case js.StringLiteral(_, _)   => true
+        case js.BinaryOp("+", lhs, _) => isAlwaysString(lhs)
+        case _ => false
       }
+
+      val jsRec = genExpr(receiver)
+
+      val lhs = {
+        // Box the receiver if it is a primitive value
+        if (receiver.tpe.typeSymbol.isPrimitiveValueClass)
+          makeBox(jsRec, receiver.tpe)
+        // Optimize away the "" + if not required
+        else if (isAlwaysString(jsRec))
+          jsRec
+        else
+          js.BinaryOp("+", js.StringLiteral("", None), jsRec)
+      }
+      val rhs = genExpr(args.head)
 
       js.BinaryOp("+", lhs, rhs)
     }
@@ -2134,6 +2169,34 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case List(arg) =>
+
+          /** get the apply method of a class extending FunctionN
+           *
+           *  only use when implementing a fromFunctionN primitive
+           *  as it uses the tree
+           */
+          def getFunApply(clSym: Symbol) = {
+            // Fetch symbol and resolve overload if necessary
+            val sym = getMemberMethod(clSym, newTermName("apply"))
+
+            if (sym.isOverloaded) {
+              // The symbol is overloaded. Figure out the arity
+              // from the name of the primitive function we are
+              // implementing. Then chose the overload with the right
+              // number of Object arguments
+              val funName = tree.fun.symbol.name.encoded
+              assert(funName.startsWith("fromFunction"))
+              val arity = funName.substring(12).toInt
+
+              sym.alternatives.find { s =>
+                val ps = s.paramss
+                ps.size == 1 &&
+                ps.head.size == arity &&
+                ps.head.forall(_.tpe.typeSymbol == ObjectClass)
+              }.get
+            } else sym
+          }
+
           code match {
             case V2JS => statToExpr(exprToStat(arg))
             case Z2JS => arg
@@ -2162,8 +2225,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
                 case _ =>
                   val inputTpe = args.head.tpe
-                  val applyMeth = getMemberMethod(inputTpe.typeSymbol,
-                      newTermName("apply"))
+                  val applyMeth = getFunApply(inputTpe.typeSymbol)
                   val arity = applyMeth.tpe.params.size
                   val theFunction = js.Ident("$this")
                   val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
@@ -2185,8 +2247,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              */
             case F2JSTHIS =>
               val inputTpe = args.head.tpe
-              val applyMeth = getMemberMethod(inputTpe.typeSymbol,
-                  newTermName("apply"))
+              val applyMeth = getFunApply(inputTpe.typeSymbol)
               val arity = applyMeth.tpe.params.size
               val theFunction = js.Ident("f")
               val arguments = (1 until arity).toList map (x => js.Ident("arg"+x))
@@ -2392,7 +2453,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             isScalaJSDefined && sym.hasAnnotation(JSBracketAccessAnnotation)
           }
 
-          if (isJSGetter) {
+          if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
+            js.UndefinedParam()
+          } else if (isJSGetter) {
             assert(argc == 0)
             js.BracketSelect(receiver, js.StringLiteral(funName))
           } else if (isJSSetter) {
@@ -2526,6 +2589,30 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
       closeReversedPartUnderConstruction()
+
+      // Find js.UndefinedParam at the end of the argument list. No check is
+      // performed whether they may be there, since they will only be placed
+      // where default arguments can be anyway
+      reversedParts = reversedParts match {
+        case Nil => Nil
+        case js.ArrayConstr(params) :: others =>
+          val nparams =
+            params.reverse.dropWhile(_.isInstanceOf[js.UndefinedParam]).reverse
+          js.ArrayConstr(nparams) :: others
+        case parts => parts
+      }
+
+      // Find remaining js.UndefinedParam and replace by js.Undefined. This can
+      // happen with named arguments or when multiple argument lists are present
+      reversedParts = reversedParts map {
+        case js.ArrayConstr(params) =>
+          val nparams = params map {
+            case js.UndefinedParam() => js.Undefined()
+            case param => param
+          }
+          js.ArrayConstr(nparams)
+        case part => part
+      }
 
       reversedParts match {
         case Nil => js.ArrayConstr(Nil)

@@ -5,19 +5,20 @@ import scala.annotation.switch
 import scala.scalajs.js
 
 final class Matcher private[regex] (
-    private var pattern0: Pattern, private var input0: CharSequence) {
+    private var pattern0: Pattern, private var input0: CharSequence,
+    private var regionStart0: Int, private var regionEnd0: Int) {
 
   import Matcher._
 
   def pattern(): Pattern = pattern0
-  def input(): CharSequence = input0
 
   // Configuration (updated manually)
   private var regexp = new js.RegExp(pattern0.jspattern, pattern0.jsflags)
-  private var inputstr = input0.toString
+  private var inputstr = input0.subSequence(regionStart0, regionEnd0).toString
 
   // Match result (updated by successful matches)
   private var lastMatch: js.RegExp.ExecResult = null
+  private var lastMatchIsValid = false
 
   // Append state (updated by replacement methods)
   private var appendPos: Int = 0
@@ -25,6 +26,8 @@ final class Matcher private[regex] (
   // Lookup methods
 
   def matches(): Boolean = {
+    lastMatchIsValid = true
+    reset()
     lastMatch = regexp.exec(inputstr)
     if ((lastMatch ne null) && (start != 0 || end != inputstr.length))
       lastMatch = null
@@ -32,6 +35,8 @@ final class Matcher private[regex] (
   }
 
   def lookingAt(): Boolean = {
+    lastMatchIsValid = true
+    reset()
     lastMatch = regexp.exec(inputstr)
     if ((lastMatch ne null) && (start != 0))
       lastMatch = null
@@ -39,6 +44,7 @@ final class Matcher private[regex] (
   }
 
   def find(): Boolean = {
+    lastMatchIsValid = true
     lastMatch = regexp.exec(inputstr)
     lastMatch ne null
   }
@@ -51,7 +57,7 @@ final class Matcher private[regex] (
 
   // Replace methods
 
-  def appendReplacement(sb: StringBuffer, replacement: String): StringBuffer = {
+  def appendReplacement(sb: StringBuffer, replacement: String): Matcher = {
     sb.append(inputstr.substring(appendPos, start))
 
     def isDigit(c: Char) = c >= '0' && c <= '9'
@@ -81,7 +87,7 @@ final class Matcher private[regex] (
     }
 
     appendPos = end
-    sb
+    this
   }
 
   def appendTail(sb: StringBuffer): StringBuffer = {
@@ -125,8 +131,10 @@ final class Matcher private[regex] (
   }
 
   def reset(input: CharSequence): Matcher = {
+    regionStart0 = 0
+    regionEnd0 = input.length()
     input0 = input
-    inputstr = input.toString
+    inputstr = input0.toString
     reset()
   }
 
@@ -136,28 +144,36 @@ final class Matcher private[regex] (
     pattern0 = pattern
     regexp = new js.RegExp(pattern.jspattern, pattern.jsflags)
     regexp.lastIndex = prevLastIndex
+    lastMatch = null
     this
   }
 
   // Query state methods - implementation of MatchResult
 
-  def groupCount(): Int = lastMatch.length-1
+  private def ensureLastMatch: js.RegExp.ExecResult = {
+    if (lastMatch == null)
+      throw new IllegalStateException("No match available")
+    lastMatch
+  }
 
-  def start(): Int = lastMatch.index
+  def groupCount(): Int = ensureLastMatch.length-1
+
+  def start(): Int = ensureLastMatch.index
   def end(): Int = start() + group().length
-  def group(): String = lastMatch(0)
+  def group(): String = ensureLastMatch(0)
 
   def start(group: Int): Int = {
     if (group == 0) start()
     else {
+      val last = ensureLastMatch
       // not provided by JS RegExp, so we make up something that at least
       // will have some sound behavior from scala.util.matching.Regex
-      inputstr.indexOf(lastMatch(group), lastMatch.index)
+      inputstr.indexOf(last(group), last.index)
     }
   }
 
   def end(group: Int): Int = start(group) + this.group(group).length
-  def group(group: Int): String = lastMatch(group)
+  def group(group: Int): String = ensureLastMatch(group)
 
   // Seal the state
 
@@ -165,15 +181,17 @@ final class Matcher private[regex] (
 
   // Other query state methods
 
-  def hitEnd(): Boolean = end() == inputstr.length
+  def hitEnd(): Boolean =
+    lastMatchIsValid && (lastMatch == null || end() == inputstr.length)
 
   def requireEnd(): Boolean = ??? // I don't understand the spec
 
   // Stub methods for region management
 
-  def regionStart(): Int = 0
-  def regionEnd(): Int = inputstr.length
-  def region(start: Int, end: Int): Matcher = ???
+  def regionStart(): Int = regionStart0
+  def regionEnd(): Int = regionEnd0
+  def region(start: Int, end: Int): Matcher =
+    new Matcher(pattern0, input0, start, end)
 
   def hasTransparentBounds(): Boolean = false
   def useTransparentBounds(b: Boolean): Matcher = ???
@@ -203,22 +221,30 @@ object Matcher {
   private final class SealedResult(inputstr: String,
       lastMatch: js.RegExp.ExecResult) extends MatchResult {
 
-    def groupCount(): Int = lastMatch.length-1
+    def groupCount(): Int = ensureLastMatch.length-1
 
-    def start(): Int = lastMatch.index
+    def start(): Int = ensureLastMatch.index
     def end(): Int = start() + group().length
-    def group(): String = lastMatch(0)
+    def group(): String = ensureLastMatch(0)
 
     def start(group: Int): Int = {
       if (group == 0) start()
       else {
+        val last = ensureLastMatch
+
         // not provided by JS RegExp, so we make up something that at least
         // will have some sound behavior from scala.util.matching.Regex
-        inputstr.indexOf(lastMatch(group), lastMatch.index)
+        inputstr.indexOf(last(group), last.index)
       }
     }
 
     def end(group: Int): Int = start(group) + this.group(group).length
-    def group(group: Int): String = lastMatch(group)
+    def group(group: Int): String = ensureLastMatch(group)
+
+    private def ensureLastMatch: js.RegExp.ExecResult = {
+      if (lastMatch == null)
+        throw new IllegalStateException("No match available")
+      lastMatch
+    }
   }
 }
