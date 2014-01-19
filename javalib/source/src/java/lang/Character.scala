@@ -31,7 +31,8 @@ object Character {
   val DECIMAL_DIGIT_NUMBER: scala.Byte = 0
   val SURROGATE: scala.Byte = 0
 
-  val MAX_RADIX: scala.Int = 0
+  val MIN_RADIX: scala.Int = 2
+  val MAX_RADIX: scala.Int = 36
 
   val MIN_HIGH_SURROGATE: scala.Char = '\uD800'
   val MAX_HIGH_SURROGATE: scala.Char = '\uDBFF'
@@ -43,12 +44,29 @@ object Character {
   /* Tests */
   def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
   def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
-  def digit(c: scala.Char, radix: scala.Int): scala.Int = sys.error("unimplemented")
+  def digit(c: scala.Char, radix: scala.Int): scala.Int = {
+    if (radix > MAX_RADIX || radix < MIN_RADIX)
+      -1
+    else if (c >= '0' && c <= '9' && c - '0' < radix)
+      c - '0'
+    else if (c >= 'A' && c <= 'Z' && c - 'A' < radix - 10)
+      c - 'A' + 10
+    else if (c >= 'a' && c <= 'z' && c - 'a' < radix - 10)
+      c - 'a' + 10
+    else if (c >= '\uFF21' && c <= '\uFF3A' &&
+      c - '\uFF21' < radix - 10)
+      c - '\uFF21' + 10
+    else if (c >= '\uFF41' && c <= '\uFF5A' &&
+      c - '\uFF41' < radix - 10)
+      c - '\uFF21' + 10
+    else -1
+  }
+
   def isISOControl(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isWhitespace(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
   def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
 
   def isHighSurrogate(c: scala.Char): scala.Boolean =

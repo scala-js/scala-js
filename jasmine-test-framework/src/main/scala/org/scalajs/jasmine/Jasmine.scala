@@ -3,6 +3,7 @@ package org.scalajs.jasmine
 import scala.scalajs.js
 
 object Jasmine extends js.GlobalScope {
+  def jasmine: JasmineEnv = ???
   def describe(name: String, suite: js.Function0[_]): Unit = ???
   def it(title: String, test: js.Function0[_]): Unit = ???
   def xdescribe(name: String, suite: js.Function0[_]): Unit = ???

@@ -13,6 +13,23 @@ object System {
     (new js.Date).getTime().toLong
   }
 
+  private[this] val getHighPrecisionTime: js.Function0[js.Number] = {
+    if (!(!global.performance)) {
+      if (!(!global.performance.now)) {
+        () => global.performance.now().asInstanceOf[js.Number]
+      } else if (!(!(global.performance.webkitNow))) {
+        () => global.performance.webkitNow().asInstanceOf[js.Number]
+      } else {
+        () => new js.Date().getTime()
+      }
+    } else {
+      () => new js.Date().getTime()
+    }
+  }
+
+  def nanoTime(): scala.Long =
+    (getHighPrecisionTime() * 1000000).toLong
+
   def arraycopy(src: Object, srcPos: scala.Int,
       dest: Object, destPos: scala.Int, length: scala.Int): Unit = {
     val jsSrc = reflect.Array.getUnderlying[Any](src)
