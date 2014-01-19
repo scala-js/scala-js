@@ -63,7 +63,7 @@ object SourceMapCat {
             val offsetEndPos =
               new FilePosition(endPos.getLine+offset, endPos.getColumn)
             val finalSourceName =
-              if(relativizeSourceMapPaths) {
+              if (relativizeSourceMapPaths) {
                 val fsPath = Paths.get((new java.net.URI(sourceName)).getPath)
                 basePath.relativize(fsPath).toString
               } else
@@ -80,7 +80,7 @@ object SourceMapCat {
          * We generate a fake line-by-line source map for these on the fly
          */
         val finalSourceName =
-          if(relativizeSourceMapPaths)
+          if (relativizeSourceMapPaths)
             basePath.relativize(Paths.get(input.getPath)).toString
           else
             input.getPath.toString
