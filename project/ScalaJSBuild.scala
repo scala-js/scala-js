@@ -126,7 +126,7 @@ object ScalaJSBuild extends Build {
             FileFunction.cached(s.cacheDirectory / "package-js",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
               targetDir.mkdir()
-              catJSFilesAndTheirSourceMaps(allJSFiles, output)
+              catJSFilesAndTheirSourceMaps(allJSFiles, output, false)
               Set(output)
             } (allJSFiles.toSet)
 

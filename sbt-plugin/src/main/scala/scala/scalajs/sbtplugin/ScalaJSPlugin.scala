@@ -60,6 +60,9 @@ object ScalaJSPlugin extends Plugin {
         "The Scala.js class that delegates test calls to the given test framework")
     val scalaJSTestFramework = settingKey[String](
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
+
+    val relativeSourceMaps = settingKey[Boolean](
+        "Make the referenced paths on source maps relative to target path")
   }
 
   import ScalaJSKeys._
@@ -214,7 +217,7 @@ object ScalaJSPlugin extends Plugin {
           FileFunction.cached(taskCacheDir / "package",
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Packaging %s ..." format output)
-            catJSFilesAndTheirSourceMaps(inputs, output)
+            catJSFilesAndTheirSourceMaps(inputs, output, relativeSourceMaps.value)
             Set(output)
           } (inputs.toSet)
         }
@@ -443,6 +446,7 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSProjectBaseSettings = Seq(
       excludeDefaultScalaLibrary := false,
 
+      relativeSourceMaps := false,
       optimizeJSPrettyPrint := false,
       optimizeJSExterns := Seq(),
 

@@ -8,6 +8,7 @@ package scala.scalajs.sbtplugin
 import sbt._
 
 import java.io.PrintWriter
+import java.nio.file.Paths
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
@@ -17,11 +18,16 @@ object SourceMapCat {
    *  JS file, with an additional .map extension (hence it likely ends in
    *  .js.map).
    */
-  def catJSFilesAndTheirSourceMaps(inputs: Seq[File], output: File) {
+  def catJSFilesAndTheirSourceMaps(inputs: Seq[File],
+                                   output: File,
+                                   relativizeSourceMapPaths: Boolean) {
     val outcode = new PrintWriter(output)
     val outMapFile = sourceMapOf(output)
     val outmap = new PrintWriter(outMapFile)
     val outmapGen = SourceMapGeneratorFactory.getInstance(SourceMapFormat.V3)
+    // java.net.URI.relativize doesn't work well with backward paths (../../..),
+    // so java.nio.file.Paths is used to do the work
+    val basePath = Paths.get(output.getParent)
 
     var totalLineCount = 0
 
@@ -56,8 +62,14 @@ object SourceMapCat {
               new FilePosition(startPos.getLine+offset, startPos.getColumn)
             val offsetEndPos =
               new FilePosition(endPos.getLine+offset, endPos.getColumn)
+            val finalSourceName =
+              if(relativizeSourceMapPaths) {
+                val fsPath = Paths.get((new java.net.URI(sourceName)).getPath)
+                basePath.relativize(fsPath).toString
+              } else
+                sourceName.toString
 
-            outmapGen.addMapping(sourceName, symbolName,
+            outmapGen.addMapping(finalSourceName, symbolName,
                 sourceStartPos, offsetStartPos, offsetEndPos)
           }
         })
@@ -67,13 +79,18 @@ object SourceMapCat {
          * written directly in JS.
          * We generate a fake line-by-line source map for these on the fly
          */
-        val sourceName = input.getPath
+        val finalSourceName =
+          if(relativizeSourceMapPaths)
+            basePath.relativize(Paths.get(input.getPath)).toString
+          else
+            input.getPath.toString
+
         for (lineNumber <- 0 until lineCount) {
           val sourceStartPos = new FilePosition(lineNumber, 0)
           val startPos = new FilePosition(offset+lineNumber, 0)
           val endPos = new FilePosition(offset+lineNumber+1, 0)
 
-          outmapGen.addMapping(sourceName, null,
+          outmapGen.addMapping(finalSourceName, null,
               sourceStartPos, startPos, endPos)
         }
       }
