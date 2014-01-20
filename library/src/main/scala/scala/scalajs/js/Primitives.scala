@@ -26,19 +26,19 @@ import scala.collection.{ immutable, mutable }
  *  boxing of proxying of any kind.
  */
 sealed trait Any extends scala.AnyRef {
-  def unary_+(): Number = sys.error("stub")
-  def unary_-(): Number = sys.error("stub")
-  def unary_~(): Number = sys.error("stub")
+  def unary_+(): Number
+  def unary_-(): Number
+  def unary_~(): Number
 
-  def unary_!(): Boolean = sys.error("stub")
+  def unary_!(): Boolean
 
-  def +(that: String): String = sys.error("stub")
-  def +(that: Dynamic): Any = sys.error("stub") // JSNumber v JSString
+  def +(that: String): String
+  def +(that: Dynamic): Any // JSNumber v JSString
 
-  def &&[A <: Any](that: A): that.type = sys.error("stub")
+  def &&[A <: Any](that: A): that.type
 
   // def ||[A <: Any](that: A): this.type v that.type = sys.error("stub")
-  def ||(that: Any): Any = sys.error("stub")
+  def ||(that: Any): Any
 }
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
@@ -312,7 +312,7 @@ sealed trait Number extends Any {
 
   def ||(that: Number): Number
 
-  def toString(radix: Number): String = ???
+  def toString(radix: Number): String
 
   /**
    * Returns a string representation of number that does not use exponential
@@ -324,8 +324,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toFixed(fractionDigits: Number): String = ???
-  def toFixed(): String = ???
+  def toFixed(fractionDigits: Number): String
+  def toFixed(): String
 
   /**
    * Returns a string representing a Number object in exponential notation with one
@@ -341,8 +341,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toExponential(fractionDigits: Number): String = ???
-  def toExponential(): String = ???
+  def toExponential(fractionDigits: Number): String
+  def toExponential(): String
 
   /**
    * Returns a string representing a Number object in fixed-point or exponential
@@ -355,8 +355,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toPrecision(precision: Number): String = ???
-  def toPrecision(): String = ???
+  def toPrecision(precision: Number): String
+  def toPrecision(): String
 }
 
 /** The top-level `Number` JavaScript object */
@@ -422,8 +422,8 @@ object Boolean extends Object {
 /** Primitive JavaScript string. */
 sealed trait String extends Any {
   def +(that: Any): String
-  override def +(that: String): String = sys.error("stub")
-  override def +(that: Dynamic): String = sys.error("stub")
+  override def +(that: String): String
+  override def +(that: Dynamic): String
 
   def ||(that: String): String
 
@@ -438,7 +438,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  val length: Number = ???
+  val length: Number
 
   /**
    * The chartAt() method returns the specified character from a string.
@@ -450,7 +450,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def charAt(pos: Number): String = ???
+  def charAt(pos: Number): String
 
   /**
    * The charCodeAt() method returns the numeric Unicode value of the character
@@ -458,14 +458,14 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def charCodeAt(index: Number): Number = ???
+  def charCodeAt(index: Number): Number
 
   /**
    * concat combines the text from one or more strings and returns a new string.
    * Changes to the text in one string do not affect the other string.
    * MDN
    */
-  def concat(strings: String*): String = ???
+  def concat(strings: String*): String
 
   /**
    * Returns the index within the calling String object of the first occurrence
@@ -475,8 +475,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def indexOf(searchString: String, position: Number): Number = ???
-  def indexOf(searchString: String): Number = ???
+  def indexOf(searchString: String, position: Number): Number
+  def indexOf(searchString: String): Number
 
   /**
    * Returns the index within the calling String object of the last occurrence
@@ -485,8 +485,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def lastIndexOf(searchString: String, position: Number): Number = ???
-  def lastIndexOf(searchString: String): Number = ???
+  def lastIndexOf(searchString: String, position: Number): Number
+  def lastIndexOf(searchString: String): Number
 
   /**
    * Returns a number indicating whether a reference string comes before or
@@ -498,7 +498,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def localeCompare(that: String): Number = ???
+  def localeCompare(that: String): Number
 
   /**
    * Used to retrieve the matches when matching a string against a regular
@@ -515,8 +515,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def `match`(regexp: String): Array[String] = ???
-  def `match`(regexp: RegExp): Array[String] = ???
+  def `match`(regexp: String): Array[String]
+  def `match`(regexp: RegExp): Array[String]
 
   /**
    * Returns a new string with some or all matches of a pattern replaced by a
@@ -532,10 +532,10 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def replace(searchValue: String, replaceValue: String): String = ???
-  def replace(searchValue: String, replaceValue: Any): String = ???
-  def replace(searchValue: RegExp, replaceValue: String): String = ???
-  def replace(searchValue: RegExp, replaceValue: Any): String = ???
+  def replace(searchValue: String, replaceValue: String): String
+  def replace(searchValue: String, replaceValue: Any): String
+  def replace(searchValue: RegExp, replaceValue: String): String
+  def replace(searchValue: RegExp, replaceValue: Any): String
 
   /**
    * If successful, search returns the index of the regular expression inside
@@ -548,8 +548,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def search(regexp: String): Number = ???
-  def search(regexp: RegExp): Number = ???
+  def search(regexp: String): Number
+  def search(regexp: RegExp): Number
 
   /**
    * slice extracts the text from one string and returns a new string. Changes
@@ -564,8 +564,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def slice(start: Number, end: Number): String = ???
-  def slice(start: Number): String = ???
+  def slice(start: Number, end: Number): String
+  def slice(start: Number): String
 
   /**
    * Splits a String object into an array of strings by separating the string
@@ -586,10 +586,10 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def split(separator: String, limit: Number): Array[String] = ???
-  def split(separator: String): Array[String] = ???
-  def split(separator: RegExp, limit: Number): Array[String] = ???
-  def split(separator: RegExp): Array[String] = ???
+  def split(separator: String, limit: Number): Array[String]
+  def split(separator: String): Array[String]
+  def split(separator: RegExp, limit: Number): Array[String]
+  def split(separator: RegExp): Array[String]
 
   /**
    * Returns a subset of a string between one index and another, or through
@@ -597,15 +597,15 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def substring(start: Number, end: Number): String = ???
-  def substring(start: Number): String = ???
+  def substring(start: Number, end: Number): String
+  def substring(start: Number): String
 
   /**
    * Returns the calling string value converted to lowercase.
    *
    * MDN
    */
-  def toLowerCase(): String = ???
+  def toLowerCase(): String
 
   /**
    * The toLocaleLowerCase method returns the value of the string converted to
@@ -617,14 +617,14 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def toLocaleLowerCase(): String = ???
+  def toLocaleLowerCase(): String
 
   /**
    * Returns the calling string value converted to uppercase.
    *
    * MDN
    */
-  def toUpperCase(): String = ???
+  def toUpperCase(): String
 
   /**
    * The toLocaleUpperCase method returns the value of the string converted to
@@ -636,14 +636,14 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def toLocaleUpperCase(): String = ???
+  def toLocaleUpperCase(): String
 
   /**
    * Removes whitespace from both ends of the string.
    *
    * MDN
    */
-  def trim(): String = ???
+  def trim(): String
 }
 
 /** The top-level `String` JavaScript object. */
@@ -660,8 +660,8 @@ sealed trait Undefined extends Any with NotNull
 class Object extends Any {
   def this(value: Any) = this()
 
-  def toLocaleString(): String = ???
-  def valueOf(): Any = ???
+  def toLocaleString(): String
+  def valueOf(): Any
 
   /**
    * Every object descended from Object inherits the hasOwnProperty method.
@@ -671,7 +671,7 @@ class Object extends Any {
    *
    * MDN
    */
-  def hasOwnProperty(v: String): Boolean = ???
+  def hasOwnProperty(v: String): Boolean
 
   /**
    * The isPrototypeOf mehtod allows you to check whether or not an object exists
@@ -679,7 +679,7 @@ class Object extends Any {
    *
    * MDN
    */
-  def isPrototypeOf(v: Object): Boolean = ???
+  def isPrototypeOf(v: Object): Boolean
 
   /**
    * Every object has a propertyIsEnumerable method. This method can determine
@@ -690,7 +690,7 @@ class Object extends Any {
    *
    * MDN
    */
-  def propertyIsEnumerable(v: String): Boolean = ???
+  def propertyIsEnumerable(v: String): Boolean
 }
 
 /** The top-level `Object` JavaScript object. */

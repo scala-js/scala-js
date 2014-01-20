@@ -32,7 +32,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  val source: String = ???
+  val source: String
   /**
    * The value of global is a Boolean and true if the "g" flag was used;
    * otherwise, false. The "g" flag indicates that the regular expression
@@ -40,7 +40,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  val global: Boolean = ???
+  val global: Boolean
   /**
    * The value of ignoreCase is a Boolean and true if the "i" flag was used;
    * otherwise, false. The "i" flag indicates that case should be ignored while
@@ -48,7 +48,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  val ignoreCase: Boolean = ???
+  val ignoreCase: Boolean
   /**
    * The value of multiline is a Boolean and is true if the "m" flag was used;
    * otherwise, false. The "m" flag indicates that a multiline input string
@@ -58,7 +58,7 @@ class RegExp protected () extends Object {
 
    * MDN
    */
-  val multiline: Boolean = ???
+  val multiline: Boolean
 
   /**
    * The lastIndex is a read/write integer property of regular expressions that
@@ -66,7 +66,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  var lastIndex: Number = ???
+  var lastIndex: Number
 
   /**
    * The exec() method executes a search for a match in a specified string.
@@ -84,7 +84,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  def exec(string: String): RegExp.ExecResult = ???
+  def exec(string: String): RegExp.ExecResult
 
   /**
    * The test() method executes a search for a match between a regular expression
@@ -98,7 +98,7 @@ class RegExp protected () extends Object {
    *
    * MDN
    */
-  def test(string: String): Boolean = ???
+  def test(string: String): Boolean
 }
 
 object RegExp extends Object {
@@ -106,7 +106,7 @@ object RegExp extends Object {
   def apply(pattern: String): RegExp = ???
 
   trait ExecResult extends Array[String] {
-    var index: Number = _
-    var input: String = _
+    var index: Number
+    var input: String
   }
 }

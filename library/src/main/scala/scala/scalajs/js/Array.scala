@@ -46,14 +46,14 @@ class Array[A] extends Object {
   // def this(items: A*) = this()
 
   /** Length of the array. */
-  def length: Number = ???
+  def length: Number
 
   /** Access the element at the given index. */
   @JSBracketAccess
-  def apply(index: Number): A = ???
+  def apply(index: Number): A
   /** Set the element at the given index. */
   @JSBracketAccess
-  def update(index: Number, value: A): Unit = ???
+  def update(index: Number, value: A): Unit
 
   /**
    * concat creates a new array consisting of the elements in the this object
@@ -63,7 +63,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def concat(items: Array[A]*): Array[A] = ???
+  def concat(items: Array[A]*): Array[A]
   /**
    * concat creates a new array consisting of the elements in the this object
    * on which it is called, followed in order by, for each argument, the
@@ -72,7 +72,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def concat(item: A, items: A*): Array[A] = ???
+  def concat(item: A, items: A*): Array[A]
 
   /**
    * The join() method joins all elements of an array into a string.
@@ -81,7 +81,7 @@ class Array[A] extends Object {
    * The separator is converted to a string if necessary. If omitted, the
    * array elements are separated with a comma.
    */
-  def join(seperator: String): String = ???
+  def join(seperator: String): String
 
   /**
    * The join() method joins all elements of an array into a string.
@@ -90,7 +90,7 @@ class Array[A] extends Object {
    * The separator is converted to a string if necessary. If omitted, the
    * array elements are separated with a comma.
    */
-  def join(): String = ???
+  def join(): String
 
   /**
    * The pop() method removes the last element from an array and returns that
@@ -98,7 +98,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def pop(): A = ???
+  def pop(): A
 
   /**
    * The push() method mutates an array by appending the given elements and
@@ -106,7 +106,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def push(items: A*): Number = ???
+  def push(items: A*): Number
 
   /**
    * The reverse() method reverses an array in place. The first array element
@@ -114,7 +114,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reverse(): Array[A] = ???
+  def reverse(): Array[A]
 
   /**
    * The shift() method removes the first element from an array and returns that
@@ -122,15 +122,15 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def shift(): A = ???
+  def shift(): A
 
   /**
    * The slice() method returns a shallow copy of a portion of an array.
    *
    * MDN
    */
-  def slice(start: Number, end: Number): Array[A] = ???
-  def slice(start: Number): Array[A] = ???
+  def slice(start: Number, end: Number): Array[A]
+  def slice(start: Number): Array[A]
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
@@ -144,8 +144,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def sort(compareFn: Function2[A, A, Number]): Array[A] = ???
-  def sort(): Array[A] = ???
+  def sort(compareFn: Function2[A, A, Number]): Array[A]
+  def sort(): Array[A]
 
   /**
    * The splice() method changes the content of an array, adding new elements
@@ -153,14 +153,14 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def splice(index: Number): Array[A] = ???
+  def splice(index: Number): Array[A]
   /**
    * The splice() method changes the content of an array, adding new elements
    * while removing old elements.
    *
    * MDN
    */
-  def splice(index: Number, deleteCount: Number, items: A*): Array[A] = ???
+  def splice(index: Number, deleteCount: Number, items: A*): Array[A]
 
   /**
    * The unshift() method adds one or more elements to the beginning of an array
@@ -168,7 +168,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def unshift(items: A*): Number = ???
+  def unshift(items: A*): Number
 
   /**
    * The indexOf() method returns the first index at which a given element can
@@ -176,8 +176,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def indexOf(searchElement: A, fromIndex: Number): Number = ???
-  def indexOf(searchElement: A): Number = ???
+  def indexOf(searchElement: A, fromIndex: Number): Number
+  def indexOf(searchElement: A): Number
 
   /**
    * The lastIndexOf() method returns the last index at which a given element
@@ -186,8 +186,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def lastIndexOf(searchElement: A, fromIndex: Number): Number = ???
-  def lastIndexOf(searchElement: A): Number = ???
+  def lastIndexOf(searchElement: A, fromIndex: Number): Number
+  def lastIndexOf(searchElement: A): Number
 
   /**
    * The every method executes the provided callback function once for each
@@ -217,8 +217,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def every(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean = ???
-  def every(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
+  def every(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean
+  def every(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean
 
   /**
    * some executes the callback function once for each element present in the
@@ -239,8 +239,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def some(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean = ???
-  def some(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
+  def some(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean
+  def some(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean
 
   /**
    * forEach executes the provided callback once for each element of the array
@@ -262,8 +262,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def forEach[U](callbackfn: Function3[A, Number, Array[A], U], thisArg: Any): Unit = ???
-  def forEach[U](callbackfn: Function3[A, Number, Array[A], U]): Unit = ???
+  def forEach[U](callbackfn: Function3[A, Number, Array[A], U], thisArg: Any): Unit
+  def forEach[U](callbackfn: Function3[A, Number, Array[A], U]): Unit
 
   /**
    * map calls a provided callback function once for each element in an array,
@@ -283,8 +283,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def map[B](callbackfn: Function3[A, Number, Array[A], B], thisArg: Any): Array[B] = ???
-  def map[B](callbackfn: Function3[A, Number, Array[A], B]): Array[B] = ???
+  def map[B](callbackfn: Function3[A, Number, Array[A], B], thisArg: Any): Array[B]
+  def map[B](callbackfn: Function3[A, Number, Array[A], B]): Array[B]
 
   /**
    * filter calls a provided callback function once for each element in an array,
@@ -308,8 +308,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def filter(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Array[A] = ???
-  def filter(callbackfn: Function3[A, Number, Array[A], Boolean]): Array[A] = ???
+  def filter(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Array[A]
+  def filter(callbackfn: Function3[A, Number, Array[A], Boolean]): Array[A]
 
   /**
    * reduce executes the callback function once for each element present in
@@ -327,8 +327,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
+  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B
+  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B]): B
 
   /**
    * reduceRight executes the callback function once for each element present
@@ -339,8 +339,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
+  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B
+  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B]): B
 }
 
 /** Factory for [[js.Array]] objects. */

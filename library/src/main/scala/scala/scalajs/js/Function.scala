@@ -55,7 +55,7 @@ class Function extends Object {
    *
    * MDN
    */
-  val length: Number = ???
+  val length: Number
 
   /**
    * The apply() method calls a function with a given this value and arguments
@@ -78,8 +78,8 @@ class Function extends Object {
    *
    * MDN
    */
-  def $apply[A](thisArg: Any, argArray: Array[A]): Dynamic = ???
-  def $apply(thisArg: Any): Dynamic = ???
+  def $apply[A](thisArg: Any, argArray: Array[A]): Dynamic
+  def $apply(thisArg: Any): Dynamic
 
   /**
    * The call() method calls a function with a given this value and arguments
@@ -87,7 +87,7 @@ class Function extends Object {
    *
    * MDN
    */
-  def call(thisArg: Any, argArray: Any*): Dynamic = ???
+  def call(thisArg: Any, argArray: Any*): Dynamic
 
   /**
    * The bind() method creates a new function that, when called, has its this
@@ -96,7 +96,7 @@ class Function extends Object {
    *
    * MDN
    */
-  def bind(thisArg: Any, argArray: Any*): Dynamic = ???
+  def bind(thisArg: Any, argArray: Any*): Dynamic
 }
 
 object Function extends Object {
