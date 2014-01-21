@@ -8,7 +8,6 @@ package scala.scalajs.sbtplugin
 import sbt._
 
 import java.io.PrintWriter
-import java.nio.file.Paths
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
@@ -25,9 +24,7 @@ object SourceMapCat {
     val outMapFile = sourceMapOf(output)
     val outmap = new PrintWriter(outMapFile)
     val outmapGen = SourceMapGeneratorFactory.getInstance(SourceMapFormat.V3)
-    // java.net.URI.relativize doesn't work well with backward paths (../../..),
-    // so java.nio.file.Paths is used to do the work
-    val basePath = Paths.get(output.getParent)
+    val basePath = output.getParent
 
     var totalLineCount = 0
 
@@ -63,11 +60,10 @@ object SourceMapCat {
             val offsetEndPos =
               new FilePosition(endPos.getLine+offset, endPos.getColumn)
             val finalSourceName =
-              if (relativizeSourceMapPaths) {
-                val fsPath = Paths.get((new java.net.URI(sourceName)).getPath)
-                basePath.relativize(fsPath).toString
-              } else
-                sourceName.toString
+              if (relativizeSourceMapPaths) 
+                relativizePath(basePath, (new java.net.URI(sourceName)).getPath)
+              else
+                sourceName
 
             outmapGen.addMapping(finalSourceName, symbolName,
                 sourceStartPos, offsetStartPos, offsetEndPos)
@@ -81,9 +77,9 @@ object SourceMapCat {
          */
         val finalSourceName =
           if (relativizeSourceMapPaths)
-            basePath.relativize(Paths.get(input.getPath)).toString
+            relativizePath(basePath, input.getPath)
           else
-            input.getPath.toString
+            input.getPath
 
         for (lineNumber <- 0 until lineCount) {
           val sourceStartPos = new FilePosition(lineNumber, 0)
@@ -108,4 +104,34 @@ object SourceMapCat {
 
   private def sourceMapOf(jsfile: File): File =
     jsfile.getParentFile / (jsfile.getName+".map")
+
+  private def relativizePath(base: String, path: String): String = {
+    import java.io.File;
+    def getPathSegments(path: String) =
+      path.split(File.separator).toList.filter(_.length > 0).filter(_ != ".")
+        .foldLeft(List[String]()) { (p, s) => if (s == "..") p.tail else s :: p }
+        .reverse
+    def dropCommonSegments(x: List[String], y: List[String]): (List[String], List[String]) =
+      if((x == Nil) || (y == Nil) || (x.head != y.head))
+        (x,y)
+      else
+        dropCommonSegments(x.tail, y.tail)
+
+    val absbase = (new File(base)).getAbsolutePath
+    val abspath = (new File(path)).getAbsolutePath
+
+    // On unixes all abs paths starts with '/'
+    // On windows the abs paths starts with drive letter and if the drives aren't
+    // the same, there is no relative path. So return abspath
+    if(absbase(0) == abspath(0)) {
+      val (restofbase, restofpath) =
+        dropCommonSegments(getPathSegments(absbase), getPathSegments(abspath))
+      val relative = List.fill(restofbase.length)("..") ::: restofpath
+
+      relative.mkString(File.separator)
+    } else {
+      abspath
+    }
+  }
+
 }
