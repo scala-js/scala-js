@@ -139,7 +139,8 @@ ScalaJS.asArrayOf.java_lang_Object = (function(obj, depth) {
 ScalaJS.data.java_lang_Object =
   new ScalaJS.ClassTypeData(
     {java_lang_Object:0},
-    false, "java.lang.Object", null, {},
+    false, "java.lang.Object", null,
+    {java_lang_Object: 1},
     ScalaJS.is.java_lang_Object,
     ScalaJS.isArrayOf.java_lang_Object);
 
