@@ -123,7 +123,7 @@ object SourceMapCat {
     // On unixes all abs paths starts with '/'
     // On windows the abs paths starts with drive letter and if the drives aren't
     // the same, there is no relative path. So return abspath
-    if(absbase(0) == abspath(0)) {
+    if (absbase(0) == abspath(0)) {
       val (restofbase, restofpath) =
         dropCommonSegments(getPathSegments(absbase), getPathSegments(abspath))
       val relative = List.fill(restofbase.length)("..") ::: restofpath
