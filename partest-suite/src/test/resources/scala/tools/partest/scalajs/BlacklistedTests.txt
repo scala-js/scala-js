@@ -66,6 +66,7 @@ run/SymbolsTest.scala
 run/t4601.scala
 run/colltest.scala
 run/equality.scala
+run/t2849.scala
 
 # Uses java.util.Collections
 run/java-erasure.scala
@@ -76,6 +77,8 @@ run/hashhash.scala
 run/is-valid-num.scala
 run/range.scala
 run/stringinterpolation_macro-run.scala
+run/t5356.scala
+run/t6064.scala
 
 #  This test uses range on Doubles which uses BigDecimal in return
 run/t5857.scala
@@ -89,6 +92,10 @@ run/t6969.scala
 run/inner-obj-auto.scala
 run/predef-cycle.scala
 run/t1074.scala
+run/synchronized.scala
+
+# Uses java.security
+run/t2318.scala
 
 # Taking too much time, because JavaScript is not as fast as the JVM
 
@@ -125,6 +132,7 @@ run/Predef.readLine.scala
 # Using System.getProperties
 
 run/t6240b.scala
+run/t4426.scala
 
 # Using reflection
 
@@ -294,6 +302,63 @@ run/shortClass.scala
 run/showraw_nosymbol.scala
 run/showraw_tree.scala
 run/showraw_tree_types_untyped.scala
+run/t1167.scala
+run/t2577.scala
+run/t2873.scala
+run/t2886.scala
+run/t2251b.scala
+run/t3346j.scala
+run/t3507-new.scala
+run/t3569.scala
+run/t5125b.scala
+run/t5225_1.scala
+run/t3425b
+run/t5256a.scala
+run/t5230.scala
+run/t5256c.scala
+run/t5256g.scala
+run/t5266_1.scala
+run/t5269.scala
+run/t5271_1.scala
+run/t5271_2.scala
+run/t5271_4.scala
+run/t5272_1_newpatmat.scala
+run/t5272_2_oldpatmat.scala
+run/t5273_1_oldpatmat.scala
+run/t5273_2a_newpatmat.scala
+run/t5273_2a_oldpatmat.scala
+run/t5275.scala
+run/t5276_1a.scala
+run/t5276_2a.scala
+run/t5277_1.scala
+run/t5279.scala
+run/t5334_1.scala
+run/t5334_2.scala
+run/t5415.scala
+run/t5418.scala
+run/t5676.scala
+run/t5704.scala
+run/t5710-1.scala
+run/t5710-2.scala
+run/t5770.scala
+run/t5894.scala
+run/t5816.scala
+run/t5824.scala
+run/t5912.scala
+run/t5942.scala
+run/t5943a2.scala
+run/t6023.scala
+run/t6113.scala
+run/t6175.scala
+run/t6178.scala
+run/t6199-mirror.scala
+run/t6199-toolbox.scala
+run/t6220.scala
+run/t6240-universe-code-gen.scala
+run/t6240-universe-code-gen.scala
+run/t6221
+run/t6260b.scala
+run/t6259.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -467,6 +532,11 @@ run/ctries-old
 run/map_java_conversions.scala
 run/parmap-ops.scala
 run/pc-conversions.scala
+run/t4459.scala
+run/t4608.scala
+run/t4723.scala
+run/t4895.scala
+run/t6052.scala
 
 # Using parser combinators
 
@@ -618,11 +688,35 @@ run/programmatic-main.scala
 run/reflection-names.scala
 run/settings-parse.scala
 run/sm-interpolator.scala
+run/t1501.scala
+run/t1500.scala
+run/sammy_java8.scala
+run/t1618.scala
+run/t2464
+run/t4072.scala
+run/t5064.scala
+run/t5313.scala
+run/t5385.scala
+run/t5699.scala
+run/t5717.scala
+run/t5940.scala
+run/t6028.scala
+run/t6194.scala
+run/t6288b-jump-position.scala
 
 # Using .java source files
 
 run/t4317
 run/t4238
+run/t2296c
+run/t4119
+run/t4283
+run/t4891
+run/t6168
+run/t6168b
 
 # Using arguments to partests
 run/absoverride.scala
+
+# Prints phase list
+run/t6102.scala

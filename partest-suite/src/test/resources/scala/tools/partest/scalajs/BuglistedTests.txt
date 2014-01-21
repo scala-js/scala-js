@@ -8,10 +8,44 @@ run/Course-2002-08.scala
 neg/t7494-multi-right-after
 neg/t7494-right-after-before
 run/iterator-from.scala
+run/t3855.scala
+run/t429.scala
+run/streams.scala
 
 # maybe?
 run/future-flatmap-exec-count.scala
 run/macro-reify-unreify
+run/t6154.scala
+
+# Missing stuff in java lib
+run/t1360.scala
+run/mutable-longmap.scala
+run/t3647.scala
+run/t6114.scala
+
+# Issues with numbers
+
+# Chars should not be negative, but are
+run/t2087-and-2400.scala
+
+# Floats need minus
+run/t2378.scala
+
+# Name mangling issue (reflective calls)?
+run/t2514.scala
+run/t2636.scala
+run/t3175.scala
+run/t4560.scala
+
+# Enumerations
+run/t3616.scala
+run/t3687.scala
+run/t3719.scala
+run/t4570.scala
+run/t5612.scala
+
+# Hash of case object needs hash of name
+run/t4752.scala
 
 # must be re-reported
 # (bug that was reported was fixed, but there is still an issue)
