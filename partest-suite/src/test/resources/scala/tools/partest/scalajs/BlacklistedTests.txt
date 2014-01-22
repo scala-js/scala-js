@@ -5,6 +5,11 @@
 # Using Jsoup, what's that?
 pos/cycle-jsoup.scala
 
+# Using scala.actors
+pos/t533.scala
+pos/functions.scala
+pos/MailBox.scala
+
 #
 # NEG
 #
@@ -120,19 +125,29 @@ run/patmat-exprs.scala
 
 run/tailcalls.scala
 run/t4294.scala
+run/t6331b.scala
 
 # Using scala.Symbol
 
 run/fors.scala
+run/t6706.scala
 
 # Using IO
 
 run/Predef.readLine.scala
+run/t6488.scala
+
+# Object{Output|Input}Streams
+run/t6935.scala
 
 # Using System.getProperties
 
 run/t6240b.scala
 run/t4426.scala
+
+# Using ExecutionContext.global
+run/t7336.scala
+run/t7775.scala
 
 # Using reflection
 
@@ -359,6 +374,50 @@ run/t6240-universe-code-gen.scala
 run/t6221
 run/t6260b.scala
 run/t6259.scala
+run/t6287.scala
+run/t6261.scala
+run/t6308.scala
+run/t6344.scala
+run/t6392a.scala
+run/t6591_1.scala
+run/t6591_2.scala
+run/t6591_3.scala
+run/t6591_5.scala
+run/t6591_6.scala
+run/t6591_7.scala
+run/t6608.scala
+run/t6677.scala
+run/t6687.scala
+run/t6715.scala
+run/t6719.scala
+run/t6793.scala
+run/t6860.scala
+run/t6793b.scala
+run/t6793c.scala
+run/t7045.scala
+run/t7046.scala
+run/t7008-scala-defined
+run/t7120b.scala
+run/t7151.scala
+run/t7214.scala
+run/t7235.scala
+run/t7331a.scala
+run/t7331b.scala
+run/t7331c.scala
+run/t7558.scala
+run/t7556
+run/t7779.scala
+run/t7868b.scala
+run/toolbox_current_run_compiles.scala
+run/toolbox_default_reporter_is_silent.scala
+run/toolbox_parse_package.scala
+run/toolbox_silent_reporter.scala
+run/toolbox_typecheck_inferimplicitvalue.scala
+run/trait-renaming
+run/typetags_serialize.scala
+run/valueclasses-typetag-basic.scala
+run/WeakHashSetTest.scala
+run/valueclasses-typetag-generic.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -537,6 +596,8 @@ run/t4608.scala
 run/t4723.scala
 run/t4895.scala
 run/t6052.scala
+run/t6410.scala
+run/t6467.scala
 
 # Using parser combinators
 
@@ -600,6 +661,7 @@ run/repl-paste-raw.scala
 run/repl-paste-4.scala
 run/t7801.scala
 run/repl-backticks.scala
+run/t6633.scala
 
 # Using the Repl (scala.tools.partest.ReplTest)
 jvm/interpreter.scala
@@ -703,6 +765,30 @@ run/t5940.scala
 run/t6028.scala
 run/t6194.scala
 run/t6288b-jump-position.scala
+run/t6669.scala
+run/t6745-2.scala
+run/t6955.scala
+run/t6956.scala
+run/t7096.scala
+run/t7271.scala
+run/t7337.scala
+run/t7398.scala
+run/t7569.scala
+run/t7852.scala
+run/t7817-tree-gen.scala
+run/t7825.scala
+
+# partest.DirectTest
+run/t6288.scala
+run/t6331.scala
+run/t6440b.scala
+run/t6555.scala
+run/t7876.scala
+run/typetags_without_scala_reflect_typetag_lookup.scala
+
+# partest.BytecodeTest
+run/t6546
+run/t7106
 
 # Using .java source files
 
@@ -714,6 +800,23 @@ run/t4283
 run/t4891
 run/t6168
 run/t6168b
+run/t6240a
+run/t6240b
+run/t6548
+run/t6989
+run/t7008
+run/t7246
+run/t7246b
+run/t7359
+run/t7439
+run/t7455
+run/t7510
+run/t7582-private-within
+run/t7582
+run/t7582b
+
+# Using scala-script
+run/t7791-script-linenums.scala
 
 # Using arguments to partests
 run/absoverride.scala

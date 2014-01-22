@@ -7,21 +7,41 @@
 run/Course-2002-08.scala
 neg/t7494-multi-right-after
 neg/t7494-right-after-before
+neg/t7622-multi-followers
+neg/t7622-cyclic-dependency
 run/iterator-from.scala
 run/t3855.scala
 run/t429.scala
 run/streams.scala
+run/t6632.scala
+run/t6634.scala
+run/t6731.scala
+run/type-currying.scala
+
+# Compiler crash (existential on value class)
+run/valueclasses-classtag-existential.scala
+
+# toString on null
+run/t7015.scala
+
+# Cannot find Nothing...
+run/t6637.scala
+run/t6725-1.scala
 
 # maybe?
 run/future-flatmap-exec-count.scala
 run/macro-reify-unreify
 run/t6154.scala
 
+# TrieMap?
+run/triemap-hash.scala
+
 # Missing stuff in java lib
 run/t1360.scala
 run/mutable-longmap.scala
 run/t3647.scala
 run/t6114.scala
+run/t7269.scala
 
 # Issues with numbers
 
@@ -31,11 +51,25 @@ run/t2087-and-2400.scala
 # Floats need minus
 run/t2378.scala
 
+# Parsing bad number does not throw exception
+run/try-catch-unify.scala
+
+# Implement new String()
+run/verify-ctor.scala
+
+# Package object of default package cannot be defined
+pos/t3999b.scala
+
+# JSCode fails
+pos/t7776.scala
+
 # Name mangling issue (reflective calls)?
 run/t2514.scala
 run/t2636.scala
 run/t3175.scala
 run/t4560.scala
+run/t7817.scala
+run/t874.scala
 
 # Enumerations
 run/t3616.scala
