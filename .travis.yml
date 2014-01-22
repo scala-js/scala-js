@@ -4,6 +4,7 @@ env:
 script:
   - sbt "${SBT_SETUP}" package testing/test $TEST_TASK reversi/optimizeJS
   - sh checksizes.sh
+  - sh check-partest-coverage.sh
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${TRAVIS_BRANCH}" == "master" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt publish; fi
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${TRAVIS_BRANCH}" == "scala-2.11" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt scalajs-compiler/publish scalajs-library/publish scalajs-jasmine-test-framework/publish; fi

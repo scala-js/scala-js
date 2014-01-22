@@ -38,7 +38,6 @@ run/t0412.scala
 run/t3518.scala
 run/t6198.scala
 run/t5018.scala
-run/t4929.scala
 run/t2417.scala
 run/t6197.scala
 run/t4813.scala
@@ -96,7 +95,6 @@ run/interpolationMultiline1.scala
 run/t6969.scala
 run/inner-obj-auto.scala
 run/predef-cycle.scala
-run/t1074.scala
 run/synchronized.scala
 
 # Uses java.security
@@ -142,7 +140,6 @@ run/t6935.scala
 
 # Using System.getProperties
 
-run/t6240b.scala
 run/t4426.scala
 
 # Using ExecutionContext.global
@@ -370,7 +367,6 @@ run/t6199-mirror.scala
 run/t6199-toolbox.scala
 run/t6220.scala
 run/t6240-universe-code-gen.scala
-run/t6240-universe-code-gen.scala
 run/t6221
 run/t6260b.scala
 run/t6259.scala
@@ -418,6 +414,10 @@ run/typetags_serialize.scala
 run/valueclasses-typetag-basic.scala
 run/WeakHashSetTest.scala
 run/valueclasses-typetag-generic.scala
+run/t4023.scala
+run/t4024.scala
+run/t6380.scala
+run/t5273_2b_oldpatmat.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -599,34 +599,9 @@ run/t6052.scala
 run/t6410.scala
 run/t6467.scala
 
-# Using parser combinators
-
-run/t1100.scala
-run/parserNoSuccessMessage.scala
-run/packrat3.scala
-run/t0700.scala
-run/t5514.scala
-run/t4138.scala
-run/packrat1.scala
-run/parserForFilter.scala
-
 # Using scala.xml
 
-run/t5843.scala
-run/t3705.scala
-run/t2354.scala
-run/t1773.scala
-run/t5052.scala
-run/t2125.scala
-run/t1620.scala
-run/t2721.scala
-run/t4387.scala
-run/xml-attribute.scala
-run/nodebuffer-array.scala
 run/t4124.scala
-run/t0663.scala
-run/io-position.scala
-run/xml-loop-bug.scala
 
 # Using Swing
 
@@ -664,9 +639,6 @@ run/repl-backticks.scala
 run/t6633.scala
 
 # Using the Repl (scala.tools.partest.ReplTest)
-jvm/interpreter.scala
-jvm/throws-annot-from-java/Test_3.scala
-jvm/xml05.scala
 run/class-symbol-contravariant.scala
 run/lub-visibility.scala
 run/macro-bundle-repl.scala
@@ -676,7 +648,6 @@ run/macro-system-properties.scala
 run/reflection-equality.scala
 run/reflection-repl-elementary.scala
 run/reify_newimpl_26.scala
-run/repl-empty-package/s_2.scala
 run/repl-javap-app.scala
 run/repl-out-dir.scala
 run/repl-term-macros.scala
@@ -686,9 +657,7 @@ run/t3376.scala
 run/t4025.scala
 run/t4172.scala
 run/t4216.scala
-run/t4542.check
 run/t4542.scala
-run/t4671.check
 run/t4671.scala
 run/t5256d.scala
 run/t5535.scala
@@ -698,7 +667,6 @@ run/t6086-repl.scala
 run/t6146b.scala
 run/t6187.scala
 run/t6320.scala
-run/t6329_repl_bug.pending
 run/t6381.scala
 run/t6434.scala
 run/t6439.scala
@@ -814,6 +782,7 @@ run/t7510
 run/t7582-private-within
 run/t7582
 run/t7582b
+run/t3897
 
 # Using scala-script
 run/t7791-script-linenums.scala

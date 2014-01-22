@@ -17,6 +17,7 @@ run/t6632.scala
 run/t6634.scala
 run/t6731.scala
 run/type-currying.scala
+run/t2250.scala
 
 # Compiler crash (existential on value class)
 run/valueclasses-classtag-existential.scala
