@@ -227,7 +227,6 @@ pos/t5953.scala
 pos/t1152
 pos/t0591.scala
 pos/t210.scala
-pos/t1909b-pos.scala
 pos/t7035.scala
 pos/t5769.scala
 pos/pmbug.scala
@@ -279,7 +278,6 @@ pos/t3731.scala
 pos/t6963c.scala
 pos/classtag-pos.scala
 pos/t6221.scala
-pos/t7584.scala
 pos/t3343.scala
 pos/spec-asseenfrom.scala
 pos/t604.scala
@@ -448,7 +446,6 @@ pos/chang
 pos/localmodules.scala
 pos/t4237.scala
 pos/rangepos-patmat.scala
-pos/t1263
 pos/t1974.scala
 pos/t0054.scala
 pos/michel2.scala
@@ -736,7 +733,6 @@ pos/t3836.scala
 pos/tcpoly_typeapp.scala
 pos/t1409
 pos/nonlocal-unchecked.scala
-pos/signatures
 pos/t0082.scala
 pos/z1720.scala
 pos/t7232c
@@ -833,7 +829,6 @@ pos/t6846.scala
 pos/t6162-inheritance.scala
 pos/relax_implicit_divergence.scala
 pos/patterns2.scala
-pos/t1909.scala
 pos/t4692.scala
 pos/t3837.scala
 pos/t661.scala
@@ -931,7 +926,6 @@ neg/t5390b.scala
 neg/abstraction-from-volatile-type-error.scala
 neg/macro-exception
 neg/t4431.scala
-neg/t6385.scala
 neg/t5689.scala
 neg/valueclasses.scala
 neg/overload.scala
@@ -1007,7 +1001,6 @@ run/t576.scala
 run/t3580.scala
 run/virtpatmat_partial.scala
 run/t6646.scala
-run/t2106.scala
 run/mixins.scala
 run/t1672.scala
 run/macro-expand-implicit-macro-has-implicit
@@ -1317,7 +1310,6 @@ run/t266.scala
 run/missingparams.scala
 run/t2255.scala
 run/private-inline.scala
-run/macro-bundle
 run/Course-2002-02.scala
 run/t3488.scala
 run/t3950.scala
@@ -1467,7 +1459,6 @@ pos/t762.scala
 pos/t0204.scala
 pos/rebind.scala
 pos/spec-short.scala
-pos/t3249
 pos/comp-rec-test.scala
 pos/lub-dealias-widen.scala
 pos/t1168.scala
@@ -1516,15 +1507,6 @@ pos/t577.scala
 pos/t4273.scala
 pos/t6278-synth-def.scala
 pos/t6184.scala
--
--
--
--
--
--
--
--
--
 neg/t0214.scala
 neg/t4842.scala
 neg/t6214.scala
@@ -1613,8 +1595,6 @@ neg/gadts1.scala
 neg/cyclics.scala
 neg/t5060.scala
 neg/scopes.scala
--
--
 run/virtpatmat_typetag.scala
 run/t4013.scala
 run/value-class-extractor-seq.scala
@@ -2015,7 +1995,6 @@ neg/t4818.scala
 neg/t3614.scala
 neg/t6666c.scala
 neg/ticket513.scala
-neg/t3692-new.scala
 neg/suggest-similar.scala
 neg/t4457_1.scala
 neg/t6666e.scala
@@ -2050,7 +2029,6 @@ neg/t5617.scala
 neg/t7299.scala
 neg/faculty.scala
 neg/virtpatmat_reach_null.scala
-neg/t5845.scala
 neg/macro-reify-typetag-hktypeparams-notags
 neg/t1224.scala
 neg/xmltruncated3.scala
@@ -2130,7 +2108,6 @@ neg/t6283.scala
 neg/override-object-flag.scala
 neg/constructor-prefix-error.scala
 neg/eta-expand-star.scala
-neg/main1.scala
 neg/t3392.scala
 neg/t1275.scala
 neg/nested-fn-print.scala
@@ -2186,7 +2163,6 @@ neg/t5376.scala
 neg/t545.scala
 neg/xmlcorner.scala
 neg/switch.scala
-neg/t4749.scala
 neg/depmet_1.scala
 neg/abstract-concrete-methods.scala
 neg/t4987.scala
@@ -2299,7 +2275,6 @@ neg/t5358.scala
 neg/t391.scala
 neg/serialversionuid-not-const.scala
 neg/t771.scala
-neg/t7251
 neg/t0903.scala
 neg/catch-all.scala
 neg/classmanifests_new_deprecations.scala
@@ -2384,7 +2359,6 @@ run/impconvtimes.scala
 run/t6863.scala
 run/t6500.scala
 run/macro-impl-rename-context
-run/t5923c
 run/t4351.scala
 run/t5009.scala
 run/macro-term-declared-in-annotation
@@ -2562,18 +2536,11 @@ run/t5986.scala
 run/view-iterator-stream.scala
 run/array-charSeq.scala
 pos/signatures
-pos/t1232
 pos/t1263
-pos/t1711
-pos/t1745
 pos/t3249
-pos/t3486
-neg/t5148.scala
 neg/t4749.scala
 neg/main1.scala
-neg/t3234.scala
 neg/t7251
-neg/t7324.scala
 neg/t7494-after-terminal
 neg/t7494-before-parser
 neg/t7494-right-after-terminal
