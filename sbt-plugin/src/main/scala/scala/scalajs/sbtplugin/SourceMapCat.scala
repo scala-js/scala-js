@@ -7,6 +7,8 @@ package scala.scalajs.sbtplugin
 
 import sbt._
 
+import scala.annotation.tailrec
+
 import java.io.PrintWriter
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
@@ -106,23 +108,26 @@ object SourceMapCat {
     jsfile.getParentFile / (jsfile.getName+".map")
 
   private def relativizePath(base: String, path: String): String = {
-    import java.io.File;
+    import java.io.File
+
     def getPathSegments(path: String) =
       path.split(File.separator).toList.filter(_.length > 0).filter(_ != ".")
         .foldLeft(List[String]()) { (p, s) => if (s == "..") p.tail else s :: p }
         .reverse
+
+    @tailrec
     def dropCommonSegments(x: List[String], y: List[String]): (List[String], List[String]) =
-      if((x == Nil) || (y == Nil) || (x.head != y.head))
-        (x,y)
+      if ((x == Nil) || (y == Nil) || (x.head != y.head))
+        (x, y)
       else
         dropCommonSegments(x.tail, y.tail)
 
     val absbase = (new File(base)).getAbsolutePath
     val abspath = (new File(path)).getAbsolutePath
 
-    // On unixes all abs paths starts with '/'
+    // On unixes all abs paths starts with '/'.
     // On windows the abs paths starts with drive letter and if the drives aren't
-    // the same, there is no relative path. So return abspath
+    // the same, there is no relative path. So return abspath.
     if (absbase(0) == abspath(0)) {
       val (restofbase, restofpath) =
         dropCommonSegments(getPathSegments(absbase), getPathSegments(abspath))
@@ -133,5 +138,4 @@ object SourceMapCat {
       abspath
     }
   }
-
 }
