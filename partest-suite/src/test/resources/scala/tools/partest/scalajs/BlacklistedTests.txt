@@ -87,9 +87,15 @@ run/t6064.scala
 #  This test uses range on Doubles which uses BigDecimal in return
 run/t5857.scala
 
-# Documented sematic difference on numbers (float precision)
+# Documented semantic difference on numbers (float precision)
 run/interpolation.scala
 run/interpolationMultiline1.scala
+
+# Documented semantic difference on numbers (overflow)
+run/streams.scala
+
+# Documented semantic difference on String.split(x: Array[Char])
+run/t0325.scala
 
 # Using Threads
 run/t6969.scala
@@ -129,6 +135,9 @@ run/t6331b.scala
 
 run/fors.scala
 run/t6706.scala
+run/t4560.scala
+run/t6634.scala
+run/t6632.scala
 
 # Using IO
 
@@ -418,6 +427,7 @@ run/t4023.scala
 run/t4024.scala
 run/t6380.scala
 run/t5273_2b_oldpatmat.scala
+run/iterator-from.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -792,3 +802,7 @@ run/absoverride.scala
 
 # Prints phase list
 run/t6102.scala
+
+###  Incorrect partests  ###
+# Badly uses constract of Console.print (no flush)
+run/t429.scala
