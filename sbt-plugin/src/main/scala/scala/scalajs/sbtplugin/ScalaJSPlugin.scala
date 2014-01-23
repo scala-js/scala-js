@@ -202,7 +202,7 @@ object ScalaJSPlugin extends Plugin {
       moduleName in packageJSKey := moduleName.value,
 
       artifactPath in packageJSKey :=
-        (crossTarget.value /
+        ((crossTarget in packageJSKey).value /
             ((moduleName in packageJSKey).value + outputSuffix + ".js")),
 
       packageJSKey := {
@@ -211,7 +211,7 @@ object ScalaJSPlugin extends Plugin {
         val output = (artifactPath in packageJSKey).value
         val taskCacheDir = s.cacheDirectory / "package-js"
 
-        IO.createDirectory(crossTarget.value)
+         IO.createDirectory(new File(output.getParent))
 
         if (inputs.isEmpty) {
           if (!output.isFile || output.length != 0)
@@ -339,7 +339,7 @@ object ScalaJSPlugin extends Plugin {
         val logger = s.log
         val cacheDir = s.cacheDirectory
         val allJSFiles = (sources in optimizeJS).value
-        val output = crossTarget.value / (moduleName.value + "-opt.js")
+        val output = (crossTarget in optimizeJS).value / (moduleName.value + "-opt.js")
 
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
