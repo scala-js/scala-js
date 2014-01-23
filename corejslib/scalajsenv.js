@@ -422,7 +422,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
 
   this.constr = ArrayClass;
   this.parentData = ScalaJS.data.java_lang_Object;
-  this.ancestors = {java_lang_Object: true};
+  this.ancestors = {java_lang_Object: 1};
   this.isPrimitive = false;
   this.isInterface = false;
   this.isArrayClass = true;

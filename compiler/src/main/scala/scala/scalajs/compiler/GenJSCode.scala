@@ -481,7 +481,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ancestorsRecord = js.ObjectConstr(
           for (ancestor <- sym :: sym.ancestors)
-            yield (encodeClassFullNameIdent(ancestor), js.BooleanLiteral(true)))
+            yield (encodeClassFullNameIdent(ancestor), js.IntLiteral(1)))
 
       val classIdent = encodeClassFullNameIdent(sym)
 

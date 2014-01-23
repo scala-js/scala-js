@@ -41,10 +41,10 @@ ScalaJS.data.java_lang_String =
     {java_lang_String:0},
     false, "java.lang.String", ScalaJS.data.java_lang_Object,
     {
-      java_lang_String: true,
-      java_io_Serializable: true,
-      java_lang_CharSequence: true,
-      java_lang_Comparable: true,
-      java_lang_Object: true
+      java_lang_String: 1,
+      java_io_Serializable: 1,
+      java_lang_CharSequence: 1,
+      java_lang_Comparable: 1,
+      java_lang_Object: 1
     },
     ScalaJS.is.java_lang_String);
