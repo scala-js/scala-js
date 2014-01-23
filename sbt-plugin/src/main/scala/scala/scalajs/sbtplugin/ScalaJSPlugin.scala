@@ -211,7 +211,7 @@ object ScalaJSPlugin extends Plugin {
         val output = (artifactPath in packageJSKey).value
         val taskCacheDir = s.cacheDirectory / "package-js"
 
-         IO.createDirectory(new File(output.getParent))
+        IO.createDirectory(new File(output.getParent))
 
         if (inputs.isEmpty) {
           if (!output.isFile || output.length != 0)
