@@ -213,6 +213,7 @@ object ArraysTest extends JasmineTest {
       ret = Arrays.binarySearch(longs, 8)
       expect(ret).toEqual(-7)
     }
+
     it("should respond to `binarySearch` with start index, end index and key for Int") {
       val ints: Array[Int] = Array(1, 2, 3, 5, 6, 7)
       var ret = Arrays.binarySearch(ints, 0, 6, 5)
@@ -242,6 +243,7 @@ object ArraysTest extends JasmineTest {
       ret = Arrays.binarySearch(ints, 8)
       expect(ret).toEqual(-7)
     }
+
     it("should respond to `binarySearch` with start index, end index and key for Short") {
       val shorts: Array[Short] = Array(1, 2, 3, 5, 6, 7)
       var ret = Arrays.binarySearch(shorts, 0, 6, 5.toShort)
@@ -271,6 +273,7 @@ object ArraysTest extends JasmineTest {
       ret = Arrays.binarySearch(shorts, 8.toShort)
       expect(ret).toEqual(-7)
     }
+
     it("should respond to `binarySearch` with start index, end index and key for Char") {
       val chars: Array[Char] = Array('b', 'c', 'd', 'f', 'g', 'h')
       var ret = Arrays.binarySearch(chars, 0, 6, 'f')
@@ -298,6 +301,96 @@ object ArraysTest extends JasmineTest {
       expect(ret).toEqual(-4)
 
       ret = Arrays.binarySearch(chars, 'i')
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3, 0.5, 0.6, 0.7)
+      var ret = Arrays.binarySearch(doubles, 0, 6, 0.5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3, 0.5, 0.6, 0.7)
+      var ret = Arrays.binarySearch(doubles, 0.5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(doubles, 0.0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(doubles, 0.4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(doubles, 0.8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f, 0.5f, 0.6f, 0.7f)
+      var ret = Arrays.binarySearch(floats, 0, 6, 0.5f)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.0f)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.4f)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.8f)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f, 0.5f, 0.6f, 0.7f)
+      var ret = Arrays.binarySearch(floats, 0.5f)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(floats, 0.0f)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(floats, 0.4f)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(floats, 0.8f)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for AnyRef") {
+      val strings: Array[AnyRef] = Array("aa", "abc", "cc", "zz", "zzzs", "zzzt")
+      var ret = Arrays.binarySearch(strings, 0, 6, "zz")
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "a")
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "cd")
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "zzzz")
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for AnyRef") {
+      val strings: Array[AnyRef] = Array("aa", "abc", "cc", "zz", "zzzs", "zzzt")
+      var ret = Arrays.binarySearch(strings, "zz")
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(strings, "a")
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(strings, "cd")
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(strings, "zzzz")
       expect(ret).toEqual(-7)
     }
   }

@@ -245,4 +245,64 @@ object Arrays {
     return -low - 1
   }
 
+  def binarySearch(a: Array[Float], key: Float): Int =
+      binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Float], startIndex: Int, endIndex:Int, key: Float): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
+  def binarySearch(a: Array[Double], key: Double): Int =
+      binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Double], startIndex: Int, endIndex:Int, key: Double): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
+  def binarySearch(a: Array[AnyRef], key: AnyRef): Int =
+      binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[AnyRef], startIndex: Int, endIndex:Int, key: AnyRef): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key.asInstanceOf[Comparable[AnyRef]].compareTo(a(mid)) > 0)
+        low = mid + 1
+      else if (key.asInstanceOf[Comparable[AnyRef]].compareTo(a(mid)) == 0)
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
 }
