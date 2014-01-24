@@ -57,7 +57,7 @@ object ArraysTest extends JasmineTest {
       Arrays.fill(booleans, 1, 4, true)
       expect(booleans).toEqual(Array(false, true, true, true, false, false))
     }
-    
+
     it("should respond to `fill` for Byte") {
       val bytes = new Array[Byte](6)
       Arrays.fill(bytes, 42.toByte)
@@ -184,5 +184,122 @@ object ArraysTest extends JasmineTest {
       expect(bytes).toEqual(Array[AnyRef](null, "a", "b", "b", "b", null))
     }
 
+    it("should respond to `binarySearch` with start index, end index and key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(longs, 0, 6, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(longs, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(longs, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(longs, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(longs, 8)
+      expect(ret).toEqual(-7)
+    }
+    it("should respond to `binarySearch` with start index, end index and key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(ints, 0, 6, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(ints, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(ints, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(ints, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(ints, 8)
+      expect(ret).toEqual(-7)
+    }
+    it("should respond to `binarySearch` with start index, end index and key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(shorts, 0, 6, 5.toShort)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 0.toShort)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 4.toShort)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 8.toShort)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(shorts, 5.toShort)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(shorts, 0.toShort)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(shorts, 4.toShort)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(shorts, 8.toShort)
+      expect(ret).toEqual(-7)
+    }
+    it("should respond to `binarySearch` with start index, end index and key for Char") {
+      val chars: Array[Char] = Array('b', 'c', 'd', 'f', 'g', 'h')
+      var ret = Arrays.binarySearch(chars, 0, 6, 'f')
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'a')
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'e')
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'i')
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Char") {
+      val chars: Array[Char] = Array('b', 'c', 'd', 'f', 'g', 'h')
+      var ret = Arrays.binarySearch(chars, 'f')
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(chars, 'a')
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(chars, 'e')
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(chars, 'i')
+      expect(ret).toEqual(-7)
+    }
   }
+
 }
