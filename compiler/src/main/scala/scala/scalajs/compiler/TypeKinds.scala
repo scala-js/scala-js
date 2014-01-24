@@ -16,7 +16,8 @@ trait TypeKinds extends SubComponent {
 
   import definitions.{ UnitClass, BooleanClass, CharClass, ByteClass,
     ShortClass, IntClass, LongClass, FloatClass, DoubleClass, ArrayClass,
-    AnyRefClass, ObjectClass, NullClass, NothingClass, arrayType }
+    AnyRefClass, ObjectClass, NullClass, NothingClass, arrayType,
+    RuntimeNullClass, RuntimeNothingClass }
 
   lazy val ObjectReference = REFERENCE(definitions.ObjectClass)
 
@@ -194,4 +195,18 @@ trait TypeKinds extends SubComponent {
     primitiveTypeMap.getOrElse(sym, newReference(sym))
   private def primitiveOrClassType(sym: Symbol, targs: List[Type]) =
     primitiveTypeMap.getOrElse(sym, arrayOrClassType(sym, targs))
+
+  /**
+   * Extractor object for Scala runtime mapped types
+   *
+   * These are types that are mapped to a different type at runtime.
+   * Currently scala.Nothing and scala.Null
+   */
+  object ScalaRTMapped {
+    def unapply(cls: Symbol) = cls match {
+      case NullClass    => Some(RuntimeNullClass)
+      case NothingClass => Some(RuntimeNothingClass)
+      case _ => None
+    }
+  }
 }
