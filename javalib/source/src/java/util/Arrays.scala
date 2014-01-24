@@ -156,4 +156,93 @@ object Arrays {
     }
   }
 
+  private def checkIndexForBinarySearch(length: Int, start: Int, end: Int): Unit = {
+    if (start > end) {
+      throw new IllegalArgumentException("Starting index cann't be greater than ending Index")
+    }
+    if (length < end || 0 > start) {
+      throw new NoSuchElementException("End index cannot be greater than Array Length, Starting index cannot be less than 0")
+    }
+  }
+
+  def binarySearch(a: Array[Long], key: Long): Int =
+    binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Long], startIndex: Int, endIndex:Int, key: Long): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
+  def binarySearch(a: Array[Int], key: Int): Int =
+    binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Int], startIndex: Int, endIndex:Int, key: Int): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
+  def binarySearch(a: Array[Short], key: Short): Int =
+    binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Short], startIndex: Int, endIndex:Int, key: Short): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
+  def binarySearch(a: Array[Char], key: Char): Int =
+    binarySearch(a, 0, a.length, key)
+
+  def binarySearch(a: Array[Char], startIndex: Int, endIndex:Int, key: Char): Int = {
+    checkIndexForBinarySearch(a.length, startIndex, endIndex)
+    var low = startIndex
+    var mid = -1
+    var high = endIndex - 1
+    while (low <= high) {
+      mid = (low + high) >>> 1
+      if (key > a(mid))
+        low = mid + 1
+      else if (key == a(mid))
+        return mid
+      else
+        high = mid -1
+    }
+    return -low - 1
+  }
+
 }
