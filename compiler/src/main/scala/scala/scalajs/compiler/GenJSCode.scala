@@ -2009,10 +2009,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         case D2L =>
           genLongModuleCall("fromDouble", source)
 
-        case B2F | B2D | S2F | S2D | C2F | C2D | I2F | I2D =>
-          source
+        // Conversions to chars (except for Long)
+        case B2C | S2C | I2C | F2C | D2C =>
+          genCallHelper("num2char", source)
 
-        case F2B | F2S | F2C | F2I | D2B | D2S | D2C | D2I =>
+        case F2B | F2S | F2I | D2B | D2S | D2I =>
           js.BinaryOp("|", source, js.IntLiteral(0))
 
         case _ => source

@@ -251,6 +251,16 @@ var ScalaJS = {
                      : ScalaJS.g["Math"]["floor"](value);
   },
 
+  /** convert a number to a char (unsigned 16bit value) */
+  num2char: function(value) {
+    var x = value | 0;
+    while (x > 65535)
+      x -= 65536;
+    while (x < 0)
+      x += 65536;
+    return x;
+  },
+
   propertiesOf: function(obj) {
     var result = new Array();
     for (var prop in obj)
@@ -379,7 +389,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
   var componentZero = componentData.zero;
 
   // The zero for the Long runtime representation
-  // is a special case here, since the class has not 
+  // is a special case here, since the class has not
   // been defined yet, when this file is read
   if (componentZero == "longZero") {
     componentZero = ScalaJS.modules.scala_scalajs_runtime_Long().
