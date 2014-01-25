@@ -20,5 +20,14 @@ object DoubleTest extends JasmineTest {
       expect(Double.box(Double.NaN) == Double.box(Double.NaN)).toBeTruthy
     }
 
+    it("should provide proper `toString`") {
+      expect(0.0.toString).toEqual("0.0")
+      expect(-0.0.toString).toEqual("-0.0")
+      expect(Double.NaN.toString).toEqual("NaN")
+      expect(5.0.toString).toEqual("5.0")
+      expect(-5.0.toString).toEqual("-5.0")
+      expect(1.2.toString).toEqual("1.2")
+    }
+
   }
 }

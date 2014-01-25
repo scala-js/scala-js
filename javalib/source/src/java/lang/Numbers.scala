@@ -260,8 +260,14 @@ final class Float(private val value: scala.Float) extends Number {
   }
 
   override def toString = {
-    val s = (value: js.Number).toString()
-    if (s.indexOf(".") < 0) s + ".0" else s
+    if (value == 0 && 1 / value < 0) {
+      "-0.0"
+    } else {
+      val s = (value: js.Number).toString()
+      if (s.indexOf(".") < 0 && !js.isNaN(value))
+        s + ".0"
+      else s
+    }
   }
 
   def isNaN: scala.Boolean = Float.isNaN(value)
@@ -323,8 +329,14 @@ final class Double(private val value: scala.Double) extends Number {
   }
 
   override def toString = {
-    val s = (value: js.Number).toString()
-    if (s.indexOf(".") < 0) s + ".0" else s
+    if (value == 0 && 1 / value < 0) {
+      "-0.0"
+    } else {
+      val s = (value: js.Number).toString()
+      if (s.indexOf(".") < 0 && !js.isNaN(value))
+        s + ".0"
+      else s
+    }
   }
 
   def isNaN: scala.Boolean = Double.isNaN(value)
