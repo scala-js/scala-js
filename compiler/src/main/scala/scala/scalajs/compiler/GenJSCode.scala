@@ -488,7 +488,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.New(envField("ClassTypeData"), List(
           js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
           js.BooleanLiteral(isInterface),
-          js.StringLiteral(sym.fullName),
+          // Manually add $ to the name if we are a module class. This is to get
+          // <mod>.getClass.getName right. Note that we do not have to take care
+          // of implementation classes here since they will not end up here.
+          js.StringLiteral(sym.fullName + (if (sym.isModuleClass) "$" else "")),
           parentData,
           ancestorsRecord
       ) ++ (
