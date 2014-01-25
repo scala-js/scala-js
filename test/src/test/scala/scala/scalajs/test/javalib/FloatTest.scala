@@ -11,6 +11,8 @@ package javalib
 import scala.scalajs.test.JasmineTest
 import scala.scalajs.js.Any.fromInt
 
+import scala.util.Try
+
 object FloatTest extends JasmineTest {
 
   describe("java.lang.Float") {
@@ -32,6 +34,12 @@ object FloatTest extends JasmineTest {
       // float). Therefore there may be some imprecision. This is
       // documented as semantic difference.
       expect(1.2f.toString.substring(0,3)).toEqual("1.2")
+    }
+
+    it("should parse strings") {
+      expect("0.0".toFloat).toEqual(0.0f)
+      expect("NaN".toFloat.isNaN).toBeTruthy
+      expect(Try("asdf".toFloat).isFailure).toBeTruthy
     }
 
   }

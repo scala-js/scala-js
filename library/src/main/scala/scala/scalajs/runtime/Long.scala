@@ -429,14 +429,20 @@ object Long {
   
   def fromString(str: String): Long =
     if (str.head == '-') -fromString(str.tail) else {
-      import scalajs.js.parseInt
+      import scalajs.js
+
       val maxLen = 9
       @tailrec
-      def fromString0(str: String, acc: Long): Long = if (str.size > 0) {
-        val (cur, next) = str.splitAt(maxLen)
+      def fromString0(str0: String, acc: Long): Long = if (str0.size > 0) {
+        val (cur, next) = str0.splitAt(maxLen)
         val macc = acc * fromInt(math.pow(10, cur.size).toInt)
         // explicitly specify radix to avoid intepreation as octal
-        val cval = fromInt(parseInt(cur, 10).toInt)
+        val ival = js.parseInt(cur, 10)
+        if (js.isNaN(ival)) {
+          throw new java.lang.NumberFormatException(
+            s"""For input string: "$str"""")
+        }
+        val cval = fromInt(ival.toInt)
         fromString0(next, macc + cval)
       } else acc
     

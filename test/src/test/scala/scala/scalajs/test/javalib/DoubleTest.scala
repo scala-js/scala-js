@@ -11,6 +11,8 @@ package javalib
 import scala.scalajs.test.JasmineTest
 import scala.scalajs.js.Any.fromInt
 
+import scala.util.Try
+
 object DoubleTest extends JasmineTest {
 
   describe("java.lang.Double") {
@@ -27,6 +29,12 @@ object DoubleTest extends JasmineTest {
       expect(5.0.toString).toEqual("5.0")
       expect(-5.0.toString).toEqual("-5.0")
       expect(1.2.toString).toEqual("1.2")
+    }
+
+    it("should parse strings") {
+      expect("0.0".toDouble).toEqual(0.0f)
+      expect("NaN".toDouble.isNaN).toBeTruthy
+      expect(Try("asdf".toDouble).isFailure).toBeTruthy
     }
 
   }

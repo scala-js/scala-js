@@ -118,11 +118,17 @@ object Integer {
 
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
-  def parseInt(s: String): scala.Int =
-    js.parseInt(s).toInt
+  def parseInt(s: String): scala.Int =    
+    // explicitly specify radix to avoid interpretation as octal (by JS)
+    parseInt(s, 10)
 
-  def parseInt(s: String, radix: scala.Int): scala.Int =
-    js.parseInt(s, radix).toInt
+  def parseInt(s: String, radix: scala.Int): scala.Int = {
+    val res = js.parseInt(s, radix)
+    if (js.isNaN(res))
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      res.toInt
+  }
 
   def toString(i: scala.Int) = valueOf(i).toString
 
@@ -287,8 +293,13 @@ object Float {
 
   def valueOf(floatValue: scala.Float) = new Float(floatValue)
 
-  def parseFloat(s: String): scala.Float =
-    js.parseFloat(s).toFloat
+  def parseFloat(s: String): scala.Float = {
+    val res = js.parseFloat(s)
+    if (s != "NaN" && js.isNaN(res))
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      res.toFloat
+  }
 
   def toString(f: scala.Float) = valueOf(f).toString
 

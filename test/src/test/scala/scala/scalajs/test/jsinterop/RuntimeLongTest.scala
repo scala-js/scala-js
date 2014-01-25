@@ -11,6 +11,8 @@ package jsinterop
 import scala.scalajs.runtime.Long
 import org.scalajs.jasmine.JasmineExpectation
 
+import scala.util.Try
+
 /**
  * test the runtime Long implementation directly
  * does not depend on magic compiler Long rewriting
@@ -97,6 +99,7 @@ object RuntimeLongTest extends JasmineTest {
       expect(Long.fromString("-4")).toEqual(        "fffffffffffffffc")
       expect(Long.fromString("4000000000")).toEqual("00000000ee6b2800")
       expect(Long.fromString("-18014398509482040")).toEqual("ffbfffffffffffc8")
+      expect(Try(Long.fromString("asdf")).isFailure).toBeTruthy
     }
 
   }
