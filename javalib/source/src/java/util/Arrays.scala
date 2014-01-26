@@ -158,10 +158,13 @@ object Arrays {
 
   private def checkIndexForBinarySearch(length: Int, start: Int, end: Int): Unit = {
     if (start > end) {
-      throw new IllegalArgumentException("Starting index cann't be greater than ending Index")
+      throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
     }
-    if (length < end || 0 > start) {
-      throw new NoSuchElementException("End index cannot be greater than Array Length, Starting index cannot be less than 0")
+    if (0 > start) {
+      throw new ArrayIndexOutOfBoundsException("Array index out of range: " + start)
+    }
+    if (length < end) {
+      throw new ArrayIndexOutOfBoundsException("Array index out of range: " + end)
     }
   }
 
