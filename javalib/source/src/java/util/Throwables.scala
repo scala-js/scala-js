@@ -164,15 +164,3 @@ class UnknownFormatFlagsException private() extends IllegalFormatException {
   def getFlags(): String = flags
   override def getMessage(): String = "Flags = " + flags
 }
-
-class IndexOutOfBoundsException(s: String) extends RuntimeException(s) {
-  def this() = this(null)
-}
-
-class IllegalArgumentException(s: String) extends RuntimeException(s) {
-  def this() = this(null)
-}
-
-class ArrayIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsException {
-  def this() = this(null)
-}
