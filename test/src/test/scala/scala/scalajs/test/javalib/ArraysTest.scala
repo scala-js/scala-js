@@ -393,6 +393,42 @@ object ArraysTest extends JasmineTest {
       ret = Arrays.binarySearch(strings, "zzzz")
       expect(ret).toEqual(-7)
     }
+
+    it("should check ranges of input to `binarySearch`") {
+      def expectException(block: => Unit)(expected: PartialFunction[Throwable, Unit]): Unit = {
+        val catchAll: PartialFunction[Throwable, Unit] = {
+          case e: Throwable => expect(e.getClass.getName).toBe("not thrown")
+        }
+
+        try {
+          block
+          expect("exception").toBe("thrown")
+        } catch expected orElse catchAll
+      }
+
+      val array = Array(0, 1, 3, 4)
+
+      expectException({ Arrays.binarySearch(array, 3, 2, 2) }) {
+        case exception: IllegalArgumentException =>
+          expect(exception.getMessage).toBe("fromIndex(3) > toIndex(2)")
+      }
+
+      // start/end comparison is made before index ranges checks
+      expectException({ Arrays.binarySearch(array, 7, 5, 2) }) {
+        case exception: IllegalArgumentException =>
+          expect(exception.getMessage).toBe("fromIndex(7) > toIndex(5)")
+      }
+
+      expectException({ Arrays.binarySearch(array, -1, 4, 2) }) {
+        case exception: ArrayIndexOutOfBoundsException =>
+          expect(exception.getMessage).toBe("Array index out of range: -1")
+      }
+
+      expectException({ Arrays.binarySearch(array, 0, 5, 2) }) {
+        case exception: ArrayIndexOutOfBoundsException =>
+          expect(exception.getMessage).toBe("Array index out of range: 5")
+      }
+    }    
   }
 
 }
