@@ -60,7 +60,14 @@ object System {
 }
 
 private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
-  private var buffer: js.String = ""
+  /** whether buffer is flushed. Can be true even if buffer != "" because of
+   *  line continuations. However, if !flushed => buffer != ""
+   */
+  private var flushed: js.Boolean = true
+  private var buffer:  js.String = ""
+
+  private val lineContEnd  : js.String = "\u21A9"
+  private val lineContStart: js.String = "\u21AA"
 
   override def print(s: String): Unit = {
     var rest: js.String = if (s eq null) "null" else s
@@ -68,13 +75,26 @@ private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
       val nlPos = rest.indexOf("\n")
       if (nlPos < 0) {
         buffer += rest
+        flushed = false
         rest = ""
       } else {
         doWriteLine(buffer + rest.substring(0, nlPos))
         buffer = ""
+        flushed = true
         rest = rest.substring(nlPos+1)
       }
     }
+  }
+
+  /**
+   * Since we cannot write a partial line in JavaScript, we write a whole
+   * line with continuation symbol at the end and schedule a line continuation
+   * symbol for the new line if the buffer is flushed.
+   */
+  override def flush(): Unit = if (!flushed) {
+    doWriteLine(buffer + lineContEnd)
+    buffer = lineContStart
+    flushed = true
   }
 
   protected def doWriteLine(line: String): Unit
