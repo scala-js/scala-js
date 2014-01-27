@@ -468,4 +468,24 @@ object Arrays {
     throw new IllegalArgumentException()
   }
 
+  def copyOf(original: Array[AnyRef], newLen: Int): Array[AnyRef] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[AnyRef], start: Int, end: Int): Array[AnyRef] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[AnyRef](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
 }
