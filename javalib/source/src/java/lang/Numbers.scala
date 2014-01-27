@@ -118,7 +118,7 @@ object Integer {
 
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
-  def parseInt(s: String): scala.Int =    
+  def parseInt(s: String): scala.Int =
     // explicitly specify radix to avoid interpretation as octal (by JS)
     parseInt(s, 10)
 

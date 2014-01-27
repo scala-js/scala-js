@@ -61,7 +61,7 @@ final class Long private (
     } else {
       masked(0, 0, x.l << (n - BITS01))
     }
-    
+
   }
 
   /**
@@ -259,7 +259,7 @@ final class Long private (
     val lp = l | ((m & 0x3) << BITS)
     f"$h%05x$mp%05x$lp%06x"
   }
-  
+
   def toOctalString: String = {
     val lp = l & (MASK >> 1)
     val mp = ((m & (MASK >> 2)) << 1) | (l >> (BITS - 1))
@@ -301,7 +301,7 @@ final class Long private (
 
   def bitCount: Int =
     Integer.bitCount(l) + Integer.bitCount(m) + Integer.bitCount(h)
-  
+
   // helpers //
 
   /** sign *bit* of long (0 for positive, 1 for negative) */
@@ -320,7 +320,7 @@ final class Long private (
       Integer.numberOfLeadingZeros(h) - (32 - BITS2)
 
   /** return Some(log_2(x)) if power of 2 or None othwerise */
-  private def powerOfTwo = 
+  private def powerOfTwo =
     if      (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
       Some(Integer.numberOfTrailingZeros(l))
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
@@ -349,12 +349,12 @@ final class Long private (
     } else {
       val xNegative = x.isNegative
       val yNegative = y.isNegative
-      
+
       val xMinValue = x.isMinValue
 
       val absX = x.abs  // this may be useless if x.isMinValue
       val absY = y.abs
-      
+
       y.powerOfTwo match {
         case Some(pow) if xMinValue =>
           val z = x >> pow
@@ -417,7 +417,7 @@ object Long {
 
   def toRuntimeLong(x: scala.Long): Long = sys.error("stub")
   def fromRuntimeLong(x:Long): scala.Long = sys.error("stub")
-  
+
   def fromHexString(str: String) = {
 	import scalajs.js.parseInt
     assert(str.size == 16)
@@ -426,7 +426,7 @@ object Long {
     val h = parseInt(str.substring(0, 5), 16).toInt
     masked(l, m, h)
   }
-  
+
   def fromString(str: String): Long =
     if (str.head == '-') -fromString(str.tail) else {
       import scalajs.js
@@ -445,10 +445,10 @@ object Long {
         val cval = fromInt(ival.toInt)
         fromString0(next, macc + cval)
       } else acc
-    
+
       fromString0(str, zero)
     }
-  
+
   def fromByte(value: Byte): Long = fromInt(value.toInt)
   def fromShort(value: Short): Long = fromInt(value.toInt)
   def fromChar(value: Char): Long = fromInt(value.toInt)
@@ -460,7 +460,7 @@ object Long {
   }
 
   def fromFloat(value: Float): Long = fromDouble(value.toDouble)
-  def fromDouble(value: Double): Long = 
+  def fromDouble(value: Double): Long =
     if (value.isNaN) zero
     else if (value < -TWO_PWR_63_DBL) MinValue
     else if (value >= TWO_PWR_63_DBL) MaxValue
@@ -510,15 +510,15 @@ object Long {
     val yShift = y << shift
 
     val (absQuot, absRem) = divide0(shift, yShift, x, zero)
-    
+
     val quot = if (xNegative ^ yNegative) -absQuot else absQuot
     val rem  =
       if (xNegative && xMinValue) -absRem - one
       else if (xNegative)         -absRem
-      else                         absRem 
+      else                         absRem
 
     (quot, rem)
-    
+
   }
 
   // Public Long API
@@ -528,5 +528,5 @@ object Long {
 
   /** The largest value representable as a Long. */
   final val MaxValue = Long(MASK, MASK, MASK_2 >> 1)
-  
+
 }
