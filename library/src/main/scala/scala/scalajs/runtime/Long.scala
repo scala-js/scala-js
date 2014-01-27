@@ -392,25 +392,25 @@ final class Long private (
 object Long {
 
   /** number of relevant bits in each Long.l and Long.m */
-  private val BITS:    Int = 22
+  private final val BITS   = 22
   /** number of relevant bits in Long.l and Long.m together */
-  private val BITS01:  Int = 2 * BITS
+  private final val BITS01 = 2 * BITS
   /** number of relevant bits in Long.h */
-  private val BITS2:   Int = 64 - BITS01
+  private final val BITS2  = 64 - BITS01
   /** bitmask for Long.l and Long.m */
-  private val MASK:    Int = (1 << BITS) - 1
+  private final val MASK   = (1 << BITS) - 1
   /** bitmask for Long.h */
-  private val MASK_2:  Int = (1 << BITS2) - 1
+  private final val MASK_2 = (1 << BITS2) - 1
 
-  private val SIGN_BIT:       Int    = BITS2 - 1
-  private val SIGN_BIT_VALUE: Int    = 1 << SIGN_BIT
-  private val TWO_PWR_15_DBL: Double = 0x8000
-  private val TWO_PWR_16_DBL: Double = 0x10000
-  private val TWO_PWR_22_DBL: Double = 0x400000
-  private val TWO_PWR_31_DBL: Double = TWO_PWR_16_DBL * TWO_PWR_15_DBL
-  private val TWO_PWR_32_DBL: Double = TWO_PWR_16_DBL * TWO_PWR_16_DBL
-  private val TWO_PWR_44_DBL: Double = TWO_PWR_22_DBL * TWO_PWR_22_DBL
-  private val TWO_PWR_63_DBL: Double = TWO_PWR_32_DBL * TWO_PWR_31_DBL
+  private final val SIGN_BIT       = BITS2 - 1
+  private final val SIGN_BIT_VALUE = 1 << SIGN_BIT
+  private final val TWO_PWR_15_DBL = 0x8000   * 1.0
+  private final val TWO_PWR_16_DBL = 0x10000  * 1.0
+  private final val TWO_PWR_22_DBL = 0x400000 * 1.0
+  private final val TWO_PWR_31_DBL = TWO_PWR_16_DBL * TWO_PWR_15_DBL
+  private final val TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL
+  private final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
+  private final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
   val zero = Long(0,0,0)
   val one  = Long(1,0,0)
