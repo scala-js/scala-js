@@ -63,6 +63,9 @@ object ScalaJSPlugin extends Plugin {
         "The Scala.js class that delegates test calls to the given test framework")
     val scalaJSTestFramework = settingKey[String](
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
+
+    val relativeSourceMaps = settingKey[Boolean](
+        "Make the referenced paths on source maps relative to target path")
   }
 
   import ScalaJSKeys._
@@ -200,7 +203,7 @@ object ScalaJSPlugin extends Plugin {
       moduleName in packageJSKey := moduleName.value,
 
       artifactPath in packageJSKey :=
-        (crossTarget.value /
+        ((crossTarget in packageJSKey).value /
             ((moduleName in packageJSKey).value + outputSuffix + ".js")),
 
       packageJSKey := {
@@ -209,7 +212,7 @@ object ScalaJSPlugin extends Plugin {
         val output = (artifactPath in packageJSKey).value
         val taskCacheDir = s.cacheDirectory / "package-js"
 
-        IO.createDirectory(crossTarget.value)
+        IO.createDirectory(new File(output.getParent))
 
         if (inputs.isEmpty) {
           if (!output.isFile || output.length != 0)
@@ -218,7 +221,7 @@ object ScalaJSPlugin extends Plugin {
           FileFunction.cached(taskCacheDir / "package",
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Packaging %s ..." format output)
-            catJSFilesAndTheirSourceMaps(inputs, output)
+            catJSFilesAndTheirSourceMaps(inputs, output, relativeSourceMaps.value)
             Set(output)
           } (inputs.toSet)
         }
@@ -337,7 +340,7 @@ object ScalaJSPlugin extends Plugin {
         val logger = s.log
         val cacheDir = s.cacheDirectory
         val allJSFiles = (sources in optimizeJS).value
-        val output = crossTarget.value / (moduleName.value + "-opt.js")
+        val output = (crossTarget in optimizeJS).value / (moduleName.value + "-opt.js")
 
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
@@ -455,6 +458,7 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSProjectBaseSettings = Seq(
       excludeDefaultScalaLibrary := false,
 
+      relativeSourceMaps := false,
       optimizeJSPrettyPrint := false,
       optimizeJSExterns := Seq(),
 

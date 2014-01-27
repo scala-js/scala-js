@@ -500,14 +500,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ancestorsRecord = js.ObjectConstr(
           for (ancestor <- sym :: sym.ancestors)
-            yield (encodeClassFullNameIdent(ancestor), js.BooleanLiteral(true)))
+            yield (encodeClassFullNameIdent(ancestor), js.IntLiteral(1)))
 
       val classIdent = encodeClassFullNameIdent(sym)
 
       js.New(envField("ClassTypeData"), List(
           js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
           js.BooleanLiteral(isInterface),
-          js.StringLiteral(sym.fullName),
+          // Manually add $ to the name if we are a module class. This is to get
+          // <mod>.getClass.getName right. Note that we do not have to take care
+          // of implementation classes here since they will not end up here.
+          js.StringLiteral(sym.fullName + (if (sym.isModuleClass) "$" else "")),
           parentData,
           ancestorsRecord
       ) ++ (
@@ -2040,10 +2043,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         case D2L =>
           genLongModuleCall("fromDouble", source)
 
-        case B2F | B2D | S2F | S2D | C2F | C2D | I2F | I2D =>
-          source
+        // Conversions to chars (except for Long)
+        case B2C | S2C | I2C | F2C | D2C =>
+          genCallHelper("num2char", source)
 
-        case F2B | F2S | F2C | F2I | D2B | D2S | D2C | D2I =>
+        case F2B | F2S | F2I | D2B | D2S | D2I =>
           js.BinaryOp("|", source, js.IntLiteral(0))
 
         case _ => source

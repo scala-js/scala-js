@@ -204,8 +204,27 @@ var ScalaJS = {
   objectHashCode: function(instance) {
     if (ScalaJS.isScalaJSObject(instance))
       return instance.hashCode__I();
-    else
+    else if (typeof(instance) === "string") {
+      // calculate hash of String as specified by JavaDoc
+      var n = instance.length;
+      var res = 0;
+      var mul = 1; // holds pow(31, n-i-1)
+      // multiplications with `mul` do never overflow the 52 bits of precision:
+      // - we truncate `mul` to 32 bits on each operation
+      // - 31 has 5 significant bits only
+      // - s[i] has 16 significant bits max
+      // 32 + max(5, 16) = 48 < 52 => no overflow
+      for (var i = n-1; i >= 0; --i) {
+        // calculate s[i] * pow(31, n-i-1)
+        res = res + (instance.charCodeAt(i) * mul | 0) | 0
+        // update mul for next iteration
+        mul = mul * 31 | 0
+      }
+
+      return res;
+    } else {
       return 42; // TODO
+    }
   },
 
   comparableCompareTo: function(instance, rhs) {
@@ -249,6 +268,16 @@ var ScalaJS = {
   truncateToLong: function(value) {
     return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
                      : ScalaJS.g["Math"]["floor"](value);
+  },
+
+  /** convert a number to a char (unsigned 16bit value) */
+  num2char: function(value) {
+    var x = value | 0;
+    while (x > 65535)
+      x -= 65536;
+    while (x < 0)
+      x += 65536;
+    return x;
   },
 
   propertiesOf: function(obj) {
@@ -379,7 +408,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
   var componentZero = componentData.zero;
 
   // The zero for the Long runtime representation
-  // is a special case here, since the class has not 
+  // is a special case here, since the class has not
   // been defined yet, when this file is read
   if (componentZero == "longZero") {
     componentZero = ScalaJS.modules.scala_scalajs_runtime_Long().
@@ -422,7 +451,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
 
   this.constr = ArrayClass;
   this.parentData = ScalaJS.data.java_lang_Object;
-  this.ancestors = {java_lang_Object: true};
+  this.ancestors = {java_lang_Object: 1};
   this.isPrimitive = false;
   this.isInterface = false;
   this.isArrayClass = true;

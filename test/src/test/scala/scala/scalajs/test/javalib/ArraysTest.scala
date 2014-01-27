@@ -57,7 +57,7 @@ object ArraysTest extends JasmineTest {
       Arrays.fill(booleans, 1, 4, true)
       expect(booleans).toEqual(Array(false, true, true, true, false, false))
     }
-    
+
     it("should respond to `fill` for Byte") {
       val bytes = new Array[Byte](6)
       Arrays.fill(bytes, 42.toByte)
@@ -184,5 +184,301 @@ object ArraysTest extends JasmineTest {
       expect(bytes).toEqual(Array[AnyRef](null, "a", "b", "b", "b", null))
     }
 
+    it("should respond to `binarySearch` with start index, end index and key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(longs, 0, 6, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(longs, 0, 6, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(longs, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(longs, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(longs, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(longs, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(ints, 0, 6, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(ints, 0, 6, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(ints, 5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(ints, 0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(ints, 4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(ints, 8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(shorts, 0, 6, 5.toShort)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 0.toShort)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 4.toShort)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(shorts, 0, 6, 8.toShort)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3, 5, 6, 7)
+      var ret = Arrays.binarySearch(shorts, 5.toShort)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(shorts, 0.toShort)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(shorts, 4.toShort)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(shorts, 8.toShort)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Char") {
+      val chars: Array[Char] = Array('b', 'c', 'd', 'f', 'g', 'h')
+      var ret = Arrays.binarySearch(chars, 0, 6, 'f')
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'a')
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'e')
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(chars, 0, 6, 'i')
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Char") {
+      val chars: Array[Char] = Array('b', 'c', 'd', 'f', 'g', 'h')
+      var ret = Arrays.binarySearch(chars, 'f')
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(chars, 'a')
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(chars, 'e')
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(chars, 'i')
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3, 0.5, 0.6, 0.7)
+      var ret = Arrays.binarySearch(doubles, 0, 6, 0.5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(doubles, 0, 6, 0.8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3, 0.5, 0.6, 0.7)
+      var ret = Arrays.binarySearch(doubles, 0.5)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(doubles, 0.0)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(doubles, 0.4)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(doubles, 0.8)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f, 0.5f, 0.6f, 0.7f)
+      var ret = Arrays.binarySearch(floats, 0, 6, 0.5f)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.0f)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.4f)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(floats, 0, 6, 0.8f)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f, 0.5f, 0.6f, 0.7f)
+      var ret = Arrays.binarySearch(floats, 0.5f)
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(floats, 0.0f)
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(floats, 0.4f)
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(floats, 0.8f)
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with start index, end index and key for AnyRef") {
+      val strings: Array[AnyRef] = Array("aa", "abc", "cc", "zz", "zzzs", "zzzt")
+      var ret = Arrays.binarySearch(strings, 0, 6, "zz")
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "a")
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "cd")
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(strings, 0, 6, "zzzz")
+      expect(ret).toEqual(-7)
+    }
+
+    it("should respond to `binarySearch` with key for AnyRef") {
+      val strings: Array[AnyRef] = Array("aa", "abc", "cc", "zz", "zzzs", "zzzt")
+      var ret = Arrays.binarySearch(strings, "zz")
+      expect(ret).toEqual(3)
+
+      ret = Arrays.binarySearch(strings, "a")
+      expect(ret).toEqual(-1)
+
+      ret = Arrays.binarySearch(strings, "cd")
+      expect(ret).toEqual(-4)
+
+      ret = Arrays.binarySearch(strings, "zzzz")
+      expect(ret).toEqual(-7)
+    }
+
+    it("should check ranges of input to `binarySearch`") {
+      def expectException(block: => Unit)(expected: PartialFunction[Throwable, Unit]): Unit = {
+        val catchAll: PartialFunction[Throwable, Unit] = {
+          case e: Throwable => expect(e.getClass.getName).toBe("not thrown")
+        }
+
+        try {
+          block
+          expect("exception").toBe("thrown")
+        } catch expected orElse catchAll
+      }
+
+      val array = Array(0, 1, 3, 4)
+
+      expectException({ Arrays.binarySearch(array, 3, 2, 2) }) {
+        case exception: IllegalArgumentException =>
+          expect(exception.getMessage).toBe("fromIndex(3) > toIndex(2)")
+      }
+
+      // start/end comparison is made before index ranges checks
+      expectException({ Arrays.binarySearch(array, 7, 5, 2) }) {
+        case exception: IllegalArgumentException =>
+          expect(exception.getMessage).toBe("fromIndex(7) > toIndex(5)")
+      }
+
+      expectException({ Arrays.binarySearch(array, -1, 4, 2) }) {
+        case exception: ArrayIndexOutOfBoundsException =>
+          expect(exception.getMessage).toBe("Array index out of range: -1")
+      }
+
+      expectException({ Arrays.binarySearch(array, 0, 5, 2) }) {
+        case exception: ArrayIndexOutOfBoundsException =>
+          expect(exception.getMessage).toBe("Array index out of range: 5")
+      }
+    }
+
+    it("should respond to `copyOf` with key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3)
+      val intscopy = Arrays.copyOf(ints, 5)
+      expect(intscopy).toEqual(Array(1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3)
+      val longscopy = Arrays.copyOf(longs, 5)
+      expect(longscopy).toEqual(Array[Long](1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3)
+      val shortscopy = Arrays.copyOf(shorts, 5)
+      expect(shortscopy).toEqual(Array[Short](1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Byte") {
+      val bytes: Array[Byte] = Array(42, 43, 44)
+      val floatscopy = Arrays.copyOf(bytes, 5)
+      expect(floatscopy).toEqual(Array[Byte](42, 43, 44, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Char") {
+      val chars: Array[Char] = Array('a', 'b', '0')
+      val charscopy = Arrays.copyOf(chars, 5)
+      println("dlskdjlskdjlks=" + charscopy(3))
+      expect(charscopy(4)).toEqual(0.toChar)
+    }
+
+    it("should respond to `copyOf` with key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3)
+      val doublescopy = Arrays.copyOf(doubles, 5)
+      expect(doublescopy).toEqual(Array[Double](0.1, 0.2, 0.3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f)
+      val floatscopy = Arrays.copyOf(floats, 5)
+      expect(floatscopy).toEqual(Array[Float](0.1f, 0.2f, 0.3f, 0f, 0f))
+    }
+
+    it("should respond to `copyOf` with key for Boolean") {
+      val bools: Array[Boolean] = Array(false, true, false)
+      val boolscopy = Arrays.copyOf(bools, 5)
+      expect(boolscopy).toEqual(Array[Boolean](false, true, false, false, false))
+    }
+
   }
+
 }

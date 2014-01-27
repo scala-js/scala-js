@@ -10,12 +10,6 @@ ScalaJS.inheritable.java_io_FilterInputStream = function() {};
 /** @constructor */
 ScalaJS.inheritable.java_lang_Thread = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_lang_ref_PhantomReference = function() {};
-/** @constructor */
-ScalaJS.inheritable.java_lang_ref_SoftReference = function() {};
-/** @constructor */
-ScalaJS.inheritable.java_lang_ref_WeakReference = function() {};
-/** @constructor */
 ScalaJS.inheritable.java_util_AbstractCollection = function() {};
 /** @constructor */
 ScalaJS.inheritable.java_util_AbstractList = function() {};

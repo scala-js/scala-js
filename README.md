@@ -3,7 +3,7 @@
 Scala.js compiles Scala code to JavaScript, allowing you to write your
 Web application entirely in Scala!
 
-Outstanding features are:
+Noteworthy features are:
 
 *   Support all of Scala (including macros!),
     modulo [a few semantic differences](http://www.scala-js.org/doc/semantics.html)

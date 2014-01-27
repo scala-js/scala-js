@@ -144,9 +144,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def encodeIsAsInstanceOf(prefix: String)(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
     toTypeKind(tpe) match {
+      case REFERENCE(ScalaRTMapped(rtSym)) =>
+        encodeIsAsInstanceOf(prefix)(value, rtSym.tpe)
       case array : ARRAY =>
+        val elemSym = array.elementKind.toType.typeSymbol match {
+          case ScalaRTMapped(rtSym) => rtSym
+          case x => x
+        }
         js.ApplyMethod(envField(prefix+"ArrayOf"),
-            encodeClassFullNameIdent(array.elementKind.toType.typeSymbol),
+            encodeClassFullNameIdent(elemSym),
             List(value, js.IntLiteral(array.dimensions)))
       case _ =>
         js.ApplyMethod(envField(prefix),
@@ -156,8 +162,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
     toTypeKind(tpe) match {
+      case REFERENCE(ScalaRTMapped(rtSym)) =>
+        encodeClassDataOfType(rtSym.tpe)
       case array : ARRAY =>
-        var result = encodeClassDataOfSym(array.elementKind.toType.typeSymbol)
+        var result = encodeClassDataOfType(array.elementKind.toType)
         for (i <- 0 until array.dimensions)
           result = js.ApplyMethod(result, js.Ident("getArrayOf"), Nil)
         result

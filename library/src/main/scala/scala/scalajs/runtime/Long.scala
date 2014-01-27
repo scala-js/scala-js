@@ -61,7 +61,7 @@ final class Long private (
     } else {
       masked(0, 0, x.l << (n - BITS01))
     }
-    
+
   }
 
   /**
@@ -259,7 +259,7 @@ final class Long private (
     val lp = l | ((m & 0x3) << BITS)
     f"$h%05x$mp%05x$lp%06x"
   }
-  
+
   def toOctalString: String = {
     val lp = l & (MASK >> 1)
     val mp = ((m & (MASK >> 2)) << 1) | (l >> (BITS - 1))
@@ -301,7 +301,7 @@ final class Long private (
 
   def bitCount: Int =
     Integer.bitCount(l) + Integer.bitCount(m) + Integer.bitCount(h)
-  
+
   // helpers //
 
   /** sign *bit* of long (0 for positive, 1 for negative) */
@@ -311,7 +311,7 @@ final class Long private (
   private def isMinValue = x == MinValue
   private def isNegative = sign != 0
   private def abs = if (sign == 1) -x else x
-  private def numberOfLeadingZeros =
+  def numberOfLeadingZeros =
     if (h == 0 && m == 0)
       Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
     else if (h == 0)
@@ -320,7 +320,7 @@ final class Long private (
       Integer.numberOfLeadingZeros(h) - (32 - BITS2)
 
   /** return Some(log_2(x)) if power of 2 or None othwerise */
-  private def powerOfTwo = 
+  private def powerOfTwo =
     if      (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
       Some(Integer.numberOfTrailingZeros(l))
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
@@ -349,12 +349,12 @@ final class Long private (
     } else {
       val xNegative = x.isNegative
       val yNegative = y.isNegative
-      
+
       val xMinValue = x.isMinValue
 
       val absX = x.abs  // this may be useless if x.isMinValue
       val absY = y.abs
-      
+
       y.powerOfTwo match {
         case Some(pow) if xMinValue =>
           val z = x >> pow
@@ -392,32 +392,32 @@ final class Long private (
 object Long {
 
   /** number of relevant bits in each Long.l and Long.m */
-  private val BITS:    Int = 22
+  private final val BITS   = 22
   /** number of relevant bits in Long.l and Long.m together */
-  private val BITS01:  Int = 2 * BITS
+  private final val BITS01 = 2 * BITS
   /** number of relevant bits in Long.h */
-  private val BITS2:   Int = 64 - BITS01
+  private final val BITS2  = 64 - BITS01
   /** bitmask for Long.l and Long.m */
-  private val MASK:    Int = (1 << BITS) - 1
+  private final val MASK   = (1 << BITS) - 1
   /** bitmask for Long.h */
-  private val MASK_2:  Int = (1 << BITS2) - 1
+  private final val MASK_2 = (1 << BITS2) - 1
 
-  private val SIGN_BIT:       Int    = BITS2 - 1
-  private val SIGN_BIT_VALUE: Int    = 1 << SIGN_BIT
-  private val TWO_PWR_15_DBL: Double = 0x8000
-  private val TWO_PWR_16_DBL: Double = 0x10000
-  private val TWO_PWR_22_DBL: Double = 0x400000
-  private val TWO_PWR_31_DBL: Double = TWO_PWR_16_DBL * TWO_PWR_15_DBL
-  private val TWO_PWR_32_DBL: Double = TWO_PWR_16_DBL * TWO_PWR_16_DBL
-  private val TWO_PWR_44_DBL: Double = TWO_PWR_22_DBL * TWO_PWR_22_DBL
-  private val TWO_PWR_63_DBL: Double = TWO_PWR_32_DBL * TWO_PWR_31_DBL
+  private final val SIGN_BIT       = BITS2 - 1
+  private final val SIGN_BIT_VALUE = 1 << SIGN_BIT
+  private final val TWO_PWR_15_DBL = 0x8000   * 1.0
+  private final val TWO_PWR_16_DBL = 0x10000  * 1.0
+  private final val TWO_PWR_22_DBL = 0x400000 * 1.0
+  private final val TWO_PWR_31_DBL = TWO_PWR_16_DBL * TWO_PWR_15_DBL
+  private final val TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL
+  private final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
+  private final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
   val zero = Long(0,0,0)
   val one  = Long(1,0,0)
 
   def toRuntimeLong(x: scala.Long): Long = sys.error("stub")
   def fromRuntimeLong(x:Long): scala.Long = sys.error("stub")
-  
+
   def fromHexString(str: String) = {
 	import scalajs.js.parseInt
     assert(str.size == 16)
@@ -426,23 +426,29 @@ object Long {
     val h = parseInt(str.substring(0, 5), 16).toInt
     masked(l, m, h)
   }
-  
+
   def fromString(str: String): Long =
     if (str.head == '-') -fromString(str.tail) else {
-      import scalajs.js.parseInt
+      import scalajs.js
+
       val maxLen = 9
       @tailrec
-      def fromString0(str: String, acc: Long): Long = if (str.size > 0) {
-        val (cur, next) = str.splitAt(maxLen)
+      def fromString0(str0: String, acc: Long): Long = if (str0.size > 0) {
+        val (cur, next) = str0.splitAt(maxLen)
         val macc = acc * fromInt(math.pow(10, cur.size).toInt)
         // explicitly specify radix to avoid intepreation as octal
-        val cval = fromInt(parseInt(cur, 10).toInt)
+        val ival = js.parseInt(cur, 10)
+        if (js.isNaN(ival)) {
+          throw new java.lang.NumberFormatException(
+            s"""For input string: "$str"""")
+        }
+        val cval = fromInt(ival.toInt)
         fromString0(next, macc + cval)
       } else acc
-    
+
       fromString0(str, zero)
     }
-  
+
   def fromByte(value: Byte): Long = fromInt(value.toInt)
   def fromShort(value: Short): Long = fromInt(value.toInt)
   def fromChar(value: Char): Long = fromInt(value.toInt)
@@ -454,7 +460,7 @@ object Long {
   }
 
   def fromFloat(value: Float): Long = fromDouble(value.toDouble)
-  def fromDouble(value: Double): Long = 
+  def fromDouble(value: Double): Long =
     if (value.isNaN) zero
     else if (value < -TWO_PWR_63_DBL) MinValue
     else if (value >= TWO_PWR_63_DBL) MaxValue
@@ -504,15 +510,15 @@ object Long {
     val yShift = y << shift
 
     val (absQuot, absRem) = divide0(shift, yShift, x, zero)
-    
+
     val quot = if (xNegative ^ yNegative) -absQuot else absQuot
     val rem  =
       if (xNegative && xMinValue) -absRem - one
       else if (xNegative)         -absRem
-      else                         absRem 
+      else                         absRem
 
     (quot, rem)
-    
+
   }
 
   // Public Long API
@@ -522,5 +528,5 @@ object Long {
 
   /** The largest value representable as a Long. */
   final val MaxValue = Long(MASK, MASK, MASK_2 >> 1)
-  
+
 }

@@ -119,10 +119,16 @@ object Integer {
   def valueOf(intValue: scala.Int) = new Integer(intValue)
 
   def parseInt(s: String): scala.Int =
-    js.parseInt(s).toInt
+    // explicitly specify radix to avoid interpretation as octal (by JS)
+    parseInt(s, 10)
 
-  def parseInt(s: String, radix: scala.Int): scala.Int =
-    js.parseInt(s, radix).toInt
+  def parseInt(s: String, radix: scala.Int): scala.Int = {
+    val res = js.parseInt(s, radix)
+    if (js.isNaN(res))
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      res.toInt
+  }
 
   def toString(i: scala.Int) = valueOf(i).toString
 
@@ -215,6 +221,9 @@ object Long {
   def signum(i: scala.Long): scala.Long =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
+  def numberOfLeadingZeros(l: scala.Long) =
+    toRuntimeLong(l).numberOfLeadingZeros
+
   def toBinaryString(l: scala.Long): String =
     dropLZ(toRuntimeLong(l).toBinaryString)
   def toHexString(l: scala.Long): String =
@@ -260,8 +269,14 @@ final class Float(private val value: scala.Float) extends Number {
   }
 
   override def toString = {
-    val s = (value: js.Number).toString()
-    if (s.indexOf(".") < 0) s + ".0" else s
+    if (value == 0 && 1 / value < 0) {
+      "-0.0"
+    } else {
+      val s = (value: js.Number).toString()
+      if (s.indexOf(".") < 0 && !js.isNaN(value))
+        s + ".0"
+      else s
+    }
   }
 
   def isNaN: scala.Boolean = Float.isNaN(value)
@@ -281,8 +296,13 @@ object Float {
 
   def valueOf(floatValue: scala.Float) = new Float(floatValue)
 
-  def parseFloat(s: String): scala.Float =
-    js.parseFloat(s).toFloat
+  def parseFloat(s: String): scala.Float = {
+    val res = js.parseFloat(s)
+    if (s != "NaN" && js.isNaN(res))
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      res.toFloat
+  }
 
   def toString(f: scala.Float) = valueOf(f).toString
 
@@ -323,8 +343,14 @@ final class Double(private val value: scala.Double) extends Number {
   }
 
   override def toString = {
-    val s = (value: js.Number).toString()
-    if (s.indexOf(".") < 0) s + ".0" else s
+    if (value == 0 && 1 / value < 0) {
+      "-0.0"
+    } else {
+      val s = (value: js.Number).toString()
+      if (s.indexOf(".") < 0 && !js.isNaN(value))
+        s + ".0"
+      else s
+    }
   }
 
   def isNaN: scala.Boolean = Double.isNaN(value)
