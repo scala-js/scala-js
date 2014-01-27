@@ -1192,7 +1192,6 @@ run/t5328.scala
 run/stream_flatmap_odds.scala
 run/implicitclasses.scala
 run/t6827.scala
-run/imports.scala
 run/t6394b
 run/complicatedmatch.scala
 run/valueclasses-classmanifest-basic.scala
@@ -1204,7 +1203,6 @@ run/amp.scala
 run/t1423.scala
 run/promotion.scala
 run/t594.scala
-run/misc.scala
 run/t6353.scala
 run/byname.scala
 run/vector1.scala
@@ -2634,3 +2632,11 @@ neg/t7899.scala
 neg/t7886.scala
 neg/t7895c.scala
 neg/t7859
+run/t2378.scala
+run/t4752.scala
+run/t2087-and-2400.scala
+run/t3855.scala
+run/t6637.scala
+run/t7015.scala
+run/try-catch-unify.scala
+run/t6731.scala

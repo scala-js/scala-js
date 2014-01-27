@@ -71,6 +71,7 @@ run/t4601.scala
 run/colltest.scala
 run/equality.scala
 run/t2849.scala
+run/t1360.scala
 
 # Uses java.util.Collections
 run/java-erasure.scala
@@ -96,6 +97,10 @@ run/streams.scala
 
 # Documented semantic difference on String.split(x: Array[Char])
 run/t0325.scala
+
+# Uses print & flush (which we cannot 100% emulate)
+run/imports.scala
+run/misc.scala
 
 # Using Threads
 run/t6969.scala
