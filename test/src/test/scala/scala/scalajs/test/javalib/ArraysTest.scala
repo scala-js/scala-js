@@ -479,6 +479,12 @@ object ArraysTest extends JasmineTest {
       expect(boolscopy).toEqual(Array[Boolean](false, true, false, false, false))
     }
 
+    it("should respond to `copyOf` with key for AnyRef") {
+      val anyrefs: Array[AnyRef] = Array("a", "b", "c")
+      val anyrefscopy = Arrays.copyOf(anyrefs, 5)
+      expect(anyrefscopy).toEqual(Array[AnyRef]("a", "b", "c", null, null))
+    }
+
   }
 
 }
