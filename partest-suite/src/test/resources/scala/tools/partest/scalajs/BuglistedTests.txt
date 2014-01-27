@@ -57,40 +57,18 @@ run/t7817.scala
 run/t874.scala
 run/type-currying.scala
 
-# Filed as #149
-run/t4752.scala
-
-# Filed as #150
-run/try-catch-unify.scala
-run/t3855.scala
-
-# Filed as #151
-run/t2378.scala
-
-# Filed as #152
-run/t2087-and-2400.scala
-
 # Filed as #153
 pos/t3999b.scala
 
 # Filed as #154
 run/verify-ctor.scala
 
-# Filed as #155
-run/t7015.scala
-
 # Filed as #156
 run/t2250.scala
 
-# Filed as #157
-run/t6731.scala
-
 # Filed as #163
-run/t1360.scala
 run/mutable-longmap.scala
 
 # Filed as #164
 run/t3647.scala
 
-# Filed as #166
-run/t6637.scala
