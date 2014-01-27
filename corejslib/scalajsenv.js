@@ -204,8 +204,27 @@ var ScalaJS = {
   objectHashCode: function(instance) {
     if (ScalaJS.isScalaJSObject(instance))
       return instance.hashCode__I();
-    else
+    else if (typeof(instance) === "string") {
+      // calculate hash of String as specified by JavaDoc
+      var n = instance.length;
+      var res = 0;
+      var mul = 1; // holds pow(31, n-i-1)
+      // multiplications with `mul` do never overflow the 52 bits of precision:
+      // - we truncate `mul` to 32 bits on each operation
+      // - 31 has 5 significant bits only
+      // - s[i] has 16 significant bits max
+      // 32 + max(5, 16) = 48 < 52 => no overflow
+      for (var i = n-1; i >= 0; --i) {
+        // calculate s[i] * pow(31, n-i-1)
+        res = res + (instance.charCodeAt(i) * mul | 0) | 0
+        // update mul for next iteration
+        mul = mul * 31 | 0
+      }
+
+      return res;
+    } else {
       return 42; // TODO
+    }
   },
 
   comparableCompareTo: function(instance, rhs) {
