@@ -311,7 +311,7 @@ final class Long private (
   private def isMinValue = x == MinValue
   private def isNegative = sign != 0
   private def abs = if (sign == 1) -x else x
-  private def numberOfLeadingZeros =
+  def numberOfLeadingZeros =
     if (h == 0 && m == 0)
       Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
     else if (h == 0)

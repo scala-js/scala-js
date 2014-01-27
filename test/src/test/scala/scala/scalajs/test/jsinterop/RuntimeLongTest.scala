@@ -102,6 +102,13 @@ object RuntimeLongTest extends JasmineTest {
       expect(Try(Long.fromString("asdf")).isFailure).toBeTruthy
     }
 
+    it("should correctly implement numberOfLeadingZeros") {
+      expect(Long.fromInt(0).numberOfLeadingZeros).toEqual(64)
+      expect(Long.fromInt(1).numberOfLeadingZeros).toEqual(63)
+      expect(Long.fromInt(-1).numberOfLeadingZeros).toEqual(0)
+      expect(Long.fromInt(2).numberOfLeadingZeros).toEqual(62)
+    }
+
   }
 
 }
