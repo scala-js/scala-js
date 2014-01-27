@@ -428,7 +428,57 @@ object ArraysTest extends JasmineTest {
         case exception: ArrayIndexOutOfBoundsException =>
           expect(exception.getMessage).toBe("Array index out of range: 5")
       }
-    }    
+    }
+
+    it("should respond to `copyOf` with key for Int") {
+      val ints: Array[Int] = Array(1, 2, 3)
+      val intscopy = Arrays.copyOf(ints, 5)
+      expect(intscopy).toEqual(Array(1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Long") {
+      val longs: Array[Long] = Array(1, 2, 3)
+      val longscopy = Arrays.copyOf(longs, 5)
+      expect(longscopy).toEqual(Array[Long](1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Short") {
+      val shorts: Array[Short] = Array(1, 2, 3)
+      val shortscopy = Arrays.copyOf(shorts, 5)
+      expect(shortscopy).toEqual(Array[Short](1, 2, 3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Byte") {
+      val bytes: Array[Byte] = Array(42, 43, 44)
+      val floatscopy = Arrays.copyOf(bytes, 5)
+      expect(floatscopy).toEqual(Array[Byte](42, 43, 44, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Char") {
+      val chars: Array[Char] = Array('a', 'b', '0')
+      val charscopy = Arrays.copyOf(chars, 5)
+      println("dlskdjlskdjlks=" + charscopy(3))
+      expect(charscopy(4)).toEqual(0.toChar)
+    }
+
+    it("should respond to `copyOf` with key for Double") {
+      val doubles: Array[Double] = Array(0.1, 0.2, 0.3)
+      val doublescopy = Arrays.copyOf(doubles, 5)
+      expect(doublescopy).toEqual(Array[Double](0.1, 0.2, 0.3, 0, 0))
+    }
+
+    it("should respond to `copyOf` with key for Float") {
+      val floats: Array[Float] = Array(0.1f, 0.2f, 0.3f)
+      val floatscopy = Arrays.copyOf(floats, 5)
+      expect(floatscopy).toEqual(Array[Float](0.1f, 0.2f, 0.3f, 0f, 0f))
+    }
+
+    it("should respond to `copyOf` with key for Boolean") {
+      val bools: Array[Boolean] = Array(false, true, false)
+      val boolscopy = Arrays.copyOf(bools, 5)
+      expect(boolscopy).toEqual(Array[Boolean](false, true, false, false, false))
+    }
+
   }
 
 }

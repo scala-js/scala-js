@@ -308,4 +308,164 @@ object Arrays {
     return -low - 1
   }
 
+  def copyOf(original: Array[Int], newLen: Int): Array[Int] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Int], start: Int, end: Int): Array[Int] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Int](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Long], newLen: Int): Array[Long] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Long], start: Int, end: Int): Array[Long] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Long](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Short], newLen: Int): Array[Short] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Short], start: Int, end: Int): Array[Short] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Short](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Byte], newLen: Int): Array[Byte] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Byte], start: Int, end: Int): Array[Byte] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Byte](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Char], newLen: Int): Array[Char] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Char], start: Int, end: Int): Array[Char] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Char](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Float], newLen: Int): Array[Float] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Float], start: Int, end: Int): Array[Float] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Float](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Double], newLen: Int): Array[Double] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Double], start: Int, end: Int): Array[Double] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Double](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
+  def copyOf(original: Array[Boolean], newLen: Int): Array[Boolean] = {
+    if (newLen >= 0)
+      return copyOfRange(original, 0, newLen)
+    throw new NegativeArraySizeException();
+  }
+
+  def copyOfRange(original: Array[Boolean], start: Int, end: Int): Array[Boolean] = {
+    if (start <= end) {
+      if (0 <= start && start <= original.length) {
+        val retLength = end - start
+        val copyLength = Math.min(retLength, original.length - start)
+        val ret = new Array[Boolean](retLength)
+        System.arraycopy(original, start, ret, 0, copyLength)
+        return ret
+      }
+      throw new ArrayIndexOutOfBoundsException()
+    }
+    throw new IllegalArgumentException()
+  }
+
 }
