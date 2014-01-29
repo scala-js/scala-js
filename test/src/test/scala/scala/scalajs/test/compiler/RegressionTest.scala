@@ -76,7 +76,7 @@ object RegressionTest extends JasmineTest {
       f()
       expect(effectHappened).toBeTruthy
     }
-    
+
     it("should correctly call subSequence on non-string CharSequences - #55") {
       val arr: CharSequence = Array('a','b','c','d')
       val ss = arr.subSequence(2,3)
@@ -97,6 +97,63 @@ object RegressionTest extends JasmineTest {
       val scalaFunction = new Fct
       val jsFunction: js.Any = scalaFunction
       val thisFunction: js.ThisFunction = scalaFunction
+    }
+
+    it("should correctly dispatch calls on private functions - #165") {
+      class A {
+        private def x = 1
+        def value = x
+      }
+      class B extends A {
+        private def x = 2
+      }
+      expect(new B().value).toEqual(1)
+    }
+
+    it("should correctly mangle JavaScript reserved identifiers - #153") {
+      // Class name
+      class break {
+        // class variable
+        var continue = 1
+        // method name
+        def switch = {
+          // local name
+          val default = 2
+          default
+        }
+      }
+      trait Foo {
+        // static member (through mixin)
+        def function = 3
+      }
+
+      val x = new break with Foo
+      expect(x.continue).toEqual(1)
+      expect(x.switch).toEqual(2)
+      expect(x.function).toEqual(3)
+    }
+
+    it("should correctly mangle identifiers starting with a digit - #153") {
+      // Class name
+      class `0` {
+        // class variable
+        var `1` = 1
+        // method name
+        def `2` = {
+          // local name
+          val `22` = 2
+          `22`
+        }
+      }
+      trait Foo {
+        // static member (through mixin)
+        def `3` = 3
+      }
+
+      val x = new `0` with Foo
+      expect(x.`1`).toEqual(1)
+      expect(x.`2`).toEqual(2)
+      expect(x.`3`).toEqual(3)
     }
   }
 }
