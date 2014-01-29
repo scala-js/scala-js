@@ -312,5 +312,20 @@ object RegexTest extends JasmineTest {
       checkInvalidAccess { matchResult.group(42) }
     }
 
+    it("should correctly handle zero-length matches") {
+      val pat = Pattern.compile("a*?")
+      val mat = pat.matcher("aaaaa")
+      for (i <- 0 to 5) {
+        expect(mat.find()).toBeTruthy
+        expect(mat.start).toEqual(i)
+        expect(mat.end).toEqual(i)
+      }
+
+      // Make sure we don't suddenly re-match
+      for (i <- 0 to 5) {
+        expect(mat.find()).toBeFalsy
+      }
+    }
+
   }
 }
