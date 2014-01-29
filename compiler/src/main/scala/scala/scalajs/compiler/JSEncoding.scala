@@ -78,9 +78,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName =
-      if (sym.isClassConstructor) "init" + InnerSep
-      else if (!foreignIsImplClass(sym.owner)) sym.name.toString
-      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+      if (sym.isClassConstructor)
+        "init" + InnerSep
+      else if (foreignIsImplClass(sym.owner))
+        encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+      else if (sym.isPrivate)
+        sym.name.toString + OuterSep + "p" +
+          sym.owner.ancestors.count(!_.isInterface).toString
+      else
+        sym.name.toString
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
         Some(sym.originalName.decoded + paramsString))

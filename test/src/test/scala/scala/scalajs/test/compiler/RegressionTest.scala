@@ -76,7 +76,7 @@ object RegressionTest extends JasmineTest {
       f()
       expect(effectHappened).toBeTruthy
     }
-    
+
     it("should correctly call subSequence on non-string CharSequences - #55") {
       val arr: CharSequence = Array('a','b','c','d')
       val ss = arr.subSequence(2,3)
@@ -97,6 +97,17 @@ object RegressionTest extends JasmineTest {
       val scalaFunction = new Fct
       val jsFunction: js.Any = scalaFunction
       val thisFunction: js.ThisFunction = scalaFunction
+    }
+
+    it("should correctly dispatch calls on private functions - #165") {
+      class A {
+        private def x = 1
+        def value = x
+      }
+      class B extends A {
+        private def x = 2
+      }
+      expect(new B().value).toEqual(1)
     }
   }
 }
