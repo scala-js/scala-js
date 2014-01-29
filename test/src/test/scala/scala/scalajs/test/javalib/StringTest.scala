@@ -113,7 +113,8 @@ object StringTest extends JasmineTest {
 
     it("should respond to `split`") {
       expect("Scala.js".split("a")).toEqual(js.Array("Sc", "l", ".js"))
-
+      expect("asdf".split("")).toEqual(js.Array("","a","s","d","f"))
+      expect("asdf".split("", -1)).toEqual(js.Array("","a","s","d","f", ""))
     }
 
     it("should respond to `split` with char as argument") {

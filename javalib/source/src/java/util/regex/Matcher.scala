@@ -19,6 +19,7 @@ final class Matcher private[regex] (
   // Match result (updated by successful matches)
   private var lastMatch: js.RegExp.ExecResult = null
   private var lastMatchIsValid = false
+  private var canStillFind = true
 
   // Append state (updated by replacement methods)
   private var appendPos: Int = 0
@@ -26,28 +27,36 @@ final class Matcher private[regex] (
   // Lookup methods
 
   def matches(): Boolean = {
-    lastMatchIsValid = true
     reset()
-    lastMatch = regexp.exec(inputstr)
+    find()
+    // TODO this check is wrong with non-greedy patterns
+    // Further, it might be wrong to just use ^$ delimiters for two reasons:
+    // - They might already be there
+    // - They might not behave as expected when newline characters are present
     if ((lastMatch ne null) && (start != 0 || end != inputstr.length))
-      lastMatch = null
+      reset()
     lastMatch ne null
   }
 
   def lookingAt(): Boolean = {
-    lastMatchIsValid = true
     reset()
-    lastMatch = regexp.exec(inputstr)
+    find()
     if ((lastMatch ne null) && (start != 0))
-      lastMatch = null
+      reset()
     lastMatch ne null
   }
 
-  def find(): Boolean = {
+  def find(): Boolean = if (canStillFind) {
     lastMatchIsValid = true
     lastMatch = regexp.exec(inputstr)
+    if (lastMatch ne null) {
+      if (lastMatch(0).isEmpty)
+        regexp.lastIndex += 1
+    } else {
+      canStillFind = false
+    }
     lastMatch ne null
-  }
+  } else false
 
   def find(start: Int): Boolean = {
     reset()
@@ -126,6 +135,8 @@ final class Matcher private[regex] (
   def reset(): Matcher = {
     regexp.lastIndex = 0
     lastMatch = null
+    lastMatchIsValid = false
+    canStillFind = true
     appendPos = 0
     this
   }
