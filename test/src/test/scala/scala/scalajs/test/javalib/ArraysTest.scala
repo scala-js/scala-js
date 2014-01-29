@@ -457,7 +457,6 @@ object ArraysTest extends JasmineTest {
     it("should respond to `copyOf` with key for Char") {
       val chars: Array[Char] = Array('a', 'b', '0')
       val charscopy = Arrays.copyOf(chars, 5)
-      println("dlskdjlskdjlks=" + charscopy(3))
       expect(charscopy(4)).toEqual(0.toChar)
     }
 
