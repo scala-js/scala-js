@@ -171,3 +171,32 @@ private[runtime] trait RuntimeString { this: js.String =>
   def trim(): String = (this: js.String).trim()
 
 }
+
+/**
+ * Implementations for constructors of java.lang.String. Do not use directly,
+ * call new String(...) instead
+ */
+private[runtime] object RuntimeString {
+
+  def newString(): js.String = ""
+  def newString(value: Array[Char]): js.String =
+    newString(value, 0, value.length)
+  def newString(value: Array[Char], offset: Int, count: Int): js.String = {
+    var res: js.String = ""
+    for (c <- value.view(offset, offset + count))
+      res += c.toString
+    res
+  }
+  /** Unimplemented, unused, but referenced */
+  def newString(bytes: Array[Byte], charsetName: String): js.String = ???
+  /** Unimplemented, unused, but referenced */
+  def newString(bytes: Array[Byte], offest: Int, length: Int,
+      charsetName: String): js.String = ???
+  def newString(codePoints: Array[Int], offset: Int, count: Int): js.String =
+    js.String.fromCharCode(
+        codePoints.view(offset, offset + count).map(x => x: js.Number) :_*)
+  def newString(original: String): js.String = original
+  def newString(buffer: StringBuffer): js.String = buffer.toString
+  def newString(builder: java.lang.StringBuilder): js.String = builder.toString
+
+}

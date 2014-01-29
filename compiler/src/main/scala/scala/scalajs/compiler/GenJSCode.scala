@@ -2428,7 +2428,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for new java.lang.String(...)
-     *  TODO Currently only new String() and new String(String) are implemented
+     *  Proxies calls to method newString on object
+     *  scala.scalajs.runtime.RuntimeString with proper arguments
      */
     private def genNewString(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
@@ -2437,12 +2438,35 @@ abstract class GenJSCode extends plugins.PluginComponent
       val ctor = fun.symbol
       val js.ArrayConstr(args) = genPrimitiveJSArgs(ctor, args0)
 
-      (args0 map (_.tpe)) match {
-        case Nil => js.StringLiteral("")
-        case List(tpe) if isStringType(tpe) => args.head
-        case _ =>
-          // TODO
-          js.Throw(js.StringLiteral("new String() not implemented"))
+      // Filter members of target module for matching member
+      val compMembers = for {
+        mem <- RuntimeStringModule.tpe.members
+        if mem.name.decoded == "newString"
+        // Deconstruct method type.
+        MethodType(params, returnType) = mem.tpe
+        if returnType.typeSymbol == JSStringClass
+        // Construct fake type returning java.lang.String
+        fakeType = MethodType(params, StringClass.tpe)
+        if ctor.tpe.matches(fakeType)
+      } yield mem
+
+      if (compMembers.isEmpty) {
+        currentCUnit.error(pos,
+            s"""Could not find implementation for constructor of java.lang.String
+               |with type ${ctor.tpe}. Constructors on java.lang.String
+               |are forwarded to the companion object of
+               |scala.scalajs.runtime.RuntimeString""".stripMargin)
+        js.Undefined()
+      } else {
+        assert(compMembers.size == 1,
+            s"""For constructor with type ${ctor.tpe} on java.lang.String,
+               |found multiple companion module members.""".stripMargin)
+
+        // Emit call to companion object
+        js.ApplyMethod(
+          genLoadModule(RuntimeStringModule),
+          encodeMethodSym(compMembers.head),
+          args)
       }
     }
 
