@@ -72,15 +72,21 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         "f"
 
     val encodedName = name + "$" + idSuffix
-    js.Ident(encodedName, Some(sym.unexpandedName.decoded))
+    js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName =
-      if (sym.isClassConstructor) "init" + InnerSep
-      else if (!foreignIsImplClass(sym.owner)) sym.name.toString
-      else encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+      if (sym.isClassConstructor)
+        "init" + InnerSep
+      else if (foreignIsImplClass(sym.owner))
+        encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+      else if (sym.isPrivate)
+        mangleJSName(sym.name.toString) + OuterSep + "p" +
+          sym.owner.ancestors.count(!_.isInterface).toString
+      else
+        mangleJSName(sym.name.toString)
     val paramsString = makeParamsString(sym)
     js.Ident(encodedName + paramsString,
         Some(sym.unexpandedName.decoded + paramsString))
@@ -90,7 +96,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
     js.Ident(
-        sym.name.toString + makeParamsString(List(internalName(sym.tpe))),
+        mangleJSName(sym.name.toString) +
+        makeParamsString(List(internalName(sym.tpe))),
         Some(sym.unexpandedName.decoded))
   }
 
@@ -98,7 +105,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       implicit pos: Position): js.Ident = {
     require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.Ident(freshName(sym), Some(sym.unexpandedName.decoded))
+    js.Ident(mangleJSName(freshName(sym)), Some(sym.unexpandedName.decoded))
   }
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
@@ -194,8 +201,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeModuleFullName(sym: Symbol): String =
     encodeFullNameInternal(sym)
 
-  private def encodeFullNameInternal(sym: Symbol): String =
-    sym.fullName.replace("_", "$und").replace(".", "_")
+  private def encodeFullNameInternal(sym: Symbol): String = {
+    val tmp = sym.fullName.replace("_", "$und").replace(".", "_")
+    mangleJSName(tmp)
+  }
 
   // Encoding of method signatures
 
@@ -238,4 +247,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       }
     case ARRAY(elem) => "A"+internalName(elem)
   }
+
+  /** mangles names that are illegal in JavaScript by prepending a $
+   *  also mangles names that would collide with these mangled names
+   */
+  private def mangleJSName(name: String) =
+    if (js.isKeyword(name) || name(0).isDigit || name(0) == '$')
+      "$" + name
+    else name
 }

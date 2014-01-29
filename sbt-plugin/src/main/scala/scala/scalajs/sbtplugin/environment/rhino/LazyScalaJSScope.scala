@@ -58,8 +58,9 @@ class LazyScalaJSScope(
   private def nameToRelativeFileName(name: String): String = {
     val name1 = if (isTraitImpl) name.split("__")(0) else name
     val name2 = name1.replace("_", "/").replace("$und", "_")
-    if (isModule) name2 + "$.js"
-    else name2 + ".js"
+    val name3 = if (name2(0) == '$') name2.substring(1) else name2
+    if (isModule) name3 + "$.js"
+    else name3 + ".js"
   }
 
   override def getClassName() = "LazyScalaJSScope"

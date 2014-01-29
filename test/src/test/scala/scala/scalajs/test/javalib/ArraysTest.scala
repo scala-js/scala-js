@@ -457,7 +457,6 @@ object ArraysTest extends JasmineTest {
     it("should respond to `copyOf` with key for Char") {
       val chars: Array[Char] = Array('a', 'b', '0')
       val charscopy = Arrays.copyOf(chars, 5)
-      println("dlskdjlskdjlks=" + charscopy(3))
       expect(charscopy(4)).toEqual(0.toChar)
     }
 
@@ -477,6 +476,12 @@ object ArraysTest extends JasmineTest {
       val bools: Array[Boolean] = Array(false, true, false)
       val boolscopy = Arrays.copyOf(bools, 5)
       expect(boolscopy).toEqual(Array[Boolean](false, true, false, false, false))
+    }
+
+    it("should respond to `copyOf` with key for AnyRef") {
+      val anyrefs: Array[AnyRef] = Array("a", "b", "c")
+      val anyrefscopy = Arrays.copyOf(anyrefs, 5)
+      expect(anyrefscopy).toEqual(Array[AnyRef]("a", "b", "c", null, null))
     }
 
   }
