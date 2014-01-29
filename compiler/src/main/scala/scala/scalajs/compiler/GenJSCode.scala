@@ -2340,7 +2340,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.UnaryOp(funName.substring(funName.length-1), receiver)
 
         case "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | ">>>" |
-             "&" | "|" | "^" | "&&" | "||" =>
+             "&" | "|" | "^" | "&&" | "||" | "<" | ">" | "<=" | ">=" =>
           assert(argc == 1)
           js.BinaryOp(funName, receiver, args.head)
 

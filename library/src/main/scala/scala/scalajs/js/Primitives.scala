@@ -427,6 +427,18 @@ sealed trait String extends Any {
 
   def ||(that: String): String
 
+  def < (that: String): Boolean
+  def < (that: Dynamic): Boolean
+
+  def > (that: String): Boolean
+  def > (that: Dynamic): Boolean
+
+  def <=(that: String): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: String): Boolean
+  def >=(that: Dynamic): Boolean
+
   /**
    * This property returns the number of code units in the string. UTF-16,
    * the string format used by JavaScript, uses a single 16-bit code unit to
