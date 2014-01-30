@@ -23,10 +23,15 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   private def isCandidateForBridge(sym: Symbol): Boolean =
     sym.isMethod && !sym.isBridge && sym.isPublic && !isPrimitive(sym)
 
+  /** checks if a symbol is overriding a symbol we already made a bridge for */
+  private def isOverridingBridge(sym: Symbol): Boolean = {
+    lazy val osym = sym.nextOverriddenSymbol
+    sym.isOverridingSymbol && osym.isPublic && !osym.owner.isInterface
+  }
+
   def genBridgesForClass(sym: Symbol): List[js.Tree] = {
     val declaredMethods = sym.info.decls.filter(isCandidateForBridge)
-    val newlyDeclaredMethods = declaredMethods.filterNot(
-        x => x.isOverridingSymbol && x.nextOverriddenSymbol.isPublic)
+    val newlyDeclaredMethods = declaredMethods.filterNot(isOverridingBridge)
     val newlyDeclaredMethodNames =
       newlyDeclaredMethods.map(_.name.toTermName).toList.distinct
     newlyDeclaredMethodNames map (genBridge(sym, _))

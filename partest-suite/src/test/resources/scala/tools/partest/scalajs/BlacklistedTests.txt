@@ -10,6 +10,10 @@ pos/t533.scala
 pos/functions.scala
 pos/MailBox.scala
 
+# Failing due to bug SI-7288 in scalac
+pos/SI-4012-a.scala
+pos/SI-7638.scala
+
 #
 # NEG
 #

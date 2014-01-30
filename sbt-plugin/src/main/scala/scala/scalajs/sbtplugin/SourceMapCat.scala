@@ -10,6 +10,7 @@ import sbt._
 import scala.annotation.tailrec
 
 import java.io.PrintWriter
+import java.util.regex.Pattern
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
@@ -111,7 +112,7 @@ object SourceMapCat {
     import java.io.File
 
     def getPathSegments(path: String) =
-      path.split(File.separator).toList.filter(_.length > 0).filter(_ != ".")
+      path.split(Pattern.quote(File.separator)).toList.filter(_.length > 0).filter(_ != ".")
         .foldLeft(List[String]()) { (p, s) => if (s == "..") p.tail else s :: p }
         .reverse
 

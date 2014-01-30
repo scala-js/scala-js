@@ -286,7 +286,6 @@ pos/t0786.scala
 pos/annot-inner.scala
 pos/t5886.scala
 pos/t1056.scala
-pos/SI-7638.scala
 pos/t294
 pos/spec-Function1.scala
 pos/t1836
@@ -2563,7 +2562,6 @@ pos/sammy_single.scala
 pos/pattern-typing.scala
 pos/SI-4012-b.scala
 pos/sammy_twice.scala
-pos/SI-4012-a.scala
 pos/t3160.scala
 pos/t1014.scala
 pos/t4970b.scala
