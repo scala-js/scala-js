@@ -40,9 +40,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
-    var allowJSAny     = true
-    var allowImplDef   = true
-    var jsAnyClassOnly = false
+    var inJSAnyMod = false
+    var inJSAnyCls = false
+    var inScalaCls = false
+
+    def jsAnyClassOnly = !inJSAnyCls && allowJSAny
+    def allowImplDef   = !inJSAnyCls && !inJSAnyMod
+    def allowJSAny     = !inScalaCls
+    def inJSAny        = inJSAnyMod || inJSAnyCls
 
     override def transform(tree: Tree): Tree = tree match {
       // Catch special case of ClassDef in ModuleDef
@@ -59,13 +64,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
 
-      // Catch ClassDefs to forbid js.Anys
+      // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
-        disallowJSAny { super.transform(cldef) }
+        enterScalaCls { super.transform(cldef) }
 
       case _ => super.transform(tree)
     }
 
+    /**
+     * Performs checks and rewrites specific to classes / objects extending
+     * js.Any
+     */
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
         // Check that we are not an anonymous class
@@ -75,7 +84,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
         // Check that we do not have a case modifier
         case implDef if implDef.mods.hasFlag(Flag.CASE) =>
-          unit.error(implDef.pos, "Classes and objects extending " + 
+          unit.error(implDef.pos, "Classes and objects extending " +
               "js.Any may not have a case modifier")
 
         // Check if we may have a js.Any here
@@ -105,30 +114,35 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
           sym.setAnnotations(rawJSAnnot :: sym.annotations)
 
-          // TODO add extractor methods
-
       }
 
-      val allowJSAnyClass = implDef.isInstanceOf[ModuleDef]
-      disallowImplDef(allowJSAnyClass) { super.transform(implDef) }
+      if (implDef.isInstanceOf[ModuleDef])
+        enterJSAnyMod { super.transform(implDef) }
+      else
+        enterJSAnyCls { super.transform(implDef) }
     }
 
-    private def disallowImplDef[T](jsAnyOnly: Boolean)(body: =>T) = {
-      val oldAllowImplDef = allowImplDef
-      val oldJSAnyClassOnly = jsAnyClassOnly
-      allowImplDef = false
-      jsAnyClassOnly = jsAnyOnly
-      val res = disallowJSAny(body)
-      allowImplDef = oldAllowImplDef
-      jsAnyClassOnly = oldJSAnyClassOnly
+    private def enterJSAnyCls[T](body: =>T) = {
+      val old = inJSAnyCls
+      inJSAnyCls = true
+      val res = body
+      inJSAnyCls = old
       res
     }
 
-    private def disallowJSAny[T](body: =>T) = {
-      val old = allowJSAny
-      allowJSAny = false
+    private def enterJSAnyMod[T](body: =>T) = {
+      val old = inJSAnyMod
+      inJSAnyMod = true
       val res = body
-      allowJSAny = old
+      inJSAnyMod = old
+      res
+    }
+
+    private def enterScalaCls[T](body: =>T) = {
+      val old = inScalaCls
+      inScalaCls = true
+      val res = body
+      inScalaCls = old
       res
     }
 
@@ -142,7 +156,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
-  
+
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
    */
