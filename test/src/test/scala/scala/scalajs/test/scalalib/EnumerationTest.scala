@@ -28,5 +28,34 @@ object EnumerationTest extends JasmineTest {
       expect(h.toString).toEqual("None")
     }
 
+    it("should allow implicit naming for values") {
+      object HelpLevel extends Enumeration {
+        type HelpLevel = Value
+        val None, Basic, Medium, Full = Value
+        val Special = Value(100)
+        val / = Value
+      }
+
+      val h = HelpLevel.Medium
+      expect(h.toString).toEqual("Medium")
+      expect(HelpLevel.Special.toString).toEqual("Special")
+      expect(HelpLevel./.toString).toEqual("$div")
+    }
+
+    it("should respond to `toString`") {
+      expect(FooBarEnum.toString).toEqual("FooBarEnum")
+    }
+
+    it("should respond to `values`") {
+      expect(FooBarEnum.values.toString).toEqual(
+          "FooBarEnum.ValueSet(A, B, C, D, E, F)")
+    }
+
   }
+
+  /** Object is here due to issues with Enumeration.toString inside closures */
+  object FooBarEnum extends Enumeration {
+    val A,B,C,D,E,F = Value
+  }
+
 }

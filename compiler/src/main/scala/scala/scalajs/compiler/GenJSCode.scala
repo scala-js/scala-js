@@ -2170,6 +2170,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Nil =>
           code match {
             case GETGLOBAL => envField("g")
+            case NTR_MOD_SUFF  =>
+              js.StringLiteral(scala.reflect.NameTransformer.MODULE_SUFFIX_STRING)
+            case NTR_NAME_JOIN =>
+              js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
           }
 
         case List(arg) =>
