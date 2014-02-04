@@ -25,6 +25,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   import global._
   import jsAddons._
+  import definitions._
+  import rootMirror._
   import jsDefinitions._
 
   val phaseName = "jsinterop"
@@ -40,9 +42,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
-    var allowJSAny     = true
-    var allowImplDef   = true
-    var jsAnyClassOnly = false
+    var inJSAnyMod = false
+    var inJSAnyCls = false
+    var inScalaCls = false
+    var inScalaEnum = false
+
+    def jsAnyClassOnly = !inJSAnyCls && allowJSAny
+    def allowImplDef   = !inJSAnyCls && !inJSAnyMod
+    def allowJSAny     = !inScalaCls
+    def inJSAny        = inJSAnyMod || inJSAnyCls
 
     override def transform(tree: Tree): Tree = tree match {
       // Catch special case of ClassDef in ModuleDef
@@ -59,13 +67,41 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
 
-      // Catch ClassDefs to forbid js.Anys
+      // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
+      case cldef: ClassDef if isScalaEnum(cldef) =>
+        enterScalaCls {
+          enterScalaEnum {
+            super.transform(cldef)
+          }
+        }
+      case idef: ImplDef if isScalaEnum(idef) =>
+        enterScalaEnum { super.transform(idef) }
+
+      // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
-        disallowJSAny { super.transform(cldef) }
+        enterScalaCls { super.transform(cldef) }
+
+      // Catch ValDefs in enumerations with simple calls to Value
+      case ValDef(mods, name, tpt, ScalaEnumValNoName(optPar)) if inScalaEnum =>
+        val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
+        treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
+
+      // Catch Select on Enumeration.Value we couldn't transform but need to
+      // Note that ScalaEnumValue.apply never constructs
+      case ScalaEnumValNoName(_) =>
+        unit.warning(tree.pos,
+                     """Couldn't transform call to Enumeration.Value.
+                       |The resulting program is unlikely to function properly as this
+                       |operation requires reflection.""".stripMargin)
+        super.transform(tree)
 
       case _ => super.transform(tree)
     }
 
+    /**
+     * Performs checks and rewrites specific to classes / objects extending
+     * js.Any
+     */
     private def transformJSAny(implDef: ImplDef) = {
       implDef match {
         // Check that we are not an anonymous class
@@ -76,7 +112,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
         // Check that we do not have a case modifier
         case implDef if implDef.mods.hasFlag(Flag.CASE) =>
-          unit.error(implDef.pos, "Classes and objects extending " + 
+          unit.error(implDef.pos, "Classes and objects extending " +
               "js.Any may not have a case modifier")
 
         // Check if we may have a js.Any here
@@ -107,30 +143,43 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
           sym.setAnnotations(rawJSAnnot :: sym.annotations)
 
-          // TODO add extractor methods
-
       }
 
-      val allowJSAnyClass = implDef.isInstanceOf[ModuleDef]
-      disallowImplDef(allowJSAnyClass) { super.transform(implDef) }
+      if (implDef.isInstanceOf[ModuleDef])
+        enterJSAnyMod { super.transform(implDef) }
+      else
+        enterJSAnyCls { super.transform(implDef) }
     }
 
-    private def disallowImplDef[T](jsAnyOnly: Boolean)(body: =>T) = {
-      val oldAllowImplDef = allowImplDef
-      val oldJSAnyClassOnly = jsAnyClassOnly
-      allowImplDef = false
-      jsAnyClassOnly = jsAnyOnly
-      val res = disallowJSAny(body)
-      allowImplDef = oldAllowImplDef
-      jsAnyClassOnly = oldJSAnyClassOnly
+    private def enterJSAnyCls[T](body: =>T) = {
+      val old = inJSAnyCls
+      inJSAnyCls = true
+      val res = body
+      inJSAnyCls = old
       res
     }
 
-    private def disallowJSAny[T](body: =>T) = {
-      val old = allowJSAny
-      allowJSAny = false
+    private def enterJSAnyMod[T](body: =>T) = {
+      val old = inJSAnyMod
+      inJSAnyMod = true
       val res = body
-      allowJSAny = old
+      inJSAnyMod = old
+      res
+    }
+
+    private def enterScalaCls[T](body: =>T) = {
+      val old = inScalaCls
+      inScalaCls = true
+      val res = body
+      inScalaCls = old
+      res
+    }
+
+    private def enterScalaEnum[T](body: =>T) = {
+      val old = inScalaEnum
+      inScalaEnum = true
+      val res = body
+      inScalaEnum = old
       res
     }
 
@@ -146,9 +195,59 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
     clDef.symbol.isAnonymousClass && 
     AllJSFunctionClasses.exists(clDef.symbol.tpe.typeSymbol isSubClass _)
 
+  private def isScalaEnum(implDef: ImplDef) =
+    implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
+
+  /**
+   * Extractor object for calls to scala.Enumeration.Value that do not have an
+   * explicit name in the parameters
+   *
+   * Extracts:
+   * - `sel: Select` where sel.symbol is Enumeration.Value (no param)
+   * - Apply(meth, List(param)) where meth.symbol is Enumeration.Value(i: Int)
+   */
+  private object ScalaEnumValNoName {
+    private val valueSym =
+      getMemberMethod(ScalaEnumClass, newTermName("Value"))
+    private val valueNoPar  = valueSym suchThat { _.paramss == List() }
+    private val valueIntPar = valueSym suchThat {
+      _.tpe.params.map(_.tpe.typeSymbol) == List(IntClass)
+    }
+
+    def unapply(t: Tree) = t match {
+      case sel: Select if sel.symbol == valueNoPar =>
+        Some(None)
+      case Apply(meth, List(param)) if meth.symbol == valueIntPar =>
+        Some(Some(param))
+      case _ =>
+        None
+    }
+  }
+
+  /**
+   * Construct a call to Enumeration.Value
+   * @param thisSym  ClassSymbol of enclosing class
+   * @param nameOrig Symbol of ValDef where this call will be placed
+   * 			       (determines the string passed to Value)
+   * @param intParam Optional tree with Int passed to Value
+   * @return Typed tree with appropriate call to Value
+   */
+  private def ScalaEnumValName(
+      thisSym: Symbol,
+      nameOrig: Symbol,
+      intParam: Option[Tree]) = {
+    val name = nameOrig.asTerm.getterName.encoded
+    val params = intParam.toList :+ Literal(Constant(name))
+    typer.typed {
+      Apply(Select(This(thisSym),newTermName("Value")), params)
+    }
+  }
+
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
-  
+
+  private val ScalaEnumClass = getRequiredClass("scala.Enumeration")
+
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
    */
