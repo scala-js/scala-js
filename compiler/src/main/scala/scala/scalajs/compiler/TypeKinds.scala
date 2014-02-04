@@ -150,9 +150,10 @@ trait TypeKinds extends SubComponent {
     // if the first two cases exist because they do or as a defensive measure, but
     // at the time I added it, RefinedTypes were indeed reaching here.
     // !!! Removed in JavaScript backend because I do not know what to do with lub
-    /*case ExistentialType(_, t)           => toTypeKind(t)
+    //case ExistentialType(_, t)           => toTypeKind(t)
+    // Apparently, this case does occur (see pos/CustomGlobal.scala)
     case AnnotatedType(_, t, _)          => toTypeKind(t)
-    case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub*/
+    //case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
 
     // For sure WildcardTypes shouldn't reach here either, but when
     // debugging such situations this may come in handy.

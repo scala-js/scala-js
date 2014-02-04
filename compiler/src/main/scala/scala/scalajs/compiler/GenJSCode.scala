@@ -237,7 +237,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       generatedMembers += genConstructor(cd)
 
-      def gen(tree: Tree) {
+      def gen(tree: Tree): Unit = {
         tree match {
           case EmptyTree => ()
           case Template(_, _, body) => body foreach gen
@@ -247,6 +247,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           case dd: DefDef =>
             generatedMembers ++= genMethod(dd)
+            // Generate a reflective call proxy if required
+            generatedMembers ++= genReflCallProxy(dd.symbol)
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -649,6 +651,108 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           case _ => false
         }
+      }
+    }
+
+    /**
+     * Generates a proxy method with return type Any for `sym` if required
+     *
+     * Reflective calls don't depend on the return type, so it's hard to
+     * generate calls without using runtime reflection to list the methods. We
+     * generate a method to be used for reflective calls (without return
+     * type in the name).
+     *
+     * There are cases where non-trivial overloads cause ambiguous situations:
+     *
+     * {{{
+     * object A {
+     *   def foo(x: Option[Int]): String
+     *   def foo(x: Option[String]): Int
+     * }
+     * }}}
+     *
+     * This is completely legal code, but due to the same erased parameter
+     * type of the {{{foo}}} overloads, they cannot be disambiguated in a
+     * reflective call, as the exact return type is unknown at the call site.
+     *
+     * Cases like the upper currently fail on the JVM backend at runtime. The
+     * Scala.js backend uses the following rules for selection (which will
+     * also cause runtime failures):
+     *
+     * - If a proxy with the same signature (method name and parameters)
+     *   exists in the superclass, no proxy is generated (proxy is inherited)
+     * - If no proxy exists in the superclass, a proxy is generated for the
+     *   first method with matching signatures.
+     */
+    def genReflCallProxy(sym: Symbol): Option[js.Tree] = {
+      implicit val pos = sym.pos
+
+      lazy val symPars = sym.tpe.params
+
+      /** Check if the parameter types of a symbol match sym's */
+      def paramMatch(s: Symbol) = {
+        val pars = s.tpe.params
+        s == sym || // Shortcut
+        symPars.size == pars.size &&
+        (symPars zip pars).forall { case (s1,s2) =>
+          s1.tpe =:= s2.tpe
+        }
+      }
+
+      /** Check if the symbol's owner's superclass has a matching member (and
+       *  therefore an existing proxy.
+       */
+      def superHasProxy = {
+        import scala.reflect.internal.Flags
+
+        val alts = sym.owner.superClass.tpe.findMember(
+            name = sym.name,
+            excludedFlags = Flags.BRIDGE | Flags.PRIVATE,
+            requiredFlags = Flags.METHOD,
+            stableOnly    = false).alternatives
+        alts.exists(paramMatch)
+      }
+
+      /** Check if this symbol is the first matching declaration */
+      def isFirstDecl = {
+        val decls = sym.owner.tpe.declaration(sym.name).alternatives
+        // We can call get safely, since we find at least ourselves
+        decls.find(paramMatch).get == sym
+      }
+
+      if (sym.isConstructor     ||
+          sym.isBridge          ||
+          sym.isPrivate         ||
+          sym.owner.isInterface ||
+          superHasProxy         ||
+          !isFirstDecl) {
+        None
+      } else {
+        // Actually generate proxy
+
+        val retTpe =
+          enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
+        val jsParams =
+          for (param <- sym.tpe.params)
+            yield encodeLocalSym(param, freshName)(param.pos)
+
+        val call = js.ApplyMethod(js.This(), encodeMethodSym(sym), jsParams)
+
+        val value = retTpe match {
+          case _ if isPrimitiveValueType(retTpe) =>
+            makeBox(call, retTpe)
+          case ErasedValueType(boxedClass, _) =>
+            val boxCtor = boxedClass.primaryConstructor
+            genNew(boxedClass, boxCtor, List(call))
+          case _ =>
+            call
+        }
+
+        val body = js.Return(value)
+
+        Some(js.MethodDef(
+            encodeMethodSym(sym, reflProxy = true), jsParams, body))
+
       }
     }
 
@@ -1305,18 +1409,6 @@ abstract class GenJSCode extends plugins.PluginComponent
                 genNew(cls, ctor, arguments)
             }
           }
-
-        /** unbox(ApplyDynamic(...))
-         *  Normally ApplyDynamic would generate a boxing operation of its
-         *  result, because that is what earlier phases of the compiler
-         *  expect. But then that result is often unboxed immediately.
-         *  This case catches this, and short-circuit the generation of the
-         *  ApplyDynamic by explicitly asking it *not* to box its result.
-         */
-        case Apply(fun @ _, List(dynapply:ApplyDynamic))
-        if (currentRun.runDefinitions.isUnbox(fun.symbol) &&
-            isBoxedForApplyDynamic(dynapply.symbol.tpe.resultType)) =>
-          genApplyDynamic(dynapply, nobox = true)
 
         /** All other Applys, which cannot be refined by pattern matching
          *  They are further refined by properties of the method symbol.
@@ -2062,12 +2154,13 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  about the backend, namely, they believe arguments and the result must
      *  be boxed, and do the boxing themselves. This decision should be left
      *  to the backend, but it's not, so we have to undo these boxes.
+     *  Note that this applies to parameter types only. The return type is boxed
+     *  anyway since we do not know it's exact type.
      *
-     *  Otherwise, this is just a regular method call, because JS is dynamic
-     *  anyway.
+     *  This then generates a call to the reflective call proxy for the given
+     *  arguments.
      */
-    private def genApplyDynamic(tree: ApplyDynamic,
-        nobox: Boolean = false): js.Tree = {
+    private def genApplyDynamic(tree: ApplyDynamic): js.Tree = {
 
       implicit val pos = tree.pos
 
@@ -2087,12 +2180,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      val apply = js.ApplyMethod(instance, encodeMethodSym(sym), arguments)
-
-      if (nobox || !isBoxedForApplyDynamic(sym.tpe.resultType))
-        apply
-      else
-        makeBox(apply, sym.tpe.resultType)
+      js.ApplyMethod(instance,
+          encodeMethodSym(sym, reflProxy = true), arguments)
     }
 
     /** Test whether the given type is artificially boxed for ApplyDynamic */

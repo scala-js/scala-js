@@ -33,6 +33,8 @@ object Math {
 
   def exp(a: scala.Double): scala.Double = js.Math.exp(a)
   def log(a: scala.Double): scala.Double = js.Math.log(a)
+  def log10(a: scala.Double): scala.Double = log(a) / js.Math.LN10
+  def log1p(a: scala.Double): scala.Double = log(a + 1)
 
   def sin(a: scala.Double): scala.Double = js.Math.sin(a)
   def cos(a: scala.Double): scala.Double = js.Math.cos(a)
@@ -44,5 +46,40 @@ object Math {
 
   def random(): scala.Double = js.Math.random()
 
+  def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
+  def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
+
+  def signum(a: scala.Double): scala.Double = {
+    if (a > 0) 1.0
+    else if (a < 0) -1.0
+    else a
+  }
+
+  def signum(a: scala.Float): scala.Float = {
+    if (a > 0) 1.0f
+    else if (a < 0) -1.0f
+    else a
+  }
+
+  def cbrt(a: scala.Double): scala.Double = {
+    if (a == 0 || a.isNaN)
+      return a
+
+    val sign = if (a < 0.0) -1.0 else 1.0
+    val value = sign * a
+
+    //Initial Approximation
+    var x = 0.0
+    var xi = pow(value, 0.3333333333333333)
+
+    //Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
+    while (abs(x - xi) >= 1E-16) {
+      x = xi
+      val x3 = js.Math.pow(x, 3)
+      val x3Plusa = x3 + value
+      xi = x * (x3Plusa + value) / (x3Plusa + x3)
+    }
+    return sign * xi
+  }
   // TODO The methods not available in the JavaScript Math object
 }

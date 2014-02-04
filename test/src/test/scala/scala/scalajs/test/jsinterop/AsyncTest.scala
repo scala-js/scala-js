@@ -95,4 +95,26 @@ object AsyncTest extends JasmineTest {
 
   }
 
+  describe("scala.concurrent.Future") {
+
+    it("should support map") {
+      implicit val ec = JSExecutionContext.runNow
+      val f = Future(3).map(x => x*2)
+      expect(f.value.get.get).toEqual(6)
+    }
+
+    it("should support flatMap") {
+      implicit val ec = JSExecutionContext.runNow
+      val f = Future(Future(3)).flatMap(x => x)
+      expect(f.value.get.get).toEqual(3)
+    }
+
+    it("should support sequence") {
+      implicit val ec = JSExecutionContext.runNow
+      val f = Future.sequence(Seq(Future(3), Future(5)))
+      expect(f.value.get.get.toArray).toEqual(js.Array(3, 5))
+    }
+
+  }
+
 }
