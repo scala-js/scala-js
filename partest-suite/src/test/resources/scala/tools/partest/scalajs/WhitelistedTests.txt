@@ -2638,3 +2638,15 @@ run/t6637.scala
 run/t7015.scala
 run/try-catch-unify.scala
 run/t6731.scala
+run/mutable-longmap.scala
+pos/t3999b.scala
+run/t0432.scala
+run/t2514.scala
+run/t7817.scala
+run/t874.scala
+run/structural.scala
+run/type-currying.scala
+run/t3616.scala
+run/t3687.scala
+run/t4570.scala
+run/t5612.scala

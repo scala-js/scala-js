@@ -79,6 +79,7 @@ run/t1360.scala
 
 # Uses java.util.Collections
 run/java-erasure.scala
+run/t2250.scala
 
 # Uses java.math.BigDecimal / BigInteger
 run/bigDecimalCache.scala
