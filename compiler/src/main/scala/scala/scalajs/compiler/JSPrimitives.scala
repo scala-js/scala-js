@@ -22,6 +22,8 @@ abstract class JSPrimitives {
 
   import global._
   import jsAddons._
+  import definitions._
+  import rootMirror._
   import jsDefinitions._
   import scalaPrimitives._
 
@@ -53,6 +55,9 @@ abstract class JSPrimitives {
 
   val RTJ2J = 335 // Runtime Long to Long
   val J2RTJ = 336 // Long to Runtime Long
+
+  val NTR_MOD_SUFF  = 337 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
+  val NTR_NAME_JOIN = 338 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -90,6 +95,11 @@ abstract class JSPrimitives {
 
     addPrimitive(RuntimeLong_from, RTJ2J)
     addPrimitive(RuntimeLong_to, J2RTJ)
+
+    val ntModule = getRequiredModule("scala.reflect.NameTransformer")
+
+    addPrimitive(getMember(ntModule, newTermName("MODULE_SUFFIX_STRING")), NTR_MOD_SUFF)
+    addPrimitive(getMember(ntModule, newTermName("NAME_JOIN_STRING")), NTR_NAME_JOIN)
   }
 
   def isJavaScriptPrimitive(code: Int) =
