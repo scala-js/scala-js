@@ -62,6 +62,41 @@ object MathTest extends JasmineTest {
       expect(Math.signum(js.Number.NaN.toFloat).isNaN).toBeTruthy
     }
 
+    it("should respond to `nextUp` for Double") {
+      expect(Math.nextUp(Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+      expect(Math.nextUp(Double.NegativeInfinity)).toEqual(-Double.MaxValue)
+      expect(Math.nextUp(Double.MaxValue)).toEqual(Double.PositiveInfinity)
+      expect(Math.nextUp(-Double.MaxValue)).toEqual(-1.7976931348623155e+308)
+      expect(Math.nextUp(-Double.MinValue)).toEqual(Double.PositiveInfinity)
+      expect(Math.nextUp(0.0)).toEqual(Double.MinValue)
+      expect(Math.nextUp(-0.0)).toEqual(Double.MinValue)
+      expect(Math.nextUp(9007199254740991.0)).toEqual(9007199254740992.0)
+      expect(Math.nextUp(9007199254740992.0)).toEqual(9007199254740994.0)
+      expect(Math.nextUp(1.0)).toEqual(1 + 2.2204460492503130808472633361816E-16)
+    }
+
+    it("should respond to `nextAfter` for Double") {
+      expect(Math.nextAfter(1.0, js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.nextAfter(js.Number.NaN.toDouble, 1.0).isNaN).toBeTruthy
+      expect(Math.nextAfter(0.0, 0.0)).toEqual(0.0)
+      expect(Math.nextAfter(0.0, -0.0)).toEqual(-0.0)
+      expect(Math.nextAfter(-0.0, 0.0)).toEqual(0.0)
+      expect(Math.nextAfter(-0.0, -0.0)).toEqual(-0.0)
+      expect(Math.nextAfter(Double.MinValue, Double.NegativeInfinity)).toEqual(Double.NegativeInfinity)
+      expect(Math.nextAfter(-Double.MinValue, Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+      expect(Math.nextAfter(Double.PositiveInfinity, Double.NegativeInfinity)).toEqual(Double.MaxValue)
+      expect(Math.nextAfter(Double.NegativeInfinity, Double.PositiveInfinity)).toEqual(-Double.MaxValue)
+      expect(Math.nextAfter(Double.MaxValue, Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+      expect(Math.nextAfter(-Double.MaxValue, Double.NegativeInfinity)).toEqual(Double.NegativeInfinity)
+      expect(Math.nextAfter(1.0, 1.0)).toEqual(1.0)
+    }
+
+    it("should respond to `ulp` for Double") {
+      expect(Math.ulp(3.4)).toEqual(4.440892098500626E-16)
+      expect(Math.ulp(3.423E109)).toEqual(4.1718496795330275E93)
+      expect(Math.ulp(0.0)).toEqual(Double.MinValue)
+    }
+
   }
 
 }
