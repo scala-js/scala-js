@@ -2,17 +2,23 @@ package java.lang
 
 import scala.scalajs.js
 
-class Character(value: scala.Char) {
-  def charValue(): scala.Char = value
+final class Long(private val value: scala.Long) extends Number {
+  import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
+
+  override def byteValue() = toRuntimeLong(value).toByte
+  override def shortValue() = toRuntimeLong(value).toShort
+  def intValue() = toRuntimeLong(value).toInt
+  def longValue() = value
+  def floatValue() = toRuntimeLong(value).toFloat
+  def doubleValue() = toRuntimeLong(value).toDouble
 
   override def equals(that: Any) =
-    that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
+    that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
 
-  override def toString: String =
-    js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
+  override def toString = toRuntimeLong(value).toString()
 
   /*
-   * Methods on scala.Char
+   * Methods on scala.Long
    * The following methods are only here to properly support reflective calls
    * on boxed primitive values. YOU WILL NOT BE ABLE TO USE THESE METHODS, since
    * we use the true javalib to lookup symbols, this file contains only
@@ -21,8 +27,8 @@ class Character(value: scala.Char) {
   def toByte: scala.Byte     = value.toByte
   def toShort: scala.Short   = value.toShort
   def toChar: scala.Char     = value.toChar
-  def toInt: scala.Int       = value
-  def toLong: scala.Long     = value.toLong
+  def toInt: scala.Int       = value.toInt
+  def toLong: scala.Long     = value
   def toFloat: scala.Float   = value.toFloat
   def toDouble: scala.Double = value.toDouble
 
@@ -34,15 +40,15 @@ class Character(value: scala.Char) {
  * //             11111010
  * }}}
  */
-  def unary_~ : scala.Int = ~value
+  def unary_~ : scala.Long = ~value
   /**
  * Returns this value, unmodified.
  */
-  def unary_+ : scala.Int = value
+  def unary_+ : scala.Long = value
   /**
  * Returns the negation of this value.
  */
-  def unary_- : scala.Int = -value
+  def unary_- : scala.Long = -value
 
   def +(x: String): String = value + x
 
@@ -51,13 +57,13 @@ class Character(value: scala.Char) {
   *         filling in the new right bits with zeroes.
   * @example {{{ 6 << 3 == 48 // in binary: 0110 << 3 == 0110000 }}}
   */
-  def <<(x: scala.Int): scala.Int = value << x
+  def <<(x: scala.Int): scala.Long = value << x
   /**
   * Returns this value bit-shifted left by the specified number of bits,
   *         filling in the new right bits with zeroes.
   * @example {{{ 6 << 3 == 48 // in binary: 0110 << 3 == 0110000 }}}
   */
-  def <<(x: scala.Long): scala.Int = value << x
+  def <<(x: scala.Long): scala.Long = value << x
   /**
   * Returns this value bit-shifted right by the specified number of bits,
   *         filling the new left bits with zeroes.
@@ -68,7 +74,7 @@ class Character(value: scala.Char) {
   * //            00011111 11111111 11111111 11111101
   * }}}
   */
-  def >>>(x: scala.Int): scala.Int = value >>> x
+  def >>>(x: scala.Int): scala.Long = value >>> x
   /**
   * Returns this value bit-shifted right by the specified number of bits,
   *         filling the new left bits with zeroes.
@@ -79,7 +85,7 @@ class Character(value: scala.Char) {
   * //            00011111 11111111 11111111 11111101
   * }}}
   */
-  def >>>(x: scala.Long): scala.Int = value >>> x
+  def >>>(x: scala.Long): scala.Long = value >>> x
   /**
   * Returns this value bit-shifted left by the specified number of bits,
   *         filling in the right bits with the same value as the left-most bit of this.
@@ -90,7 +96,7 @@ class Character(value: scala.Char) {
   * //            11111111 11111111 11111111 11111101
   * }}}
   */
-  def >>(x: scala.Int): scala.Int = value >> x
+  def >>(x: scala.Int): scala.Long = value >> x
   /**
   * Returns this value bit-shifted left by the specified number of bits,
   *         filling in the right bits with the same value as the left-most bit of this.
@@ -101,123 +107,123 @@ class Character(value: scala.Char) {
   * //            11111111 11111111 11111111 11111101
   * }}}
   */
-  def >>(x: scala.Long): scala.Int = value >> x
+  def >>(x: scala.Long): scala.Long = value >> x
 
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Byte): scala.Boolean = value < x
+  def <(x: scala.Byte): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Short): scala.Boolean = value < x
+  def <(x: scala.Short): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Char): scala.Boolean = value < x
+  def <(x: scala.Char): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Int): scala.Boolean = value < x
+  def <(x: scala.Int): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Long): scala.Boolean = value < x
+  def <(x: scala.Long): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Float): scala.Boolean = value < x
+  def <(x: scala.Float): Boolean = value < x
   /**
   * Returns `true` if this value is less than x, `false` otherwise.
   */
-  def <(x: scala.Double): scala.Boolean = value < x
+  def <(x: scala.Double): Boolean = value < x
 
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Byte): scala.Boolean = value <= x
+  def <=(x: scala.Byte): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Short): scala.Boolean = value <= x
+  def <=(x: scala.Short): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Char): scala.Boolean = value <= x
+  def <=(x: scala.Char): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Int): scala.Boolean = value <= x
+  def <=(x: scala.Int): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Long): scala.Boolean = value <= x
+  def <=(x: scala.Long): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Float): scala.Boolean = value <= x
+  def <=(x: scala.Float): Boolean = value <= x
   /**
   * Returns `true` if this value is less than or equal to x, `false` otherwise.
   */
-  def <=(x: scala.Double): scala.Boolean = value <= x
+  def <=(x: scala.Double): Boolean = value <= x
 
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Byte): scala.Boolean = value > x
+  def >(x: scala.Byte): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Short): scala.Boolean = value > x
+  def >(x: scala.Short): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Char): scala.Boolean = value > x
+  def >(x: scala.Char): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Int): scala.Boolean = value > x
+  def >(x: scala.Int): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Long): scala.Boolean = value > x
+  def >(x: scala.Long): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Float): scala.Boolean = value > x
+  def >(x: scala.Float): Boolean = value > x
   /**
   * Returns `true` if this value is greater than x, `false` otherwise.
   */
-  def >(x: scala.Double): scala.Boolean = value > x
+  def >(x: scala.Double): Boolean = value > x
 
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Byte): scala.Boolean = value >= x
+  def >=(x: scala.Byte): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Short): scala.Boolean = value >= x
+  def >=(x: scala.Short): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Char): scala.Boolean = value >= x
+  def >=(x: scala.Char): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Int): scala.Boolean = value >= x
+  def >=(x: scala.Int): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Long): scala.Boolean = value >= x
+  def >=(x: scala.Long): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Float): scala.Boolean = value >= x
+  def >=(x: scala.Float): Boolean = value >= x
   /**
   * Returns `true` if this value is greater than or equal to x, `false` otherwise.
   */
-  def >=(x: scala.Double): scala.Boolean = value >= x
+  def >=(x: scala.Double): Boolean = value >= x
 
   /**
   * Returns the bitwise OR of this value and `x`.
@@ -229,7 +235,7 @@ class Character(value: scala.Char) {
   * //              11111010
   * }}}
   */
-  def |(x: scala.Byte): scala.Int = value | x
+  def |(x: scala.Byte): scala.Long = value | x
   /**
   * Returns the bitwise OR of this value and `x`.
   * @example {{{
@@ -240,7 +246,7 @@ class Character(value: scala.Char) {
   * //              11111010
   * }}}
   */
-  def |(x: scala.Short): scala.Int = value | x
+  def |(x: scala.Short): scala.Long = value | x
   /**
   * Returns the bitwise OR of this value and `x`.
   * @example {{{
@@ -251,7 +257,7 @@ class Character(value: scala.Char) {
   * //              11111010
   * }}}
   */
-  def |(x: scala.Char): scala.Int = value | x
+  def |(x: scala.Char): scala.Long = value | x
   /**
   * Returns the bitwise OR of this value and `x`.
   * @example {{{
@@ -262,7 +268,7 @@ class Character(value: scala.Char) {
   * //              11111010
   * }}}
   */
-  def |(x: scala.Int): scala.Int = value | x
+  def |(x: scala.Int): scala.Long = value | x
   /**
   * Returns the bitwise OR of this value and `x`.
   * @example {{{
@@ -285,7 +291,7 @@ class Character(value: scala.Char) {
   * //              10100000
   * }}}
   */
-  def &(x: scala.Byte): scala.Int = value & x
+  def &(x: scala.Byte): scala.Long = value & x
   /**
   * Returns the bitwise AND of this value and `x`.
   * @example {{{
@@ -296,7 +302,7 @@ class Character(value: scala.Char) {
   * //              10100000
   * }}}
   */
-  def &(x: scala.Short): scala.Int = value & x
+  def &(x: scala.Short): scala.Long = value & x
   /**
   * Returns the bitwise AND of this value and `x`.
   * @example {{{
@@ -307,7 +313,7 @@ class Character(value: scala.Char) {
   * //              10100000
   * }}}
   */
-  def &(x: scala.Char): scala.Int = value & x
+  def &(x: scala.Char): scala.Long = value & x
   /**
   * Returns the bitwise AND of this value and `x`.
   * @example {{{
@@ -318,7 +324,7 @@ class Character(value: scala.Char) {
   * //              10100000
   * }}}
   */
-  def &(x: scala.Int): scala.Int = value & x
+  def &(x: scala.Int): scala.Long = value & x
   /**
   * Returns the bitwise AND of this value and `x`.
   * @example {{{
@@ -341,7 +347,7 @@ class Character(value: scala.Char) {
   * //              01011010
   * }}}
   */
-  def ^(x: scala.Byte): scala.Int = value ^ x
+  def ^(x: scala.Byte): scala.Long = value ^ x
   /**
   * Returns the bitwise XOR of this value and `x`.
   * @example {{{
@@ -352,7 +358,7 @@ class Character(value: scala.Char) {
   * //              01011010
   * }}}
   */
-  def ^(x: scala.Short): scala.Int = value ^ x
+  def ^(x: scala.Short): scala.Long = value ^ x
   /**
   * Returns the bitwise XOR of this value and `x`.
   * @example {{{
@@ -363,7 +369,7 @@ class Character(value: scala.Char) {
   * //              01011010
   * }}}
   */
-  def ^(x: scala.Char): scala.Int = value ^ x
+  def ^(x: scala.Char): scala.Long = value ^ x
   /**
   * Returns the bitwise XOR of this value and `x`.
   * @example {{{
@@ -374,7 +380,7 @@ class Character(value: scala.Char) {
   * //              01011010
   * }}}
   */
-  def ^(x: scala.Int): scala.Int = value ^ x
+  def ^(x: scala.Int): scala.Long = value ^ x
   /**
   * Returns the bitwise XOR of this value and `x`.
   * @example {{{
@@ -390,19 +396,19 @@ class Character(value: scala.Char) {
   /**
   * Returns the sum of this value and `x`.
   */
-  def +(x: scala.Byte): scala.Int = value + x
+  def +(x: scala.Byte): scala.Long = value + x
   /**
   * Returns the sum of this value and `x`.
   */
-  def +(x: scala.Short): scala.Int = value + x
+  def +(x: scala.Short): scala.Long = value + x
   /**
   * Returns the sum of this value and `x`.
   */
-  def +(x: scala.Char): scala.Int = value + x
+  def +(x: scala.Char): scala.Long = value + x
   /**
   * Returns the sum of this value and `x`.
   */
-  def +(x: scala.Int): scala.Int = value + x
+  def +(x: scala.Int): scala.Long = value + x
   /**
   * Returns the sum of this value and `x`.
   */
@@ -419,19 +425,19 @@ class Character(value: scala.Char) {
   /**
   * Returns the difference of this value and `x`.
   */
-  def -(x: scala.Byte): scala.Int = value - x
+  def -(x: scala.Byte): scala.Long = value - x
   /**
   * Returns the difference of this value and `x`.
   */
-  def -(x: scala.Short): scala.Int = value - x
+  def -(x: scala.Short): scala.Long = value - x
   /**
   * Returns the difference of this value and `x`.
   */
-  def -(x: scala.Char): scala.Int = value - x
+  def -(x: scala.Char): scala.Long = value - x
   /**
   * Returns the difference of this value and `x`.
   */
-  def -(x: scala.Int): scala.Int = value - x
+  def -(x: scala.Int): scala.Long = value - x
   /**
   * Returns the difference of this value and `x`.
   */
@@ -448,48 +454,48 @@ class Character(value: scala.Char) {
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Byte): scala.Int = value * x
+  def *(x: scala.Byte): scala.Long = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Short): scala.Int = value * x
+  def *(x: scala.Short): scala.Long = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Char): scala.Int = value * x
+  def *(x: scala.Char): scala.Long = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Int): scala.Int = value * x
+  def *(x: scala.Int): scala.Long = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Long): scala.Long = value * x
+  def *(x: scala.Long): scala.Long = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Float): scala.Float = value * x
+  def *(x: scala.Float): scala.Float = value - x
   /**
   * Returns the product of this value and `x`.
   */
-  def *(x: scala.Double): scala.Double = value * x
+  def *(x: scala.Double): scala.Double = value - x
 
   /**
   * Returns the quotient of this value and `x`.
   */
-  def /(x: scala.Byte): scala.Int = value / x
+  def /(x: scala.Byte): scala.Long = value / x
   /**
   * Returns the quotient of this value and `x`.
   */
-  def /(x: scala.Short): scala.Int = value / x
+  def /(x: scala.Short): scala.Long = value / x
   /**
   * Returns the quotient of this value and `x`.
   */
-  def /(x: scala.Char): scala.Int = value / x
+  def /(x: scala.Char): scala.Long = value / x
   /**
   * Returns the quotient of this value and `x`.
   */
-  def /(x: scala.Int): scala.Int = value / x
+  def /(x: scala.Int): scala.Long = value / x
   /**
   * Returns the quotient of this value and `x`.
   */
@@ -506,19 +512,19 @@ class Character(value: scala.Char) {
   /**
   * Returns the remainder of the division of this value by `x`.
   */
-  def %(x: scala.Byte): scala.Int = value % x
+  def %(x: scala.Byte): scala.Long = value % x
   /**
   * Returns the remainder of the division of this value by `x`.
   */
-  def %(x: scala.Short): scala.Int = value % x
+  def %(x: scala.Short): scala.Long = value % x
   /**
   * Returns the remainder of the division of this value by `x`.
   */
-  def %(x: scala.Char): scala.Int = value % x
+  def %(x: scala.Char): scala.Long = value % x
   /**
   * Returns the remainder of the division of this value by `x`.
   */
-  def %(x: scala.Int): scala.Int = value % x
+  def %(x: scala.Int): scala.Long = value % x
   /**
   * Returns the remainder of the division of this value by `x`.
   */
@@ -534,89 +540,49 @@ class Character(value: scala.Char) {
 
 }
 
-object Character {
-  val TYPE = classOf[scala.Char]
-  val MIN_VALUE: scala.Char = 0
-  val MAX_VALUE: scala.Char = 0xff
+object Long {
+  import scala.scalajs.runtime.{ Long => RTLong }
+  import RTLong.{fromRuntimeLong, toRuntimeLong}
 
-  def valueOf(charValue: scala.Char) = new Character(charValue)
+  val TYPE = classOf[scala.Long]
+  val MIN_VALUE: scala.Long = -9223372036854775808L
+  val MAX_VALUE: scala.Long = 9223372036854775807L
+  val SIZE: scala.Int = 64
 
-  val LOWERCASE_LETTER: scala.Byte = 0
-  val UPPERCASE_LETTER: scala.Byte = 0
-  val OTHER_LETTER: scala.Byte = 0
-  val TITLECASE_LETTER: scala.Byte = 0
-  val LETTER_NUMBER: scala.Byte = 0
-  val COMBINING_SPACING_MARK: scala.Byte = 0
-  val ENCLOSING_MARK: scala.Byte = 0
-  val NON_SPACING_MARK: scala.Byte = 0
-  val MODIFIER_LETTER: scala.Byte = 0
-  val DECIMAL_DIGIT_NUMBER: scala.Byte = 0
-  val SURROGATE: scala.Byte = 0
+  def valueOf(longValue: scala.Long) = new Long(longValue)
+  def parseLong(s: String): scala.Long = fromRuntimeLong(RTLong.fromString(s))
+  def toString(l: scala.Long) = toRuntimeLong(l).toString
 
-  val MIN_RADIX: scala.Int = 2
-  val MAX_RADIX: scala.Int = 36
+  def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
 
-  val MIN_HIGH_SURROGATE: scala.Char = '\uD800'
-  val MAX_HIGH_SURROGATE: scala.Char = '\uDBFF'
-  val MIN_LOW_SURROGATE: scala.Char = '\uDC00'
-  val MAX_LOW_SURROGATE: scala.Char = '\uDFFF'
-  val MIN_SURROGATE: scala.Char = MIN_HIGH_SURROGATE
-  val MAX_SURROGATE: scala.Char = MAX_LOW_SURROGATE
+  def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
+  def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
+  def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
 
-  /* Tests */
-  def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
-  def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
-  def digit(c: scala.Char, radix: scala.Int): scala.Int = {
-    if (radix > MAX_RADIX || radix < MIN_RADIX)
-      -1
-    else if (c >= '0' && c <= '9' && c - '0' < radix)
-      c - '0'
-    else if (c >= 'A' && c <= 'Z' && c - 'A' < radix - 10)
-      c - 'A' + 10
-    else if (c >= 'a' && c <= 'z' && c - 'a' < radix - 10)
-      c - 'a' + 10
-    else if (c >= '\uFF21' && c <= '\uFF3A' &&
-      c - '\uFF21' < radix - 10)
-      c - '\uFF21' + 10
-    else if (c >= '\uFF41' && c <= '\uFF5A' &&
-      c - '\uFF41' < radix - 10)
-      c - '\uFF21' + 10
-    else -1
+  def signum(i: scala.Long): scala.Long =
+    if (i == 0) 0 else if (i < 0) -1 else 1
+
+  def numberOfLeadingZeros(l: scala.Long) =
+    toRuntimeLong(l).numberOfLeadingZeros
+
+  def toBinaryString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toBinaryString)
+  def toHexString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toHexString)
+  def toOctalString(l: scala.Long): String =
+    dropLZ(toRuntimeLong(l).toOctalString)
+
+  /** Drop leading zeros
+   *
+   * This method was:
+   *
+   *     s.dropWhile(_ == '0').padTo(1, '0')
+   *
+   * but generated too much JS code
+   */
+  private def dropLZ(s: js.String) = {
+    var i = 0
+    while ("0" == s.charAt(i)) { i += 1 }
+    s.substring(Math.min(i,s.length - 1))
   }
-
-  def isISOControl(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
-  def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-
-  def isHighSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_HIGH_SURROGATE) && (c <= MAX_HIGH_SURROGATE)
-  def isLowSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_LOW_SURROGATE) && (c <= MAX_LOW_SURROGATE)
-  def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
-    isHighSurrogate(high) && isLowSurrogate(low)
-
-  def isUnicodeIdentifierStart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isUnicodeIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isIdentifierIgnorable(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isMirrored(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLowerCase(c: scala.Char): scala.Boolean = toLowerCase(c) == c
-  def isUpperCase(c: scala.Char): scala.Boolean = toUpperCase(c) == c
-  def isTitleCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isJavaIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-
-  def getDirectionality(c: scala.Char): scala.Byte = sys.error("unimplemented")
-
-  /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
-  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
-  def toTitleCase(c: scala.Char): scala.Char = sys.error("unimplemented")
-  def getNumericValue(c: scala.Char): scala.Int = sys.error("unimplemented")
-
-  /* Misc */
-  def reverseBytes(ch: scala.Char): scala.Char = sys.error("unimplemented")
-
-  def toString(c: scala.Char) = valueOf(c).toString
 }

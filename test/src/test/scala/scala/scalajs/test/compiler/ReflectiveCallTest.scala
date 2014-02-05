@@ -53,5 +53,27 @@ object ReflectiveCallTest extends JasmineTest {
 
       expect(m[Tata](Rec).toString).toEqual("Tata(iei)")
     }
+
+    it("should work with primitive types") {
+      def fInt(x: Any { def unary_- :Int }) = -x
+      expect(fInt(1.toByte)).toEqual(-1)
+      expect(fInt(1.toShort)).toEqual(-1)
+      expect(fInt(1.toChar)).toEqual(-1)
+      expect(fInt(1.toInt)).toEqual(-1)
+
+      def fLong(x: Any { def unary_- :Long }) = -x
+      expect(fLong(1L)).toEqual(-1L)
+
+      def fFloat(x: Any { def unary_- :Float}) = -x
+      expect(fFloat(1.5f)).toEqual(-1.5f)
+
+      def fDouble(x: Any { def unary_- :Double }) = -x
+      expect(fDouble(1.5)).toEqual(-1.5)
+
+      def fBoolean(x: Any { def unary_! :Boolean }) = !x
+      expect(fBoolean(false)).toBeTruthy
+      expect(fBoolean(true)).toBeFalsy
+    }
+
   }
 }
