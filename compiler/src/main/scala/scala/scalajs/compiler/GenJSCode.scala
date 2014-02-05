@@ -1410,7 +1410,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genCallHelper(helper, arguments:_*)
-            } else if (isRawJSType(receiver.tpe) || isStringType(receiver.tpe)) {
+            } else if (isStringType(receiver.tpe)) {
+              genStringCall(app)
+            } else if (isRawJSType(receiver.tpe)) {
               genPrimitiveJSCall(app)
             } else {
               val instance = genExpr(receiver)
@@ -2319,8 +2321,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             sym.hasAnnotation(JSBracketAccessAnnotation))
       }
 
-      val isString = isStringType(receiver0.tpe)
-
       def paramType(index: Int) = sym.tpe.params(index).tpe
 
       def charToString(arg: js.Tree) = {
@@ -2371,71 +2371,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case _ => js.ApplyMethod(receiver, js.StringLiteral("apply"),
                 List(js.Null(), argArray))
           }
-
-        case "charAt" | "codePointAt" if isString =>
-          js.ApplyMethod(receiver, js.StringLiteral("charCodeAt"), args)
-        case "length" if isString =>
-          js.BracketSelect(receiver, js.StringLiteral("length"))
-        case "isEmpty" if isString =>
-          js.UnaryOp("!", js.BracketSelect(receiver, js.StringLiteral("length")))
-        case "indexOf" | "lastIndexOf" if isString && !isStringType(paramType(0)) =>
-          js.ApplyMethod(receiver, js.StringLiteral(funName),
-              charToString(args.head) :: args.tail)
-        case "contains" if isString =>
-          val index = js.ApplyMethod(receiver, js.StringLiteral("indexOf"), args)
-          js.BinaryOp(">=", index, js.IntLiteral(0))
-        case "startsWith" if isString =>
-          genCallHelper("stringStartsWith", receiver, args.head)
-        case "endsWith" if isString =>
-          genCallHelper("stringEndsWith", receiver, args.head)
-        case "subSequence" if isString =>
-          js.ApplyMethod(receiver, js.StringLiteral("substring"), args)
-        case "intern" if isString =>
-          receiver
-        case "compareTo" if isString =>
-          genCallHelper("comparableCompareTo", receiver, args.head)
-
-        case "replace" if isString =>
-          val argsAsStrings =
-            if (paramType(0).typeSymbol == CharSequenceClass)
-              args map charSeqToString
-            else
-              args map charToString
-          js.ApplyMethod(
-              js.ApplyMethod(receiver,
-                  js.StringLiteral("split"), List(argsAsStrings(0))),
-              js.StringLiteral("join"), List(argsAsStrings(1)))
-
-        case "matches" if isString =>
-          // Made-up of Pattern.matches(args.head, receiver)
-          val PatternModuleClass =
-            requiredClass[java.util.regex.Pattern].companionModule.moduleClass
-          val PatternModule = genLoadModule(PatternModuleClass)
-          val matchesMethod =
-            getMemberMethod(PatternModuleClass, newTermName("matches"))
-          js.ApplyMethod(PatternModule, encodeMethodSym(matchesMethod), List(
-              args.head, receiver))
-
-        case "split" if isString =>
-          // Made-up of Pattern.compile(args.head).split(receiver, args.tail)
-          val PatternClass = requiredClass[java.util.regex.Pattern]
-          val PatternModuleClass = PatternClass.companionModule.moduleClass
-          val PatternModule = genLoadModule(PatternModuleClass)
-          val compileMethod = getMemberMethod(PatternModuleClass,
-              newTermName("compile")).suchThat(_.tpe.params.size == 1)
-          val pattern = js.ApplyMethod(PatternModule,
-              encodeMethodSym(compileMethod), List(args.head))
-          val splitMethod = getMemberMethod(PatternClass,
-              newTermName("split")).suchThat(_.tpe.params.size == args.size)
-          js.ApplyMethod(pattern, encodeMethodSym(splitMethod),
-              receiver :: args.tail)
-
-        case "toCharArray" if isString =>
-          // Call js.Any.stringToCharArray(<the string>)
-          val jsAnyMod = genLoadModule(JSAnyModule)
-          val s2charr = getMemberMethod(JSAnyModule,
-              newTermName("stringToCharArray"))
-          js.ApplyMethod(jsAnyMod, encodeMethodSym(s2charr), receiver :: Nil)
 
         case _ =>
           def isJSGetter = {
@@ -2508,6 +2443,43 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ =>
           // TODO
           js.Throw(js.StringLiteral("new String() not implemented"))
+      }
+    }
+
+    /**
+     * Forwards call on java.lang.String to the implementation class of
+     * scala.scalajs.runtime.RuntimeString
+     */
+    private def genStringCall(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+
+      // Deconstruct tree and create receiver and argument JS expressions
+      val Apply(Select(receiver0, _), args0) = tree
+      val receiver = genExpr(receiver0)
+      val js.ArrayConstr(args) = genPrimitiveJSArgs(sym, args0)
+
+      // Get implementation from RuntimeString trait
+      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
+
+      // Check that we found a member
+      if (rtStrSym == NoSymbol) {
+        currentCUnit.error(pos,
+            s"""Could not find implementation for method ${sym.name}
+               |on java.lang.String with type ${sym.tpe}
+               |Methods on java.lang.String are forwarded to the implementation class
+               |of scala.scalajs.runtime.RuntimeString""".stripMargin)
+        js.Undefined()
+      } else {
+        assert(!rtStrSym.isOverloaded,
+            s"""For method ${sym.name} on java.lang.String with type ${sym.tpe},
+               |found multiple implementation class members.""".stripMargin)
+
+        // Emit call to implementation class
+        js.Apply(
+          encodeImplClassMethodSym(rtStrSym),
+          receiver :: args)
       }
     }
 

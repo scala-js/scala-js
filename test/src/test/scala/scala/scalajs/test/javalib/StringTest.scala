@@ -130,6 +130,20 @@ object StringTest extends JasmineTest {
       expect("".hashCode()).toEqual(0)
     }
 
+    it("should respond to `getChars`") {
+      val trg = new Array[Char](10)
+      "asdf_foo".getChars(2, 6, trg, 3)
+      val exp = Array(0,0,0,'d','f','_','f',0,0,0)
+
+      for ((i,e) <- trg zip exp) {
+        expect(i).toEqual(e)
+      }
+    }
+
+    it("should respond to `concat`") {
+      expect("asdf".concat("fdsa")).toEqual("asdffdsa")
+    }
+
     it("should provide `format`") {
       expect(String.format("%d", new Integer(5))).toEqual("5")
       expect(String.format("%05d", new Integer(5))).toEqual("00005")

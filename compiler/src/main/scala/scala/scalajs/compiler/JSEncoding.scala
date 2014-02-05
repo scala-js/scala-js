@@ -86,6 +86,31 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         Some(sym.originalName.decoded + paramsString))
   }
 
+  /** encode a method symbol on a trait so it refers to its corresponding
+   *  symbol in the implementation class. This works around a limitation in
+   *  Scalac 2.11 that doesn't return members for the implementation class.
+   */
+  def encodeImplClassMethodSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+    require(sym.owner.isInterface)
+    // Unfortunately we cannot verify here, whether this symbol is actually
+    // implemented in the trait.
+
+    // Prepare special parameter string
+    val tpe = sym.tpe
+    val paramTpes = sym.owner.tpe +: tpe.params.map(_.tpe) :+ tpe.resultType
+    val paramsString = makeParamsString(paramTpes.map(internalName _))
+
+    // Encode prefix
+    val implClass = sym.owner.implClass orElse erasure.implClass(sym.owner)
+    val encodedName =
+      encodeClassFullName(implClass) + OuterSep + sym.name.toString
+
+    // Create ident
+    js.DotSelect(envField("impls"),
+        js.Ident(encodedName + paramsString,
+            Some(sym.originalName.decoded + paramsString)))
+  }
+
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)

@@ -104,5 +104,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val RuntimeLong_from = getMemberMethod(RuntimeLongModule, newTermName("fromRuntimeLong"))
       lazy val RuntimeLong_to   = getMemberMethod(RuntimeLongModule, newTermName("toRuntimeLong"))
 
+    lazy val RuntimeStringClass = getRequiredClass("scala.scalajs.runtime.RuntimeString")
+    lazy val RuntimeStringModule = RuntimeStringClass.companionModule
+
   }
 }
