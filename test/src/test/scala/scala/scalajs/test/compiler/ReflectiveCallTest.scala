@@ -53,5 +53,46 @@ object ReflectiveCallTest extends JasmineTest {
 
       expect(m[Tata](Rec).toString).toEqual("Tata(iei)")
     }
+
+    it("should work with unary methods on primitive types") {
+      def fInt(x: Any { def unary_- :Int }) = -x
+      expect(fInt(1.toByte)).toEqual(-1)
+      expect(fInt(1.toShort)).toEqual(-1)
+      expect(fInt(1.toChar)).toEqual(-1)
+      expect(fInt(1)).toEqual(-1)
+
+      def fLong(x: Any { def unary_- :Long }) = -x
+      expect(fLong(1L)).toEqual(-1L)
+
+      def fFloat(x: Any { def unary_- :Float}) = -x
+      expect(fFloat(1.5f)).toEqual(-1.5f)
+
+      def fDouble(x: Any { def unary_- :Double }) = -x
+      expect(fDouble(1.5)).toEqual(-1.5)
+
+      def fBoolean(x: Any { def unary_! :Boolean }) = !x
+      expect(fBoolean(false)).toBeTruthy
+      expect(fBoolean(true)).toBeFalsy
+    }
+
+    it("should work with binary operators on primitive types") {
+      def fLong(x: Any { def +(x: Long): Long }) = x + 5L
+      expect(fLong(5.toByte)).toEqual(10L)
+      expect(fLong(10.toShort)).toEqual(15L)
+      expect(fLong(10.toChar)).toEqual(15L)
+      expect(fLong(-1)).toEqual(4L)
+      expect(fLong(17L)).toEqual(22L)
+
+      def fFloat(x: Any { def %(x: Float): Float}) = x % 3.4f
+      expect(fFloat(5.5f)).toEqual(2.1f)
+
+      def fDouble(x: Any { def /(x: Double): Double }) = x / 1.4
+      expect(fDouble(-1.5)).toEqual(-1.0714285714285714)
+
+      def fBoolean(x: Any { def &&(x: Boolean): Boolean }) = x && true
+      expect(fBoolean(false)).toBeFalsy
+      expect(fBoolean(true)).toBeTruthy
+    }
+
   }
 }
