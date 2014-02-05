@@ -131,6 +131,34 @@ object StringTest extends JasmineTest {
       expect("".hashCode()).toEqual(0)
     }
 
+    it("should respond to `getChars`") {
+      val trg = new Array[Char](10)
+      "asdf_foo".getChars(2, 6, trg, 3)
+      val exp = Array(0,0,0,'d','f','_','f',0,0,0)
+
+      for ((i,e) <- trg zip exp) {
+        expect(i).toEqual(e)
+      }
+    }
+
+
+    it("should respond to `concat`") {
+      expect("asdf".concat("fdsa")).toEqual("asdffdsa")
+    }
+
+    it("should respond to constructors") {
+      val charArray = Array('a','b','c','d','e','f','g','h','i')
+      val codePointArray = Array(65,67,68,69,72)
+      expect(new String()).toEqual("")
+      expect(new String(charArray)).toEqual("abcdefghi")
+      expect(new String(charArray, 3, 5)).toEqual("defgh")
+      expect(new String(codePointArray, 1, 3)).toEqual("CDE")
+      expect(new String("foo")).toEqual("foo")
+      expect(new String(new StringBuffer("buffer-foo"))).toEqual("buffer-foo")
+      expect(new String(new java.lang.StringBuilder("builder-foo"))
+        ).toEqual("builder-foo")
+    }
+
     it("should provide `format`") {
       expect(String.format("%d", new Integer(5))).toEqual("5")
       expect(String.format("%05d", new Integer(5))).toEqual("00005")

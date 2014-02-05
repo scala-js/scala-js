@@ -257,14 +257,6 @@ var ScalaJS = {
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
-  stringStartsWith: function(str, prefix) {
-    return str["substring"](0, prefix["length"]) === prefix;
-  },
-
-  stringEndsWith: function(str, suffix) {
-    return str["substring"](str["length"] - suffix["length"]) === suffix;
-  },
-
   truncateToLong: function(value) {
     return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
                      : ScalaJS.g["Math"]["floor"](value);
