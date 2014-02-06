@@ -2130,6 +2130,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  arguments.
      */
     private def genApplyDynamic(tree: ApplyDynamic): js.Tree = {
+      import js.TreeDSL._
 
       implicit val pos = tree.pos
 
@@ -2146,6 +2147,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         sym.tpe.resultType <:< UnitClass.tpe
       }
 
+      /**
+       * Check if string implements the particular method. If this is the case
+       * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
+       * dealing with a string.
+       */
+      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
+
       val ApplyDynamic(receiver, args) = tree
       val instance = genExpr(receiver)
 
@@ -2160,19 +2168,34 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      val normalCaseTree = js.ApplyMethod(instance,
-          encodeMethodSym(sym, reflProxy = true), arguments)
+      val baseCase = js.ApplyMethod(instance,
+                         encodeMethodSym(sym, reflProxy = true), arguments)
 
-      if (isArrayLikeUpdate) {
-        import js.TreeDSL._
-
+      val arrayCase = if (isArrayLikeUpdate) {
         IF (genCallHelper("isScalaJSArray", instance)) {
           js.ApplyMethod(instance, js.Ident("update__I__O__"), arguments)
         } ELSE {
-          normalCaseTree
+          baseCase
         }
+      } else baseCase
 
-      } else normalCaseTree
+      val stringCase = if (rtStrSym != NoSymbol) {
+        IF (js.UnaryOp("typeof", instance) === js.StringLiteral("string")) {
+          val strApply = js.Apply(
+            encodeImplClassMethodSym(rtStrSym),
+            instance :: arguments)
+          // Box the result of the string method if required
+          val retTpe = rtStrSym.tpe.resultType
+          if (retTpe.typeSymbol.isPrimitiveValueClass)
+            makeBox(strApply, retTpe)
+          else
+            strApply
+        } ELSE {
+          arrayCase
+        }
+      } else arrayCase
+
+      stringCase
 
     }
 

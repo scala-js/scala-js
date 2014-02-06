@@ -88,5 +88,11 @@ object ReflectiveCallTest extends JasmineTest {
       expect(x(1)).toEqual("2foo")
     }
 
+    it("should work with Strings") {
+      def get(obj: { def codePointAt(str: Int): Int }) =
+        obj.codePointAt(1)
+      expect(get("Hi")).toEqual('i'.toInt)
+    }
+
   }
 }
