@@ -2134,8 +2134,19 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       val sym = tree.symbol
-      val ApplyDynamic(receiver, args) = tree
 
+      /** check if the method we are invoking conforms to the update
+       *  method on scala.Array. If this is the case, we have to check
+       *  that case specially at runtime, since the arrays element type is not
+       *  erased and therefore the method name mangling turns out wrong.
+       */
+      def isArrayLikeUpdate = sym.name.decoded == "update" && {
+        val params = sym.tpe.params
+        params.size == 2 && params.head.tpe.typeSymbol == IntClass &&
+        sym.tpe.resultType <:< UnitClass.tpe
+      }
+
+      val ApplyDynamic(receiver, args) = tree
       val instance = genExpr(receiver)
 
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
@@ -2149,8 +2160,20 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      js.ApplyMethod(instance,
+      val normalCaseTree = js.ApplyMethod(instance,
           encodeMethodSym(sym, reflProxy = true), arguments)
+
+      if (isArrayLikeUpdate) {
+        import js.TreeDSL._
+
+        IF (genCallHelper("isScalaJSArray", instance)) {
+          js.ApplyMethod(instance, js.Ident("update__I__O__"), arguments)
+        } ELSE {
+          normalCaseTree
+        }
+
+      } else normalCaseTree
+
     }
 
     /** Test whether the given type is artificially boxed for ApplyDynamic */

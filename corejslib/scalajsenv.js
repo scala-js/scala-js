@@ -63,6 +63,10 @@ var ScalaJS = {
     return !!(obj && obj.$classData);
   },
 
+  isScalaJSArray: function(obj) {
+    return obj && obj.$classData && obj.$classData.isArrayClass
+  },
+
   dynamicIsInstanceOf: function(obj, data) {
     return data.isInstance(obj);
   },
@@ -429,6 +433,27 @@ ScalaJS.ArrayTypeData = function(componentData) {
   ArrayClass.prototype.clone__O = function() {
     return new ArrayClass(this.underlying["slice"](0));
   };
+
+  // Methods for reflective calls
+  ArrayClass.prototype.apply__I__ = function(i) {
+    return this.underlying[i];
+  }
+
+  ArrayClass.prototype.clone__ = function() {
+    return this.clone__O();
+  }
+
+  ArrayClass.prototype.length__ = function() {
+    return this.underlying["length"];
+  }
+
+  // Note that this method is actually typed on the true element type, since
+  // array types are not erased. The compiler does some magic to artificially
+  // erase the element type when reflectively calling the update method of a
+  // ScalaJSArray
+  ArrayClass.prototype.update__I__O__ = function(i,x) {
+    this.underlying[i] = x;
+  }
 
   // The data
 
