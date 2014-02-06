@@ -12,4 +12,9 @@ package scala.scalajs.js
 
 case class JavaScriptException(exception: Any) extends RuntimeException {
   override def toString() = exception.toString()
+
+  override def fillInStackTrace(): Throwable = {
+    scala.scalajs.runtime.StackTrace.captureState(this, exception)
+    this
+  }
 }

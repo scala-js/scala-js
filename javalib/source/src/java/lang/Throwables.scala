@@ -1,24 +1,111 @@
 package java.lang
 
+import scala.scalajs.js
+
 class Throwable(s: String, private var e: Throwable) extends Object with java.io.Serializable {
   def this() = this(null, null)
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(null, e)
 
-  // def getLocalizedMessage(): String = ???
-  // def printStackTrace(s: java.io.PrintStream): Unit = ???
-  // def printStackTrace(s: java.io.PrintWriter): Unit = ???
-  // def setStackTrace(stackTrace: scala.Array[StackTraceElement]): Unit = ???
+  private[this] var stackTrace: Array[StackTraceElement] = _
+
+  fillInStackTrace()
+
   def initCause(cause: Throwable): Throwable = {
     e = cause
     this
   }
-  
-  def getStackTrace(): scala.Array[StackTraceElement] = null
+
   def getMessage(): String = s
-  def printStackTrace(): Unit = ()
   def getCause(): Throwable = e
-  def fillInStackTrace(): Throwable = this
+  def getLocalizedMessage(): String = getMessage()
+
+  def fillInStackTrace(): Throwable = {
+    scala.scalajs.runtime.StackTrace.captureState(this)
+    this
+  }
+
+  def getStackTrace(): Array[StackTraceElement] = {
+    if (stackTrace eq null)
+      stackTrace = scala.scalajs.runtime.StackTrace.extract(this)
+    stackTrace
+  }
+
+  def setStackTrace(stackTrace: Array[StackTraceElement]): Unit = {
+    var i = 0
+    while (i < stackTrace.length) {
+      if (stackTrace(i) eq null)
+        throw new NullPointerException()
+      i += 1
+    }
+
+    this.stackTrace = stackTrace.clone()
+  }
+
+  def printStackTrace(): Unit = printStackTrace(System.err)
+
+  def printStackTrace(out: java.io.PrintStream): Unit = {
+    getStackTrace() // will init it if still null
+
+    // Message
+    out.println(toString)
+
+    // Trace
+    if (stackTrace.length != 0) {
+      var i = 0
+      while (i < stackTrace.length) {
+        out.println("  at "+stackTrace(i))
+        i += 1
+      }
+    } else {
+      out.println("  <no stack trace available>")
+    }
+
+    // Causes
+    var wCause: Throwable = this
+    while ((wCause ne wCause.getCause) && (wCause.getCause ne null)) {
+      val parentTrace = wCause.getStackTrace
+      wCause = wCause.getCause
+      val thisTrace = wCause.getStackTrace
+
+      val thisLength = thisTrace.length
+      val parentLength = parentTrace.length
+
+      out.println("Caused by: " + wCause.toString)
+
+      if (thisLength != 0) {
+        /* Count how many frames are shared between this stack trace and the
+         * parent stack trace, so that we can omit them when printing.
+         */
+        var sameFrameCount: Int = 0
+        while (sameFrameCount < thisLength && sameFrameCount < parentLength &&
+            thisTrace(thisLength-sameFrameCount-1) == parentTrace(parentLength-sameFrameCount-1)) {
+          sameFrameCount += 1
+        }
+
+        /* If at least one, decrement so that the first common frame is still
+         * printed. According to Harmony this is spec'ed and common practice.
+         */
+        if (sameFrameCount > 0)
+          sameFrameCount -= 1
+
+        // Print the non-common frames
+        val lengthToPrint = thisLength - sameFrameCount
+        var i = 0
+        while (i < lengthToPrint) {
+          out.println("  at "+thisTrace(i))
+          i += 1
+        }
+
+        if (sameFrameCount > 0)
+          out.println("  ... " + sameFrameCount + " more")
+      } else {
+        out.println("  <no stack trace available>")
+      }
+    }
+  }
+
+  // def printStackTrace(s: java.io.PrintWriter): Unit = ???
 
   override def toString() = {
     val className = getClass.getName
