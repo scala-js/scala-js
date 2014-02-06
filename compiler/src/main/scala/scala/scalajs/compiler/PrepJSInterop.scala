@@ -45,7 +45,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
     var inJSAnyMod = false
     var inJSAnyCls = false
     var inScalaCls = false
+    /** are we inside a subclass of scala.Enumeration */
     var inScalaEnum = false
+    /** are we inside the implementation of scala.Enumeration? */
+    var inEnumImpl = false
 
     def jsAnyClassOnly = !inJSAnyCls && allowJSAny
     def allowImplDef   = !inJSAnyCls && !inJSAnyMod
@@ -67,6 +70,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
 
+      // Catch the definition of scala.Enumeration itself
+      case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
+        enterEnumImpl { super.transform(cldef) }
+
       // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
       case cldef: ClassDef if isScalaEnum(cldef) =>
         enterScalaCls {
@@ -87,8 +94,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
         treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
 
       // Catch Select on Enumeration.Value we couldn't transform but need to
-      // Note that ScalaEnumValue.apply never constructs
-      case ScalaEnumValNoName(_) =>
+      // we ignore the implementation of scala.Enumeration itself
+      case ScalaEnumValNoName(_) if !inEnumImpl =>
         unit.warning(tree.pos,
                      """Couldn't transform call to Enumeration.Value.
                        |The resulting program is unlikely to function properly as this
@@ -178,6 +185,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       inScalaEnum = true
       val res = body
       inScalaEnum = old
+      res
+    }
+
+    private def enterEnumImpl[T](body: =>T) = {
+      val old = inEnumImpl
+      inEnumImpl = true
+      val res = body
+      inEnumImpl = old
       res
     }
 
