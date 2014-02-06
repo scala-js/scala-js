@@ -2130,12 +2130,31 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  arguments.
      */
     private def genApplyDynamic(tree: ApplyDynamic): js.Tree = {
+      import js.TreeDSL._
 
       implicit val pos = tree.pos
 
       val sym = tree.symbol
-      val ApplyDynamic(receiver, args) = tree
 
+      /** check if the method we are invoking conforms to the update
+       *  method on scala.Array. If this is the case, we have to check
+       *  that case specially at runtime, since the arrays element type is not
+       *  erased and therefore the method name mangling turns out wrong.
+       */
+      def isArrayLikeUpdate = sym.name.decoded == "update" && {
+        val params = sym.tpe.params
+        params.size == 2 && params.head.tpe.typeSymbol == IntClass &&
+        sym.tpe.resultType <:< UnitClass.tpe
+      }
+
+      /**
+       * Check if string implements the particular method. If this is the case
+       * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
+       * dealing with a string.
+       */
+      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
+
+      val ApplyDynamic(receiver, args) = tree
       val instance = genExpr(receiver)
 
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
@@ -2149,8 +2168,35 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      js.ApplyMethod(instance,
-          encodeMethodSym(sym, reflProxy = true), arguments)
+      val baseCase = js.ApplyMethod(instance,
+                         encodeMethodSym(sym, reflProxy = true), arguments)
+
+      val arrayCase = if (isArrayLikeUpdate) {
+        IF (genCallHelper("isScalaJSArray", instance)) {
+          js.ApplyMethod(instance, js.Ident("update__I__O__"), arguments)
+        } ELSE {
+          baseCase
+        }
+      } else baseCase
+
+      val stringCase = if (rtStrSym != NoSymbol) {
+        IF (js.UnaryOp("typeof", instance) === js.StringLiteral("string")) {
+          val strApply = js.Apply(
+            encodeImplClassMethodSym(rtStrSym),
+            instance :: arguments)
+          // Box the result of the string method if required
+          val retTpe = rtStrSym.tpe.resultType
+          if (retTpe.typeSymbol.isPrimitiveValueClass)
+            makeBox(strApply, retTpe)
+          else
+            strApply
+        } ELSE {
+          arrayCase
+        }
+      } else arrayCase
+
+      stringCase
+
     }
 
     /** Test whether the given type is artificially boxed for ApplyDynamic */
