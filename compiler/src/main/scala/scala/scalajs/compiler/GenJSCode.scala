@@ -943,7 +943,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           genTry(t)
 
         case Throw(expr) =>
-          js.Throw(genExpr(expr))
+          val ex = genExpr(expr)
+          if (isMaybeJavaScriptException(expr.tpe))
+            js.Throw(genCallHelper("unwrapJavaScriptException", ex))
+          else
+            js.Throw(ex)
 
         case app: Apply =>
           genApply(app)
@@ -1182,20 +1186,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       val blockAST = genExpr(block)
       val exceptVar = js.Ident("$jsexc$")
 
-      def isAncestorOfJavaScriptException(tpe: Type) = {
-        // A bit awkward because JSException might not be in the classpath
-        val sym = tpe.typeSymbol
-        (sym == JavaScriptExceptionClass ||
-            RuntimeExceptionClass.ancestors.contains(sym))
-      }
-
       val handlerAST = {
         if (catches.isEmpty) {
           js.EmptyTree
         } else {
-          var mightCatchJavaScriptException = false
+          val mightCatchJavaScriptException = catches.exists { caseDef =>
+            caseDef.pat match {
+              case Typed(Ident(nme.WILDCARD), tpt) =>
+                isMaybeJavaScriptException(tpt.tpe)
+              case Ident(nme.WILDCARD) =>
+                true
+              case pat @ Bind(_, _) =>
+                isMaybeJavaScriptException(pat.symbol.tpe)
+            }
+          }
 
-          val elseHandler: js.Tree = js.Throw(exceptVar)
+          val elseHandler: js.Tree =
+            if (mightCatchJavaScriptException)
+              js.Throw(genCallHelper("unwrapJavaScriptException", exceptVar))
+            else
+              js.Throw(exceptVar)
+
           val handler0 = catches.foldRight(elseHandler) { (caseDef, elsep) =>
             implicit val jspos = caseDef.pos
             val CaseDef(pat, _, body) = caseDef
@@ -1219,11 +1230,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             // Generate the test
             if (tpe == ThrowableClass.tpe) {
-              mightCatchJavaScriptException = true
               bodyWithBoundVar
             } else {
-              mightCatchJavaScriptException ||=
-                isAncestorOfJavaScriptException(tpe)
               val cond = genIsInstanceOf(ThrowableClass.tpe, tpe, exceptVar)
               js.If(cond, bodyWithBoundVar, elsep)
             }
@@ -3146,6 +3154,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   private def isLongType(tpe: Type): Boolean =
     tpe.typeSymbol == LongClass
+
+  private def isMaybeJavaScriptException(tpe: Type) =
+    JavaScriptExceptionClass isSubClass tpe.typeSymbol
 
   /** Get JS name of Symbol if it was specified with JSName annotation */
   def jsNameOf(sym: Symbol): String = {
