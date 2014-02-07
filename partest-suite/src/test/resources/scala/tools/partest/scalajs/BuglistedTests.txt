@@ -3,53 +3,34 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# should work...
+#### Filed bugs
+
+# Filed as #211
+run/t6725-1.scala
+
+# Filed as #213
+run/t3175.scala
+
+# Filed as #215
+run/issue192.scala
+
+# Filed as #216
+run/hashCodeBoxesRunTime.scala
+
+# Filed as #217
+run/richs.scala
+
+# Filed as #218
+run/valueclasses-classtag-existential.scala
+
+# Filed as #219
+pos/t7776.scala
+
+# Filed as #220
 run/Course-2002-08.scala
+
+# Filed as #221
 neg/t7494-multi-right-after
 neg/t7494-right-after-before
 neg/t7622-multi-followers
 neg/t7622-cyclic-dependency
-
-# Compiler crash (existential on value class)
-run/valueclasses-classtag-existential.scala
-
-# Cannot find Nothing...
-run/t6725-1.scala
-
-# maybe?
-run/future-flatmap-exec-count.scala
-run/macro-reify-unreify
-run/t6154.scala
-
-# TrieMap?
-run/triemap-hash.scala
-
-# Missing stuff in java lib
-run/t6114.scala
-run/t7269.scala
-
-# JSCode fails
-pos/t7776.scala
-
-# Enumerations
-run/t3719.scala
-
-# must be re-reported
-# (bug that was reported was fixed, but there is still an issue)
-run/hashCodeBoxesRunTime.scala
-run/richs.scala
-
-#### Filed bugs
-
-# Filed as #195
-run/issue192.scala
-run/t1110.scala
-run/t2636.scala
-run/t3175.scala
-
-# Filed as #154
-run/verify-ctor.scala
-
-# Filed as #164
-run/t3647.scala
-

@@ -2650,3 +2650,7 @@ run/t3616.scala
 run/t3687.scala
 run/t4570.scala
 run/t5612.scala
+run/t1110.scala
+run/t2636.scala
+run/verify-ctor.scala
+run/t3647.scala

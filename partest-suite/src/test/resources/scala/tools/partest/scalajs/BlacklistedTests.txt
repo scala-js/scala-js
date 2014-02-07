@@ -76,6 +76,8 @@ run/colltest.scala
 run/equality.scala
 run/t2849.scala
 run/t1360.scala
+run/t6114.scala
+run/t7269.scala
 
 # Uses java.util.Collections
 run/java-erasure.scala
@@ -115,6 +117,9 @@ run/synchronized.scala
 
 # Uses java.security
 run/t2318.scala
+
+# Tries to catch java.lang.StackOverflowError
+run/t6154.scala
 
 # Taking too much time, because JavaScript is not as fast as the JVM
 
@@ -164,6 +169,7 @@ run/t4426.scala
 # Using ExecutionContext.global
 run/t7336.scala
 run/t7775.scala
+run/future-flatmap-exec-count.scala
 
 # Using reflection
 
@@ -569,10 +575,14 @@ run/macro-invalidusage-partialapplication-with-tparams
 run/macro-reflective-ma-normal-mdmi
 run/macro-reflective-mamd-normal-mi
 
-# Using Enumeration which uses reflection
+# Using macros, but indirectly creating calls to reflection
+run/macro-reify-unreify
+
+# Using Enumeration in a way we cannot fix
 
 run/t2111.scala
 run/enums.scala
+run/t3719.scala
 
 # Expecting some particular value of hashCode()
 
@@ -595,6 +605,10 @@ run/optimizer-array-load.scala
 
 run/classfile-format-51.scala
 run/classfile-format-52.scala
+
+# Concurrent collections (TrieMap)
+# has too much stuff implemented in *.java, so no support
+run/triemap-hash.scala
 
 # Using parallel collections
 
