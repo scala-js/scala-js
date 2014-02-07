@@ -2155,7 +2155,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
 
       val ApplyDynamic(receiver, args) = tree
-      val instance = genExpr(receiver)
+
+      val callTrg = js.Ident(freshName("dynCallTrg"))
+      val callTrgVarDef = js.VarDef(callTrg, genExpr(receiver))
 
       val arguments = args zip sym.tpe.params map { case (arg, param) =>
         if (isBoxedForApplyDynamic(param.tpe)) {
@@ -2168,12 +2170,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      val baseCase = js.ApplyMethod(instance,
+      val baseCase = js.ApplyMethod(callTrg,
           encodeMethodSym(sym, reflProxy = true), arguments)
 
       val arrayCase = if (isArrayLikeUpdate) {
-        IF (genCallHelper("isScalaJSArray", instance)) {
-          js.ApplyMethod(instance,
+        IF (genCallHelper("isScalaJSArray", callTrg)) {
+          js.ApplyMethod(callTrg,
               js.Ident("update__I__elementType__"), arguments)
         } ELSE {
           baseCase
@@ -2181,10 +2183,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else baseCase
 
       val stringCase = if (rtStrSym != NoSymbol) {
-        IF (js.UnaryOp("typeof", instance) === js.StringLiteral("string")) {
+        IF (js.UnaryOp("typeof", callTrg) === js.StringLiteral("string")) {
           val strApply = js.Apply(
             encodeImplClassMethodSym(rtStrSym),
-            instance :: arguments)
+            callTrg :: arguments)
           // Box the result of the string method if required
           val retTpe = rtStrSym.tpe.resultType
           if (retTpe.typeSymbol.isPrimitiveValueClass)
@@ -2196,8 +2198,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       } else arrayCase
 
-      stringCase
-
+      js.Block(callTrgVarDef,stringCase)
     }
 
     /** Test whether the given type is artificially boxed for ApplyDynamic */
