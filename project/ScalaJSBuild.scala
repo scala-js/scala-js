@@ -218,6 +218,7 @@ object ScalaJSBuild extends Build {
                   || path.endsWith("/scala/Console.scala")
                   || path.endsWith("/scala/compat/Platform.scala")
                   || path.endsWith("/scala/runtime/BoxesRunTime.scala")
+                  || path.endsWith("/scala/util/control/NoStackTrace.scala")
 
                   // Hideous but effective way not to compile useless parts
                   || path.contains("/scala/collection/parallel/")

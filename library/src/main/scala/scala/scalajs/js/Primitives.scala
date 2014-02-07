@@ -35,8 +35,6 @@ sealed trait Any extends scala.AnyRef {
   def +(that: String): String = sys.error("stub")
   def +(that: Dynamic): Any = sys.error("stub") // JSNumber v JSString
 
-  def &&[A <: Any](that: A): that.type = sys.error("stub")
-
   // def ||[A <: Any](that: A): this.type v that.type = sys.error("stub")
   def ||(that: Any): Any = sys.error("stub")
 }
@@ -186,6 +184,22 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
 
+  def <(that: Number): Boolean
+  def <(that: String): Boolean
+  def <(that: Dynamic): Boolean
+
+  def >(that: Number): Boolean
+  def >(that: String): Boolean
+  def >(that: Dynamic): Boolean
+
+  def <=(that: Number): Boolean
+  def <=(that: String): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: Number): Boolean
+  def >=(that: String): Boolean
+  def >=(that: Dynamic): Boolean
+
   def ||(that: Dynamic): Dynamic
 
   // Work around the annoying implicits in Predef in Scala 2.10.
@@ -298,6 +312,18 @@ sealed trait Number extends Any {
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
 
+  def <(that: Number): Boolean
+  def <(that: Dynamic): Boolean
+
+  def >(that: Number): Boolean
+  def >(that: Dynamic): Boolean
+
+  def <=(that: Number): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: Number): Boolean
+  def >=(that: Dynamic): Boolean
+
   def ||(that: Number): Number
 
   def toString(radix: Number): String = ???
@@ -397,6 +423,7 @@ object Number extends Object {
 
 /** Primitive JavaScript boolean. */
 sealed trait Boolean extends Any {
+  def &&(that: Boolean): Boolean
   def ||(that: Boolean): Boolean
 
   def unary_!(): Boolean

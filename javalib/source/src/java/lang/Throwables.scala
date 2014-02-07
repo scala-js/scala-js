@@ -1,24 +1,67 @@
 package java.lang
 
+import scala.scalajs.js
+
 class Throwable(s: String, private var e: Throwable) extends Object with java.io.Serializable {
   def this() = this(null, null)
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(null, e)
 
-  // def getLocalizedMessage(): String = ???
-  // def printStackTrace(s: java.io.PrintStream): Unit = ???
-  // def printStackTrace(s: java.io.PrintWriter): Unit = ???
-  // def setStackTrace(stackTrace: scala.Array[StackTraceElement]): Unit = ???
+  private[this] var stackTrace: Array[StackTraceElement] = _
+
+  fillInStackTrace()
+
   def initCause(cause: Throwable): Throwable = {
     e = cause
     this
   }
-  
-  def getStackTrace(): scala.Array[StackTraceElement] = null
+
   def getMessage(): String = s
-  def printStackTrace(): Unit = ()
   def getCause(): Throwable = e
-  def fillInStackTrace(): Throwable = this
+  def getLocalizedMessage(): String = getMessage()
+
+  def fillInStackTrace(): Throwable = {
+    scala.scalajs.runtime.StackTrace.captureState(this)
+    this
+  }
+
+  def getStackTrace(): Array[StackTraceElement] = {
+    if (stackTrace eq null)
+      stackTrace = scala.scalajs.runtime.StackTrace.extract(this)
+    stackTrace
+  }
+
+  def setStackTrace(stackTrace: Array[StackTraceElement]): Unit = {
+    /* TODO Try and see whether using exists() would not blow up opt code */
+    var i = 0
+    while (i < stackTrace.length) {
+      if (stackTrace(i) eq null)
+        throw new NullPointerException()
+      i += 1
+    }
+
+    this.stackTrace = stackTrace.clone()
+  }
+
+  def printStackTrace(): Unit = printStackTrace(System.err)
+
+  def printStackTrace(out: java.io.PrintStream): Unit = {
+    getStackTrace() // will init it if still null
+
+    // Message
+    out.println(toString)
+
+    // Trace
+    var i = 0
+    while (i < stackTrace.length) {
+      out.println("  at "+stackTrace(i))
+      i += 1
+    }
+
+    // TODO Causes
+  }
+
+  // def printStackTrace(s: java.io.PrintWriter): Unit = ???
 
   override def toString() = {
     val className = getClass.getName
