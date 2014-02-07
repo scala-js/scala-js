@@ -94,5 +94,34 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fBoolean(true)).toBeTruthy
     }
 
+    it("should work with Arrays") {
+      type UPD = { def update(i: Int, x: String): Unit }
+      type APL = { def apply(i: Int): String }
+      type LEN = { def length: Int }
+      def upd(obj: UPD, i: Int, x: String) = obj.update(i,x)
+      def apl(obj: APL, i: Int) = obj.apply(i)
+      def len(obj: LEN) = obj.length
+
+      val x = Array("asdf","foo","bar")
+
+      expect(len(x)).toEqual(3)
+      expect(apl(x,0)).toEqual("asdf")
+      upd(x,1,"2foo")
+      expect(x(1)).toEqual("2foo")
+    }
+
+    it("should work with Arrays of primitive values") {
+      type UPD = { def update(i: Int, x: Int): Unit }
+      type APL = { def apply(i: Int): Int}
+      def upd(obj: UPD, i: Int, x: Int) = obj.update(i,x)
+      def apl(obj: APL, i: Int) = obj.apply(i)
+
+      val x = Array(5,2,8)
+
+      expect(apl(x,0)).toEqual(5)
+      upd(x,1,1000)
+      expect(x(1)).toEqual(1000)
+    }
+
   }
 }
