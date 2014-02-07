@@ -221,6 +221,9 @@ object Dynamic {
   /** Instantiates a new object of a JavaScript class. */
   def newInstance(clazz: Dynamic)(args: Any*): Dynamic = sys.error("stub")
 
+  /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
+  def typeOf(x: Any): String = sys.error("stub")
+
   /** Creates a new object with a literal syntax.
    *
    *  For example,

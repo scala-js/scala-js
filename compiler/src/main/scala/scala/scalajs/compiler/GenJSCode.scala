@@ -2410,6 +2410,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             case JS2N => arg
             case JS2S => arg
 
+            case TYPEOF =>
+              // js.Dynamic.typeOf(arg)
+              js.UnaryOp("typeof", arg)
+
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
               maybeDynamicSelect(receiver, arg)
