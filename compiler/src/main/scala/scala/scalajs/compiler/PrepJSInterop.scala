@@ -110,14 +110,28 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
      * js.Any
      */
     private def transformJSAny(implDef: ImplDef) = {
+      val sym = implDef.symbol
+
+      lazy val badParent = sym.info.parents.find(t => !(t <:< JSAnyClass.tpe))
+      def inScalaJSJSPackage = sym.enclosingPackage == ScalaJSJSPackage
+
       implDef match {
+        // Check that we do not extends a trait that does not extends js.Any
+        case _ if !inScalaJSJSPackage && !badParent.isEmpty =>
+          val badName = {
+            val names = (badParent.get.typeSymbol.fullName, sym.fullName).zipped
+            names.dropWhile(scala.Function.tupled(_ == _)).unzip._1.mkString
+          }
+          unit.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
+              "which does not extend js.Any.")
+
         // Check that we are not an anonymous class
-        case cldef: ClassDef if cldef.symbol.isAnonymousClass =>
+        case cldef: ClassDef if sym.isAnonymousClass =>
           unit.error(implDef.pos, "Anonymous classes may not " +
               "extend js.Any")
 
         // Check that we do not have a case modifier
-        case implDef if implDef.mods.hasFlag(Flag.CASE) =>
+        case _ if implDef.mods.hasFlag(Flag.CASE) =>
           unit.error(implDef.pos, "Classes and objects extending " +
               "js.Any may not have a case modifier")
 
@@ -142,11 +156,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
         //      "js.Any may only have a single, empty argument list")
 
         case _ =>
-          // We cannot use implDef.symbol directly, since the symbol
+          // We cannot use sym directly, since the symbol
           // of a module is not its type's symbol but the value it declares
-          val sym = implDef.symbol.tpe.typeSymbol
+          val tSym = sym.tpe.typeSymbol
 
-          sym.setAnnotations(rawJSAnnot :: sym.annotations)
+          tSym.setAnnotations(rawJSAnnot :: sym.annotations)
 
       }
 
