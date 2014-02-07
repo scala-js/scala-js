@@ -26,19 +26,9 @@ import scala.collection.{ immutable, mutable }
  *  boxing of proxying of any kind.
  */
 sealed trait Any extends scala.AnyRef {
-  def unary_+(): Number = sys.error("stub")
-  def unary_-(): Number = sys.error("stub")
-  def unary_~(): Number = sys.error("stub")
-
   def unary_!(): Boolean = sys.error("stub")
 
   def +(that: String): String = sys.error("stub")
-  def +(that: Dynamic): Any = sys.error("stub") // JSNumber v JSString
-
-  def &&[A <: Any](that: A): that.type = sys.error("stub")
-
-  // def ||[A <: Any](that: A): this.type v that.type = sys.error("stub")
-  def ||(that: Any): Any = sys.error("stub")
 }
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
@@ -161,9 +151,11 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   /** Calls this object as a callable. */
   def apply(args: Any*): Dynamic
 
-  def +(that: Number): Number
-  def +(that: Any): Any // Number v String
+  def unary_+(): Number
+  def unary_-(): Number
+  def unary_~(): Number
 
+  def +(that: Number): Dynamic // could be a String if this is a String
   def -(that: Number): Number
   def *(that: Number): Number
   def /(that: Number): Number
@@ -175,6 +167,7 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def |(that: Number): Number
   def ^(that: Number): Number
 
+  def +(that: Dynamic): Dynamic // could be String if this or that is a String
   def -(that: Dynamic): Number
   def *(that: Dynamic): Number
   def /(that: Dynamic): Number
@@ -186,6 +179,33 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
 
+  def <(that: Number): Boolean
+  def >(that: Number): Boolean
+  def <=(that: Number): Boolean
+  def >=(that: Number): Boolean
+
+  def <(that: String): Boolean
+  def >(that: String): Boolean
+  def <=(that: String): Boolean
+  def >=(that: String): Boolean
+
+  def <(that: Dynamic): Boolean
+  def >(that: Dynamic): Boolean
+  def <=(that: Dynamic): Boolean
+  def >=(that: Dynamic): Boolean
+
+  /* The result of (dyn && bool) and (dyn || bool) has, in theory, type
+   * (Dynamic v Boolean). This type cannot be expressed in Scala, but if it
+   * could, the operations one could apply on a (Dynamic v Boolean) would be
+   * the *intersection* of the operations one can apply on a Dynamic and on a
+   * Boolean. Since any operation can be applied on a Dynamic, this
+   * intersection is equal to the set of operations supported by Boolean.
+   * Hence the result type is restricted to Boolean.
+   */
+  def &&(that: Boolean): Boolean
+  def ||(that: Boolean): Boolean
+
+  def &&(that: Dynamic): Dynamic
   def ||(that: Dynamic): Dynamic
 
   // Work around the annoying implicits in Predef in Scala 2.10.
@@ -274,8 +294,11 @@ object Dictionary {
 
 /** Primitive JavaScript number. */
 sealed trait Number extends Any {
-  def +(that: Number): Number
+  def unary_+(): Number
+  def unary_-(): Number
+  def unary_~(): Number
 
+  def +(that: Number): Number
   def -(that: Number): Number
   def *(that: Number): Number
   def /(that: Number): Number
@@ -287,6 +310,7 @@ sealed trait Number extends Any {
   def |(that: Number): Number
   def ^(that: Number): Number
 
+  def +(that: Dynamic): Dynamic // could be a String if that is a String
   def -(that: Dynamic): Number
   def *(that: Dynamic): Number
   def /(that: Dynamic): Number
@@ -298,7 +322,15 @@ sealed trait Number extends Any {
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
 
-  def ||(that: Number): Number
+  def <(that: Number): Boolean
+  def >(that: Number): Boolean
+  def <=(that: Number): Boolean
+  def >=(that: Number): Boolean
+
+  def <(that: Dynamic): Boolean
+  def >(that: Dynamic): Boolean
+  def <=(that: Dynamic): Boolean
+  def >=(that: Dynamic): Boolean
 
   def toString(radix: Number): String = ???
 
@@ -397,9 +429,12 @@ object Number extends Object {
 
 /** Primitive JavaScript boolean. */
 sealed trait Boolean extends Any {
+  def &&(that: Boolean): Boolean
   def ||(that: Boolean): Boolean
 
-  def unary_!(): Boolean
+  // See the comment in `Dynamic` for the rationale of returning Boolean here.
+  def &&(that: Dynamic): Boolean
+  def ||(that: Dynamic): Boolean
 }
 
 /** The top-level `Boolean` JavaScript object. */
@@ -409,11 +444,9 @@ object Boolean extends Object {
 
 /** Primitive JavaScript string. */
 sealed trait String extends Any {
-  def +(that: Any): String
   override def +(that: String): String = sys.error("stub")
-  override def +(that: Dynamic): String = sys.error("stub")
-
-  def ||(that: String): String
+  def +(that: Any): String
+  def +(that: Dynamic): String
 
   def < (that: String): Boolean
   def < (that: Dynamic): Boolean
