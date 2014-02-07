@@ -24,6 +24,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
+    lazy val ScalaJSJSPackage = getRequiredPackage("scala.scalajs.js")
+
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
       lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
