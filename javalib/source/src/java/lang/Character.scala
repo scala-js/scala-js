@@ -11,6 +11,8 @@ class Character(value: scala.Char) {
   override def toString: String =
     js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
 
+  override def hashCode(): Int = value.##
+
   /*
    * Methods on scala.Char
    * The following methods are only here to properly support reflective calls
