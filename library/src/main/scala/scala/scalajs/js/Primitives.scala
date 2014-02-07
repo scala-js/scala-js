@@ -35,8 +35,6 @@ sealed trait Any extends scala.AnyRef {
   def +(that: String): String = sys.error("stub")
   def +(that: Dynamic): Any = sys.error("stub") // JSNumber v JSString
 
-  def &&[A <: Any](that: A): that.type = sys.error("stub")
-
   // def ||[A <: Any](that: A): this.type v that.type = sys.error("stub")
   def ||(that: Any): Any = sys.error("stub")
 }
@@ -397,6 +395,7 @@ object Number extends Object {
 
 /** Primitive JavaScript boolean. */
 sealed trait Boolean extends Any {
+  def &&(that: Boolean): Boolean
   def ||(that: Boolean): Boolean
 
   def unary_!(): Boolean
