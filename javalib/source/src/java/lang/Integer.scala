@@ -2,17 +2,23 @@ package java.lang
 
 import scala.scalajs.js
 
-class Character(value: scala.Char) {
-  def charValue(): scala.Char = value
+final class Integer(private val value: scala.Int) extends Number {
+  protected[lang] val isInt = true
+
+  def intValue() = value
+  def longValue() = value.toLong
+  def floatValue() = value.toFloat
+  def doubleValue() = value.toDouble
+
+  override def hashCode(): Int = value.##
 
   override def equals(that: Any) =
-    that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
+    that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
 
-  override def toString: String =
-    js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
+  override def toString = (value:js.Number).toString()
 
   /*
-   * Methods on scala.Char
+   * Methods on scala.Int
    * The following methods are only here to properly support reflective calls
    * on boxed primitive values. YOU WILL NOT BE ABLE TO USE THESE METHODS, since
    * we use the true javalib to lookup symbols, this file contains only
@@ -131,89 +137,71 @@ class Character(value: scala.Char) {
 
 }
 
-object Character {
-  val TYPE = classOf[scala.Char]
-  val MIN_VALUE: scala.Char = 0
-  val MAX_VALUE: scala.Char = 0xff
+object Integer {
+  val TYPE = classOf[scala.Int]
+  val MIN_VALUE: scala.Int = -2147483648
+  val MAX_VALUE: scala.Int = 2147483647
+  val SIZE: Int = 32
 
-  def valueOf(charValue: scala.Char) = new Character(charValue)
+  def valueOf(intValue: scala.Int) = new Integer(intValue)
 
-  val LOWERCASE_LETTER: scala.Byte = 0
-  val UPPERCASE_LETTER: scala.Byte = 0
-  val OTHER_LETTER: scala.Byte = 0
-  val TITLECASE_LETTER: scala.Byte = 0
-  val LETTER_NUMBER: scala.Byte = 0
-  val COMBINING_SPACING_MARK: scala.Byte = 0
-  val ENCLOSING_MARK: scala.Byte = 0
-  val NON_SPACING_MARK: scala.Byte = 0
-  val MODIFIER_LETTER: scala.Byte = 0
-  val DECIMAL_DIGIT_NUMBER: scala.Byte = 0
-  val SURROGATE: scala.Byte = 0
+  def parseInt(s: String): scala.Int =
+    // explicitly specify radix to avoid interpretation as octal (by JS)
+    parseInt(s, 10)
 
-  val MIN_RADIX: scala.Int = 2
-  val MAX_RADIX: scala.Int = 36
-
-  val MIN_HIGH_SURROGATE: scala.Char = '\uD800'
-  val MAX_HIGH_SURROGATE: scala.Char = '\uDBFF'
-  val MIN_LOW_SURROGATE: scala.Char = '\uDC00'
-  val MAX_LOW_SURROGATE: scala.Char = '\uDFFF'
-  val MIN_SURROGATE: scala.Char = MIN_HIGH_SURROGATE
-  val MAX_SURROGATE: scala.Char = MAX_LOW_SURROGATE
-
-  /* Tests */
-  def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
-  def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
-  def digit(c: scala.Char, radix: scala.Int): scala.Int = {
-    if (radix > MAX_RADIX || radix < MIN_RADIX)
-      -1
-    else if (c >= '0' && c <= '9' && c - '0' < radix)
-      c - '0'
-    else if (c >= 'A' && c <= 'Z' && c - 'A' < radix - 10)
-      c - 'A' + 10
-    else if (c >= 'a' && c <= 'z' && c - 'a' < radix - 10)
-      c - 'a' + 10
-    else if (c >= '\uFF21' && c <= '\uFF3A' &&
-      c - '\uFF21' < radix - 10)
-      c - '\uFF21' + 10
-    else if (c >= '\uFF41' && c <= '\uFF5A' &&
-      c - '\uFF41' < radix - 10)
-      c - '\uFF21' + 10
-    else -1
+  def parseInt(s: String, radix: scala.Int): scala.Int = {
+    val res = js.parseInt(s, radix)
+    if (js.isNaN(res))
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      res.toInt
   }
 
-  def isISOControl(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
-  def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def toString(i: scala.Int) = valueOf(i).toString
 
-  def isHighSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_HIGH_SURROGATE) && (c <= MAX_HIGH_SURROGATE)
-  def isLowSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_LOW_SURROGATE) && (c <= MAX_LOW_SURROGATE)
-  def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
-    isHighSurrogate(high) && isLowSurrogate(low)
+  def bitCount(i: scala.Int): scala.Int = {
+    // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+    // The implicit casts to 32-bit ints due to binary ops make this work in JS too
+    val t1 = i - ((i >> 1) & 0x55555555)
+    val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
+    ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+  }
 
-  def isUnicodeIdentifierStart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isUnicodeIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isIdentifierIgnorable(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isMirrored(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLowerCase(c: scala.Char): scala.Boolean = toLowerCase(c) == c
-  def isUpperCase(c: scala.Char): scala.Boolean = toUpperCase(c) == c
-  def isTitleCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isJavaIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def reverseBytes(i: scala.Int): scala.Int = {
+    val byte3 = i >>> 24
+    val byte2 = (i >>> 8) & 0xFF00
+    val byte1 = (i << 8) & 0xFF0000
+    val byte0 = (i << 24)
+    byte0 | byte1 | byte2 | byte3
+  }
 
-  def getDirectionality(c: scala.Char): scala.Byte = sys.error("unimplemented")
+  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = {
+    (i << distance) | (i >>> (32-distance))
+  }
 
-  /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
-  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
-  def toTitleCase(c: scala.Char): scala.Char = sys.error("unimplemented")
-  def getNumericValue(c: scala.Char): scala.Int = sys.error("unimplemented")
+  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = {
+    (i >>> distance) | (i << (32-distance))
+  }
 
-  /* Misc */
-  def reverseBytes(ch: scala.Char): scala.Char = sys.error("unimplemented")
+  def signum(i: scala.Int): scala.Int =
+    if (i == 0) 0 else if (i < 0) -1 else 1
 
-  def toString(c: scala.Char) = valueOf(c).toString
+  def numberOfLeadingZeros(i: scala.Int): scala.Int = {
+    // See http://aggregate.org/MAGIC/#Leading%20Zero%20Count
+    var x = i
+    x |= (x >>> 1)
+    x |= (x >>> 2)
+    x |= (x >>> 4)
+    x |= (x >>> 8)
+    x |= (x >>> 16)
+    32 - bitCount(x)
+  }
+
+  def numberOfTrailingZeros(i: scala.Int): scala.Int =
+    // See http://aggregate.org/MAGIC/#Trailing%20Zero%20Count
+    bitCount((i & -i) - 1)
+
+  def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
+  def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
+  def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)
 }

@@ -78,18 +78,6 @@ object Any {
     result
   }
 
-  def stringToCharArray(jsStr: String): scala.Array[Char] = {
-    val str: java.lang.String = jsStr
-    val length = str.length
-    val result = new scala.Array[Char](length)
-    var i = 0
-    while (i < length) {
-      result(i) = str.charAt(i)
-      i += 1
-    }
-    result
-  }
-
   def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] = {
     val result = new Array[A]
     col.foreach(x => result.push(x))
@@ -424,6 +412,18 @@ sealed trait String extends Any {
   override def +(that: Dynamic): String = sys.error("stub")
 
   def ||(that: String): String
+
+  def < (that: String): Boolean
+  def < (that: Dynamic): Boolean
+
+  def > (that: String): Boolean
+  def > (that: Dynamic): Boolean
+
+  def <=(that: String): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: String): Boolean
+  def >=(that: Dynamic): Boolean
 
   /**
    * This property returns the number of code units in the string. UTF-16,

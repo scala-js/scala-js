@@ -24,6 +24,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
+    lazy val ScalaJSJSPackage = getPackage("scala.scalajs.js")
+
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
       lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
@@ -109,6 +111,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val RuntimeLongModule = RuntimeLongClass.companionModule
       lazy val RuntimeLong_from = getMemberMethod(RuntimeLongModule, newTermName("fromRuntimeLong"))
       lazy val RuntimeLong_to   = getMemberMethod(RuntimeLongModule, newTermName("toRuntimeLong"))
+
+    lazy val RuntimeStringClass = getRequiredClass("scala.scalajs.runtime.RuntimeString")
+    lazy val RuntimeStringModule = RuntimeStringClass.companionModule
 
   }
 }

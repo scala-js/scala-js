@@ -335,12 +335,18 @@ object ScalaJSPlugin extends Plugin {
             (unmanagedSources in optimizeJS).value)
       },
 
+      moduleName in optimizeJS := moduleName.value,
+
+      artifactPath in optimizeJS :=
+        ((crossTarget in optimizeJS).value /
+            ((moduleName in optimizeJS).value + "-opt.js")),
+
       optimizeJS := {
         val s = streams.value
         val logger = s.log
         val cacheDir = s.cacheDirectory
         val allJSFiles = (sources in optimizeJS).value
-        val output = (crossTarget in optimizeJS).value / (moduleName.value + "-opt.js")
+        val output = (artifactPath in optimizeJS).value
 
         val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>

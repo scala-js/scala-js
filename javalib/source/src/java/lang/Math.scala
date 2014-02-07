@@ -81,5 +81,61 @@ object Math {
     }
     return sign * xi
   }
+
+  def nextUp(a: scala.Double): scala.Double = {
+  // js implementation of nextUp https://gist.github.com/Yaffle/4654250
+    import scala.Double._
+    if (a != a || a == PositiveInfinity)
+      a
+    else if (a == NegativeInfinity)
+      -MaxValue
+    else if (a == MaxValue)
+      PositiveInfinity
+    else if (a == 0)
+      MinValue
+    else {
+      def iter(x: scala.Double, xi: scala.Double, n: scala.Double): scala.Double = {
+        if (Math.abs(xi - x) >= 1E-16) {
+          val c0 = (xi + x) / 2
+          val c =
+            if (c0 == NegativeInfinity || c0 == PositiveInfinity)
+              x + (xi - x) / 2
+            else
+              c0
+          if (n == c) xi
+          else if (a < c) iter(x = x, xi = c, n = c)
+          else iter(x = c, xi = xi, n = c)
+        }
+        else xi
+      }
+      val d = Math.max(Math.abs(a) * 2E-16, MinValue)
+      val ad = a + d
+      val xi0 =
+        if (ad == PositiveInfinity) MaxValue
+        else ad
+      iter(x = a, xi = xi0, n = a)
+    }
+  }
+
+  def nextAfter(a: scala.Double, b: scala.Double): scala.Double = {
+    if (b < a)
+      -nextUp(-a)
+    else if (a < b)
+      nextUp(a)
+    else if (a != a || b != b)
+      scala.Double.NaN
+    else
+      b
+  }
+
+  def ulp(a: scala.Double): scala.Double = {
+    if (abs(a) == scala.Double.PositiveInfinity)
+      scala.Double.PositiveInfinity
+    else if (abs(a) == scala.Double.MaxValue)
+      pow(2, 971)
+    else
+      nextAfter(abs(a), scala.Double.MaxValue) - a
+  }
+
   // TODO The methods not available in the JavaScript Math object
 }

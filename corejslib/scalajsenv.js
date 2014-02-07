@@ -63,6 +63,10 @@ var ScalaJS = {
     return !!(obj && obj.$classData);
   },
 
+  isScalaJSArray: function(obj) {
+    return obj && obj.$classData && obj.$classData.isArrayClass
+  },
+
   dynamicIsInstanceOf: function(obj, data) {
     return data.isInstance(obj);
   },
@@ -257,14 +261,6 @@ var ScalaJS = {
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
-  stringStartsWith: function(str, prefix) {
-    return str["substring"](0, prefix["length"]) === prefix;
-  },
-
-  stringEndsWith: function(str, suffix) {
-    return str["substring"](str["length"] - suffix["length"]) === suffix;
-  },
-
   truncateToLong: function(value) {
     return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
                      : ScalaJS.g["Math"]["floor"](value);
@@ -354,7 +350,7 @@ var ScalaJS = {
 // Type data constructors
 
 /** @constructor */
-ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
+ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun) {
   this.constr = undefined;
   this.parentData = undefined;
   this.ancestors = {};
@@ -369,6 +365,7 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
   this._arrayOf = undefined;
   this.isInstance = function(obj) { return false; };
   this.isArrayOf = function(obj, depth) { return false; };
+  this.boxValue = boxFun
 },
 
 /** @constructor */
@@ -438,6 +435,27 @@ ScalaJS.ArrayTypeData = function(componentData) {
     return new ArrayClass(this.underlying["slice"](0));
   };
 
+  // Methods for reflective calls
+  ArrayClass.prototype.apply__I__ = function(i) {
+    return componentData.boxValue(this.underlying[i]);
+  }
+
+  ArrayClass.prototype.clone__ = function() {
+    return this.clone__O();
+  }
+
+  ArrayClass.prototype.length__ = function() {
+    return ScalaJS.bI(this.underlying["length"]);
+  }
+
+  // Note that this method is actually typed on the true element type, since
+  // array types are not erased. The compiler does some magic to artificially
+  // erase the element type when reflectively calling the update method of a
+  // ScalaJSArray
+  ArrayClass.prototype.update__I__elementType__ = function(i,x) {
+    this.underlying[i] = x;
+  }
+
   // The data
 
   var encodedName = "[" + componentData.arrayEncodedName;
@@ -481,20 +499,23 @@ ScalaJS.ClassTypeData.prototype.getArrayOf = function() {
   return this._arrayOf;
 };
 
+// Boxes a value. This is identity, except for primitive value types
+ScalaJS.ClassTypeData.prototype.boxValue = function(v) { return v; }
+
 ScalaJS.PrimitiveTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
 // Create primitive types
 
-ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
-ScalaJS.data.scala_Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.data.scala_Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char");
-ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
-ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short");
-ScalaJS.data.scala_Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int");
-ScalaJS.data.scala_Long    = new ScalaJS.PrimitiveTypeData("longZero", "J", "long");
-ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
-ScalaJS.data.scala_Double  = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
+ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void", ScalaJS.bV);
+ScalaJS.data.scala_Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean", ScalaJS.bZ);
+ScalaJS.data.scala_Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char", ScalaJS.bC);
+ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte", ScalaJS.bB);
+ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short", ScalaJS.bS);
+ScalaJS.data.scala_Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int", ScalaJS.bI);
+ScalaJS.data.scala_Long    = new ScalaJS.PrimitiveTypeData("longZero", "J", "long", ScalaJS.bJ);
+ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float", ScalaJS.bF);
+ScalaJS.data.scala_Double  = new ScalaJS.PrimitiveTypeData(0.0, "D", "double", ScalaJS.bD);
 
 // Instance tests for array of primitives
 

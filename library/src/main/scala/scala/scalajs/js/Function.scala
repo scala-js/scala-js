@@ -58,11 +58,11 @@ class Function extends Object {
   val length: Number = ???
 
   /**
-   * The apply() method calls a function with a given this value and arguments
-   * provided as an array (or an array-like object).
+   * The call() method calls a function with a given this value and arguments
+   * provided individually.
    *
    * You can assign a different this object when calling an existing function.
-   * this refers to the current object, the calling object. With apply, you
+   * this refers to the current object, the calling object. With call, you
    * can write a method once and then inherit it in another object, without
    * having to rewrite the method for the new object.
    *
@@ -77,17 +77,21 @@ class Function extends Object {
    * fun.apply(this, new Array('eat', 'bananas')).
    *
    * MDN
-   */
-  def $apply[A](thisArg: Any, argArray: Array[A]): Dynamic = ???
-  def $apply(thisArg: Any): Dynamic = ???
-
-  /**
-   * The call() method calls a function with a given this value and arguments
-   * provided individually.
    *
-   * MDN
+   * Scala.js-specific note: call() can be used instead of the apply() method
+   * available in JavaScript. Simply use the :_* notation to expand a Seq as
+   * variadic arguments, e.g.,
+   *
+   * {{{
+   * someFun.call(thisArg, argSeq: _*)
+   * }}}
+   *
    */
   def call(thisArg: Any, argArray: Any*): Dynamic = ???
+
+  // Do not expose apply: use call(thisArg, argArray: _*) instead.
+  // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = ???
+  // def apply(thisArg: Any): Dynamic = ???
 
   /**
    * The bind() method creates a new function that, when called, has its this
