@@ -184,6 +184,22 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
 
+  def <(that: Number): Boolean
+  def <(that: String): Boolean
+  def <(that: Dynamic): Boolean
+
+  def >(that: Number): Boolean
+  def >(that: String): Boolean
+  def >(that: Dynamic): Boolean
+
+  def <=(that: Number): Boolean
+  def <=(that: String): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: Number): Boolean
+  def >=(that: String): Boolean
+  def >=(that: Dynamic): Boolean
+
   def ||(that: Dynamic): Dynamic
 
   // Work around the annoying implicits in Predef in Scala 2.10.
@@ -295,6 +311,18 @@ sealed trait Number extends Any {
   def &(that: Dynamic): Number
   def |(that: Dynamic): Number
   def ^(that: Dynamic): Number
+
+  def <(that: Number): Boolean
+  def <(that: Dynamic): Boolean
+
+  def >(that: Number): Boolean
+  def >(that: Dynamic): Boolean
+
+  def <=(that: Number): Boolean
+  def <=(that: Dynamic): Boolean
+
+  def >=(that: Number): Boolean
+  def >=(that: Dynamic): Boolean
 
   def ||(that: Number): Number
 
