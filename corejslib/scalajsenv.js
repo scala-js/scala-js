@@ -100,6 +100,13 @@ var ScalaJS = {
         .init___Lscala_scalajs_js_Any(exception);
   },
 
+  unwrapJavaScriptException: function(exception) {
+    if (ScalaJS.is.scala_scalajs_js_JavaScriptException(exception))
+      return exception.exception__Lscala_scalajs_js_Any();
+    else
+      return exception;
+  },
+
   makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
     return new arrayClassData.constr(nativeArray);
   },
