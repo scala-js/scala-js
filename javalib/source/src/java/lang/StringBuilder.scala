@@ -8,7 +8,7 @@ class StringBuilder(private var content: String) extends CharSequence
   def this(csq: CharSequence) = this(csq.toString)
 
   def append(s: String): StringBuilder = {
-    content += { if (s == null) "null" else s }
+    content += ("" + s)
     this
   }
 
@@ -21,10 +21,7 @@ class StringBuilder(private var content: String) extends CharSequence
   def append(f: Float): StringBuilder = append(f.toString())
   def append(d: Double): StringBuilder = append(d.toString())
 
-  def append(obj: AnyRef): StringBuilder = {
-    if (obj == null) append(null: String)
-    else             append(obj.toString())
-  }
+  def append(obj: AnyRef): StringBuilder = append("" + obj)
 
   def append(csq: CharSequence): StringBuilder = append(csq: AnyRef)
   def append(csq: CharSequence, start: Int, end: Int): StringBuilder = {
