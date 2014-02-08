@@ -193,7 +193,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                                      if (hasWidth)     width.toInt     else -1,
                                      if (hasPrecision) precision.toInt else -1)
                 None // no further processing
-              case t: AnyRef if !hasFlag("#") => pad(t.toString)
+              case t: AnyRef if !hasFlag("#") => pad("" + t)
               case _ =>
                 throw new FormatFlagsConversionMismatchException("#", 's')
             }

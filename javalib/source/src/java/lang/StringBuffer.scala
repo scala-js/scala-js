@@ -8,7 +8,7 @@ class StringBuffer(private var content: String) extends CharSequence
   def this(csq: CharSequence) = this(csq.toString)
 
   def append(s: String): StringBuffer = {
-    content += { if (s == null) "null" else s }
+    content += ("" + s)
     this
   }
 
@@ -21,10 +21,7 @@ class StringBuffer(private var content: String) extends CharSequence
   def append(f: Float): StringBuffer = append(f.toString())
   def append(d: Double): StringBuffer = append(d.toString())
 
-  def append(obj: AnyRef): StringBuffer = {
-    if (obj == null) append(null: String)
-    else             append(obj.toString())
-  }
+  def append(obj: AnyRef): StringBuffer = append("" + obj)
 
   def append(csq: CharSequence): StringBuffer = append(csq: AnyRef)
   def append(csq: CharSequence, start: Int, end: Int): StringBuffer = {
