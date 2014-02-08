@@ -236,6 +236,9 @@ trait JSPrinters { self: JSGlobalAddons =>
           }
           undent; println(); print("}")
 
+        case js.Debugger() =>
+          print("debugger")
+
         // Expressions
 
         case js.DotSelect(qualifier, item) =>

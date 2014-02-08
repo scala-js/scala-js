@@ -25,6 +25,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
     lazy val ScalaJSJSPackage = getRequiredPackage("scala.scalajs.js")
+      lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
