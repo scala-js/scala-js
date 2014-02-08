@@ -1529,12 +1529,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val Select(receiver, _) = fun
 
-            if (ToStringMaybeOnString contains fun.symbol) {
-              js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
-            } else if (MethodWithHelperInEnv contains fun.symbol) {
+            if (MethodWithHelperInEnv contains fun.symbol) {
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genCallHelper(helper, arguments:_*)
+            } else if (ToStringMaybeOnString contains fun.symbol) {
+              js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
             } else if (isStringType(receiver.tpe)) {
               genStringCall(app)
             } else if (isRawJSType(receiver.tpe)) {
@@ -1563,13 +1563,13 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private lazy val ToStringMaybeOnString = Set[Symbol](
-      Object_toString,
       getMemberMethod(CharSequenceClass, nme.toString_),
       getMemberMethod(StringClass, nme.toString_)
     )
 
     // TODO Make these primitives?
     private lazy val MethodWithHelperInEnv = Map[Symbol, String](
+      Object_toString  -> "objectToString",
       Object_getClass  -> "objectGetClass",
       Object_clone     -> "objectClone",
       Object_finalize  -> "objectFinalize",

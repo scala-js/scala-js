@@ -78,6 +78,8 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             lastImplicitIndex
           }
           lastIndex = index
+          if (index <= 0 || index > args.length)
+            throw new MissingFormatArgumentException(matchResult(5))
           val arg = args(index-1)
 
           val widthStr = matchResult(3)

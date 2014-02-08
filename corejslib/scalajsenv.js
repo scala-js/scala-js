@@ -177,6 +177,13 @@ var ScalaJS = {
       return lhs === rhs;
   },
 
+  objectToString: function(instance) {
+    if (instance === void 0)
+      return "undefined";
+    else
+      return instance.toString();
+  },
+
   objectGetClass: function(instance) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
       return instance.getClass__java_lang_Class();
