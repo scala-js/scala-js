@@ -40,5 +40,26 @@ object IntegerTest extends JasmineTest {
       expect(Integer.numberOfTrailingZeros(0)).toEqual(32)
     }
 
+    it("should provide `toBinaryString`") {
+      expect(Integer.toBinaryString(-1)).toEqual("11111111111111111111111111111111")
+      expect(Integer.toBinaryString(-10001)).toEqual("11111111111111111101100011101111")
+      expect(Integer.toBinaryString(Integer.MIN_VALUE)).toEqual("10000000000000000000000000000000")
+      expect(Integer.toBinaryString(Integer.MAX_VALUE)).toEqual("1111111111111111111111111111111")
+    }
+
+    it("should provide `toHexString`") {
+      expect(Integer.toHexString(-1)).toEqual("ffffffff")
+      expect(Integer.toHexString(-10001)).toEqual("ffffd8ef")
+      expect(Integer.toHexString(Integer.MIN_VALUE)).toEqual("80000000")
+      expect(Integer.toHexString(-2147000002)).toEqual("8007613e")
+      expect(Integer.toHexString(Integer.MAX_VALUE)).toEqual("7fffffff")
+    }
+
+    it("should provide `toOctalString`") {
+      expect(Integer.toOctalString(-1)).toEqual("37777777777")
+      expect(Integer.toOctalString(-10001)).toEqual("37777754357")
+      expect(Integer.toOctalString(Integer.MIN_VALUE)).toEqual("20000000000")
+      expect(Integer.toOctalString(Integer.MAX_VALUE)).toEqual("17777777777")
+    }
   }
 }
