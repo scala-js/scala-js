@@ -44,6 +44,7 @@ abstract class JSPrimitives {
 
   val GETGLOBAL = 320 // Get the top-level object (`window` in browsers)
   val DYNNEW = 321    // Instantiate a new JavaScript object
+  val TYPEOF = 322    // typeof x
 
   val DYNSELECT = 330 // js.Dynamic.selectDynamic
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
@@ -86,6 +87,7 @@ abstract class JSPrimitives {
 
     addPrimitive(JSDynamic_global, GETGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)
+    addPrimitive(JSDynamic_typeOf, TYPEOF)
 
     addPrimitive(JSDynamic_selectDynamic, DYNSELECT)
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)

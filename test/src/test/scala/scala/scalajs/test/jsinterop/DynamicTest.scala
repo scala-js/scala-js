@@ -55,5 +55,16 @@ object DynamicTest extends JasmineTest {
       val x = obj()
       expect(x.isInstanceOf[js.Object]).toBeTruthy()
     }
+
+    it("should provide an equivalent to `typeof x`") {
+      import js.Dynamic.typeOf
+      expect(typeOf(5)).toEqual("number")
+      expect(typeOf(false)).toEqual("boolean")
+      expect(typeOf("hello")).toEqual("string")
+      expect(typeOf(null)).toEqual("object")
+      expect(typeOf(new js.Object)).toEqual("object")
+      expect(typeOf(())).toEqual("undefined")
+      expect(typeOf(() => 42)).toEqual("function")
+    }
   }
 }
