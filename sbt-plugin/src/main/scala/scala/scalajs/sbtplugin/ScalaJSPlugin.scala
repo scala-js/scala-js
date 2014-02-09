@@ -75,7 +75,8 @@ object ScalaJSPlugin extends Plugin {
   }
 
   val isScalaJSCompilerJar = isJarWithPrefix(
-      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler") _
+      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
+      "scala-parser-combinators", "scala-xml") _
 
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
     files sortWith { (lhs, rhs) =>

@@ -24,7 +24,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
-    lazy val ScalaJSJSPackage = getRequiredPackage("scala.scalajs.js")
+    lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
       lazy val JSPackage_typeOf   = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
       lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
 
@@ -49,6 +49,10 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSArray_apply  = getMemberMethod(JSArrayClass, newTermName("apply"))
       lazy val JSArray_update = getMemberMethod(JSArrayClass, newTermName("update"))
 
+    lazy val JSFunctionClasses     = (0 to 22) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
+    lazy val JSThisFunctionClasses = (0 to 21) map (n => getRequiredClass("scala.scalajs.js.ThisFunction"+n))
+    lazy val AllJSFunctionClasses  = JSFunctionClasses ++ JSThisFunctionClasses
+
     lazy val RuntimeExceptionClass    = requiredClass[RuntimeException]
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
@@ -64,6 +68,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSObjectTpe    = JSObjectClass.toTypeConstructor
 
     lazy val JSGlobalScopeTpe = JSGlobalScopeClass.toTypeConstructor
+
+    lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
     lazy val JSAnyModule = JSAnyClass.companionModule
       lazy val JSAny_fromUnit    = getMemberMethod(JSAnyModule, newTermName("fromUnit"))

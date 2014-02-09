@@ -117,7 +117,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
       implDef match {
         // Check that we do not extends a trait that does not extends js.Any
-        case _ if !inScalaJSJSPackage && !badParent.isEmpty =>
+        case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
+          !isJSLambda(sym) =>
           val badName = {
             val names = (badParent.get.typeSymbol.fullName, sym.fullName).zipped
             names.dropWhile(scala.Function.tupled(_ == _)).unzip._1.mkString
@@ -126,7 +127,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
               "which does not extend js.Any.")
 
         // Check that we are not an anonymous class
-        case cldef: ClassDef if sym.isAnonymousClass =>
+        case cldef: ClassDef
+          if cldef.symbol.isAnonymousClass && !isJSLambda(sym) =>
           unit.error(implDef.pos, "Anonymous classes may not " +
               "extend js.Any")
 
@@ -136,7 +138,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
               "js.Any may not have a case modifier")
 
         // Check if we may have a js.Any here
-        case _: ClassDef if !allowJSAny && !jsAnyClassOnly =>
+        case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
+          !isJSLambda(sym) =>
           unit.error(implDef.pos, "Classes extending js.Any may not be " +
               "defined inside a class or trait")
 
@@ -217,6 +220,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def isJSGlobalScope(implDef: ImplDef) = isScalaJSDefined &&
     (implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass)
+
+  private def isJSLambda(sym: Symbol) = isScalaJSDefined &&
+    sym.isAnonymousClass &&
+    AllJSFunctionClasses.exists(sym.tpe.typeSymbol isSubClass _)
 
   private def isScalaEnum(implDef: ImplDef) =
     implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass

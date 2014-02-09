@@ -42,7 +42,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def encodeLabelSym(sym: Symbol, freshName: Symbol => String)(
       implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.Ident(freshName(sym), Some(sym.originalName.decoded))
+    js.Ident(freshName(sym), Some(sym.unexpandedName.decoded))
   }
 
   private lazy val allRefClasses: Set[Symbol] = {
@@ -72,7 +72,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         "f"
 
     val encodedName = name + "$" + idSuffix
-    js.Ident(mangleJSName(encodedName), Some(sym.originalName.decoded))
+    js.Ident(mangleJSName(encodedName), Some(sym.unexpandedName.decoded))
   }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)
@@ -92,7 +92,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
     val paramsString = makeParamsString(sym, reflProxy)
     js.Ident(encodedName + paramsString,
-        Some(sym.originalName.decoded + paramsString))
+        Some(sym.unexpandedName.decoded + paramsString))
   }
 
   /** encode a method symbol on a trait so it refers to its corresponding
@@ -117,7 +117,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     // Create ident
     js.DotSelect(envField("impls"),
         js.Ident(encodedName + paramsString,
-            Some(sym.originalName.decoded + paramsString)))
+            Some(sym.unexpandedName.decoded + paramsString)))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
@@ -126,14 +126,14 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(
         mangleJSName(sym.name.toString) +
         makeParamsString(List(internalName(sym.tpe))),
-        Some(sym.originalName.decoded))
+        Some(sym.unexpandedName.decoded))
   }
 
   def encodeLocalSym(sym: Symbol, freshName: Symbol => String)(
       implicit pos: Position): js.Ident = {
     require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.Ident(mangleJSName(freshName(sym)), Some(sym.originalName.decoded))
+    js.Ident(mangleJSName(freshName(sym)), Some(sym.unexpandedName.decoded))
   }
 
   def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {

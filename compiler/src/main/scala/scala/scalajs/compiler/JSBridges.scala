@@ -33,7 +33,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     val declaredMethods = sym.info.decls.filter(isCandidateForBridge)
     val newlyDeclaredMethods = declaredMethods.filterNot(isOverridingBridge)
     val newlyDeclaredMethodNames =
-      newlyDeclaredMethods.map(_.name).toList.distinct
+      newlyDeclaredMethods.map(_.name.toTermName).toList.distinct
     newlyDeclaredMethodNames map (genBridge(sym, _))
   }
 
