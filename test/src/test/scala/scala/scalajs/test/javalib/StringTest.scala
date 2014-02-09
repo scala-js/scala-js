@@ -30,10 +30,24 @@ object StringTest extends JasmineTest {
       expect("Scala.js".equals("Java")).toBeFalsy
     }
 
+    it("should respond to `equalsIgnoreCase`") {
+      expect("Scala.JS".equalsIgnoreCase("Scala.js")).toBeTruthy
+      expect("åløb".equalsIgnoreCase("ÅLØb")).toBeTruthy
+      expect("Scala.js".equalsIgnoreCase("Java")).toBeFalsy
+      expect("Scala.js".equalsIgnoreCase(null)).toBeFalsy
+    }
+
     it("should respond to `compareTo`") {
       expect("Scala.js".compareTo("Scala")).toBeGreaterThan(0)
       expect("Scala.js".compareTo("Scala.js")).toBe(0)
       expect("Scala.js".compareTo("banana")).toBeLessThan(0)
+    }
+
+    it("should respond to `compareToIgnoreCase`") {
+      expect("Scala.JS".compareToIgnoreCase("Scala.js")).toBe(0)
+      expect("Scala.JS".compareToIgnoreCase("scala")).toBeGreaterThan(0)
+      expect("åløb".compareToIgnoreCase("ÅLØB")).toBe(0)
+      expect("Java".compareToIgnoreCase("Scala")).toBeLessThan(0)
     }
 
     it("should respond to `isEmpty`") {
