@@ -42,6 +42,16 @@ private[runtime] trait RuntimeString { this: js.String =>
     else 1
   }
 
+  def equalsIgnoreCase(that: String) = {
+    if (that eq null) false
+    else {
+      val thatljs = (that: js.String).toLowerCase
+      val thisljs = (this: js.String).toLowerCase
+
+      thisljs == thatljs
+    }
+  }
+
   def concat(s: String): String = (this: js.String) + s
 
   def contains(s: CharSequence): Boolean =
