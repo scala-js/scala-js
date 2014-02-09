@@ -24,7 +24,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
     lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
-    lazy val ScalaJSJSPackage = getPackage("scala.scalajs.js")
+    lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
       lazy val JSPackage_typeOf   = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
       lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
 

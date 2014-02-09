@@ -21,7 +21,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                             with JSEncoding
                             with JSBridges
                             with JSDesugaring
-                            with GenJSFiles {
+                            with GenJSFiles
+                            with Compat210Component {
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
   }
@@ -741,7 +742,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val value = retTpe match {
           case _ if isPrimitiveValueType(retTpe) =>
             makeBox(call, retTpe)
-          case ErasedValueType(boxedClass, _) =>
+          case retTpe: ErasedValueType =>
+            val boxedClass = retTpe.valueClazz
             val boxCtor = boxedClass.primaryConstructor
             genNew(boxedClass, boxCtor, List(call))
           case _ =>
@@ -3214,7 +3216,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val unboxedParam = paramTpe match {
           case _ if isPrimitiveValueType(paramTpe) =>
             makeUnbox(paramIdent, paramTpe)
-          case ErasedValueType(boxedClass, _) =>
+          case paramTpe: ErasedValueType =>
+            val boxedClass = paramTpe.valueClazz
             val unboxMethod = boxedClass.derivedValueClassUnbox
             js.ApplyMethod(paramIdent, encodeMethodSym(unboxMethod), Nil)
         }
@@ -3230,7 +3233,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               val boxedExpr = resultType match {
                 case _ if isPrimitiveValueType(resultType) =>
                   makeBox(expr, resultType)
-                case ErasedValueType(boxedClass, _) =>
+                case resultType: ErasedValueType =>
+                  val boxedClass = resultType.valueClazz
                   val ctor = boxedClass.primaryConstructor
                   genNew(boxedClass, ctor, List(expr))
               }
