@@ -59,6 +59,9 @@ abstract class JSPrimitives {
   val NTR_MOD_SUFF  = 337 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
   val NTR_NAME_JOIN = 338 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
+  val TYPEOF = 340   // typeof x
+  val DEBUGGER = 341 // js.debugger()
+
   /** Initialize the map of primitive methods */
   def init() {
     if (!isScalaJSDefined)
@@ -100,8 +103,11 @@ abstract class JSPrimitives {
 
     addPrimitive(getMember(ntModule, newTermName("MODULE_SUFFIX_STRING")), NTR_MOD_SUFF)
     addPrimitive(getMember(ntModule, newTermName("NAME_JOIN_STRING")), NTR_NAME_JOIN)
+
+    addPrimitive(JSPackage_typeOf, TYPEOF)
+    addPrimitive(JSPackage_debugger, DEBUGGER)
   }
 
   def isJavaScriptPrimitive(code: Int) =
-    code >= 300 && code < 340
+    code >= 300 && code < 350
 }

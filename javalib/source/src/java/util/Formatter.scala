@@ -39,6 +39,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
 
   private val RegularChunk = new RegExpExtractor(new js.RegExp("""^[^\x25]+"""))
   private val DoublePercent = new RegExpExtractor(new js.RegExp("""^\x25{2}"""))
+  private val EOLChunk = new RegExpExtractor(new js.RegExp("""^\x25n"""))
   private val FormattedChunk = new RegExpExtractor(new js.RegExp(
       """^\x25(?:([1-9]\d*)\$)?([-#+ 0,\(<]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
 
@@ -56,6 +57,10 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
         case DoublePercent(_) =>
           fmt = fmt.substring(2)
           dest.append('%')
+
+        case EOLChunk(_) =>
+          fmt = fmt.substring(2)
+          dest.append('\n')
 
         case FormattedChunk(matchResult) =>
           fmt = fmt.substring(matchResult(0).length)
@@ -231,8 +236,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                   // JavaDoc: 6 is default precision
                   numberArg.toFixed(6)
               }, !js.isFinite(numberArg))
-            case 'n' =>
-              pad("\n")
           }
 
           def sciNotation(precision: js.Number) = {

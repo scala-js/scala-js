@@ -196,6 +196,9 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
             super.transformStat(js.Switch(newSelector, cases, body))
           }
 
+        case js.Debugger() =>
+          tree
+
         // Treat 'return' as an LHS
 
         case js.Return(expr, label) =>
@@ -564,7 +567,8 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
              */
             rhs match {
               case _:js.FunDef | _:js.Skip | _:js.VarDef | _:js.Assign |
-                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.DocComment =>
+                  _:js.While | _:js.DoWhile | _:js.Switch | _:js.Debugger |
+                  _:js.DocComment =>
                 transformStat(rhs)
               case _ =>
                 abort("Illegal tree in JSDesugar.pushLhsInto():\n" +

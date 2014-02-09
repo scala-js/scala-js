@@ -165,6 +165,8 @@ trait JSTrees { self: JSGlobalAddons =>
     /** Like match in Scala (i.e., a break-free switch) */
     case class Match(selector: Tree, cases: List[(List[Tree], Tree)], default: Tree)(implicit val pos: Position) extends Tree
 
+    case class Debugger()(implicit val pos: Position) extends Tree
+
     // Expressions
 
     case class DotSelect(qualifier: Tree, item: Ident)(implicit val pos: Position) extends Tree

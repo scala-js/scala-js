@@ -53,6 +53,21 @@ package object js extends js.GlobalScope {
   /** The constant Positive Infinity. */
   val Infinity: Number = ???
 
+  /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
+  def typeOf(x: Any): String = sys.error("stub")
+
+  /** Invokes any available debugging functionality.
+   *  If no debugging functionality is available, this statement has no effect.
+   *
+   *  MDN
+   *
+   *  Browser support:
+   *    * Has no effect in Rhino nor, apparently, in Firefox
+   *    * In Chrome, it has no effect unless the developer tools are opened
+   *      beforehand.
+   */
+  def debugger(): Unit = sys.error("stub")
+
   /** Evaluates JavaScript code and returns the result. */
   def eval(x: String): Any = ???
 
