@@ -2178,6 +2178,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       val sym = tree.symbol
+      val params = sym.tpe.params
 
       /** check if the method we are invoking conforms to the update
        *  method on scala.Array. If this is the case, we have to check
@@ -2185,7 +2186,6 @@ abstract class GenJSCode extends plugins.PluginComponent
        *  erased and therefore the method name mangling turns out wrong.
        */
       def isArrayLikeUpdate = sym.name.decoded == "update" && {
-        val params = sym.tpe.params
         params.size == 2 && params.head.tpe.typeSymbol == IntClass &&
         sym.tpe.resultType <:< UnitClass.tpe
       }
@@ -2195,7 +2195,14 @@ abstract class GenJSCode extends plugins.PluginComponent
        * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
        * dealing with a string.
        */
-      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
+      val rtStrSym = RuntimeStringClass.tpe.member(sym.name).suchThat { s =>
+        val sParams = s.tpe.params
+        !s.isBridge &&
+        params.size == sParams.size &&
+        (params zip sParams).forall { case (s1,s2) =>
+          s1.tpe =:= s2.tpe
+        }
+      }
 
       val ApplyDynamic(receiver, args) = tree
 

@@ -11,6 +11,8 @@ class Character(value: scala.Char) {
   override def toString: String =
     js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
 
+  override def hashCode(): Int = value.##
+
   /*
    * Methods on scala.Char
    * The following methods are only here to properly support reflective calls
@@ -38,6 +40,22 @@ class Character(value: scala.Char) {
   protected def >>>(x: scala.Long): scala.Int = value >>> x
   protected def >>(x: scala.Int): scala.Int = value >> x
   protected def >>(x: scala.Long): scala.Int = value >> x
+
+  protected def ==(x: scala.Byte): scala.Boolean = value == x
+  protected def ==(x: scala.Short): scala.Boolean = value == x
+  protected def ==(x: scala.Char): scala.Boolean = value == x
+  protected def ==(x: scala.Int): scala.Boolean = value == x
+  protected def ==(x: scala.Long): scala.Boolean = value == x
+  protected def ==(x: scala.Float): scala.Boolean = value == x
+  protected def ==(x: scala.Double): scala.Boolean = value == x
+
+  protected def !=(x: scala.Byte): scala.Boolean = value != x
+  protected def !=(x: scala.Short): scala.Boolean = value != x
+  protected def !=(x: scala.Char): scala.Boolean = value != x
+  protected def !=(x: scala.Int): scala.Boolean = value != x
+  protected def !=(x: scala.Long): scala.Boolean = value != x
+  protected def !=(x: scala.Float): scala.Boolean = value != x
+  protected def !=(x: scala.Double): scala.Boolean = value != x
 
   protected def <(x: scala.Byte): scala.Boolean = value < x
   protected def <(x: scala.Short): scala.Boolean = value < x
