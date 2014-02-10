@@ -174,6 +174,16 @@ object FormatterTest extends JasmineTest {
       expectF("%d%n%d", new JInteger(1), new JInteger(2)).toEqual("1\n2")
     }
 
+    it("should survive `null` and `undefined`") {
+      expectF("%s", null).toEqual("null")
+      expectF("%s", (): js.Undefined).toEqual("undefined")
+    }
+
+    it("should allow 'f' string interpolation to survive `null` and `undefined`") {
+      expect(f"${null}%s").toEqual("null")
+      expect(f"${(): js.Undefined}%s").toEqual("undefined")
+    }
+
     it("should allow positional arguments") {
       expectF("%2$d %1$d",    new JInteger(1), new JInteger(2)).toEqual("2 1")
       expectF("%2$d %2$d %d", new JInteger(1), new JInteger(2)).toEqual("2 2 1")
