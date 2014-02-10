@@ -199,6 +199,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     toTypeKind(tpe) match {
       case REFERENCE(ScalaRTMapped(rtSym)) =>
         encodeClassDataOfType(rtSym.tpe)
+      case REFERENCE(sym) =>
+        encodeClassDataOfSym(sym)
       case array : ARRAY =>
         var result = encodeClassDataOfType(array.elementKind.toType)
         for (i <- 0 until array.dimensions)

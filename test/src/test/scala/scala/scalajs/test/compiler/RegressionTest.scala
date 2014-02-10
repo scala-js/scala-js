@@ -13,6 +13,8 @@ import scala.scalajs.test.JasmineTest
 
 object RegressionTest extends JasmineTest {
 
+  class Bug218Foo[T](val x: T) extends AnyVal
+
   describe("Scala.js compiler regression tests") {
 
     it("Wrong division conversion (7 / 2.0) - #18") {
@@ -154,6 +156,11 @@ object RegressionTest extends JasmineTest {
       expect(x.`1`).toEqual(1)
       expect(x.`2`).toEqual(2)
       expect(x.`3`).toEqual(3)
+    }
+
+    it("should support class literals for existential value types - #218") {
+      expect(scala.reflect.classTag[Bug218Foo[_]].toString).toEqual(
+          "scala.scalajs.test.compiler.RegressionTest$Bug218Foo")
     }
   }
 }
