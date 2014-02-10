@@ -201,7 +201,51 @@ object Integer {
     // See http://aggregate.org/MAGIC/#Trailing%20Zero%20Count
     bitCount((i & -i) - 1)
 
-  def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
-  def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
-  def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)
+  def toBinaryString(i: scala.Int): String = {
+    if (i >= 0)
+      (i:js.Number).toString(2)
+    else {
+      def make(str: String, num: Int, pos: Int): String = {
+        if (pos < 32)
+          make(str + ((num & 1) + '0').toChar, num >>> 1, pos + 1)
+        else
+          str
+      }
+      make("", i, 0).reverse
+    }
+  }
+
+  def toHexString(i: scala.Int): String = {
+    if (i >= 0)
+      (i:js.Number).toString(16)
+    else {
+      def make(str: String, num: Int, pos: Int): String = {
+        if (pos < 8) {
+          val t = num & 15
+          if (t > 9)
+            make(str + (t - 10 + 'a').toChar, num >>> 4, pos + 1)
+          else
+            make(str + (t + '0').toChar, num >>> 4, pos + 1)
+        }
+        else
+          str
+      }
+      make("", i, 0).reverse
+    }
+  }
+
+  def toOctalString(i: scala.Int): String = {
+    if (i >= 0)
+      (i:js.Number).toString(8)
+    else {
+      def make(str: String, num: Int, pos: Int): String = {
+        if (pos < 11)
+          make(str + ((num & 7) + '0').toChar, num >>> 3, pos + 1)
+        else
+          str
+      }
+      make("", i, 0).reverse
+    }
+  }
+
 }
