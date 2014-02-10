@@ -11,7 +11,7 @@ import scala.tools.nsc._
  *
  *  @author Sébastien Doeraene
  */
-trait TypeKinds extends SubComponent {
+trait TypeKinds extends SubComponent { this: GenJSCode =>
   import global._
 
   import definitions.{ UnitClass, BooleanClass, CharClass, ByteClass,
@@ -154,6 +154,12 @@ trait TypeKinds extends SubComponent {
     // Apparently, this case does occur (see pos/CustomGlobal.scala)
     case AnnotatedType(_, t, _)          => toTypeKind(t)
     //case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
+
+    /* This case is not in scalac. We need it for the test
+     * run/valueclasses-classtag-existential. I have no idea how icode does
+     * not fail this test: we do everything the same as icode up to here.
+     */
+    case tpe: ErasedValueType            => newReference(tpe.valueClazz)
 
     // For sure WildcardTypes shouldn't reach here either, but when
     // debugging such situations this may come in handy.
