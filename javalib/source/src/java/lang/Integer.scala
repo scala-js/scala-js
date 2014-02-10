@@ -217,7 +217,13 @@ object Integer {
     // See http://aggregate.org/MAGIC/#Trailing%20Zero%20Count
     bitCount((i & -i) - 1)
 
-  def toBinaryString(i: scala.Int): String = (i:js.Number).toString(2)
-  def toHexString(i: scala.Int): String = (i:js.Number).toString(16)
-  def toOctalString(i: scala.Int): String = (i:js.Number).toString(8)
+  def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
+  def toHexString(i: scala.Int): String = toStringBase(i, 16)
+  def toOctalString(i: scala.Int): String = toStringBase(i, 8)
+
+  private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
+    if (i > scala.Int.MaxValue) "+" + (i: js.Number).toString(base)
+    else if (i < scala.Int.MinValue) (i: js.Number).toString(base) // includes "-"
+    else ((i: js.Number) >>> 0).toString(base)
+  }
 }

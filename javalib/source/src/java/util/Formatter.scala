@@ -11,7 +11,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   var closed = false
 
   def this() = this(new StringBuilder())
-  
+
   def close(): Unit = {
     if (!closed) {
       dest match {
@@ -97,29 +97,29 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           val conversion = (matchResult(5): String).charAt(0)
 
           def numberArg: js.Number = arg match {
-            case arg: Number => arg.doubleValue()
+            case arg: Number    => arg.doubleValue()
             case arg: Character => arg.charValue().toInt
-            case _ => arg.asInstanceOf[js.Number] // assume js.Number
+            case arg: js.Number => arg
           }
 
-          def unsignedArgStr(base: Int): js.String = arg match {
-            case arg: Byte    if arg < 0 =>
-              (js.Math.pow(2, Byte.SIZE)    + arg.doubleValue()).toString(base)
-            case arg: Short   if arg < 0 =>
-              (js.Math.pow(2, Short.SIZE)   + arg.doubleValue()).toString(base)
-            case arg: Integer if arg < 0 =>
-              (js.Math.pow(2, Integer.SIZE) + arg.doubleValue()).toString(base)
-            case arg: Long if base == 8 =>
-              Long.toOctalString(arg)
-            case arg: Long if base == 2 =>
-              Long.toBinaryString(arg)
-            case arg: Long if base == 16 =>
-              Long.toHexString(arg)
-            case arg: Long =>
-              sys.error("shouldn't happen")
-            // ignore negative case of js.Number since we don't know
-            // with what base to convert
-            case arg => numberArg.toString(base)
+          // threshold is supposed to be MaxValue+1
+          def pseudoUnsignedArgStr(x: js.Number, threshold: js.Number,
+              base: js.Number): js.String = {
+            if (x >= 0) {
+              if (x >= threshold) ("+": js.String) + x.toString(base)
+              else                x.toString(base)
+            } else {
+              if (x < -threshold) x.toString(base) // includes "-"
+              else                ((threshold << 1) + x).toString(base)
+            }
+          }
+
+          def padCaptureSign(argStr: js.String, prefix: js.String) = {
+            val firstChar = (argStr: String).charAt(0)
+            if (firstChar == '+' || firstChar == '-')
+              pad(argStr.substring(1), firstChar+prefix)
+            else
+              pad(argStr, prefix)
           }
 
           def strRepeat(s: js.String, times: js.Number) = {
@@ -161,7 +161,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 val padLength = width - prePadLen
                 val padChar: js.String = if (padZero) "0" else " "
                 val padding = strRepeat(padChar, padLength)
-          
+
                 if (padZero && padRight)
                   throw new java.util.IllegalFormatFlagsException(flags)
                 else if (padRight) prefix + argStr  + padding
@@ -170,7 +170,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               }
             }
 
-            val casedStr = 
+            val casedStr =
               if (conversion.isUpper) padStr.toUpperCase()
               else padStr
             dest.append(casedStr)
@@ -209,9 +209,31 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              pad(unsignedArgStr(8), if (hasFlag("#")) "0" else "")
+              val str: js.String = arg match {
+                case arg: Byte =>
+                  pseudoUnsignedArgStr(arg.byteValue,
+                      threshold = scala.Byte.MaxValue+1, base = 8)
+                case arg: Short=>
+                  pseudoUnsignedArgStr(arg.shortValue,
+                      threshold = scala.Short.MaxValue+1, base = 8)
+                case arg: Integer   => Integer.toOctalString(arg)
+                case arg: Long      => Long.toOctalString(arg)
+                case arg: js.Number => arg.toString(8)
+              }
+              padCaptureSign(str, if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              pad(unsignedArgStr(16), if (hasFlag("#")) "0x" else "")
+              val str: js.String = arg match {
+                case arg: Byte =>
+                  pseudoUnsignedArgStr(arg.byteValue,
+                      threshold = scala.Byte.MaxValue+1, base = 16)
+                case arg: Short =>
+                  pseudoUnsignedArgStr(arg.shortValue,
+                      threshold = scala.Short.MaxValue+1, base = 16)
+                case arg: Integer   => Integer.toHexString(arg)
+                case arg: Long      => Long.toHexString(arg)
+                case arg: js.Number => arg.toString(16)
+              }
+              padCaptureSign(str, if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
               sciNotation(if (hasPrecision) precision else (6: js.Number))
             case 'g' | 'G' =>
