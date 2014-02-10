@@ -54,6 +54,22 @@ final class Float(private val value: scala.Float) extends Number {
 
   protected def +(x: String): String = value + x
 
+  protected def ==(x: scala.Byte): scala.Boolean = value == x
+  protected def ==(x: scala.Short): scala.Boolean = value == x
+  protected def ==(x: scala.Char): scala.Boolean = value == x
+  protected def ==(x: scala.Int): scala.Boolean = value == x
+  protected def ==(x: scala.Long): scala.Boolean = value == x
+  protected def ==(x: scala.Float): scala.Boolean = value == x
+  protected def ==(x: scala.Double): scala.Boolean = value == x
+
+  protected def !=(x: scala.Byte): scala.Boolean = value != x
+  protected def !=(x: scala.Short): scala.Boolean = value != x
+  protected def !=(x: scala.Char): scala.Boolean = value != x
+  protected def !=(x: scala.Int): scala.Boolean = value != x
+  protected def !=(x: scala.Long): scala.Boolean = value != x
+  protected def !=(x: scala.Float): scala.Boolean = value != x
+  protected def !=(x: scala.Double): scala.Boolean = value != x
+
   protected def <(x: scala.Byte): scala.Boolean = value < x
   protected def <(x: scala.Short): scala.Boolean = value < x
   protected def <(x: scala.Char): scala.Boolean = value < x

@@ -19,6 +19,8 @@ class Boolean(private val value: scala.Boolean) {
    */
 
   protected def unary_! : scala.Boolean = !value
+  protected def ==(x: scala.Boolean): scala.Boolean = value == x
+  protected def !=(x: scala.Boolean): scala.Boolean = value != x
   protected def ||(x: scala.Boolean): scala.Boolean = value || x
   protected def &&(x: scala.Boolean): scala.Boolean = value && x
   protected def |(x: scala.Boolean): scala.Boolean = value | x

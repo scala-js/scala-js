@@ -94,6 +94,47 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fBoolean(true)).toBeTruthy
     }
 
+    it("should work with equality operators on primitive types") {
+      def fNum(obj: Any { def ==(x: Int): Boolean }) = obj == 5
+      expect(fNum(5.toByte)).toBeTruthy
+      expect(fNum(6.toByte)).toBeFalsy
+      expect(fNum(5.toShort)).toBeTruthy
+      expect(fNum(7.toShort)).toBeFalsy
+      expect(fNum(5.toChar)).toBeTruthy
+      expect(fNum('r')).toBeFalsy
+      expect(fNum(5)).toBeTruthy
+      expect(fNum(-4)).toBeFalsy
+      expect(fNum(5L)).toBeTruthy
+      expect(fNum(400L)).toBeFalsy
+      expect(fNum(5.0f)).toBeTruthy
+      expect(fNum(5.6f)).toBeFalsy
+      expect(fNum(5.0)).toBeTruthy
+      expect(fNum(7.9)).toBeFalsy
+      def fBool(obj: Any { def ==(x: Boolean): Boolean }) = obj == false
+      expect(fBool(true)).toBeFalsy
+      expect(fBool(false)).toBeTruthy
+
+      def fNumN(obj: Any { def !=(x: Int): Boolean }) = obj != 5
+      expect(fNumN(5.toByte)).toBeFalsy
+      expect(fNumN(6.toByte)).toBeTruthy
+      expect(fNumN(5.toShort)).toBeFalsy
+      expect(fNumN(7.toShort)).toBeTruthy
+      expect(fNumN(5.toChar)).toBeFalsy
+      expect(fNumN('r')).toBeTruthy
+      expect(fNumN(5)).toBeFalsy
+      expect(fNumN(-4)).toBeTruthy
+      expect(fNumN(5L)).toBeFalsy
+      expect(fNumN(400L)).toBeTruthy
+      expect(fNumN(5.0f)).toBeFalsy
+      expect(fNumN(5.6f)).toBeTruthy
+      expect(fNumN(5.0)).toBeFalsy
+      expect(fNumN(7.9)).toBeTruthy
+      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }) = obj != false
+      expect(fBoolN(true)).toBeTruthy
+      expect(fBoolN(false)).toBeFalsy
+
+    }
+
     it("should work with Arrays") {
       type UPD = { def update(i: Int, x: String): Unit }
       type APL = { def apply(i: Int): String }
