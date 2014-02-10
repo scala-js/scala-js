@@ -20,8 +20,12 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   import jsDefinitions._
   import scalaPrimitives.isPrimitive
 
-  private def isCandidateForBridge(sym: Symbol): Boolean =
-    sym.isMethod && !sym.isBridge && sym.isPublic && !isPrimitive(sym)
+  private def isCandidateForBridge(sym: Symbol): Boolean = (
+     sym.isMethod      &&
+    !sym.isBridge      &&
+     sym.isPublic      &&
+    !isPrimitive(sym)  &&
+    !sym.isMacro)
 
   /** checks if a symbol is overriding a symbol we already made a bridge for */
   private def isOverridingBridge(sym: Symbol): Boolean = {

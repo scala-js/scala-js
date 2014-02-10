@@ -707,7 +707,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def superHasProxy(s: Symbol) = {
         val alts = sym.superClass.tpe.findMember(
             name = s.name,
-            excludedFlags = Flags.BRIDGE | Flags.PRIVATE,
+            excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
             requiredFlags = Flags.METHOD,
             stableOnly    = false).alternatives
         alts.exists(weakMatch(s) _)
@@ -715,7 +715,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Query candidate methods
       val methods = sym.tpe.findMembers(
-          excludedFlags = Flags.BRIDGE | Flags.PRIVATE,
+          excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
           requiredFlags = Flags.METHOD)
 
       val candidates = methods filter {
