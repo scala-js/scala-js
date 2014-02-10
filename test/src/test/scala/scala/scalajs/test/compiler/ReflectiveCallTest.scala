@@ -168,6 +168,9 @@ object ReflectiveCallTest extends JasmineTest {
       def get(obj: { def codePointAt(str: Int): Int }) =
         obj.codePointAt(1)
       expect(get("Hi")).toEqual('i'.toInt)
+
+      def sub(x: { def substring(x: Int): AnyRef }) = x.substring(5)
+      expect(sub("asdfasdfasdf") == "sdfasdf").toBeTruthy
     }
 
   }
