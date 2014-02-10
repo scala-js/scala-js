@@ -209,21 +209,44 @@ object ScalaJSBuild extends Build {
           // Do not generate .class files
           scalacOptions += "-Yskip:cleanup,icode,jvm",
 
-          // Exclude files that are overridden in library
-          excludeFilter in (Compile, unmanagedSources) ~= { superFilter =>
-            superFilter || new SimpleFileFilter({ f =>
-              val path = f.getPath.replace(java.io.File.separator, "/")
-              (path.endsWith("/scala/package.scala")
-                  || path.endsWith("/scala/App.scala")
-                  || path.endsWith("/scala/Console.scala")
-                  || path.endsWith("/scala/Symbol.scala")
-                  || path.endsWith("/scala/compat/Platform.scala")
-                  || path.endsWith("/scala/runtime/BoxesRunTime.scala")
-                  || path.endsWith("/scala/util/control/NoStackTrace.scala")
+          unmanagedSourceDirectories in Compile := {
+            val base = baseDirectory.value
+            Seq(
+                base / "source" / "src" / "library",
+                base / "source" / "src" / "continuations" / "library",
+                base / "overrides"
+            )
+          },
 
-                  // Hideous but effective way not to compile useless parts
-                  || path.contains("/scala/collection/parallel/")
-                  || path.contains("/scala/util/parsing/"))
+          // Exclude files in src/library/ that are overridden in overrides/
+          excludeFilter in (Compile, unmanagedSources) := {
+            def normPath(f: File): String =
+              f.getPath.replace(java.io.File.separator, "/")
+
+            val overridesDir = baseDirectory.value / "overrides"
+            val allOverrides = (overridesDir ** "*.scala").get
+            val overridePathLen = normPath(overridesDir).length
+            val scalaNames =
+              for (f <- allOverrides)
+                yield normPath(f).substring(overridePathLen)
+            val javaNames =
+              for (name <- scalaNames)
+                yield name.substring(0, name.length-6) + ".java"
+            val overrideNames = scalaNames ++ javaNames
+            val libraryPath = normPath(baseDirectory.value / "source/src")
+
+            val superFilter = (excludeFilter in (Compile, unmanagedSources)).value
+            superFilter || new SimpleFileFilter({ f =>
+              val path = normPath(f)
+              (
+                  // overrides
+                  path.startsWith(libraryPath) &&
+                  overrideNames.exists(path.endsWith(_))
+              ) || (
+                  // useless things
+                  path.contains("/scala/collection/parallel/") ||
+                  path.contains("/scala/util/parsing/")
+              )
             })
           },
 
