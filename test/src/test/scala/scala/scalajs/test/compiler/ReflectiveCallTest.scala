@@ -171,6 +171,26 @@ object ReflectiveCallTest extends JasmineTest {
 
       def sub(x: { def substring(x: Int): AnyRef }) = x.substring(5)
       expect(sub("asdfasdfasdf") == "sdfasdf").toBeTruthy
+
+      type LEN_A = { def length: Any }
+      def lenA(x: LEN_A) = x.length
+      expect(lenA("asdf") == 4).toBeTruthy
+    }
+
+    it("should properly generate forwarders for inherited methods") {
+      trait A {
+        def foo: Int
+      }
+
+      abstract class B extends A
+
+      class C extends B {
+        def foo = 1
+      }
+
+      def call(x: { def foo: Int }) = x.foo
+
+      expect(call(new C)).toEqual(1)
     }
 
   }
