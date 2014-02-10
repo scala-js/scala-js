@@ -1971,6 +1971,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           (code match {
+            // Special cases for (bool & bool) and (bool | bool) since in
+            // JavaScript, the return type is number rather than boolean
+            case AND if args.forall(_.tpe.typeSymbol == BooleanClass) =>
+              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("&", lsrc, rsrc)))
+            case OR if args.forall(_.tpe.typeSymbol == BooleanClass) =>
+              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("|", lsrc, rsrc)))
+
             case ADD => js.BinaryOp("+", lsrc, rsrc)
             case SUB => js.BinaryOp("-", lsrc, rsrc)
             case MUL => js.BinaryOp("*", lsrc, rsrc)
