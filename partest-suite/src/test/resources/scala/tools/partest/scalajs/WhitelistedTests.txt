@@ -2664,3 +2664,4 @@ pos/t7776.scala
 run/Course-2002-08.scala
 run/fors.scala
 run/t6706.scala
+run/t3175.scala

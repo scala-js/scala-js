@@ -2190,10 +2190,12 @@ abstract class GenJSCode extends plugins.PluginComponent
        *  method on scala.Array. If this is the case, we have to check
        *  that case specially at runtime, since the arrays element type is not
        *  erased and therefore the method name mangling turns out wrong.
+       *
+       *  Note that we cannot check if Unit conforms to the expected return
+       *  type, since this type information is already erased.
        */
       def isArrayLikeUpdate = sym.name.decoded == "update" && {
-        params.size == 2 && params.head.tpe.typeSymbol == IntClass &&
-        sym.tpe.resultType <:< UnitClass.tpe
+        params.size == 2 && params.head.tpe.typeSymbol == IntClass
       }
 
       /**

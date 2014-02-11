@@ -2,9 +2,3 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
-
-# Filed as #250
-run/t3175.scala
-
-# Filed as #251
-run/valueclasses-classtag-existential.scala
