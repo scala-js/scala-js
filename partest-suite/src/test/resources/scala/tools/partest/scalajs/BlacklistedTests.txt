@@ -43,6 +43,9 @@ neg/t7622-cyclic-dependency
 # RUN
 #
 
+# Uses ClassTags on existentials which are broken in Scala (see #251)
+run/valueclasses-classtag-existential.scala
+
 # Using parts of the javalib we don't plan to support
 
 run/t0412.scala
