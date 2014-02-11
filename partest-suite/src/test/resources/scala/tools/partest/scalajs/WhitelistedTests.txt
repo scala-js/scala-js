@@ -2654,3 +2654,13 @@ run/t1110.scala
 run/t2636.scala
 run/verify-ctor.scala
 run/t3647.scala
+run/t4560.scala
+run/t6632.scala
+run/hashCodeBoxesRunTime.scala
+run/issue192.scala
+run/richs.scala
+run/t6725-1.scala
+pos/t7776.scala
+run/Course-2002-08.scala
+run/fors.scala
+run/t6706.scala
