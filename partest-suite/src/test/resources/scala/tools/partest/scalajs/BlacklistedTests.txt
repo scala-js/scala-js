@@ -32,6 +32,13 @@ neg/t6446-show-phases.scala
 # Prints phase list
 neg/t7494-no-options
 
+# Screws up, but not really our problem (error: None.get instead of
+# phase ordering error)
+neg/t7494-multi-right-after
+neg/t7494-right-after-before
+neg/t7622-multi-followers
+neg/t7622-cyclic-dependency
+
 #
 # RUN
 #
@@ -145,14 +152,6 @@ run/patmat-exprs.scala
 run/tailcalls.scala
 run/t4294.scala
 run/t6331b.scala
-
-# Using scala.Symbol
-
-run/fors.scala
-run/t6706.scala
-run/t4560.scala
-run/t6634.scala
-run/t6632.scala
 
 # Using IO
 
@@ -559,6 +558,10 @@ run/reify_renamed_type_local_to_reifee.scala
 run/reify_renamed_type_spliceable.scala
 run/reify_typerefs_1a.scala
 run/reify_timeofday.scala
+
+# Uses refletction indirectly through
+# scala.runtime.ScalaRunTime.replStringOf
+run/t6634.scala
 
 # Using reflection to invoke macros. These tests actually don't require
 # or test reflection, but use it to separate compilation units nicely.

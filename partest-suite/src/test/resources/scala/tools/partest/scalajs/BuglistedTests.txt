@@ -3,34 +3,8 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-#### Filed bugs
-
-# Filed as #211
-run/t6725-1.scala
-
-# Filed as #213
+# Filed as #250
 run/t3175.scala
 
-# Filed as #215
-run/issue192.scala
-
-# Filed as #216
-run/hashCodeBoxesRunTime.scala
-
-# Filed as #217
-run/richs.scala
-
-# Filed as #218
+# Filed as #251
 run/valueclasses-classtag-existential.scala
-
-# Filed as #219
-pos/t7776.scala
-
-# Filed as #220
-run/Course-2002-08.scala
-
-# Filed as #221
-neg/t7494-multi-right-after
-neg/t7494-right-after-before
-neg/t7622-multi-followers
-neg/t7622-cyclic-dependency
