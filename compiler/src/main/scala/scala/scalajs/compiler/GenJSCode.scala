@@ -248,8 +248,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           case dd: DefDef =>
             generatedMembers ++= genMethod(dd)
-            // Generate a reflective call proxy if required
-            generatedMembers ++= genReflCallProxy(dd.symbol)
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -266,10 +264,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(constructorBridges0.size <= 1)
       val constructorBridge = constructorBridges0.headOption
 
+      // Generate the reflective call proxies (where required)
+      val reflProxies = genReflCallProxies(sym)
+
       // The actual class definition
       val classDefinition = js.ClassDef(classVar,
           envField("inheritable") DOT encodeClassFullNameIdent(sym.superClass),
-          generatedMembers.toList ++ bridges)
+          generatedMembers.toList ++ bridges ++ reflProxies)
 
       /* Inheritable constructor
        *
@@ -656,7 +657,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /**
-     * Generates a proxy method with return type Any for `sym` if required
+     * Generates reflective proxy methods for methods in sym
      *
      * Reflective calls don't depend on the return type, so it's hard to
      * generate calls without using runtime reflection to list the methods. We
@@ -685,77 +686,75 @@ abstract class GenJSCode extends plugins.PluginComponent
      * - If no proxy exists in the superclass, a proxy is generated for the
      *   first method with matching signatures.
      */
-    def genReflCallProxy(sym: Symbol): Option[js.Tree] = {
-      implicit val pos = sym.pos
+    def genReflCallProxies(sym: Symbol): List[js.Tree] = {
+      import scala.reflect.internal.Flags
 
-      lazy val symPars = sym.tpe.params
-
-      /** Check if the parameter types of a symbol match sym's */
-      def paramMatch(s: Symbol) = {
-        val pars = s.tpe.params
-        s == sym || // Shortcut
-        symPars.size == pars.size &&
-        (symPars zip pars).forall { case (s1,s2) =>
+      /** Check if two method symbols conform in name and parameter types */
+      def weakMatch(s1: Symbol)(s2: Symbol) = {
+        val p1 = s1.tpe.params
+        val p2 = s2.tpe.params
+        s1 == s2 || // Shortcut
+        s1.name == s2.name &&
+        p1.size == p2.size &&
+        (p1 zip p2).forall { case (s1,s2) =>
           s1.tpe =:= s2.tpe
         }
       }
 
       /** Check if the symbol's owner's superclass has a matching member (and
-       *  therefore an existing proxy.
+       *  therefore an existing proxy).
        */
-      def superHasProxy = {
-        import scala.reflect.internal.Flags
-
-        val alts = sym.owner.superClass.tpe.findMember(
-            name = sym.name,
-            excludedFlags = Flags.BRIDGE | Flags.PRIVATE,
+      def superHasProxy(s: Symbol) = {
+        val alts = sym.superClass.tpe.findMember(
+            name = s.name,
+            excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
             requiredFlags = Flags.METHOD,
             stableOnly    = false).alternatives
-        alts.exists(paramMatch)
+        alts.exists(weakMatch(s) _)
       }
 
-      /** Check if this symbol is the first matching declaration */
-      def isFirstDecl = {
-        val decls = sym.owner.tpe.declaration(sym.name).alternatives
-        // We can call get safely, since we find at least ourselves
-        decls.find(paramMatch).get == sym
+      // Query candidate methods
+      val methods = sym.tpe.findMembers(
+          excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
+          requiredFlags = Flags.METHOD)
+
+      val candidates = methods filter {
+        s => !s.isConstructor && !superHasProxy(s)
       }
 
-      if (sym.isConstructor     ||
-          sym.isBridge          ||
-          sym.isPrivate         ||
-          sym.owner.isInterface ||
-          superHasProxy         ||
-          !isFirstDecl) {
-        None
-      } else {
-        // Actually generate proxy
-
-        val retTpe =
-          enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
-        val jsParams =
-          for (param <- sym.tpe.params)
-            yield encodeLocalSym(param, freshName)(param.pos)
-
-        val call = js.ApplyMethod(js.This(), encodeMethodSym(sym), jsParams)
-
-        val value = retTpe match {
-          case _ if isPrimitiveValueType(retTpe) =>
-            makeBox(call, retTpe)
-          case retTpe: ErasedValueType =>
-            val boxedClass = retTpe.valueClazz
-            val boxCtor = boxedClass.primaryConstructor
-            genNew(boxedClass, boxCtor, List(call))
-          case _ =>
-            call
-        }
-
-        val body = js.Return(value)
-
-        Some(js.MethodDef(
-            encodeMethodSym(sym, reflProxy = true), jsParams, body))
-
+      val proxies = candidates filter {
+        c => candidates.find(weakMatch(c) _).get == c
       }
+
+      proxies.map(genReflCallProxy _).toList
+    }
+
+    /** actually generates reflective call proxy for the given method symbol */
+    private def genReflCallProxy(sym: Symbol): js.Tree = {
+      implicit val pos = sym.pos
+
+      val retTpe =
+        enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
+      val jsParams =
+        for (param <- sym.tpe.params)
+          yield encodeLocalSym(param, freshName)(param.pos)
+
+      val call = js.ApplyMethod(js.This(), encodeMethodSym(sym), jsParams)
+
+      val value = retTpe match {
+        case _ if isPrimitiveValueType(retTpe) =>
+          makeBox(call, retTpe)
+        case retTpe: ErasedValueType =>
+          val boxedClass = retTpe.valueClazz
+          val boxCtor = boxedClass.primaryConstructor
+          genNew(boxedClass, boxCtor, List(call))
+        case _ =>
+          call
+      }
+
+      val body = js.Return(value)
+
+      js.MethodDef(encodeMethodSym(sym, reflProxy = true), jsParams, body)
     }
 
     // Generate a module accessor ----------------------------------------------
@@ -1529,12 +1528,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val Select(receiver, _) = fun
 
-            if (ToStringMaybeOnString contains fun.symbol) {
-              js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
-            } else if (MethodWithHelperInEnv contains fun.symbol) {
+            if (MethodWithHelperInEnv contains fun.symbol) {
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genCallHelper(helper, arguments:_*)
+            } else if (ToStringMaybeOnString contains fun.symbol) {
+              js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
             } else if (isStringType(receiver.tpe)) {
               genStringCall(app)
             } else if (isRawJSType(receiver.tpe)) {
@@ -1563,13 +1562,13 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private lazy val ToStringMaybeOnString = Set[Symbol](
-      Object_toString,
       getMemberMethod(CharSequenceClass, nme.toString_),
       getMemberMethod(StringClass, nme.toString_)
     )
 
     // TODO Make these primitives?
     private lazy val MethodWithHelperInEnv = Map[Symbol, String](
+      Object_toString  -> "objectToString",
       Object_getClass  -> "objectGetClass",
       Object_clone     -> "objectClone",
       Object_finalize  -> "objectFinalize",
@@ -1971,6 +1970,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           (code match {
+            // Special cases for (bool & bool) and (bool | bool) since in
+            // JavaScript, the return type is number rather than boolean
+            case AND if args.forall(_.tpe.typeSymbol == BooleanClass) =>
+              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("&", lsrc, rsrc)))
+            case OR if args.forall(_.tpe.typeSymbol == BooleanClass) =>
+              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("|", lsrc, rsrc)))
+
             case ADD => js.BinaryOp("+", lsrc, rsrc)
             case SUB => js.BinaryOp("-", lsrc, rsrc)
             case MUL => js.BinaryOp("*", lsrc, rsrc)
@@ -2178,6 +2184,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       val sym = tree.symbol
+      val params = sym.tpe.params
 
       /** check if the method we are invoking conforms to the update
        *  method on scala.Array. If this is the case, we have to check
@@ -2185,7 +2192,6 @@ abstract class GenJSCode extends plugins.PluginComponent
        *  erased and therefore the method name mangling turns out wrong.
        */
       def isArrayLikeUpdate = sym.name.decoded == "update" && {
-        val params = sym.tpe.params
         params.size == 2 && params.head.tpe.typeSymbol == IntClass &&
         sym.tpe.resultType <:< UnitClass.tpe
       }
@@ -2195,7 +2201,14 @@ abstract class GenJSCode extends plugins.PluginComponent
        * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
        * dealing with a string.
        */
-      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
+      val rtStrSym = RuntimeStringClass.tpe.member(sym.name).suchThat { s =>
+        val sParams = s.tpe.params
+        !s.isBridge &&
+        params.size == sParams.size &&
+        (params zip sParams).forall { case (s1,s2) =>
+          s1.tpe =:= s2.tpe
+        }
+      }
 
       val ApplyDynamic(receiver, args) = tree
 

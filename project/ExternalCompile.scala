@@ -36,12 +36,8 @@ object ExternalCompile {
         def cpToString(cp: Seq[File]) =
           cp.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator)
 
-        val (compilerCp, cp0) = classpath.partition(isScalaJSCompilerJar)
-        val cp =
-          if (excludeDefaultScalaLibrary.value) cp0
-          else cp0 ++ compilerCp.filter(isScalaLibraryJar)
-
-        val cpStr = cpToString(cp)
+        val compilerCp = inputs.compilers.scalac.scalaInstance.allJars
+        val cpStr = cpToString(classpath)
 
         // List all my dependencies (recompile if any of these changes)
 
@@ -118,9 +114,6 @@ object ExternalCompile {
   val scalaJSExternalCompileSettings = (
       inConfig(Compile)(scalaJSExternalCompileConfigSettings) ++
       inConfig(Test)(scalaJSExternalCompileConfigSettings)
-  ) ++ Seq(
-      libraryDependencies +=
-        "org.scala-lang" % "scala-compiler" % scalaVersion.value
   )
 
 }

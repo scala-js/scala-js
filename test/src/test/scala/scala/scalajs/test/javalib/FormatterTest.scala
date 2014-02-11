@@ -19,6 +19,7 @@ import java.lang.{
   Integer => JInteger,
   Long    => JLong,
   Byte    => JByte,
+  Short   => JShort,
   Boolean => JBoolean,
   String  => JString
 }
@@ -71,6 +72,14 @@ object FormatterTest extends JasmineTest {
 
   describe("java.util.Formatter") {
 
+    // Explicitly define these as `var`'s to avoid any compile-time constant folding
+    var IntMax: Int = Int.MaxValue
+    var IntMin: Int = Int.MinValue
+    var ByteMax: Byte = Byte.MaxValue
+    var ByteMin: Byte = Byte.MinValue
+    var ShortMax: Short = Short.MaxValue
+    var ShortMin: Short = Short.MinValue
+
     it("should provide 'b' conversion") {
       expectF("%b", null).toEqual("false")
       expectF("%b", true: JBoolean).toEqual(JString.valueOf(true))
@@ -114,6 +123,14 @@ object FormatterTest extends JasmineTest {
       expectF("%05o", new JInteger(16)).toEqual("00020")
       expectF("%5o",  new JInteger(-10)).toEqual("37777777766")
       expectF("%05o", new JInteger(-10)).toEqual("37777777766")
+      expectF("%o",   new JByte(8.toByte)).toEqual("10")
+      expectF("%05o", new JByte(16.toByte)).toEqual("00020")
+      expectF("%5o",  new JByte(-10.toByte)).toEqual("  366")
+      expectF("%05o", new JByte(-10.toByte)).toEqual("00366")
+      expectF("%o",   new JShort(8.toShort)).toEqual("10")
+      expectF("%05o", new JShort(16.toShort)).toEqual("00020")
+      expectF("%5o",  new JShort(-10.toShort)).toEqual("177766")
+      expectF("%05o", new JShort(-10.toShort)).toEqual("177766")
       expectF("%05o", new JLong(-5L)).toEqual("1777777777777777777773")
     }
 
@@ -123,8 +140,46 @@ object FormatterTest extends JasmineTest {
       expectF("%#5X",  new JInteger(5)).toEqual("  0X5")
       expectF("%x",    new JInteger(-3)).toEqual("fffffffd")
       expectF("%x",    new JByte(-4.toByte)).toEqual("fc")
+      expectF("%0#5x", new JByte(5.toByte)).toEqual("0x005")
+      expectF("%#5x",  new JByte(5.toByte)).toEqual("  0x5")
+      expectF("%#5X",  new JByte(5.toByte)).toEqual("  0X5")
+      expectF("%x",    new JByte(-3.toByte)).toEqual("fd")
+      expectF("%0#5x", new JShort(5.toShort)).toEqual("0x005")
+      expectF("%#5x",  new JShort(5.toShort)).toEqual("  0x5")
+      expectF("%#5X",  new JShort(5.toShort)).toEqual("  0X5")
+      expectF("%x",    new JShort(-3.toShort)).toEqual("fffd")
       expectF("%x",    new JLong(-5L)).toEqual("fffffffffffffffb")
       expectF("%X",    new JLong(26L)).toEqual("1A")
+    }
+
+    it("should provide 'o' conversion for values out of range") {
+      expectF("%0#14o", new JInteger(IntMin-1)).toEqual("-0020000000001")
+      expectF("%#14o",  new JInteger(IntMin*2)).toEqual(" -040000000000")
+      expectF("%#14o",  new JInteger(IntMax+1)).toEqual(" +020000000000")
+      expectF("%o",     new JInteger(IntMax*2)).toEqual("+37777777776")
+      expectF("%0#7o", new JByte((ByteMin-1).toByte)).toEqual("-000201")
+      expectF("%#7o",  new JByte((ByteMin*2).toByte)).toEqual("  -0400")
+      expectF("%#7o",  new JByte((ByteMax+1).toByte)).toEqual("  +0200")
+      expectF("%o",    new JByte((ByteMax*2).toByte)).toEqual("+376")
+      expectF("%0#11o", new JShort((ShortMin-1).toShort)).toEqual("-0000100001")
+      expectF("%#11o",  new JShort((ShortMin*2).toShort)).toEqual("   -0200000")
+      expectF("%#11o",  new JShort((ShortMax+1).toShort)).toEqual("   +0100000")
+      expectF("%o",     new JShort((ShortMax*2).toShort)).toEqual("+177776")
+    }
+
+    it("should provide 'x' conversion for values out of range") {
+      expectF("%0#14x", new JInteger(IntMin-1)).toEqual("-0x00080000001")
+      expectF("%#14x",  new JInteger(IntMin*2)).toEqual("  -0x100000000")
+      expectF("%#14X",  new JInteger(IntMax+1)).toEqual("   +0X80000000")
+      expectF("%x",     new JInteger(IntMax*2)).toEqual("+fffffffe")
+      expectF("%0#7x", new JByte((ByteMin-1).toByte)).toEqual("-0x0081")
+      expectF("%#7x",  new JByte((ByteMin*2).toByte)).toEqual(" -0x100")
+      expectF("%#7X",  new JByte((ByteMax+1).toByte)).toEqual("  +0X80")
+      expectF("%x",    new JByte((ByteMax*2).toByte)).toEqual("+fe")
+      expectF("%0#11x", new JShort((ShortMin-1).toShort)).toEqual("-0x00008001")
+      expectF("%#11x",  new JShort((ShortMin*2).toShort)).toEqual("   -0x10000")
+      expectF("%#11X",  new JShort((ShortMax+1).toShort)).toEqual("    +0X8000")
+      expectF("%x",     new JShort((ShortMax*2).toShort)).toEqual("+fffe")
     }
 
     it("should provide 'e' conversion") {
@@ -172,6 +227,16 @@ object FormatterTest extends JasmineTest {
 
     it("should support '%n'") {
       expectF("%d%n%d", new JInteger(1), new JInteger(2)).toEqual("1\n2")
+    }
+
+    it("should survive `null` and `undefined`") {
+      expectF("%s", null).toEqual("null")
+      expectF("%s", (): js.Undefined).toEqual("undefined")
+    }
+
+    it("should allow 'f' string interpolation to survive `null` and `undefined`") {
+      expect(f"${null}%s").toEqual("null")
+      expect(f"${(): js.Undefined}%s").toEqual("undefined")
     }
 
     it("should allow positional arguments") {
