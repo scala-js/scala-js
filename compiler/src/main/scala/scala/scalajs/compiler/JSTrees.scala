@@ -185,6 +185,8 @@ trait JSTrees { self: JSGlobalAddons =>
 
     case class This()(implicit val pos: Position) extends Tree
 
+    case class BracketDelete(obj: Tree, prop: Tree)(implicit val pos: Position) extends Tree
+
     // Literals
 
     sealed trait Literal extends Tree
@@ -397,6 +399,9 @@ trait JSTrees { self: JSGlobalAddons =>
           case New(fun, args) =>
             New(fun, args map transformExpr)
 
+          case BracketDelete(obj, prop) =>
+            BracketDelete(transformExpr(obj), transformExpr(prop))
+
           // Compounds
 
           case ArrayConstr(items) =>
@@ -496,6 +501,9 @@ trait JSTrees { self: JSGlobalAddons =>
 
           case New(fun, args) =>
             New(fun, args map transformExpr)
+
+          case BracketDelete(obj, prop) =>
+            BracketDelete(transformExpr(obj), transformExpr(prop))
 
           // Compounds
 

@@ -353,6 +353,8 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
           allowUnpure && test(fun) && (args forall test)
         case js.New(fun, args) =>
           allowUnpure && test(fun) && (args forall test)
+        case js.BracketDelete(obj, prop) =>
+          allowUnpure && test(obj) && test(prop)
 
         // Non-expressions
         case _ => false
@@ -505,6 +507,11 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
           unnest(fun :: args) { newFunAndArgs =>
             val newFun :: newArgs = newFunAndArgs
             redo(js.New(newFun, newArgs))
+          }
+
+        case js.BracketDelete(obj, prop) =>
+          unnest(obj, prop) { (newObj, newProp) =>
+            redo(js.BracketDelete(newObj, newProp))
           }
 
         // Operators (if we reach here their operands are not expressions)

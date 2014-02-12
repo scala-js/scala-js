@@ -2474,6 +2474,10 @@ abstract class GenJSCode extends plugins.PluginComponent
               // js.Dynamic.selectDynamic(arg)
               maybeDynamicSelect(receiver, arg)
 
+            case DICT_DEL =>
+              // js.Dictionary.delete(arg)
+              js.BracketDelete(receiver, arg)
+
             case DICT_PROPS =>
               // js.Dictionary.propertiesOf(arg)
               genCallHelper("propertiesOf", arg)

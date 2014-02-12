@@ -49,15 +49,16 @@ abstract class JSPrimitives {
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
   val DYNAPPLY = 332  // js.Dynamic.applyDynamic
 
-  val DICT_PROPS = 333 // js.Dictionary.propertiesOf
+  val DICT_DEL = 333   // js.Dictionary.delete
+  val DICT_PROPS = 334 // js.Dictionary.propertiesOf
 
-  val ARR_CREATE = 334 // js.Array.apply (array literal syntax)
+  val ARR_CREATE = 335 // js.Array.apply (array literal syntax)
 
-  val RTJ2J = 335 // Runtime Long to Long
-  val J2RTJ = 336 // Long to Runtime Long
+  val RTJ2J = 336 // Runtime Long to Long
+  val J2RTJ = 337 // Long to Runtime Long
 
-  val NTR_MOD_SUFF  = 337 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
-  val NTR_NAME_JOIN = 338 // scala.relfect.NameTransformer.NAME_JOIN_STRING
+  val NTR_MOD_SUFF  = 338 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
+  val NTR_NAME_JOIN = 339 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
   val TYPEOF = 340   // typeof x
   val DEBUGGER = 341 // js.debugger()
@@ -92,6 +93,7 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)
     addPrimitive(JSDynamic_applyDynamic, DYNAPPLY)
 
+    addPrimitive(JSDictionary_delete, DICT_DEL)
     addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)
 
     addPrimitive(JSArray_create, ARR_CREATE)
