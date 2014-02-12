@@ -26,7 +26,7 @@ trait DOMElement extends js.Object {
 
 trait JQueryStatic extends js.Object {
   def apply(arg: js.Any): JQuery
-  def apply(arg: js.Any, attributes: js.Dictionary): JQuery
+  def apply(arg: js.Any, attributes: js.Any): JQuery
 }
 
 trait JQuery extends js.Object {

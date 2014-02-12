@@ -283,6 +283,9 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.This() =>
           print("this")
 
+        case js.BracketDelete(obj, prop) =>
+          print("delete ", obj, "[", prop, "]")
+
         // Literals
 
         case js.Undefined() =>

@@ -249,49 +249,6 @@ object Dynamic {
   }
 }
 
-/** Dictionary "view" of a JavaScript value */
-sealed trait Dictionary extends Any {
-  /** Reads a field of this object by its name. */
-  @JSBracketAccess
-  def apply(key: String): Any
-
-  /** Writes a field of this object by its name. */
-  @JSBracketAccess
-  def update(key: String, value: Any): Unit
-}
-
-/** Factory for [[Dictionary]] instances. */
-object Dictionary {
-  /** Returns a new empty dictionary */
-  def empty: Dictionary = new Object
-
-  def apply(properties: (String, Any)*): Dictionary =
-    apply(properties)
-
-  def apply(properties: TraversableOnce[(String, Any)]): Dictionary = {
-    val result = empty
-    for ((key, value) <- properties)
-      result(key) = value
-    result
-  }
-
-  def apply[A <% String, B <% Any](properties: (A, B)*): Dictionary =
-    apply(properties)
-
-  def apply[A <% String, B <% Any](
-      properties: TraversableOnce[(A, B)]): Dictionary = {
-    val result = empty
-    for ((key, value) <- properties)
-      result(key) = value
-    result
-  }
-
-  /** Returns the names of all the enumerable properties of this object. */
-  def propertiesOf(obj: Any): Array[String] = sys.error("stub")
-
-  implicit def fromAny(value: Any): Dictionary = value.asInstanceOf[Dictionary]
-}
-
 /** Primitive JavaScript number. */
 sealed trait Number extends Any {
   def unary_+(): Number
@@ -730,6 +687,11 @@ class Object extends Any {
 object Object extends Object {
   def apply(): Object = ???
   def apply(value: Any): Object = ???
+
+  /** Tests whether the object has a property on itself or in its prototype
+   *  chain. This method is the equivalent of `p in o` in JavaScript.
+   */
+  def hasProperty(o: Object, p: String): Boolean = sys.error("stub")
 
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the

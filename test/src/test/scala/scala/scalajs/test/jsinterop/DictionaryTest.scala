@@ -17,7 +17,7 @@ object DictionaryTest extends JasmineTest {
 
     it("should provide equivalent of JS for-in loop of {} - #13") {
       val obj = js.eval("var dictionaryTest13 = { a: 'Scala.js', b: 7357 }; dictionaryTest13;")
-      val dict: js.Dictionary = obj
+      val dict = obj.asInstanceOf[js.Dictionary[js.Any]]
       var propCount = 0
       var propString = ""
 
@@ -32,7 +32,7 @@ object DictionaryTest extends JasmineTest {
 
     it("should provide equivalent of JS for-in loop of [] - #13") {
       val obj = js.eval("var arrayTest13 = [ 7, 3, 5, 7 ]; arrayTest13;")
-      val array: js.Dictionary = obj
+      val array = obj.asInstanceOf[js.Dictionary[js.Any]]
       var propCount = 0
       var propString = ""
 
@@ -43,6 +43,23 @@ object DictionaryTest extends JasmineTest {
 
       expect(propCount).toEqual(4)
       expect(propString).toEqual("7357")
+    }
+
+    it("should provide an equivalent of the JS delete keyword - #255") {
+      val obj = js.Dictionary.empty[js.Any]
+      obj("foo") = 42
+      obj("bar") = "foobar"
+      js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
+          js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
+      expect(obj("foo")).toEqual(42)
+      expect(obj("bar")).toEqual("foobar")
+      expect(obj("nonconfig")).toEqual(4)
+      expect(obj.delete("foo")).toBeTruthy
+      expect(obj.delete("nonconfig")).toBeFalsy
+      expect(obj("foo")).toBeUndefined
+      expect(obj.asInstanceOf[js.Object].hasOwnProperty("foo")).toBeFalsy
+      expect(obj("bar")).toEqual("foobar")
+      expect(obj("nonconfig")).toEqual(4)
     }
 
   }

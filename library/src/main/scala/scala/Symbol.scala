@@ -34,32 +34,32 @@ final class Symbol private (val name: String) extends Serializable {
 }
 
 // Modified to use Scala.js specific cache
-object Symbol extends JSUniquenessCache {
+object Symbol extends JSUniquenessCache[Symbol] {
   override def apply(name: String): Symbol = super.apply(name)
   protected def valueFromKey(name: String): Symbol = new Symbol(name)
   protected def keyFromValue(sym: Symbol): Option[String] = Some(sym.name)
 }
 
-private[scala] abstract class JSUniquenessCache
+private[scala] abstract class JSUniquenessCache[V]
 {
-  private val map = js.Dictionary()
+  private val map = js.Dictionary.empty[js.Any] // V | js.Undefined
 
-  protected def valueFromKey(k: String): Symbol
-  protected def keyFromValue(v: Symbol): Option[String]
+  protected def valueFromKey(k: String): V
+  protected def keyFromValue(v: V): Option[String]
 
-  def apply(name: String): Symbol = {
+  def apply(name: String): V = {
     val symName: js.String = name
     val cachedSym = map(symName)
     if (!cachedSym) {
       val sym = valueFromKey(name)
       map(name) = sym.asInstanceOf[js.Any]
-      sym
+      sym.asInstanceOf[V]
     } else {
-      cachedSym.asInstanceOf[Symbol]
+      cachedSym.asInstanceOf[V]
     }
   }
-  
-  def unapply(other: Symbol): Option[String] = keyFromValue(other)
+
+  def unapply(other: V): Option[String] = keyFromValue(other)
 }
 
 /** This is private so it won't appear in the library API, but
