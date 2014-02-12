@@ -88,6 +88,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSDynamicModule = JSDynamicClass.companionModule
       lazy val JSDynamic_global      = getMemberMethod(JSDynamicModule, newTermName("global"))
       lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
+    lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
+      lazy val JSDynamicLiteral_applyDynamicNamed = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamicNamed"))
+      lazy val JSDynamicLiteral_applyDynamic = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamic"))
 
     lazy val JSNumberModule = JSNumberClass.companionModule
       lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))

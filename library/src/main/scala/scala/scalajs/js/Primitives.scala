@@ -229,23 +229,22 @@ object Dynamic {
    *    {foo: 3, bar: "foobar"}
    */
   object literal extends scala.Dynamic {
+    /** literal creation like this:
+     *  js.Dynamic.literal(name1 = "value", name2 = "value")
+     */
     def applyDynamicNamed(name: java.lang.String)(
-        fields: (java.lang.String, Any)*): Dynamic = {
-      if (name != "apply")
-        throw new AssertionError("js.Dynamic.literal has only an apply() method")
+        fields: (java.lang.String, Any)*): Dynamic = sys.error("stub")
 
-      val result = Object().asInstanceOf[Dynamic]
-      for ((name, value) <- fields)
-        result.updateDynamic(name)(value)
-      result
-    }
+    /** literal creation like this:
+     *  js.Dynamic.literal("name1" -> "value", "name2" -> "value")
+     *
+     *  Note that this could be simply `def apply`, but this would make the
+     *  applyDynamicNamed fail, since a call with named arguments would
+     *  be routed to the `def apply`, rather than def dynamic version.
+     */
+    def applyDynamic(name: java.lang.String)(
+        fields: (java.lang.String, Any)*): Dynamic = sys.error("stub")
 
-    // support for js.Dynamic.literal() with no argument
-    def applyDynamic(name: java.lang.String)(): Dynamic = {
-      if (name != "apply")
-        throw new AssertionError("js.Dynamic.literal has only an apply() method")
-      Object().asInstanceOf[Dynamic]
-    }
   }
 }
 

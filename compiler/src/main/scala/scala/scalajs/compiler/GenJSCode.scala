@@ -2361,6 +2361,76 @@ abstract class GenJSCode extends plugins.PluginComponent
             genCallHelper("applyMethodWithVarargs",
                 receiver, methodName, actualArgArray)
         }
+      } else if (code == DYNLITN) {
+        // We have a call of the form:
+        //   js.Dynamic.literal(name1 = ..., name2 = ...)
+        // Translate to:
+        //   {"name1": ..., "name2": ... }
+        genArgArray match {
+          case js.ArrayConstr(
+              js.StringLiteral("apply", _) :: jse.LitNamed(pairs)) =>
+            js.ObjectConstr(pairs)
+          case js.ArrayConstr(js.StringLiteral(name, _) :: _) =>
+            currentCUnit.error(pos,
+                s"js.Dynamic.literal does not have a method named $name")
+            statToExpr(js.Skip())
+          case _ =>
+            currentCUnit.error(pos,
+                "js.Dynamic.literal.applyDynamicNamed may not be called directly")
+            statToExpr(js.Skip())
+        }
+      } else if (code == DYNLIT) {
+        // We have call of some other form
+        //   js.Dynamic.literal(...)
+        // Tranlate to:
+        //   var obj = {};
+        //   obj[...] = ...;
+        //   obj
+
+        // Extract first arg to future proof against varargs
+        extractFirstArg() match {
+          // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
+          case (js.StringLiteral("apply", _),
+                js.ArrayConstr(jse.LitNamed(pairs))) =>
+            js.ObjectConstr(pairs)
+          // case js.Dynamic.literal(x, y)
+          case (js.StringLiteral("apply", _),
+                js.ArrayConstr(tups)) =>
+
+            // Create tmp variable
+            val res = js.Ident(freshName("obj"))
+            val resVarDef = js.VarDef(res, js.ObjectConstr(Nil))
+
+            // Assign fields
+            val assigns = tups flatMap {
+              // special case for literals
+              case jse.Tuple2(name, value) =>
+                js.Assign(js.BracketSelect(res, name), value) :: Nil
+              case tupExpr =>
+                val tup = js.Ident(freshName("tup"))
+                js.VarDef(tup, tupExpr) ::
+                js.Assign(js.BracketSelect(res,
+                  js.ApplyMethod(tup, js.Ident("_1__O"), Nil)),
+                  js.ApplyMethod(tup, js.Ident("_2__O"), Nil)) :: Nil
+            }
+
+            js.Block(resVarDef +: assigns :+ res :_*)
+
+          // Here we would need the case where the varargs are passed in
+          // as non-literal list:
+          //   js.Dynamic.literal(x :_*)
+          // However, Scala does currently not support this
+
+          // case where another method is called
+          case (js.StringLiteral(name, _), _) =>
+            currentCUnit.error(pos,
+                s"js.Dynamic.literal does not have a method named $name")
+            statToExpr(js.Skip())
+          case _ =>
+            currentCUnit.error(pos,
+                "js.Dynamic.literal.applyDynamic may not be called directly")
+            statToExpr(js.Skip())
+        }
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements:_*)
         genArgArray

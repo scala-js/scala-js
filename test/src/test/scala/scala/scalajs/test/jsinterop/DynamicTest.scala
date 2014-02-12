@@ -48,6 +48,28 @@ object DynamicTest extends JasmineTest {
       )
       expect(y.inner.name).toEqual("inner obj")
       expect(y.fun()).toEqual(42)
+
+      expect(obj().anything).toBeUndefined()
+    }
+
+    it("should provide object literal construction with dynamic naming") {
+      import js.Dynamic.{ literal => obj }
+      val x = obj("foo" -> 3, "bar" -> "foobar")
+      expect(x.foo).toEqual(3)
+      expect(x.bar).toEqual("foobar")
+      expect(x.unknown).toBeUndefined()
+
+      val tup1 = ("hello1", 3: js.Number)
+      val tup2 = ("hello2", 10: js.Number)
+
+      val y = obj(tup1, tup2)
+      expect(y.hello1).toEqual(3)
+      expect(y.hello2).toEqual(10)
+
+      var count = 0
+      val z = obj({ count += 1; ("foo", "bar")})
+      expect(z.foo).toEqual("bar")
+      expect(count).toEqual(1)
     }
 
     it("should allow to create an empty object with the literal syntax") {
