@@ -5,8 +5,6 @@
 
 package reversi
 
-import scala.language.implicitConversions
-
 import scala.annotation.tailrec
 import scala.scalajs.js
 
@@ -64,14 +62,14 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   buildUI()
 
   def createResetButton() = {
-    jQuery("<input>", js.Dictionary(
-        "type" -> "button", "value" -> "Reset"
+    jQuery("<input>", js.Dynamic.literal(
+        `type` = "button", value = "Reset"
     )).click(reset _)
   }
 
   def createPassButton() = {
-    jQuery("<input>", js.Dictionary(
-        "type" -> "button", "value" -> "Pass"
+    jQuery("<input>", js.Dynamic.literal(
+        `type` = "button", value = "Pass"
     )).click(pass _)
   }
 
