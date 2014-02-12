@@ -27,4 +27,30 @@ object MiscInteropTest extends JasmineTest {
     }
   }
 
+  describe("scala.scalajs.js.Object") {
+
+    it("should provide an equivalent to `p in o`") {
+      import js.Object.{ hasProperty => hasProp }
+      val o = js.Dynamic.literal(foo = 5, bar = "foobar").asInstanceOf[js.Object]
+      expect(hasProp(o, "foo")).toBeTruthy
+      expect(hasProp(o, "foobar")).toBeFalsy
+      expect(hasProp(o, "toString")).toBeTruthy // in prototype
+    }
+
+    it("should respect evaluation order for `hasProperty`") {
+      import js.Object.{ hasProperty => hasProp }
+      var indicator = 3
+      def o() = {
+        indicator += 4
+        js.Dynamic.literal(x = 5).asInstanceOf[js.Object]
+      }
+      def p() = {
+        indicator *= 2
+        "x"
+      }
+      expect(hasProp(o(), p())).toBeTruthy
+      expect(indicator).toEqual(14)
+    }
+  }
+
 }

@@ -739,6 +739,11 @@ object Object extends Object {
   def apply(): Object = ???
   def apply(value: Any): Object = ???
 
+  /** Tests whether the object has a property on itself or in its prototype
+   *  chain. This method is the equivalent of `p in o` in JavaScript.
+   */
+  def hasProperty(o: Object, p: String): Boolean = sys.error("stub")
+
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the
    * internal [[Prototype]]) of the specified object.

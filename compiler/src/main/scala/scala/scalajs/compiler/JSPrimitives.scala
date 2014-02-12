@@ -62,6 +62,7 @@ abstract class JSPrimitives {
 
   val TYPEOF = 340   // typeof x
   val DEBUGGER = 341 // js.debugger()
+  val HASPROP = 342  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -108,6 +109,8 @@ abstract class JSPrimitives {
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
+
+    addPrimitive(JSObject_hasProperty, HASPROP)
   }
 
   def isJavaScriptPrimitive(code: Int) =
