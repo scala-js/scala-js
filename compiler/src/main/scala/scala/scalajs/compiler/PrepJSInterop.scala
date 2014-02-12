@@ -42,6 +42,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
+    // Force evaluation of JSDynamicLiteral: Strangely, we are unable to find
+    // nested objects in the JSCode phase (probably after flatten).
+    // Therefore we force the symbol of js.Dynamic.literal here in order to
+    // have access to it in JSCode.
+    JSDynamicLiteral
+
     var inJSAnyMod = false
     var inJSAnyCls = false
     var inScalaCls = false
