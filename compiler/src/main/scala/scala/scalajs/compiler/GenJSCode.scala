@@ -2495,6 +2495,19 @@ abstract class GenJSCode extends plugins.PluginComponent
             case DYNUPDATE =>
               // js.Dynamic.updateDynamic(arg1)(arg2)
               statToExpr(js.Assign(maybeDynamicSelect(receiver, arg1), arg2))
+
+            case HASPROP =>
+              // js.Object.hasProperty(arg1, arg2)
+              /* Here we have an issue with evaluation order of arg1 and arg2,
+               * since the obvious translation is `arg2 in arg1`, but then
+               * arg2 is evaluated before arg1. Since this is not a commonly
+               * used operator, we don't try to avoid unnessary temp vars, and
+               * simply always evaluate arg1 in a temp before doing the `in`.
+               */
+              val temp = js.Ident(freshName())
+              js.Block(
+                  js.VarDef(temp, arg1),
+                  js.BinaryOp("in", arg2, temp))
           }
       })
     }
