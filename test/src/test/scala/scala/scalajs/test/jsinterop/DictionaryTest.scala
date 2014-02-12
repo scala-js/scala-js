@@ -45,5 +45,22 @@ object DictionaryTest extends JasmineTest {
       expect(propString).toEqual("7357")
     }
 
+    it("should provide an equivalent of the JS delete keyword - #255") {
+      val obj = js.Dictionary.empty
+      obj("foo") = 42
+      obj("bar") = "foobar"
+      js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
+          js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
+      expect(obj("foo")).toEqual(42)
+      expect(obj("bar")).toEqual("foobar")
+      expect(obj("nonconfig")).toEqual(4)
+      expect(obj.delete("foo")).toBeTruthy
+      expect(obj.delete("nonconfig")).toBeFalsy
+      expect(obj("foo")).toBeUndefined
+      expect(obj.asInstanceOf[js.Object].hasOwnProperty("foo")).toBeFalsy
+      expect(obj("bar")).toEqual("foobar")
+      expect(obj("nonconfig")).toEqual(4)
+    }
+
   }
 }

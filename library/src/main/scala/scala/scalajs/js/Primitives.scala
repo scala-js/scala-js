@@ -258,6 +258,14 @@ sealed trait Dictionary extends Any {
   /** Writes a field of this object by its name. */
   @JSBracketAccess
   def update(key: String, value: Any): Unit
+
+  /** Deletes a property of this object by its name.
+   *  The property must be configurable.
+   *  This method is equivalent to the "delete" keyword in JavaScript.
+   *  @return true on success (the property did not exist or was configurable),
+   *          false otherwise
+   */
+  def delete(key: String): Boolean = sys.error("stub")
 }
 
 /** Factory for [[Dictionary]] instances. */
