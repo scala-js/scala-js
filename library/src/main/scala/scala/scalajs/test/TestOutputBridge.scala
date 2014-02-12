@@ -70,16 +70,16 @@ class TestOutputBridge(eventProxy: EventProxy) extends TestOutput {
     stack.toArray
   }
 
-  private def toJsArray(a: Array[ScriptStackElement]): js.Array[js.Dictionary] =
-    elementToDictionary(a)
+  private def toJsArray(a: Array[ScriptStackElement]): js.Array[js.Any] =
+    elementToJS(a)
 
-  private def elementToDictionary(a: Seq[ScriptStackElement]): Array[js.Dictionary] =
-    (for (el <- a) yield stackElementToDictionary(el)).toArray
+  private def elementToJS(a: Seq[ScriptStackElement]): Array[js.Any] =
+    (for (el <- a) yield stackElementToJS(el)).toArray
 
-  private def stackElementToDictionary(s: ScriptStackElement): js.Dictionary = {
-    js.Dictionary(
-        "fileName" -> (s.fileName: js.String),
-        "functionName" -> (s.functionName: js.String),
-        "lineNumber" -> (s.lineNumber: js.Number))
+  private def stackElementToJS(s: ScriptStackElement): js.Any = {
+    js.Dynamic.literal(
+        fileName = (s.fileName: js.String),
+        functionName = (s.functionName: js.String),
+        lineNumber = (s.lineNumber: js.Number))
   }
 }

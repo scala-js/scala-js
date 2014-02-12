@@ -249,57 +249,6 @@ object Dynamic {
   }
 }
 
-/** Dictionary "view" of a JavaScript value */
-sealed trait Dictionary extends Any {
-  /** Reads a field of this object by its name. */
-  @JSBracketAccess
-  def apply(key: String): Any
-
-  /** Writes a field of this object by its name. */
-  @JSBracketAccess
-  def update(key: String, value: Any): Unit
-
-  /** Deletes a property of this object by its name.
-   *  The property must be configurable.
-   *  This method is equivalent to the "delete" keyword in JavaScript.
-   *  @return true on success (the property did not exist or was configurable),
-   *          false otherwise
-   */
-  def delete(key: String): Boolean = sys.error("stub")
-}
-
-/** Factory for [[Dictionary]] instances. */
-object Dictionary {
-  /** Returns a new empty dictionary */
-  def empty: Dictionary = new Object
-
-  def apply(properties: (String, Any)*): Dictionary =
-    apply(properties)
-
-  def apply(properties: TraversableOnce[(String, Any)]): Dictionary = {
-    val result = empty
-    for ((key, value) <- properties)
-      result(key) = value
-    result
-  }
-
-  def apply[A <% String, B <% Any](properties: (A, B)*): Dictionary =
-    apply(properties)
-
-  def apply[A <% String, B <% Any](
-      properties: TraversableOnce[(A, B)]): Dictionary = {
-    val result = empty
-    for ((key, value) <- properties)
-      result(key) = value
-    result
-  }
-
-  /** Returns the names of all the enumerable properties of this object. */
-  def propertiesOf(obj: Any): Array[String] = sys.error("stub")
-
-  implicit def fromAny(value: Any): Dictionary = value.asInstanceOf[Dictionary]
-}
-
 /** Primitive JavaScript number. */
 sealed trait Number extends Any {
   def unary_+(): Number
