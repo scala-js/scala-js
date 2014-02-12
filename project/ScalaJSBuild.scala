@@ -71,6 +71,9 @@ object ScalaJSBuild extends Build {
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
   override lazy val settings = super.settings ++ Seq(
+    // Most of the projects cross-compile
+    crossScalaVersions := Seq("2.10.2", "2.11.0-M7"),
+
     /* Friendly error message when we forget to fetch the submodule
      * or when we forget to update it after changing branch. */
     {
@@ -78,20 +81,27 @@ object ScalaJSBuild extends Build {
         val logger = s.globalLogging.full
         import logger.warn
         val base = s.configuration.baseDirectory()
-        val scalalibHeadFile = base / ".git/modules/scalalib/source-2.11/HEAD"
-        if (!scalalibHeadFile.exists()) {
-          warn("It seems you have not fetched the scalalib/source submodule.")
-          warn("This will prevent you from building Scala.js!")
-          warn("You can fix this by doing the following:")
-          warn("  $ git submodule init")
-          warn("  $ git submodule update")
-        } else {
-          val sha = IO.readLines(scalalibHeadFile).headOption
-          if (sha != Some("c243435f113615b2f7407fbd683c93ec16c73749")) {
-            warn("The head of the scala/source submodule is not the one I expected.")
-            warn("This will likely prevent you from building Scala.js and will cause weird errors!")
+        for {
+          (ver, expectedSha) <- Seq(
+              "2.10" -> "60d462ef6e0dba5f9a7c4cc81255fcb9fba7939a",
+              "2.11" -> "c243435f113615b2f7407fbd683c93ec16c73749"
+          )
+        } {
+          val scalalibHeadFile = base / s".git/modules/scalalib/source-$ver/HEAD"
+          if (!scalalibHeadFile.exists()) {
+            warn(s"It seems you have not fetched the scalalib/source-$ver submodule.")
+            warn("This will prevent you from building Scala.js!")
             warn("You can fix this by doing the following:")
+            warn("  $ git submodule init")
             warn("  $ git submodule update")
+          } else {
+            val sha = IO.readLines(scalalibHeadFile).headOption
+            if (sha != Some(expectedSha)) {
+              warn("The head of the scala/source-$ver submodule is not the one I expected.")
+              warn("This will likely prevent you from building Scala.js and will cause weird errors!")
+              warn("You can fix this by doing the following:")
+              warn("  $ git submodule update")
+            }
           }
         }
         s
@@ -111,17 +121,17 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
 
           clean := clean.dependsOn(
-              // compiler, plugin, library and jasmineTestFramework are aggregated
-              clean in corejslib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in test, clean in examples,
-              clean in exampleHelloWorld, clean in exampleReversi,
-              clean in exampleTesting).value,
+              // compiler, library and jasmineTestFramework are aggregated
+              clean in plugin, clean in corejslib, clean in javalib,
+              clean in scalalib, clean in libraryAux, clean in test,
+              clean in examples, clean in exampleHelloWorld,
+              clean in exampleReversi, clean in exampleTesting).value,
 
           publish := {},
           publishLocal := {}
       )
   ).aggregate(
-      compiler, plugin, library, jasmineTestFramework
+      compiler, library, jasmineTestFramework
   )
 
   lazy val compiler: Project = Project(
@@ -130,8 +140,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
           libraryDependencies ++= Seq(
-              "org.scala-lang" % "scala-compiler" % scalaJSScalaVersion,
-              "org.scala-lang" % "scala-reflect" % scalaJSScalaVersion
+              "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+              "org.scala-lang" % "scala-reflect" % scalaVersion.value
           ),
           exportJars := true
       )
@@ -183,13 +193,19 @@ object ScalaJSBuild extends Build {
       )
   )
 
+  lazy val delambdafySetting = {
+    scalacOptions ++= (
+        if (scalaBinaryVersion.value == "2.10") Seq()
+        else Seq("-Ydelambdafy:method"))
+  }
+
   lazy val javalib: Project = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
-          scalacOptions += "-Ydelambdafy:method",
+          delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -202,7 +218,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
-          scalacOptions += "-Ydelambdafy:method",
+          delambdafySetting,
 
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
@@ -276,7 +292,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
-          scalacOptions += "-Ydelambdafy:method",
+          delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -288,7 +304,7 @@ object ScalaJSBuild extends Build {
       base = file("library"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
-          scalacOptions += "-Ydelambdafy:method"
+          delambdafySetting
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(

@@ -79,7 +79,7 @@ case class PartestTask(taskDef: TaskDef, testNames: Array[String]) extends Task 
     val classLoader = new URLClassLoader(forkedCp.split(java.io.File.pathSeparator).map(new File(_).toURI.toURL))
     val runner = SBTRunner(
         Framework.fingerprint, eventHandler, loggers,
-        "../scalalib/source/test/files",
+        "../scalalib/source-2.11/test/files",
         classLoader, null, null, Array.empty[String], testNames)
 
     if (Runtime.getRuntime().maxMemory() / (1024*1024) < 800)
