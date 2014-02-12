@@ -78,7 +78,7 @@ object ScalaJSBuild extends Build {
         val logger = s.globalLogging.full
         import logger.warn
         val base = s.configuration.baseDirectory()
-        val scalalibHeadFile = base / ".git/modules/scalalib/source/HEAD"
+        val scalalibHeadFile = base / ".git/modules/scalalib/source-2.10/HEAD"
         if (!scalalibHeadFile.exists()) {
           warn("It seems you have not fetched the scalalib/source submodule.")
           warn("This will prevent you from building Scala.js!")
@@ -211,10 +211,12 @@ object ScalaJSBuild extends Build {
 
           unmanagedSourceDirectories in Compile := {
             val base = baseDirectory.value
+            val ver = scalaVersion.value.substring(0, 4)
             Seq(
-                base / "source" / "src" / "library",
-                base / "source" / "src" / "continuations" / "library",
-                base / "overrides"
+                base / s"source-$ver" / "src" / "library",
+                base / s"source-$ver" / "src" / "continuations" / "library",
+                base / "overrides",
+                base / s"overrides-$ver"
             )
           },
 
@@ -223,17 +225,23 @@ object ScalaJSBuild extends Build {
             def normPath(f: File): String =
               f.getPath.replace(java.io.File.separator, "/")
 
-            val overridesDir = baseDirectory.value / "overrides"
-            val allOverrides = (overridesDir ** "*.scala").get
-            val overridePathLen = normPath(overridesDir).length
-            val scalaNames =
-              for (f <- allOverrides)
-                yield normPath(f).substring(overridePathLen)
-            val javaNames =
-              for (name <- scalaNames)
-                yield name.substring(0, name.length-6) + ".java"
-            val overrideNames = scalaNames ++ javaNames
-            val libraryPath = normPath(baseDirectory.value / "source/src")
+            val ver = scalaVersion.value.substring(0, 4)
+            val overridesDirs = Seq(
+                baseDirectory.value / "overrides",
+                baseDirectory.value / s"overrides-$ver"
+            )
+            val overrideNames = overridesDirs flatMap { overridesDir =>
+              val allOverrides = (overridesDir ** "*.scala").get
+              val overridePathLen = normPath(overridesDir).length
+              val scalaNames =
+                for (f <- allOverrides)
+                  yield normPath(f).substring(overridePathLen)
+              val javaNames =
+                for (name <- scalaNames)
+                  yield name.substring(0, name.length-6) + ".java"
+              scalaNames ++ javaNames
+            }
+            val libraryPath = normPath(baseDirectory.value / s"source-$ver/src")
 
             val superFilter = (excludeFilter in (Compile, unmanagedSources)).value
             superFilter || new SimpleFileFilter({ f =>

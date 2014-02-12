@@ -1,4 +1,4 @@
-[submodule "scalalib/source"]
-	path = scalalib/source
+[submodule "scalalib/source-2.10"]
+	path = scalalib/source-2.10
 	url = https://github.com/scala/scala.git
 	ignore = all
