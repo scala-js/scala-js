@@ -48,21 +48,23 @@ abstract class JSPrimitives {
   val DYNSELECT = 330 // js.Dynamic.selectDynamic
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
   val DYNAPPLY = 332  // js.Dynamic.applyDynamic
+  val DYNLITN = 333   // js.Dynamic.literal.applyDynamicNamed
+  val DYNLIT = 334    // js.Dynamic.literal.applyDynamic
 
-  val DICT_DEL = 333   // js.Dictionary.delete
-  val DICT_PROPS = 334 // js.Dictionary.propertiesOf
+  val DICT_DEL = 335   // js.Dictionary.delete
+  val DICT_PROPS = 336 // js.Dictionary.propertiesOf
 
-  val ARR_CREATE = 335 // js.Array.apply (array literal syntax)
+  val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
-  val RTJ2J = 336 // Runtime Long to Long
-  val J2RTJ = 337 // Long to Runtime Long
+  val RTJ2J = 338 // Runtime Long to Long
+  val J2RTJ = 339 // Long to Runtime Long
 
-  val NTR_MOD_SUFF  = 338 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
-  val NTR_NAME_JOIN = 339 // scala.relfect.NameTransformer.NAME_JOIN_STRING
+  val NTR_MOD_SUFF  = 340 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
+  val NTR_NAME_JOIN = 341 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
-  val TYPEOF = 340   // typeof x
-  val DEBUGGER = 341 // js.debugger()
-  val HASPROP = 342  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
+  val TYPEOF = 342   // typeof x
+  val DEBUGGER = 343 // js.debugger()
+  val HASPROP = 344  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -93,6 +95,8 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamic_selectDynamic, DYNSELECT)
     addPrimitive(JSDynamic_updateDynamic, DYNUPDATE)
     addPrimitive(JSDynamic_applyDynamic, DYNAPPLY)
+    addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLITN)
+    addPrimitive(JSDynamicLiteral_applyDynamic, DYNLIT)
 
     addPrimitive(JSDictionary_delete, DICT_DEL)
     addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)

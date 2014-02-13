@@ -11,7 +11,10 @@ import scala.tools.nsc._
  *
  *  @author Sébastien Doeraene
  */
-trait JSGlobalAddons extends JSTrees with JSPrinters with JSDefinitions {
+trait JSGlobalAddons extends JSTrees
+                        with JSPrinters
+                        with JSDefinitions
+                        with JSTreeExtractors {
   val global: Global
 
   /** JavaScript primitives, used in jscode */

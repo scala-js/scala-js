@@ -314,6 +314,9 @@ trait JSPrinters { self: JSGlobalAddons =>
         case js.ArrayConstr(items) =>
           printRow(items, "[", ", ", "]")
 
+        case js.ObjectConstr(Nil) =>
+          print("{}")
+
         case js.ObjectConstr(fields) =>
           print("{"); indent; println()
           printSeq(fields) {
