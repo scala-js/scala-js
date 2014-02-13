@@ -97,6 +97,47 @@ object MathTest extends JasmineTest {
       expect(Math.ulp(0.0)).toEqual(Double.MinValue)
     }
 
+    it("should respond to `hypot`") {
+      expect(Math.hypot(0.0, 0.0)).toBeCloseTo(0.0)
+      expect(Math.hypot(3.0, 4.0)).toBeCloseTo(5.0)
+      expect(Math.hypot(3.0, js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.hypot(Double.NegativeInfinity, 4.0)).toEqual(Double.PositiveInfinity)
+    }
+
+    it("should respond to `expm1`") {
+      expect(1 / Math.expm1(-0.0) < 0).toBeTruthy
+      expect(Math.expm1(-0.0)).toBeCloseTo(0.0)
+      expect(Math.expm1(3.0)).toBeCloseTo(19.085536923187668)
+      expect(Math.expm1(15.0)).toBeCloseTo(3269016.3724721107)
+      expect(Math.expm1(1.8E10)).toEqual(Double.PositiveInfinity)
+      expect(Math.expm1(Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+      expect(Math.expm1(Double.NegativeInfinity)).toBeCloseTo(-1.0)
+      expect(Math.expm1(4.9E-324)).toBeCloseTo(4.9E-324)
+    }
+
+    it("should respond to `sinh`") {
+      expect(Math.sinh(-1234.56)).toEqual(Double.NegativeInfinity)
+      expect(Math.sinh(1234.56)).toEqual(Double.PositiveInfinity)
+      expect(Math.sinh(0.0)).toBeCloseTo(0.0)
+      expect(Math.sinh(Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+    }
+
+    it("should respond to `cosh`") {
+      expect(Math.cosh(-1234.56)).toEqual(Double.PositiveInfinity)
+      expect(Math.cosh(1234.56)).toEqual(Double.PositiveInfinity)
+      expect(Math.cosh(-0.0)).toBeCloseTo(1.0)
+      expect(Math.cosh(Double.PositiveInfinity)).toEqual(Double.PositiveInfinity)
+    }
+
+    it("should respond to `tanh`") {
+      expect(Math.tanh(-1234.56)).toBeCloseTo(-1.0)
+      expect(Math.tanh(-120.56)).toBeCloseTo(-1.0)
+      expect(Math.tanh(1234.56)).toBeCloseTo(1.0)
+      expect(Math.tanh(0.0)).toBeCloseTo(0.0)
+      expect(Math.tanh(Double.PositiveInfinity)).toBeCloseTo(1.0)
+      expect(Math.tanh(Double.NegativeInfinity)).toBeCloseTo(-1.0)
+    }
+
   }
 
 }
