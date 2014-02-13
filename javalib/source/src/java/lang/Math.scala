@@ -137,5 +137,73 @@ object Math {
       nextAfter(abs(a), scala.Double.MaxValue) - a
   }
 
+  def hypot(a: scala.Double, b: scala.Double): scala.Double = {
+    // http://en.wikipedia.org/wiki/Hypot#Implementation
+    if (abs(a) == scala.Double.PositiveInfinity || abs(b) == scala.Double.PositiveInfinity)
+      scala.Double.PositiveInfinity
+    else if (a.isNaN || b.isNaN)
+      scala.Double.NaN
+    else if (a == 0 && b == 0)
+      0.0
+    else {
+      //To Avoid Overflow and UnderFlow
+      // calculate |x| * sqrt(1 - (y/x)^2) instead of sqrt(x^2 + y^2)
+      val x = abs(a)
+      val y = abs(b)
+      val m = max(x, y)
+      val t = min(x, y) / m
+      m * sqrt(1 + t * t)
+    }
+  }
+
+  def expm1(a: scala.Double): scala.Double = {
+    // https://github.com/ghewgill/picomath/blob/master/javascript/expm1.js
+    if (a == 0 || a.isNaN)
+      a
+    // Power Series http://en.wikipedia.org/wiki/Power_series
+    // for small values of a, exp(a) = 1 + a + (a*a)/2
+    else if (abs(a) < 1E-5)
+      a + 0.5 * a * a
+    else
+      exp(a) - 1.0
+  }
+
+  def sinh(a: scala.Double): scala.Double = {
+    if (a.isNaN || a == 0.0 || abs(a) == scala.Double.PositiveInfinity)
+      a
+    else
+      (exp(a) - exp(-a)) / 2.0
+  }
+
+  def cosh(a: scala.Double): scala.Double = {
+    if (a.isNaN)
+      a
+    else if (a == 0.0)
+      1.0
+    else if (abs(a) == scala.Double.PositiveInfinity)
+      scala.Double.PositiveInfinity
+    else
+      (exp(a) + exp(-a)) / 2.0
+  }
+
+  def tanh(a: scala.Double): scala.Double = {
+    if (a.isNaN || a == 0.0)
+      a
+    else if (abs(a) == scala.Double.PositiveInfinity)
+      signum(a)
+    else {
+      // sinh(a) / cosh(a) =
+      // 1 - 2 * (exp(-a)/ (exp(-a) + exp (a)))
+      val expma = exp(-a)
+      if (expma == scala.Double.PositiveInfinity) //Infinity / Infinity
+        -1.0
+      else {
+        val expa = exp(a)
+        val ret = expma / (expa + expma)
+        1.0 - (2.0 * ret)
+      }
+    }
+  }
+
   // TODO The methods not available in the JavaScript Math object
 }
