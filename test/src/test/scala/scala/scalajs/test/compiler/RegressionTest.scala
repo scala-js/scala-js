@@ -162,5 +162,15 @@ object RegressionTest extends JasmineTest {
       expect(scala.reflect.classTag[Bug218Foo[_]].toString).toEqual(
           "scala.scalajs.test.compiler.RegressionTest$Bug218Foo")
     }
+
+    it("should support Buffer - #268") {
+      val a = scala.collection.mutable.Buffer.empty[Int]
+      a.insert(0, 0)
+      a.remove(0)
+      for (i <- 0 to 10) {
+        a.insert(a.length / 2, i)
+      }
+      expect(a.mkString(", ")).toEqual("1, 3, 5, 7, 9, 10, 8, 6, 4, 2, 0")
+    }
   }
 }
