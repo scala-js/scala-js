@@ -435,6 +435,9 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
+          // FIXME, we need to lift this since partest does not work on 2.10
+          // this version should come from elsewhere
+          scalaVersion := "2.11.0-M7",
 
           resolvers += Resolver.typesafeIvyRepo("releases"),
 
@@ -463,6 +466,9 @@ object ScalaJSBuild extends Build {
           useLibraryButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js partest suite",
+          // FIXME, we need to lift this since partest does not work on 2.10
+          // this version should come from elsewhere
+          scalaVersion := "2.11.0-M7",
 
           /* Add an extracted version of scalajs-library.jar on the classpath.
            * The runner will need it, as it cannot cope with .js files in .jar.
