@@ -20,9 +20,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
   import rootMirror._
 
   class JSDefinitionsClass {
-    lazy val MaybeJSAnyClass = getClassIfDefined("scala.scalajs.js.Any")
-    lazy val isScalaJSDefined = MaybeJSAnyClass != NoSymbol
-    lazy val MaybeJSAnyTpe = if (isScalaJSDefined) MaybeJSAnyClass.toTypeConstructor else NoType
 
     lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
       lazy val JSPackage_typeOf   = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))

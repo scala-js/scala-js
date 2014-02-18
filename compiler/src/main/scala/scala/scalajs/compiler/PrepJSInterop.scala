@@ -221,14 +221,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   }
 
-  private def isJSAny(implDef: ImplDef) = isScalaJSDefined &&
-    (implDef.symbol.tpe.typeSymbol isSubClass JSAnyClass)
+  private def isJSAny(implDef: ImplDef) =
+    implDef.symbol.tpe.typeSymbol isSubClass JSAnyClass
 
-  private def isJSGlobalScope(implDef: ImplDef) = isScalaJSDefined &&
-    (implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass)
+  private def isJSGlobalScope(implDef: ImplDef) =
+    implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass
 
-  private def isJSLambda(sym: Symbol) = isScalaJSDefined &&
-    sym.isAnonymousClass &&
+  private def isJSLambda(sym: Symbol) = sym.isAnonymousClass &&
     AllJSFunctionClasses.exists(sym.tpe.typeSymbol isSubClass _)
 
   private def isScalaEnum(implDef: ImplDef) =

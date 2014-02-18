@@ -68,8 +68,6 @@ abstract class JSPrimitives {
 
   /** Initialize the map of primitive methods */
   def init() {
-    if (!isScalaJSDefined)
-      return
 
     addPrimitive(JSAny_fromUnit, V2JS)
     addPrimitive(JSAny_fromBoolean, Z2JS)
