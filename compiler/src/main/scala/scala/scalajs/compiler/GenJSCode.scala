@@ -2608,11 +2608,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       lazy val js.ArrayConstr(args) = argArray
       lazy val argc = args.length
 
-      def hasExplicitJSEncoding = {
-        isScalaJSDefined && (
-            sym.hasAnnotation(JSNameAnnotation) ||
-            sym.hasAnnotation(JSBracketAccessAnnotation))
-      }
+      def hasExplicitJSEncoding =
+        sym.hasAnnotation(JSNameAnnotation) ||
+        sym.hasAnnotation(JSBracketAccessAnnotation)
 
       def paramType(index: Int) = sym.tpe.params(index).tpe
 
@@ -2681,9 +2679,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          def isJSBracketAccess = {
-            isScalaJSDefined && sym.hasAnnotation(JSBracketAccessAnnotation)
-          }
+          def isJSBracketAccess = sym.hasAnnotation(JSBracketAccessAnnotation)
 
           if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
             js.UndefinedParam()
@@ -3374,8 +3370,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           "genLoadModule called with non-module symbol: " + sym0)
       val sym = if (sym0.isModule) sym0.moduleClass else sym0
 
-      val isGlobalScope = isScalaJSDefined &&
-        (sym.tpe.typeSymbol isSubClass JSGlobalScopeClass)
+      val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
 
       if (isGlobalScope) envField("g")
       else if (isRawJSType(sym.tpe)) genPrimitiveJSModule(sym)
@@ -3471,14 +3466,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
 
   /** Get JS name of Symbol if it was specified with JSName annotation */
-  def jsNameOf(sym: Symbol): String = {
-    if (isScalaJSDefined) {
-      sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
-          sym.unexpandedName.decoded)
-    } else {
-      sym.unexpandedName.decoded
-    }
-  }
+  def jsNameOf(sym: Symbol): String =
+    sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
+        sym.unexpandedName.decoded)
 
   private def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted
