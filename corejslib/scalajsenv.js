@@ -275,11 +275,6 @@ var ScalaJS = {
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
-  truncateToLong: function(value) {
-    return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
-                     : ScalaJS.g["Math"]["floor"](value);
-  },
-
   /** convert a number to a char (unsigned 16bit value) */
   num2char: function(value) {
     var x = value | 0;
