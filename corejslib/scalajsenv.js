@@ -67,17 +67,13 @@ var ScalaJS = {
     return obj && obj.$classData && obj.$classData.isArrayClass
   },
 
-  dynamicIsInstanceOf: function(obj, data) {
-    return data.isInstance(obj);
-  },
-
   dynamicIsAssignableFrom: function(lhsData, rhsData) {
     if (lhsData.isPrimitive || rhsData.isPrimitive)
       return lhsData === rhsData;
     if (rhsData === ScalaJS.data.java_lang_String)
-      return ScalaJS.dynamicIsInstanceOf("some string", lhsData);
+      return lhsData.isInstance("some string");
     else
-      return ScalaJS.dynamicIsInstanceOf({$classData: rhsData}, lhsData);
+      return lhsData.isInstance({$classData: rhsData});
   },
 
   throwClassCastException: function(instance, classFullName) {

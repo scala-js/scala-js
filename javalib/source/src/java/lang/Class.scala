@@ -10,8 +10,7 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
   }
 
   def isInstance(obj: Object): scala.Boolean =
-    js.Dynamic.global.ScalaJS.dynamicIsInstanceOf(
-        obj.asInstanceOf[js.Any], data).asInstanceOf[js.Boolean]
+    data.isInstance(obj.asInstanceOf[js.Any]).asInstanceOf[js.Boolean]
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
     js.Dynamic.global.ScalaJS.dynamicIsAssignableFrom(

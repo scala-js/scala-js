@@ -11,10 +11,18 @@ package compiler
 /** Tests the little reflection we support */
 object ReflectionTest extends JasmineTest {
 
-  describe("Scala.js Reflection") {
+  describe("Scala.js Reflection (through java.lang.Class)") {
     it("should append $ to class name of objects") {
       expect(TestObject.getClass.getName).toEqual(
         "scala.scalajs.test.compiler.ReflectionTest$TestObject$")
+    }
+
+    it("should support isInstance") {
+      class A
+      class B extends A
+      val b = new B
+      expect(classOf[A].isInstance(b)).toBeTruthy
+      expect(classOf[A].isInstance("hello")).toBeFalsy
     }
   }
 
