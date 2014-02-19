@@ -271,16 +271,6 @@ var ScalaJS = {
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
-  /** convert a number to a char (unsigned 16bit value) */
-  num2char: function(value) {
-    var x = value | 0;
-    while (x > 65535)
-      x -= 65536;
-    while (x < 0)
-      x += 65536;
-    return x;
-  },
-
   propertiesOf: function(obj) {
     var result = new Array();
     for (var prop in obj)
