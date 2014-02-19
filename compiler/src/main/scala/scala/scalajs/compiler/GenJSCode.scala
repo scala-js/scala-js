@@ -2155,7 +2155,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Conversions to chars (except for Long)
         case B2C | S2C | I2C | F2C | D2C =>
-          genCallHelper("num2char", source)
+          js.BinaryOp("&", source, js.IntLiteral(0xffff))
 
         case F2B | F2S | F2I | D2B | D2S | D2I =>
           js.BinaryOp("|", source, js.IntLiteral(0))

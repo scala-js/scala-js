@@ -67,17 +67,13 @@ var ScalaJS = {
     return obj && obj.$classData && obj.$classData.isArrayClass
   },
 
-  dynamicIsInstanceOf: function(obj, data) {
-    return data.isInstance(obj);
-  },
-
   dynamicIsAssignableFrom: function(lhsData, rhsData) {
     if (lhsData.isPrimitive || rhsData.isPrimitive)
       return lhsData === rhsData;
     if (rhsData === ScalaJS.data.java_lang_String)
-      return ScalaJS.dynamicIsInstanceOf("some string", lhsData);
+      return lhsData.isInstance("some string");
     else
-      return ScalaJS.dynamicIsInstanceOf({$classData: rhsData}, lhsData);
+      return lhsData.isInstance({$classData: rhsData});
   },
 
   throwClassCastException: function(instance, classFullName) {
@@ -273,21 +269,6 @@ var ScalaJS = {
       return instance["substring"](start, end);
     else
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
-  },
-
-  truncateToLong: function(value) {
-    return value < 0 ? ScalaJS.g["Math"]["ceil"](value)
-                     : ScalaJS.g["Math"]["floor"](value);
-  },
-
-  /** convert a number to a char (unsigned 16bit value) */
-  num2char: function(value) {
-    var x = value | 0;
-    while (x > 65535)
-      x -= 65536;
-    while (x < 0)
-      x += 65536;
-    return x;
   },
 
   propertiesOf: function(obj) {
