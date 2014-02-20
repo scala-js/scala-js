@@ -234,9 +234,7 @@ trait JSTrees { self: JSGlobalAddons =>
 
     case class MethodDef(name: PropertyName, args: List[Ident], body: Tree)(implicit val pos: Position) extends Tree
 
-    case class GetterDef(name: PropertyName, body: Tree)(implicit val pos: Position) extends Tree
-
-    case class SetterDef(name: PropertyName, arg: Ident, body: Tree)(implicit val pos: Position) extends Tree
+    case class PropertyDef(name: PropertyName, getterBody: Tree, setterArg: Ident, setterBody: Tree)(implicit val pos: Position) extends Tree
 
     case class Super()(implicit val pos: Position) extends Tree
 
@@ -532,11 +530,12 @@ trait JSTrees { self: JSGlobalAddons =>
           case MethodDef(name, args, body) =>
             MethodDef(name, args, transformStat(body))
 
-          case GetterDef(name, body) =>
-            GetterDef(name, transformStat(body))
-
-          case SetterDef(name, arg, body) =>
-            SetterDef(name, arg, transformStat(body))
+          case PropertyDef(name, getterBody, setterArg, setterBody) =>
+            PropertyDef(
+                name,
+                transformStat(getterBody),
+                setterArg,
+                transformStat(setterBody))
 
           case _ =>
             tree
