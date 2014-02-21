@@ -685,6 +685,14 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genReflCallProxies(sym: Symbol): List[js.Tree] = {
       import scala.reflect.internal.Flags
 
+      // Flags of members we do not want to consider for reflective call proxys
+      val excludedFlags = (
+          Flags.BRIDGE  |
+          Flags.PRIVATE |
+          Flags.MACRO   |
+          Flags.DEFAULTPARAM
+      )
+
       /** Check if two method symbols conform in name and parameter types */
       def weakMatch(s1: Symbol)(s2: Symbol) = {
         val p1 = s1.tpe.params
@@ -703,7 +711,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def superHasProxy(s: Symbol) = {
         val alts = sym.superClass.tpe.findMember(
             name = s.name,
-            excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
+            excludedFlags = excludedFlags,
             requiredFlags = Flags.METHOD,
             stableOnly    = false).alternatives
         alts.exists(weakMatch(s) _)
@@ -711,7 +719,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Query candidate methods
       val methods = sym.tpe.findMembers(
-          excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
+          excludedFlags = excludedFlags,
           requiredFlags = Flags.METHOD)
 
       val candidates = methods filter {
