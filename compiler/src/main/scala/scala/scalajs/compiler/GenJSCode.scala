@@ -3058,25 +3058,26 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  function into a Scala function.
      */
     private object JSFunctionToScala {
-      private val AnonFunctionFullNamePrefix =
-        "scala_scalajs_js_runtime_AnonFunction"
+      private val AnonFunPrefScala =
+        "scala.scalajs.js.runtime.AnonFunction"
+      private val AnonFunPrefJS =
+        AnonFunPrefScala.replace('.', '_')
 
       def apply(jsFunction: js.Tree, arity: Int)(
           implicit pos: Position): js.Tree = {
-        val anonClassIdent = js.Ident(AnonFunctionFullNamePrefix+arity)
-        val anonClassCtor = js.DotSelect(envField("classes"), anonClassIdent)
-        js.New(anonClassCtor, List(jsFunction))
+        val clsSym = getRequiredClass(AnonFunPrefScala + arity)
+        val ctor = clsSym.tpe.member(nme.CONSTRUCTOR)
+        genNew(clsSym, ctor, List(jsFunction))
       }
 
-      def unapply(tree: js.New): Option[(js.Tree, Int)] = tree match {
-        case js.New(
+      def unapply(tree: js.Apply): Option[(js.Tree, Int)] = tree match {
+        case js.Apply(js.DotSelect(js.New(
             js.DotSelect(js.DotSelect(
                 js.Ident(ScalaJSEnvironmentName, _),
-                js.Ident("classes", _)),
-                js.Ident(wrapperName, _)),
-            List(fun))
-        if wrapperName.startsWith(AnonFunctionFullNamePrefix) =>
-          val arityStr = wrapperName.substring(AnonFunctionFullNamePrefix.length)
+                js.Ident("c", _)),
+                js.Ident(wrapperName, _)), Nil), _), List(fun))
+        if wrapperName.startsWith(AnonFunPrefJS) =>
+          val arityStr = wrapperName.substring(AnonFunPrefJS.length)
           try {
             Some((fun, arityStr.toInt))
           } catch {

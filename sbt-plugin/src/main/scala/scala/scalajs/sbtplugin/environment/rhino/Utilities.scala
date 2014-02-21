@@ -46,9 +46,13 @@ trait Utilities { self: CodeBlock =>
 
   def toArgs(args: Seq[Any]) = args.map(Context.javaToJS(_, scope)).toArray
 
-  def createInstance(className: String, args: Any*) = {
-    val classObject = getFunctionObject("ScalaJS.classes", className)
-    classObject.construct(context, scope, toArgs(args))
+  def createInstance(className: String, initName: String)(args: Any*) = {
+    val classObject = getFunctionObject("ScalaJS.c", className)
+    val inst = classObject.construct(context, scope, Array())
+    val method =
+      ScriptableObject.getProperty(inst, initName).asInstanceOf[javascript.Function]
+
+    method.call(context, scope, inst, toArgs(args))
   }
 
   def getModule(className: String) = {
