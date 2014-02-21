@@ -49,7 +49,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Some state --------------------------------------------------------------
 
-    var currentCUnit: CompilationUnit = _
     var currentClassSym: Symbol = _
     var currentMethodSym: Symbol = _
     var isModuleInitialized: Boolean = false // see genApply for super calls
@@ -123,8 +122,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     override def apply(cunit: CompilationUnit) {
       try {
-        currentCUnit = cunit
-
         val generatedClasses = ListBuffer.empty[(Symbol, js.Tree)]
 
         def collectClassDefs(tree: Tree): List[ClassDef] = {
@@ -198,7 +195,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
         undefinedDefaultParams.clear()
-        currentCUnit = null
         currentClassSym = null
         currentMethodSym = null
       }
@@ -689,6 +685,14 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genReflCallProxies(sym: Symbol): List[js.Tree] = {
       import scala.reflect.internal.Flags
 
+      // Flags of members we do not want to consider for reflective call proxys
+      val excludedFlags = (
+          Flags.BRIDGE  |
+          Flags.PRIVATE |
+          Flags.MACRO   |
+          Flags.DEFAULTPARAM
+      )
+
       /** Check if two method symbols conform in name and parameter types */
       def weakMatch(s1: Symbol)(s2: Symbol) = {
         val p1 = s1.tpe.params
@@ -707,7 +711,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def superHasProxy(s: Symbol) = {
         val alts = sym.superClass.tpe.findMember(
             name = s.name,
-            excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
+            excludedFlags = excludedFlags,
             requiredFlags = Flags.METHOD,
             stableOnly    = false).alternatives
         alts.exists(weakMatch(s) _)
@@ -715,7 +719,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Query candidate methods
       val methods = sym.tpe.findMembers(
-          excludedFlags = Flags.BRIDGE | Flags.PRIVATE | Flags.MACRO,
+          excludedFlags = excludedFlags,
           requiredFlags = Flags.METHOD)
 
       val candidates = methods filter {
@@ -985,7 +989,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               "Trying to access the this of another class: " +
               "tree.symbol = " + tree.symbol +
               ", class symbol = " + currentClassSym +
-              " compilation unit:" + currentCUnit)
+              " compilation unit:" + currentUnit)
           if (symIsModuleClass && tree.symbol != currentClassSym) {
             genLoadModule(tree.symbol)
           } else if (methodTailJumpThisSym != NoSymbol) {
@@ -1629,7 +1633,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case JSBooleanClass   => genTypeOfTest("boolean")
           case JSUndefinedClass => genTypeOfTest("undefined")
           case sym if sym.isTrait =>
-            currentCUnit.error(pos,
+            currentUnit.error(pos,
                 s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
             js.BooleanLiteral(true)
           case sym =>
@@ -2371,11 +2375,11 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.ArrayConstr(jse.LitNamed(pairs))) =>
             js.ObjectConstr(pairs)
           case (js.StringLiteral(name, _), _) if name != "apply" =>
-            currentCUnit.error(pos,
+            currentUnit.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             statToExpr(js.Skip())
           case _ =>
-            currentCUnit.error(pos,
+            currentUnit.error(pos,
                 "js.Dynamic.literal.applyDynamicNamed may not be called directly")
             statToExpr(js.Skip())
         }
@@ -2423,11 +2427,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           // case where another method is called
           case (js.StringLiteral(name, _), _) if name != "apply" =>
-            currentCUnit.error(pos,
+            currentUnit.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             statToExpr(js.Skip())
           case _ =>
-            currentCUnit.error(pos,
+            currentUnit.error(pos,
                 "js.Dynamic.literal.applyDynamic may not be called directly")
             statToExpr(js.Skip())
         }
@@ -2680,17 +2684,18 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           def isJSBracketAccess = sym.hasAnnotation(JSBracketAccessAnnotation)
+          def jsFunName = jsNameOf(sym)
 
           if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
             js.UndefinedParam()
           } else if (isJSGetter) {
             assert(argc == 0)
-            js.BracketSelect(receiver, js.StringLiteral(funName))
+            js.BracketSelect(receiver, js.StringLiteral(jsFunName))
           } else if (isJSSetter) {
             assert(argc == 1)
             statToExpr(js.Assign(
                 js.BracketSelect(receiver,
-                    js.StringLiteral(funName.substring(0, funName.length-2))),
+                    js.StringLiteral(jsFunName.stripSuffix("_="))),
                 args.head))
           } else if (isJSBracketAccess) {
             assert(argArray.isInstanceOf[js.ArrayConstr] && (argc == 1 || argc == 2),
@@ -2704,7 +2709,6 @@ abstract class GenJSCode extends plugins.PluginComponent
                     valueArg))
             }
           } else {
-            val jsFunName = jsNameOf(sym)
             argArray match {
               case js.ArrayConstr(args) =>
                 js.ApplyMethod(receiver, js.StringLiteral(jsFunName), args)
@@ -2740,7 +2744,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } yield mem
 
       if (compMembers.isEmpty) {
-        currentCUnit.error(pos,
+        currentUnit.error(pos,
             s"""Could not find implementation for constructor of java.lang.String
                |with type ${ctor.tpe}. Constructors on java.lang.String
                |are forwarded to the companion object of
@@ -2778,7 +2782,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Check that we found a member
       if (rtStrSym == NoSymbol) {
-        currentCUnit.error(pos,
+        currentUnit.error(pos,
             s"""Could not find implementation for method ${sym.name}
                |on java.lang.String with type ${sym.tpe}
                |Methods on java.lang.String are forwarded to the implementation class

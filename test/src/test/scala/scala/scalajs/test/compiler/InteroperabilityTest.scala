@@ -62,6 +62,40 @@ object InteroperabilityTest extends JasmineTest {
       expect(obj.value(7357)).toEqual(7357)
     }
 
+    it("should translate explicit getter and setter names to field access") {
+      trait InteroperabilityTestProperty extends js.Object {
+        def a_=(x: Int): Unit = ???
+        def a: Int = ???
+      }
+      val obj = js.eval("""
+        var interoperabilityTestProperty = { a: 1 };
+        interoperabilityTestProperty;
+        """).asInstanceOf[InteroperabilityTestProperty]
+
+      expect(obj.a).toEqual(1)
+      obj.a = 100
+      expect(obj.a).toEqual(100)
+    }
+
+    it("should support @JSName together with field access") {
+      trait InteroperabilityTestPropertyNamed extends js.Object {
+        @JSName("b")
+        def a_=(x: Int): Unit = ???
+        @JSName("b")
+        def a: Int = ???
+        def b: Int = ???
+      }
+      val obj = js.eval("""
+        var interoperabilityTestProperty = { b: 1 };
+        interoperabilityTestProperty;
+        """).asInstanceOf[InteroperabilityTestPropertyNamed]
+
+      expect(obj.a).toEqual(1)
+      obj.a = 100
+      expect(obj.a).toEqual(100)
+      expect(obj.b).toEqual(100)
+    }
+
     it("should support @JSBracketAccess to specify access using []-subscription") {
       trait InteroperabilityTestJSBracketAccess extends js.Object {
         @JSBracketAccess
