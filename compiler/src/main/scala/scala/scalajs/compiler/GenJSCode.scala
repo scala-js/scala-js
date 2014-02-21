@@ -2684,17 +2684,18 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           def isJSBracketAccess = sym.hasAnnotation(JSBracketAccessAnnotation)
+          def jsFunName = jsNameOf(sym)
 
           if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
             js.UndefinedParam()
           } else if (isJSGetter) {
             assert(argc == 0)
-            js.BracketSelect(receiver, js.StringLiteral(funName))
+            js.BracketSelect(receiver, js.StringLiteral(jsFunName))
           } else if (isJSSetter) {
             assert(argc == 1)
             statToExpr(js.Assign(
                 js.BracketSelect(receiver,
-                    js.StringLiteral(funName.substring(0, funName.length-2))),
+                    js.StringLiteral(jsFunName.stripSuffix("_="))),
                 args.head))
           } else if (isJSBracketAccess) {
             assert(argArray.isInstanceOf[js.ArrayConstr] && (argc == 1 || argc == 2),
@@ -2708,7 +2709,6 @@ abstract class GenJSCode extends plugins.PluginComponent
                     valueArg))
             }
           } else {
-            val jsFunName = jsNameOf(sym)
             argArray match {
               case js.ArrayConstr(args) =>
                 js.ApplyMethod(receiver, js.StringLiteral(jsFunName), args)
