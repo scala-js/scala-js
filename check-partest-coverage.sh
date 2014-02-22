@@ -1,5 +1,17 @@
 #! /bin/sh
 
+# This script tests if all Scala partests are classified. Since
+# Scala.js does not provide all the Scala functionality (see [1]), we
+# have to exclude some partests from testing. Therefore, every partest
+# in $TESTDIR has to be in exactly one of the following files located
+# in $KNOWDIR:
+# - WhitelistedTests.txt: Tests that succeed
+# - BlacklistedTests.txt: Tests that fail since they test for behavior
+#   which is not supported in Scala.js
+# - BuglistedTests.txt: Tests that fail due to a bug in Scala.js
+#
+# [1] http://www.scala-js.org/doc/semantics.html
+
 TMP_PREF=`basename $0`
 TMP_HAVE_FILE=`mktemp /tmp/${TMP_PREF}_have_XXXXX` || exit 2
 TMP_KNOW_FILE=`mktemp /tmp/${TMP_PREF}_know_XXXXX` || exit 2
