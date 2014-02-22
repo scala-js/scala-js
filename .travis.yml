@@ -14,30 +14,30 @@ env:
 matrix:
   include:
     - jdk: openjdk6
-      scala: 2.10.2
+      scala: 2.10.3
       env:
         - KIND=main
         - PUBLISH_ENABLED=true
     - jdk: openjdk6
-      scala: 2.10.2
+      scala: 2.10.3
       env:
         - KIND=sbtplugin
         - PUBLISH_ENABLED=true
     - jdk: openjdk6
-      scala: 2.11.0-M7
+      scala: 2.11.0-M8
       env:
         - KIND=main
         - PUBLISH_ENABLED=true
     - jdk: openjdk6
-      scala: 2.11.0-M7
+      scala: 2.11.0-M8
       env:
         - KIND=main
         - SBT_SETUP='set scalacOptions in ScalaJSBuild.test += "-Xexperimental"'
     - jdk: oraclejdk7
-      scala: 2.10.2
+      scala: 2.10.3
       env:
         - KIND=main
     - jdk: oraclejdk7
-      scala: 2.11.0-M7
+      scala: 2.11.0-M8
       env:
         - KIND=main

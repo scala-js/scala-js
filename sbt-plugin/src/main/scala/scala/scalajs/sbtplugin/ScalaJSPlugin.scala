@@ -33,7 +33,7 @@ import scala.scalajs.sbtplugin.testing.TestFramework
 object ScalaJSPlugin extends Plugin {
   val scalaJSVersion = "0.4-SNAPSHOT"
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
-  val scalaJSScalaVersion = "2.10.2"
+  val scalaJSScalaVersion = "2.10.3"
 
   object ScalaJSKeys {
     val packageJS = taskKey[Seq[File]]("Package all the compiled .js files")

@@ -72,7 +72,7 @@ object ScalaJSBuild extends Build {
 
   override lazy val settings = super.settings ++ Seq(
     // Most of the projects cross-compile
-    crossScalaVersions := Seq("2.10.2", "2.11.0-M7"),
+    crossScalaVersions := Seq("2.10.3", "2.11.0-M8"),
 
     /* Friendly error message when we forget to fetch the submodule
      * or when we forget to update it after changing branch. */
@@ -83,8 +83,8 @@ object ScalaJSBuild extends Build {
         val base = s.configuration.baseDirectory()
         for {
           (ver, expectedSha) <- Seq(
-              "2.10" -> "60d462ef6e0dba5f9a7c4cc81255fcb9fba7939a",
-              "2.11" -> "c243435f113615b2f7407fbd683c93ec16c73749"
+              "2.10" -> "e2fec6b28dfd73482945ffab85d9b582d0cb9f17",
+              "2.11" -> "8f6f4032b5c026fd9301cebe28dde5bb7c8e264c"
           )
         } {
           val scalalibHeadFile = base / s".git/modules/scalalib/source-$ver/HEAD"
@@ -97,7 +97,7 @@ object ScalaJSBuild extends Build {
           } else {
             val sha = IO.readLines(scalalibHeadFile).headOption
             if (sha != Some(expectedSha)) {
-              warn("The head of the scala/source-$ver submodule is not the one I expected.")
+              warn(s"The head of the scala/source-$ver submodule is not the one I expected.")
               warn("This will likely prevent you from building Scala.js and will cause weird errors!")
               warn("You can fix this by doing the following:")
               warn("  $ git submodule update")
@@ -278,8 +278,15 @@ object ScalaJSBuild extends Build {
 
           // Continuation plugin
           autoCompilerPlugins := true,
-          libraryDependencies += compilerPlugin(
-              "org.scala-lang.plugins" % "continuations" % scalaVersion.value),
+          libraryDependencies ++= (
+            if (scalaVersion.value startsWith "2.11.") Seq(
+              compilerPlugin("org.scala-lang.plugins" %% "scala-continuations-plugin" % "1.0.0-RC3"),
+              "org.scala-lang.plugins" %% "scala-continuations-library" % "1.0.0-RC3"
+            )
+            else Seq(
+              compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
+            )
+          ),
           scalacOptions += "-P:continuations:enable"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -433,29 +440,24 @@ object ScalaJSBuild extends Build {
       id = "scalajs-partest",
       base = file("partest"),
       settings = defaultSettings ++ Seq(
-          name := "Partest for Scala.js",
-          moduleName := "scalajs-partest",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
-
-          resolvers += Resolver.typesafeIvyRepo("releases"),
-
-          libraryDependencies ++= Seq(
-              "org.scala-sbt" % "sbt" % "0.13.0",
-              "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
-              "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4"
-          ),
-
-          unmanagedSourceDirectories in Compile ++= {
-            val base = ((scalaSource in (plugin, Compile)).value /
-                "scala/scalajs/sbtplugin")
-            Seq(base / "environment", base / "sourcemap")
-          },
-          sources in Compile += (
-              (scalaSource in (plugin, Compile)).value /
-              "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala")
+        name := "Partest for Scala.js",
+        moduleName := "scalajs-partest",
+        crossScalaVersions := Seq("2.11.0-M8"), // no partest on 2.10
+        resolvers += Resolver.typesafeIvyRepo("releases"),
+        libraryDependencies ++= Seq(
+            "org.scala-sbt" % "sbt" % "0.13.1",
+            "com.google.javascript" % "closure-compiler" % "v20130603",
+            "org.mozilla" % "rhino" % "1.7R4"
+        ),
+        libraryDependencies ++= (if (scalaVersion.value startsWith "2.10.") Nil else Seq("org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8")),
+        unmanagedSourceDirectories in Compile ++= {
+          val base = ((scalaSource in (plugin, Compile)).value /
+              "scala/scalajs/sbtplugin")
+          Seq(base / "environment", base / "sourcemap")
+        },
+        sources in Compile += (
+            (scalaSource in (plugin, Compile)).value /
+            "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala")
       )
   ).dependsOn(compiler)
 
@@ -466,9 +468,7 @@ object ScalaJSBuild extends Build {
           useLibraryButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js partest suite",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
+          crossScalaVersions := Seq("2.11.0-M8"), // no partest on 2.10
 
           /* Add an extracted version of scalajs-library.jar on the classpath.
            * The runner will need it, as it cannot cope with .js files in .jar.
