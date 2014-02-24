@@ -19,7 +19,8 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  def genJSFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree) {
+  def genJSFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
+      infoBuilder: ClassInfoBuilder) {
     val outfile = getUniqueFileFor(cunit, sym, ".js", true)
     val output = bufferedPrintWriter(outfile)
     var sourceMapFile: AbstractFile = null
@@ -49,6 +50,17 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       output.close()
       if (sourceMapOutput ne null)
         sourceMapOutput.close()
+    }
+
+    val infofile = getFileFor(cunit, sym, ".sjsinfo", false)
+    val infoWriter = bufferedPrintWriter(infofile)
+    try {
+      val printer = new JSTreePrinter(infoWriter)
+      printer.printTree(infoBuilder.toJSON)
+      printer.println()
+      printer.close()
+    } finally {
+      infoWriter.close()
     }
   }
 
@@ -87,11 +99,11 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     val dir = (baseDir /: pathParts.init)(_.subdirectoryNamed(_))
 
     var filename = pathParts.last
-    if (withOrderingPrefix) {
+    if (withOrderingPrefix)
       filename = getOrderingPrefixFor(sym) + filename
-      if (sym.isModuleClass && !sym.isImplClass)
-        filename = filename + nme.MODULE_SUFFIX_STRING
-    }
+    if (sym.isModuleClass && !sym.isImplClass)
+      filename = filename + nme.MODULE_SUFFIX_STRING
+
     dir fileNamed (filename + suffix)
   }
 
