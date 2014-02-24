@@ -22,7 +22,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   def genJSFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree) {
     val outfile = getUniqueFileFor(cunit, sym, ".js", true)
     val output = bufferedPrintWriter(outfile)
-    var sourceMapFile: File = null
+    var sourceMapFile: AbstractFile = null
     var sourceMapOutput: PrintWriter = null
     try {
       val printer =
@@ -31,7 +31,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
           sourceMapFile = getUniqueFileFor(cunit, sym, ".js.map", true)
           sourceMapOutput = bufferedPrintWriter(sourceMapFile)
           new JSTreePrinterWithSourceMap(output, sourceMapOutput,
-              outfile.getName)
+              outfile.name)
         } else {
           // Without source map
           new JSTreePrinter(output)
@@ -40,7 +40,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       printer.printTopLevelTree(tree)
 
       if (sourceMapFile ne null) {
-        printer.print(s"//@ sourceMappingURL=${sourceMapFile.getName}")
+        printer.print(s"//@ sourceMappingURL=${sourceMapFile.name}")
         printer.println()
       }
 
@@ -52,17 +52,20 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     }
   }
 
-  private def bufferedPrintWriter(file: File) =
-    new PrintWriter(new BufferedOutputStream(new FileOutputStream(file)))
+  private def bufferedPrintWriter(file: AbstractFile) =
+    new PrintWriter(file.bufferedOutput)
 
   private def getUniqueFileFor(cunit: CompilationUnit, sym: Symbol,
       suffix: String, withOrderingPrefix: Boolean) = {
-    val file = getFileFor(cunit, sym, suffix, withOrderingPrefix)
-
-    if (withOrderingPrefix && !file.exists) {
+    val afile = getFileFor(cunit, sym, suffix, withOrderingPrefix)
+    val file = afile.file
+    if (file != null && withOrderingPrefix && !file.exists && file.getParentFile != null) {
       /* Remove files with the same name but a different ordering prefix.
        * This needs to be done only when the file does not exist. If it exists,
        * then all the files to be deleted now were deleted when it was created.
+       *
+       * Don't do anything if the file is a VirtualFile and doesn't have a real file
+       * backing it.
        */
       val otherFiles = file.getParentFile.listFiles()
       if (otherFiles ne null) {
@@ -72,7 +75,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       }
     }
 
-    file
+    afile
   }
 
   private def getFileFor(cunit: CompilationUnit, sym: Symbol,
@@ -89,8 +92,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       if (sym.isModuleClass && !sym.isImplClass)
         filename = filename + nme.MODULE_SUFFIX_STRING
     }
-
-    new File(dir.file, filename + suffix)
+    dir fileNamed (filename + suffix)
   }
 
   private def getOrderingPrefixFor(sym: Symbol): String = {
