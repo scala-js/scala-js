@@ -28,12 +28,12 @@ import rhino.ScriptableObjectOps
 
 import sbt.IO
 
+import scala.scalajs.sbtplugin.Utils._
+
 class RhinoBasedScalaJSEnvironment(
     inputs: Seq[File], classpath: Seq[File],
     console: Option[Console],
     trace: (=> Throwable) => Unit) extends ScalaJSEnvironment {
-
-  val ScalaJSProviderPattern = """[0-9]{4}-(.*\.js)""".r
 
   /* Splits the inputs into 4 categories
    *
@@ -155,7 +155,13 @@ class RhinoBasedScalaJSEnvironment(
   }
 
   private val EnvJSLib = new FileNameMatcher("""env\.rhino\.(?:[\d\.]+\.)?js""".r)
-  private val ScalaJSProvider = new FileNameMatcher(ScalaJSProviderPattern)
+
+  private def isScalaJSProvider(file: File): Boolean =
+    file.getPath.endsWith(".js") && changeExt(file, ".js", ".sjsinfo").exists
+
+  private object ScalaJSProvider {
+    def unapply(file: File): Boolean = isScalaJSProvider(file)
+  }
 
   private object ScalaJSCore {
     def unapply(file: File) =
@@ -166,27 +172,15 @@ class RhinoBasedScalaJSEnvironment(
 
   private object RelativeScalaJSProvider {
     def unapply(file: File): Option[String] = {
-      val classpath = classpathOf(file)
-
-      (file.getName, classpath) match {
-        case (ScalaJSProviderPattern(fileName), Some(classpath)) =>
-          Some(makeRelative(fileName, classpath))
-        case _ => None
-      }
-    }
-
-    private def makeRelative(fileName: String, classpath: String) = {
-      val rel = classpath.replace("\\", "/")
-      val lastSlash = rel.lastIndexOf("/")
-      val relativeFileName = rel.substring(0, lastSlash + 1) + fileName
-      relativeFileName
+      if (!isScalaJSProvider(file)) None
+      else classpathOf(file)
     }
 
     private def classpathOf(file: File) = {
       classpath.view
         .map(IO.relativize(_, file))
         .collectFirst {
-          case Some(path) => path
+          case Some(path) => path.replace("\\", "/")
         }
     }
   }

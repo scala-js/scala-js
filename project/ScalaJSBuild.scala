@@ -308,15 +308,15 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
-          /* Add the .js and .js.map files from other lib projects
-           * (but not .jstype files)
+          /* Add the .js, .js.map and .sjsinfo files from other lib projects
+           * (but not .class files)
            */
           mappings in packageBin ++= {
             val allProducts = (
                 (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
-            val filter = ("*.js": NameFilter) | "*.js.map"
+            val filter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
             allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
           },
 
@@ -453,9 +453,11 @@ object ScalaJSBuild extends Build {
                 "scala/scalajs/sbtplugin")
             Seq(base / "environment", base / "sourcemap")
           },
-          sources in Compile += (
-              (scalaSource in (plugin, Compile)).value /
-              "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala")
+          sources in Compile ++= {
+            val d = (scalaSource in (plugin, Compile)).value
+            Seq(d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
+                d / "scala/scalajs/sbtplugin/Utils.scala")
+          }
       )
   ).dependsOn(compiler)
 
@@ -485,7 +487,7 @@ object ScalaJSBuild extends Build {
             val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
-              val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+              val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
               s.log.info("Extracting %s ..." format libraryJar)
               if (extractDir.exists)
                 IO.delete(extractDir)
