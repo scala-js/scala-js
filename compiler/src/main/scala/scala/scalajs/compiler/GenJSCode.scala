@@ -162,12 +162,16 @@ abstract class GenJSCode extends plugins.PluginComponent
           implicit val pos = cd.pos
           val sym = cd.symbol
 
-          /* Do not actually emit code for primitive types nor scala.Array.
-           */
+          /* Do not actually emit code for primitive types nor scala.Array. */
           val isPrimitive =
             isPrimitiveValueClass(sym) || (sym == ArrayClass)
 
-          if (!isPrimitive) {
+          /* Similarly, do not emit code for impl classes of raw JS traits. */
+          val isRawJSImplClass =
+            sym.isImplClass && isRawJSType(
+                sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
+
+          if (!isPrimitive && !isRawJSImplClass) {
             val tree = if (sym.isInterface) {
               genInterface(cd)
             } else if (sym.isImplClass) {
