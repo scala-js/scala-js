@@ -210,7 +210,7 @@ sealed trait Dynamic extends Any with scala.Dynamic {
 
   // Work around the annoying implicits in Predef in Scala 2.10.
   def x: Dynamic
-  def x_=(value: Any): Dynamic
+  def x_=(value: Any): Unit
 }
 
 /** Factory for dynamically typed JavaScript values. */
