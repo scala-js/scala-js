@@ -94,6 +94,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
       case cldef: ClassDef =>
         enterScalaCls { super.transform(cldef) }
 
+      // Catch DefDefs in JSAny to forbid setters with non-unit return type
+      case ddef: DefDef if inJSAny && isNonJSScalaSetter(ddef.symbol) =>
+        unit.error(tree.pos, "Setters that do not return Unit are " +
+            "not allowed in types extending js.Any")
+        super.transform(ddef)
+
       // Catch ValDefs in enumerations with simple calls to Value
       case ValDef(mods, name, tpt, ScalaEnumValNoName(optPar)) if inScalaEnum =>
         val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
@@ -232,6 +238,21 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   private def isScalaEnum(implDef: ImplDef) =
     implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
+
+  /**
+   * is this symbol a setter that has a non-unit return type
+   *
+   * these setters don't make sense in JS (in JS, assignment returns
+   * the assigned value) and are therefore not allowed in facade types
+   */
+  private def isNonJSScalaSetter(sym: Symbol) = sym.name.decoded.endsWith("_=") && {
+    sym.tpe.paramss match {
+      case List(List(arg)) =>
+        !isScalaRepeatedParamType(arg.tpe) &&
+        sym.tpe.resultType.typeSymbol != UnitClass
+      case _ => false
+    }
+  }
 
   /**
    * Extractor object for calls to scala.Enumeration.Value that do not have an
