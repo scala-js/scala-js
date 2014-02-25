@@ -367,7 +367,11 @@ object ScalaJSBuild extends Build {
 
           // Add the core JS library
           mappings in packageBin +=
-            (packageJS in corejslib).value.head -> "scalajs-corejslib.js"
+            (packageJS in corejslib).value.head -> "scalajs-corejslib.js",
+          mappings in packageBin ++= {
+            val dir = (baseDirectory in corejslib).value
+            (dir ** "*.sjsinfo") x relativeTo(dir)
+          }
       ))
   ).dependsOn(compiler % "plugin")
 
