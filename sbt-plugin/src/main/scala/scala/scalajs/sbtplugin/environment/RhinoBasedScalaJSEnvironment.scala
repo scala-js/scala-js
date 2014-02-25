@@ -35,40 +35,42 @@ class RhinoBasedScalaJSEnvironment(
     console: Option[Console],
     trace: (=> Throwable) => Unit) extends ScalaJSEnvironment {
 
-  /* Splits the inputs into 4 categories
+  private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
+
+  /* Splits the inputs into 3 categories
    *
-   * 1. The core lib (using lazy loading for Scala.js files on the classpath)
+   * 1. The core lib (using lazy loading for Scala.js files)
    * 2. Other js files and
-   * 3. Scala.js files (not on the classpath)
-   * 4. Env.js lib if it is present
+   * 3. Env.js lib if it is present
    */
-  lazy val (scalaJSCoreLib, availableJsFiles, scalaJSFiles, envJSLib) = {
+  lazy val (scalaJSCoreLib, availableJSFiles, envJSLib) = {
     var scalaJSCoreLib: Option[ScalaJSCoreLib] = None
-    val scalaJSProviders, availableJsFiles = mutable.Map.empty[String, File]
-    val scalaJSFiles = mutable.Seq.empty[File]
+    val scalaJSProviders, availableJSFiles = mutable.Map.empty[String, File]
     var envJSLib: Option[File] = None
 
     inputs.foreach {
       case ScalaJSCore(lib) =>
         scalaJSCoreLib = Some(lib.withProviders(scalaJSProviders))
 
-      case file @ RelativeScalaJSProvider(relativeFileName) =>
-        scalaJSProviders += relativeFileName -> file
-
-      case file @ ScalaJSProvider() =>
-        scalaJSFiles :+ file
+      case file @ ScalaJSClassFile(infoFile) =>
+        val encodedName = IO.readLines(infoFile).collectFirst {
+          case EncodedNameLine(encodedName) => encodedName
+        }.getOrElse {
+          throw new AssertionError(s"Did not find encoded name in $infoFile")
+        }
+        scalaJSProviders += encodedName -> file
 
       case file @ EnvJSLib() =>
         envJSLib = Some(file)
 
       case file =>
-        availableJsFiles += file.getName -> file
+        availableJSFiles += file.getName -> file
     }
 
-    if (scalaJSCoreLib == None && (scalaJSProviders.nonEmpty | scalaJSFiles.nonEmpty))
+    if (scalaJSCoreLib == None && scalaJSProviders.nonEmpty)
       throw new RuntimeException("Could not find scalajs-corejslib.js, make sure it's on the classpath")
 
-    (scalaJSCoreLib, availableJsFiles, scalaJSFiles, envJSLib)
+    (scalaJSCoreLib, availableJSFiles, envJSLib)
   }
 
   /** Executes code in an environment where the Scala.js library is set up to
@@ -96,14 +98,11 @@ class RhinoBasedScalaJSEnvironment(
           Context.javaToJS(console, scope))
       }
 
-      scope.addFunction("importScripts", importScripts(context, scope, availableJsFiles))
+      scope.addFunction("importScripts", importScripts(context, scope, availableJSFiles))
 
       try {
         // We only need to make the core lib available
         scalaJSCoreLib.foreach(_.insertInto(context, scope))
-
-        // Any Scala.js files that were not on the classpath need to be loaded
-        scalaJSFiles.foreach(context.evaluateFile(scope, _))
 
         code(context, scope)
       } catch {
@@ -156,32 +155,9 @@ class RhinoBasedScalaJSEnvironment(
 
   private val EnvJSLib = new FileNameMatcher("""env\.rhino\.(?:[\d\.]+\.)?js""".r)
 
-  private def isScalaJSProvider(file: File): Boolean =
-    file.getPath.endsWith(".js") && changeExt(file, ".js", ".sjsinfo").exists
-
-  private object ScalaJSProvider {
-    def unapply(file: File): Boolean = isScalaJSProvider(file)
-  }
-
   private object ScalaJSCore {
     def unapply(file: File) =
-      if (file.getName == "scalajs-corejslib.js")
-        Some(new ScalaJSCoreLib(file))
+      if (isCoreJSLibFile(file)) Some(new ScalaJSCoreLib(file))
       else None
-  }
-
-  private object RelativeScalaJSProvider {
-    def unapply(file: File): Option[String] = {
-      if (!isScalaJSProvider(file)) None
-      else classpathOf(file)
-    }
-
-    private def classpathOf(file: File) = {
-      classpath.view
-        .map(IO.relativize(_, file))
-        .collectFirst {
-          case Some(path) => path.replace("\\", "/")
-        }
-    }
   }
 }
