@@ -16,6 +16,7 @@ import Keys._
 import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
+import Utils._
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -78,15 +79,29 @@ object ScalaJSPlugin extends Plugin {
       "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
       "scala-parser-combinators", "scala-xml") _
 
+  private val AncestorCountLine =
+    raw""""ancestorCount": *([0-9]+)""".r.unanchored
+
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
     files sortWith { (lhs, rhs) =>
-      val corejslibName = "scalajs-corejslib.js"
-      val lhsName = lhs.name
-      val rhsName = rhs.name
-
-      if (rhsName == corejslibName) false
-      else if (lhsName == corejslibName) true
-      else lhsName.compareTo(rhsName) < 0
+      def rankOf(jsFile: File): Int = {
+        if (jsFile.name == "scalajs-corejslib.js") -1
+        else {
+          val infoFile = changeExt(jsFile, ".js", ".sjsinfo")
+          if (!infoFile.exists) 10000
+          else {
+            IO.readLines(infoFile).collectFirst {
+              case AncestorCountLine(countStr) => countStr.toInt
+            }.getOrElse {
+              throw new AssertionError(s"Did not find ancestor count in $infoFile")
+            }
+          }
+        }
+      }
+      val lhsRank = rankOf(lhs)
+      val rhsRank = rankOf(rhs)
+      if (lhsRank != rhsRank) lhsRank < rhsRank
+      else lhs.name.compareTo(rhs.name) < 0
     }
   }
 
@@ -144,7 +159,7 @@ object ScalaJSPlugin extends Plugin {
         val cachedExtractJars = FileFunction.cached(taskCacheDir / "extract-jars")(
             FilesInfo.lastModified, FilesInfo.exists) { (inReport, outReport) =>
 
-          val usefulFilesFilter = ("*.js": NameFilter) | ("*.js.map")
+          val usefulFilesFilter = ("*.sjsinfo": NameFilter) | "*.js" | "*.js.map"
 
           for (jar <- inReport.modified -- inReport.removed) {
             s.log.info("Extracting %s ..." format jar)
@@ -233,9 +248,10 @@ object ScalaJSPlugin extends Plugin {
   /** Patches the IncOptions so that .js and .js.map files are pruned as needed.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .js and .js.map files emitted by the
-   *  Scala.js compiler. This makes sure that, when a .class file must be
-   *  deleted, the corresponding .js and .js.map files are also deleted.
+   *  IncOptions with one that is aware of .js, .js.map and .sjsinfo files
+   *  emitted by the Scala.js compiler. This makes sure that, when a .class
+   *  file must be deleted, the corresponding .js, .js.map and .sjsinfo files
+   *  are also deleted.
    */
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val inheritedNewClassfileManager = incOptions.newClassfileManager
@@ -244,28 +260,14 @@ object ScalaJSPlugin extends Plugin {
 
       def delete(classes: Iterable[File]): Unit = {
         inherited.delete(classes flatMap { classFile =>
-          var jsFiles: List[File] = Nil
-          val classFileName = classFile.getName
-          if (classFileName endsWith ".class") {
-            val parent = classFile.getParentFile
-            val baseName = classFileName.substring(0, classFileName.length-6)
-            val siblings = parent.listFiles()
-            if (siblings ne null) {
-              for (file <- siblings) {
-                val name = file.getName
-                if (name.length > 5 &&
-                    name.charAt(4) == '-' &&
-                    name.substring(0, 4).forall(Character.isDigit)) {
-                  val nameWithoutPrefix = name.substring(5)
-                  if (nameWithoutPrefix == baseName + ".js" ||
-                      nameWithoutPrefix == baseName + ".js.map") {
-                    jsFiles ::= file
-                  }
-                }
-              }
-            }
-          }
-          classFile :: jsFiles
+          val scalaJSFiles = if (classFile.getPath endsWith ".class") {
+            for {
+              ext <- List(".js", ".js.map", ".sjsinfo")
+              f = changeExt(classFile, ".class", ext)
+              if f.exists
+            } yield f
+          } else Nil
+          classFile :: scalaJSFiles
         })
       }
 

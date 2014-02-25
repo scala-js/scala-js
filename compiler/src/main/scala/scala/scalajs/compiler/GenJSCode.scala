@@ -21,6 +21,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                             with JSEncoding
                             with JSBridges
                             with JSDesugaring
+                            with ClassInfos
                             with GenJSFiles
                             with Compat210Component {
   val jsAddons: JSGlobalAddons {
@@ -50,6 +51,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Some state --------------------------------------------------------------
 
     var currentClassSym: Symbol = _
+    var currentClassInfoBuilder: ClassInfoBuilder = _
     var currentMethodSym: Symbol = _
     var isModuleInitialized: Boolean = false // see genApply for super calls
     var methodHasTailJump: Boolean = false
@@ -85,7 +87,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Rewriting of anonymous function classes ---------------------------------
 
     private val translatedAnonFunctions =
-      mutable.Map.empty[Symbol, List[js.Tree] => js.Tree] // ctor args to instance
+      mutable.Map.empty[Symbol,
+        (/*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree, ClassInfoBuilder)]
     private val instantiatedAnonFunctions =
       mutable.Set.empty[Symbol]
     private val undefinedDefaultParams =
@@ -122,7 +125,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     override def apply(cunit: CompilationUnit) {
       try {
-        val generatedClasses = ListBuffer.empty[(Symbol, js.Tree)]
+        val generatedClasses = ListBuffer.empty[(Symbol, js.Tree, ClassInfoBuilder)]
 
         def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
@@ -172,6 +175,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 sym.owner.info.decl(sym.name.dropRight(nme.IMPL_CLASS_SUFFIX.length)).tpe)
 
           if (!isPrimitive && !isRawJSImplClass) {
+            currentClassInfoBuilder = new ClassInfoBuilder(sym.asClass)
             val tree = if (sym.isInterface) {
               genInterface(cd)
             } else if (sym.isImplClass) {
@@ -187,19 +191,21 @@ abstract class GenJSCode extends plugins.PluginComponent
               else
                 classDef
             }
-            generatedClasses += sym -> tree
+            generatedClasses += ((sym, tree, currentClassInfoBuilder))
+            currentClassInfoBuilder = null
           }
         }
 
-        for ((sym, tree) <- generatedClasses) {
+        for ((sym, tree, infoBuilder) <- generatedClasses) {
           val desugared = desugarJavaScript(tree)
-          genJSFile(cunit, sym, desugared)
+          genJSFile(cunit, sym, desugared, infoBuilder)
         }
       } finally {
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
         undefinedDefaultParams.clear()
         currentClassSym = null
+        currentClassInfoBuilder = null
         currentMethodSym = null
       }
     }
@@ -1406,7 +1412,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isStringType(tpe)) {
             genNewString(app)
           } else if (translatedAnonFunctions contains tpe.typeSymbol) {
-            val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
+            val (functionMaker, _) = translatedAnonFunctions(tpe.typeSymbol)
             functionMaker(args map genExpr)
           } else if (isRawJSType(tpe)) {
             genPrimitiveJSNew(app)
@@ -3030,6 +3036,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(sym.isAnonymousFunction,
           s"tryGenAndRecordAnonFunctionClass called with non-anonymous function $cd")
       currentClassSym = sym
+      currentClassInfoBuilder = new ClassInfoBuilder(sym.asClass)
 
       val (functionMakerBase, arity) =
         tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
@@ -3040,9 +3047,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         JSFunctionToScala(functionMakerBase(capturedArgs), arity)
       }
 
-      translatedAnonFunctions += sym -> functionMaker
+      translatedAnonFunctions += sym -> (functionMaker, currentClassInfoBuilder)
 
       currentClassSym = null
+      currentClassInfoBuilder = null
       true
     }
 
@@ -3118,13 +3126,17 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(isRawJSFunctionDef(sym),
           s"genAndRecordRawJSFunctionClass called with non-JS function $cd")
       currentClassSym = sym
+      currentClassInfoBuilder = new ClassInfoBuilder(sym.asClass)
 
       val (functionMaker, _) =
         tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
           abort(s"Could not generate raw function maker for JS function: $msg")
         }
 
-      translatedAnonFunctions += sym -> functionMaker
+      translatedAnonFunctions += sym -> (functionMaker, currentClassInfoBuilder)
+
+      currentClassSym = null
+      currentClassInfoBuilder = null
     }
 
     /** Code common to tryGenAndRecordAnonFunctionClass and
@@ -3478,6 +3490,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
         sym.unexpandedName.decoded)
 
-  private def isStaticModule(sym: Symbol): Boolean =
+  def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted
 }
