@@ -48,19 +48,17 @@ class LazyScalaJSScope(
   }
 
   private def load(name: String): Unit = {
-    val relativeFileName = nameToRelativeFileName(name)
-    providers.get(relativeFileName) foreach { file =>
+    val encodedName = propNameToEncodedName(name)
+    providers.get(encodedName) foreach { file =>
       val ctx = Context.getCurrentContext()
       ctx.evaluateFile(globalScope, file)
     }
   }
 
-  private def nameToRelativeFileName(name: String): String = {
-    val name1 = if (isTraitImpl) name.split("__")(0) else name
-    val name2 = name1.replace("_", "/").replace("$und", "_")
-    val name3 = if (name2(0) == '$') name2.substring(1) else name2
-    if (isModule) name3 + "$.js"
-    else name3 + ".js"
+  private def propNameToEncodedName(name: String): String = {
+    if (isTraitImpl) name.split("__")(0)
+    else if (isModule) name + "$"
+    else name
   }
 
   override def getClassName() = "LazyScalaJSScope"

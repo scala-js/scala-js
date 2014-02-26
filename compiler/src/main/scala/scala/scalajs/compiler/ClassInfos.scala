@@ -28,6 +28,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val name = symbol.fullName + (
         if (isStaticModule) nme.MODULE_SUFFIX_STRING else "")
     val ancestorCount = symbol.ancestors.count(!_.isInterface)
+    val encodedName = encodeClassFullName(symbol)
 
     def toJSON: js.Tree = {
       obj(
@@ -36,7 +37,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
           "isStaticModule" -> isStaticModule,
           "isInterface" -> isInterface,
           "isImplClass" -> isImplClass,
-          "isRawJSType" -> isRawJSType
+          "isRawJSType" -> isRawJSType,
+          "encodedName" -> encodedName
       )
     }
   }

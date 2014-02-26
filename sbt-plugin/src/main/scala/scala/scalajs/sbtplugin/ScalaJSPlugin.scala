@@ -85,17 +85,15 @@ object ScalaJSPlugin extends Plugin {
   def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
     files sortWith { (lhs, rhs) =>
       def rankOf(jsFile: File): Int = {
-        if (jsFile.name == "scalajs-corejslib.js") -1
-        else {
-          val infoFile = changeExt(jsFile, ".js", ".sjsinfo")
-          if (!infoFile.exists) 10000
-          else {
+        jsFile match {
+          case CoreJSLibFile() => -1
+          case ScalaJSClassFile(infoFile) =>
             IO.readLines(infoFile).collectFirst {
               case AncestorCountLine(countStr) => countStr.toInt
             }.getOrElse {
               throw new AssertionError(s"Did not find ancestor count in $infoFile")
             }
-          }
+          case _ => 10000
         }
       }
       val lhsRank = rankOf(lhs)
