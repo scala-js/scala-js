@@ -24,6 +24,10 @@ matrix:
         - KIND=sbtplugin
         - PUBLISH_ENABLED=true
     - jdk: openjdk6
+      scala: 2.10.3
+      env:
+        - KIND=main
+    - jdk: openjdk6
       scala: 2.11.0-M7
       env:
         - KIND=main
@@ -33,11 +37,28 @@ matrix:
       env:
         - KIND=main
         - SBT_SETUP='set scalacOptions in ScalaJSBuild.test += "-Xexperimental"'
+    - jdk: openjdk6
+      scala: 2.11.0-M8
+      env:
+        - KIND=main
+    - jdk: openjdk6
+      scala: 2.11.0-M8
+      env:
+        - KIND=main
+        - SBT_SETUP='set scalacOptions in ScalaJSBuild.test += "-Xexperimental"'
     - jdk: oraclejdk7
       scala: 2.10.2
       env:
         - KIND=main
     - jdk: oraclejdk7
+      scala: 2.10.3
+      env:
+        - KIND=main
+    - jdk: oraclejdk7
       scala: 2.11.0-M7
+      env:
+        - KIND=main
+    - jdk: oraclejdk7
+      scala: 2.11.0-M8
       env:
         - KIND=main
