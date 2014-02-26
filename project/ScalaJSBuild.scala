@@ -17,6 +17,8 @@ object ScalaJSBuild extends Build {
     "Directory the scala source is fetched to")
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
+  val shouldPartest = settingKey[Boolean](
+    "Whether we should partest the current scala version (and fail if we can't)")
 
   val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "org.scala-lang.modules.scalajs",
@@ -28,7 +30,15 @@ object ScalaJSBuild extends Build {
 
       homepage := Some(url("http://scala-js.org/")),
       licenses += ("BSD New",
-          url("https://github.com/scala-js/scala-js/blob/master/LICENSE"))
+          url("https://github.com/scala-js/scala-js/blob/master/LICENSE")),
+
+      shouldPartest := {
+        val testListDir = (
+          (resourceDirectory in (partestSuite, Test)).value / "scala"
+            / "tools" / "partest" / "scalajs" / scalaVersion.value
+        )
+        testListDir.exists
+      }
   )
 
   private val snapshotsOrReleases =
@@ -464,29 +474,36 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
 
           resolvers += Resolver.typesafeIvyRepo("releases"),
 
-          libraryDependencies ++= Seq(
-              "org.scala-sbt" % "sbt" % "0.13.0",
-              "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
-              "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4"
-          ),
+          libraryDependencies ++= {
+            if (shouldPartest.value)
+              Seq(
+                "org.scala-sbt" % "sbt" % "0.13.0",
+                "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
+                "com.google.javascript" % "closure-compiler" % "v20130603",
+                "org.mozilla" % "rhino" % "1.7R4"
+              )
+            else Seq()
+          },
 
           unmanagedSourceDirectories in Compile ++= {
             val base = ((scalaSource in (plugin, Compile)).value /
                 "scala/scalajs/sbtplugin")
             Seq(base / "environment", base / "sourcemap")
           },
-          sources in Compile ++= {
-            val d = (scalaSource in (plugin, Compile)).value
-            Seq(d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
+          sources in Compile := {
+            if (shouldPartest.value) {
+              val baseSrcs = (sources in Compile).value
+              val d = (scalaSource in (plugin, Compile)).value
+              val newSrcs = Seq(
+                d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
                 d / "scala/scalajs/sbtplugin/Utils.scala")
+              baseSrcs ++ newSrcs
+            } else Seq()
           }
+
       )
   ).dependsOn(compiler)
 
@@ -497,38 +514,37 @@ object ScalaJSBuild extends Build {
           useLibraryButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js partest suite",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
 
           /* Add an extracted version of scalajs-library.jar on the classpath.
            * The runner will need it, as it cannot cope with .js files in .jar.
            */
-          dependencyClasspath in Test += {
-            val s = streams.value
+          dependencyClasspath in Test ++= {
+            if (shouldPartest.value) {
+              val s = streams.value
 
-            val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
-            val extractDir = taskCacheDir / "scalajs-library"
+              val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
+              val extractDir = taskCacheDir / "scalajs-library"
 
-            val libraryJar =
-              (artifactPath in (library, Compile, packageBin)).value
+              val libraryJar =
+                (artifactPath in (library, Compile, packageBin)).value
 
-            val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
+              val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
-              val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
-              s.log.info("Extracting %s ..." format libraryJar)
-              if (extractDir.exists)
-                IO.delete(extractDir)
-              IO.createDirectory(extractDir)
-              IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
-                  preserveLastModified = true)
-              (extractDir ** usefulFilesFilter).get.toSet
-            }
+                val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
+                s.log.info("Extracting %s ..." format libraryJar)
+                if (extractDir.exists)
+                  IO.delete(extractDir)
+                IO.createDirectory(extractDir)
+                IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
+                    preserveLastModified = true)
+                (extractDir ** usefulFilesFilter).get.toSet
+              }
 
-            cachedExtractJar(Set(libraryJar))
+              cachedExtractJar(Set(libraryJar))
 
-            Attributed.blank(extractDir)
+              Seq(Attributed.blank(extractDir))
+            } else Seq()
           },
 
           fork in Test := true,
@@ -538,12 +554,16 @@ object ScalaJSBuild extends Build {
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.testblackbugonly=true",
 
-          testFrameworks +=
-            new TestFramework("scala.tools.partest.scalajs.Framework"),
+          testFrameworks ++= {
+            if (shouldPartest.value)
+              Seq(new TestFramework("scala.tools.partest.scalajs.Framework"))
+            else Seq()
+          },
 
-          definedTests in Test +=
-            new sbt.TestDefinition(
-                "partest",
+          definedTests in Test ++= {
+            if (shouldPartest.value)
+              Seq(new sbt.TestDefinition(
+                s"partest-${scalaVersion.value}",
                 // marker fingerprint since there are no test classes
                 // to be discovered by sbt:
                 new sbt.testing.AnnotatedFingerprint {
@@ -552,7 +572,9 @@ object ScalaJSBuild extends Build {
                 },
                 true,
                 Array()
-            )
+              ))
+            else Seq()
+          }
       )
   ).dependsOn(partest % "test")
 }

@@ -2,7 +2,7 @@ language: scala
 script:
   - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package testing/test scalajs-test/test reversi/optimizeJS; fi
   - if [ $KIND == main ]; then sh checksizes.sh $TRAVIS_SCALA_VERSION; fi
-  - if [ $KIND == main ]; then sh check-partest-coverage.sh; fi
+  - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" scalajs-sbt-plugin/package; fi
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION publish; fi

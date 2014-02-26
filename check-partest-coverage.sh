@@ -12,14 +12,23 @@
 #
 # [1] http://www.scala-js.org/doc/semantics.html
 
+# Arguments
+if [ $# -le 0 ]; then
+    echo "Please give full scala version as argument" >&2
+    exit 42
+fi
+
+FULLVER="$1"
+
 # Config
 BASEDIR="`dirname $0`"
-TESTDIR="$BASEDIR/scalalib/fetchedSources/2.11.0-M7/test/files"
-KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs"
+TESTDIR="$BASEDIR/scalalib/fetchedSources/$1/test/files"
+KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs/$1/"
 
-# If the test files are not here, we are not testing the right version
-# since sbt hasn't fetched them
-if [ ! -d $TESTDIR ]; then
+# If the classification directory does not exist, this means (by
+# definition) that we do not want to or cannot partest this scala
+# version. Therefore, everything is OK.
+if [ ! -d $KNOWDIR ]; then
     exit 0
 fi
 

@@ -35,6 +35,23 @@ trait ScalaJSRunner extends nest.Runner {
 }
 
 trait ScalaJSSuiteRunner extends SuiteRunner {
+
+  // Stuff to mix in
+
+  /**
+    * specific tests to run. if this is non-empty, only these
+    * tests are ran.
+    *
+    * from sbt call (e.g.)
+    * testOnly -- run/t7899.scala
+    */
+  val testNames: Array[String]
+
+  /** Full scala version name. Used to discover blacklist (etc.) files */
+  val scalaVersion: String
+
+  // Stuf we provide
+
   override def runTest(testFile: File): TestState = {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
     val runner = new nest.Runner(testFile, this) with ScalaJSRunner
@@ -62,6 +79,9 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     super.runTestsForFiles(kindFiles.filter(shouldUseTest), kind)
   }
 
+  private lazy val listDir =
+    s"/scala/tools/partest/scalajs/$scalaVersion"
+
   private lazy val useBlacklist =
     scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.useblacklist")
 
@@ -72,13 +92,13 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.testunknownonly")
 
   private lazy val buglistedTestFileNames =
-    readTestList("/scala/tools/partest/scalajs/BuglistedTests.txt")
+    readTestList(s"$listDir/BuglistedTests.txt")
 
   private lazy val blacklistedTestFileNames =
-    readTestList("/scala/tools/partest/scalajs/BlacklistedTests.txt")
+    readTestList(s"$listDir/BlacklistedTests.txt")
 
   private lazy val whitelistedTestFileNames =
-    readTestList("/scala/tools/partest/scalajs/WhitelistedTests.txt")
+    readTestList(s"$listDir/WhitelistedTests.txt")
 
   private def readTestList(resourceName: String): Set[String] = {
     val source = scala.io.Source.fromURL(getClass.getResource(resourceName))
@@ -95,15 +115,6 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
     fileNames.toSet
   }
-
-  /**
-    * specific tests to run. if this is non-empty, only these
-    * tests are ran.
-    * 
-    * from sbt call (e.g.)
-    * testOnly -- run/t7899.scala
-    */
-  val testNames: Array[String]
 
   def shouldUseTest(testFile: File): Boolean = {
     val absPath = testFile.toCanonical.getAbsolutePath
@@ -133,7 +144,8 @@ class ScalaJSSBTRunner(
     javaCmd: File,
     javacCmd: File,
     scalacArgs: Array[String],
-    val testNames: Array[String]
+    val testNames: Array[String],
+    val scalaVersion: String
 ) extends SBTRunner(
     partestFingerprint, eventHandler, loggers, srcDir, testClassLoader,
     javaCmd, javacCmd, scalacArgs
