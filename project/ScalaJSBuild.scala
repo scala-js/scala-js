@@ -13,6 +13,11 @@ import ExternalCompile.scalaJSExternalCompileSettings
 
 object ScalaJSBuild extends Build {
 
+  val fetchedScalaSourceDir = settingKey[File](
+    "Directory the scala source is fetched to")
+  val fetchScalaSource = taskKey[File](
+    "Fetches the scala source for the current scala version")
+
   val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "org.scala-lang.modules.scalajs",
       version := scalaJSVersion,
@@ -70,48 +75,10 @@ object ScalaJSBuild extends Build {
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
-  override lazy val settings = super.settings ++ Seq(
+  override lazy val settings = super.settings :+ {
     // Most of the projects cross-compile
-    crossScalaVersions := Seq("2.10.2", "2.11.0-M7"),
-
-    /* Friendly error message when we forget to fetch the submodule
-     * or when we forget to update it after changing branch. */
-    {
-      val f = (s: State) => {
-        val logger = s.globalLogging.full
-        import logger.warn
-        val base = s.configuration.baseDirectory()
-        for {
-          (ver, expectedSha) <- Seq(
-              "2.10" -> "60d462ef6e0dba5f9a7c4cc81255fcb9fba7939a",
-              "2.11" -> "c243435f113615b2f7407fbd683c93ec16c73749"
-          )
-        } {
-          val scalalibHeadFile = base / s".git/modules/scalalib/source-$ver/HEAD"
-          if (!scalalibHeadFile.exists()) {
-            warn(s"It seems you have not fetched the scalalib/source-$ver submodule.")
-            warn("This will prevent you from building Scala.js!")
-            warn("You can fix this by doing the following:")
-            warn("  $ git submodule init")
-            warn("  $ git submodule update")
-          } else {
-            val sha = IO.readLines(scalalibHeadFile).headOption
-            if (sha != Some(expectedSha)) {
-              warn("The head of the scala/source-$ver submodule is not the one I expected.")
-              warn("This will likely prevent you from building Scala.js and will cause weird errors!")
-              warn("You can fix this by doing the following:")
-              warn("  $ git submodule update")
-            }
-          }
-        }
-        s
-      }
-      onLoad in Global := {
-        val previous = (onLoad in Global).value
-        f compose previous
-      }
-    }
-  )
+    crossScalaVersions := Seq("2.10.2", "2.10.3", "2.11.0-M7", "2.11.0-M8")
+  }
 
   lazy val root: Project = Project(
       id = "scalajs",
@@ -224,30 +191,85 @@ object ScalaJSBuild extends Build {
           scalacOptions ~= (_.filterNot(
               Set("-deprecation", "-unchecked", "-feature") contains _)),
 
-          // Do not generate .class files
-          scalacOptions += "-Yskip:cleanup,icode,jvm",
 
-          unmanagedSourceDirectories in Compile := {
-            val base = baseDirectory.value
-            val ver = scalaVersion.value.substring(0, 4)
-            Seq(
-                base / s"source-$ver" / "src" / "library",
-                base / s"source-$ver" / "src" / "continuations" / "library",
-                base / "overrides",
-                base / s"overrides-$ver"
-            )
+          scalacOptions ++= List(
+            // Do not generate .class files
+            "-Yskip:cleanup,icode,jvm",
+            // Tell plugin to hack fix bad classOf trees
+            "-P:scalajs:fixClassOf"),
+
+          fetchedScalaSourceDir := (
+            baseDirectory.value / "fetchedSources" /
+            scalaVersion.value
+          ),
+
+          fetchScalaSource := {
+            import org.eclipse.jgit.api._
+
+            val s = streams.value
+            val ver = scalaVersion.value
+            val trgDir = fetchedScalaSourceDir.value
+
+            if (!trgDir.exists) {
+              s.log.info(s"Fetching Scala source version $ver")
+
+              // Make parent dirs and stuff
+              IO.createDirectory(trgDir)
+
+              // Clone scala source code
+              new CloneCommand()
+                .setDirectory(trgDir)
+                .setURI("https://github.com/scala/scala.git")
+                .call()
+
+            }
+
+            // Checkout proper ref. We do this anyway so we fail if
+            // something is wrong
+            val git = Git.open(trgDir)
+            s.log.info(s"Checking out Scala source version $ver")
+            git.checkout().setName(s"v$ver").call()
+
+            trgDir
           },
 
-          // Exclude files in src/library/ that are overridden in overrides/
-          excludeFilter in (Compile, unmanagedSources) := {
+          unmanagedSourceDirectories in Compile := {
+            // Calculates all prefixes of the current Scala version
+            // (including the empty prefix) to construct override
+            // directories like the following:
+            // - override-2.10.2-RC1
+            // - override-2.10.2
+            // - override-2.10
+            // - override-2
+            // - override
+            val ver = scalaVersion.value
+            val base = baseDirectory.value
+            val parts = ver.split(Array('.','-'))
+            val verList = parts.inits.map { ps =>
+              val len = ps.mkString(".").length
+              // re-read version, since we lost '.' and '-'
+              ver.substring(0, len)
+            }
+            def dirStr(v: String) =
+              if (v.isEmpty) "overrides" else s"overrides-$v"
+            val dirs = verList.map(base / dirStr(_)).filter(_.exists)
+            dirs.toSeq.reverse
+          },
+
+          // Add scala source to managed sources
+          managedSources in Compile ++= {
+            // Relevant directories for scala source
+            val libraryPath = fetchScalaSource.value / "src"
+            val subdirs = Seq(
+              libraryPath / "library",
+              libraryPath / "continuations" / "library"
+            )
+
+            // Filter sources with overrides
             def normPath(f: File): String =
               f.getPath.replace(java.io.File.separator, "/")
 
-            val ver = scalaVersion.value.substring(0, 4)
-            val overridesDirs = Seq(
-                baseDirectory.value / "overrides",
-                baseDirectory.value / s"overrides-$ver"
-            )
+            val overridesDirs = (unmanagedSourceDirectories in Compile).value
             val overrideNames = overridesDirs flatMap { overridesDir =>
               val allOverrides = (overridesDir ** "*.scala").get
               val overridePathLen = normPath(overridesDir).length
@@ -259,27 +281,34 @@ object ScalaJSBuild extends Build {
                   yield name.substring(0, name.length-6) + ".java"
               scalaNames ++ javaNames
             }
-            val libraryPath = normPath(baseDirectory.value / s"source-$ver/src")
 
-            val superFilter = (excludeFilter in (Compile, unmanagedSources)).value
-            superFilter || new SimpleFileFilter({ f =>
-              val path = normPath(f)
-              (
-                  // overrides
-                  path.startsWith(libraryPath) &&
-                  overrideNames.exists(path.endsWith(_))
-              ) || (
-                  // useless things
-                  path.contains("/scala/collection/parallel/") ||
-                  path.contains("/scala/util/parsing/")
-              )
-            })
+            // Match and filter sources
+            for {
+              sd  <- subdirs
+              src <- (sd ** "*.scala").get
+              path = normPath(src)
+              if !(
+                // overrides
+                overrideNames.exists(path.endsWith(_)) ||
+                // useless things
+                path.contains("/scala/collection/parallel/") ||
+                path.contains("/scala/util/parsing/"))
+            } yield src
+
           },
 
           // Continuation plugin
           autoCompilerPlugins := true,
-          libraryDependencies += compilerPlugin(
-              "org.scala-lang.plugins" % "continuations" % scalaVersion.value),
+          libraryDependencies ++= {
+            val ver = scalaVersion.value
+            if (ver.startsWith("2.11.") && ver != "2.11.0-M7") Seq(
+              compilerPlugin("org.scala-lang.plugins" %% "scala-continuations-plugin" % "1.0.0-RC3"),
+              "org.scala-lang.plugins" %% "scala-continuations-library" % "1.0.0-RC3"
+            )
+            else Seq(
+              compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
+            )
+          },
           scalacOptions += "-P:continuations:enable"
       ) ++ (
           scalaJSExternalCompileSettings

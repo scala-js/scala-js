@@ -12,12 +12,21 @@
 #
 # [1] http://www.scala-js.org/doc/semantics.html
 
+# Config
+BASEDIR="`dirname $0`"
+TESTDIR="$BASEDIR/scalalib/fetchedSources/2.11.0-M7/test/files"
+KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs"
+
+# If the test files are not here, we are not testing the right version
+# since sbt hasn't fetched them
+if [ ! -d $TESTDIR ]; then
+    exit 0
+fi
+
+# Temp files
 TMP_PREF=`basename $0`
 TMP_HAVE_FILE=`mktemp /tmp/${TMP_PREF}_have_XXXXX` || exit 2
 TMP_KNOW_FILE=`mktemp /tmp/${TMP_PREF}_know_XXXXX` || exit 2
-BASEDIR="`dirname $0`"
-TESTDIR="$BASEDIR/scalalib/source-2.11/test/files"
-KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs"
 
 # Trap removal of tmp files on exit
 trap "rm \"$TMP_HAVE_FILE\" \"$TMP_KNOW_FILE\"" EXIT
