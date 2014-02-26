@@ -93,7 +93,7 @@ object ScalaJSPlugin extends Plugin {
             }.getOrElse {
               throw new AssertionError(s"Did not find ancestor count in $infoFile")
             }
-          case _ => 10000
+          case _ => 10000 // just in case someone does something weird to our classpaths
         }
       }
       val lhsRank = rankOf(lhs)
@@ -194,7 +194,10 @@ object ScalaJSPlugin extends Plugin {
         val inputs = new mutable.ListBuffer[File]
 
         for (dir <- cp.map(_.data)) {
-          for (file <- (dir ** "*.js").get) {
+          for {
+            file <- (dir ** "*.js").get
+            if isScalaJSClassFile(file) || isCoreJSLibFile(file)
+          } {
             val path = IO.relativize(dir, file).get
             if (!existingPaths.contains(path)) {
               inputs += file
