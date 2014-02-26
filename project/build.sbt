@@ -9,6 +9,8 @@ libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603
 
 libraryDependencies += "org.mozilla" % "rhino" % "1.7R4"
 
+libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.201312181205-r"
+
 unmanagedSourceDirectories in Compile <+= baseDirectory {
   base => base.getParentFile / "sbt-plugin" / "src" / "main" / "scala"
 }

@@ -23,6 +23,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
     val global: PrepJSInterop.this.global.type
   }
 
+  val scalaJSOpts: ScalaJSOptions
+
   import global._
   import jsAddons._
   import definitions._
@@ -113,6 +115,42 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
                        |The resulting program is unlikely to function properly as this
                        |operation requires reflection.""".stripMargin)
         super.transform(tree)
+
+      // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
+      // but unfortunately do. In normal cases, the typer phase replaces these
+      // calls by a literal constant of the given type. However, when we compile
+      // the scala library itself and Predef.scala is in the sources, this does
+      // not happen.
+      //
+      // The trees reach this phase under the form:
+      //
+      //   scala.this.Predef.classOf[T]
+      //
+      // If we encounter such a tree, depending on the plugin options, we fail
+      // here or silently fix those calls.
+      case TypeApply(
+          classOfTree @ Select(Select(This(scala_?), predef_?), classOf_?),
+          List(tpeArg))
+        if (scala_?.decoded   == "scala"  &&
+            predef_?.decoded  == "Predef" &&
+            classOf_?.decoded == "classOf") =>
+
+        if (scalaJSOpts.fixClassOf) {
+          // Replace call by literal constant containing type
+          if (typer.checkClassType(tpeArg)) {
+            typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
+          } else {
+            unit.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
+            EmptyTree
+          }
+        } else {
+          unit.error(classOfTree.pos,
+              """This classOf resulted in an unresolved classOf in the jscode
+                |phase. This is most likely a bug in the Scala compiler. ScalaJS
+                |is probably able to work around this bug. Enable the workaround
+                |by passing the fixClassOf option to the plugin.""".stripMargin)
+          EmptyTree
+        }
 
       case _ => super.transform(tree)
     }

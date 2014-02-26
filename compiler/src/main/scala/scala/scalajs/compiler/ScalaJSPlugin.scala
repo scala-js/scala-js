@@ -27,9 +27,14 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
   } with JSGlobalAddons
 
+  object scalaJSOpts extends ScalaJSOptions {
+    var fixClassOf: Boolean = false
+  }
+
   object PrepInteropComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
+    val scalaJSOpts = ScalaJSPlugin.this.scalaJSOpts
     override val runsAfter = List("typer")
     override val runsBefore = List("pickle")
   } with PrepJSInterop
@@ -40,5 +45,21 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
   } with GenJSCode
+
+  override def processOptions(options: List[String],
+      error: String => Unit): Unit = {
+    for (option <- options) {
+      if (option == "fixClassOf") {
+        scalaJSOpts.fixClassOf = true
+      } else {
+        error("Option not understood: " + option)
+      }
+    }
+  }
+
+  override val optionsHelp: Option[String] = Some(s"""
+      |  -P:$name:fixClassOf          repair calls to Predef.classOf that reach ScalaJS
+      |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
+      """.stripMargin)
 
 }

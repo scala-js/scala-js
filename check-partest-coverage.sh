@@ -12,12 +12,30 @@
 #
 # [1] http://www.scala-js.org/doc/semantics.html
 
+# Arguments
+if [ $# -le 0 ]; then
+    echo "Please give full scala version as argument" >&2
+    exit 42
+fi
+
+FULLVER="$1"
+
+# Config
+BASEDIR="`dirname $0`"
+TESTDIR="$BASEDIR/scalalib/fetchedSources/$1/test/files"
+KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs/$1/"
+
+# If the classification directory does not exist, this means (by
+# definition) that we do not want to or cannot partest this scala
+# version. Therefore, everything is OK.
+if [ ! -d $KNOWDIR ]; then
+    exit 0
+fi
+
+# Temp files
 TMP_PREF=`basename $0`
 TMP_HAVE_FILE=`mktemp /tmp/${TMP_PREF}_have_XXXXX` || exit 2
 TMP_KNOW_FILE=`mktemp /tmp/${TMP_PREF}_know_XXXXX` || exit 2
-BASEDIR="`dirname $0`"
-TESTDIR="$BASEDIR/scalalib/source-2.11/test/files"
-KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs"
 
 # Trap removal of tmp files on exit
 trap "rm \"$TMP_HAVE_FILE\" \"$TMP_KNOW_FILE\"" EXIT

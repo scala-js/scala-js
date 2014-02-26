@@ -13,6 +13,13 @@ import ExternalCompile.scalaJSExternalCompileSettings
 
 object ScalaJSBuild extends Build {
 
+  val fetchedScalaSourceDir = settingKey[File](
+    "Directory the scala source is fetched to")
+  val fetchScalaSource = taskKey[File](
+    "Fetches the scala source for the current scala version")
+  val shouldPartest = settingKey[Boolean](
+    "Whether we should partest the current scala version (and fail if we can't)")
+
   val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "org.scala-lang.modules.scalajs",
       version := scalaJSVersion,
@@ -23,7 +30,15 @@ object ScalaJSBuild extends Build {
 
       homepage := Some(url("http://scala-js.org/")),
       licenses += ("BSD New",
-          url("https://github.com/scala-js/scala-js/blob/master/LICENSE"))
+          url("https://github.com/scala-js/scala-js/blob/master/LICENSE")),
+
+      shouldPartest := {
+        val testListDir = (
+          (resourceDirectory in (partestSuite, Test)).value / "scala"
+            / "tools" / "partest" / "scalajs" / scalaVersion.value
+        )
+        testListDir.exists
+      }
   )
 
   private val snapshotsOrReleases =
@@ -70,48 +85,10 @@ object ScalaJSBuild extends Build {
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
-  override lazy val settings = super.settings ++ Seq(
+  override lazy val settings = super.settings :+ {
     // Most of the projects cross-compile
-    crossScalaVersions := Seq("2.10.2", "2.11.0-M7"),
-
-    /* Friendly error message when we forget to fetch the submodule
-     * or when we forget to update it after changing branch. */
-    {
-      val f = (s: State) => {
-        val logger = s.globalLogging.full
-        import logger.warn
-        val base = s.configuration.baseDirectory()
-        for {
-          (ver, expectedSha) <- Seq(
-              "2.10" -> "60d462ef6e0dba5f9a7c4cc81255fcb9fba7939a",
-              "2.11" -> "c243435f113615b2f7407fbd683c93ec16c73749"
-          )
-        } {
-          val scalalibHeadFile = base / s".git/modules/scalalib/source-$ver/HEAD"
-          if (!scalalibHeadFile.exists()) {
-            warn(s"It seems you have not fetched the scalalib/source-$ver submodule.")
-            warn("This will prevent you from building Scala.js!")
-            warn("You can fix this by doing the following:")
-            warn("  $ git submodule init")
-            warn("  $ git submodule update")
-          } else {
-            val sha = IO.readLines(scalalibHeadFile).headOption
-            if (sha != Some(expectedSha)) {
-              warn("The head of the scala/source-$ver submodule is not the one I expected.")
-              warn("This will likely prevent you from building Scala.js and will cause weird errors!")
-              warn("You can fix this by doing the following:")
-              warn("  $ git submodule update")
-            }
-          }
-        }
-        s
-      }
-      onLoad in Global := {
-        val previous = (onLoad in Global).value
-        f compose previous
-      }
-    }
-  )
+    crossScalaVersions := Seq("2.10.2", "2.10.3", "2.11.0-M7", "2.11.0-M8")
+  }
 
   lazy val root: Project = Project(
       id = "scalajs",
@@ -224,30 +201,85 @@ object ScalaJSBuild extends Build {
           scalacOptions ~= (_.filterNot(
               Set("-deprecation", "-unchecked", "-feature") contains _)),
 
-          // Do not generate .class files
-          scalacOptions += "-Yskip:cleanup,icode,jvm",
 
-          unmanagedSourceDirectories in Compile := {
-            val base = baseDirectory.value
-            val ver = scalaVersion.value.substring(0, 4)
-            Seq(
-                base / s"source-$ver" / "src" / "library",
-                base / s"source-$ver" / "src" / "continuations" / "library",
-                base / "overrides",
-                base / s"overrides-$ver"
-            )
+          scalacOptions ++= List(
+            // Do not generate .class files
+            "-Yskip:cleanup,icode,jvm",
+            // Tell plugin to hack fix bad classOf trees
+            "-P:scalajs:fixClassOf"),
+
+          fetchedScalaSourceDir := (
+            baseDirectory.value / "fetchedSources" /
+            scalaVersion.value
+          ),
+
+          fetchScalaSource := {
+            import org.eclipse.jgit.api._
+
+            val s = streams.value
+            val ver = scalaVersion.value
+            val trgDir = fetchedScalaSourceDir.value
+
+            if (!trgDir.exists) {
+              s.log.info(s"Fetching Scala source version $ver")
+
+              // Make parent dirs and stuff
+              IO.createDirectory(trgDir)
+
+              // Clone scala source code
+              new CloneCommand()
+                .setDirectory(trgDir)
+                .setURI("https://github.com/scala/scala.git")
+                .call()
+
+            }
+
+            // Checkout proper ref. We do this anyway so we fail if
+            // something is wrong
+            val git = Git.open(trgDir)
+            s.log.info(s"Checking out Scala source version $ver")
+            git.checkout().setName(s"v$ver").call()
+
+            trgDir
           },
 
-          // Exclude files in src/library/ that are overridden in overrides/
-          excludeFilter in (Compile, unmanagedSources) := {
+          unmanagedSourceDirectories in Compile := {
+            // Calculates all prefixes of the current Scala version
+            // (including the empty prefix) to construct override
+            // directories like the following:
+            // - override-2.10.2-RC1
+            // - override-2.10.2
+            // - override-2.10
+            // - override-2
+            // - override
+            val ver = scalaVersion.value
+            val base = baseDirectory.value
+            val parts = ver.split(Array('.','-'))
+            val verList = parts.inits.map { ps =>
+              val len = ps.mkString(".").length
+              // re-read version, since we lost '.' and '-'
+              ver.substring(0, len)
+            }
+            def dirStr(v: String) =
+              if (v.isEmpty) "overrides" else s"overrides-$v"
+            val dirs = verList.map(base / dirStr(_)).filter(_.exists)
+            dirs.toSeq.reverse
+          },
+
+          // Add scala source to managed sources
+          managedSources in Compile ++= {
+            // Relevant directories for scala source
+            val libraryPath = fetchScalaSource.value / "src"
+            val subdirs = Seq(
+              libraryPath / "library",
+              libraryPath / "continuations" / "library"
+            )
+
+            // Filter sources with overrides
             def normPath(f: File): String =
               f.getPath.replace(java.io.File.separator, "/")
 
-            val ver = scalaVersion.value.substring(0, 4)
-            val overridesDirs = Seq(
-                baseDirectory.value / "overrides",
-                baseDirectory.value / s"overrides-$ver"
-            )
+            val overridesDirs = (unmanagedSourceDirectories in Compile).value
             val overrideNames = overridesDirs flatMap { overridesDir =>
               val allOverrides = (overridesDir ** "*.scala").get
               val overridePathLen = normPath(overridesDir).length
@@ -259,27 +291,34 @@ object ScalaJSBuild extends Build {
                   yield name.substring(0, name.length-6) + ".java"
               scalaNames ++ javaNames
             }
-            val libraryPath = normPath(baseDirectory.value / s"source-$ver/src")
 
-            val superFilter = (excludeFilter in (Compile, unmanagedSources)).value
-            superFilter || new SimpleFileFilter({ f =>
-              val path = normPath(f)
-              (
-                  // overrides
-                  path.startsWith(libraryPath) &&
-                  overrideNames.exists(path.endsWith(_))
-              ) || (
-                  // useless things
-                  path.contains("/scala/collection/parallel/") ||
-                  path.contains("/scala/util/parsing/")
-              )
-            })
+            // Match and filter sources
+            for {
+              sd  <- subdirs
+              src <- (sd ** "*.scala").get
+              path = normPath(src)
+              if !(
+                // overrides
+                overrideNames.exists(path.endsWith(_)) ||
+                // useless things
+                path.contains("/scala/collection/parallel/") ||
+                path.contains("/scala/util/parsing/"))
+            } yield src
+
           },
 
           // Continuation plugin
           autoCompilerPlugins := true,
-          libraryDependencies += compilerPlugin(
-              "org.scala-lang.plugins" % "continuations" % scalaVersion.value),
+          libraryDependencies ++= {
+            val ver = scalaVersion.value
+            if (ver.startsWith("2.11.") && ver != "2.11.0-M7") Seq(
+              compilerPlugin("org.scala-lang.plugins" %% "scala-continuations-plugin" % "1.0.0-RC3"),
+              "org.scala-lang.plugins" %% "scala-continuations-library" % "1.0.0-RC3"
+            )
+            else Seq(
+              compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
+            )
+          },
           scalacOptions += "-P:continuations:enable"
       ) ++ (
           scalaJSExternalCompileSettings
@@ -435,29 +474,36 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
 
           resolvers += Resolver.typesafeIvyRepo("releases"),
 
-          libraryDependencies ++= Seq(
-              "org.scala-sbt" % "sbt" % "0.13.0",
-              "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
-              "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4"
-          ),
+          libraryDependencies ++= {
+            if (shouldPartest.value)
+              Seq(
+                "org.scala-sbt" % "sbt" % "0.13.0",
+                "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
+                "com.google.javascript" % "closure-compiler" % "v20130603",
+                "org.mozilla" % "rhino" % "1.7R4"
+              )
+            else Seq()
+          },
 
           unmanagedSourceDirectories in Compile ++= {
             val base = ((scalaSource in (plugin, Compile)).value /
                 "scala/scalajs/sbtplugin")
             Seq(base / "environment", base / "sourcemap")
           },
-          sources in Compile ++= {
-            val d = (scalaSource in (plugin, Compile)).value
-            Seq(d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
+          sources in Compile := {
+            if (shouldPartest.value) {
+              val baseSrcs = (sources in Compile).value
+              val d = (scalaSource in (plugin, Compile)).value
+              val newSrcs = Seq(
+                d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
                 d / "scala/scalajs/sbtplugin/Utils.scala")
+              baseSrcs ++ newSrcs
+            } else Seq()
           }
+
       )
   ).dependsOn(compiler)
 
@@ -468,38 +514,37 @@ object ScalaJSBuild extends Build {
           useLibraryButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js partest suite",
-          // FIXME, we need to lift this since partest does not work on 2.10
-          // this version should come from elsewhere
-          scalaVersion := "2.11.0-M7",
 
           /* Add an extracted version of scalajs-library.jar on the classpath.
            * The runner will need it, as it cannot cope with .js files in .jar.
            */
-          dependencyClasspath in Test += {
-            val s = streams.value
+          dependencyClasspath in Test ++= {
+            if (shouldPartest.value) {
+              val s = streams.value
 
-            val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
-            val extractDir = taskCacheDir / "scalajs-library"
+              val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
+              val extractDir = taskCacheDir / "scalajs-library"
 
-            val libraryJar =
-              (artifactPath in (library, Compile, packageBin)).value
+              val libraryJar =
+                (artifactPath in (library, Compile, packageBin)).value
 
-            val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
+              val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
 
-              val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
-              s.log.info("Extracting %s ..." format libraryJar)
-              if (extractDir.exists)
-                IO.delete(extractDir)
-              IO.createDirectory(extractDir)
-              IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
-                  preserveLastModified = true)
-              (extractDir ** usefulFilesFilter).get.toSet
-            }
+                val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
+                s.log.info("Extracting %s ..." format libraryJar)
+                if (extractDir.exists)
+                  IO.delete(extractDir)
+                IO.createDirectory(extractDir)
+                IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
+                    preserveLastModified = true)
+                (extractDir ** usefulFilesFilter).get.toSet
+              }
 
-            cachedExtractJar(Set(libraryJar))
+              cachedExtractJar(Set(libraryJar))
 
-            Attributed.blank(extractDir)
+              Seq(Attributed.blank(extractDir))
+            } else Seq()
           },
 
           fork in Test := true,
@@ -509,12 +554,16 @@ object ScalaJSBuild extends Build {
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
           //javaOptions in Test += "-Dscala.tools.partest.scalajs.testblackbugonly=true",
 
-          testFrameworks +=
-            new TestFramework("scala.tools.partest.scalajs.Framework"),
+          testFrameworks ++= {
+            if (shouldPartest.value)
+              Seq(new TestFramework("scala.tools.partest.scalajs.Framework"))
+            else Seq()
+          },
 
-          definedTests in Test +=
-            new sbt.TestDefinition(
-                "partest",
+          definedTests in Test ++= {
+            if (shouldPartest.value)
+              Seq(new sbt.TestDefinition(
+                s"partest-${scalaVersion.value}",
                 // marker fingerprint since there are no test classes
                 // to be discovered by sbt:
                 new sbt.testing.AnnotatedFingerprint {
@@ -523,7 +572,9 @@ object ScalaJSBuild extends Build {
                 },
                 true,
                 Array()
-            )
+              ))
+            else Seq()
+          }
       )
   ).dependsOn(partest % "test")
 }
