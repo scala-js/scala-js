@@ -26,7 +26,7 @@ import rhino.ContextOps
 import rhino.ScalaJSCoreLib
 import rhino.ScriptableObjectOps
 
-import sbt.IO
+import sbt._
 
 import scala.scalajs.sbtplugin.Utils._
 
@@ -37,20 +37,22 @@ class RhinoBasedScalaJSEnvironment(
 
   private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 
-  /* Splits the inputs into 3 categories
-   *
-   * 1. The core lib (using lazy loading for Scala.js files)
-   * 2. Other js files and
-   * 3. Env.js lib if it is present
+  /** ScalaJS core lib (with lazy-loading of Scala.js providers) and .js
+   *  scripts to be executed immediately.
    */
-  lazy val (scalaJSCoreLib, availableJSFiles, envJSLib) = {
-    var scalaJSCoreLib: Option[ScalaJSCoreLib] = None
-    val scalaJSProviders, availableJSFiles = mutable.Map.empty[String, File]
-    var envJSLib: Option[File] = None
+  lazy val (scalaJSCoreLib, immediateJSInputs) = {
+    /* This splits the inputs in 3 categories:
+     * 1. The scalajs-corejslib.js file
+     * 2. Scala.js providers (.js files emitted by Scala.js)
+     * 3. Other .js files that must be executed immediately
+     */
+    var scalaJSCoreLibFile: Option[File] = None
+    val scalaJSProviders = mutable.Map.empty[String, File]
+    val immediateJSInputs = mutable.ListBuffer.empty[File]
 
     inputs.foreach {
-      case ScalaJSCore(lib) =>
-        scalaJSCoreLib = Some(lib.withProviders(scalaJSProviders))
+      case file @ CoreJSLibFile() =>
+        scalaJSCoreLibFile = Some(file)
 
       case file @ ScalaJSClassFile(infoFile) =>
         val encodedName = IO.readLines(infoFile).collectFirst {
@@ -60,24 +62,49 @@ class RhinoBasedScalaJSEnvironment(
         }
         scalaJSProviders += encodedName -> file
 
-      case file @ EnvJSLib() =>
-        envJSLib = Some(file)
-
       case file =>
-        availableJSFiles += file.getName -> file
+        immediateJSInputs += file
     }
 
-    if (scalaJSCoreLib == None && scalaJSProviders.nonEmpty)
-      throw new RuntimeException("Could not find scalajs-corejslib.js, make sure it's on the classpath")
+    if (scalaJSCoreLibFile == None && scalaJSProviders.nonEmpty)
+      throw new RuntimeException(
+          "Could not find scalajs-corejslib.js, make sure it is on the classpath")
+    val scalaJSCoreLib = scalaJSCoreLibFile.map(
+        new ScalaJSCoreLib(_).withProviders(scalaJSProviders))
 
-    (scalaJSCoreLib, availableJSFiles, envJSLib)
+    (scalaJSCoreLib, immediateJSInputs.toList)
+  }
+
+  /** Additional .js scripts available on the classpath (for importScripts).
+   *  Isolates the env.js library if available.
+   */
+  lazy val (envJSLib, availableJSFiles) = {
+    val availableJSFiles = mutable.Map.empty[String, File]
+    var envJSLib: Option[File] = None
+
+    for (dir <- classpath.reverse) { // reverse so earlier dirs shadow later dirs
+      for (file <- (dir ** "*.js").get) {
+        file match {
+          case CoreJSLibFile() | ScalaJSClassFile(_) =>
+          case EnvJSLib() =>
+            envJSLib = Some(file)
+          case _ =>
+            availableJSFiles += file.getName -> file
+        }
+      }
+    }
+
+    (envJSLib, availableJSFiles)
   }
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
    *
-   *  Other js files can be loaded using the importScripts javascript
-   *  function.
+   *  Other .js scripts in the inputs are executed eagerly before the provided
+   *  `code` is called.
+   *
+   *  Additional .js files available on the classpath can be loaded using the
+   *  importScripts JavaScript function.
    */
   def runInContextAndScope(code: (Context, ScriptableObject) => Unit): Unit = {
     val context = Context.enter()
@@ -98,11 +125,16 @@ class RhinoBasedScalaJSEnvironment(
           Context.javaToJS(console, scope))
       }
 
-      scope.addFunction("importScripts", importScripts(context, scope, availableJSFiles))
+      scope.addFunction("importScripts",
+          importScripts(context, scope, availableJSFiles))
 
       try {
         // We only need to make the core lib available
         scalaJSCoreLib.foreach(_.insertInto(context, scope))
+
+        // Then we execute immediate .js scripts
+        for (file <- immediateJSInputs)
+          context.evaluateFile(scope, file)
 
         code(context, scope)
       } catch {
@@ -154,10 +186,4 @@ class RhinoBasedScalaJSEnvironment(
   }
 
   private val EnvJSLib = new FileNameMatcher("""env\.rhino\.(?:[\d\.]+\.)?js""".r)
-
-  private object ScalaJSCore {
-    def unapply(file: File) =
-      if (isCoreJSLibFile(file)) Some(new ScalaJSCoreLib(file))
-      else None
-  }
 }
