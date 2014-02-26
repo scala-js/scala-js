@@ -182,7 +182,7 @@ var ScalaJS = {
 
   objectGetClass: function(instance) {
     if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.getClass__java_lang_Class();
+      return instance.getClass__Ljava_lang_Class();
     else if (typeof(instance) === "string")
       return ScalaJS.data.java_lang_String.getClassOf();
     else
