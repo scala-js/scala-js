@@ -98,6 +98,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
   class ClassInfo(data: ClassInfoData) {
     val encodedName = data.encodedName
+    val ancestorCount = data.ancestorCount
     val isStaticModule = data.isStaticModule
     val isInterface = data.isInterface
     val isImplClass = data.isImplClass
@@ -127,6 +128,10 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     var isInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false
     var isDataAccessed: Boolean = false
+
+    def isNeededAtAll =
+      isDataAccessed ||
+      (isImplClass && methodInfos.values.exists(_.isReachable))
 
     lazy val methodInfos: mutable.Map[String, MethodInfo] = {
       val ms = for ((methodName, methodData) <- data.methods)
