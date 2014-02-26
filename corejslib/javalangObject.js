@@ -20,13 +20,13 @@ ScalaJS.c.java_lang_Object.prototype.init___ = function() {
   return this;
 }
 
-ScalaJS.c.java_lang_Object.prototype.getClass__java_lang_Class = function() {
+ScalaJS.c.java_lang_Object.prototype.getClass__Ljava_lang_Class = function() {
   return this.$classData.getClassOf();
 }
 
 // Bridge for getClass()
 ScalaJS.c.java_lang_Object.prototype.getClass = function() {
-  return this.getClass__java_lang_Class();
+  return this.getClass__Ljava_lang_Class();
 }
 
 ScalaJS.c.java_lang_Object.prototype.hashCode__I = function() {
@@ -69,7 +69,7 @@ ScalaJS.c.java_lang_Object.prototype.clone = function() {
 
 ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
   // getClass().getName() + "@" + Integer.toHexString(hashCode())
-  var className = this.getClass__java_lang_Class().getName__T();
+  var className = this.getClass__Ljava_lang_Class().getName__T();
   var hashCode = this.hashCode__I();
   return className + '@' + hashCode.toString(16);
 }
