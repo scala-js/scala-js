@@ -16,7 +16,7 @@ import scala.util.{ Try, Failure }
 object RuntimeTypesTest extends JasmineTest {
 
   describe("scala.Nothing") {
-    
+
     it("casts to scala.Nothing should fail") {
       val msg = Try("a".asInstanceOf[Nothing]) match {
         case Failure(thr: ClassCastException) => thr.getMessage
@@ -35,18 +35,24 @@ object RuntimeTypesTest extends JasmineTest {
       arr.asInstanceOf[Array[Array[Nothing]]]
       // This apparently works too... Dunno why
       arr.asInstanceOf[Array[Nothing]]
-    } 
+    }
 
   }
 
   describe("scala.Null") {
-    
+
     it("casts to scala.Null should fail for everything else but null") {
       val msg = Try("a".asInstanceOf[Null]) match {
         case Failure(thr: ClassCastException) => thr.getMessage
         case _ => "not failed"
       }
       expect(msg).toEqual("a is not an instance of scala.runtime.Null$")
+    }
+
+    it("classTag of scala.Null should contain proper Class[_] - #297") {
+      val tag = scala.reflect.classTag[Null]
+      expect(tag.runtimeClass != null).toBeTruthy
+      expect(tag.runtimeClass.getName).toEqual("scala.runtime.Null$")
     }
 
     it("casts to scala.Null should succeed on null") {
