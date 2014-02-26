@@ -140,7 +140,8 @@ object ScalaJSBuild extends Build {
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4"
+              "org.mozilla" % "rhino" % "1.7R4",
+              "net.liftweb" %% "lift-json" % "2.5.1"
           )
       )
   )
