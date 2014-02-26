@@ -87,7 +87,13 @@ object ScalaJSBuild extends Build {
 
   override lazy val settings = super.settings :+ {
     // Most of the projects cross-compile
-    crossScalaVersions := Seq("2.10.2", "2.10.3", "2.11.0-M7", "2.11.0-M8")
+    crossScalaVersions := Seq(
+      "2.10.2",
+      "2.10.3",
+      "2.10.4-RC2",
+      "2.11.0-M7",
+      "2.11.0-M8"
+    )
   }
 
   lazy val root: Project = Project(
