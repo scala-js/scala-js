@@ -12,6 +12,7 @@ package scala.scalajs.test
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
 import scala.scalajs.js.JavaScriptException
+import scala.scalajs.js.annotation.JSExport
 
 import org.scalajs.jasmine.ExpectationResult
 import org.scalajs.jasmine.Result
@@ -55,13 +56,18 @@ object JasmineTestFramework extends TestFramework {
   }
 }
 
+/** This class is passed to the actual jasmine framework as a reporter.
+ *  TODO this should probably be renamed
+ */
 class JasmineTestFramework(testOutput: TestOutput) {
   private var currentSuite: Suite = _
 
+  @JSExport
   def reportRunnerStarting(): Unit = {
     testOutput.log.info("")
   }
 
+  @JSExport
   def reportSpecStarting(spec: Spec): Unit = {
     if (currentSuite != spec.suite) {
       currentSuite = spec.suite
@@ -69,6 +75,7 @@ class JasmineTestFramework(testOutput: TestOutput) {
     }
   }
 
+  @JSExport
   def reportSpecResults(spec: Spec): Unit = {
     val results = spec.results()
     val description = spec.description
@@ -82,6 +89,7 @@ class JasmineTestFramework(testOutput: TestOutput) {
     }
   }
 
+  @JSExport
   def reportSuiteResults(suite: Suite): Unit = {
     var results = suite.results()
 
@@ -100,6 +108,7 @@ class JasmineTestFramework(testOutput: TestOutput) {
     info("")
   }
 
+  @JSExport
   def reportRunnerResults(): Unit = {
     // no need to report
   }

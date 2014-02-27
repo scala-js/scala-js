@@ -13,7 +13,6 @@ var ScalaJS = {
   data: {},            // Data for types
   c: {},               // Scala.js constructors
   inheritable: {},     // Inheritable constructors (without initialization code)
-  classes: {},         // JavaScript constructors
   impls: {},           // Implementation class modules
   moduleInstances: {}, // Module instances
   modules: {},         // Module accessors

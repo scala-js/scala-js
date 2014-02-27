@@ -235,16 +235,19 @@ object InteroperabilityTest extends JasmineTest {
           `1` = 5))
     }
 
-    it("should generate bridges for methods inherited from traits - #178") {
+    it("should generate exports for methods inherited from traits - #178") {
+      import js.annotation.JSExport
+
       trait Foo {
+        @JSExport
         def theValue = 1
       }
       class Bar extends Foo
 
       val x = (new Bar).asInstanceOf[js.Dynamic]
 
-      // Call bridge by using js.Dynamic
-      expect(x.theValue()).toEqual(1)
+      // Call the export by using js.Dynamic
+      expect(x.theValue).toEqual(1)
     }
 
   }

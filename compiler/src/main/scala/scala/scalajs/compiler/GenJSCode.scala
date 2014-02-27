@@ -19,11 +19,12 @@ import scala.annotation.tailrec
 abstract class GenJSCode extends plugins.PluginComponent
                             with TypeKinds
                             with JSEncoding
-                            with JSBridges
+                            with GenJSExports
                             with JSDesugaring
                             with ClassInfos
                             with GenJSFiles
                             with Compat210Component {
+
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
   }
@@ -241,6 +242,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Generate members (constructor + methods)
 
       val generatedMembers = new ListBuffer[js.Tree]
+      val exportedSymbols = new ListBuffer[Symbol]
 
       generatedMembers += genConstructor(cd)
 
@@ -253,7 +255,16 @@ abstract class GenJSCode extends plugins.PluginComponent
             () // fields are added in the constructor (genConstructor(cd))
 
           case dd: DefDef =>
-            generatedMembers ++= genMethod(dd)
+            val sym = dd.symbol
+
+            if (jsInterop.isExport(sym)) {
+              generatedMembers += genExportForwarder(dd)
+              // We add symbols that we have to export here. This way we also
+              // get inherited stuff that is implemented in this class.
+              exportedSymbols += sym
+            } else {
+              generatedMembers ++= genMethod(dd)
+            }
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -261,14 +272,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       gen(impl)
 
-      // Generate the bridges, then steal the constructor bridges (1 at most)
-      val bridges0 = genBridgesForClass(sym)
-      val (constructorBridges0, bridges) = bridges0.partition {
-        case js.MethodDef(js.Ident("init_", _), _, _) => true
-        case _ => false
-      }
-      assert(constructorBridges0.size <= 1)
-      val constructorBridge = constructorBridges0.headOption
+      // Generate the exported members
+      val exports = genMemberExports(sym, exportedSymbols.toList)
+
+      // Generate exported constructors
+      val exportedConstructors = genConstructorExports(sym)
 
       // Generate the reflective call proxies (where required)
       val reflProxies = genReflCallProxies(sym)
@@ -276,7 +284,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // The actual class definition
       val classDefinition = js.ClassDef(classVar,
           envField("inheritable") DOT encodeClassFullNameIdent(sym.superClass),
-          generatedMembers.toList ++ bridges ++ reflProxies)
+          generatedMembers.toList ++ exports ++ reflProxies)
 
       /* Inheritable constructor
        *
@@ -289,28 +297,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.DocComment("@constructor"),
             inheritableConstructorVar := js.Function(Nil, js.Skip()),
             inheritableConstructorVar DOT "prototype" := classVar DOT "prototype")
-      }
-
-      /* JS-friendly constructor
-       *
-       * ScalaJS.classes.classIdent = function(<args of the constructor bridge>) {
-       *   ScalaJS.c.classIdent.call(this);
-       *   <body of the constructor bridge>
-       * }
-       * ScalaJS.classes.prototype = Class.prototype;
-       */
-      val createJSConstructorStat = constructorBridge match {
-        case Some(js.MethodDef(_, args, body)) =>
-          val jsConstructorVar = envField("classes") DOT classIdent
-          js.Block(
-              js.DocComment("@constructor"),
-              jsConstructorVar := js.Function(args, js.Block(
-                  js.ApplyMethod(classVar, js.Ident("call"), List(js.This())),
-                  body)),
-              jsConstructorVar DOT "prototype" := classVar DOT "prototype")
-
-        case _ =>
-          js.Skip()
       }
 
       // Instance tests
@@ -330,11 +316,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Bring it all together
 
       val everything = js.Block(
-          classDefinition,
-          createInheritableConstructor,
-          createJSConstructorStat,
-          instanceTestMethods,
-          createDataStat)
+          classDefinition +:
+          createInheritableConstructor +:
+          exportedConstructors :+
+          instanceTestMethods :+
+          createDataStat :_*)
 
       currentClassSym = null
 
@@ -401,7 +387,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body foreach gen
 
           case dd: DefDef =>
-            generatedMethods ++= genMethod(dd)
+            if (jsInterop.isExport(dd.symbol))
+              generatedMethods += genExportForwarder(dd)
+            else
+              generatedMethods ++= genMethod(dd)
 
           case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
         }
@@ -732,8 +721,10 @@ abstract class GenJSCode extends plugins.PluginComponent
           excludedFlags = excludedFlags,
           requiredFlags = Flags.METHOD)
 
-      val candidates = methods filter {
-        s => !s.isConstructor && !superHasProxy(s)
+      val candidates = methods filterNot { s =>
+        s.isConstructor  ||
+        superHasProxy(s) ||
+        jsInterop.isExport(s)
       }
 
       val proxies = candidates filter {
@@ -771,6 +762,75 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.MethodDef(encodeMethodSym(sym, reflProxy = true), jsParams, body)
     }
 
+    /** Generate a method definition for an export forwarder. This is similar
+     *  to genMethod but does not handle tail recursion and removes any boxing
+     *  introduced by the erasure phase.
+     */
+    def genExportForwarder(dd: DefDef) = {
+      implicit val pos = dd.pos
+      val sym = dd.symbol
+
+      // Prepare params
+      val vparamss = dd.vparamss
+
+      assert(vparamss.isEmpty || vparamss.tail.isEmpty,
+          "Malformed parameter list: " + vparamss)
+      val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
+
+      val jsParams =
+        for (param <- params)
+          yield encodeLocalSym(param, freshName)(param.pos)
+
+      // Prepare RHS
+      def isBox(sym: Symbol) = currentRun.runDefinitions.isBox(sym)
+
+      def genFwdApply(tree: Tree) = tree match {
+        case Apply(fun @ Select(receiver, _), arglist) =>
+          // If the forwarder is inherited from a trait, we call the
+          // implementation class and therefore have `this` as additional
+          // argument to the call.
+          // If we are in the implementation class, we get a this too much
+          // and have to drop it (it's used as the receiver)
+          val fwdJsParams = {
+            if (arglist.size == jsParams.size) jsParams
+            else if (arglist.size < jsParams.size) jsParams.tail
+            else js.This() :: jsParams
+          }
+
+          assert(fwdJsParams.size == arglist.size)
+
+          js.ApplyMethod(
+              genExpr(receiver),
+              encodeMethodSym(fun.symbol),
+              fwdJsParams)
+        case _ => abort("Unexpected tree")
+      }
+
+      val jsRhs = dd.rhs match {
+        // Unwrap boxes
+        case Apply(fun, List(body)) if isBox(fun.symbol) =>
+          js.Return(genFwdApply(body))
+        // Unwrap boxes to ValueClasses
+        case Apply(Select(New(_), _), List(body)) =>
+          // Unfortunately, isDerivedValueClass does not work here. We
+          // just assume that no one messed with our trees (no one
+          // should) and therefore this can only a ValueClass box.
+          js.Return(genFwdApply(body))
+        // Drop boxed units
+        case Block(List(body), expr) if expr.symbol == BoxedUnit_UNIT =>
+          exprToStat(genFwdApply(body))
+        // Normal case (no boxing happened)
+        // Note that we do not need to handle unit return specially here,
+        // since they are always boxed.
+        case body: Apply =>
+          js.Return(genFwdApply(body))
+        case _ =>
+          abort("Unexpected tree")
+      }
+
+      js.MethodDef(encodeMethodSym(sym), jsParams, jsRhs)
+    }
+
     // Generate a module accessor ----------------------------------------------
 
     /** Gen JS code for a module accessor
@@ -800,8 +860,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         moduleInstance := js.Undefined()
       }
 
+      val accessorName = envField("modules") DOT moduleIdent
       val createAccessor = {
-        envField("modules") DOT moduleIdent := js.Function(Nil, js.Block(
+        accessorName := js.Function(Nil, js.Block(
             IF (!(moduleInstance)) {
               moduleInstance := js.ApplyMethod(
                   js.New(encodeClassSym(sym), Nil),
@@ -812,7 +873,14 @@ abstract class GenJSCode extends plugins.PluginComponent
         ))
       }
 
-      js.Block(createModuleInstanceField, createAccessor)
+      // For simplicity, this export is generated in place
+      val exportedAccessor = jsInterop.exportsOf(sym) map { case (name, p) =>
+          implicit val pos = p
+          js.Select(envField("g"), js.StringLiteral(name)) := accessorName
+      }
+
+      js.Block(List(createModuleInstanceField, createAccessor) ++
+          exportedAccessor :_*)
     }
 
     // Code generation ---------------------------------------------------------
@@ -2678,36 +2746,20 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case _ =>
-          def isJSGetter = {
-            sym.tpe.params.isEmpty && enteringPhase(currentRun.uncurryPhase) {
-              sym.tpe.isInstanceOf[NullaryMethodType]
-            }
-          }
-
-          def isJSSetter = {
-            funName.endsWith("_=") && enteringPhase(currentRun.uncurryPhase) {
-              sym.tpe.paramss match {
-                case List(List(arg)) => !isScalaRepeatedParamType(arg.tpe)
-                case _ => false
-              }
-            }
-          }
-
-          def isJSBracketAccess = sym.hasAnnotation(JSBracketAccessAnnotation)
           def jsFunName = jsNameOf(sym)
 
           if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
             js.UndefinedParam()
-          } else if (isJSGetter) {
+          } else if (jsInterop.isJSGetter(sym)) {
             assert(argc == 0)
             js.BracketSelect(receiver, js.StringLiteral(jsFunName))
-          } else if (isJSSetter) {
+          } else if (jsInterop.isJSSetter(sym)) {
             assert(argc == 1)
             statToExpr(js.Assign(
                 js.BracketSelect(receiver,
                     js.StringLiteral(jsFunName.stripSuffix("_="))),
                 args.head))
-          } else if (isJSBracketAccess) {
+          } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(argArray.isInstanceOf[js.ArrayConstr] && (argc == 1 || argc == 2),
                 s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
             args match {
