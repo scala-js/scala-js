@@ -34,15 +34,6 @@ explanations on how to do so.
 
 ## Contribute
 
-### Get the code
-
-Get the code with git. Beware that this repo contains one submodule, which
-you need to clone too. To do this, add the `--recursive` option when cloning.
-If you've already cloned this repo, cd into it and do:
-
-    $ git submodule init
-    $ git submodule update
-
 ### Compile
 
 Scala.js uses [sbt](http://www.scala-sbt.org/) for its build process.
@@ -50,13 +41,32 @@ To compile your fork, simply run:
 
     sbt> package
 
+By default the sbt environment uses Scala 2.10.2. You can switch to any of the
+supported versions with, e.g.,
+
+    sbt> ++2.11.0-M7
+
 ### Run the test suite
 
-Compile and run the test suite with
+Compile and run the Scala.js-specific test suite with
 
     sbt> scalajs-test/test
 
 (you must have run `package` before running the test suite)
+
+To run the Scala test suite (aka partest), you have to use a 2.11 version, e.g.,
+2.11.0-M7, and run:
+
+    sbt> scalajs-partest-suite/test
+
+Beware, this takes a very long time.
+
+A complete test session from scratch on 2.11.0-M7 would then be
+
+    sbt> ++2.11.0-M7
+    sbt> package
+    sbt> scalajs-test/test
+    sbt> scalajs-partest-suite/test
 
 ### Test the examples
 
@@ -93,4 +103,4 @@ Simply publish it locally with:
 ## License
 
 Scala.js is distributed under the
-[Scala License](http://www.scala-lang.org/node/146).
+[Scala License](http://www.scala-lang.org/license.html).
