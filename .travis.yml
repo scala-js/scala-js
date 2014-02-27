@@ -45,6 +45,7 @@ matrix:
       scala: 2.11.0-M8
       env:
         - KIND=main
+        - PUBLISH_ENABLED=true
     - jdk: openjdk6
       scala: 2.11.0-M8
       env:
