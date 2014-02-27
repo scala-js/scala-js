@@ -246,8 +246,8 @@ final class Long private (
     masked(c0, c1n, c2 + (c1n >> BITS))
   }
 
-  def /(y: Long): Long = (x divMod y)._1
-  def %(y: Long): Long = (x divMod y)._2
+  def /(y: Long): Long = (x divMod y)(0)
+  def %(y: Long): Long = (x divMod y)(1)
 
   //override def getClass(): Class[Long] = null
 
@@ -270,27 +270,27 @@ final class Long private (
   // Any API //
 
   override def toString: String = {
+    import scala.scalajs.js
+
     if (isZero) "0"
     // Check for MinValue, because its not negatable
     else if (isMinValue) "-9223372036854775808"
     else if (isNegative) "-" + (-x).toString
     else {
-      assert(!isNegative)
-
-      val tenPowZeros = 9
-      val tenPow = 1000000000
-      val tenPowL = fromInt(tenPow)
+      val tenPowL = toRuntimeLong(1000000000L) // 9 zeros
 
       @tailrec
       def toString0(v: Long, acc: String): String =
         if (v.isZero) acc
         else {
-          val (quot, rem) = v.divMod(tenPowL)
+          val quotRem = v.divMod(tenPowL)
+          val quot = quotRem(0)
+          val rem = quotRem(1)
 
           val digits = rem.toInt.toString
-          val zeroPrefix = if (!quot.isZero) {
-            "0" * (tenPowZeros - digits.length)
-          } else ""
+          val zeroPrefix =
+            if (quot.isZero) ""
+            else "000000000".substring(digits.length) // (9 - digits.length) zeros
 
           toString0(quot, zeroPrefix + digits + acc)
         }
@@ -319,16 +319,16 @@ final class Long private (
     else
       Integer.numberOfLeadingZeros(h) - (32 - BITS2)
 
-  /** return Some(log_2(x)) if power of 2 or None othwerise */
+  /** return log_2(x) if power of 2 or -1 otherwise */
   private def powerOfTwo =
     if      (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
-      Some(Integer.numberOfTrailingZeros(l))
+      Integer.numberOfTrailingZeros(l)
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
-      Some(Integer.numberOfTrailingZeros(m) + BITS)
+      Integer.numberOfTrailingZeros(m) + BITS
     else if (h != 0 && m == 0 && l == 0 && (h & (h - 1)) == 0)
-      Some(Integer.numberOfTrailingZeros(h) + BITS01)
+      Integer.numberOfTrailingZeros(h) + BITS01
     else
-      None
+      -1
 
   private def setBit(bit: Int) =
     if (bit < BITS)
@@ -338,14 +338,15 @@ final class Long private (
     else
       Long(l, m, h | (1 << (bit - BITS01)))
 
-  private def divMod(y: Long): (Long, Long) = {
+  private def divMod(y: Long): scala.scalajs.js.Array[Long] = {
+    import scala.scalajs.js
     if (y.isZero) throw new ArithmeticException("/ by zero")
-    else if (x.isZero) (zero, zero)
+    else if (x.isZero) js.Array(zero, zero)
     else if (y.isMinValue) {
       // MinValue / MinValue == 1, rem = 0
       // otherwise == 0, rem x
-      if (x.isMinValue) (one, zero)
-      else (zero, x)
+      if (x.isMinValue) js.Array(one, zero)
+      else js.Array(zero, x)
     } else {
       val xNegative = x.isNegative
       val yNegative = y.isNegative
@@ -355,23 +356,26 @@ final class Long private (
       val absX = x.abs  // this may be useless if x.isMinValue
       val absY = y.abs
 
-      y.powerOfTwo match {
-        case Some(pow) if xMinValue =>
+      val pow = y.powerOfTwo
+      if (pow >= 0) {
+        if (xMinValue) {
           val z = x >> pow
-          (if (yNegative) -z else z, zero)
-        case Some(pow) =>
+          js.Array(if (yNegative) -z else z, zero)
+        } else {
           // x is not min value, so we can use absX
           val absZ = absX >> pow
           val z = if (xNegative ^ yNegative) -absZ else absZ
           val remAbs = absX.maskRight(pow)
           val rem = if (xNegative) -remAbs else remAbs
-          (z, rem)
-        case None if xMinValue =>
+          js.Array(z, rem)
+        }
+      } else {
+        if (xMinValue)
           divModHelper(MaxValue, absY, xNegative, yNegative, xMinValue = true)
         // here we know that x is not min value, so absX makes sense to use
-        case None if absX < absY =>
-          (zero, x)
-        case None =>
+        else if (absX < absY)
+          js.Array(zero, x)
+        else
           divModHelper(absX, absY, xNegative, yNegative, xMinValue = false)
       }
 
@@ -461,7 +465,7 @@ object Long {
 
   def fromFloat(value: Float): Long = fromDouble(value.toDouble)
   def fromDouble(value: Double): Long =
-    if (value.isNaN) zero
+    if (java.lang.Double.isNaN(value)) zero
     else if (value < -TWO_PWR_63_DBL) MinValue
     else if (value >= TWO_PWR_63_DBL) MaxValue
     else if (value < 0) -fromDouble(-value)
@@ -493,12 +497,13 @@ object Long {
    */
   private def divModHelper(x: Long, y: Long,
                            xNegative: Boolean, yNegative: Boolean,
-                           xMinValue: Boolean) = {
+                           xMinValue: Boolean): scala.scalajs.js.Array[Long] = {
+    import scala.scalajs.js
 
     @tailrec
     def divide0(shift: Int, yShift: Long,
-                curX: Long, quot: Long): (Long,Long) =
-      if (shift < 0 || curX.isZero) (quot, curX) else {
+                curX: Long, quot: Long): js.Array[Long] =
+      if (shift < 0 || curX.isZero) js.Array(quot, curX) else {
         val newX = curX - yShift
         if (!newX.isNegative)
           divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
@@ -509,7 +514,9 @@ object Long {
     val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
     val yShift = y << shift
 
-    val (absQuot, absRem) = divide0(shift, yShift, x, zero)
+    val absQuotRem = divide0(shift, yShift, x, zero)
+    val absQuot = absQuotRem(0)
+    val absRem = absQuotRem(1)
 
     val quot = if (xNegative ^ yNegative) -absQuot else absQuot
     val rem  =
@@ -517,8 +524,7 @@ object Long {
       else if (xNegative)         -absRem
       else                         absRem
 
-    (quot, rem)
-
+    js.Array(quot, rem)
   }
 
   // Public Long API
