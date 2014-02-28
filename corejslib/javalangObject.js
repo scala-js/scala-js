@@ -61,13 +61,37 @@ ScalaJS.c.java_lang_Object.prototype.toString = function() {
   return this.toString__T();
 }
 
+// Notify and notify all:
+// Although we do not support wait on Object as it does not make sense in JS, we
+// allow notify to be called in order to support code that calls only notify but
+// never wait. Further, note that these methods are not in the sjsinfo file.
+// Therefore, dce will complain about them not being reachable, but the code
+// will still work.
 ScalaJS.c.java_lang_Object.prototype.notify__V = function() {}
 ScalaJS.c.java_lang_Object.prototype.notifyAll__V = function() {}
-ScalaJS.c.java_lang_Object.prototype.wait__J__V = function() {}
-ScalaJS.c.java_lang_Object.prototype.wait__J__I__V = function() {}
-ScalaJS.c.java_lang_Object.prototype.wait__V = function() {}
 
 ScalaJS.c.java_lang_Object.prototype.finalize__V = function() {}
+
+// Reflective call proxies for methods on java.lang.Object
+// Note that we do not need to proxy the following methods, since they are
+// defined on Any in the Scala hierarchy and therefore a reflective call is
+// never issued:
+// - equals
+// - getClass
+// - hashCode
+// - toString
+ScalaJS.c.java_lang_Object.prototype.clone__ = function() {
+  return this.clone__O()
+}
+ScalaJS.c.java_lang_Object.prototype.notify__ = function() {
+  return ScalaJS.bV(this.notify__V())
+}
+ScalaJS.c.java_lang_Object.prototype.notifyAll__ = function() {
+  return ScalaJS.bV(this.notifyAll__V())
+}
+ScalaJS.c.java_lang_Object.prototype.finalize__ = function() {
+  return ScalaJS.bV(this.finalize__V())
+}
 
 // Instance tests
 

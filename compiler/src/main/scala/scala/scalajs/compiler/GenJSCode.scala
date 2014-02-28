@@ -2377,6 +2377,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val params = sym.tpe.params
 
+      /** check if the method we are invoking is eq or ne. they cannot be
+       *  overridden since they are final. If this is true, we only emit a
+       *  `===` or `!==`.
+       */
+      val isEqOrNeq = (sym.name.decoded == "eq" || sym.name.decoded == "ne") &&
+        params.size == 1 && params.head.tpe.typeSymbol == ObjectClass
+
       /** check if the method we are invoking conforms to the update
        *  method on scala.Array. If this is the case, we have to check
        *  that case specially at runtime, since the arrays element type is not
@@ -2394,7 +2401,7 @@ abstract class GenJSCode extends plugins.PluginComponent
        * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
        * dealing with a string.
        */
-      val rtStrSym = RuntimeStringClass.tpe.member(sym.name).suchThat { s =>
+      lazy val rtStrSym = RuntimeStringClass.tpe.member(sym.name).suchThat { s =>
         val sParams = s.tpe.params
         !s.isBridge &&
         params.size == sParams.size &&
@@ -2405,52 +2412,83 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val ApplyDynamic(receiver, args) = tree
 
-      val callTrg = js.Ident(freshName("dynCallTrg"))
-      val callTrgVarDef = js.VarDef(callTrg, genExpr(receiver))
+      if (isEqOrNeq) {
+        // Just emit a boxed equiality check
+        val jsThis = genExpr(receiver)
+        val jsThat = genExpr(args.head)
+        val op = if (sym.name.decoded == "eq") "===" else "!=="
 
-      val arguments = args zip sym.tpe.params map { case (arg, param) =>
-        if (isBoxedForApplyDynamic(param.tpe)) {
-          arg match {
-            case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) => genExpr(result)
-            case _ => makeUnbox(genExpr(arg), param.tpe)
+        makeBox(js.BinaryOp(op, jsThis, jsThat), BooleanClass.tpe)
+      } else {
+        // Create a fully-fledged reflective call
+        val callTrg = js.Ident(freshName("dynCallTrg"))
+        val callTrgVarDef = js.VarDef(callTrg, genExpr(receiver))
+
+        val arguments = args zip sym.tpe.params map { case (arg, param) =>
+          if (isBoxedForApplyDynamic(param.tpe)) {
+            arg match {
+              case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) =>
+                genExpr(result)
+              case _ =>
+                makeUnbox(genExpr(arg), param.tpe)
+            }
+          } else {
+            genExpr(arg)
           }
-        } else {
-          genExpr(arg)
         }
+
+        val proxyIdent = encodeMethodSym(sym, reflProxy = true)
+        val baseCase = genApplyMethod(callTrg, receiver.tpe, proxyIdent, arguments)
+
+        val arrayCase = if (isArrayLikeUpdate) {
+          IF (genCallHelper("isScalaJSArray", callTrg)) {
+            js.ApplyMethod(callTrg,
+                js.Ident("update__I__elementType__"), arguments)
+          } ELSE {
+            baseCase
+          }
+        } else baseCase
+
+        val stringCase = if (rtStrSym != NoSymbol && rtStrSym.isPublic) {
+          IF (js.UnaryOp("typeof", callTrg) === js.StringLiteral("string")) {
+            // Check if we are calling a method on Object. The trait
+            // RuntimeString extends Object, too.
+            if (rtStrSym.owner == ObjectClass) {
+              MethodWithHelperInEnv get rtStrSym map { helper =>
+                // This method has a helper, call it
+                genCallHelper(helper, callTrg :: arguments:_*)
+              } getOrElse {
+                // If we end up here, we have a call to a method in
+                // java.lang.Object we cannot support (such as wait). An example
+                // is wait. Calls like this only fail reflectively at compile
+                // time because some of them exist in the Scala stdlib. DCE will
+                // issue a warning in any case.
+                currentUnit.error(pos,
+                    s"""You tried to call ${rtStrSym.name} on AnyRef reflectively, but this
+                       |method does not make sense in Scala.js. You may not call it""".stripMargin)
+                statToExpr(js.Skip())
+              }
+            } else {
+              val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
+              val strApply = genApplyMethod(
+                envField("impls"),
+                implClass,
+                methodIdent,
+                callTrg :: arguments)
+              // Box the result of the string method if required
+              val retTpe = rtStrSym.tpe.resultType
+              if (retTpe.typeSymbol.isPrimitiveValueClass)
+                makeBox(strApply, retTpe)
+              else
+                strApply
+            }
+          } ELSE {
+            arrayCase
+          }
+        } else arrayCase
+
+        js.Block(callTrgVarDef,stringCase)
       }
-
-      val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-      val baseCase = genApplyMethod(callTrg, receiver.tpe, proxyIdent, arguments)
-
-      val arrayCase = if (isArrayLikeUpdate) {
-        IF (genCallHelper("isScalaJSArray", callTrg)) {
-          js.ApplyMethod(callTrg,
-              js.Ident("update__I__elementType__"), arguments)
-        } ELSE {
-          baseCase
-        }
-      } else baseCase
-
-      val stringCase = if (rtStrSym != NoSymbol) {
-        IF (js.UnaryOp("typeof", callTrg) === js.StringLiteral("string")) {
-          val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
-          val strApply = genApplyMethod(
-              envField("impls"),
-              implClass,
-              methodIdent,
-              callTrg :: arguments)
-          // Box the result of the string method if required
-          val retTpe = rtStrSym.tpe.resultType
-          if (retTpe.typeSymbol.isPrimitiveValueClass)
-            makeBox(strApply, retTpe)
-          else
-            strApply
-        } ELSE {
-          arrayCase
-        }
-      } else arrayCase
-
-      js.Block(callTrgVarDef,stringCase)
     }
 
     /** Test whether the given type is artificially boxed for ApplyDynamic */
