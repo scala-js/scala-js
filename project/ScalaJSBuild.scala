@@ -422,10 +422,6 @@ object ScalaJSBuild extends Build {
   lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ (
       useLibraryButDoNotDependOnIt ++
       useJasmineTestFrameworkButDoNotDependOnIt
-  ) ++ Seq(
-      // Add the startup.js file of this example project
-      unmanagedSources in (Compile, packageJS) +=
-        baseDirectory.value / "startup.js"
   )
 
   lazy val exampleHelloWorld = Project(

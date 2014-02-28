@@ -6,9 +6,11 @@
 package helloworld
 
 import scala.scalajs.js
-import js.annotation.JSName
+import js.annotation.{ JSName, JSExport }
 
+@JSExport
 object HelloWorld {
+  @JSExport
   def main() {
     sayHelloFromDOM()
     sayHelloFromTypedDOM()
