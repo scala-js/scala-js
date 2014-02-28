@@ -11,6 +11,8 @@ package scala
 import scala.compat.Platform.currentTime
 import scala.collection.mutable.ListBuffer
 
+import scala.scalajs.js.annotation.JSExport
+
 /** The `App` trait can be used to quickly turn objects
  *  into executable programs. Here is an example:
  *  {{{
@@ -64,8 +66,12 @@ trait App extends DelayedInit {
    *  This stores all argument so that they can be retrieved with `args`
    *  and the executes all initialization code segments in the order they were
    *  passed to `delayedInit`
+   *
+   *  Scala.js: This method is always JSExported so you can easily access it
+   *  from your JS code.
    *  @param args the arguments passed to the main method
    */
+  @JSExport
   def main(args: Array[String]) = {
     this._args = args
     for (proc <- initCode) proc()
