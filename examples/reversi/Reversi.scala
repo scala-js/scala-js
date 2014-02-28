@@ -7,6 +7,7 @@ package reversi
 
 import scala.annotation.tailrec
 import scala.scalajs.js
+import scala.scalajs.js.annotation.JSExport
 
 sealed abstract class OptPlayer
 
@@ -24,6 +25,7 @@ case object Black extends Player {
   val opponent = White
 }
 
+@JSExport
 class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   // The Model -----------------------------------------------------------------
@@ -149,6 +151,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     startGame()
   }
 
+  @JSExport
   def startGame() {
     // Set up the board
     allSquares foreach (_.owner = NoPlayer)
