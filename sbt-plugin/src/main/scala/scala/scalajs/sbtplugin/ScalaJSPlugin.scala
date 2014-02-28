@@ -367,7 +367,7 @@ object ScalaJSPlugin extends Plugin {
         output
       },
 
-      managedSources in optimizeJS := packageJS.value,
+      managedSources in optimizeJS := Seq(preoptimizeJS.value),
       unmanagedSources in optimizeJS := Seq(),
       sources in optimizeJS := {
         ((managedSources in optimizeJS).value ++
