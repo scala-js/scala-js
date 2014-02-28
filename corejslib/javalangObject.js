@@ -24,28 +24,13 @@ ScalaJS.c.java_lang_Object.prototype.getClass__Ljava_lang_Class = function() {
   return this.$classData.getClassOf();
 }
 
-// Bridge for getClass()
-ScalaJS.c.java_lang_Object.prototype.getClass = function() {
-  return this.getClass__Ljava_lang_Class();
-}
-
 ScalaJS.c.java_lang_Object.prototype.hashCode__I = function() {
   // TODO
   return 42;
 }
 
-// Bridge for hashCode()
-ScalaJS.c.java_lang_Object.prototype.hashCode = function() {
-  return this.hashCode__I();
-}
-
 ScalaJS.c.java_lang_Object.prototype.equals__O__Z = function(rhs) {
   return this === rhs;
-}
-
-// Bridge for equals(Object)
-ScalaJS.c.java_lang_Object.prototype.equals = function(that) {
-  return this.equals__O__Z(that);
 }
 
 ScalaJS.c.java_lang_Object.prototype.clone__O = function() {
@@ -62,11 +47,6 @@ ScalaJS.c.java_lang_Object.prototype.clone__O = function() {
   }
 }
 
-// Bridge for clone()
-ScalaJS.c.java_lang_Object.prototype.clone = function() {
-  return this.clone__O();
-}
-
 ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
   // getClass().getName() + "@" + Integer.toHexString(hashCode())
   var className = this.getClass__Ljava_lang_Class().getName__T();
@@ -74,7 +54,9 @@ ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
   return className + '@' + hashCode.toString(16);
 }
 
-// Bridge for toString()
+// JSExport for toString(). We always need to export this, since we
+// rely on JS calling it automatically when we do things like:
+// `"" + obj`
 ScalaJS.c.java_lang_Object.prototype.toString = function() {
   return this.toString__T();
 }
@@ -86,16 +68,6 @@ ScalaJS.c.java_lang_Object.prototype.wait__J__I__V = function() {}
 ScalaJS.c.java_lang_Object.prototype.wait__V = function() {}
 
 ScalaJS.c.java_lang_Object.prototype.finalize__V = function() {}
-
-// Constructor bridge
-
-/** @constructor */
-ScalaJS.classes.java_lang_Object = function() {
-  ScalaJS.c.java_lang_Object.call(this);
-  return this.init___();
-}
-ScalaJS.classes.java_lang_Object.prototype =
-  ScalaJS.c.java_lang_Object.prototype;
 
 // Instance tests
 

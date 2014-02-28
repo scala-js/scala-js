@@ -25,7 +25,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   /** Addons for JavaScript platform */
   object jsAddons extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
-  } with JSGlobalAddons
+  } with JSGlobalAddons with Compat210Component
 
   object scalaJSOpts extends ScalaJSOptions {
     var fixClassOf: Boolean = false

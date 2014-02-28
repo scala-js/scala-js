@@ -9,16 +9,23 @@ import scala.tools.nsc
 import nsc._
 
 import scala.collection.immutable.ListMap
+import scala.collection.mutable
 
 /** Prepares classes extending js.Any for JavaScript interop
  *
- * This phase does two things:
+ * This phase does:
+ * - Sanity checks for js.Any hierarchy
  * - Annotate subclasses of js.Any to be treated specially
- * - Handle extension methods to subclasses of js.Any
+ * - Rewrite calls to scala.Enumeration.Value (include name string)
+ * - Create JSExport methods: Dummy methods that are propagated
+ *   through the whole compiler chain to mark exports. This allows
+ *   exports to have the same semantics than methods.
  *
  * @author Tobias Schlatter
  */
-abstract class PrepJSInterop extends plugins.PluginComponent with transform.Transform {
+abstract class PrepJSInterop extends plugins.PluginComponent
+                                with PrepJSExports
+                                with transform.Transform {
   val jsAddons: JSGlobalAddons {
     val global: PrepJSInterop.this.global.type
   }
@@ -63,7 +70,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
     def allowJSAny     = !inScalaCls
     def inJSAny        = inJSAnyMod || inJSAnyCls
 
-    override def transform(tree: Tree): Tree = tree match {
+    /** DefDefs in class templates that export methods to JavaScript */
+    val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
+
+    override def transform(tree: Tree): Tree = postTransform { tree match {
       // Catch special case of ClassDef in ModuleDef
       case cldef: ClassDef if jsAnyClassOnly && isJSAny(cldef) =>
         transformJSAny(cldef)
@@ -152,7 +162,24 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
           EmptyTree
         }
 
+      case ddef: DefDef =>
+        // Generate exporters for this ddef if required
+        exporters.getOrElseUpdate(ddef.symbol.owner,
+            mutable.ListBuffer.empty) ++= genExportMember(ddef)
+
+        super.transform(tree)
+
       case _ => super.transform(tree)
+    } }
+
+    private def postTransform(tree: Tree) = tree match {
+      case Template(parents, self, body) =>
+        val clsSym = tree.symbol.owner
+        val exports = exporters.get(clsSym).toIterable.flatten
+
+        // Add exports to the template
+        treeCopy.Template(tree, parents, self, body ++ exports)
+      case _ => tree
     }
 
     /**
@@ -265,8 +292,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent with transform.Tran
 
   }
 
-  private def isJSAny(implDef: ImplDef) =
-    implDef.symbol.tpe.typeSymbol isSubClass JSAnyClass
+  def isJSAny(sym: Symbol): Boolean =
+    sym.tpe.typeSymbol isSubClass JSAnyClass
+
+  private def isJSAny(implDef: ImplDef): Boolean = isJSAny(implDef.symbol)
 
   private def isJSGlobalScope(implDef: ImplDef) =
     implDef.symbol.tpe.typeSymbol isSubClass JSGlobalScopeClass

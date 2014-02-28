@@ -344,13 +344,9 @@ trait JSPrinters { self: JSGlobalAddons =>
           printRow(args, "(", ", ", ") ")
           printBlock(body)
 
-        case js.GetterDef(name, body) =>
+        case js.PropertyDef(name, _, _, _) =>
           // TODO
-          print("<getter>")
-
-        case js.SetterDef(name, arg, body) =>
-          // TODO
-          print("<setter>")
+          print(s"<property: $name>")
 
         case js.Super() =>
           print("super")

@@ -30,6 +30,8 @@ case class TestTask(
 
   val tags = Array.empty[String]
 
+  private val ctorName = "init___Lscala_scalajs_test_EventProxy__T__T"
+
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     val testKey = taskDef.fullyQualifiedName.replaceAll("\\.", "_")
     val testFrameworkKey = testFramework.replaceAll("\\.", "_")
@@ -39,7 +41,8 @@ case class TestTask(
     environment.runInContextAndScope { (context, scope) =>
       new CodeBlock(context, scope) with Utilities {
         try {
-          createInstance(testRunnerClass, eventProxy, testFrameworkKey, testKey)
+          createInstance(testRunnerClass,
+              ctorName)(eventProxy, testFrameworkKey, testKey)
         } catch {
           case t: RhinoException =>
             eventProxy.error(t.details, t.getScriptStack())

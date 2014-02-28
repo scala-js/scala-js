@@ -12,7 +12,10 @@ import scala.tools.nsc._
  *
  *  @author Sébastien Doeraene
  */
-trait Compat210Component extends SubComponent {
+trait Compat210Component {
+
+  val global: Global
+
   import global._
 
   // unexpandedName replaces originalName

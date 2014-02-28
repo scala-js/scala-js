@@ -9,47 +9,120 @@ import scala.tools.nsc._
 import scala.math.PartialOrdering
 import scala.reflect.internal.Flags
 
-/** Generation of bridges for JavaScript
+/** Generation of exports for JavaScript
  *
  *  @author Sébastien Doeraene
  */
-trait JSBridges extends SubComponent { self: GenJSCode =>
+trait GenJSExports extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
   import definitions._
   import jsDefinitions._
-  import scalaPrimitives.isPrimitive
 
-  private def isCandidateForBridge(sym: Symbol): Boolean = (
-     sym.isMethod      &&
-    !sym.isBridge      &&
-     sym.isPublic      &&
-    !isPrimitive(sym)  &&
-    !sym.isMacro)
+  /**
+   * Generate exporter methods for a class
+   * @param classSym symbol of class we export for
+   * @param decldExports symbols exporter methods that have been encountered in
+   *   the class' tree. This is not the same as classSym.info.delcs since
+   *   inherited concrete methods from traits should be in this param, too
+   */
+  def genMemberExports(
+      classSym: Symbol,
+      decldExports: List[Symbol]): List[js.Tree] = {
 
-  /** checks if a symbol is overriding a symbol we already made a bridge for */
-  private def isOverridingBridge(sym: Symbol): Boolean = {
+    val newlyDecldExports = decldExports.filterNot { isOverridingExport _ }
+    val newlyDecldExportNames =
+      newlyDecldExports.map(_.name.toTermName).toList.distinct
+
+    newlyDecldExportNames map { genMemberExport(classSym, _) }
+  }
+
+  def genConstructorExports(classSym: Symbol): List[js.Tree] = {
+    val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
+
+    // Generate exports from constructors and their annotations
+    val ctorExports = for {
+      ctor        <- constructors
+      (jsName, _) <- jsInterop.exportsOf(ctor)
+    } yield (jsName, ctor)
+
+    val exports = for {
+      (jsName, specs) <- ctorExports.groupBy(_._1)
+    } yield {
+      import js.TreeDSL._
+
+      val ctors = specs.map(_._2)
+      implicit val pos = ctors.head.pos
+
+      val js.MethodDef(_, args, body) = genExportMethod(ctors, jsName)
+
+      val jsCtor = envField("c") DOT encodeClassFullNameIdent(classSym)
+      val expCtorVar = js.Select(envField("g"), js.StringLiteral(jsName))
+
+      js.Block(
+        js.DocComment("@constructor"),
+        expCtorVar := js.Function(args, js.Block(
+          // Call the js constructor while passing the current this
+          js.ApplyMethod(jsCtor, js.Ident("call"), List(js.This())),
+          body
+        )),
+        expCtorVar DOT "prototype" := jsCtor DOT "prototype"
+      )
+
+    }
+
+    exports.toList
+
+  }
+
+
+  private def isOverridingExport(sym: Symbol): Boolean = {
     lazy val osym = sym.nextOverriddenSymbol
-    sym.isOverridingSymbol && osym.isPublic && !osym.owner.isInterface
+    sym.isOverridingSymbol && !osym.owner.isInterface
   }
 
-  def genBridgesForClass(sym: Symbol): List[js.Tree] = {
-    val declaredMethods = sym.info.decls.filter(isCandidateForBridge)
-    val newlyDeclaredMethods = declaredMethods.filterNot(isOverridingBridge)
-    val newlyDeclaredMethodNames =
-      newlyDeclaredMethods.map(_.name.toTermName).toList.distinct
-    newlyDeclaredMethodNames map (genBridge(sym, _))
-  }
+  private def genMemberExport(classSym: Symbol, name: TermName): js.Tree = {
+    val alts = classSym.info.member(name).alternatives
 
-  private def genBridge(classSym: Symbol, name: TermName): js.Tree = {
-    val alts0 = classSym.info.member(name).alternatives
-    val alts1 = alts0.filter(isCandidateForBridge)
-    val alts = alts1.filterNot(
-        x => alts1.exists(y => (y ne x) && (y.tpe <:< x.tpe)))
     assert(!alts.isEmpty,
         s"Ended up with no alternatives for ${classSym.fullName}::$name. " +
-        s"Original set was ${alts0} with types ${alts0.map(_.tpe)}")
+        s"Original set was ${alts} with types ${alts.map(_.tpe)}")
 
+    val (jsName, isProp) = jsInterop.jsExportInfo(name)
+
+    if (isProp)
+      genExportProperty(alts, jsName)
+    else
+      genExportMethod(alts, jsName)
+
+  }
+
+  private def genExportProperty(alts: List[Symbol], jsName: String) = {
+    assert(!alts.isEmpty)
+    implicit val pos = alts.head.pos
+
+    // Separate getters and setters. Somehow isJSGetter doesn't work here. Hence
+    // we just check the parameter list length.
+    val (getter, setters) = alts.partition(_.tpe.params.isEmpty)
+
+    // if we have more than one getter, something went horribly wrong
+    assert(getter.size <= 1,
+        s"Found more than one getter to export for name ${jsName}.")
+
+    val getTree =
+      if (getter.isEmpty) js.EmptyTree
+      else genApplyForSym(getter.head)
+
+    val setTree =
+      if (setters.isEmpty) js.EmptyTree
+      else genExportSameArgc(setters, 0) // we only have 1 argument
+
+    js.PropertyDef(js.StringLiteral(jsName), getTree, genFormalArg(1), setTree)
+  }
+
+  /** generates the exporter function (i.e. exporter for non-properties) for
+   *  a given name */
+  private def genExportMethod(alts: List[Symbol], jsName: String) = {
     implicit val pos = alts.head.pos
 
     val altsByArgCount = alts.groupBy(_.tpe.params.size).toList.sortBy(_._1)
@@ -60,7 +133,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
     val cases = for {
       (argc, methods) <- altsByArgCount
     } yield {
-      (js.IntLiteral(argc), genBridgeSameArgc(methods, 0))
+      (js.IntLiteral(argc), genExportSameArgc(methods, 0))
     }
 
     val body = {
@@ -71,32 +144,28 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
       }
     }
 
-    val jsName = name.toString match {
-      case "<init>" => "init_" // will be stolen by the JS constructor
-      case "constructor" => "$constructor"
-      case x if x(0).isDigit    => "$" + x
-      case x if x(0) == "$"     => "$" + x
-      case x if js.isKeyword(x) => "$" + x
-      case x => x
-    }
-    js.MethodDef(js.Ident(jsName), formalsArgs, body)
+    js.MethodDef(js.StringLiteral(jsName), formalsArgs, body)
   }
 
-  private def genBridgeSameArgc(alts: List[Symbol], paramIndex: Int): js.Tree = {
+  private def genExportSameArgc(alts: List[Symbol], paramIndex: Int): js.Tree = {
     implicit val pos = alts.head.pos
 
     val remainingParamLists = alts map (_.tpe.params.drop(paramIndex))
 
     if (alts.size == 1) genApplyForSym(alts.head)
-    if (remainingParamLists.head.isEmpty) genTieBreak(alts)
-    else {
+    else if (remainingParamLists.head.isEmpty) {
+      currentUnit.error(pos,
+          s"""Cannot disambiguate overloads for exported method ${alts.head.name} with types
+             |  ${alts.map(_.tpe).mkString("\n  ")}""".stripMargin)
+      js.Return(js.Undefined())
+    } else {
       val altsByTypeTest = groupByWithoutHashCode(alts) {
         alt => typeTestForTpe(alt.tpe.params(paramIndex).tpe)
       }
 
       if (altsByTypeTest.size == 1) {
         // Testing this parameter is not doing any us good
-        genBridgeSameArgc(alts, paramIndex+1)
+        genExportSameArgc(alts, paramIndex+1)
       } else {
         // Sort them so that, e.g., isInstanceOf[String]
         // comes before isInstanceOf[Object]
@@ -110,7 +179,7 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
           implicit val pos = subAlts.head.pos
 
           def param = genFormalArg(paramIndex+1)
-          val genSubAlts = genBridgeSameArgc(subAlts, paramIndex+1)
+          val genSubAlts = genExportSameArgc(subAlts, paramIndex+1)
 
           typeTest match {
             case TypeOfTypeTest(typeString) =>
@@ -133,12 +202,6 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
   private def genIsInstance(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
     encodeIsInstanceOf(value, tpe)
-  }
-
-  private def genTieBreak(alts: List[Symbol]): js.Tree = {
-    // TODO For now we just emit the first one
-    implicit val pos = alts.head.pos
-    js.Block(genApplyForSym(alts.head))
   }
 
   private sealed abstract class RTTypeTest
@@ -262,4 +325,5 @@ trait JSBridges extends SubComponent { self: GenJSCode =>
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.Ident =
     js.Ident("arg$" + index)
+
 }

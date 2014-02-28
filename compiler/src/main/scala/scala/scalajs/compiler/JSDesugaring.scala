@@ -598,12 +598,14 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
       currentClassDef = tree
 
       val typeFunctionDef = genTypeFunctionDef(tree)
-      val methodsDefs = for {
-        m @ js.MethodDef(name, _, _) <- tree.defs
-        if name.name != "constructor"
-      } yield genAddMethodDefToPrototype(tree, m)
+      val memberDefs = tree.defs collect {
+        case m @ js.MethodDef(name, _, _) if name.name != "constructor" =>
+          genAddMethodDefToPrototype(tree, m)
+        case p: js.PropertyDef =>
+          genAddPropertyDefToPrototype(tree, p)
+      }
 
-      val result = transformStat(js.Block(typeFunctionDef :: methodsDefs))
+      val result = transformStat(js.Block(typeFunctionDef :: memberDefs))
 
       currentClassDef = savedCurrentClassDef
 
@@ -656,6 +658,50 @@ trait JSDesugaring extends SubComponent { self: GenJSCode =>
       js.Assign(
           js.Select(js.DotSelect(cd.name, js.Ident("prototype")), name),
           value)
+    }
+
+    /** Generate the addition to the prototype of a property */
+    def genAddPropertyDefToPrototype(cd: js.ClassDef,
+        property: js.PropertyDef): js.Tree = {
+      implicit val pos = property.pos
+
+      // defineProperty method
+      val defProp =
+        js.Select(js.Ident("Object"), js.StringLiteral("defineProperty"))
+
+      // class prototype
+      val proto = js.DotSelect(cd.name, js.Ident("prototype"))
+
+      // property name
+      val name = property.name match {
+        case lit: js.StringLiteral => lit
+        case id:  js.Ident         =>
+          // We need to work around the closure compiler. Call propertyName to
+          // get a string representation of the optimized name
+          import js.TreeDSL._
+          js.Apply(js.Ident("ScalaJS") DOT js.Ident("propertyName"),
+              js.ObjectConstr(id -> js.IntLiteral(0) :: Nil) :: Nil)
+      }
+
+      // Options passed to the defineProperty method
+      val descriptor = js.ObjectConstr {
+        // Basic config
+        val base =
+          js.StringLiteral("enumerable") -> js.BooleanLiteral(true) :: Nil
+
+        // Optionally add getter
+        val wget =
+          if (property.getterBody == js.EmptyTree) base
+          else js.StringLiteral("get") ->
+            js.Function(Nil, property.getterBody) :: base
+
+        // Optionally add setter
+        if (property.setterBody == js.EmptyTree) wget
+        else js.StringLiteral("set") ->
+            js.Function(property.setterArg :: Nil, property.setterBody) :: wget
+      }
+
+      js.Apply(defProp, proto :: name :: descriptor :: Nil)
     }
   }
 }

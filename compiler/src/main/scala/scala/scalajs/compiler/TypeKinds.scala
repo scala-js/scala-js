@@ -13,6 +13,7 @@ import scala.tools.nsc._
  */
 trait TypeKinds extends SubComponent { this: GenJSCode =>
   import global._
+  import jsAddons._
 
   import definitions.{ UnitClass, BooleanClass, CharClass, ByteClass,
     ShortClass, IntClass, LongClass, FloatClass, DoubleClass, ArrayClass,
