@@ -90,7 +90,7 @@ object ScalaJSBuild extends Build {
     crossScalaVersions := Seq(
       "2.10.2",
       "2.10.3",
-      "2.10.4-RC2",
+      "2.10.4-RC3",
       "2.11.0-M7",
       "2.11.0-M8"
     )
