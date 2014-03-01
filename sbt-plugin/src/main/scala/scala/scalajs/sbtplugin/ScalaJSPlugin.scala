@@ -17,6 +17,7 @@ import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
+import optimizer.ScalaJSOptimizer
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -38,6 +39,7 @@ object ScalaJSPlugin extends Plugin {
 
   object ScalaJSKeys {
     val packageJS = taskKey[Seq[File]]("Package all the compiled .js files")
+    val preoptimizeJS = taskKey[File]("Package and pre-optimize all the compiled .js files in one file")
     val optimizeJS = taskKey[File]("Package and optimize all the compiled .js files in one file")
 
     val packageExternalDepsJS = taskKey[Seq[File]]("Package the .js files of external dependencies")
@@ -331,7 +333,41 @@ object ScalaJSPlugin extends Plugin {
           packageExportedProductsJS.value
       ),
 
-      managedSources in optimizeJS := packageJS.value,
+      sources in preoptimizeJS := (
+          (sources in packageExternalDepsJS).value ++
+          (sources in packageInternalDepsJS).value ++
+          (sources in packageExportedProductsJS).value
+      ),
+
+      artifactPath in preoptimizeJS :=
+        ((crossTarget in preoptimizeJS).value /
+            ((moduleName in preoptimizeJS).value + "-preopt.js")),
+
+      preoptimizeJS := {
+        val s = streams.value
+        val inputs = (sources in preoptimizeJS).value
+        val output = (artifactPath in preoptimizeJS).value
+        val taskCacheDir = s.cacheDirectory / "preoptimize-js"
+
+        IO.createDirectory(new File(output.getParent))
+
+        if (inputs.isEmpty) {
+          if (!output.isFile || output.length != 0)
+            IO.writeLines(output, Nil)
+        } else {
+          FileFunction.cached(taskCacheDir,
+              FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+            s.log.info("Preoptimizing %s ..." format output)
+            val optimizer = new ScalaJSOptimizer(s.log)
+            optimizer.optimize(inputs, output, relativeSourceMaps.value)
+            Set(output)
+          } (inputs.toSet)
+        }
+
+        output
+      },
+
+      managedSources in optimizeJS := Seq(preoptimizeJS.value),
       unmanagedSources in optimizeJS := Seq(),
       sources in optimizeJS := {
         ((managedSources in optimizeJS).value ++

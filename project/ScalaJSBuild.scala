@@ -140,7 +140,8 @@ object ScalaJSBuild extends Build {
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4"
+              "org.mozilla" % "rhino" % "1.7R4",
+              "net.liftweb" %% "lift-json" % "2.5.1"
           )
       )
   )
@@ -367,7 +368,11 @@ object ScalaJSBuild extends Build {
 
           // Add the core JS library
           mappings in packageBin +=
-            (packageJS in corejslib).value.head -> "scalajs-corejslib.js"
+            (packageJS in corejslib).value.head -> "scalajs-corejslib.js",
+          mappings in packageBin ++= {
+            val dir = (baseDirectory in corejslib).value
+            (dir ** "*.sjsinfo") x relativeTo(dir)
+          }
       ))
   ).dependsOn(compiler % "plugin")
 

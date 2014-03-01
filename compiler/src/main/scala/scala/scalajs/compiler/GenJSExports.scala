@@ -201,7 +201,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private def genIsInstance(value: js.Tree, tpe: Type)(
       implicit pos: Position): js.Tree = {
-    encodeIsInstanceOf(value, tpe)
+    encodeIsInstanceOf(value, tpe)._1 // Will be invalidated by @JSExport support
   }
 
   private sealed abstract class RTTypeTest

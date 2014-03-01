@@ -1,0 +1,32 @@
+{
+  "name": "java.lang.Object",
+  "ancestorCount": 0,
+  "isStaticModule": false,
+  "isInterface": false,
+  "isImplClass": false,
+  "isRawJSType": false,
+  "encodedName": "java_lang_Object",
+  "superClass": "",
+  "ancestors": ["java_lang_Object"],
+  "methods": {
+    "__init__": {},
+    "init___": {},
+    "getClass__Ljava_lang_Class": {},
+    "hashCode__I": {},
+    "equals__O__Z": {},
+    "clone__O": {
+      "calledMethods": {
+        "java_lang_CloneNotSupportedException": ["init___"]
+      }
+      "instantiatedClasses": ["java_lang_CloneNotSupportedException"],
+      "accessedClassData": ["java_lang_Cloneable"]
+    },
+    "toString__T": {
+      "calledMethods": {
+        "java_lang_Object": ["getClass__Ljava_lang_Class", "hashCode__I"],
+        "java_lang_Class": ["getName__T"]
+      }
+    },
+    "finalize__V": {}
+  }
+}

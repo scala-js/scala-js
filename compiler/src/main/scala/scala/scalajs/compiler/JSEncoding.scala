@@ -77,6 +77,18 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)
                      (implicit pos: Position): js.Ident = {
+    val (encodedName, paramsString) = encodeMethodNameInternal(sym, reflProxy)
+    js.Ident(encodedName + paramsString,
+        Some(sym.unexpandedName.decoded + paramsString))
+  }
+
+  def encodeMethodName(sym: Symbol, reflProxy: Boolean = false): String = {
+    val (encodedName, paramsString) = encodeMethodNameInternal(sym, reflProxy)
+    encodedName + paramsString
+  }
+
+  private def encodeMethodNameInternal(sym: Symbol,
+      reflProxy: Boolean = false): (String, String) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
     val encodedName = {
       if (sym.isClassConstructor)
@@ -91,15 +103,16 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     }
 
     val paramsString = makeParamsString(sym, reflProxy)
-    js.Ident(encodedName + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString))
+
+    (encodedName, paramsString)
   }
 
   /** encode a method symbol on a trait so it refers to its corresponding
    *  symbol in the implementation class. This works around a limitation in
    *  Scalac 2.11 that doesn't return members for the implementation class.
    */
-  def encodeImplClassMethodSym(sym: Symbol)(implicit pos: Position): js.Tree = {
+  def encodeImplClassMethodSym(sym: Symbol)(
+      implicit pos: Position): (Symbol, js.Ident) = {
     require(sym.owner.isInterface)
     // Unfortunately we cannot verify here, whether this symbol is actually
     // implemented in the trait.
@@ -115,9 +128,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
       encodeClassFullName(implClass) + OuterSep + sym.name.toString
 
     // Create ident
-    js.DotSelect(envField("impls"),
-        js.Ident(encodedName + paramsString,
-            Some(sym.unexpandedName.decoded + paramsString)))
+    (implClass, js.Ident(encodedName + paramsString,
+        Some(sym.unexpandedName.decoded + paramsString)))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
@@ -141,10 +153,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.DotSelect(envField("c"), encodeClassFullNameIdent(sym))
   }
 
-  def encodeClassOfType(tpe: Type)(implicit pos: Position): js.Tree = {
-    js.ApplyMethod(encodeClassDataOfType(tpe), js.Ident("getClassOf"), Nil)
-  }
-
   def encodeModuleSymInstance(sym: Symbol)(implicit pos: Position): js.Tree = {
     require(sym.isModuleClass,
         "encodeModuleSymInstance called with non-moduleClass symbol: " + sym)
@@ -163,21 +171,21 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
           encodeModuleFullNameIdent(sym)), Nil)
   }
 
-  private def foreignIsImplClass(sym: Symbol): Boolean =
+  def foreignIsImplClass(sym: Symbol): Boolean =
     sym.isModuleClass && nme.isImplClassName(sym.name)
 
   def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
-      implicit pos: Position): js.Tree = {
+      implicit pos: Position): (js.Tree, Symbol) = {
     encodeIsAsInstanceOf("is")(value, tpe)
   }
 
   def encodeAsInstanceOf(value: js.Tree, tpe: Type)(
-      implicit pos: Position): js.Tree = {
+      implicit pos: Position): (js.Tree, Symbol) = {
     encodeIsAsInstanceOf("as")(value, tpe)
   }
 
   private def encodeIsAsInstanceOf(prefix: String)(value: js.Tree, tpe: Type)(
-      implicit pos: Position): js.Tree = {
+      implicit pos: Position): (js.Tree, Symbol) = {
     toTypeKind(tpe) match {
       case REFERENCE(ScalaRTMapped(rtSym)) =>
         encodeIsAsInstanceOf(prefix)(value, rtSym.tpe)
@@ -186,33 +194,36 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
           case ScalaRTMapped(rtSym) => rtSym
           case x => x
         }
-        js.ApplyMethod(envField(prefix+"ArrayOf"),
+        (js.ApplyMethod(envField(prefix+"ArrayOf"),
             encodeClassFullNameIdent(elemSym),
-            List(value, js.IntLiteral(array.dimensions)))
+            List(value, js.IntLiteral(array.dimensions))), elemSym)
       case _ =>
-        js.ApplyMethod(envField(prefix),
-            encodeClassFullNameIdent(tpe.typeSymbol), List(value))
+        val sym = tpe.typeSymbol
+        (js.ApplyMethod(envField(prefix),
+            encodeClassFullNameIdent(sym), List(value)), sym)
     }
   }
 
-  def encodeClassDataOfType(tpe: Type)(implicit pos: Position): js.Tree = {
+  def encodeClassDataOfType(tpe: Type)(implicit pos: Position): (js.Tree, Symbol) = {
     toTypeKind(tpe) match {
       case REFERENCE(ScalaRTMapped(rtSym)) =>
         encodeClassDataOfType(rtSym.tpe)
       case REFERENCE(sym) =>
         encodeClassDataOfSym(sym)
       case array : ARRAY =>
-        var result = encodeClassDataOfType(array.elementKind.toType)
+        val (result0, sym) = encodeClassDataOfType(array.elementKind.toType)
+        var result = result0
         for (i <- 0 until array.dimensions)
           result = js.ApplyMethod(result, js.Ident("getArrayOf"), Nil)
-        result
+        (result, sym)
 
       case _ => encodeClassDataOfSym(tpe.typeSymbol)
     }
   }
 
-  private def encodeClassDataOfSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    js.DotSelect(envField("data"), encodeClassFullNameIdent(sym))
+  private def encodeClassDataOfSym(sym: Symbol)(
+      implicit pos: Position): (js.Tree, Symbol) = {
+    (js.DotSelect(envField("data"), encodeClassFullNameIdent(sym)), sym)
   }
 
   def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
@@ -225,8 +236,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def encodeClassFullName(sym: Symbol): String = {
     val base = encodeFullNameInternal(sym)
-    if (sym.isModuleClass && !foreignIsImplClass(sym)) base + "$" else base
+    if (needsModuleClassSuffix(sym)) base + "$" else base
   }
+
+  def needsModuleClassSuffix(sym: Symbol): Boolean =
+    sym.isModuleClass && !foreignIsImplClass(sym)
 
   def encodeModuleFullName(sym: Symbol): String =
     encodeFullNameInternal(sym)
