@@ -94,6 +94,10 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val LongModule = lookupClass("scala_scalajs_runtime_Long$")
     LongModule.accessModule()
     LongModule.callMethod("zero__Lscala_scalajs_runtime_Long")
+
+    val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
+    BoxesRunTime.accessModule()
+    BoxesRunTime.callMethod("equals__O__O__Z")
   }
 
   class ClassInfo(data: ClassInfoData) {
