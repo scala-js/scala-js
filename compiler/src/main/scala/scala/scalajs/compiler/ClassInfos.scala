@@ -65,7 +65,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       val isExported: Boolean = false) {
     val encodedName = ident.name
 
-    val calledMethods = mutable.Set.empty[(String, String)] // (class, method)
+    val calledMethods = mutable.Set.empty[(String, String)] // (tpe, method)
+    val calledMethodsStatic = mutable.Set.empty[(String, String)] // (class, method)
     val instantiatedClasses = mutable.Set.empty[String]
     val accessedModules = mutable.Set.empty[String]
     val accessedClassData = mutable.Set.empty[String]
@@ -75,6 +76,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     def callsMethod(owner: Symbol, method: js.Ident): Unit =
       calledMethods += ((encodeClassFullName(owner), method.name))
+
+    def callsMethodStatic(ownerIdent: js.Ident, method: js.Ident): Unit =
+      calledMethodsStatic += ((ownerIdent.name, method.name))
 
     def instantiatesClass(classSym: Symbol): Unit =
       instantiatedClasses += encodeClassFullName(classSym)
@@ -89,6 +93,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     def createsAnonFunction(funInfo: ClassInfoBuilder): Unit = {
       for (methodInfo <- funInfo.methodInfos) {
         calledMethods ++= methodInfo.calledMethods
+        calledMethodsStatic ++= methodInfo.calledMethodsStatic
         instantiatedClasses ++= methodInfo.instantiatedClasses
         accessedModules ++= methodInfo.accessedModules
         accessedClassData ++= methodInfo.accessedClassData
@@ -104,6 +109,11 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       if (calledMethods.nonEmpty) {
         val groupedByType = calledMethods.toList.groupBy(_._1)
         fields += ("calledMethods" ->
+            obj(groupedByType.mapValues(_.map(_._2): js.Tree).toList: _*))
+      }
+      if (calledMethodsStatic.nonEmpty) {
+        val groupedByType = calledMethodsStatic.toList.groupBy(_._1)
+        fields += ("calledMethodsStatic" ->
             obj(groupedByType.mapValues(_.map(_._2): js.Tree).toList: _*))
       }
       if (instantiatedClasses.nonEmpty)

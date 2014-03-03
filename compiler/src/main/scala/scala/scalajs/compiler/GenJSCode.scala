@@ -1491,18 +1491,10 @@ abstract class GenJSCode extends plugins.PluginComponent
            * desugaring.
            */
           val superCall = {
-            val superClass = encodeClassSym(
-                if (sup.symbol.superClass == NoSymbol) ObjectClass
-                else sup.symbol.superClass)(sup.pos)
-            val superProto = js.DotSelect(superClass, js.Ident("prototype")(sup.pos))(sup.pos)
-            val methodIdent = encodeMethodSym(fun.symbol)(fun.pos)
-            val callee = js.DotSelect(superProto, methodIdent)(fun.pos)
             val thisArg =
               if (methodTailJumpThisSym == NoSymbol) js.This()(sup.pos)
               else encodeLocalSym(methodTailJumpThisSym, freshName)(sup.pos)
-            val arguments = thisArg :: (args map genExpr)
-            currentMethodInfoBuilder.callsMethod(sup.symbol.superClass, methodIdent)
-            js.ApplyMethod(callee, js.Ident("call"), arguments)
+            genStaticApplyMethod(thisArg, fun.symbol, args map genExpr)
           }
 
           // We initialize the module instance just after the super constructor
@@ -1687,20 +1679,26 @@ abstract class GenJSCode extends plugins.PluginComponent
               if (fun.symbol.isClassConstructor) {
                 /* See #66: we have to emit a static call to avoid calling a
                  * constructor with the same signature in a subclass */
-                val methodFun = js.DotSelect(js.DotSelect(js.DotSelect(
-                    envField("c"),
-                    encodeClassFullNameIdent(fun.symbol.owner)),
-                    js.Ident("prototype")),
-                    method)
-                currentMethodInfoBuilder.callsMethod(fun.symbol.owner, method)
-                js.ApplyMethod(methodFun, js.Ident("call"),
-                    instance :: arguments)
+                genStaticApplyMethod(instance, fun.symbol, arguments)
               } else {
                 genApplyMethod(instance, receiver.tpe, method, arguments)
               }
             }
           }
       }
+    }
+
+    def genStaticApplyMethod(receiver: js.Tree, method: Symbol,
+        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
+      val classIdent = encodeClassFullNameIdent(method.owner)
+      val methodIdent = encodeMethodSym(method)
+      val methodFun = js.DotSelect(js.DotSelect(js.DotSelect(
+          envField("c"),
+          classIdent),
+          js.Ident("prototype")),
+          methodIdent)
+      currentMethodInfoBuilder.callsMethodStatic(classIdent, methodIdent)
+      js.ApplyMethod(methodFun, js.Ident("call"), receiver :: arguments)
     }
 
     private lazy val ToStringMaybeOnString = Set[Symbol](
@@ -2610,8 +2608,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val tup = js.Ident(freshName("tup"))
                 js.VarDef(tup, tupExpr) ::
                 js.Assign(js.BracketSelect(res,
-                  js.ApplyMethod(tup, js.Ident("_1__O"), Nil)),
-                  js.ApplyMethod(tup, js.Ident("_2__O"), Nil)) :: Nil
+                    genApplyMethod(tup, TupleClass(2), js.Ident("_1__O"), Nil)),
+                    genApplyMethod(tup, TupleClass(2), js.Ident("_2__O"), Nil)) :: Nil
             }
 
             js.Block(resVarDef +: assigns :+ res :_*)

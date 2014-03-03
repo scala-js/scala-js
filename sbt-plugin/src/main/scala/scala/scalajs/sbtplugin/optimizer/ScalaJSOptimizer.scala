@@ -87,7 +87,7 @@ class ScalaJSOptimizer(logger: Logger) {
         val (implementation, afterImpl) = lines.span(!_.startsWith("ScalaJS.is."))
         val (classData, setClassData :: moduleAccessor) = afterImpl.span(!_.startsWith("ScalaJS.c."))
 
-        if (classInfo.isInstantiated) {
+        if (classInfo.isAnySubclassInstantiated) {
           // constructor
           val (constructorLines0, constructorLine1 :: afterConstructor) =
             implementation.span(!_.startsWith(s"ScalaJS.c.$className.prototype.constructor ="))
@@ -104,7 +104,7 @@ class ScalaJSOptimizer(logger: Logger) {
 
         if (classInfo.isDataAccessed)
           pasteLines(classData)
-        if (classInfo.isInstantiated)
+        if (classInfo.isAnySubclassInstantiated)
           pasteLines(setClassData :: Nil)
         if (classInfo.isModuleAccessed)
           pasteLines(moduleAccessor)
