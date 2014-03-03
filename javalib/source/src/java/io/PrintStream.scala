@@ -33,8 +33,11 @@ class PrintStream(_out: OutputStream, autoFlush: Boolean, ecoding: String)
 
   private def writeString(s: String) = {
     val bytes = new Array[Byte](s.length)
-    for (i <- 0 until s.length)
+    var i = 0
+    while (i < s.length) {
       bytes(i) = s.charAt(i).toByte
+      i += 1
+    }
     write(bytes)
   }
 
