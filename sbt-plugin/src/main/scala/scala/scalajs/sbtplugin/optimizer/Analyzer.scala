@@ -10,6 +10,13 @@ import sbt.Level.{Value => LogLevel}
 import OptData._
 
 class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
+  /* Set this to true to debug the DCE analyzer.
+   * We don't rely on config to disable 'debug' messages because we want
+   * to use 'debug' for displaying more stack trace info that the user can
+   * see with the 'last' command.
+   */
+  val DebugAnalyzer = false
+
   object logger extends Logger {
     var indentation: String = ""
 
@@ -30,8 +37,12 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     }
 
     def debugIndent[A](message: => String)(body: => A): A = {
-      debug(message)
-      indented(body)
+      if (DebugAnalyzer) {
+        debug(message)
+        indented(body)
+      } else {
+        body
+      }
     }
 
     def temporarilyNotIndented[A](body: => A): A = {
@@ -256,7 +267,8 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     def accessData()(implicit from: From): Unit = {
       if (!isDataAccessed && hasData) {
         checkExistent()
-        logger.debug(s"$this.isDataAccessed = true")
+        if (DebugAnalyzer)
+          logger.debug(s"$this.isDataAccessed = true")
         isDataAccessed = true
       }
     }
@@ -388,35 +400,36 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   def warnCallStack()(implicit from: From): Unit = {
     val seenInfos = mutable.Set.empty[AnyRef]
 
-    def onlyOnce(info: AnyRef): Boolean = {
-      if (seenInfos.add(info)) {
-        true
-      } else {
-        logger.warn("  (already seen, not repeating call stack)")
-        false
-      }
-    }
-
-    def rec(optFrom: Option[From], verb: String = "called"): Unit = {
+    def rec(level: LogLevel, optFrom: Option[From],
+        verb: String = "called"): Unit = {
       val involvedClasses = new mutable.ListBuffer[ClassInfo]
+
+      def onlyOnce(info: AnyRef): Boolean = {
+        if (seenInfos.add(info)) {
+          true
+        } else {
+          logger.log(level, "  (already seen, not repeating call stack)")
+          false
+        }
+      }
 
       @tailrec
       def loopTrace(optFrom: Option[From], verb: String = "called"): Unit = {
         optFrom match {
           case None =>
-            logger.warn(s"$verb from ... er ... nowhere!? (this is a bug in dce)")
+            logger.log(level, s"$verb from ... er ... nowhere!? (this is a bug in dce)")
           case Some(from) =>
             from match {
               case FromMethod(methodInfo) =>
-                logger.warn(s"$verb from $methodInfo")
+                logger.log(level, s"$verb from $methodInfo")
                 if (onlyOnce(methodInfo)) {
                   methodInfo.instantiatedSubclass.foreach(involvedClasses += _)
                   loopTrace(methodInfo.calledFrom)
                 }
               case FromCore =>
-                logger.warn(s"$verb from scalajs-corejslib.js")
+                logger.log(level, s"$verb from scalajs-corejslib.js")
               case FromExports =>
-                logger.warn("exported to JavaScript with @JSExport")
+                logger.log(level, "exported to JavaScript with @JSExport")
             }
         }
       }
@@ -426,17 +439,18 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       }
 
       if (involvedClasses.nonEmpty) {
-        logger.warn("involving instantiated classes:")
+        logger.log(level, "involving instantiated classes:")
         logger.indented {
           for (classInfo <- involvedClasses.result().distinct) {
-            logger.warn(s"$classInfo")
+            logger.log(level, s"$classInfo")
             if (onlyOnce(classInfo))
-              rec(classInfo.instantiatedFrom, verb = "instantiated")
+              rec(sbt.Level.Debug, classInfo.instantiatedFrom, verb = "instantiated")
+            // recurse with Debug log level not to overwhelm the user
           }
         }
       }
     }
 
-    rec(Some(from))
+    rec(sbt.Level.Warn, Some(from))
   }
 }
