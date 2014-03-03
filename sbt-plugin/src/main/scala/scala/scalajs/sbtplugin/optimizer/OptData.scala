@@ -46,6 +46,7 @@ object OptData {
       isAbstract: Option[Boolean],
       isExported: Option[Boolean],
       calledMethods: Option[Map[String, List[String]]],
+      calledMethodsStatic: Option[Map[String, List[String]]],
       instantiatedClasses: Option[List[String]],
       accessedModules: Option[List[String]],
       accessedClassData: Option[List[String]]
@@ -58,6 +59,7 @@ object OptData {
           isAbstract = if (isAbstract) Some(true) else None,
           isExported = None,
           calledMethods = None,
+          calledMethodsStatic = None,
           instantiatedClasses = None,
           accessedModules = None,
           accessedClassData = None
