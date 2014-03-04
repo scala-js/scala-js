@@ -46,6 +46,12 @@ trait PrepJSExports { this: PrepJSInterop =>
       err("""You may not export a method whose return type is neither a subtype of
             |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
             |primitive value type).""".stripMargin)
+    } else if (forScaladoc) {
+      /* Don't do anything under scaladoc because the uncurry phase does not
+       * exist in that setting (see bug #323). It's no big deal because we do
+       * not need exports for scaladoc
+       */
+      Nil
     } else {
       assert(!baseSym.isBridge)
 
