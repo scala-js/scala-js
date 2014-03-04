@@ -5,6 +5,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 import sbt._
+import net.liftweb.json._
 
 import scala.scalajs.sbtplugin.Utils._
 import OptData._
@@ -133,7 +134,9 @@ class ScalaJSOptimizer(logger: Logger) {
             val firstLine = remainingLines.head
             val (methodLines, nextLines) = remainingLines.tail.span(!_.startsWith(methodLinePrefix))
             val encodedName = if (firstLine(prefixLength) == '.') {
-              Some(firstLine.substring(prefixLength+1).takeWhile(_ != ' '))
+              val name = firstLine.substring(prefixLength+1).takeWhile(_ != ' ')
+              val unquoted = parse('"'+name+'"').asInstanceOf[JString].s // see #330
+              Some(unquoted)
             } else {
               None // this is an exported method with []-select
             }
