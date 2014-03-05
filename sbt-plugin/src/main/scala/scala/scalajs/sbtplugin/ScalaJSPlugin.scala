@@ -458,7 +458,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
-      scalaJSTestBridgeClass := "scala.scalajs.test.TestBridge",
+      scalaJSTestBridgeClass := "scala.scalajs.test.JasmineTestBridge",
 
       loadedTestFrameworks := {
         val loader = testLoader.value

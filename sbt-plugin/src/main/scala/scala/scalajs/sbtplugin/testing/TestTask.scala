@@ -15,9 +15,8 @@ import sbt.testing.Task
 import sbt.testing.Logger
 import scala.scalajs.sbtplugin.ScalaJSEnvironment
 import scala.annotation.tailrec
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript
+import org.mozilla.javascript.{Context, Scriptable, Function}
 import org.mozilla.javascript.Scriptable.NOT_FOUND
 import org.mozilla.javascript.RhinoException
 import scala.scalajs.sbtplugin.environment.rhino.CodeBlock
@@ -30,19 +29,20 @@ case class TestTask(
 
   val tags = Array.empty[String]
 
-  private val ctorName = "init___Lscala_scalajs_test_EventProxy__T__T"
-
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    val testKey = taskDef.fullyQualifiedName.replaceAll("\\.", "_")
-    val testFrameworkKey = testFramework.replaceAll("\\.", "_")
+    val testKey = taskDef.fullyQualifiedName
+    val testFrameworkKey = testFramework
 
     val eventProxy = EventProxy(eventHandler, loggers, new Events(taskDef))
 
     environment.runInContextAndScope { (context, scope) =>
       new CodeBlock(context, scope) with Utilities {
         try {
-          createInstance(testRunnerClass,
-              ctorName)(eventProxy, testFrameworkKey, testKey)
+          val f = context.evaluateString(scope,
+              s"""var f = function(p, f, t) { $testRunnerClass().run(p, f, t); }; f;""",
+              null, 0, null).asInstanceOf[Function]
+          f.call(context, scope, null,
+              toArgs(Seq(eventProxy, testFrameworkKey, testKey)))
         } catch {
           case t: RhinoException =>
             eventProxy.error(t.details, t.getScriptStack())

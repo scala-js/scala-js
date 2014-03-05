@@ -10,17 +10,11 @@
 package scala.scalajs.test
 
 import scala.scalajs.js
-import js.Dynamic.{ newInstance, global }
-import js.JavaScriptException
+import js.annotation._
 
-class TestBridge(reporter: EventProxy, framework: String, test: String) {
-  val testOutput = new TestOutputBridge(reporter)
-
-  val testFramework =
-    global.ScalaJS.modules.applyDynamic(framework)()
-      .asInstanceOf[TestFramework]
-
-  testFramework.runTests(testOutput) {
-    global.ScalaJS.modules.applyDynamic(test)()
-  }
+/** Marker trait for Scala.js test bridges. */
+@JSExportDescendentObjects
+trait TestBridge {
+  @JSExport
+  def run(reporter: EventProxy, framework: String, test: String): Unit
 }
