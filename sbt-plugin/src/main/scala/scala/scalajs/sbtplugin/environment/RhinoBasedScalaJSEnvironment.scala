@@ -40,7 +40,7 @@ class RhinoBasedScalaJSEnvironment(
   /** ScalaJS core lib (with lazy-loading of Scala.js providers) and .js
    *  scripts to be executed immediately.
    */
-  lazy val (scalaJSCoreLib, immediateJSInputs) = {
+  lazy val (scalaJSCoreLib, exportedScalaJSSymbols, immediateJSInputs) = {
     /* This splits the inputs in 3 categories:
      * 1. The scalajs-corejslib.js file
      * 2. Scala.js providers (.js files emitted by Scala.js)
@@ -48,6 +48,7 @@ class RhinoBasedScalaJSEnvironment(
      */
     var scalaJSCoreLibFile: Option[File] = None
     val scalaJSProviders = mutable.Map.empty[String, File]
+    val exportedScalaJSSymbols = mutable.ListBuffer.empty[String]
     val immediateJSInputs = mutable.ListBuffer.empty[File]
 
     inputs.foreach {
@@ -55,12 +56,16 @@ class RhinoBasedScalaJSEnvironment(
         scalaJSCoreLibFile = Some(file)
 
       case file @ ScalaJSClassFile(infoFile) =>
-        val encodedName = IO.readLines(infoFile).collectFirst {
+        val lines = IO.readLines(infoFile)
+        val encodedName = lines.collectFirst {
           case EncodedNameLine(encodedName) => encodedName
         }.getOrElse {
           throw new AssertionError(s"Did not find encoded name in $infoFile")
         }
         scalaJSProviders += encodedName -> file
+        val isExported = lines.exists(_ == """  "isExported": true,""")
+        if (isExported)
+          exportedScalaJSSymbols += encodedName
 
       case file =>
         immediateJSInputs += file
@@ -72,7 +77,7 @@ class RhinoBasedScalaJSEnvironment(
     val scalaJSCoreLib = scalaJSCoreLibFile.map(
         new ScalaJSCoreLib(_).withProviders(scalaJSProviders))
 
-    (scalaJSCoreLib, immediateJSInputs.toList)
+    (scalaJSCoreLib, exportedScalaJSSymbols.toList, immediateJSInputs.toList)
   }
 
   /** Additional .js scripts available on the classpath (for importScripts).
@@ -129,8 +134,16 @@ class RhinoBasedScalaJSEnvironment(
           importScripts(context, scope, availableJSFiles))
 
       try {
-        // We only need to make the core lib available
-        scalaJSCoreLib.foreach(_.insertInto(context, scope))
+        // Make the core lib available
+        scalaJSCoreLib.foreach { lib =>
+          lib.insertInto(context, scope)
+
+          // Make sure exported symbols are loaded
+          val ScalaJS = scope.get("ScalaJS", scope).asInstanceOf[Scriptable]
+          val c = ScalaJS.get("c", ScalaJS).asInstanceOf[Scriptable]
+          for (encodedName <- exportedScalaJSSymbols)
+            c.get(encodedName, c)
+        }
 
         // Then we execute immediate .js scripts
         for (file <- immediateJSInputs)
