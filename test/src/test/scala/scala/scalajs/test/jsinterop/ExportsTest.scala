@@ -9,7 +9,7 @@ package scala.scalajs.test
 package jsinterop
 
 import scala.scalajs.js
-import js.annotation.JSExport
+import js.annotation._
 import scala.scalajs.test.JasmineTest
 
 object ExportsTest extends JasmineTest {
@@ -172,6 +172,30 @@ object ExportsTest extends JasmineTest {
 
   } // describe
 
+  describe("@JSExportDescendentObjects") {
+
+    it("should offer auto exports for objects extending a trait") {
+      val accessor = js.Dynamic.global.scala.scalajs.test.jsinterop
+        .selectDynamic("ExportsTest$AutoExportedTraitObject")
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(AutoExportedTraitObject.asInstanceOf[js.Any])
+    }
+
+    it("should offer auto exports for objects extending a class") {
+      val accessor = js.Dynamic.global.scala.scalajs.test.jsinterop
+        .selectDynamic("ExportsTest$AutoExportedClassObject")
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(AutoExportedClassObject.asInstanceOf[js.Any])
+    }
+
+  }
+
   @JSExport
   @JSExport("TheExportedObject")
   @JSExport("qualified.testobject.ExportedObject") // purposefully halfway the same as ExportedClass
@@ -187,5 +211,15 @@ object ExportsTest extends JasmineTest {
     @JSExport
     val x = _x
   }
+
+  @JSExportDescendentObjects
+  trait AutoExportTrait
+
+  object AutoExportedTraitObject extends AutoExportTrait
+
+  @JSExportDescendentObjects
+  class AutoExportClass
+
+  object AutoExportedClassObject extends AutoExportClass
 
 }
