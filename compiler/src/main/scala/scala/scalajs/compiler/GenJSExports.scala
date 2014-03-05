@@ -5,6 +5,8 @@
 
 package scala.scalajs.compiler
 
+import scala.collection.mutable
+
 import scala.tools.nsc._
 import scala.math.PartialOrdering
 import scala.reflect.internal.Flags
@@ -57,9 +59,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val js.MethodDef(_, args, body) = genExportMethod(ctors, jsName)
 
       val jsCtor = envField("c") DOT encodeClassFullNameIdent(classSym)
-      val expCtorVar = js.Select(envField("g"), js.StringLiteral(jsName))
+      val (createNamespace, expCtorVar) = genCreateNamespaceInGlobal(jsName)
 
       js.Block(
+        createNamespace,
         js.DocComment("@constructor"),
         expCtorVar := js.Function(args, js.Block(
           // Call the js constructor while passing the current this
@@ -68,13 +71,49 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         )),
         expCtorVar DOT "prototype" := jsCtor DOT "prototype"
       )
-
     }
 
     exports.toList
-
   }
 
+  def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
+    import js.TreeDSL._
+
+    for ((jsName, p) <- jsInterop.exportsOf(classSym)) yield {
+      implicit val pos = p
+
+      val accessorVar =
+        envField("modules") DOT encodeModuleFullNameIdent(classSym)
+      val (createNamespace, expAccessorVar) = genCreateNamespaceInGlobal(jsName)
+
+      js.Block(
+        createNamespace,
+        expAccessorVar := accessorVar
+      )
+    }
+  }
+
+  /** Gen JS code for assigning an rhs to a qualified name in the global scope.
+   *  For example, given the qualified name "foo.bar.Something", generates:
+   *
+   *  ScalaJS["g"]["foo"] = ScalaJS["g"]["foo"] || {};
+   *  ScalaJS["g"]["foo"]["bar"] = ScalaJS["g"]["foo"]["bar"] || {};
+   *
+   *  Returns (statements, ScalaJS["g"]["foo"]["bar"]["Something"])
+   */
+  private def genCreateNamespaceInGlobal(qualName: String)(
+      implicit pos: Position): (js.Tree, js.Tree) = {
+    val parts = qualName.split("\\.")
+    val statements = mutable.ListBuffer.empty[js.Tree]
+    var namespace = envField("g")
+    for (i <- 0 until parts.length-1) {
+      namespace = js.BracketSelect(namespace, js.StringLiteral(parts(i)))
+      statements +=
+        js.Assign(namespace, js.BinaryOp("||", namespace, js.ObjectConstr(Nil)))
+    }
+    val lhs = js.BracketSelect(namespace, js.StringLiteral(parts.last))
+    (js.Block(statements.result()), lhs)
+  }
 
   private def isOverridingExport(sym: Symbol): Boolean = {
     lazy val osym = sym.nextOverriddenSymbol

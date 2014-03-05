@@ -136,6 +136,16 @@ object ExportsTest extends JasmineTest {
       expect(obj.witness).toEqual("witness")
     }
 
+    it("should offer exports for objects with qualified name") {
+      val accessor = js.Dynamic.global.qualified.testobject.ExportedObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(obj.witness).toEqual("witness")
+    }
+
     it("should offer exports for classes with implicit name") {
       val constr = js.Dynamic.global.selectDynamic("ExportsTest$ExportedClass")
       expect(constr).toBeDefined
@@ -145,7 +155,15 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for classes with explicit name") {
-      val constr = js.Dynamic.global.selectDynamic("TheExportedClass")
+      val constr = js.Dynamic.global.TheExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect(obj.x).toEqual(5)
+    }
+
+    it("should offer exports for classes with qualified name") {
+      val constr = js.Dynamic.global.qualified.testclass.ExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -156,6 +174,7 @@ object ExportsTest extends JasmineTest {
 
   @JSExport
   @JSExport("TheExportedObject")
+  @JSExport("qualified.testobject.ExportedObject") // purposefully halfway the same as ExportedClass
   object ExportedObject {
     @JSExport
     def witness: String = "witness"
@@ -163,6 +182,7 @@ object ExportsTest extends JasmineTest {
 
   @JSExport
   @JSExport("TheExportedClass")
+  @JSExport("qualified.testclass.ExportedClass") // purposefully halfway the same as ExportedObject
   class ExportedClass(_x: Int) {
     @JSExport
     val x = _x
