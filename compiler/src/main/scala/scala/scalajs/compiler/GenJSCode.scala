@@ -3559,7 +3559,10 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
       require(sym0.isModuleOrModuleClass,
           "genLoadModule called with non-module symbol: " + sym0)
-      val sym = if (sym0.isModule) sym0.moduleClass else sym0
+      val sym1 = if (sym0.isModule) sym0.moduleClass else sym0
+      val sym = // redirect all static methods of String to RuntimeString
+        if (sym1 == StringModule) RuntimeStringModule.moduleClass
+        else sym1
 
       val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
 

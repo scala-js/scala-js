@@ -72,19 +72,19 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val accessedClassData = mutable.Set.empty[String]
 
     def callsMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
-      calledMethods += ((ownerIdent.name, method.name))
+      calledMethods += ((patchClassName(ownerIdent.name), method.name))
 
     def callsMethod(owner: Symbol, method: js.Ident): Unit =
-      calledMethods += ((encodeClassFullName(owner), method.name))
+      calledMethods += ((patchClassName(encodeClassFullName(owner)), method.name))
 
     def callsMethodStatic(ownerIdent: js.Ident, method: js.Ident): Unit =
-      calledMethodsStatic += ((ownerIdent.name, method.name))
+      calledMethodsStatic += ((patchClassName(ownerIdent.name), method.name))
 
     def instantiatesClass(classSym: Symbol): Unit =
-      instantiatedClasses += encodeClassFullName(classSym)
+      instantiatedClasses += patchClassName(encodeClassFullName(classSym))
 
     def accessesModule(moduleClassSym: Symbol): Unit =
-      accessedModules += encodeModuleFullName(moduleClassSym)
+      accessedModules += patchModuleName(encodeModuleFullName(moduleClassSym))
 
     def accessesClassData(classSym: Symbol): Unit =
       if (!classSym.isPrimitiveValueClass)
@@ -98,6 +98,16 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
         accessedModules ++= methodInfo.accessedModules
         accessedClassData ++= methodInfo.accessedClassData
       }
+    }
+
+    private def patchClassName(name: String): String = name match {
+      case "java_lang_String$" => "scala_scalajs_runtime_RuntimeString$"
+      case _ => name
+    }
+
+    private def patchModuleName(name: String): String = name match {
+      case "java_lang_String" => "scala_scalajs_runtime_RuntimeString"
+      case _ => name
     }
 
     def toJSONPair: (String, js.Tree) = {
