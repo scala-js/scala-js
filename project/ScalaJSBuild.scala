@@ -3,6 +3,7 @@ import Keys._
 
 import PublishToBintray.publishToBintraySettings
 
+import scala.collection.mutable
 import scala.util.Properties
 
 import scala.scalajs.sbtplugin._
@@ -270,48 +271,49 @@ object ScalaJSBuild extends Build {
             def dirStr(v: String) =
               if (v.isEmpty) "overrides" else s"overrides-$v"
             val dirs = verList.map(base / dirStr(_)).filter(_.exists)
-            dirs.toSeq.reverse
+            dirs.toSeq // most specific shadow less specific
           },
 
-          // Add scala source to managed sources
-          managedSources in Compile ++= {
-            // Relevant directories for scala source
-            val libraryPath = fetchScalaSource.value / "src"
-            val subdirs = Seq(
-              libraryPath / "library",
-              libraryPath / "continuations" / "library"
+          // Compute sources
+          // Files in earlier src dirs shadow files in later dirs
+          sources in Compile := {
+            // Sources coming from the sources of Scala
+            val scalaSrcDir = fetchScalaSource.value / "src"
+            val scalaSrcDirs = Seq(
+              scalaSrcDir / "library"/*,
+              scalaSrcDir / "continuations" / "library"*/
             )
+
+            // All source directories (overrides shadow scalaSrcDirs)
+            val sourceDirectories =
+              (unmanagedSourceDirectories in Compile).value ++ scalaSrcDirs
 
             // Filter sources with overrides
             def normPath(f: File): String =
               f.getPath.replace(java.io.File.separator, "/")
 
-            val overridesDirs = (unmanagedSourceDirectories in Compile).value
-            val overrideNames = overridesDirs flatMap { overridesDir =>
-              val allOverrides = (overridesDir ** "*.scala").get
-              val overridePathLen = normPath(overridesDir).length
-              val scalaNames =
-                for (f <- allOverrides)
-                  yield normPath(f).substring(overridePathLen)
-              val javaNames =
-                for (name <- scalaNames)
-                  yield name.substring(0, name.length-6) + ".java"
-              scalaNames ++ javaNames
+            val sources = mutable.ListBuffer.empty[File]
+            val paths = mutable.Set.empty[String]
+
+            for {
+              srcDir <- sourceDirectories
+              normSrcDir = normPath(srcDir)
+              src <- (srcDir ** "*.scala").get
+            } {
+              val normSrc = normPath(src)
+              val path = normSrc.substring(normSrcDir.length)
+              val useless =
+                path.contains("/scala/collection/parallel/") ||
+                path.contains("/scala/util/parsing/")
+              if (!useless) {
+                if (paths.add(path))
+                  sources += src
+                else
+                  streams.value.log.info(s"not including $src")
+              }
             }
 
-            // Match and filter sources
-            for {
-              sd  <- subdirs
-              src <- (sd ** "*.scala").get
-              path = normPath(src)
-              if !(
-                // overrides
-                overrideNames.exists(path.endsWith(_)) ||
-                // useless things
-                path.contains("/scala/collection/parallel/") ||
-                path.contains("/scala/util/parsing/"))
-            } yield src
-
+            sources.result()
           },
 
           // Continuation plugin
