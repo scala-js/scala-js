@@ -251,8 +251,15 @@ final class Long private (
 
   //override def getClass(): Class[Long] = null
 
-  def toBinaryString: String =
-    f"${h.toBinaryString}%020s${m.toBinaryString}%022s${l.toBinaryString}%022s"
+  def toBinaryString: String = {
+    import scala.scalajs.js
+    def padBinary22(i: Int) = {
+      val zeros: js.String = "0000000000000000000000" // 22 zeros
+      val s = (i: js.Number).toString(2)
+      zeros.substring(s.length) + s
+    }
+    (padBinary22(h) + padBinary22(m) + padBinary22(l)).substring(2)
+  }
 
   def toHexString: String = {
     val mp = m >> 2

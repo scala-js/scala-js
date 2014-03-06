@@ -153,7 +153,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     // !!! Removed in JavaScript backend because I do not know what to do with lub
     //case ExistentialType(_, t)           => toTypeKind(t)
     // Apparently, this case does occur (see pos/CustomGlobal.scala)
-    case AnnotatedType(_, t, _)          => toTypeKind(t)
+    case t: AnnotatedType                => toTypeKind(t.underlying)
     //case RefinedType(parents, _)         => parents map toTypeKind reduceLeft lub
 
     /* This case is not in scalac. We need it for the test

@@ -188,6 +188,8 @@ private[runtime] trait RuntimeString { this: js.String =>
  */
 private[runtime] object RuntimeString {
 
+  // Constructors
+
   def newString(): js.String = ""
   def newString(value: Array[Char]): js.String =
     newString(value, 0, value.length)
@@ -208,5 +210,25 @@ private[runtime] object RuntimeString {
   def newString(original: String): js.String = original
   def newString(buffer: StringBuffer): js.String = buffer.toString
   def newString(builder: java.lang.StringBuilder): js.String = builder.toString
+
+  // Static methods (aka methods on the companion object)
+
+  def valueOf(value: scala.Boolean) = new java.lang.Boolean(value).toString()
+  def valueOf(value: scala.Char) = new java.lang.Character(value).toString()
+  def valueOf(value: scala.Byte) = new java.lang.Byte(value).toString()
+  def valueOf(value: scala.Short) = new java.lang.Short(value).toString()
+  def valueOf(value: scala.Int) = new java.lang.Integer(value).toString()
+  def valueOf(value: scala.Long) = new java.lang.Long(value).toString()
+  def valueOf(value: scala.Float) = new java.lang.Float(value).toString()
+  def valueOf(value: scala.Double) = new java.lang.Double(value).toString()
+  def valueOf(value: java.lang.Object) =
+    if (value eq null) "null" else value.toString()
+
+  def format(format: String, args: Array[AnyRef]): String = {
+    val frm = new java.util.Formatter()
+    val res = frm.format(format, args: _*).toString()
+    frm.close()
+    res
+  }
 
 }
