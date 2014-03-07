@@ -487,7 +487,8 @@ object ScalaJSPlugin extends Plugin {
       scalaJSTestFrameworkSettings
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
-          packageExportedProductsJS) map { packageJSTask =>
+          packageExportedProductsJS,
+          preoptimizeJS, optimizeJS) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
   )
