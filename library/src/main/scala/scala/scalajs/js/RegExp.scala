@@ -20,10 +20,7 @@ package scala.scalajs.js
  *
  * MDN
  */
-class RegExp protected () extends Object {
-  def this(pattern: String, flags: String) = this()
-  def this(pattern: String) = this()
-
+class RegExp(pattern: String, flags: String = "") extends Object {
   /**
    * The source property returns a String containing the text of the pattern,
    * excluding the forward slashes. It is a read-only property of an individual
@@ -102,8 +99,7 @@ class RegExp protected () extends Object {
 }
 
 object RegExp extends Object {
-  def apply(pattern: String, flags: String): RegExp = ???
-  def apply(pattern: String): RegExp = ???
+  def apply(pattern: String, flags: String = ""): RegExp = ???
 
   trait ExecResult extends Array[String] {
     var index: Number = _

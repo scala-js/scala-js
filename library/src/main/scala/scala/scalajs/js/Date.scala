@@ -26,12 +26,8 @@ class Date extends Object {
   def this(value: Number) = this()
   def this(value: String) = this()
 
-  def this(year: Number, month: Number, date: Number, hours: Number, minutes: Number, seconds: Number, ms: Number) = this()
-  def this(year: Number, month: Number, date: Number, hours: Number, minutes: Number, seconds: Number) = this()
-  def this(year: Number, month: Number, date: Number, hours: Number, minutes: Number) = this()
-  def this(year: Number, month: Number, date: Number, hours: Number) = this()
-  def this(year: Number, month: Number, date: Number) = this()
-  def this(year: Number, month: Number) = this()
+  def this(year: Number, month: Number, date: Number = 1, hours: Number = 0,
+      minutes: Number = 0, seconds: Number = 0, ms: Number = 0) = this()
 
   def toDateString(): String = ???
   def toTimeString(): String = ???
@@ -163,36 +159,25 @@ class Date extends Object {
   def setTime(time: Number): Unit = ???
   def setMilliseconds(ms: Number): Unit = ???
   def setUTCMilliseconds(ms: Number): Unit = ???
-  def setSeconds(sec: Number, ms: Number): Unit = ???
-  def setSeconds(sec: Number): Unit = ???
-  def setUTCSeconds(sec: Number, ms: Number): Unit = ???
-  def setUTCSeconds(sec: Number): Unit = ???
-  def setMinutes(min: Number, sec: Number, ms: Number): Unit = ???
-  def setMinutes(min: Number, sec: Number): Unit = ???
-  def setMinutes(min: Number): Unit = ???
-  def setUTCMinutes(min: Number, sec: Number, ms: Number): Unit = ???
-  def setUTCMinutes(min: Number, sec: Number): Unit = ???
-  def setUTCMinutes(min: Number): Unit = ???
-  def setHours(hours: Number, min: Number, sec: Number, ms: Number): Unit = ???
-  def setHours(hours: Number, min: Number, sec: Number): Unit = ???
-  def setHours(hours: Number, min: Number): Unit = ???
-  def setHours(hours: Number): Unit = ???
-  def setUTCHours(hours: Number, min: Number, sec: Number, ms: Number): Unit = ???
-  def setUTCHours(hours: Number, min: Number, sec: Number): Unit = ???
-  def setUTCHours(hours: Number, min: Number): Unit = ???
-  def setUTCHours(hours: Number): Unit = ???
+  def setSeconds(sec: Number, ms: Number = getMilliseconds()): Unit = ???
+  def setUTCSeconds(sec: Number, ms: Number = getMilliseconds()): Unit = ???
+  def setMinutes(min: Number, sec: Number = getSeconds(),
+      ms: Number = getMilliseconds()): Unit = ???
+  def setUTCMinutes(min: Number, sec: Number = getSeconds(),
+      ms: Number = getMilliseconds()): Unit = ???
+  def setHours(hours: Number, min: Number = getMinutes(),
+      sec: Number = getSeconds(), ms: Number = getMilliseconds()): Unit = ???
+  def setUTCHours(hours: Number, min: Number = getMinutes(),
+      sec: Number = getSeconds(), ms: Number = getMilliseconds()): Unit = ???
+
   def setDate(date: Number): Unit = ???
   def setUTCDate(date: Number): Unit = ???
-  def setMonth(month: Number, date: Number): Unit = ???
-  def setMonth(month: Number): Unit = ???
-  def setUTCMonth(month: Number, date: Number): Unit = ???
-  def setUTCMonth(month: Number): Unit = ???
-  def setFullYear(year: Number, month: Number, date: Number): Unit = ???
-  def setFullYear(year: Number, month: Number): Unit = ???
-  def setFullYear(year: Number): Unit = ???
-  def setUTCFullYear(year: Number, month: Number, date: Number): Unit = ???
-  def setUTCFullYear(year: Number, month: Number): Unit = ???
-  def setUTCFullYear(year: Number): Unit = ???
+  def setMonth(month: Number, date: Number = getDate()): Unit = ???
+  def setUTCMonth(month: Number, date: Number = getDate()): Unit = ???
+  def setFullYear(year: Number, month: Number = getMonth(),
+      date: Number = getDate()): Unit = ???
+  def setUTCFullYear(year: Number, month: Number = getMonth(),
+      date: Number = getDate()): Unit = ???
 
   def toUTCString(): String = ???
   def toISOString(): String = ???
@@ -227,12 +212,8 @@ object Date extends Object {
    */
   def parse(s: String): Number = ???
 
-  def UTC(year: Number, month: Number, date: Number, hours: Number, minutes: Number, seconds: Number, ms: Number): Number = ???
-  def UTC(year: Number, month: Number, date: Number, hours: Number, minutes: Number, seconds: Number): Number = ???
-  def UTC(year: Number, month: Number, date: Number, hours: Number, minutes: Number): Number = ???
-  def UTC(year: Number, month: Number, date: Number, hours: Number): Number = ???
-  def UTC(year: Number, month: Number, date: Number): Number = ???
-  def UTC(year: Number, month: Number): Number = ???
+  def UTC(year: Number, month: Number, date: Number = 1, hours: Number = 0,
+      minutes: Number = 0, seconds: Number = 0, ms: Number = 0): Number = ???
 
   /**
    * Returns the numeric value corresponding to the current time - the number

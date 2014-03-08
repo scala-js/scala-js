@@ -14,7 +14,7 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import annotation._
 
 /**
  *  Arrays are list-like objects whose prototype has methods to perform
@@ -81,16 +81,7 @@ class Array[A] extends Object {
    * The separator is converted to a string if necessary. If omitted, the
    * array elements are separated with a comma.
    */
-  def join(seperator: String): String = ???
-
-  /**
-   * The join() method joins all elements of an array into a string.
-   *
-   * separator Specifies a string to separate each element of the array.
-   * The separator is converted to a string if necessary. If omitted, the
-   * array elements are separated with a comma.
-   */
-  def join(): String = ???
+  def join(seperator: String = ","): String = ???
 
   /**
    * The pop() method removes the last element from an array and returns that
@@ -144,8 +135,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def sort(compareFn: Function2[A, A, Number]): Array[A] = ???
-  def sort(): Array[A] = ???
+  def sort(compareFn: Function2[A, A, Number] = ???): Array[A] = ???
 
   /**
    * The splice() method changes the content of an array, adding new elements
@@ -217,7 +207,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def every(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean = ???
+  def every[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+      thisArg: T): Boolean = ???
   def every(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
 
   /**
@@ -239,8 +230,11 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def some(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Boolean = ???
+  def some[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+      thisArg: T): Boolean = ???
   def some(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
+  def some(callbackfn: Function2[A, Number, Boolean]): Boolean = ???
+  def some(callbackfn: Function1[A, Boolean]): Boolean = ???
 
   /**
    * forEach executes the provided callback once for each element of the array
@@ -262,8 +256,11 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def forEach[U](callbackfn: Function3[A, Number, Array[A], U], thisArg: Any): Unit = ???
-  def forEach[U](callbackfn: Function3[A, Number, Array[A], U]): Unit = ???
+  def forEach[T](callbackfn: ThisFunction3[T, A, Number, Array[A], _],
+      thisArg: T): Unit = ???
+  def forEach(callbackfn: Function3[A, Number, Array[A], _]): Unit = ???
+  def forEach(callbackfn: Function2[A, Number, _]): Unit = ???
+  def forEach(callbackfn: Function1[A, _]): Unit = ???
 
   /**
    * map calls a provided callback function once for each element in an array,
@@ -283,8 +280,11 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def map[B](callbackfn: Function3[A, Number, Array[A], B], thisArg: Any): Array[B] = ???
+  def map[B, T](callbackfn: ThisFunction3[T, A, Number, Array[A], B],
+      thisArg: T): Array[B] = ???
   def map[B](callbackfn: Function3[A, Number, Array[A], B]): Array[B] = ???
+  def map[B](callbackfn: Function2[A, Number, B]): Array[B] = ???
+  def map[B](callbackfn: Function1[A, B]): Array[B] = ???
 
   /**
    * filter calls a provided callback function once for each element in an array,
@@ -308,8 +308,11 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def filter(callbackfn: Function3[A, Number, Array[A], Boolean], thisArg: Any): Array[A] = ???
+  def filter[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+      thisArg: T): Array[A] = ???
   def filter(callbackfn: Function3[A, Number, Array[A], Boolean]): Array[A] = ???
+  def filter(callbackfn: Function2[A, Number, Boolean]): Array[A] = ???
+  def filter(callbackfn: Function1[A, Boolean]): Array[A] = ???
 
   /**
    * reduce executes the callback function once for each element present in
@@ -323,12 +326,16 @@ class Array[A] extends Object {
    * then previousValue will be equal to initialValue and currentValue will be
    * equal to the first value in the array. If no initialValue was provided,
    * then previousValue will be equal to the first value in the array and
-   * currentValue will be equal to th
+   * currentValue will be equal to the second.
    *
    * MDN
    */
   def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
+  def reduce[B](callbackfn: Function3[B, A, Number, B], initialValue: B): B = ???
+  def reduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
   def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
+  def reduce[B](callbackfn: Function3[B, A, Number, B]): B = ???
+  def reduce[B](callbackfn: Function2[B, A, B]): B = ???
 
   /**
    * reduceRight executes the callback function once for each element present
@@ -340,7 +347,11 @@ class Array[A] extends Object {
    * MDN
    */
   def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
+  def reduceRight[B](callbackfn: Function3[B, A, Number, B], initialValue: B): B = ???
+  def reduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
   def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
+  def reduceRight[B](callbackfn: Function3[B, A, Number, B]): B = ???
+  def reduceRight[B](callbackfn: Function2[B, A, B]): B = ???
 }
 
 /** Factory for [[js.Array]] objects. */

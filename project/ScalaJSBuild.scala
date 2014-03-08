@@ -471,7 +471,16 @@ object ScalaJSBuild extends Build {
           useJasmineTestFrameworkButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js test suite",
-          publishArtifact in Compile := false
+          publishArtifact in Compile := false,
+
+          sources in Test ++= {
+            if (!scalaVersion.value.startsWith("2.10") &&
+                scalacOptions.value.contains("-Xexperimental")) {
+              (((sourceDirectory in Test).value / "require-sam") ** "*.scala").get
+            } else {
+              Nil
+            }
+          }
       )
   ).dependsOn(compiler % "plugin")
 

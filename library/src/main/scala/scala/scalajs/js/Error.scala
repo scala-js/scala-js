@@ -14,10 +14,7 @@
  */
 package scala.scalajs.js
 
-class Error extends Object {
-  def this(message: String) = this()
-
-
+class Error(message0: String = "") extends Object {
   val name: String = ???
   /**
    * Human-readable description of the error
@@ -28,8 +25,7 @@ class Error extends Object {
 }
 
 object Error extends Object {
-  def apply(message: String): Error = ???
-  def apply(): Error = ???
+  def apply(message: String = ""): Error = ???
 }
 
 /**
@@ -38,13 +34,10 @@ object Error extends Object {
  *
  * MDN
  */
-class EvalError extends Error {
-  def this(message: String) = this()
-}
+class EvalError(message: String = "") extends Error
 
 object EvalError extends Object {
-  def apply(message: String): EvalError = ???
-  def apply(): EvalError = ???
+  def apply(message: String = ""): EvalError = ???
 }
 
 /**
@@ -59,13 +52,10 @@ object EvalError extends Object {
  *
  * MDN
  */
-class RangeError extends Error {
-  def this(message: String) = this()
-}
+class RangeError(message: String = "") extends Error
 
 object RangeError extends Object {
-  def apply(message: String): RangeError = ???
-  def apply(): RangeError = ???
+  def apply(message: String = ""): RangeError = ???
 }
 
 /**
@@ -76,13 +66,10 @@ object RangeError extends Object {
  *
  * MDN
  */
-class ReferenceError extends Error {
-  def this(message: String) = this()
-}
+class ReferenceError(message: String = "") extends Error
 
 object ReferenceError extends Object {
-  def apply(message: String): ReferenceError = ???
-  def apply(): ReferenceError = ???
+  def apply(message: String = ""): ReferenceError = ???
 }
 
 /**
@@ -93,13 +80,10 @@ object ReferenceError extends Object {
  *
  * MDN
  */
-class SyntaxError extends Error {
-  def this(message: String) = this()
-}
+class SyntaxError(message: String = "") extends Error
 
 object SyntaxError extends Object {
-  def apply(message: String): SyntaxError = ???
-  def apply(): SyntaxError = ???
+  def apply(message: String = ""): SyntaxError = ???
 }
 
 /**
@@ -110,13 +94,10 @@ object SyntaxError extends Object {
  *
  * MDN
  */
-class TypeError extends Error {
-  def this(message: String) = this()
-}
+class TypeError(message: String = "") extends Error
 
 object TypeError extends Object {
-  def apply(message: String): TypeError = ???
-  def apply(): TypeError = ???
+  def apply(message: String = ""): TypeError = ???
 }
 
 /**
@@ -126,11 +107,8 @@ object TypeError extends Object {
  *
  * MDN
  */
-class URIError extends Error {
-  def this(message: String) = this()
-}
+class URIError(message: String = "") extends Error
 
 object URIError extends Object {
-  def apply(message: String): URIError = ???
-  def apply(): URIError = ???
+  def apply(message: String = ""): URIError = ???
 }

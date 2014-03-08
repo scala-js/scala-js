@@ -39,13 +39,7 @@ package scala.scalajs.js
  *
  * MDN
  */
-class Function extends Object {
-  /**
-   * secondary constructor working around restriction that primary ctor
-   * must not have arguments
-   */
-  def this(args: String*) = this()
-
+class Function(args: String*) extends Object {
   /**
    * length is a property of a function object, and indicates how many arguments
    * the function expects, i.e. the number of formal parameters. This number
