@@ -1,4 +1,4 @@
-package scala.scalajs.js.runtime
+package scala.scalajs.runtime
 
 import scala.scalajs.js
 import scala.runtime._
