@@ -193,5 +193,56 @@ object ReflectiveCallTest extends JasmineTest {
       expect(call(new C)).toEqual(1)
     }
 
+    it("should work on java.lang.Object.{ notify, notifyAll } - #303") {
+      type ObjNotifyLike = Any {
+        def notify(): Unit
+        def notifyAll(): Unit
+      }
+      def objNotifyTest(obj: ObjNotifyLike) = {
+        obj.notify()
+        obj.notifyAll()
+        1
+      }
+
+      class A
+
+      expect(objNotifyTest(new A())).toEqual(1)
+    }
+
+    it("should work on java.lang.Object.clone - #303") {
+      type ObjCloneLike = Any { def clone(): AnyRef }
+      def objCloneTest(obj: ObjCloneLike) = obj.clone()
+
+      class B(val x: Int) extends Cloneable {
+        override def clone() = super.clone
+      }
+
+      val b = new B(1)
+      val bClone = objCloneTest(b).asInstanceOf[B]
+
+      expect(b eq bClone).toBeFalsy
+      expect(bClone.x).toEqual(1)
+    }
+
+    it("should work on scala.AnyRef.{ eq, ne } - #303") {
+      type ObjEqLike = Any {
+        def eq(that: AnyRef): Boolean
+        def ne(that: AnyRef): Boolean
+      }
+      def objEqTest(obj: ObjEqLike, that: AnyRef) = obj eq that
+      def objNeTest(obj: ObjEqLike, that: AnyRef) = obj ne that
+
+      class A
+
+      val a1 = new A
+      val a2 = new A
+
+      expect(objEqTest(a1,a2)).toBeFalsy
+      expect(objEqTest(a1,a1)).toBeTruthy
+
+      expect(objNeTest(a1,a2)).toBeTruthy
+      expect(objNeTest(a1,a1)).toBeFalsy
+    }
+
   }
 }
