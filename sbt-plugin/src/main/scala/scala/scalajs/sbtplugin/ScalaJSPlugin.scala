@@ -527,9 +527,6 @@ object ScalaJSPlugin extends Plugin {
       // the resolver to find the compiler and library (and others)
       resolvers ++= Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver),
 
-      // you had better use the same version of Scala as Scala.js
-      scalaVersion := scalaJSScalaVersion,
-
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin("org.scala-lang.modules.scalajs" %% "scalajs-compiler" % scalaJSVersion),
