@@ -51,6 +51,8 @@ trait JSGlobalAddons extends JSTrees
         else sym
       }
 
+      def isValidName(name: String) = !name.contains("__")
+
       def defaultName = {
         val nmeSym = if (sym.isConstructor) sym.owner else sym
         val decN = nmeSym.unexpandedName.decoded
@@ -65,15 +67,35 @@ trait JSGlobalAddons extends JSTrees
         if annot.symbol == JSExportAnnotation
       } yield {
         val name = annot.stringArg(0).getOrElse(defaultName)
+        if (!isValidName(name)) {
+          // Get position for error message
+          val pos = if (annot.stringArg(0).isDefined)
+            annot.args.head.pos
+          else trgSym.pos
+
+          currentUnit.error(pos,
+              "An exported name may not contain a double underscore (`__`)")
+        }
         (name, annot.pos)
       }
 
       val inheritedExports = if (sym.isModuleClass) {
-        if (sym.ancestors.exists(_.annotations.exists(
-            _.symbol == JSExportDescendentObjectsAnnotation)))
+        val forcingSym = sym.ancestors.find(_.annotations.exists(
+            _.symbol == JSExportDescendentObjectsAnnotation))
+
+        forcingSym map { fs =>
+          val name = sym.fullName
+
+          if (!isValidName(name)) {
+            // Get all annotation positions for error message
+            currentUnit.error(sym.pos,
+                s"""${sym.name} may not have a double underscore (`__`) in its fully qualified
+                   |name, since it is forced to be exported by a @JSExportDescendentObjects on ${fs}""".stripMargin)
+          }
+
           List((sym.fullName, sym.pos))
-        else
-          Nil
+
+        } getOrElse Nil
       } else Nil
 
       directExports ::: inheritedExports
