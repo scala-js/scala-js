@@ -3228,7 +3228,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private object JSFunctionToScala {
       private val AnonFunPrefScala =
-        "scala.scalajs.js.runtime.AnonFunction"
+        "scala.scalajs.runtime.AnonFunction"
       private val AnonFunPrefJS =
         AnonFunPrefScala.replace('.', '_')
 
@@ -3438,14 +3438,17 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  where argI are the formal arguments of the lambda, and captureI are
      *  local variables or the enclosing def.
      *
-     *  We translate them by instantiating scala.runtime.AnonFunctionN with a
-     *  JS anonymous function:
+     *  We translate them by instantiating scala.scalajs.runtime.AnonFunctionN
+     *  with a JS anonymous function:
      *
-     *  new ScalaJS.classes.scala_scalajs_js_runtime_AnonFunctionN(
+     *  new ScalaJS.c.scala_scalajs_runtime_AnonFunctionN().init___xyz(
      *    (function(arg1, ..., argN) {
      *      return this.someMethod(arg1, ..., argN, capture1, ..., captureM)
      *    }).bind(this)
      *  )
+     *
+     *  (with additional considerations for protecting captures against
+     *  mutations)
      *
      *  In addition, input params are unboxed before use, and the result of
      *  someMethod() is boxed back.

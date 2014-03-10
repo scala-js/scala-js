@@ -30,8 +30,7 @@ object JSON extends Object {
    *
    * MDN
    */
-  def parse(text: String, reviver: Function2[Any, Any, Any]): Dynamic = ???
-  def parse(text: String): Dynamic = ???
+  def parse(text: String, reviver: Function2[Any, Any, Any] = ???): Dynamic = ???
 
   /**
    * Convert a value to JSON, optionally replacing values if a replacer function
@@ -46,9 +45,7 @@ object JSON extends Object {
    *
    * MDN
    */
-  def stringify(value: Any, replacer: Function2[String, Any, Any], space: Any): String = ???
-  def stringify(value: Any, replacer: Function2[String, Any, Any]): String = ???
-  def stringify(value: Any): String = ???
+  def stringify(value: Any, replacer: Function2[String, Any, Any] = ???, space: Any = ???): String = ???
   def stringify(value: Any, replacer: Array[Any]): String = ???
   def stringify(value: Any, replacer: Array[Any], space: Any): String = ???
 }
