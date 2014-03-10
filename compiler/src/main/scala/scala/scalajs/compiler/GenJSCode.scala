@@ -2574,9 +2574,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             statToExpr(js.Skip())
         }
       } else if (code == DYNLIT) {
-        // We have call of some other form
+        // We have a call of some other form
         //   js.Dynamic.literal(...)
-        // Tranlate to:
+        // Translate to:
         //   var obj = {};
         //   obj[...] = ...;
         //   obj
@@ -2604,8 +2604,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val tup = js.Ident(freshName("tup"))
                 js.VarDef(tup, tupExpr) ::
                 js.Assign(js.BracketSelect(res,
-                    genApplyMethod(tup, TupleClass(2), js.Ident("_1__O"), Nil)),
-                    genApplyMethod(tup, TupleClass(2), js.Ident("_2__O"), Nil)) :: Nil
+                    genApplyMethod(tup, TupleClass(2), js.Ident("$$und1__O"), Nil)),
+                    genApplyMethod(tup, TupleClass(2), js.Ident("$$und2__O"), Nil)) :: Nil
             }
 
             js.Block(resVarDef +: assigns :+ res :_*)

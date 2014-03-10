@@ -55,7 +55,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeFieldSym called with non-field symbol: " + sym)
 
-    val name0 = sym.name.toString
+    val name0 = encodeMemberNameInternal(sym)
     val name =
       if (name0.charAt(name0.length()-1) != ' ') name0
       else name0.substring(0, name0.length()-1)
@@ -90,16 +90,19 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def encodeMethodNameInternal(sym: Symbol,
       reflProxy: Boolean = false): (String, String) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
+
+    def name = encodeMemberNameInternal(sym)
+
     val encodedName = {
       if (sym.isClassConstructor)
         "init" + InnerSep
       else if (foreignIsImplClass(sym.owner))
-        encodeClassFullName(sym.owner) + OuterSep + sym.name.toString
+        encodeClassFullName(sym.owner) + OuterSep + name
       else if (sym.isPrivate)
-        mangleJSName(sym.name.toString) + OuterSep + "p" +
+        mangleJSName(name) + OuterSep + "p" +
           sym.owner.ancestors.count(!_.isInterface).toString
       else
-        mangleJSName(sym.name.toString)
+        mangleJSName(name)
     }
 
     val paramsString = makeParamsString(sym, reflProxy)
@@ -125,7 +128,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     // Encode prefix
     val implClass = sym.owner.implClass orElse erasure.implClass(sym.owner)
     val encodedName =
-      encodeClassFullName(implClass) + OuterSep + sym.name.toString
+      encodeClassFullName(implClass) + OuterSep + encodeMemberNameInternal(sym)
 
     // Create ident
     (implClass, js.Ident(encodedName + paramsString,
@@ -136,7 +139,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isStaticMember,
         "encodeStaticMemberSym called with non-static symbol: " + sym)
     js.Ident(
-        mangleJSName(sym.name.toString) +
+        mangleJSName(encodeMemberNameInternal(sym)) +
         makeParamsString(List(internalName(sym.tpe))),
         Some(sym.unexpandedName.decoded))
   }
@@ -249,6 +252,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val tmp = sym.fullName.replace("_", "$und").replace(".", "_")
     mangleJSName(tmp)
   }
+
+  private def encodeMemberNameInternal(sym: Symbol): String =
+    sym.name.toString.replace("_", "$und")
 
   // Encoding of method signatures
 
