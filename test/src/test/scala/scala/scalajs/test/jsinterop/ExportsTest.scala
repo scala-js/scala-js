@@ -170,6 +170,29 @@ object ExportsTest extends JasmineTest {
       expect(obj.x).toEqual(5)
     }
 
+    it("should correctly disambiguate overloads involving longs") {
+
+      class Foo {
+        @JSExport
+        def foo(x: Int) = 1
+        @JSExport
+        def foo(x: Long) = 2
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      // Create a long factory we can call dynamically to retrieve an unboxed
+      // long which is typed as a js.Any
+      object LongFactory {
+        @JSExport
+        def aLong = 1L
+      }
+      val trueJsLong = LongFactory.asInstanceOf[js.Dynamic].aLong
+
+      expect(foo.foo(1)).toEqual(1)
+      expect(foo.foo(trueJsLong)).toEqual(2)
+    }
+
   } // describe
 
   describe("@JSExportDescendentObjects") {
