@@ -51,7 +51,7 @@ trait JSGlobalAddons extends JSTrees
         else sym
       }
 
-      lazy val defaultName = {
+      def defaultName = {
         val nmeSym = if (sym.isConstructor) sym.owner else sym
         val decN = nmeSym.unexpandedName.decoded
         if (isJSSetter(sym))
@@ -60,13 +60,23 @@ trait JSGlobalAddons extends JSTrees
           decN
       }
 
-      for {
+      val directExports = for {
         annot <- trgSym.annotations
         if annot.symbol == JSExportAnnotation
       } yield {
         val name = annot.stringArg(0).getOrElse(defaultName)
         (name, annot.pos)
       }
+
+      val inheritedExports = if (sym.isModuleClass) {
+        if (sym.ancestors.exists(_.annotations.exists(
+            _.symbol == JSExportDescendentObjectsAnnotation)))
+          List((sym.fullName, sym.pos))
+        else
+          Nil
+      } else Nil
+
+      directExports ::: inheritedExports
     }
 
     /** creates a name for an export specification */

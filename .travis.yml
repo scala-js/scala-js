@@ -1,6 +1,7 @@
 language: scala
 script:
   - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc testing/test scalajs-test/test reversi/packageJS reversi/optimizeJS; fi
+  - if [[ "$KIND" == "main" && "$PUBLISH_ENABLED" == "true" ]]; then sbt "${SBT_SETUP}" 'set sources in (exampleTesting, Test, ScalaJSKeys.scalaJSEnvironment) := Seq((ScalaJSKeys.preoptimizeJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test 'set sources in (exampleTesting, Test, ScalaJSKeys.scalaJSEnvironment) := Seq((ScalaJSKeys.optimizeJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test; fi
   - if [ $KIND == main ]; then sh checksizes.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" scalajs-sbt-plugin/package; fi

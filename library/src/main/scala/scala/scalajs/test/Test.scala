@@ -9,5 +9,9 @@
 
 package scala.scalajs.test
 
+import scala.scalajs.js
+import js.annotation.JSExportDescendentObjects
+
 /** Marker trait for Scala.js tests */
+@JSExportDescendentObjects
 trait Test

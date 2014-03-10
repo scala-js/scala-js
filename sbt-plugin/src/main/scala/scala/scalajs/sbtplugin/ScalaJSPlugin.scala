@@ -458,7 +458,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
-      scalaJSTestBridgeClass := "scala.scalajs.test.TestBridge",
+      scalaJSTestBridgeClass := "scala.scalajs.test.JasmineTestBridge",
 
       loadedTestFrameworks := {
         val loader = testLoader.value
@@ -487,7 +487,8 @@ object ScalaJSPlugin extends Plugin {
       scalaJSTestFrameworkSettings
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
-          packageExportedProductsJS) map { packageJSTask =>
+          packageExportedProductsJS,
+          preoptimizeJS, optimizeJS) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
   )
