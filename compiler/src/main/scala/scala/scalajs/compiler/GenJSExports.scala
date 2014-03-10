@@ -59,7 +59,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val js.MethodDef(_, args, body) = genExportMethod(ctors, jsName)
 
       val jsCtor = envField("c") DOT encodeClassFullNameIdent(classSym)
-      val (createNamespace, expCtorVar) = genCreateNamespaceInGlobal(jsName)
+      val (createNamespace, expCtorVar) = genCreateNamespaceInExports(jsName)
 
       js.Block(
         createNamespace,
@@ -84,7 +84,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val accessorVar =
         envField("modules") DOT encodeModuleFullNameIdent(classSym)
-      val (createNamespace, expAccessorVar) = genCreateNamespaceInGlobal(jsName)
+      val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
 
       js.Block(
         createNamespace,
@@ -93,19 +93,19 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
   }
 
-  /** Gen JS code for assigning an rhs to a qualified name in the global scope.
+  /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
    *  For example, given the qualified name "foo.bar.Something", generates:
    *
-   *  ScalaJS["g"]["foo"] = ScalaJS["g"]["foo"] || {};
-   *  ScalaJS["g"]["foo"]["bar"] = ScalaJS["g"]["foo"]["bar"] || {};
+   *  ScalaJS.e["foo"] = ScalaJS.e["foo"] || {};
+   *  ScalaJS.e["foo"]["bar"] = ScalaJS.e["foo"]["bar"] || {};
    *
-   *  Returns (statements, ScalaJS["g"]["foo"]["bar"]["Something"])
+   *  Returns (statements, ScalaJS.e["foo"]["bar"]["Something"])
    */
-  private def genCreateNamespaceInGlobal(qualName: String)(
+  private def genCreateNamespaceInExports(qualName: String)(
       implicit pos: Position): (js.Tree, js.Tree) = {
     val parts = qualName.split("\\.")
     val statements = mutable.ListBuffer.empty[js.Tree]
-    var namespace = envField("g")
+    var namespace = envField("e")
     for (i <- 0 until parts.length-1) {
       namespace = js.BracketSelect(namespace, js.StringLiteral(parts(i)))
       statements +=

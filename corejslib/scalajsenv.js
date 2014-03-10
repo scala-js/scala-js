@@ -10,6 +10,8 @@
 var ScalaJS = {
   // Fields
   g: (typeof global === "object" && global && global["Object"] === Object) ? global : this, // Global scope
+  e: (typeof __ScalaJSExportsNamespace === "object" && __ScalaJSExportsNamespace) ? __ScalaJSExportsNamespace : // Where to send exports
+      ((typeof global === "object" && global && global["Object"] === Object) ? global : this),
   data: {},            // Data for types
   c: {},               // Scala.js constructors
   inheritable: {},     // Inheritable constructors (without initialization code)
@@ -341,6 +343,12 @@ var ScalaJS = {
   }
 }
 
+/* We have to force a non-elidable *read* of ScalaJS.e, otherwise Closure will
+ * eliminate it altogether, along with all the exports, which is ... er ...
+ * plain wrong.
+ */
+ScalaJS.g["__ScalaJSExportsNamespace"] = ScalaJS.e;
+
 // Type data constructors
 
 /** @constructor */
@@ -360,7 +368,7 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun
   this.isInstance = function(obj) { return false; };
   this.isArrayOf = function(obj, depth) { return false; };
   this.boxValue = boxFun
-},
+};
 
 /** @constructor */
 ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,

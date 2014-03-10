@@ -118,6 +118,7 @@ object ScalaJSPlugin extends Plugin {
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
     var global = {};
+    var __ScalaJSExportsNamespace = {};
     """
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
