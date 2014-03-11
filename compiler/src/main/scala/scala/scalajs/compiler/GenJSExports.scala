@@ -327,6 +327,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private def typeTestForTpe(tpe: Type): RTTypeTest = {
     toTypeKind(tpe) match {
       case UNDEFINED => TypeOfTypeTest("undefined")
+      case LongKind => InstanceOfTypeTest(RuntimeLongClass.tpe)
       case _:INT | _:FLOAT => TypeOfTypeTest("number")
       case BOOL => TypeOfTypeTest("boolean")
 
