@@ -17,15 +17,7 @@ import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
-import optimizer.ScalaJSOptimizer
-
-import com.google.javascript.jscomp.{
-  SourceFile => ClosureSource,
-  Compiler => ClosureCompiler,
-  CompilerOptions => ClosureOptions,
-  _
-}
-import scala.collection.JavaConverters._
+import optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
 import environment.rhino.{CodeBlock, Utilities}
@@ -104,22 +96,6 @@ object ScalaJSPlugin extends Plugin {
       else lhs.name.compareTo(rhs.name) < 0
     }
   }
-
-  private val ScalaJSExterns = """
-    /** @constructor */
-    function Object() {}
-    Object.protoype.toString = function() {};
-    /** @constructor */
-    function Array() {}
-    Array.prototype.length = 0;
-    /** @constructor */
-    function Function() {}
-    Function.prototype.constructor = function() {};
-    Function.prototype.call = function() {};
-    Function.prototype.apply = function() {};
-    var global = {};
-    var __ScalaJSExportsNamespace = {};
-    """
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[Seq[File]],
@@ -350,7 +326,7 @@ object ScalaJSPlugin extends Plugin {
         val output = (artifactPath in preoptimizeJS).value
         val taskCacheDir = s.cacheDirectory / "preoptimize-js"
 
-        IO.createDirectory(new File(output.getParent))
+        IO.createDirectory(output.getParentFile)
 
         if (inputs.isEmpty) {
           if (!output.isFile || output.length != 0)
@@ -383,56 +359,22 @@ object ScalaJSPlugin extends Plugin {
 
       optimizeJS := {
         val s = streams.value
-        val logger = s.log
-        val cacheDir = s.cacheDirectory
-        val allJSFiles = (sources in optimizeJS).value
+        val inputs = (sources in optimizeJS).value
         val output = (artifactPath in optimizeJS).value
+        val taskCacheDir = s.cacheDirectory / "optimize-js"
 
-        val cachedOptimizeJS = FileFunction.cached(cacheDir / "optimize-js",
+        IO.createDirectory(output.getParentFile)
+
+        FileFunction.cached(taskCacheDir,
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-
-          logger.info("Optimizing %s ..." format output)
-
-          val closureSources = allJSFiles map ClosureSource.fromFile
-          val closureExterns = (
-              ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
-              optimizeJSExterns.value.map(ClosureSource.fromFile(_)))
-
-          IO.createDirectory(new File(output.getParent))
-
-          val options = new ClosureOptions
-          options.prettyPrint = optimizeJSPrettyPrint.value
-          CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
-          options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
-
-          val compiler = new ClosureCompiler
-          val result = compiler.compile(
-              closureExterns.asJava, closureSources.asJava, options)
-
-          val errors = result.errors.toList
-          val warnings = result.warnings.toList
-
-          if (!errors.isEmpty) {
-            logger.error(errors.length + " Closure errors:")
-            errors.foreach(err => logger.error(err.toString))
-
-            IO.write(output, "")
-          } else {
-            if (!warnings.isEmpty) {
-              logger.warn(warnings.length + " Closure warnings:")
-              warnings.foreach(err => logger.warn(err.toString))
-            }
-
-            IO.write(output,
-                "(function(){'use strict';" +
-                compiler.toSource +
-                "}).call(this);\n")
-          }
-
+          s.log.info("Optimizing %s ..." format output)
+          val optimizer = new ScalaJSClosureOptimizer(
+              FileSystem.DefaultFileSystem, s.log)
+          optimizer.optimize(inputs, output,
+              additionalExterns = optimizeJSExterns.value,
+              prettyPrint = optimizeJSPrettyPrint.value)
           Set(output)
-        }
-
-        cachedOptimizeJS(allJSFiles.toSet)
+        } (inputs.toSet)
 
         output
       }
