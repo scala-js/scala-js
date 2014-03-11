@@ -46,8 +46,8 @@ trait JSGlobalAddons extends JSTrees
       val trgSym = {
         // For accessors, look on the val/var def
         if (sym.isAccessor) sym.accessed
-        // For primary constructors, look on the class itself
-        else if (sym.isPrimaryConstructor) sym.owner
+        // For primary class constructors, look on the class itself
+        else if (sym.isPrimaryConstructor && !sym.owner.isModuleClass) sym.owner
         else sym
       }
 

@@ -42,14 +42,33 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   def genConstructorExports(classSym: Symbol): List[js.Tree] = {
     val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
+    /** Perform sanity checks for constructor exports.
+     *  Issues an error message if bad
+     *  @return true if ok, false otherwise
+     */
+    def checkExport(ctorSym: Symbol, annotPos: Position) = {
+      def err(msg: String) = { currentUnit.error(annotPos, msg); false }
+      if (!classSym.isPublic)
+        err("You may not export a non-public class")
+      else if (isRawJSType(classSym.tpe))
+        err("You may not export a subclass of js.Any")
+      else if (enteringPhase(currentRun.flattenPhase)(classSym.isNestedClass))
+        err("You may not export a nested class. Create an exported factory " +
+            "method in the outer class to work around this limitation.")
+      else if (!ctorSym.isPublic)
+        err("You may not export a non-public constructor")
+      else true
+    }
+
     // Generate exports from constructors and their annotations
     val ctorExports = for {
-      ctor        <- constructors
-      (jsName, _) <- jsInterop.exportsOf(ctor)
+      ctor          <- constructors
+      (jsName, pos) <- jsInterop.exportsOf(ctor)
+      if checkExport(ctor, pos)
     } yield (jsName, ctor)
 
     val exports = for {
-      (jsName, specs) <- ctorExports.groupBy(_._1)
+      (jsName, specs) <- ctorExports.groupBy(_._1) // group by exported name
     } yield {
       import js.TreeDSL._
 
@@ -77,19 +96,35 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   }
 
   def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
-    import js.TreeDSL._
 
-    for ((jsName, p) <- jsInterop.exportsOf(classSym)) yield {
-      implicit val pos = p
+    val exportNames = jsInterop.exportsOf(classSym)
 
-      val accessorVar =
-        envField("modules") DOT encodeModuleFullNameIdent(classSym)
-      val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
+    // Error helper
+    def err(msg: String) = { currentUnit.error(exportNames.head._2, msg); Nil }
 
-      js.Block(
-        createNamespace,
-        expAccessorVar := accessorVar
-      )
+    if (exportNames.isEmpty)
+      Nil
+    else if (isRawJSType(classSym.tpe))
+      err("You may not export an object extending js.Any")
+    else if (!classSym.isPublic)
+      err("You may not export an non-public object")
+    else if (!enteringPhase(currentRun.flattenPhase)(classSym.owner.isPackage))
+      err("You may not export a nested object")
+    else {
+      import js.TreeDSL._
+
+      for ((jsName, p) <- exportNames) yield {
+        implicit val pos = p
+
+        val accessorVar =
+          envField("modules") DOT encodeModuleFullNameIdent(classSym)
+        val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
+
+        js.Block(
+          createNamespace,
+          expAccessorVar := accessorVar
+        )
+      }
     }
   }
 
