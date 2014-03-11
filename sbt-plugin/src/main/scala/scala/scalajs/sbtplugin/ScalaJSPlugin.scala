@@ -359,7 +359,7 @@ object ScalaJSPlugin extends Plugin {
           FileFunction.cached(taskCacheDir,
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Preoptimizing %s ..." format output)
-            val optimizer = new ScalaJSOptimizer(s.log)
+            val optimizer = new ScalaJSOptimizer(FileSystem.DefaultFileSystem, s.log)
             optimizer.optimize(inputs, output, relativeSourceMaps.value)
             Set(output)
           } (inputs.toSet)
