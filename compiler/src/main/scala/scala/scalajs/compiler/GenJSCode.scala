@@ -377,6 +377,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         gen(cd.impl)
       }
 
+      // Check that interface/trait is not exported
+      for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
+        currentUnit.error(pos, "You may not export a trait")
+      }
+
       val instanceTestMethods = genInstanceTestMethods(cd)
 
       val createDataStat = {

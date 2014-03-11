@@ -117,7 +117,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for objects with implicit name") {
-      val accessor = js.Dynamic.global.selectDynamic("ExportsTest$ExportedObject")
+      val accessor = js.Dynamic.global.ExportedObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -147,7 +147,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for classes with implicit name") {
-      val constr = js.Dynamic.global.selectDynamic("ExportsTest$ExportedClass")
+      val constr = js.Dynamic.global.ExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -175,8 +175,8 @@ object ExportsTest extends JasmineTest {
   describe("@JSExportDescendentObjects") {
 
     it("should offer auto exports for objects extending a trait") {
-      val accessor = js.Dynamic.global.scala.scalajs.test.jsinterop
-        .selectDynamic("ExportsTest$AutoExportedTraitObject")
+      val accessor =
+        js.Dynamic.global.scala.scalajs.test.jsinterop.AutoExportedTraitObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -185,8 +185,8 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer auto exports for objects extending a class") {
-      val accessor = js.Dynamic.global.scala.scalajs.test.jsinterop
-        .selectDynamic("ExportsTest$AutoExportedClassObject")
+      val accessor =
+        js.Dynamic.global.scala.scalajs.test.jsinterop.AutoExportedClassObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -196,30 +196,30 @@ object ExportsTest extends JasmineTest {
 
   }
 
-  @JSExport
-  @JSExport("TheExportedObject")
-  @JSExport("qualified.testobject.ExportedObject") // purposefully halfway the same as ExportedClass
-  object ExportedObject {
-    @JSExport
-    def witness: String = "witness"
-  }
-
-  @JSExport
-  @JSExport("TheExportedClass")
-  @JSExport("qualified.testclass.ExportedClass") // purposefully halfway the same as ExportedObject
-  class ExportedClass(_x: Int) {
-    @JSExport
-    val x = _x
-  }
-
-  @JSExportDescendentObjects
-  trait AutoExportTrait
-
-  object AutoExportedTraitObject extends AutoExportTrait
-
-  @JSExportDescendentObjects
-  class AutoExportClass
-
-  object AutoExportedClassObject extends AutoExportClass
-
 }
+
+@JSExport
+@JSExport("TheExportedObject")
+@JSExport("qualified.testobject.ExportedObject") // purposefully halfway the same as ExportedClass
+object ExportedObject {
+  @JSExport
+  def witness: String = "witness"
+}
+
+@JSExport
+@JSExport("TheExportedClass")
+@JSExport("qualified.testclass.ExportedClass") // purposefully halfway the same as ExportedObject
+class ExportedClass(_x: Int) {
+  @JSExport
+  val x = _x
+}
+
+@JSExportDescendentObjects
+trait AutoExportTrait
+
+object AutoExportedTraitObject extends AutoExportTrait
+
+@JSExportDescendentObjects
+class AutoExportClass
+
+object AutoExportedClassObject extends AutoExportClass
