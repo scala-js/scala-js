@@ -25,7 +25,7 @@ import environment.rhino.{CodeBlock, Utilities}
 import scala.scalajs.sbtplugin.testing.TestFramework
 
 object ScalaJSPlugin extends Plugin {
-  val scalaJSVersion = "0.4.0"
+  val scalaJSVersion = "0.4.1-SNAPSHOT"
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
   val scalaJSScalaVersion = "2.10.2"
 
