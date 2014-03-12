@@ -4,8 +4,6 @@ import sbt._
 import net.liftweb.json._
 
 object OptData {
-  private implicit val formats = DefaultFormats
-
   case class ClassInfoData(
       name: String,
       ancestorCount: Int,
@@ -66,7 +64,4 @@ object OptData {
       )
     }
   }
-
-  def readData(infoFile: File): ClassInfoData =
-    Extraction.extract[ClassInfoData](parse(IO.read(infoFile)))
 }

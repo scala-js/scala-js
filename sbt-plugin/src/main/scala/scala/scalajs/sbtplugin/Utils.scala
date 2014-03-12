@@ -21,8 +21,10 @@ object Utils {
   def isScalaJSClassFile(f: File): Boolean =
     ScalaJSClassFile.unapply(f).isDefined
 
+  val CoreJSLibFileName = "scalajs-corejslib.js"
+
   def isCoreJSLibFile(f: File): Boolean =
-    f.name == "scalajs-corejslib.js"
+    f.name == CoreJSLibFileName
 
   object CoreJSLibFile {
     def unapply(f: File): Boolean = isCoreJSLibFile(f)
