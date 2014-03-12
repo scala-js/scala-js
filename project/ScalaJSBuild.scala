@@ -125,8 +125,32 @@ object ScalaJSBuild extends Build {
           name := "Scala.js compiler",
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaVersion.value,
-              "org.scala-lang" % "scala-reflect" % scalaVersion.value
+              "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+              "com.novocode" % "junit-interface" % "0.9" % "test"
           ),
+          testOptions += Tests.Setup { () =>
+            val testOutDir = (streams.value.cacheDirectory / "scalajs-compiler-test")
+            IO.createDirectory(testOutDir)
+            sys.props("scala.scalajs.compiler.test.output") =
+              testOutDir.getAbsolutePath
+            sys.props("scala.scalajs.compiler.test.scalajslib") =
+              (artifactPath in (library, Compile, packageBin)).value.getAbsolutePath
+            sys.props("scala.scalajs.compiler.test.scalalib") = {
+
+              def isScalaLib(att: Attributed[File]) = {
+                att.metadata.get(moduleID.key).exists { mId =>
+                  mId.organization == "org.scala-lang" &&
+                  mId.name         == "scala-library"  &&
+                  mId.revision     == scalaVersion.value
+                }
+              }
+
+              val lib = (managedClasspath in Test).value.find(isScalaLib)
+              lib.map(_.data.getAbsolutePath).getOrElse {
+                streams.value.log.error("Couldn't find Scala library on the classpath. CP: " + (managedClasspath in Test).value); ""
+              }
+            }
+          },
           exportJars := true
       )
   )
