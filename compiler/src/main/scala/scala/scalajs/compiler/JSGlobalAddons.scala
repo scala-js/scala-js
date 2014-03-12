@@ -51,23 +51,26 @@ trait JSGlobalAddons extends JSTrees
         else sym
       }
 
-      def isValidName(name: String) = !name.contains("__")
-
-      def defaultName = {
-        val nmeSym = if (sym.isConstructor) sym.owner else sym
-        val decN = nmeSym.unexpandedName.decoded
-        if (isJSSetter(sym))
-          decN.stripSuffix("_=")
-        else
-          decN
-      }
-
       val directExports = for {
         annot <- trgSym.annotations
         if annot.symbol == JSExportAnnotation
       } yield {
-        val name = annot.stringArg(0).getOrElse(defaultName)
-        if (!isValidName(name)) {
+        // Symbol we use to get name from (constructors take name of class)
+        val nmeSym = if (sym.isConstructor) sym.owner else sym
+        // The actual name of the symbol
+        val symNme = nmeSym.unexpandedName.decoded
+
+        // Enforce that methods ending with _= are exported as setters
+        if (symNme.endsWith("_=") && !isJSSetter(sym)) {
+          currentUnit.error(annot.pos, "A method ending in _= will be " +
+              s"exported as setter. But $symNme does not have the right " +
+              "signature to do so (single argument, unit return type).")
+        }
+
+        val name = annot.stringArg(0).getOrElse(symNme.stripSuffix("_="))
+
+        // Enforce no __ in name
+        if (name.contains("__")) {
           // Get position for error message
           val pos = if (annot.stringArg(0).isDefined)
             annot.args.head.pos
@@ -76,6 +79,7 @@ trait JSGlobalAddons extends JSTrees
           currentUnit.error(pos,
               "An exported name may not contain a double underscore (`__`)")
         }
+
         (name, annot.pos)
       }
 
@@ -86,7 +90,8 @@ trait JSGlobalAddons extends JSTrees
         forcingSym map { fs =>
           val name = sym.fullName
 
-          if (!isValidName(name)) {
+          // Enfore no __ in name
+          if (name.contains("__")) {
             // Get all annotation positions for error message
             currentUnit.error(sym.pos,
                 s"""${sym.name} may not have a double underscore (`__`) in its fully qualified
