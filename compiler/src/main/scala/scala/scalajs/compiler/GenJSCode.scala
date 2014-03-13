@@ -2157,8 +2157,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           val rsrc = fromLong(rsrc_in, args(1).tpe)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
-            if (eqeq && leftKind.isReferenceType &&
-                !isRawJSType(args(0).tpe) && !isRawJSType(args(1).tpe)) {
+            if (eqeq &&
+                leftKind.isReferenceType &&
+                !isRawJSType(args(0).tpe) &&
+                !isRawJSType(args(1).tpe) &&
+                // don't call equals if we have a literal null at rhs
+                !rsrc.isInstanceOf[js.Null]
+                ) {
               val body = genEqEqPrimitive(args(0), args(1), lsrc, rsrc)
               if (not) js.UnaryOp("!", body) else body
             } else

@@ -2760,3 +2760,5 @@ neg/t7872c.scala
 neg/t8146-non-finitary.scala
 neg/t7872b.scala
 neg/t6920.scala
+run/t6200.scala
+run/t6196.scala

@@ -172,5 +172,17 @@ object RegressionTest extends JasmineTest {
       }
       expect(a.mkString(", ")).toEqual("1, 3, 5, 7, 9, 10, 8, 6, 4, 2, 0")
     }
+
+    it("should not call equals when comparing with a literal null - #362") {
+      class A { override def equals(x: Any) = !(this == null) }
+
+      val x = new A
+      val y = new A
+
+      // If the null comparisons actually call equals, the following two will
+      // cause infinite recursion
+      expect(x == y).toBeTruthy
+      expect(y == x).toBeTruthy
+    }
   }
 }
