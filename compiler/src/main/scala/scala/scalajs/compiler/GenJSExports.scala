@@ -48,15 +48,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      */
     def checkExport(ctorSym: Symbol, annotPos: Position) = {
       def err(msg: String) = { currentUnit.error(annotPos, msg); false }
+
+      // Frontend checks this
+      assert(ctorSym.isPublic)
+
       if (!classSym.isPublic)
         err("You may not export a non-public class")
-      else if (isRawJSType(classSym.tpe))
-        err("You may not export a subclass of js.Any")
       else if (enteringPhase(currentRun.flattenPhase)(classSym.isNestedClass))
         err("You may not export a nested class. Create an exported factory " +
             "method in the outer class to work around this limitation.")
-      else if (!ctorSym.isPublic)
-        err("You may not export a non-public constructor")
       else true
     }
 

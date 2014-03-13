@@ -29,15 +29,14 @@ trait PrepJSExports { this: PrepJSInterop =>
 
     // Helper function for errors
     def err(msg: String) = { currentUnit.error(exportNames.head._2, msg); Nil }
+    def memType = if (baseSym.isConstructor) "constructor" else "method"
 
-    if (exportNames.isEmpty || baseSym.isConstructor)
-      // we can generate constructors entirely in the backend, since they
-      // do not need inheritance and such.
+    if (exportNames.isEmpty)
       Nil
     else if (isJSAny(baseSym.owner))
-      err("You may not export a method of a subclass of js.Any")
+      err(s"You may not export a $memType of a subclass of js.Any")
     else if (!baseSym.isPublic)
-      err("You may not export a non-public member")
+      err(s"You may not export a non-public $memType")
     else if (baseSym.isMacro)
       err("You may not export a macro")
     else if (scalaPrimitives.isPrimitive(baseSym))
@@ -51,6 +50,11 @@ trait PrepJSExports { this: PrepJSInterop =>
        * exist in that setting (see bug #323). It's no big deal because we do
        * not need exports for scaladoc
        */
+      Nil
+    } else if (baseSym.isConstructor) {
+      // we can generate constructors entirely in the backend, since they
+      // do not need inheritance and such. But we want to check their sanity
+      // here
       Nil
     } else {
       assert(!baseSym.isBridge)
