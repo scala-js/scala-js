@@ -3,6 +3,6 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# Stackoverflow error (bad tail-recursion?)
+# Filed as #362
 run/t6200.scala
 run/t6196.scala
