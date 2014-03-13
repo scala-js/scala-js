@@ -21,6 +21,7 @@ import org.mozilla.javascript.Context
 import org.mozilla.javascript.RhinoException
 import org.mozilla.javascript.Scriptable
 import org.mozilla.javascript.ScriptableObject
+import org.mozilla.javascript.Undefined
 
 import rhino.ContextOps
 import rhino.ScalaJSCoreLib
@@ -115,6 +116,10 @@ class RhinoBasedScalaJSEnvironment(
     val context = Context.enter()
     try {
       val scope = context.initStandardObjects()
+
+      // Make sure Rhino does not do its magic for JVM top-level packages (#364)
+      for (name <- Seq("java", "scala", "com", "org"))
+        ScriptableObject.putProperty(scope, name, Undefined.instance)
 
       envJSLib.foreach { file =>
         context.setOptimizationLevel(-1)
