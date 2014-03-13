@@ -193,6 +193,13 @@ object ExportsTest extends JasmineTest {
       expect(foo.foo(trueJsLong)).toEqual(2)
     }
 
+    it("should support exporting under 'org' namespace - #364") {
+      val accessor = js.Dynamic.global.org.ExportedUnderOrgObject
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBe(ExportedUnderOrgObject.asInstanceOf[js.Any])
+    }
+
   } // describe
 
   describe("@JSExportDescendentObjects") {
@@ -236,6 +243,9 @@ class ExportedClass(_x: Int) {
   @JSExport
   val x = _x
 }
+
+@JSExport("org.ExportedUnderOrgObject")
+object ExportedUnderOrgObject
 
 @JSExportDescendentObjects
 trait AutoExportTrait
