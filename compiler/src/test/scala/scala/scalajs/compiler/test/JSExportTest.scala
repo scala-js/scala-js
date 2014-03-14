@@ -3,7 +3,7 @@ package scala.scalajs.compiler.test
 import scala.scalajs.compiler.test.util._
 import org.junit.Test
 
-class JSExportTest extends DirectTest with TestHelpers {
+class JSExportTest extends DirectTest with TestHelpers with CompatMatchers {
 
   override def preamble =
     """import scala.scalajs.js.annotation.JSExport
@@ -24,7 +24,8 @@ class JSExportTest extends DirectTest with TestHelpers {
     @JSExport
     class B__
     """ hasErrors
-    """newSource1.scala:4: error: An exported name may not contain a double underscore (`__`)
+    """
+      |newSource1.scala:4: error: An exported name may not contain a double underscore (`__`)
       |      @JSExport(name = "__")
       |                       ^
       |newSource1.scala:8: error: An exported name may not contain a double underscore (`__`)
@@ -48,9 +49,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def world = "bar"
     }
     """ hasErrors
-    """newSource1.scala:7: error: double definition:
-      |method $js$exported$prop$value:=> Any and
-      |method $js$exported$prop$value:=> Any at line 4
+    compat"""
+      |newSource1.scala:7: error: double definition:
+      |$method $$js$$exported$$prop$$value:=> Any and
+      |$method $$js$$exported$$prop$$value:=> Any at line 4
       |have same type
       |      @JSExport("value")
       |       ^
@@ -66,7 +68,8 @@ class JSExportTest extends DirectTest with TestHelpers {
       def ub(x: Box[Int]): Int = x.x
     }
     """ hasErrors
-    """newSource1.scala:8: error: double definition:
+    """
+       |newSource1.scala:8: error: double definition:
        |method $js$exported$meth$ub:(x: Confl.this.Box[Int])Any and
        |method $js$exported$meth$ub:(x: Confl.this.Box[String])Any at line 6
        |have same type after erasure: (x: Confl#Box)Object
@@ -83,7 +86,8 @@ class JSExportTest extends DirectTest with TestHelpers {
       def rtType(x: Int) = x
     }
     """ hasErrors
-    """newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$rtType with types
+    """
+      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$rtType with types
       |  (x: Int)Object
       |  (x: Short)Object
       |      @JSExport
@@ -102,7 +106,8 @@ class JSExportTest extends DirectTest with TestHelpers {
       def badGen[T](x: T) = x
     }
     """ hasErrors
-    """newSource1.scala:4: error: You may not export a method whose return type is neither a subtype of
+    """
+       |newSource1.scala:4: error: You may not export a method whose return type is neither a subtype of
        |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
        |primitive value type).
        |      @JSExport
@@ -126,7 +131,8 @@ class JSExportTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """newSource1.scala:5: error: You may not export a local class or object
+    """
+      |newSource1.scala:5: error: You may not export a local class or object
       |        @JSExport
       |         ^
     """
@@ -140,7 +146,8 @@ class JSExportTest extends DirectTest with TestHelpers {
       }
     }
     """ hasErrors
-    """newSource1.scala:5: error: You may not export a local class or object
+    """
+      |newSource1.scala:5: error: You may not export a local class or object
       |        @JSExport
       |         ^
     """
