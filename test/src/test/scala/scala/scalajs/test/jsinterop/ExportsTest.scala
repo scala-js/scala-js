@@ -102,7 +102,7 @@ object ExportsTest extends JasmineTest {
       expect(foo.y).toEqual("world set get")
     }
 
-    it("should offer multiple exports for methods") {
+    it("should offer overloaded exports for methods") {
       class Foo {
         @JSExport("foobar")
         def foo(): Int = 42
@@ -114,6 +114,151 @@ object ExportsTest extends JasmineTest {
       expect(js.typeOf(foo.foobar)).toBe("function")
       expect(foo.foobar()).toEqual(42)
       expect(foo.foobar(3)).toEqual(6)
+    }
+
+    it("should offer multiple exports for the same method") {
+      class Foo {
+        @JSExport
+        @JSExport("b")
+        @JSExport("c")
+        def a(): Int = 1
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.a)).toBe("function")
+      expect(js.typeOf(foo.b)).toBe("function")
+      expect(js.typeOf(foo.c)).toBe("function")
+
+      expect(foo.a()).toEqual(1)
+      expect(foo.b()).toEqual(1)
+      expect(foo.c()).toEqual(1)
+    }
+
+    it("should inherit exports from traits") {
+      trait Foo {
+        @JSExport
+        def x: Int
+
+        @JSExport
+        def method(x: Int): Int
+      }
+
+      class Bar extends Foo {
+        val x = 1
+        def method(x: Int) = 2 * x
+      }
+
+      val bar = (new Bar).asInstanceOf[js.Dynamic]
+      expect(bar.x).toEqual(1)
+      expect(js.typeOf(bar.method)).toBe("function")
+      expect(bar.method(2)).toEqual(4)
+    }
+
+    it("should offer overloading with inherited exports") {
+      class A {
+        @JSExport
+        def foo(x: Int) = 2*x
+      }
+
+      class B extends A{
+        @JSExport("foo")
+        def bar(x: String) = s"Hello $x"
+      }
+
+      val b = (new B).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(b.foo)).toBe("function")
+      expect(b.foo(1)).toEqual(2)
+      expect(b.foo("World")).toEqual("Hello World")
+    }
+
+    it("should offer exports for generic methods") {
+      class Foo {
+        @JSExport
+        def gen[T <: AnyRef](x: T) = x
+      }
+
+      val x = (new Object).asInstanceOf[js.Any]
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.gen)).toBe("function")
+      expect(foo.gen(x)).toBe(x)
+    }
+
+    it("should offer exports for lambda return types") {
+      class Foo {
+        @JSExport
+        def lambda(x: Int) = (y: Int) => x + y
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.lambda)).toBe("function")
+
+      val lambda = foo.lambda(5).asInstanceOf[Function1[Int,Int]]
+
+      expect(lambda(4)).toEqual(9)
+    }
+
+    it("should offer exports for multi parameter lists") {
+      class Foo {
+        @JSExport
+        def multiParam(x: Int)(y: Int): Int = x + y
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.multiParam)).toBe("function")
+      expect(foo.multiParam(5,6)).toEqual(11)
+    }
+
+    it("should offer exports for default arguments") {
+      class Foo {
+        @JSExport
+        def defArg(x: Int = 1) = x
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.defArg)).toBe("function")
+      expect(foo.defArg(5)).toEqual(5)
+    }
+
+    it("should offer exports for weird stuff") {
+      class UhOh {
+        // Something no one should export
+        @JSExport
+        def ahem[T : Comparable](x: T)(implicit y: Int) = ???
+      }
+
+      val x = (new UhOh).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(x.ahem)).toBe("function")
+    }
+
+    it("should offer exports with value class return types") {
+      class Foo {
+        @JSExport
+        def vc(x: Int) = new SomeValueClass(x)
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.vc)).toBe("function")
+
+      // Unboxed return value
+      expect(foo.vc(5)).toBe(5)
+    }
+
+    it("should offer exports for overridden methods with refined return type") {
+      class A
+      class B extends A
+
+      class C1 {
+        @JSExport
+        def x: A = new A
+      }
+
+      class C2 extends C1 {
+        override def x: B = new B
+      }
+
+      val c2 = (new C2).asInstanceOf[js.Dynamic]
+      expect(c2.x.isInstanceOf[B]).toBeTruthy
     }
 
     it("should offer exports for objects with implicit name") {
@@ -256,3 +401,5 @@ object AutoExportedTraitObject extends AutoExportTrait
 class AutoExportClass
 
 object AutoExportedClassObject extends AutoExportClass
+
+class SomeValueClass(val i: Int) extends AnyVal
