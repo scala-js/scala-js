@@ -162,12 +162,41 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           EmptyTree
         }
 
+      // Exporter generation
       case ddef: DefDef =>
         // Generate exporters for this ddef if required
         exporters.getOrElseUpdate(ddef.symbol.owner,
             mutable.ListBuffer.empty) ++= genExportMember(ddef)
 
         super.transform(tree)
+
+      // Fix for issue with calls to js.Dynamic.x()
+      // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
+      case Select(Select(trg, x_?), nme.apply) if (isJSDynamic(trg) &&
+          x_?.decoded == "x") =>
+
+        val newTree = atPos(tree.pos) {
+          Apply(
+              Select(super.transform(trg), newTermName("applyDynamic")),
+              List(Literal(Constant("x")))
+          )
+        }
+
+        typer.typed(newTree, Mode.FUNmode, tree.tpe)
+
+
+      // Fix for issue with calls to js.Dynamic.x()
+      // Rewrite (obj: js.Dynamic).x to obj.selectDynamic("x")
+      case Select(trg, x_?) if isJSDynamic(trg) && x_?.decoded == "x" =>
+
+        val newTree = atPos(tree.pos) {
+          Apply(
+              Select(super.transform(trg), newTermName("selectDynamic")),
+              List(Literal(Constant("x")))
+          )
+        }
+
+        typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
       case _ => super.transform(tree)
     } }
@@ -315,6 +344,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
   private def isScalaEnum(implDef: ImplDef) =
     implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
+
+  private def isJSDynamic(tree: Tree) = tree.tpe.typeSymbol == JSDynamicClass
 
   /**
    * is this symbol a setter that has a non-unit return type

@@ -59,4 +59,30 @@ trait Compat210Component {
     val runDefinitions: Compat210Component.this.global.definitions.type =
       global.definitions
   }
+
+  // Mode.FUNmode replaces analyzer.FUNmode
+
+  object Mode {
+    import Compat210Component.AnalyzerCompat
+    // No type ascription! Type is different in 2.10 / 2.11
+    val FUNmode = analyzer.FUNmode
+  }
+}
+
+object Compat210Component {
+  private object LowPriorityMode {
+    object Mode {
+      def FUNmode = sys.error("infinite loop in Compat")
+    }
+  }
+
+  private implicit final class AnalyzerCompat(self: scala.tools.nsc.typechecker.Analyzer) {
+    def FUNmode = {
+      import Compat210Component.LowPriorityMode._
+      {
+        import scala.reflect.internal._
+        Mode.FUNmode
+      }
+    }
+  }
 }
