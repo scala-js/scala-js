@@ -1,10 +1,16 @@
-package scala.scalajs.sbtplugin.optimizer
+/*                     __                                               *\
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2014, LAMP/EPFL   **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
+**                          |/____/                                     **
+\*                                                                      */
 
-import scala.scalajs.sbtplugin
 
-import sbt.{File => _, _}
+package scala.scalajs.tools.optimizer
 
-import scala.scalajs.sbtplugin.FileSystem
+import scala.scalajs.tools.logging._
+import scala.scalajs.tools.io.FileSystem
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,

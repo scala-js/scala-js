@@ -13,6 +13,10 @@ libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.2013
 
 libraryDependencies += "net.liftweb" %% "lift-json" % "2.5.1"
 
-unmanagedSourceDirectories in Compile <+= baseDirectory {
-  base => base.getParentFile / "sbt-plugin" / "src" / "main" / "scala"
+unmanagedSourceDirectories in Compile ++= {
+  val root = baseDirectory.value.getParentFile
+  Seq(
+    root / "tools" / "src" / "main" / "scala",
+    root / "sbt-plugin" / "src" / "main" / "scala"
+  )
 }

@@ -1,14 +1,22 @@
-package scala.scalajs.sbtplugin.optimizer
+/*                     __                                               *\
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2014, LAMP/EPFL   **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
+**                          |/____/                                     **
+\*                                                                      */
+
+
+package scala.scalajs.tools.optimizer
 
 import scala.annotation.tailrec
 
 import scala.collection.mutable
 
-import sbt.{File => _, _}
 import net.liftweb.json._
 
-import scala.scalajs.sbtplugin.FileSystem
-import scala.scalajs.sbtplugin.Utils._
+import scala.scalajs.tools.logging._
+import scala.scalajs.tools.io.FileSystem
 import OptData._
 
 /** Scala.js optimizer: does type-aware global dce. */
@@ -40,10 +48,10 @@ class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
     val (classFiles, otherFiles) = inputs.partition(isScalaJSClassFile)
 
     val (coreJSLibFiles, customScripts) =
-      otherFiles.partition(_.name == CoreJSLibFileName)
+      otherFiles.partition(_.name == "scalajs-corejslib.js")
     if (coreJSLibFiles.size != 1)
       throw new IllegalArgumentException(
-          s"There must be exactly one Scala.js core library ($CoreJSLibFileName) in the inputs.")
+          s"There must be exactly one Scala.js core library (scalajs-corejslib.js) in the inputs.")
     val coreJSLibFile = coreJSLibFiles.head
 
     val infoFiles0 = classFiles.map(jsFileToInfo)

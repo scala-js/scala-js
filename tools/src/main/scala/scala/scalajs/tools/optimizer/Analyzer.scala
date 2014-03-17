@@ -1,11 +1,19 @@
-package scala.scalajs.sbtplugin.optimizer
+/*                     __                                               *\
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013-2014, LAMP/EPFL   **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
+**                          |/____/                                     **
+\*                                                                      */
+
+
+package scala.scalajs.tools.optimizer
 
 import scala.annotation.tailrec
 
 import scala.collection.mutable
 
-import sbt.Logger
-import sbt.Level.{Value => LogLevel}
+import scala.scalajs.tools.logging._
 
 import OptData._
 
@@ -23,7 +31,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     def indent(): Unit = indentation += "  "
     def undent(): Unit = indentation = indentation.substring(2)
 
-    def log(level: LogLevel, message: => String) =
+    def log(level: Level, message: => String) =
       logger0.log(level, indentation+message)
     def success(message: => String) =
       logger0.success(indentation+message)
@@ -400,7 +408,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   def warnCallStack()(implicit from: From): Unit = {
     val seenInfos = mutable.Set.empty[AnyRef]
 
-    def rec(level: LogLevel, optFrom: Option[From],
+    def rec(level: Level, optFrom: Option[From],
         verb: String = "called"): Unit = {
       val involvedClasses = new mutable.ListBuffer[ClassInfo]
 
@@ -444,13 +452,13 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
           for (classInfo <- involvedClasses.result().distinct) {
             logger.log(level, s"$classInfo")
             if (onlyOnce(classInfo))
-              rec(sbt.Level.Debug, classInfo.instantiatedFrom, verb = "instantiated")
+              rec(Level.Debug, classInfo.instantiatedFrom, verb = "instantiated")
             // recurse with Debug log level not to overwhelm the user
           }
         }
       }
     }
 
-    rec(sbt.Level.Warn, Some(from))
+    rec(Level.Warn, Some(from))
   }
 }
