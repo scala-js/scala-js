@@ -309,7 +309,7 @@ object ScalaJSBuild extends Build {
                 if (paths.add(path))
                   sources += src
                 else
-                  streams.value.log.info(s"not including $src")
+                  streams.value.log.debug(s"not including $src")
               }
             }
 
