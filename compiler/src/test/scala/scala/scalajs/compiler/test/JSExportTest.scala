@@ -6,7 +6,7 @@ import org.junit.Test
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def preamble =
-    """import scala.scalajs.js.annotation.JSExport
+    """import scala.scalajs.js.annotation.{JSExport, JSExportDescendentObjects}
     """
 
   @Test
@@ -36,6 +36,21 @@ class JSExportTest extends DirectTest with TestHelpers {
       |          ^
     """
 
+    // Inherited exports
+    """
+    @JSExportDescendentObjects
+    trait A
+
+    package fo__o {
+      object B extends A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified
+      |name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
+      |      object B extends A
+      |             ^
+    """
   }
 
   @Test
@@ -116,7 +131,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local class or object
+      |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
     """
@@ -131,7 +146,52 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local class or object
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local method
+    """
+    class A {
+      def method = {
+        @JSExport
+        def foo = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local val
+    """
+    class A {
+      def method = {
+        @JSExport
+        val x = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local var
+    """
+    class A {
+      def method = {
+        @JSExport
+        var x = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
     """
