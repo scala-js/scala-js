@@ -185,9 +185,7 @@ object ScalaJSPlugin extends Plugin {
           }
         }
 
-        // Return a sorted list of the inputs
-
-        sortScalaJSOutputFiles(inputs.result())
+        inputs.result()
       },
 
       sources in packageJSKey := {
@@ -216,7 +214,8 @@ object ScalaJSPlugin extends Plugin {
           FileFunction.cached(taskCacheDir / "package",
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Packaging %s ..." format output)
-            catJSFilesAndTheirSourceMaps(inputs, output, relativeSourceMaps.value)
+            val sorted = sortScalaJSOutputFiles(inputs)
+            catJSFilesAndTheirSourceMaps(sorted, output, relativeSourceMaps.value)
             Set(output)
           } (inputs.toSet)
         }
