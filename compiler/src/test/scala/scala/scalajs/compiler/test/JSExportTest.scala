@@ -116,7 +116,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local class or object
+      |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
     """
@@ -131,7 +131,52 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local class or object
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local method
+    """
+    class A {
+      def method = {
+        @JSExport
+        def foo = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local val
+    """
+    class A {
+      def method = {
+        @JSExport
+        val x = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
+      |        @JSExport
+      |         ^
+    """
+
+    // Local var
+    """
+    class A {
+      def method = {
+        @JSExport
+        var x = 1
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
     """

@@ -209,15 +209,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         // Add exports to the template
         treeCopy.Template(tree, parents, self, body ++ exports)
 
-      case implDef: ImplDef =>
-        val sym = implDef.symbol
+      case memDef: MemberDef =>
+        val sym = memDef.symbol
         if (sym.isLocal) {
           for ((_, pos) <- jsInterop.exportsOf(sym)) {
-            currentUnit.error(pos, "You may not export a local class or object")
+            currentUnit.error(pos, "You may not export a local definition")
           }
         }
 
-        implDef
+        memDef
       case _ => tree
     }
 
