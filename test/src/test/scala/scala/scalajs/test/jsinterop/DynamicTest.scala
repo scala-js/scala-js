@@ -11,6 +11,8 @@ package jsinterop
 import scala.scalajs.js
 import scala.scalajs.test.JasmineTest
 
+import js.annotation.JSExport
+
 object DynamicTest extends JasmineTest {
 
   describe("scala.scalajs.js.Dynamic") {
@@ -27,6 +29,21 @@ object DynamicTest extends JasmineTest {
 
       expect(point.x).toEqual(1)
       expect(point.y).toEqual(2)
+    }
+
+    it("should allow to call functions with arguments named x") {
+      class A {
+        def a = 1
+      }
+
+      class B extends A {
+        @JSExport
+        def x(par: Int) = a + par // make sure `this` is bound correctly in JS
+      }
+
+      val b = (new B).asInstanceOf[js.Dynamic]
+
+      expect(b.x(10)).toEqual(11)
     }
 
     it("should allow instanciating JS classes dynamically - #10") {
