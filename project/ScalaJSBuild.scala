@@ -106,10 +106,12 @@ object ScalaJSBuild extends Build {
 
           clean := clean.dependsOn(
               // compiler, library and jasmineTestFramework are aggregated
-              clean in plugin, clean in corejslib, clean in javalib,
-              clean in scalalib, clean in libraryAux, clean in test,
+              clean in tools, clean in plugin,
+              clean in corejslib, clean in javalib, clean in scalalib,
+              clean in libraryAux,
               clean in examples, clean in exampleHelloWorld,
-              clean in exampleReversi, clean in exampleTesting).value,
+              clean in exampleReversi, clean in exampleTesting,
+              clean in test, clean in partest, clean in partestSuite).value,
 
           publish := {},
           publishLocal := {}
@@ -155,6 +157,19 @@ object ScalaJSBuild extends Build {
       )
   )
 
+  lazy val tools: Project = Project(
+      id = "scalajs-tools",
+      base = file("tools"),
+      settings = defaultSettings ++ publishSettings ++ Seq(
+          name := "Scala.js tools",
+          scalaVersion := "2.10.2",
+          libraryDependencies ++= Seq(
+              "com.google.javascript" % "closure-compiler" % "v20130603",
+              "net.liftweb" %% "lift-json" % "2.5.1"
+          )
+      )
+  )
+
   lazy val plugin: Project = Project(
       id = "scalajs-sbt-plugin",
       base = file("sbt-plugin"),
@@ -164,12 +179,10 @@ object ScalaJSBuild extends Build {
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
-              "com.google.javascript" % "closure-compiler" % "v20130603",
-              "org.mozilla" % "rhino" % "1.7R4",
-              "net.liftweb" %% "lift-json" % "2.5.1"
+              "org.mozilla" % "rhino" % "1.7R4"
           )
       )
-  )
+  ).dependsOn(tools)
 
   lazy val corejslib: Project = Project(
       id = "scalajs-corejslib",

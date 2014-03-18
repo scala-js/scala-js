@@ -17,7 +17,10 @@ import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
-import optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
+import Implicits._
+
+import scala.scalajs.tools.io.FileSystem
+import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
 import environment.rhino.{CodeBlock, Utilities}
