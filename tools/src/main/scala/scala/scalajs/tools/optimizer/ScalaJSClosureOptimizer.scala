@@ -10,7 +10,7 @@
 package scala.scalajs.tools.optimizer
 
 import scala.scalajs.tools.logging._
-import scala.scalajs.tools.io.FileSystem
+import scala.scalajs.tools.io._
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -21,23 +21,20 @@ import com.google.javascript.jscomp.{
 import scala.collection.JavaConverters._
 
 /** Scala.js Closure optimizer: does advanced optimizations with Closure. */
-class ScalaJSClosureOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
+class ScalaJSClosureOptimizer {
   import ScalaJSClosureOptimizer._
-  import fs.{File, fileOps}
 
-  private def toClosureSource(file: File) =
-    ClosureSource.fromInputStream(file.name, file.input)
+  private def toClosureSource(file: VirtualJSFile) =
+    ClosureSource.fromCode(file.name, file.content)
 
-  def optimize(inputs: Seq[File], output: File,
-      additionalExterns: Seq[File] = Nil,
-      prettyPrint: Boolean = false): Unit = {
-    val closureSources = inputs map toClosureSource
-    val closureExterns = (
-        ClosureSource.fromCode("ScalaJSExterns.js", ScalaJSExterns) +:
-        additionalExterns.map(toClosureSource))
+  def optimize(inputs: Inputs, outputConfig: OutputConfig,
+      logger: Logger): Result = {
+    val closureSources = inputs.sources map toClosureSource
+    val closureExterns =
+      (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
 
     val options = new ClosureOptions
-    options.prettyPrint = prettyPrint
+    options.prettyPrint = outputConfig.prettyPrint
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
 
@@ -48,35 +45,50 @@ class ScalaJSClosureOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
     val errors = result.errors.toList
     val warnings = result.warnings.toList
 
-    if (!errors.isEmpty) {
+    val outputContent = if (!errors.isEmpty) {
       logger.error(errors.length + " Closure errors:")
       errors.foreach(err => logger.error(err.toString))
-
-      writeToFile(output, "")
+      ""
     } else {
       if (!warnings.isEmpty) {
         logger.warn(warnings.length + " Closure warnings:")
         warnings.foreach(err => logger.warn(err.toString))
       }
-
-      writeToFile(output,
-          "(function(){'use strict';" +
-          compiler.toSource +
-          "}).call(this);\n")
+      "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
     }
-  }
 
-  private def writeToFile(file: File, content: String): Unit = {
-    val stream = new java.io.PrintStream(file.bufferedOutput)
-    try {
-      stream.append(content)
-    } finally {
-      stream.close()
-    }
+    new Result(new VirtualJSFile {
+      val name = outputConfig.name
+      def content = outputContent
+    })
   }
 }
 
 object ScalaJSClosureOptimizer {
+  /** Inputs of the Scala.js Closure optimizer. */
+  final case class Inputs(
+      /** Sources to be fed to Closure. */
+      sources: Seq[VirtualJSFile],
+      /** Additional externs files to be given to Closure. */
+      additionalExterns: Seq[VirtualJSFile] = Nil
+  )
+
+  /** Configuration for the output of the Scala.js Closure optimizer. */
+  final case class OutputConfig(
+      /** Name of the output file. */
+      name: String,
+      /** Pretty-print the output. */
+      prettyPrint: Boolean = false,
+      /** Ask to produce source map for the output (currently ignored). */
+      wantSourceMap: Boolean = false
+  )
+
+  /** Result of the Scala.js Closure optimizer. */
+  final class Result(
+      /** Output file. */
+      val output: VirtualJSFile
+  )
+
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
   val ScalaJSExterns = """
     /** @constructor */
@@ -93,4 +105,9 @@ object ScalaJSClosureOptimizer {
     var global = {};
     var __ScalaJSExportsNamespace = {};
     """
+
+  val ScalaJSExternsFile = new VirtualJSFile {
+    val name = "ScalaJSExterns.js"
+    def content = ScalaJSExterns
+  }
 }

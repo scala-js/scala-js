@@ -13,13 +13,15 @@ import sbt._
 import sbt.inc.{ IncOptions, ClassfileManager }
 import Keys._
 
+import java.nio.charset.Charset
+
 import scala.collection.mutable
 
 import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
 import Implicits._
 
-import scala.scalajs.tools.io.FileSystem
+import scala.scalajs.tools.io.{IO => _, _}
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
@@ -98,6 +100,22 @@ object ScalaJSPlugin extends Plugin {
       if (lhsRank != rhsRank) lhsRank < rhsRank
       else lhs.name.compareTo(rhs.name) < 0
     }
+  }
+
+  /** Partitions a sequence of files in three categories:
+   *  1. The core js lib (must be unique)
+   *  2. Scala.js class files (.js files emitted by Scala.js)
+   *  3. Other scripts
+   */
+  def partitionJSFiles(files: Seq[File]): (File, Seq[File], Seq[File]) = {
+    val (classFiles, otherFiles) = files.partition(isScalaJSClassFile)
+    val (coreJSLibFiles, customScripts) = otherFiles.partition(isCoreJSLibFile)
+
+    if (coreJSLibFiles.size != 1)
+      throw new IllegalArgumentException(
+          s"There must be exactly one Scala.js core library (scalajs-corejslib.js) in the inputs.")
+
+    (coreJSLibFiles.head, classFiles, customScripts)
   }
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
@@ -337,8 +355,23 @@ object ScalaJSPlugin extends Plugin {
           FileFunction.cached(taskCacheDir,
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Preoptimizing %s ..." format output)
-            val optimizer = new ScalaJSOptimizer(FileSystem.DefaultFileSystem, s.log)
-            optimizer.optimize(inputs, output, relativeSourceMaps.value)
+            import ScalaJSOptimizer._
+            val (coreJSLibFile, classFiles, customScripts) =
+              partitionJSFiles(inputs)
+            val coreInfoFiles =
+              Seq("javalangObject.sjsinfo", "javalangString.sjsinfo").map(
+                  name => FileVirtualFile.withName(coreJSLibFile, name))
+            val optimizer = new ScalaJSOptimizer
+            val result = optimizer.optimize(
+                Inputs(
+                    coreJSLib = FileVirtualJSFile(coreJSLibFile),
+                    coreInfoFiles = coreInfoFiles map FileVirtualFile,
+                    scalaJSClassfiles = classFiles map FileVirtualScalaJSClassfile,
+                    customScripts = customScripts map FileVirtualJSFile),
+                OutputConfig(
+                    name = output.name),
+                s.log)
+            IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
             Set(output)
           } (inputs.toSet)
         }
@@ -370,11 +403,17 @@ object ScalaJSPlugin extends Plugin {
         FileFunction.cached(taskCacheDir,
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
           s.log.info("Optimizing %s ..." format output)
-          val optimizer = new ScalaJSClosureOptimizer(
-              FileSystem.DefaultFileSystem, s.log)
-          optimizer.optimize(inputs, output,
-              additionalExterns = optimizeJSExterns.value,
-              prettyPrint = optimizeJSPrettyPrint.value)
+          import ScalaJSClosureOptimizer._
+          val optimizer = new ScalaJSClosureOptimizer
+          val result = optimizer.optimize(
+              Inputs(
+                  sources = inputs map FileVirtualJSFile,
+                  additionalExterns = optimizeJSExterns.value map FileVirtualJSFile),
+              OutputConfig(
+                  name = output.name,
+                  prettyPrint = optimizeJSPrettyPrint.value),
+              s.log)
+          IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
           Set(output)
         } (inputs.toSet)
 

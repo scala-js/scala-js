@@ -11,101 +11,76 @@ package scala.scalajs.tools.optimizer
 
 import scala.annotation.tailrec
 
+import java.io._
 import scala.collection.mutable
 
 import net.liftweb.json._
 
 import scala.scalajs.tools.logging._
-import scala.scalajs.tools.io.FileSystem
+import scala.scalajs.tools.io._
 import OptData._
 
 /** Scala.js optimizer: does type-aware global dce. */
-class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
+class ScalaJSOptimizer {
   import ScalaJSOptimizer._
-  import fs.{File, fileOps}
 
-  val encodedNameToJSFile = mutable.Map.empty[String, File]
+  private[this] var logger: Logger = _
+  private[this] val encodedNameToClassfile =
+    mutable.Map.empty[String, VirtualScalaJSClassfile]
 
   /** Applies Scala.js-specific optimizations to a sequence of .js files.
-   *  The inputs must contain exactly one file named "scalajs-corejslib.js"
-   *  ([[scala.scalajs.sbtplugin.Utils.CoreJSLibFileName]]), which must be the
-   *  Scala.js core JS library.
-   *  In the directory containing the Scala.js core JS library, the files
-   *  "javalangObject.sjsinfo" and "javalangString.sjsinfo" must also be
-   *  present (but not listed in the inputs).
-   *  The inputs otherwise contain a mix of so-called Scala.js class files,
-   *  i.e., .js files emitted by Scala.js, which have a sibling with extension
-   *  ".sjsinfo", and other custom .js files.
-   *  The Scala.js class files will be processed by this method to eliminate
-   *  dead code. The output file will contain, in that order:
+   *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
+   *  optional inputs.
+   *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
+   *  for the output of this method.
+   *  Returns a [[ScalaJSOptimizer.Result]] containing the result of the
+   *  optimizations. Its output file will contain, in that order:
    *  1. The Scala.js core lib,
    *  2. The result of dead code elimination applied to Scala.js class files,
    *  3. The custom .js files, in the same order as they were listed in inputs.
    */
-  def optimize(inputs: Seq[File], output: File,
-      relativeSourceMaps: Boolean = false): Unit = {
-
-    val (classFiles, otherFiles) = inputs.partition(isScalaJSClassFile)
-
-    val (coreJSLibFiles, customScripts) =
-      otherFiles.partition(_.name == "scalajs-corejslib.js")
-    if (coreJSLibFiles.size != 1)
-      throw new IllegalArgumentException(
-          s"There must be exactly one Scala.js core library (scalajs-corejslib.js) in the inputs.")
-    val coreJSLibFile = coreJSLibFiles.head
-
-    val infoFiles0 = classFiles.map(jsFileToInfo)
-    val infoFiles = Seq(
-        coreJSLibFile.withName("javalangObject.sjsinfo"),
-        coreJSLibFile.withName("javalangString.sjsinfo")) ++ infoFiles0
-
-    val analyzer = parseInfoFiles(infoFiles)
-    analyzer.computeReachability()
-    writeDCEedOutput(analyzer, output, coreJSLibFile, customScripts)
+  def optimize(inputs: Inputs, outputConfig: OutputConfig,
+      logger: Logger): Result = {
+    this.logger = logger
+    try {
+      val analyzer = parseInfoFiles(inputs)
+      analyzer.computeReachability()
+      writeDCEedOutput(inputs, outputConfig, analyzer)
+    } finally {
+      this.logger = null
+    }
   }
 
-  private def isScalaJSClassFile(file: File): Boolean =
-    file.hasExtension(".js") && jsFileToInfo(file).exists
-
-  private def jsFileToInfo(file: File): File =
-    file.withExtension(".js", ".sjsinfo")
-
-  private def parseInfoFiles(infoFiles: Seq[File]): Analyzer = {
-    val allData = infoFiles map { infoFile =>
-      val data = readData(infoFile)
+  private def parseInfoFiles(inputs: Inputs): Analyzer = {
+    val coreData = inputs.coreInfoFiles.map(f => readData(f.content))
+    val userData = inputs.scalaJSClassfiles map { classfile =>
+      val data = readData(classfile.info)
       val encodedName = data.encodedName
-      val jsFile = infoFile.withExtension(".sjsinfo", ".js")
-      if (jsFile.exists)
-        encodedNameToJSFile += encodedName -> jsFile
+      encodedNameToClassfile += encodedName -> classfile
       data
     }
-    new Analyzer(logger, allData)
+    new Analyzer(logger, coreData ++ userData)
   }
 
-  private def readData(infoFile: File): ClassInfoData = {
+  private def readData(infoFile: String): ClassInfoData = {
     implicit val formats = DefaultFormats
-    val input = infoFile.input
-    val reader = new java.io.InputStreamReader(infoFile.input)
-    try {
-      Extraction.extract[ClassInfoData](JsonParser.parse(reader, false))
-    } finally {
-      reader.close()
-    }
+    Extraction.extract[ClassInfoData](JsonParser.parse(infoFile))
   }
 
-  private def writeDCEedOutput(analyzer: Analyzer, outputFile: File,
-      coreJSLibFile: File, customScripts: Seq[File]): Unit = {
+  private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
+      analyzer: Analyzer): Result = {
 
-    val writer = new java.io.PrintWriter(outputFile.output)
+    val outputContent = new StringWriter
+    val writer = new PrintWriter(outputContent)
 
-    def pasteFile(f: File): Unit =
-      pasteLines(fs.readLines(f))
+    def pasteFile(f: VirtualFile): Unit =
+      pasteLines(f.readLines())
     def pasteLines(lines: TraversableOnce[String]): Unit =
       lines foreach writer.println
     def pasteLine(line: String): Unit =
       writer.println(line)
 
-    pasteFile(coreJSLibFile)
+    pasteFile(inputs.coreJSLib)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
@@ -115,7 +90,7 @@ class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
     for {
       classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
       if classInfo.isNeededAtAll
-      jsFile <- encodedNameToJSFile.get(classInfo.encodedName)
+      classfile <- encodedNameToClassfile.get(classInfo.encodedName)
     } {
       def pasteReachableMethods(methodLines: List[String], methodLinePrefix: String): Unit = {
         for (p <- methodChunks(methodLines, methodLinePrefix)) {
@@ -127,7 +102,7 @@ class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
         }
       }
 
-      val lines = fs.readLines(jsFile).filterNot(_.startsWith("//@"))
+      val lines = classfile.readLines().filterNot(_.startsWith("//@"))
       if (classInfo.isImplClass) {
         pasteReachableMethods(lines, "ScalaJS.impls")
       } else if (!classInfo.hasInstantiation) {
@@ -162,10 +137,17 @@ class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
       }
     }
 
-    for (file <- customScripts)
+    for (file <- inputs.customScripts)
       pasteFile(file)
 
     writer.close()
+
+    val outputString = outputContent.toString()
+
+    new Result(new VirtualJSFile {
+      val name = outputConfig.name
+      def content = outputString
+    })
   }
 
   private def methodChunks(methodLines: List[String],
@@ -197,6 +179,32 @@ class ScalaJSOptimizer[FS <: FileSystem](val fs: FS, logger: Logger) {
 }
 
 object ScalaJSOptimizer {
+  /** Inputs of the Scala.js optimizer. */
+  final case class Inputs(
+      /** The scalajs-corejslib.js file. */
+      coreJSLib: VirtualJSFile,
+      /** Core .sjsinfo files: those for java.lang.{Object,String}. */
+      coreInfoFiles: Seq[VirtualFile],
+      /** Scala.js "class files": those emitted by the Scala.js compilation. */
+      scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
+      /** Additional scripts to be appended in the output. */
+      customScripts: Seq[VirtualJSFile] = Nil
+  )
+
+  /** Configuration for the output of the Scala.js optimizer. */
+  final case class OutputConfig(
+      /** Name of the output file. */
+      name: String,
+      /** Ask to produce source map for the output (currently ignored). */
+      wantSourceMap: Boolean = false
+  )
+
+  /** Result of the Scala.js optimizer. */
+  final class Result(
+      /** Output file. */
+      val output: VirtualJSFile
+  )
+
   private trait JustAForeach[A] {
     def foreach[U](f: A => U): Unit
   }
