@@ -29,7 +29,7 @@ matrix:
       env:
         - KIND=main
     - jdk: openjdk6
-      scala: 2.10.4-RC3
+      scala: 2.10.4
       env:
         - KIND=main
     - jdk: openjdk6
@@ -61,7 +61,7 @@ matrix:
       env:
         - KIND=main
     - jdk: oraclejdk7
-      scala: 2.10.4-RC3
+      scala: 2.10.4
       env:
         - KIND=main
     - jdk: oraclejdk7
