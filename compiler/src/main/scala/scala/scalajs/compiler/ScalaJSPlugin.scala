@@ -22,6 +22,9 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   val description = "Compile to JavaScript"
   val components = List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
 
+  /** Called when the JS ASTs are generated. Override for testing */
+  def generatedJSAST(clDefs: List[jsAddons.js.Tree]): Unit = {}
+
   /** Addons for JavaScript platform */
   object jsAddons extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
@@ -44,7 +47,10 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
-  } with GenJSCode
+  } with GenJSCode {
+    def generatedJSAST(clDefs: List[jsAddons.js.Tree]) =
+      ScalaJSPlugin.this.generatedJSAST(clDefs)
+  }
 
   override def processOptions(options: List[String],
       error: String => Unit): Unit = {
