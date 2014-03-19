@@ -3,5 +3,5 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# Some reflective call issue
+# Filed as #390
 run/t5565.scala
