@@ -41,6 +41,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   val phaseName = "jscode"
 
+  /** testing: this will be called when ASTs are generated */
+  def generatedJSAST(clDefs: List[jsAddons.js.Tree]): Unit
+
   override def newPhase(p: Phase) = new JSCodePhase(p)
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) {
@@ -197,6 +200,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             currentClassInfoBuilder = null
           }
         }
+
+        val clDefs = generatedClasses.map(_._2).toList
+        generatedJSAST(clDefs)
 
         for ((sym, tree, infoBuilder) <- generatedClasses) {
           val desugared = desugarJavaScript(tree)
