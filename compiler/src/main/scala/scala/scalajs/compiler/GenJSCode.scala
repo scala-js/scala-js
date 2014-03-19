@@ -740,8 +740,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val excludedFlags = (
           Flags.BRIDGE  |
           Flags.PRIVATE |
-          Flags.MACRO   |
-          Flags.DEFAULTPARAM
+          Flags.MACRO
       )
 
       /** Check if two method symbols conform in name and parameter types */

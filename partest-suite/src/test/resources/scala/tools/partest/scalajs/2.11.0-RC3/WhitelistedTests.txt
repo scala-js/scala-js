@@ -2900,3 +2900,4 @@ run/t261.scala
 run/t3235-minimal.scala
 run/t1503_future.scala
 run/t1503.scala
+run/t5565.scala
