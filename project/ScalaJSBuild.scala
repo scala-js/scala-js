@@ -93,7 +93,8 @@ object ScalaJSBuild extends Build {
       "2.10.3",
       "2.10.4",
       "2.11.0-M7",
-      "2.11.0-M8"
+      "2.11.0-M8",
+      "2.11.0-RC3"
     )
   }
 
@@ -537,7 +538,13 @@ object ScalaJSBuild extends Build {
             if (shouldPartest.value)
               Seq(
                 "org.scala-sbt" % "sbt" % "0.13.0",
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8",
+                (
+                  if (scalaVersion.value == "2.11.0-M7" ||
+                      scalaVersion.value == "2.11.0-M8")
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.0-RC8"
+                  else
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.0"
+                ),
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "org.mozilla" % "rhino" % "1.7R4"
               )
