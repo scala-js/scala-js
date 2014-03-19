@@ -91,7 +91,7 @@ object ScalaJSBuild extends Build {
     crossScalaVersions := Seq(
       "2.10.2",
       "2.10.3",
-      "2.10.4-RC3",
+      "2.10.4",
       "2.11.0-M7",
       "2.11.0-M8"
     )
@@ -316,10 +316,9 @@ object ScalaJSBuild extends Build {
           sources in Compile := {
             // Sources coming from the sources of Scala
             val scalaSrcDir = fetchScalaSource.value / "src"
-            val scalaSrcDirs = Seq(
-              scalaSrcDir / "library"/*,
-              scalaSrcDir / "continuations" / "library"*/
-            )
+            val scalaSrcDirs = (scalaSrcDir / "library") :: (
+                if (!scalaVersion.value.startsWith("2.10.")) Nil
+                else (scalaSrcDir / "continuations" / "library") :: Nil)
 
             // All source directories (overrides shadow scalaSrcDirs)
             val sourceDirectories =
@@ -353,19 +352,21 @@ object ScalaJSBuild extends Build {
             sources.result()
           },
 
-          // Continuation plugin
+          // Continuation plugin (when using 2.10.x)
           autoCompilerPlugins := true,
           libraryDependencies ++= {
             val ver = scalaVersion.value
-            if (ver.startsWith("2.11.") && ver != "2.11.0-M7") Seq(
-              compilerPlugin("org.scala-lang.plugins" %% "scala-continuations-plugin" % "1.0.0-RC3"),
-              "org.scala-lang.plugins" %% "scala-continuations-library" % "1.0.0-RC3"
-            )
-            else Seq(
-              compilerPlugin("org.scala-lang.plugins" % "continuations" % scalaVersion.value)
-            )
+            if (ver.startsWith("2.10."))
+              Seq(compilerPlugin("org.scala-lang.plugins" % "continuations" % ver))
+            else
+              Nil
           },
-          scalacOptions += "-P:continuations:enable"
+          scalacOptions ++= {
+            if (scalaVersion.value.startsWith("2.10."))
+              Seq("-P:continuations:enable")
+            else
+              Nil
+          }
       ) ++ (
           scalaJSExternalCompileSettings
       )
