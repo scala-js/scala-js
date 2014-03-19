@@ -2,6 +2,3 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
-
-# Filed as #390
-run/t5565.scala

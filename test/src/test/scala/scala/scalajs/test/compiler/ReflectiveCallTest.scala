@@ -244,5 +244,14 @@ object ReflectiveCallTest extends JasmineTest {
       expect(objNeTest(a1,a1)).toBeFalsy
     }
 
+    it("should work with default arguments - #390") {
+      def pimpIt(a: Int) = new {
+        def foo(b: Int, c: Int = 1): Int = a + b + c
+      }
+
+      expect(pimpIt(1).foo(2)).toEqual(4)
+      expect(pimpIt(2).foo(2,4)).toEqual(8)
+    }
+
   }
 }
