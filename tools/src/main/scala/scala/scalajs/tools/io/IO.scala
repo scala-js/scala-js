@@ -38,4 +38,21 @@ object IO {
       br.close()
     }
   }
+
+  /** Reads the entire content of an input stream as a UTF-8 string. */
+  def readInputStreamToString(stream: InputStream): String = {
+    val reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"))
+    val buffer = new Array[Char](4096)
+    val builder = new StringBuilder
+    @tailrec
+    def loop(): Unit = {
+      val len = reader.read(buffer)
+      if (len > 0) {
+        builder.appendAll(buffer, 0, len)
+        loop()
+      }
+    }
+    loop()
+    builder.toString()
+  }
 }

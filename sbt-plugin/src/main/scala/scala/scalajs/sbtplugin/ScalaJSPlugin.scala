@@ -22,6 +22,7 @@ import Utils._
 import Implicits._
 
 import scala.scalajs.tools.io.{IO => _, _}
+import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
@@ -342,39 +343,35 @@ object ScalaJSPlugin extends Plugin {
 
       preoptimizeJS := {
         val s = streams.value
-        val inputs = (sources in preoptimizeJS).value
+        val classpath = for {
+          entry <- (fullClasspath in preoptimizeJS).value
+          f = entry.data
+          if (!isScalaJSCompilerJar(f))
+        } yield f
         val output = (artifactPath in preoptimizeJS).value
         val taskCacheDir = s.cacheDirectory / "preoptimize-js"
 
         IO.createDirectory(output.getParentFile)
 
-        if (inputs.isEmpty) {
-          if (!output.isFile || output.length != 0)
-            IO.writeLines(output, Nil)
-        } else {
-          FileFunction.cached(taskCacheDir,
-              FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-            s.log.info("Preoptimizing %s ..." format output)
-            import ScalaJSOptimizer._
-            val (coreJSLibFile, classFiles, customScripts) =
-              partitionJSFiles(inputs)
-            val coreInfoFiles =
-              Seq("javalangObject.sjsinfo", "javalangString.sjsinfo").map(
-                  name => FileVirtualFile.withName(coreJSLibFile, name))
-            val optimizer = new ScalaJSOptimizer
-            val result = optimizer.optimize(
-                Inputs(
-                    coreJSLib = FileVirtualJSFile(coreJSLibFile),
-                    coreInfoFiles = coreInfoFiles map FileVirtualFile,
-                    scalaJSClassfiles = classFiles map FileVirtualScalaJSClassfile,
-                    customScripts = customScripts map FileVirtualJSFile),
-                OutputConfig(
-                    name = output.name),
-                s.log)
-            IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
-            Set(output)
-          } (inputs.toSet)
+        val filesToWatchForChanges = classpath flatMap { f =>
+          if (f.isFile) List(f)
+          else (f ** "*.js").get
         }
+
+        FileFunction.cached(taskCacheDir,
+            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+          s.log.info("Preoptimizing %s ..." format output)
+          import ScalaJSOptimizer._
+          val classpathEntries =
+            ScalaJSClasspathEntries.readEntriesInClasspath(classpath)
+          val optimizer = new ScalaJSOptimizer
+          val result = optimizer.optimize(
+              Inputs(classpath = classpathEntries),
+              OutputConfig(name = output.name),
+              s.log)
+          IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
+          Set(output)
+        } (filesToWatchForChanges.toSet)
 
         output
       },
