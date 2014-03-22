@@ -552,9 +552,12 @@ object ScalaJSBuild extends Build {
           },
 
           unmanagedSourceDirectories in Compile ++= {
-            val base = ((scalaSource in (plugin, Compile)).value /
+            val toolsBase = (scalaSource in (tools, Compile)).value /
+                "scala/scalajs/tools"
+            val pluginBase = ((scalaSource in (plugin, Compile)).value /
                 "scala/scalajs/sbtplugin")
-            Seq(base / "environment", base / "sourcemap")
+            Seq(pluginBase / "environment", pluginBase / "sourcemap",
+                toolsBase / "io", toolsBase / "classpath")
           },
           sources in Compile := {
             if (shouldPartest.value) {
@@ -577,38 +580,6 @@ object ScalaJSBuild extends Build {
           useLibraryButDoNotDependOnIt
       ) ++ Seq(
           name := "Scala.js partest suite",
-
-          /* Add an extracted version of scalajs-library.jar on the classpath.
-           * The runner will need it, as it cannot cope with .js files in .jar.
-           */
-          dependencyClasspath in Test ++= {
-            if (shouldPartest.value) {
-              val s = streams.value
-
-              val taskCacheDir = s.cacheDirectory / "extract-scalajs-library"
-              val extractDir = taskCacheDir / "scalajs-library"
-
-              val libraryJar =
-                (artifactPath in (library, Compile, packageBin)).value
-
-              val cachedExtractJar = FileFunction.cached(taskCacheDir / "cache-info",
-                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-
-                val usefulFilesFilter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
-                s.log.info("Extracting %s ..." format libraryJar)
-                if (extractDir.exists)
-                  IO.delete(extractDir)
-                IO.createDirectory(extractDir)
-                IO.unzip(libraryJar, extractDir, filter = usefulFilesFilter,
-                    preserveLastModified = true)
-                (extractDir ** usefulFilesFilter).get.toSet
-              }
-
-              cachedExtractJar(Set(libraryJar))
-
-              Seq(Attributed.blank(extractDir))
-            } else Seq()
-          },
 
           fork in Test := true,
           javaOptions in Test += "-Xmx1G",

@@ -279,27 +279,17 @@ object ScalaJSPlugin extends Plugin {
   }
 
   val scalaJSEnvironmentTask = Def.task[ScalaJSEnvironment] {
-    val inputs = (sources in scalaJSEnvironment).value
-    val classpath = (fullClasspath in scalaJSEnvironment).value.map(_.data)
     val logger = streams.value.log
     val console = loggingConsole.value
 
-    new RhinoBasedScalaJSEnvironment(inputs, classpath, console, logger.trace)
+    val classpath =
+      ScalaJSClasspathEntries.readEntriesInClasspath(
+          jsClasspath((fullClasspath in scalaJSEnvironment).value))
+
+    new RhinoBasedScalaJSEnvironment(classpath, console, logger.trace)
   }
 
   val scalaJSEnvironmentSettings = Seq(
-      sources in scalaJSEnvironment := (
-          (sources in packageExternalDepsJS).value ++
-          (sources in packageInternalDepsJS).value ++
-          (sources in packageExportedProductsJS).value
-      ),
-
-      fullClasspath in scalaJSEnvironment := (
-          (externalDependencyClasspath in packageExternalDepsJS).value ++
-          (internalDependencyClasspath in packageInternalDepsJS).value ++
-          (exportedProducts in packageExportedProductsJS).value
-      ),
-
       scalaJSEnvironment <<= scalaJSEnvironmentTask
   )
 

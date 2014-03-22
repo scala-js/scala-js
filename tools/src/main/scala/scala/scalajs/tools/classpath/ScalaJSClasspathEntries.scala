@@ -21,7 +21,8 @@ import scala.scalajs.tools.io._
 final case class ScalaJSClasspathEntries(
     coreJSLibFile: VirtualJSFile,
     coreInfoFiles: Seq[VirtualFile],
-    classFiles: Seq[VirtualScalaJSClassfile]
+    classFiles: Seq[VirtualScalaJSClassfile],
+    otherJSFiles: Seq[VirtualJSFile] = Nil
 )
 
 object ScalaJSClasspathEntries {
@@ -29,6 +30,7 @@ object ScalaJSClasspathEntries {
     private var coreJSLibFile: Option[VirtualJSFile] = None
     private val coreInfoFiles = mutable.ListBuffer.empty[VirtualFile]
     private val classFiles = mutable.Map.empty[String, VirtualScalaJSClassfile]
+    private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
 
     def addCoreJSLibFile(file: VirtualJSFile): Unit = {
       if (coreJSLibFile.nonEmpty)
@@ -56,6 +58,20 @@ object ScalaJSClasspathEntries {
       }
     }
 
+    def hasJSFile(relativePath: String): Boolean =
+      otherJSFiles.contains(relativePath)
+
+    def addJSFile(relativePath: String, file: VirtualJSFile): Unit =
+      otherJSFiles += ((relativePath, file))
+
+    def addJSFileIfNew(relativePath: String, file: => VirtualJSFile): Boolean = {
+      if (hasJSFile(relativePath)) false
+      else {
+        addJSFile(relativePath, file)
+        true
+      }
+    }
+
     /** Returns the result of the builder.
      *  A core JS lib must have been found.
      */
@@ -63,7 +79,8 @@ object ScalaJSClasspathEntries {
       if (coreJSLibFile.isEmpty)
         throw new IllegalStateException("Missing core JS lib on the classpath")
       ScalaJSClasspathEntries(
-          coreJSLibFile.get, coreInfoFiles.toSeq, classFiles.values.toSeq)
+          coreJSLibFile.get, coreInfoFiles.toSeq, classFiles.values.toSeq,
+          otherJSFiles.values.toSeq)
     }
 
     /** Returns a partial result of the builder.
@@ -74,7 +91,8 @@ object ScalaJSClasspathEntries {
       val coreJSLib = coreJSLibFile.getOrElse(
           VirtualJSFile.empty("scalajs-corejslib.js"))
       ScalaJSClasspathEntries(
-          coreJSLib, coreInfoFiles.toSeq, classFiles.values.toSeq)
+          coreJSLib, coreInfoFiles.toSeq, classFiles.values.toSeq,
+          otherJSFiles.values.toSeq)
     }
   }
 
@@ -100,7 +118,7 @@ object ScalaJSClasspathEntries {
   def readEntriesInClasspathElement(builder: Builder, element: File): Unit = {
     if (element.isDirectory)
       readEntriesInDir(builder, element)
-    else
+    else if (element.isFile)
       readEntriesInJar(builder, element)
   }
 
@@ -122,9 +140,12 @@ object ScalaJSClasspathEntries {
               builder.addCoreInfoFile(FileVirtualJSFile(file))
 
             case _ =>
-              if (!builder.hasClassFile(path) &&
-                  FileVirtualScalaJSClassfile.isScalaJSClassfile(file))
-                builder.addClassFile(path, FileVirtualScalaJSClassfile(file))
+              if (FileVirtualScalaJSClassfile.isScalaJSClassfile(file)) {
+                builder.addClassFileIfNew(path,
+                    FileVirtualScalaJSClassfile(file))
+              } else {
+                builder.addJSFileIfNew(path, FileVirtualJSFile(file))
+              }
           }
         }
       }
@@ -216,6 +237,8 @@ object ScalaJSClasspathEntries {
     for ((path, classFile) <- classFiles) {
       if (classFile.info != "") // it is really a Scala.js class file
         builder.addClassFile(path, classFile)
+      else // it is another .js file
+        builder.addJSFile(path, classFile)
     }
   }
 }
