@@ -106,10 +106,17 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Add symbol to class
     clsSym.info.decls.enter(expSym)
 
+    def spliceParam(sym: Symbol) = {
+      if (isRepeated(sym))
+        Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
+      else
+        Ident(sym)
+    }
+
     // Construct inner function call
     val sel: Tree = Select(This(clsSym), defSym)
     val rhs = (sel /: expSym.paramss) {
-      (fun,params) => Apply(fun, params map Ident)
+      (fun,params) => Apply(fun, params map spliceParam)
     }
 
     // Construct and type the actual tree

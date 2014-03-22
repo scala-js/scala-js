@@ -261,6 +261,18 @@ object ExportsTest extends JasmineTest {
       expect(c2.x.isInstanceOf[B]).toBeTruthy
     }
 
+    it("should offer exports for variable argument methods - #393") {
+      class A {
+        @JSExport
+        def foo(i: String*) = i.mkString("|")
+      }
+
+      val strings = Seq("a", "b", "c").asInstanceOf[js.Any]
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(strings)).toEqual("a|b|c")
+    }
+
     it("should offer exports for objects with implicit name") {
       val accessor = js.Dynamic.global.ExportedObject
       expect(accessor).toBeDefined
