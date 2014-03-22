@@ -13,6 +13,7 @@ import sbt._
 import sbt.inc.{ IncOptions, ClassfileManager }
 import Keys._
 
+import java.io.PrintWriter
 import java.nio.charset.Charset
 
 import scala.collection.mutable
@@ -23,6 +24,7 @@ import Implicits._
 
 import scala.scalajs.tools.io.{IO => _, _}
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.packager._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
@@ -79,44 +81,20 @@ object ScalaJSPlugin extends Plugin {
       "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
       "scala-parser-combinators", "scala-xml") _
 
-  private val AncestorCountLine =
-    raw""""ancestorCount": *([0-9]+)""".r.unanchored
-
-  def sortScalaJSOutputFiles(files: Seq[File]): Seq[File] = {
-    files sortWith { (lhs, rhs) =>
-      def rankOf(jsFile: File): Int = {
-        jsFile match {
-          case CoreJSLibFile() => -1
-          case ScalaJSClassFile(infoFile) =>
-            IO.readLines(infoFile).collectFirst {
-              case AncestorCountLine(countStr) => countStr.toInt
-            }.getOrElse {
-              throw new AssertionError(s"Did not find ancestor count in $infoFile")
-            }
-          case _ => 10000 // just in case someone does something weird to our classpaths
-        }
-      }
-      val lhsRank = rankOf(lhs)
-      val rhsRank = rankOf(rhs)
-      if (lhsRank != rhsRank) lhsRank < rhsRank
-      else lhs.name.compareTo(rhs.name) < 0
-    }
+  private def jsClasspath(cp: Seq[Attributed[File]]): Seq[File] = {
+    for {
+      entry <- cp
+      f = entry.data
+      if !isScalaJSCompilerJar(f)
+    } yield f
   }
 
-  /** Partitions a sequence of files in three categories:
-   *  1. The core js lib (must be unique)
-   *  2. Scala.js class files (.js files emitted by Scala.js)
-   *  3. Other scripts
-   */
-  def partitionJSFiles(files: Seq[File]): (File, Seq[File], Seq[File]) = {
-    val (classFiles, otherFiles) = files.partition(isScalaJSClassFile)
-    val (coreJSLibFiles, customScripts) = otherFiles.partition(isCoreJSLibFile)
-
-    if (coreJSLibFiles.size != 1)
-      throw new IllegalArgumentException(
-          s"There must be exactly one Scala.js core library (scalajs-corejslib.js) in the inputs.")
-
-    (coreJSLibFiles.head, classFiles, customScripts)
+  private def filesToWatchForChanges(classpath: Seq[File]): Set[File] = {
+    val seq = classpath flatMap { f =>
+      if (f.isFile) List(f)
+      else (f ** "*.js").get
+    }
+    seq.toSet
   }
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
@@ -223,23 +201,45 @@ object ScalaJSPlugin extends Plugin {
 
       packageJSKey := {
         val s = streams.value
-        val inputs = (sources in packageJSKey).value
+        val classpath = jsClasspath(classpathKey.value)
         val output = (artifactPath in packageJSKey).value
         val taskCacheDir = s.cacheDirectory / "package-js"
 
-        IO.createDirectory(new File(output.getParent))
+        IO.createDirectory(output.getParentFile)
 
-        if (inputs.isEmpty) {
+        if (classpath.isEmpty) {
           if (!output.isFile || output.length != 0)
             IO.writeLines(output, Nil)
         } else {
-          FileFunction.cached(taskCacheDir / "package",
+          FileFunction.cached(taskCacheDir,
               FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
             s.log.info("Packaging %s ..." format output)
-            val sorted = sortScalaJSOutputFiles(inputs)
-            catJSFilesAndTheirSourceMaps(sorted, output, relativeSourceMaps.value)
+            import ScalaJSPackager._
+            val classpathEntries =
+              ScalaJSClasspathEntries.readEntriesInClasspathPartial(classpath)
+            val packager = new ScalaJSPackager
+            val relativizeSourceMapBasePath =
+              if (relativeSourceMaps.value) Some(output.getParent)
+              else None
+            val outputWriter = new PrintWriter(output, "UTF-8")
+            val sourceMapWriter =
+              if (packageJSKey == packageExternalDepsJS) None
+              else Some(new PrintWriter(changeExt(output, ".js", ".js.map"), "UTF-8"))
+            try {
+              val result = packager.packageScalaJS(
+                  Inputs(classpath = classpathEntries),
+                  OutputConfig(
+                      name = output.name,
+                      outputWriter = outputWriter,
+                      sourceMapWriter = sourceMapWriter,
+                      relativizeSourceMapBasePath = relativizeSourceMapBasePath),
+                  s.log)
+            } finally {
+              outputWriter.close()
+              sourceMapWriter.foreach(_.close())
+            }
             Set(output)
-          } (inputs.toSet)
+          } (filesToWatchForChanges(classpath))
         }
 
         Seq(output)
@@ -343,20 +343,11 @@ object ScalaJSPlugin extends Plugin {
 
       preoptimizeJS := {
         val s = streams.value
-        val classpath = for {
-          entry <- (fullClasspath in preoptimizeJS).value
-          f = entry.data
-          if (!isScalaJSCompilerJar(f))
-        } yield f
+        val classpath = jsClasspath((fullClasspath in preoptimizeJS).value)
         val output = (artifactPath in preoptimizeJS).value
         val taskCacheDir = s.cacheDirectory / "preoptimize-js"
 
         IO.createDirectory(output.getParentFile)
-
-        val filesToWatchForChanges = classpath flatMap { f =>
-          if (f.isFile) List(f)
-          else (f ** "*.js").get
-        }
 
         FileFunction.cached(taskCacheDir,
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
@@ -371,7 +362,7 @@ object ScalaJSPlugin extends Plugin {
               s.log)
           IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
           Set(output)
-        } (filesToWatchForChanges.toSet)
+        } (filesToWatchForChanges(classpath))
 
         output
       },

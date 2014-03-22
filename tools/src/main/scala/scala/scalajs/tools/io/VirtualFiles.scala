@@ -27,6 +27,11 @@ trait VirtualFile {
   def version: Option[Any] = None
 }
 
+object VirtualFile {
+  def empty(name: String): VirtualFile =
+    new MemVirtualFile(name).withVersion(Some(name))
+}
+
 /** A virtual input file which contains JavaScript code.
  *  It may have a source map associated with it.
  */
@@ -37,6 +42,11 @@ trait VirtualJSFile extends VirtualFile {
   def sourceMap: Option[String] = None
 }
 
+object VirtualJSFile {
+  def empty(name: String): VirtualJSFile =
+    new MemVirtualJSFile(name).withVersion(Some(name))
+}
+
 /** A virtual JavaScript input file which was emitted by Scala.js as a
  *  "classfile".
  *  It has an info file associated with it.
@@ -44,4 +54,9 @@ trait VirtualJSFile extends VirtualFile {
 trait VirtualScalaJSClassfile extends VirtualJSFile {
   /** Content of the info file associated with this classfile. */
   def info: String
+}
+
+object VirtualScalaJSClassfile {
+  def empty(name: String): VirtualScalaJSClassfile =
+    new MemVirtualScalaJSClassfile(name).withVersion(Some(name))
 }

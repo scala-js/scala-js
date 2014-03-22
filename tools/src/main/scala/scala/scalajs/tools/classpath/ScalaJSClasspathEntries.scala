@@ -56,20 +56,44 @@ object ScalaJSClasspathEntries {
       }
     }
 
+    /** Returns the result of the builder.
+     *  A core JS lib must have been found.
+     */
     def result: ScalaJSClasspathEntries = {
       if (coreJSLibFile.isEmpty)
         throw new IllegalStateException("Missing core JS lib on the classpath")
       ScalaJSClasspathEntries(
           coreJSLibFile.get, coreInfoFiles.toSeq, classFiles.values.toSeq)
     }
+
+    /** Returns a partial result of the builder.
+     *  There may or may not be a core JS lib (in which case it is an empty
+     *  file).
+     */
+    def partialResult: ScalaJSClasspathEntries = {
+      val coreJSLib = coreJSLibFile.getOrElse(
+          VirtualJSFile.empty("scalajs-corejslib.js"))
+      ScalaJSClasspathEntries(
+          coreJSLib, coreInfoFiles.toSeq, classFiles.values.toSeq)
+    }
   }
 
   /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
   def readEntriesInClasspath(classpath: Seq[File]): ScalaJSClasspathEntries = {
+    readEntriesInClasspathInternal(classpath).result
+  }
+
+  /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
+  def readEntriesInClasspathPartial(classpath: Seq[File]): ScalaJSClasspathEntries = {
+    readEntriesInClasspathInternal(classpath).partialResult
+  }
+
+  /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
+  private def readEntriesInClasspathInternal(classpath: Seq[File]): Builder = {
     val builder = new Builder
     for (element <- classpath)
       readEntriesInClasspathElement(builder, element)
-    builder.result
+    builder
   }
 
   /** Adds the Scala.js classpath entries in a directory or jar to a builder. */
