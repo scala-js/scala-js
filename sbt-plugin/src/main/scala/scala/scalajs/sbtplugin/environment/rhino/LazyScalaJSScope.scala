@@ -27,7 +27,7 @@ import scala.collection.mutable
  *  that are actually needed.
  */
 class LazyScalaJSScope(
-    providers: scala.collection.Map[String, File],
+    coreLib: ScalaJSCoreLib,
     globalScope: Scriptable,
     base: Scriptable,
     isModule: Boolean = false,
@@ -47,13 +47,8 @@ class LazyScalaJSScope(
     }
   }
 
-  private def load(name: String): Unit = {
-    val encodedName = propNameToEncodedName(name)
-    providers.get(encodedName) foreach { file =>
-      val ctx = Context.getCurrentContext()
-      ctx.evaluateFile(globalScope, file)
-    }
-  }
+  private def load(name: String): Unit =
+    coreLib.load(globalScope, propNameToEncodedName(name))
 
   private def propNameToEncodedName(name: String): String = {
     if (isTraitImpl) name.split("__")(0)

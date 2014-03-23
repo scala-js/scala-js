@@ -24,24 +24,9 @@ object FileVirtualFile extends (File => FileVirtualFile) {
 
   /** Reads the entire content of a file as a UTF-8 string. */
   def readFileToString(file: File): String = {
-    val reader = new BufferedReader(new InputStreamReader(
-        new FileInputStream(file), "UTF-8"))
-    try {
-      val buffer = new Array[Char](4096)
-      val builder = new StringBuilder
-      @tailrec
-      def loop(): Unit = {
-        val len = reader.read(buffer)
-        if (len > 0) {
-          builder.appendAll(buffer, 0, len)
-          loop()
-        }
-      }
-      loop()
-      builder.toString()
-    } finally {
-      reader.close()
-    }
+    val stream = new FileInputStream(file)
+    try IO.readInputStreamToString(stream)
+    finally stream.close()
   }
 
   /** Tests whether the given file has the specified extension.
@@ -93,6 +78,11 @@ class FileVirtualScalaJSClassfile(f: File)
 }
 
 object FileVirtualScalaJSClassfile extends (File => FileVirtualScalaJSClassfile) {
+  import FileVirtualFile._
+
   def apply(f: File): FileVirtualScalaJSClassfile =
     new FileVirtualScalaJSClassfile(f)
+
+  def isScalaJSClassfile(file: File): Boolean =
+    hasExtension(file, ".js") && withExtension(file, ".js", ".sjsinfo").exists
 }

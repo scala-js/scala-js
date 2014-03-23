@@ -17,18 +17,25 @@ import org.mozilla.javascript.BaseFunction
 import org.mozilla.javascript.Undefined
 import org.mozilla.javascript.ScriptableObject
 
+import scala.scalajs.tools.io._
+
 package object rhino {
 
   implicit class ContextOps(val self: Context) extends AnyVal {
+    def evaluateFile(scope: Scriptable, file: VirtualJSFile,
+        securityDomain: AnyRef = null): Any = {
+      self.evaluateString(scope, file.content, file.name, 1, securityDomain)
+    }
+
+    @deprecated("Use the overload with a VirtualJSFile instead", "0.4.2")
     def evaluateFile(scope: Scriptable, file: File,
-      securityDomain: AnyRef = null): Any = {
-      val reader = new java.io.FileReader(file)
-      try {
-        self.evaluateReader(scope, reader,
-          file.getAbsolutePath, 1, securityDomain)
-      } finally {
-        reader.close()
-      }
+        securityDomain: AnyRef): Any = {
+      evaluateFile(scope, FileVirtualJSFile(file), securityDomain)
+    }
+
+    @deprecated("Use the overload with a VirtualJSFile instead", "0.4.2")
+    def evaluateFile(scope: Scriptable, file: File): Any = {
+      evaluateFile(scope, FileVirtualJSFile(file))
     }
   }
 

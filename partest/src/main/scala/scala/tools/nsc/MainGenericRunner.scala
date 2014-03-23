@@ -2,6 +2,8 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
+import scala.scalajs.tools.classpath._
+
 import scala.scalajs.sbtplugin.environment.{
   Console, RhinoBasedScalaJSEnvironment
 }
@@ -43,18 +45,18 @@ class MainGenericRunner {
     if (howToRun != AsObject)
       return errorFn("Scala.js runner can only run an object")
 
-    val classpath: Seq[File] = for {
+    val usefulClasspathEntries = for {
       url <- settings.classpathURLs
-      file = urlToFile(url)
-      if (file.isDirectory)
-    } yield file
-
-    val inputs = (classpath ** "*.js").get
+      f = urlToFile(url)
+      if (f.isDirectory || f.getName.startsWith("scalajs-library"))
+    } yield f
+    val classpath = ScalaJSClasspathEntries.readEntriesInClasspath(
+        usefulClasspathEntries)
 
     def trace(e: => Throwable): Unit = e.printStackTrace()
 
     val environment = new RhinoBasedScalaJSEnvironment(
-        inputs, classpath, Some(new ConsoleConsole), trace)
+        classpath, Some(new ConsoleConsole), trace)
 
     environment.runInContextAndScope { (context, scope) =>
       new CodeBlock(context, scope) with Utilities {

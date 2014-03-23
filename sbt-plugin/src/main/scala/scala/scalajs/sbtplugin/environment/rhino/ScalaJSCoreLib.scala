@@ -9,22 +9,47 @@
 
 package scala.scalajs.sbtplugin.environment.rhino
 
-import org.mozilla.javascript.Scriptable
 import java.io.File
+import scala.collection.mutable
+
 import org.mozilla.javascript.Context
-import scala.collection.Map
+import org.mozilla.javascript.Scriptable
 
-class ScalaJSCoreLib(file: File,
-    scalaJSProviders: Map[String, File] = Map.empty) {
+import scala.scalajs.tools.io._
+import scala.scalajs.tools.classpath._
 
-  import ScalaJSCoreLib.Info
+class ScalaJSCoreLib(classpath: ScalaJSClasspathEntries) {
+  import ScalaJSCoreLib._
 
-  def withProviders(scalaJSProviders: Map[String, File]) =
-    new ScalaJSCoreLib(this.file, scalaJSProviders)
+  private val (providers, exportedSymbols) = {
+    val providers = mutable.Map.empty[String, VirtualScalaJSClassfile]
+    val exportedSymbols = mutable.ListBuffer.empty[String]
+
+    for (classFile <- classpath.classFiles) {
+      val info = classFile.info
+      val encodedName = info match {
+        case EncodedNameLine(encodedName) => encodedName
+        case _ =>
+          throw new AssertionError(s"Did not find encoded name in $classFile")
+      }
+      providers += encodedName -> classFile
+      val isExported = info.indexOf("\n" + """  "isExported": true,""") >= 0
+      if (isExported)
+        exportedSymbols += encodedName
+    }
+
+    (providers, exportedSymbols)
+  }
 
   def insertInto(context: Context, scope: Scriptable) = {
-    context.evaluateFile(scope, file)
+    context.evaluateFile(scope, classpath.coreJSLibFile)
     lazifyScalaJSFields(scope)
+
+    // Make sure exported symbols are loaded
+    val ScalaJS = scope.get("ScalaJS", scope).asInstanceOf[Scriptable]
+    val c = ScalaJS.get("c", ScalaJS).asInstanceOf[Scriptable]
+    for (encodedName <- exportedSymbols)
+      c.get(encodedName, c)
   }
 
   private val scalaJSLazyFields = Seq(
@@ -43,7 +68,7 @@ class ScalaJSCoreLib(file: File,
     val ScalaJS = scope.get("ScalaJS", scope).asInstanceOf[Scriptable]
 
     def makeLazyScalaJSScope(base: Scriptable, isModule: Boolean, isTraitImpl: Boolean) =
-      new LazyScalaJSScope(scalaJSProviders, scope, base, isModule, isTraitImpl)
+      new LazyScalaJSScope(this, scope, base, isModule, isTraitImpl)
 
     for (Info(name, isModule, isTraitImpl) <- scalaJSLazyFields) {
       val base = ScalaJS.get(name, ScalaJS).asInstanceOf[Scriptable]
@@ -51,9 +76,18 @@ class ScalaJSCoreLib(file: File,
       ScalaJS.put(name, ScalaJS, lazified)
     }
   }
+
+  private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
+    providers.get(encodedName) foreach { file =>
+      val ctx = Context.getCurrentContext()
+      ctx.evaluateFile(scope, file)
+    }
+  }
 }
 
 object ScalaJSCoreLib {
   private case class Info(name: String,
       isModule: Boolean = false, isTraitImpl: Boolean = false)
+
+  private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 }

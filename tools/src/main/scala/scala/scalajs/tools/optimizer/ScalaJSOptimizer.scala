@@ -18,6 +18,7 @@ import net.liftweb.json._
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.classpath._
 import OptData._
 
 /** Scala.js optimizer: does type-aware global dce. */
@@ -43,7 +44,7 @@ class ScalaJSOptimizer {
       logger: Logger): Result = {
     this.logger = logger
     try {
-      val analyzer = parseInfoFiles(inputs)
+      val analyzer = parseInfoFiles(inputs.classpath)
       analyzer.computeReachability()
       writeDCEedOutput(inputs, outputConfig, analyzer)
     } finally {
@@ -51,9 +52,9 @@ class ScalaJSOptimizer {
     }
   }
 
-  private def parseInfoFiles(inputs: Inputs): Analyzer = {
-    val coreData = inputs.coreInfoFiles.map(f => readData(f.content))
-    val userData = inputs.scalaJSClassfiles map { classfile =>
+  private def parseInfoFiles(classpath: ScalaJSClasspathEntries): Analyzer = {
+    val coreData = classpath.coreInfoFiles.map(f => readData(f.content))
+    val userData = classpath.classFiles map { classfile =>
       val data = readData(classfile.info)
       val encodedName = data.encodedName
       encodedNameToClassfile += encodedName -> classfile
@@ -80,7 +81,7 @@ class ScalaJSOptimizer {
     def pasteLine(line: String): Unit =
       writer.println(line)
 
-    pasteFile(inputs.coreJSLib)
+    pasteFile(inputs.classpath.coreJSLibFile)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
@@ -181,15 +182,29 @@ class ScalaJSOptimizer {
 object ScalaJSOptimizer {
   /** Inputs of the Scala.js optimizer. */
   final case class Inputs(
-      /** The scalajs-corejslib.js file. */
-      coreJSLib: VirtualJSFile,
-      /** Core .sjsinfo files: those for java.lang.{Object,String}. */
-      coreInfoFiles: Seq[VirtualFile],
-      /** Scala.js "class files": those emitted by the Scala.js compilation. */
-      scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
+      /** The Scala.js classpath entries. */
+      classpath: ScalaJSClasspathEntries,
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil
   )
+
+  object Inputs {
+    @deprecated("Use the primary constructor/apply method", "0.4.2")
+    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
+        scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
+        customScripts: Seq[VirtualJSFile]): Inputs = {
+      apply(
+          ScalaJSClasspathEntries(coreJSLib, coreInfoFiles, scalaJSClassfiles),
+          customScripts)
+    }
+
+    @deprecated("Use the primary constructor/apply method", "0.4.2")
+    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
+        scalaJSClassfiles: Seq[VirtualScalaJSClassfile]): Inputs = {
+      apply(
+          ScalaJSClasspathEntries(coreJSLib, coreInfoFiles, scalaJSClassfiles))
+    }
+  }
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
