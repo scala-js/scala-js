@@ -92,6 +92,23 @@ class JSExportTest extends DirectTest with TestHelpers {
       |      @JSExport
       |       ^
     """
+
+    """
+    class Confl {
+      @JSExport
+      def foo(x: Int)(ys: Int*) = x
+
+      @JSExport
+      def foo(x: Int*) = x
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |  (x: Seq)Object
+      |  (x: Int, ys: Seq)Object
+      |      @JSExport
+      |       ^
+    """
   }
 
   @Test
@@ -194,6 +211,23 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
+    """
+
+  }
+
+  @Test
+  def noMiddleVarArg = {
+
+    """
+    class A {
+      @JSExport
+      def method(xs: Int*)(ys: String) = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: In an exported method, a *-parameter must come last (through all parameter lists)
+      |      @JSExport
+      |       ^
     """
 
   }

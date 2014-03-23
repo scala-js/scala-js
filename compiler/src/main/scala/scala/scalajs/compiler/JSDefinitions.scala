@@ -121,5 +121,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val RuntimeStringClass = getRequiredClass("scala.scalajs.runtime.RuntimeString")
     lazy val RuntimeStringModule = RuntimeStringClass.companionModule
 
+    lazy val JSArraySeqClass = getRequiredClass("scala.scalajs.runtime.JSArraySeq")
+      lazy val JSArraySeq_ctor = JSArraySeqClass.primaryConstructor
+
   }
 }

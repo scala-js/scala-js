@@ -267,10 +267,49 @@ object ExportsTest extends JasmineTest {
         def foo(i: String*) = i.mkString("|")
       }
 
-      val strings = Seq("a", "b", "c").asInstanceOf[js.Any]
       val a = (new A).asInstanceOf[js.Dynamic]
 
-      expect(a.foo(strings)).toEqual("a|b|c")
+      expect(a.foo()).toEqual("")
+      expect(a.foo("a", "b", "c")).toEqual("a|b|c")
+      expect(a.foo("a", "b", "c", "d")).toEqual("a|b|c|d")
+    }
+
+    it("should correctly overload in view of difficult repeated parameter lists") {
+      class A {
+        @JSExport
+        def foo(a: String, b: String, i: Int, c: String) = 1
+
+        @JSExport
+        def foo(a: String*) = 2
+
+        @JSExport
+        def foo(x: Int)(a: Int*) = x * 100000 + a.sum
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo()).toEqual(2)
+      expect(a.foo("asdf")).toEqual(2)
+      expect(a.foo("asdf", "foo")).toEqual(2)
+      expect(a.foo("asdf", "foo", "bar")).toEqual(2)
+      expect(a.foo("asdf", "foo", 1, "bar")).toEqual(1)
+      expect(a.foo("asdf", "foo", "foo", "bar")).toEqual(2)
+      expect(a.foo(5, 1, 2, 3, 10)).toEqual(500016)
+      expect(a.foo(1)).toEqual(100000)
+    }
+
+    xit("should correctly box repeated parameter lists with value classes") {
+      // Only in v0.5
+      class A {
+        @JSExport
+        def vc(vcs: SomeValueClass*) = vcs.map(_.i).sum
+      }
+
+      val vc1 = new SomeValueClass(1).asInstanceOf[js.Any]
+      val vc2 = new SomeValueClass(2).asInstanceOf[js.Any]
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(vc1, vc2)).toEqual(3)
     }
 
     it("should offer exports for objects with implicit name") {

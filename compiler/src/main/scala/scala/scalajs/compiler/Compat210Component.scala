@@ -52,6 +52,21 @@ trait Compat210Component {
     def original: TypeRef = sys.error("infinite loop in Compat")
   }
 
+  // repeatedToSingle
+
+  @inline final def repeatedToSingle(t: Type) =
+    global.definitions.repeatedToSingle(t)
+
+  private implicit final class DefinitionsCompat(
+    self: Compat210Component.this.global.definitions.type) {
+
+    def repeatedToSingle(t: Type) = t match {
+      case TypeRef(_, self.RepeatedParamClass, arg :: Nil) => arg
+      case _ => t
+    }
+
+  }
+
   // run.runDefinitions bundles methods and state related to the run
   // that were previously in definitions itself
 
