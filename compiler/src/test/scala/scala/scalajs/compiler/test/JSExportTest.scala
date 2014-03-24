@@ -2,6 +2,7 @@ package scala.scalajs.compiler.test
 
 import scala.scalajs.compiler.test.util._
 import org.junit.Test
+import org.junit.Ignore
 
 class JSExportTest extends DirectTest with TestHelpers {
 
@@ -226,6 +227,185 @@ class JSExportTest extends DirectTest with TestHelpers {
     """ hasErrors
     """
       |newSource1.scala:4: error: In an exported method, a *-parameter must come last (through all parameter lists)
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noExportTrait = {
+
+    """
+    @JSExport
+    trait Test
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export a trait
+      |    @JSExport
+      |     ^
+    """
+
+  }
+
+  @Test
+  @Ignore("Filed as #397")
+  def noExportNonPublicClassOrObject = {
+
+    """
+    @JSExport
+    private class A
+
+    @JSExport
+    protected class B
+    """ hasErrors ""
+
+    """
+    @JSExport
+    private object A
+
+    @JSExport
+    protected object B
+    """ hasErrors ""
+
+  }
+
+  @Test
+  def noExportNonPublicMember = {
+
+    """
+    class A {
+      @JSExport
+      private def foo = 1
+
+      @JSExport
+      protected def bar = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a non-public method
+      |      @JSExport
+      |       ^
+      |newSource1.scala:7: error: You may not export a non-public method
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noExportNestedClass = {
+
+    """
+    class A {
+      @JSExport
+      class Nested
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |      @JSExport
+      |       ^
+    """
+
+    """
+    object A {
+      @JSExport
+      class Nested
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
+  @Ignore("Filed as #398")
+  def noExportNestedObject = {
+
+    """
+    class A {
+      @JSExport
+      object Nested
+    }
+    """ hasErrors ""
+
+    """
+    object A {
+      @JSExport
+      object Nested
+    }
+    """ hasErrors ""
+
+  }
+
+  @Test
+  @Ignore("Filed as #399")
+  def noExportJSRaw = {
+
+    """
+    import scala.scalajs.js
+
+    @JSExport
+    object A extends js.Object
+    """ hasErrors ""
+
+    """
+    import scala.scalajs.js
+
+    @JSExport
+    class A extends js.Object
+    """ hasErrors ""
+
+  }
+
+  @Test
+  def noExportJSRawMember = {
+
+    """
+    import scala.scalajs.js
+
+    class A extends js.Object {
+      @JSExport
+      def foo = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: You may not export a method of a subclass of js.Any
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noBadSetterType = {
+
+    // Bad param list
+    """
+    class A {
+      @JSExport
+      def foo_=(x: Int, y: Int) = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: A method ending in _= will be exported as setter. But foo_= does not have the right signature to do so (single argument, unit return type).
+      |      @JSExport
+      |       ^
+    """
+
+    // Bad return type
+    """
+    class A {
+      @JSExport
+      def foo_=(x: Int) = "string"
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: A method ending in _= will be exported as setter. But foo_= does not have the right signature to do so (single argument, unit return type).
       |      @JSExport
       |       ^
     """

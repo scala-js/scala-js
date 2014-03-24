@@ -33,6 +33,14 @@ trait TestHelpers extends DirectTest {
           expected.stripMargin.trim, reps.trim)
     }
 
+    def hasWarns(expected: String) = {
+      val reps = repResult {
+        assertTrue("snippet should compile", compileString(preamble + code))
+      }
+      assertEquals("should have right warnings",
+          expected.stripMargin.trim, reps.trim)
+    }
+
     def fails() =
       assertFalse("snippet shouldn't compile", compileString(preamble + code))
 
@@ -44,6 +52,10 @@ trait TestHelpers extends DirectTest {
       body
       errBuffer.toString
     }
+  }
+
+  implicit class CodeWrappers(sc: StringContext) {
+    def expr() = new CompileTests(s"class A { ${sc.parts.mkString} }")
   }
 
 }
