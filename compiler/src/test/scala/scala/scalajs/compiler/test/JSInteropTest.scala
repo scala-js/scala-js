@@ -84,12 +84,25 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  @Ignore("Filed as #400")
   def noCaseClassObject = {
 
     """
     case class A(x: Int) extends js.Object
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: Classes and objects extending js.Any may not have a case modifier
+      |    case class A(x: Int) extends js.Object
+      |               ^
+    """
+
+    """
+    case object B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: Classes and objects extending js.Any may not have a case modifier
+      |    case object B extends js.Object
+      |                ^
+    """
 
   }
 

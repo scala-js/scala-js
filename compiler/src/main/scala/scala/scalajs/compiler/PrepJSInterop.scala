@@ -232,6 +232,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       def inScalaJSJSPackage = sym.enclosingPackage == ScalaJSJSPackage
 
       implDef match {
+        // Check that we do not have a case modifier
+        case _ if implDef.mods.hasFlag(Flag.CASE) =>
+          unit.error(implDef.pos, "Classes and objects extending " +
+              "js.Any may not have a case modifier")
+
         // Check that we do not extends a trait that does not extends js.Any
         case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
           !isJSLambda(sym) =>
@@ -247,11 +252,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if cldef.symbol.isAnonymousClass && !isJSLambda(sym) =>
           unit.error(implDef.pos, "Anonymous classes may not " +
               "extend js.Any")
-
-        // Check that we do not have a case modifier
-        case _ if implDef.mods.hasFlag(Flag.CASE) =>
-          unit.error(implDef.pos, "Classes and objects extending " +
-              "js.Any may not have a case modifier")
 
         // Check if we may have a js.Any here
         case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
