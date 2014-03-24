@@ -44,29 +44,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     def genConstructorExports(classSym: Symbol): List[js.Tree] = {
       val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
-      /** Perform sanity checks for constructor exports.
-       *  Issues an error message if bad
-       *  @return true if ok, false otherwise
-       */
-      def checkExport(ctorSym: Symbol, annotPos: Position) = {
-        def err(msg: String) = { currentUnit.error(annotPos, msg); false }
-
-        // Frontend checks this
-        assert(ctorSym.isPublic)
-
-        if (!classSym.isPublic)
-          err("You may not export a non-public class")
-        else if (enteringPhase(currentRun.flattenPhase)(classSym.isNestedClass))
-          err("You may not export a nested class. Create an exported factory " +
-              "method in the outer class to work around this limitation.")
-        else true
-      }
-
       // Generate exports from constructors and their annotations
       val ctorExports = for {
         ctor          <- constructors
         (jsName, pos) <- jsInterop.exportsOf(ctor)
-        if checkExport(ctor, pos)
       } yield (jsName, ctor)
 
       val exports = for {
@@ -106,8 +87,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       if (exportNames.isEmpty)
         Nil
-      else if (!classSym.isPublic)
-        err("You may not export an non-public object")
       else if (!enteringPhase(currentRun.flattenPhase)(classSym.owner.isPackage))
         err("You may not export a nested object")
       else {

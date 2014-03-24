@@ -170,6 +170,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         super.transform(tree)
 
+      // Module export sanity check (export generated in JSCode phase)
+      case modDef: ModuleDef =>
+        val sym = modDef.symbol
+        if (!sym.isPublic) {
+          for ((_, pos) <- jsInterop.exportsOf(sym)) {
+            currentUnit.error(pos, "You may not export an non-public object")
+          }
+        }
+
+        super.transform(modDef)
+
       // Fix for issue with calls to js.Dynamic.x()
       // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
       case Select(Select(trg, x_?), nme.apply) if (isJSDynamic(trg) &&

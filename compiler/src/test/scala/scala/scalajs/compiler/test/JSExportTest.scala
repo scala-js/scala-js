@@ -149,7 +149,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local definition
+      |newSource1.scala:5: error: You may not export a local class
       |        @JSExport
       |         ^
     """
@@ -249,7 +249,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  @Ignore("Filed as #397")
   def noExportNonPublicClassOrObject = {
 
     """
@@ -258,7 +257,15 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     protected class B
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export a non-public class
+      |    @JSExport
+      |     ^
+      |newSource1.scala:6: error: You may not export a non-public class
+      |    @JSExport
+      |     ^
+    """
 
     """
     @JSExport
@@ -266,7 +273,15 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     protected object B
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export an non-public object
+      |    @JSExport
+      |     ^
+      |newSource1.scala:6: error: You may not export an non-public object
+      |    @JSExport
+      |     ^
+    """
 
   }
 

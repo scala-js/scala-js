@@ -33,7 +33,7 @@ trait PrepJSExports { this: PrepJSInterop =>
 
     if (exportNames.isEmpty)
       Nil
-    else if (isJSAny(baseSym.owner))
+    else if (isJSAny(clsSym))
       err(s"You may not export a $memType of a subclass of js.Any")
     else if (!baseSym.isPublic)
       err(s"You may not export a non-public $memType")
@@ -56,8 +56,17 @@ trait PrepJSExports { this: PrepJSInterop =>
     } else if (baseSym.isConstructor) {
       // we can generate constructors entirely in the backend, since they
       // do not need inheritance and such. But we want to check their sanity
-      // here
-      Nil
+      // here by previous tests and the following ones.
+
+      if (!clsSym.isPublic)
+        err("You may not export a non-public class")
+      else if (clsSym.isLocal)
+        err("You may not export a local class")
+      else if (clsSym.isNestedClass)
+        err("You may not export a nested class. Create an exported factory " +
+            "method in the outer class to work around this limitation.")
+      else Nil
+
     } else {
       assert(!baseSym.isBridge)
 
