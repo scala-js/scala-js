@@ -79,31 +79,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
+      import js.TreeDSL._
 
-      val exportNames = jsInterop.exportsOf(classSym)
+      for {
+        (jsName, p) <- jsInterop.exportsOf(classSym)
+      } yield {
+        implicit val pos = p
 
-      // Error helper
-      def err(msg: String) = { currentUnit.error(exportNames.head._2, msg); Nil }
+        val accessorVar =
+          envField("modules") DOT encodeModuleFullNameIdent(classSym)
+        val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
 
-      if (exportNames.isEmpty)
-        Nil
-      else if (!enteringPhase(currentRun.flattenPhase)(classSym.owner.isPackage))
-        err("You may not export a nested object")
-      else {
-        import js.TreeDSL._
-
-        for ((jsName, p) <- exportNames) yield {
-          implicit val pos = p
-
-          val accessorVar =
-            envField("modules") DOT encodeModuleFullNameIdent(classSym)
-          val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
-
-          js.Block(
-            createNamespace,
-            expAccessorVar := accessorVar
-          )
-        }
+        js.Block(
+          createNamespace,
+          expAccessorVar := accessorVar
+        )
       }
     }
 

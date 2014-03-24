@@ -173,11 +173,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       // Module export sanity check (export generated in JSCode phase)
       case modDef: ModuleDef =>
         val sym = modDef.symbol
-        if (!sym.isPublic) {
+
+        def condErr(msg: String) = {
           for ((_, pos) <- jsInterop.exportsOf(sym)) {
-            currentUnit.error(pos, "You may not export an non-public object")
+            currentUnit.error(pos, msg)
           }
         }
+
+        if (!sym.isPublic)
+          condErr("You may not export an non-public object")
+        else if (sym.isLocal)
+          condErr("You may not export a local object")
+        else if (!sym.owner.isPackage)
+          condErr("You may not export a nested object")
 
         super.transform(modDef)
 

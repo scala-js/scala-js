@@ -164,7 +164,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a local definition
+      |newSource1.scala:5: error: You may not export a local object
       |        @JSExport
       |         ^
     """
@@ -338,7 +338,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  @Ignore("Filed as #398")
   def noExportNestedObject = {
 
     """
@@ -346,14 +345,24 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       object Nested
     }
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a nested object
+      |      @JSExport
+      |       ^
+    """
 
     """
     object A {
       @JSExport
       object Nested
     }
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a nested object
+      |      @JSExport
+      |       ^
+    """
 
   }
 
