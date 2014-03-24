@@ -170,6 +170,25 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         super.transform(tree)
 
+      // Module export sanity check (export generated in JSCode phase)
+      case modDef: ModuleDef =>
+        val sym = modDef.symbol
+
+        def condErr(msg: String) = {
+          for ((_, pos) <- jsInterop.exportsOf(sym)) {
+            currentUnit.error(pos, msg)
+          }
+        }
+
+        if (!sym.isPublic)
+          condErr("You may not export an non-public object")
+        else if (sym.isLocal)
+          condErr("You may not export a local object")
+        else if (!sym.owner.isPackage)
+          condErr("You may not export a nested object")
+
+        super.transform(modDef)
+
       // Fix for issue with calls to js.Dynamic.x()
       // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
       case Select(Select(trg, x_?), nme.apply) if (isJSDynamic(trg) &&
@@ -232,6 +251,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       def inScalaJSJSPackage = sym.enclosingPackage == ScalaJSJSPackage
 
       implDef match {
+        // Check that we do not have a case modifier
+        case _ if implDef.mods.hasFlag(Flag.CASE) =>
+          unit.error(implDef.pos, "Classes and objects extending " +
+              "js.Any may not have a case modifier")
+
         // Check that we do not extends a trait that does not extends js.Any
         case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
           !isJSLambda(sym) =>
@@ -247,11 +271,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if cldef.symbol.isAnonymousClass && !isJSLambda(sym) =>
           unit.error(implDef.pos, "Anonymous classes may not " +
               "extend js.Any")
-
-        // Check that we do not have a case modifier
-        case _ if implDef.mods.hasFlag(Flag.CASE) =>
-          unit.error(implDef.pos, "Classes and objects extending " +
-              "js.Any may not have a case modifier")
 
         // Check if we may have a js.Any here
         case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
