@@ -169,7 +169,7 @@ class JasmineTestFramework(testOutput: TestOutput) {
           case StackTracePattern(originalMessage, fileName, lineNumber) =>
             ScriptStackElement(fileName, "", lineNumber.toInt)
           case unknown =>
-            throw JavaScriptException("Unknown stack element: " + unknown)
+            ScriptStackElement("Unknown stack element: " + unknown, "", -1)
         }
         .takeWhile(e => !(e.fileName contains "jasmine.js"))
     } else Array.empty
