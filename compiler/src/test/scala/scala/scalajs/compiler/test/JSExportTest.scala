@@ -343,7 +343,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  @Ignore("Filed as #399")
   def noExportJSRaw = {
 
     """
@@ -351,14 +350,24 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     object A extends js.Object
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a class extending js.Any
+      |    @JSExport
+      |     ^
+    """
 
     """
     import scala.scalajs.js
 
     @JSExport
     class A extends js.Object
-    """ hasErrors ""
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a constructor of a subclass of js.Any
+      |    @JSExport
+      |     ^
+    """
 
   }
 

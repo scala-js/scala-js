@@ -106,8 +106,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       if (exportNames.isEmpty)
         Nil
-      else if (isRawJSType(classSym.tpe))
-        err("You may not export an object extending js.Any")
       else if (!classSym.isPublic)
         err("You may not export an non-public object")
       else if (!enteringPhase(currentRun.flattenPhase)(classSym.owner.isPackage))

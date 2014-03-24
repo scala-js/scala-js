@@ -348,6 +348,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
 
+      // Check that RawJS type is not exported
+      for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
+        currentUnit.error(pos, "You may not export a class extending js.Any")
+      }
+
       val classIdent = encodeClassFullNameIdent(sym)
 
       val classDataVar = envField("data") DOT classIdent
