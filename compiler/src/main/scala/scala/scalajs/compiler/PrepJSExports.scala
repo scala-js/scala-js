@@ -41,11 +41,13 @@ trait PrepJSExports { this: PrepJSInterop =>
       err("You may not export a macro")
     else if (scalaPrimitives.isPrimitive(baseSym))
       err("You may not export a primitive")
-    else if (!hasAllowedRetType(baseSym.tpe)) {
+    else if (!hasAllowedRetType(baseSym.tpe))
       err("""You may not export a method whose return type is neither a subtype of
             |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
             |primitive value type).""".stripMargin)
-    } else if (forScaladoc) {
+    else if (hasIllegalRepeatedParam(baseSym))
+      err(s"In an exported $memType, a *-parameter must come last (through all parameter lists)")
+    else if (forScaladoc) {
       /* Don't do anything under scaladoc because the uncurry phase does not
        * exist in that setting (see bug #323). It's no big deal because we do
        * not need exports for scaladoc
@@ -106,10 +108,17 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Add symbol to class
     clsSym.info.decls.enter(expSym)
 
+    def spliceParam(sym: Symbol) = {
+      if (isRepeated(sym))
+        Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
+      else
+        Ident(sym)
+    }
+
     // Construct inner function call
     val sel: Tree = Select(This(clsSym), defSym)
     val rhs = (sel /: expSym.paramss) {
-      (fun,params) => Apply(fun, params map Ident)
+      (fun,params) => Apply(fun, params map spliceParam)
     }
 
     // Construct and type the actual tree
@@ -144,6 +153,14 @@ trait PrepJSExports { this: PrepJSInterop =>
         case _ => false
       }
     }
+  }
+
+  /** checks whether this type has a repeated parameter elsewhere than at the end
+    * of all the params
+    */
+  private def hasIllegalRepeatedParam(sym: Symbol): Boolean = {
+    val params = sym.paramss.flatten
+    params.nonEmpty && params.init.exists(isRepeated _)
   }
 
 }

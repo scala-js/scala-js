@@ -46,7 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   override def newPhase(p: Phase) = new JSCodePhase(p)
 
-  class JSCodePhase(prev: Phase) extends StdPhase(prev) {
+  class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
 
     override def name = phaseName
     override def description = "Generate JavaScript code from ASTs"
