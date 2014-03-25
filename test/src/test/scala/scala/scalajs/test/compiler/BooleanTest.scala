@@ -15,12 +15,13 @@ object BooleanTest extends JasmineTest {
 
   describe("Boolean primitives") {
 
-    it("& and | on booleans should return booleans") {
+    it("&, | and ^ on booleans should return booleans") {
       expect(js.typeOf(true & false)).toEqual("boolean")
       expect(js.typeOf(true | false)).toEqual("boolean")
+      expect(js.typeOf(true ^ false)).toEqual("boolean")
     }
 
-    it("& and | on booleans should return correct results") {
+    it("&, | and ^ on booleans should return correct results") {
       expect(false & false).toBeFalsy
       expect(false & true).toBeFalsy
       expect(true & false).toBeFalsy
@@ -30,6 +31,11 @@ object BooleanTest extends JasmineTest {
       expect(true | false).toBeTruthy
       expect(false | true).toBeTruthy
       expect(true | true).toBeTruthy
+
+      expect(false ^ false).toBeFalsy
+      expect(true ^ false).toBeTruthy
+      expect(false ^ true).toBeTruthy
+      expect(true ^ true).toBeFalsy
     }
 
   }

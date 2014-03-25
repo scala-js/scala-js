@@ -5,6 +5,8 @@
 
 package scala.scalajs.compiler
 
+import scala.annotation.switch
+
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -2180,14 +2182,15 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.BinaryOp(if (not) "!==" else "===", lsrc, rsrc)
           }
 
-          (code match {
-            // Special cases for (bool & bool) and (bool | bool) since in
-            // JavaScript, the return type is number rather than boolean
-            case AND if args.forall(_.tpe.typeSymbol == BooleanClass) =>
-              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("&", lsrc, rsrc)))
-            case OR if args.forall(_.tpe.typeSymbol == BooleanClass) =>
-              js.UnaryOp("!", js.UnaryOp("!", js.BinaryOp("|", lsrc, rsrc)))
+          /* Wrap the given tree in !!tree to cast it to boolean if the
+           * expected result type is boolean. This is used for &, | and ^
+           * with boolean arguments, because the JS operator returns a number.
+           */
+          def wrapForBool(tree: js.Tree): js.Tree =
+            if (resultKind == BooleanKind) js.UnaryOp("!", js.UnaryOp("!", tree))
+            else tree
 
+          (code: @switch) match {
             case ADD => js.BinaryOp("+", lsrc, rsrc)
             case SUB => js.BinaryOp("-", lsrc, rsrc)
             case MUL => js.BinaryOp("*", lsrc, rsrc)
@@ -2198,9 +2201,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                 case _:FLOAT => actualDiv
               }
             case MOD => js.BinaryOp("%", lsrc, rsrc)
-            case OR => js.BinaryOp("|", lsrc, rsrc)
-            case XOR => js.BinaryOp("^", lsrc, rsrc)
-            case AND => js.BinaryOp("&", lsrc, rsrc)
+            case OR  => wrapForBool(js.BinaryOp("|", lsrc, rsrc))
+            case XOR => wrapForBool(js.BinaryOp("^", lsrc, rsrc))
+            case AND => wrapForBool(js.BinaryOp("&", lsrc, rsrc))
             case LSL => js.BinaryOp("<<", lsrc, rsrc)
             case LSR => js.BinaryOp(">>>", lsrc, rsrc)
             case ASR => js.BinaryOp(">>", lsrc, rsrc)
@@ -2216,7 +2219,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case ZAND => js.BinaryOp("&&", lsrc, rsrc)
             case _ =>
               abort("Unknown binary operation code: " + code)
-          })
+          }
 
         case _ =>
           abort("Too many arguments for primitive function: " + tree)
