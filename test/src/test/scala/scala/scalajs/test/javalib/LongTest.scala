@@ -43,5 +43,42 @@ object LongTest extends JasmineTest {
       expect(compare(3L, 3L)).toEqual(0)
     }
 
+    it("should parse strings") {
+      def test(s: String, v: Long): Unit = {
+        expect(JLong.parseLong(s)).toEqual(v)
+        expect(JLong.valueOf(s).longValue()).toEqual(v)
+        expect(new JLong(s).longValue()).toEqual(v)
+      }
+
+      test("0", 0L)
+      test("5", 5L)
+      test("127", 127L)
+      test("-100", -100L)
+      test("30000", 30000L)
+      test("-90000", -90000L)
+    }
+
+    it("should reject invalid strings when parsing") {
+      def test(s: String): Unit =
+        expect(() => JLong.parseLong(s)).toThrow
+
+      test("abc")
+      test("")
+    }
+
+    it("should parse strings in base 16") {
+      def test(s: String, v: Long): Unit = {
+        expect(JLong.parseLong(s, 16)).toEqual(v)
+        expect(JLong.valueOf(s, 16).longValue()).toEqual(v)
+      }
+
+      test("0", 0x0L)
+      test("5", 0x5L)
+      test("ff", 0xffL)
+      test("-24", -0x24L)
+      test("30000", 0x30000L)
+      test("-90000", -0x90000L)
+    }
+
   }
 }

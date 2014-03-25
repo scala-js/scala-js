@@ -37,6 +37,19 @@ object DoubleTest extends JasmineTest {
       expect("0.0".toDouble).toEqual(0.0f)
       expect("NaN".toDouble.isNaN).toBeTruthy
       expect(Try("asdf".toDouble).isFailure).toBeTruthy
+
+      def test(s: String, v: Double): Unit = {
+        expect(JDouble.parseDouble(s)).toBeCloseTo(v)
+        expect(JDouble.valueOf(s).doubleValue()).toBeCloseTo(v)
+        expect(new JDouble(s).doubleValue()).toBeCloseTo(v)
+      }
+
+      test("0", 0.0)
+      test("5.3", 5.3)
+      test("127e2", 12700.0)
+      test("-123.4", -123.4)
+      test("65432.1", 65432.10)
+      test("-987654.321", -987654.321)
     }
 
     it("should provide `compareTo`") {

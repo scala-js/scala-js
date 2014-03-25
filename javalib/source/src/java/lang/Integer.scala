@@ -5,6 +5,8 @@ import scala.scalajs.js
 final class Integer(private val value: scala.Int)
     extends Number with Comparable[Integer] {
 
+  def this(s: String) = this(Integer.parseInt(s))
+
   def intValue() = value
   def longValue() = value.toLong
   def floatValue() = value.toFloat
@@ -162,7 +164,9 @@ object Integer {
   val MAX_VALUE: scala.Int = 2147483647
   val SIZE: Int = 32
 
-  def valueOf(intValue: scala.Int) = new Integer(intValue)
+  def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
+  def valueOf(s: String): Integer = valueOf(parseInt(s))
+  def valueOf(s: String, radix: Int): Integer = valueOf(parseInt(s, radix))
 
   def parseInt(s: String): scala.Int =
     // explicitly specify radix to avoid interpretation as octal (by JS)
@@ -176,7 +180,7 @@ object Integer {
       res.toInt
   }
 
-  def toString(i: scala.Int) = valueOf(i).toString
+  def toString(i: scala.Int): String = valueOf(i).toString
 
   def bitCount(i: scala.Int): scala.Int = {
     // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel

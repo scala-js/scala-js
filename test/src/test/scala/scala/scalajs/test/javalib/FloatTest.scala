@@ -42,6 +42,19 @@ object FloatTest extends JasmineTest {
       expect("0.0".toFloat).toEqual(0.0f)
       expect("NaN".toFloat.isNaN).toBeTruthy
       expect(Try("asdf".toFloat).isFailure).toBeTruthy
+
+      def test(s: String, v: Float): Unit = {
+        expect(JFloat.parseFloat(s)).toBeCloseTo(v)
+        expect(JFloat.valueOf(s).floatValue()).toBeCloseTo(v)
+        expect(new JFloat(s).floatValue()).toBeCloseTo(v)
+      }
+
+      test("0", 0.0f)
+      test("5.3", 5.3f)
+      test("127e2", 12700.0f)
+      test("-123.4", -123.4f)
+      test("65432.1", 65432.10f)
+      test("-87654.321", -87654.321f)
     }
 
     it("should provide `compareTo`") {

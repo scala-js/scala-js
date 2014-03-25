@@ -438,27 +438,34 @@ object Long {
     masked(l, m, h)
   }
 
-  def fromString(str: String): Long =
-    if (str.head == '-') -fromString(str.tail) else {
+  def fromString(str: String): Long = fromString(str, 10)
+
+  def fromString(str: String, radix: Int): Long = {
+    if (str.isEmpty) {
+      throw new java.lang.NumberFormatException(
+          s"""For input string: "$str"""")
+    } else if (str.charAt(0) == '-') {
+      -fromString(str.substring(1), radix)
+    } else {
       import scalajs.js
 
       val maxLen = 9
       @tailrec
-      def fromString0(str0: String, acc: Long): Long = if (str0.size > 0) {
-        val (cur, next) = str0.splitAt(maxLen)
-        val macc = acc * fromInt(math.pow(10, cur.size).toInt)
-        // explicitly specify radix to avoid intepreation as octal
-        val ival = js.parseInt(cur, 10)
+      def fromString0(str0: String, acc: Long): Long = if (str0.length > 0) {
+        val cur = (str0: js.String).substring(0, maxLen): String
+        val macc = acc * fromInt(math.pow(radix, cur.length).toInt)
+        val ival = js.parseInt(cur, radix)
         if (js.isNaN(ival)) {
           throw new java.lang.NumberFormatException(
             s"""For input string: "$str"""")
         }
         val cval = fromInt(ival.toInt)
-        fromString0(next, macc + cval)
+        fromString0((str0: js.String).substring(maxLen), macc + cval)
       } else acc
 
       fromString0(str, zero)
     }
+  }
 
   def fromByte(value: Byte): Long = fromInt(value.toInt)
   def fromShort(value: Short): Long = fromInt(value.toInt)

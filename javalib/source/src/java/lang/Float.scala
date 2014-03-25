@@ -5,6 +5,8 @@ import scala.scalajs.js
 final class Float(private val value: scala.Float)
     extends Number with Comparable[Float] {
 
+  def this(s: String) = this(Float.parseFloat(s))
+
   override def byteValue() = value.toByte
   override def shortValue() = value.toShort
   def intValue() = value.toInt
@@ -160,7 +162,8 @@ object Float {
   val MIN_EXPONENT = -126
   val SIZE = 32
 
-  def valueOf(floatValue: scala.Float) = new Float(floatValue)
+  def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
+  def valueOf(s: String): Float = valueOf(parseFloat(s))
 
   def parseFloat(s: String): scala.Float = {
     val res = js.parseFloat(s)
@@ -170,7 +173,7 @@ object Float {
       res.toFloat
   }
 
-  def toString(f: scala.Float) = valueOf(f).toString
+  def toString(f: scala.Float): String = valueOf(f).toString
 
   def compare(a: scala.Float, b: scala.Float): scala.Int = {
     if (a == b) 0

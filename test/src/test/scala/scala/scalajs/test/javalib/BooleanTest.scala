@@ -37,5 +37,19 @@ object BooleanTest extends JasmineTest {
       expect(compare(true, true)).toEqual(0)
     }
 
+    it("should parse strings") {
+      def test(s: String, v: Boolean): Unit = {
+        expect(JBoolean.parseBoolean(s)).toEqual(v)
+        expect(JBoolean.valueOf(s).booleanValue()).toEqual(v)
+        expect(new JBoolean(s).booleanValue()).toEqual(v)
+      }
+
+      test("false", false)
+      test("true", true)
+      test("TrUe", true)
+      test(null, false)
+      test("truee", false)
+    }
+
   }
 }

@@ -37,5 +37,29 @@ object ShortTest extends JasmineTest {
       expect(compare(3.toShort, 3.toShort)).toEqual(0)
     }
 
+    it("should parse strings") {
+      def test(s: String, v: Short): Unit = {
+        expect(JShort.parseShort(s)).toEqual(v)
+        expect(JShort.valueOf(s).shortValue()).toEqual(v)
+        expect(new JShort(s).shortValue()).toEqual(v)
+      }
+
+      test("0", 0)
+      test("5", 5)
+      test("127", 127)
+      test("-100", -100)
+      test("30000", 30000)
+    }
+
+    it("should reject invalid strings when parsing") {
+      def test(s: String): Unit =
+        expect(() => JShort.parseShort(s)).toThrow
+
+      test("abc")
+      test("")
+      test("60000") // out of range
+      test("-90000") // out of range
+    }
+
   }
 }

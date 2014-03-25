@@ -5,6 +5,8 @@ import scala.scalajs.js
 final class Byte(private val value: scala.Byte)
     extends Number with Comparable[Byte] {
 
+  def this(s: String) = this(Byte.parseByte(s))
+
   override def byteValue() = value
   override def shortValue() = value.toShort
   def intValue() = value.toInt
@@ -164,7 +166,19 @@ object Byte {
   val MAX_VALUE: scala.Byte = 127
   val SIZE: scala.Int = 8
 
-  def valueOf(byteValue: scala.Byte) = new Byte(byteValue)
-  def parseByte(s: String): scala.Byte = Integer.parseInt(s).toByte
-  def toString(b: scala.Byte) = Integer.valueOf(b.toInt).toString
+  def valueOf(byteValue: scala.Byte): Byte = new Byte(byteValue)
+  def valueOf(s: String): Byte = valueOf(parseByte(s))
+  def valueOf(s: String, radix: Int): Byte = valueOf(parseByte(s, radix))
+
+  def parseByte(s: String): scala.Byte = parseByte(s, 10)
+
+  def parseByte(s: String, radix: Int): scala.Byte = {
+    val r = Integer.parseInt(s, radix)
+    if (r < MIN_VALUE || r > MAX_VALUE)
+      throw new NumberFormatException(s"""For input string: "$s"""")
+    else
+      r.toByte
+  }
+
+  def toString(b: scala.Byte): String = Integer.valueOf(b.toInt).toString
 }

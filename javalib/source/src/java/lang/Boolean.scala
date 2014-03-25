@@ -2,6 +2,8 @@ package java.lang
 
 class Boolean(private val value: scala.Boolean) extends Comparable[Boolean] {
 
+  def this(v: String) = this(Boolean.parseBoolean(v))
+
   def booleanValue(): scala.Boolean = value
 
   override def equals(that: Any) =
@@ -38,7 +40,12 @@ object Boolean {
   val TRUE = new Boolean(true)
   val FALSE = new Boolean(false)
 
-  def valueOf(booleanValue: scala.Boolean) = if (booleanValue) TRUE else FALSE
+  def valueOf(booleanValue: scala.Boolean): Boolean =
+    if (booleanValue) TRUE else FALSE
+  def valueOf(s: String): Boolean = valueOf(parseBoolean(s))
 
-  def toString(b: scala.Boolean) = if (b) "true" else "false"
+  def parseBoolean(s: String): scala.Boolean =
+    (s != null) && s.equalsIgnoreCase("true")
+
+  def toString(b: scala.Boolean): String = if (b) "true" else "false"
 }
