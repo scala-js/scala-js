@@ -7,7 +7,7 @@ final class Long(private val value: scala.Long)
 
   def this(s: String) = this(Long.parseLong(s))
 
-  import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
+  import scala.scalajs.runtime.RuntimeLong.{fromRuntimeLong, toRuntimeLong}
 
   override def byteValue() = toRuntimeLong(value).toByte
   override def shortValue() = toRuntimeLong(value).toShort
@@ -161,8 +161,8 @@ final class Long(private val value: scala.Long)
 }
 
 object Long {
-  import scala.scalajs.runtime.{ Long => RTLong }
-  import RTLong.{fromRuntimeLong, toRuntimeLong}
+  import scala.scalajs.runtime.RuntimeLong
+  import RuntimeLong.{fromRuntimeLong, toRuntimeLong}
 
   val TYPE = classOf[scala.Long]
   val MIN_VALUE: scala.Long = -9223372036854775808L
@@ -173,10 +173,11 @@ object Long {
   def valueOf(s: String): Long = valueOf(parseLong(s))
   def valueOf(s: String, radix: Int): Long = valueOf(parseLong(s, radix))
 
-  def parseLong(s: String): scala.Long = fromRuntimeLong(RTLong.fromString(s))
+  def parseLong(s: String): scala.Long =
+    fromRuntimeLong(RuntimeLong.fromString(s))
 
   def parseLong(s: String, radix: Int): scala.Long =
-    fromRuntimeLong(RTLong.fromString(s, radix))
+    fromRuntimeLong(RuntimeLong.fromString(s, radix))
 
   def toString(l: scala.Long): String = toRuntimeLong(l).toString
 

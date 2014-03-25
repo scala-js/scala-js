@@ -410,8 +410,8 @@ ScalaJS.ArrayTypeData = function(componentData) {
   // is a special case here, since the class has not
   // been defined yet, when this file is read
   if (componentZero == "longZero") {
-    componentZero = ScalaJS.modules.scala_scalajs_runtime_Long().
-      zero__Lscala_scalajs_runtime_Long();
+    componentZero = ScalaJS.modules.scala_scalajs_runtime_RuntimeLong().
+      zero__Lscala_scalajs_runtime_RuntimeLong();
   }
 
   /** @constructor */

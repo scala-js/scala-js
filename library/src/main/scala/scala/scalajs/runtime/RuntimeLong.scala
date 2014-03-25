@@ -13,37 +13,37 @@ import scala.annotation.tailrec
  * s.t. (x.l + ((long) x.m << 22) + ((long) x.h << 44)) is equal to
  * the original value
  */
-final class Long private (
+final class RuntimeLong private (
   val l: Int,
   val m: Int,
   val h: Int
 ) { x =>
 
-  import Long._
+  import RuntimeLong._
 
   def toByte: Byte = toInt.toByte
   def toShort: Short = toInt.toShort
   def toChar: Char = toInt.toChar
   def toInt: Int = l | (m << BITS)
-  def toLong: Long = x
+  def toLong: Long = fromRuntimeLong(x)
   def toFloat: Float = toDouble.toFloat
   def toDouble: Double =
     if (isMinValue) -9223372036854775808.0
     else if (isNegative) -((-x).toDouble)
     else l + m * TWO_PWR_22_DBL + h * TWO_PWR_44_DBL
 
-  def unary_~ : Long = masked(~x.l, ~x.m, ~x.h)
-  def unary_+ : Long = x
-  def unary_- : Long = {
+  def unary_~ : RuntimeLong = masked(~x.l, ~x.m, ~x.h)
+  def unary_+ : RuntimeLong = x
+  def unary_- : RuntimeLong = {
     val neg0 = (~x.l + 1) & MASK
     val neg1 = (~x.m + (if (neg0 == 0) 1 else 0)) & MASK
     val neg2 = (~x.h + (if (neg0 == 0 && neg1 == 0) 1 else 0)) & MASK_2
-    Long(neg0, neg1, neg2)
+    RuntimeLong(neg0, neg1, neg2)
   }
 
   def +(y: String): String = x.toString + y
 
-  def <<(n_in: Int): Long = {
+  def <<(n_in: Int): RuntimeLong = {
     /* crop MSB. Note: This will cause (2L << 65 == 2L << 1)
      * apparently this is as specified
      */
@@ -67,7 +67,7 @@ final class Long private (
   /**
    * logical right shift
    */
-  def >>>(n_in: Int): Long = {
+  def >>>(n_in: Int): RuntimeLong = {
     // Check that h is correctly masked, otherwise we'll shift values in
     assert(x.h == (x.h & MASK_2))
     val n = n_in & 63
@@ -91,7 +91,7 @@ final class Long private (
   /**
    * arithmetic right shift
    */
-  def >>(n_in: Int): Long = {
+  def >>(n_in: Int): RuntimeLong = {
     val n = n_in & 63;
 
     // Sign extend x.h
@@ -120,15 +120,15 @@ final class Long private (
   }
 
   override def equals(that: Any): Boolean = that match {
-    case y: Long =>
+    case y: RuntimeLong =>
       x.l == y.l && x.m == y.m && x.h == y.h
     case _ => false
   }
   def notEquals(that: Any): Boolean = !equals(that)
 
-  def < (y: Long): Boolean = !(x >= y)
-  def <=(y: Long): Boolean = !(x >  y)
-  def > (y: Long): Boolean = {
+  def < (y: RuntimeLong): Boolean = !(x >= y)
+  def <=(y: RuntimeLong): Boolean = !(x >  y)
+  def > (y: RuntimeLong): Boolean = {
     val signx = x.sign
     val signy = y.sign
     if (signx == 0)
@@ -148,13 +148,16 @@ final class Long private (
    * greater or equal.
    * note: gwt implements this individually
    */
-  def >=(y: Long) : Boolean = x == y || x > y
+  def >=(y: RuntimeLong) : Boolean = x == y || x > y
 
-  def |(y: Long): Long = Long(x.l | y.l, x.m | y.m, x.h | y.h)
-  def &(y: Long): Long = Long(x.l & y.l, x.m & y.m, x.h & y.h)
-  def ^(y: Long): Long = Long(x.l ^ y.l, x.m ^ y.m, x.h ^ y.h)
+  def |(y: RuntimeLong): RuntimeLong =
+    RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
+  def &(y: RuntimeLong): RuntimeLong =
+    RuntimeLong(x.l & y.l, x.m & y.m, x.h & y.h)
+  def ^(y: RuntimeLong): RuntimeLong =
+    RuntimeLong(x.l ^ y.l, x.m ^ y.m, x.h ^ y.h)
 
-  def +(y: Long): Long = {
+  def +(y: RuntimeLong): RuntimeLong = {
     val sum0 = x.l + y.l
     val sum1 = x.m + y.m + (sum0 >> BITS)
     val sum2 = x.h + y.h + (sum1 >> BITS)
@@ -165,13 +168,13 @@ final class Long private (
    * subtraction
    * note: gwt implements this individually
    */
-  def -(y: Long): Long = x + (-y)
+  def -(y: RuntimeLong): RuntimeLong = x + (-y)
 
   // This assumes that BITS == 22
-  def *(y: Long): Long = {
+  def *(y: RuntimeLong): RuntimeLong = {
 
     /** divides v in 13bit chunks */
-    def chunk13(v: Long) = (
+    def chunk13(v: RuntimeLong) = (
       v.l & 0x1fff,
       (v.l >> 13) | ((v.m & 0xf) << 9),
       (v.m >> 4) & 0x1fff,
@@ -246,8 +249,8 @@ final class Long private (
     masked(c0, c1n, c2 + (c1n >> BITS))
   }
 
-  def /(y: Long): Long = (x divMod y)(0)
-  def %(y: Long): Long = (x divMod y)(1)
+  def /(y: RuntimeLong): RuntimeLong = (x divMod y)(0)
+  def %(y: RuntimeLong): RuntimeLong = (x divMod y)(1)
 
   //override def getClass(): Class[Long] = null
 
@@ -287,7 +290,7 @@ final class Long private (
       val tenPowL = toRuntimeLong(1000000000L) // 9 zeros
 
       @tailrec
-      def toString0(v: Long, acc: String): String =
+      def toString0(v: RuntimeLong, acc: String): String =
         if (v.isZero) acc
         else {
           val quotRem = v.divMod(tenPowL)
@@ -339,13 +342,13 @@ final class Long private (
 
   private def setBit(bit: Int) =
     if (bit < BITS)
-      Long(l | (1 << bit), m, h)
+      RuntimeLong(l | (1 << bit), m, h)
     else if (bit < BITS01)
-      Long(l, m | (1 << (bit - BITS)), h)
+      RuntimeLong(l, m | (1 << (bit - BITS)), h)
     else
-      Long(l, m, h | (1 << (bit - BITS01)))
+      RuntimeLong(l, m, h | (1 << (bit - BITS01)))
 
-  private def divMod(y: Long): scala.scalajs.js.Array[Long] = {
+  private def divMod(y: RuntimeLong): scala.scalajs.js.Array[RuntimeLong] = {
     import scala.scalajs.js
     if (y.isZero) throw new ArithmeticException("/ by zero")
     else if (x.isZero) js.Array(zero, zero)
@@ -391,16 +394,16 @@ final class Long private (
 
   private def maskRight(bits: Int) = {
     if (bits <= BITS)
-      Long(l & ((1 << bits) - 1), 0, 0)
+      RuntimeLong(l & ((1 << bits) - 1), 0, 0)
     else if (bits <= BITS01)
-      Long(l, m & ((1 << (bits - BITS)) - 1), 0)
+      RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
     else
-      Long(l, m, h & ((1 << (bits - BITS01)) - 1))
+      RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
   }
 
 }
 
-object Long {
+object RuntimeLong {
 
   /** number of relevant bits in each Long.l and Long.m */
   private final val BITS   = 22
@@ -423,14 +426,14 @@ object Long {
   private final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  val zero = Long(0,0,0)
-  val one  = Long(1,0,0)
+  val zero: RuntimeLong = RuntimeLong(0, 0, 0)
+  val one:  RuntimeLong = RuntimeLong(1, 0, 0)
 
-  def toRuntimeLong(x: scala.Long): Long = sys.error("stub")
-  def fromRuntimeLong(x:Long): scala.Long = sys.error("stub")
+  def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
+  def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
 
-  def fromHexString(str: String) = {
-	import scalajs.js.parseInt
+  def fromHexString(str: String): RuntimeLong = {
+    import scalajs.js.parseInt
     assert(str.size == 16)
     val l = parseInt(str.substring(10), 16).toInt
     val m = parseInt(str.substring(6, 7), 16).toInt >> 2
@@ -438,9 +441,9 @@ object Long {
     masked(l, m, h)
   }
 
-  def fromString(str: String): Long = fromString(str, 10)
+  def fromString(str: String): RuntimeLong = fromString(str, 10)
 
-  def fromString(str: String, radix: Int): Long = {
+  def fromString(str: String, radix: Int): RuntimeLong = {
     if (str.isEmpty) {
       throw new java.lang.NumberFormatException(
           s"""For input string: "$str"""")
@@ -451,7 +454,7 @@ object Long {
 
       val maxLen = 9
       @tailrec
-      def fromString0(str0: String, acc: Long): Long = if (str0.length > 0) {
+      def fromString0(str0: String, acc: RuntimeLong): RuntimeLong = if (str0.length > 0) {
         val cur = (str0: js.String).substring(0, maxLen): String
         val macc = acc * fromInt(math.pow(radix, cur.length).toInt)
         val ival = js.parseInt(cur, radix)
@@ -467,18 +470,18 @@ object Long {
     }
   }
 
-  def fromByte(value: Byte): Long = fromInt(value.toInt)
-  def fromShort(value: Short): Long = fromInt(value.toInt)
-  def fromChar(value: Char): Long = fromInt(value.toInt)
-  def fromInt(value: Int): Long = {
+  def fromByte(value: Byte): RuntimeLong = fromInt(value.toInt)
+  def fromShort(value: Short): RuntimeLong = fromInt(value.toInt)
+  def fromChar(value: Char): RuntimeLong = fromInt(value.toInt)
+  def fromInt(value: Int): RuntimeLong = {
     val a0 = value & MASK
     val a1 = (value >> BITS) & MASK
     val a2 = if (value < 0) MASK_2 else 0
-    new Long(a0, a1, a2)
+    RuntimeLong(a0, a1, a2)
   }
 
-  def fromFloat(value: Float): Long = fromDouble(value.toDouble)
-  def fromDouble(value: Double): Long =
+  def fromFloat(value: Float): RuntimeLong = fromDouble(value.toDouble)
+  def fromDouble(value: Double): RuntimeLong =
     if (java.lang.Double.isNaN(value)) zero
     else if (value < -TWO_PWR_63_DBL) MinValue
     else if (value >= TWO_PWR_63_DBL) MaxValue
@@ -490,7 +493,7 @@ object Long {
       val a1 = if (acc >= TWO_PWR_22_DBL) (acc / TWO_PWR_22_DBL).toInt else 0
       acc -= a1 * TWO_PWR_22_DBL
       val a0 = acc.toInt
-      Long(a0, a1, a2)
+      RuntimeLong(a0, a1, a2)
     }
 
   /**
@@ -498,8 +501,11 @@ object Long {
    * l & MASK, m & MASK, h & MASK_2
    */
   protected def masked(l: Int, m: Int, h: Int) =
-    Long(l & MASK, m & MASK, h & MASK_2)
-  def apply(l: Int, m: Int, h: Int) = new Long(l, m, h)
+    RuntimeLong(l & MASK, m & MASK, h & MASK_2)
+
+  /** Creates a new long from its three underlying components. */
+  def apply(l: Int, m: Int, h: Int): RuntimeLong =
+    new RuntimeLong(l, m, h)
 
   /**
    * performs division in "normal cases"
@@ -509,14 +515,14 @@ object Long {
    * @param yNegative whether denominator was negative
    * @param xMinValue whether numerator was Long.minValue
    */
-  private def divModHelper(x: Long, y: Long,
-                           xNegative: Boolean, yNegative: Boolean,
-                           xMinValue: Boolean): scala.scalajs.js.Array[Long] = {
+  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
+      xNegative: Boolean, yNegative: Boolean,
+      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
     import scala.scalajs.js
 
     @tailrec
-    def divide0(shift: Int, yShift: Long,
-                curX: Long, quot: Long): js.Array[Long] =
+    def divide0(shift: Int, yShift: RuntimeLong,
+                curX: RuntimeLong, quot: RuntimeLong): js.Array[RuntimeLong] =
       if (shift < 0 || curX.isZero) js.Array(quot, curX) else {
         val newX = curX - yShift
         if (!newX.isNegative)
@@ -544,9 +550,9 @@ object Long {
   // Public Long API
 
   /** The smallest value representable as a Long. */
-  final val MinValue = Long(0, 0, SIGN_BIT_VALUE)
+  final val MinValue = RuntimeLong(0, 0, SIGN_BIT_VALUE)
 
   /** The largest value representable as a Long. */
-  final val MaxValue = Long(MASK, MASK, MASK_2 >> 1)
+  final val MaxValue = RuntimeLong(MASK, MASK, MASK_2 >> 1)
 
 }

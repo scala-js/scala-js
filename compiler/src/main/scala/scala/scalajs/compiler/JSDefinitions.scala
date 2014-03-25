@@ -113,7 +113,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
 
-    lazy val RuntimeLongClass  = getRequiredClass("scala.scalajs.runtime.Long")
+    lazy val RuntimeLongClass  = getRequiredClass("scala.scalajs.runtime.RuntimeLong")
     lazy val RuntimeLongModule = RuntimeLongClass.companionModule
       lazy val RuntimeLong_from = getMemberMethod(RuntimeLongModule, newTermName("fromRuntimeLong"))
       lazy val RuntimeLong_to   = getMemberMethod(RuntimeLongModule, newTermName("toRuntimeLong"))
