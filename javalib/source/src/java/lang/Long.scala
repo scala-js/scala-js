@@ -2,7 +2,9 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Long(private val value: scala.Long) extends Number {
+final class Long(private val value: scala.Long)
+    extends Number with Comparable[Long] {
+
   import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
 
   override def byteValue() = toRuntimeLong(value).toByte
@@ -14,6 +16,9 @@ final class Long(private val value: scala.Long) extends Number {
 
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
+
+  override def compareTo(that: Long): Int =
+    if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString = toRuntimeLong(value).toString()
 

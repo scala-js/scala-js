@@ -1,10 +1,14 @@
 package java.lang
 
-class Boolean(private val value: scala.Boolean) {
+class Boolean(private val value: scala.Boolean) extends Comparable[Boolean] {
+
   def booleanValue(): scala.Boolean = value
 
   override def equals(that: Any) =
     that.isInstanceOf[Boolean] && (value == that.asInstanceOf[Boolean].value)
+
+  override def compareTo(that: Boolean): Int =
+    if (value == that.value) 0 else if (value) 1 else -1
 
   override def toString: String = if (value) "true" else "false"
 

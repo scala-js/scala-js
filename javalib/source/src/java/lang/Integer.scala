@@ -2,8 +2,8 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Integer(private val value: scala.Int) extends Number {
-  protected[lang] val isInt = true
+final class Integer(private val value: scala.Int)
+    extends Number with Comparable[Integer] {
 
   def intValue() = value
   def longValue() = value.toLong
@@ -14,6 +14,9 @@ final class Integer(private val value: scala.Int) extends Number {
 
   override def equals(that: Any) =
     that.isInstanceOf[Integer] && (value == that.asInstanceOf[Integer].value)
+
+  override def compareTo(that: Integer): Int =
+    if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString = (value:js.Number).toString()
 

@@ -2,7 +2,8 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Float(private val value: scala.Float) extends Number {
+final class Float(private val value: scala.Float)
+    extends Number with Comparable[Float] {
 
   override def byteValue() = value.toByte
   override def shortValue() = value.toShort
@@ -20,6 +21,9 @@ final class Float(private val value: scala.Float) extends Number {
       value != 0 || 1 / value == 1 / that.value
     )
   }
+
+  override def compareTo(that: Float): Int =
+    if (equals(that)) 0 else if (value < that.value) -1 else 1
 
   override def toString = {
     if (value == 0 && 1 / value < 0) {

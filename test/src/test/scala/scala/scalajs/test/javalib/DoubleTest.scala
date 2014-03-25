@@ -9,7 +9,9 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.test.JasmineTest
-import scala.scalajs.js.Any.fromInt
+import scala.scalajs.js
+
+import java.lang.{Double => JDouble}
 
 import scala.util.Try
 
@@ -35,6 +37,32 @@ object DoubleTest extends JasmineTest {
       expect("0.0".toDouble).toEqual(0.0f)
       expect("NaN".toDouble.isNaN).toBeTruthy
       expect(Try("asdf".toDouble).isFailure).toBeTruthy
+    }
+
+    it("should provide `compareTo`") {
+      def compare(x: Double, y: Double): Int =
+        new JDouble(x).compareTo(new JDouble(y))
+
+      expect(compare(0.0, 5.5)).toBeLessThan(0)
+      expect(compare(10.5, 10.2)).toBeGreaterThan(0)
+      expect(compare(-2.1, -1.0)).toBeLessThan(0)
+      expect(compare(3.14, 3.14)).toEqual(0)
+
+      // From compareTo's point of view, NaN is equal to NaN
+      expect(compare(Double.NaN, Double.NaN)).toEqual(0)
+    }
+
+    it("should be a Comparable") {
+      def compare(x: Any, y: Any): Int =
+        x.asInstanceOf[Comparable[Any]].compareTo(y)
+
+      expect(compare(0.0, 5.5)).toBeLessThan(0)
+      expect(compare(10.5, 10.2)).toBeGreaterThan(0)
+      expect(compare(-2.1, -1.0)).toBeLessThan(0)
+      expect(compare(3.14, 3.14)).toEqual(0)
+
+      // From compareTo's point of view, NaN is equal to NaN
+      expect(compare(Double.NaN, Double.NaN)).toEqual(0)
     }
 
   }

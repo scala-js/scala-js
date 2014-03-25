@@ -2,7 +2,8 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Byte(private val value: scala.Byte) extends Number {
+final class Byte(private val value: scala.Byte)
+    extends Number with Comparable[Byte] {
 
   override def byteValue() = value
   override def shortValue() = value.toShort
@@ -15,6 +16,9 @@ final class Byte(private val value: scala.Byte) extends Number {
 
   override def equals(that: Any) =
     that.isInstanceOf[Byte] && (value == that.asInstanceOf[Byte].value)
+
+  override def compareTo(that: Byte): Int =
+    if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString = (value:js.Number).toString()
 

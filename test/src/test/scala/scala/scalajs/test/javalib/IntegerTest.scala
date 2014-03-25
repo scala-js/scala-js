@@ -9,7 +9,7 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.test.JasmineTest
-import scala.scalajs.js.Any.fromInt
+import scala.scalajs.js
 
 object IntegerTest extends JasmineTest {
 
@@ -85,6 +85,26 @@ object IntegerTest extends JasmineTest {
       expect(Integer.toOctalString(MinValue*2)).toEqual("-40000000000")
       expect(Integer.toOctalString(MaxValue+1)).toEqual("+20000000000")
       expect(Integer.toOctalString(MaxValue*2)).toEqual("+37777777776")
+    }
+
+    it("should provide `compareTo`") {
+      def compare(x: Int, y: Int): Int =
+        new Integer(x).compareTo(new Integer(y))
+
+      expect(compare(0, 5)).toBeLessThan(0)
+      expect(compare(10, 9)).toBeGreaterThan(0)
+      expect(compare(-2, -1)).toBeLessThan(0)
+      expect(compare(3, 3)).toEqual(0)
+    }
+
+    it("should be a Comparable") {
+      def compare(x: Any, y: Any): Int =
+        x.asInstanceOf[Comparable[Any]].compareTo(y)
+
+      expect(compare(0, 5)).toBeLessThan(0)
+      expect(compare(10, 9)).toBeGreaterThan(0)
+      expect(compare(-2, -1)).toBeLessThan(0)
+      expect(compare(3, 3)).toEqual(0)
     }
 
   }

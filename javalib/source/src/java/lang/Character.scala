@@ -2,11 +2,15 @@ package java.lang
 
 import scala.scalajs.js
 
-class Character(value: scala.Char) {
+class Character(private val value: scala.Char) extends Comparable[Character] {
+
   def charValue(): scala.Char = value
 
   override def equals(that: Any) =
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
+
+  override def compareTo(that: Character): Int =
+    if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString: String =
     js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
