@@ -9,7 +9,7 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.test.JasmineTest
-import scala.scalajs.js.Any.fromInt
+import scala.scalajs.js
 
 object CharacterTest extends JasmineTest {
 
@@ -22,6 +22,26 @@ object CharacterTest extends JasmineTest {
       expect(Character.digit('1', 36)).toEqual(1)
       expect(Character.digit('Z', 36)).toEqual(35)
       expect(Character.digit('\uFF22', 20)).toEqual(11)
+    }
+
+    it("should provide `compareTo`") {
+      def compare(x: Char, y: Char): Int =
+        new Character(x).compareTo(new Character(y))
+
+      expect(compare('0', '5')).toBeLessThan(0)
+      expect(compare('o', 'g')).toBeGreaterThan(0)
+      expect(compare('A', 'a')).toBeLessThan(0)
+      expect(compare('b', 'b')).toEqual(0)
+    }
+
+    it("should be a Comparable") {
+      def compare(x: Any, y: Any): Int =
+        x.asInstanceOf[Comparable[Any]].compareTo(y)
+
+      expect(compare('0', '5')).toBeLessThan(0)
+      expect(compare('o', 'g')).toBeGreaterThan(0)
+      expect(compare('A', 'a')).toBeLessThan(0)
+      expect(compare('b', 'b')).toEqual(0)
     }
 
   }

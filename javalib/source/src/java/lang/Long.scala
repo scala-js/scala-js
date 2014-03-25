@@ -2,7 +2,11 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Long(private val value: scala.Long) extends Number {
+final class Long(private val value: scala.Long)
+    extends Number with Comparable[Long] {
+
+  def this(s: String) = this(Long.parseLong(s))
+
   import scala.scalajs.runtime.Long.{fromRuntimeLong, toRuntimeLong}
 
   override def byteValue() = toRuntimeLong(value).toByte
@@ -14,6 +18,9 @@ final class Long(private val value: scala.Long) extends Number {
 
   override def equals(that: Any) =
     that.isInstanceOf[Long] && (value == that.asInstanceOf[Long].value)
+
+  override def compareTo(that: Long): Int =
+    if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString = toRuntimeLong(value).toString()
 
@@ -162,9 +169,16 @@ object Long {
   val MAX_VALUE: scala.Long = 9223372036854775807L
   val SIZE: scala.Int = 64
 
-  def valueOf(longValue: scala.Long) = new Long(longValue)
+  def valueOf(longValue: scala.Long): Long = new Long(longValue)
+  def valueOf(s: String): Long = valueOf(parseLong(s))
+  def valueOf(s: String, radix: Int): Long = valueOf(parseLong(s, radix))
+
   def parseLong(s: String): scala.Long = fromRuntimeLong(RTLong.fromString(s))
-  def toString(l: scala.Long) = toRuntimeLong(l).toString
+
+  def parseLong(s: String, radix: Int): scala.Long =
+    fromRuntimeLong(RTLong.fromString(s, radix))
+
+  def toString(l: scala.Long): String = toRuntimeLong(l).toString
 
   def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
 

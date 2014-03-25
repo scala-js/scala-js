@@ -2,7 +2,10 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Double(private val value: scala.Double) extends Number {
+final class Double(private val value: scala.Double)
+    extends Number with Comparable[Double] {
+
+  def this(s: String) = this(Double.parseDouble(s))
 
   override def byteValue() = value.toByte
   override def shortValue() = value.toShort
@@ -20,6 +23,9 @@ final class Double(private val value: scala.Double) extends Number {
       value != 0 || 1 / value == 1 / that.value
     )
   }
+
+  override def compareTo(that: Double): Int =
+    if (equals(that)) 0 else if (value < that.value) -1 else 1
 
   override def toString = {
     if (value == 0 && 1 / value < 0) {
@@ -156,9 +162,10 @@ object Double {
   val MIN_EXPONENT = -1022
   val SIZE = 64
 
-  def valueOf(doubleValue: scala.Double) = new Double(doubleValue)
+  def valueOf(doubleValue: scala.Double): Double = new Double(doubleValue)
+  def valueOf(s: String): Double = valueOf(parseDouble(s))
   def parseDouble(s: String): scala.Double = Float.parseFloat(s).toDouble
-  def toString(d: scala.Double) = Float.valueOf(d.toFloat).toString
+  def toString(d: scala.Double): String = Float.valueOf(d.toFloat).toString
 
   def compare(a: scala.Double, b: scala.Double): scala.Int = {
     if (a == b) 0

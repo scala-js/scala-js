@@ -9,7 +9,9 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.test.JasmineTest
-import scala.scalajs.js.Any.fromInt
+import scala.scalajs.js
+
+import java.lang.{Float => JFloat}
 
 import scala.util.Try
 
@@ -40,6 +42,45 @@ object FloatTest extends JasmineTest {
       expect("0.0".toFloat).toEqual(0.0f)
       expect("NaN".toFloat.isNaN).toBeTruthy
       expect(Try("asdf".toFloat).isFailure).toBeTruthy
+
+      def test(s: String, v: Float): Unit = {
+        expect(JFloat.parseFloat(s)).toBeCloseTo(v)
+        expect(JFloat.valueOf(s).floatValue()).toBeCloseTo(v)
+        expect(new JFloat(s).floatValue()).toBeCloseTo(v)
+      }
+
+      test("0", 0.0f)
+      test("5.3", 5.3f)
+      test("127e2", 12700.0f)
+      test("-123.4", -123.4f)
+      test("65432.1", 65432.10f)
+      test("-87654.321", -87654.321f)
+    }
+
+    it("should provide `compareTo`") {
+      def compare(x: Float, y: Float): Int =
+        new JFloat(x).compareTo(new JFloat(y))
+
+      expect(compare(0.0f, 5.5f)).toBeLessThan(0)
+      expect(compare(10.5f, 10.2f)).toBeGreaterThan(0)
+      expect(compare(-2.1f, -1.0f)).toBeLessThan(0)
+      expect(compare(3.14f, 3.14f)).toEqual(0)
+
+      // From compareTo's point of view, NaN is equal to NaN
+      expect(compare(Float.NaN, Float.NaN)).toEqual(0)
+    }
+
+    it("should be a Comparable") {
+      def compare(x: Any, y: Any): Int =
+        x.asInstanceOf[Comparable[Any]].compareTo(y)
+
+      expect(compare(0.0f, 5.5f)).toBeLessThan(0)
+      expect(compare(10.5f, 10.2f)).toBeGreaterThan(0)
+      expect(compare(-2.1f, -1.0f)).toBeLessThan(0)
+      expect(compare(3.14f, 3.14f)).toEqual(0)
+
+      // From compareTo's point of view, NaN is equal to NaN
+      expect(compare(Float.NaN, Float.NaN)).toEqual(0)
     }
 
   }
