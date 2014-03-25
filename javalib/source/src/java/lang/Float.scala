@@ -14,31 +14,20 @@ final class Float(private val value: scala.Float)
   def floatValue() = value
   def doubleValue() = value.toDouble
 
-  override def equals(that0: Any) = that0.isInstanceOf[Float] && {
-    val that = that0.asInstanceOf[Float]
-
-    isNaN && that.isNaN ||
-    value == that.value && (
-      // check that they have the same sign if they are 0
-      value != 0 || 1 / value == 1 / that.value
-    )
+  override def equals(that: Any): scala.Boolean = that match {
+    case that: Float =>
+      // Always be consistent with the way java.lang.Double performs equality
+      new Double(doubleValue()).equals(new Double(that.doubleValue()))
+    case _ =>
+      false
   }
 
   override def compareTo(that: Float): Int =
     if (equals(that)) 0 else if (value < that.value) -1 else 1
 
-  override def toString = {
-    if (value == 0 && 1 / value < 0) {
-      "-0.0"
-    } else {
-      val s = (value: js.Number).toString()
-      if (s.indexOf(".") < 0 && !js.isNaN(value))
-        s + ".0"
-      else s
-    }
-  }
+  override def toString(): String = (value: js.Number).toString()
 
-  def isNaN: scala.Boolean = Float.isNaN(value)
+  def isNaN(): scala.Boolean = Float.isNaN(value)
 
   /*
    * Methods on scala.Float

@@ -24,12 +24,12 @@ object FloatTest extends JasmineTest {
       expect(Float.box(Float.NaN) == Float.box(Float.NaN)).toBeTruthy
     }
 
-    it("should provide proper `toString`") {
-      expect(0.0f.toString).toEqual("0.0")
-      expect(-0.0f.toString).toEqual("-0.0")
+    it("should provide `toString` with integer values when an integer") {
+      expect(0.0f.toString).toEqual("0")
+      expect(-0.0f.toString).toEqual("0")
       expect(Float.NaN.toString).toEqual("NaN")
-      expect(5.0f.toString).toEqual("5.0")
-      expect(-5.0f.toString).toEqual("-5.0")
+      expect(5.0f.toString).toEqual("5")
+      expect(-5.0f.toString).toEqual("-5")
 
       // We need to explicitly cut the string here, since floats are
       // represented by doubles (but the literal is emitted as

@@ -396,13 +396,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     }
 
     private def genBoxFunction(tpe: Type)(implicit pos: Position) = {
+      def noBoxFun = {
+        val arg = js.Ident("x", None)
+        js.Function(arg :: Nil, js.Return(arg))
+      }
+
       toTypeKind(tpe) match {
+        case BooleanKind | LongKind | DoubleKind =>
+          noBoxFun
         case kind: ValueTypeKind =>
           js.Select(environment, js.Ident("b" + kind.primitiveCharCode))
         case _ =>
-          // No boxing. Identity function
-          val arg = js.Ident("x", None)
-          js.Function(arg :: Nil, js.Return(arg))
+          noBoxFun
       }
     }
 

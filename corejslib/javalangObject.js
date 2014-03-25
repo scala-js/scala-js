@@ -98,7 +98,9 @@ ScalaJS.c.java_lang_Object.prototype.finalize__ = function() {
 ScalaJS.is.java_lang_Object = function(obj) {
   return !!((obj && obj.$classData &&
     obj.$classData.ancestors.java_lang_Object) ||
-    (typeof(obj) === "string"));
+    (typeof(obj) === "string") ||
+    (typeof(obj) === "number") ||
+    (typeof(obj) === "boolean"));
 };
 
 ScalaJS.as.java_lang_Object = function(obj) {

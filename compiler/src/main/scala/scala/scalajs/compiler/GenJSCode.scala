@@ -191,6 +191,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               assert(!isRawJSFunctionDef(sym),
                   s"Raw JS function def should have been recorded: $cd")
               genRawJSClassData(cd)
+            } else if (isHijackedBoxedClass(sym)) {
+              genHijackedBoxedClassData(cd)
             } else {
               val classDef = genClass(cd)
               if (isStaticModule(sym))
@@ -369,6 +371,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       classDataVar := genDataRecord(cd)
     }
 
+    // Generate the class data of a hijacked boxed class -----------------------
+
+    /** Gen JS code creating the class data of a hijacked boxed class
+     */
+    def genHijackedBoxedClassData(cd: ClassDef): js.Tree = {
+      import js.TreeDSL._
+
+      implicit val pos = cd.pos
+      val ClassDef(mods, name, _, impl) = cd
+      val sym = cd.symbol
+
+      val classIdent = encodeClassFullNameIdent(sym)
+
+      val instanceTestMethods = genInstanceTestMethods(cd)
+
+      val classDataVar = envField("data") DOT classIdent
+      val createDataStat = classDataVar := genDataRecord(cd)
+
+      js.Block(instanceTestMethods, createDataStat)
+    }
+
     // Generate an interface ---------------------------------------------------
 
     /** Gen JS code for an interface definition
@@ -460,7 +483,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       implDefinition
     }
 
-    // Commons for genClass, genRawJSClassData and genInterface ----------------
+    // Commons for genClass, genInterface and co -------------------------------
 
     def genInstanceTestMethods(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
@@ -471,10 +494,17 @@ abstract class GenJSCode extends plugins.PluginComponent
       val displayName = sym.fullName
       val classIdent = encodeClassFullNameIdent(sym)
 
+      val isHijackedBoxedCls = isHijackedBoxedClass(sym)
       val isAncestorOfString =
         StringClass.ancestors contains sym
+      val isAncestorOfHijackedNumberClass =
+        HijackedNumberClasses.exists(_.ancestors contains sym)
+      val isAncestorOfBoxedBooleanClass =
+        BoxedBooleanClass.ancestors contains sym
 
-      val createIsStat = {
+      val createIsStat = if (isHijackedBoxedCls) {
+        js.Skip()
+      } else {
         val obj = js.Ident("obj")
         envField("is") DOT classIdent := js.Function(List(obj), js.Return {
           var test = (obj && (obj DOT "$classData") &&
@@ -483,12 +513,20 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isAncestorOfString)
             test = test || (
                 js.UnaryOp("typeof", obj) === js.StringLiteral("string"))
+          if (isAncestorOfHijackedNumberClass)
+            test = test || (
+                js.UnaryOp("typeof", obj) === js.StringLiteral("number"))
+          if (isAncestorOfBoxedBooleanClass)
+            test = test || (
+                js.UnaryOp("typeof", obj) === js.StringLiteral("boolean"))
 
           !(!test)
         })
       }
 
-      val createAsStat = {
+      val createAsStat = if (isHijackedBoxedCls) {
+        js.Skip()
+      } else {
         val obj = js.Ident("obj")
         envField("as") DOT classIdent := js.Function(List(obj), js.Block {
           IF (js.ApplyMethod(envField("is"), classIdent, List(obj)) ||
@@ -536,7 +574,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
 
       val isInterface = sym.isInterface
-      val isAncestorOfString = StringClass.ancestors contains sym
+      val isHijackedBoxedCls = isHijackedBoxedClass(sym)
+      val isAncestorOfStringOrHijackedBoxedClass =
+        (StringClass +: HijackedBoxedClasses).exists(_.ancestors contains sym)
 
       val parentData = {
         if (isInterface) js.Undefined()
@@ -560,9 +600,20 @@ abstract class GenJSCode extends plugins.PluginComponent
           parentData,
           ancestorsRecord
       ) ++ (
-          // Ancestors of string have a non-standard isInstanceOf test
-          if (isAncestorOfString) List(envField("is") DOT classIdent)
-          else Nil
+          // Optional parameter isInstance
+          if (isHijackedBoxedCls) {
+            /* Hijacked boxed classes have a special isInstanceOf test. */
+            List(js.Function(List(js.Ident("x")), {
+              js.Return(genIsInstanceOf(sym.typeConstructor, js.Ident("x")))
+            }))
+          } else if (isAncestorOfStringOrHijackedBoxedClass) {
+            /* Ancestors of string or hijacked boxed classes have a normal
+             * ScalaJS.is.pack_Class test but with a non-standard behavior. */
+            List(envField("is") DOT classIdent)
+          } else {
+            // For other classes, the isInstance function can be inferred.
+            Nil
+          }
       ))
     }
 
@@ -1536,6 +1587,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         /** Constructor call (new)
          *  Further refined into:
          *  * new String(...)
+         *  * new of a hijacked boxed class
          *  * new of a primitive JS type
          *  * new Array
          *  * regular new
@@ -1549,6 +1601,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           val tpe = tpt.tpe
           if (isStringType(tpe)) {
             genNewString(app)
+          } else if (isHijackedBoxedClass(tpe.typeSymbol)) {
+            genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
           } else if (translatedAnonFunctions contains tpe.typeSymbol) {
             val (functionMaker, funInfo) = translatedAnonFunctions(tpe.typeSymbol)
             currentMethodInfoBuilder.createsAnonFunction(funInfo)
@@ -1673,6 +1727,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              *    at compile-time are sometimes raw JS values at runtime).
              *  * Methods of ancestors of java.lang.String (because they could
              *    be a primitive string at runtime).
+             *  * Likewise, methods of ancestors of hijacked boxed classes
              *  * Calls to primitive JS methods (Scala.js -> JS bridge)
              *  * Regular method call
              */
@@ -1689,7 +1744,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
               genCallHelper(helper, arguments:_*)
-            } else if (ToStringMaybeOnString contains fun.symbol) {
+            } else if (ToStringMaybeOnHijackedClass contains fun.symbol) {
               js.ApplyMethod(genExpr(receiver), js.Ident("toString"), Nil)
             } else if (isStringType(receiver.tpe)) {
               genStringCall(app)
@@ -1725,32 +1780,54 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.ApplyMethod(methodFun, js.Ident("call"), receiver :: arguments)
     }
 
-    private lazy val ToStringMaybeOnString = Set[Symbol](
-      getMemberMethod(CharSequenceClass, nme.toString_),
-      getMemberMethod(StringClass, nme.toString_)
-    )
+    private lazy val ToStringMaybeOnHijackedClass: Set[Symbol] = Set(
+        CharSequenceClass, StringClass,
+        BoxedBooleanClass, BoxedIntClass, BoxedLongClass, BoxedDoubleClass
+    ).map(cls => getMemberMethod(cls, nme.toString_))
 
-    // TODO Make these primitives?
-    private lazy val MethodWithHelperInEnv = Map[Symbol, String](
-      Object_toString  -> "objectToString",
-      Object_getClass  -> "objectGetClass",
-      Object_clone     -> "objectClone",
-      Object_finalize  -> "objectFinalize",
-      Object_notify    -> "objectNotify",
-      Object_notifyAll -> "objectNotifyAll",
-      Object_equals    -> "objectEquals",
-      Object_hashCode  -> "objectHashCode",
+    private lazy val MethodWithHelperInEnv: Map[Symbol, String] = {
+      val m = mutable.Map[Symbol, String](
+        Object_toString  -> "objectToString",
+        Object_getClass  -> "objectGetClass",
+        Object_clone     -> "objectClone",
+        Object_finalize  -> "objectFinalize",
+        Object_notify    -> "objectNotify",
+        Object_notifyAll -> "objectNotifyAll",
+        Object_equals    -> "objectEquals",
+        Object_hashCode  -> "objectHashCode"
+      )
 
-      getMemberMethod(CharSequenceClass, newTermName("length")) -> "charSequenceLength",
-      getMemberMethod(CharSequenceClass, newTermName("charAt")) -> "charSequenceCharAt",
-      getMemberMethod(CharSequenceClass, newTermName("subSequence")) -> "charSequenceSubSequence",
+      def addN(clazz: Symbol, meth: TermName, helperName: String): Unit = {
+        for (sym <- getMemberMethod(clazz, meth).alternatives)
+          m += sym -> helperName
+      }
+      def addS(clazz: Symbol, meth: String, helperName: String): Unit =
+        addN(clazz, newTermName(meth), helperName)
 
-      getMemberMethod(ComparableClass, newTermName("compareTo")) -> "comparableCompareTo",
+      addS(CharSequenceClass, "length", "charSequenceLength")
+      addS(CharSequenceClass, "charAt", "charSequenceCharAt")
+      addS(CharSequenceClass, "subSequence", "charSequenceSubSequence")
 
-      getMemberMethod(StringClass, nme.equals_) -> "objectEquals",
-      getMemberMethod(StringClass, nme.hashCode_) -> "objectHashCode",
-      getMemberMethod(StringClass, newTermName("compareTo")) -> "comparableCompareTo"
-    )
+      addS(ComparableClass, "compareTo", "comparableCompareTo")
+
+      for (clazz <- StringClass +: HijackedBoxedClasses) {
+        addN(clazz, nme.equals_, "objectEquals")
+        addN(clazz, nme.hashCode_, "objectHashCode")
+        addS(clazz, "compareTo", "comparableCompareTo")
+      }
+
+      for (clazz <- requiredClass[java.lang.Number] +: HijackedNumberClasses) {
+        for (pref <- Seq("byte", "short", "int", "long", "float", "double")) {
+          val meth = pref+"Value"
+          addS(clazz, meth, "number"+meth.capitalize)
+          // example: "intValue" -> "numberIntValue"
+        }
+      }
+
+      addS(BoxedDoubleClass, "isNaN", "isNaN")
+
+      m.toMap
+    }
 
     private lazy val CharSequenceClass = requiredClass[java.lang.CharSequence]
 
@@ -1782,11 +1859,13 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for an isInstanceOf test (for reference types only) */
     def genIsInstanceOf(to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
+
+      def genTypeOfTest(typeString: String) = {
+        js.BinaryOp("===", js.UnaryOp("typeof", value),
+            js.StringLiteral(typeString))
+      }
+
       if (isRawJSType(to)) {
-        def genTypeOfTest(typeString: String) = {
-          js.BinaryOp("===", js.UnaryOp("typeof", value),
-              js.StringLiteral(typeString))
-        }
         to.typeSymbol match {
           case JSNumberClass    => genTypeOfTest("number")
           case JSStringClass    => genTypeOfTest("string")
@@ -1799,9 +1878,17 @@ abstract class GenJSCode extends plugins.PluginComponent
           case sym =>
             js.BinaryOp("instanceof", value, genGlobalJSObject(sym))
         }
+      } else if (isHijackedBoxedClass(to.typeSymbol)) {
+        to.typeSymbol match {
+          case BoxedBooleanClass => genTypeOfTest("boolean")
+          case BoxedDoubleClass  => genTypeOfTest("number")
+          case BoxedLongClass    =>
+            genIsInstanceOf(RuntimeLongClass.typeConstructor, value)
+        }
       } else {
         val (result, sym) = encodeIsInstanceOf(value, to)
-        currentMethodInfoBuilder.accessesClassData(sym)
+        if (sym != RuntimeLongClass)
+          currentMethodInfoBuilder.accessesClassData(sym)
         result
       }
     }
@@ -1823,6 +1910,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             val (result, sym) = encodeAsInstanceOf(value, to)
             currentMethodInfoBuilder.accessesClassData(sym)
             result
+        }
+      } else if (isHijackedBoxedClass(to.typeSymbol)) {
+        to.typeSymbol match {
+          case BoxedBooleanClass => genCallHelper("asBoolean", value)
+          case BoxedDoubleClass  => genCallHelper("asDouble", value)
+          case BoxedLongClass    =>
+            genAsInstanceOf(RuntimeLongClass.typeConstructor, value)
         }
       } else {
         val (result, sym) = encodeAsInstanceOf(value, to)
@@ -1896,6 +1990,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       currentMethodInfoBuilder.instantiatesClass(clazz)
       val instance = js.New(typeVar, Nil)
       genApplyMethod(instance, clazz, ctor, arguments)
+    }
+
+    /** Gen JS code for a call to a constructor of a hijacked boxed class.
+     *  All of these have 2 constructors: one with the primitive
+     *  value, which is erased, and one with a String, which is
+     *  equivalent to BoxedClass.valueOf(arg).
+     */
+    private def genNewHijackedBoxedClass(clazz: Symbol, ctor: Symbol,
+        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
+      assert(arguments.size == 1)
+      if (isStringType(ctor.tpe.params.head.tpe)) {
+        // BoxedClass.valueOf(arg)
+        val companion = clazz.companionModule.moduleClass
+        val valueOf = getMemberMethod(companion, nme.valueOf) suchThat { s =>
+          s.tpe.params.size == 1 && isStringType(s.tpe.params.head.tpe)
+        }
+        genApplyMethod(genLoadModule(companion), companion, valueOf, arguments)
+      } else {
+        // erased
+        arguments.head
+      }
     }
 
     /** Gen JS code for creating a new Array: new Array[T](length)
@@ -2142,23 +2257,24 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val ltree = toLong(lsrc, args(0).tpe)
           val rtree = toLong(rsrc, args(1).tpe)
+          val rtLongTpe = RuntimeLongClass.tpe
 
           code match {
-            case ADD => genOlLongCall(ltree, "+",   rtree)(RuntimeLongClass.tpe)
-            case SUB => genLongCall  (ltree, "-",   rtree)
-            case MUL => genLongCall  (ltree, "*",   rtree)
-            case DIV => genLongCall  (ltree, "/",   rtree)
-            case MOD => genLongCall  (ltree, "%",   rtree)
-            case OR  => genLongCall  (ltree, "|",   rtree)
-            case XOR => genLongCall  (ltree, "^",   rtree)
-            case AND => genLongCall  (ltree, "&",   rtree)
-            case LSL => genLongCall  (ltree, "<<",  rtree)
-            case LSR => genLongCall  (ltree, ">>>", rtree)
-            case ASR => genLongCall  (ltree, ">>",  rtree)
-            case LT  => genLongCall  (ltree, "<",   rtree)
-            case LE  => genLongCall  (ltree, "<=",  rtree)
-            case GT  => genLongCall  (ltree, ">",   rtree)
-            case GE  => genLongCall  (ltree, ">=",  rtree)
+            case ADD => genOlLongCall(ltree, "+",   rtree)(rtLongTpe)
+            case SUB => genOlLongCall(ltree, "-",   rtree)(rtLongTpe)
+            case MUL => genOlLongCall(ltree, "*",   rtree)(rtLongTpe)
+            case DIV => genOlLongCall(ltree, "/",   rtree)(rtLongTpe)
+            case MOD => genOlLongCall(ltree, "%",   rtree)(rtLongTpe)
+            case OR  => genOlLongCall(ltree, "|",   rtree)(rtLongTpe)
+            case XOR => genOlLongCall(ltree, "^",   rtree)(rtLongTpe)
+            case AND => genOlLongCall(ltree, "&",   rtree)(rtLongTpe)
+            case LSL => genOlLongCall(ltree, "<<",  rtree)(IntTpe)
+            case LSR => genOlLongCall(ltree, ">>>", rtree)(IntTpe)
+            case ASR => genOlLongCall(ltree, ">>",  rtree)(IntTpe)
+            case LT  => genOlLongCall(ltree, "<",   rtree)(rtLongTpe)
+            case LE  => genOlLongCall(ltree, "<=",  rtree)(rtLongTpe)
+            case GT  => genOlLongCall(ltree, ">",   rtree)(rtLongTpe)
+            case GE  => genOlLongCall(ltree, ">=",  rtree)(rtLongTpe)
             case EQ  => genLongCall  (ltree, "equals", rtree)
             case NE  => genLongCall  (ltree, "notEquals", rtree)
             case _ =>
@@ -2444,11 +2560,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       /**
-       * Check if string implements the particular method. If this is the case
-       * (rtStrSym != NoSymbol), we generate a runtime instance check if we are
-       * dealing with a string.
+       * Tests whether one of our reflective "boxes" for primitive types
+       * implements the particular method. If this is the case
+       * (result != NoSymbol), we generate a runtime instance check if we are
+       * dealing with the appropriate primitive type.
        */
-      lazy val rtStrSym = RuntimeStringClass.tpe.member(sym.name).suchThat { s =>
+      def matchingSymIn(clazz: Symbol) = clazz.tpe.member(sym.name).suchThat { s =>
         val sParams = s.tpe.params
         !s.isBridge &&
         params.size == sParams.size &&
@@ -2485,56 +2602,75 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-        val baseCase = genApplyMethod(callTrg, receiver.tpe, proxyIdent, arguments)
+        var callStatement: js.Tree =
+          genApplyMethod(callTrg, receiver.tpe, proxyIdent, arguments)
 
-        val arrayCase = if (isArrayLikeUpdate) {
-          IF (genCallHelper("isScalaJSArray", callTrg)) {
+        if (isArrayLikeUpdate) {
+          callStatement = IF (genCallHelper("isScalaJSArray", callTrg)) {
             js.ApplyMethod(callTrg,
                 js.Ident("update__I__elementType__"), arguments)
           } ELSE {
-            baseCase
+            callStatement
           }
-        } else baseCase
+        }
 
-        val stringCase = if (rtStrSym != NoSymbol && rtStrSym.isPublic) {
-          IF (js.UnaryOp("typeof", callTrg) === js.StringLiteral("string")) {
-            // Check if we are calling a method on Object. The trait
-            // RuntimeString extends Object, too.
-            if (rtStrSym.owner == ObjectClass) {
-              MethodWithHelperInEnv get rtStrSym map { helper =>
-                // This method has a helper, call it
-                genCallHelper(helper, callTrg :: arguments:_*)
-              } getOrElse {
-                // If we end up here, we have a call to a method in
-                // java.lang.Object we cannot support (such as wait). An example
-                // is wait. Calls like this only fail reflectively at compile
-                // time because some of them exist in the Scala stdlib. DCE will
-                // issue a warning in any case.
-                currentUnit.error(pos,
-                    s"""You tried to call ${rtStrSym.name} on AnyRef reflectively, but this
-                       |method does not make sense in Scala.js. You may not call it""".stripMargin)
-                statToExpr(js.Skip())
-              }
+        for {
+          (primTypeOf, reflBoxClass) <- Seq(
+              ("string", RuntimeStringClass),
+              ("number", NumberReflectiveCallClass),
+              ("boolean", BooleanReflectiveCallClass)
+          )
+          implMethodSym = matchingSymIn(reflBoxClass)
+          if implMethodSym != NoSymbol && implMethodSym.isPublic
+        } {
+          callStatement = IF (js.UnaryOp("typeof", callTrg) === js.StringLiteral(primTypeOf)) {
+            val helper = MethodWithHelperInEnv.get(implMethodSym)
+            if (helper.isDefined) {
+              // This method has a helper, call it
+              genCallHelper(helper.get, callTrg :: arguments:_*)
+            } else if (implMethodSym.owner == ObjectClass) {
+              /* If we end up here, we have a call to a method in
+               * java.lang.Object we cannot support (such as wait).
+               * Calls like this only fail reflectively at compile time because
+               * some of them exist in the Scala stdlib. DCE will issue a
+               * warning in any case.
+               */
+              currentUnit.error(pos,
+                  s"""You tried to call ${implMethodSym.name} on AnyRef reflectively, but this
+                     |method does not make sense in Scala.js. You may not call it""".stripMargin)
+              statToExpr(js.Skip())
             } else {
-              val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
-              val strApply = genApplyMethod(
-                envField("impls"),
-                implClass,
-                methodIdent,
-                callTrg :: arguments)
-              // Box the result of the string method if required
-              val retTpe = rtStrSym.tpe.resultType
+              val rawApply = if (primTypeOf == "string") {
+                val (implClass, methodIdent) =
+                  encodeImplClassMethodSym(implMethodSym)
+                genApplyMethod(
+                  envField("impls"),
+                  implClass,
+                  methodIdent,
+                  callTrg :: arguments)
+              } else {
+                val reflBoxClass = implMethodSym.owner
+                val reflBox = genNew(reflBoxClass,
+                    reflBoxClass.primaryConstructor, List(callTrg))
+                genApplyMethod(
+                    reflBox,
+                    reflBoxClass,
+                    implMethodSym,
+                    arguments)
+              }
+              // Box the result of the implementing method if required
+              val retTpe = implMethodSym.tpe.resultType
               if (retTpe.typeSymbol.isPrimitiveValueClass)
-                makeBox(strApply, retTpe)
+                makeBox(rawApply, retTpe)
               else
-                strApply
+                rawApply
             }
           } ELSE {
-            arrayCase
+            callStatement
           }
-        } else arrayCase
+        }
 
-        js.Block(callTrgVarDef,stringCase)
+        js.Block(callTrgVarDef, callStatement)
       }
     }
 
@@ -2556,12 +2692,15 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def makeBoxUnbox(expr: js.Tree, tpe: Type, functionPrefix: String)(
         implicit pos: Position): js.Tree = {
 
-      val boxHelperName = toTypeKind(tpe) match {
-        case kind: ValueTypeKind => functionPrefix + kind.primitiveCharCode
+      toTypeKind(tpe) match {
+        case BooleanKind | LongKind | DoubleKind if functionPrefix == "b" =>
+          expr // these are not boxed
+        case kind: ValueTypeKind =>
+          val boxHelperName = functionPrefix + kind.primitiveCharCode
+          genCallHelper(boxHelperName, expr)
         case _ =>
           abort(s"makeBoxUnbox requires a primitive type, found $tpe at $pos")
       }
-      genCallHelper(boxHelperName, expr)
     }
 
     private def lookupModuleClass(name: String) = {
@@ -2723,6 +2862,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case DEBUGGER =>
               statToExpr(js.Debugger())
+            case RETURNRECEIVER =>
+              receiver
           }
 
         case List(arg) =>
@@ -3760,6 +3901,18 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   private def isLongType(tpe: Type): Boolean =
     tpe.typeSymbol == LongClass
+
+  private lazy val BoxedBooleanClass = boxedClass(BooleanClass)
+  private lazy val BoxedLongClass = boxedClass(LongClass)
+  private lazy val BoxedDoubleClass = boxedClass(DoubleClass)
+
+  private lazy val HijackedNumberClasses =
+    Seq(BoxedLongClass, BoxedDoubleClass)
+  private lazy val HijackedBoxedClasses =
+    BoxedBooleanClass +: HijackedNumberClasses
+
+  private lazy val isHijackedBoxedClass: Set[Symbol] =
+    HijackedBoxedClasses.toSet
 
   private def isMaybeJavaScriptException(tpe: Type) =
     JavaScriptExceptionClass isSubClass tpe.typeSymbol

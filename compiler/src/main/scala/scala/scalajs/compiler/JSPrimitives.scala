@@ -66,6 +66,8 @@ abstract class JSPrimitives {
   val DEBUGGER = 343 // js.debugger()
   val HASPROP = 344  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
 
+  val RETURNRECEIVER = 345 // anything "return this;", e.g., Boolean.booleanValue()
+
   /** Initialize the map of primitive methods */
   def init() {
 
@@ -113,6 +115,17 @@ abstract class JSPrimitives {
     addPrimitive(JSPackage_debugger, DEBUGGER)
 
     addPrimitive(JSObject_hasProperty, HASPROP)
+
+    addPrimitive(getMember(requiredClass[java.lang.Boolean],
+        newTermName("booleanValue")), RETURNRECEIVER)
+    /* We could add a bunch of other such methods, like Double.doubleValue()
+     * or Long.longValue(). However,
+     * * These methods are already covered as methods with helpers in the env,
+     * * They are seldom called (they are not called by generated code), and
+     * * We should do it for the cross-product of all Number subclasses with
+     *   all the xValue() methods.
+     * Conclusion: we do not bother.
+     */
   }
 
   def isJavaScriptPrimitive(code: Int) =

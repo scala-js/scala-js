@@ -978,7 +978,6 @@ run/t3563.scala
 run/t6111.scala
 run/classtags_multi.scala
 run/t5201.scala
-run/Course-2002-04.scala
 run/checked.scala
 run/valueclasses-classtag-basic.scala
 run/t7171.scala
@@ -1105,7 +1104,6 @@ run/t4827b.scala
 run/lift-and-unlift.scala
 run/t6574b.scala
 run/t7240
-run/t0421-new.scala
 run/t3984.scala
 run/virtpatmat_tailcalls_verifyerror.scala
 run/macro-term-declared-in-class-class
@@ -1198,7 +1196,6 @@ run/withIndex.scala
 run/exc1.scala
 run/amp.scala
 run/t1423.scala
-run/promotion.scala
 run/t594.scala
 run/t6353.scala
 run/byname.scala
@@ -1249,7 +1246,6 @@ run/t4396.scala
 run/macro-undetparams-consfromsls
 run/t2029.scala
 run/t1220.scala
-run/t4617.scala
 run/option-fold.scala
 run/t5284c.scala
 run/macro-auto-duplicate
@@ -1299,13 +1295,11 @@ run/t4536.scala
 run/NestedClasses.scala
 run/t3877.scala
 run/seqlike-kmp.scala
-run/spec-self.scala
 run/t5907.scala
 run/t266.scala
 run/missingparams.scala
 run/t2255.scala
 run/private-inline.scala
-run/Course-2002-02.scala
 run/t3488.scala
 run/t3950.scala
 run/typealias_overriding.scala
@@ -1362,8 +1356,6 @@ run/t6292.scala
 run/t6206.scala
 run/t3702.scala
 run/t1042.scala
-run/Course-2002-09.scala
-run/Course-2002-01.scala
 run/t1718.scala
 run/t2074_2.scala
 run/arraycopy.scala
@@ -1380,7 +1372,6 @@ run/t5856.scala
 run/t6968.scala
 run/names-defaults.scala
 run/macro-expand-tparams-implicit
-run/t0421-old.scala
 run/t5881.scala
 run/t3540.scala
 run/virtpatmat_try.scala
@@ -1597,7 +1588,6 @@ run/tuples.scala
 run/t5753_2
 run/t0528.scala
 run/t5105.scala
-run/Course-2002-10.scala
 run/t1195-old.scala
 run/t7341.scala
 run/t3670.scala
@@ -2347,7 +2337,6 @@ run/t102.scala
 run/nonlocalreturn.scala
 run/macro-reify-staticXXX
 run/Course-2002-06.scala
-run/impconvtimes.scala
 run/t6863.scala
 run/t6500.scala
 run/macro-impl-rename-context
@@ -2444,7 +2433,6 @@ run/t3964.scala
 run/t6329_vanilla.scala
 run/t3038c
 run/t1697.scala
-run/t6318_primitives.scala
 run/t2030.scala
 run/t3397.scala
 run/t1005.scala
@@ -2474,7 +2462,6 @@ run/iq.scala
 run/t2788.scala
 run/t2027.scala
 run/macro-expand-recursive
-run/t5552.scala
 run/t949.scala
 run/macro-bundle-toplevel
 run/t1909b.scala
@@ -2514,7 +2501,6 @@ run/t7899-regression.scala
 run/t7584b.scala
 run/t7223.scala
 run/t7859
-run/t5866.scala
 run/t7868.scala
 run/t7871
 run/arrayclone-new.scala
@@ -2537,7 +2523,6 @@ neg/t7494-before-parser
 neg/t7494-right-after-terminal
 run/lazy-traits.scala
 run/OrderingTest.scala
-run/runtime.scala
 run/ReplacementMatching.scala
 run/patmat-finally.scala
 run/number-parsing.scala
@@ -2620,13 +2605,11 @@ neg/t7899.scala
 neg/t7886.scala
 neg/t7895c.scala
 neg/t7859
-run/t2378.scala
 run/t4752.scala
 run/t2087-and-2400.scala
 run/t3855.scala
 run/t6637.scala
 run/t7015.scala
-run/try-catch-unify.scala
 run/t6731.scala
 pos/t3999b.scala
 run/t0432.scala
@@ -2650,7 +2633,6 @@ run/issue192.scala
 run/richs.scala
 run/t6725-1.scala
 pos/t7776.scala
-run/Course-2002-08.scala
 run/fors.scala
 run/t6706.scala
 run/t3175.scala

@@ -66,6 +66,10 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   case object FromCore extends From
   case object FromExports extends From
 
+  private val HijackedBoxedClassNames = Set(
+      "java_lang_Boolean", "java_lang_Long", "java_lang_Double"
+  )
+
   val classInfos: mutable.Map[String, ClassInfo] = {
     val cs = for (classData <- allData)
       yield (classData.encodedName, new ClassInfo(classData))
@@ -116,10 +120,9 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     ObjectClass.callMethod("toString__T")
 
     lookupClass("scala_runtime_BoxedUnit$").accessModule()
-    lookupClass("java_lang_Boolean$").accessModule()
     for ((name, char) <- Seq(
         ("Character", "C"), ("Byte", "B"), ("Short", "S"), ("Integer", "I"),
-        ("Long", "J"), ("Float", "F"), ("Double", "D"))) {
+        ("Float", "F"))) {
       instantiateClassWith(s"java_lang_$name", s"init___$char")
     }
 
@@ -144,10 +147,11 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val isInterface = data.isInterface
     val isImplClass = data.isImplClass
     val isRawJSType = data.isRawJSType
+    val isHijackedBoxedClass = HijackedBoxedClassNames.contains(encodedName)
     val isClass = !isInterface && !isImplClass && !isRawJSType
     val isExported = data.isExported.getOrElse(false)
 
-    val hasInstantiation = isClass
+    val hasInstantiation = isClass && !isHijackedBoxedClass
     val hasData = !isImplClass
 
     var superClass: ClassInfo = _
@@ -207,7 +211,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
         if (ancestorInfo ne null) {
           ancestorInfo.methodInfos.get(methodName) match {
             case Some(m) if !m.isAbstract => Some(m)
-            case None => loop(ancestorInfo.superClass)
+            case _ => loop(ancestorInfo.superClass)
           }
         } else {
           None
