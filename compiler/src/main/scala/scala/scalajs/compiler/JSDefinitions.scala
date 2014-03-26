@@ -123,6 +123,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
+    lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
 
     lazy val JSArraySeqClass = getRequiredClass("scala.scalajs.runtime.JSArraySeq")
       lazy val JSArraySeq_ctor = JSArraySeqClass.primaryConstructor

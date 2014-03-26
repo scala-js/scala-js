@@ -129,4 +129,33 @@ class NumberReflectiveCall(value: Double) {
   def %(x: scala.Float): scala.Double = value % x
   def %(x: scala.Double): scala.Double = value % x
 
+  // Methods of scala.Int that are not defined on scala.Double
+
+  def unary_~ : scala.Int = ~value.toInt
+
+  def <<(x: scala.Int): scala.Int = value.toInt << x
+  def <<(x: scala.Long): scala.Int = value.toInt << x
+  def >>>(x: scala.Int): scala.Int = value.toInt >>> x
+  def >>>(x: scala.Long): scala.Int = value.toInt >>> x
+  def >>(x: scala.Int): scala.Int = value.toInt >> x
+  def >>(x: scala.Long): scala.Int = value.toInt >> x
+
+  def |(x: scala.Byte): scala.Int = value.toInt | x
+  def |(x: scala.Short): scala.Int = value.toInt | x
+  def |(x: scala.Char): scala.Int = value.toInt | x
+  def |(x: scala.Int): scala.Int = value.toInt | x
+  def |(x: scala.Long): scala.Long = value.toInt | x
+
+  def &(x: scala.Byte): scala.Int = value.toInt & x
+  def &(x: scala.Short): scala.Int = value.toInt & x
+  def &(x: scala.Char): scala.Int = value.toInt & x
+  def &(x: scala.Int): scala.Int = value.toInt & x
+  def &(x: scala.Long): scala.Long = value.toInt & x
+
+  def ^(x: scala.Byte): scala.Int = value.toInt ^ x
+  def ^(x: scala.Short): scala.Int = value.toInt ^ x
+  def ^(x: scala.Char): scala.Int = value.toInt ^ x
+  def ^(x: scala.Int): scala.Int = value.toInt ^ x
+  def ^(x: scala.Long): scala.Long = value.toInt ^ x
+
 }

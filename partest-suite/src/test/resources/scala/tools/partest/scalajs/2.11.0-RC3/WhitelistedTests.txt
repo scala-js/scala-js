@@ -2515,7 +2515,6 @@ run/lazy-traits.scala
 run/OrderingTest.scala
 run/ReplacementMatching.scala
 run/patmat-finally.scala
-run/number-parsing.scala
 run/t3158.scala
 run/t3346e.scala
 run/t4398.scala

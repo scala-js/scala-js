@@ -83,6 +83,18 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fLong(-1)).toEqual(4L)
       expect(fLong(17L)).toEqual(22L)
 
+      def fInt(x: Any { def /(x: Int): Int }) = x / 7
+      expect(fInt(65.toByte)).toEqual(9)
+      expect(fInt(15.toShort)).toEqual(2)
+      expect(fInt(25.toChar)).toEqual(3)
+      expect(fInt(-40)).toEqual(-5)
+
+      def fShort(x: Any { def +(x: Short): Int }) = x + 6.toShort
+      expect(fShort(65.toByte)).toEqual(71)
+      expect(fShort(15.toShort)).toEqual(21)
+      expect(fShort(25.toChar)).toEqual(31)
+      expect(fShort(-40)).toEqual(-34)
+
       def fFloat(x: Any { def %(x: Float): Float}) = x % 3.4f
       expect(fFloat(5.5f)).toEqual(2.1f)
 

@@ -402,7 +402,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       toTypeKind(tpe) match {
-        case BooleanKind | LongKind | DoubleKind =>
+        case BooleanKind | IntKind | LongKind | DoubleKind =>
           noBoxFun
         case kind: ValueTypeKind =>
           js.Select(environment, js.Ident("b" + kind.primitiveCharCode))

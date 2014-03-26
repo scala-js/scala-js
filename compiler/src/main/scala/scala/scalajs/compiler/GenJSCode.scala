@@ -1881,6 +1881,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
           case BoxedBooleanClass => genTypeOfTest("boolean")
+          case BoxedIntClass     => genCallHelper("isInt", value)
           case BoxedDoubleClass  => genTypeOfTest("number")
           case BoxedLongClass    =>
             genIsInstanceOf(RuntimeLongClass.typeConstructor, value)
@@ -1914,6 +1915,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
           case BoxedBooleanClass => genCallHelper("asBoolean", value)
+          case BoxedIntClass     => genCallHelper("asInt", value)
           case BoxedDoubleClass  => genCallHelper("asDouble", value)
           case BoxedLongClass    =>
             genAsInstanceOf(RuntimeLongClass.typeConstructor, value)
@@ -2640,30 +2642,39 @@ abstract class GenJSCode extends plugins.PluginComponent
                      |method does not make sense in Scala.js. You may not call it""".stripMargin)
               statToExpr(js.Skip())
             } else {
-              val rawApply = if (primTypeOf == "string") {
+              if (primTypeOf == "string") {
                 val (implClass, methodIdent) =
                   encodeImplClassMethodSym(implMethodSym)
-                genApplyMethod(
-                  envField("impls"),
-                  implClass,
-                  methodIdent,
-                  callTrg :: arguments)
+                val rawApply = genApplyMethod(
+                    envField("impls"),
+                    implClass,
+                    methodIdent,
+                    callTrg :: arguments)
+                // Box the result of the implementing method if required
+                val retTpe = implMethodSym.tpe.resultType
+                if (retTpe.typeSymbol.isPrimitiveValueClass)
+                  makeBox(rawApply, retTpe)
+                else
+                  rawApply
               } else {
-                val reflBoxClass = implMethodSym.owner
-                val reflBox = genNew(reflBoxClass,
-                    reflBoxClass.primaryConstructor, List(callTrg))
+                val reflBoxClassPatched = {
+                  if (primTypeOf == "number" &&
+                      toTypeKind(implMethodSym.tpe.resultType) == DoubleKind &&
+                      toTypeKind(sym.tpe.resultType).isInstanceOf[INT]) {
+                    // This must be an Int, and not a Double
+                    IntegerReflectiveCallClass
+                  } else {
+                    reflBoxClass
+                  }
+                }
+                val reflBox = genNew(reflBoxClassPatched,
+                    reflBoxClassPatched.primaryConstructor, List(callTrg))
                 genApplyMethod(
                     reflBox,
-                    reflBoxClass,
-                    implMethodSym,
+                    reflBoxClassPatched,
+                    proxyIdent,
                     arguments)
               }
-              // Box the result of the implementing method if required
-              val retTpe = implMethodSym.tpe.resultType
-              if (retTpe.typeSymbol.isPrimitiveValueClass)
-                makeBox(rawApply, retTpe)
-              else
-                rawApply
             }
           } ELSE {
             callStatement
@@ -2693,7 +2704,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       toTypeKind(tpe) match {
-        case BooleanKind | LongKind | DoubleKind if functionPrefix == "b" =>
+        case BooleanKind | IntKind | LongKind | DoubleKind
+            if functionPrefix == "b" =>
           expr // these are not boxed
         case kind: ValueTypeKind =>
           val boxHelperName = functionPrefix + kind.primitiveCharCode
@@ -3903,11 +3915,12 @@ abstract class GenJSCode extends plugins.PluginComponent
     tpe.typeSymbol == LongClass
 
   private lazy val BoxedBooleanClass = boxedClass(BooleanClass)
+  private lazy val BoxedIntClass = boxedClass(IntClass)
   private lazy val BoxedLongClass = boxedClass(LongClass)
   private lazy val BoxedDoubleClass = boxedClass(DoubleClass)
 
   private lazy val HijackedNumberClasses =
-    Seq(BoxedLongClass, BoxedDoubleClass)
+    Seq(BoxedIntClass, BoxedLongClass, BoxedDoubleClass)
   private lazy val HijackedBoxedClasses =
     BoxedBooleanClass +: HijackedNumberClasses
 

@@ -20,7 +20,7 @@ object FloatTest extends JasmineTest {
   describe("java.lang.Float") {
 
     it("should provide proper `equals`") {
-      expect(Float.box(0.0f) == Float.box(-0.0f)).toBeFalsy
+      expect(Float.box(0.0f) == Float.box(-0.0f)).toBeTruthy
       expect(Float.box(Float.NaN) == Float.box(Float.NaN)).toBeTruthy
     }
 

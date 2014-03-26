@@ -20,7 +20,7 @@ object DoubleTest extends JasmineTest {
   describe("java.lang.Double") {
 
     it("should provide proper `equals`") {
-      expect(Double.box(0.0) == Double.box(-0.0)).toBeFalsy
+      expect(Double.box(0.0) == Double.box(-0.0)).toBeTruthy
       expect(Double.box(Double.NaN) == Double.box(Double.NaN)).toBeTruthy
     }
 
