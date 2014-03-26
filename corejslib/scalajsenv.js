@@ -272,6 +272,10 @@ var ScalaJS = {
       return instance.subSequence__I__I__Ljava_lang_CharSequence(start, end);
   },
 
+  truncateInt: function(x) {
+    return x < 0 ? ScalaJS.g["Math"]["ceil"](x) : ScalaJS.g["Math"]["floor"](x);
+  },
+
   propertiesOf: function(obj) {
     var result = new Array();
     for (var prop in obj)
