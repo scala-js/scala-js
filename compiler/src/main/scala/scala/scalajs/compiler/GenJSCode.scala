@@ -1780,10 +1780,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.ApplyMethod(methodFun, js.Ident("call"), receiver :: arguments)
     }
 
-    private lazy val ToStringMaybeOnHijackedClass: Set[Symbol] = Set(
-        CharSequenceClass, StringClass,
-        BoxedBooleanClass, BoxedIntClass, BoxedLongClass, BoxedDoubleClass
-    ).map(cls => getMemberMethod(cls, nme.toString_))
+    private lazy val ToStringMaybeOnHijackedClass: Set[Symbol] =
+      (Set(CharSequenceClass, StringClass, NumberClass) ++ HijackedBoxedClasses)
+        .map(cls => getMemberMethod(cls, nme.toString_))
 
     private lazy val MethodWithHelperInEnv: Map[Symbol, String] = {
       val m = mutable.Map[Symbol, String](
@@ -1816,7 +1815,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         addS(clazz, "compareTo", "comparableCompareTo")
       }
 
-      for (clazz <- requiredClass[java.lang.Number] +: HijackedNumberClasses) {
+      for (clazz <- NumberClass +: HijackedNumberClasses) {
         for (pref <- Seq("byte", "short", "int", "long", "float", "double")) {
           val meth = pref+"Value"
           addS(clazz, meth, "number"+meth.capitalize)
@@ -1824,6 +1823,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
+      addS(BoxedFloatClass, "isNaN", "isNaN")
       addS(BoxedDoubleClass, "isNaN", "isNaN")
 
       m.toMap
@@ -1882,6 +1882,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         to.typeSymbol match {
           case BoxedBooleanClass => genTypeOfTest("boolean")
           case BoxedIntClass     => genCallHelper("isInt", value)
+          case BoxedFloatClass   => genTypeOfTest("number")
           case BoxedDoubleClass  => genTypeOfTest("number")
           case BoxedLongClass    =>
             genIsInstanceOf(RuntimeLongClass.typeConstructor, value)
@@ -1916,6 +1917,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         to.typeSymbol match {
           case BoxedBooleanClass => genCallHelper("asBoolean", value)
           case BoxedIntClass     => genCallHelper("asInt", value)
+          case BoxedFloatClass   => genCallHelper("asFloat", value)
           case BoxedDoubleClass  => genCallHelper("asDouble", value)
           case BoxedLongClass    =>
             genAsInstanceOf(RuntimeLongClass.typeConstructor, value)
@@ -2704,7 +2706,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       toTypeKind(tpe) match {
-        case BooleanKind | IntKind | LongKind | DoubleKind
+        case BooleanKind | IntKind | LongKind | FloatKind | DoubleKind
             if functionPrefix == "b" =>
           expr // these are not boxed
         case kind: ValueTypeKind =>
@@ -3917,10 +3919,13 @@ abstract class GenJSCode extends plugins.PluginComponent
   private lazy val BoxedBooleanClass = boxedClass(BooleanClass)
   private lazy val BoxedIntClass = boxedClass(IntClass)
   private lazy val BoxedLongClass = boxedClass(LongClass)
+  private lazy val BoxedFloatClass = boxedClass(FloatClass)
   private lazy val BoxedDoubleClass = boxedClass(DoubleClass)
 
+  private lazy val NumberClass = requiredClass[java.lang.Number]
+
   private lazy val HijackedNumberClasses =
-    Seq(BoxedIntClass, BoxedLongClass, BoxedDoubleClass)
+    Seq(BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
   private lazy val HijackedBoxedClasses =
     BoxedBooleanClass +: HijackedNumberClasses
 

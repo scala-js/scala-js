@@ -77,6 +77,7 @@ var ScalaJS = {
     else if (rhsData === ScalaJS.data.java_lang_Boolean)
       fakeInstance = false;
     else if (rhsData === ScalaJS.data.java_lang_Integer ||
+             rhsData === ScalaJS.data.java_lang_Float ||
              rhsData === ScalaJS.data.java_lang_Double)
       fakeInstance = 0;
     else if (rhsData === ScalaJS.data.java_lang_Long)
@@ -375,6 +376,13 @@ var ScalaJS = {
       ScalaJS.throwClassCastException(v, "java.lang.Integer");
   },
 
+  asFloat: function(v) {
+    if (typeof v === "number" || v === null)
+      return v;
+    else
+      ScalaJS.throwClassCastException(v, "java.lang.Float");
+  },
+
   asDouble: function(v) {
     if (typeof v === "number" || v === null)
       return v;
@@ -395,9 +403,6 @@ var ScalaJS = {
   },
   bS: function(value) {
     return new ScalaJS.c.java_lang_Short().init___S(value);
-  },
-  bF: function(value) {
-    return new ScalaJS.c.java_lang_Float().init___F(value);
   },
 
   // Unboxes - inline all the way through obj.xValue()
@@ -424,7 +429,7 @@ var ScalaJS = {
     return null === value ? 0 : ScalaJS.as.scala_scalajs_runtime_RuntimeLong(value);
   },
   uF: function(value) {
-    return null === value ? 0.0 : ScalaJS.as.java_lang_Float(value).value$2;
+    return null === value ? 0.0 : ScalaJS.asFloat(value);
   },
   uD: function(value) {
     return null === value ? 0.0 : ScalaJS.asDouble(value);
@@ -605,7 +610,7 @@ ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte", Scala
 ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short", ScalaJS.bS);
 ScalaJS.data.scala_Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int");
 ScalaJS.data.scala_Long    = new ScalaJS.PrimitiveTypeData("longZero", "J", "long");
-ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float", ScalaJS.bF);
+ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
 ScalaJS.data.scala_Double  = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
 
 // Instance tests for array of primitives

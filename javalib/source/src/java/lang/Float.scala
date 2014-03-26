@@ -2,140 +2,25 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Float(private val value: scala.Float)
-    extends Number with Comparable[Float] {
+// This class is not emitted, but we need to define its members correctly
+final class Float(value: scala.Float) extends Number with Comparable[Float] {
 
   def this(s: String) = this(Float.parseFloat(s))
 
-  override def byteValue() = value.toByte
-  override def shortValue() = value.toShort
-  def intValue() = value.toInt
-  def longValue() = value.toLong
-  def floatValue() = value
-  def doubleValue() = value.toDouble
+  override def byteValue(): scala.Byte = sys.error("stub")
+  override def shortValue(): scala.Short = sys.error("stub")
+  def intValue(): scala.Int = sys.error("stub")
+  def longValue(): scala.Long = sys.error("stub")
+  def floatValue(): scala.Float = sys.error("stub")
+  def doubleValue(): scala.Double = sys.error("stub")
 
-  override def equals(that: Any): scala.Boolean = that match {
-    case that: Float =>
-      // Always be consistent with the way java.lang.Double performs equality
-      new Double(doubleValue()).equals(new Double(that.doubleValue()))
-    case _ =>
-      false
-  }
+  override def equals(that: Any): scala.Boolean = sys.error("stub")
 
-  override def compareTo(that: Float): Int =
-    if (equals(that)) 0 else if (value < that.value) -1 else 1
+  override def compareTo(that: Float): Int = sys.error("stub")
 
-  override def toString(): String = (value: js.Number).toString()
+  override def toString(): String = sys.error("stub")
 
-  def isNaN(): scala.Boolean = Float.isNaN(value)
-
-  /*
-   * Methods on scala.Float
-   * The following methods are only here to properly support reflective calls
-   * on boxed primitive values. YOU WILL NOT BE ABLE TO USE THESE METHODS, since
-   * we use the true javalib to lookup symbols, this file contains only
-   * implementations.
-   */
-  protected def toByte: scala.Byte     = value.toByte
-  protected def toShort: scala.Short   = value.toShort
-  protected def toChar: scala.Char     = value.toChar
-  protected def toInt: scala.Int       = value.toInt
-  protected def toLong: scala.Long     = value.toLong
-  protected def toFloat: scala.Float   = value
-  protected def toDouble: scala.Double = value.toDouble
-
-  protected def unary_+ : scala.Float = value
-  protected def unary_- : scala.Float = -value
-
-  protected def +(x: String): String = value + x
-
-  protected def ==(x: scala.Byte): scala.Boolean = value == x
-  protected def ==(x: scala.Short): scala.Boolean = value == x
-  protected def ==(x: scala.Char): scala.Boolean = value == x
-  protected def ==(x: scala.Int): scala.Boolean = value == x
-  protected def ==(x: scala.Long): scala.Boolean = value == x
-  protected def ==(x: scala.Float): scala.Boolean = value == x
-  protected def ==(x: scala.Double): scala.Boolean = value == x
-
-  protected def !=(x: scala.Byte): scala.Boolean = value != x
-  protected def !=(x: scala.Short): scala.Boolean = value != x
-  protected def !=(x: scala.Char): scala.Boolean = value != x
-  protected def !=(x: scala.Int): scala.Boolean = value != x
-  protected def !=(x: scala.Long): scala.Boolean = value != x
-  protected def !=(x: scala.Float): scala.Boolean = value != x
-  protected def !=(x: scala.Double): scala.Boolean = value != x
-
-  protected def <(x: scala.Byte): scala.Boolean = value < x
-  protected def <(x: scala.Short): scala.Boolean = value < x
-  protected def <(x: scala.Char): scala.Boolean = value < x
-  protected def <(x: scala.Int): scala.Boolean = value < x
-  protected def <(x: scala.Long): scala.Boolean = value < x
-  protected def <(x: scala.Float): scala.Boolean = value < x
-  protected def <(x: scala.Double): scala.Boolean = value < x
-
-  protected def <=(x: scala.Byte): scala.Boolean = value <= x
-  protected def <=(x: scala.Short): scala.Boolean = value <= x
-  protected def <=(x: scala.Char): scala.Boolean = value <= x
-  protected def <=(x: scala.Int): scala.Boolean = value <= x
-  protected def <=(x: scala.Long): scala.Boolean = value <= x
-  protected def <=(x: scala.Float): scala.Boolean = value <= x
-  protected def <=(x: scala.Double): scala.Boolean = value <= x
-
-  protected def >(x: scala.Byte): scala.Boolean = value > x
-  protected def >(x: scala.Short): scala.Boolean = value > x
-  protected def >(x: scala.Char): scala.Boolean = value > x
-  protected def >(x: scala.Int): scala.Boolean = value > x
-  protected def >(x: scala.Long): scala.Boolean = value > x
-  protected def >(x: scala.Float): scala.Boolean = value > x
-  protected def >(x: scala.Double): scala.Boolean = value > x
-
-  protected def >=(x: scala.Byte): scala.Boolean = value >= x
-  protected def >=(x: scala.Short): scala.Boolean = value >= x
-  protected def >=(x: scala.Char): scala.Boolean = value >= x
-  protected def >=(x: scala.Int): scala.Boolean = value >= x
-  protected def >=(x: scala.Long): scala.Boolean = value >= x
-  protected def >=(x: scala.Float): scala.Boolean = value >= x
-  protected def >=(x: scala.Double): scala.Boolean = value >= x
-
-  protected def +(x: scala.Byte): scala.Float = value + x
-  protected def +(x: scala.Short): scala.Float = value + x
-  protected def +(x: scala.Char): scala.Float = value + x
-  protected def +(x: scala.Int): scala.Float = value + x
-  protected def +(x: scala.Long): scala.Float = value + x
-  protected def +(x: scala.Float): scala.Float = value + x
-  protected def +(x: scala.Double): scala.Double = value + x
-
-  protected def -(x: scala.Byte): scala.Float = value - x
-  protected def -(x: scala.Short): scala.Float = value - x
-  protected def -(x: scala.Char): scala.Float = value - x
-  protected def -(x: scala.Int): scala.Float = value - x
-  protected def -(x: scala.Long): scala.Float = value - x
-  protected def -(x: scala.Float): scala.Float = value - x
-  protected def -(x: scala.Double): scala.Double = value - x
-
-  protected def *(x: scala.Byte): scala.Float = value * x
-  protected def *(x: scala.Short): scala.Float = value * x
-  protected def *(x: scala.Char): scala.Float = value * x
-  protected def *(x: scala.Int): scala.Float = value * x
-  protected def *(x: scala.Long): scala.Float = value * x
-  protected def *(x: scala.Float): scala.Float = value * x
-  protected def *(x: scala.Double): scala.Double = value * x
-
-  protected def /(x: scala.Byte): scala.Float = value / x
-  protected def /(x: scala.Short): scala.Float = value / x
-  protected def /(x: scala.Char): scala.Float = value / x
-  protected def /(x: scala.Int): scala.Float = value / x
-  protected def /(x: scala.Long): scala.Float = value / x
-  protected def /(x: scala.Float): scala.Float = value / x
-  protected def /(x: scala.Double): scala.Double = value / x
-
-  protected def %(x: scala.Byte): scala.Float = value % x
-  protected def %(x: scala.Short): scala.Float = value % x
-  protected def %(x: scala.Char): scala.Float = value % x
-  protected def %(x: scala.Int): scala.Float = value % x
-  protected def %(x: scala.Long): scala.Float = value % x
-  protected def %(x: scala.Float): scala.Float = value % x
-  protected def %(x: scala.Double): scala.Double = value % x
+  def isNaN(): scala.Boolean = sys.error("stub")
 
 }
 

@@ -68,7 +68,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
   private val HijackedBoxedClassNames = Set(
       "java_lang_Boolean", "java_lang_Integer", "java_lang_Long",
-      "java_lang_Double"
+      "java_lang_Float", "java_lang_Double"
   )
 
   val classInfos: mutable.Map[String, ClassInfo] = {
@@ -122,7 +122,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
     lookupClass("scala_runtime_BoxedUnit$").accessModule()
     for ((name, char) <- Seq(
-        ("Character", "C"), ("Byte", "B"), ("Short", "S"), ("Float", "F"))) {
+        ("Character", "C"), ("Byte", "B"), ("Short", "S"))) {
       instantiateClassWith(s"java_lang_$name", s"init___$char")
     }
 
