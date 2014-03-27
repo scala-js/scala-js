@@ -37,9 +37,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     var isExported: Boolean = false
     val methodInfos = mutable.ListBuffer.empty[MethodInfoBuilder]
 
-    def addMethod(ident: js.Ident, isAbstract: Boolean = false,
+    def addMethod(encodedName: String, isAbstract: Boolean = false,
         isExported: Boolean = false): MethodInfoBuilder = {
-      val b = new MethodInfoBuilder(ident, isAbstract, isExported)
+      val b = new MethodInfoBuilder(encodedName, isAbstract, isExported)
       methodInfos += b
       b
     }
@@ -61,9 +61,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     }
   }
 
-  class MethodInfoBuilder(val ident: js.Ident, val isAbstract: Boolean = false,
+  class MethodInfoBuilder(val encodedName: String, val isAbstract: Boolean = false,
       val isExported: Boolean = false) {
-    val encodedName = ident.name
 
     val calledMethods = mutable.Set.empty[(String, String)] // (tpe, method)
     val calledMethodsStatic = mutable.Set.empty[(String, String)] // (class, method)

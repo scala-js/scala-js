@@ -68,7 +68,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           js.DocComment("@constructor"),
           expCtorVar := js.Function(args, js.Block(
             // Call the js constructor while passing the current this
-            js.ApplyMethod(jsCtor, js.Ident("call"), List(js.This())),
+            genApplyMethod(jsCtor, classSym, js.Ident("call"), List(js.This())),
             body
           )),
           expCtorVar DOT "prototype" := jsCtor DOT "prototype"
@@ -315,9 +315,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                 }, genSubAlts, elsep)
 
               case InstanceOfTypeTest(tpe) =>
-                js.If(orUndef {
-                  encodeIsInstanceOf(param, tpe)._1
-                }, genSubAlts, elsep)
+                js.If(orUndef(genIsInstanceOf(tpe, param)),
+                    genSubAlts, elsep)
 
               case NoTypeTest =>
                 genSubAlts // note: elsep is discarded, obviously
@@ -383,15 +382,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           }
 
           // Pass previous arguments to defaultGetter
-          jsArg := js.ApplyMethod(trgTree, encodeMethodSym(defaultGetter),
+          jsArg := genApplyMethod(trgTree, trgSym, defaultGetter,
               jsArgs.take(defaultGetter.tpe.params.size))
 
         } ELSE js.Skip() // inference for withoutElse doesn't work
       }
 
       val jsReturn = js.Return {
-        js.ApplyMethod(js.This(), encodeMethodSym(sym),
-          jsArgs ++ jsVarArg)
+        genApplyMethod(js.This(), sym.owner, sym, jsArgs ++ jsVarArg)
       }
 
       js.Block(jsDefaultArgPrep :+ jsReturn)
