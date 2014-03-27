@@ -76,7 +76,9 @@ var ScalaJS = {
       fakeInstance = "some string";
     else if (rhsData === ScalaJS.data.java_lang_Boolean)
       fakeInstance = false;
-    else if (rhsData === ScalaJS.data.java_lang_Integer ||
+    else if (rhsData === ScalaJS.data.java_lang_Byte ||
+             rhsData === ScalaJS.data.java_lang_Short ||
+             rhsData === ScalaJS.data.java_lang_Integer ||
              rhsData === ScalaJS.data.java_lang_Float ||
              rhsData === ScalaJS.data.java_lang_Double)
       fakeInstance = 0;
@@ -358,6 +360,14 @@ var ScalaJS = {
 
   // is/as for hijacked boxed classes (the non-trivial ones)
 
+  isByte: function(v) {
+    return ScalaJS.isInt(v) && (v >= -128) && (v < 128);
+  },
+
+  isShort: function(v) {
+    return ScalaJS.isInt(v) && (v >= -32768) && (v < 32768);
+  },
+
   isInt: function(v) {
     return (typeof v === "number") && (v % 1 === 0);
   },
@@ -367,6 +377,20 @@ var ScalaJS = {
       return v;
     else
       ScalaJS.throwClassCastException(v, "java.lang.Boolean");
+  },
+
+  asByte: function(v) {
+    if (ScalaJS.isByte(v) || v === null)
+      return v;
+    else
+      ScalaJS.throwClassCastException(v, "java.lang.Byte");
+  },
+
+  asShort: function(v) {
+    if (ScalaJS.isShort(v) || v === null)
+      return v;
+    else
+      ScalaJS.throwClassCastException(v, "java.lang.Short");
   },
 
   asInt: function(v) {
@@ -398,12 +422,6 @@ var ScalaJS = {
   bC: function(value) {
     return new ScalaJS.c.java_lang_Character().init___C(value);
   },
-  bB: function(value) {
-    return new ScalaJS.c.java_lang_Byte().init___B(value);
-  },
-  bS: function(value) {
-    return new ScalaJS.c.java_lang_Short().init___S(value);
-  },
 
   // Unboxes - inline all the way through obj.xValue()
 
@@ -417,10 +435,10 @@ var ScalaJS = {
     return null === value ? 0 : ScalaJS.as.java_lang_Character(value).value$1;
   },
   uB: function(value) {
-    return null === value ? 0 : ScalaJS.as.java_lang_Byte(value).value$2;
+    return null === value ? 0 : ScalaJS.asByte(value);
   },
   uS: function(value) {
-    return null === value ? 0 : ScalaJS.as.java_lang_Short(value).value$2;
+    return null === value ? 0 : ScalaJS.asShort(value);
   },
   uI: function(value) {
     return null === value ? 0 : ScalaJS.asInt(value);
@@ -606,8 +624,8 @@ ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void", ScalaJS.bV);
 ScalaJS.data.scala_Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
 ScalaJS.data.scala_Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char", ScalaJS.bC);
-ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte", ScalaJS.bB);
-ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short", ScalaJS.bS);
+ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
+ScalaJS.data.scala_Short   = new ScalaJS.PrimitiveTypeData(0, "S", "short");
 ScalaJS.data.scala_Int     = new ScalaJS.PrimitiveTypeData(0, "I", "int");
 ScalaJS.data.scala_Long    = new ScalaJS.PrimitiveTypeData("longZero", "J", "long");
 ScalaJS.data.scala_Float   = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");

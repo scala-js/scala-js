@@ -1881,6 +1881,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
           case BoxedBooleanClass => genTypeOfTest("boolean")
+          case BoxedByteClass    => genCallHelper("isByte", value)
+          case BoxedShortClass   => genCallHelper("isShort", value)
           case BoxedIntClass     => genCallHelper("isInt", value)
           case BoxedFloatClass   => genTypeOfTest("number")
           case BoxedDoubleClass  => genTypeOfTest("number")
@@ -1916,6 +1918,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
           case BoxedBooleanClass => genCallHelper("asBoolean", value)
+          case BoxedByteClass    => genCallHelper("asByte", value)
+          case BoxedShortClass   => genCallHelper("asShort", value)
           case BoxedIntClass     => genCallHelper("asInt", value)
           case BoxedFloatClass   => genCallHelper("asFloat", value)
           case BoxedDoubleClass  => genCallHelper("asDouble", value)
@@ -2706,7 +2710,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       toTypeKind(tpe) match {
-        case BooleanKind | IntKind | LongKind | FloatKind | DoubleKind
+        case BooleanKind | ByteKind | ShortKind | IntKind | LongKind |
+            FloatKind | DoubleKind
             if functionPrefix == "b" =>
           expr // these are not boxed
         case kind: ValueTypeKind =>
@@ -3917,6 +3922,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     tpe.typeSymbol == LongClass
 
   private lazy val BoxedBooleanClass = boxedClass(BooleanClass)
+  private lazy val BoxedByteClass = boxedClass(ByteClass)
+  private lazy val BoxedShortClass = boxedClass(ShortClass)
   private lazy val BoxedIntClass = boxedClass(IntClass)
   private lazy val BoxedLongClass = boxedClass(LongClass)
   private lazy val BoxedFloatClass = boxedClass(FloatClass)
@@ -3925,7 +3932,8 @@ abstract class GenJSCode extends plugins.PluginComponent
   private lazy val NumberClass = requiredClass[java.lang.Number]
 
   private lazy val HijackedNumberClasses =
-    Seq(BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+    Seq(BoxedByteClass, BoxedShortClass, BoxedIntClass, BoxedLongClass,
+        BoxedFloatClass, BoxedDoubleClass)
   private lazy val HijackedBoxedClasses =
     BoxedBooleanClass +: HijackedNumberClasses
 

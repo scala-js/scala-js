@@ -102,12 +102,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             case arg: js.Number => arg
           }
 
-          def unsignedArgStr(x: js.Number, bits: js.Number,
-              base: js.Number): js.String = {
-            val shift = 32 - bits
-            ((x << shift) >>> shift).toString(base)
-          }
-
           def padCaptureSign(argStr: js.String, prefix: js.String) = {
             val firstChar = (argStr: String).charAt(0)
             if (firstChar == '+' || firstChar == '-')
@@ -204,8 +198,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               with_+(numberArg.toString())
             case 'o' =>
               val str: js.String = arg match {
-                case arg: Byte      => unsignedArgStr(arg.byteValue(), 8, 8)
-                case arg: Short     => unsignedArgStr(arg.shortValue(), 16, 8)
                 case arg: Integer   => Integer.toOctalString(arg)
                 case arg: Long      => Long.toOctalString(arg)
                 case arg: js.Number => arg.toString(8)
@@ -213,8 +205,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               padCaptureSign(str, if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
               val str: js.String = arg match {
-                case arg: Byte      => unsignedArgStr(arg.byteValue(), 8, 16)
-                case arg: Short     => unsignedArgStr(arg.shortValue(), 16, 16)
                 case arg: Integer   => Integer.toHexString(arg)
                 case arg: Long      => Long.toHexString(arg)
                 case arg: js.Number => arg.toString(16)
