@@ -298,6 +298,98 @@ object ExportsTest extends JasmineTest {
       expect(a.foo(1)).toEqual(100000)
     }
 
+    it("should offer exports with default arguments") {
+      class A {
+        var oneCount: Int = 0
+        def one = {
+          oneCount += 1
+          1
+        }
+        @JSExport
+        def foo(a: Int = one)(b: Int = a + one)(c: Int = b + one) =
+          a + b + c
+      }
+
+      val a = new A
+      val jsa = a.asInstanceOf[js.Dynamic]
+
+      expect(jsa.foo()).toEqual(6)
+      expect(a.oneCount).toEqual(3)
+
+      expect(jsa.foo(2)).toEqual(9)
+      expect(a.oneCount).toEqual(5)
+
+      expect(jsa.foo(2,4)).toEqual(11)
+      expect(a.oneCount).toEqual(6)
+
+      expect(jsa.foo(2,4,10)).toEqual(16)
+      expect(a.oneCount).toEqual(6)
+
+      expect(jsa.foo((),4,10)).toEqual(15)
+      expect(a.oneCount).toEqual(7)
+
+      expect(jsa.foo((),4)).toEqual(10)
+      expect(a.oneCount).toEqual(9)
+    }
+
+    it("should correctly overload methods in presence of default parameters") {
+      class A {
+        @JSExport
+        def foo(a: Int)(b: Int = 5)(c: Int = 7) = 1000 + a + b + c
+
+        @JSExport
+        def foo(a: Int, b: String) = 2
+
+        @JSExport
+        def foo(a: Int, b: Int, c: String) = 3
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual(1013)
+      expect(a.foo(1, 4)).toEqual(1012)
+      expect(a.foo(1, 4, 5)).toEqual(1010)
+      expect(a.foo(1, "foo")).toEqual(2)
+      expect(a.foo(1, 2, "foo")).toEqual(3)
+
+    }
+
+    it("should prefer overloads taking a js.Undefined over methods with default parameters") {
+      class A {
+        @JSExport
+        def foo(a: Int)(b: String = "asdf") = s"$a $b"
+
+        @JSExport
+        def foo(a: Int, b: js.Undefined) = "woot"
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual("1 asdf")
+      expect(a.foo(2, "omg")).toEqual("2 omg")
+      expect(a.foo(1, ())).toEqual("woot")
+
+    }
+
+    it("should correctly overload methods in presence of default parameters and repeated parameters") {
+      class A {
+        @JSExport
+        def foo(x: Int, y: Int = 1) = x + y
+        @JSExport
+        def foo(x: String*) = x.mkString("|")
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual(2)
+      expect(a.foo(1, 2)).toEqual(3)
+      expect(a.foo()).toEqual("")
+      expect(a.foo("foo")).toEqual("foo")
+      expect(a.foo("foo","bar")).toEqual("foo|bar")
+
+    }
+
+
     xit("should correctly box repeated parameter lists with value classes") {
       // Only in v0.5
       class A {
@@ -364,6 +456,22 @@ object ExportsTest extends JasmineTest {
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
       expect(obj.x).toEqual(5)
+    }
+
+    it("should offer export for classes with repeated parameters in ctor") {
+      val constr = js.Dynamic.global.ExportedVarArgClass
+      expect(js.Dynamic.newInstance(constr)().result).toEqual("")
+      expect(js.Dynamic.newInstance(constr)("a").result).toEqual("a")
+      expect(js.Dynamic.newInstance(constr)("a", "b").result).toEqual("a|b")
+      expect(js.Dynamic.newInstance(constr)("a", "b", "c").result).toEqual("a|b|c")
+      expect(js.Dynamic.newInstance(constr)(5, "a").result).toEqual("Number: <5>|a")
+    }
+
+    it("should offer export for classes with default parameters in ctor") {
+      val constr = js.Dynamic.global.ExportedDefaultArgClass
+      expect(js.Dynamic.newInstance(constr)(1,2,3).result).toEqual(6)
+      expect(js.Dynamic.newInstance(constr)(1).result).toEqual(106)
+      expect(js.Dynamic.newInstance(constr)(1,2).result).toEqual(103)
     }
 
     it("should correctly disambiguate overloads involving longs") {
@@ -438,6 +546,26 @@ object ExportedObject {
 class ExportedClass(_x: Int) {
   @JSExport
   val x = _x
+}
+
+@JSExport
+class ExportedVarArgClass(x: String*) {
+
+  @JSExport
+  def this(x: Int, y: String) = this(s"Number: <$x>", y)
+
+  @JSExport
+  def result = x.mkString("|")
+}
+
+@JSExport
+class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
+
+  @JSExport
+  def this(x: Int, y: Int = 5) = this(x, y, 100)
+
+  @JSExport
+  def result = x + y + z
 }
 
 @JSExport("org.ExportedUnderOrgObject")

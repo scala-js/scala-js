@@ -3617,7 +3617,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Generate loading of a module value
      *  Can be given either the module symbol, or its module class symbol.
      */
-    private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
+    def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
       require(sym0.isModuleOrModuleClass,
           "genLoadModule called with non-module symbol: " + sym0)
       val sym1 = if (sym0.isModule) sym0.moduleClass else sym0
