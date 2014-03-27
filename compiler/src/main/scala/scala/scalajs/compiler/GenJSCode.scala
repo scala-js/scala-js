@@ -276,11 +276,17 @@ abstract class GenJSCode extends plugins.PluginComponent
               generatedMembers ++= genMethod(dd)
             }
 
+            currentMethodInfoBuilder = null
+
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
       }
 
       gen(impl)
+
+      // Create method info builder for exported stuff
+      currentMethodInfoBuilder =
+        currentClassInfoBuilder.addMethod(dceExportName, isExported = true)
 
       // Generate the exported members
       val exports = genMemberExports(sym, exportedSymbols.toList)
@@ -289,6 +295,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val exportedConstructors = genConstructorExports(sym)
       if (exportedConstructors.nonEmpty)
         currentClassInfoBuilder.isExported = true
+
+      currentMethodInfoBuilder = null
 
       // Generate the reflective call proxies (where required)
       val reflProxies = genReflCallProxies(sym)
@@ -383,7 +391,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case Template(_, _, body) => body foreach gen
             case dd: DefDef =>
               currentClassInfoBuilder.addMethod(
-                  encodeMethodSym(dd.symbol), isAbstract = true)
+                  encodeMethodName(dd.symbol), isAbstract = true)
             case _ => abort("Illegal tree in gen of genInterface(): " + tree)
           }
         }
@@ -428,6 +436,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               generatedMethods += genExportForwarder(dd)
             else
               generatedMethods ++= genMethod(dd)
+
+            currentMethodInfoBuilder = null
 
           case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
         }
@@ -563,8 +573,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  fields of the object by assigning them to the zero of their type.
      */
     def genConstructor(cd: ClassDef): js.MethodDef = {
-      currentMethodInfoBuilder = currentClassInfoBuilder.addMethod(
-          js.Ident("__init__", None)(cd.pos))
+      currentMethodInfoBuilder = currentClassInfoBuilder.addMethod("__init__")
 
       // Non-method term members are fields, except for module members.
       val createFieldsStats = {
@@ -640,7 +649,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def createInfoBuilder(isAbstract: Boolean = false) = {
         currentMethodInfoBuilder =
-          currentClassInfoBuilder.addMethod(methodIdent,
+          currentClassInfoBuilder.addMethod(methodIdent.name,
               isAbstract = isAbstract,
               isExported = sym.isClassConstructor && jsInterop.exportsOf(sym).nonEmpty)
         currentMethodInfoBuilder
@@ -797,7 +806,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = sym.pos
 
       val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-      currentMethodInfoBuilder = currentClassInfoBuilder.addMethod(proxyIdent)
+      currentMethodInfoBuilder =
+        currentClassInfoBuilder.addMethod(proxyIdent.name)
 
       val retTpe =
         enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
@@ -817,6 +827,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ =>
           call
       }
+
+      currentMethodInfoBuilder = null
 
       val body = js.Return(value)
 
@@ -841,7 +853,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val methodIdent = encodeMethodSym(sym)
 
       currentMethodInfoBuilder =
-        currentClassInfoBuilder.addMethod(methodIdent, isExported = true)
+        currentClassInfoBuilder.addMethod(methodIdent.name)
 
       val jsParams =
         for (param <- params)
@@ -1402,7 +1414,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             if (tpe == ThrowableClass.tpe) {
               bodyWithBoundVar
             } else {
-              val cond = genIsInstanceOf(ThrowableClass.tpe, tpe, exceptVar)
+              val cond = genIsInstanceOf(tpe, exceptVar)
               js.If(cond, bodyWithBoundVar, elsep)
             }
           }
@@ -1452,9 +1464,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           val Select(obj, _) = fun
-          val from = obj.tpe
           val to = targs.head.tpe
-          val l = toTypeKind(from)
+          val l = toTypeKind(obj.tpe)
           val r = toTypeKind(to)
           val source = genExpr(obj)
 
@@ -1480,11 +1491,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             source
           }
           else if (r.isValueType)
-            genIsInstanceOf(from, boxedClass(to.typeSymbol).tpe, source)
+            genIsInstanceOf(boxedClass(to.typeSymbol).tpe, source)
           else if (cast)
-            genAsInstanceOf(from, to, source)
+            genAsInstanceOf(to, source)
           else
-            genIsInstanceOf(from, to, source)
+            genIsInstanceOf(to, source)
 
         /** Super call of the form Class.super[mix].fun(args)
          *  This does not include calls defined in mixin traits, as these are
@@ -1769,7 +1780,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
-    def genIsInstanceOf(from: Type, to: Type, value: js.Tree)(
+    def genIsInstanceOf(to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
       if (isRawJSType(to)) {
         def genTypeOfTest(typeString: String) = {
@@ -1796,7 +1807,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for an asInstanceOf cast (for reference types only) */
-    def genAsInstanceOf(from: Type, to: Type, value: js.Tree)(
+    def genAsInstanceOf(to: Type, value: js.Tree)(
         implicit pos: Position = value.pos): js.Tree = {
       if (isRawJSType(to)) {
         // asInstanceOf on JavaScript is completely erased
@@ -3366,6 +3377,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       translatedAnonFunctions += sym -> (functionMaker, currentClassInfoBuilder)
 
+      currentMethodInfoBuilder = null
       currentClassSym = null
       currentClassInfoBuilder = null
     }
@@ -3620,7 +3632,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Generate loading of a module value
      *  Can be given either the module symbol, or its module class symbol.
      */
-    private def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
+    def genLoadModule(sym0: Symbol)(implicit pos: Position): js.Tree = {
       require(sym0.isModuleOrModuleClass,
           "genLoadModule called with non-module symbol: " + sym0)
       val sym1 = if (sym0.isModule) sym0.moduleClass else sym0

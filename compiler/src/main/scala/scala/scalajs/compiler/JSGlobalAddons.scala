@@ -32,6 +32,7 @@ trait JSGlobalAddons extends JSTrees
   /** global javascript interop related helpers */
   object jsInterop {
     import scala.reflect.NameTransformer
+    import scala.reflect.internal.Flags
 
     private val exportPrefix = "$js$exported$"
     private val methodExportPrefix = exportPrefix + "meth$"
@@ -113,11 +114,10 @@ trait JSGlobalAddons extends JSTrees
       newTermName(pref + encname)
     }
 
-    /** checks if the given name is a JSExport */
-    def isExportName(name: Name): Boolean = name.startsWith(exportPrefix)
-
     /** checks if the given symbol is a JSExport */
-    def isExport(sym: Symbol): Boolean = isExportName(sym.unexpandedName)
+    def isExport(sym: Symbol): Boolean =
+      sym.unexpandedName.startsWith(exportPrefix) &&
+      !sym.hasFlag(Flags.DEFAULTPARAM)
 
     /** retrieves the originally assigned jsName of this export and whether it
      *  is a property
