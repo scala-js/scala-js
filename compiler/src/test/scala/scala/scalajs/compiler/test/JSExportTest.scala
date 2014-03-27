@@ -110,6 +110,39 @@ class JSExportTest extends DirectTest with TestHelpers {
       |      @JSExport
       |       ^
     """
+
+    """
+    class Confl {
+      @JSExport
+      def foo(x: Int = 1) = x
+      @JSExport
+      def foo(x: String*) = x
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |  (x: Int)Object
+      |  (x: Seq)Object
+      |      @JSExport
+      |       ^
+    """
+
+    """
+    class Confl {
+      @JSExport
+      def foo(x: Int, y: String)(z: Int = 1) = x
+      @JSExport
+      def foo(x: Short, y: String)(z: String*) = x
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
+      |  (x: Int, y: String, z: Int)Object
+      |  (x: Short, y: String, z: Seq)Object
+      |      @JSExport
+      |       ^
+    """
+
   }
 
   @Test
@@ -227,6 +260,23 @@ class JSExportTest extends DirectTest with TestHelpers {
     """ hasErrors
     """
       |newSource1.scala:4: error: In an exported method, a *-parameter must come last (through all parameter lists)
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noMiddleDefaultParam = {
+
+    """
+    class A {
+      @JSExport
+      def method(x: Int = 1)(y: String) = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: In an exported method, all parameters with defaults must be at the end
       |      @JSExport
       |       ^
     """
@@ -443,6 +493,21 @@ class JSExportTest extends DirectTest with TestHelpers {
       |       ^
     """
 
+  }
+
+  @Test
+  def gracefulDoubleDefaultFail = {
+    // This used to blow up (i.e. not just fail), because PrepJSExports asked
+    // for the symbol of the default parameter getter of [[y]], and asserted its
+    // not overloaded. Since the Scala compiler only fails later on this, the
+    // assert got triggered and made the compiler crash
+    """
+    class A {
+      @JSExport
+      def foo(x: String, y: String = "hello") = x
+      def foo(x: Int, y: String = "bar") = x
+    }
+    """ fails()
   }
 
 }

@@ -298,6 +298,98 @@ object ExportsTest extends JasmineTest {
       expect(a.foo(1)).toEqual(100000)
     }
 
+    it("should offer exports with default arguments") {
+      class A {
+        var oneCount: Int = 0
+        def one = {
+          oneCount += 1
+          1
+        }
+        @JSExport
+        def foo(a: Int = one)(b: Int = a + one)(c: Int = b + one) =
+          a + b + c
+      }
+
+      val a = new A
+      val jsa = a.asInstanceOf[js.Dynamic]
+
+      expect(jsa.foo()).toEqual(6)
+      expect(a.oneCount).toEqual(3)
+
+      expect(jsa.foo(2)).toEqual(9)
+      expect(a.oneCount).toEqual(5)
+
+      expect(jsa.foo(2,4)).toEqual(11)
+      expect(a.oneCount).toEqual(6)
+
+      expect(jsa.foo(2,4,10)).toEqual(16)
+      expect(a.oneCount).toEqual(6)
+
+      expect(jsa.foo((),4,10)).toEqual(15)
+      expect(a.oneCount).toEqual(7)
+
+      expect(jsa.foo((),4)).toEqual(10)
+      expect(a.oneCount).toEqual(9)
+    }
+
+    it("should correctly overload methods in presence of default parameters") {
+      class A {
+        @JSExport
+        def foo(a: Int)(b: Int = 5)(c: Int = 7) = 1000 + a + b + c
+
+        @JSExport
+        def foo(a: Int, b: String) = 2
+
+        @JSExport
+        def foo(a: Int, b: Int, c: String) = 3
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual(1013)
+      expect(a.foo(1, 4)).toEqual(1012)
+      expect(a.foo(1, 4, 5)).toEqual(1010)
+      expect(a.foo(1, "foo")).toEqual(2)
+      expect(a.foo(1, 2, "foo")).toEqual(3)
+
+    }
+
+    it("should prefer overloads taking a js.Undefined over methods with default parameters") {
+      class A {
+        @JSExport
+        def foo(a: Int)(b: String = "asdf") = s"$a $b"
+
+        @JSExport
+        def foo(a: Int, b: js.Undefined) = "woot"
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual("1 asdf")
+      expect(a.foo(2, "omg")).toEqual("2 omg")
+      expect(a.foo(1, ())).toEqual("woot")
+
+    }
+
+    it("should correctly overload methods in presence of default parameters and repeated parameters") {
+      class A {
+        @JSExport
+        def foo(x: Int, y: Int = 1) = x + y
+        @JSExport
+        def foo(x: String*) = x.mkString("|")
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+
+      expect(a.foo(1)).toEqual(2)
+      expect(a.foo(1, 2)).toEqual(3)
+      expect(a.foo()).toEqual("")
+      expect(a.foo("foo")).toEqual("foo")
+      expect(a.foo("foo","bar")).toEqual("foo|bar")
+
+    }
+
+
     xit("should correctly box repeated parameter lists with value classes") {
       // Only in v0.5
       class A {
