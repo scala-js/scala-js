@@ -67,11 +67,8 @@ trait App extends DelayedInit {
    *  and the executes all initialization code segments in the order they were
    *  passed to `delayedInit`
    *
-   *  Scala.js: This method is always JSExported so you can easily access it
-   *  from your JS code.
    *  @param args the arguments passed to the main method
    */
-  @JSExport
   def main(args: Array[String]) = {
     this._args = args
     for (proc <- initCode) proc()
