@@ -46,7 +46,11 @@ trait PrepJSExports { this: PrepJSInterop =>
             |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
             |primitive value type).""".stripMargin)
     else if (hasIllegalRepeatedParam(baseSym))
-      err(s"In an exported $memType, a *-parameter must come last (through all parameter lists)")
+      err(s"In an exported $memType, a *-parameter must come last " +
+        "(through all parameter lists)")
+    else if (hasIllegalDefaultParam(baseSym))
+      err(s"In an exported $memType, all parameters with defaults " +
+        "must be at the end")
     else if (forScaladoc) {
       /* Don't do anything under scaladoc because the uncurry phase does not
        * exist in that setting (see bug #323). It's no big deal because we do
@@ -74,13 +78,15 @@ trait PrepJSExports { this: PrepJSInterop =>
       clsSym.resetFlag(Flags.INTERFACE)
 
       // Actually generate exporter methods
-      for ((jsName, pos) <- exportNames)
-        yield atPos(pos) { genExportDef(baseSym, jsName, pos) }
+      for {
+        (jsName, pos) <- exportNames
+        tree          <- genExportDefs(baseSym, jsName, pos)
+      } yield tree
     }
   }
 
-  /** generate an exporter for a DefDef */
-  private def genExportDef(defSym: Symbol, jsName: String, pos: Position) = {
+  /** generate an exporter for a DefDef including default parameter methods */
+  private def genExportDefs(defSym: Symbol, jsName: String, pos: Position) = {
     val clsSym = defSym.owner
     val scalaName =
       jsInterop.scalaExportName(jsName, jsInterop.isJSProperty(defSym))
@@ -117,6 +123,47 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Add symbol to class
     clsSym.info.decls.enter(expSym)
 
+    // Construct exporter DefDef tree
+    val exporter = genProxyDefDef(clsSym, defSym, expSym, pos)
+
+    // Construct exporters for default getters
+    val defaultGetters = for {
+      (param, i) <- expSym.paramss.flatten.zipWithIndex
+      if param.hasFlag(Flags.DEFAULTPARAM)
+    } yield genExportDefaultGetter(clsSym, defSym, expSym, i + 1, pos)
+
+    exporter :: defaultGetters
+  }
+
+  private def genExportDefaultGetter(clsSym: Symbol, trgMethod: Symbol,
+      exporter: Symbol, paramPos: Int, pos: Position) = {
+
+    // Get default getter method we'll copy
+    val trgGetter =
+      clsSym.tpe.member(nme.defaultGetterName(trgMethod.name, paramPos))
+
+    assert(trgGetter.exists)
+
+    // Although the following must be true in a correct program, we cannot
+    // assert, since a graceful failure message is only generated later
+    if (!trgGetter.isOverloaded) {
+      val expGetter = trgGetter.cloneSymbol
+
+      expGetter.name = nme.defaultGetterName(exporter.name, paramPos)
+      expGetter.pos  = pos
+
+      clsSym.info.decls.enter(expGetter)
+
+      genProxyDefDef(clsSym, trgGetter, expGetter, pos)
+
+    } else EmptyTree
+  }
+
+  /** generate a DefDef tree (from [[proxySym]]) that calls [[trgSym]] */
+  private def genProxyDefDef(clsSym: Symbol, trgSym: Symbol,
+      proxySym: Symbol, pos: Position) = atPos(pos) {
+
+    // Helper to ascribe repeated argument lists when calling
     def spliceParam(sym: Symbol) = {
       if (isRepeated(sym))
         Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
@@ -124,14 +171,13 @@ trait PrepJSExports { this: PrepJSInterop =>
         Ident(sym)
     }
 
-    // Construct inner function call
-    val sel: Tree = Select(This(clsSym), defSym)
-    val rhs = (sel /: expSym.paramss) {
+    // Construct proxied function call
+    val sel: Tree = Select(This(clsSym), trgSym)
+    val rhs = (sel /: proxySym.paramss) {
       (fun,params) => Apply(fun, params map spliceParam)
     }
 
-    // Construct and type the actual tree
-    typer.typedDefDef(DefDef(expSym, rhs))
+    typer.typedDefDef(DefDef(proxySym, rhs))
   }
 
   /** changes the return type of the method type tpe to Any. returns new type */
@@ -170,6 +216,14 @@ trait PrepJSExports { this: PrepJSInterop =>
   private def hasIllegalRepeatedParam(sym: Symbol): Boolean = {
     val params = sym.paramss.flatten
     params.nonEmpty && params.init.exists(isRepeated _)
+  }
+
+  /** checks whether there are default parameters not at the end of
+    * the flattened parameter list
+    */
+  private def hasIllegalDefaultParam(sym: Symbol): Boolean = {
+    val isDefParam = (_: Symbol).hasFlag(Flags.DEFAULTPARAM)
+    sym.paramss.flatten.reverse.dropWhile(isDefParam).exists(isDefParam)
   }
 
 }
