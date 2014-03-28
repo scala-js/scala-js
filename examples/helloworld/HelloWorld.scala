@@ -8,14 +8,16 @@ package helloworld
 import scala.scalajs.js
 import js.annotation.{ JSName, JSExport }
 
-@JSExport
-object HelloWorld {
-  @JSExport
+object HelloWorld extends js.JSApp {
   def main() {
-    sayHelloFromDOM()
-    sayHelloFromTypedDOM()
-    sayHelloFromJQuery()
-    sayHelloFromTypedJQuery()
+    if (!(!js.Dynamic.global.document)) {
+      sayHelloFromDOM()
+      sayHelloFromTypedDOM()
+      sayHelloFromJQuery()
+      sayHelloFromTypedJQuery()
+    } else {
+      println("Hello world!")
+    }
   }
 
   def sayHelloFromDOM() {
