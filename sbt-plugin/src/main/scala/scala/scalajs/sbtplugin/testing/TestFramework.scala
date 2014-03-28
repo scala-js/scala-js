@@ -9,26 +9,56 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import scala.scalajs.sbtplugin.ScalaJSEnvironment
+import scala.scalajs.tools.environment._
+import scala.scalajs.tools.classpath._
+
+import sbt._
+
 import sbt.testing.Fingerprint
 import sbt.testing.Framework
 import sbt.testing.SubclassFingerprint
 import sbt.testing.Runner
 
-class TestFramework(environment: ScalaJSEnvironment, testRunnerClass: String,
+import sbt.classpath.ClasspathFilter
+
+import java.net.URLClassLoader
+
+class TestFramework(
+    environment: ScalaJSEnvironment,
     testFramework: String) extends Framework {
 
   val name = "Scala.js Test Framework"
 
   lazy val fingerprints = Array[Fingerprint](f1)
 
-  val f1 = new SubclassFingerprint {
+  private val f1 = new SubclassFingerprint {
     val isModule = true
     val superclassName = "scala.scalajs.test.Test"
     val requireNoArgConstructor = true
   }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner =
-    TestRunner(args, remoteArgs, environment, testRunnerClass, testFramework)
+      testClassLoader: ClassLoader): Runner = {
+
+    val classpath = classLoader2Classpath(testClassLoader)
+
+    // TODO abstract what kind of classpath to create.
+    val jsClasspath = ScalaJSClasspath.readEntriesInClasspath(classpath)
+
+    new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
+  }
+
+  /** extract (supsected) classpath from a ClassLoader since we cannot use
+   *  a ClassLoader to load JS files
+   */
+  private def classLoader2Classpath(cl: ClassLoader): Seq[File] = cl match {
+    case cl: URLClassLoader =>
+      cl.getURLs().map(url => new File(url.toURI())).toList
+    case sbtFilter: ClasspathFilter =>
+      classLoader2Classpath(sbtFilter.getParent())
+    case _ =>
+      sys.error("You cannot use a Scala.js framework with a class loader of " +
+          s"type: ${cl.getClass()}.")
+  }
+
 }

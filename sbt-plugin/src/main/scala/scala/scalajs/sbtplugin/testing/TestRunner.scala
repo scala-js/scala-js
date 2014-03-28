@@ -12,16 +12,21 @@ package scala.scalajs.sbtplugin.testing
 import sbt.testing.TaskDef
 import sbt.testing.Task
 import sbt.testing.Runner
-import scala.scalajs.sbtplugin.ScalaJSEnvironment
 
-case class TestRunner(
-    args: Array[String], remoteArgs: Array[String],
+import scala.scalajs.tools.environment._
+import scala.scalajs.tools.classpath._
+
+class TestRunner(
     environment: ScalaJSEnvironment,
-    testRunnerClass: String, testFramework: String) extends Runner {
+    jsClasspath: JSClasspath,
+    testFramework: String,
+    // TODO add arguments to interface for framework
+    val args: Array[String],
+    val remoteArgs: Array[String]) extends Runner {
 
-  def tasks(taskDefs: Array[TaskDef]): Array[Task] =
-    if (_done) throw new IllegalStateException("Done has already been called")
-    else taskDefs.map(TestTask(environment, testRunnerClass, testFramework))
+  def tasks(taskDefs: Array[TaskDef]): Array[Task] = if (_done) {
+    throw new IllegalStateException("Done has already been called")
+  } else taskDefs.map(TestTask(environment, jsClasspath, testFramework))
 
   def done(): String = {
     _done = true

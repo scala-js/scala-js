@@ -47,9 +47,16 @@ object StackTrace {
    *  analyzed in meaningful way (because we don't know the browser), an
    *  empty array is returned.
    */
-  def extract(throwable: Throwable): Array[StackTraceElement] = {
-    val e = throwable.asInstanceOf[js.Dynamic].stackdata
-    val lines = normalizeStackTraceLines(e)
+  def extract(throwable: Throwable): Array[StackTraceElement] =
+    extract(throwable.asInstanceOf[js.Dynamic].stackdata)
+
+  /** Extracts a stack trace from captured browser-specific stackdata.
+   *  If no stack trace state has been recorded, or if the state cannot be
+   *  analyzed in meaningful way (because we don't know the browser), an
+   *  empty array is returned.
+   */
+  def extract(stackdata: js.Dynamic): Array[StackTraceElement] = {
+    val lines = normalizeStackTraceLines(stackdata)
     normalizedLinesToStackTrace(lines)
   }
 

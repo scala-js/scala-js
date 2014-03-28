@@ -10,15 +10,18 @@
 package scala.scalajs.test
 
 trait TestOutput {
-  val errorColor: String
-  val successColor: String
-  val infoColor: String
 
-  def color(message: String, color: String): String
+  type Color
 
-  def error(message: String, stack: Array[ScriptStackElement]): Unit
+  val errorColor: Color
+  val successColor: Color
+  val infoColor: Color
+
+  def color(message: String, color: Color): String
+
+  def error(message: String, stack: Array[StackTraceElement]): Unit
   def error(message: String): Unit
-  def failure(message: String, stack: Array[ScriptStackElement]): Unit
+  def failure(message: String, stack: Array[StackTraceElement]): Unit
   def failure(message: String): Unit
   def succeeded(message: String): Unit
   def skipped(message: String): Unit
@@ -28,5 +31,4 @@ trait TestOutput {
 
   def log: TestOutputLog
 
-  def getCurrentStack(): Array[ScriptStackElement]
 }

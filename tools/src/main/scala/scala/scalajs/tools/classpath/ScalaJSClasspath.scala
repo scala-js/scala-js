@@ -18,14 +18,16 @@ import scala.collection.mutable
 
 import scala.scalajs.tools.io._
 
-final case class ScalaJSClasspathEntries(
+final case class ScalaJSClasspath(
     coreJSLibFile: VirtualJSFile,
     coreInfoFiles: Seq[VirtualFile],
     classFiles: Seq[VirtualScalaJSClassfile],
     otherJSFiles: Seq[VirtualJSFile] = Nil
-)
+) extends JSClasspath {
+  def mainJSFiles: Seq[VirtualJSFile] = coreJSLibFile +: classFiles
+}
 
-object ScalaJSClasspathEntries {
+object ScalaJSClasspath {
   class Builder {
     private var coreJSLibFile: Option[VirtualJSFile] = None
     private val coreInfoFiles = mutable.ListBuffer.empty[VirtualFile]
@@ -75,10 +77,10 @@ object ScalaJSClasspathEntries {
     /** Returns the result of the builder.
      *  A core JS lib must have been found.
      */
-    def result: ScalaJSClasspathEntries = {
+    def result: ScalaJSClasspath = {
       if (coreJSLibFile.isEmpty)
         throw new IllegalStateException("Missing core JS lib on the classpath")
-      ScalaJSClasspathEntries(
+      ScalaJSClasspath(
           coreJSLibFile.get, coreInfoFiles.toSeq, classFiles.values.toSeq,
           otherJSFiles.values.toSeq)
     }
@@ -87,22 +89,22 @@ object ScalaJSClasspathEntries {
      *  There may or may not be a core JS lib (in which case it is an empty
      *  file).
      */
-    def partialResult: ScalaJSClasspathEntries = {
+    def partialResult: ScalaJSClasspath = {
       val coreJSLib = coreJSLibFile.getOrElse(
           VirtualJSFile.empty("scalajs-corejslib.js"))
-      ScalaJSClasspathEntries(
+      ScalaJSClasspath(
           coreJSLib, coreInfoFiles.toSeq, classFiles.values.toSeq,
           otherJSFiles.values.toSeq)
     }
   }
 
   /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
-  def readEntriesInClasspath(classpath: Seq[File]): ScalaJSClasspathEntries = {
+  def readEntriesInClasspath(classpath: Seq[File]): ScalaJSClasspath = {
     readEntriesInClasspathInternal(classpath).result
   }
 
   /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
-  def readEntriesInClasspathPartial(classpath: Seq[File]): ScalaJSClasspathEntries = {
+  def readEntriesInClasspathPartial(classpath: Seq[File]): ScalaJSClasspath = {
     readEntriesInClasspathInternal(classpath).partialResult
   }
 

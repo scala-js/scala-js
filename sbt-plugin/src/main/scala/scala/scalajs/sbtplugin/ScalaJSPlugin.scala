@@ -27,7 +27,8 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.packager._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
-import environment.{Console, LoggerConsole, RhinoBasedScalaJSEnvironment}
+import scala.scalajs.tools.environment.{ ScalaJSEnvironment, Console }
+import scala.scalajs.sbtplugin.environment.rhino.RhinoBasedScalaJSEnvironment
 import environment.rhino.{CodeBlock, Utilities}
 
 import scala.scalajs.sbtplugin.testing.TestFramework
@@ -59,8 +60,6 @@ object ScalaJSPlugin extends Plugin {
     val scalaJSSetupRunner = settingKey[Boolean](
         "Configure the run task to run the main object with the Scala.js environment")
 
-    val scalaJSTestBridgeClass = settingKey[String](
-        "The Scala.js class that delegates test calls to the given test framework")
     val scalaJSTestFramework = settingKey[String](
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
 
@@ -119,7 +118,7 @@ object ScalaJSPlugin extends Plugin {
             s.log.info("Packaging %s ..." format output)
             import ScalaJSPackager._
             val classpathEntries =
-              ScalaJSClasspathEntries.readEntriesInClasspathPartial(classpath)
+              ScalaJSClasspath.readEntriesInClasspathPartial(classpath)
             val packager = new ScalaJSPackager
             val relSourceMapBasePath =
               if (relativeSourceMaps.value) Some(output.getParent)
@@ -180,19 +179,9 @@ object ScalaJSPlugin extends Plugin {
     incOptions.copy(newClassfileManager = newClassfileManager)
   }
 
-  val scalaJSEnvironmentTask = Def.task[ScalaJSEnvironment] {
-    val logger = streams.value.log
-    val console = loggingConsole.value
-
-    val classpath =
-      ScalaJSClasspathEntries.readEntriesInClasspath(
-          jsClasspath((fullClasspath in scalaJSEnvironment).value))
-
-    new RhinoBasedScalaJSEnvironment(classpath, console, logger.trace)
-  }
-
   val scalaJSEnvironmentSettings = Seq(
-      scalaJSEnvironment <<= scalaJSEnvironmentTask
+      scalaJSEnvironment :=
+        new RhinoBasedScalaJSEnvironment(streams.value.log.trace)
   )
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
@@ -230,7 +219,7 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Preoptimizing %s ..." format output)
           import ScalaJSOptimizer._
           val classpathEntries =
-            ScalaJSClasspathEntries.readEntriesInClasspath(classpath)
+            ScalaJSClasspath.readEntriesInClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
           val outputWriter = new FileVirtualJSFileWriter(output)
 
@@ -298,15 +287,11 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  lazy val scalaJSRunnerTask = Def.task[ScalaRun] {
-    new ScalaJSEnvRun(scalaJSEnvironment.value)
-  }
-
   val scalaJSRunSettings = Seq(
       scalaJSSetupRunner := true,
       runner in run <<= Def.taskDyn {
         if (scalaJSSetupRunner.value)
-          scalaJSRunnerTask
+          Def.task(new ScalaJSEnvRun(scalaJSEnvironment.value))
         else
           runner in run
       }
@@ -319,7 +304,6 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
-      scalaJSTestBridgeClass := "scala.scalajs.test.JasmineTestBridge",
 
       loadedTestFrameworks := {
         val loader = testLoader.value
@@ -334,7 +318,6 @@ object ScalaJSPlugin extends Plugin {
               sbt.TestFramework(classOf[TestFramework].getName),
               new TestFramework(
                   environment = scalaJSEnvironment.value,
-                  testRunnerClass = scalaJSTestBridgeClass.value,
                   testFramework = scalaJSTestFramework.value)
           )
         } else {

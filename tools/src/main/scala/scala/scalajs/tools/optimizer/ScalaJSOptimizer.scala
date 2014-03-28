@@ -51,7 +51,7 @@ class ScalaJSOptimizer {
     }
   }
 
-  private def parseInfoFiles(classpath: ScalaJSClasspathEntries): Analyzer = {
+  private def parseInfoFiles(classpath: ScalaJSClasspath): Analyzer = {
     val coreData = classpath.coreInfoFiles.map(f => readData(f.content))
     val userData = classpath.classFiles map { classfile =>
       val data = readData(classfile.info)
@@ -174,7 +174,7 @@ object ScalaJSOptimizer {
   /** Inputs of the Scala.js optimizer. */
   final case class Inputs(
       /** The Scala.js classpath entries. */
-      classpath: ScalaJSClasspathEntries,
+      classpath: ScalaJSClasspath,
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil
   )
@@ -185,7 +185,7 @@ object ScalaJSOptimizer {
         scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
         customScripts: Seq[VirtualJSFile]): Inputs = {
       apply(
-          ScalaJSClasspathEntries(coreJSLib, coreInfoFiles, scalaJSClassfiles),
+          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles),
           customScripts)
     }
 
@@ -193,7 +193,7 @@ object ScalaJSOptimizer {
     def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
         scalaJSClassfiles: Seq[VirtualScalaJSClassfile]): Inputs = {
       apply(
-          ScalaJSClasspathEntries(coreJSLib, coreInfoFiles, scalaJSClassfiles))
+          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles))
     }
   }
 

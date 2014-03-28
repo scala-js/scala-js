@@ -446,6 +446,7 @@ object ScalaJSBuild extends Build {
 
   def useLibraryButDoNotDependOnIt = Seq(
       useProjectButDoNotDependOnIt(library, Compile),
+      useProjectButDoNotDependOnIt(library, Runtime),
       useProjectButDoNotDependOnIt(library, Test)
   )
 

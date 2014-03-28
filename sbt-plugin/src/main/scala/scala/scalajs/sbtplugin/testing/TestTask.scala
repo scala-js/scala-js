@@ -9,47 +9,62 @@
 
 package scala.scalajs.sbtplugin.testing
 
+import scala.annotation.tailrec
+
 import sbt.testing.TaskDef
 import sbt.testing.EventHandler
 import sbt.testing.Task
 import sbt.testing.Logger
-import scala.scalajs.sbtplugin.ScalaJSEnvironment
-import scala.annotation.tailrec
+
 import org.mozilla.javascript
 import org.mozilla.javascript.{Context, Scriptable, Function}
 import org.mozilla.javascript.Scriptable.NOT_FOUND
 import org.mozilla.javascript.RhinoException
-import scala.scalajs.sbtplugin.environment.rhino.CodeBlock
-import scala.scalajs.sbtplugin.environment.rhino.Utilities
 
-case class TestTask(
+import scala.scalajs.tools.io._
+import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.environment._
+
+class TestTask(
     environment: ScalaJSEnvironment,
-    testRunnerClass: String,
-    testFramework: String)(val taskDef: TaskDef) extends Task {
+    jsClasspath: JSClasspath,
+    testFramework: String,
+    val taskDef: TaskDef) extends Task {
 
   val tags = Array.empty[String]
 
-  def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    val testKey = taskDef.fullyQualifiedName
-    val testFrameworkKey = testFramework
+  def execute(eventHandler: EventHandler,
+      loggers: Array[Logger]): Array[Task] = {
 
-    val eventProxy = EventProxy(eventHandler, loggers, new Events(taskDef))
+    val runnerFile = testRunnerFile
+    val testConsole = new TestOutputConsole(eventHandler, loggers,
+        new Events(taskDef), jsClasspath)
 
-    environment.runInContextAndScope { (context, scope) =>
-      new CodeBlock(context, scope) with Utilities {
-        try {
-          val f = context.evaluateString(scope,
-              s"""var f = function(p, f, t) { $testRunnerClass().run(p, f, t); }; f;""",
-              null, 0, null).asInstanceOf[Function]
-          f.call(context, scope, null,
-              toArgs(Seq(eventProxy, testFrameworkKey, testKey)))
-        } catch {
-          case t: RhinoException =>
-            eventProxy.error(t.details, t.getScriptStack())
-        }
-      }
-    }
+    // Actually execute test
+    environment.runJS(jsClasspath, runnerFile, testConsole)
 
     Array.empty
   }
+
+  private def testRunnerFile = {
+    val testKey = taskDef.fullyQualifiedName
+
+    // Note that taskDef does also have the selector, fingerprint and
+    // explicitlySpecified value we could pass to the framework. However, we
+    // believe that these are only moderately useful. Therefore, we'll silently
+    // ignore them.
+
+    new MemVirtualJSFile("Generated test launcher file").
+      withContent(s"""$testFramework().runTests(
+                     |  scala.scalajs.test.internal.ConsoleTestOutput(),
+                     |  $testKey);""".stripMargin)
+  }
+}
+
+object TestTask {
+
+  def apply(environment: ScalaJSEnvironment, jsClasspath: JSClasspath,
+    testFramework: String)(taskDef: TaskDef) =
+      new TestTask(environment, jsClasspath, testFramework, taskDef)
+
 }

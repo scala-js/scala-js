@@ -18,7 +18,7 @@ import org.mozilla.javascript.Scriptable
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 
-class ScalaJSCoreLib(classpath: ScalaJSClasspathEntries) {
+class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {

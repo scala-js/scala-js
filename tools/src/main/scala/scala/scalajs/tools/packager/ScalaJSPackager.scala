@@ -60,7 +60,7 @@ object ScalaJSPackager {
   /** Inputs of the Scala.js optimizer. */
   final case class Inputs(
       /** The (partial) Scala.js classpath entries. */
-      classpath: ScalaJSClasspathEntries,
+      classpath: ScalaJSClasspath,
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil
   )

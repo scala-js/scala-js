@@ -7,63 +7,23 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.environment
-
-import java.io.File
+package scala.scalajs.sbtplugin.environment.rhino
 
 import scala.collection.Map
 import scala.collection.mutable
-import scala.util.matching.Regex
 
-import scala.scalajs.tools.io.{IO => _, _}
+import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
-import scala.scalajs.sbtplugin.ScalaJSEnvironment
-import scala.scalajs.sbtplugin.sourcemap.SourceMappedException
-
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.RhinoException
-import org.mozilla.javascript.Scriptable
-import org.mozilla.javascript.ScriptableObject
-import org.mozilla.javascript.Undefined
-
-import rhino.ContextOps
-import rhino.ScalaJSCoreLib
-import rhino.ScriptableObjectOps
-
-import sbt._
+import scala.scalajs.tools.environment._
 
 import scala.scalajs.sbtplugin.Utils._
 
+import org.mozilla.javascript._
+
+import scala.Array.canBuildFrom
+
 class RhinoBasedScalaJSEnvironment(
-    classpath: ScalaJSClasspathEntries,
-    console: Option[Console],
     trace: (=> Throwable) => Unit) extends ScalaJSEnvironment {
-
-  /** Scala.js core lib (with lazy-loading of Scala.js providers). */
-  lazy val scalaJSCoreLib =
-    if (classpath.classFiles.isEmpty) None
-    else Some(new ScalaJSCoreLib(classpath))
-
-  /** Additional .js scripts available on the classpath (for importScripts).
-   *  Isolates the env.js library if available.
-   */
-  lazy val (envJSLib, availableJSFiles) = {
-    val availableJSFiles = mutable.Map.empty[String, VirtualJSFile]
-    var envJSLib: Option[VirtualJSFile] = None
-
-    val EnvJSLibNamePattern = """env\.rhino\.(?:[\d\.]+\.)?js""".r
-
-    for (file <- classpath.otherJSFiles) {
-      file.name match {
-        case EnvJSLibNamePattern(_*) =>
-          envJSLib = Some(file)
-        case _ =>
-          availableJSFiles += file.name -> file
-      }
-    }
-
-    (envJSLib, availableJSFiles)
-  }
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -74,7 +34,9 @@ class RhinoBasedScalaJSEnvironment(
    *  Additional .js files available on the classpath can be loaded using the
    *  importScripts JavaScript function.
    */
-  def runInContextAndScope(code: (Context, ScriptableObject) => Unit): Unit = {
+  def runJS(classpath: JSClasspath, code: VirtualJSFile,
+      console: Console): Option[String] = {
+
     val context = Context.enter()
     try {
       val scope = context.initStandardObjects()
@@ -82,6 +44,9 @@ class RhinoBasedScalaJSEnvironment(
       // Make sure Rhino does not do its magic for JVM top-level packages (#364)
       for (name <- Seq("java", "scala", "com", "org"))
         ScriptableObject.putProperty(scope, name, Undefined.instance)
+
+      // Extract envJS and load automatically
+      val (envJSLib, availableJSFiles) = filterAvailable(classpath.otherJSFiles)
 
       envJSLib.foreach { file =>
         context.setOptimizationLevel(-1)
@@ -92,24 +57,31 @@ class RhinoBasedScalaJSEnvironment(
         scope.addFunction("print", print(console))
       }
 
-      console.foreach { console =>
-        ScriptableObject.putProperty(scope, "console",
+      ScriptableObject.putProperty(scope, "console",
           Context.javaToJS(console, scope))
-      }
 
       scope.addFunction("importScripts",
           importScripts(context, scope, availableJSFiles))
 
       try {
-        // Make the core lib available
-        scalaJSCoreLib.foreach(_.insertInto(context, scope))
+        // Make the classpath available. Either through lazy loading or by
+        // simply inserting
+        classpath match {
+          case cp: ScalaJSClasspath =>
+            if (cp.classFiles.nonEmpty) {
+              val loader = new ScalaJSCoreLib(cp)
+              loader.insertInto(context, scope)
+            }
+          case _ =>
+            classpath.mainJSFiles.foreach { f =>
+              context.evaluateFile(scope, f)
+            }
+        }
 
-        code(context, scope)
+        context.evaluateString(scope, code.content, code.name, 0, null)
+
+        None
       } catch {
-        case e: RhinoException =>
-          trace(e) // print the stack trace while we're in the Context
-          throw new SourceMappedException(e)
-
         case e: Exception =>
           trace(e) // print the stack trace while we're in the Context
           throw new RuntimeException("Exception while running JS code", e)
@@ -119,8 +91,8 @@ class RhinoBasedScalaJSEnvironment(
     }
   }
 
-  private def print(console: Option[Console])(args: Array[AnyRef]) =
-    console.foreach(_.log(args.mkString(" ")))
+  private def print(console: Console)(args: Array[AnyRef]) =
+    console.log(args.mkString(" "))
 
   private def importScripts(context: Context, globalScope: Scriptable,
       availableJSFiles: Map[String, VirtualJSFile])(args: Array[AnyRef]) = {
@@ -139,4 +111,19 @@ class RhinoBasedScalaJSEnvironment(
             "', make sure you make it available on any classpath")
     }
   }
+
+  /** splits out the envJS library if available */
+  private def filterAvailable(otherJSFiles: Seq[VirtualJSFile]) = {
+
+    val envJSLibNamePat = """env\.rhino\.(?:[\d\.]+\.)?js""".r
+    def isEnvJSLib(file: VirtualJSFile) = 
+      envJSLibNamePat.unapplySeq(file.name).isDefined
+
+    val (envJSLibs, others) = otherJSFiles.partition(isEnvJSLib _)
+
+    val availableJSFiles = others.map(f => (f.name, f)).toMap
+
+    (envJSLibs.headOption, availableJSFiles)
+  }
+
 }

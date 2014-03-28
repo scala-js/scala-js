@@ -7,45 +7,48 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.sourcemap
+package scala.scalajs.tools.sourcemap
 
-import org.mozilla.javascript.ScriptStackElement
-import sbt.IO
-import java.io.File
-import com.google.debugging.sourcemap.SourceMapConsumerFactory
-import com.google.debugging.sourcemap.SourceMapSection
-import com.google.debugging.sourcemap.SourceMapConsumerV3
-import com.google.debugging.sourcemap.FilePosition
+import scala.scalajs.tools.classpath.JSClasspath
 
-object SourceMapper {
-  def map(stack: Array[ScriptStackElement]): Array[ScriptStackElement] = {
-    for (el <- stack) yield {
-      val sourceMapFile = new File(el.fileName + ".map")
-      if (sourceMapFile.exists) mapScriptStackElement(el, sourceMapFile)
-      else el
-    }
+import com.google.debugging.sourcemap._
+
+class SourceMapper(classpath: JSClasspath) {
+
+  def map(ste: StackTraceElement, columnNumber: Int): StackTraceElement = {
+    val mapped = for {
+      sourceMap <- findSourceMap(ste.getFileName)
+    } yield map(ste, columnNumber, sourceMap)
+
+    mapped.getOrElse(ste)
   }
 
-  def mapScriptStackElement(el: ScriptStackElement,
-      sourceMapFile: File): ScriptStackElement = {
+  def map(ste: StackTraceElement, columnNumber: Int,
+      sourceMap: String): StackTraceElement = {
+
     val sourceMapConsumer =
       SourceMapConsumerFactory
-        .parse(IO.read(sourceMapFile))
+        .parse(sourceMap)
         .asInstanceOf[SourceMapConsumerV3]
 
-    val lineNumber = el.lineNumber
-    val column = getFirstColumn(sourceMapConsumer, lineNumber)
+    val lineNumber = ste.getLineNumber
+    val column =
+      if (columnNumber == -1) getFirstColumn(sourceMapConsumer, lineNumber)
+      else columnNumber
 
     val originalMapping =
       sourceMapConsumer.getMappingForLine(lineNumber, column)
 
-    new ScriptStackElement(
+    new StackTraceElement(
+      ste.getClassName,
+      ste.getMethodName,
       originalMapping.getOriginalFile,
-      el.functionName,
       originalMapping.getLineNumber)
   }
 
-  def getFirstColumn(sourceMapConsumer: SourceMapConsumerV3, lineNumber: Int) = {
+  private def getFirstColumn(sourceMapConsumer: SourceMapConsumerV3,
+      lineNumber: Int) = {
+
     var column: Option[Int] = None
 
     sourceMapConsumer.visitMappings(
@@ -61,5 +64,13 @@ object SourceMapper {
       })
 
     column.getOrElse(1)
+  }
+
+  private def findSourceMap(path: String) = {
+    val candidates = classpath.mainJSFiles.filter(_.path == path) ++
+      classpath.otherJSFiles.filter(_.path == path)
+
+    if (candidates.size != 1) None // better no sourcemap than a wrong one
+    else candidates.head.sourceMap
   }
 }
