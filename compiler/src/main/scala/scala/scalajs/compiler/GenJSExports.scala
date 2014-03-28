@@ -67,8 +67,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           createNamespace,
           js.DocComment("@constructor"),
           expCtorVar := js.Function(args, js.Block(
-            // Call the js constructor while passing the current this
-            genApplyMethod(jsCtor, classSym, js.Ident("call"), List(js.This())),
+            // Call the js constructor statically -- no dce info required here
+            js.ApplyMethod(jsCtor, js.Ident("call"), List(js.This())),
             body
           )),
           expCtorVar DOT "prototype" := jsCtor DOT "prototype"
