@@ -67,7 +67,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   case object FromExports extends From
 
   private val HijackedBoxedClassNames = Set(
-      "java_lang_Boolean",
+      "scala_runtime_BoxedUnit", "java_lang_Boolean",
       "java_lang_Byte", "java_lang_Short", "java_lang_Integer",
       "java_lang_Long", "java_lang_Float", "java_lang_Double"
   )
@@ -121,7 +121,6 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val ObjectClass = instantiateClassWith("java_lang_Object", "init___")
     ObjectClass.callMethod("toString__T")
 
-    lookupClass("scala_runtime_BoxedUnit$").accessModule()
     instantiateClassWith(s"java_lang_Character", s"init___C")
 
     instantiateClassWith("java_lang_ClassCastException", "init___T")

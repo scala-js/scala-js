@@ -86,6 +86,8 @@ var ScalaJS = {
       fakeInstance =
         ScalaJS.modules.scala_scalajs_runtime_RuntimeLong().
           zero__Lscala_scalajs_runtime_RuntimeLong();
+    else if (rhsData === ScalaJS.data.scala_runtime_BoxedUnit)
+      fakeInstance = void 0;
     else
       fakeInstance = {$classData: rhsData};
     return lhsData.isInstance(fakeInstance);
@@ -207,6 +209,8 @@ var ScalaJS = {
         return ScalaJS.data.java_lang_Double.getClassOf();
     } else if (typeof(instance) === "boolean")
       return ScalaJS.data.java_lang_Boolean.getClassOf();
+    else if (instance === void 0)
+      return ScalaJS.data.scala_runtime_BoxedUnit.getClassOf();
     else
       return null; // Exception?
   },
@@ -273,6 +277,8 @@ var ScalaJS = {
       return instance | 0;
     } else if (typeof instance === "boolean") {
       return instance ? 1231 : 1237;
+    } else if (instance === void 0) {
+      return 0;
     } else {
       return 42; // TODO
     }
@@ -372,6 +378,13 @@ var ScalaJS = {
     return (typeof v === "number") && (v % 1 === 0);
   },
 
+  asUnit: function(v) {
+    if (v === void 0)
+      return v;
+    else
+      ScalaJS.throwClassCastException(v, "scala.runtime.BoxedUnit");
+  },
+
   asBoolean: function(v) {
     if (typeof v === "boolean" || v === null)
       return v;
@@ -416,9 +429,6 @@ var ScalaJS = {
 
   // Boxes - inline all the way through java.lang.X.valueOf()
 
-  bV: function() {
-    return ScalaJS.modules.scala_runtime_BoxedUnit().UNIT$1;
-  },
   bC: function(value) {
     return new ScalaJS.c.java_lang_Character().init___C(value);
   },
@@ -621,7 +631,7 @@ ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
 // Create primitive types
 
-ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void", ScalaJS.bV);
+ScalaJS.data.scala_Unit    = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
 ScalaJS.data.scala_Boolean = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
 ScalaJS.data.scala_Char    = new ScalaJS.PrimitiveTypeData(0, "C", "char", ScalaJS.bC);
 ScalaJS.data.scala_Byte    = new ScalaJS.PrimitiveTypeData(0, "B", "byte");

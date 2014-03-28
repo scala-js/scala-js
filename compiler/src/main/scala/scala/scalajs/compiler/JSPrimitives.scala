@@ -67,6 +67,8 @@ abstract class JSPrimitives {
   val HASPROP = 344  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
 
   val RETURNRECEIVER = 345 // anything "return this;", e.g., Boolean.booleanValue()
+  val UNITVAL = 346        // () value, which is undefined
+  val UNITTYPE = 347       // BoxedUnit.TYPE (== classOf[Unit])
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -126,6 +128,9 @@ abstract class JSPrimitives {
      *   all the xValue() methods.
      * Conclusion: we do not bother.
      */
+
+    addPrimitive(BoxedUnit_UNIT, UNITVAL)
+    addPrimitive(BoxedUnit_TYPE, UNITTYPE)
   }
 
   def isJavaScriptPrimitive(code: Int) =

@@ -1,14 +1,14 @@
 package scala.runtime
 
 class BoxedUnit private {
-  override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+  override def equals(that: Any): Boolean = sys.error("stub")
 
-  override def hashCode() = 0
+  override def hashCode(): Int = sys.error("stub")
 
-  override def toString() = "()"
+  override def toString(): String = sys.error("stub")
 }
 
 object BoxedUnit {
-  val UNIT = new BoxedUnit
-  val TYPE = java.lang.Void.TYPE
+  val UNIT: BoxedUnit = sys.error("stub")
+  val TYPE: Class[Void] = sys.error("stub")
 }

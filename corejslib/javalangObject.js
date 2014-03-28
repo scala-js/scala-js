@@ -84,13 +84,13 @@ ScalaJS.c.java_lang_Object.prototype.clone__ = function() {
   return this.clone__O()
 }
 ScalaJS.c.java_lang_Object.prototype.notify__ = function() {
-  return ScalaJS.bV(this.notify__V())
+  return this.notify__V()
 }
 ScalaJS.c.java_lang_Object.prototype.notifyAll__ = function() {
-  return ScalaJS.bV(this.notifyAll__V())
+  return this.notifyAll__V()
 }
 ScalaJS.c.java_lang_Object.prototype.finalize__ = function() {
-  return ScalaJS.bV(this.finalize__V())
+  return this.finalize__V()
 }
 
 // Instance tests
@@ -100,7 +100,8 @@ ScalaJS.is.java_lang_Object = function(obj) {
     obj.$classData.ancestors.java_lang_Object) ||
     (typeof(obj) === "string") ||
     (typeof(obj) === "number") ||
-    (typeof(obj) === "boolean"));
+    (typeof(obj) === "boolean") ||
+    obj === void 0);
 };
 
 ScalaJS.as.java_lang_Object = function(obj) {

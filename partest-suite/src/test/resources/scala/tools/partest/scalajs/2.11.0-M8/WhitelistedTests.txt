@@ -1217,7 +1217,6 @@ run/t6406-regextract.scala
 run/t0911.scala
 run/t4013c.scala
 run/t3502.scala
-run/t5680.scala
 run/t5648.scala
 run/retclosure.scala
 run/t2857.scala
@@ -1347,14 +1346,12 @@ run/macro-openmacros
 run/macro-undetparams-macroitself
 run/t6318_derived.scala
 run/deprecate-early-type-defs.scala
-run/t7657
 run/dead-code-elimination.scala
 run/t4827.scala
 run/Course-2002-07.scala
 run/slice-strings.scala
 run/t6292.scala
 run/t6206.scala
-run/t3702.scala
 run/t1042.scala
 run/t1718.scala
 run/t2074_2.scala
@@ -2284,7 +2281,6 @@ run/t0677-new.scala
 run/t3273.scala
 run/t3763.scala
 run/t2755.scala
-run/dynamic-anyval.scala
 run/t920.scala
 run/t5610a.scala
 run/literals.scala
@@ -2361,7 +2357,6 @@ run/tuple-zipped.scala
 run/breakout.scala
 run/t4122.scala
 run/macro-settings
-run/t6662
 run/t7157
 run/t1323.scala
 run/t4013b.scala
@@ -2463,13 +2458,11 @@ run/t2788.scala
 run/t2027.scala
 run/macro-expand-recursive
 run/t949.scala
-run/macro-bundle-toplevel
 run/t1909b.scala
 run/delambdafy-nested-by-name.scala
 run/delambdafy-two-lambdas.scala
 run/macro-blackbox-materialization
 run/lists-run.scala
-run/macro-bundle-static
 run/macro-parse-position
 run/macro-parse-position-malformed
 run/macro-whitebox-dynamic-materialization
@@ -2615,7 +2608,6 @@ run/t0432.scala
 run/t2514.scala
 run/t7817.scala
 run/t874.scala
-run/structural.scala
 run/type-currying.scala
 run/t3616.scala
 run/t3687.scala

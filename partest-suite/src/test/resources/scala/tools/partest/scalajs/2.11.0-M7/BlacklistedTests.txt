@@ -66,6 +66,16 @@ run/try-catch-unify.scala
 # Relies on !box(+0.0).equals(box(-0.0))
 run/number-parsing.scala
 
+# Relies on ().toString() == "()"
+run/dynamic-anyval.scala
+run/macro-bundle-static
+run/macro-bundle-toplevel
+run/structural.scala
+run/t3702.scala
+run/t5680.scala
+run/t6662
+run/t7657
+
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 

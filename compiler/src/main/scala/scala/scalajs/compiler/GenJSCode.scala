@@ -1812,7 +1812,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       for (clazz <- StringClass +: HijackedBoxedClasses) {
         addN(clazz, nme.equals_, "objectEquals")
         addN(clazz, nme.hashCode_, "objectHashCode")
-        addS(clazz, "compareTo", "comparableCompareTo")
+        if (clazz != BoxedUnitClass)
+          addS(clazz, "compareTo", "comparableCompareTo")
       }
 
       for (clazz <- NumberClass +: HijackedNumberClasses) {
@@ -1880,6 +1881,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
+          case BoxedUnitClass    => js.BinaryOp("===", value, js.Undefined())
           case BoxedBooleanClass => genTypeOfTest("boolean")
           case BoxedByteClass    => genCallHelper("isByte", value)
           case BoxedShortClass   => genCallHelper("isShort", value)
@@ -1917,6 +1919,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       } else if (isHijackedBoxedClass(to.typeSymbol)) {
         to.typeSymbol match {
+          case BoxedUnitClass    => genCallHelper("asUnit", value)
           case BoxedBooleanClass => genCallHelper("asBoolean", value)
           case BoxedByteClass    => genCallHelper("asByte", value)
           case BoxedShortClass   => genCallHelper("asShort", value)
@@ -2710,13 +2713,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
 
       toTypeKind(tpe) match {
-        case BooleanKind | ByteKind | ShortKind | IntKind | LongKind |
-            FloatKind | DoubleKind
-            if functionPrefix == "b" =>
-          expr // these are not boxed
         case kind: ValueTypeKind =>
-          val boxHelperName = functionPrefix + kind.primitiveCharCode
-          genCallHelper(boxHelperName, expr)
+          if (kind == CharKind || functionPrefix != "b") {
+            val boxHelperName = functionPrefix + kind.primitiveCharCode
+            genCallHelper(boxHelperName, expr)
+          } else {
+            expr // box is identity for all non-Char types
+          }
         case _ =>
           abort(s"makeBoxUnbox requires a primitive type, found $tpe at $pos")
       }
@@ -2883,6 +2886,10 @@ abstract class GenJSCode extends plugins.PluginComponent
               statToExpr(js.Debugger())
             case RETURNRECEIVER =>
               receiver
+            case UNITVAL =>
+              js.Undefined()
+            case UNITTYPE =>
+              genClassConstant(UnitTpe)
           }
 
         case List(arg) =>
@@ -3877,10 +3884,19 @@ abstract class GenJSCode extends plugins.PluginComponent
        * So we cheat here. This is a workaround for not having separate
        * compilation yet.
        */
-      val instance = genLoadModule(sym.owner)
-      val method = encodeStaticMemberSym(sym)
-      currentMethodInfoBuilder.callsMethod(sym.owner, method)
-      js.ApplyMethod(instance, method, Nil)
+      import scalaPrimitives._
+      import jsPrimitives._
+      if (isPrimitive(sym)) {
+        getPrimitive(sym) match {
+          case UNITVAL  => js.Undefined()
+          case UNITTYPE => genClassConstant(UnitTpe)
+        }
+      } else {
+        val instance = genLoadModule(sym.owner)
+        val method = encodeStaticMemberSym(sym)
+        currentMethodInfoBuilder.callsMethod(sym.owner, method)
+        js.ApplyMethod(instance, method, Nil)
+      }
     }
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
@@ -3935,7 +3951,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     Seq(BoxedByteClass, BoxedShortClass, BoxedIntClass, BoxedLongClass,
         BoxedFloatClass, BoxedDoubleClass)
   private lazy val HijackedBoxedClasses =
-    BoxedBooleanClass +: HijackedNumberClasses
+    Seq(BoxedUnitClass, BoxedBooleanClass) ++ HijackedNumberClasses
 
   private lazy val isHijackedBoxedClass: Set[Symbol] =
     HijackedBoxedClasses.toSet
