@@ -105,8 +105,52 @@ sealed trait Number extends Any {
   def toPrecision(): String = ???
 }
 
-object Number {
+/** The top-level `Number` JavaScript object */
+object Number extends Object {
   implicit def toDouble(value: prim.Number): scala.Double = sys.error("stub")
+
+  /**
+   * The Number.MAX_VALUE property represents the maximum numeric value
+   * representable in JavaScript.
+   *
+   * The MAX_VALUE property has a value of approximately 1.79E+308. Values
+   * larger than MAX_VALUE are represented as "Infinity".
+   *
+   * MDN
+   */
+  val MAX_VALUE: Double = ???
+  /**
+   * The Number.MIN_VALUE property represents the smallest positive numeric
+   * value representable in JavaScript.
+   *
+   * The MIN_VALUE property is the number closest to 0, not the most negative
+   * number, that JavaScript can represent.
+   *
+   * MIN_VALUE has a value of approximately 5e-324. Values smaller than MIN_VALUE
+   * ("underflow values") are converted to 0.
+   *
+   * MDN
+   */
+  val MIN_VALUE: Double = ???
+  /**
+   * The Number.NaN property represents Not-A-Number. Equivalent of NaN.
+   *
+   * MDN
+   */
+  val NaN: Double = ???
+
+  /**
+   * The Number.NEGATIVE_INFINITY property represents the negative Infinity value.
+   *
+   * MDN
+   */
+  val NEGATIVE_INFINITY: Double = ???
+  /**
+   * The Number.POSITIVE_INFINITY property represents the positive Infinity value.
+   *
+   * MDN
+   */
+  val POSITIVE_INFINITY: Double = ???
 }
 
 /** Primitive JavaScript boolean. */
@@ -119,7 +163,8 @@ sealed trait Boolean extends Any {
   def ||(that: Dynamic): Boolean
 }
 
-object Boolean {
+/** The top-level `Boolean` JavaScript object. */
+object Boolean extends Object {
   implicit def toBoolean(value: prim.Boolean): scala.Boolean = sys.error("stub")
 }
 
@@ -360,8 +405,11 @@ sealed trait String extends Any {
   def trim(): String = ???
 }
 
-object String {
+/** The top-level `String` JavaScript object. */
+object String extends Object {
   implicit def toScalaString(value: prim.String): java.lang.String = sys.error("stub")
+
+  def fromCharCode(codes: Int*): java.lang.String = ???
 }
 
 /** Primitive JavaScript undefined value. */

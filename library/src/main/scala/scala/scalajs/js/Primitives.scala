@@ -248,61 +248,6 @@ object Dynamic {
   }
 }
 
-/** The top-level `Number` JavaScript object */
-object Number extends Object {
-  /**
-   * The Number.MAX_VALUE property represents the maximum numeric value
-   * representable in JavaScript.
-   *
-   * The MAX_VALUE property has a value of approximately 1.79E+308. Values
-   * larger than MAX_VALUE are represented as "Infinity".
-   *
-   * MDN
-   */
-  val MAX_VALUE: Double = ???
-  /**
-   * The Number.MIN_VALUE property represents the smallest positive numeric
-   * value representable in JavaScript.
-   *
-   * The MIN_VALUE property is the number closest to 0, not the most negative
-   * number, that JavaScript can represent.
-   *
-   * MIN_VALUE has a value of approximately 5e-324. Values smaller than MIN_VALUE
-   * ("underflow values") are converted to 0.
-   *
-   * MDN
-   */
-  val MIN_VALUE: Double = ???
-  /**
-   * The Number.NaN property represents Not-A-Number. Equivalent of NaN.
-   *
-   * MDN
-   */
-  val NaN: Double = ???
-
-  /**
-   * The Number.NEGATIVE_INFINITY property represents the negative Infinity value.
-   *
-   * MDN
-   */
-  val NEGATIVE_INFINITY: Double = ???
-  /**
-   * The Number.POSITIVE_INFINITY property represents the positive Infinity value.
-   *
-   * MDN
-   */
-  val POSITIVE_INFINITY: Double = ???
-}
-
-/** The top-level `Boolean` JavaScript object. */
-object Boolean extends Object {
-}
-
-/** The top-level `String` JavaScript object. */
-object String extends Object {
-  def fromCharCode(codes: Int*): String = ???
-}
-
 /** Base class of all JavaScript objects. */
 class Object extends Any {
   def this(value: Any) = this()

@@ -48,6 +48,22 @@ package scala.scalajs
  *  array access syntax of JavaScript.
  */
 package object js extends js.GlobalScope {
+  /** The type of JavaScript numbers, which is [[scala.Double]]. */
+  type Number = scala.Double
+  /** The type of JavaScript booleans, which is [[scala.Boolean]]. */
+  type Boolean = scala.Boolean
+  /** The type of JavaScript strings, which is [[java.lang.String]]. */
+  type String = java.lang.String
+  /** The type of the JavaScript undefined value, which is [[scala.Unit]]. */
+  type Undefined = scala.Unit
+
+  /** The top-level `Number` JavaScript object. */
+  val Number: js.prim.Number.type = ???
+  /** The top-level `Boolean` JavaScript object. */
+  val Boolean: js.prim.Boolean.type = ???
+  /** The top-level `String` JavaScript object. */
+  val String: js.prim.String.type = ???
+
   /** The constant Not-a-Number. */
   val NaN: Double = ???
   /** The constant Positive Infinity. */
@@ -78,9 +94,9 @@ package object js extends js.GlobalScope {
   def eval(x: String): Any = ???
 
   /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Int): Double = ???
+  def parseInt(s: String, radix: Int): js.Number = ???
   /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): Double = ???
+  def parseInt(s: String): js.Number = ???
   /** Parses a string as a floating point number. */
   def parseFloat(string: String): Double = ???
 
