@@ -215,12 +215,12 @@ object FormatterTest extends JasmineTest {
 
     it("should survive `null` and `undefined`") {
       expectF("%s", null).toEqual("null")
-      expectF("%s", (): js.Undefined).toEqual("undefined")
+      expectF("%s", js.undefined).toEqual("undefined")
     }
 
     it("should allow 'f' string interpolation to survive `null` and `undefined`") {
       expect(f"${null}%s").toEqual("null")
-      expect(f"${(): js.Undefined}%s").toEqual("undefined")
+      expect(f"${js.undefined}%s").toEqual("undefined")
     }
 
     it("should allow positional arguments") {

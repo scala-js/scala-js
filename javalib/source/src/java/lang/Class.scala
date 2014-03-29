@@ -10,24 +10,23 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
   }
 
   def isInstance(obj: Object): scala.Boolean =
-    data.isInstance(obj.asInstanceOf[js.Any]).asInstanceOf[js.Boolean]
+    data.isInstance(obj.asInstanceOf[js.Any]).asInstanceOf[scala.Boolean]
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
     js.Dynamic.global.ScalaJS.dynamicIsAssignableFrom(
-        this.data, that.data).asInstanceOf[js.Boolean]
+        this.data, that.data).asInstanceOf[scala.Boolean]
 
   def isInterface(): scala.Boolean =
-    data.isInterface.asInstanceOf[js.Boolean]
+    data.isInterface.asInstanceOf[scala.Boolean]
 
   def isArray(): scala.Boolean =
-    data.isArrayClass.asInstanceOf[js.Boolean]
+    data.isArrayClass.asInstanceOf[scala.Boolean]
 
   def isPrimitive(): scala.Boolean =
-    data.isPrimitive.asInstanceOf[js.Boolean]
+    data.isPrimitive.asInstanceOf[scala.Boolean]
 
-  def getName(): String = {
-    data.displayName.asInstanceOf[js.String]
-  }
+  def getName(): String =
+    data.displayName.asInstanceOf[String]
 
   def getSuperClass(): Class[_ >: A] =
     if (!data.parentData) null

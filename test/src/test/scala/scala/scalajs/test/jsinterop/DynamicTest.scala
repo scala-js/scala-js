@@ -61,7 +61,7 @@ object DynamicTest extends JasmineTest {
 
       val y = obj(
           inner = obj(name = "inner obj"),
-          fun = { () => 42: js.Any }
+          fun = { () => 42 }
       )
       expect(y.inner.name).toEqual("inner obj")
       expect(y.fun()).toEqual(42)
@@ -76,8 +76,8 @@ object DynamicTest extends JasmineTest {
       expect(x.bar).toEqual("foobar")
       expect(x.unknown).toBeUndefined()
 
-      val tup1 = ("hello1", 3: js.Number)
-      val tup2 = ("hello2", 10: js.Number)
+      val tup1 = ("hello1", 3: js.Any)
+      val tup2 = ("hello2", 10: js.Any)
 
       val y = obj(tup1, tup2)
       expect(y.hello1).toEqual(3)
@@ -109,7 +109,7 @@ object DynamicTest extends JasmineTest {
           return x['.o[3√!|-pr()per7:3$];'] === ' such eval ';
         }
         dynamicLiteralNameEncoding_checkEvilProperties
-      """).asInstanceOf[js.Function1[js.Any, js.Boolean]]
+      """).asInstanceOf[js.Function1[js.Any, Boolean]]
       val obj1 = obj(
           ".o[3√!|-pr()per7:3$];" -> " such eval ").asInstanceOf[js.Dictionary[js.Any]]
       expect(obj1(".o[3√!|-pr()per7:3$];")).toEqual(" such eval ")
@@ -120,7 +120,7 @@ object DynamicTest extends JasmineTest {
           return x["'" + '"'] === 7357;
         }
         dynamicLiteralNameEncoding_quote
-      """).asInstanceOf[js.Function1[js.Any, js.Boolean]]
+      """).asInstanceOf[js.Function1[js.Any, Boolean]]
 
       val quote = '"'
 

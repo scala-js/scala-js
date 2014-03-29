@@ -62,13 +62,14 @@ abstract class JSPrimitives {
   val NTR_MOD_SUFF  = 340 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
   val NTR_NAME_JOIN = 341 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
-  val TYPEOF = 342   // typeof x
-  val DEBUGGER = 343 // js.debugger()
-  val HASPROP = 344  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
+  val ISUNDEF = 342  // js.isUndefined
+  val TYPEOF = 343   // typeof x
+  val DEBUGGER = 344 // js.debugger()
+  val HASPROP = 345  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
 
-  val RETURNRECEIVER = 345 // anything "return this;", e.g., Boolean.booleanValue()
-  val UNITVAL = 346        // () value, which is undefined
-  val UNITTYPE = 347       // BoxedUnit.TYPE (== classOf[Unit])
+  val RETURNRECEIVER = 346 // anything "return this;", e.g., Boolean.booleanValue()
+  val UNITVAL = 347        // () value, which is undefined
+  val UNITTYPE = 348       // BoxedUnit.TYPE (== classOf[Unit])
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -115,6 +116,8 @@ abstract class JSPrimitives {
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
+    addPrimitive(JSPackage_undefined, UNITVAL)
+    addPrimitive(JSPackage_isUndefined, ISUNDEF)
 
     addPrimitive(JSObject_hasProperty, HASPROP)
 

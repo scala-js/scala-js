@@ -4,5 +4,5 @@ import scala.scalajs.js
 
 trait Suite extends js.Object {
   def results(): SuiteResults = ???
-  val description: js.String = ???
+  val description: String = ???
 }

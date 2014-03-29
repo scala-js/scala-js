@@ -3001,8 +3001,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             case RTJ2J => arg
             case J2RTJ => arg
 
+            case ISUNDEF =>
+              // js.isUndefined(arg)
+              js.BinaryOp("===", arg, js.Undefined())
             case TYPEOF =>
-              // js.Dynamic.typeOf(arg)
+              // js.typeOf(arg)
               js.UnaryOp("typeof", arg)
           }
 

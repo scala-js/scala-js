@@ -48,9 +48,8 @@ private[scala] abstract class JSUniquenessCache[V]
   protected def keyFromValue(v: V): Option[String]
 
   def apply(name: String): V = {
-    val symName: js.String = name
-    val cachedSym = map(symName)
-    if (!cachedSym) {
+    val cachedSym = map(name)
+    if (js.isUndefined(cachedSym)) {
       val sym = valueFromKey(name)
       map(name) = sym.asInstanceOf[js.Any]
       sym.asInstanceOf[V]

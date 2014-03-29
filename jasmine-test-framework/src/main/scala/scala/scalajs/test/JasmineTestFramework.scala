@@ -159,19 +159,22 @@ class JasmineTestFramework(testOutput: TestOutput) {
   }
 
   private def getScriptStack(stack: js.Any): Array[ScriptStackElement] = {
-    if (stack.isInstanceOf[js.String]) {
-      val StackTracePattern = """^(.+?) ([^ ]+\.js):(\d+).*?$""".r
-      val stackString: String = stack.asInstanceOf[js.String]
+    (stack: Any) match {
+      case stack: String =>
+        val StackTracePattern = """^(.+?) ([^ ]+\.js):(\d+).*?$""".r
 
-      stackString
-        .split("\n")
-        .map {
-          case StackTracePattern(originalMessage, fileName, lineNumber) =>
-            ScriptStackElement(fileName, "", lineNumber.toInt)
-          case unknown =>
-            ScriptStackElement("Unknown stack element: " + unknown, "", -1)
-        }
-        .takeWhile(e => !(e.fileName contains "jasmine.js"))
-    } else Array.empty
+        stack
+          .split("\n")
+          .map {
+            case StackTracePattern(originalMessage, fileName, lineNumber) =>
+              ScriptStackElement(fileName, "", lineNumber.toInt)
+            case unknown =>
+              ScriptStackElement("Unknown stack element: " + unknown, "", -1)
+          }
+          .takeWhile(e => !(e.fileName contains "jasmine.js"))
+
+      case _ =>
+        Array.empty
+    }
   }
 }

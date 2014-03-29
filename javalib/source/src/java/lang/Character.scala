@@ -12,8 +12,8 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
   override def compareTo(that: Character): Int =
     if (value == that.value) 0 else if (value < that.value) -1 else 1
 
-  override def toString: String =
-    js.Dynamic.global.String.fromCharCode(value.toInt).asInstanceOf[js.String]
+  override def toString(): String =
+    js.String.fromCharCode(value.toInt)
 
   override def hashCode(): Int = value.##
 

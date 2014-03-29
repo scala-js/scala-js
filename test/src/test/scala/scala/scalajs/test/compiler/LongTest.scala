@@ -76,9 +76,9 @@ object LongTest extends JasmineTest {
       expect("45678901234567890".toLong == 45678901234567890L).toBeTruthy
     }
 
-    it("should convert from and to js.Number") {
-      val x = 5: js.Number
-      expect((5L: js.Number) == x).toBeTruthy
+    it("should convert from and to js.prim.Number") {
+      val x = 5: js.prim.Number
+      expect((5L: js.prim.Number) == x).toBeTruthy
       expect(x.toLong == 5L).toBeTruthy
     }
 

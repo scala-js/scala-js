@@ -23,161 +23,161 @@ package scala.scalajs.js
  */
 class Date extends Object {
 
-  def this(value: Number) = this()
+  def this(value: Double) = this()
   def this(value: String) = this()
 
-  def this(year: Number, month: Number, date: Number = 1, hours: Number = 0,
-      minutes: Number = 0, seconds: Number = 0, ms: Number = 0) = this()
+  def this(year: Int, month: Int, date: Int = 1, hours: Int = 0,
+      minutes: Int = 0, seconds: Int = 0, ms: Int = 0) = this()
 
   def toDateString(): String = ???
   def toTimeString(): String = ???
   def toLocaleDateString(): String = ???
   def toLocaleTimeString(): String = ???
 
-  override def valueOf(): Number = ???
+  override def valueOf(): Double = ???
 
-  def getTime(): Number = ???
+  def getTime(): Double = ???
 
   /**
    * Returns the year (4 digits for 4-digit years) of the specified date according to local time.
    *
    * MDN
    */
-  def getFullYear(): Number = ???
+  def getFullYear(): Int = ???
 
   /**
    * Returns the year (4 digits for 4-digit years) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCFullYear(): Number = ???
+  def getUTCFullYear(): Int = ???
 
   /**
    * Returns the month (0-11) in the specified date according to local time.
    *
    * MDN
    */
-  def getMonth(): Number = ???
+  def getMonth(): Int = ???
 
   /**
    * Returns the month (0-11) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMonth(): Number = ???
+  def getUTCMonth(): Int = ???
 
   /**
    * Returns the day of the month (1-31) for the specified date according to local time.
    *
    * MDN
    */
-  def getDate(): Number = ???
+  def getDate(): Int = ???
 
   /**
    * Returns the day (date) of the month (1-31) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCDate(): Number = ???
+  def getUTCDate(): Int = ???
 
   /**
    * Returns the day of the week (0-6) for the specified date according to local time.
    *
    * MDN
    */
-  def getDay(): Number = ???
+  def getDay(): Int = ???
 
   /**
    * Returns the day of the week (0-6) in the specified date according to universal time.
    * MDN
    */
-  def getUTCDay(): Number = ???
+  def getUTCDay(): Int = ???
 
   /**
    * Returns the hour (0-23) in the specified date according to local time.
    *
    * MDN
    */
-  def getHours(): Number = ???
+  def getHours(): Int = ???
 
   /**
    * Returns the hours (0-23) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCHours(): Number = ???
+  def getUTCHours(): Int = ???
 
   /**
    * Returns the minutes (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getMinutes(): Number = ???
+  def getMinutes(): Int = ???
 
   /**
    * Returns the minutes (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMinutes(): Number = ???
+  def getUTCMinutes(): Int = ???
 
   /**
    * Returns the seconds (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getSeconds(): Number = ???
+  def getSeconds(): Int = ???
 
   /**
    * Returns the seconds (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCSeconds(): Number = ???
+  def getUTCSeconds(): Int = ???
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to local time.
    *
    * MDN
    */
-  def getMilliseconds(): Number = ???
+  def getMilliseconds(): Int = ???
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMilliseconds(): Number = ???
+  def getUTCMilliseconds(): Int = ???
 
   /**
    * Returns the time-zone offset in minutes for the current locale.
    *
    * MDN
    */
-  def getTimezoneOffset(): Number = ???
+  def getTimezoneOffset(): Int = ???
 
-  def setTime(time: Number): Unit = ???
-  def setMilliseconds(ms: Number): Unit = ???
-  def setUTCMilliseconds(ms: Number): Unit = ???
-  def setSeconds(sec: Number, ms: Number = getMilliseconds()): Unit = ???
-  def setUTCSeconds(sec: Number, ms: Number = getMilliseconds()): Unit = ???
-  def setMinutes(min: Number, sec: Number = getSeconds(),
-      ms: Number = getMilliseconds()): Unit = ???
-  def setUTCMinutes(min: Number, sec: Number = getSeconds(),
-      ms: Number = getMilliseconds()): Unit = ???
-  def setHours(hours: Number, min: Number = getMinutes(),
-      sec: Number = getSeconds(), ms: Number = getMilliseconds()): Unit = ???
-  def setUTCHours(hours: Number, min: Number = getMinutes(),
-      sec: Number = getSeconds(), ms: Number = getMilliseconds()): Unit = ???
+  def setTime(time: Double): Unit = ???
+  def setMilliseconds(ms: Int): Unit = ???
+  def setUTCMilliseconds(ms: Int): Unit = ???
+  def setSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = ???
+  def setUTCSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = ???
+  def setMinutes(min: Int, sec: Int = getSeconds(),
+      ms: Int = getMilliseconds()): Unit = ???
+  def setUTCMinutes(min: Int, sec: Int = getSeconds(),
+      ms: Int = getMilliseconds()): Unit = ???
+  def setHours(hours: Int, min: Int = getMinutes(),
+      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = ???
+  def setUTCHours(hours: Int, min: Int = getMinutes(),
+      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = ???
 
-  def setDate(date: Number): Unit = ???
-  def setUTCDate(date: Number): Unit = ???
-  def setMonth(month: Number, date: Number = getDate()): Unit = ???
-  def setUTCMonth(month: Number, date: Number = getDate()): Unit = ???
-  def setFullYear(year: Number, month: Number = getMonth(),
-      date: Number = getDate()): Unit = ???
-  def setUTCFullYear(year: Number, month: Number = getMonth(),
-      date: Number = getDate()): Unit = ???
+  def setDate(date: Int): Unit = ???
+  def setUTCDate(date: Int): Unit = ???
+  def setMonth(month: Int, date: Int = getDate()): Unit = ???
+  def setUTCMonth(month: Int, date: Int = getDate()): Unit = ???
+  def setFullYear(year: Int, month: Int = getMonth(),
+      date: Int = getDate()): Unit = ???
+  def setUTCFullYear(year: Int, month: Int = getMonth(),
+      date: Int = getDate()): Unit = ???
 
   def toUTCString(): String = ???
   def toISOString(): String = ???
@@ -210,10 +210,10 @@ object Date extends Object {
    *
    * MDN
    */
-  def parse(s: String): Number = ???
+  def parse(s: String): Int = ???
 
-  def UTC(year: Number, month: Number, date: Number = 1, hours: Number = 0,
-      minutes: Number = 0, seconds: Number = 0, ms: Number = 0): Number = ???
+  def UTC(year: Int, month: Int, date: Int = 1, hours: Int = 0,
+      minutes: Int = 0, seconds: Int = 0, ms: Int = 0): Double = ???
 
   /**
    * Returns the numeric value corresponding to the current time - the number
@@ -221,5 +221,5 @@ object Date extends Object {
    *
    * MDN
    */
-  def now(): Number = ???
+  def now(): Double = ???
 }

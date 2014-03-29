@@ -96,8 +96,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
     /** Draw the specified square on the board canvas */
     def drawSquare(square: Square) {
-      val x: js.Number = square.x * SquareSizePx
-      val y: js.Number = square.y * SquareSizePx
+      val x = square.x * SquareSizePx
+      val y = square.y * SquareSizePx
 
       // Background
       context.fillStyle = "green"

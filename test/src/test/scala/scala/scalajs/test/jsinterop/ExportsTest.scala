@@ -360,7 +360,7 @@ object ExportsTest extends JasmineTest {
         def foo(a: Int)(b: String = "asdf") = s"$a $b"
 
         @JSExport
-        def foo(a: Int, b: js.Undefined) = "woot"
+        def foo(a: Int, b: js.prim.Undefined) = "woot"
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]

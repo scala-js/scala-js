@@ -7,7 +7,7 @@ import scala.scalajs.js
   */
 class JSArraySeq[A,B](
   private val arr: js.Array[A],
-  private val offset: js.Number,
+  private val offset: Int,
   private val map: js.Function1[A,B]) extends Seq[B] {
 
   def apply(i: Int): B = map(arr(i+offset))

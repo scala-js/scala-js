@@ -10,16 +10,16 @@ import scala.scalajs.js
 trait Window extends js.Object {
   val document: DOMDocument
 
-  def alert(msg: js.String): Unit
+  def alert(msg: String): Unit
 }
 
 trait DOMDocument extends js.Object {
-  def getElementById(id: js.String): DOMElement
-  def createElement(tag: js.String): DOMElement
+  def getElementById(id: String): DOMElement
+  def createElement(tag: String): DOMElement
 }
 
 trait DOMElement extends js.Object {
-  var innerHTML: js.String
+  var innerHTML: String
 
   def appendChild(child: DOMElement): Unit
 }
@@ -30,58 +30,58 @@ trait JQueryStatic extends js.Object {
 }
 
 trait JQuery extends js.Object {
-  def get(index: js.Number): DOMElement
+  def get(index: Int): DOMElement
 
-  def text(value: js.String): JQuery
-  def text(): js.String
+  def text(value: String): JQuery
+  def text(): String
 
-  def html(value: js.String): JQuery
-  def html(): js.String
+  def html(value: String): JQuery
+  def html(): String
 
-  def prop(property: js.String): js.Any
-  def prop(property: js.String, value: js.Any): JQuery
+  def prop(property: String): js.Any
+  def prop(property: String, value: js.Any): JQuery
 
   def offset(): JQueryOffset
 
   def appendTo(parent: JQuery): JQuery
   def append(children: JQuery): JQuery
 
-  def addClass(classes: js.String): JQuery
-  def removeClass(classes: js.String): JQuery
+  def addClass(classes: String): JQuery
+  def removeClass(classes: String): JQuery
 
-  def each[U](callback: js.Function2[js.Number, js.Dynamic, U]): JQuery
+  def each[U](callback: js.Function2[Int, js.Dynamic, U]): JQuery
 
   def click[U](handler: js.Function0[U]): JQuery
   def click[U](handler: js.Function1[JQueryEvent, U]): JQuery
 }
 
 trait JQueryOffset extends js.Object {
-  val top: js.Number
-  val left: js.Number
+  val top: Double
+  val left: Double
 }
 
 trait JQueryEvent extends js.Object {
-  val pageX: js.Number
-  val pageY: js.Number
+  val pageX: Double
+  val pageY: Double
 }
 
 trait HTMLCanvasElement extends DOMElement {
-  def getContext(kind: js.String): js.Any // depends on the kind
+  def getContext(kind: String): js.Any // depends on the kind
 }
 
 trait CanvasRenderingContext2D extends js.Object {
   val canvas: HTMLCanvasElement
 
-  var fillStyle: js.String
-  var lineWidth: js.Number
+  var fillStyle: String
+  var lineWidth: Double
 
-  def fillRect(x: js.Number, y: js.Number, w: js.Number, h: js.Number)
-  def strokeRect(x: js.Number, y: js.Number, w: js.Number, h: js.Number)
+  def fillRect(x: Double, y: Double, w: Double, h: Double): Unit
+  def strokeRect(x: Double, y: Double, w: Double, h: Double): Unit
 
-  def beginPath()
-  def fill()
-  def stroke()
+  def beginPath(): Unit
+  def fill(): Unit
+  def stroke(): Unit
 
-  def arc(x: js.Number, y: js.Number, radius: js.Number,
-      startAngle: js.Number, endAngle: js.Number, anticlockwise: js.Boolean)
+  def arc(x: Double, y: Double, radius: Double,
+      startAngle: Double, endAngle: Double, anticlockwise: Boolean): Unit
 }

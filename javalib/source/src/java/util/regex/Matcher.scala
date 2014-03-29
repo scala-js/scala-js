@@ -212,9 +212,6 @@ final class Matcher private[regex] (
 }
 
 object Matcher {
-  // js.Numbers used here are always Ints
-  private implicit def jsNumberToInt(i: js.Number): Int = (i: Double).toInt
-
   def quoteReplacement(s: String): String = {
     var result = ""
     var i = 0

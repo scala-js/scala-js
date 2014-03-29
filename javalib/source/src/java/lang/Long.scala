@@ -70,9 +70,10 @@ object Long {
    *
    * but generated too much JS code
    */
-  private def dropLZ(s: js.String) = {
+  private def dropLZ(s: String) = {
     var i = 0
-    while ("0" == s.charAt(i)) { i += 1 }
-    s.substring(Math.min(i,s.length - 1))
+    while (i < s.length-1 && s.charAt(i) == '0')
+      i += 1
+    s.substring(i)
   }
 }

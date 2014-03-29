@@ -49,9 +49,15 @@ package scala.scalajs
  */
 package object js extends js.GlobalScope {
   /** The constant Not-a-Number. */
-  val NaN: Number = ???
+  val NaN: Double = ???
   /** The constant Positive Infinity. */
-  val Infinity: Number = ???
+  val Infinity: Double = ???
+
+  /** The undefined value. */
+  def undefined: js.prim.Undefined = sys.error("stub")
+
+  /** Tests whether the given value is undefined. */
+  def isUndefined(v: scala.Any): Boolean = sys.error("stub")
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
   def typeOf(x: Any): String = sys.error("stub")
@@ -72,16 +78,16 @@ package object js extends js.GlobalScope {
   def eval(x: String): Any = ???
 
   /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Number): Number = ???
+  def parseInt(s: String, radix: Int): Double = ???
   /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): Number = ???
+  def parseInt(s: String): Double = ???
   /** Parses a string as a floating point number. */
-  def parseFloat(string: String): Number = ???
+  def parseFloat(string: String): Double = ???
 
   /** Tests whether the given value is Not-a-Number. */
-  def isNaN(number: Number): Boolean = ???
+  def isNaN(number: Double): Boolean = ???
   /** Tests whether the given value is a finite number. */
-  def isFinite(number: Number): Boolean = ???
+  def isFinite(number: Double): Boolean = ???
 
   /** Decodes a Uniform Resource Identifier (URI).
    *  @see [[encodeURI]]

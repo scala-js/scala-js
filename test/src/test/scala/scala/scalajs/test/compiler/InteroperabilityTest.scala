@@ -23,9 +23,9 @@ object InteroperabilityTest extends JasmineTest {
 
     it("should support backquotes to escape Scala fields") {
       trait InteroperabilityTestFieldEscape extends js.Object {
-        var `def`: js.Number
-        def `val`(): js.Number = ???
-        def `val`(n: js.Number): js.Number = ???
+        var `def`: Int
+        def `val`(): Int = ???
+        def `val`(n: Int): Int = ???
       }
 
       val obj = js.eval("""
@@ -45,9 +45,9 @@ object InteroperabilityTest extends JasmineTest {
     it("should support @JSName to specify the JavaScript name for fields") {
       trait InteroperabilityTestJSName extends js.Object {
         @JSName("val")
-        def value(): js.Number = ???
+        def value(): Int = ???
         @JSName("val")
-        def value(n: js.Number): js.Number = ???
+        def value(n: Int): Int = ???
       }
 
       val obj = js.eval("""
@@ -99,9 +99,9 @@ object InteroperabilityTest extends JasmineTest {
     it("should support @JSBracketAccess to specify access using []-subscription") {
       trait InteroperabilityTestJSBracketAccess extends js.Object {
         @JSBracketAccess
-        def apply(index: js.Number): js.Number = ???
+        def apply(index: Int): Int = ???
         @JSBracketAccess
-        def update(index: js.Number, v: js.Number): Unit = ???
+        def update(index: Int, v: Int): Unit = ???
       }
 
       val obj = js.eval("""
@@ -175,7 +175,7 @@ object InteroperabilityTest extends JasmineTest {
 
     it("should protect receiver of raw JS apply if it's a select") {
       trait InteroperabilityTestRawReceiver extends js.Object {
-        val check: js.Function1[js.Number, js.Number] = ???
+        val check: js.Function1[Int, Int] = ???
       }
 
       val rawReceiver = js.eval("""
@@ -198,15 +198,11 @@ object InteroperabilityTest extends JasmineTest {
        */
       trait InteroperabilityTestDefaultParam extends js.Object {
         @JSName("fun")
-        def simple(x: js.Number, y: js.Number = 5): js.Any = ???
+        def simple(x: Int, y: Int = 5): js.Any = ???
         @JSName("fun")
-        def named(
-            x: js.Number = 1,
-            y: js.Number = 1,
-            z: js.Number = 1): js.Any = ???
+        def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Any = ???
         @JSName("fun")
-        def multi(x: js.Number = 1)
-          (ys: js.Number*)(z: js.Number = 1): js.Any = ???
+        def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Any = ???
       }
 
       val obj = js.eval("""
@@ -218,7 +214,7 @@ object InteroperabilityTest extends JasmineTest {
 
       // Helpers
       import js.Dynamic.{literal => args}
-      val undef = (): js.Undefined
+      val undef = js.undefined
 
       expect(obj.simple(1)).toEqual(args(`0` = 1))
       expect(obj.simple(1,5)).toEqual(args(`0` = 1, `1` = 5))
@@ -259,23 +255,23 @@ object InteroperabilityTest extends JasmineTest {
 
 @JSName("InteroperabilityTestInherit.Pattern")
 class InteroperabilityTestPattern protected () extends js.Object {
-  def this(pattern: js.String) = this()
-  val field: js.Number = ???
-  def method(): js.String = ???
-  def getConstructorParam(): js.String = ???
+  def this(pattern: String) = this()
+  val field: Int = ???
+  def method(): String = ???
+  def getConstructorParam(): String = ???
 }
 
 trait InteroperabilityTestTopLevel extends js.Object {
-  val value: js.String = ???
-  def valueAsInt(): js.Number = ???
+  val value: String = ???
+  def valueAsInt(): Int = ???
 }
 
 @JSName("InteroperabilityTestTopLevelObject")
 object InteroperabilityTestTopLevel extends js.Object {
-  def apply(value: js.String): InteroperabilityTestTopLevel = ???
+  def apply(value: String): InteroperabilityTestTopLevel = ???
 }
 
 object InteroperabilityTestGlobalScope extends js.GlobalScope {
-  var interoperabilityTestGlobalScopeValue: js.String = ???
-  def interoperabilityTestGlobalScopeValueAsInt(): js.Number = ???
+  var interoperabilityTestGlobalScopeValue: String = ???
+  def interoperabilityTestGlobalScopeValueAsInt(): Int = ???
 }

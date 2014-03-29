@@ -61,10 +61,10 @@ class TestOutputBridge(eventProxy: EventProxy) extends TestOutput {
     val rhinoException = newInstance(RhinoExceptionClass)("stack creation")
     val rhinoStack = rhinoException.getScriptStack().asInstanceOf[js.Array[js.Dynamic]]
     val stack =
-      for (i <- 0 until rhinoStack.length.asInstanceOf[js.Number].toInt) yield {
+      for (i <- 0 until rhinoStack.length) yield {
         val e = rhinoStack(i)
         ScriptStackElement(e.fileName.toString, e.functionName.toString,
-            e.lineNumber.asInstanceOf[js.Number].toInt)
+            e.lineNumber.asInstanceOf[Int])
       }
 
     stack.toArray
@@ -78,8 +78,8 @@ class TestOutputBridge(eventProxy: EventProxy) extends TestOutput {
 
   private def stackElementToJS(s: ScriptStackElement): js.Any = {
     js.Dynamic.literal(
-        fileName = (s.fileName: js.String),
-        functionName = (s.functionName: js.String),
-        lineNumber = (s.lineNumber: js.Number))
+        fileName = s.fileName,
+        functionName = s.functionName,
+        lineNumber = s.lineNumber)
   }
 }

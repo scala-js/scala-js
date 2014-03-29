@@ -19,9 +19,9 @@ object ThisFunctionTest extends JasmineTest {
       val g = js.eval("""
           var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
       """).asInstanceOf[js.Function2[js.ThisFunction2[
-          js.Dynamic, js.Number, js.String, js.String], js.Dynamic, js.String]]
+          js.Dynamic, Int, String, String], js.Dynamic, String]]
 
-      val f = { (thiz: js.Dynamic, v: js.Number, u: js.String) =>
+      val f = { (thiz: js.Dynamic, v: Int, u: String) =>
         expect(thiz).toBeTruthy()
         expect(thiz.foobar).toEqual("foobar")
         u + v
@@ -36,12 +36,12 @@ object ThisFunctionTest extends JasmineTest {
       val g = js.eval("""
           var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
       """).asInstanceOf[js.Function2[js.ThisFunction2[
-          js.Dynamic, js.Number, js.String, js.String], js.Dynamic, js.String]]
+          js.Dynamic, Int, String, String], js.Dynamic, String]]
 
       val obj = js.Object().asInstanceOf[js.Dynamic]
       obj.foo = "foo"
       obj.foobar = "foobar"
-      expect(g({ (thiz: js.Dynamic, v: js.Number, u: js.String) =>
+      expect(g({ (thiz: js.Dynamic, v: Int, u: String) =>
         expect(thiz).toBeTruthy()
         expect(thiz.foobar).toEqual("foobar")
         u + v
@@ -51,7 +51,7 @@ object ThisFunctionTest extends JasmineTest {
     it("should bind the first argument to this when applying js.ThisFunctionN") {
       val g = js.eval("""
           var g = function(x) { return this.foo + ":" + x; }; g;
-      """).asInstanceOf[js.ThisFunction1[js.Dynamic, js.Number, js.String]]
+      """).asInstanceOf[js.ThisFunction1[js.Dynamic, Int, String]]
       val obj = js.Object().asInstanceOf[js.Dynamic]
       obj.foo = "foo"
       expect(g(obj, 42)).toEqual("foo:42")
@@ -60,8 +60,8 @@ object ThisFunctionTest extends JasmineTest {
     it("should provide an implicit conversion from js.ThisFunction to Scala function") {
       val g = js.eval("""
           var g = function(x) { return this.foo + ":" + x; }; g;
-      """).asInstanceOf[js.ThisFunction1[js.Dynamic, js.Number, js.String]]
-      val f: scala.Function2[js.Dynamic, js.Number, js.String] = g
+      """).asInstanceOf[js.ThisFunction1[js.Dynamic, Int, String]]
+      val f: scala.Function2[js.Dynamic, Int, String] = g
       val obj = js.Object().asInstanceOf[js.Dynamic]
       obj.foo = "foo"
       expect(f(obj, 42)).toEqual("foo:42")

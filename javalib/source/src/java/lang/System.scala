@@ -13,12 +13,12 @@ object System {
     (new js.Date).getTime().toLong
   }
 
-  private[this] val getHighPrecisionTime: js.Function0[js.Number] = {
+  private[this] val getHighPrecisionTime: js.Function0[scala.Double] = {
     if (!(!global.performance)) {
       if (!(!global.performance.now)) {
-        () => global.performance.now().asInstanceOf[js.Number]
+        () => global.performance.now().asInstanceOf[scala.Double]
       } else if (!(!(global.performance.webkitNow))) {
-        () => global.performance.webkitNow().asInstanceOf[js.Number]
+        () => global.performance.webkitNow().asInstanceOf[scala.Double]
       } else {
         () => new js.Date().getTime()
       }
@@ -72,15 +72,15 @@ private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
   /** whether buffer is flushed. Can be true even if buffer != "" because of
    *  line continuations. However, if !flushed => buffer != ""
    */
-  private var flushed: js.Boolean = true
-  private var buffer:  js.String = ""
+  private var flushed: scala.Boolean = true
+  private var buffer: String = ""
 
-  private val lineContEnd  : js.String = "\u21A9"
-  private val lineContStart: js.String = "\u21AA"
+  private val lineContEnd: String = "\u21A9"
+  private val lineContStart: String = "\u21AA"
 
   override def print(s: String): Unit = {
-    var rest: js.String = if (s eq null) "null" else s
-    while (!(!rest)) {
+    var rest: String = if (s eq null) "null" else s
+    while (!rest.isEmpty) {
       val nlPos = rest.indexOf("\n")
       if (nlPos < 0) {
         buffer += rest

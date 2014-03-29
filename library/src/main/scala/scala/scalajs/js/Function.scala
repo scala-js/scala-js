@@ -49,7 +49,7 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  val length: Number = ???
+  val length: Int = ???
 
   /**
    * The call() method calls a function with a given this value and arguments
