@@ -139,13 +139,14 @@ object ScalaJSClasspathEntries {
             case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
               builder.addCoreInfoFile(FileVirtualJSFile(file))
 
-            case _ =>
+            case _ if name.endsWith(".js") =>
               if (FileVirtualScalaJSClassfile.isScalaJSClassfile(file)) {
                 builder.addClassFileIfNew(path,
                     FileVirtualScalaJSClassfile(file))
               } else {
                 builder.addJSFileIfNew(path, FileVirtualJSFile(file))
               }
+            case _ => // ignore other files
           }
         }
       }
