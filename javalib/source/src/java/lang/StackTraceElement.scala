@@ -1,5 +1,7 @@
 package java.lang
 
+import scala.scalajs.js
+
 final class StackTraceElement(declaringClass: String, methodName: String,
     fileName: String, lineNumber: Int) extends AnyRef with java.io.Serializable {
 
@@ -31,8 +33,11 @@ final class StackTraceElement(declaringClass: String, methodName: String,
         result += "(Unknown Source)"
     } else {
       result += s"($fileName"
-      if (lineNumber >= 0)
+      if (lineNumber >= 0) {
         result += s":$lineNumber"
+        if (columnNumber >= 0)
+          result += s":$columnNumber"
+      }
       result += ")"
     }
     result
@@ -40,5 +45,11 @@ final class StackTraceElement(declaringClass: String, methodName: String,
 
   override def hashCode(): Int = {
     declaringClass.hashCode() ^ methodName.hashCode()
+  }
+
+  private def columnNumber: Int = {
+    val rawNum = this.asInstanceOf[js.Dynamic].columnNumber
+    if (!(!rawNum)) rawNum.asInstanceOf[Int]
+    else -1
   }
 }
