@@ -3651,7 +3651,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Generate a call to scala.scalajs.runtime.Long companion */
+    /** Generate a call to scala.scalajs.runtime.RuntimeLong companion */
     private def genLongModuleCall(methodName: String, args: js.Tree*)(implicit pos: Position) = {
       val LongModule = genLoadModule(RuntimeLongModule)
       val encName = scala.reflect.NameTransformer.encode(methodName)

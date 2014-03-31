@@ -128,9 +128,9 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
     instantiateClassWith("java_lang_Class", "init___Lscala_scalajs_js_Dynamic")
 
-    val LongModule = lookupClass("scala_scalajs_runtime_Long$")
+    val LongModule = lookupClass("scala_scalajs_runtime_RuntimeLong$")
     LongModule.accessModule()
-    LongModule.callMethod("zero__Lscala_scalajs_runtime_Long")
+    LongModule.callMethod("zero__Lscala_scalajs_runtime_RuntimeLong")
 
     val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
     BoxesRunTime.accessModule()
