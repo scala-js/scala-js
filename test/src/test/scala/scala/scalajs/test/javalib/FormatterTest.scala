@@ -157,14 +157,6 @@ object FormatterTest extends JasmineTest {
       expectF("%#14o",  new JInteger(IntMin*2)).toEqual(" -040000000000")
       expectF("%#14o",  new JInteger(IntMax+1)).toEqual(" +020000000000")
       expectF("%o",     new JInteger(IntMax*2)).toEqual("+37777777776")
-      expectF("%0#7o", new JByte((ByteMin-1).toByte)).toEqual("-000201")
-      expectF("%#7o",  new JByte((ByteMin*2).toByte)).toEqual("  -0400")
-      expectF("%#7o",  new JByte((ByteMax+1).toByte)).toEqual("  +0200")
-      expectF("%o",    new JByte((ByteMax*2).toByte)).toEqual("+376")
-      expectF("%0#11o", new JShort((ShortMin-1).toShort)).toEqual("-0000100001")
-      expectF("%#11o",  new JShort((ShortMin*2).toShort)).toEqual("   -0200000")
-      expectF("%#11o",  new JShort((ShortMax+1).toShort)).toEqual("   +0100000")
-      expectF("%o",     new JShort((ShortMax*2).toShort)).toEqual("+177776")
     }
 
     it("should provide 'x' conversion for values out of range") {
@@ -172,14 +164,6 @@ object FormatterTest extends JasmineTest {
       expectF("%#14x",  new JInteger(IntMin*2)).toEqual("  -0x100000000")
       expectF("%#14X",  new JInteger(IntMax+1)).toEqual("   +0X80000000")
       expectF("%x",     new JInteger(IntMax*2)).toEqual("+fffffffe")
-      expectF("%0#7x", new JByte((ByteMin-1).toByte)).toEqual("-0x0081")
-      expectF("%#7x",  new JByte((ByteMin*2).toByte)).toEqual(" -0x100")
-      expectF("%#7X",  new JByte((ByteMax+1).toByte)).toEqual("  +0X80")
-      expectF("%x",    new JByte((ByteMax*2).toByte)).toEqual("+fe")
-      expectF("%0#11x", new JShort((ShortMin-1).toShort)).toEqual("-0x00008001")
-      expectF("%#11x",  new JShort((ShortMin*2).toShort)).toEqual("   -0x10000")
-      expectF("%#11X",  new JShort((ShortMax+1).toShort)).toEqual("    +0X8000")
-      expectF("%x",     new JShort((ShortMax*2).toShort)).toEqual("+fffe")
     }
 
     it("should provide 'e' conversion") {

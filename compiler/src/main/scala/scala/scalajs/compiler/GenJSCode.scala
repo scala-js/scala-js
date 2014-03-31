@@ -2382,8 +2382,21 @@ abstract class GenJSCode extends plugins.PluginComponent
         case B2C | S2C | I2C | F2C | D2C =>
           js.BinaryOp("&", source, js.IntLiteral(0xffff))
 
-        case F2B | F2S | F2I | D2B | D2S | D2I =>
-          js.BinaryOp("|", source, js.IntLiteral(0))
+        // To Byte, need to crop at signed 8-bit
+        case C2B | S2B | I2B | F2B | D2B =>
+          // note: & 0xff would not work because of negative values
+          js.BinaryOp(">>", js.BinaryOp("<<", source, js.IntLiteral(24)),
+              js.IntLiteral(24))
+
+        // To Short, need to crop at signed 16-bit
+        case C2S | I2S | F2S | D2S =>
+          // note: & 0xffff would not work because of negative values
+          js.BinaryOp(">>", js.BinaryOp("<<", source, js.IntLiteral(16)),
+              js.IntLiteral(16))
+
+        // To Int, need to round to integer
+        case F2I | D2I =>
+          genCallHelper("truncateInt", source)
 
         case _ => source
       }
