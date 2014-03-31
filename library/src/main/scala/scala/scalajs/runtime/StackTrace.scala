@@ -197,7 +197,7 @@ object StackTrace {
   private def extractRhino(e: js.Dynamic): js.Array[js.String] = {
     (e.stack.asInstanceOf[js.String])
       .replace("""^\s+at\s+""".re("gm"), "") // remove 'at' and indentation
-      .replace("""^(.+) \((.+)\)$""".re("gm"), "$2@$1")
+      .replace("""^(.+?)(?: \((.+)\))?$""".re("gm"), "$2@$1")
       .replace("""\r\n?""".re("gm"), "\n") // Rhino has platform-dependent EOL's
       .split("\n")
   }
