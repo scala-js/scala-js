@@ -9,11 +9,7 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import sbt.testing.TaskDef
-import sbt.testing.OptionalThrowable
-import sbt.testing.{ Event => SbtEvent }
-import sbt.testing.Status
-import sbt.testing.SuiteSelector
+import sbt.testing.{Event => SbtEvent, _}
 
 class Events(taskDef: TaskDef) {
 

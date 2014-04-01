@@ -9,9 +9,7 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import sbt.testing.TaskDef
-import sbt.testing.Task
-import sbt.testing.Runner
+import sbt.testing._
 
 import scala.scalajs.tools.environment._
 import scala.scalajs.tools.classpath._
@@ -26,7 +24,9 @@ class TestRunner(
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = if (_done) {
     throw new IllegalStateException("Done has already been called")
-  } else taskDefs.map(TestTask(environment, jsClasspath, testFramework))
+  } else {
+    taskDefs.map(TestTask(environment, jsClasspath, testFramework))
+  }
 
   def done(): String = {
     _done = true

@@ -9,10 +9,9 @@
 
 package scala.scalajs.sbtplugin.environment.rhino
 
-import org.mozilla.javascript.Scriptable
-import java.io.File
-import org.mozilla.javascript.Context
 import scala.collection.mutable
+
+import org.mozilla.javascript.Scriptable
 
 /** A proxy for a ScalaJS "scope" field that loads scripts lazily
  *

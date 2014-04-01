@@ -9,11 +9,9 @@
 
 package scala.scalajs.sbtplugin.environment.rhino
 
-import java.io.File
 import scala.collection.mutable
 
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.{Context, Scriptable}
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
