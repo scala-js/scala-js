@@ -17,7 +17,7 @@ final class RuntimeLong private (
   val l: Int,
   val m: Int,
   val h: Int
-) { x =>
+) extends Number with Comparable[java.lang.Long] { x =>
 
   import RuntimeLong._
 
@@ -31,6 +31,20 @@ final class RuntimeLong private (
     if (isMinValue) -9223372036854775808.0
     else if (isNegative) -((-x).toDouble)
     else l + m * TWO_PWR_22_DBL + h * TWO_PWR_44_DBL
+
+  // java.lang.Number
+  override def byteValue(): Byte = toByte
+  override def shortValue(): Short = toShort
+  def intValue(): Int = toInt
+  def longValue(): Long = fromRuntimeLong(x)
+  def floatValue(): Float = toFloat
+  def doubleValue(): Double = toDouble
+
+  // java.lang.Comparable + overload taking scala.Long
+  def compareTo(that: RuntimeLong): Int =
+    if (this equals that) 0 else if (this > that) 1 else -1
+  def compareTo(that: java.lang.Long): Int =
+    compareTo(toRuntimeLong(that.longValue()))
 
   def unary_~ : RuntimeLong = masked(~x.l, ~x.m, ~x.h)
   def unary_+ : RuntimeLong = x
@@ -400,6 +414,129 @@ final class RuntimeLong private (
     else
       RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
   }
+
+  /*
+   * Methods of scala.Long
+   * The following methods are only here to properly support reflective calls
+   * on longs. YOU MUST NOT USE THESE METHODS.
+   */
+
+  //protected def unary_~ : Long = ~toLong // already defined
+  //protected def unary_+ : Long = toLong  // already defined
+  //protected def unary_- : Long = -toLong // already defined
+
+  //protected def <<(y: Int): Long = toLong << y         // already defined
+  protected def <<(y: Long): Long = toLong << y
+  //protected def >>>(y: Int): Long = toLong >>> y       // already defined
+  protected def >>>(y: Long): Long = toLong >>> y
+  //protected def >>(y: Int): Long = toLong >> y         // already defined
+  protected def >>(y: Long): Long = toLong >> y
+
+  protected def ==(y: Byte): Boolean = toLong == y
+  protected def ==(y: Short): Boolean = toLong == y
+  protected def ==(y: Char): Boolean = toLong == y
+  protected def ==(y: Int): Boolean = toLong == y
+  protected def ==(y: Long): Boolean = toLong == y
+  protected def ==(y: Float): Boolean = toLong == y
+  protected def ==(y: Double): Boolean = toLong == y
+
+  protected def !=(y: Byte): Boolean = toLong != y
+  protected def !=(y: Short): Boolean = toLong != y
+  protected def !=(y: Char): Boolean = toLong != y
+  protected def !=(y: Int): Boolean = toLong != y
+  protected def !=(y: Long): Boolean = toLong != y
+  protected def !=(y: Float): Boolean = toLong != y
+  protected def !=(y: Double): Boolean = toLong != y
+
+  protected def <(y: Byte): Boolean = toLong < y
+  protected def <(y: Short): Boolean = toLong < y
+  protected def <(y: Char): Boolean = toLong < y
+  protected def <(y: Int): Boolean = toLong < y
+  protected def <(y: Long): Boolean = toLong < y
+  protected def <(y: Float): Boolean = toLong < y
+  protected def <(y: Double): Boolean = toLong < y
+
+  protected def <=(y: Byte): Boolean = toLong <= y
+  protected def <=(y: Short): Boolean = toLong <= y
+  protected def <=(y: Char): Boolean = toLong <= y
+  protected def <=(y: Int): Boolean = toLong <= y
+  protected def <=(y: Long): Boolean = toLong <= y
+  protected def <=(y: Float): Boolean = toLong <= y
+  protected def <=(y: Double): Boolean = toLong <= y
+
+  protected def >(y: Byte): Boolean = toLong > y
+  protected def >(y: Short): Boolean = toLong > y
+  protected def >(y: Char): Boolean = toLong > y
+  protected def >(y: Int): Boolean = toLong > y
+  protected def >(y: Long): Boolean = toLong > y
+  protected def >(y: Float): Boolean = toLong > y
+  protected def >(y: Double): Boolean = toLong > y
+
+  protected def >=(y: Byte): Boolean = toLong >= y
+  protected def >=(y: Short): Boolean = toLong >= y
+  protected def >=(y: Char): Boolean = toLong >= y
+  protected def >=(y: Int): Boolean = toLong >= y
+  protected def >=(y: Long): Boolean = toLong >= y
+  protected def >=(y: Float): Boolean = toLong >= y
+  protected def >=(y: Double): Boolean = toLong >= y
+
+  protected def |(y: Byte): Long = toLong | y
+  protected def |(y: Short): Long = toLong | y
+  protected def |(y: Char): Long = toLong | y
+  protected def |(y: Int): Long = toLong | y
+  protected def |(y: Long): Long = toLong | y
+
+  protected def &(y: Byte): Long = toLong & y
+  protected def &(y: Short): Long = toLong & y
+  protected def &(y: Char): Long = toLong & y
+  protected def &(y: Int): Long = toLong & y
+  protected def &(y: Long): Long = toLong & y
+
+  protected def ^(y: Byte): Long = toLong ^ y
+  protected def ^(y: Short): Long = toLong ^ y
+  protected def ^(y: Char): Long = toLong ^ y
+  protected def ^(y: Int): Long = toLong ^ y
+  protected def ^(y: Long): Long = toLong ^ y
+
+  protected def +(y: Byte): Long = toLong + y
+  protected def +(y: Short): Long = toLong + y
+  protected def +(y: Char): Long = toLong + y
+  protected def +(y: Int): Long = toLong + y
+  protected def +(y: Long): Long = toLong + y
+  protected def +(y: Float): Float = toLong + y
+  protected def +(y: Double): Double = toLong + y
+
+  protected def -(y: Byte): Long = toLong - y
+  protected def -(y: Short): Long = toLong - y
+  protected def -(y: Char): Long = toLong - y
+  protected def -(y: Int): Long = toLong - y
+  protected def -(y: Long): Long = toLong - y
+  protected def -(y: Float): Float = toLong - y
+  protected def -(y: Double): Double = toLong - y
+
+  protected def *(y: Byte): Long = toLong - y
+  protected def *(y: Short): Long = toLong - y
+  protected def *(y: Char): Long = toLong - y
+  protected def *(y: Int): Long = toLong - y
+  protected def *(y: Long): Long = toLong - y
+  protected def *(y: Float): Float = toLong - y
+  protected def *(y: Double): Double = toLong - y
+
+  protected def /(y: Byte): Long = toLong / y
+  protected def /(y: Short): Long = toLong / y
+  protected def /(y: Char): Long = toLong / y
+  protected def /(y: Int): Long = toLong / y
+  protected def /(y: Long): Long = toLong / y
+  protected def /(y: Float): Float = toLong / y
+  protected def /(y: Double): Double = toLong / y
+
+  protected def %(y: Byte): Long = toLong % y
+  protected def %(y: Short): Long = toLong % y
+  protected def %(y: Char): Long = toLong % y
+  protected def %(y: Int): Long = toLong % y
+  protected def %(y: Long): Long = toLong % y
+  protected def %(y: Float): Float = toLong % y
+  protected def %(y: Double): Double = toLong % y
 
 }
 

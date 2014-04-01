@@ -20,7 +20,7 @@ object SystemTest extends JasmineTest {
       val object1 = Array[Any](() => true, 1, "2", '3', 4.0, true, object0)
 
       System.arraycopy(object1, 1, object0, 1, 5)
-      expect(object0.mkString).toEqual("[1234.0true]")
+      expect(object0.mkString).toEqual("[1234true]")
 
       val string0 = Array("a", "b", "c", "d", "e", "f")
       val string1 = Array("1", "2", "3", "4")

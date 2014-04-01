@@ -2,161 +2,23 @@ package java.lang
 
 import scala.scalajs.js
 
-final class Short(private val value: scala.Short)
-    extends Number with Comparable[Short] {
+// This class is not emitted, but we need to define its members correctly
+final class Short(value: scala.Short) extends Number with Comparable[Short] {
 
   def this(s: String) = this(Short.parseShort(s))
 
-  override def byteValue() = value.toByte
-  override def shortValue() = value
-  def intValue() = value.toInt
-  def longValue() = value.toLong
-  def floatValue() = value.toFloat
-  def doubleValue() = value.toDouble
+  override def byteValue(): scala.Byte = sys.error("stub")
+  override def shortValue(): scala.Short = sys.error("stub")
+  def intValue(): scala.Int = sys.error("stub")
+  def longValue(): scala.Long = sys.error("stub")
+  def floatValue(): scala.Float = sys.error("stub")
+  def doubleValue(): scala.Double = sys.error("stub")
 
-  override def hashCode(): Int = value.##
+  override def equals(that: Any): scala.Boolean = sys.error("stub")
 
-  override def equals(that: Any) =
-    that.isInstanceOf[Short] && (value == that.asInstanceOf[Short].value)
+  override def compareTo(that: Short): Int = sys.error("stub")
 
-  override def compareTo(that: Short): Int =
-    if (value == that.value) 0 else if (value < that.value) -1 else 1
-
-  override def toString = (value:js.Number).toString()
-
-  /*
-   * Methods on scala.Short
-   * The following methods are only here to properly support reflective calls
-   * on boxed primitive values. YOU WILL NOT BE ABLE TO USE THESE METHODS, since
-   * we use the true javalib to lookup symbols, this file contains only
-   * implementations.
-   */
-  protected def toByte: scala.Byte     = value.toByte
-  protected def toShort: scala.Short   = value
-  protected def toChar: scala.Char     = value.toChar
-  protected def toInt: scala.Int       = value.toInt
-  protected def toLong: scala.Long     = value.toLong
-  protected def toFloat: scala.Float   = value.toFloat
-  protected def toDouble: scala.Double = value.toDouble
-
-  protected def unary_~ : scala.Int = ~value
-  protected def unary_+ : scala.Int = value
-  protected def unary_- : scala.Int = -value
-
-  protected def +(x: String): String = value + x
-
-  protected def <<(x: scala.Int): scala.Int = value << x
-  protected def <<(x: scala.Long): scala.Int = value << x
-  protected def >>>(x: scala.Int): scala.Int = value >>> x
-  protected def >>>(x: scala.Long): scala.Int = value >>> x
-  protected def >>(x: scala.Int): scala.Int = value >> x
-  protected def >>(x: scala.Long): scala.Int = value >> x
-
-  protected def ==(x: scala.Byte): scala.Boolean = value == x
-  protected def ==(x: scala.Short): scala.Boolean = value == x
-  protected def ==(x: scala.Char): scala.Boolean = value == x
-  protected def ==(x: scala.Int): scala.Boolean = value == x
-  protected def ==(x: scala.Long): scala.Boolean = value == x
-  protected def ==(x: scala.Float): scala.Boolean = value == x
-  protected def ==(x: scala.Double): scala.Boolean = value == x
-
-  protected def !=(x: scala.Byte): scala.Boolean = value != x
-  protected def !=(x: scala.Short): scala.Boolean = value != x
-  protected def !=(x: scala.Char): scala.Boolean = value != x
-  protected def !=(x: scala.Int): scala.Boolean = value != x
-  protected def !=(x: scala.Long): scala.Boolean = value != x
-  protected def !=(x: scala.Float): scala.Boolean = value != x
-  protected def !=(x: scala.Double): scala.Boolean = value != x
-
-  protected def <(x: scala.Byte): scala.Boolean = value < x
-  protected def <(x: scala.Short): scala.Boolean = value < x
-  protected def <(x: scala.Char): scala.Boolean = value < x
-  protected def <(x: scala.Int): scala.Boolean = value < x
-  protected def <(x: scala.Long): scala.Boolean = value < x
-  protected def <(x: scala.Float): scala.Boolean = value < x
-  protected def <(x: scala.Double): scala.Boolean = value < x
-
-  protected def <=(x: scala.Byte): scala.Boolean = value <= x
-  protected def <=(x: scala.Short): scala.Boolean = value <= x
-  protected def <=(x: scala.Char): scala.Boolean = value <= x
-  protected def <=(x: scala.Int): scala.Boolean = value <= x
-  protected def <=(x: scala.Long): scala.Boolean = value <= x
-  protected def <=(x: scala.Float): scala.Boolean = value <= x
-  protected def <=(x: scala.Double): scala.Boolean = value <= x
-
-  protected def >(x: scala.Byte): scala.Boolean = value > x
-  protected def >(x: scala.Short): scala.Boolean = value > x
-  protected def >(x: scala.Char): scala.Boolean = value > x
-  protected def >(x: scala.Int): scala.Boolean = value > x
-  protected def >(x: scala.Long): scala.Boolean = value > x
-  protected def >(x: scala.Float): scala.Boolean = value > x
-  protected def >(x: scala.Double): scala.Boolean = value > x
-
-  protected def >=(x: scala.Byte): scala.Boolean = value >= x
-  protected def >=(x: scala.Short): scala.Boolean = value >= x
-  protected def >=(x: scala.Char): scala.Boolean = value >= x
-  protected def >=(x: scala.Int): scala.Boolean = value >= x
-  protected def >=(x: scala.Long): scala.Boolean = value >= x
-  protected def >=(x: scala.Float): scala.Boolean = value >= x
-  protected def >=(x: scala.Double): scala.Boolean = value >= x
-
-  protected def |(x: scala.Byte): scala.Int = value | x
-  protected def |(x: scala.Short): scala.Int = value | x
-  protected def |(x: scala.Char): scala.Int = value | x
-  protected def |(x: scala.Int): scala.Int = value | x
-  protected def |(x: scala.Long): scala.Long = value | x
-
-  protected def &(x: scala.Byte): scala.Int = value & x
-  protected def &(x: scala.Short): scala.Int = value & x
-  protected def &(x: scala.Char): scala.Int = value & x
-  protected def &(x: scala.Int): scala.Int = value & x
-  protected def &(x: scala.Long): scala.Long = value & x
-
-  protected def ^(x: scala.Byte): scala.Int = value ^ x
-  protected def ^(x: scala.Short): scala.Int = value ^ x
-  protected def ^(x: scala.Char): scala.Int = value ^ x
-  protected def ^(x: scala.Int): scala.Int = value ^ x
-  protected def ^(x: scala.Long): scala.Long = value ^ x
-
-  protected def +(x: scala.Byte): scala.Int = value + x
-  protected def +(x: scala.Short): scala.Int = value + x
-  protected def +(x: scala.Char): scala.Int = value + x
-  protected def +(x: scala.Int): scala.Int = value + x
-  protected def +(x: scala.Long): scala.Long = value + x
-  protected def +(x: scala.Float): scala.Float = value + x
-  protected def +(x: scala.Double): scala.Double = value + x
-
-  protected def -(x: scala.Byte): scala.Int = value - x
-  protected def -(x: scala.Short): scala.Int = value - x
-  protected def -(x: scala.Char): scala.Int = value - x
-  protected def -(x: scala.Int): scala.Int = value - x
-  protected def -(x: scala.Long): scala.Long = value - x
-  protected def -(x: scala.Float): scala.Float = value - x
-  protected def -(x: scala.Double): scala.Double = value - x
-
-  protected def *(x: scala.Byte): scala.Int = value * x
-  protected def *(x: scala.Short): scala.Int = value * x
-  protected def *(x: scala.Char): scala.Int = value * x
-  protected def *(x: scala.Int): scala.Int = value * x
-  protected def *(x: scala.Long): scala.Long = value * x
-  protected def *(x: scala.Float): scala.Float = value * x
-  protected def *(x: scala.Double): scala.Double = value * x
-
-  protected def /(x: scala.Byte): scala.Int = value / x
-  protected def /(x: scala.Short): scala.Int = value / x
-  protected def /(x: scala.Char): scala.Int = value / x
-  protected def /(x: scala.Int): scala.Int = value / x
-  protected def /(x: scala.Long): scala.Long = value / x
-  protected def /(x: scala.Float): scala.Float = value / x
-  protected def /(x: scala.Double): scala.Double = value / x
-
-  protected def %(x: scala.Byte): scala.Int = value % x
-  protected def %(x: scala.Short): scala.Int = value % x
-  protected def %(x: scala.Char): scala.Int = value % x
-  protected def %(x: scala.Int): scala.Int = value % x
-  protected def %(x: scala.Long): scala.Long = value % x
-  protected def %(x: scala.Float): scala.Float = value % x
-  protected def %(x: scala.Double): scala.Double = value % x
+  override def toString(): String = sys.error("stub")
 
 }
 

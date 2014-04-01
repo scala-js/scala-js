@@ -20,16 +20,16 @@ object DoubleTest extends JasmineTest {
   describe("java.lang.Double") {
 
     it("should provide proper `equals`") {
-      expect(Double.box(0.0) == Double.box(-0.0)).toBeFalsy
+      expect(Double.box(0.0) == Double.box(-0.0)).toBeTruthy
       expect(Double.box(Double.NaN) == Double.box(Double.NaN)).toBeTruthy
     }
 
-    it("should provide proper `toString`") {
-      expect(0.0.toString).toEqual("0.0")
-      expect(-0.0.toString).toEqual("-0.0")
+    it("should provide `toString` with integer values when an integer") {
+      expect(0.0.toString).toEqual("0")
+      expect(-0.0.toString).toEqual("0")
       expect(Double.NaN.toString).toEqual("NaN")
-      expect(5.0.toString).toEqual("5.0")
-      expect(-5.0.toString).toEqual("-5.0")
+      expect(5.0.toString).toEqual("5")
+      expect(-5.0.toString).toEqual("-5")
       expect(1.2.toString).toEqual("1.2")
     }
 

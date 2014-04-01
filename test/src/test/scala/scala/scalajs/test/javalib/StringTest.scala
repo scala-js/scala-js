@@ -182,7 +182,7 @@ object StringTest extends JasmineTest {
       expect(String.format("%5d", new Integer(-10))).toEqual("  -10")
       expect(String.format("%05d", new Integer(-10))).toEqual("-0010")
       expect(String.format("%x", new Integer(-3))).toEqual("fffffffd")
-      expect(String.format("%x", new java.lang.Byte(-4.toByte))).toEqual("fc")
+      expect(String.format("%x", new java.lang.Byte(-4.toByte))).toEqual("fffffffc")
     }
 
   }

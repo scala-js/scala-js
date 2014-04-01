@@ -43,6 +43,39 @@ neg/t7622-cyclic-dependency
 # RUN
 #
 
+# Relies on the exact toString() representation of Floats/Doubles
+run/Course-2002-01.scala
+run/Course-2002-02.scala
+run/Course-2002-04.scala
+run/Course-2002-08.scala
+run/Course-2002-09.scala
+run/Course-2002-10.scala
+run/impconvtimes.scala
+run/promotion.scala
+run/runtime.scala
+run/spec-self.scala
+run/t0421-new.scala
+run/t0421-old.scala
+run/t2378.scala
+run/t4617.scala
+run/t5552.scala
+run/t5866.scala
+run/t6318_primitives.scala
+run/try-catch-unify.scala
+
+# Relies on !box(+0.0).equals(box(-0.0))
+run/number-parsing.scala
+
+# Relies on ().toString() == "()"
+run/dynamic-anyval.scala
+run/macro-bundle-static
+run/macro-bundle-toplevel
+run/structural.scala
+run/t3702.scala
+run/t5680.scala
+run/t6662
+run/t7657
+
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 
