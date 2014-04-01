@@ -15,5 +15,6 @@ import js.annotation.{ JSExportDescendentObjects, JSExport }
 @JSExportDescendentObjects
 trait TestFramework {
   @JSExport
-  def runTests(testOutput: TestOutput)(tests: js.Function0[Unit]): Unit
+  def runTests(testOutput: TestOutput, args: js.Array[String])(
+    tests: js.Function0[Unit]): Unit
 }

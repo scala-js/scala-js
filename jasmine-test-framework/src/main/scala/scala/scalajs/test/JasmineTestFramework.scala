@@ -31,9 +31,14 @@ object JasmineTestFramework extends TestFramework {
   // make sure jasmine is loaded
   global.importScripts("jasmine.js")
 
-  def runTests(testOutput: TestOutput)(tests: js.Function0[Unit]): Unit = {
+  def runTests(testOutput: TestOutput, args: js.Array[String])(
+    tests: js.Function0[Unit]): Unit = {
+
     val jasmine = global.jasmine
     val reporter = new JasmineTestReporter(testOutput)
+
+    if (args.length >= 1)
+      testOutput.log.warn(s"Jasmine: Discarding arguments: $args")
 
     try {
       tests()
