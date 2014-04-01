@@ -93,8 +93,8 @@ object Integer {
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
 
   private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    if (i > scala.Int.MaxValue) "+" + (i: js.Number).toString(base)
-    else if (i < scala.Int.MinValue) (i: js.Number).toString(base) // includes "-"
-    else ((i: js.Number) >>> 0).toString(base)
+    if (i > scala.Int.MaxValue) "+" + (i: js.prim.Number).toString(base)
+    else if (i < scala.Int.MinValue) (i: js.prim.Number).toString(base) // includes "-"
+    else ((i: js.prim.Number) >>> 0).toString(base)
   }
 }

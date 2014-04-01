@@ -32,7 +32,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   // Begin implem of format()
 
   private class RegExpExtractor(val regexp: js.RegExp) {
-    def unapply(str: js.String): Option[js.RegExp.ExecResult] = {
+    def unapply(str: String): Option[js.RegExp.ExecResult] = {
       Option(regexp.exec(str))
     }
   }
@@ -44,11 +44,13 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
       """^\x25(?:([1-9]\d*)\$)?([-#+ 0,\(<]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
 
   def format(format_in: String, args: Array[AnyRef]): Formatter = ifNotClosed {
-    var fmt: js.String = format_in
-    var lastImplicitIndex: js.Number = 0
-    var lastIndex: js.Number = 0 // required for < flag
+    import js.Any.fromDouble // to have .toFixed and .toExponential on Doubles
 
-    while (!(!fmt)) {
+    var fmt: String = format_in
+    var lastImplicitIndex: Int = 0
+    var lastIndex: Int = 0 // required for < flag
+
+    while (!fmt.isEmpty) {
       fmt match {
         case RegularChunk(matchResult) =>
           fmt = fmt.substring(matchResult(0).length)
@@ -66,11 +68,11 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           fmt = fmt.substring(matchResult(0).length)
 
           val flags = matchResult(2)
-          def hasFlag(flag: js.String) = flags.indexOf(flag) >= 0
+          def hasFlag(flag: String) = flags.indexOf(flag) >= 0
 
           val indexStr = matchResult(1)
           val index = if (!(!indexStr)) {
-            js.parseInt(indexStr)
+            Integer.parseInt(indexStr)
           } else if (hasFlag("<")) {
             lastIndex
           } else {
@@ -85,33 +87,36 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           val widthStr = matchResult(3)
           val hasWidth = !(!widthStr)
           val width =
-            if (hasWidth) js.parseInt(widthStr)
-            else (0: js.Number)
+            if (hasWidth) Integer.parseInt(widthStr)
+            else 0
 
           val precisionStr = matchResult(4)
           val hasPrecision = !(!precisionStr)
           val precision =
-            if (hasPrecision) js.parseInt(precisionStr)
-            else (0: js.Number)
+            if (hasPrecision) Integer.parseInt(precisionStr)
+            else 0
 
-          val conversion = (matchResult(5): String).charAt(0)
+          val conversion = matchResult(5).toString().charAt(0)
 
-          def numberArg: js.Number = arg match {
-            case arg: Number    => arg.doubleValue()
-            case arg: Character => arg.charValue().toInt
-            case arg: js.Number => arg
+          def intArg: Int = (arg: Any) match {
+            case arg: Int  => arg
+            case arg: Char => arg.toInt
+          }
+          def numberArg: scala.Double = (arg: Any) match {
+            case arg: Number => arg.doubleValue()
+            case arg: Char   => arg.toDouble
           }
 
-          def padCaptureSign(argStr: js.String, prefix: js.String) = {
-            val firstChar = (argStr: String).charAt(0)
+          def padCaptureSign(argStr: String, prefix: String) = {
+            val firstChar = argStr.charAt(0)
             if (firstChar == '+' || firstChar == '-')
               pad(argStr.substring(1), firstChar+prefix)
             else
               pad(argStr, prefix)
           }
 
-          def strRepeat(s: js.String, times: js.Number) = {
-            var result: js.String = ""
+          def strRepeat(s: String, times: Int) = {
+            var result: String = ""
             var i = times
             while (i > 0) {
               result += s
@@ -120,8 +125,8 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             result
           }
 
-          def with_+(s: js.String, preventZero: scala.Boolean = false) = {
-            if ((s:String).charAt(0) != '-') {
+          def with_+(s: String, preventZero: scala.Boolean = false) = {
+            if (s.charAt(0) != '-') {
               if (hasFlag("+"))
                 pad(s, "+", preventZero)
               else if (hasFlag(" "))
@@ -132,11 +137,11 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               if (hasFlag("("))
                 pad(s.substring(1) + ")", "(", preventZero)
               else
-                pad(s.substring(1),"-", preventZero)
+                pad(s.substring(1), "-", preventZero)
             }
           }
 
-          def pad(argStr: js.String, prefix: js.String = "",
+          def pad(argStr: String, prefix: String = "",
                   preventZero: Boolean = false) = {
             val prePadLen = argStr.length + prefix.length
 
@@ -147,7 +152,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 val padRight = hasFlag("-")
                 val padZero = hasFlag("0") && !preventZero
                 val padLength = width - prePadLen
-                val padChar: js.String = if (padZero) "0" else " "
+                val padChar: String = if (padZero) "0" else " "
                 val padding = strRepeat(padChar, padLength)
 
                 if (padZero && padRight)
@@ -162,7 +167,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               if (conversion.isUpper) padStr.toUpperCase()
               else padStr
             dest.append(casedStr)
-
           }
 
           (conversion: @switch) match {
@@ -193,40 +197,38 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 throw new FormatFlagsConversionMismatchException("#", 's')
             }
             case 'c' | 'C' =>
-              pad(js.String.fromCharCode(numberArg))
+              pad(js.String.fromCharCode(intArg))
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              val str: js.String = arg match {
-                case arg: Integer   => Integer.toOctalString(arg)
-                case arg: Long      => Long.toOctalString(arg)
-                case arg: js.Number => arg.toString(8)
+              val str = arg match {
+                case arg: Integer        => Integer.toOctalString(arg)
+                case arg: Long           => Long.toOctalString(arg)
+                case arg: js.prim.Number => arg.toString(8).toString()
               }
               padCaptureSign(str, if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              val str: js.String = arg match {
-                case arg: Integer   => Integer.toHexString(arg)
-                case arg: Long      => Long.toHexString(arg)
-                case arg: js.Number => arg.toString(16)
+              val str = arg match {
+                case arg: Integer        => Integer.toHexString(arg)
+                case arg: Long           => Long.toHexString(arg)
+                case arg: js.prim.Number => arg.toString(16).toString()
               }
               padCaptureSign(str, if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
-              sciNotation(if (hasPrecision) precision else (6: js.Number))
+              sciNotation(if (hasPrecision) precision else 6)
             case 'g' | 'G' =>
               val m = js.Math.abs(numberArg)
               // precision handling according to JavaDoc
               // precision here means number of significant digits
               // not digits after decimal point
               val p =
-                if (!hasPrecision)
-                  6: js.Number
-                else if (precision == (0: js.Number))
-                  1: js.Number
+                if (!hasPrecision) 6
+                else if (precision == 0) 1
                 else precision
               // between 1e-4 and 10e(p): display as fixed
-              if (m >= 1e-4 && m < js.Math.pow(10,p)) {
+              if (m >= 1e-4 && m < js.Math.pow(10, p)) {
                 val sig = js.Math.ceil(js.Math.log(m) / js.Math.LN10)
-                with_+(numberArg.toFixed(js.Math.max(p - sig,0)))
+                with_+(numberArg.toFixed(js.Math.max(p - sig, 0)))
               } else sciNotation(p - 1)
             case 'f' =>
               with_+ ( {
@@ -238,16 +240,16 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               }, !js.isFinite(numberArg))
           }
 
-          def sciNotation(precision: js.Number) = {
+          def sciNotation(precision: Int) = {
             val exp = numberArg.toExponential(precision)
             with_+( {
               // check if we need additional 0 padding in exponent
               // JavaDoc: at least 2 digits
               if ("e" == exp.charAt(exp.length - 3))
-                exp.substring(0,exp.length - 1) + "0" +
+                exp.substring(0, exp.length - 1) + "0" +
                   exp.charAt(exp.length - 1)
               else exp
-            } , !js.isFinite(numberArg))
+            }, !js.isFinite(numberArg))
           }
       }
     }

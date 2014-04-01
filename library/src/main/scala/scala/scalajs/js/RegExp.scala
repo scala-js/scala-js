@@ -63,7 +63,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  var lastIndex: Number = ???
+  var lastIndex: Int = ???
 
   /**
    * The exec() method executes a search for a match in a specified string.
@@ -101,8 +101,8 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 object RegExp extends Object {
   def apply(pattern: String, flags: String = ""): RegExp = ???
 
-  trait ExecResult extends Array[String] {
-    var index: Number = _
+  trait ExecResult extends Array[prim.String] { // can be undefined
+    var index: Int = _
     var input: String = _
   }
 }

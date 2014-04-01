@@ -4,12 +4,9 @@ import scala.scalajs.js
 
 object Arrays {
   def sort[T](array: Array[Any], comparator: Comparator[T]): Unit = {
-    def compareFn(o1: T, o2: T): js.Number =
-      comparator.compare(o1, o2)
-
     val jsArray: js.Array[T] =
         array.asInstanceOf[js.Dynamic].underlying.asInstanceOf[js.Array[T]]
-    jsArray.sort(compareFn _)
+    jsArray.sort((o1: T, o2: T) => comparator.compare(o1, o2))
   }
 
   def fill(a: Array[Boolean], value: Boolean): Unit = {

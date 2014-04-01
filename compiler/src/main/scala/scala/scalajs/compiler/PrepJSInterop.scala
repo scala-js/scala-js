@@ -248,7 +248,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val sym = implDef.symbol
 
       lazy val badParent = sym.info.parents.find(t => !(t <:< JSAnyClass.tpe))
-      def inScalaJSJSPackage = sym.enclosingPackage == ScalaJSJSPackage
+      def inScalaJSJSPackage =
+        sym.enclosingPackage == ScalaJSJSPackage ||
+        sym.enclosingPackage == ScalaJSJSPrimPackage
 
       implDef match {
         // Check that we do not have a case modifier

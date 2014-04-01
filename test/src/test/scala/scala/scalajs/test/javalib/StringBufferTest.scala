@@ -22,7 +22,7 @@ object StringBufferTest extends JasmineTest {
       expect(newBuf.append(null: AnyRef).toString).toEqual("null")
       expect(newBuf.append(null: String).toString).toEqual("null")
       expect(newBuf.append(null: CharSequence,0,2).toString).toEqual("nu")
-      expect(newBuf.append((): js.Undefined).toString).toEqual("undefined")
+      expect(newBuf.append(js.undefined).toString).toEqual("undefined")
     }
 
   }
@@ -36,12 +36,12 @@ object StringBufferTest extends JasmineTest {
       expect(newBuf.append(null: AnyRef).toString).toEqual("null")
       expect(newBuf.append(null: String).toString).toEqual("null")
       expect(newBuf.append(null: CharSequence,0,2).toString).toEqual("nu")
-      expect(newBuf.append((): js.Undefined).toString).toEqual("undefined")
+      expect(newBuf.append(js.undefined).toString).toEqual("undefined")
     }
 
     it("should allow string interpolation to survive `null` and `undefined`") {
       expect(s"${null}").toEqual("null")
-      expect(s"${(): js.Undefined}").toEqual("undefined")
+      expect(s"${js.undefined}").toEqual("undefined")
     }
 
   }

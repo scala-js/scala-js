@@ -22,8 +22,12 @@ trait JSDefinitions { self: JSGlobalAddons =>
   class JSDefinitionsClass {
 
     lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
-      lazy val JSPackage_typeOf   = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
-      lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
+      lazy val JSPackage_undefined   = getMemberMethod(ScalaJSJSPackage, newTermName("undefined"))
+      lazy val JSPackage_isUndefined = getMemberMethod(ScalaJSJSPackage, newTermName("isUndefined"))
+      lazy val JSPackage_typeOf      = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
+      lazy val JSPackage_debugger    = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
+
+    lazy val ScalaJSJSPrimPackage = getPackage(newTermNameCached("scala.scalajs.js.prim")) // compat 2.10/2.11
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
@@ -32,10 +36,10 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSDynamic_applyDynamic  = getMemberMethod(JSDynamicClass, newTermName("applyDynamic"))
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
       lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))
-    lazy val JSNumberClass    = getRequiredClass("scala.scalajs.js.Number")
-    lazy val JSBooleanClass   = getRequiredClass("scala.scalajs.js.Boolean")
-    lazy val JSStringClass    = getRequiredClass("scala.scalajs.js.String")
-    lazy val JSUndefinedClass = getRequiredClass("scala.scalajs.js.Undefined")
+    lazy val JSNumberClass    = getRequiredClass("scala.scalajs.js.prim.Number")
+    lazy val JSBooleanClass   = getRequiredClass("scala.scalajs.js.prim.Boolean")
+    lazy val JSStringClass    = getRequiredClass("scala.scalajs.js.prim.String")
+    lazy val JSUndefinedClass = getRequiredClass("scala.scalajs.js.prim.Undefined")
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 

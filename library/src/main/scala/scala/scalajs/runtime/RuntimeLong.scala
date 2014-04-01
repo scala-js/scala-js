@@ -269,10 +269,9 @@ final class RuntimeLong private (
   //override def getClass(): Class[Long] = null
 
   def toBinaryString: String = {
-    import scala.scalajs.js
     def padBinary22(i: Int) = {
-      val zeros: js.String = "0000000000000000000000" // 22 zeros
-      val s = (i: js.Number).toString(2)
+      val zeros = "0000000000000000000000" // 22 zeros
+      val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
     (padBinary22(h) + padBinary22(m) + padBinary22(l)).substring(2)
@@ -294,8 +293,6 @@ final class RuntimeLong private (
   // Any API //
 
   override def toString: String = {
-    import scala.scalajs.js
-
     if (isZero) "0"
     // Check for MinValue, because its not negatable
     else if (isMinValue) "-9223372036854775808"
@@ -592,7 +589,7 @@ object RuntimeLong {
       val maxLen = 9
       @tailrec
       def fromString0(str0: String, acc: RuntimeLong): RuntimeLong = if (str0.length > 0) {
-        val cur = (str0: js.String).substring(0, maxLen): String
+        val cur = (str0: js.prim.String).substring(0, maxLen): String
         val macc = acc * fromInt(math.pow(radix, cur.length).toInt)
         val ival = js.parseInt(cur, radix)
         if (js.isNaN(ival)) {
@@ -600,7 +597,7 @@ object RuntimeLong {
             s"""For input string: "$str"""")
         }
         val cval = fromInt(ival.toInt)
-        fromString0((str0: js.String).substring(maxLen), macc + cval)
+        fromString0((str0: js.prim.String).substring(maxLen), macc + cval)
       } else acc
 
       fromString0(str, zero)

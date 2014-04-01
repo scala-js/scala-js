@@ -8,7 +8,7 @@ trait JasmineEnv extends js.Object {
 
 object JasmineEnv {
   trait Clock extends js.Object {
-    def tick(time: js.Number): js.Undefined
-    def useMock(): js.Undefined
+    def tick(time: Double): Unit
+    def useMock(): Unit
   }
 }

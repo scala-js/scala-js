@@ -26,51 +26,51 @@ object Math extends Object {
    *
    * MDN
    */
-  val E: Number = ???
+  val E: Double = ???
   /**
    * Natural logarithm of 10, approximately 2.303.
    *
    * MDN
    */
-  val LN10: Number = ???
+  val LN10: Double = ???
   /**
    * Natural logarithm of 2, approximately 0.693.
    *
    * MDN
    */
-  val LN2: Number = ???
+  val LN2: Double = ???
   /**
    * Base 2 logarithm of E, approximately 1.443.
    *
    * MDN
    */
-  val LOG2E: Number = ???
+  val LOG2E: Double = ???
   /**
    * Base 10 logarithm of E, approximately 0.434.
    *
    * MSN
    */
-  val LOG10E: Number = ???
+  val LOG10E: Double = ???
   /**
    * Ratio of the circumference of a circle to its diameter, approximately 3.14159.
    *
    * MDN
    */
-  val PI: Number = ???
+  val PI: Double = ???
 
   /**
    * Square root of 1/2; equivalently, 1 over the square root of 2, approximately 0.707.
    *
    * MDN
    */
-  val SQRT1_2: Number = ???
+  val SQRT1_2: Double = ???
 
   /**
    * Square root of 2, approximately 1.414.
    *
    * MDN
    */
-  val SQRT2: Number = ???
+  val SQRT2: Double = ???
 
   /**
    * Returns the absolute value of a number.
@@ -80,7 +80,17 @@ object Math extends Object {
    *
    * MDN
    */
-  def abs(x: Number): Number = ???
+  def abs(x: Int): Int = ???
+
+  /**
+   * Returns the absolute value of a number.
+   *
+   * Passing a non-numeric string or undefined/empty variable returns NaN.
+   * Passing null returns 0.
+   *
+   * MDN
+   */
+  def abs(x: Double): Double = ???
 
   /**
    * The Math.acos() function returns the arccosine (in radians) of a number.
@@ -90,7 +100,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def acos(x: Number): Number = ???
+  def acos(x: Double): Double = ???
 
   /**
    * The Math.asin() function returns the arcsine (in radians) of a number.
@@ -100,7 +110,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def asin(x: Number): Number = ???
+  def asin(x: Double): Double = ???
 
   /**
    * The Math.atan() function returns the arctangent (in radians) of a number.
@@ -109,7 +119,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def atan(x: Number): Number = ???
+  def atan(x: Double): Double = ???
 
   /**
    * The Math.atan2() function returns the arctangent of the quotient of its
@@ -126,7 +136,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def atan2(y: Number, x: Number): Number = ???
+  def atan2(y: Double, x: Double): Double = ???
 
   /**
    * The Math.ceil() function returns the smallest integer greater than or
@@ -134,7 +144,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def ceil(x: Number): Number = ???
+  def ceil(x: Double): Double = ???
 
   /**
    * The Math.cos() function returns the cosine of a number.
@@ -144,7 +154,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def cos(x: Number): Number = ???
+  def cos(x: Double): Double = ???
 
   /**
    * The Math.exp() function returns E^x, where x is the argument, and E is
@@ -152,7 +162,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def exp(x: Number): Number = ???
+  def exp(x: Double): Double = ???
 
   /**
    * The Math.floor() function returns the largest integer less than or equal
@@ -160,7 +170,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def floor(x: Number): Number = ???
+  def floor(x: Double): Double = ???
 
   /**
    * The Math.log() function returns the natural logarithm (base E) of a number.
@@ -169,7 +179,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def log(x: Number): Number = ???
+  def log(x: Double): Double = ???
+
+  /**
+   * The Math.max() function returns the largest of zero or more numbers.
+   *
+   * MDN
+   */
+  def max(value1: Int, values: Int*): Int = ???
 
   /**
    * The Math.max() function returns the largest of zero or more numbers.
@@ -180,7 +197,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def max(values: Number*): Number = ???
+  def max(values: Double*): Double = ???
+
+  /**
+   * The Math.min() function returns the smallest of zero or more numbers.
+   *
+   * MDN
+   */
+  def min(value1: Int, values: Int*): Int = ???
 
   /**
    * The Math.min() function returns the smallest of zero or more numbers.
@@ -191,14 +215,14 @@ object Math extends Object {
    *
    * MDN
    */
-  def min(values: Number*): Number = ???
+  def min(values: Double*): Double = ???
 
   /**
    * The Math.pow() function returns the base to the exponent Power,  that is, base^^exponent.
    *
    * MDN
    */
-  def pow(x: Number, y: Number): Number = ???
+  def pow(x: Double, y: Double): Double = ???
 
   /**
    * The Math.random() function returns a floating-point, pseudo-random number in
@@ -209,7 +233,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def random(): Number = ???
+  def random(): Double = ???
 
   /**
    * The Math.round() function returns the value of a number rounded to the
@@ -221,7 +245,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def round(x: Number): Number = ???
+  def round(x: Double): Double = ???
 
   /**
    * The Math.sin() function returns the sine of a number.
@@ -231,7 +255,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def sin(x: Number): Number = ???
+  def sin(x: Double): Double = ???
 
   /**
    * The Math.sqrt() function returns the square root (x\sqrt{x}) of a number.
@@ -240,7 +264,7 @@ object Math extends Object {
    *
    * MDN
    */
-  def sqrt(x: Number): Number = ???
+  def sqrt(x: Double): Double = ???
 
   /**
    * The Math.tan() function returns the tangent of a number.
@@ -249,5 +273,5 @@ object Math extends Object {
    *
    * MDN
    */
-  def tan(x: Number): Number = ???
+  def tan(x: Double): Double = ???
 }

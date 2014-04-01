@@ -55,31 +55,31 @@ object HelloWorld extends js.JSApp {
 object window extends js.GlobalScope {
   val document: DOMDocument = ???
 
-  def alert(msg: js.String): Unit = ???
+  def alert(msg: String): Unit = ???
 }
 
 trait DOMDocument extends js.Object {
-  def getElementById(id: js.String): DOMElement
-  def createElement(tag: js.String): DOMElement
+  def getElementById(id: String): DOMElement
+  def createElement(tag: String): DOMElement
 }
 
 trait DOMElement extends js.Object {
-  var innerHTML: js.String
+  var innerHTML: String
 
   def appendChild(child: DOMElement): Unit
 }
 
 @JSName("jQuery")
 object JQuery extends js.Object {
-  def apply(selector: js.String): JQuery = ???
+  def apply(selector: String): JQuery = ???
 }
 
 trait JQuery extends js.Object {
-  def text(value: js.String): JQuery
-  def text(): js.String
+  def text(value: String): JQuery
+  def text(): String
 
-  def html(value: js.String): JQuery
-  def html(): js.String
+  def html(value: String): JQuery
+  def html(): String
 
   def appendTo(parent: JQuery): JQuery
 }

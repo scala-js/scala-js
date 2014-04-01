@@ -40,20 +40,20 @@ class Array[A] extends Object {
   /** Creates a new array with the given length.
    *  @param arrayLength Initial length of the array.
    */
-  def this(arrayLength: Number) = this()
+  def this(arrayLength: Int) = this()
 
   // Do not expose this one - use js.Array(item1, item2, ...) instead
   // def this(items: A*) = this()
 
   /** Length of the array. */
-  def length: Number = ???
+  def length: Int = ???
 
   /** Access the element at the given index. */
   @JSBracketAccess
-  def apply(index: Number): A = ???
+  def apply(index: Int): A = ???
   /** Set the element at the given index. */
   @JSBracketAccess
-  def update(index: Number, value: A): Unit = ???
+  def update(index: Int, value: A): Unit = ???
 
   /**
    * concat creates a new array consisting of the elements in the this object
@@ -97,7 +97,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def push(items: A*): Number = ???
+  def push(items: A*): Int = ???
 
   /**
    * The reverse() method reverses an array in place. The first array element
@@ -120,8 +120,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def slice(start: Number, end: Number): Array[A] = ???
-  def slice(start: Number): Array[A] = ???
+  def slice(start: Int, end: Int): Array[A] = ???
+  def slice(start: Int): Array[A] = ???
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
@@ -135,7 +135,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def sort(compareFn: Function2[A, A, Number] = ???): Array[A] = ???
+  def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = ???
 
   /**
    * The splice() method changes the content of an array, adding new elements
@@ -143,14 +143,14 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def splice(index: Number): Array[A] = ???
+  def splice(index: Int): Array[A] = ???
   /**
    * The splice() method changes the content of an array, adding new elements
    * while removing old elements.
    *
    * MDN
    */
-  def splice(index: Number, deleteCount: Number, items: A*): Array[A] = ???
+  def splice(index: Int, deleteCount: Int, items: A*): Array[A] = ???
 
   /**
    * The unshift() method adds one or more elements to the beginning of an array
@@ -158,7 +158,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def unshift(items: A*): Number = ???
+  def unshift(items: A*): Int = ???
 
   /**
    * The indexOf() method returns the first index at which a given element can
@@ -166,8 +166,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def indexOf(searchElement: A, fromIndex: Number): Number = ???
-  def indexOf(searchElement: A): Number = ???
+  def indexOf(searchElement: A, fromIndex: Int): Int = ???
+  def indexOf(searchElement: A): Int = ???
 
   /**
    * The lastIndexOf() method returns the last index at which a given element
@@ -176,8 +176,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def lastIndexOf(searchElement: A, fromIndex: Number): Number = ???
-  def lastIndexOf(searchElement: A): Number = ???
+  def lastIndexOf(searchElement: A, fromIndex: Int): Int = ???
+  def lastIndexOf(searchElement: A): Int = ???
 
   /**
    * The every method executes the provided callback function once for each
@@ -207,9 +207,9 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def every[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+  def every[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Boolean = ???
-  def every(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
+  def every(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
 
   /**
    * some executes the callback function once for each element present in the
@@ -230,10 +230,10 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def some[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+  def some[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Boolean = ???
-  def some(callbackfn: Function3[A, Number, Array[A], Boolean]): Boolean = ???
-  def some(callbackfn: Function2[A, Number, Boolean]): Boolean = ???
+  def some(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
+  def some(callbackfn: Function2[A, Int, Boolean]): Boolean = ???
   def some(callbackfn: Function1[A, Boolean]): Boolean = ???
 
   /**
@@ -256,10 +256,10 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def forEach[T](callbackfn: ThisFunction3[T, A, Number, Array[A], _],
+  def forEach[T](callbackfn: ThisFunction3[T, A, Int, Array[A], _],
       thisArg: T): Unit = ???
-  def forEach(callbackfn: Function3[A, Number, Array[A], _]): Unit = ???
-  def forEach(callbackfn: Function2[A, Number, _]): Unit = ???
+  def forEach(callbackfn: Function3[A, Int, Array[A], _]): Unit = ???
+  def forEach(callbackfn: Function2[A, Int, _]): Unit = ???
   def forEach(callbackfn: Function1[A, _]): Unit = ???
 
   /**
@@ -280,10 +280,10 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def map[B, T](callbackfn: ThisFunction3[T, A, Number, Array[A], B],
+  def map[B, T](callbackfn: ThisFunction3[T, A, Int, Array[A], B],
       thisArg: T): Array[B] = ???
-  def map[B](callbackfn: Function3[A, Number, Array[A], B]): Array[B] = ???
-  def map[B](callbackfn: Function2[A, Number, B]): Array[B] = ???
+  def map[B](callbackfn: Function3[A, Int, Array[A], B]): Array[B] = ???
+  def map[B](callbackfn: Function2[A, Int, B]): Array[B] = ???
   def map[B](callbackfn: Function1[A, B]): Array[B] = ???
 
   /**
@@ -308,10 +308,10 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def filter[T](callbackfn: ThisFunction3[T, A, Number, Array[A], Boolean],
+  def filter[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
       thisArg: T): Array[A] = ???
-  def filter(callbackfn: Function3[A, Number, Array[A], Boolean]): Array[A] = ???
-  def filter(callbackfn: Function2[A, Number, Boolean]): Array[A] = ???
+  def filter(callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = ???
+  def filter(callbackfn: Function2[A, Int, Boolean]): Array[A] = ???
   def filter(callbackfn: Function1[A, Boolean]): Array[A] = ???
 
   /**
@@ -330,11 +330,11 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function3[B, A, Number, B], initialValue: B): B = ???
+  def reduce[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
+  def reduce[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
   def reduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
-  def reduce[B](callbackfn: Function3[B, A, Number, B]): B = ???
+  def reduce[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
+  def reduce[B](callbackfn: Function3[B, A, Int, B]): B = ???
   def reduce[B](callbackfn: Function2[B, A, B]): B = ???
 
   /**
@@ -346,18 +346,18 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function3[B, A, Number, B], initialValue: B): B = ???
+  def reduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
+  def reduceRight[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
   def reduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function4[B, A, Number, Array[A], B]): B = ???
-  def reduceRight[B](callbackfn: Function3[B, A, Number, B]): B = ???
+  def reduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
+  def reduceRight[B](callbackfn: Function3[B, A, Int, B]): B = ???
   def reduceRight[B](callbackfn: Function2[B, A, B]): B = ???
 }
 
 /** Factory for [[js.Array]] objects. */
 object Array extends Object {
   // Do not expose this one - use new Array(len) instead
-  // def apply[A](arrayLength: Number): Array[A] = ???
+  // def apply[A](arrayLength: Int): Array[A] = ???
 
   /** Creates a new array with the given items. */
   def apply[A](items: A*): Array[A] = sys.error("stub")

@@ -4,6 +4,6 @@ import scala.scalajs.js
 
 trait Spec extends js.Object {
   def results(): SpecResults = ???
-  val description: js.String = ???
+  val description: String = ???
   val suite: Suite = ???
 }

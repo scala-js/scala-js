@@ -1,6 +1,7 @@
 package scala.scalajs.runtime
 
 import scala.scalajs.js
+import scala.scalajs.js.prim.{String => jsString}
 
 import java.util.regex._
 
@@ -20,23 +21,23 @@ import java.util.regex._
  *
  * Therefore: ALWAYS ascribe the this pointer!
  */
-private[runtime] trait RuntimeString { this: js.String =>
+private[runtime] trait RuntimeString { this: jsString =>
 
   def charAt(index: Int): Char =
-    (this: js.String).charCodeAt(index).toChar
+    (this: jsString).charCodeAt(index).toChar
   def codePointAt(index: Int): Int =
-    (this: js.String).charCodeAt(index).toInt
+    (this: jsString).charCodeAt(index).toInt
 
   def compareTo(anotherString: String): Int = {
-    val thatjs: js.String = anotherString
-    val thisjs: js.String = this
+    val thatjs: jsString = anotherString
+    val thisjs: jsString = this
     if (thisjs == thatjs) 0
     else if (thisjs < thatjs) -1
     else 1
   }
   def compareToIgnoreCase(str: String): Int = {
-    val thatljs = (str: js.String).toLowerCase
-    val thisljs = (this: js.String).toLowerCase
+    val thatljs = (str: jsString).toLowerCase
+    val thisljs = (this: jsString).toLowerCase
     if (thisljs == thatljs) 0
     else if (thisljs < thatljs) -1
     else 1
@@ -45,20 +46,20 @@ private[runtime] trait RuntimeString { this: js.String =>
   def equalsIgnoreCase(that: String) = {
     if (that eq null) false
     else {
-      val thatljs = (that: js.String).toLowerCase
-      val thisljs = (this: js.String).toLowerCase
+      val thatljs = (that: jsString).toLowerCase
+      val thisljs = (this: jsString).toLowerCase
 
       thisljs == thatljs
     }
   }
 
-  def concat(s: String): String = (this: js.String) + s
+  def concat(s: String): String = (this: jsString) + s
 
   def contains(s: CharSequence): Boolean =
-    (this: js.String).indexOf(s.toString).toInt != -1
+    (this: jsString).indexOf(s.toString).toInt != -1
 
   def endsWith(suffix: String): Boolean = {
-    val thisjs: js.String = this
+    val thisjs: jsString = this
     suffix == thisjs.substring(thisjs.length - suffix.length)
   }
 
@@ -70,7 +71,7 @@ private[runtime] trait RuntimeString { this: js.String =>
   def getChars(srcBegin: Int, srcEnd: Int,
     dst: Array[Char], dstBegin: Int): Unit = {
 
-    val thisjs: js.String = this
+    val thisjs: jsString = this
 
     if (srcBegin < 0 ||
         srcEnd   > thisjs.length ||
@@ -90,18 +91,18 @@ private[runtime] trait RuntimeString { this: js.String =>
   }
 
   def indexOf(ch: Int): Int = {
-    val search: js.String = js.String.fromCharCode(ch)
-    (this: js.String).indexOf(search).toInt
+    val search: jsString = js.String.fromCharCode(ch)
+    (this: jsString).indexOf(search).toInt
   }
   def indexOf(ch: Int, fromIndex: Int): Int = {
     val search = js.String.fromCharCode(ch)
-    (this: js.String).indexOf(search, fromIndex).toInt
+    (this: jsString).indexOf(search, fromIndex).toInt
   }
 
   def indexOf(str: String): Int =
-    (this: js.String).indexOf(str).toInt
+    (this: jsString).indexOf(str).toInt
   def indexOf(str: String, fromIndex: Int): Int =
-    (this: js.String).indexOf(str, fromIndex).toInt
+    (this: jsString).indexOf(str, fromIndex).toInt
 
   /**
    * Just returning this string is a valid implementation for `intern` in
@@ -110,22 +111,22 @@ private[runtime] trait RuntimeString { this: js.String =>
    */
   def intern(): String = this
 
-  def isEmpty(): Boolean = !(this: js.String).length
+  def isEmpty(): Boolean = !(this: jsString).length
 
   def lastIndexOf(ch: Int): Int = {
     val search = js.String.fromCharCode(ch)
-    (this: js.String).lastIndexOf(search).toInt
+    (this: jsString).lastIndexOf(search).toInt
   }
   def lastIndexOf(ch: Int, fromIndex: Int): Int = {
     val search = js.String.fromCharCode(ch)
-    (this: js.String).lastIndexOf(search, fromIndex).toInt
+    (this: jsString).lastIndexOf(search, fromIndex).toInt
   }
   def lastIndexOf(str: String): Int =
-    (this: js.String).lastIndexOf(str).toInt
+    (this: jsString).lastIndexOf(str).toInt
   def lastIndexOf(str: String, fromIndex: Int): Int =
-    (this: js.String).lastIndexOf(str, fromIndex).toInt
+    (this: jsString).lastIndexOf(str, fromIndex).toInt
 
-  def length(): Int = (this: js.String).length.toInt
+  def length(): Int = (this: jsString).length.toInt
 
   def matches(regex: String): Boolean =
     Pattern.matches(regex, this: String)
@@ -133,7 +134,7 @@ private[runtime] trait RuntimeString { this: js.String =>
   def replace(oldChar: Char, newChar: Char): String =
     (this: String).replace(oldChar.toString, newChar.toString)
   def replace(target: CharSequence, replacement: CharSequence): String =
-    (this: js.String).split(target.toString).join(replacement.toString)
+    (this: jsString).split(target.toString).join(replacement.toString)
   def replaceAll(regex: String, replacement: String): String = {
     val pat = Pattern.compile(regex)
     val mat = pat.matcher(this: String)
@@ -155,18 +156,18 @@ private[runtime] trait RuntimeString { this: js.String =>
   def startsWith(prefix: String): Boolean =
     (this: String).startsWith(prefix, 0)
   def startsWith(prefix: String, toffset: Int): Boolean =
-    prefix == (this: js.String).substring(toffset, prefix.length)
+    prefix == (this: jsString).substring(toffset, prefix.length)
 
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
-    (this: js.String).substring(beginIndex, endIndex)
+    (this: jsString).substring(beginIndex, endIndex)
 
   def substring(beginIndex: Int): String =
-    (this: js.String).substring(beginIndex)
+    (this: jsString).substring(beginIndex)
   def substring(beginIndex: Int, endIndex: Int): String =
-    (this: js.String).substring(beginIndex, endIndex)
+    (this: jsString).substring(beginIndex, endIndex)
 
   def toCharArray(): Array[Char] = {
-    val length = (this: js.String).length.toInt
+    val length = (this: jsString).length.toInt
     val result = new Array[Char](length)
     var i = 0
     while (i < length) {
@@ -175,10 +176,10 @@ private[runtime] trait RuntimeString { this: js.String =>
     }
     result
   }
-  def toLowerCase(): String = (this: js.String).toLowerCase
-  def toUpperCase(): String = (this: js.String).toUpperCase
+  def toLowerCase(): String = (this: jsString).toLowerCase
+  def toUpperCase(): String = (this: jsString).toUpperCase
 
-  def trim(): String = (this: js.String).trim()
+  def trim(): String = (this: jsString).trim()
 
 }
 
@@ -190,26 +191,26 @@ private[runtime] object RuntimeString {
 
   // Constructors
 
-  def newString(): js.String = ""
-  def newString(value: Array[Char]): js.String =
+  def newString(): jsString = ""
+  def newString(value: Array[Char]): jsString =
     newString(value, 0, value.length)
-  def newString(value: Array[Char], offset: Int, count: Int): js.String = {
-    var res: js.String = ""
+  def newString(value: Array[Char], offset: Int, count: Int): jsString = {
+    var res: jsString = ""
     for (c <- value.view(offset, offset + count))
       res += c.toString
     res
   }
   /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], charsetName: String): js.String = ???
+  def newString(bytes: Array[Byte], charsetName: String): jsString = ???
   /** Unimplemented, unused, but referenced */
   def newString(bytes: Array[Byte], offest: Int, length: Int,
-      charsetName: String): js.String = ???
-  def newString(codePoints: Array[Int], offset: Int, count: Int): js.String =
+      charsetName: String): jsString = ???
+  def newString(codePoints: Array[Int], offset: Int, count: Int): jsString =
     js.String.fromCharCode(
-        codePoints.view(offset, offset + count).map(x => x: js.Number) :_*)
-  def newString(original: String): js.String = original
-  def newString(buffer: StringBuffer): js.String = buffer.toString
-  def newString(builder: java.lang.StringBuilder): js.String = builder.toString
+        codePoints.view(offset, offset + count) :_*)
+  def newString(original: String): jsString = original
+  def newString(buffer: StringBuffer): jsString = buffer.toString
+  def newString(builder: java.lang.StringBuilder): jsString = builder.toString
 
   // Static methods (aka methods on the companion object)
 

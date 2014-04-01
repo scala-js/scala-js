@@ -19,34 +19,34 @@ object Array {
 
   def get(array: AnyRef, index: Int): Any = getUnderlying(array)(index)
 
-  def getBoolean(array: AnyRef, index: Int): Boolean = getUnderlying[js.Boolean](array)(index)
-  def getByte(array: AnyRef, index: Int): Byte = getUnderlying[js.Number](array)(index).toByte
-  def getChar(array: AnyRef, index: Int): Char = getUnderlying[js.Number](array)(index).toInt.toChar
-  def getShort(array: AnyRef, index: Int): Short = getUnderlying[js.Number](array)(index).toShort
-  def getInt(array: AnyRef, index: Int): Int = getUnderlying[js.Number](array)(index).toInt
-  def getLong(array: AnyRef, index: Int): Long = getUnderlying[js.Number](array)(index).toLong
-  def getFloat(array: AnyRef, index: Int): Float = getUnderlying[js.Number](array)(index).toFloat
-  def getDouble(array: AnyRef, index: Int): Double = getUnderlying[js.Number](array)(index).toDouble
+  def getBoolean(array: AnyRef, index: Int): Boolean = getUnderlying[Boolean](array)(index)
+  def getByte(array: AnyRef, index: Int): Byte = getUnderlying[Byte](array)(index)
+  def getChar(array: AnyRef, index: Int): Char = getUnderlying[Int](array)(index).toChar
+  def getShort(array: AnyRef, index: Int): Short = getUnderlying[Short](array)(index)
+  def getInt(array: AnyRef, index: Int): Int = getUnderlying[Int](array)(index)
+  def getLong(array: AnyRef, index: Int): Long = getUnderlying[Long](array)(index)
+  def getFloat(array: AnyRef, index: Int): Float = getUnderlying[Float](array)(index)
+  def getDouble(array: AnyRef, index: Int): Double = getUnderlying[Double](array)(index)
 
   def set(array: AnyRef, index: Int, value: Any): Unit = getUnderlying[Any](array)(index) = value
 
-  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit = getUnderlying[js.Any](array)(index) = value
-  def setByte(array: AnyRef, index: Int, value: Byte): Unit = getUnderlying[js.Any](array)(index) = value
-  def setChar(array: AnyRef, index: Int, value: Char): Unit = getUnderlying[js.Any](array)(index) = value.toInt
-  def setShort(array: AnyRef, index: Int, value: Short): Unit = getUnderlying[js.Any](array)(index) = value
-  def setInt(array: AnyRef, index: Int, value: Int): Unit = getUnderlying[js.Any](array)(index) = value
-  def setLong(array: AnyRef, index: Int, value: Long): Unit = getUnderlying[js.Any](array)(index) = value
-  def setFloat(array: AnyRef, index: Int, value: Float): Unit = getUnderlying[js.Any](array)(index) = value
-  def setDouble(array: AnyRef, index: Int, value: Double): Unit = getUnderlying[js.Any](array)(index) = value
+  def setBoolean(array: AnyRef, index: Int, value: Boolean): Unit = getUnderlying[Boolean](array)(index) = value
+  def setByte(array: AnyRef, index: Int, value: Byte): Unit = getUnderlying[Byte](array)(index) = value
+  def setChar(array: AnyRef, index: Int, value: Char): Unit = getUnderlying[Int](array)(index) = value.toInt
+  def setShort(array: AnyRef, index: Int, value: Short): Unit = getUnderlying[Short](array)(index) = value
+  def setInt(array: AnyRef, index: Int, value: Int): Unit = getUnderlying[Int](array)(index) = value
+  def setLong(array: AnyRef, index: Int, value: Long): Unit = getUnderlying[Long](array)(index) = value
+  def setFloat(array: AnyRef, index: Int, value: Float): Unit = getUnderlying[Float](array)(index) = value
+  def setDouble(array: AnyRef, index: Int, value: Double): Unit = getUnderlying[Double](array)(index) = value
 
   private def newArray(componentType: Class[_], length: Int): AnyRef = {
     js.Dynamic.global.ScalaJS.newArrayObject(
-        componentType.data.getArrayOf(), js.Array(length:js.Number))
+        componentType.data.getArrayOf(), js.Array(length))
   }
 
   private def multiNewArray(componentType: Class[_],
       dimensions: scala.Array[Int]): AnyRef = {
-    val lengths = getUnderlying[js.Number](dimensions)
+    val lengths = getUnderlying[Int](dimensions)
     var arrayClassData = componentType.data
     var i = 0
     while (i < lengths.length) {
