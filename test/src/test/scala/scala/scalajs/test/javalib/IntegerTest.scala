@@ -66,27 +66,6 @@ object IntegerTest extends JasmineTest {
       expect(Integer.toOctalString(MaxValue)).toEqual("17777777777")
     }
 
-    it("should provide `toBinaryString` for values out of range") {
-      expect(Integer.toBinaryString(MinValue-1)).toEqual("-10000000000000000000000000000001")
-      expect(Integer.toBinaryString(MinValue*2)).toEqual("-100000000000000000000000000000000")
-      expect(Integer.toBinaryString(MaxValue+1)).toEqual("+10000000000000000000000000000000")
-      expect(Integer.toBinaryString(MaxValue*2)).toEqual("+11111111111111111111111111111110")
-    }
-
-    it("should provide `toHexString` for values out of range") {
-      expect(Integer.toHexString(MinValue-1)).toEqual("-80000001")
-      expect(Integer.toHexString(MinValue*2)).toEqual("-100000000")
-      expect(Integer.toHexString(MaxValue+1)).toEqual("+80000000")
-      expect(Integer.toHexString(MaxValue*2)).toEqual("+fffffffe")
-    }
-
-    it("should provide `toOctalString` for values out of range") {
-      expect(Integer.toOctalString(MinValue-1)).toEqual("-20000000001")
-      expect(Integer.toOctalString(MinValue*2)).toEqual("-40000000000")
-      expect(Integer.toOctalString(MaxValue+1)).toEqual("+20000000000")
-      expect(Integer.toOctalString(MaxValue*2)).toEqual("+37777777776")
-    }
-
     it("should provide `compareTo`") {
       def compare(x: Int, y: Int): Int =
         new Integer(x).compareTo(new Integer(y))
