@@ -158,23 +158,20 @@ object ScalaJSClasspathEntries {
   def readEntriesInJar(builder: Builder, jarFile: File): Unit = {
     val stream = new FileInputStream(jarFile)
     try {
-      readEntriesInJar(builder, stream)
+      readEntriesInJar(builder, stream, jarFile.getPath)
     } finally {
       stream.close()
     }
   }
 
   /** Adds the Scala.js class files in a .jar file (or .zip) to a builder. */
-  def readEntriesInJar(builder: Builder, stream: InputStream): Unit = {
+  def readEntriesInJar(builder: Builder, stream: InputStream,
+      jarPath: String): Unit = {
     val zipStream = new ZipInputStream(stream)
     val classFiles = mutable.Map.empty[String, MemVirtualScalaJSClassfile]
 
-    def getOrCreateClassfile(path: String): MemVirtualScalaJSClassfile = {
-      classFiles.getOrElseUpdate(path, {
-        val name = path.substring(path.lastIndexOf('/')+1)
-        new MemVirtualScalaJSClassfile(name)
-      })
-    }
+    def getOrCreateClassfile(path: String): MemVirtualScalaJSClassfile =
+      classFiles.getOrElseUpdate(path, new MemVirtualScalaJSClassfile(path))
 
     @tailrec
     def loop(): Unit = {
@@ -182,8 +179,9 @@ object ScalaJSClasspathEntries {
       if (entry != null) {
         val longName = entry.getName
         val name = longName.substring(longName.lastIndexOf('/')+1)
+        val fullPath = jarPath + ":" + longName
 
-        def jsPath(ext: String) = longName.dropRight(ext.length) + ".js"
+        def jsPath(ext: String) = fullPath.dropRight(ext.length) + ".js"
 
         def entryContent: String =
           IO.readInputStreamToString(zipStream)
@@ -193,20 +191,20 @@ object ScalaJSClasspathEntries {
         longName match {
           case "scalajs-corejslib.js" =>
             builder.addCoreJSLibFile(
-                new MemVirtualJSFile(name)
+                new MemVirtualJSFile(fullPath)
                   .withContent(entryContent)
                   .withVersion(entryVersion))
 
           case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
             builder.addCoreInfoFile(
-                new MemVirtualFile(name)
+                new MemVirtualFile(fullPath)
                   .withContent(entryContent)
                   .withVersion(entryVersion))
 
           case _ =>
             if (name.endsWith(".js")) {
               // assume Scala.js class file
-              val path = longName
+              val path = fullPath
               if (!builder.hasClassFile(path)) {
                 getOrCreateClassfile(path)
                   .withContent(entryContent)

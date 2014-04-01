@@ -5,8 +5,16 @@ import java.io.InputStream
 /** A virtual input file.
  */
 trait VirtualFile {
-  /** Name of the file, excluding parent directory and including extension. */
-  def name: String
+  /** Path of the file, including everything.
+   *  Unique if possible (used for lookup). */
+  def path: String
+
+  /** Name of the file, including extension */
+  def name: String = {
+    val pos = path.lastIndexOf('/')
+    if (pos == -1) path
+    else path.substring(pos + 1)
+  }
 
   /** Returns the content of the file. */
   def content: String
@@ -28,8 +36,8 @@ trait VirtualFile {
 }
 
 object VirtualFile {
-  def empty(name: String): VirtualFile =
-    new MemVirtualFile(name).withVersion(Some(name))
+  def empty(path: String): VirtualFile =
+    new MemVirtualFile(path).withVersion(Some(path))
 }
 
 /** A virtual input file which contains JavaScript code.
@@ -43,8 +51,8 @@ trait VirtualJSFile extends VirtualFile {
 }
 
 object VirtualJSFile {
-  def empty(name: String): VirtualJSFile =
-    new MemVirtualJSFile(name).withVersion(Some(name))
+  def empty(path: String): VirtualJSFile =
+    new MemVirtualJSFile(path).withVersion(Some(path))
 }
 
 /** A virtual JavaScript input file which was emitted by Scala.js as a
@@ -57,6 +65,6 @@ trait VirtualScalaJSClassfile extends VirtualJSFile {
 }
 
 object VirtualScalaJSClassfile {
-  def empty(name: String): VirtualScalaJSClassfile =
-    new MemVirtualScalaJSClassfile(name).withVersion(Some(name))
+  def empty(path: String): VirtualScalaJSClassfile =
+    new MemVirtualScalaJSClassfile(path).withVersion(Some(path))
 }

@@ -8,6 +8,8 @@ import java.io._
 class FileVirtualFile(val file: File) extends VirtualFile {
   import FileVirtualFile._
 
+  override def path = file.getPath
+
   override def name = file.getName
 
   override def content: String = readFileToString(file)
