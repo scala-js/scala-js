@@ -28,7 +28,7 @@ class ScalaJSClosureOptimizer {
     ClosureSource.fromCode(file.name, file.content)
 
   def optimize(inputs: Inputs, outputConfig: OutputConfig,
-      logger: Logger): Result = {
+      logger: Logger): Unit = {
     val closureSources = inputs.sources map toClosureSource
     val closureExterns =
       (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
@@ -57,10 +57,7 @@ class ScalaJSClosureOptimizer {
       "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
     }
 
-    new Result(new VirtualJSFile {
-      val name = outputConfig.name
-      def content = outputContent
-    })
+    outputConfig.writer.contentWriter.write(outputContent)
   }
 }
 
@@ -75,18 +72,14 @@ object ScalaJSClosureOptimizer {
 
   /** Configuration for the output of the Scala.js Closure optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. */
+      /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
-      /** Pretty-print the output. */
-      prettyPrint: Boolean = false,
+      /** Writer for the output */
+      writer: VirtualJSFileWriter,
       /** Ask to produce source map for the output (currently ignored). */
-      wantSourceMap: Boolean = false
-  )
-
-  /** Result of the Scala.js Closure optimizer. */
-  final class Result(
-      /** Output file. */
-      val output: VirtualJSFile
+      wantSourceMap: Boolean = false,
+      /** Pretty-print the output. */
+      prettyPrint: Boolean = false
   )
 
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
@@ -106,8 +99,7 @@ object ScalaJSClosureOptimizer {
     var __ScalaJSExportsNamespace = {};
     """
 
-  val ScalaJSExternsFile = new VirtualJSFile {
-    val name = "ScalaJSExterns.js"
-    def content = ScalaJSExterns
-  }
+  val ScalaJSExternsFile = new MemVirtualJSFile("ScalaJSExterns.js").
+    withContent(ScalaJSExterns)
+
 }

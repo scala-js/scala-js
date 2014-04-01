@@ -13,7 +13,7 @@ import sbt._
 import sbt.inc.{ IncOptions, ClassfileManager }
 import Keys._
 
-import java.io.PrintWriter
+import java.io.{ BufferedWriter, FileWriter }
 import java.nio.charset.Charset
 
 import scala.collection.mutable
@@ -121,26 +121,25 @@ object ScalaJSPlugin extends Plugin {
             val classpathEntries =
               ScalaJSClasspathEntries.readEntriesInClasspathPartial(classpath)
             val packager = new ScalaJSPackager
-            val relativizeSourceMapBasePath =
+            val relSourceMapBasePath =
               if (relativeSourceMaps.value) Some(output.getParent)
               else None
-            val outputWriter = new PrintWriter(output, "UTF-8")
-            val sourceMapWriter =
-              if (packageJSKey == packageExternalDepsJS) None
-              else Some(new PrintWriter(changeExt(output, ".js", ".js.map"), "UTF-8"))
+
+            val outputWriter = new FileVirtualJSFileWriter(output)
+
             try {
-              val result = packager.packageScalaJS(
+              packager.packageScalaJS(
                   Inputs(classpath = classpathEntries),
                   OutputConfig(
                       name = output.name,
-                      outputWriter = outputWriter,
-                      sourceMapWriter = sourceMapWriter,
-                      relativizeSourceMapBasePath = relativizeSourceMapBasePath),
+                      writer = outputWriter,
+                      wantSourceMap = (packageJSKey != packageExternalDepsJS),
+                      relativizeSourceMapBasePath = relSourceMapBasePath),
                   s.log)
             } finally {
               outputWriter.close()
-              sourceMapWriter.foreach(_.close())
             }
+
             Set(output)
           } (filesToWatchForChanges(classpath))
         }
@@ -233,11 +232,21 @@ object ScalaJSPlugin extends Plugin {
           val classpathEntries =
             ScalaJSClasspathEntries.readEntriesInClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
-          val result = optimizer.optimize(
-              Inputs(classpath = classpathEntries),
-              OutputConfig(name = output.name),
-              s.log)
-          IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
+          val outputWriter = new FileVirtualJSFileWriter(output)
+
+          try {
+            optimizer.optimize(
+                Inputs(classpath = classpathEntries),
+                OutputConfig(
+                    name = output.name,
+                    writer = outputWriter,
+                    // TODO configure source map once we support it
+                    wantSourceMap = false),
+                s.log)
+          } finally {
+            outputWriter.close()
+          }
+
           Set(output)
         } (filesToWatchForChanges(classpath))
 
@@ -263,15 +272,25 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Optimizing %s ..." format output)
           import ScalaJSClosureOptimizer._
           val optimizer = new ScalaJSClosureOptimizer
-          val result = optimizer.optimize(
-              Inputs(
-                  sources = inputs map FileVirtualJSFile,
-                  additionalExterns = optimizeJSExterns.value map FileVirtualJSFile),
-              OutputConfig(
-                  name = output.name,
-                  prettyPrint = optimizeJSPrettyPrint.value),
-              s.log)
-          IO.write(output, result.output.content, Charset.forName("UTF-8"), false)
+          val outputWriter = new FileVirtualJSFileWriter(output)
+
+          try {
+            optimizer.optimize(
+                Inputs(
+                    sources = inputs map FileVirtualJSFile,
+                    additionalExterns =
+                      optimizeJSExterns.value map FileVirtualJSFile),
+                OutputConfig(
+                    name = output.name,
+                    writer = outputWriter,
+                    // TODO configure source map once we support it
+                    wantSourceMap = false,
+                    prettyPrint = optimizeJSPrettyPrint.value),
+                s.log)
+          } finally {
+            outputWriter.close()
+          }
+
           Set(output)
         } (inputs.toSet)
 

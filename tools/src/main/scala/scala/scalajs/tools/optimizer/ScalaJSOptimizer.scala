@@ -11,7 +11,6 @@ package scala.scalajs.tools.optimizer
 
 import scala.annotation.tailrec
 
-import java.io._
 import scala.collection.mutable
 
 import net.liftweb.json._
@@ -41,7 +40,7 @@ class ScalaJSOptimizer {
    *  3. The custom .js files, in the same order as they were listed in inputs.
    */
   def optimize(inputs: Inputs, outputConfig: OutputConfig,
-      logger: Logger): Result = {
+      logger: Logger): Unit = {
     this.logger = logger
     try {
       val analyzer = parseInfoFiles(inputs.classpath)
@@ -69,17 +68,18 @@ class ScalaJSOptimizer {
   }
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
-      analyzer: Analyzer): Result = {
+      analyzer: Analyzer): Unit = {
 
-    val outputContent = new StringWriter
-    val writer = new PrintWriter(outputContent)
+    val writer = outputConfig.writer.contentWriter
 
     def pasteFile(f: VirtualFile): Unit =
       pasteLines(f.readLines())
     def pasteLines(lines: TraversableOnce[String]): Unit =
-      lines foreach writer.println
-    def pasteLine(line: String): Unit =
-      writer.println(line)
+      lines foreach pasteLine
+    def pasteLine(line: String): Unit = {
+      writer.write(line)
+      writer.write('\n')
+    }
 
     pasteFile(inputs.classpath.coreJSLibFile)
 
@@ -140,15 +140,6 @@ class ScalaJSOptimizer {
 
     for (file <- inputs.customScripts)
       pasteFile(file)
-
-    writer.close()
-
-    val outputString = outputContent.toString()
-
-    new Result(new VirtualJSFile {
-      val name = outputConfig.name
-      def content = outputString
-    })
   }
 
   private def methodChunks(methodLines: List[String],
@@ -208,16 +199,12 @@ object ScalaJSOptimizer {
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. */
+      /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
+      /** Writer for the output. */
+      writer: VirtualJSFileWriter,
       /** Ask to produce source map for the output (currently ignored). */
       wantSourceMap: Boolean = false
-  )
-
-  /** Result of the Scala.js optimizer. */
-  final class Result(
-      /** Output file. */
-      val output: VirtualJSFile
   )
 
   private trait JustAForeach[A] {
