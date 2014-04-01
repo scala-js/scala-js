@@ -24,18 +24,7 @@ package object rhino {
   implicit class ContextOps(val self: Context) extends AnyVal {
     def evaluateFile(scope: Scriptable, file: VirtualJSFile,
         securityDomain: AnyRef = null): Any = {
-      self.evaluateString(scope, file.content, file.name, 1, securityDomain)
-    }
-
-    @deprecated("Use the overload with a VirtualJSFile instead", "0.4.2")
-    def evaluateFile(scope: Scriptable, file: File,
-        securityDomain: AnyRef): Any = {
-      evaluateFile(scope, FileVirtualJSFile(file), securityDomain)
-    }
-
-    @deprecated("Use the overload with a VirtualJSFile instead", "0.4.2")
-    def evaluateFile(scope: Scriptable, file: File): Any = {
-      evaluateFile(scope, FileVirtualJSFile(file))
+      self.evaluateString(scope, file.content, file.path, 1, securityDomain)
     }
   }
 

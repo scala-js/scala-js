@@ -11,16 +11,18 @@ package scala.scalajs.tools.sourcemap
 
 import scala.annotation.tailrec
 
-import java.io.PrintWriter
+import java.io.Writer
 import java.util.regex.Pattern
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
 import scala.scalajs.tools.io._
 
-class JSFileBuilder(val name: String, protected val outputWriter: PrintWriter) {
-  def addLine(line: String): Unit =
-    outputWriter.println(line)
+class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
+  def addLine(line: String): Unit = {
+    outputWriter.write(line)
+    outputWriter.write('\n')
+  }
 
   def addLines(lines: Seq[String]): Unit =
     lines.foreach(addLine)
@@ -39,8 +41,8 @@ class JSFileBuilder(val name: String, protected val outputWriter: PrintWriter) {
   }
 }
 
-class JSFileBuilderWithSourceMap(n: String,
-    ow: PrintWriter, protected val sourceMapWriter: PrintWriter,
+class JSFileBuilderWithSourceMap(n: String, ow: Writer,
+    protected val sourceMapWriter: Writer,
     relativizeSourceMapBasePath: Option[String] = None)
     extends JSFileBuilder(n, ow) {
 

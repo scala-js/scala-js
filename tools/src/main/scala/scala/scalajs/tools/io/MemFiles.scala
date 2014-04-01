@@ -10,7 +10,7 @@
 package scala.scalajs.tools.io
 
 /** A simple in-memory mutable virtual file. */
-class MemVirtualFile(val name: String) extends VirtualFile {
+class MemVirtualFile(val path: String) extends VirtualFile {
   private[this] var _content: String = ""
   private[this] var _version: Option[Any] = None
 
@@ -32,7 +32,7 @@ class MemVirtualFile(val name: String) extends VirtualFile {
 }
 
 /** A simple in-memory mutable virtual JS file. */
-class MemVirtualJSFile(n: String) extends MemVirtualFile(n) with VirtualJSFile {
+class MemVirtualJSFile(p: String) extends MemVirtualFile(p) with VirtualJSFile {
   private[this] var _sourceMap: Option[String] = None
 
   override def sourceMap: Option[String] = _sourceMap
@@ -45,7 +45,7 @@ class MemVirtualJSFile(n: String) extends MemVirtualFile(n) with VirtualJSFile {
 }
 
 /** A simple in-memory mutable virtual Scala.js class file. */
-class MemVirtualScalaJSClassfile(n: String) extends MemVirtualJSFile(n)
+class MemVirtualScalaJSClassfile(p: String) extends MemVirtualJSFile(p)
                                                with VirtualScalaJSClassfile {
   private[this] var _info: String = ""
 

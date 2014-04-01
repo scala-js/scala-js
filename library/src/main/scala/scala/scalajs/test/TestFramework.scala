@@ -10,9 +10,10 @@
 package scala.scalajs.test
 
 import scala.scalajs.js
-import js.annotation.JSExportDescendentObjects
+import js.annotation.{ JSExportDescendentObjects, JSExport }
 
 @JSExportDescendentObjects
 trait TestFramework {
-  def runTests(testOutput: TestOutput)(tests: => Unit): Unit
+  @JSExport
+  def runTests(testOutput: TestOutput)(tests: js.Function0[Unit]): Unit
 }

@@ -10,19 +10,32 @@
 package scala.scalajs.sbtplugin
 
 import sbt._
+import scala.scalajs.tools.environment.ScalaJSEnvironment
 
-import environment.rhino.{ CodeBlock, Utilities }
+import scala.scalajs.tools
+import tools.io.MemVirtualJSFile
+import tools.classpath.ScalaJSClasspath
+
 
 /** An sbt Scala runner that runs Scala.js code in a Scala.js environment */
 class ScalaJSEnvRun(env: ScalaJSEnvironment) extends ScalaRun {
+
   def run(mainClass: String, classpath: Seq[File], options: Seq[String],
       log: Logger): Option[String] = {
+
     log.info("Running " + mainClass + options.mkString(" ", " ", ""))
-    env.runInContextAndScope { (context, scope) =>
-      new CodeBlock(context, scope) with Utilities {
-        callMainMethod(mainClass, options.toArray)
-      }
-    }
-    None
+    log.debug(s"with classpath $classpath")
+
+    env.runJS(
+        // TODO abstract what kind of classpath to create.
+        ScalaJSClasspath.readEntriesInClasspath(classpath),
+        runnerVirtualFile(mainClass),
+        new LoggerConsole(log))
   }
+
+  private def runnerVirtualFile(mainClass: String) = {
+    new MemVirtualJSFile("Generated launcher file").
+      withContent(s"$mainClass().main();")
+  }
+
 }

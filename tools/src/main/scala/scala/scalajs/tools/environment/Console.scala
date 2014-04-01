@@ -1,5 +1,5 @@
 /*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js API               **
+**     ________ ___   / /  ___      __ ____  Scala.js sbt plugin        **
 **    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
@@ -7,16 +7,8 @@
 \*                                                                      */
 
 
-package scala.scalajs.test
+package scala.scalajs.tools.environment
 
-import scala.scalajs.js
-
-class ScriptStackElement(
-  val fileName: String,
-  val functionName: String,
-  val lineNumber: Int)
-
-object ScriptStackElement {
-  def apply(fileName: String, functionName: String, lineNumber: Int) =
-    new ScriptStackElement(fileName, functionName, lineNumber)
+trait Console {
+  def log(msg: Any): Unit
 }

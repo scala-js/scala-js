@@ -7,10 +7,16 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.environment
+package scala.scalajs.tools.environment
 
-import sbt.Logger
+import scala.scalajs.tools.io._
+import scala.scalajs.tools.classpath._
 
-trait Console {
-  def log(msg: Any): Unit
+trait ScalaJSEnvironment {
+  /** Run the codeimport scala.scalajs.tools.environment.Console
+ in the virtual file. Return Some(<error message>) if failed
+   *  None otherwise
+   */
+  def runJS(classpath: JSClasspath, code: VirtualJSFile,
+      console: Console): Option[String]
 }

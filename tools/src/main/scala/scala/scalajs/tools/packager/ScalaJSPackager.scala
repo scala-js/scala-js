@@ -41,13 +41,13 @@ class ScalaJSPackager {
 
     val builder = {
       import outputConfig._
-      sourceMapWriter match {
-        case Some(smWriter) =>
-          new JSFileBuilderWithSourceMap(name, outputWriter, smWriter,
-              relativizeSourceMapBasePath)
-        case None =>
-          new JSFileBuilder(name, outputWriter)
-      }
+      if (wantSourceMap)
+        new JSFileBuilderWithSourceMap(name,
+            writer.contentWriter,
+            writer.sourceMapWriter,
+            relativizeSourceMapBasePath)
+      else
+        new JSFileBuilder(name, writer.contentWriter)
     }
 
     for (file <- allSortedFiles)
@@ -60,19 +60,19 @@ object ScalaJSPackager {
   /** Inputs of the Scala.js optimizer. */
   final case class Inputs(
       /** The (partial) Scala.js classpath entries. */
-      classpath: ScalaJSClasspathEntries,
+      classpath: ScalaJSClasspath,
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil
   )
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. */
+      /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Print writer for the output file. */
-      outputWriter: PrintWriter,
-      /** Optional print writer for the source map. */
-      sourceMapWriter: Option[PrintWriter],
+      writer: VirtualJSFileWriter,
+      /** Ask to produce source map for the output. */
+      wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */
       relativizeSourceMapBasePath: Option[String] = None
   )
