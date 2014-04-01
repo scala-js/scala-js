@@ -9,18 +9,11 @@
 
 package scala.scalajs.sbtplugin.environment.rhino
 
-import scala.collection.Map
-import scala.collection.mutable
-
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.environment._
 
-import scala.scalajs.sbtplugin.Utils._
-
 import org.mozilla.javascript._
-
-import scala.Array.canBuildFrom
 
 class RhinoBasedScalaJSEnvironment(
     trace: (=> Throwable) => Unit) extends ScalaJSEnvironment {
@@ -78,7 +71,7 @@ class RhinoBasedScalaJSEnvironment(
             }
         }
 
-        context.evaluateString(scope, code.content, code.name, 0, null)
+        context.evaluateFile(scope, code)
 
         None
       } catch {
@@ -116,7 +109,7 @@ class RhinoBasedScalaJSEnvironment(
   private def filterAvailable(otherJSFiles: Seq[VirtualJSFile]) = {
 
     val envJSLibNamePat = """env\.rhino\.(?:[\d\.]+\.)?js""".r
-    def isEnvJSLib(file: VirtualJSFile) = 
+    def isEnvJSLib(file: VirtualJSFile) =
       envJSLibNamePat.unapplySeq(file.name).isDefined
 
     val (envJSLibs, others) = otherJSFiles.partition(isEnvJSLib _)

@@ -13,13 +13,6 @@ import sbt._
 import sbt.inc.{ IncOptions, ClassfileManager }
 import Keys._
 
-import java.io.{ BufferedWriter, FileWriter }
-import java.nio.charset.Charset
-
-import scala.collection.mutable
-
-import SourceMapCat.catJSFilesAndTheirSourceMaps
-import Utils._
 import Implicits._
 
 import scala.scalajs.tools.io.{IO => _, _}
@@ -29,7 +22,6 @@ import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import scala.scalajs.tools.environment.{ ScalaJSEnvironment, Console }
 import scala.scalajs.sbtplugin.environment.rhino.RhinoBasedScalaJSEnvironment
-import environment.rhino.{CodeBlock, Utilities}
 
 import scala.scalajs.sbtplugin.testing.TestFramework
 
@@ -165,7 +157,7 @@ object ScalaJSPlugin extends Plugin {
           val scalaJSFiles = if (classFile.getPath endsWith ".class") {
             for {
               ext <- List(".js", ".js.map", ".sjsinfo")
-              f = changeExt(classFile, ".class", ext)
+              f = FileVirtualFile.withExtension(classFile, ".class", ext)
               if f.exists
             } yield f
           } else Nil

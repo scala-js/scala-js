@@ -1,9 +1,6 @@
 import sbt._
 import Keys._
 
-import scala.scalajs.sbtplugin.ScalaJSPlugin._
-import ScalaJSKeys._
-
 object ExternalCompile {
 
   private val isWindows =

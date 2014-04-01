@@ -13,12 +13,7 @@ import scala.scalajs.tools.environment._
 import scala.scalajs.tools.classpath._
 
 import sbt._
-
-import sbt.testing.Fingerprint
-import sbt.testing.Framework
-import sbt.testing.SubclassFingerprint
-import sbt.testing.Runner
-
+import sbt.testing._
 import sbt.classpath.ClasspathFilter
 
 import java.net.URLClassLoader
@@ -48,7 +43,7 @@ class TestFramework(
     new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
   }
 
-  /** extract (supsected) classpath from a ClassLoader since we cannot use
+  /** extract (suspected) classpath from a ClassLoader since we cannot use
    *  a ClassLoader to load JS files
    */
   private def classLoader2Classpath(cl: ClassLoader): Seq[File] = cl match {

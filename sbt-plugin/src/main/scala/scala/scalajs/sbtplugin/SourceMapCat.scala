@@ -12,8 +12,6 @@ import java.io._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.sourcemap._
 
-import Utils._
-
 object SourceMapCat {
   /** Concatenate JS files and their respective source maps
    *  In this implementation, source maps are assumed to be named after their
@@ -24,7 +22,8 @@ object SourceMapCat {
       relativizeSourceMapPaths: Boolean) {
 
     val outputWriter = new PrintWriter(output, "UTF-8")
-    val sourceMapWriter = new PrintWriter(changeExt(output, ".js", ".js.map"))
+    val sourceMapWriter = new PrintWriter(
+        FileVirtualFile.withExtension(output, ".js", ".js.map"))
     try {
       val relativizeSourceMapBasePath =
         if (relativizeSourceMapPaths) Some(output.getParent)

@@ -9,17 +9,7 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import scala.annotation.tailrec
-
-import sbt.testing.TaskDef
-import sbt.testing.EventHandler
-import sbt.testing.Task
-import sbt.testing.Logger
-
-import org.mozilla.javascript
-import org.mozilla.javascript.{Context, Scriptable, Function}
-import org.mozilla.javascript.Scriptable.NOT_FOUND
-import org.mozilla.javascript.RhinoException
+import sbt.testing._
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._

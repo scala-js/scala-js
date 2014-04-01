@@ -10,12 +10,10 @@
 package scala.scalajs.sbtplugin
 
 import sbt._
+
+import scala.scalajs.tools.io.MemVirtualJSFile
+import scala.scalajs.tools.classpath.ScalaJSClasspath
 import scala.scalajs.tools.environment.ScalaJSEnvironment
-
-import scala.scalajs.tools
-import tools.io.MemVirtualJSFile
-import tools.classpath.ScalaJSClasspath
-
 
 /** An sbt Scala runner that runs Scala.js code in a Scala.js environment */
 class ScalaJSEnvRun(env: ScalaJSEnvironment) extends ScalaRun {

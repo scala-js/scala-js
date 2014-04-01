@@ -9,13 +9,7 @@
 
 package scala.scalajs.sbtplugin.environment
 
-import java.io.File
-
-import org.mozilla.javascript.Scriptable
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.BaseFunction
-import org.mozilla.javascript.Undefined
-import org.mozilla.javascript.ScriptableObject
+import org.mozilla.javascript._
 
 import scala.scalajs.tools.io._
 
