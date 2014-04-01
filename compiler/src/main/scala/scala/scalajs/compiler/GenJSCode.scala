@@ -2300,7 +2300,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             case _ => tree
           }
 
-          lazy val leftKind = toTypeKind(args.head.tpe)
+          lazy val leftKind = toTypeKind(args(0).tpe)
+          lazy val rightKind = toTypeKind(args(1).tpe)
           lazy val resultKind = toTypeKind(tree.tpe)
 
           val lsrc = fromLong(lsrc_in, args(0).tpe)
@@ -2328,22 +2329,42 @@ abstract class GenJSCode extends plugins.PluginComponent
             if (resultKind == BooleanKind) js.UnaryOp("!", js.UnaryOp("!", tree))
             else tree
 
+          def isInt32Op: Boolean =
+            resultKind == IntKind &&
+            (leftKind == IntKind || rightKind == IntKind)
+
+          def or0(tree: js.Tree): js.Tree =
+            js.BinaryOp("|", tree, js.IntLiteral(0))
+
+          /* Wrap the given operation so that result is wrapped around 32-bit
+           * signed integer if this is a signed 32-bit operation.
+           */
+          def wrapForInt32(tree: js.Tree): js.Tree =
+            if (isInt32Op) or0(tree)
+            else tree
+
           (code: @switch) match {
-            case ADD => js.BinaryOp("+", lsrc, rsrc)
-            case SUB => js.BinaryOp("-", lsrc, rsrc)
-            case MUL => js.BinaryOp("*", lsrc, rsrc)
+            case ADD => wrapForInt32(js.BinaryOp("+", lsrc, rsrc))
+            case SUB => wrapForInt32(js.BinaryOp("-", lsrc, rsrc))
+            case MUL =>
+              if (isInt32Op)
+                genCallHelper("imul", lsrc, rsrc)
+              else if (leftKind == CharKind && rightKind == CharKind)
+                or0(js.BinaryOp("*", lsrc, rsrc))
+              else
+                js.BinaryOp("*", lsrc, rsrc)
             case DIV =>
               val actualDiv = js.BinaryOp("/", lsrc, rsrc)
               (resultKind: @unchecked) match {
-                case _:INT => js.BinaryOp("|", actualDiv, js.IntLiteral(0))
-                case _:FLOAT => actualDiv
+                case _: INT   => or0(actualDiv)
+                case _: FLOAT => actualDiv
               }
             case MOD => js.BinaryOp("%", lsrc, rsrc)
             case OR  => wrapForBool(js.BinaryOp("|", lsrc, rsrc))
             case XOR => wrapForBool(js.BinaryOp("^", lsrc, rsrc))
             case AND => wrapForBool(js.BinaryOp("&", lsrc, rsrc))
             case LSL => js.BinaryOp("<<", lsrc, rsrc)
-            case LSR => js.BinaryOp(">>>", lsrc, rsrc)
+            case LSR => or0(js.BinaryOp(">>>", lsrc, rsrc))
             case ASR => js.BinaryOp(">>", lsrc, rsrc)
             case LT => js.BinaryOp("<", lsrc, rsrc)
             case LE => js.BinaryOp("<=", lsrc, rsrc)
@@ -2521,9 +2542,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.BinaryOp(">>", js.BinaryOp("<<", source, js.IntLiteral(16)),
               js.IntLiteral(16))
 
-        // To Int, need to round to integer
+        // To Int, need to crop at signed 32-bit
         case F2I | D2I =>
-          genCallHelper("truncateInt", source)
+          js.BinaryOp("|", source, js.IntLiteral(0))
 
         case _ => source
       }

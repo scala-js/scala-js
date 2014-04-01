@@ -152,20 +152,6 @@ object FormatterTest extends JasmineTest {
       expectF("%X",    new JLong(26L)).toEqual("1A")
     }
 
-    it("should provide 'o' conversion for values out of range") {
-      expectF("%0#14o", new JInteger(IntMin-1)).toEqual("-0020000000001")
-      expectF("%#14o",  new JInteger(IntMin*2)).toEqual(" -040000000000")
-      expectF("%#14o",  new JInteger(IntMax+1)).toEqual(" +020000000000")
-      expectF("%o",     new JInteger(IntMax*2)).toEqual("+37777777776")
-    }
-
-    it("should provide 'x' conversion for values out of range") {
-      expectF("%0#14x", new JInteger(IntMin-1)).toEqual("-0x00080000001")
-      expectF("%#14x",  new JInteger(IntMin*2)).toEqual("  -0x100000000")
-      expectF("%#14X",  new JInteger(IntMax+1)).toEqual("   +0X80000000")
-      expectF("%x",     new JInteger(IntMax*2)).toEqual("+fffffffe")
-    }
-
     it("should provide 'e' conversion") {
       expectF("%e",       new JDouble(1000)).toEqual("1.000000e+03")
       expectF("%.0e",     new JDouble(1.2e100)).toEqual("1e+100")

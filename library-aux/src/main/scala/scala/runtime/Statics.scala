@@ -7,14 +7,14 @@ object Statics {
   def mix(hash: Int, data: Int): Int = {
     var h = mixLast(hash, data)
     h = Integer.rotateLeft(h, 13)
-    (((h * 5) | 0) + 0xe6546b64) | 0
+    (h * 5) + 0xe6546b64
   }
 
   def mixLast(hash: Int, data: Int): Int = {
     var k = data
-    k = (k * 0xcc9e2d51) | 0
+    k *= 0xcc9e2d51
     k = Integer.rotateLeft(k, 15)
-    k = (k * 0x1b873593) | 0
+    k *= 0x1b873593
     hash ^ k
   }
 
@@ -26,15 +26,15 @@ object Statics {
   def avalanche(h0: Int): Int = {
     var h = h0
     h ^= h >>> 16
-    h = (h * 0x85ebca6b) | 0
+    h *= 0x85ebca6b
     h ^= h >>> 13
-    h = (h * 0xc2b2ae35) | 0
+    h *= 0xc2b2ae35
     h ^= h >>> 16
     h
   }
 
   def longHash(lv: Long): Int = {
-    (lv | 0).toInt
+    lv.toInt
     /*
     val iv = lv.toInt | 0
     if (iv == lv) iv

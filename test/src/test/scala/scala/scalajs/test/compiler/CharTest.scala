@@ -29,5 +29,13 @@ object CharTest extends JasmineTest {
       expect(34234567876543L.toChar.toInt).toEqual(57279)
     }
 
+    it("should overflow with *") {
+      def test(a: Char, b: Char, expected: Int): Unit =
+        expect(a * b).toEqual(expected)
+
+      // note: expected values are constant-folded by the compiler on the JVM
+      test(Char.MaxValue, Char.MaxValue, Char.MaxValue * Char.MaxValue)
+    }
+
   }
 }

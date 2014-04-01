@@ -330,7 +330,7 @@ var ScalaJS = {
     else                              return instance.shortValue__S();
   },
   numberIntValue: function(instance) {
-    if (typeof instance === "number") return ScalaJS.truncateInt(instance);
+    if (typeof instance === "number") return instance | 0;
     else                              return instance.intValue__I();
   },
   numberLongValue: function(instance) {
@@ -347,10 +347,6 @@ var ScalaJS = {
   numberDoubleValue: function(instance) {
     if (typeof instance === "number") return instance;
     else                              return instance.doubleValue__D();
-  },
-
-  truncateInt: function(x) {
-    return x < 0 ? ScalaJS.g["Math"]["ceil"](x) : ScalaJS.g["Math"]["floor"](x);
   },
 
   isNaN: function(instance) {
@@ -375,7 +371,7 @@ var ScalaJS = {
   },
 
   isInt: function(v) {
-    return (typeof v === "number") && (v % 1 === 0);
+    return (v | 0) === v;
   },
 
   asUnit: function(v) {
@@ -674,3 +670,16 @@ ScalaJS.data.scala_Float.isArrayOf = ScalaJS.isArrayOf.scala_Float;
 ScalaJS.isArrayOf.scala_Double = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.data.scala_Double);
 ScalaJS.asArrayOf.scala_Double = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.scala_Double, "D");
 ScalaJS.data.scala_Double.isArrayOf = ScalaJS.isArrayOf.scala_Double;
+
+// Polyfills
+
+ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
+  // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
+  var ah = (a >>> 16) & 0xffff;
+  var al = a & 0xffff;
+  var bh = (b >>> 16) & 0xffff;
+  var bl = b & 0xffff;
+  // the shift by 0 fixes the sign on the high part
+  // the final |0 converts the unsigned value into a signed value
+  return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
+});
