@@ -444,4 +444,9 @@ object Object extends Object {
    * MDN
    */
   def keys(o: Object): Array[String] = ???
+
+  /** Returns the names of all the enumerable properties of this object.
+   *  This is the equivalent of a for...in loop in JavaScript.
+   */
+  def properties(o: Object): Array[String] = sys.error("stub")
 }

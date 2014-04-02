@@ -52,7 +52,6 @@ abstract class JSPrimitives {
   val DYNLIT = 334    // js.Dynamic.literal.applyDynamic
 
   val DICT_DEL = 335   // js.Dictionary.delete
-  val DICT_PROPS = 336 // js.Dictionary.propertiesOf
 
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
@@ -66,10 +65,11 @@ abstract class JSPrimitives {
   val TYPEOF = 343   // typeof x
   val DEBUGGER = 344 // js.debugger()
   val HASPROP = 345  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
+  val OBJPROPS = 346 // js.Object.properties(o), equiv to `for (p in o)` in JS
 
-  val RETURNRECEIVER = 346 // anything "return this;", e.g., Boolean.booleanValue()
-  val UNITVAL = 347        // () value, which is undefined
-  val UNITTYPE = 348       // BoxedUnit.TYPE (== classOf[Unit])
+  val RETURNRECEIVER = 347 // anything "return this;", e.g., Boolean.booleanValue()
+  val UNITVAL = 348        // () value, which is undefined
+  val UNITTYPE = 349       // BoxedUnit.TYPE (== classOf[Unit])
 
   /** Initialize the map of primitive methods */
   def init() {
@@ -102,7 +102,6 @@ abstract class JSPrimitives {
     addPrimitive(JSDynamicLiteral_applyDynamic, DYNLIT)
 
     addPrimitive(JSDictionary_delete, DICT_DEL)
-    addPrimitive(JSDictionary_propertiesOf, DICT_PROPS)
 
     addPrimitive(JSArray_create, ARR_CREATE)
 
@@ -120,6 +119,7 @@ abstract class JSPrimitives {
     addPrimitive(JSPackage_isUndefined, ISUNDEF)
 
     addPrimitive(JSObject_hasProperty, HASPROP)
+    addPrimitive(JSObject_properties, OBJPROPS)
 
     addPrimitive(getMember(requiredClass[java.lang.Boolean],
         newTermName("booleanValue")), RETURNRECEIVER)
