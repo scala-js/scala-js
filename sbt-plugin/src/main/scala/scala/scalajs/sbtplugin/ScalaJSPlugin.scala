@@ -363,7 +363,8 @@ object ScalaJSPlugin extends Plugin {
 
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
-      addCompilerPlugin("org.scala-lang.modules.scalajs" %% "scalajs-compiler" % scalaJSVersion),
+      addCompilerPlugin(
+          "org.scala-lang.modules.scalajs" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 
       // and of course the Scala.js library
       libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % scalaJSVersion

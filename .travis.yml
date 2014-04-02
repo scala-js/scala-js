@@ -7,6 +7,7 @@ script:
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" scalajs-tools/package scalajs-sbt-plugin/package; fi
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION publish; fi
+  - if [[ "${PUBLISH_COMPILER}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/publish; fi
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "sbtplugin" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" scalajs-tools/publish scalajs-sbt-plugin/publish; fi
 env:
   global:
@@ -28,10 +29,12 @@ matrix:
       scala: 2.10.3
       env:
         - KIND=main
+        - PUBLISH_COMPILER=true
     - jdk: openjdk6
       scala: 2.10.4
       env:
         - KIND=main
+        - PUBLISH_COMPILER=true
     - jdk: openjdk6
       scala: 2.11.0-M7
       env:
