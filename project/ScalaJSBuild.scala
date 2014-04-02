@@ -140,6 +140,7 @@ object ScalaJSBuild extends Build {
       base = file("compiler"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
+          crossVersion := CrossVersion.full, // because compiler api is not binary compatible
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaVersion.value,
               "org.scala-lang" % "scala-reflect" % scalaVersion.value,
