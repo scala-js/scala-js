@@ -59,6 +59,7 @@ object ConsoleTestOutput extends TestOutput {
   val log =
     new TestOutputLog {
       def info(message: String): Unit = send("info", message)
+      def warn(message: String): Unit = send("warn", message)
       def error(message: String): Unit = send("error", message)
     }
 

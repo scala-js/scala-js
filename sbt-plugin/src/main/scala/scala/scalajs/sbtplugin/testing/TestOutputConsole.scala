@@ -24,7 +24,8 @@ class TestOutputConsole(
     handler: EventHandler,
     loggers: Array[Logger],
     events: Events,
-    classpath: JSClasspath) extends Console {
+    classpath: JSClasspath,
+    noSourceMap: Boolean) extends Console {
 
   import events._
 
@@ -32,7 +33,7 @@ class TestOutputConsole(
 
   private val traceBuf = new ArrayBuffer[StackTraceElement]
 
-  private val sourceMapper = new SourceMapper(classpath)
+  private lazy val sourceMapper = new SourceMapper(classpath)
 
   override def log(msg: Any): Unit = {
     val msgStr = msg.toString
@@ -78,6 +79,9 @@ class TestOutputConsole(
           case "info" =>
             noTrace()
             log(_.info, message)
+          case "warn" =>
+            noTrace()
+            log(_.warn, message)
           case "trace" =>
             val Array(className, methodName, fileName,
                 lineNumberStr, columnNumberStr) = message.split('|')
@@ -93,7 +97,10 @@ class TestOutputConsole(
             val ste =
               new StackTraceElement(className, methodName, fileName, lineNumber)
 
-            traceBuf += sourceMapper.map(ste, columnNumber)
+            if (noSourceMap)
+              traceBuf += ste
+            else
+              traceBuf += sourceMapper.map(ste, columnNumber)
           case _ =>
             noTrace()
             log(_.error, s"Unknown op: $op. Originating log message: $msgStr")
