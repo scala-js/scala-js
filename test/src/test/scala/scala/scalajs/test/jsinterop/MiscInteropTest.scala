@@ -51,6 +51,36 @@ object MiscInteropTest extends JasmineTest {
       expect(hasProp(o(), p())).toBeTruthy
       expect(indicator).toEqual(14)
     }
+
+    it("should provide equivalent of JS for-in loop of {} - #13") {
+      val obj = js.eval("var dictionaryTest13 = { a: 'Scala.js', b: 7357 }; dictionaryTest13;")
+      val dict = obj.asInstanceOf[js.Dictionary[js.Any]]
+      var propCount = 0
+      var propString = ""
+
+      for (prop <- js.Object.properties(dict)) {
+        propCount += 1
+        propString += dict(prop)
+      }
+
+      expect(propCount).toEqual(2)
+      expect(propString).toEqual("Scala.js7357")
+    }
+
+    it("should provide equivalent of JS for-in loop of [] - #13") {
+      val obj = js.eval("var arrayTest13 = [ 7, 3, 5, 7 ]; arrayTest13;")
+      val array = obj.asInstanceOf[js.Dictionary[js.Any]]
+      var propCount = 0
+      var propString = ""
+
+      for (prop <- js.Object.properties(array)) {
+        propCount += 1
+        propString += array(prop)
+      }
+
+      expect(propCount).toEqual(4)
+      expect(propString).toEqual("7357")
+    }
   }
 
 }

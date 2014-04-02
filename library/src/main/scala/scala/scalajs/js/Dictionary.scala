@@ -48,5 +48,7 @@ object Dictionary {
   }
 
   /** Returns the names of all the enumerable properties of this object. */
-  def propertiesOf(obj: Any): Array[String] = sys.error("stub")
+  @deprecated("Use js.Object.properties(obj) instead", "0.5.0")
+  def propertiesOf(obj: Any): Array[String] =
+    Object.properties(obj.asInstanceOf[Object])
 }

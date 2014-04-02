@@ -97,9 +97,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSNumberModule = JSNumberClass.companionModule
       lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))
 
-    lazy val JSDictionaryModule = JSDictionaryClass.companionModule
-      lazy val JSDictionary_propertiesOf = getMemberMethod(JSDictionaryModule, newTermName("propertiesOf"))
-
     lazy val JSBooleanModule = JSBooleanClass.companionModule
       lazy val JSBoolean_toBoolean = getMemberMethod(JSBooleanModule, newTermName("toBoolean"))
 
@@ -108,6 +105,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSObjectModule = JSObjectClass.companionModule
       lazy val JSObject_hasProperty = getMemberMethod(JSObjectModule, newTermName("hasProperty"))
+      lazy val JSObject_properties  = getMemberMethod(JSObjectModule, newTermName("properties"))
 
     lazy val JSArrayModule = JSArrayClass.companionModule
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))

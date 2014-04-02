@@ -3015,10 +3015,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               // js.Dictionary.delete(arg)
               js.BracketDelete(receiver, arg)
 
-            case DICT_PROPS =>
-              // js.Dictionary.propertiesOf(arg)
-              genCallHelper("propertiesOf", arg)
-
             case RTJ2J => arg
             case J2RTJ => arg
 
@@ -3028,6 +3024,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             case TYPEOF =>
               // js.typeOf(arg)
               js.UnaryOp("typeof", arg)
+
+            case OBJPROPS =>
+              // js.Object.properties(arg)
+              genCallHelper("propertiesOf", arg)
           }
 
         case List(arg1, arg2) =>
