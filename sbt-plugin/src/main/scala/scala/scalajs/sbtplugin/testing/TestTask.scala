@@ -13,12 +13,13 @@ import sbt.testing._
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.environment._
+import scala.scalajs.tools.env._
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 
 class TestTask(
-    environment: ScalaJSEnvironment,
+    env: JSEnv,
     jsClasspath: JSClasspath,
     testFramework: String,
     args: Array[String],
@@ -35,9 +36,14 @@ class TestTask(
     val runnerFile = testRunnerFile(options.frameworkArgs)
     val testConsole = new TestOutputConsole(eventHandler, loggers,
         new Events(taskDef), jsClasspath, options.noSourceMap)
+    val logger = new SbtTestLoggerAccWrapper(loggers)
 
-    // Actually execute test
-    environment.runJS(jsClasspath, runnerFile, testConsole)
+    try {
+      // Actually execute test
+      env.runJS(jsClasspath, runnerFile, logger, testConsole)
+    } catch {
+      case NonFatal(e) => logger.trace(e)
+    }
 
     Array.empty
   }
@@ -64,7 +70,7 @@ class TestTask(
 
 object TestTask {
 
-  def apply(environment: ScalaJSEnvironment, jsClasspath: JSClasspath,
+  def apply(environment: JSEnv, jsClasspath: JSClasspath,
     testFramework: String, args: Array[String])(taskDef: TaskDef) =
       new TestTask(environment, jsClasspath, testFramework, args, taskDef)
 

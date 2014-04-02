@@ -12,7 +12,7 @@ package scala.scalajs.sbtplugin.testing
 import sbt.testing.Logger
 import sbt.testing.EventHandler
 
-import scala.scalajs.tools.environment.Console
+import scala.scalajs.tools.env.JSConsole
 import scala.scalajs.tools.sourcemap.SourceMapper
 import scala.scalajs.tools.classpath.JSClasspath
 
@@ -25,7 +25,7 @@ class TestOutputConsole(
     loggers: Array[Logger],
     events: Events,
     classpath: JSClasspath,
-    noSourceMap: Boolean) extends Console {
+    noSourceMap: Boolean) extends JSConsole {
 
   import events._
 

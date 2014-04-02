@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.environment
+package scala.scalajs.sbtplugin.env
 
 import org.mozilla.javascript._
 

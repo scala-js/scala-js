@@ -7,16 +7,16 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.environment.rhino
+package scala.scalajs.sbtplugin.env.rhino
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.environment._
+import scala.scalajs.tools.env._
+import scala.scalajs.tools.logging._
 
 import org.mozilla.javascript._
 
-class RhinoBasedScalaJSEnvironment(
-    trace: (=> Throwable) => Unit) extends ScalaJSEnvironment {
+class RhinoJSEnv extends JSEnv {
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -28,7 +28,7 @@ class RhinoBasedScalaJSEnvironment(
    *  importScripts JavaScript function.
    */
   def runJS(classpath: JSClasspath, code: VirtualJSFile,
-      console: Console): Option[String] = {
+      logger: Logger, console: JSConsole): Option[String] = {
 
     val context = Context.enter()
     try {
@@ -75,16 +75,16 @@ class RhinoBasedScalaJSEnvironment(
 
         None
       } catch {
-        case e: Exception =>
-          trace(e) // print the stack trace while we're in the Context
-          throw new RuntimeException("Exception while running JS code", e)
+        case e: RhinoException =>
+          logger.error(e.getStackTraceString)
+          Some(s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
       Context.exit()
     }
   }
 
-  private def print(console: Console)(args: Array[AnyRef]) =
+  private def print(console: JSConsole)(args: Array[AnyRef]) =
     console.log(args.mkString(" "))
 
   private def importScripts(context: Context, globalScope: Scriptable,

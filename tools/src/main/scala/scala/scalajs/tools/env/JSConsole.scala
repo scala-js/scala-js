@@ -7,12 +7,9 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package scala.scalajs.tools.env
 
-import sbt.Logger
-import scala.scalajs.tools.environment.Console
-
-/** A proxy for a Logger that looks like a Mozilla console object */
-class LoggerConsole(logger: Logger) extends Console {
-  def log(msg: Any): Unit = logger.info(msg.toString)
+/** Trait representing a JS console */
+trait JSConsole {
+  def log(msg: Any): Unit
 }

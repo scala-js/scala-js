@@ -20,8 +20,8 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.packager._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
-import scala.scalajs.tools.environment.{ ScalaJSEnvironment, Console }
-import scala.scalajs.sbtplugin.environment.rhino.RhinoBasedScalaJSEnvironment
+import scala.scalajs.tools.env._
+import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 
 import scala.scalajs.sbtplugin.testing.TestFramework
 
@@ -44,9 +44,9 @@ object ScalaJSPlugin extends Plugin {
     val optimizeJSExterns = taskKey[Seq[File]](
         "Extern files to use with optimizeJS")
 
-    val loggingConsole = taskKey[Option[Console]](
+    val loggingConsole = taskKey[Option[JSConsole]](
         "The logging console used by the Scala.js jvm environment")
-    val scalaJSEnvironment = taskKey[ScalaJSEnvironment](
+    val jsEnv = settingKey[JSEnv](
         "A JVM-like environment where Scala.js files can be run and tested")
 
     val scalaJSSetupRunner = settingKey[Boolean](
@@ -171,11 +171,6 @@ object ScalaJSPlugin extends Plugin {
     incOptions.copy(newClassfileManager = newClassfileManager)
   }
 
-  val scalaJSEnvironmentSettings = Seq(
-      scalaJSEnvironment :=
-        new RhinoBasedScalaJSEnvironment(streams.value.log.trace)
-  )
-
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
@@ -185,9 +180,11 @@ object ScalaJSPlugin extends Plugin {
           packageInternalDepsJS, "-intdeps") ++
       packageClasspathJSTasks(exportedProducts,
           packageExportedProductsJS, "")
-  ) ++ (
-      scalaJSEnvironmentSettings
   ) ++ Seq(
+
+      // Default JS environment is Rhino
+      jsEnv := new RhinoJSEnv,
+
       packageJS := (
           packageExternalDepsJS.value ++
           packageInternalDepsJS.value ++
@@ -289,7 +286,7 @@ object ScalaJSPlugin extends Plugin {
       scalaJSSetupRunner := true,
       runner in run <<= Def.taskDyn {
         if (scalaJSSetupRunner.value)
-          Def.task(new ScalaJSEnvRun(scalaJSEnvironment.value))
+          Def.task(new ScalaJSEnvRun(jsEnv.value))
         else
           runner in run
       }
@@ -315,7 +312,7 @@ object ScalaJSPlugin extends Plugin {
           loadedTestFrameworks.value.updated(
               sbt.TestFramework(classOf[TestFramework].getName),
               new TestFramework(
-                  environment = scalaJSEnvironment.value,
+                  environment = jsEnv.value,
                   testFramework = scalaJSTestFramework.value)
           )
         } else {
@@ -336,7 +333,7 @@ object ScalaJSPlugin extends Plugin {
   )
 
   def defaultLoggingConsole =
-      loggingConsole := Some(new LoggerConsole(streams.value.log))
+      loggingConsole := Some(new LoggerJSConsole(streams.value.log))
 
   val scalaJSDefaultConfigs = (
       inConfig(Compile)(scalaJSCompileSettings) ++

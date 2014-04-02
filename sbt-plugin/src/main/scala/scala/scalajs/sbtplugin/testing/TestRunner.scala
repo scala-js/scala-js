@@ -11,11 +11,11 @@ package scala.scalajs.sbtplugin.testing
 
 import sbt.testing._
 
-import scala.scalajs.tools.environment._
+import scala.scalajs.tools.env._
 import scala.scalajs.tools.classpath._
 
 class TestRunner(
-    environment: ScalaJSEnvironment,
+    environment: JSEnv,
     jsClasspath: JSClasspath,
     testFramework: String,
     val args: Array[String],
