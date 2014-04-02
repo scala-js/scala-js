@@ -78,6 +78,9 @@ class TestOutputConsole(
           case "info" =>
             noTrace()
             log(_.info, message)
+          case "warn" =>
+            noTrace()
+            log(_.warn, message)
           case "trace" =>
             val Array(className, methodName, fileName,
                 lineNumberStr, columnNumberStr) = message.split('|')
