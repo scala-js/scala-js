@@ -101,7 +101,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 object RegExp extends Object {
   def apply(pattern: String, flags: String = ""): RegExp = ???
 
-  trait ExecResult extends Array[prim.String] { // can be undefined
+  trait ExecResult extends Array[UndefOr[String]] {
     var index: Int = _
     var input: String = _
   }
