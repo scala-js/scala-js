@@ -22,6 +22,7 @@ class JasmineTest extends Test {
   def xit(title: String)(test: => Unit): Unit = Jasmine.xit(title, test _)
   def beforeEach(block: => Unit): Unit = Jasmine.beforeEach(block _)
   def afterEach(block: => Unit): Unit = Jasmine.afterEach(block _)
-  def expect(exp: CharSequence): JasmineExpectation = Jasmine.expect(exp.toString)
+  def expect(exp: CharSequence): JasmineExpectation =
+    Jasmine.expect(if (exp == null) null else exp.toString)
   def expect(exp: js.Any): JasmineExpectation = Jasmine.expect(exp)
 }
