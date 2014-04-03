@@ -15,6 +15,8 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.env._
 
+import scala.scalajs.sbtplugin.JSUtils._
+
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
@@ -103,32 +105,6 @@ object TestTask {
     }
 
     read0(args0)
-  }
-
-  private def listToJS(xs: List[String]) =
-    xs.map(x => '"' + escapeJS(x) + '"').mkString("[",",","]")
-
-  /** Stolen from scala.scalajs.compiler.JSPrinters */
-  private def escapeJS(str: String): String = {
-    /* Note that Java and JavaScript happen to use the same encoding for
-     * Unicode, namely UTF-16, which means that 1 char from Java always equals
-     * 1 char in JavaScript. */
-    val builder = new StringBuilder
-    str foreach {
-      case '\\' => builder.append("\\\\")
-      case '"' => builder.append("\\\"")
-      case '\u0007' => builder.append("\\a")
-      case '\u0008' => builder.append("\\b")
-      case '\u0009' => builder.append("\\t")
-      case '\u000A' => builder.append("\\n")
-      case '\u000B' => builder.append("\\v")
-      case '\u000C' => builder.append("\\f")
-      case '\u000D' => builder.append("\\r")
-      case c =>
-        if (c >= 32 && c <= 126) builder.append(c.toChar) // ASCII printable characters
-        else builder.append(f"\\u$c%04x")
-    }
-    builder.result()
   }
 
 }
