@@ -87,7 +87,8 @@ object ScalaJSPlugin extends Plugin {
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[Seq[File]],
-      outputSuffix: String): Seq[Setting[_]] = Seq(
+      outputSuffix: String,
+      packOrder: Int): Seq[Setting[_]] = Seq(
 
       artifactPath in packageJSKey :=
         ((crossTarget in packageJSKey).value /
@@ -101,38 +102,45 @@ object ScalaJSPlugin extends Plugin {
 
         IO.createDirectory(output.getParentFile)
 
-        if (classpath.isEmpty) {
-          if (!output.isFile || output.length != 0)
-            IO.writeLines(output, Nil)
-        } else {
-          FileFunction.cached(taskCacheDir,
-              FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-            s.log.info("Packaging %s ..." format output)
-            import ScalaJSPackager._
-            val classpathEntries =
-              ScalaJSClasspath.readEntriesInClasspathPartial(classpath)
-            val packager = new ScalaJSPackager
-            val relSourceMapBase =
-              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
-              else None
+        val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
 
-            val outputWriter = new FileVirtualJSFileWriter(output)
+        try {
+          if (classpath.isEmpty) {
+            import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
 
-            try {
-              packager.packageScalaJS(
-                  Inputs(classpath = classpathEntries),
-                  OutputConfig(
-                      name = output.name,
-                      writer = outputWriter,
-                      wantSourceMap = (packageJSKey != packageExternalDepsJS),
-                      relativizeSourceMapBase = relSourceMapBase),
-                  s.log)
-            } finally {
-              outputWriter.close()
-            }
+            outputWriter.contentWriter.write("/* dummy empty file */\n")
+            writePackInfo(outputWriter, PackInfoData(packOrder))
+          } else {
+            FileFunction.cached(taskCacheDir,
+                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+              s.log.info("Packaging %s ..." format output)
+              import ScalaJSPackager._
+              val classpathEntries =
+                ScalaJSClasspath.partialFromClasspath(classpath)
+              val packager = new ScalaJSPackager
+              val relSourceMapBase =
+                if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+                else None
 
-            Set(output)
-          } (filesToWatchForChanges(classpath))
+              try {
+                packager.packageScalaJS(
+                    Inputs(classpath = classpathEntries),
+                    OutputConfig(
+                        name = output.name,
+                        writer = outputWriter,
+                        packOrder = packOrder,
+                        wantSourceMap = (packageJSKey != packageExternalDepsJS),
+                        relativizeSourceMapBase = relSourceMapBase),
+                    s.log)
+              } finally {
+                outputWriter.close()
+              }
+
+              Set(output)
+            } (filesToWatchForChanges(classpath))
+          }
+        } finally {
+          outputWriter.close()
         }
 
         Seq(output)
@@ -175,11 +183,11 @@ object ScalaJSPlugin extends Plugin {
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       packageClasspathJSTasks(externalDependencyClasspath,
-          packageExternalDepsJS, "-extdeps") ++
+          packageExternalDepsJS, "-extdeps", 0) ++
       packageClasspathJSTasks(internalDependencyClasspath,
-          packageInternalDepsJS, "-intdeps") ++
+          packageInternalDepsJS, "-intdeps", 1) ++
       packageClasspathJSTasks(exportedProducts,
-          packageExportedProductsJS, "")
+          packageExportedProductsJS, "", 2)
   ) ++ Seq(
 
       // Default JS environment is Rhino
@@ -207,10 +215,9 @@ object ScalaJSPlugin extends Plugin {
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
           s.log.info("Preoptimizing %s ..." format output)
           import ScalaJSOptimizer._
-          val classpathEntries =
-            ScalaJSClasspath.readEntriesInClasspath(classpath)
+          val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
-          val outputWriter = new FileVirtualJSFileWriter(output)
+          val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
 
           try {
             optimizer.optimize(
@@ -250,7 +257,7 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Optimizing %s ..." format output)
           import ScalaJSClosureOptimizer._
           val optimizer = new ScalaJSClosureOptimizer
-          val outputWriter = new FileVirtualJSFileWriter(output)
+          val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
 
           try {
             optimizer.optimize(

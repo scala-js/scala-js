@@ -37,8 +37,7 @@ class TestFramework(
 
     val classpath = classLoader2Classpath(testClassLoader)
 
-    // TODO abstract what kind of classpath to create.
-    val jsClasspath = ScalaJSClasspath.readEntriesInClasspath(classpath)
+    val jsClasspath = JSClasspath.fromClasspath(classpath)
 
     new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
   }

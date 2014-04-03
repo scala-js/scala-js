@@ -17,6 +17,8 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
 
+import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
+
 /** Scala.js packager: concatenates blindly all Scala.js class files. */
 class ScalaJSPackager {
   import ScalaJSPackager._
@@ -40,8 +42,10 @@ class ScalaJSPackager {
       sortScalaJSClassfiles(classpath.classFiles) ++
       inputs.customScripts
 
+    import outputConfig._
+
     val builder = {
-      import outputConfig._
+
       if (wantSourceMap)
         new JSFileBuilderWithSourceMap(name,
             writer.contentWriter,
@@ -54,6 +58,8 @@ class ScalaJSPackager {
     for (file <- allSortedFiles)
       builder.addFile(file)
     builder.complete()
+
+    writePackInfo(writer, PackInfoData(packOrder))
   }
 }
 
@@ -71,7 +77,11 @@ object ScalaJSPackager {
       /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Print writer for the output file. */
-      writer: VirtualJSFileWriter,
+      writer: VirtualScalaJSPackfileWriter,
+      /** Pack order written to the .sjspack file to ensure proper ordering by
+       *  other tools (notably when reading a JSClasspath from the packed files)
+       */
+      packOrder: Int,
       /** Ask to produce source map for the output. */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */

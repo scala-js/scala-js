@@ -12,7 +12,7 @@ package scala.scalajs.sbtplugin
 import sbt._
 
 import scala.scalajs.tools.io.MemVirtualJSFile
-import scala.scalajs.tools.classpath.ScalaJSClasspath
+import scala.scalajs.tools.classpath.JSClasspath
 import scala.scalajs.tools.env.JSEnv
 
 import scala.util.control.NonFatal
@@ -29,11 +29,13 @@ class ScalaJSEnvRun(env: JSEnv) extends ScalaRun {
     log.debug(s"with classpath $classpath")
 
     try {
-      env.runJS(
-          // TODO abstract what kind of classpath to create.
-          ScalaJSClasspath.readEntriesInClasspath(classpath),
-          runnerVirtualFile(mainClass),
-          log,
+      // Generate the most specific JSClasspath we can
+      val jsCp = JSClasspath.fromClasspath(classpath)
+
+      log.debug(s"Type of JSClasspath is: ${jsCp.getClass()}")
+
+      // Actually run code
+      env.runJS(jsCp, runnerVirtualFile(mainClass), log,
           new LoggerJSConsole(log))
     } catch {
       case NonFatal(e) =>
