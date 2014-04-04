@@ -81,15 +81,15 @@ object StackTrace {
       if (!(!line)) {
         val mtch1 = NormalizedFrameLineWithColumn.exec(line)
         if (mtch1 ne null) {
-          val (className, methodName) = extractClassMethod(mtch1(1))
-          result.push(
-              STE(className, methodName, mtch1(2), mtch1(3).toInt, mtch1(4).toInt))
+          val (className, methodName) = extractClassMethod(mtch1(1).get)
+          result.push(STE(className, methodName, mtch1(2).get,
+              mtch1(3).get.toInt, mtch1(4).get.toInt))
         } else {
           val mtch2 = NormalizedFrameLine.exec(line)
           if (mtch2 ne null) {
-            val (className, methodName) = extractClassMethod(mtch2(1))
+            val (className, methodName) = extractClassMethod(mtch2(1).get)
             result.push(
-                STE(className, methodName, mtch2(2), mtch2(3).toInt))
+                STE(className, methodName, mtch2(2).get, mtch2(3).get.toInt))
           } else {
             result.push(STE("<jscode>", line, null, -1)) // just in case
           }
@@ -114,8 +114,8 @@ object StackTrace {
     val Pat = """^ScalaJS\.c\.([^\.]+)(\.prototype)?\.([^\.]+)$""".re
     val mtch = Pat.exec(functionName)
     if (mtch ne null) {
-      val classEncoding: String = mtch(1)
-      val methodEncoding: String = mtch(3)
+      val classEncoding = mtch(1).get
+      val methodEncoding = mtch(3).get
       val className = classEncoding.replace("_", ".").replace("$und", "_")
       val methodName = {
         if (methodEncoding startsWith "init___") {
@@ -210,7 +210,7 @@ object StackTrace {
   }
 
   private def extractRhino(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[jsString])
+    (e.stack.asInstanceOf[js.UndefOr[jsString]]).getOrElse[jsString]("")
       .replace("""^\s+at\s+""".re("gm"), "") // remove 'at' and indentation
       .replace("""^(.+?)(?: \((.+)\))?$""".re("gm"), "$2@$1")
       .replace("""\r\n?""".re("gm"), "\n") // Rhino has platform-dependent EOL's
@@ -268,7 +268,7 @@ object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        result.push("{anonymous}()@" + mtch(2) + ":" + mtch(1)
+        result.push("{anonymous}()@" + mtch(2).get + ":" + mtch(1).get
             /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */)
       }
       i += 2
@@ -289,9 +289,8 @@ object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName: jsString =
-          if (js.isUndefined(mtch(3))) "{anonymous}" else mtch(3)
-        result.push(fnName + "()@" + mtch(2) + ":" + mtch(1)
+        val fnName = mtch(3).getOrElse("{anonymous}")
+        result.push(fnName + "()@" + mtch(2).get + ":" + mtch(1).get
             /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
       }
       i += 2
@@ -313,9 +312,8 @@ object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName: jsString =
-          if (js.isUndefined(mtch(1))) "global code" else mtch(1) + "()"
-        result.push(fnName + "@" + mtch(2) + ":" + mtch(3))
+        val fnName = mtch(1).fold("global code")(_ + "()")
+        result.push(fnName + "@" + mtch(2).get + ":" + mtch(3).get)
       }
       i += 1
     }
@@ -333,10 +331,9 @@ object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = mtch(4) + ":" + mtch(1) + ":" + mtch(2)
-        val fnName0: jsString =
-          if (js.isUndefined(mtch(3))) "global code" else mtch(3)
-        val fnName = fnName0
+        val location = mtch(4).get + ":" + mtch(1).get + ":" + mtch(2).get
+        val fnName0 = mtch(2).getOrElse("global code")
+        val fnName = (fnName0: jsString)
           .replace("""<anonymous function: (\S+)>""".re, "$1")
           .replace("""<anonymous function>""".re, "{anonymous}")
         result.push(fnName + "@" + location

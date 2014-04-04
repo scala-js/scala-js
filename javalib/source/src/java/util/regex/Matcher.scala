@@ -50,7 +50,7 @@ final class Matcher private[regex] (
     lastMatchIsValid = true
     lastMatch = regexp.exec(inputstr)
     if (lastMatch ne null) {
-      if (lastMatch(0).isEmpty)
+      if (lastMatch(0).get.isEmpty)
         regexp.lastIndex += 1
     } else {
       canStillFind = false
@@ -171,7 +171,7 @@ final class Matcher private[regex] (
 
   def start(): Int = ensureLastMatch.index
   def end(): Int = start() + group().length
-  def group(): String = ensureLastMatch(0)
+  def group(): String = ensureLastMatch(0).get
 
   def start(group: Int): Int = {
     if (group == 0) start()
@@ -179,12 +179,19 @@ final class Matcher private[regex] (
       val last = ensureLastMatch
       // not provided by JS RegExp, so we make up something that at least
       // will have some sound behavior from scala.util.matching.Regex
-      inputstr.indexOf(last(group), last.index)
+      last(group).fold(-1) {
+        groupStr => inputstr.indexOf(groupStr, last.index)
+      }
     }
   }
 
-  def end(group: Int): Int = start(group) + this.group(group).length
-  def group(group: Int): String = ensureLastMatch(group)
+  def end(group: Int): Int = {
+    val s = start(group)
+    if (s == -1) -1
+    else s + this.group(group).length
+  }
+
+  def group(group: Int): String = ensureLastMatch(group).orNull
 
   // Seal the state
 
@@ -233,7 +240,7 @@ object Matcher {
 
     def start(): Int = ensureLastMatch.index
     def end(): Int = start() + group().length
-    def group(): String = ensureLastMatch(0)
+    def group(): String = ensureLastMatch(0).get
 
     def start(group: Int): Int = {
       if (group == 0) start()
@@ -242,12 +249,19 @@ object Matcher {
 
         // not provided by JS RegExp, so we make up something that at least
         // will have some sound behavior from scala.util.matching.Regex
-        inputstr.indexOf(last(group), last.index)
+        last(group).fold(-1) {
+          groupStr => inputstr.indexOf(groupStr, last.index)
+        }
       }
     }
 
-    def end(group: Int): Int = start(group) + this.group(group).length
-    def group(group: Int): String = ensureLastMatch(group)
+    def end(group: Int): Int = {
+      val s = start(group)
+      if (s == -1) -1
+      else s + this.group(group).length
+    }
+
+    def group(group: Int): String = ensureLastMatch(group).orNull
 
     private def ensureLastMatch: js.RegExp.ExecResult = {
       if (lastMatch == null)

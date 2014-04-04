@@ -3949,7 +3949,8 @@ abstract class GenJSCode extends plugins.PluginComponent
    *  I.e., test whether the type extends scala.js.Any
    */
   def isRawJSType(tpe: Type): Boolean =
-    tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
+    tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined ||
+    tpe.typeSymbol == UndefOrClass
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =

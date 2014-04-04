@@ -113,7 +113,7 @@ object RegexTest extends JasmineTest {
     }
 
     it("should respond to `start`, `end`, `group`, and `toMatchResult`") {
-      val matcher = Pattern.compile("\\s(([A-Za-z]{5}).js)\\s").matcher("Write Scala.js everyday!")
+      val matcher = Pattern.compile("\\s(([A-Za-z]{5}(hum)?).js)\\s").matcher("Write Scala.js everyday!")
 
       def checkGroup0(start: Int, end: Int, group: String) =
         checkGroup(start, 5, end, 15, group, " Scala.js ")
@@ -124,26 +124,31 @@ object RegexTest extends JasmineTest {
       def checkGroup2(start: Int, end: Int, group: String) =
         checkGroup(start, 6, end, 11, group, "Scala")
 
+      def checkGroup3(start: Int, end: Int, group: String) =
+        checkGroup(start, -1, end, -1, group, null)
+
       def checkGroup(start: Int, startExpected: Int, end: Int, endExpected: Int,
                      group: String, groupExpected: String): Unit = {
-        expect(start).toBe(startExpected)
-        expect(end).toBe(endExpected)
-        expect(group).toBe(groupExpected)
+        expect(start).toEqual(startExpected)
+        expect(end).toEqual(endExpected)
+        expect(group).toEqual(groupExpected)
       }
 
       expect(matcher.find()).toBeTruthy
-      expect(matcher.groupCount).toEqual(2)
+      expect(matcher.groupCount).toEqual(3)
       checkGroup0(matcher.start, matcher.end, matcher.group)
       checkGroup0(matcher.start(0), matcher.end(0), matcher.group(0))
       checkGroup1(matcher.start(1), matcher.end(1), matcher.group(1))
       checkGroup2(matcher.start(2), matcher.end(2), matcher.group(2))
+      checkGroup3(matcher.start(3), matcher.end(3), matcher.group(3))
 
       val matchResult = matcher.toMatchResult
-      expect(matchResult.groupCount).toEqual(2)
+      expect(matchResult.groupCount).toEqual(3)
       checkGroup0(matchResult.start, matchResult.end, matchResult.group)
       checkGroup0(matchResult.start(0), matchResult.end(0), matchResult.group(0))
       checkGroup1(matchResult.start(1), matchResult.end(1), matchResult.group(1))
       checkGroup2(matchResult.start(2), matchResult.end(2), matchResult.group(2))
+      checkGroup3(matchResult.start(3), matchResult.end(3), matchResult.group(3))
     }
 
     it("should respond to `matches`") {

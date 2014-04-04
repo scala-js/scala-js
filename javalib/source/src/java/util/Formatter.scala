@@ -53,8 +53,8 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
     while (!fmt.isEmpty) {
       fmt match {
         case RegularChunk(matchResult) =>
-          fmt = fmt.substring(matchResult(0).length)
-          dest.append(matchResult(0))
+          fmt = fmt.substring(matchResult(0).get.length)
+          dest.append(matchResult(0).get)
 
         case DoublePercent(_) =>
           fmt = fmt.substring(2)
@@ -65,13 +65,13 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           dest.append('\n')
 
         case FormattedChunk(matchResult) =>
-          fmt = fmt.substring(matchResult(0).length)
+          fmt = fmt.substring(matchResult(0).get.length)
 
-          val flags = matchResult(2)
+          val flags = matchResult(2).get
           def hasFlag(flag: String) = flags.indexOf(flag) >= 0
 
-          val indexStr = matchResult(1)
-          val index = if (!(!indexStr)) {
+          val indexStr = matchResult(1).getOrElse("")
+          val index = if (!indexStr.isEmpty) {
             Integer.parseInt(indexStr)
           } else if (hasFlag("<")) {
             lastIndex
@@ -81,22 +81,22 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
           }
           lastIndex = index
           if (index <= 0 || index > args.length)
-            throw new MissingFormatArgumentException(matchResult(5))
+            throw new MissingFormatArgumentException(matchResult(5).get)
           val arg = args(index-1)
 
-          val widthStr = matchResult(3)
-          val hasWidth = !(!widthStr)
+          val widthStr = matchResult(3).getOrElse("")
+          val hasWidth = !widthStr.isEmpty
           val width =
             if (hasWidth) Integer.parseInt(widthStr)
             else 0
 
-          val precisionStr = matchResult(4)
-          val hasPrecision = !(!precisionStr)
+          val precisionStr = matchResult(4).getOrElse("")
+          val hasPrecision = !precisionStr.isEmpty
           val precision =
             if (hasPrecision) Integer.parseInt(precisionStr)
             else 0
 
-          val conversion = matchResult(5).toString().charAt(0)
+          val conversion = matchResult(5).get.charAt(0)
 
           def intArg: Int = (arg: Any) match {
             case arg: Int  => arg
