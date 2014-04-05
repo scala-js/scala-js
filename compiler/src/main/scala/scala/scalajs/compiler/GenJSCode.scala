@@ -860,24 +860,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       currentMethodInfoBuilder =
         currentClassInfoBuilder.addMethod(proxyIdent.name)
 
-      val retTpe =
-        enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
       val jsParams =
         for (param <- sym.tpe.params)
           yield encodeLocalSym(param, freshName)(param.pos)
 
       val call = genApplyMethod(js.This(), sym.owner, sym, jsParams)
-
-      val value = retTpe match {
-        case _ if isPrimitiveValueType(retTpe) =>
-          makeBox(call, retTpe)
-        case retTpe: ErasedValueType =>
-          val boxedClass = retTpe.valueClazz
-          val boxCtor = boxedClass.primaryConstructor
-          genNew(boxedClass, boxCtor, List(call))
-        case _ =>
-          call
-      }
+      val value = ensureBoxed(call,
+          enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
 
       currentMethodInfoBuilder = null
 
@@ -1715,11 +1704,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (currentRun.runDefinitions.isBox(sym)) {
             /** Box a primitive value */
             val arg = args.head
-            makeBox(genExpr(arg), arg.tpe)
+            makePrimitiveBox(genExpr(arg), arg.tpe)
           } else if (currentRun.runDefinitions.isUnbox(sym)) {
             /** Unbox a primitive value */
             val arg = args.head
-            makeUnbox(genExpr(arg), tree.tpe)
+            makePrimitiveUnbox(genExpr(arg), tree.tpe)
           } else {
             /** Actual method call
              *  But even these are further refined into:
@@ -2421,17 +2410,24 @@ abstract class GenJSCode extends plugins.PluginComponent
         case _ => false
       }
 
-      val jsRec = genExpr(receiver)
+      /* Primitive number types such as scala.Int have a
+       *   def +(s: String): String
+       * method, which is why we have to box the lhs sometimes.
+       * Otherwise, both lhs and rhs are already reference types (Any of String)
+       * so boxing is not necessary (in particular, rhs is never a primitive).
+       */
+      assert(!isPrimitiveValueType(receiver.tpe) || isStringType(args.head.tpe))
+      assert(!isPrimitiveValueType(args.head.tpe))
 
       val lhs = {
+        val lhs0 = genExpr(receiver)
         // Box the receiver if it is a primitive value
-        if (receiver.tpe.typeSymbol.isPrimitiveValueClass)
-          makeBox(jsRec, receiver.tpe)
+        val lhs1 =
+          if (!isPrimitiveValueType(receiver.tpe)) lhs0
+          else makePrimitiveBox(lhs0, receiver.tpe)
         // Optimize away the "" + if not required
-        else if (isAlwaysString(jsRec))
-          jsRec
-        else
-          js.BinaryOp("+", js.StringLiteral("", None), jsRec)
+        if (isAlwaysString(lhs1)) lhs1
+        else js.BinaryOp("+", js.StringLiteral("", None), lhs1)
       }
       val rhs = genExpr(args.head)
 
@@ -2614,19 +2610,19 @@ abstract class GenJSCode extends plugins.PluginComponent
         val jsThat = genExpr(args.head)
         val op = if (sym.name.decoded == "eq") "===" else "!=="
 
-        makeBox(js.BinaryOp(op, jsThis, jsThat), BooleanClass.tpe)
+        ensureBoxed(js.BinaryOp(op, jsThis, jsThat), BooleanClass.tpe)
       } else {
         // Create a fully-fledged reflective call
         val callTrg = js.Ident(freshName("dynCallTrg"))
         val callTrgVarDef = js.VarDef(callTrg, genExpr(receiver))
 
         val arguments = args zip sym.tpe.params map { case (arg, param) =>
-          if (isBoxedForApplyDynamic(param.tpe)) {
+          if (isPrimitiveValueType(param.tpe)) {
             arg match {
               case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) =>
                 genExpr(result)
               case _ =>
-                makeUnbox(genExpr(arg), param.tpe)
+                makePrimitiveUnbox(genExpr(arg), param.tpe)
             }
           } else {
             genExpr(arg)
@@ -2682,8 +2678,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                     callTrg :: arguments)
                 // Box the result of the implementing method if required
                 val retTpe = implMethodSym.tpe.resultType
-                if (retTpe.typeSymbol.isPrimitiveValueClass)
-                  makeBox(rawApply, retTpe)
+                if (isPrimitiveValueType(retTpe))
+                  makePrimitiveBox(rawApply, retTpe)
                 else
                   rawApply
               } else {
@@ -2715,22 +2711,62 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Test whether the given type is artificially boxed for ApplyDynamic */
-    private def isBoxedForApplyDynamic(tpe: Type) =
-      tpe.typeSymbol.isPrimitiveValueClass
+    /** Ensures that the value of the given tree is boxed.
+     *  @param expr Tree to be boxed if needed.
+     *  @param tpeEnteringPosterasure The type of `expr` as it was entering
+     *    the posterasure phase.
+     */
+    def ensureBoxed(expr: js.Tree, tpeEnteringPosterasure: Type)(
+        implicit pos: Position): js.Tree = {
+
+      tpeEnteringPosterasure match {
+        case tpe if isPrimitiveValueType(tpe) =>
+          makePrimitiveBox(expr, tpe)
+
+        case tpe: ErasedValueType =>
+          val boxedClass = tpe.valueClazz
+          val ctor = boxedClass.primaryConstructor
+          genNew(boxedClass, ctor, List(expr))
+
+        case _ =>
+          expr
+      }
+    }
+
+    /** Ensures that the value of the given tree is unboxed.
+     *  @param expr Tree to be unboxed if needed.
+     *  @param tpeEnteringPosterasure The type of `expr` as it was entering
+     *    the posterasure phase.
+     */
+    def ensureUnboxed(expr: js.Tree, tpeEnteringPosterasure: Type)(
+        implicit pos: Position): js.Tree = {
+
+      tpeEnteringPosterasure match {
+        case tpe if isPrimitiveValueType(tpe) =>
+          makePrimitiveUnbox(expr, tpe)
+
+        case tpe: ErasedValueType =>
+          val boxedClass = tpe.valueClazz
+          val unboxMethod = boxedClass.derivedValueClassUnbox
+          genApplyMethod(expr, boxedClass, unboxMethod, Nil)
+
+        case _ =>
+          expr
+      }
+    }
 
     /** Gen a boxing operation (tpe is the primitive type) */
-    private def makeBox(expr: js.Tree, tpe: Type)(
+    private def makePrimitiveBox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree =
-      makeBoxUnbox(expr, tpe, "b")
+      makePrimitiveBoxUnbox(expr, tpe, "b")
 
     /** Gen an unboxing operation (tpe is the primitive type) */
-    private def makeUnbox(expr: js.Tree, tpe: Type)(
+    private def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree =
-      makeBoxUnbox(expr, tpe, "u")
+      makePrimitiveBoxUnbox(expr, tpe, "u")
 
     /** Common implementation for `makeBox()` and `makeUnbox()` */
-    private def makeBoxUnbox(expr: js.Tree, tpe: Type, functionPrefix: String)(
+    private def makePrimitiveBoxUnbox(expr: js.Tree, tpe: Type, functionPrefix: String)(
         implicit pos: Position): js.Tree = {
 
       toTypeKind(tpe) match {
@@ -2742,7 +2778,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             expr // box is identity for all non-Char types
           }
         case _ =>
-          abort(s"makeBoxUnbox requires a primitive type, found $tpe at $pos")
+          abort(s"makePrimitiveBoxUnbox requires a primitive type, found $tpe at $pos")
       }
     }
 
@@ -3771,49 +3807,29 @@ abstract class GenJSCode extends plugins.PluginComponent
         params: List[js.Ident], body: js.Tree): js.Tree = {
       implicit val pos = body.pos
 
-      // TODO Can we do this in a nicer way?
-      def needsBoxingOrUnboxing(tpe: Type): Boolean =
-        isPrimitiveValueType(tpe) || tpe.isInstanceOf[ErasedValueType]
-
       val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
 
       val unboxParams = for {
         (paramIdent, paramSym) <- params zip methodType.params
         paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
-        if needsBoxingOrUnboxing(paramTpe)
+        unboxedParam = ensureUnboxed(paramIdent, paramTpe)
+        if unboxedParam ne paramIdent
       } yield {
-        val unboxedParam = paramTpe match {
-          case _ if isPrimitiveValueType(paramTpe) =>
-            makeUnbox(paramIdent, paramTpe)
-          case paramTpe: ErasedValueType =>
-            val boxedClass = paramTpe.valueClazz
-            val unboxMethod = boxedClass.derivedValueClassUnbox
-            genApplyMethod(paramIdent, boxedClass, unboxMethod, Nil)
-        }
         js.Assign(paramIdent, unboxedParam)
       }
 
       val returnStat = {
         implicit val pos = body.pos
         val resultType = methodType.resultType
-        if (needsBoxingOrUnboxing(resultType)) {
-          body match {
-            case js.Return(expr, None) =>
-              val boxedExpr = resultType match {
-                case _ if isPrimitiveValueType(resultType) =>
-                  makeBox(expr, resultType)
-                case resultType: ErasedValueType =>
-                  val boxedClass = resultType.valueClazz
-                  val ctor = boxedClass.primaryConstructor
-                  genNew(boxedClass, ctor, List(expr))
-              }
-              js.Return(boxedExpr)
-            case _ =>
-              assert(resultType.typeSymbol == UnitClass)
-              js.Block(body, js.Return(makeBox(js.Undefined(), resultType)))
-          }
-        } else {
-          body
+        body match {
+          case js.Return(expr, None) =>
+            js.Return(ensureBoxed(expr, resultType))
+          case _ =>
+            assert(resultType.typeSymbol == UnitClass)
+            /* In theory we should return a boxed () value, but that is the
+             * undefined value, which is returned automatically in
+             * JavaScript when there is no return statement. */
+            body
         }
       }
 
