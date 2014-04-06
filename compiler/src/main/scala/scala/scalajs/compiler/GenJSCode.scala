@@ -268,14 +268,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           case dd: DefDef =>
             val sym = dd.symbol
+            generatedMembers ++= genMethod(dd)
 
             if (jsInterop.isExport(sym)) {
-              generatedMembers += genExportForwarder(dd)
               // We add symbols that we have to export here. This way we also
               // get inherited stuff that is implemented in this class.
               exportedSymbols += sym
-            } else {
-              generatedMembers ++= genMethod(dd)
             }
 
             currentMethodInfoBuilder = null
@@ -455,11 +453,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body foreach gen
 
           case dd: DefDef =>
-            if (jsInterop.isExport(dd.symbol))
-              generatedMethods += genExportForwarder(dd)
-            else
-              generatedMethods ++= genMethod(dd)
-
+            generatedMethods ++= genMethod(dd)
             currentMethodInfoBuilder = null
 
           case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
@@ -873,81 +867,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val body = js.Return(value)
 
       js.MethodDef(proxyIdent, jsParams, body)
-    }
-
-    /** Generate a method definition for an export forwarder. This is similar
-     *  to genMethod but does not handle tail recursion and removes any boxing
-     *  introduced by the erasure phase.
-     */
-    def genExportForwarder(dd: DefDef) = {
-      implicit val pos = dd.pos
-      val sym = dd.symbol
-
-      // Prepare params
-      val vparamss = dd.vparamss
-
-      assert(vparamss.isEmpty || vparamss.tail.isEmpty,
-          "Malformed parameter list: " + vparamss)
-      val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
-
-      val methodIdent = encodeMethodSym(sym)
-
-      currentMethodInfoBuilder =
-        currentClassInfoBuilder.addMethod(methodIdent.name)
-
-      val jsParams =
-        for (param <- params)
-          yield encodeLocalSym(param, freshName)(param.pos)
-
-      // Prepare RHS
-      def isBox(sym: Symbol) = currentRun.runDefinitions.isBox(sym)
-
-      def genFwdApply(tree: Tree) = tree match {
-        case Apply(fun @ Select(receiver, _), arglist) =>
-          // If the forwarder is inherited from a trait, we call the
-          // implementation class and therefore have `this` as additional
-          // argument to the call.
-          // If we are in the implementation class, we get a this too much
-          // and have to drop it (it's used as the receiver)
-          val fwdJsParams = {
-            if (arglist.size == jsParams.size) jsParams
-            else if (arglist.size < jsParams.size) jsParams.tail
-            else js.This() :: jsParams
-          }
-
-          assert(fwdJsParams.size == arglist.size)
-
-          genApplyMethod(
-              genExpr(receiver),
-              receiver.tpe,
-              encodeMethodSym(fun.symbol),
-              fwdJsParams)
-        case _ => abort("Unexpected tree")
-      }
-
-      val jsRhs = dd.rhs match {
-        // Unwrap boxes
-        case Apply(fun, List(body)) if isBox(fun.symbol) =>
-          js.Return(genFwdApply(body))
-        // Unwrap boxes to ValueClasses
-        case Apply(Select(New(_), _), List(body)) =>
-          // Unfortunately, isDerivedValueClass does not work here. We
-          // just assume that no one messed with our trees (no one
-          // should) and therefore this can only a ValueClass box.
-          js.Return(genFwdApply(body))
-        // Drop boxed units
-        case Block(List(body), expr) if expr.symbol == BoxedUnit_UNIT =>
-          exprToStat(genFwdApply(body))
-        // Normal case (no boxing happened)
-        // Note that we do not need to handle unit return specially here,
-        // since they are always boxed.
-        case body: Apply =>
-          js.Return(genFwdApply(body))
-        case _ =>
-          abort("Unexpected tree")
-      }
-
-      js.MethodDef(methodIdent, jsParams, jsRhs)
     }
 
     // Generate a module accessor ----------------------------------------------
@@ -3094,8 +3013,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  come into play:
      *  * Operator methods are translated to JS operators (not method calls)
      *  * apply is translated as a function call, i.e. o() instead of o.apply()
-     *  * Some methods of java.lang.String are given an alternative name
-     *    (TODO: consider them as primitives instead?)
      *  * Scala varargs are turned into JS varargs (see genPrimitiveJSArgs())
      *  * Getters and parameterless methods are translated as Selects
      *  * Setters are translated to Assigns of Selects
@@ -3118,20 +3035,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         sym.hasAnnotation(JSNameAnnotation) ||
         sym.hasAnnotation(JSBracketAccessAnnotation)
 
-      def paramType(index: Int) = sym.tpe.params(index).tpe
-
-      def charToString(arg: js.Tree) = {
-        val jsString = js.BracketSelect(envField("g"), js.StringLiteral("String"))
-        js.ApplyMethod(jsString, js.StringLiteral("fromCharCode"), List(arg))
-      }
-
-      def charSeqToString(arg: js.Tree) =
-        js.ApplyMethod(arg, js.Ident("toString"), Nil)
-
-      def stringLength(arg: js.Tree) =
-        js.BracketSelect(arg, js.StringLiteral("length"))
-
-      funName match {
+      val boxedResult = funName match {
         case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
           assert(argc == 0)
           js.UnaryOp(funName.substring(funName.length-1), receiver)
@@ -3204,6 +3108,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
       }
+
+      boxedResult match {
+        case js.UndefinedParam() => boxedResult
+        case _ =>
+          ensureUnboxed(boxedResult,
+              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+      }
     }
 
     /** Gen JS code for new java.lang.String(...)
@@ -3215,7 +3126,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(_, _), args0) = tree
 
       val ctor = fun.symbol
-      val js.ArrayConstr(args) = genPrimitiveJSArgs(ctor, args0)
+      val args = args0 map genExpr
 
       // Filter members of target module for matching member
       val compMembers = for {
@@ -3262,7 +3173,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Deconstruct tree and create receiver and argument JS expressions
       val Apply(Select(receiver0, _), args0) = tree
       val receiver = genExpr(receiver0)
-      val js.ArrayConstr(args) = genPrimitiveJSArgs(sym, args0)
+      val args = args0 map genExpr
 
       // Get implementation from RuntimeString trait
       val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
@@ -3357,7 +3268,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      for ((arg, wasRepeated) <- args zip wereRepeated) {
+      val paramTpes = enteringPhase(currentRun.posterasurePhase) {
+        for (param <- sym.tpe.params)
+          yield param.tpe
+      }
+
+      for (((arg, wasRepeated), tpe) <- (args zip wereRepeated) zip paramTpes) {
         if (wasRepeated) {
           genPrimitiveJSRepeatedParam(arg) match {
             case js.ArrayConstr(jsArgs) =>
@@ -3368,7 +3284,12 @@ abstract class GenJSCode extends plugins.PluginComponent
               reversedParts ::= jsArgArray
           }
         } else {
-          reversedPartUnderConstruction ::= genExpr(arg)
+          val unboxedArg = genExpr(arg)
+          val boxedArg = unboxedArg match {
+            case js.UndefinedParam() => unboxedArg
+            case _                   => ensureBoxed(unboxedArg, tpe)
+          }
+          reversedPartUnderConstruction ::= boxedArg
         }
       }
       closeReversedPartUnderConstruction()

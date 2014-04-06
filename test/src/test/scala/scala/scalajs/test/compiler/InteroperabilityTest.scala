@@ -246,6 +246,68 @@ object InteroperabilityTest extends JasmineTest {
       expect(x.theValue).toEqual(1)
     }
 
+    it("should unbox Chars received from calling a JS interop method") {
+      trait InteroperabilityTestCharResult extends js.Object {
+        def get(): Char = ???
+      }
+
+      val obj = js.eval("""
+        var obj = {
+          get: function() { return JSUtils().stringToChar('e'); }
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestCharResult]
+
+      expect(obj.get().toInt).toEqual('e'.toInt)
+    }
+
+    it("should box Chars given to a JS interop method") {
+      trait InteroperabilityTestCharParam extends js.Object {
+        def twice(c: Char): String = ???
+      }
+
+      val obj = js.eval("""
+        var obj = {
+          twice: function(c) { c = JSUtils().charToString(c); return c+c; }
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestCharParam]
+
+      expect(obj.twice('x')).toEqual("xx")
+    }
+
+    it("should unbox value classes received from calling a JS interop method") {
+      trait InteroperabilityTestValueClassResult extends js.Object {
+        def test(vc: Any): SomeValueClass = ???
+      }
+
+      val obj = js.eval("""
+        var obj = {
+          test: function(vc) { return vc; }
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestValueClassResult]
+
+      val r = obj.test(new SomeValueClass(5))
+      expect(r.i).toEqual(5)
+    }
+
+    it("should box value classes given to a JS interop method") {
+      trait InteroperabilityTestValueClassParam extends js.Object {
+        def stringOf(vc: SomeValueClass): String = ???
+      }
+
+      val obj = js.eval("""
+        var obj = {
+          stringOf: function(vc) { return vc.toString(); }
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestValueClassParam]
+
+      val vc = new SomeValueClass(7)
+      expect(obj.stringOf(vc)).toEqual("SomeValueClass(7)")
+    }
+
   }
 }
 
@@ -274,4 +336,8 @@ object InteroperabilityTestTopLevel extends js.Object {
 object InteroperabilityTestGlobalScope extends js.GlobalScope {
   var interoperabilityTestGlobalScopeValue: String = ???
   def interoperabilityTestGlobalScopeValueAsInt(): Int = ???
+}
+
+class SomeValueClass(val i: Int) extends AnyVal {
+  override def toString(): String = s"SomeValueClass($i)"
 }

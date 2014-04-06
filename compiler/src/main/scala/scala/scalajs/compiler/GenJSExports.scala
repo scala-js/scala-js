@@ -273,7 +273,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             if (ps.size <= paramIndex || isRepeated(ps(paramIndex))) {
               assert(isRepeated(ps.last))
               repeatedToSingle(ps.last.tpe)
-            } else ps(paramIndex).tpe
+            } else {
+              enteringPhase(currentRun.posterasurePhase) {
+                ps(paramIndex).tpe
+              }
+            }
           }
 
           typeTestForTpe(tpe)
@@ -308,6 +312,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             }
 
             typeTest match {
+              case HelperTypeTest(helperName, _) =>
+                js.If(orUndef(genCallHelper(helperName, param)),
+                    genSubAlts, elsep)
+
               case TypeOfTypeTest(typeString) =>
                 js.If(orUndef {
                   js.BinaryOp("===", js.UnaryOp("typeof", param),
@@ -347,66 +355,70 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // optional repeated parameter list
       val jsVarArg = repeatedTpe map { tpe =>
-        // Construct a new JSArraySeq with optional boxing
+        // Construct a new JSArraySeq
         genNew(JSArraySeqClass, JSArraySeq_ctor,
-          List(js.Ident("arguments"), js.IntLiteral(normalArgc),
-              genBoxFunction(tpe)))
+          List(js.Ident("arguments"), js.IntLiteral(normalArgc)))
       }
 
       // normal arguments
       val jsArgs = genFormalArgs(normalArgc)
 
-      // Generate JS code to arguments using default getters
-      val jsDefaultArgPrep = for {
-        (jsArg, (param, i)) <- jsArgs zip sym.tpe.params.zipWithIndex
-        if param.hasFlag(Flags.DEFAULTPARAM)
+      // Generate JS code to prepare arguments (default getters and unboxes)
+      val funTpe = enteringPhase(currentRun.posterasurePhase)(sym.tpe)
+      val jsArgPrep = for {
+        (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
       } yield {
         import js.TreeDSL._
 
-        // If argument is undefined, call default getter
-        IF (jsArg === js.Undefined()) {
-          val trgSym = {
-            if (sym.isClassConstructor) sym.owner.companionModule
-            else sym.owner
+        // Code to unbox the argument (if it is defined)
+        val jsUnboxArg = {
+          val unboxedArg = ensureUnboxed(jsArg,
+              enteringPhase(currentRun.posterasurePhase)(param.tpe))
+          if (unboxedArg eq jsArg)
+            js.Skip()
+          else
+            jsArg := unboxedArg
+        }
+
+        // If argument is undefined and there is a default getter, call it
+        if (param.hasFlag(Flags.DEFAULTPARAM)) {
+          IF (jsArg === js.Undefined()) {
+            val trgSym = {
+              if (sym.isClassConstructor) sym.owner.companionModule
+              else sym.owner
+            }
+            val defaultGetter = trgSym.tpe.member(
+                nme.defaultGetterName(sym.name, i+1))
+
+            assert(defaultGetter.exists,
+                s"need default getter for method ${sym.fullName}")
+            assert(!defaultGetter.isOverloaded)
+
+            val trgTree = {
+              if (sym.isClassConstructor) genLoadModule(trgSym)
+              else js.This()
+            }
+
+            // Pass previous arguments to defaultGetter
+            jsArg := genApplyMethod(trgTree, trgSym, defaultGetter,
+                jsArgs.take(defaultGetter.tpe.params.size))
+          } ELSE {
+            // Otherwise, unbox the argument
+            jsUnboxArg
           }
-          val defaultGetter = trgSym.tpe.member(
-              nme.defaultGetterName(sym.name, i+1))
-
-          assert(defaultGetter.exists,
-              s"need default getter for method ${sym.fullName}")
-          assert(!defaultGetter.isOverloaded)
-
-          val trgTree = {
-            if (sym.isClassConstructor) genLoadModule(trgSym)
-            else js.This()
-          }
-
-          // Pass previous arguments to defaultGetter
-          jsArg := genApplyMethod(trgTree, trgSym, defaultGetter,
-              jsArgs.take(defaultGetter.tpe.params.size))
-
-        } ELSE js.Skip() // inference for withoutElse doesn't work
+        } else {
+          // Otherwise, it is always the unboxed argument
+          jsUnboxArg
+        }
       }
 
       val jsReturn = js.Return {
-        genApplyMethod(js.This(), sym.owner, sym, jsArgs ++ jsVarArg)
+        val call = genApplyMethod(js.This(), sym.owner, sym, jsArgs ++ jsVarArg)
+        ensureBoxed(call,
+            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
 
-      js.Block(jsDefaultArgPrep :+ jsReturn)
-    }
-
-    private def genBoxFunction(tpe: Type)(implicit pos: Position) = {
-      def noBoxFun = {
-        val arg = js.Ident("x", None)
-        js.Function(arg :: Nil, js.Return(arg))
-      }
-
-      toTypeKind(tpe) match {
-        case kind @ CharKind =>
-          js.Select(environment, js.Ident("b" + kind.primitiveCharCode))
-        case _ =>
-          noBoxFun
-      }
+      js.Block(jsArgPrep :+ jsReturn)
     }
 
   }
@@ -440,6 +452,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private sealed abstract class RTTypeTest
 
+  private final case class HelperTypeTest(helperName: String,
+      rank: Int) extends RTTypeTest
+
   private final case class TypeOfTypeTest(typeString: String) extends RTTypeTest
 
   private final case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
@@ -462,11 +477,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       override def lteq(lhs: RTTypeTest, rhs: RTTypeTest): Boolean = {
         (lhs, rhs) match {
+          // NoTypeTest is always last
           case (_, NoTypeTest) => true
           case (NoTypeTest, _) => false
 
+          // undefined test is always first
+          case (TypeOfTypeTest("undefined"), _) => true
+          case (_, TypeOfTypeTest("undefined")) => false
+
+          case (HelperTypeTest(_, rank1), HelperTypeTest(_, rank2)) =>
+            rank1 <= rank2
+          case (_:HelperTypeTest, _) => true
+          case (_, _:HelperTypeTest) => false
+
           case (TypeOfTypeTest(s1), TypeOfTypeTest(s2)) =>
-            s1 == "undefined" || (s1 <= s2) && s2 != "undefined"
+            s1 <= s2
 
           case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
             t1 <:< t2
@@ -502,25 +527,35 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   }
 
   private def typeTestForTpe(tpe: Type): RTTypeTest = {
-    toTypeKind(tpe) match {
-      case UNDEFINED => TypeOfTypeTest("undefined")
-      case LongKind => InstanceOfTypeTest(RuntimeLongClass.tpe)
-      case _:INT | _:FLOAT => TypeOfTypeTest("number")
-      case BOOL => TypeOfTypeTest("boolean")
+    tpe match {
+      case tpe: ErasedValueType =>
+        InstanceOfTypeTest(tpe.valueClazz.typeConstructor)
 
-      case REFERENCE(cls) =>
-        if (cls == StringClass) TypeOfTypeTest("string")
-        else if (isRawJSType(tpe)) {
-          cls match {
-            case JSNumberClass => TypeOfTypeTest("number")
-            case JSBooleanClass => TypeOfTypeTest("boolean")
-            case JSStringClass => TypeOfTypeTest("string")
-            case JSUndefinedClass => TypeOfTypeTest("undefined")
-            case _ => NoTypeTest
-          }
-        } else InstanceOfTypeTest(tpe)
+      case _ =>
+        (toTypeKind(tpe): @unchecked) match {
+          case UndefinedKind => TypeOfTypeTest("undefined")
+          case BooleanKind   => TypeOfTypeTest("boolean")
+          case CharKind      => InstanceOfTypeTest(boxedClass(CharClass).tpe)
+          case ByteKind      => HelperTypeTest("isByte", 0)
+          case ShortKind     => HelperTypeTest("isShort", 1)
+          case IntKind       => HelperTypeTest("isInt", 2)
+          case LongKind      => InstanceOfTypeTest(RuntimeLongClass.tpe)
+          case _:FLOAT       => TypeOfTypeTest("number")
 
-      case ARRAY(_) => InstanceOfTypeTest(tpe)
+          case REFERENCE(cls) =>
+            if (cls == StringClass) TypeOfTypeTest("string")
+            else if (isRawJSType(tpe)) {
+              cls match {
+                case JSNumberClass => TypeOfTypeTest("number")
+                case JSBooleanClass => TypeOfTypeTest("boolean")
+                case JSStringClass => TypeOfTypeTest("string")
+                case JSUndefinedClass => TypeOfTypeTest("undefined")
+                case _ => NoTypeTest
+              }
+            } else InstanceOfTypeTest(tpe)
+
+          case ARRAY(_) => InstanceOfTypeTest(tpe)
+        }
     }
   }
 
