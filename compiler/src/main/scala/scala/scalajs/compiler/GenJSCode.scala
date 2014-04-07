@@ -31,6 +31,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     val global: GenJSCode.this.global.type
   }
 
+  val scalaJSOpts: ScalaJSOptions
+
   import global._
   import jsAddons._
   import rootMirror._

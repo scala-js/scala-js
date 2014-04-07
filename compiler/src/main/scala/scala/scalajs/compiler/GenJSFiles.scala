@@ -27,12 +27,13 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     var sourceMapOutput: PrintWriter = null
     try {
       val printer =
-        if (true) { // TODO Some option
+        if (!scalaJSOpts.noSourceMap) {
           // With source map
           sourceMapFile = getFileFor(cunit, sym, ".js.map")
           sourceMapOutput = bufferedPrintWriter(sourceMapFile)
-          new JSTreePrinterWithSourceMap(output, sourceMapOutput,
-              outfile.name)
+          val smWriter = new SourceMapWriter(sourceMapOutput, outfile.name,
+              scalaJSOpts.relSourceMap, scalaJSOpts.absSourceMap)
+          new JSTreePrinterWithSourceMap(output, smWriter)
         } else {
           // Without source map
           new JSTreePrinter(output)
