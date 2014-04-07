@@ -50,11 +50,16 @@ matrix:
       env:
         - KIND=main
         - PUBLISH_ENABLED=true
+    - jdk: openjdk6
+      scala: 2.11.0-RC4
+      env:
+        - KIND=main
+        - PUBLISH_ENABLED=true
     - jdk: oraclejdk7
       scala: 2.10.2
       env:
         - KIND=main
     - jdk: oraclejdk7
-      scala: 2.11.0-RC3
+      scala: 2.11.0-RC4
       env:
         - KIND=main
