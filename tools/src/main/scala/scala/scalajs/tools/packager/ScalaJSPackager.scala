@@ -10,6 +10,7 @@
 package scala.scalajs.tools.packager
 
 import java.io._
+import java.net.URI
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
@@ -45,7 +46,7 @@ class ScalaJSPackager {
         new JSFileBuilderWithSourceMap(name,
             writer.contentWriter,
             writer.sourceMapWriter,
-            relativizeSourceMapBasePath)
+            relativizeSourceMapBase)
       else
         new JSFileBuilder(name, writer.contentWriter)
     }
@@ -74,7 +75,7 @@ object ScalaJSPackager {
       /** Ask to produce source map for the output. */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */
-      relativizeSourceMapBasePath: Option[String] = None
+      relativizeSourceMapBase: Option[URI] = None
   )
 
   private val AncestorCountLine =

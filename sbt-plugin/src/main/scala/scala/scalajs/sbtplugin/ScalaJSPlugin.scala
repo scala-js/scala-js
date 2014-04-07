@@ -121,8 +121,8 @@ object ScalaJSPlugin extends Plugin {
             val classpathEntries =
               ScalaJSClasspathEntries.readEntriesInClasspathPartial(classpath)
             val packager = new ScalaJSPackager
-            val relSourceMapBasePath =
-              if (relativeSourceMaps.value) Some(output.getParent)
+            val relSourceMapBase =
+              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
               else None
 
             val outputWriter = new FileVirtualJSFileWriter(output)
@@ -134,7 +134,7 @@ object ScalaJSPlugin extends Plugin {
                       name = output.name,
                       writer = outputWriter,
                       wantSourceMap = (packageJSKey != packageExternalDepsJS),
-                      relativizeSourceMapBasePath = relSourceMapBasePath),
+                      relativizeSourceMapBase = relSourceMapBase),
                   s.log)
             } finally {
               outputWriter.close()

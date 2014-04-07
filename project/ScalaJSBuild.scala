@@ -83,6 +83,17 @@ object ScalaJSBuild extends Build {
       autoCompilerPlugins := true
   )
 
+  val scalaJSSourceMapSettings = scalacOptions ++= {
+    if (scalaJSIsSnapshotVersion) Seq()
+    else Seq(
+      // Link source maps to github sources
+      "-P:scalajs:relSourceMap:" + root.base.toURI,
+      "-P:scalajs:absSourceMap:" +
+      "https://raw.githubusercontent.com/scala-js/scala-js/v" +
+      scalaJSVersion + "/"
+    )
+  }
+
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
@@ -229,7 +240,8 @@ object ScalaJSBuild extends Build {
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
-          scalacOptions += "-Yskip:cleanup,icode,jvm"
+          scalacOptions += "-Yskip:cleanup,icode,jvm",
+          scalaJSSourceMapSettings
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -252,7 +264,14 @@ object ScalaJSBuild extends Build {
             // Do not generate .class files
             "-Yskip:cleanup,icode,jvm",
             // Tell plugin to hack fix bad classOf trees
-            "-P:scalajs:fixClassOf"),
+            "-P:scalajs:fixClassOf",
+            // Link source maps to github sources
+            "-P:scalajs:relSourceMap:" +
+            fetchedScalaSourceDir.value.toURI,
+            "-P:scalajs:absSourceMap:" +
+            "https://raw.githubusercontent.com/scala/scala/v" +
+            scalaVersion.value + "/"
+            ),
 
           fetchedScalaSourceDir := (
             baseDirectory.value / "fetchedSources" /
@@ -380,7 +399,8 @@ object ScalaJSBuild extends Build {
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
           delambdafySetting,
-          scalacOptions += "-Yskip:cleanup,icode,jvm"
+          scalacOptions += "-Yskip:cleanup,icode,jvm",
+          scalaJSSourceMapSettings
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -391,7 +411,8 @@ object ScalaJSBuild extends Build {
       base = file("library"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
-          delambdafySetting
+          delambdafySetting,
+          scalaJSSourceMapSettings
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -427,7 +448,8 @@ object ScalaJSBuild extends Build {
 
           libraryDependencies ++= Seq(
             "org.webjars" % "jasmine" % "1.3.1"
-          )
+          ),
+          scalaJSSourceMapSettings
       )
   ).dependsOn(compiler % "plugin", library)
 

@@ -26,12 +26,12 @@ object SourceMapCat {
     val outputWriter = new PrintWriter(output, "UTF-8")
     val sourceMapWriter = new PrintWriter(changeExt(output, ".js", ".js.map"))
     try {
-      val relativizeSourceMapBasePath =
-        if (relativizeSourceMapPaths) Some(output.getParent)
+      val relativizeSourceMapBase =
+        if (relativizeSourceMapPaths) Some(output.getParentFile.toURI)
         else None
 
       val builder = new JSFileBuilderWithSourceMap(output.getName,
-          outputWriter, sourceMapWriter, relativizeSourceMapBasePath)
+          outputWriter, sourceMapWriter, relativizeSourceMapBase)
 
       for (input <- inputs)
         builder.addFile(FileVirtualJSFile(input))
