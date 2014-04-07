@@ -107,7 +107,8 @@ object ScalaJSBuild extends Build {
       "2.10.4",
       "2.11.0-M7",
       "2.11.0-M8",
-      "2.11.0-RC3"
+      "2.11.0-RC3",
+      "2.11.0-RC4"
     )
   }
 
