@@ -1,0 +1,4 @@
+# The tests in this file should pass but have never passed so far
+# use scala.tools.partest.scalajs.testunknownonly to only run tests
+# which are neither in BuglistedTests.txt, WhitelistedTests.txt or
+# BlacklistedTests.txt
