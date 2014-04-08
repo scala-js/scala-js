@@ -8,6 +8,8 @@ package scala.scalajs.compiler
 import scala.tools.nsc._
 
 import java.io.PrintWriter
+import java.net.URI
+
 import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
 import scala.reflect.internal.util.SourceFile
@@ -398,7 +400,11 @@ trait JSPrinters { self: JSGlobalAddons =>
       "abcdefghijklmnopqrstuvwxyz" +
       "0123456789+/"
 
-  class SourceMapWriter(val out: PrintWriter, val generatedFile: String) {
+  class SourceMapWriter(
+      val out: PrintWriter,
+      val generatedFile: String,
+      val relativizeURI: Option[URI],
+      val absolutizeURI: Option[URI]) {
     private val sources = new ListBuffer[String]
     private val _srcToIndex = new HashMap[SourceFile, Int]
 
@@ -432,11 +438,15 @@ trait JSPrinters { self: JSGlobalAddons =>
       source.file.file match {
         case null => source.path
         case file =>
-          val uri = file.toURI.toASCIIString
-          if (uri.startsWith("file:/") && uri.charAt(6) != '/')
-            "file:///" + uri.substring(6)
+          val uri = file.toURI
+          val relUri = relativizeURI.map(_.relativize(uri)).getOrElse(uri)
+          val absUri = absolutizeURI.map(_.resolve(relUri)).getOrElse(relUri)
+
+          val uriStr = absUri.toASCIIString
+          if (uriStr.startsWith("file:/") && uriStr.charAt(6) != '/')
+            "file:///" + uriStr.substring(6)
           else
-            uri
+            uriStr
       }
     }
 
@@ -584,10 +594,8 @@ trait JSPrinters { self: JSGlobalAddons =>
   }
 
   class JSTreePrinterWithSourceMap(_out: PrintWriter,
-      val sourceMapOut: PrintWriter,
-      generatedFile: String) extends JSTreePrinter(_out) {
+      sourceMap: SourceMapWriter) extends JSTreePrinter(_out) {
 
-    private val sourceMap = new SourceMapWriter(sourceMapOut, generatedFile)
     private var column = 0
 
     override def printTree(tree: js.Tree): Unit = {

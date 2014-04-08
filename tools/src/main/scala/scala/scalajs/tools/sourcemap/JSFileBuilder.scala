@@ -13,6 +13,7 @@ import scala.annotation.tailrec
 
 import java.io.Writer
 import java.util.regex.Pattern
+import java.net.URI
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
@@ -43,19 +44,17 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
 
 class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     protected val sourceMapWriter: Writer,
-    relativizeSourceMapBasePath: Option[String] = None)
+    relativizeSourceMapBasePath: Option[URI] = None)
     extends JSFileBuilder(n, ow) {
-
-  import JSFileBuilderWithSourceMap._
 
   protected val sourceMapGen: SourceMapGenerator =
     SourceMapGeneratorFactory.getInstance(SourceMapFormat.V3)
 
   protected var totalLineCount = 0
 
-  protected def relPath(path: String): String = {
+  protected def relPath(path: URI): URI = {
     relativizeSourceMapBasePath match {
-      case Some(base) => relativizePath(base, path)
+      case Some(base) => base.relativize(path)
       case None => path
     }
   }
@@ -90,9 +89,9 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
               new FilePosition(startPos.getLine+startLine, startPos.getColumn)
             val offsetEndPos =
               new FilePosition(endPos.getLine+startLine, endPos.getColumn)
-            val relSourceName = relPath(new java.net.URI(sourceName).getPath)
+            val relSourceName = relPath(new URI(sourceName))
 
-            sourceMapGen.addMapping(relSourceName, symbolName,
+            sourceMapGen.addMapping(relSourceName.toASCIIString(), symbolName,
                 sourceStartPos, offsetStartPos, offsetEndPos)
           }
         })
@@ -121,39 +120,5 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     super.complete()
 
     sourceMapGen.appendTo(sourceMapWriter, name)
-  }
-}
-
-object JSFileBuilderWithSourceMap {
-  private def relativizePath(base: String, path: String): String = {
-    import java.io.File
-
-    def getPathSegments(path: String) =
-      path.split(Pattern.quote(File.separator)).toList.filter(_.length > 0).filter(_ != ".")
-        .foldLeft(List[String]()) { (p, s) => if (s == "..") p.tail else s :: p }
-        .reverse
-
-    @tailrec
-    def dropCommonSegments(x: List[String], y: List[String]): (List[String], List[String]) =
-      if ((x == Nil) || (y == Nil) || (x.head != y.head))
-        (x, y)
-      else
-        dropCommonSegments(x.tail, y.tail)
-
-    val absbase = (new File(base)).getAbsolutePath
-    val abspath = (new File(path)).getAbsolutePath
-
-    // On unixes all abs paths start with '/'.
-    // On windows the abs paths starts with drive letter and if the drives
-    // are not the same, there is no relative path. So return abspath.
-    if (absbase(0) == abspath(0)) {
-      val (restofbase, restofpath) =
-        dropCommonSegments(getPathSegments(absbase), getPathSegments(abspath))
-      val relative = List.fill(restofbase.length)("..") ::: restofpath
-
-      relative.mkString(File.separator)
-    } else {
-      abspath
-    }
   }
 }
