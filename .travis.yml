@@ -1,7 +1,7 @@
 language: scala
 script:
-  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc testing/test scalajs-test/test scalajs-test/clean 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-compiler/test reversi/packageJS reversi/optimizeJS; fi
-  - if [[ "$KIND" == "main" && "$PUBLISH_ENABLED" == "true" ]]; then sbt "${SBT_SETUP}" 'set sources in (exampleTesting, Test, ScalaJSKeys.jsEnv) := Seq((ScalaJSKeys.preoptimizeJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test 'set sources in (exampleTesting, Test, ScalaJSKeys.jsEnv) := Seq((ScalaJSKeys.optimizeJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test; fi
+  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc testing/test scalajs-test/test scalajs-test/clean 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-compiler/test reversi/packageJS reversi/fullOptJS; fi
+  - if [[ "$KIND" == "main" && "$PUBLISH_ENABLED" == "true" ]]; then sbt "${SBT_SETUP}" 'set sources in (exampleTesting, Test, ScalaJSKeys.jsEnv) := Seq((ScalaJSKeys.fastOptJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test 'set sources in (exampleTesting, Test, ScalaJSKeys.jsEnv) := Seq((ScalaJSKeys.fullOptJS in (exampleTesting, Test)).value)' ++$TRAVIS_SCALA_VERSION testing/test; fi
   - if [ $KIND == main ]; then sh checksizes.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" scalajs-tools/package scalajs-sbt-plugin/package; fi

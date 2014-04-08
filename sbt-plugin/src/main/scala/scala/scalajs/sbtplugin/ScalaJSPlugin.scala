@@ -31,18 +31,22 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSScalaVersion = "2.10.2"
 
   object ScalaJSKeys {
-    val packageJS = taskKey[Seq[File]]("Package all the compiled .js files")
-    val preoptimizeJS = taskKey[File]("Package and pre-optimize all the compiled .js files in one file")
-    val optimizeJS = taskKey[File]("Package and optimize all the compiled .js files in one file")
+    val packageJS = taskKey[Seq[File]](
+        "Package all the compiled .js files")
+    val fastOptJS = taskKey[File](
+        "Package and fast optimize all the compiled .js files in one file")
+    val fullOptJS = taskKey[File](
+        "Package and fully optimize all the compiled .js files in one file")
 
-    val packageExternalDepsJS = taskKey[Seq[File]]("Package the .js files of external dependencies")
-    val packageInternalDepsJS = taskKey[Seq[File]]("Package the .js files of internal dependencies")
-    val packageExportedProductsJS = taskKey[Seq[File]]("Package the .js files the project")
+    val packageExternalDepsJS = taskKey[Seq[File]](
+        "Package the .js files of external dependencies")
+    val packageInternalDepsJS = taskKey[Seq[File]](
+        "Package the .js files of internal dependencies")
+    val packageExportedProductsJS = taskKey[Seq[File]](
+        "Package the .js files of the project")
 
-    val optimizeJSPrettyPrint = settingKey[Boolean](
-        "Pretty-print the output of optimizeJS")
-    val optimizeJSExterns = taskKey[Seq[File]](
-        "Extern files to use with optimizeJS")
+    val fullOptJSPrettyPrint = settingKey[Boolean](
+        "Pretty-print the output of fullOptJS")
 
     val loggingConsole = taskKey[Option[JSConsole]](
         "The logging console used by the Scala.js jvm environment")
@@ -199,21 +203,21 @@ object ScalaJSPlugin extends Plugin {
           packageExportedProductsJS.value
       ),
 
-      artifactPath in preoptimizeJS :=
-        ((crossTarget in preoptimizeJS).value /
-            ((moduleName in preoptimizeJS).value + "-preopt.js")),
+      artifactPath in fastOptJS :=
+        ((crossTarget in fastOptJS).value /
+            ((moduleName in fastOptJS).value + "-fastopt.js")),
 
-      preoptimizeJS := {
+      fastOptJS := {
         val s = streams.value
-        val classpath = jsClasspath((fullClasspath in preoptimizeJS).value)
-        val output = (artifactPath in preoptimizeJS).value
-        val taskCacheDir = s.cacheDirectory / "preoptimize-js"
+        val classpath = jsClasspath((fullClasspath in fastOptJS).value)
+        val output = (artifactPath in fastOptJS).value
+        val taskCacheDir = s.cacheDirectory / "fastopt-js"
 
         IO.createDirectory(output.getParentFile)
 
         FileFunction.cached(taskCacheDir,
             FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-          s.log.info("Preoptimizing %s ..." format output)
+          s.log.info("Fast optimizing %s ..." format output)
           import ScalaJSOptimizer._
           val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
@@ -238,17 +242,17 @@ object ScalaJSPlugin extends Plugin {
         output
       },
 
-      sources in optimizeJS := Seq(preoptimizeJS.value),
+      sources in fullOptJS := Seq(fastOptJS.value),
 
-      artifactPath in optimizeJS :=
-        ((crossTarget in optimizeJS).value /
-            ((moduleName in optimizeJS).value + "-opt.js")),
+      artifactPath in fullOptJS :=
+        ((crossTarget in fullOptJS).value /
+            ((moduleName in fullOptJS).value + "-opt.js")),
 
-      optimizeJS := {
+      fullOptJS := {
         val s = streams.value
-        val inputs = (sources in optimizeJS).value
-        val output = (artifactPath in optimizeJS).value
-        val taskCacheDir = s.cacheDirectory / "optimize-js"
+        val inputs = (sources in fullOptJS).value
+        val output = (artifactPath in fullOptJS).value
+        val taskCacheDir = s.cacheDirectory / "fullopt-js"
 
         IO.createDirectory(output.getParentFile)
 
@@ -261,16 +265,13 @@ object ScalaJSPlugin extends Plugin {
 
           try {
             optimizer.optimize(
-                Inputs(
-                    sources = inputs map FileVirtualJSFile,
-                    additionalExterns =
-                      optimizeJSExterns.value map FileVirtualJSFile),
+                Inputs(sources = inputs map FileVirtualJSFile),
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
                     // TODO configure source map once we support it
                     wantSourceMap = false,
-                    prettyPrint = optimizeJSPrettyPrint.value),
+                    prettyPrint = fullOptJSPrettyPrint.value),
                 s.log)
           } finally {
             outputWriter.close()
@@ -334,7 +335,7 @@ object ScalaJSPlugin extends Plugin {
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
           packageExportedProductsJS,
-          preoptimizeJS, optimizeJS) map { packageJSTask =>
+          fastOptJS, fullOptJS) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
   )
@@ -349,8 +350,7 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps := false,
-      optimizeJSPrettyPrint := false,
-      optimizeJSExterns := Seq(),
+      fullOptJSPrettyPrint := false,
 
       defaultLoggingConsole
   )
