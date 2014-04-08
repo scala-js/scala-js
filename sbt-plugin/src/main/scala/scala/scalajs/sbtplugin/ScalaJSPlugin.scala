@@ -276,7 +276,13 @@ object ScalaJSPlugin extends Plugin {
         } (inputs.toSet)
 
         output
-      }
+      },
+
+      console <<= console.dependsOn(Def.task(
+          streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
+              "are running a JVM REPL. JavaScript things won't work.")
+      ))
+
   )
 
   val scalaJSRunSettings = Seq(
