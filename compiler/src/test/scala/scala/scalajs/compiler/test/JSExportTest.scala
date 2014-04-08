@@ -80,16 +80,16 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     class Confl {
       @JSExport
-      def rtType(x: Short) = x
+      def rtType(x: Float) = x
 
       @JSExport
-      def rtType(x: Int) = x
+      def rtType(x: Double) = x
     }
     """ hasErrors
     """
       |newSource1.scala:7: error: Cannot disambiguate overloads for exported method $js$exported$meth$rtType with types
-      |  (x: Int)Object
-      |  (x: Short)Object
+      |  (x: Double)Object
+      |  (x: Float)Object
       |      @JSExport
       |       ^
     """
@@ -130,15 +130,15 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     class Confl {
       @JSExport
-      def foo(x: Int, y: String)(z: Int = 1) = x
+      def foo(x: Float, y: String)(z: Int = 1) = x
       @JSExport
-      def foo(x: Short, y: String)(z: String*) = x
+      def foo(x: Double, y: String)(z: String*) = x
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: Cannot disambiguate overloads for exported method $js$exported$meth$foo with types
-      |  (x: Int, y: String, z: Int)Object
-      |  (x: Short, y: String, z: Seq)Object
+      |  (x: Float, y: String, z: Int)Object
+      |  (x: Double, y: String, z: Seq)Object
       |      @JSExport
       |       ^
     """

@@ -240,8 +240,27 @@ object ExportsTest extends JasmineTest {
       val foo = (new Foo).asInstanceOf[js.Dynamic]
       expect(js.typeOf(foo.vc)).toBe("function")
 
-      // Unboxed return value
-      expect(foo.vc(5)).toBe(5)
+      // The result should be a boxed SomeValueClass
+      val result = foo.vc(5)
+      expect(js.typeOf(result)).toEqual("object")
+      expect((result: Any).isInstanceOf[SomeValueClass]).toBeTruthy
+      expect((result: Any) == (new SomeValueClass(5))).toBeTruthy
+    }
+
+    it("should accept boxed value classes as parameter") {
+      class Foo {
+        @JSExport
+        def vc(x: SomeValueClass) = x.i
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.vc)).toBe("function")
+
+      // The parameter should be a boxed SomeValueClass
+      val valueCls = new SomeValueClass(7)
+      val result = foo.vc(valueCls.asInstanceOf[js.Any])
+      expect(js.typeOf(result)).toEqual("number")
+      expect(result).toEqual(7)
     }
 
     it("should offer exports for overridden methods with refined return type") {
@@ -390,18 +409,17 @@ object ExportsTest extends JasmineTest {
     }
 
 
-    xit("should correctly box repeated parameter lists with value classes") {
-      // Only in v0.5
+    it("should correctly box repeated parameter lists with value classes") {
       class A {
         @JSExport
-        def vc(vcs: SomeValueClass*) = vcs.map(_.i).sum
+        def foo(vcs: SomeValueClass*) = vcs.map(_.i).sum
       }
 
-      val vc1 = new SomeValueClass(1).asInstanceOf[js.Any]
-      val vc2 = new SomeValueClass(2).asInstanceOf[js.Any]
+      val vc1 = new SomeValueClass(1)
+      val vc2 = new SomeValueClass(2)
       val a = (new A).asInstanceOf[js.Dynamic]
 
-      expect(a.foo(vc1, vc2)).toEqual(3)
+      expect(a.foo(vc1.asInstanceOf[js.Any], vc2.asInstanceOf[js.Any])).toEqual(3)
     }
 
     it("should offer exports for objects with implicit name") {
@@ -495,6 +513,59 @@ object ExportsTest extends JasmineTest {
 
       expect(foo.foo(1)).toEqual(1)
       expect(foo.foo(trueJsLong)).toEqual(2)
+    }
+
+    it("should return boxed Chars") {
+      class Foo {
+        @JSExport
+        def bar(x: Int): Char = x.toChar
+      }
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      val funs = js.eval("""
+          var funs = {
+            testIsChar: function(foo) { return JSUtils().isChar(foo.bar(65)); },
+            testCharValue: function(foo) { return JSUtils().charToString(foo.bar(65)); }
+          }; funs;
+          """).asInstanceOf[js.Dynamic]
+
+      expect(funs.testIsChar(foo)).toBeTruthy
+      expect(funs.testCharValue(foo)).toEqual("A")
+    }
+
+    it("should take boxed Chars as parameter") {
+      class Foo {
+        @JSExport
+        def bar(x: Char): Int = x.toInt
+      }
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      val f = js.eval("""
+          var f = function(foo) { return foo.bar(JSUtils().stringToChar('e')); };
+          f;
+          """).asInstanceOf[js.Dynamic]
+
+      expect(f(foo)).toEqual('e'.toInt)
+    }
+
+    it("should be able to disambiguate an Int from a Char") {
+      class Foo {
+        @JSExport
+        def bar(x: Char): String = "char: "+x
+        @JSExport
+        def bar(x: Int): String = "int: "+x
+      }
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      val funs = js.eval("""
+          var funs = {
+            testChar: function(foo) { return foo.bar(JSUtils().stringToChar('S')); },
+            testInt: function(foo) { return foo.bar(68); }
+          }; funs;
+          """).asInstanceOf[js.Dynamic]
+
+      expect(funs.testChar(foo)).toEqual("char: S")
+      expect(funs.testInt(foo)).toEqual("int: 68")
     }
 
     it("should support exporting under 'org' namespace - #364") {
