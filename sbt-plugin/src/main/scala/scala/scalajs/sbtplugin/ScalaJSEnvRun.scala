@@ -27,6 +27,7 @@ class ScalaJSEnvRun(env: JSEnv) extends ScalaRun {
 
     log.info("Running " + mainClass + options.mkString(" ", " ", ""))
     log.debug(s"with classpath $classpath")
+    log.debug(s"with JSEnv of type ${env.getClass()}")
 
     try {
       // Generate the most specific JSClasspath we can

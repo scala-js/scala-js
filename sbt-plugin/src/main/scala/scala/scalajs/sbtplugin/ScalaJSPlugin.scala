@@ -22,6 +22,7 @@ import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import scala.scalajs.tools.env._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
+import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 
 import scala.scalajs.sbtplugin.testing.TestFramework
 
@@ -50,6 +51,12 @@ object ScalaJSPlugin extends Plugin {
 
     val loggingConsole = taskKey[Option[JSConsole]](
         "The logging console used by the Scala.js jvm environment")
+
+    val preLinkJSEnv = settingKey[JSEnv](
+        "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files")
+    val postLinkJSEnv = settingKey[JSEnv](
+        "The jsEnv used to execute after linking (packaging / optimizing) Scala.js files")
+
     val jsEnv = settingKey[JSEnv](
         "A JVM-like environment where Scala.js files can be run and tested")
 
@@ -61,6 +68,11 @@ object ScalaJSPlugin extends Plugin {
 
     val relativeSourceMaps = settingKey[Boolean](
         "Make the referenced paths on source maps relative to target path")
+
+    // Task keys to re-wire sources and run with other VM
+    val packageStage = taskKey[Unit]("Run stuff after packageJS")
+    val fastOptStage = taskKey[Unit]("Run stuff after fastOptJS")
+    val fullOptStage = taskKey[Unit]("Run stuff after fullOptJS")
   }
 
   import ScalaJSKeys._
@@ -194,9 +206,6 @@ object ScalaJSPlugin extends Plugin {
           packageExportedProductsJS, "", 2)
   ) ++ Seq(
 
-      // Default JS environment is Rhino
-      jsEnv := new RhinoJSEnv,
-
       packageJS := (
           packageExternalDepsJS.value ++
           packageInternalDepsJS.value ++
@@ -286,30 +295,62 @@ object ScalaJSPlugin extends Plugin {
       console <<= console.dependsOn(Def.task(
           streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
               "are running a JVM REPL. JavaScript things won't work.")
-      ))
+      )),
+
+      // Default jsEnv
+      jsEnv := preLinkJSEnv.value,
+
+      // Wire jsEnv and sources for other stages
+      jsEnv in packageStage := postLinkJSEnv.value,
+      jsEnv in fastOptStage := postLinkJSEnv.value,
+      jsEnv in fullOptStage := postLinkJSEnv.value,
+
+      exportedProducts in packageStage := Attributed.blankSeq( packageJS.value),
+      exportedProducts in fastOptStage := Seq(Attributed.blank(fastOptJS.value)),
+      exportedProducts in fullOptStage := Seq(Attributed.blank(fullOptJS.value))
 
   )
 
+  val scalaJSStageSettings = Seq(
+    fullClasspath <<= Classpaths.concatDistinct(exportedProducts,
+        dependencyClasspath in (This, This, Global)),
+
+    // Dummy task needs dummy tag (used for concurrency restrictions)
+    tags := Seq()
+  )
+
+  // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       scalaJSSetupRunner := true,
-      runner in run <<= Def.taskDyn {
+      runner <<= Def.taskDyn {
         if (scalaJSSetupRunner.value)
           Def.task(new ScalaJSEnvRun(jsEnv.value))
         else
-          runner in run
-      }
+          runner
+      },
+
+      // Although these are the defaults, we add them again since they
+      // will be filtered
+      run <<= Defaults.runTask(fullClasspath, mainClass, runner),
+      runMain <<= Defaults.runMainTask(fullClasspath, runner)
   )
 
   val scalaJSCompileSettings = (
       scalaJSConfigSettings ++
-      scalaJSRunSettings
+      scalaJSRunSettings ++
+
+      // Staged runners
+      inTask(packageStage)(scalaJSStageSettings ++ scalaJSRunSettings) ++
+      inTask(fastOptStage)(scalaJSStageSettings ++ scalaJSRunSettings) ++
+      inTask(fullOptStage)(scalaJSStageSettings ++ scalaJSRunSettings)
   )
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
 
       loadedTestFrameworks := {
-        val loader = testLoader.value
+        // Hard scope the loader since we cannot test presence in other stages
+        val loader = (testLoader in test).value
         val isTestFrameworkDefined = try {
           Class.forName(scalaJSTestFramework.value, false, loader)
           true
@@ -329,9 +370,41 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
+  /** Transformer to force keys (which are not in exclude list) to be
+   *  scoped in a given task.
+   */
+  class ForceTaskScope[A](task: TaskKey[A],
+      excl: Set[AttributeKey[_]]) extends (ScopedKey ~> ScopedKey) {
+    def apply[B](sc: ScopedKey[B]) = if (!excl.contains(sc.key)) {
+      val scope = sc.scope.copy(task = Select(task.key))
+      sc.copy(scope = scope)
+    } else sc
+  }
+
+  def stagedTestSettings[A](task: TaskKey[A]) = {
+    val keys = Set[AttributeKey[_]](
+        testLoader.key, executeTests.key, test.key, testOnly.key, testQuick.key)
+    val excl = Set[AttributeKey[_]](
+        testExecution.key, testFilter.key, testGrouping.key)
+
+    val f = new ForceTaskScope(task, excl)
+    val hackedTestTasks = for {
+      setting <- Defaults.testTasks
+      if keys.contains(setting.key.key)
+    } yield setting mapKey f mapReferenced f
+
+    hackedTestTasks ++
+    inTask(task)(scalaJSStageSettings ++ scalaJSTestFrameworkSettings)
+  }
+
   val scalaJSTestSettings = (
       scalaJSConfigSettings ++
-      scalaJSTestFrameworkSettings
+      scalaJSTestFrameworkSettings ++
+
+      // Add staged tests
+      stagedTestSettings(packageStage) ++
+      stagedTestSettings(fastOptStage) ++
+      stagedTestSettings(fullOptStage)
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
           packageExportedProductsJS,
@@ -351,6 +424,9 @@ object ScalaJSPlugin extends Plugin {
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps := false,
       fullOptJSPrettyPrint := false,
+
+      preLinkJSEnv  := new RhinoJSEnv,
+      postLinkJSEnv := new NodeJSEnv,
 
       defaultLoggingConsole
   )
