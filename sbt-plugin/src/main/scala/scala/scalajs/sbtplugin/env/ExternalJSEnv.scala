@@ -23,7 +23,7 @@ abstract class ExternalJSEnv(
   protected def executable: String
 
   /** JS files used to setup VM */
-  protected def initFiles: Seq[VirtualJSFile] = Nil
+  protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Nil
 
   /** Sends required data to VM Stdin (can throw) */
   protected def sendVMStdin(args: RunJSArgs, out: OutputStream): Unit = {}
@@ -64,12 +64,16 @@ abstract class ExternalJSEnv(
   }
 
   /** send a bunch of JS files to an output stream */
-  final protected def sendJS(files: Seq[VirtualJSFile], out: OutputStream) = {
+  final protected def sendJS(files: Seq[VirtualJSFile],
+      out: OutputStream): Unit = {
     val writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"))
-
-    try { files.foreach { writeJSFile(_, writer) } }
-    finally { writer.close() }
+    try sendJS(files, writer)
+    finally writer.close()
   }
+
+  /** send a bunch of JS files to a writer */
+  final protected def sendJS(files: Seq[VirtualJSFile], out: Writer): Unit =
+    files.foreach { writeJSFile(_, out) }
 
   /** write a single JS file to a writer using an include fct if appropriate */
   protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
@@ -108,9 +112,13 @@ abstract class ExternalJSEnv(
    */
   protected def getVMEnv(args: RunJSArgs): Seq[String] = additionalEnv
 
-  /** Get files that are passed to VM */
+  /** Get files that are a library (i.e. that do not run anything) */
+  protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
+    initFiles(args) ++ args.classpath.jsFiles
+
+  /** Get all files that are passed to VM (libraries and code) */
   protected def getJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    initFiles ++ (args.classpath.jsFiles :+ args.code)
+    getLibJSFiles(args) :+ args.code
 
 }
 
