@@ -221,8 +221,7 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    // TODO configure source map once we support it
-                    wantSourceMap = false),
+                    wantSourceMap = true),
                 s.log)
           } finally {
             outputWriter.close()
