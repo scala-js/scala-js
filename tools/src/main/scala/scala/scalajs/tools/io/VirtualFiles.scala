@@ -1,6 +1,6 @@
 package scala.scalajs.tools.io
 
-import java.io.InputStream
+import java.io._
 
 /** A virtual input file.
  */
@@ -19,10 +19,13 @@ trait VirtualFile {
   /** Returns the content of the file. */
   def content: String
 
+  /** Returns a new Reader of the file. */
+  def reader: Reader = new StringReader(content)
+
   /** Returns the lines in the content.
    *  Lines do not contain the new line characters.
    */
-  def readLines(): List[String] = IO.readLines(content)
+  def readLines(): List[String] = IO.readLines(reader)
 
   /** Optionally returns an implementation-dependent "version" token.
    *  Versions are compared with ==.
