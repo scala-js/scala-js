@@ -384,7 +384,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (param.hasFlag(Flags.DEFAULTPARAM)) {
           IF (jsArg === js.Undefined()) {
             val trgSym = {
-              if (sym.isClassConstructor) sym.owner.companionModule
+              if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
               else sym.owner
             }
             val defaultGetter = trgSym.tpe.member(
