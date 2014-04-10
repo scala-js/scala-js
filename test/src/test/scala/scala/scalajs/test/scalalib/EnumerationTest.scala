@@ -42,6 +42,32 @@ object EnumerationTest extends JasmineTest {
       expect(HelpLevel./.toString).toEqual("$div")
     }
 
+    it("should give a pseudo toString to unnamed values") {
+      object Test extends Enumeration {
+        private val nullStr: String = null
+        val A = Value(nullStr) // Circumvent compiler replacement and warning
+      }
+
+      expect(Test.A.toString.startsWith(
+          "<Unknown name for enum field #0 of class ")).toBeTruthy
+    }
+
+    it("should give a graceful error message upon name based query when unnamed fields are present") {
+      object Test extends Enumeration {
+        private val nullStr: String = null
+        val A = Value(nullStr) // Circumvent compiler replacement and warning
+      }
+
+      expect(() => Test.withName("A")).toThrow
+      expect {
+        try { Test.withName("A"); ??? }
+        catch { case e: NoSuchElementException => e.getMessage }
+      } toContain {
+        """Couldn't find enum field with name A.
+          |However, there were the following unnamed fields:""".stripMargin
+      }
+    }
+
     it("should respond to `toString`") {
       expect(FooBarEnum.toString).toEqual("FooBarEnum")
     }
@@ -49,6 +75,15 @@ object EnumerationTest extends JasmineTest {
     it("should respond to `values`") {
       expect(FooBarEnum.values.toString).toEqual(
           "FooBarEnum.ValueSet(A, B, C, D, E, F)")
+    }
+
+    it("should allow setting nextName") {
+      object Test extends Enumeration {
+        nextName = Iterator("x","y","z")
+        val a,b,c = Value
+      }
+
+      expect(Test.values.mkString("|")).toEqual("x|y|z")
     }
 
   }
