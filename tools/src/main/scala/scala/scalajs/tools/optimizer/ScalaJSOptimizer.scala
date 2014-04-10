@@ -9,7 +9,7 @@
 
 package scala.scalajs.tools.optimizer
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
@@ -18,6 +18,7 @@ import net.liftweb.json._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.sourcemap._
 import OptData._
 
 /** Scala.js optimizer: does type-aware global dce. */
@@ -70,18 +71,18 @@ class ScalaJSOptimizer {
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
       analyzer: Analyzer): Unit = {
 
-    val writer = outputConfig.writer.contentWriter
-
-    def pasteFile(f: VirtualFile): Unit =
-      pasteLines(f.readLines())
-    def pasteLines(lines: TraversableOnce[String]): Unit =
-      lines foreach pasteLine
-    def pasteLine(line: String): Unit = {
-      writer.write(line)
-      writer.write('\n')
+    val builder = {
+      import outputConfig._
+      if (wantSourceMap)
+        new JSFileBuilderWithSourceMap(name,
+            writer.contentWriter,
+            writer.sourceMapWriter,
+            None)
+      else
+        new JSFileBuilder(name, writer.contentWriter)
     }
 
-    pasteFile(inputs.classpath.coreJSLibFile)
+    builder.addFile(inputs.classpath.coreJSLibFile)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
@@ -93,80 +94,109 @@ class ScalaJSOptimizer {
       if classInfo.isNeededAtAll
       classfile <- encodedNameToClassfile.get(classInfo.encodedName)
     } {
-      def pasteReachableMethods(methodLines: List[String], methodLinePrefix: String): Unit = {
-        for (p <- methodChunks(methodLines, methodLinePrefix)) {
-          val (optMethodName, methodLines) = p
-          val isReachable = optMethodName.forall(
-              classInfo.methodInfos(_).isReachable)
-          if (isReachable)
-            pasteLines(methodLines)
+      val className = classInfo.encodedName
+
+      class NoSourceMapLinkSelector extends (String => Boolean) {
+        override def apply(line: String): Boolean =
+          !line.startsWith("//@ sourceMappingURL=")
+      }
+
+      class ReachableMethodsSelector extends NoSourceMapLinkSelector {
+        private[this] val methodLinePrefix =
+          if (classInfo.isImplClass) "ScalaJS.impls"
+          else s"ScalaJS.c.$className.prototype"
+
+        private[this] val prefixLength = methodLinePrefix.length
+        private[this] var inReachableMethod = false
+
+        override def apply(line: String): Boolean = {
+          super.apply(line) && {
+            if (line.startsWith(methodLinePrefix)) {
+              // Update inReachableMethod
+              if (line(prefixLength) == '.') {
+                val name = line.substring(prefixLength+1).takeWhile(_ != ' ')
+                val encodedName = parse('"'+name+'"').asInstanceOf[JString].s // see #330
+                inReachableMethod = classInfo.methodInfos(encodedName).isReachable
+              } else {
+                // this is an exported method with []-select
+                inReachableMethod = true
+              }
+            }
+            inReachableMethod
+          }
+        }
+      }
+
+      class FullInfoSelector extends ReachableMethodsSelector {
+        private[this] var state: Int = StateConstructor
+
+        @tailrec
+        override final def apply(line: String): Boolean = {
+          if (line.startsWith("//@ sourceMappingURL=")) false
+          else {
+            (state: @switch) match {
+              case StateConstructor =>
+                if (line.startsWith(s"ScalaJS.c.$className.prototype.constructor =")) {
+                  // last line of the Constructor part, switch for next time
+                  state = StateMethods
+                }
+                // include if any subclass is instantiated
+                classInfo.isAnySubclassInstantiated
+
+              case StateMethods =>
+                if (line.startsWith("/** @constructor */")) {
+                  // beginning of the InheritableConstructor part, switch and redo
+                  state = StateInheritableConstructor
+                  apply(line)
+                } else {
+                  // still in the Methods part, use the super apply
+                  classInfo.isAnySubclassInstantiated && super.apply(line)
+                }
+
+              case StateInheritableConstructor =>
+                if (line.startsWith("ScalaJS.is.")) {
+                  // beginning of the Data part, switch and redo
+                  state = StateData
+                  apply(line)
+                } else {
+                  // inheritable constructor
+                  classInfo.isAnySubclassInstantiated
+                }
+
+              case StateData =>
+                if (line.startsWith("ScalaJS.c.")) {
+                  // last line of the Data part which is the set-classdata stat
+                  state = StateModuleAccessor
+                  classInfo.isAnySubclassInstantiated
+                } else {
+                  // in the Data part
+                  classInfo.isDataAccessed
+                }
+
+              case StateModuleAccessor =>
+                classInfo.isModuleAccessed
+            }
+          }
         }
       }
 
       val lines = classfile.readLines().filterNot(_.startsWith("//@"))
       if (classInfo.isImplClass) {
-        pasteReachableMethods(lines, "ScalaJS.impls")
+        val selector = new ReachableMethodsSelector
+        builder.addPartsOfFile(classfile)(selector)
       } else if (!classInfo.hasInstantiation) {
         // there is only the data anyway
-        pasteLines(lines)
+        builder.addFile(classfile)
       } else {
-        val className = classInfo.encodedName
-        val (implementation, afterImpl) = lines.span(!_.startsWith("ScalaJS.is."))
-        val (classData, setClassData :: moduleAccessor) = afterImpl.span(!_.startsWith("ScalaJS.c."))
-
-        if (classInfo.isAnySubclassInstantiated) {
-          // constructor
-          val (constructorLines0, constructorLine1 :: afterConstructor) =
-            implementation.span(!_.startsWith(s"ScalaJS.c.$className.prototype.constructor ="))
-          pasteLines(constructorLines0)
-          pasteLine(constructorLine1)
-
-          // methods
-          val (methodLines, afterMethods) = afterConstructor.span(_ != "/** @constructor */")
-          pasteReachableMethods(methodLines, s"ScalaJS.c.$className.prototype")
-
-          // inheritable constructor
-          pasteLines(afterMethods)
-        }
-
-        if (classInfo.isDataAccessed)
-          pasteLines(classData)
-        if (classInfo.isAnySubclassInstantiated)
-          pasteLines(setClassData :: Nil)
-        if (classInfo.isModuleAccessed)
-          pasteLines(moduleAccessor)
+        val selector = new FullInfoSelector
+        builder.addPartsOfFile(classfile)(selector)
       }
     }
 
     for (file <- inputs.customScripts)
-      pasteFile(file)
-  }
+      builder.addFile(file)
 
-  private def methodChunks(methodLines: List[String],
-      methodLinePrefix: String): JustAForeach[(Option[String], List[String])] = {
-    new JustAForeach[(Option[String], List[String])] {
-      private[this] val prefixLength = methodLinePrefix.length
-
-      override def foreach[U](f: ((Option[String], List[String])) => U): Unit = {
-        @tailrec
-        def loop(remainingLines: List[String]): Unit = {
-          if (remainingLines.nonEmpty) {
-            val firstLine = remainingLines.head
-            val (methodLines, nextLines) = remainingLines.tail.span(!_.startsWith(methodLinePrefix))
-            val encodedName = if (firstLine(prefixLength) == '.') {
-              val name = firstLine.substring(prefixLength+1).takeWhile(_ != ' ')
-              val unquoted = parse('"'+name+'"').asInstanceOf[JString].s // see #330
-              Some(unquoted)
-            } else {
-              None // this is an exported method with []-select
-            }
-            f((encodedName, firstLine :: methodLines))
-            loop(nextLines)
-          }
-        }
-        loop(methodLines)
-      }
-    }
+    builder.complete()
   }
 }
 
@@ -207,7 +237,9 @@ object ScalaJSOptimizer {
       wantSourceMap: Boolean = false
   )
 
-  private trait JustAForeach[A] {
-    def foreach[U](f: A => U): Unit
-  }
+  private final val StateConstructor = 0
+  private final val StateMethods = 1
+  private final val StateInheritableConstructor = 2
+  private final val StateData = 3
+  private final val StateModuleAccessor = 4
 }
