@@ -88,3 +88,21 @@ object FileVirtualScalaJSClassfile extends (File => FileVirtualScalaJSClassfile)
   def isScalaJSClassfile(file: File): Boolean =
     hasExtension(file, ".js") && withExtension(file, ".js", ".sjsinfo").exists
 }
+
+class FileVirtualScalaJSPackfile(f: File)
+    extends FileVirtualJSFile(f) with VirtualScalaJSPackfile {
+  import FileVirtualFile._
+
+  override def packInfo: String =
+    readFileToString(withExtension(file, ".js", ".sjspack"))
+}
+
+object FileVirtualScalaJSPackfile extends (File => FileVirtualScalaJSPackfile) {
+  import FileVirtualFile._
+
+  def apply(f: File): FileVirtualScalaJSPackfile =
+    new FileVirtualScalaJSPackfile(f)
+
+  def isScalaJSPackfile(file: File): Boolean =
+    hasExtension(file, ".js") && withExtension(file, ".js", ".sjspack").exists
+}

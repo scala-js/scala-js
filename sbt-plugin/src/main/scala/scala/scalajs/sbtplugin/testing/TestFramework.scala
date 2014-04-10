@@ -9,7 +9,7 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import scala.scalajs.tools.environment._
+import scala.scalajs.tools.env._
 import scala.scalajs.tools.classpath._
 
 import sbt._
@@ -19,7 +19,7 @@ import sbt.classpath.ClasspathFilter
 import java.net.URLClassLoader
 
 class TestFramework(
-    environment: ScalaJSEnvironment,
+    environment: JSEnv,
     testFramework: String) extends Framework {
 
   val name = "Scala.js Test Framework"
@@ -37,8 +37,7 @@ class TestFramework(
 
     val classpath = classLoader2Classpath(testClassLoader)
 
-    // TODO abstract what kind of classpath to create.
-    val jsClasspath = ScalaJSClasspath.readEntriesInClasspath(classpath)
+    val jsClasspath = JSClasspath.fromClasspath(classpath)
 
     new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
   }

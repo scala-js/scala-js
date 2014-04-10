@@ -57,3 +57,17 @@ class MemVirtualScalaJSClassfile(p: String) extends MemVirtualJSFile(p)
     this
   }
 }
+
+/** A simple in-memory mutable virtual Scala.js pack file. */
+class MemVirtualScalaJSPackfile(p: String) extends MemVirtualJSFile(p)
+                                              with VirtualScalaJSPackfile {
+  private[this] var _packInfo: String = ""
+
+  override def packInfo: String = _packInfo
+  def packInfo_=(v: String): Unit = _packInfo = v
+
+  final def withPackInfo(v: String): this.type = {
+    packInfo = v
+    this
+  }
+}

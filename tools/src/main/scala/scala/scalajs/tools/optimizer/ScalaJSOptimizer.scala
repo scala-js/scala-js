@@ -20,6 +20,8 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import OptData._
 
+import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
+
 /** Scala.js optimizer: does type-aware global dce. */
 class ScalaJSOptimizer {
   import ScalaJSOptimizer._
@@ -46,6 +48,9 @@ class ScalaJSOptimizer {
       val analyzer = parseInfoFiles(inputs.classpath)
       analyzer.computeReachability()
       writeDCEedOutput(inputs, outputConfig, analyzer)
+
+      // Write out pack order (constant: file is stand alone)
+      writePackInfo(outputConfig.writer, PackInfoData(packOrder = 0))
     } finally {
       this.logger = null
     }
@@ -202,7 +207,7 @@ object ScalaJSOptimizer {
       /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Writer for the output. */
-      writer: VirtualJSFileWriter,
+      writer: VirtualScalaJSPackfileWriter,
       /** Ask to produce source map for the output (currently ignored). */
       wantSourceMap: Boolean = false
   )

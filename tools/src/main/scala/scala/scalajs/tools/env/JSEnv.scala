@@ -7,16 +7,16 @@
 \*                                                                      */
 
 
-package scala.scalajs.tools.environment
+package scala.scalajs.tools.env
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.logging._
 
-trait ScalaJSEnvironment {
-  /** Run the codeimport scala.scalajs.tools.environment.Console
- in the virtual file. Return Some(<error message>) if failed
+trait JSEnv {
+  /** Run the code in the virtual file. Return Some(<error message>) if failed
    *  None otherwise
    */
   def runJS(classpath: JSClasspath, code: VirtualJSFile,
-      console: Console): Option[String]
+      logger: Logger, console: JSConsole): Option[String]
 }

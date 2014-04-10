@@ -5,7 +5,7 @@ package scala.tools.nsc
 import scala.scalajs.tools.classpath._
 
 import scala.scalajs.sbtplugin.environment.{
-  Console, RhinoBasedScalaJSEnvironment
+  Console, RhinoJSEnvironment
 }
 import scala.scalajs.sbtplugin.environment.rhino.{
   CodeBlock, Utilities
@@ -55,7 +55,7 @@ class MainGenericRunner {
 
     def trace(e: => Throwable): Unit = e.printStackTrace()
 
-    val environment = new RhinoBasedScalaJSEnvironment(
+    val environment = new RhinoJSEnvironment(
         classpath, Some(new ConsoleConsole), trace)
 
     environment.runInContextAndScope { (context, scope) =>

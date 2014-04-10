@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin.environment.rhino
+package scala.scalajs.sbtplugin.env.rhino
 
 import scala.collection.mutable
 
