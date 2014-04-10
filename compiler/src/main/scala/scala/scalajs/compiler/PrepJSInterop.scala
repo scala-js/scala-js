@@ -113,17 +113,38 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         super.transform(ddef)
 
       // Catch ValDefs in enumerations with simple calls to Value
-      case ValDef(mods, name, tpt, ScalaEnumValNoName(optPar)) if inScalaEnum =>
+      case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar)) if inScalaEnum =>
         val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
         treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
 
       // Catch Select on Enumeration.Value we couldn't transform but need to
       // we ignore the implementation of scala.Enumeration itself
-      case ScalaEnumValNoName(_) if !inEnumImpl =>
+      case ScalaEnumValue.NoName(_) if !inEnumImpl =>
         unit.warning(tree.pos,
                      """Couldn't transform call to Enumeration.Value.
                        |The resulting program is unlikely to function properly as this
                        |operation requires reflection.""".stripMargin)
+        super.transform(tree)
+
+      case ScalaEnumValue.NullName() if !inEnumImpl =>
+        unit.warning(tree.pos,
+                     """Passing null as name to Enumeration.Value
+                       |requires reflection at runtime. The resulting
+                       |program is unlikely to function properly.""".stripMargin)
+        super.transform(tree)
+
+      case ScalaEnumVal.NoName(_) if !inEnumImpl =>
+        unit.warning(tree.pos,
+                     """Calls to the non-string constructors of Enumeration.Val
+                       |require reflection at runtime. The resulting
+                       |program is unlikely to function properly.""".stripMargin)
+        super.transform(tree)
+
+      case ScalaEnumVal.NullName() if !inEnumImpl =>
+        unit.warning(tree.pos,
+                     """Passing null as name to a constructor of Enumeration.Val
+                       |requires reflection at runtime. The resulting
+                       |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
       // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
@@ -381,31 +402,63 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  /**
-   * Extractor object for calls to scala.Enumeration.Value that do not have an
-   * explicit name in the parameters
-   *
-   * Extracts:
-   * - `sel: Select` where sel.symbol is Enumeration.Value (no param)
-   * - Apply(meth, List(param)) where meth.symbol is Enumeration.Value(i: Int)
-   */
-  private object ScalaEnumValNoName {
-    private val valueSym =
-      getMemberMethod(ScalaEnumClass, newTermName("Value"))
-    private val valueNoPar  = valueSym suchThat { _.paramss == List() }
-    private val valueIntPar = valueSym suchThat {
-      _.tpe.params.map(_.tpe.typeSymbol) == List(IntClass)
+  trait ScalaEnumFctExtractors {
+    protected val methSym: Symbol
+
+    protected def resolve(ptpes: Symbol*) = {
+      val res = methSym suchThat {
+        _.tpe.params.map(_.tpe.typeSymbol) == ptpes.toList
+      }
+      assert(res != NoSymbol)
+      res
     }
 
-    def unapply(t: Tree) = t match {
-      case sel: Select if sel.symbol == valueNoPar =>
-        Some(None)
-      case Apply(meth, List(param)) if meth.symbol == valueIntPar =>
-        Some(Some(param))
-      case _ =>
-        None
+    protected val noArg    = resolve()
+    protected val nameArg  = resolve(StringClass)
+    protected val intArg   = resolve(IntClass)
+    protected val fullMeth = resolve(IntClass, StringClass)
+
+    /**
+     * Extractor object for calls to the targeted symbol that do not have an
+     * explicit name in the parameters
+     *
+     * Extracts:
+     * - `sel: Select` where sel.symbol is targeted symbol (no arg)
+     * - Apply(meth, List(param)) where meth.symbol is targeted symbol (i: Int)
+     */
+    object NoName {
+      def unapply(t: Tree) = t match {
+        case sel: Select if sel.symbol == noArg =>
+          Some(None)
+        case Apply(meth, List(param)) if meth.symbol == intArg =>
+          Some(Some(param))
+        case _ =>
+          None
+      }
     }
+
+    object NullName {
+      def unapply(tree: Tree) = tree match {
+        case Apply(meth, List(Literal(Constant(null)))) =>
+          meth.symbol == nameArg
+        case Apply(meth, List(_, Literal(Constant(null)))) =>
+          meth.symbol == fullMeth
+        case _ => false
+      }
+    }
+
   }
+
+  private object ScalaEnumValue extends {
+    protected val methSym =
+      getMemberMethod(ScalaEnumClass, newTermName("Value"))
+  } with ScalaEnumFctExtractors
+
+  private object ScalaEnumVal extends {
+    private val valSym =
+      getMemberClass(ScalaEnumClass, newTermName("Val"))
+    protected val methSym = valSym.tpe.member(nme.CONSTRUCTOR)
+  } with ScalaEnumFctExtractors
 
   /**
    * Construct a call to Enumeration.Value
@@ -419,8 +472,29 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       thisSym: Symbol,
       nameOrig: Symbol,
       intParam: Option[Tree]) = {
-    val name = nameOrig.asTerm.getterName.encoded
-    val params = intParam.toList :+ Literal(Constant(name))
+
+    def enc(name: TermName) = name.encodedName
+
+    val defaultName = nameOrig.asTerm.getterName.encoded
+
+
+    // Construct the following tree
+    //
+    //   if (nextName != null && nextName.hasNext)
+    //     nextName.next()
+    //   else
+    //     <defaultName>
+    //
+    val nextNameTree = Select(This(thisSym), "nextName")
+    val nullCompTree =
+      Apply(Select(nextNameTree, enc("!=")), Literal(Constant(null)) :: Nil)
+    val hasNextTree = Select(nextNameTree, "hasNext")
+    val condTree = Apply(Select(nullCompTree, enc("&&")), hasNextTree :: Nil)
+    val nameTree = If(condTree,
+        Apply(Select(nextNameTree, "next"), Nil),
+        Literal(Constant(defaultName)))
+    val params = intParam.toList :+ nameTree
+
     typer.typed {
       Apply(Select(This(thisSym),newTermName("Value")), params)
     }
