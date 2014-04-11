@@ -3,25 +3,30 @@ package scala.tools.nsc
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.logging._
+import scala.scalajs.tools.io._
+import scala.scalajs.tools.env.JSConsole
 
-import scala.scalajs.sbtplugin.environment.{
-  Console, RhinoJSEnvironment
-}
-import scala.scalajs.sbtplugin.environment.rhino.{
-  CodeBlock, Utilities
-}
-
-import sbt._
+import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
+import scala.scalajs.sbtplugin.JSUtils._
 
 import java.io.File
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
 
-class ConsoleConsole extends Console {
-  def log(x: Any): Unit = scala.Console.out.println(x.toString)
-  def info(x: Any): Unit = scala.Console.out.println(x.toString)
-  def warn(x: Any): Unit = scala.Console.err.println(x.toString)
-  def error(x: Any): Unit = scala.Console.err.println(x.toString)
+class ScalaConsoleLogger extends Logger {
+  def log(level: Level, message: =>String): Unit = {
+    if (level == Level.Warn || level == Level.Error)
+      scala.Console.err.println(message)
+    else
+      scala.Console.out.println(message)
+  }
+  def success(message: => String): Unit = info(message)
+  def trace(t: => Throwable): Unit = t.printStackTrace()
+}
+
+class ScalaConsoleJSConsole extends JSConsole {
+  def log(msg: Any) = scala.Console.out.println(msg.toString)
 }
 
 class MainGenericRunner {
@@ -50,21 +55,26 @@ class MainGenericRunner {
       f = urlToFile(url)
       if (f.isDirectory || f.getName.startsWith("scalajs-library"))
     } yield f
-    val classpath = ScalaJSClasspathEntries.readEntriesInClasspath(
-        usefulClasspathEntries)
+    val classpath = ScalaJSClasspath.fromClasspath(usefulClasspathEntries)
 
-    def trace(e: => Throwable): Unit = e.printStackTrace()
+    val env = new RhinoJSEnv
+    val logger = new ScalaConsoleLogger
+    val jsConsole = new ScalaConsoleJSConsole
 
-    val environment = new RhinoJSEnvironment(
-        classpath, Some(new ConsoleConsole), trace)
-
-    environment.runInContextAndScope { (context, scope) =>
-      new CodeBlock(context, scope) with Utilities {
-        callMainMethod(thingToRun, command.arguments.toArray)
-      }
-    }
+    env.runJS(
+      classpath,
+      runnerJSFile(thingToRun, command.arguments),
+      logger,
+      jsConsole)
 
     true
+  }
+
+  private def runnerJSFile(mainObj: String, args: List[String]) = {
+    val jsObj = "ScalaJS.modules." + mainObj.replace('.', '_')
+    val jsArgs = listToJS(args)
+    new MemVirtualJSFile("Generated launcher file").
+      withContent(s"$jsObj().main__AT__V($jsArgs);")
   }
 
   private def urlToFile(url: java.net.URL) = {
