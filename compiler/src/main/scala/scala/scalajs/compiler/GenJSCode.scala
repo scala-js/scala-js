@@ -31,6 +31,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     val global: GenJSCode.this.global.type
   }
 
+  val scalaJSOpts: ScalaJSOptions
+
   import global._
   import jsAddons._
   import rootMirror._
@@ -286,7 +288,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Create method info builder for exported stuff
       currentMethodInfoBuilder =
-        currentClassInfoBuilder.addMethod(dceExportName, isExported = true)
+        currentClassInfoBuilder.addMethod(
+            dceExportName + classIdent.name, isExported = true)
 
       // Generate the exported members
       val exports = genMemberExports(sym, exportedSymbols.toList)

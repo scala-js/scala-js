@@ -21,12 +21,39 @@
       "instantiatedClasses": ["java_lang_CloneNotSupportedException"],
       "accessedClassData": ["java_lang_Cloneable"]
     },
+    "notify__V": {},
+    "notifyAll__V": {},
     "toString__T": {
       "calledMethods": {
         "java_lang_Object": ["getClass__Ljava_lang_Class", "hashCode__I"],
         "java_lang_Class": ["getName__T"]
       }
     },
-    "finalize__V": {}
+    "finalize__V": {},
+    "clone__": {
+      "calledMethods": {
+        "java_lang_Object": ["clone__O"]
+      }
+    },
+    "notify__": {
+      "calledMethods": {
+        "java_lang_Object": ["notify__V"]
+      }
+    },
+    "notifyAll__": {
+      "calledMethods": {
+        "java_lang_Object": ["notifyAll__V"]
+      }
+    },
+    "clone__": {
+      "calledMethods": {
+        "java_lang_Object": ["clone__O"]
+      }
+    },
+    "finalize__": {
+      "calledMethods": {
+        "java_lang_Object": ["finalize__V"]
+      }
+    }
   }
 }

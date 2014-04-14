@@ -10,6 +10,7 @@
 package scala.scalajs.tools.packager
 
 import java.io._
+import java.net.URI
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
@@ -41,13 +42,13 @@ class ScalaJSPackager {
 
     val builder = {
       import outputConfig._
-      sourceMapWriter match {
-        case Some(smWriter) =>
-          new JSFileBuilderWithSourceMap(name, outputWriter, smWriter,
-              relativizeSourceMapBasePath)
-        case None =>
-          new JSFileBuilder(name, outputWriter)
-      }
+      if (wantSourceMap)
+        new JSFileBuilderWithSourceMap(name,
+            writer.contentWriter,
+            writer.sourceMapWriter,
+            relativizeSourceMapBase)
+      else
+        new JSFileBuilder(name, writer.contentWriter)
     }
 
     for (file <- allSortedFiles)
@@ -67,14 +68,14 @@ object ScalaJSPackager {
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. */
+      /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Print writer for the output file. */
-      outputWriter: PrintWriter,
-      /** Optional print writer for the source map. */
-      sourceMapWriter: Option[PrintWriter],
+      writer: VirtualJSFileWriter,
+      /** Ask to produce source map for the output. */
+      wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */
-      relativizeSourceMapBasePath: Option[String] = None
+      relativizeSourceMapBase: Option[URI] = None
   )
 
   private val AncestorCountLine =
