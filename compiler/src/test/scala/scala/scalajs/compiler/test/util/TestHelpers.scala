@@ -44,6 +44,13 @@ trait TestHelpers extends DirectTest {
     def fails() =
       assertFalse("snippet shouldn't compile", compileString(preamble + code))
 
+    def warns() = {
+      val reps = repResult {
+        assertTrue("snippet should compile", compileString(preamble + code))
+      }
+      assertFalse("should have warnings", reps.isEmpty)
+    }
+
     def succeeds() =
       assertTrue("snippet should compile", compileString(preamble + code))
 
