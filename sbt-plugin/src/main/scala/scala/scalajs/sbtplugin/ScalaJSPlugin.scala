@@ -18,7 +18,6 @@ import java.nio.charset.Charset
 
 import scala.collection.mutable
 
-import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
 import Implicits._
 
