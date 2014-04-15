@@ -108,10 +108,11 @@ object IntegerTest extends JasmineTest {
     }
 
     it("should parse strings") {
-      def test(s: String, v: Int): Unit = {
-        expect(Integer.parseInt(s)).toEqual(v)
-        expect(Integer.valueOf(s).intValue()).toEqual(v)
-        expect(new Integer(s).intValue()).toEqual(v)
+      def test(s: String, v: Int, radix: Int = 10): Unit = {
+        expect(Integer.parseInt(s, radix)).toEqual(v)
+        expect(Integer.valueOf(s, radix).intValue()).toEqual(v)
+        if (radix == 10)
+          expect(new Integer(s).intValue()).toEqual(v)
       }
 
       test("0", 0)
@@ -120,13 +121,21 @@ object IntegerTest extends JasmineTest {
       test("-100", -100)
       test("30000", 30000)
       test("-90000", -90000)
+      test("Kona", 411787, 27)
+      test("+42", 42)
+      test("-0", 0)
+      test("-FF", -255, 16)
     }
 
     it("should reject invalid strings when parsing") {
-      def test(s: String): Unit =
-        expect(() => Integer.parseInt(s)).toThrow
+      def test(s: String, radix: Int = 10): Unit =
+        expect(() => Integer.parseInt(s, radix)).toThrow
 
       test("abc")
+      test("5a")
+      test("2147483648")
+      test("99", 8)
+      test("-")
       test("")
     }
 
