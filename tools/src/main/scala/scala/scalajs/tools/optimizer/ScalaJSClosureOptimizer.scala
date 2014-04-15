@@ -20,6 +20,8 @@ import com.google.javascript.jscomp.{
 }
 import scala.collection.JavaConverters._
 
+import java.net.URI
+
 /** Scala.js Closure optimizer: does advanced optimizations with Closure. */
 class ScalaJSClosureOptimizer {
   import ScalaJSClosureOptimizer._
@@ -79,7 +81,9 @@ object ScalaJSClosureOptimizer {
       /** Ask to produce source map for the output (currently ignored). */
       wantSourceMap: Boolean = false,
       /** Pretty-print the output. */
-      prettyPrint: Boolean = false
+      prettyPrint: Boolean = false,
+      /** Base path to relativize paths in the source map (currently ignored) */
+      relativizeSourceMapBase: Option[URI] = None
   )
 
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
