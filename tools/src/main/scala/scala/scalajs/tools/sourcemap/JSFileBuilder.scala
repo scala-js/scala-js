@@ -55,7 +55,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
 
   protected def relPath(path: URI): URI = {
     relativizeSourceMapBasePath match {
-      case Some(base) => base.relativize(path)
+      case Some(base) => Utils.relativize(base, path)
       case None => path
     }
   }
@@ -131,7 +131,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
            * written directly in JS.
            * We generate a fake line-by-line source map for these on the fly
            */
-          val sourceName = file.name
+          val relSourceName = getRelSourceName(file)
 
           for (lineNumber <- 0 until offsets.size) {
             val offset = offsets(lineNumber)
@@ -140,7 +140,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
               val startPos = new FilePosition(startLine+offset, 0)
               val endPos = new FilePosition(startLine+offset+1, 0)
 
-              sourceMapGen.addMapping(sourceName, null,
+              sourceMapGen.addMapping(relSourceName, null,
                   sourceStartPos, startPos, endPos)
             }
           }
@@ -155,5 +155,20 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     super.complete()
 
     sourceMapGen.appendTo(sourceMapWriter, name)
+  }
+
+  private def getRelSourceName(file: VirtualJSFile): String = file match {
+    case file: FileVirtualJSFile =>
+      val uri = relPath(file.file.toURI)
+      val uriStr = uri.toASCIIString
+      // Stolen from scala.scalajs.compiler.JSPrinters.SourceMapWriter
+      // but wrapped with new URI
+      if (uriStr.startsWith("file:/") && uriStr.charAt(6) != '/')
+        "file:///" + uriStr.substring(6)
+      else
+        uriStr
+    case _ =>
+      // Default to relative URI with name. Source map will probably not work
+      file.name
   }
 }

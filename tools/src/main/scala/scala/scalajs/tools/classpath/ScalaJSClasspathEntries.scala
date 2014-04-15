@@ -168,12 +168,19 @@ object ScalaJSClasspathEntries {
   def readEntriesInJar(builder: Builder, stream: InputStream): Unit = {
     val zipStream = new ZipInputStream(stream)
     val classFiles = mutable.Map.empty[String, MemVirtualScalaJSClassfile]
+    var coreJSLib: Option[MemVirtualJSFile] = None
 
     def getOrCreateClassfile(path: String): MemVirtualScalaJSClassfile = {
       classFiles.getOrElseUpdate(path, {
         val name = path.substring(path.lastIndexOf('/')+1)
         new MemVirtualScalaJSClassfile(name)
       })
+    }
+
+    def getOrCreateCorejslib(): MemVirtualJSFile = coreJSLib.getOrElse {
+      val file = new MemVirtualJSFile("scalajs-corejslib.js")
+      coreJSLib = Some(file)
+      file
     }
 
     @tailrec
@@ -192,10 +199,13 @@ object ScalaJSClasspathEntries {
 
         longName match {
           case "scalajs-corejslib.js" =>
-            builder.addCoreJSLibFile(
-                new MemVirtualJSFile(name)
-                  .withContent(entryContent)
-                  .withVersion(entryVersion))
+            getOrCreateCorejslib()
+              .withContent(entryContent)
+              .withVersion(entryVersion)
+
+          case "scalajs-corejslib.js.map" =>
+            getOrCreateCorejslib()
+              .withSourceMap(Some(entryContent))
 
           case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
             builder.addCoreInfoFile(
@@ -234,6 +244,8 @@ object ScalaJSClasspathEntries {
       }
     }
     loop()
+
+    coreJSLib.foreach(builder.addCoreJSLibFile _)
 
     for ((path, classFile) <- classFiles) {
       if (classFile.info != "") // it is really a Scala.js class file

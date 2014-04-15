@@ -18,7 +18,6 @@ import java.nio.charset.Charset
 
 import scala.collection.mutable
 
-import SourceMapCat.catJSFilesAndTheirSourceMaps
 import Utils._
 import Implicits._
 
@@ -235,6 +234,9 @@ object ScalaJSPlugin extends Plugin {
             ScalaJSClasspathEntries.readEntriesInClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
           val outputWriter = new FileVirtualJSFileWriter(output)
+          val relSourceMapBase =
+              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+              else None
 
           try {
             optimizer.optimize(
@@ -242,7 +244,8 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    wantSourceMap = (emitSourceMaps in preoptimizeJS).value),
+                    wantSourceMap = (emitSourceMaps in preoptimizeJS).value,
+                    relSourceMapBase),
                 s.log)
           } finally {
             outputWriter.close()
@@ -274,6 +277,9 @@ object ScalaJSPlugin extends Plugin {
           import ScalaJSClosureOptimizer._
           val optimizer = new ScalaJSClosureOptimizer
           val outputWriter = new FileVirtualJSFileWriter(output)
+          val relSourceMapBase =
+              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+              else None
 
           try {
             optimizer.optimize(
@@ -285,7 +291,8 @@ object ScalaJSPlugin extends Plugin {
                     name = output.name,
                     writer = outputWriter,
                     wantSourceMap = (emitSourceMaps in optimizeJS).value,
-                    prettyPrint = optimizeJSPrettyPrint.value),
+                    prettyPrint = optimizeJSPrettyPrint.value,
+                    relSourceMapBase),
                 s.log)
           } finally {
             outputWriter.close()
