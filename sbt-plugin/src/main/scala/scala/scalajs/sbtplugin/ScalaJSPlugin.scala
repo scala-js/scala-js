@@ -66,6 +66,8 @@ object ScalaJSPlugin extends Plugin {
 
     val relativeSourceMaps = settingKey[Boolean](
         "Make the referenced paths on source maps relative to target path")
+    val emitSourceMaps = settingKey[Boolean](
+        "Whether package and optimize stages should emit source maps at all")
   }
 
   import ScalaJSKeys._
@@ -133,7 +135,7 @@ object ScalaJSPlugin extends Plugin {
                   OutputConfig(
                       name = output.name,
                       writer = outputWriter,
-                      wantSourceMap = (packageJSKey != packageExternalDepsJS),
+                      wantSourceMap = (emitSourceMaps in packageJSKey).value,
                       relativizeSourceMapBase = relSourceMapBase),
                   s.log)
             } finally {
@@ -240,7 +242,7 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    wantSourceMap = true),
+                    wantSourceMap = (emitSourceMaps in preoptimizeJS).value),
                 s.log)
           } finally {
             outputWriter.close()
@@ -282,8 +284,7 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    // TODO configure source map once we support it
-                    wantSourceMap = false,
+                    wantSourceMap = (emitSourceMaps in optimizeJS).value,
                     prettyPrint = optimizeJSPrettyPrint.value),
                 s.log)
           } finally {
@@ -369,6 +370,8 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps := false,
+      emitSourceMaps := true,
+      emitSourceMaps in packageExternalDepsJS := false,
       optimizeJSPrettyPrint := false,
       optimizeJSExterns := Seq(),
 
