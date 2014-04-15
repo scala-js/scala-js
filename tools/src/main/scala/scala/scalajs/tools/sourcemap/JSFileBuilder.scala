@@ -55,7 +55,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
 
   protected def relPath(path: URI): URI = {
     relativizeSourceMapBasePath match {
-      case Some(base) => base.relativize(path)
+      case Some(base) => Utils.relativize(base, path)
       case None => path
     }
   }
