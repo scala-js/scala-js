@@ -52,9 +52,23 @@ object FloatTest extends JasmineTest {
       test("0", 0.0f)
       test("5.3", 5.3f)
       test("127e2", 12700.0f)
+      test("127E-2", 1.27f)
+      test("1E+1", 10f)
       test("-123.4", -123.4f)
       test("65432.1", 65432.10f)
       test("-87654.321", -87654.321f)
+      test("+.3f", 0.3f)
+    }
+
+    it("should reject invalid strings when parsing") {
+      def test(s: String): Unit =
+        expect(() => JFloat.parseFloat(s)).toThrow
+
+      test("4.3.5")
+      test("4e3.5")
+      test("hello world")
+      test("--4")
+      test("4E-3.2")
     }
 
     it("should provide `compareTo`") {

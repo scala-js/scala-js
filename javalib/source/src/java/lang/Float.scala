@@ -162,15 +162,25 @@ object Float {
   val MIN_EXPONENT = -126
   val SIZE = 32
 
+  private[this] val floatStrPat = new js.RegExp("^" +
+      "[\\x00-\\x20]*"   + // optional whitespace
+      "[+-]?"            + // optional sign
+      "(NaN|Infinity|"   + // special cases
+       "(\\d+\\.?\\d*|"  + // literal w/  leading digit
+        "\\.\\d+)"       + // literal w/o leading digit
+       "([eE][+-]?\\d+)?"+ // optional exponent
+      ")[fFdD]?"         + // optional float / double specifier (ignored)
+      "[\\x00-\\x20]*"   + // optional whitespace
+      "$")
+
   def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
   def valueOf(s: String): Float = valueOf(parseFloat(s))
 
   def parseFloat(s: String): scala.Float = {
-    val res = js.parseFloat(s)
-    if (s != "NaN" && js.isNaN(res))
-      throw new NumberFormatException(s"""For input string: "$s"""")
+    if (floatStrPat.test(s))
+      js.parseFloat(s).toFloat
     else
-      res.toFloat
+      throw new NumberFormatException(s"""For input string: "$s"""")
   }
 
   def toString(f: scala.Float): String = valueOf(f).toString
