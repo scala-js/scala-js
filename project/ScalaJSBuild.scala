@@ -571,7 +571,8 @@ object ScalaJSBuild extends Build {
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.0"
                 ),
                 "com.google.javascript" % "closure-compiler" % "v20130603",
-                "org.mozilla" % "rhino" % "1.7R4"
+                "org.mozilla" % "rhino" % "1.7R4",
+                "net.liftweb" % "lift-json_2.10" % "2.5.1"
               )
             else Seq()
           },
@@ -581,16 +582,21 @@ object ScalaJSBuild extends Build {
                 "scala/scalajs/tools"
             val pluginBase = ((scalaSource in (plugin, Compile)).value /
                 "scala/scalajs/sbtplugin")
-            Seq(pluginBase / "environment", pluginBase / "sourcemap",
-                toolsBase / "io", toolsBase / "classpath")
+            Seq(
+              pluginBase / "env",
+              pluginBase / "sourcemap",
+              toolsBase  / "io",
+              toolsBase  / "classpath",
+              toolsBase  / "env",
+              toolsBase  / "logging"
+            )
           },
           sources in Compile := {
             if (shouldPartest.value) {
               val baseSrcs = (sources in Compile).value
               val d = (scalaSource in (plugin, Compile)).value
               val newSrcs = Seq(
-                d / "scala/scalajs/sbtplugin/ScalaJSEnvironment.scala",
-                d / "scala/scalajs/sbtplugin/Utils.scala")
+                d / "scala/scalajs/sbtplugin/JSUtils.scala")
               baseSrcs ++ newSrcs
             } else Seq()
           }
