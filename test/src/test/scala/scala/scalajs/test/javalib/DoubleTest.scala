@@ -47,9 +47,23 @@ object DoubleTest extends JasmineTest {
       test("0", 0.0)
       test("5.3", 5.3)
       test("127e2", 12700.0)
+      test("127E-2", 1.27)
+      test("1E+1", 10)
       test("-123.4", -123.4)
       test("65432.1", 65432.10)
-      test("-987654.321", -987654.321)
+      test("-87654.321", -87654.321)
+      test("+.3f", 0.3)
+    }
+
+    it("should reject invalid strings when parsing") {
+      def test(s: String): Unit =
+        expect(() => JDouble.parseDouble(s)).toThrow
+
+      test("4.3.5")
+      test("4e3.5")
+      test("hello world")
+      test("--4")
+      test("4E-3.2")
     }
 
     it("should provide `compareTo`") {

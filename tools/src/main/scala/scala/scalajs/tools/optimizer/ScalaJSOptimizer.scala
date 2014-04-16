@@ -15,6 +15,8 @@ import scala.collection.mutable
 
 import net.liftweb.json._
 
+import java.net.URI
+
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
@@ -82,7 +84,7 @@ class ScalaJSOptimizer {
         new JSFileBuilderWithSourceMap(name,
             writer.contentWriter,
             writer.sourceMapWriter,
-            None)
+            relativizeSourceMapBase)
       else
         new JSFileBuilder(name, writer.contentWriter)
     }
@@ -238,8 +240,10 @@ object ScalaJSOptimizer {
       name: String,
       /** Writer for the output. */
       writer: VirtualScalaJSPackfileWriter,
-      /** Ask to produce source map for the output (currently ignored). */
-      wantSourceMap: Boolean = false
+      /** Ask to produce source map for the output */
+      wantSourceMap: Boolean = false,
+      /** Base path to relativize paths in the source map. */
+      relativizeSourceMapBase: Option[URI] = None
   )
 
   private final val StateConstructor = 0

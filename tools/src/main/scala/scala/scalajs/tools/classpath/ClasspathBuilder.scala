@@ -185,9 +185,18 @@ private[classpath] class ClasspathBuilder {
       jarPath: String): Unit = {
     val zipStream = new ZipInputStream(stream)
     val classFiles = mutable.Map.empty[String, MemVirtualScalaJSClassfile]
+    var coreJSLib: Option[MemVirtualJSFile] = None
 
     def getOrCreateClassfile(path: String): MemVirtualScalaJSClassfile =
       classFiles.getOrElseUpdate(path, new MemVirtualScalaJSClassfile(path))
+
+    def getOrCreateCorejslib(jarPath: String): MemVirtualJSFile = {
+      coreJSLib.getOrElse {
+        val file = new MemVirtualJSFile(jarPath + ":scalajs-corejslib.js")
+        coreJSLib = Some(file)
+        file
+      }
+    }
 
     @tailrec
     def loop(): Unit = {
@@ -206,10 +215,13 @@ private[classpath] class ClasspathBuilder {
 
         longName match {
           case "scalajs-corejslib.js" =>
-            addCoreJSLibFile(
-                new MemVirtualJSFile(fullPath)
-                  .withContent(entryContent)
-                  .withVersion(entryVersion))
+            getOrCreateCorejslib(jarPath)
+              .withContent(entryContent)
+              .withVersion(entryVersion)
+
+          case "scalajs-corejslib.js.map" =>
+            getOrCreateCorejslib(jarPath)
+              .withSourceMap(Some(entryContent))
 
           case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
             addCoreInfoFile(
@@ -248,6 +260,8 @@ private[classpath] class ClasspathBuilder {
       }
     }
     loop()
+
+    coreJSLib.foreach(addCoreJSLibFile _)
 
     for ((path, classFile) <- classFiles) {
       if (classFile.info != "") // it is really a Scala.js class file

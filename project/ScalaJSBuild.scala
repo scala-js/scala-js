@@ -9,8 +9,10 @@ import scala.util.Properties
 import scala.scalajs.sbtplugin._
 import ScalaJSPlugin._
 import ScalaJSKeys._
-import SourceMapCat.catJSFilesAndTheirSourceMaps
 import ExternalCompile.scalaJSExternalCompileSettings
+
+import scala.scalajs.tools.io.{ FileVirtualJSFile, FileVirtualJSFileWriter }
+import scala.scalajs.tools.sourcemap._
 
 object ScalaJSBuild extends Build {
 
@@ -220,7 +222,20 @@ object ScalaJSBuild extends Build {
             FileFunction.cached(s.cacheDirectory / "package-js",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
               targetDir.mkdir()
-              catJSFilesAndTheirSourceMaps(allJSFiles, output, false)
+
+              val writer = new FileVirtualJSFileWriter(output)
+              try {
+                val builder = new JSFileBuilderWithSourceMap(output.getName,
+                    writer.contentWriter, writer.sourceMapWriter, None)
+
+                for (jsFile <- allJSFiles)
+                  builder.addFile(FileVirtualJSFile(jsFile))
+
+                builder.complete()
+              } finally {
+                writer.close()
+              }
+
               Set(output)
             } (allJSFiles.toSet)
 
@@ -431,8 +446,16 @@ object ScalaJSBuild extends Build {
           },
 
           // Add the core JS library
-          mappings in packageBin +=
-            (packageJS in corejslib).value.head -> "scalajs-corejslib.js",
+          mappings in packageBin ++= {
+            val lib = (packageJS in corejslib).value.head
+            val sourcemap = new File(lib.getAbsolutePath + ".map")
+
+            Seq(lib -> "scalajs-corejslib.js") ++ {
+              if (sourcemap.isFile)
+                Seq(sourcemap -> "scalajs-corejslib.js.map")
+              else Seq()
+            }
+          },
           mappings in packageBin ++= {
             val dir = (baseDirectory in corejslib).value
             (dir ** "*.sjsinfo") x relativeTo(dir)

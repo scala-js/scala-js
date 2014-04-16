@@ -37,11 +37,30 @@ object Integer {
     parseInt(s, 10)
 
   def parseInt(s: String, radix: scala.Int): scala.Int = {
-    val res = js.parseInt(s, radix)
-    if (js.isNaN(res))
-      throw new NumberFormatException(s"""For input string: "$s"""")
-    else
-      res.toInt
+    def fail = throw new NumberFormatException(s"""For input string: "$s"""")
+
+    if (s == null || s.size == 0 ||
+        radix < Character.MIN_RADIX ||
+        radix > Character.MAX_RADIX)
+      fail
+    else {
+      var i = if (s(0) == '-' || s(0) == '+') 1 else 0
+      // JavaDoc says: We need at least one digit
+      if (s.size <= i) fail
+      else {
+        // Check each character for validity
+        while (i < s.size) {
+          if (Character.digit(s(i), radix) < 0) fail
+          i += 1
+        }
+        val res = js.parseInt(s, radix)
+
+        if (js.isNaN(res) || res > MAX_VALUE || res < MIN_VALUE)
+          fail
+        else
+          res.toInt
+      }
+    }
   }
 
   def toString(i: scala.Int): String = valueOf(i).toString

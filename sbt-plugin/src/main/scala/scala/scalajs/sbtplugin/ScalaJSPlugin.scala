@@ -69,6 +69,9 @@ object ScalaJSPlugin extends Plugin {
     val relativeSourceMaps = settingKey[Boolean](
         "Make the referenced paths on source maps relative to target path")
 
+    val emitSourceMaps = settingKey[Boolean](
+        "Whether package and optimize stages should emit source maps at all")
+
     // Task keys to re-wire sources and run with other VM
     val packageStage = taskKey[Unit]("Run stuff after packageJS")
     val fastOptStage = taskKey[Unit]("Run stuff after fastOptJS")
@@ -145,7 +148,7 @@ object ScalaJSPlugin extends Plugin {
                         name = output.name,
                         writer = outputWriter,
                         packOrder = packOrder,
-                        wantSourceMap = (packageJSKey != packageExternalDepsJS),
+                        wantSourceMap = (emitSourceMaps in packageJSKey).value,
                         relativizeSourceMapBase = relSourceMapBase),
                     s.log)
               } finally {
@@ -231,6 +234,9 @@ object ScalaJSPlugin extends Plugin {
           val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
           val optimizer = new ScalaJSOptimizer
           val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
+          val relSourceMapBase =
+              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+              else None
 
           try {
             optimizer.optimize(
@@ -238,7 +244,8 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    wantSourceMap = true),
+                    wantSourceMap = (emitSourceMaps in fastOptJS).value,
+                    relSourceMapBase),
                 s.log)
           } finally {
             outputWriter.close()
@@ -270,6 +277,9 @@ object ScalaJSPlugin extends Plugin {
           import ScalaJSClosureOptimizer._
           val optimizer = new ScalaJSClosureOptimizer
           val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
+          val relSourceMapBase =
+              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+              else None
 
           try {
             optimizer.optimize(
@@ -277,9 +287,9 @@ object ScalaJSPlugin extends Plugin {
                 OutputConfig(
                     name = output.name,
                     writer = outputWriter,
-                    // TODO configure source map once we support it
-                    wantSourceMap = false,
-                    prettyPrint = fullOptJSPrettyPrint.value),
+                    wantSourceMap = (emitSourceMaps in fullOptJS).value,
+                    prettyPrint = fullOptJSPrettyPrint.value,
+                    relSourceMapBase),
                 s.log)
           } finally {
             outputWriter.close()
@@ -422,10 +432,14 @@ object ScalaJSPlugin extends Plugin {
 
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps := false,
+
       fullOptJSPrettyPrint := false,
 
       preLinkJSEnv  := new RhinoJSEnv,
       postLinkJSEnv := new NodeJSEnv,
+
+      emitSourceMaps := true,
+      emitSourceMaps in packageExternalDepsJS := false,
 
       defaultLoggingConsole
   )

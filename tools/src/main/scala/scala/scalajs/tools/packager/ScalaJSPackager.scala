@@ -45,7 +45,6 @@ class ScalaJSPackager {
     import outputConfig._
 
     val builder = {
-
       if (wantSourceMap)
         new JSFileBuilderWithSourceMap(name,
             writer.contentWriter,
