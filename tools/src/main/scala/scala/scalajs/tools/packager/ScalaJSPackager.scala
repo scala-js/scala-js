@@ -37,10 +37,7 @@ class ScalaJSPackager {
   def packageScalaJS(inputs: Inputs, outputConfig: OutputConfig,
       logger: Logger): Unit = {
     val classpath = inputs.classpath
-    val allSortedFiles =
-      Seq(classpath.coreJSLibFile) ++
-      sortScalaJSClassfiles(classpath.classFiles) ++
-      inputs.customScripts
+    val allSortedFiles = classpath.mainJSFiles ++ inputs.customScripts
 
     import outputConfig._
 
@@ -67,7 +64,7 @@ object ScalaJSPackager {
   /** Inputs of the Scala.js optimizer. */
   final case class Inputs(
       /** The (partial) Scala.js classpath entries. */
-      classpath: ScalaJSClasspath,
+      classpath: JSClasspath,
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil
   )
@@ -88,23 +85,4 @@ object ScalaJSPackager {
       relativizeSourceMapBase: Option[URI] = None
   )
 
-  private val AncestorCountLine =
-    raw""""ancestorCount": *([0-9]+)""".r.unanchored
-
-  private def sortScalaJSClassfiles(classFiles: Seq[VirtualScalaJSClassfile]) = {
-    val withAncestorCount = classFiles.zip(classFiles.map(ancestorCountOf))
-    val sorted = withAncestorCount sortWith { (lhs, rhs) =>
-      if (lhs._2 != rhs._2) lhs._2 < rhs._2
-      else lhs._1.name.compareTo(rhs._1.name) < 0
-    }
-    sorted.map(_._1)
-  }
-
-  private def ancestorCountOf(classFile: VirtualScalaJSClassfile): Int = {
-    classFile.info match {
-      case AncestorCountLine(countStr) => countStr.toInt
-      case _ =>
-        throw new AssertionError(s"Did not find ancestor count in $classFile")
-    }
-  }
 }
