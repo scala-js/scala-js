@@ -38,14 +38,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   // Stuff to mix in
 
-  /**
-    * specific tests to run. if this is non-empty, only these
-    * tests are ran.
-    *
-    * from sbt call (e.g.)
-    * testOnly -- run/t7899.scala
-    */
-  val testNames: Array[String]
+  val options: ScalaJSPartestOptions
 
   /** Full scala version name. Used to discover blacklist (etc.) files */
   val scalaVersion: String
@@ -82,15 +75,6 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   private lazy val listDir =
     s"/scala/tools/partest/scalajs/$scalaVersion"
 
-  private lazy val useBlacklist =
-    scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.useblacklist")
-
-  private lazy val testBlackBugOnly =
-    scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.testblackbugonly")
-
-  private lazy val testUnknownOnly =
-    scala.util.Properties.propOrFalse("scala.tools.partest.scalajs.testunknownonly")
-
   private lazy val buglistedTestFileNames =
     readTestList(s"$listDir/BuglistedTests.txt")
 
@@ -118,17 +102,21 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   def shouldUseTest(testFile: File): Boolean = {
     val absPath = testFile.toCanonical.getAbsolutePath
-    if (!testNames.isEmpty)
-      testNames.find(absPath.endsWith _).isDefined
-    else if (testUnknownOnly)
-      (!blacklistedTestFileNames.contains(absPath) &&
-       !whitelistedTestFileNames.contains(absPath) &&
-       !buglistedTestFileNames.contains(absPath))
-    else if (testBlackBugOnly)
-      blacklistedTestFileNames.contains(absPath) ||
-      buglistedTestFileNames.contains(absPath)
-    else if (useBlacklist) !blacklistedTestFileNames.contains(absPath)
-    else whitelistedTestFileNames.contains(absPath)
+    import ScalaJSPartestOptions._
+    options.testFilter match {
+      case UnknownTests =>
+        !blacklistedTestFileNames.contains(absPath) &&
+        !whitelistedTestFileNames.contains(absPath) &&
+        !buglistedTestFileNames.contains(absPath)
+      case BlacklistedTests =>
+        blacklistedTestFileNames.contains(absPath)
+      case BuglistedTests =>
+        buglistedTestFileNames.contains(absPath)
+      case WhitelistedTests =>
+        whitelistedTestFileNames.contains(absPath)
+      case SomeTests(names) =>
+        names.exists(absPath.endsWith _)
+    }
   }
 }
 
@@ -144,7 +132,7 @@ class ScalaJSSBTRunner(
     javaCmd: File,
     javacCmd: File,
     scalacArgs: Array[String],
-    val testNames: Array[String],
+    val options: ScalaJSPartestOptions,
     val scalaVersion: String
 ) extends SBTRunner(
     partestFingerprint, eventHandler, loggers, srcDir, testClassLoader,
