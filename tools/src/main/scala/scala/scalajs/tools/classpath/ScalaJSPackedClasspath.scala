@@ -11,8 +11,9 @@ package scala.scalajs.tools.classpath
 
 import java.io._
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.json._
 
-import net.liftweb.json._
+import org.json.simple.JSONValue
 
 final class ScalaJSPackedClasspath private (
     val mainJSFiles: Seq[VirtualScalaJSPackfile],
@@ -23,15 +24,30 @@ object ScalaJSPackedClasspath {
 
   case class PackInfoData(packOrder: Int)
 
-  def readPackInfo(file: VirtualScalaJSPackfile): PackInfoData = {
-    implicit val formats = DefaultFormats
-    Serialization.read[PackInfoData](file.packInfo)
+  object PackInfoData {
+
+    implicit object packInfoDataToJSON extends JSONSerializer[PackInfoData] {
+      def serialize(x: PackInfoData) = {
+        new JSONObjBuilder()
+          .fld("packOrder", x.packOrder)
+          .toJSON
+      }
+    }
+
+    implicit object packInfoDataFromJSON extends JSONDeserializer[PackInfoData] {
+      def deserialize(x: Object): PackInfoData = {
+        val e = new JSONObjExtractor(x)
+        PackInfoData(e.fld[Int]("packOrder"))
+      }
+    }
   }
+
+  def readPackInfo(file: VirtualScalaJSPackfile): PackInfoData =
+    fromJSON[PackInfoData](JSONValue.parseWithException(file.packInfo))
 
   def writePackInfo(writer: VirtualScalaJSPackfileWriter,
       info: PackInfoData): Unit = {
-    implicit val formats = DefaultFormats
-    writer.packInfoWriter.write(Serialization.write(info))
+    JSONValue.writeJSONString(info.toJSON, writer.packInfoWriter)
   }
 
   def apply(unorderedPackfiles: Seq[VirtualScalaJSPackfile],
