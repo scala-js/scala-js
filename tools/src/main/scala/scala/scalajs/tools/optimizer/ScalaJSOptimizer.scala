@@ -49,7 +49,7 @@ class ScalaJSOptimizer {
     this.logger = logger
     try {
       val analyzer = parseInfoFiles(inputs.classpath)
-      analyzer.computeReachability()
+      analyzer.computeReachability(inputs.manuallyReachable)
       writeDCEedOutput(inputs, outputConfig, analyzer)
 
       // Write out pack order (constant: file is stand alone)
@@ -213,26 +213,16 @@ object ScalaJSOptimizer {
       /** The Scala.js classpath entries. */
       classpath: ScalaJSClasspath,
       /** Additional scripts to be appended in the output. */
-      customScripts: Seq[VirtualJSFile] = Nil
+      customScripts: Seq[VirtualJSFile] = Nil,
+      /** Manual additions to reachability */
+      manuallyReachable: Seq[ManualReachability] = Nil
   )
 
-  object Inputs {
-    @deprecated("Use the primary constructor/apply method", "0.4.2")
-    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
-        scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
-        customScripts: Seq[VirtualJSFile]): Inputs = {
-      apply(
-          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles),
-          customScripts)
-    }
-
-    @deprecated("Use the primary constructor/apply method", "0.4.2")
-    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
-        scalaJSClassfiles: Seq[VirtualScalaJSClassfile]): Inputs = {
-      apply(
-          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles))
-    }
-  }
+  sealed abstract class ManualReachability
+  final case class ReachObject(name: String) extends ManualReachability
+  final case class Instantiate(name: String) extends ManualReachability
+  final case class ReachMethod(className: String, methodName: String,
+      static: Boolean) extends ManualReachability
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
