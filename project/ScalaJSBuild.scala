@@ -181,7 +181,7 @@ object ScalaJSBuild extends Build {
           scalaVersion := "2.10.2",
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "net.liftweb" %% "lift-json" % "2.5.1"
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1"
           )
       )
   )
@@ -593,7 +593,8 @@ object ScalaJSBuild extends Build {
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.0"
                 ),
                 "com.google.javascript" % "closure-compiler" % "v20130603",
-                "org.mozilla" % "rhino" % "1.7R4"
+                "org.mozilla" % "rhino" % "1.7R4",
+                "com.googlecode.json-simple" % "json-simple" % "1.1.1"
               )
             else Seq()
           },
