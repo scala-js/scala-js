@@ -36,22 +36,7 @@ matrix:
         - KIND=main
         - PUBLISH_COMPILER=true
     - jdk: openjdk6
-      scala: 2.11.0-M7
-      env:
-        - KIND=main
-        - PUBLISH_ENABLED=true
-    - jdk: openjdk6
-      scala: 2.11.0-M8
-      env:
-        - KIND=main
-        - PUBLISH_ENABLED=true
-    - jdk: openjdk6
-      scala: 2.11.0-RC3
-      env:
-        - KIND=main
-        - PUBLISH_ENABLED=true
-    - jdk: openjdk6
-      scala: 2.11.0-RC4
+      scala: 2.11.0
       env:
         - KIND=main
         - PUBLISH_ENABLED=true
@@ -60,6 +45,6 @@ matrix:
       env:
         - KIND=main
     - jdk: oraclejdk7
-      scala: 2.11.0-RC4
+      scala: 2.11.0
       env:
         - KIND=main
