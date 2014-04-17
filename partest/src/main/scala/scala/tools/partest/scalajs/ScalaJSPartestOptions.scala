@@ -1,7 +1,8 @@
 package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
-  val testFilter: ScalaJSPartestOptions.TestFilter
+  val testFilter: ScalaJSPartestOptions.TestFilter,
+  val optimize: Boolean
 )
 
 object ScalaJSPartestOptions {
@@ -22,6 +23,7 @@ object ScalaJSPartestOptions {
     var failed = false
 
     var filter: Option[TestFilter] = None
+    var optimize = false
 
     def error(msg: String) = {
       failed = true
@@ -39,6 +41,10 @@ object ScalaJSPartestOptions {
     }
 
     for (arg <- args) arg match {
+      case "--fastOpt" =>
+        optimize = true
+      case "--noOpt" =>
+        optimize = false
       case "--blacklisted" =>
         setFilter(BlacklistedTests)
       case "--buglisted" =>
@@ -53,7 +59,7 @@ object ScalaJSPartestOptions {
 
     if (failed) None
     else Some {
-      new ScalaJSPartestOptions(filter.getOrElse(WhitelistedTests))
+      new ScalaJSPartestOptions(filter.getOrElse(WhitelistedTests), optimize)
     }
   }
 

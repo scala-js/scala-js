@@ -31,7 +31,14 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
 }
 
 trait ScalaJSRunner extends nest.Runner {
+  val options: ScalaJSPartestOptions
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
+  override def extraJavaOptions = {
+    if (options.optimize)
+      super.extraJavaOptions :+ "-Dscalajs.partest.optimize=true"
+    else
+      super.extraJavaOptions
+  }
 }
 
 trait ScalaJSSuiteRunner extends SuiteRunner {
@@ -47,7 +54,9 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   override def runTest(testFile: File): TestState = {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
-    val runner = new nest.Runner(testFile, this) with ScalaJSRunner
+    val runner = new nest.Runner(testFile, this) with ScalaJSRunner {
+      val options = ScalaJSSuiteRunner.this.options
+    }
 
     // when option "--failed" is provided execute test only if log
     // is present (which means it failed before)

@@ -608,10 +608,7 @@ object ScalaJSBuild extends Build {
             Seq(
               pluginBase / "env",
               pluginBase / "sourcemap",
-              toolsBase  / "io",
-              toolsBase  / "classpath",
-              toolsBase  / "env",
-              toolsBase  / "logging"
+              toolsBase
             )
           },
           sources in Compile := {
