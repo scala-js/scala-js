@@ -64,6 +64,9 @@ class MainGenericRunner {
     val logger = new ScalaConsoleLogger
     val jsConsole = new ScalaConsoleJSConsole
 
+    val (runnerFile, reachability) =
+      runnerJSFile(thingToRun, command.arguments)
+
     if (optimize) {
       import ScalaJSOptimizer._
 
@@ -75,10 +78,7 @@ class MainGenericRunner {
 
       try {
         optimizer.optimize(
-            Inputs(classpath, manuallyReachable = Seq(
-                ReachObject(objName),
-                ReachMethod(objName + '$', "main__AT__V", static = false)
-            )),
+            Inputs(classpath, manuallyReachable = reachability),
             OutputConfig(
                 name          = fileName,
                 writer        = packFileWriter,
@@ -93,32 +93,64 @@ class MainGenericRunner {
       val packFile = packFileWriter.toVirtualFile(fileName)
       val packedClasspath = ScalaJSPackedClasspath(Seq(packFile), Nil)
       val env = new NodeJSEnv
-
-      env.runJS(
-          packedClasspath,
-          runnerJSFile(thingToRun, command.arguments),
-          logger,
-          jsConsole)
-
+      env.runJS(packedClasspath, runnerFile, logger, jsConsole)
     } else {
       val env = new RhinoJSEnv
-
-      env.runJS(
-        classpath,
-        runnerJSFile(thingToRun, command.arguments),
-        logger,
-        jsConsole)
+      env.runJS(classpath, runnerFile, logger, jsConsole)
     }
 
     true
   }
 
   private def runnerJSFile(mainObj: String, args: List[String]) = {
-    val jsObj = "ScalaJS.modules." + mainObj.replace('.', '_')
-    val jsArgs = listToJS(args)
-    new MemVirtualJSFile("Generated launcher file").
-      withContent(s"$jsObj().main__AT__V($jsArgs);")
+    import ScalaJSOptimizer._
+
+    val mainModule = mainObj.replace('.', '_')
+    val mainModule_main = "main__AT__V"
+
+    val mainReach = Seq(
+      ReachObject(mainModule),
+      ReachMethod(mainModule + '$', mainModule_main, static = false))
+
+    val (jsArgs, argReach) = toScalaStringArray(listToJS(args))
+
+    val vFile = new MemVirtualJSFile("Generated launcher file").
+      withContent(s"${mod(mainModule)}.$mainModule_main($jsArgs);")
+
+    (vFile, mainReach ++ argReach)
   }
+
+  /** constructs js.Any.toArray($jsArr)(ClassTag(classOf[String])) */
+  private def toScalaStringArray(jsArr: String) = {
+    import ScalaJSOptimizer._
+
+    val jsAnyModule = "scala_scalajs_js_Any"
+    val jsAny_toArray = "toArray__Lscala_scalajs_js_Array__Lscala_reflect_ClassTag__O"
+
+    val ClassTagModule = "scala_reflect_ClassTag"
+    val ClassTag_apply = "apply__Ljava_lang_Class__Lscala_reflect_ClassTag"
+    
+    val StringClass = "java_lang_String"
+
+    val reach = Seq(
+      ReachObject(jsAnyModule),
+      ReachMethod(jsAnyModule + '$', jsAny_toArray, static = false),
+      ReachObject(ClassTagModule),
+      ReachMethod(ClassTagModule + '$', ClassTag_apply, static = false),
+      ReachData(StringClass)
+    )
+
+    val code = s"""${mod(jsAnyModule)}.$jsAny_toArray($jsArr,
+      ${mod(ClassTagModule)}.$ClassTag_apply(${data(StringClass)}.getClassOf()))"""
+
+    (code, reach)
+  }
+
+  /** generate module accessor for a module name */
+  private def mod(name: String): String = s"ScalaJS.modules.$name()" 
+
+  /** generate data accessor for a class name */
+  private def data(name: String): String = s"ScalaJS.data.$name" 
 
   private def urlToFile(url: java.net.URL) = {
     try {

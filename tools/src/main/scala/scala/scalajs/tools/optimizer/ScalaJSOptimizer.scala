@@ -223,6 +223,7 @@ object ScalaJSOptimizer {
   final case class Instantiate(name: String) extends ManualReachability
   final case class ReachMethod(className: String, methodName: String,
       static: Boolean) extends ManualReachability
+  final case class ReachData(name: String) extends ManualReachability
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(

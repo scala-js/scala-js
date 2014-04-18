@@ -150,6 +150,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       case Instantiate(name) => classInfos(name).instantiated()
       case ReachMethod(className, methodName, static) =>
         classInfos(className).callMethod(methodName, static)
+      case ReachData(className) => classInfos(className).accessData()
     }
   }
 
