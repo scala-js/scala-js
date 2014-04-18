@@ -63,6 +63,7 @@ class MainGenericRunner {
 
     val logger = new ScalaConsoleLogger
     val jsConsole = new ScalaConsoleJSConsole
+    val runnerFile = runnerJSFile(thingToRun, command.arguments)
 
     if (optimize) {
       import ScalaJSOptimizer._
@@ -94,20 +95,10 @@ class MainGenericRunner {
       val packedClasspath = ScalaJSPackedClasspath(Seq(packFile), Nil)
       val env = new NodeJSEnv
 
-      env.runJS(
-          packedClasspath,
-          runnerJSFile(thingToRun, command.arguments),
-          logger,
-          jsConsole)
-
+      env.runJS(packedClasspath, runnerFile, logger, jsConsole)
     } else {
       val env = new RhinoJSEnv
-
-      env.runJS(
-        classpath,
-        runnerJSFile(thingToRun, command.arguments),
-        logger,
-        jsConsole)
+      env.runJS(classpath, runnerFile, logger, jsConsole)
     }
 
     true
@@ -115,9 +106,16 @@ class MainGenericRunner {
 
   private def runnerJSFile(mainObj: String, args: List[String]) = {
     val jsObj = "ScalaJS.modules." + mainObj.replace('.', '_')
-    val jsArgs = listToJS(args)
+    val jsArgs = argArray(args)
     new MemVirtualJSFile("Generated launcher file").
       withContent(s"$jsObj().main__AT__V($jsArgs);")
+  }
+
+  /** constructs a scala.Array[String] with the given elements */
+  private def argArray(args: List[String]) = {
+    s"""ScalaJS.makeNativeArrayWrapper(
+          ScalaJS.data.java_lang_String.getArrayOf(),
+          ${listToJS(args)})"""
   }
 
   private def urlToFile(url: java.net.URL) = {
