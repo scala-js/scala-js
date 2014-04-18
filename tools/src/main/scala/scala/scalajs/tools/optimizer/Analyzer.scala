@@ -16,6 +16,7 @@ import scala.collection.mutable
 import scala.scalajs.tools.logging._
 
 import OptData._
+import ScalaJSOptimizer._
 
 class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   /* Set this to true to debug the DCE analyzer.
@@ -65,6 +66,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
   case class FromMethod(methodInfo: MethodInfo) extends From
   case object FromCore extends From
   case object FromExports extends From
+  case object FromManual extends From
 
   private val HijackedBoxedClassNames = Set(
       "scala_runtime_BoxedUnit", "java_lang_Boolean",
@@ -101,8 +103,9 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       classInfo.linkClasses()
   }
 
-  def computeReachability(): Unit = {
+  def computeReachability(manuallyReachable: Seq[ManualReachability]): Unit = {
     reachCoreSymbols()
+    manuallyReachable.foreach(reachManually _)
     for (classInfo <- classInfos.values)
       classInfo.reachExports()
   }
@@ -135,6 +138,19 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
     BoxesRunTime.accessModule()
     BoxesRunTime.callMethod("equals__O__O__Z")
+  }
+
+  def reachManually(info: ManualReachability) = {
+    implicit val from = FromManual
+
+    // Don't lookupClass here, since we don't want to create any
+    // symbols. If a symbol doesn't exist, we fail.
+    info match {
+      case ReachObject(name) => classInfos(name + "$").accessModule()
+      case Instantiate(name) => classInfos(name).instantiated()
+      case ReachMethod(className, methodName, static) =>
+        classInfos(className).callMethod(methodName, static)
+    }
   }
 
   class ClassInfo(data: ClassInfoData) {
@@ -439,6 +455,8 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
                 logger.log(level, s"$verb from scalajs-corejslib.js")
               case FromExports =>
                 logger.log(level, "exported to JavaScript with @JSExport")
+              case FromManual =>
+                logger.log(level, "manually made reachable")
             }
         }
       }

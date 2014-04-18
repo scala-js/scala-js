@@ -72,7 +72,7 @@ case class Runner(args: Array[String], remoteArgs: Array[String], testClassLoade
  *
  * TODO: make configurable
  */
-case class PartestTask(taskDef: TaskDef, testNames: Array[String]) extends Task {
+case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
 
   // Get scala version through test name
   val scalaVersion = taskDef.fullyQualifiedName.stripPrefix("partest-")
@@ -81,19 +81,25 @@ case class PartestTask(taskDef: TaskDef, testNames: Array[String]) extends Task 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     val forkedCp    = scala.util.Properties.javaClassPath
     val classLoader = new URLClassLoader(forkedCp.split(java.io.File.pathSeparator).map(new File(_).toURI.toURL))
-    val runner = SBTRunner(
-        Framework.fingerprint, eventHandler, loggers,
-        s"../scalalib/fetchedSources/${scalaVersion}/test/files",
-        classLoader, null, null, Array.empty[String], testNames, scalaVersion)
 
     if (Runtime.getRuntime().maxMemory() / (1024*1024) < 800)
       loggers foreach (_.warn(s"""Low heap size detected (~ ${Runtime.getRuntime().maxMemory() / (1024*1024)}M). Please add the following to your build.sbt: javaOptions in Test += "-Xmx1G""""))
 
-    try runner execute Array("run", "pos", "neg")
-    catch {
-      case ex: ClassNotFoundException =>
-        loggers foreach { l => l.error("Please make sure partest is running in a forked VM by including the following line in build.sbt:\nfork in Test := true") }
-        throw ex
+    val maybeOptions =
+      ScalaJSPartestOptions(args, str => loggers.foreach(_.error(str)))
+
+    maybeOptions foreach { options =>
+      val runner = SBTRunner(
+          Framework.fingerprint, eventHandler, loggers,
+          s"../scalalib/fetchedSources/${scalaVersion}/test/files",
+          classLoader, null, null, Array.empty[String], options, scalaVersion)
+
+      try runner execute Array("run", "pos", "neg")
+      catch {
+        case ex: ClassNotFoundException =>
+          loggers foreach { l => l.error("Please make sure partest is running in a forked VM by including the following line in build.sbt:\nfork in Test := true") }
+          throw ex
+      }
     }
 
     Array()
@@ -103,9 +109,9 @@ case class PartestTask(taskDef: TaskDef, testNames: Array[String]) extends Task 
 
   // use reflection to instantiate scala.tools.partest.scalajs.ScalaJSSBTRunner,
   // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
-  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], srcDir: String, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], testNames: Array[String], scalaVersion: String): SBTRunner = {
+  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], srcDir: String, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
     val runnerClass = Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, srcDir, testClassLoader, javaCmd, javacCmd, scalacArgs, testNames, scalaVersion).asInstanceOf[SBTRunner]
+    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, srcDir, testClassLoader, javaCmd, javacCmd, scalacArgs, options, scalaVersion).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */

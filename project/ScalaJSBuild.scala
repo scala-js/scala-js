@@ -181,7 +181,7 @@ object ScalaJSBuild extends Build {
           scalaVersion := "2.10.2",
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "net.liftweb" %% "lift-json" % "2.5.1"
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1"
           )
       )
   )
@@ -595,7 +595,7 @@ object ScalaJSBuild extends Build {
                 ),
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "org.mozilla" % "rhino" % "1.7R4",
-                "net.liftweb" % "lift-json_2.10" % "2.5.1"
+                "com.googlecode.json-simple" % "json-simple" % "1.1.1"
               )
             else Seq()
           },
@@ -608,10 +608,7 @@ object ScalaJSBuild extends Build {
             Seq(
               pluginBase / "env",
               pluginBase / "sourcemap",
-              toolsBase  / "io",
-              toolsBase  / "classpath",
-              toolsBase  / "env",
-              toolsBase  / "logging"
+              toolsBase
             )
           },
           sources in Compile := {
@@ -637,10 +634,6 @@ object ScalaJSBuild extends Build {
 
           fork in Test := true,
           javaOptions in Test += "-Xmx1G",
-          //Uncomment what you need here
-          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testunknownonly=true",
-          //javaOptions in Test += "-Dscala.tools.partest.scalajs.useblacklist=true",
-          //javaOptions in Test += "-Dscala.tools.partest.scalajs.testblackbugonly=true",
 
           testFrameworks ++= {
             if (shouldPartest.value)

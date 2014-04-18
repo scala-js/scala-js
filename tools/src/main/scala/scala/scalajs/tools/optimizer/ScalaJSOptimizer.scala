@@ -13,14 +13,16 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
-import net.liftweb.json._
-
 import java.net.URI
+
+import org.json.simple.JSONValue
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.json._
+
 import OptData._
 
 import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
@@ -49,7 +51,7 @@ class ScalaJSOptimizer {
     this.logger = logger
     try {
       val analyzer = parseInfoFiles(inputs.classpath)
-      analyzer.computeReachability()
+      analyzer.computeReachability(inputs.manuallyReachable)
       writeDCEedOutput(inputs, outputConfig, analyzer)
 
       // Write out pack order (constant: file is stand alone)
@@ -70,10 +72,8 @@ class ScalaJSOptimizer {
     new Analyzer(logger, coreData ++ userData)
   }
 
-  private def readData(infoFile: String): ClassInfoData = {
-    implicit val formats = DefaultFormats
-    Extraction.extract[ClassInfoData](JsonParser.parse(infoFile))
-  }
+  private def readData(infoFile: String): ClassInfoData =
+    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
       analyzer: Analyzer): Unit = {
@@ -122,7 +122,7 @@ class ScalaJSOptimizer {
               // Update inReachableMethod
               if (line(prefixLength) == '.') {
                 val name = line.substring(prefixLength+1).takeWhile(_ != ' ')
-                val encodedName = parse('"'+name+'"').asInstanceOf[JString].s // see #330
+                val encodedName = JSONValue.parse('"'+name+'"').asInstanceOf[String] // see #330
                 inReachableMethod = classInfo.methodInfos(encodedName).isReachable
               } else {
                 // this is an exported method with []-select
@@ -213,26 +213,16 @@ object ScalaJSOptimizer {
       /** The Scala.js classpath entries. */
       classpath: ScalaJSClasspath,
       /** Additional scripts to be appended in the output. */
-      customScripts: Seq[VirtualJSFile] = Nil
+      customScripts: Seq[VirtualJSFile] = Nil,
+      /** Manual additions to reachability */
+      manuallyReachable: Seq[ManualReachability] = Nil
   )
 
-  object Inputs {
-    @deprecated("Use the primary constructor/apply method", "0.4.2")
-    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
-        scalaJSClassfiles: Seq[VirtualScalaJSClassfile],
-        customScripts: Seq[VirtualJSFile]): Inputs = {
-      apply(
-          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles),
-          customScripts)
-    }
-
-    @deprecated("Use the primary constructor/apply method", "0.4.2")
-    def apply(coreJSLib: VirtualJSFile, coreInfoFiles: Seq[VirtualFile],
-        scalaJSClassfiles: Seq[VirtualScalaJSClassfile]): Inputs = {
-      apply(
-          ScalaJSClasspath(coreJSLib, coreInfoFiles, scalaJSClassfiles))
-    }
-  }
+  sealed abstract class ManualReachability
+  final case class ReachObject(name: String) extends ManualReachability
+  final case class Instantiate(name: String) extends ManualReachability
+  final case class ReachMethod(className: String, methodName: String,
+      static: Boolean) extends ManualReachability
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(

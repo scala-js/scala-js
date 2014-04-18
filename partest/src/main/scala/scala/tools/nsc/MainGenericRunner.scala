@@ -5,9 +5,11 @@ package scala.tools.nsc
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.optimizer.ScalaJSOptimizer
 import scala.scalajs.tools.env.JSConsole
 
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
+import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 import scala.scalajs.sbtplugin.JSUtils._
 
 import java.io.File
@@ -39,6 +41,8 @@ class MainGenericRunner {
     false
   }
 
+  val optimize = sys.props.contains("scalajs.partest.optimize")
+
   def process(args: Array[String]): Boolean = {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
     import command.{ settings, howToRun, thingToRun }
@@ -57,15 +61,54 @@ class MainGenericRunner {
     } yield f
     val classpath = ScalaJSClasspath.fromClasspath(usefulClasspathEntries)
 
-    val env = new RhinoJSEnv
     val logger = new ScalaConsoleLogger
     val jsConsole = new ScalaConsoleJSConsole
 
-    env.runJS(
-      classpath,
-      runnerJSFile(thingToRun, command.arguments),
-      logger,
-      jsConsole)
+    if (optimize) {
+      import ScalaJSOptimizer._
+
+      val optimizer = new ScalaJSOptimizer
+      val objName = thingToRun.replace('.', '_')
+
+      val fileName = "partest optimized file"
+      val packFileWriter = new MemVirtualScalaJSPackfileWriter
+
+      try {
+        optimizer.optimize(
+            Inputs(classpath, manuallyReachable = Seq(
+                ReachObject(objName),
+                ReachMethod(objName + '$', "main__AT__V", static = false)
+            )),
+            OutputConfig(
+                name          = fileName,
+                writer        = packFileWriter,
+                wantSourceMap = false
+                ),
+            logger
+        )
+      } finally {
+        packFileWriter.close()
+      }
+
+      val packFile = packFileWriter.toVirtualFile(fileName)
+      val packedClasspath = ScalaJSPackedClasspath(Seq(packFile), Nil)
+      val env = new NodeJSEnv
+
+      env.runJS(
+          packedClasspath,
+          runnerJSFile(thingToRun, command.arguments),
+          logger,
+          jsConsole)
+
+    } else {
+      val env = new RhinoJSEnv
+
+      env.runJS(
+        classpath,
+        runnerJSFile(thingToRun, command.arguments),
+        logger,
+        jsConsole)
+    }
 
     true
   }
