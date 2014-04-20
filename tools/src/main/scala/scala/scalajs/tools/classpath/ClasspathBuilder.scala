@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 private[classpath] class ClasspathBuilder {
 
   private var coreJSLibFile: Option[VirtualJSFile] = None
-  private val coreInfoFiles = mutable.ListBuffer.empty[VirtualFile]
+  private val coreInfoFiles = mutable.ListBuffer.empty[VirtualTextFile]
   private val classFiles = mutable.Map.empty[String, VirtualScalaJSClassfile]
   private val packFiles = mutable.Map.empty[String, VirtualScalaJSPackfile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
@@ -23,7 +23,7 @@ private[classpath] class ClasspathBuilder {
     coreJSLibFile = Some(file)
   }
 
-  def addCoreInfoFile(file: VirtualFile): Unit = {
+  def addCoreInfoFile(file: VirtualTextFile): Unit = {
     coreInfoFiles += file
   }
 
@@ -225,7 +225,7 @@ private[classpath] class ClasspathBuilder {
 
           case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
             addCoreInfoFile(
-                new MemVirtualFile(fullPath)
+                new MemVirtualTextFile(fullPath)
                   .withContent(entryContent)
                   .withVersion(entryVersion))
 

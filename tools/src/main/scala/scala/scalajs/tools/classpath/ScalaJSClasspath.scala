@@ -14,7 +14,7 @@ import scala.scalajs.tools.io._
 
 final case class ScalaJSClasspath(
     coreJSLibFile: VirtualJSFile,
-    coreInfoFiles: Seq[VirtualFile],
+    coreInfoFiles: Seq[VirtualTextFile],
     /** note that the class files are unordered
      *  use mainJSFiles for ordered class files
      */
