@@ -260,8 +260,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         generatedJSAST(clDefs)
 
         for ((sym, tree, infoBuilder) <- generatedClasses) {
-          val desugared = ir.JSDesugaring.desugarJavaScript(tree)
-          genJSFile(cunit, sym, desugared, infoBuilder)
+          genIRFile(cunit, sym, tree, infoBuilder.toJSON)
         }
       } finally {
         translatedAnonFunctions.clear()

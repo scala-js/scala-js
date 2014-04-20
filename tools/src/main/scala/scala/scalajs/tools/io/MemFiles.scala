@@ -36,6 +36,20 @@ class MemVirtualTextFile(p: String) extends MemVirtualFile(p)
   }
 }
 
+/** A simple in-memory mutable virtual binary file. */
+class MemVirtualBinaryFile(p: String) extends MemVirtualFile(p)
+                                         with VirtualBinaryFile {
+  private[this] var _content: Array[Byte] = new Array[Byte](0)
+
+  override def content: Array[Byte] = _content
+  def content_=(v: Array[Byte]): Unit = _content = v
+
+  final def withContent(v: Array[Byte]): this.type = {
+    content = v
+    this
+  }
+}
+
 /** A simple in-memory mutable virtual JS file. */
 class MemVirtualJSFile(p: String) extends MemVirtualTextFile(p)
                                      with VirtualJSFile {
@@ -77,3 +91,7 @@ class MemVirtualScalaJSPackfile(p: String) extends MemVirtualJSFile(p)
     this
   }
 }
+
+/** A simple in-memory mutable virtual serialized Scala.js IR file. */
+class MemVirtualSerializedScalaJSIRFile(p: String) extends MemVirtualBinaryFile(p)
+                                                      with VirtualSerializedScalaJSIRFile

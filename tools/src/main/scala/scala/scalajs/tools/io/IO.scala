@@ -55,4 +55,20 @@ object IO {
     loop()
     builder.toString()
   }
+
+  /** Reads the entire content of an input stream as a byte array. */
+  def readInputStreamToByteArray(stream: InputStream): Array[Byte] = {
+    val builder = new ByteArrayOutputStream()
+    val buffer = new Array[Byte](4096)
+    @tailrec
+    def loop(): Unit = {
+      val size = stream.read(buffer)
+      if (size > 0) {
+        builder.write(buffer, 0, size)
+        loop()
+      }
+    }
+    loop()
+    builder.toByteArray()
+  }
 }

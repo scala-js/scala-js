@@ -35,7 +35,8 @@ object SourceMapWriter {
 
 class SourceMapWriter(
     val out: Writer,
-    val generatedFile: String) {
+    val generatedFile: String,
+    val relativizeBaseURI: Option[URI] = None) {
 
   import SourceMapWriter._
 
@@ -69,7 +70,10 @@ class SourceMapWriter(
 
   /** Relatively hacky way to get a Web-friendly URI to the source file */
   private def sourceToURI(source: SourceFile): String = {
-    val uriStr = source.toASCIIString
+    val uri = source
+    val relURI = relativizeBaseURI.fold(uri)(Utils.relativize(_, uri))
+
+    val uriStr = relURI.toASCIIString
     if (uriStr.startsWith("file:/") && uriStr.charAt(6) != '/')
       "file:///" + uriStr.substring(6)
     else

@@ -160,6 +160,11 @@ private[classpath] class ClasspathBuilder {
             case _ if name.endsWith(".js") =>
               readJSFile(file, path)
 
+            case _ if name.endsWith(".sjsir") =>
+              val irFile = FileVirtualScalaJSIRFile(file)
+              val classFile = irFile.toScalaJSClassfile
+              addClassFileIfNew(classFile.path, classFile)
+
             case _ => // ignore other files
           }
         }
@@ -210,6 +215,8 @@ private[classpath] class ClasspathBuilder {
 
         def entryContent: String =
           IO.readInputStreamToString(zipStream)
+        def entryBinaryContent: Array[Byte] =
+          IO.readInputStreamToByteArray(zipStream)
         def entryVersion: Option[Any] =
           Some(entry.getTime)
 
@@ -251,6 +258,17 @@ private[classpath] class ClasspathBuilder {
               if (!hasClassFile(path)) {
                 getOrCreateClassfile(path)
                   .withInfo(entryContent)
+              }
+            } else if (name.endsWith(".sjsir")) {
+              // a Scala.js IR file
+              val path = jsPath(".sjsir")
+              if (!hasClassFile(path)) {
+                classFiles -= path // just to be sure
+                addClassFile(path,
+                    new MemVirtualSerializedScalaJSIRFile(path)
+                      .withContent(entryBinaryContent)
+                      .withVersion(entryVersion)
+                      .toScalaJSClassfile)
               }
             } else {
               // ignore other files

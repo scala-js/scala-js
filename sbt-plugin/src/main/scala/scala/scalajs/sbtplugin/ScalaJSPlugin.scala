@@ -99,7 +99,7 @@ object ScalaJSPlugin extends Plugin {
   private def filesToWatchForChanges(classpath: Seq[File]): Set[File] = {
     val seq = classpath flatMap { f =>
       if (f.isFile) List(f)
-      else (f ** "*.js").get
+      else (f ** (("*.sjsir": NameFilter) | "*.js")).get
     }
     seq.toSet
   }
@@ -166,13 +166,12 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  /** Patches the IncOptions so that .js and .js.map files are pruned as needed.
+  /** Patches the IncOptions so that .sjsir files are pruned as needed.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .js, .js.map and .sjsinfo files
-   *  emitted by the Scala.js compiler. This makes sure that, when a .class
-   *  file must be deleted, the corresponding .js, .js.map and .sjsinfo files
-   *  are also deleted.
+   *  IncOptions with one that is aware of .sjsir files emitted by the Scala.js
+   *  compiler. This makes sure that, when a .class file must be deleted, the
+   *  corresponding .sjsir file are also deleted.
    */
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val inheritedNewClassfileManager = incOptions.newClassfileManager
@@ -182,11 +181,9 @@ object ScalaJSPlugin extends Plugin {
       def delete(classes: Iterable[File]): Unit = {
         inherited.delete(classes flatMap { classFile =>
           val scalaJSFiles = if (classFile.getPath endsWith ".class") {
-            for {
-              ext <- List(".js", ".js.map", ".sjsinfo")
-              f = FileVirtualFile.withExtension(classFile, ".class", ext)
-              if f.exists
-            } yield f
+            val f = FileVirtualFile.withExtension(classFile, ".class", ".sjsir")
+            if (f.exists) List(f)
+            else Nil
           } else Nil
           classFile :: scalaJSFiles
         })

@@ -19,6 +19,7 @@ import java.net.URI
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
+import scala.scalajs.ir
 import scala.scalajs.tools.io._
 
 class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
@@ -38,27 +39,33 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
       addLine(line)
   }
 
+  /** Add an IR tree representing a statement.
+   *  The IR is desugared with [[scala.scalajs.ir.JSDesugaring]] before being
+   *  emitted.
+   */
+  def addIRTree(tree: ir.Trees.Tree): Unit =
+    addJSTree(ir.JSDesugaring.desugarJavaScript(tree))
+
+  /** Add a JavaScript tree representing a statement.
+   *  The tree must be a valid JavaScript tree (typically obtained by
+   *  desugaring a full-fledged IR tree).
+   */
+  def addJSTree(tree: ir.Trees.Tree): Unit = {
+    val printer = new ir.Printers.IRTreePrinter(outputWriter)
+    printer.printTopLevelTree(tree)
+    // Do not close the printer: we do not have ownership of the writers
+  }
+
   def complete(): Unit = {
     // Can be overridden by subclasses
   }
 }
 
-class JSFileBuilderWithSourceMap(n: String, ow: Writer,
-    protected val sourceMapWriter: Writer,
-    relativizeSourceMapBasePath: Option[URI] = None)
+class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
+    protected val sourceMapWriter: ir.SourceMapWriter)
     extends JSFileBuilder(n, ow) {
 
-  protected val sourceMapGen: SourceMapGenerator =
-    SourceMapGeneratorFactory.getInstance(SourceMapFormat.V3)
-
   protected var totalLineCount = 0
-
-  protected def relPath(path: URI): URI = {
-    relativizeSourceMapBasePath match {
-      case Some(base) => Utils.relativize(base, path)
-      case None => path
-    }
-  }
 
   override def addLine(line: String): Unit = {
     super.addLine(line)
@@ -76,12 +83,14 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
 
       // Select lines, and remember offsets
       val offsets = new mutable.ArrayBuffer[Int] // (maybe NotSelected)
+      val selectedLineLengths = new mutable.ArrayBuffer[Int]
       var line: String = br.readLine()
       var selectedCount = 0
       while (line != null) {
         if (selector(line)) {
           addLine(line)
           offsets += selectedCount
+          selectedLineLengths += line.length
           selectedCount += 1
         } else {
           offsets += NotSelected
@@ -100,30 +109,49 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
           val consumer = new SourceMapConsumerV3
           consumer.parse(sourceMap)
 
+          val entriesByLine = Array.fill(selectedCount)(
+              List.newBuilder[(Int, Int, ir.Position, String)])
+
           consumer.visitMappings(new SourceMapConsumerV3.EntryVisitor {
             override def visit(sourceName: String, symbolName: String,
                 sourceStartPos: FilePosition,
                 startPos: FilePosition, endPos: FilePosition): Unit = {
 
-              val line = startPos.getLine
-              if (line < 0 || line >= offsets.size)
-                return
-              val offset = offsets(line)
-              if (offset == NotSelected)
-                return
+              for (line <- startPos.getLine to endPos.getLine) {
+                if (line < 0 || line >= offsets.size)
+                  return
+                val offset = offsets(line)
+                if (offset == NotSelected)
+                  return
 
-              val lineSpan = endPos.getLine - startPos.getLine
+                val startColumn =
+                  if (line == startPos.getLine) startPos.getColumn
+                  else 0
+                val endColumn0 =
+                  if (line == endPos.getLine) endPos.getColumn
+                  else selectedLineLengths(offset)
+                val endColumn = Math.max(endColumn0, startColumn)
+                val sourcePos = ir.Position(new URI(sourceName),
+                    sourceStartPos.getLine, sourceStartPos.getColumn)
 
-              val offsetStartPos =
-                new FilePosition(startLine+offset, startPos.getColumn)
-              val offsetEndPos =
-                new FilePosition(startLine+offset+lineSpan, endPos.getColumn)
-              val relSourceName = relPath(new URI(sourceName))
-
-              sourceMapGen.addMapping(relSourceName.toASCIIString(), symbolName,
-                  sourceStartPos, offsetStartPos, offsetEndPos)
+                entriesByLine(offset) +=
+                  ((startColumn, endColumn, sourcePos, symbolName))
+              }
             }
           })
+
+          for (lineNumber <- 0 until selectedCount) {
+            val entries = entriesByLine(lineNumber).result().sortBy(_._1)
+            var lastEndColumn = 0
+            for ((startColumn, endColumn, sourcePos, symbolName) <- entries) {
+              val startColumn1 = Math.max(startColumn, lastEndColumn)
+              sourceMapWriter.startNode(startColumn, sourcePos,
+                  Option(symbolName))
+              sourceMapWriter.endNode(endColumn)
+              lastEndColumn = endColumn
+            }
+            sourceMapWriter.nextLine()
+          }
 
         case None =>
           /* The source map does not exist.
@@ -131,17 +159,15 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
            * written directly in JS.
            * We generate a fake line-by-line source map for these on the fly
            */
-          val relSourceName = getRelSourceName(file)
+          val sourceFile = getFileSourceFile(file)
 
           for (lineNumber <- 0 until offsets.size) {
             val offset = offsets(lineNumber)
             if (offset != NotSelected) {
-              val sourceStartPos = new FilePosition(lineNumber, 0)
-              val startPos = new FilePosition(startLine+offset, 0)
-              val endPos = new FilePosition(startLine+offset+1, 0)
-
-              sourceMapGen.addMapping(relSourceName, null,
-                  sourceStartPos, startPos, endPos)
+              val originalPos = ir.Position(sourceFile, lineNumber, 0)
+              sourceMapWriter.startNode(0, originalPos, None)
+              sourceMapWriter.endNode(selectedLineLengths(offset))
+              sourceMapWriter.nextLine()
             }
           }
       }
@@ -150,25 +176,34 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     }
   }
 
+  override def addJSTree(tree: ir.Trees.Tree): Unit = {
+    val printer = new ir.Printers.IRTreePrinterWithSourceMap(
+        outputWriter, sourceMapWriter)
+    printer.printTopLevelTree(tree)
+    // Do not close the printer: we do not have ownership of the writers
+  }
+
+  private def getFileSourceFile(
+      file: VirtualJSFile): ir.Position.SourceFile = file match {
+    case file: FileVirtualJSFile =>
+      file.file.toURI
+    case _ =>
+      // Default to relative URI with name. Source map will probably not work
+      new URI(file.name)
+  }
+}
+
+class JSFileBuilderWithSourceMap(n: String, ow: Writer,
+    sourceMapOutputWriter: Writer,
+    relativizeSourceMapBasePath: Option[URI] = None)
+    extends JSFileBuilderWithSourceMapWriter(
+        n, ow,
+        new ir.SourceMapWriter(sourceMapOutputWriter, n,
+            relativizeSourceMapBasePath)) {
+
   override def complete(): Unit = {
     addLine("//@ sourceMappingURL=" + name + ".map")
     super.complete()
-
-    sourceMapGen.appendTo(sourceMapWriter, name)
-  }
-
-  private def getRelSourceName(file: VirtualJSFile): String = file match {
-    case file: FileVirtualJSFile =>
-      val uri = relPath(file.file.toURI)
-      val uriStr = uri.toASCIIString
-      // Stolen from scala.scalajs.compiler.JSPrinters.SourceMapWriter
-      // but wrapped with new URI
-      if (uriStr.startsWith("file:/") && uriStr.charAt(6) != '/')
-        "file:///" + uriStr.substring(6)
-      else
-        uriStr
-    case _ =>
-      // Default to relative URI with name. Source map will probably not work
-      file.name
+    sourceMapWriter.close()
   }
 }

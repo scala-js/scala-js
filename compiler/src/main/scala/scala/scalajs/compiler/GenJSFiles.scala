@@ -11,7 +11,8 @@ import scala.reflect.internal.pickling.PickleBuffer
 
 import java.io._
 
-import scala.scalajs.ir.{Trees => js, Printers, SourceMapWriter}
+import scala.scalajs.ir
+import ir.{Trees => js, Printers, SourceMapWriter}
 
 /** Send JS ASTs to files
  *
@@ -20,6 +21,18 @@ import scala.scalajs.ir.{Trees => js, Printers, SourceMapWriter}
 trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
+
+  def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
+      info: js.Tree): Unit = {
+    val outfile = getFileFor(cunit, sym, ".sjsir")
+    val output = outfile.bufferedOutput
+    try {
+      ir.Serializers.serialize(output, info)
+      ir.Serializers.serialize(output, tree)
+    } finally {
+      output.close()
+    }
+  }
 
   def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.Tree): Unit = {
     val outfile = getFileFor(cunit, sym, ".ir.js")
@@ -30,51 +43,6 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
       printer.close()
     } finally {
       output.close()
-    }
-  }
-
-  def genJSFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
-      infoBuilder: ClassInfoBuilder) {
-    val outfile = getFileFor(cunit, sym, ".js")
-    val output = bufferedWriter(outfile)
-    var sourceMapFile: AbstractFile = null
-    var sourceMapOutput: Writer = null
-    try {
-      val printer =
-        if (!scalaJSOpts.noSourceMap) {
-          // With source map
-          sourceMapFile = getFileFor(cunit, sym, ".js.map")
-          sourceMapOutput = bufferedWriter(sourceMapFile)
-          val smWriter = new SourceMapWriter(sourceMapOutput, outfile.name)
-          new Printers.IRTreePrinterWithSourceMap(output, smWriter)
-        } else {
-          // Without source map
-          new Printers.IRTreePrinter(output)
-        }
-
-      printer.printTopLevelTree(tree)
-
-      if (sourceMapFile ne null) {
-        printer.print(s"//@ sourceMappingURL=${sourceMapFile.name}")
-        printer.println()
-      }
-
-      printer.close()
-    } finally {
-      output.close()
-      if (sourceMapOutput ne null)
-        sourceMapOutput.close()
-    }
-
-    val infofile = getFileFor(cunit, sym, ".sjsinfo")
-    val infoWriter = bufferedWriter(infofile)
-    try {
-      val printer = new Printers.IRTreePrinter(infoWriter)
-      printer.printTree(infoBuilder.toJSON)
-      printer.println()
-      printer.close()
-    } finally {
-      infoWriter.close()
     }
   }
 
