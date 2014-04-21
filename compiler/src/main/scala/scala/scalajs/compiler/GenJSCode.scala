@@ -171,8 +171,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         /* Finally, we emit true code for the remaining class defs. */
         for (cd <- fullClassDefs) {
-          implicit val pos = cd.pos
           val sym = cd.symbol
+          implicit val pos = sym.pos
 
           /* Do not actually emit code for primitive types nor scala.Array. */
           val isPrimitive =
@@ -239,9 +239,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genClass(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
       currentClassSym = sym
 
       assert(!sym.isInterface && !sym.isImplClass,
@@ -357,9 +357,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genRawJSClassData(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
-      val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
 
       // Check that RawJS type is not exported
       for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
@@ -381,8 +380,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genInterface(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val sym = cd.symbol
+      implicit val pos = sym.pos
 
       val classIdent = encodeClassFullNameIdent(sym)
 
@@ -422,9 +421,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genImplClass(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
       currentClassSym = sym
 
       val generatedMethods = new ListBuffer[js.MethodDef]
