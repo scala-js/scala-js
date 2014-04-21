@@ -96,36 +96,38 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   private def readTestList(resourceName: String): Set[String] = {
     val source = scala.io.Source.fromURL(getClass.getResource(resourceName))
 
-    val srcDir = PathSettings.srcDir
-
     val fileNames = for {
       line <- source.getLines
       trimmed = line.trim
       if trimmed != "" && !trimmed.startsWith("#")
-    } yield {
-      (srcDir / trimmed).toCanonical.getAbsolutePath
-    }
+    } yield extendShortTestName(trimmed)
 
     fileNames.toSet
   }
 
-  def shouldUseTest(testFile: File): Boolean = {
-    val absPath = testFile.toCanonical.getAbsolutePath
+  private def extendShortTestName(testName: String) = {
+    val srcDir = PathSettings.srcDir
+    (srcDir / testName).toCanonical.getAbsolutePath
+  }
+
+  private lazy val testFilter: String => Boolean = {
     import ScalaJSPartestOptions._
     options.testFilter match {
-      case UnknownTests =>
+      case UnknownTests => { absPath =>
         !blacklistedTestFileNames.contains(absPath) &&
         !whitelistedTestFileNames.contains(absPath) &&
         !buglistedTestFileNames.contains(absPath)
-      case BlacklistedTests =>
-        blacklistedTestFileNames.contains(absPath)
-      case BuglistedTests =>
-        buglistedTestFileNames.contains(absPath)
-      case WhitelistedTests =>
-        whitelistedTestFileNames.contains(absPath)
-      case SomeTests(names) =>
-        names.exists(absPath.endsWith _)
+      }
+      case BlacklistedTests => blacklistedTestFileNames
+      case BuglistedTests   => buglistedTestFileNames
+      case WhitelistedTests => whitelistedTestFileNames
+      case SomeTests(names) => names.map(extendShortTestName _).toSet
     }
+  }
+
+  private def shouldUseTest(testFile: File): Boolean = {
+    val absPath = testFile.toCanonical.getAbsolutePath
+    testFilter(absPath)
   }
 }
 
