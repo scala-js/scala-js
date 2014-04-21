@@ -129,7 +129,7 @@ object ScalaJSBuild extends Build {
           publishLocal := {}
       )
   ).aggregate(
-      compiler, library, jasmineTestFramework
+      compiler, library, testBridge, jasmineTestFramework
   )
 
   lazy val compiler: Project = Project(
@@ -461,6 +461,15 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin")
 
   // Test framework
+  lazy val testBridge = Project(
+      id = "scalajs-test-bridge",
+      base = file("test-bridge"),
+      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+          name := "Scala.js test bridge",
+          delambdafySetting,
+          scalaJSSourceMapSettings
+      )
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val jasmineTestFramework = Project(
       id = "scalajs-jasmine-test-framework",
@@ -473,7 +482,7 @@ object ScalaJSBuild extends Build {
           ),
           scalaJSSourceMapSettings
       )
-  ).dependsOn(compiler % "plugin", library)
+  ).dependsOn(compiler % "plugin", library, testBridge)
 
   // Utils
 
@@ -495,6 +504,7 @@ object ScalaJSBuild extends Build {
   )
 
   def useJasmineTestFrameworkButDoNotDependOnIt = Seq(
+      useProjectButDoNotDependOnIt(testBridge, Test),
       useProjectButDoNotDependOnIt(jasmineTestFramework, Test),
       libraryDependencies ++=
         (libraryDependencies in jasmineTestFramework).value map (_ % "test")
