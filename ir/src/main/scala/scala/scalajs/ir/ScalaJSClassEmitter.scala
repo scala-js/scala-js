@@ -423,16 +423,19 @@ object ScalaJSClassEmitter {
   }
 
   def genTraitImpl(tree: ClassDef): Tree = {
-    val defs = for (m <- tree.defs) yield {
-      (m: @unchecked) match {
-        case m @ MethodDef(name: Ident, args, resultType, body) =>
-          implicit val pos = m.pos
-          Assign(
-              JSDotSelect(envField("impls"), name),
-              Function(args, resultType, body))
-      }
+    val defs = tree.defs collect {
+      case m: MethodDef =>
+        genTraitImplMethod(tree, m)
     }
     Block(defs)(tree.pos)
+  }
+
+  def genTraitImplMethod(cd: ClassDef, tree: MethodDef): Tree = {
+    implicit val pos = tree.pos
+    val MethodDef(name: Ident, args, resultType, body) = tree
+    Assign(
+        JSDotSelect(envField("impls"), name),
+        Function(args, resultType, body))
   }
 
   // Helpers

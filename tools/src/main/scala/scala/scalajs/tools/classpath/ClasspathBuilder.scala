@@ -13,7 +13,7 @@ private[classpath] class ClasspathBuilder {
 
   private var coreJSLibFile: Option[VirtualJSFile] = None
   private val coreInfoFiles = mutable.ListBuffer.empty[VirtualTextFile]
-  private val classFiles = mutable.Map.empty[String, VirtualScalaJSClassfile]
+  private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
   private val packFiles = mutable.Map.empty[String, VirtualScalaJSPackfile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
 
@@ -27,18 +27,18 @@ private[classpath] class ClasspathBuilder {
     coreInfoFiles += file
   }
 
-  def hasClassFile(relativePathOfJSFile: String): Boolean =
-    classFiles.contains(relativePathOfJSFile)
+  def hasIRFile(relativePathOfIRFile: String): Boolean =
+    irFiles.contains(relativePathOfIRFile)
 
-  def addClassFile(relativePathOfJSFile: String,
-      file: VirtualScalaJSClassfile): Unit =
-    classFiles += ((relativePathOfJSFile, file))
+  def addIRFile(relativePathOfIRFile: String,
+      file: VirtualScalaJSIRFile): Unit =
+    irFiles += ((relativePathOfIRFile, file))
 
-  def addClassFileIfNew(relativePathOfJSFile: String,
-      file: => VirtualScalaJSClassfile): Boolean = {
-    if (hasClassFile(relativePathOfJSFile)) false
+  def addIRFileIfNew(relativePathOfIRFile: String,
+      file: => VirtualScalaJSIRFile): Boolean = {
+    if (hasIRFile(relativePathOfIRFile)) false
     else {
-      addClassFile(relativePathOfJSFile, file)
+      addIRFile(relativePathOfIRFile, file)
       true
     }
   }
@@ -84,7 +84,7 @@ private[classpath] class ClasspathBuilder {
     if (!isScalaJSClasspath)
       throw new IllegalStateException("Missing core JS lib on the classpath")
     ScalaJSClasspath(
-        coreJSLibFile.get, coreInfoFiles.toSeq, classFiles.values.toSeq,
+        coreJSLibFile.get, coreInfoFiles.toSeq, irFiles.values.toSeq,
         otherJSFiles.values.toSeq)
   }
 
@@ -98,7 +98,7 @@ private[classpath] class ClasspathBuilder {
     val coreJSLib = coreJSLibFile.getOrElse(
         VirtualJSFile.empty("scalajs-corejslib.js"))
     ScalaJSClasspath(
-        coreJSLib, coreInfoFiles.toSeq, classFiles.values.toSeq,
+        coreJSLib, coreInfoFiles.toSeq, irFiles.values.toSeq,
         otherJSFiles.values.toSeq)
   }
 
@@ -134,8 +134,8 @@ private[classpath] class ClasspathBuilder {
   }
 
   def readJSFile(file: File, path: String) = {
-    if (FileVirtualScalaJSClassfile.isScalaJSClassfile(file))
-      addClassFileIfNew(path, FileVirtualScalaJSClassfile(file))
+    if (FileVirtualScalaJSIRFile.isScalaJSIRFile(file))
+      addIRFileIfNew(path, FileVirtualScalaJSIRFile(file))
     else
       addJSFileIfNew(path, FileVirtualJSFile(file))
   }
@@ -158,12 +158,10 @@ private[classpath] class ClasspathBuilder {
               addCoreInfoFile(FileVirtualJSFile(file))
 
             case _ if name.endsWith(".js") =>
-              readJSFile(file, path)
+              addJSFileIfNew(path, FileVirtualJSFile(file))
 
             case _ if name.endsWith(".sjsir") =>
-              val irFile = FileVirtualScalaJSIRFile(file)
-              val classFile = irFile.toScalaJSClassfile
-              addClassFileIfNew(classFile.path, classFile)
+              addIRFileIfNew(path, FileVirtualScalaJSIRFile(file))
 
             case _ => // ignore other files
           }
@@ -189,11 +187,11 @@ private[classpath] class ClasspathBuilder {
   def readEntriesInJar(stream: InputStream,
       jarPath: String): Unit = {
     val zipStream = new ZipInputStream(stream)
-    val classFiles = mutable.Map.empty[String, MemVirtualScalaJSClassfile]
+    val jsFiles = mutable.Map.empty[String, MemVirtualJSFile]
     var coreJSLib: Option[MemVirtualJSFile] = None
 
-    def getOrCreateClassfile(path: String): MemVirtualScalaJSClassfile =
-      classFiles.getOrElseUpdate(path, new MemVirtualScalaJSClassfile(path))
+    def getOrCreateJSFile(path: String): MemVirtualJSFile =
+      jsFiles.getOrElseUpdate(path, new MemVirtualJSFile(path))
 
     def getOrCreateCorejslib(jarPath: String): MemVirtualJSFile = {
       coreJSLib.getOrElse {
@@ -210,8 +208,6 @@ private[classpath] class ClasspathBuilder {
         val longName = entry.getName
         val name = longName.substring(longName.lastIndexOf('/')+1)
         val fullPath = jarPath + ":" + longName
-
-        def jsPath(ext: String) = fullPath.dropRight(ext.length) + ".js"
 
         def entryContent: String =
           IO.readInputStreamToString(zipStream)
@@ -238,37 +234,28 @@ private[classpath] class ClasspathBuilder {
 
           case _ =>
             if (name.endsWith(".js")) {
-              // assume Scala.js class file
+              // content of a JS file
               val path = fullPath
-              if (!hasClassFile(path)) {
-                getOrCreateClassfile(path)
+              if (!hasJSFile(path)) {
+                getOrCreateJSFile(path)
                   .withContent(entryContent)
                   .withVersion(entryVersion)
               }
             } else if (name.endsWith(".js.map")) {
-              // assume the source map of a Scala.js class file
-              val path = jsPath(".js.map")
-              if (!hasClassFile(path)) {
-                getOrCreateClassfile(path)
+              // assume the source map of a JS file
+              val path = fullPath.dropRight(".map".length)
+              if (!hasJSFile(path)) {
+                getOrCreateJSFile(path)
                   .withSourceMap(Some(entryContent))
-              }
-            } else if (name.endsWith(".sjsinfo")) {
-              // the info of a Scala.js class file
-              val path = jsPath(".sjsinfo")
-              if (!hasClassFile(path)) {
-                getOrCreateClassfile(path)
-                  .withInfo(entryContent)
               }
             } else if (name.endsWith(".sjsir")) {
               // a Scala.js IR file
-              val path = jsPath(".sjsir")
-              if (!hasClassFile(path)) {
-                classFiles -= path // just to be sure
-                addClassFile(path,
+              val path = fullPath
+              if (!hasIRFile(path)) {
+                addIRFile(path,
                     new MemVirtualSerializedScalaJSIRFile(path)
                       .withContent(entryBinaryContent)
-                      .withVersion(entryVersion)
-                      .toScalaJSClassfile)
+                      .withVersion(entryVersion))
               }
             } else {
               // ignore other files
@@ -281,11 +268,9 @@ private[classpath] class ClasspathBuilder {
 
     coreJSLib.foreach(addCoreJSLibFile _)
 
-    for ((path, classFile) <- classFiles) {
-      if (classFile.info != "") // it is really a Scala.js class file
-        addClassFile(path, classFile)
-      else // it is another .js file
-        addJSFile(path, classFile)
+    for ((path, jsFile) <- jsFiles) {
+      if (jsFile.content != "") // it is not just an unpaired .js.map file
+        addJSFile(path, jsFile)
     }
   }
 

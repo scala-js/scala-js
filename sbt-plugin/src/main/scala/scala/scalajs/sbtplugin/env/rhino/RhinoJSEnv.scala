@@ -61,7 +61,7 @@ class RhinoJSEnv extends JSEnv {
         // simply inserting
         classpath match {
           case cp: ScalaJSClasspath =>
-            if (cp.classFiles.nonEmpty) {
+            if (cp.irFiles.nonEmpty) {
               val loader = new ScalaJSCoreLib(cp)
               loader.insertInto(context, scope)
             }

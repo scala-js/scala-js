@@ -75,20 +75,6 @@ object VirtualJSFile {
     new MemVirtualJSFile(path).withVersion(Some(path))
 }
 
-/** A virtual JavaScript input file which was emitted by Scala.js as a
- *  "classfile".
- *  It has an info file associated with it.
- */
-trait VirtualScalaJSClassfile extends VirtualJSFile {
-  /** Content of the info file associated with this classfile. */
-  def info: String
-}
-
-object VirtualScalaJSClassfile {
-  def empty(path: String): VirtualScalaJSClassfile =
-    new MemVirtualScalaJSClassfile(path).withVersion(Some(path))
-}
-
 /** A virtual JavaScript input file which was packed by Scala.js
  *  It has a pack info file associated with it.
  */
@@ -117,28 +103,6 @@ trait VirtualScalaJSIRFile extends VirtualFile {
 
   /** Info tree and IR tree of this file. */
   def infoAndTree: (ir.Trees.Tree, ir.Trees.ClassDef)
-
-  /** Converts this Scala.js IR file to a desugared Scala.js class file. */
-  def toScalaJSClassfile: VirtualScalaJSClassfile = {
-    val (info, tree) = this.infoAndTree
-
-    val writer = new MemVirtualJSFileWriter
-    val builder = new JSFileBuilderWithSourceMap(
-        name,
-        writer.contentWriter,
-        writer.sourceMapWriter,
-        relativizeSourceMapBasePath = None)
-    builder.addIRTree(tree)
-    builder.complete()
-    val jsFile = writer.toVirtualFile(path)
-
-    val p = path.stripSuffix(".sjsir") + ".js"
-    new MemVirtualScalaJSClassfile(p)
-      .withContent(jsFile.content)
-      .withSourceMap(jsFile.sourceMap)
-      .withInfo(info.toString())
-      .withVersion(version)
-  }
 }
 
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
