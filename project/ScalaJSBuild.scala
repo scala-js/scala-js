@@ -132,12 +132,30 @@ object ScalaJSBuild extends Build {
       compiler, library, testBridge, jasmineTestFramework
   )
 
+  /* This project is not really used in the build. Its sources are actually
+   * added as sources of the `compiler` project (and meant to be added to the
+   * `tools` project as well).
+   * It exists mostly to be used in IDEs, because they don't like very much to
+   * have code in a project that lives outside the project's directory, and
+   * like even less that code be shared by different projects.
+   */
+  lazy val ir: Project = Project(
+      id = "scalajs-ir",
+      base = file("ir"),
+      settings = defaultSettings ++ Seq(
+          name := "Scala.js IR",
+          exportJars := true
+      )
+  )
+
   lazy val compiler: Project = Project(
       id = "scalajs-compiler",
       base = file("compiler"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
           crossVersion := CrossVersion.full, // because compiler api is not binary compatible
+          unmanagedSourceDirectories in Compile +=
+            (scalaSource in (ir, Compile)).value,
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaVersion.value,
               "org.scala-lang" % "scala-reflect" % scalaVersion.value,

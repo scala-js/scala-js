@@ -4,6 +4,8 @@ import util._
 
 import org.junit.Test
 
+import scala.scalajs.ir.{Trees => js, Types => jstpe}
+
 class OptimizationTest extends JSASTTest {
 
   @Test
@@ -17,10 +19,9 @@ class OptimizationTest extends JSASTTest {
       val jsFun: js.Function = (x: Int) => x * 2
     }
     """.
-    hasNot("runtime.AnonFunction ctor") { (js, jse) => {
-      case js.New(jse.QualIdent(
-          "ScalaJS.c.scala_scalajs_runtime_AnonFunction1"), _) =>
-    }}
+    hasNot("runtime.AnonFunction ctor") {
+      case js.New(jstpe.ClassType("scala_scalajs_runtime_AnonFunction1"), _, _) =>
+    }
 
     // Make sure our wrapper matcher has the right name
     """
@@ -31,10 +32,9 @@ class OptimizationTest extends JSASTTest {
       val jsFun: js.Function = scalaFun
     }
     """.
-    has("runtime.AnonFunction ctor") { (js, jse) => {
-      case js.New(jse.QualIdent(
-          "ScalaJS.c.scala_scalajs_runtime_AnonFunction1"), _) =>
-    }}
+    has("runtime.AnonFunction ctor") {
+      case js.New(jstpe.ClassType("scala_scalajs_runtime_AnonFunction1"), _, _) =>
+    }
 
   }
 

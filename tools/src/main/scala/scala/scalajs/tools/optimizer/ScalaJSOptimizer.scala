@@ -143,7 +143,7 @@ class ScalaJSOptimizer {
           else {
             (state: @switch) match {
               case StateConstructor =>
-                if (line.startsWith(s"ScalaJS.c.$className.prototype.constructor =")) {
+                if (line.startsWith(s"ScalaJS.inheritable.$className.prototype =")) {
                   // last line of the Constructor part, switch for next time
                   state = StateMethods
                 }
@@ -151,23 +151,13 @@ class ScalaJSOptimizer {
                 classInfo.isAnySubclassInstantiated
 
               case StateMethods =>
-                if (line.startsWith("/** @constructor */")) {
-                  // beginning of the InheritableConstructor part, switch and redo
-                  state = StateInheritableConstructor
-                  apply(line)
-                } else {
-                  // still in the Methods part, use the super apply
-                  classInfo.isAnySubclassInstantiated && super.apply(line)
-                }
-
-              case StateInheritableConstructor =>
                 if (line.startsWith("ScalaJS.is.")) {
                   // beginning of the Data part, switch and redo
                   state = StateData
                   apply(line)
                 } else {
-                  // inheritable constructor
-                  classInfo.isAnySubclassInstantiated
+                  // still in the Methods part, use the super apply
+                  classInfo.isAnySubclassInstantiated && super.apply(line)
                 }
 
               case StateData =>
@@ -181,7 +171,18 @@ class ScalaJSOptimizer {
                 }
 
               case StateModuleAccessor =>
-                classInfo.isModuleAccessed
+                if (line == "/** @constructor */" || // if class
+                    line.startsWith("ScalaJS.e")) {  // if module
+                  // begging of the Exports part, switch and redo
+                  state = StateExports
+                  apply(line)
+                } else {
+                  // in the Module Accessor part
+                  classInfo.isModuleAccessed
+                }
+
+              case StateExports =>
+                true
             }
           }
         }
@@ -238,7 +239,7 @@ object ScalaJSOptimizer {
 
   private final val StateConstructor = 0
   private final val StateMethods = 1
-  private final val StateInheritableConstructor = 2
-  private final val StateData = 3
-  private final val StateModuleAccessor = 4
+  private final val StateData = 2
+  private final val StateModuleAccessor = 3
+  private final val StateExports = 4
 }

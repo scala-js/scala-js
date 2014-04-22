@@ -1,29 +1,29 @@
 package scala.scalajs.compiler.test.util
 
+import language.implicitConversions
+
 import scala.tools.nsc._
-import scala.scalajs.compiler.{ScalaJSPlugin, JSTrees, JSTreeExtractors}
 
 import scala.util.control.ControlThrowable
 
 import org.junit.Assert._
 
-import language.implicitConversions
+import scala.scalajs.compiler.{ScalaJSPlugin, JSTreeExtractors}
+import JSTreeExtractors.jse
+import scala.scalajs.ir
+import ir.{Trees => js}
 
 abstract class JSASTTest extends DirectTest {
 
   private var lastAST: JSAST = _
 
   abstract class JSAST {
-    val trees: JSTrees with JSTreeExtractors
-    val clDefs: List[trees.js.Tree]
+    val clDefs: List[js.Tree]
 
-    type Pat = (trees.js.type, trees.jse.type) =>
-      PartialFunction[trees.js.Tree, Unit]
+    type Pat = PartialFunction[js.Tree, Unit]
 
-    class PFTraverser(pat: Pat) extends trees.js.Transformer {
+    class PFTraverser(pf: Pat) extends ir.Transformers.Transformer {
       private case object Found extends ControlThrowable
-
-      val pf = pat(trees.js, trees.jse)
 
       private[this] var finding = false
 
@@ -42,7 +42,7 @@ abstract class JSASTTest extends DirectTest {
         clDefs map transformStat _
       }
 
-      private def visit(tr: trees.js.Tree)(after: =>trees.js.Tree) = {
+      private def visit(tr: js.Tree)(after: => js.Tree) = {
         if (finding && pf.isDefinedAt(tr))
           throw Found
 
@@ -52,15 +52,15 @@ abstract class JSASTTest extends DirectTest {
         after
       }
 
-      override def transformStat(tr: trees.js.Tree) = visit(tr) {
+      override def transformStat(tr: js.Tree) = visit(tr) {
         super.transformStat(tr)
       }
 
-      override def transformExpr(tr: trees.js.Tree) = visit(tr) {
+      override def transformExpr(tr: js.Tree) = visit(tr) {
         super.transformExpr(tr)
       }
 
-      override def transformDef(tr: trees.js.Tree) = visit(tr) {
+      override def transformDef(tr: js.Tree) = visit(tr) {
         super.transformDef(tr)
       }
     }
@@ -93,7 +93,7 @@ abstract class JSASTTest extends DirectTest {
   implicit def string2ast(str: String): JSAST = stringAST(str)
 
   override def newScalaJSPlugin(global: Global) = new ScalaJSPlugin(global) {
-    override def generatedJSAST(cld: List[jsAddons.js.Tree]): Unit = {
+    override def generatedJSAST(cld: List[js.Tree]): Unit = {
       lastAST = new JSAST { val trees = jsAddons; val clDefs = cld }
     }
   }

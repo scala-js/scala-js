@@ -7,6 +7,8 @@ package scala.scalajs.compiler
 
 import scala.tools.nsc._
 
+import scala.scalajs.ir.{Trees => js, Types => jstpe}
+
 /** Encoding of symbol names for JavaScript
  *
  *  Some issues that this encoding solves:
@@ -31,16 +33,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   /** Name given to all exported stuff of a class for DCE */
   final val dceExportName = "<exported>"
-
-  /** The current Scala.js environment */
-  def environment(implicit pos: Position): js.Ident = {
-    js.Ident(ScalaJSEnvironmentName, Some(ScalaJSEnvironmentName))
-  }
-
-  /** Select a given field of the current Scala.js environment */
-  def envField(name: String)(implicit pos: Position): js.Tree = {
-    js.DotSelect(environment, js.Ident(name, Some(name)))
-  }
 
   def encodeLabelSym(sym: Symbol, freshName: Symbol => String)(
       implicit pos: Position): js.Ident = {
@@ -154,82 +146,28 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(mangleJSName(freshName(sym)), Some(sym.unexpandedName.decoded))
   }
 
-  def encodeClassSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isClass, "encodeClassSym called with non-class symbol: " + sym)
-    js.DotSelect(envField("c"), encodeClassFullNameIdent(sym))
-  }
-
-  def encodeModuleSymInstance(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModuleClass,
-        "encodeModuleSymInstance called with non-moduleClass symbol: " + sym)
-    js.DotSelect(envField("moduleInstances"),
-        encodeModuleFullNameIdent(sym))
-  }
-
-  def encodeModuleSym(sym: Symbol)(implicit pos: Position): js.Tree = {
-    require(sym.isModuleClass,
-        "encodeModuleSym called with non-moduleClass symbol: " + sym)
-
-    if (foreignIsImplClass(sym))
-      envField("impls")
-    else
-      js.Apply(js.DotSelect(envField("modules"),
-          encodeModuleFullNameIdent(sym)), Nil)
-  }
-
   def foreignIsImplClass(sym: Symbol): Boolean =
     sym.isModuleClass && nme.isImplClassName(sym.name)
 
-  def encodeIsInstanceOf(value: js.Tree, tpe: Type)(
-      implicit pos: Position): (js.Tree, Symbol) = {
-    encodeIsAsInstanceOf("is")(value, tpe)
-  }
-
-  def encodeAsInstanceOf(value: js.Tree, tpe: Type)(
-      implicit pos: Position): (js.Tree, Symbol) = {
-    encodeIsAsInstanceOf("as")(value, tpe)
-  }
-
-  private def encodeIsAsInstanceOf(prefix: String)(value: js.Tree, tpe: Type)(
-      implicit pos: Position): (js.Tree, Symbol) = {
+  def encodeReferenceType(tpe: Type)(implicit pos: Position): (jstpe.ReferenceType, Symbol) = {
     toTypeKind(tpe) match {
-      case REFERENCE(ScalaRTMapped(rtSym)) =>
-        encodeIsAsInstanceOf(prefix)(value, rtSym.tpe)
-      case array : ARRAY =>
-        val elemSym = array.elementKind.toType.typeSymbol match {
-          case ScalaRTMapped(rtSym) => rtSym
-          case x => x
-        }
-        (js.ApplyMethod(envField(prefix+"ArrayOf"),
-            encodeClassFullNameIdent(elemSym),
-            List(value, js.IntLiteral(array.dimensions))), elemSym)
-      case _ =>
-        val sym = tpe.typeSymbol
-        (js.ApplyMethod(envField(prefix),
-            encodeClassFullNameIdent(sym), List(value)), sym)
+      case kind: ARRAY =>
+        val sym = mapRuntimeClass(kind.elementKind.toType.typeSymbol)
+        (jstpe.ArrayType(encodeClassFullName(sym), kind.dimensions), sym)
+
+      case kind =>
+        val sym = mapRuntimeClass(kind.toType.typeSymbol)
+        (jstpe.ClassType(encodeClassFullName(sym)), sym)
     }
   }
 
-  def encodeClassDataOfType(tpe: Type)(implicit pos: Position): (js.Tree, Symbol) = {
-    toTypeKind(tpe) match {
-      case REFERENCE(ScalaRTMapped(rtSym)) =>
-        encodeClassDataOfType(rtSym.tpe)
-      case REFERENCE(sym) =>
-        encodeClassDataOfSym(sym)
-      case array : ARRAY =>
-        val (result0, sym) = encodeClassDataOfType(array.elementKind.toType)
-        var result = result0
-        for (i <- 0 until array.dimensions)
-          result = js.ApplyMethod(result, js.Ident("getArrayOf"), Nil)
-        (result, sym)
-
-      case _ => encodeClassDataOfSym(tpe.typeSymbol)
+  def encodeClassType(sym: Symbol): jstpe.Type = {
+    if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
+    else {
+      assert(sym != definitions.ArrayClass,
+          "encodeClassType() cannot be called with ArrayClass")
+      jstpe.ClassType(encodeClassFullName(sym))
     }
-  }
-
-  private def encodeClassDataOfSym(sym: Symbol)(
-      implicit pos: Position): (js.Tree, Symbol) = {
-    (js.DotSelect(envField("data"), encodeClassFullNameIdent(sym)), sym)
   }
 
   def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {

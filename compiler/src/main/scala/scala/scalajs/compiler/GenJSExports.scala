@@ -11,6 +11,8 @@ import scala.tools.nsc._
 import scala.math.PartialOrdering
 import scala.reflect.internal.Flags
 
+import scala.scalajs.ir.{Trees => js, Types => jstpe}
+
 /** Generation of exports for JavaScript
  *
  *  @author Sébastien Doeraene
@@ -41,7 +43,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       newlyDecldExportNames map { genMemberExport(classSym, _) }
     }
 
-    def genConstructorExports(classSym: Symbol): List[js.Tree] = {
+    def genConstructorExports(classSym: Symbol): List[js.ConstructorExportDef] = {
       val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
 
       // Generate exports from constructors and their annotations
@@ -53,47 +55,22 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val exports = for {
         (jsName, specs) <- ctorExports.groupBy(_._1) // group by exported name
       } yield {
-        import js.TreeDSL._
-
         val ctors = specs.map(_._2)
         implicit val pos = ctors.head.pos
 
-        val js.MethodDef(_, args, body) = genExportMethod(ctors, jsName)
-
-        val jsCtor = envField("c") DOT encodeClassFullNameIdent(classSym)
-        val (createNamespace, expCtorVar) = genCreateNamespaceInExports(jsName)
-
-        js.Block(
-          createNamespace,
-          js.DocComment("@constructor"),
-          expCtorVar := js.Function(args, js.Block(
-            // Call the js constructor statically -- no dce info required here
-            js.ApplyMethod(jsCtor, js.Ident("call"), List(js.This())),
-            body
-          )),
-          expCtorVar DOT "prototype" := jsCtor DOT "prototype"
-        )
+        val js.MethodDef(_, args, _, body) = genExportMethod(ctors, jsName)
+        js.ConstructorExportDef(jsName, args, body)
       }
 
       exports.toList
     }
 
-    def genModuleAccessorExports(classSym: Symbol): List[js.Tree] = {
-      import js.TreeDSL._
-
+    def genModuleAccessorExports(classSym: Symbol): List[js.ModuleExportDef] = {
       for {
         (jsName, p) <- jsInterop.exportsOf(classSym)
       } yield {
         implicit val pos = p
-
-        val accessorVar =
-          envField("modules") DOT encodeModuleFullNameIdent(classSym)
-        val (createNamespace, expAccessorVar) = genCreateNamespaceInExports(jsName)
-
-        js.Block(
-          createNamespace,
-          expAccessorVar := accessorVar
-        )
+        js.ModuleExportDef(jsName)
       }
     }
 
@@ -231,12 +208,13 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else if (cases.size == 1 && !hasVarArg)
           cases.head._2
         else {
-          js.Switch(js.DotSelect(js.Ident("arguments"), js.Ident("length")),
+          js.Switch(js.JSDotSelect(
+              js.VarRef(js.Ident("arguments"), false)(jstpe.DynType), js.Ident("length")),
               cases.toList, defaultCase)
         }
       }
 
-      js.MethodDef(js.StringLiteral(jsName), formalArgs, body)
+      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.DynType, body)
     }
 
     /**
@@ -308,23 +286,23 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             }
 
             def orUndef(cond: js.Tree) = if (!hasDefaultParam) cond else {
-              js.BinaryOp("||", cond, js.BinaryOp("===", param, js.Undefined()))
+              js.JSBinaryOp("||", cond, js.JSBinaryOp("===", param.ref, js.Undefined()))
             }
 
             typeTest match {
               case HelperTypeTest(helperName, _) =>
-                js.If(orUndef(genCallHelper(helperName, param)),
-                    genSubAlts, elsep)
+                js.If(orUndef(genCallHelper(helperName, param.ref)(jstpe.BooleanType)),
+                    genSubAlts, elsep)(jstpe.UndefType)
 
               case TypeOfTypeTest(typeString) =>
                 js.If(orUndef {
-                  js.BinaryOp("===", js.UnaryOp("typeof", param),
+                  js.JSBinaryOp("===", js.JSUnaryOp("typeof", param.ref),
                       js.StringLiteral(typeString))
-                }, genSubAlts, elsep)
+                }, genSubAlts, elsep)(jstpe.UndefType)
 
               case InstanceOfTypeTest(tpe) =>
-                js.If(orUndef(genIsInstanceOf(tpe, param)),
-                    genSubAlts, elsep)
+                js.If(orUndef(genIsInstanceOf(tpe, param.ref)),
+                    genSubAlts, elsep)(jstpe.UndefType)
 
               case NoTypeTest =>
                 genSubAlts // note: elsep is discarded, obviously
@@ -357,7 +335,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val jsVarArg = repeatedTpe map { tpe =>
         // Construct a new JSArraySeq
         genNew(JSArraySeqClass, JSArraySeq_ctor,
-          List(js.Ident("arguments"), js.IntLiteral(normalArgc)))
+          List(js.VarRef(js.Ident("arguments"), false)(jstpe.DynType),
+            js.IntLiteral(normalArgc)))
       }
 
       // normal arguments
@@ -368,21 +347,19 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val jsArgPrep = for {
         (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
       } yield {
-        import js.TreeDSL._
-
         // Code to unbox the argument (if it is defined)
         val jsUnboxArg = {
-          val unboxedArg = ensureUnboxed(jsArg,
+          val unboxedArg = ensureUnboxed(jsArg.ref,
               enteringPhase(currentRun.posterasurePhase)(param.tpe))
           if (unboxedArg eq jsArg)
             js.Skip()
           else
-            jsArg := unboxedArg
+            js.Assign(jsArg.ref, unboxedArg)
         }
 
         // If argument is undefined and there is a default getter, call it
         if (param.hasFlag(Flags.DEFAULTPARAM)) {
-          IF (jsArg === js.Undefined()) {
+          js.If(js.BinaryOp("===", jsArg.ref, js.Undefined(), jstpe.BooleanType), {
             val trgSym = {
               if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
               else sym.owner
@@ -396,16 +373,16 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             val trgTree = {
               if (sym.isClassConstructor) genLoadModule(trgSym)
-              else js.This()
+              else js.This()(encodeClassType(trgSym))
             }
 
             // Pass previous arguments to defaultGetter
-            jsArg := genApplyMethod(trgTree, trgSym, defaultGetter,
-                jsArgs.take(defaultGetter.tpe.params.size))
-          } ELSE {
+            js.Assign(jsArg.ref, genApplyMethod(trgTree, trgSym, defaultGetter,
+                jsArgs.take(defaultGetter.tpe.params.size).map(_.ref)))
+          }, {
             // Otherwise, unbox the argument
             jsUnboxArg
-          }
+          })(jstpe.UndefType)
         } else {
           // Otherwise, it is always the unboxed argument
           jsUnboxArg
@@ -413,7 +390,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       val jsReturn = js.Return {
-        val call = genApplyMethod(js.This(), sym.owner, sym, jsArgs ++ jsVarArg)
+        val call = genApplyMethod(js.This()(encodeClassType(sym.owner)),
+            sym.owner, sym, jsArgs.map(_.ref) ++ jsVarArg)
         ensureBoxed(call,
             enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
@@ -421,28 +399,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       js.Block(jsArgPrep :+ jsReturn)
     }
 
-  }
-
-  /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
-   *  For example, given the qualified name "foo.bar.Something", generates:
-   *
-   *  ScalaJS.e["foo"] = ScalaJS.e["foo"] || {};
-   *  ScalaJS.e["foo"]["bar"] = ScalaJS.e["foo"]["bar"] || {};
-   *
-   *  Returns (statements, ScalaJS.e["foo"]["bar"]["Something"])
-   */
-  private def genCreateNamespaceInExports(qualName: String)(
-      implicit pos: Position): (js.Tree, js.Tree) = {
-    val parts = qualName.split("\\.")
-    val statements = mutable.ListBuffer.empty[js.Tree]
-    var namespace = envField("e")
-    for (i <- 0 until parts.length-1) {
-      namespace = js.BracketSelect(namespace, js.StringLiteral(parts(i)))
-      statements +=
-        js.Assign(namespace, js.BinaryOp("||", namespace, js.ObjectConstr(Nil)))
-    }
-    val lhs = js.BracketSelect(namespace, js.StringLiteral(parts.last))
-    (js.Block(statements.result()), lhs)
   }
 
   private def isOverridingExport(sym: Symbol): Boolean = {
@@ -582,11 +538,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     js.Throw(js.StringLiteral("No matching overload"))
   }
 
-  private def genFormalArgs(count: Int)(implicit pos: Position): List[js.Ident] =
+  private def genFormalArgs(count: Int)(implicit pos: Position): List[js.ParamDef] =
     (1 to count map genFormalArg).toList
 
-  private def genFormalArg(index: Int)(implicit pos: Position): js.Ident =
-    js.Ident("arg$" + index)
+  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType)
 
 
   /**

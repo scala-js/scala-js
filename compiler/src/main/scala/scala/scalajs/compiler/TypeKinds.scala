@@ -7,6 +7,9 @@ package scala.scalajs.compiler
 
 import scala.tools.nsc._
 
+import scala.scalajs.ir
+import ir.Types
+
 /** Types as their are viewed by JavaScript
  *
  *  @author Sébastien Doeraene
@@ -69,12 +72,22 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     }
 
     def toType: Type
+
+    def toIRType: Types.Type
+    def toReferenceType: Types.ReferenceType
   }
 
-  sealed abstract class ValueTypeKind(cls: Symbol) extends TypeKind {
+  sealed abstract class TypeKindButArray extends TypeKind {
+    override def toReferenceType: Types.ClassType
+  }
+
+  sealed abstract class ValueTypeKind(cls: Symbol) extends TypeKindButArray {
     override def isValueType = true
 
     def toType = cls.tpe
+
+    override def toReferenceType: Types.ClassType =
+      Types.ClassType(encodeClassFullName(cls))
 
     val primitiveCharCode = cls match {
       case UnitClass     => "V"
@@ -91,26 +104,43 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   }
 
   /** The undefined value */
-  case object UNDEFINED extends ValueTypeKind(definitions.UnitClass) {}
+  case object UNDEFINED extends ValueTypeKind(definitions.UnitClass) {
+    def toIRType = Types.UndefType
+  }
 
   /** The null value */
   //case object NULL extends ValueTypeKind(definitions.NullClass) {}
 
   /** Int */
-  case class INT(cls: Symbol) extends ValueTypeKind(cls) {}
+  case class INT(cls: Symbol) extends ValueTypeKind(cls) {
+    def toIRType =
+      if (cls == LongClass) Types.ClassType(ir.Definitions.RuntimeLongClass)
+      else Types.IntType
+  }
 
   /** Float */
-  case class FLOAT(cls: Symbol) extends ValueTypeKind(cls) {}
+  case class FLOAT(cls: Symbol) extends ValueTypeKind(cls) {
+    def toIRType = Types.DoubleType
+  }
 
   /** Boolean */
-  case object BOOL extends ValueTypeKind(definitions.BooleanClass) {}
+  case object BOOL extends ValueTypeKind(definitions.BooleanClass) {
+    def toIRType = Types.BooleanType
+  }
 
   /** An object */
-  case class REFERENCE(cls: Symbol) extends TypeKind {
+  case class REFERENCE(cls: Symbol) extends TypeKindButArray {
     override def toString = "REFERENCE(" + cls.fullName + ")"
     override def isReferenceType = true
 
     def toType = cls.tpe
+
+    def toIRType =
+      if (cls == ObjectClass) Types.AnyType
+      else Types.ClassType(encodeClassFullName(cls))
+
+    override def toReferenceType: Types.ClassType =
+      Types.ClassType(encodeClassFullName(mapRuntimeClass(cls)))
   }
 
   /** An array */
@@ -121,14 +151,25 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
     def toType = arrayType(elem.toType)
 
+    def toIRType = toReferenceType
+
+    override def toReferenceType: Types.ArrayType = {
+      Types.ArrayType(
+          elementKind.toReferenceType.className,
+          dimensions)
+    }
+
     /** The ultimate element type of this array. */
-    def elementKind: TypeKind = elem match {
-      case a : ARRAY => a.elementKind
-      case k => k
+    def elementKind: TypeKindButArray = elem match {
+      case a: ARRAY            => a.elementKind
+      case k: TypeKindButArray => k
     }
   }
 
   ////////////////// Conversions //////////////////////////////
+
+  def toIRType(t: Type): Types.Type =
+    toTypeKind(t).toIRType
 
   // The following code is a hard copy-and-paste from backend.icode.TypeKinds
 
@@ -216,5 +257,10 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
       case NothingClass => Some(RuntimeNothingClass)
       case _ => None
     }
+  }
+
+  def mapRuntimeClass(cls: Symbol): Symbol = cls match {
+    case ScalaRTMapped(rtCls) => rtCls
+    case _ => cls
   }
 }

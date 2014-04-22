@@ -5,6 +5,8 @@ import util._
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.scalajs.ir.{Trees => js}
+
 class JSExportASTTest extends JSASTTest {
 
   @Test
@@ -24,10 +26,10 @@ class JSExportASTTest extends JSASTTest {
       @JSExport
       override def foo = 2
     }
-    """.traverse { (js, jse) => {
+    """.traverse {
       case js.PropertyDef(js.StringLiteral("foo", _), _, _, _) =>
         props += 1
-    }}
+    }
 
     assertEquals("Only define the property `foo` once", props, 1)
 
