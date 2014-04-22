@@ -39,8 +39,8 @@ class NodeJSEnv(
 
   def this() = this(None, Seq.empty, Seq.empty)
 
-  // We need to define importScripts
-  override protected def initFiles: Seq[VirtualJSFile] = Seq {
+  // We need to define importScripts and hack console.log
+  override protected def initFiles: Seq[VirtualJSFile] = Seq(
     new MemVirtualJSFile("importScripts.js").withContent(
         """
         global.importScripts = function() {
@@ -51,8 +51,23 @@ class NodeJSEnv(
               global[elem] = module[elem];
           }
         };
+        """),
+     new MemVirtualJSFile("nodeConsoleHack.js").withContent(
+        """
+        // Hack console log to duplicate double % signs
+        (function() {
+          var oldLog = console.log;
+          var newLog = function() {
+            var args = arguments;
+            if (args.length >= 1) {
+              args[0] = args[0].replace(/%/g, "%%");
+            }
+            oldLog.apply(console, args);
+          };
+          console.log = newLog;
+        })();
         """)
-  }
+  )
 
   // Send code to Stdin
   override protected def sendVMStdin(args: RunJSArgs, out: OutputStream): Unit = {
