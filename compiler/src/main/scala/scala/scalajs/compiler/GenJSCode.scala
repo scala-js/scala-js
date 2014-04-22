@@ -2958,9 +2958,14 @@ abstract class GenJSCode extends plugins.PluginComponent
                 })
               }
 
-            case JS2Z => arg
-            case JS2N => arg
-            case JS2S => arg
+            case JS2Z | JS2N =>
+              makePrimitiveUnbox(arg, tree.tpe)
+
+            case JS2S =>
+              genAsInstanceOf(tree.tpe, arg)
+
+            case RTJ2J | J2RTJ =>
+              arg // TODO? What if (arg === null) for RTJ2J?
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
@@ -2969,9 +2974,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case DICT_DEL =>
               // js.Dictionary.delete(arg)
               js.BracketDelete(receiver, arg)
-
-            case RTJ2J => arg
-            case J2RTJ => arg
 
             case ISUNDEF =>
               // js.isUndefined(arg)
