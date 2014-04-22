@@ -9,11 +9,13 @@ script:
     fi
   - if [ $KIND == main ]; then sh checksizes.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
-  - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" scalajs-tools/package scalajs-sbt-plugin/package; fi
+  - if [ $KIND == tools ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package; fi
+  - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package scalajs-sbt-plugin/package; fi
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION publish; fi
   - if [[ "${PUBLISH_COMPILER}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/publish; fi
-  - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "sbtplugin" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" scalajs-tools/publish scalajs-sbt-plugin/publish; fi
+  - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "sbtplugin" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/publish scalajs-sbt-plugin/publish; fi
+  - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "tools" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/publish; fi
 env:
   global:
     - secure: "gIReAZ60hLtbYTlnNUM508LhhznImVPRO5fHQ/9SY7mqA/ql3EVJ65M43GxzvKjNkZ7thKj1ygYklCQaqXwdszR8xRRM7MNQIUImZhsjXJ0xqorpQf2fmo2sD54Gx/caAI4kx0x/ULm9ZA5QK6hprl8aVqb1o5bYAxfZdx719pE="
@@ -24,12 +26,7 @@ matrix:
       scala: 2.10.2
       env:
         - KIND=main
-        - PUBLISH_ENABLED=true
-    - jdk: openjdk6
-      scala: 2.10.2
-      env:
-        - KIND=sbtplugin
-        - PUBLISH_ENABLED=true
+        - PUBLISH_COMPILER=true
     - jdk: openjdk6
       scala: 2.10.3
       env:
@@ -39,11 +36,21 @@ matrix:
       scala: 2.10.4
       env:
         - KIND=main
-        - PUBLISH_COMPILER=true
+        - PUBLISH_ENABLED=true
+    - jdk: openjdk6
+      scala: 2.10.4
+      env:
+        - KIND=sbtplugin
+        - PUBLISH_ENABLED=true
     - jdk: openjdk6
       scala: 2.11.0
       env:
         - KIND=main
+        - PUBLISH_ENABLED=true
+    - jdk: openjdk6
+      scala: 2.11.0
+      env:
+        - KIND=tools
         - PUBLISH_ENABLED=true
     - jdk: oraclejdk7
       scala: 2.10.2
