@@ -138,6 +138,9 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
     BoxesRunTime.accessModule()
     BoxesRunTime.callMethod("equals__O__O__Z")
+
+    for (hijacked <- HijackedBoxedClassNames)
+      lookupClass(hijacked).accessData()
   }
 
   def reachManually(info: ManualReachability) = {
