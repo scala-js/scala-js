@@ -171,8 +171,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         /* Finally, we emit true code for the remaining class defs. */
         for (cd <- fullClassDefs) {
-          implicit val pos = cd.pos
           val sym = cd.symbol
+          implicit val pos = sym.pos
 
           /* Do not actually emit code for primitive types nor scala.Array. */
           val isPrimitive =
@@ -241,9 +241,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genClass(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
       currentClassSym = sym
 
       assert(!sym.isInterface && !sym.isImplClass,
@@ -357,9 +357,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genRawJSClassData(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
-      val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
 
       // Check that RawJS type is not exported
       for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
@@ -379,10 +378,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genHijackedBoxedClassData(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
-      val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
-
+      implicit val pos = sym.pos
       val classIdent = encodeClassFullNameIdent(sym)
 
       val instanceTestMethods = genInstanceTestMethods(cd)
@@ -402,8 +399,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genInterface(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val sym = cd.symbol
+      implicit val pos = sym.pos
 
       val classIdent = encodeClassFullNameIdent(sym)
 
@@ -443,9 +440,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genImplClass(cd: ClassDef): js.Tree = {
       import js.TreeDSL._
 
-      implicit val pos = cd.pos
       val ClassDef(mods, name, _, impl) = cd
       val sym = cd.symbol
+      implicit val pos = sym.pos
       currentClassSym = sym
 
       val generatedMethods = new ListBuffer[js.MethodDef]
@@ -2961,9 +2958,14 @@ abstract class GenJSCode extends plugins.PluginComponent
                 })
               }
 
-            case JS2Z => arg
-            case JS2N => arg
-            case JS2S => arg
+            case JS2Z | JS2N =>
+              makePrimitiveUnbox(arg, tree.tpe)
+
+            case JS2S =>
+              genAsInstanceOf(tree.tpe, arg)
+
+            case RTJ2J | J2RTJ =>
+              arg // TODO? What if (arg === null) for RTJ2J?
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
@@ -2972,9 +2974,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case DICT_DEL =>
               // js.Dictionary.delete(arg)
               js.BracketDelete(receiver, arg)
-
-            case RTJ2J => arg
-            case J2RTJ => arg
 
             case ISUNDEF =>
               // js.isUndefined(arg)
