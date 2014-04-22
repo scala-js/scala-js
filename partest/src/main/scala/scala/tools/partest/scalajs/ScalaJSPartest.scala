@@ -32,12 +32,15 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
 
 trait ScalaJSRunner extends nest.Runner {
   val options: ScalaJSPartestOptions
+  val noWarnFile: String
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
+    val opts = super.extraJavaOptions :+
+      s"-Dscala.partest.noWarnFile=$noWarnFile"
     if (options.optimize)
-      super.extraJavaOptions :+ "-Dscalajs.partest.optimize=true"
+      opts :+ "-Dscalajs.partest.optimize=true"
     else
-      super.extraJavaOptions
+      opts
   }
 }
 
@@ -56,6 +59,11 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
     val runner = new nest.Runner(testFile, this) with ScalaJSRunner {
       val options = ScalaJSSuiteRunner.this.options
+      val noWarnFile = {
+        val uri = getClass.getResource(s"$listDir/NoDCEWarn.txt").toURI
+        assert(uri != null, "Need NoDCEWarn.txt file")
+        new File(uri).getAbsolutePath()
+      }
     }
 
     // when option "--failed" is provided execute test only if log

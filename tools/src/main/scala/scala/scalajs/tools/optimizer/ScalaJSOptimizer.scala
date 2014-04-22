@@ -51,8 +51,9 @@ class ScalaJSOptimizer {
     this.logger = logger
     PersistentState.startRun()
     try {
-      val analyzer = readClasspathAndCreateAnalyzer(inputs.classpath)
-      analyzer.computeReachability(inputs.manuallyReachable)
+      import inputs._
+      val analyzer = readClasspathAndCreateAnalyzer(classpath)
+      analyzer.computeReachability(manuallyReachable, noWarnMissing)
       writeDCEedOutput(inputs, outputConfig, analyzer)
 
       // Write out pack order (constant: file is stand alone)
@@ -229,7 +230,9 @@ object ScalaJSOptimizer {
       /** Additional scripts to be appended in the output. */
       customScripts: Seq[VirtualJSFile] = Nil,
       /** Manual additions to reachability */
-      manuallyReachable: Seq[ManualReachability] = Nil
+      manuallyReachable: Seq[ManualReachability] = Nil,
+      /** Elements we won't warn even if they don't exist */
+      noWarnMissing: Seq[NoWarnMissing] = Nil
   )
 
   sealed abstract class ManualReachability
@@ -237,6 +240,11 @@ object ScalaJSOptimizer {
   final case class Instantiate(name: String) extends ManualReachability
   final case class ReachMethod(className: String, methodName: String,
       static: Boolean) extends ManualReachability
+
+  sealed abstract class NoWarnMissing
+  final case class NoWarnClass(className: String) extends NoWarnMissing
+  final case class NoWarnMethod(className: String, methodName: String)
+    extends NoWarnMissing
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(

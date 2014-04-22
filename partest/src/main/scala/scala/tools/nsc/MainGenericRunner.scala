@@ -13,6 +13,8 @@ import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 import scala.scalajs.sbtplugin.JSUtils._
 
 import java.io.File
+import scala.io.Source
+
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
 
@@ -42,6 +44,18 @@ class MainGenericRunner {
   }
 
   val optimize = sys.props.contains("scalajs.partest.optimize")
+  def noWarnMissing = {
+    import ScalaJSOptimizer._
+
+    for {
+      fname <- sys.props.get("scala.partest.noWarnFile").toSeq
+      line  <- Source.fromFile(fname).getLines
+      if !line.startsWith("#")
+    } yield line.split('.') match {
+      case Array(className) =>             NoWarnClass(className)
+      case Array(className, methodName) => NoWarnMethod(className, methodName)
+    }
+  }
 
   def process(args: Array[String]): Boolean = {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
@@ -76,10 +90,13 @@ class MainGenericRunner {
 
       try {
         optimizer.optimize(
-            Inputs(classpath, manuallyReachable = Seq(
-                ReachObject(objName),
-                ReachMethod(objName + '$', "main__AT__V", static = false)
-            )),
+            Inputs(classpath,
+                manuallyReachable = Seq(
+                  ReachObject(objName),
+                  ReachMethod(objName + '$', "main__AT__V", static = false)
+                ),
+                noWarnMissing = noWarnMissing
+            ),
             OutputConfig(
                 name          = fileName,
                 writer        = packFileWriter,
