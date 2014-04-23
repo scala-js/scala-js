@@ -245,6 +245,11 @@ object Trees {
 
   case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  object CallHelper {
+    def apply(helper: String, args: Tree*)(tpe: Type)(implicit pos: Position) =
+      CallHelper(helper, args.toList)(tpe)
+  }
+
   // JavaScript expressions
 
   case class JSGlobal()(implicit val pos: Position) extends Tree {

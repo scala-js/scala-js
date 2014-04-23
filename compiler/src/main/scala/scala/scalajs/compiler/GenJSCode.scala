@@ -878,7 +878,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Throw(expr) =>
           val ex = genExpr(expr)
           if (isMaybeJavaScriptException(expr.tpe))
-            js.Throw(genCallHelper("unwrapJavaScriptException", ex)(jstpe.AnyType))
+            js.Throw(js.CallHelper("unwrapJavaScriptException", ex)(jstpe.AnyType))
           else
             js.Throw(ex)
 
@@ -1146,7 +1146,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val elseHandler: js.Tree =
             if (mightCatchJavaScriptException)
-              js.Throw(genCallHelper("unwrapJavaScriptException", exceptVar)(jstpe.AnyType))
+              js.Throw(js.CallHelper("unwrapJavaScriptException", exceptVar)(jstpe.AnyType))
             else
               js.Throw(exceptVar)
 
@@ -1185,7 +1185,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (mightCatchJavaScriptException) {
             js.Block(
                 js.Assign(exceptVar,
-                    genCallHelper("wrapJavaScriptException", exceptVar)(
+                    js.CallHelper("wrapJavaScriptException", exceptVar)(
                         encodeClassType(ThrowableClass))),
                 handler0)
           } else {
@@ -1470,7 +1470,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               }
               val helper = MethodWithHelperInEnv(fun.symbol)
               val arguments = (receiver :: args) map genExpr
-              genCallHelper(helper, arguments:_*)(toIRType(tree.tpe))
+              js.CallHelper(helper, arguments:_*)(toIRType(tree.tpe))
             } else if (ToStringMaybeOnHijackedClass contains fun.symbol) {
               js.Cast(js.JSApply(js.JSDotSelect(
                   js.Cast(genExpr(receiver), jstpe.DynType),
@@ -2092,7 +2092,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       val function = if (mustUseAnyComparator) "anyEqEq" else "anyRefEqEq"
-      genCallHelper(function, lsrc, rsrc)(jstpe.BooleanType)
+      js.CallHelper(function, lsrc, rsrc)(jstpe.BooleanType)
     }
 
     /** Gen JS code for string concatenation
@@ -2333,7 +2333,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         if (isArrayLikeUpdate) {
           callStatement = js.If(
-              genCallHelper("isScalaJSArray", callTrg)(jstpe.BooleanType), {
+              js.CallHelper("isScalaJSArray", callTrg)(jstpe.BooleanType), {
             js.JSApply(js.JSDotSelect(js.Cast(callTrg, jstpe.DynType),
                 js.Ident("update__I__elementType__")), arguments)
           }, {
@@ -2358,7 +2358,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             val helper = MethodWithHelperInEnv.get(implMethodSym)
             if (helper.isDefined) {
               // This method has a helper, call it
-              genCallHelper(helper.get, callTrg :: arguments:_*)(
+              js.CallHelper(helper.get, callTrg :: arguments:_*)(
                   toIRType(implMethodSym.tpe.resultType))
             } else if (implMethodSym.owner == ObjectClass) {
               /* If we end up here, we have a call to a method in
@@ -2477,9 +2477,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       toTypeKind(tpe) match {
         case kind: ValueTypeKind =>
           if (unbox) {
-            genCallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
+            js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
           } else if (kind == CharKind) {
-            genCallHelper("bC", expr)(encodeClassType(BoxedCharacterClass))
+            js.CallHelper("bC", expr)(encodeClassType(BoxedCharacterClass))
           } else {
             expr // box is identity for all non-Char types
           }
@@ -2546,7 +2546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case js.JSArrayConstr(actualArgs) =>
             js.JSNew(jsClass, actualArgs)
           case _ =>
-            genCallHelper("newInstanceWithVarargs",
+            js.CallHelper("newInstanceWithVarargs",
                 jsClass, actualArgArray)(jstpe.DynType)
         }
       } else if (code == DYNAPPLY) {
@@ -2557,13 +2557,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             receiver match {
               // follow up on the cute hack ...
               case js.JSDotSelect(js.JSGlobal(), js.Ident("ScalaJS", _)) if shouldUseDotSelect =>
-                genCallHelper(methodName.asInstanceOf[js.StringLiteral].value,
+                js.CallHelper(methodName.asInstanceOf[js.StringLiteral].value,
                     actualArgs: _*)(jstpe.DynType)
               case _ =>
                 js.JSApply(maybeDotSelect(receiver, methodName), actualArgs)
             }
           case _ =>
-            genCallHelper("applyMethodWithVarargs",
+            js.CallHelper("applyMethodWithVarargs",
                 receiver, methodName, actualArgArray)(jstpe.DynType)
         }
       } else if (code == DYNLITN) {
@@ -2790,7 +2790,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case OBJPROPS =>
               // js.Object.properties(arg)
-              genCallHelper("propertiesOf", arg)(jstpe.DynType)
+              js.CallHelper("propertiesOf", arg)(jstpe.DynType)
           }
 
         case List(arg1, arg2) =>
@@ -2873,7 +2873,7 @@ abstract class GenJSCode extends plugins.PluginComponent
            */
           def protectedReceiver = receiver match {
             case js.JSDotSelect(_, _) | js.JSBracketSelect(_, _) =>
-              genCallHelper("protect", receiver)(receiver.tpe)
+              js.CallHelper("protect", receiver)(receiver.tpe)
             case _ =>
               receiver
           }
@@ -2916,7 +2916,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.JSApply(js.JSBracketSelect(
                     receiver, js.StringLiteral(jsFunName)), args)
               case _ =>
-                genCallHelper("applyMethodWithVarargs", receiver,
+                js.CallHelper("applyMethodWithVarargs", receiver,
                     js.StringLiteral(jsFunName), argArray)(jstpe.DynType)
             }
           }
@@ -3027,7 +3027,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (cls == JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
           else js.JSNew(genPrimitiveJSClass(cls), args)
         case argArray =>
-          genCallHelper("newInstanceWithVarargs",
+          js.CallHelper("newInstanceWithVarargs",
               genPrimitiveJSClass(cls), argArray)(jstpe.DynType)
       }
     }
@@ -3677,12 +3677,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val (irType, sym) = encodeReferenceType(tpe)
       currentMethodInfoBuilder.accessesClassData(sym)
       js.ClassOf(irType)
-    }
-
-    /** Generate a call to a helper function in the environment */
-    def genCallHelper(helperName: String, args: js.Tree*)(irType: jstpe.Type)(
-        implicit pos: Position) = {
-      js.CallHelper(helperName, args.toList)(irType)
     }
   }
 
