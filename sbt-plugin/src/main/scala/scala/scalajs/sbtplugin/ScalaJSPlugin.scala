@@ -72,6 +72,9 @@ object ScalaJSPlugin extends Plugin {
     val emitSourceMaps = settingKey[Boolean](
         "Whether package and optimize stages should emit source maps at all")
 
+    val scalaJSOptimizer = settingKey[ScalaJSOptimizer](
+        "Scala.js optimizer")
+
     // Task keys to re-wire sources and run with other VM
     val packageStage = taskKey[Unit]("Run stuff after packageJS")
     val fastOptStage = taskKey[Unit]("Run stuff after fastOptJS")
@@ -216,6 +219,9 @@ object ScalaJSPlugin extends Plugin {
         ((crossTarget in fastOptJS).value /
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
+      scalaJSOptimizer in fastOptJS :=
+        new ScalaJSOptimizer,
+
       fastOptJS := {
         val s = streams.value
         val classpath = jsClasspath((fullClasspath in fastOptJS).value)
@@ -229,7 +235,7 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Fast optimizing %s ..." format output)
           import ScalaJSOptimizer._
           val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
-          val optimizer = new ScalaJSOptimizer
+          val optimizer = (scalaJSOptimizer in fastOptJS).value
           val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
           val relSourceMapBase =
               if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
