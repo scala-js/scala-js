@@ -9,18 +9,9 @@
 
 package scala.scalajs.tools.io
 
-/** A simple in-memory mutable virtual file. */
+/** A base class for simple in-memory mutable virtual files. */
 class MemVirtualFile(val path: String) extends VirtualFile {
-  private[this] var _content: String = ""
   private[this] var _version: Option[Any] = None
-
-  override def content: String = _content
-  def content_=(v: String): Unit = _content = v
-
-  final def withContent(v: String): this.type = {
-    content = v
-    this
-  }
 
   override def version: Option[Any] = _version
   def version_=(v: Option[Any]): Unit = _version = v
@@ -31,8 +22,23 @@ class MemVirtualFile(val path: String) extends VirtualFile {
   }
 }
 
+/** A simple in-memory mutable virtual text file. */
+class MemVirtualTextFile(p: String) extends MemVirtualFile(p)
+                                       with VirtualTextFile {
+  private[this] var _content: String = ""
+
+  override def content: String = _content
+  def content_=(v: String): Unit = _content = v
+
+  final def withContent(v: String): this.type = {
+    content = v
+    this
+  }
+}
+
 /** A simple in-memory mutable virtual JS file. */
-class MemVirtualJSFile(p: String) extends MemVirtualFile(p) with VirtualJSFile {
+class MemVirtualJSFile(p: String) extends MemVirtualTextFile(p)
+                                     with VirtualJSFile {
   private[this] var _sourceMap: Option[String] = None
 
   override def sourceMap: Option[String] = _sourceMap

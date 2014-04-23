@@ -2,11 +2,11 @@ package scala.scalajs.tools.io
 
 import java.io.Writer
 
-trait VirtualFileWriter {
+trait VirtualTextFileWriter {
   def contentWriter: Writer
 }
 
-trait VirtualJSFileWriter extends VirtualFileWriter {
+trait VirtualJSFileWriter extends VirtualTextFileWriter {
   def sourceMapWriter: Writer
 }
 

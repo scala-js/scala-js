@@ -16,17 +16,6 @@ trait VirtualFile {
     else path.substring(pos + 1)
   }
 
-  /** Returns the content of the file. */
-  def content: String
-
-  /** Returns a new Reader of the file. */
-  def reader: Reader = new StringReader(content)
-
-  /** Returns the lines in the content.
-   *  Lines do not contain the new line characters.
-   */
-  def readLines(): List[String] = IO.readLines(reader)
-
   /** Optionally returns an implementation-dependent "version" token.
    *  Versions are compared with ==.
    *  If non-empty, a different version must be returned when the content
@@ -38,15 +27,30 @@ trait VirtualFile {
   def version: Option[Any] = None
 }
 
-object VirtualFile {
-  def empty(path: String): VirtualFile =
-    new MemVirtualFile(path).withVersion(Some(path))
+/** A virtual input file.
+ */
+trait VirtualTextFile extends VirtualFile {
+  /** Returns the content of the file. */
+  def content: String
+
+  /** Returns a new Reader of the file. */
+  def reader: Reader = new StringReader(content)
+
+  /** Returns the lines in the content.
+   *  Lines do not contain the new line characters.
+   */
+  def readLines(): List[String] = IO.readLines(reader)
+}
+
+object VirtualTextFile {
+  def empty(path: String): VirtualTextFile =
+    new MemVirtualTextFile(path)
 }
 
 /** A virtual input file which contains JavaScript code.
  *  It may have a source map associated with it.
  */
-trait VirtualJSFile extends VirtualFile {
+trait VirtualJSFile extends VirtualTextFile {
   /** Optionally, content of the source map file associated with this
    *  JavaScript source.
    */

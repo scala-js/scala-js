@@ -2,7 +2,7 @@ package scala.scalajs.tools.io
 
 import java.io._
 
-class FileVirtualFileWriter(val file: File) extends VirtualFileWriter {
+class FileVirtualTextFileWriter(val file: File) extends VirtualTextFileWriter {
 
   private[this] var _contentWriter: Writer = null
 
@@ -19,7 +19,7 @@ class FileVirtualFileWriter(val file: File) extends VirtualFileWriter {
 
 }
 
-class FileVirtualJSFileWriter(f: File) extends FileVirtualFileWriter(f)
+class FileVirtualJSFileWriter(f: File) extends FileVirtualTextFileWriter(f)
                                           with VirtualJSFileWriter {
 
   import FileVirtualFile.withExtension

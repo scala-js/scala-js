@@ -2,21 +2,21 @@ package scala.scalajs.tools.io
 
 import java.io.StringWriter
 
-class MemVirtualFileWriter extends VirtualFileWriter {
+class MemVirtualTextFileWriter extends VirtualTextFileWriter {
   val contentWriter = new StringWriter
 
-  def toVirtualFile(name: String): MemVirtualFile =
-    addToFile(new MemVirtualFile(name))
+  def toVirtualFile(name: String): MemVirtualTextFile =
+    addToFile(new MemVirtualTextFile(name))
 
   def close() = {
     contentWriter.close()
   }
 
-  protected def addToFile(vf: MemVirtualFile): vf.type =
+  protected def addToFile(vf: MemVirtualTextFile): vf.type =
     vf.withContent(contentWriter.toString)
 }
 
-class MemVirtualJSFileWriter extends MemVirtualFileWriter
+class MemVirtualJSFileWriter extends MemVirtualTextFileWriter
                                 with VirtualJSFileWriter {
 
   private var sourceMapUsed = false

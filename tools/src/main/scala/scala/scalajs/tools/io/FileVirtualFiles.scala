@@ -12,8 +12,6 @@ class FileVirtualFile(val file: File) extends VirtualFile {
 
   override def name = file.getName
 
-  override def content: String = readFileToString(file)
-
   override def version: Option[Any] = {
     if (!file.isFile) None
     else Some(file.lastModified())
@@ -23,13 +21,6 @@ class FileVirtualFile(val file: File) extends VirtualFile {
 object FileVirtualFile extends (File => FileVirtualFile) {
   def apply(f: File): FileVirtualFile =
     new FileVirtualFile(f)
-
-  /** Reads the entire content of a file as a UTF-8 string. */
-  def readFileToString(file: File): String = {
-    val stream = new FileInputStream(file)
-    try IO.readInputStreamToString(stream)
-    finally stream.close()
-  }
 
   /** Tests whether the given file has the specified extension.
    *  Extension contain the '.', so a typical value for `ext` would be ".js".
@@ -56,8 +47,30 @@ object FileVirtualFile extends (File => FileVirtualFile) {
   }
 }
 
-class FileVirtualJSFile(f: File) extends FileVirtualFile(f) with VirtualJSFile {
+/** A [[VirtualTextFile]] implemented by an actual file on the file system. */
+class FileVirtualTextFile(f: File) extends FileVirtualFile(f)
+                                      with VirtualTextFile {
+  import FileVirtualTextFile._
+
+  override def content: String = readFileToString(file)
+}
+
+object FileVirtualTextFile extends (File => FileVirtualTextFile) {
+  def apply(f: File): FileVirtualTextFile =
+    new FileVirtualTextFile(f)
+
+  /** Reads the entire content of a file as a UTF-8 string. */
+  def readFileToString(file: File): String = {
+    val stream = new FileInputStream(file)
+    try IO.readInputStreamToString(stream)
+    finally stream.close()
+  }
+}
+
+class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
+                                    with VirtualJSFile {
   import FileVirtualFile._
+  import FileVirtualTextFile._
 
   override def sourceMap: Option[String] = {
     val f = withExtension(file, ".js", ".js.map")
@@ -74,6 +87,7 @@ object FileVirtualJSFile extends (File => FileVirtualJSFile) {
 class FileVirtualScalaJSClassfile(f: File)
     extends FileVirtualJSFile(f) with VirtualScalaJSClassfile {
   import FileVirtualFile._
+  import FileVirtualTextFile._
 
   override def info: String =
     readFileToString(withExtension(file, ".js", ".sjsinfo"))
@@ -92,6 +106,7 @@ object FileVirtualScalaJSClassfile extends (File => FileVirtualScalaJSClassfile)
 class FileVirtualScalaJSPackfile(f: File)
     extends FileVirtualJSFile(f) with VirtualScalaJSPackfile {
   import FileVirtualFile._
+  import FileVirtualTextFile._
 
   override def packInfo: String =
     readFileToString(withExtension(file, ".js", ".sjspack"))
