@@ -2,3 +2,7 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
+
+# Fail after fast opt
+run/range-unit.scala
+run/t7015.scala

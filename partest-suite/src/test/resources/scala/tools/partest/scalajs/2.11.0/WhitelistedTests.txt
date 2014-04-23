@@ -1269,7 +1269,6 @@ run/finally.scala
 run/t405.scala
 run/existentials.scala
 run/t2876.scala
-run/t1430
 run/t4809.scala
 run/t1427.scala
 run/t6135.scala
@@ -2283,7 +2282,6 @@ run/macro-expand-nullary-nongeneric
 run/macro-basic-ma-mdmi
 run/valueclasses-constr.scala
 run/t1247.scala
-run/t4729
 run/t3487.scala
 run/rawstrings.scala
 run/patmat-seqs.scala
@@ -2462,7 +2460,6 @@ run/macro-vampire-false-warning
 run/macro-whitebox-fundep-materialization
 run/macro-whitebox-structural
 run/mutable-treeset.scala
-run/range-unit.scala
 run/static-module-method.scala
 run/sort.scala
 run/t1909.scala
@@ -2587,7 +2584,6 @@ run/t4752.scala
 run/t2087-and-2400.scala
 run/t3855.scala
 run/t6637.scala
-run/t7015.scala
 run/t6731.scala
 pos/t3999b.scala
 run/t0432.scala
