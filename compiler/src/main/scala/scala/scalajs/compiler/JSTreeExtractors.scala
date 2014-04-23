@@ -7,26 +7,13 @@ package scala.scalajs.compiler
 
 import scala.annotation.tailrec
 
-/** Useful extractors for JavaScript trees */
-trait JSTreeExtractors { this: JSTrees =>
+import scala.scalajs.ir.Trees._
+import scala.scalajs.ir.Types._
 
-  import js._
+/** Useful extractors for JavaScript trees */
+object JSTreeExtractors {
 
   object jse {
-    /**
-     *  A qualified identifier with dot select.
-     *
-     *  Example (JS): ScalaJS.c.foo
-     */
-    object QualIdent {
-      def unapply(tree: Tree): Option[String] = tree match {
-        case DotSelect(prefix, Ident(name, _)) =>
-          unapply(prefix) map { _ + s".$name" }
-        case Ident(name, _) => Some(name)
-        case _ => None
-      }
-    }
-
     /**
      *  A literally named sequence (like in a call to applyDynamicNamed)
      *
@@ -54,33 +41,24 @@ trait JSTreeExtractors { this: JSTrees =>
      *  But also (Scala): x -> y
      */
     object Tuple2 {
-      def unapply(tree: Tree) = tree match {
-        // case (x,y)
-        case ApplyMethod(js.New(
-            QualIdent("ScalaJS.c.scala_Tuple2"), Nil),
-            Ident("init___O__O", _),
-            List(_1,_2)) => Some((_1,_2))
+      def unapply(tree: Tree): Option[(Tree, Tree)] = tree match {
+        // case (x, y)
+        case New(ClassType("scala_Tuple2"), Ident("init___O__O", _),
+            List(_1, _2)) =>
+          Some((_1, _2))
         // case x -> y
-        case ApplyMethod(
-            ScalaObject("ScalaJS.modules.scala_Predef$ArrowAssoc"),
+        case Apply(
+            LoadModule(ClassType("scala_Predef$ArrowAssoc$")),
             Ident("$$minus$greater$extension__O__O__Lscala_Tuple2", _),
-            ApplyMethod(
-              ScalaObject("ScalaJS.modules.scala_Predef"),
-              Ident("any2ArrowAssoc__O__O", _),
-              List(_1)) :: _2 :: Nil) => Some((_1, _2))
+            List(
+              Apply(
+                LoadModule(ClassType("scala_Predef$")),
+                Ident("any2ArrowAssoc__O__O", _),
+                List(_1)),
+              _2)) =>
+          Some((_1, _2))
         case _ =>
           None
-      }
-    }
-
-    /**
-     *  Fetching a Scala module (via it's accessor method)
-     */
-    object ScalaObject {
-      def unapply(tree: Tree) = tree match {
-        case ApplyMethod(QualIdent(id), Ident(name, _), Nil) =>
-          Some(s"$id.$name")
-        case _ => None
       }
     }
   }

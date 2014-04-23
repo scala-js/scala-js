@@ -12,6 +12,8 @@ import scala.tools.nsc._
 
 import java.io.{ File, PrintWriter, BufferedOutputStream, FileOutputStream }
 
+import scala.scalajs.ir.{Trees => js}
+
 trait ClassInfos extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
@@ -150,7 +152,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     /** Object construction. */
     def obj(fields: (String, js.Tree)*): js.Tree =
-      js.ObjectConstr(fields.map(f => (js.StringLiteral(f._1), f._2)).toList)
+      js.JSObjectConstr(fields.map(f => (js.StringLiteral(f._1), f._2)).toList)
 
     implicit def string2lit(s: String): js.StringLiteral =
       js.StringLiteral(s)
@@ -162,11 +164,11 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       js.BooleanLiteral(b)
 
     implicit def seq2array[A](seq: Seq[A])(
-        implicit convA: A => js.Tree): js.ArrayConstr =
-      js.ArrayConstr(seq.map(convA).toList)
+        implicit convA: A => js.Tree): js.JSArrayConstr =
+      js.JSArrayConstr(seq.map(convA).toList)
 
     implicit def pair2array[A, B](pair: (A, B))(
-        implicit convA: A => js.Tree, convB: B => js.Tree): js.ArrayConstr =
-      js.ArrayConstr(List(convA(pair._1), convB(pair._2)))
+        implicit convA: A => js.Tree, convB: B => js.Tree): js.JSArrayConstr =
+      js.JSArrayConstr(List(convA(pair._1), convB(pair._2)))
   }
 }

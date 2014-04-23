@@ -1,0 +1,563 @@
+/*                     __                                               *\
+**     ________ ___   / /  ___      __ ____  Scala.js IR                **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2014, LAMP/EPFL        **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
+**                          |/____/                                     **
+\*                                                                      */
+
+
+package scala.scalajs.ir
+
+import java.io.Writer
+import java.net.URI
+
+import Position._
+import Trees._
+import Types._
+
+object Printers {
+
+  /** Basically copied from scala.reflect.internal.Printers */
+  trait IndentationManager {
+    val out: Writer
+
+    protected var indentMargin = 0
+    protected val indentStep = 2
+    protected var indentString = "                                        " // 40
+
+    def indent() = indentMargin += indentStep
+    def undent() = indentMargin -= indentStep
+
+    def println() {
+      out.write('\n')
+      while (indentMargin > indentString.length())
+        indentString += indentString
+      if (indentMargin > 0)
+        out.write(indentString, 0, indentMargin)
+    }
+
+    def printSeq[a](ls: List[a])(printelem: a => Unit)(printsep: Boolean => Unit) {
+      ls match {
+        case List() =>
+        case List(x) => printelem(x)
+        case x :: rest =>
+          printelem(x)
+          printsep(!x.isInstanceOf[DocComment])
+          printSeq(rest)(printelem)(printsep)
+      }
+    }
+
+    def printColumn(ts: List[Tree], start: String, sep: String, end: String) {
+      print(start); indent; println()
+      printSeq(ts){print(_)}{ needsSep =>
+        if (needsSep)
+          print(sep)
+        println()
+      }
+      undent; println(); print(end)
+    }
+
+    def printRow(ts: List[Any], start: String, sep: String, end: String) {
+      print(start)
+      printSeq(ts){print(_)}{ needsSep =>
+        if (needsSep)
+          print(sep)
+      }
+      print(end)
+    }
+
+    def printRow(ts: List[Any], sep: String) { printRow(ts, "", sep, "") }
+
+    def print(args: Any*): Unit
+  }
+
+  class IRTreePrinter(val out: Writer) extends IndentationManager {
+    def printBlock(tree: Tree) {
+      tree match {
+        case Block(_) =>
+          printTree(tree)
+        case _ =>
+          printColumn(List(tree), "{", ";", "}")
+      }
+    }
+
+    def printTopLevelTree(tree: Tree) {
+      tree match {
+        case Block(stats) =>
+          for (stat <- stats)
+            printTopLevelTree(stat)
+        case _ =>
+          printTree(tree)
+          if (!tree.isInstanceOf[DocComment])
+            print(";")
+          println()
+      }
+    }
+
+    def printSig(args: List[ParamDef], resultType: Type): Unit = {
+      printRow(args, "(", ", ", ")")
+      printOptType(resultType)
+      print(" ")
+    }
+
+    def printArgs(args: List[Tree]): Unit = {
+      printRow(args, "(", ", ", ")")
+    }
+
+    def printTree(tree: Tree) {
+      tree match {
+        case EmptyTree =>
+          print("<empty>")
+
+        // Comments
+
+        case DocComment(text) =>
+          val lines = text.split("\n").toList
+          if (lines.tail.isEmpty) {
+            print("/** ", lines.head, " */")
+          } else {
+            print("/** ", lines.head); println()
+            for (line <- lines.tail) {
+              print(" *  ", line); println()
+            }
+            print(" */")
+          }
+
+        // Definitions
+
+        case VarDef(ident, vtpe, mutable, rhs) =>
+          if (!mutable)
+            print("/*const*/ ")
+          print("var ", ident)
+          printOptType(vtpe)
+          if (rhs != EmptyTree)
+            print(" = ", rhs)
+
+        case ParamDef(ident, ptpe) =>
+          print(ident)
+          printOptType(ptpe)
+
+        // Control flow constructs
+
+        case Skip() =>
+          print("/*<skip>*/")
+
+        case Block(stats) =>
+          printColumn(stats, "{", ";", "}")
+
+        case Labeled(label, tpe, body) =>
+          print(label)
+          if (tpe != UndefType)
+            print("[", tpe, "]")
+          print(": ")
+          printBlock(body)
+
+        case Assign(lhs, rhs) =>
+          print(lhs, " = ", rhs)
+
+        case Return(expr, label) =>
+          if (label.isEmpty) print("return ", expr)
+          else print("return(", label.get, ") ", expr)
+
+        case If(cond, thenp, elsep) =>
+          print("if (", cond, ") ")
+          printBlock(thenp)
+          elsep match {
+            case Skip() => ()
+            case _ =>
+              print(" else ")
+              printBlock(elsep)
+          }
+
+        case While(cond, body, label) =>
+          if (label.isDefined)
+            print(label.get, ": ")
+          print("while (", cond, ") ")
+          printBlock(body)
+
+        case DoWhile(body, cond, label) =>
+          if (label.isDefined)
+            print(label.get, ": ")
+          print("do ")
+          printBlock(body)
+          print(" while (", cond, ")")
+
+        case Try(block, errVar, handler, finalizer) =>
+          print("try ")
+          printBlock(block)
+          if (handler != EmptyTree) {
+            print(" catch (", errVar, ") ")
+            printBlock(handler)
+          }
+          if (finalizer != EmptyTree) {
+            print(" finally ")
+            printBlock(finalizer)
+          }
+
+        case Throw(expr) =>
+          print("throw ", expr)
+
+        case Break(label) =>
+          if (label.isEmpty) print("break")
+          else print("break ", label.get)
+
+        case Continue(label) =>
+          if (label.isEmpty) print("continue")
+          else print("continue ", label.get)
+
+        case Switch(selector, cases, default) =>
+          print("switch (", selector, ") ")
+          print("{"); indent
+          for ((value, body) <- cases) {
+            println()
+            print("case ", value, ":"); indent; println()
+            print(body, ";")
+            undent
+          }
+          if (default != EmptyTree) {
+            println()
+            print("default:"); indent; println()
+            print(default, ";")
+            undent
+          }
+          undent; println(); print("}")
+
+        case Match(selector, cases, default) =>
+          print("match (", selector, ") ")
+          print("{"); indent
+          for ((value, body) <- cases) {
+            println()
+            print("case ", value, ":"); indent; println()
+            print(body, ";")
+            undent
+          }
+          if (default != EmptyTree) {
+            println()
+            print("default:"); indent; println()
+            print(default, ";")
+            undent
+          }
+          undent; println(); print("}")
+
+        case Debugger() =>
+          print("debugger")
+
+        // Scala expressions
+
+        case New(cls, ctor, args) =>
+          print("new ", cls, "().", ctor)
+          printArgs(args)
+
+        case LoadModule(cls) =>
+          print("mod:", cls)
+
+        case StoreModule(cls, value) =>
+          print("mod:", cls, "<-", value)
+
+        case Select(qualifier, item, _) =>
+          print(qualifier, ".", item)
+
+        case Apply(receiver, method, args) =>
+          print(receiver, ".", method)
+          printArgs(args)
+
+        case StaticApply(receiver, cls, method, args) =>
+          print(receiver, ".", cls, "::", method)
+          printArgs(args)
+
+        case TraitImplApply(impl, method, args) =>
+          print(impl, "::", method)
+          printArgs(args)
+
+        case UnaryOp(op, lhs, tpe) =>
+          print("(", op, "[", tpe, "]", lhs, ")")
+
+        case BinaryOp(op, lhs, rhs, tpe) =>
+          print("(", lhs, " ", op, "[", tpe, "] ", rhs, ")")
+
+        case NewArray(tpe, lengths) =>
+          print("new ", tpe.baseClassName)
+          for (length <- lengths)
+            print("[", length, "]")
+          for (dim <- lengths.size until tpe.dimensions)
+            print("[]")
+
+        case ArrayValue(tpe, elems) =>
+          print(tpe)
+          printArgs(elems)
+
+        case ArrayLength(array) =>
+          print(array, ".length")
+
+        case ArraySelect(array, index) =>
+          print(array, "[", index, "]")
+
+        case IsInstanceOf(expr, cls) =>
+          print(expr, ".isInstanceOf[", cls, "]")
+
+        case AsInstanceOf(expr, cls) =>
+          print(expr, ".asInstanceOf[", cls, "]")
+
+        case ClassOf(cls) =>
+          print("classOf[", cls, "]")
+
+        case CallHelper(helper, args) =>
+          print(helper)
+          printArgs(args)
+
+        // JavaScript expressions
+
+        case JSGlobal() =>
+          print("<global>")
+
+        case JSNew(ctor, args) =>
+          def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
+            case JSDotSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case JSBracketSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case VarRef(_, _) => true
+            case This() => true
+            case _ => false // in particular, Apply
+          }
+          if (containsOnlySelectsFromAtom(ctor))
+            print("new ", ctor)
+          else
+            print("new (", ctor, ")")
+          printArgs(args)
+
+        case JSDotSelect(qualifier, item) =>
+          print(qualifier, ".", item)
+
+        case JSBracketSelect(qualifier, item) =>
+          print(qualifier, "[", item, "]")
+
+        case JSApply(fun, args) =>
+          print(fun)
+          printArgs(args)
+
+        case JSDelete(obj, prop) =>
+          print("delete ", obj, "[", prop, "]")
+
+        case JSUnaryOp("typeof", lhs) =>
+          print("typeof(", lhs, ")")
+
+        case JSUnaryOp(op, lhs) =>
+          print("(", op, lhs, ")")
+
+        case JSBinaryOp(op, lhs, rhs) =>
+          print("(", lhs, " ", op, " ", rhs, ")")
+
+        case JSArrayConstr(items) =>
+          printRow(items, "[", ", ", "]")
+
+        case JSObjectConstr(Nil) =>
+          print("{}")
+
+        case JSObjectConstr(fields) =>
+          print("{"); indent; println()
+          printSeq(fields) {
+            case (name, value) => print(name, ": ", value)
+          } { needsSep =>
+            if (needsSep)
+              print(",")
+            println()
+          }
+          undent; println(); print("}")
+
+        // Literals
+
+        case Undefined() =>
+          print("undefined")
+
+        case UndefinedParam() =>
+          print("<undefined param>")
+
+        case Null() =>
+          print("null")
+
+        case BooleanLiteral(value) =>
+          print(if (value) "true" else "false")
+
+        case IntLiteral(value) =>
+          print(value)
+
+        case DoubleLiteral(value) =>
+          print(value)
+
+        case StringLiteral(value, _) =>
+          print("\"", escapeJS(value), "\"")
+
+        // Atomic expressions
+
+        case VarRef(ident, _) =>
+          print(ident)
+
+        case This() =>
+          print("this")
+
+        case Function(args, resultType, body) =>
+          print("(function")
+          printSig(args, resultType)
+          printBlock(body)
+          print(")")
+
+        // Type-related
+
+        case Cast(expr, tpe) =>
+          print(expr, ".cast[", tpe, "]")
+
+        // Classes
+
+        case ClassDef(name, kind, parent, ancestors, defs) =>
+          kind match {
+            case ClassKind.Class         => print("class ")
+            case ClassKind.ModuleClass   => print("module class ")
+            case ClassKind.Interface     => print("interface ")
+            case ClassKind.RawJSType     => print("jstype ")
+            case ClassKind.HijackedClass => print("hijacked class ")
+            case ClassKind.TraitImpl     => print("trait impl ")
+          }
+          print(name)
+          parent.foreach(print(" extends ", _))
+          if (ancestors.nonEmpty)
+            printRow(ancestors, " ancestors ", ", ", "")
+          print(" ")
+          printColumn(defs, "{", "", "}")
+          println()
+
+        case MethodDef(name, args, resultType, body) =>
+          print(name)
+          printSig(args, resultType)
+          printBlock(body)
+
+        case PropertyDef(name, _, _, _) =>
+          // TODO
+          print(s"<property: $name>")
+
+        case ConstructorExportDef(fullName, args, body) =>
+          print("export \"", escapeJS(fullName), "\"")
+          printSig(args, DynType) // DynType as trick not to display a type
+          printBlock(body)
+
+        case ModuleExportDef(fullName) =>
+          print("export \"", escapeJS(fullName), "\"")
+
+        case _ =>
+          print(s"<error, elem of class ${tree.getClass()}>")
+      }
+    }
+
+    def printOptType(tpe: Type): Unit =
+      if (tpe != DynType) print(": ", tpe)
+
+    def printType(tpe: Type): Unit = tpe match {
+      case AnyType              => print("any")
+      case NothingType          => print("nothing")
+      case UndefType            => print("void")
+      case BooleanType          => print("boolean")
+      case IntType              => print("int")
+      case DoubleType           => print("number")
+      case StringType           => print("string")
+      case NullType             => print("null")
+      case ClassType(className) => print(className)
+      case DynType              => print("dyn")
+      case NoType               => print("<notype>")
+
+      case ArrayType(base, dims) =>
+        print(base)
+        for (i <- 1 to dims)
+          print("[]")
+    }
+
+    def printIdent(ident: Ident): Unit =
+      printString(escapeJS(ident.name))
+
+    def print(args: Any*): Unit = args foreach {
+      case tree: Tree =>
+        //printPosition(tree)
+        printTree(tree)
+      case tpe: Type =>
+        printType(tpe)
+      case ident: Ident =>
+        printIdent(ident)
+      case arg =>
+        printString(if (arg == null) "null" else arg.toString)
+    }
+
+    protected def printString(s: String): Unit = {
+      out.write(s)
+    }
+
+    def close(): Unit = ()
+  }
+
+  def escapeJS(str: String): String = {
+    /* Note that Java and JavaScript happen to use the same encoding for
+     * Unicode, namely UTF-16, which means that 1 char from Java always equals
+     * 1 char in JavaScript. */
+    val builder = new StringBuilder
+    str foreach {
+      case '\\' => builder.append("\\\\")
+      case '"' => builder.append("\\\"")
+      case '\u0007' => builder.append("\\a")
+      case '\u0008' => builder.append("\\b")
+      case '\u0009' => builder.append("\\t")
+      case '\u000A' => builder.append("\\n")
+      case '\u000B' => builder.append("\\v")
+      case '\u000C' => builder.append("\\f")
+      case '\u000D' => builder.append("\\r")
+      case c =>
+        if (c >= 32 && c <= 126) builder.append(c.toChar) // ASCII printable characters
+        else builder.append(f"\\u$c%04x")
+    }
+    builder.result()
+  }
+
+  class IRTreePrinterWithSourceMap(_out: Writer,
+      sourceMap: SourceMapWriter) extends IRTreePrinter(_out) {
+
+    private var column = 0
+
+    override def printTree(tree: Tree): Unit = {
+      val pos = tree.pos
+      if (pos.isDefined) {
+        val originalName = tree match {
+          case StringLiteral(_, origName) => origName
+          case _ => None
+        }
+        sourceMap.startNode(column, pos, originalName)
+      }
+
+      super.printTree(tree)
+
+      if (pos.isDefined)
+        sourceMap.endNode(column)
+    }
+
+    override def printIdent(ident: Ident): Unit = {
+      if (ident.pos.isDefined)
+        sourceMap.startNode(column, ident.pos, ident.originalName)
+      super.printIdent(ident)
+      if (ident.pos.isDefined)
+        sourceMap.endNode(column)
+    }
+
+    override def println(): Unit = {
+      super.println()
+      sourceMap.nextLine()
+      column = this.indentMargin
+    }
+
+    override def printString(s: String): Unit = {
+      // assume no EOL char in s, and assume s only has ASCII characters
+      super.printString(s)
+      column += s.length()
+    }
+
+    override def close(): Unit = {
+      sourceMap.close()
+      super.close()
+    }
+  }
+
+}

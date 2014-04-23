@@ -13,6 +13,8 @@ import scala.collection.{ mutable, immutable }
 
 import java.net.{ URI, URISyntaxException }
 
+import scala.scalajs.ir.Trees
+
 /** Main entry point for the Scala.js compiler plugin
  *
  *  @author Sébastien Doeraene
@@ -25,7 +27,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   val components = List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
 
   /** Called when the JS ASTs are generated. Override for testing */
-  def generatedJSAST(clDefs: List[jsAddons.js.Tree]): Unit = {}
+  def generatedJSAST(clDefs: List[Trees.Tree]): Unit = {}
 
   /** Addons for JavaScript platform */
   object jsAddons extends {
@@ -54,7 +56,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
   } with GenJSCode {
-    def generatedJSAST(clDefs: List[jsAddons.js.Tree]) =
+    def generatedJSAST(clDefs: List[Trees.Tree]) =
       ScalaJSPlugin.this.generatedJSAST(clDefs)
   }
 
