@@ -25,6 +25,20 @@ object StringBufferTest extends JasmineTest {
       expect(newBuf.append(js.undefined).toString).toEqual("undefined")
     }
 
+    it("should respond to `setCharAt`") {
+      val buf = newBuf
+      buf.append("foobar")
+
+      buf.setCharAt(2, 'x')
+      expect(buf.toString).toEqual("foxbar")
+
+      buf.setCharAt(5, 'h')
+      expect(buf.toString).toEqual("foxbah")
+
+      expect(() => buf.setCharAt(-1, 'h')).toThrow
+      expect(() => buf.setCharAt(6,  'h')).toThrow
+    }
+
   }
 
   describe("java.lang.StringBuilder") {
@@ -42,6 +56,20 @@ object StringBufferTest extends JasmineTest {
     it("should allow string interpolation to survive `null` and `undefined`") {
       expect(s"${null}").toEqual("null")
       expect(s"${js.undefined}").toEqual("undefined")
+    }
+
+    it("should respond to `setCharAt`") {
+      val buf = newBuf
+      buf.append("foobar")
+
+      buf.setCharAt(2, 'x')
+      expect(buf.toString).toEqual("foxbar")
+
+      buf.setCharAt(5, 'h')
+      expect(buf.toString).toEqual("foxbah")
+
+      expect(() => buf.setCharAt(-1, 'h')).toThrow
+      expect(() => buf.setCharAt(6,  'h')).toThrow
     }
 
   }
