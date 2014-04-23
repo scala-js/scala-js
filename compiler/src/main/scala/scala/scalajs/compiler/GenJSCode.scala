@@ -140,11 +140,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       longName
     }
 
-    def freshName(sym: Symbol): String = {
-      localSymbolNames.getOrElseUpdate(sym, {
-        freshName(sym.name.toString)
-      })
-    }
+    def freshName(sym: Symbol): String =
+      localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
 
     // Rewriting of anonymous function classes ---------------------------------
 
