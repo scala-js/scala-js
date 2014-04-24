@@ -21,6 +21,7 @@ final class Float(value: scala.Float) extends Number with Comparable[Float] {
   override def toString(): String = sys.error("stub")
 
   def isNaN(): scala.Boolean = sys.error("stub")
+  def isInfinite(): scala.Boolean = sys.error("stub")
 
 }
 

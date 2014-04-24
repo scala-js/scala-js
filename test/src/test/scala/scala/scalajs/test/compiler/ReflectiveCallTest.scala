@@ -13,6 +13,8 @@ import scala.scalajs.test.JasmineTest
 
 import language.reflectiveCalls
 
+import java.lang.{Float => JFloat, Double => JDouble}
+
 object ReflectiveCallTest extends JasmineTest {
 
   describe("Reflective Calls") {
@@ -254,6 +256,28 @@ object ReflectiveCallTest extends JasmineTest {
 
       expect(objNeTest(a1,a2)).toBeTruthy
       expect(objNeTest(a1,a1)).toBeFalsy
+    }
+
+    it("should work on java.lang.{Float,Double}.{isNaN,isInfinite}") {
+      type FloatingNumberLike = Any {
+        def isNaN(): Boolean
+        def isInfinite(): Boolean
+      }
+      def test(x: FloatingNumberLike, isNaN: Boolean,
+          isInfinite: Boolean) = {
+        expect(x.isNaN()).toEqual(isNaN)
+        expect(x.isInfinite()).toEqual(isInfinite)
+      }
+
+      test(new JFloat(Float.NaN), true, false)
+      test(new JFloat(Float.PositiveInfinity), false, true)
+      test(new JFloat(Float.NegativeInfinity), false, true)
+      test(new JFloat(54.67), false, false)
+
+      test(new JDouble(Double.NaN), true, false)
+      test(new JDouble(Double.PositiveInfinity), false, true)
+      test(new JDouble(Double.NegativeInfinity), false, true)
+      test(new JDouble(54.67), false, false)
     }
 
     it("should work with default arguments - #390") {

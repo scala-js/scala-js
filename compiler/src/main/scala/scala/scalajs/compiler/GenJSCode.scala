@@ -1574,6 +1574,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       addS(BoxedFloatClass, "isNaN", "isNaN")
       addS(BoxedDoubleClass, "isNaN", "isNaN")
 
+      addS(BoxedFloatClass, "isInfinite", "isInfinite")
+      addS(BoxedDoubleClass, "isInfinite", "isInfinite")
+
       m.toMap
     }
 

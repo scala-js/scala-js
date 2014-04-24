@@ -92,5 +92,13 @@ object DoubleTest extends JasmineTest {
       expect(compare(Double.NaN, Double.NaN)).toEqual(0)
     }
 
+    it("should provide isInfinite - #515") {
+      expect(Double.PositiveInfinity.isInfinite).toBeTruthy
+      expect(Double.NegativeInfinity.isInfinite).toBeTruthy
+      expect((1.0/0).isInfinite).toBeTruthy
+      expect((-1.0/0).isInfinite).toBeTruthy
+      expect((0.0).isInfinite).toBeFalsy
+    }
+
   }
 }
