@@ -1,10 +1,19 @@
-package scala.scalajs.tools.sourcemap
+/*                     __                                               *\
+**     ________ ___   / /  ___      __ ____  Scala.js IR                **
+**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2014, LAMP/EPFL        **
+**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
+** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
+**                          |/____/                                     **
+\*                                                                      */
+
+
+package scala.scalajs.ir
 
 import java.net.URI
 
 object Utils {
 
-  /** Relativize targ URI w.r.t. base URI */
+  /** Relativize target URI w.r.t. base URI */
   def relativize(base0: URI, trgt0: URI): URI = {
     val base = base0.normalize
     val trgt = trgt0.normalize
@@ -28,7 +37,6 @@ object Utils {
       // Relative URI does not have scheme or authority
       new URI(null, null, newPath, trgt.getRawQuery, trgt.getRawFragment)
     }
-
   }
 
 }

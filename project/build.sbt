@@ -16,7 +16,8 @@ libraryDependencies += "com.googlecode.json-simple" % "json-simple" % "1.1.1"
 unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
-    root / "tools" / "src" / "main" / "scala",
-    root / "sbt-plugin" / "src" / "main" / "scala"
+    root / "ir/src/main/scala",
+    root / "tools/src/main/scala",
+    root / "sbt-plugin/src/main/scala"
   )
 }

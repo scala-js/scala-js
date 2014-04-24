@@ -2,6 +2,9 @@ package scala.scalajs.tools.io
 
 import java.io._
 
+import scala.scalajs.ir
+import scala.scalajs.tools.sourcemap._
+
 /** A virtual input file.
  */
 trait VirtualFile {
@@ -47,6 +50,16 @@ object VirtualTextFile {
     new MemVirtualTextFile(path)
 }
 
+/** A virtual binary input file.
+ */
+trait VirtualBinaryFile extends VirtualFile {
+  /** Returns the content of the file. */
+  def content: Array[Byte]
+
+  /** Returns a new InputStream of the file. */
+  def inputStream: InputStream = new ByteArrayInputStream(content)
+}
+
 /** A virtual input file which contains JavaScript code.
  *  It may have a source map associated with it.
  */
@@ -62,20 +75,6 @@ object VirtualJSFile {
     new MemVirtualJSFile(path).withVersion(Some(path))
 }
 
-/** A virtual JavaScript input file which was emitted by Scala.js as a
- *  "classfile".
- *  It has an info file associated with it.
- */
-trait VirtualScalaJSClassfile extends VirtualJSFile {
-  /** Content of the info file associated with this classfile. */
-  def info: String
-}
-
-object VirtualScalaJSClassfile {
-  def empty(path: String): VirtualScalaJSClassfile =
-    new MemVirtualScalaJSClassfile(path).withVersion(Some(path))
-}
-
 /** A virtual JavaScript input file which was packed by Scala.js
  *  It has a pack info file associated with it.
  */
@@ -87,4 +86,45 @@ trait VirtualScalaJSPackfile extends VirtualJSFile {
 object VirtualScalaJSPackfile {
   def empty(path: String): VirtualScalaJSPackfile =
     new MemVirtualScalaJSPackfile(path).withVersion(Some(path))
+}
+
+/** A virtual Scala.js IR file.
+ *  It contains the IR tree.
+ *  It can also offer a [[VirtualJSFile]] view of its desugared content.
+ */
+trait VirtualScalaJSIRFile extends VirtualFile {
+  /** Info tree of this file. */
+  def info: ir.Trees.Tree =
+    infoAndTree._1
+
+  /** IR Tree of this file. */
+  def tree: ir.Trees.ClassDef =
+    infoAndTree._2
+
+  /** Info tree and IR tree of this file. */
+  def infoAndTree: (ir.Trees.Tree, ir.Trees.ClassDef)
+}
+
+/** Base trait for virtual Scala.js IR files that are serialized as binary file.
+ */
+trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScalaJSIRFile {
+  /** Info of this file. */
+  override def info: ir.Trees.Tree = {
+    // Overridden to avoid reading and deserializing the tree
+    val stream = inputStream
+    try ir.Serializers.deserialize(stream)
+    finally stream.close()
+  }
+
+  /** IR Tree of this file. */
+  override def infoAndTree: (ir.Trees.Tree, ir.Trees.ClassDef) = {
+    val stream = inputStream
+    try {
+      val info = ir.Serializers.deserialize(stream)
+      val tree = ir.Serializers.deserialize(stream).asInstanceOf[ir.Trees.ClassDef]
+      (info, tree)
+    } finally {
+      stream.close()
+    }
+  }
 }

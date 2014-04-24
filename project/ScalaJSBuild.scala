@@ -194,6 +194,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js tools",
           scalaVersion := "2.10.2",
+          unmanagedSourceDirectories in Compile +=
+            (scalaSource in (ir, Compile)).value,
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1"
@@ -456,7 +458,7 @@ object ScalaJSBuild extends Build {
                 (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
-            val filter = ("*.js": NameFilter) | "*.js.map" | "*.sjsinfo"
+            val filter = ("*.sjsir": NameFilter)
             allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
           },
 

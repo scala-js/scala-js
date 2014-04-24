@@ -13,6 +13,8 @@ import scala.collection.mutable
 
 import org.mozilla.javascript.{Context, Scriptable}
 
+import scala.scalajs.ir
+
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 
@@ -20,18 +22,15 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {
-    val providers = mutable.Map.empty[String, VirtualScalaJSClassfile]
+    import ir.Trees._
+
+    val providers = mutable.Map.empty[String, VirtualScalaJSIRFile]
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
-    for (classFile <- classpath.classFiles) {
-      val info = classFile.info
-      val encodedName = info match {
-        case EncodedNameLine(encodedName) => encodedName
-        case _ =>
-          throw new AssertionError(s"Did not find encoded name in $classFile")
-      }
-      providers += encodedName -> classFile
-      val isExported = info.indexOf("\n" + """  "isExported": true,""") >= 0
+    for (irFile <- classpath.irFiles) {
+      val (encodedName, _, isExported) =
+        ScalaJSClasspath.extractCoreInfo(irFile.info)
+      providers += encodedName -> irFile
       if (isExported)
         exportedSymbols += encodedName
     }
@@ -76,9 +75,17 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   }
 
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
-    providers.get(encodedName) foreach { file =>
+    providers.get(encodedName) foreach { irFile =>
+      // TODO? Convert the desugared IR tree directly to Rhino ASTs?
+      val codeWriter = new java.io.StringWriter
+      val printer = new ir.Printers.IRTreePrinter(codeWriter)
+      val classDef = irFile.tree
+      val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
+      printer.printTopLevelTree(desugared)
+      printer.close()
       val ctx = Context.getCurrentContext()
-      ctx.evaluateFile(scope, file)
+      ctx.evaluateString(scope, codeWriter.toString(),
+          classDef.pos.source.toString, classDef.pos.line, null)
     }
   }
 }

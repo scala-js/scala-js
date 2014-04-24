@@ -17,6 +17,8 @@ import java.net.URI
 
 import org.json.simple.JSONValue
 
+import scala.scalajs.ir
+
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
@@ -32,10 +34,8 @@ class ScalaJSOptimizer {
   import ScalaJSOptimizer._
 
   private[this] var logger: Logger = _
-  private[this] val encodedNameToClassfile =
-    mutable.Map.empty[String, VirtualScalaJSClassfile]
 
-  /** Applies Scala.js-specific optimizations to a sequence of .js files.
+  /** Applies Scala.js-specific optimizations to a Scala.js classpath.
    *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
    *  optional inputs.
    *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
@@ -49,31 +49,67 @@ class ScalaJSOptimizer {
   def optimize(inputs: Inputs, outputConfig: OutputConfig,
       logger: Logger): Unit = {
     this.logger = logger
+    PersistentState.startRun()
     try {
-      val analyzer = parseInfoFiles(inputs.classpath)
+      val analyzer = readClasspathAndCreateAnalyzer(inputs.classpath)
       analyzer.computeReachability(inputs.manuallyReachable)
       writeDCEedOutput(inputs, outputConfig, analyzer)
 
       // Write out pack order (constant: file is stand alone)
       writePackInfo(outputConfig.writer, PackInfoData(packOrder = 0))
     } finally {
+      PersistentState.endRun()
       this.logger = null
     }
   }
 
-  private def parseInfoFiles(classpath: ScalaJSClasspath): Analyzer = {
+  private def readClasspathAndCreateAnalyzer(
+      classpath: ScalaJSClasspath): Analyzer = {
     val coreData = classpath.coreInfoFiles.map(f => readData(f.content))
-    val userData = classpath.classFiles map { classfile =>
-      val data = readData(classfile.info)
-      val encodedName = data.encodedName
-      encodedNameToClassfile += encodedName -> classfile
-      data
+    val userData = classpath.irFiles map { irFile =>
+      PersistentState.getPersistentIRFile(irFile).info
     }
     new Analyzer(logger, coreData ++ userData)
   }
 
-  private def readData(infoFile: String): ClassInfoData =
-    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
+  private[this] object PersistentState {
+
+    val files = mutable.Map.empty[String, PersistentIRFile]
+    val encodedNameToPersistentFile =
+      mutable.Map.empty[String, PersistentIRFile]
+
+    var statsReused: Int = 0
+    var statsInvalidated: Int = 0
+    var statsTreesRead: Int = 0
+
+    def startRun(): Unit = {
+      statsReused = 0
+      statsInvalidated = 0
+      statsTreesRead = 0
+      for (file <- files.values)
+        file.startRun()
+    }
+
+    def getPersistentIRFile(irFile: VirtualScalaJSIRFile): PersistentIRFile = {
+      val file = files.getOrElseUpdate(irFile.path,
+          new PersistentIRFile(irFile.path))
+      if (file.updateFile(irFile))
+        statsReused += 1
+      else
+        statsInvalidated += 1
+      encodedNameToPersistentFile += ((file.info.encodedName, file))
+      file
+    }
+
+    def endRun(): Unit = {
+      // "Garbage-collect" persisted versions of files that have disappeared
+      files.retain((_, f) => f.cleanAfterRun())
+      encodedNameToPersistentFile.clear()
+      logger.debug(
+          s"Inc. opt stats: reused: $statsReused -- "+
+          s"invalidated: $statsInvalidated -- trees read: $statsTreesRead")
+    }
+  }
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
       analyzer: Analyzer): Unit = {
@@ -99,105 +135,82 @@ class ScalaJSOptimizer {
     for {
       classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
       if classInfo.isNeededAtAll
-      classfile <- encodedNameToClassfile.get(classInfo.encodedName)
+      persistentFile <- PersistentState.encodedNameToPersistentFile.get(
+          classInfo.encodedName)
     } {
-      val className = classInfo.encodedName
+      import ir.Trees._
+      import ir.{ScalaJSClassEmitter => Emitter}
+      import ir.JSDesugaring.{desugarJavaScript => desugar}
 
-      class NoSourceMapLinkSelector extends (String => Boolean) {
-        override def apply(line: String): Boolean =
-          !line.startsWith("//@ sourceMappingURL=")
+      val d = persistentFile.desugared
+      lazy val classDef = {
+        PersistentState.statsTreesRead += 1
+        persistentFile.tree
       }
 
-      class ReachableMethodsSelector extends NoSourceMapLinkSelector {
-        private[this] val methodLinePrefix =
-          if (classInfo.isImplClass) "ScalaJS.impls"
-          else s"ScalaJS.c.$className.prototype"
+      def addTree(tree: Tree): Unit =
+        builder.addJSTree(tree)
 
-        private[this] val prefixLength = methodLinePrefix.length
-        private[this] var inReachableMethod = false
-
-        override def apply(line: String): Boolean = {
-          super.apply(line) && {
-            if (line.startsWith(methodLinePrefix)) {
-              // Update inReachableMethod
-              if (line(prefixLength) == '.') {
-                val name = line.substring(prefixLength+1).takeWhile(_ != ' ')
-                val encodedName = JSONValue.parse('"'+name+'"').asInstanceOf[String] // see #330
-                inReachableMethod = classInfo.methodInfos(encodedName).isReachable
-              } else {
-                // this is an exported method with []-select
-                inReachableMethod = true
-              }
-            }
-            inReachableMethod
+      def addReachableMethods(emitFun: (ClassDef, MethodDef) => Tree): Unit = {
+        /* This is a bit convoluted because we have to:
+         * * avoid to use classDef at all if we already know all the needed methods
+         * * if any new method is needed, better to go through the defs once
+         */
+        val methodNames = d.methodNames.getOrElseUpdate(
+            classDef.defs collect {
+              case MethodDef(Ident(encodedName, _), _, _, _) => encodedName
+            })
+        val reachableMethods = methodNames.filter(
+            name => classInfo.methodInfos(name).isReachable)
+        if (reachableMethods.forall(d.methods.contains(_))) {
+          for (encodedName <- reachableMethods) {
+            addTree(d.methods(encodedName))
           }
-        }
-      }
-
-      class FullInfoSelector extends ReachableMethodsSelector {
-        private[this] var state: Int = StateConstructor
-
-        @tailrec
-        override final def apply(line: String): Boolean = {
-          if (line.startsWith("//@ sourceMappingURL=")) false
-          else {
-            (state: @switch) match {
-              case StateConstructor =>
-                if (line.startsWith(s"ScalaJS.inheritable.$className.prototype =")) {
-                  // last line of the Constructor part, switch for next time
-                  state = StateMethods
-                }
-                // include if any subclass is instantiated
-                classInfo.isAnySubclassInstantiated
-
-              case StateMethods =>
-                if (line.startsWith("ScalaJS.is.")) {
-                  // beginning of the Data part, switch and redo
-                  state = StateData
-                  apply(line)
-                } else {
-                  // still in the Methods part, use the super apply
-                  classInfo.isAnySubclassInstantiated && super.apply(line)
-                }
-
-              case StateData =>
-                if (line.startsWith("ScalaJS.c.")) {
-                  // last line of the Data part which is the set-classdata stat
-                  state = StateModuleAccessor
-                  classInfo.isAnySubclassInstantiated
-                } else {
-                  // in the Data part
-                  classInfo.isDataAccessed
-                }
-
-              case StateModuleAccessor =>
-                if (line == "/** @constructor */" || // if class
-                    line.startsWith("ScalaJS.e")) {  // if module
-                  // begging of the Exports part, switch and redo
-                  state = StateExports
-                  apply(line)
-                } else {
-                  // in the Module Accessor part
-                  classInfo.isModuleAccessed
-                }
-
-              case StateExports =>
-                true
+        } else {
+          for (m @ MethodDef(Ident(encodedName, _), _, _, _) <- classDef.defs) {
+            if (classInfo.methodInfos(encodedName).isReachable) {
+              addTree(d.methods.getOrElseUpdate(encodedName,
+                  desugar(emitFun(classDef, m))))
             }
           }
         }
       }
 
-      val lines = classfile.readLines().filterNot(_.startsWith("//@"))
       if (classInfo.isImplClass) {
-        val selector = new ReachableMethodsSelector
-        builder.addPartsOfFile(classfile)(selector)
+        addReachableMethods(Emitter.genTraitImplMethod)
       } else if (!classInfo.hasInstantiation) {
         // there is only the data anyway
-        builder.addFile(classfile)
+        addTree(d.wholeClass.getOrElseUpdate(
+            desugar(classDef)))
       } else {
-        val selector = new FullInfoSelector
-        builder.addPartsOfFile(classfile)(selector)
+        if (classInfo.isAnySubclassInstantiated) {
+          addTree(d.constructor.getOrElseUpdate(
+              desugar(Emitter.genConstructor(classDef))))
+          addReachableMethods(Emitter.genMethod)
+          addTree(d.exportedMembers.getOrElseUpdate(desugar(Block {
+            classDef.defs collect {
+              case m @ MethodDef(_: StringLiteral, _, _, _) =>
+                Emitter.genMethod(classDef, m)
+              case p: PropertyDef =>
+                Emitter.genProperty(classDef, p)
+            }
+          }(classDef.pos))))
+        }
+        if (classInfo.isDataAccessed) {
+          addTree(d.typeData.getOrElseUpdate(desugar(Block(
+            Emitter.genInstanceTests(classDef),
+            Emitter.genArrayInstanceTests(classDef),
+            Emitter.genTypeData(classDef)
+          )(classDef.pos))))
+        }
+        if (classInfo.isAnySubclassInstantiated)
+          addTree(d.setTypeData.getOrElseUpdate(
+              desugar(Emitter.genSetTypeData(classDef))))
+        if (classInfo.isModuleAccessed)
+          addTree(d.moduleAccessor.getOrElseUpdate(
+              desugar(Emitter.genModuleAccessor(classDef))))
+        addTree(d.classExports.getOrElseUpdate(
+            desugar(Emitter.genClassExports(classDef))))
       }
     }
 
@@ -237,9 +250,108 @@ object ScalaJSOptimizer {
       relativizeSourceMapBase: Option[URI] = None
   )
 
-  private final val StateConstructor = 0
-  private final val StateMethods = 1
-  private final val StateData = 2
-  private final val StateModuleAccessor = 3
-  private final val StateExports = 4
+  // Private helpers -----------------------------------------------------------
+
+  private final class PersistentIRFile(val path: String) {
+    import ir.Trees._
+
+    private[this] var existedInThisRun: Boolean = false
+    private[this] var desugaredUsedInThisRun: Boolean = false
+
+    private[this] var irFile: VirtualScalaJSIRFile = null
+    private[this] var version: Option[Any] = None
+    private[this] var _info: ClassInfoData = null
+    private[this] var _tree: ClassDef = null
+    private[this] var _desugared: Desugared = null
+
+    def startRun(): Unit = {
+      existedInThisRun = false
+      desugaredUsedInThisRun = false
+    }
+
+    def updateFile(irFile: VirtualScalaJSIRFile): Boolean = {
+      existedInThisRun = true
+      this.irFile = irFile
+      if (version.isDefined && version == irFile.version) {
+        // yeepeeh, nothing to do
+        true
+      } else {
+        version = irFile.version
+        _info = readData(irFile.info)
+        _desugared = null
+        false
+      }
+    }
+
+    def info: ClassInfoData = _info
+
+    def desugared: Desugared = {
+      desugaredUsedInThisRun = true
+      if (_desugared == null)
+        _desugared = new Desugared
+      _desugared
+    }
+
+    def tree: ClassDef = {
+      if (_tree == null)
+        _tree = irFile.tree
+      _tree
+    }
+
+    /** Returns true if this file should be kept for the next run at all. */
+    def cleanAfterRun(): Boolean = {
+      irFile = null
+      if (!desugaredUsedInThisRun)
+        _desugared = null // free desugared if unused in this run
+      existedInThisRun
+    }
+  }
+
+  private final class Desugared {
+    import ir.Trees._
+
+    // for class kinds that are not decomposed
+    val wholeClass = new OneTimeCache[Tree]
+
+    val constructor = new OneTimeCache[Tree]
+    val methodNames = new OneTimeCache[List[String]]
+    val methods = mutable.Map.empty[String, Tree]
+    val exportedMembers = new OneTimeCache[Tree]
+    val typeData = new OneTimeCache[Tree]
+    val setTypeData = new OneTimeCache[Tree]
+    val moduleAccessor = new OneTimeCache[Tree]
+    val classExports = new OneTimeCache[Tree]
+  }
+
+  private final class OneTimeCache[A >: Null] {
+    private[this] var value: A = null
+    def getOrElseUpdate(v: => A): A = {
+      if (value == null)
+        value = v
+      value
+    }
+  }
+
+  private def readData(infoFile: String): ClassInfoData =
+    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
+
+  private def readData(info: ir.Trees.Tree): ClassInfoData = {
+    // TODO Definitely not the most efficient way to do this
+    import ir.Trees._
+    import scala.collection.JavaConverters._
+
+    def toJSONValue(tree: Tree): Any = {
+      (tree: @unchecked) match {
+        case Null()                  => null
+        case BooleanLiteral(value)   => value
+        case IntLiteral(value)       => value
+        case DoubleLiteral(value)    => value
+        case StringLiteral(value, _) => value
+        case JSArrayConstr(items)    => items.map(toJSONValue).asJava
+        case JSObjectConstr(fields)  =>
+          fields.map(x => (x._1.name, toJSONValue(x._2))).toMap.asJava
+      }
+    }
+    fromJSON[ClassInfoData](toJSONValue(info).asInstanceOf[AnyRef])
+  }
 }

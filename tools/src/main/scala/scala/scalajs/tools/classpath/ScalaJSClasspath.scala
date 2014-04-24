@@ -10,7 +10,10 @@
 package scala.scalajs.tools.classpath
 
 import java.io._
+
+import scala.scalajs.ir
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.sourcemap._
 
 final case class ScalaJSClasspath(
     coreJSLibFile: VirtualJSFile,
@@ -18,12 +21,12 @@ final case class ScalaJSClasspath(
     /** note that the class files are unordered
      *  use mainJSFiles for ordered class files
      */
-    classFiles: Seq[VirtualScalaJSClassfile],
+    irFiles: Seq[VirtualScalaJSIRFile],
     otherJSFiles: Seq[VirtualJSFile] = Nil
 ) extends JSClasspath {
-  import ScalaJSClasspath.sortScalaJSClassfiles
+  import ScalaJSClasspath.desugarIRFiles
   lazy val mainJSFiles: Seq[VirtualJSFile] =
-    coreJSLibFile +: sortScalaJSClassfiles(classFiles)
+    coreJSLibFile +: desugarIRFiles(irFiles)
 }
 
 object ScalaJSClasspath {
@@ -42,23 +45,46 @@ object ScalaJSClasspath {
     builder.partialResult
   }
 
-  private def sortScalaJSClassfiles(classFiles: Seq[VirtualScalaJSClassfile]) = {
-    val withAncestorCount = classFiles.zip(classFiles.map(ancestorCountOf))
-    val sorted = withAncestorCount sortWith { (lhs, rhs) =>
-      if (lhs._2 != rhs._2) lhs._2 < rhs._2
-      else lhs._1.name.compareTo(rhs._1.name) < 0
-    }
-    sorted.map(_._1)
+  private def desugarIRFiles(irFiles: Seq[VirtualScalaJSIRFile]): Seq[VirtualJSFile] = {
+    val writer = new MemVirtualJSFileWriter
+    val builder = new JSFileBuilderWithSourceMap(
+        "packaged-file.js",
+        writer.contentWriter,
+        writer.sourceMapWriter,
+        relativizeSourceMapBasePath = None)
+    val infoAndTrees = irFiles.map(_.infoAndTree)
+    val ancestorCountAndTrees =
+      infoAndTrees.map(t => (extractCoreInfo(t._1)._2, t._2))
+    for ((_, tree) <- ancestorCountAndTrees.sortBy(_._1))
+      builder.addIRTree(tree)
+    builder.complete()
+    Seq(writer.toVirtualFile("packaged-file.js"))
   }
 
-  private val AncestorCountLine =
-    raw""""ancestorCount": *([0-9]+)""".r.unanchored
+  /** Retrieves (encodedName, ancestorCount, isExported) from an info tree. */
+  def extractCoreInfo(info: ir.Trees.Tree): (String, Int, Boolean) = {
+    import ir.Trees._
+    (info: @unchecked) match {
+      case JSObjectConstr(fields) =>
+        var encodedName: String = null
+        var ancestorCount: Int = -1
+        var isExported: Boolean = false
+        fields foreach {
+          case (StringLiteral("encodedName", _), StringLiteral(v, _)) =>
+            encodedName = v
+          case (StringLiteral("ancestorCount", _), IntLiteral(v)) =>
+            ancestorCount = v
+          case (StringLiteral("isExported", _), BooleanLiteral(v)) =>
+            isExported = v
+          case _ =>
+        }
 
-  private def ancestorCountOf(classFile: VirtualScalaJSClassfile): Int = {
-    classFile.info match {
-      case AncestorCountLine(countStr) => countStr.toInt
-      case _ =>
-        throw new AssertionError(s"Did not find ancestor count in $classFile")
+        if (encodedName == null)
+          throw new AssertionError(s"Did not find encoded name in $info")
+        if (ancestorCount < 0)
+          throw new AssertionError(s"Did not find ancestor count in $info")
+
+        (encodedName, ancestorCount, isExported)
     }
   }
 

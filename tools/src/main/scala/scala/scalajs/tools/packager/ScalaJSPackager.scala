@@ -37,7 +37,6 @@ class ScalaJSPackager {
   def packageScalaJS(inputs: Inputs, outputConfig: OutputConfig,
       logger: Logger): Unit = {
     val classpath = inputs.classpath
-    val allSortedFiles = classpath.mainJSFiles ++ inputs.customScripts
 
     import outputConfig._
 
@@ -51,8 +50,30 @@ class ScalaJSPackager {
         new JSFileBuilder(name, writer.contentWriter)
     }
 
-    for (file <- allSortedFiles)
+    classpath match {
+      case ScalaJSClasspath(coreJSLibFile, _, irFiles, _) =>
+        /* For a Scala.js classpath, we can emit the IR tree directly to our
+         * builder, instead of emitting each in a virtual file then appending
+         * that to the builder.
+         * This is mostly important for the source map, because otherwise the
+         * intermediate source map has to be parsed again.
+         */
+        builder.addFile(coreJSLibFile)
+
+        val infoAndTrees = irFiles.map(_.infoAndTree)
+        val ancestorCountAndTrees =
+          infoAndTrees.map(t => (ScalaJSClasspath.extractCoreInfo(t._1)._2, t._2))
+        for ((_, tree) <- ancestorCountAndTrees.sortBy(_._1))
+          builder.addIRTree(tree)
+
+      case _ =>
+        for (file <- classpath.mainJSFiles)
+          builder.addFile(file)
+    }
+
+    for (file <- inputs.customScripts)
       builder.addFile(file)
+
     builder.complete()
 
     writePackInfo(writer, PackInfoData(packOrder))

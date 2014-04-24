@@ -72,6 +72,9 @@ object ScalaJSPlugin extends Plugin {
     val emitSourceMaps = settingKey[Boolean](
         "Whether package and optimize stages should emit source maps at all")
 
+    val scalaJSOptimizer = settingKey[ScalaJSOptimizer](
+        "Scala.js optimizer")
+
     // Task keys to re-wire sources and run with other VM
     val packageStage = taskKey[Unit]("Run stuff after packageJS")
     val fastOptStage = taskKey[Unit]("Run stuff after fastOptJS")
@@ -99,7 +102,7 @@ object ScalaJSPlugin extends Plugin {
   private def filesToWatchForChanges(classpath: Seq[File]): Set[File] = {
     val seq = classpath flatMap { f =>
       if (f.isFile) List(f)
-      else (f ** "*.js").get
+      else (f ** (("*.sjsir": NameFilter) | "*.js")).get
     }
     seq.toSet
   }
@@ -166,13 +169,12 @@ object ScalaJSPlugin extends Plugin {
       }
   )
 
-  /** Patches the IncOptions so that .js and .js.map files are pruned as needed.
+  /** Patches the IncOptions so that .sjsir files are pruned as needed.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .js, .js.map and .sjsinfo files
-   *  emitted by the Scala.js compiler. This makes sure that, when a .class
-   *  file must be deleted, the corresponding .js, .js.map and .sjsinfo files
-   *  are also deleted.
+   *  IncOptions with one that is aware of .sjsir files emitted by the Scala.js
+   *  compiler. This makes sure that, when a .class file must be deleted, the
+   *  corresponding .sjsir file are also deleted.
    */
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val inheritedNewClassfileManager = incOptions.newClassfileManager
@@ -182,11 +184,9 @@ object ScalaJSPlugin extends Plugin {
       def delete(classes: Iterable[File]): Unit = {
         inherited.delete(classes flatMap { classFile =>
           val scalaJSFiles = if (classFile.getPath endsWith ".class") {
-            for {
-              ext <- List(".js", ".js.map", ".sjsinfo")
-              f = FileVirtualFile.withExtension(classFile, ".class", ext)
-              if f.exists
-            } yield f
+            val f = FileVirtualFile.withExtension(classFile, ".class", ".sjsir")
+            if (f.exists) List(f)
+            else Nil
           } else Nil
           classFile :: scalaJSFiles
         })
@@ -219,6 +219,9 @@ object ScalaJSPlugin extends Plugin {
         ((crossTarget in fastOptJS).value /
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
+      scalaJSOptimizer in fastOptJS :=
+        new ScalaJSOptimizer,
+
       fastOptJS := {
         val s = streams.value
         val classpath = jsClasspath((fullClasspath in fastOptJS).value)
@@ -232,7 +235,7 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Fast optimizing %s ..." format output)
           import ScalaJSOptimizer._
           val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
-          val optimizer = new ScalaJSOptimizer
+          val optimizer = (scalaJSOptimizer in fastOptJS).value
           val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
           val relSourceMapBase =
               if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
