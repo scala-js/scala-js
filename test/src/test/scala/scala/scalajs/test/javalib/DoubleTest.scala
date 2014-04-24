@@ -31,6 +31,10 @@ object DoubleTest extends JasmineTest {
       expect(5.0.toString).toEqual("5.0")
       expect(-5.0.toString).toEqual("-5.0")
       expect(1.2.toString).toEqual("1.2")
+
+      // #516
+      expect(Float.PositiveInfinity.toString).toEqual("Infinity")
+      expect(Float.NegativeInfinity.toString).toEqual("-Infinity")
     }
 
     it("should parse strings") {

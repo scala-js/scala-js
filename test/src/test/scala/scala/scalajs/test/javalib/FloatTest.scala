@@ -36,6 +36,10 @@ object FloatTest extends JasmineTest {
       // float). Therefore there may be some imprecision. This is
       // documented as semantic difference.
       expect(1.2f.toString.substring(0,3)).toEqual("1.2")
+
+      // #516
+      expect(Float.PositiveInfinity.toString).toEqual("Infinity")
+      expect(Float.NegativeInfinity.toString).toEqual("-Infinity")
     }
 
     it("should parse strings") {

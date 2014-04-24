@@ -32,7 +32,7 @@ final class Double(private val value: scala.Double)
       "-0.0"
     } else {
       val s = (value: js.Number).toString()
-      if (s.indexOf(".") < 0 && !js.isNaN(value))
+      if (s.indexOf(".") < 0 && !js.isNaN(value) && js.isFinite(value))
         s + ".0"
       else s
     }
