@@ -51,7 +51,7 @@ class ScalaJSPackager {
     }
 
     classpath match {
-      case ScalaJSClasspath(coreJSLibFile, _, irFiles, _) =>
+      case ScalaJSClasspath(coreJSLibFile, irFiles, _) =>
         /* For a Scala.js classpath, we can emit the IR tree directly to our
          * builder, instead of emitting each in a virtual file then appending
          * that to the builder.

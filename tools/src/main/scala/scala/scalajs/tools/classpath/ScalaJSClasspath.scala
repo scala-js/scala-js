@@ -17,7 +17,6 @@ import scala.scalajs.tools.sourcemap._
 
 final case class ScalaJSClasspath(
     coreJSLibFile: VirtualJSFile,
-    coreInfoFiles: Seq[VirtualTextFile],
     /** note that the class files are unordered
      *  use mainJSFiles for ordered class files
      */

@@ -66,11 +66,10 @@ class ScalaJSOptimizer {
 
   private def readClasspathAndCreateAnalyzer(
       classpath: ScalaJSClasspath): Analyzer = {
-    val coreData = classpath.coreInfoFiles.map(f => readData(f.content))
     val userData = classpath.irFiles map { irFile =>
       PersistentState.getPersistentIRFile(irFile).info
     }
-    new Analyzer(logger, coreData ++ userData)
+    new Analyzer(logger, CoreData.CoreClassesData ++ userData)
   }
 
   private[this] object PersistentState {
@@ -339,9 +338,6 @@ object ScalaJSOptimizer {
       value
     }
   }
-
-  private def readData(infoFile: String): ClassInfoData =
-    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
 
   private def readData(info: ir.Trees.Tree): ClassInfoData = {
     // TODO Definitely not the most efficient way to do this

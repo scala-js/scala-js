@@ -473,10 +473,6 @@ object ScalaJSBuild extends Build {
                 Seq(sourcemap -> "scalajs-corejslib.js.map")
               else Seq()
             }
-          },
-          mappings in packageBin ++= {
-            val dir = (baseDirectory in corejslib).value
-            (dir ** "*.sjsinfo") x relativeTo(dir)
           }
       ))
   ).dependsOn(compiler % "plugin")

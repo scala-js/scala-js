@@ -28,13 +28,13 @@ object OptData {
   )
 
   case class MethodInfoData(
-      isAbstract: Option[Boolean],
-      isExported: Option[Boolean],
-      calledMethods: Option[Map[String, List[String]]],
-      calledMethodsStatic: Option[Map[String, List[String]]],
-      instantiatedClasses: Option[List[String]],
-      accessedModules: Option[List[String]],
-      accessedClassData: Option[List[String]]
+      isAbstract: Option[Boolean] = None,
+      isExported: Option[Boolean] = None,
+      calledMethods: Option[Map[String, List[String]]] = None,
+      calledMethodsStatic: Option[Map[String, List[String]]] = None,
+      instantiatedClasses: Option[List[String]] = None,
+      accessedModules: Option[List[String]] = None,
+      accessedClassData: Option[List[String]] = None
   )
 
   object MethodInfoData {
