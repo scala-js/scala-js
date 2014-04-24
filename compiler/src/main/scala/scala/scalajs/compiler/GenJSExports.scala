@@ -291,7 +291,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             typeTest match {
               case HelperTypeTest(helperName, _) =>
-                js.If(orUndef(genCallHelper(helperName, param.ref)(jstpe.BooleanType)),
+                js.If(orUndef(js.CallHelper(helperName, param.ref)(jstpe.BooleanType)),
                     genSubAlts, elsep)(jstpe.UndefType)
 
               case TypeOfTypeTest(typeString) =>
