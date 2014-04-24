@@ -18,17 +18,6 @@ import scala.io.Source
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
 
-class ScalaConsoleLogger extends Logger {
-  def log(level: Level, message: =>String): Unit = {
-    if (level == Level.Warn || level == Level.Error)
-      scala.Console.err.println(message)
-    else
-      scala.Console.out.println(message)
-  }
-  def success(message: => String): Unit = info(message)
-  def trace(t: => Throwable): Unit = t.printStackTrace()
-}
-
 class ScalaConsoleJSConsole extends JSConsole {
   def log(msg: Any) = scala.Console.out.println(msg.toString)
 }
@@ -75,7 +64,7 @@ class MainGenericRunner {
     } yield f
     val classpath = ScalaJSClasspath.fromClasspath(usefulClasspathEntries)
 
-    val logger = new ScalaConsoleLogger
+    val logger = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
     val runnerFile = runnerJSFile(thingToRun, command.arguments)
 
