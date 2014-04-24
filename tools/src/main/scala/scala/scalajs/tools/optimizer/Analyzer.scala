@@ -103,8 +103,15 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       classInfo.linkClasses()
   }
 
-  def computeReachability(manuallyReachable: Seq[ManualReachability]): Unit = {
+  def computeReachability(manuallyReachable: Seq[ManualReachability],
+      noWarnMissing: Seq[NoWarnMissing]): Unit = {
+    // Stuff reachable from core symbols always should warn
     reachCoreSymbols()
+
+    // Disable warnings as requested
+    noWarnMissing.foreach(disableWarning _)
+
+    // Reach all user stuff
     manuallyReachable.foreach(reachManually _)
     for (classInfo <- classInfos.values)
       classInfo.reachExports()
@@ -134,10 +141,14 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val LongModule = lookupClass("scala_scalajs_runtime_RuntimeLong$")
     LongModule.accessModule()
     LongModule.callMethod("zero__Lscala_scalajs_runtime_RuntimeLong")
+    LongModule.callMethod("fromDouble__D__Lscala_scalajs_runtime_RuntimeLong")
 
     val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
     BoxesRunTime.accessModule()
     BoxesRunTime.callMethod("equals__O__O__Z")
+
+    for (hijacked <- HijackedBoxedClassNames)
+      lookupClass(hijacked).accessData()
   }
 
   def reachManually(info: ManualReachability) = {
@@ -151,6 +162,13 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       case ReachMethod(className, methodName, static) =>
         classInfos(className).callMethod(methodName, static)
     }
+  }
+
+  def disableWarning(noWarn: NoWarnMissing) = noWarn match {
+    case NoWarnClass(className) =>
+      lookupClass(className).warnEnabled = false
+    case NoWarnMethod(className, methodName) =>
+      lookupClass(className).lookupMethod(methodName).warnEnabled = false
   }
 
   class ClassInfo(data: ClassInfoData) {
@@ -172,6 +190,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     val descendants = mutable.ListBuffer.empty[ClassInfo]
 
     var nonExistent: Boolean = false
+    var warnEnabled: Boolean = true
 
     def linkClasses(): Unit = {
       if (data.superClass != "")
@@ -203,14 +222,11 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       mutable.Map.empty[String, MethodInfo] ++ ms
     }
 
-    def lookupMethod(methodName: String)(implicit from: From): MethodInfo = {
+    def lookupMethod(methodName: String): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
-        logger.temporarilyNotIndented {
-          logger.warn(s"Referring to non-existent method $this.$methodName")
-          warnCallStack()
-        }
         val syntheticData = MethodInfoData.placeholder(methodName)
         val m = new MethodInfo(this, methodName, syntheticData)
+        m.nonExistent = true
         methodInfos += methodName -> m
         m
       }
@@ -299,7 +315,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     }
 
     def checkExistent(): Unit = {
-      if (nonExistent) {
+      if (nonExistent && warnEnabled) {
         logger.warn(s"Referring to non-existent class $encodedName")
         nonExistent = false
       }
@@ -350,11 +366,17 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     var calledFrom: Option[From] = None
     var instantiatedSubclass: Option[ClassInfo] = None
 
+    var nonExistent: Boolean = false
+    var warnEnabled: Boolean = true
+
     override def toString(): String = s"$owner.$encodedName"
 
     def reachStatic()(implicit from: From): Unit = {
       assert(!isAbstract,
           s"Trying to reach statically the abstract method $this")
+
+      warnIfNonExistent()
+
       if (!isReachable) {
         logger.debugIndent(s"$this.isReachable = true") {
           isReachable = true
@@ -370,12 +392,23 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       assert(!isConstructorName(encodedName),
           s"Trying to reach dynamically the constructor $this")
 
+      warnIfNonExistent()
+
       if (!isReachable) {
         logger.debugIndent(s"$this.isReachable = true") {
           isReachable = true
           calledFrom = Some(from)
           instantiatedSubclass = Some(inClass)
           doReach()
+        }
+      }
+    }
+
+    private def warnIfNonExistent()(implicit from: From) = {
+      if (warnEnabled && owner.warnEnabled && nonExistent) {
+        logger.temporarilyNotIndented {
+          logger.warn(s"Referring to non-existent method $this")
+          warnCallStack()
         }
       }
     }

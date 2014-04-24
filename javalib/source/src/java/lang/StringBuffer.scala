@@ -53,4 +53,11 @@ class StringBuffer(private var content: String) extends CharSequence
     content = new StringBuilder(content).reverse().toString()
     this
   }
+
+  def setCharAt(index: Int, ch: Char): Unit = {
+    if (index < 0 || index >= content.length)
+      throw new IndexOutOfBoundsException("String index out of range: " + index)
+    content = content.substring(0, index) + ch + content.substring(index + 1)
+  }
+
 }

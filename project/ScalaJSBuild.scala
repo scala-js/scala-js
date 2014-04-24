@@ -212,7 +212,8 @@ object ScalaJSBuild extends Build {
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
-              "org.mozilla" % "rhino" % "1.7R4"
+              "org.mozilla" % "rhino" % "1.7R4",
+              "com.novocode" % "junit-interface" % "0.9" % "test"
           )
       )
   ).dependsOn(tools)

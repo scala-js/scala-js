@@ -929,6 +929,8 @@ run/t3452d
 run/t3452b-bcode
 run/t3452b
 run/t3452a
+run/t1430
+run/t4729
 
 # Using scala-script
 run/t7791-script-linenums.scala
