@@ -36,6 +36,10 @@ object FloatTest extends JasmineTest {
       // float). Therefore there may be some imprecision. This is
       // documented as semantic difference.
       expect(1.2f.toString.substring(0,3)).toEqual("1.2")
+
+      // #516
+      expect(Float.PositiveInfinity.toString).toEqual("Infinity")
+      expect(Float.NegativeInfinity.toString).toEqual("-Infinity")
     }
 
     it("should parse strings") {
@@ -95,6 +99,14 @@ object FloatTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Float.NaN, Float.NaN)).toEqual(0)
+    }
+
+    it("should provide isInfinite - #514") {
+      expect(Float.PositiveInfinity.isInfinite).toBeTruthy
+      expect(Float.NegativeInfinity.isInfinite).toBeTruthy
+      expect((1f/0).isInfinite).toBeTruthy
+      expect((-1f/0).isInfinite).toBeTruthy
+      expect(0f.isInfinite).toBeFalsy
     }
 
   }

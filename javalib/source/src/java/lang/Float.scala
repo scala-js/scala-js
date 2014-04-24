@@ -32,12 +32,13 @@ final class Float(private val value: scala.Float)
       "-0.0"
     } else {
       val s = (value: js.Number).toString()
-      if (s.indexOf(".") < 0 && !js.isNaN(value))
+      if (s.indexOf(".") < 0 && !js.isNaN(value) && js.isFinite(value))
         s + ".0"
       else s
     }
   }
 
+  def isInfinite: scala.Boolean = Float.isInfinite(value)
   def isNaN: scala.Boolean = Float.isNaN(value)
 
   /*
