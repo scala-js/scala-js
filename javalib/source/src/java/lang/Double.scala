@@ -38,6 +38,7 @@ final class Double(private val value: scala.Double)
     }
   }
 
+  def isInfinite: scala.Boolean = Double.isInfinite(value)
   def isNaN: scala.Boolean = Double.isNaN(value)
 
   /*

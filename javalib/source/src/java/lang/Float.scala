@@ -38,6 +38,7 @@ final class Float(private val value: scala.Float)
     }
   }
 
+  def isInfinite: scala.Boolean = Float.isInfinite(value)
   def isNaN: scala.Boolean = Float.isNaN(value)
 
   /*
