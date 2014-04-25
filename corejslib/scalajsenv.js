@@ -464,7 +464,7 @@ var ScalaJS = {
  * eliminate it altogether, along with all the exports, which is ... er ...
  * plain wrong.
  */
-ScalaJS.g["__ScalaJSExportsNamespace"] = ScalaJS.e;
+this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 
 // Type data constructors
 
