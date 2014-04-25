@@ -13,14 +13,16 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
-import net.liftweb.json._
-
 import java.net.URI
+
+import org.json.simple.JSONValue
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.json._
+
 import OptData._
 
 /** Scala.js optimizer: does type-aware global dce. */
@@ -65,10 +67,8 @@ class ScalaJSOptimizer {
     new Analyzer(logger, coreData ++ userData)
   }
 
-  private def readData(infoFile: String): ClassInfoData = {
-    implicit val formats = DefaultFormats
-    Extraction.extract[ClassInfoData](JsonParser.parse(infoFile))
-  }
+  private def readData(infoFile: String): ClassInfoData =
+    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
       analyzer: Analyzer): Unit = {
@@ -117,7 +117,7 @@ class ScalaJSOptimizer {
               // Update inReachableMethod
               if (line(prefixLength) == '.') {
                 val name = line.substring(prefixLength+1).takeWhile(_ != ' ')
-                val encodedName = parse('"'+name+'"').asInstanceOf[JString].s // see #330
+                val encodedName = JSONValue.parse('"'+name+'"').asInstanceOf[String] // see #330
                 inReachableMethod = classInfo.methodInfos(encodedName).isReachable
               } else {
                 // this is an exported method with []-select

@@ -105,10 +105,7 @@ object ScalaJSBuild extends Build {
       "2.10.2",
       "2.10.3",
       "2.10.4",
-      "2.11.0-M7",
-      "2.11.0-M8",
-      "2.11.0-RC3",
-      "2.11.0-RC4"
+      "2.11.0"
     )
   }
 
@@ -140,6 +137,7 @@ object ScalaJSBuild extends Build {
       base = file("compiler"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
+          crossVersion := CrossVersion.full, // because compiler api is not binary compatible
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaVersion.value,
               "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -180,7 +178,7 @@ object ScalaJSBuild extends Build {
           scalaVersion := "2.10.2",
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "net.liftweb" %% "lift-json" % "2.5.1"
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1"
           )
       )
   )
@@ -592,7 +590,8 @@ object ScalaJSBuild extends Build {
                     "org.scala-lang.modules" %% "scala-partest" % "1.0.0"
                 ),
                 "com.google.javascript" % "closure-compiler" % "v20130603",
-                "org.mozilla" % "rhino" % "1.7R4"
+                "org.mozilla" % "rhino" % "1.7R4",
+                "com.googlecode.json-simple" % "json-simple" % "1.1.1"
               )
             else Seq()
           },

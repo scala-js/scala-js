@@ -9,9 +9,10 @@
 
 package scala.scalajs.tools.optimizer
 
-import net.liftweb.json._
+import scala.scalajs.tools.json._
 
 object OptData {
+
   case class ClassInfoData(
       name: String,
       ancestorCount: Int,
@@ -25,28 +26,6 @@ object OptData {
       isExported: Option[Boolean],
       methods: Map[String, MethodInfoData]
   )
-
-  object ClassInfoData {
-    def placeholder(encodedName: String): ClassInfoData = {
-      val isStaticModule = encodedName endsWith "$"
-      val isImplClass = encodedName endsWith "$class"
-      ClassInfoData(
-          name = s"<$encodedName>",
-          ancestorCount = 0,
-          isStaticModule = isStaticModule,
-          isInterface = false, // assuming
-          isImplClass = isImplClass,
-          isRawJSType = false, // assuming
-          encodedName = encodedName,
-          superClass = if (isImplClass) "" else "java_lang_Object",
-          ancestors = List(encodedName, "java_lang_Object"),
-          isExported = None,
-          methods = Map(
-              "__init__" -> MethodInfoData.placeholder("__init__"),
-              "init___" -> MethodInfoData.placeholder("init___"))
-      )
-    }
-  }
 
   case class MethodInfoData(
       isAbstract: Option[Boolean],
@@ -70,6 +49,94 @@ object OptData {
           accessedModules = None,
           accessedClassData = None
       )
+    }
+
+    implicit object methodInfoDataToJSON extends JSONSerializer[MethodInfoData] {
+      def serialize(x: MethodInfoData) = {
+        new JSONObjBuilder()
+          .opt("isAbstract",          x.isAbstract)
+          .opt("isExported",          x.isExported)
+          .opt("calledMethods",       x.calledMethods)
+          .opt("calledMethodsStatic", x.calledMethodsStatic)
+          .opt("instantiatedClasses", x.instantiatedClasses)
+          .opt("accessedModules",     x.accessedModules)
+          .opt("accessedClassData",   x.accessedClassData)
+          .toJSON
+      }
+    }
+
+    implicit object methodInfoDataFromJSON extends JSONDeserializer[MethodInfoData] {
+      def deserialize(x: Object) = {
+        val e = new JSONObjExtractor(x)
+        MethodInfoData(
+            e.opt[Boolean]("isAbstract"),
+            e.opt[Boolean]("isExported"),
+            e.opt[Map[String, List[String]]]("calledMethods"),
+            e.opt[Map[String, List[String]]]("calledMethodsStatic"),
+            e.opt[List[String]]("instantiatedClasses"),
+            e.opt[List[String]]("accessedModules"),
+            e.opt[List[String]]("accessedClassData")
+        )
+      }
+    }
+  }
+
+  object ClassInfoData {
+    def placeholder(encodedName: String): ClassInfoData = {
+      val isStaticModule = encodedName endsWith "$"
+      val isImplClass = encodedName endsWith "$class"
+      ClassInfoData(
+          name = s"<$encodedName>",
+          ancestorCount = 0,
+          isStaticModule = isStaticModule,
+          isInterface = false, // assuming
+          isImplClass = isImplClass,
+          isRawJSType = false, // assuming
+          encodedName = encodedName,
+          superClass = if (isImplClass) "" else "java_lang_Object",
+          ancestors = List(encodedName, "java_lang_Object"),
+          isExported = None,
+          methods = Map(
+              "__init__" -> MethodInfoData.placeholder("__init__"),
+              "init___" -> MethodInfoData.placeholder("init___"))
+      )
+    }
+
+    implicit object classInfoDataToJSON extends JSONSerializer[ClassInfoData] {
+      def serialize(x: ClassInfoData) = {
+        new JSONObjBuilder()
+          .fld("name",           x.name)
+          .fld("ancestorCount",  x.ancestorCount)
+          .fld("isStaticModule", x.isStaticModule)
+          .fld("isInterface",    x.isInterface)
+          .fld("isImplClass",    x.isImplClass)
+          .fld("isRawJSType",    x.isRawJSType)
+          .fld("encodedName",    x.encodedName)
+          .fld("superClass",     x.superClass)
+          .fld("ancestors",      x.ancestors)
+          .opt("isExported",     x.isExported)
+          .fld("methods",        x.methods)
+          .toJSON
+      }
+    }
+
+    implicit object classInfoDataFromJSON extends JSONDeserializer[ClassInfoData] {
+      def deserialize(x: Object) = {
+        val e = new JSONObjExtractor(x)
+        ClassInfoData(
+            e.fld[String]("name"),
+            e.fld[Int]("ancestorCount"),
+            e.fld[Boolean]("isStaticModule"),
+            e.fld[Boolean]("isInterface"),
+            e.fld[Boolean]("isImplClass"),
+            e.fld[Boolean]("isRawJSType"),
+            e.fld[String]("encodedName"),
+            e.fld[String]("superClass"),
+            e.fld[List[String]]("ancestors"),
+            e.opt[Boolean]("isExported"),
+            e.fld[Map[String, MethodInfoData]]("methods")
+        )
+      }
     }
   }
 }

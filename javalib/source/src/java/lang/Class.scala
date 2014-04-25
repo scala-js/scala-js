@@ -29,7 +29,7 @@ final class Class[A] private(private[lang] val data: js.Dynamic) extends Object 
     data.displayName.asInstanceOf[js.String]
   }
 
-  def getSuperClass(): Class[_ >: A] =
+  def getSuperclass(): Class[_ >: A] =
     if (!data.parentData) null
     else data.parentData.getClassOf().asInstanceOf[Class[_ >: A]]
 
