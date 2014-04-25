@@ -13,12 +13,14 @@ import scala.annotation.tailrec
 
 import scala.collection.mutable
 
+import scala.scalajs.ir
+import ir.{ClassKind, Infos}
+
 import scala.scalajs.tools.logging._
 
-import OptData._
 import ScalaJSOptimizer._
 
-class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
+class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
   /* Set this to true to debug the DCE analyzer.
    * We don't rely on config to disable 'debug' messages because we want
    * to use 'debug' for displaying more stack trace info that the user can
@@ -84,7 +86,7 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     classInfos.get(encodedName) match {
       case Some(info) => info
       case None =>
-        val c = new ClassInfo(ClassInfoData.placeholder(encodedName))
+        val c = new ClassInfo(createMissingClassInfo(encodedName))
         classInfos += encodedName -> c
         c.nonExistent = true
         c.linkClasses()
@@ -171,16 +173,16 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       lookupClass(className).lookupMethod(methodName).warnEnabled = false
   }
 
-  class ClassInfo(data: ClassInfoData) {
+  class ClassInfo(data: Infos.ClassInfo) {
     val encodedName = data.encodedName
     val ancestorCount = data.ancestorCount
-    val isStaticModule = data.isStaticModule
-    val isInterface = data.isInterface
-    val isImplClass = data.isImplClass
-    val isRawJSType = data.isRawJSType
+    val isStaticModule = data.kind == ClassKind.ModuleClass
+    val isInterface = data.kind == ClassKind.Interface
+    val isImplClass = data.kind == ClassKind.TraitImpl
+    val isRawJSType = data.kind == ClassKind.RawJSType
     val isHijackedBoxedClass = HijackedBoxedClassNames.contains(encodedName)
     val isClass = !isInterface && !isImplClass && !isRawJSType
-    val isExported = data.isExported.getOrElse(false)
+    val isExported = data.isExported
 
     val hasInstantiation = isClass && !isHijackedBoxedClass
     val hasData = !isImplClass
@@ -217,15 +219,15 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       (isImplClass && methodInfos.values.exists(_.isReachable))
 
     lazy val methodInfos: mutable.Map[String, MethodInfo] = {
-      val ms = for ((methodName, methodData) <- data.methods)
-        yield (methodName, new MethodInfo(this, methodName, methodData))
+      val ms = for (methodData <- data.methods)
+        yield (methodData.encodedName, new MethodInfo(this, methodData))
       mutable.Map.empty[String, MethodInfo] ++ ms
     }
 
     def lookupMethod(methodName: String): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
-        val syntheticData = MethodInfoData.placeholder(methodName)
-        val m = new MethodInfo(this, methodName, syntheticData)
+        val syntheticData = createMissingMethodInfo(methodName)
+        val m = new MethodInfo(this, syntheticData)
         m.nonExistent = true
         methodInfos += methodName -> m
         m
@@ -355,11 +357,11 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
     }
   }
 
-  class MethodInfo(val owner: ClassInfo, val encodedName: String,
-      data: MethodInfoData) {
+  class MethodInfo(val owner: ClassInfo, data: Infos.MethodInfo) {
 
-    val isAbstract = data.isAbstract.getOrElse(false)
-    val isExported = data.isExported.getOrElse(false)
+    val encodedName = data.encodedName
+    val isAbstract = data.isAbstract
+    val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
 
     var isReachable: Boolean = false
@@ -421,25 +423,25 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
         if (owner.isImplClass)
           owner.checkExistent()
 
-        for (moduleName <- data.accessedModules.getOrElse(Nil)) {
+        for (moduleName <- data.accessedModules) {
           lookupModule(moduleName).accessModule()
         }
 
-        for (className <- data.instantiatedClasses.getOrElse(Nil)) {
+        for (className <- data.instantiatedClasses) {
           lookupClass(className).instantiated()
         }
 
-        for (className <- data.accessedClassData.getOrElse(Nil)) {
+        for (className <- data.accessedClassData) {
           lookupClass(className).accessData()
         }
 
-        for ((className, methods) <- data.calledMethods.getOrElse(Map.empty)) {
+        for ((className, methods) <- data.calledMethods) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
             classInfo.callMethod(methodName)
         }
 
-        for ((className, methods) <- data.calledMethodsStatic.getOrElse(Map.empty)) {
+        for ((className, methods) <- data.calledMethodsStatic) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
             classInfo.callMethod(methodName, static = true)
@@ -455,6 +457,30 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
   def isConstructorName(encodedName: String): Boolean =
     encodedName.startsWith("init___") || (encodedName == "__init__")
+
+  private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
+    val kind =
+      if (encodedName.endsWith("$")) ClassKind.ModuleClass
+      else if (encodedName.endsWith("$class")) ClassKind.TraitImpl
+      else ClassKind.Class
+    Infos.ClassInfo(
+        name = s"<$encodedName>",
+        encodedName = encodedName,
+        isExported = false,
+        ancestorCount = if (kind.isClass) 1 else 0,
+        kind = kind,
+        superClass = if (kind.isClass) "java_lang_Object" else "",
+        ancestors = List(encodedName, "java_lang_Object"),
+        methods = List(
+            createMissingMethodInfo("__init__"),
+            createMissingMethodInfo("init___"))
+    )
+  }
+
+  private def createMissingMethodInfo(encodedName: String,
+      isAbstract: Boolean = false): Infos.MethodInfo = {
+    Infos.MethodInfo(encodedName = encodedName, isAbstract = isAbstract)
+  }
 
   def warnCallStack()(implicit from: From): Unit = {
     val seenInfos = mutable.Set.empty[AnyRef]

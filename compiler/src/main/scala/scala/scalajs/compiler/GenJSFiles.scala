@@ -13,6 +13,7 @@ import java.io._
 
 import scala.scalajs.ir
 import ir.{Trees => js, Printers, SourceMapWriter}
+import ir.Infos._
 
 /** Send JS ASTs to files
  *
@@ -23,24 +24,29 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import jsAddons._
 
   def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
-      info: js.Tree): Unit = {
+      classInfo: ClassInfo): Unit = {
     val outfile = getFileFor(cunit, sym, ".sjsir")
     val output = outfile.bufferedOutput
     try {
-      ir.Serializers.serialize(output, info)
+      ir.InfoSerializers.serialize(output, classInfo)
       ir.Serializers.serialize(output, tree)
     } finally {
       output.close()
     }
   }
 
-  def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.Tree): Unit = {
+  def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
+      classInfo: ClassInfo): Unit = {
     val outfile = getFileFor(cunit, sym, ".ir.js")
     val output = bufferedWriter(outfile)
     try {
       val printer = new Printers.IRTreePrinter(output)
       printer.printTopLevelTree(tree)
       printer.close()
+
+      val infoPrinter = new Printers.InfoPrinter(output)
+      infoPrinter.printClassInfo(classInfo)
+      infoPrinter.close()
     } finally {
       output.close()
     }

@@ -52,39 +52,10 @@ object ScalaJSClasspath {
         writer.sourceMapWriter,
         relativizeSourceMapBasePath = None)
     val infoAndTrees = irFiles.map(_.infoAndTree)
-    val ancestorCountAndTrees =
-      infoAndTrees.map(t => (extractCoreInfo(t._1)._2, t._2))
-    for ((_, tree) <- ancestorCountAndTrees.sortBy(_._1))
+    for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
       builder.addIRTree(tree)
     builder.complete()
     Seq(writer.toVirtualFile("packaged-file.js"))
-  }
-
-  /** Retrieves (encodedName, ancestorCount, isExported) from an info tree. */
-  def extractCoreInfo(info: ir.Trees.Tree): (String, Int, Boolean) = {
-    import ir.Trees._
-    (info: @unchecked) match {
-      case JSObjectConstr(fields) =>
-        var encodedName: String = null
-        var ancestorCount: Int = -1
-        var isExported: Boolean = false
-        fields foreach {
-          case (StringLiteral("encodedName", _), StringLiteral(v, _)) =>
-            encodedName = v
-          case (StringLiteral("ancestorCount", _), IntLiteral(v)) =>
-            ancestorCount = v
-          case (StringLiteral("isExported", _), BooleanLiteral(v)) =>
-            isExported = v
-          case _ =>
-        }
-
-        if (encodedName == null)
-          throw new AssertionError(s"Did not find encoded name in $info")
-        if (ancestorCount < 0)
-          throw new AssertionError(s"Did not find ancestor count in $info")
-
-        (encodedName, ancestorCount, isExported)
-    }
   }
 
 }

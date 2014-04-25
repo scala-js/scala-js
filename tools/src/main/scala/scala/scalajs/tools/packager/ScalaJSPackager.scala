@@ -61,9 +61,7 @@ class ScalaJSPackager {
         builder.addFile(coreJSLibFile)
 
         val infoAndTrees = irFiles.map(_.infoAndTree)
-        val ancestorCountAndTrees =
-          infoAndTrees.map(t => (ScalaJSClasspath.extractCoreInfo(t._1)._2, t._2))
-        for ((_, tree) <- ancestorCountAndTrees.sortBy(_._1))
+        for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
           builder.addIRTree(tree)
 
       case _ =>

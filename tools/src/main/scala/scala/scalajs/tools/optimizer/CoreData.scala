@@ -9,80 +9,73 @@
 
 package scala.scalajs.tools.optimizer
 
-import OptData._
+import scala.scalajs.ir
+import ir.ClassKind
+import ir.Infos._
 
 object CoreData {
-  val CoreClassesData: Seq[ClassInfoData] = Seq(ObjectData, StringData)
+  val CoreClassesInfo: Seq[ClassInfo] = Seq(ObjectInfo, StringInfo)
 
-  private def ObjectData = ClassInfoData(
+  private def ObjectInfo = ClassInfo(
     name = "java.lang.Object",
-    ancestorCount = 0,
-    isStaticModule = false,
-    isInterface = false,
-    isImplClass = false,
-    isRawJSType = false,
     encodedName = "java_lang_Object",
+    ancestorCount = 0,
+    kind = ClassKind.Class,
     superClass = "",
     ancestors = List("java_lang_Object"),
-    isExported = None,
-    methods = Map(
-      "__init__" -> MethodInfoData(),
-      "init___" -> MethodInfoData(),
-      "getClass__Ljava_lang_Class" -> MethodInfoData(),
-      "hashCode__I" -> MethodInfoData(),
-      "equals__O__Z" -> MethodInfoData(),
-      "clone__O" -> MethodInfoData(
-        calledMethods = Some(Map(
+    methods = List(
+      MethodInfo("__init__"),
+      MethodInfo("init___"),
+      MethodInfo("getClass__Ljava_lang_Class"),
+      MethodInfo("hashCode__I"),
+      MethodInfo("equals__O__Z"),
+      MethodInfo("clone__O",
+        calledMethods = Map(
           "java_lang_CloneNotSupportedException" -> List("init___")
-        )),
-        instantiatedClasses = Some(List("java_lang_CloneNotSupportedException")),
-        accessedClassData = Some(List("java_lang_Cloneable"))
+        ),
+        instantiatedClasses = List("java_lang_CloneNotSupportedException"),
+        accessedClassData = List("java_lang_Cloneable")
       ),
-      "notify__V" -> MethodInfoData(),
-      "notifyAll__V" -> MethodInfoData(),
-      "toString__T" -> MethodInfoData(
-        calledMethods = Some(Map(
+      MethodInfo("notify__V"),
+      MethodInfo("notifyAll__V"),
+      MethodInfo("toString__T",
+        calledMethods = Map(
           "java_lang_Object" -> List("getClass__Ljava_lang_Class", "hashCode__I"),
           "java_lang_Class" -> List("getName__T")
-        ))
+        )
       ),
-      "finalize__V" -> MethodInfoData(),
-      "clone__" -> MethodInfoData(
-        calledMethods = Some(Map(
+      MethodInfo("finalize__V"),
+      MethodInfo("clone__",
+        calledMethods = Map(
           "java_lang_Object" -> List("clone__O")
-        ))
+        )
       ),
-      "notify__" -> MethodInfoData(
-        calledMethods = Some(Map(
+      MethodInfo("notify__",
+        calledMethods = Map(
           "java_lang_Object" -> List("notify__V")
-        ))
+        )
       ),
-      "notifyAll__" -> MethodInfoData(
-        calledMethods = Some(Map(
+      MethodInfo("notifyAll__",
+        calledMethods = Map(
           "java_lang_Object" -> List("notifyAll__V")
-        ))
+        )
       ),
-      "finalize__" -> MethodInfoData(
-        calledMethods = Some(Map(
+      MethodInfo("finalize__",
+        calledMethods = Map(
           "java_lang_Object" -> List("finalize__V")
-        ))
+        )
       )
     )
   )
 
-  private def StringData = ClassInfoData(
+  private def StringInfo = ClassInfo(
     name = "java.lang.String",
-    ancestorCount = 1,
-    isStaticModule = false,
-    isInterface = false,
-    isImplClass = false,
-    isRawJSType = false,
     encodedName = "java_lang_String",
+    ancestorCount = 1,
+    kind = ClassKind.HijackedClass,
     superClass = "java_lang_Object",
     ancestors = List(
       "java_lang_String", "java_io_Serializable",
-      "java_lang_CharSequence", "java_lang_Comparable", "java_lang_Object"),
-    isExported = None,
-    methods = Map.empty
+      "java_lang_CharSequence", "java_lang_Comparable", "java_lang_Object")
   )
 }

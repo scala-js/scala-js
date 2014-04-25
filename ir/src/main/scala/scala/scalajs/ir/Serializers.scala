@@ -322,14 +322,7 @@ object Serializers {
         case ClassDef(name, kind, parent, ancestors, defs) =>
           writeByte(TagClassDef)
           writeIdent(name)
-          writeByte(kind match {
-            case ClassKind.Class         => 1
-            case ClassKind.ModuleClass   => 2
-            case ClassKind.Interface     => 3
-            case ClassKind.RawJSType     => 4
-            case ClassKind.HijackedClass => 5
-            case ClassKind.TraitImpl     => 6
-          })
+          writeByte(ClassKind.toByte(kind))
           writeOptIdent(parent)
           writeIdents(ancestors)
           writeTrees(defs)
@@ -519,14 +512,7 @@ object Serializers {
 
         case TagClassDef =>
           val name = readIdent()
-          val kind = readByte() match {
-            case 1 => ClassKind.Class
-            case 2 => ClassKind.ModuleClass
-            case 3 => ClassKind.Interface
-            case 4 => ClassKind.RawJSType
-            case 5 => ClassKind.HijackedClass
-            case 6 => ClassKind.TraitImpl
-          }
+          val kind = ClassKind.fromByte(readByte())
           val parent = readOptIdent()
           val ancestors = readIdents()
           val defs = readTrees()

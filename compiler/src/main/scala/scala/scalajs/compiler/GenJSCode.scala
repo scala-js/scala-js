@@ -265,7 +265,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         generatedJSAST(clDefs)
 
         for ((sym, tree, infoBuilder) <- generatedClasses) {
-          genIRFile(cunit, sym, tree, infoBuilder.toJSON)
+          genIRFile(cunit, sym, tree, infoBuilder.result())
         }
       } finally {
         translatedAnonFunctions.clear()
@@ -3730,7 +3730,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   private lazy val HijackedBoxedClasses =
     Seq(BoxedUnitClass, BoxedBooleanClass) ++ HijackedNumberClasses
 
-  private lazy val isHijackedBoxedClass: Set[Symbol] =
+  protected lazy val isHijackedBoxedClass: Set[Symbol] =
     HijackedBoxedClasses.toSet
 
   private def isMaybeJavaScriptException(tpe: Type) =
