@@ -9,7 +9,3 @@ trait VirtualTextFileWriter {
 trait VirtualJSFileWriter extends VirtualTextFileWriter {
   def sourceMapWriter: Writer
 }
-
-trait VirtualScalaJSPackfileWriter extends VirtualJSFileWriter {
-  def packInfoWriter: Writer
-}

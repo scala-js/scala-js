@@ -11,52 +11,40 @@ package scala.scalajs.tools.classpath
 
 import java.io._
 import scala.scalajs.tools.io._
-import scala.scalajs.tools.json._
 
-import org.json.simple.JSONValue
+import scala.util.Try
 
 final class ScalaJSPackedClasspath private (
-    val mainJSFiles: Seq[VirtualScalaJSPackfile],
+    val mainJSFiles: Seq[VirtualJSFile],
     val otherJSFiles: Seq[VirtualJSFile]
 ) extends JSClasspath
 
 object ScalaJSPackedClasspath {
 
-  case class PackInfoData(packOrder: Int)
+  private val packOrderPrefix = "// ScalaJS PackOrder: "
 
-  object PackInfoData {
+  def packOrderLine(order: Int) = s"$packOrderPrefix$order"
 
-    implicit object packInfoDataToJSON extends JSONSerializer[PackInfoData] {
-      def serialize(x: PackInfoData) = {
-        new JSONObjBuilder()
-          .fld("packOrder", x.packOrder)
-          .toJSON
-      }
-    }
+  private def readPackOrder(f: VirtualJSFile): Int = {
+    val in = new BufferedReader(f.reader)
 
-    implicit object packInfoDataFromJSON extends JSONDeserializer[PackInfoData] {
-      def deserialize(x: Object): PackInfoData = {
-        val e = new JSONObjExtractor(x)
-        PackInfoData(e.fld[Int]("packOrder"))
-      }
-    }
+    val optPackOrder = for {
+      nullLine <- Try(in.readLine()).toOption
+      line     <- Option(nullLine)
+      if line.startsWith(packOrderPrefix)
+      orderStr  = line.stripPrefix(packOrderPrefix)
+      order    <- Try(orderStr.toInt).toOption
+    } yield order
+
+    in.close()
+
+    optPackOrder.getOrElse(
+      sys.error(s"$f doesn't have a ScalaJS PackOrder header"))
   }
 
-  def readPackInfo(file: VirtualScalaJSPackfile): PackInfoData =
-    fromJSON[PackInfoData](JSONValue.parseWithException(file.packInfo))
-
-  def writePackInfo(writer: VirtualScalaJSPackfileWriter,
-      info: PackInfoData): Unit = {
-    JSONValue.writeJSONString(info.toJSON, writer.packInfoWriter)
-  }
-
-  def apply(unorderedPackfiles: Seq[VirtualScalaJSPackfile],
+  def apply(unorderedPackfiles: Seq[VirtualJSFile],
       otherJSFiles: Seq[VirtualJSFile]): ScalaJSPackedClasspath = {
-
-    val orderedPackfiles = unorderedPackfiles.sortBy { f =>
-      readPackInfo(f).packOrder
-    }
-
+    val orderedPackfiles = unorderedPackfiles.sortBy(readPackOrder _)
     new ScalaJSPackedClasspath(orderedPackfiles, otherJSFiles)
   }
 

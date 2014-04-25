@@ -75,19 +75,6 @@ object VirtualJSFile {
     new MemVirtualJSFile(path).withVersion(Some(path))
 }
 
-/** A virtual JavaScript input file which was packed by Scala.js
- *  It has a pack info file associated with it.
- */
-trait VirtualScalaJSPackfile extends VirtualJSFile {
-  /** content of the pack info file associated with this packfile. */
-  def packInfo: String
-}
-
-object VirtualScalaJSPackfile {
-  def empty(path: String): VirtualScalaJSPackfile =
-    new MemVirtualScalaJSPackfile(path).withVersion(Some(path))
-}
-
 /** A virtual Scala.js IR file.
  *  It contains the IR tree.
  *  It can also offer a [[VirtualJSFile]] view of its desugared content.

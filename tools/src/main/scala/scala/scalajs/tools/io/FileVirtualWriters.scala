@@ -44,29 +44,3 @@ class FileVirtualJSFileWriter(f: File) extends FileVirtualTextFileWriter(f)
   }
 
 }
-
-class FileVirtualScalaJSPackfileWriter(f: File) extends
-    FileVirtualJSFileWriter(f) with VirtualScalaJSPackfileWriter {
-
-  import FileVirtualFile.withExtension
-
-  val packInfoFile = withExtension(file, ".js", ".sjspack")
-
-  private[this] var _packInfoWriter: Writer = null
-
-  override def packInfoWriter: Writer = {
-    if (_packInfoWriter != null) _packInfoWriter
-    else {
-      _packInfoWriter = new OutputStreamWriter(
-          new BufferedOutputStream(
-              new FileOutputStream(packInfoFile)), "UTF-8")
-      _packInfoWriter
-    }
-  }
-
-  override def close(): Unit = {
-    super.close()
-    if (_packInfoWriter != null) _packInfoWriter.close()
-  }
-
-}

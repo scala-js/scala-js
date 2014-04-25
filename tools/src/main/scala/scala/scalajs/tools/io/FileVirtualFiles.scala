@@ -108,25 +108,6 @@ object FileVirtualJSFile extends (File => FileVirtualJSFile) {
     new FileVirtualJSFile(f)
 }
 
-class FileVirtualScalaJSPackfile(f: File)
-    extends FileVirtualJSFile(f) with VirtualScalaJSPackfile {
-  import FileVirtualFile._
-  import FileVirtualTextFile._
-
-  override def packInfo: String =
-    readFileToString(withExtension(file, ".js", ".sjspack"))
-}
-
-object FileVirtualScalaJSPackfile extends (File => FileVirtualScalaJSPackfile) {
-  import FileVirtualFile._
-
-  def apply(f: File): FileVirtualScalaJSPackfile =
-    new FileVirtualScalaJSPackfile(f)
-
-  def isScalaJSPackfile(file: File): Boolean =
-    hasExtension(file, ".js") && withExtension(file, ".js", ".sjspack").exists
-}
-
 class FileVirtualScalaJSIRFile(f: File)
     extends FileVirtualBinaryFile(f) with VirtualSerializedScalaJSIRFile
 

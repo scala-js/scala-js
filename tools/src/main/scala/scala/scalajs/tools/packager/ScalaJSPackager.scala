@@ -17,7 +17,7 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
 
-import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
+import ScalaJSPackedClasspath.packOrderLine
 
 /** Scala.js packager: concatenates blindly all Scala.js class files. */
 class ScalaJSPackager {
@@ -50,6 +50,9 @@ class ScalaJSPackager {
         new JSFileBuilder(name, writer.contentWriter)
     }
 
+    // Write pack order line first
+    builder.addLine(packOrderLine(packOrder))
+
     classpath match {
       case ScalaJSClasspath(coreJSLibFile, _, irFiles, _) =>
         /* For a Scala.js classpath, we can emit the IR tree directly to our
@@ -75,8 +78,6 @@ class ScalaJSPackager {
       builder.addFile(file)
 
     builder.complete()
-
-    writePackInfo(writer, PackInfoData(packOrder))
   }
 }
 
@@ -94,7 +95,7 @@ object ScalaJSPackager {
       /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Print writer for the output file. */
-      writer: VirtualScalaJSPackfileWriter,
+      writer: VirtualJSFileWriter,
       /** Pack order written to the .sjspack file to ensure proper ordering by
        *  other tools (notably when reading a JSClasspath from the packed files)
        */

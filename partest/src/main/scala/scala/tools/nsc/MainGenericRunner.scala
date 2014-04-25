@@ -75,7 +75,7 @@ class MainGenericRunner {
       val objName = thingToRun.replace('.', '_')
 
       val fileName = "partest optimized file"
-      val packFileWriter = new MemVirtualScalaJSPackfileWriter
+      val packFileWriter = new MemVirtualJSFileWriter
 
       try {
         optimizer.optimize(
