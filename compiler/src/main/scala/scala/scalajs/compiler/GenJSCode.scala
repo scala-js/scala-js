@@ -83,9 +83,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     private[this] def convert(nscSource: SourceFile): ir.Position.SourceFile = {
       nscSource.file.file match {
         case null =>
-          // TODO Better than this
-          val path = nscSource.file.path
-          new java.io.File(path.substring(path.lastIndexOf('/')+1)).toURI
+          new java.net.URI(
+              "virtualfile",       // Pseudo-Scheme
+              nscSource.file.path, // Scheme specific part
+              null                 // Fragment
+          )
         case file =>
           val relURI = scalaJSOpts.relSourceMap.fold(file.toURI)(_.relativize(file.toURI))
           val absURI = scalaJSOpts.absSourceMap.fold(relURI)(_.resolve(relURI))
