@@ -3,6 +3,7 @@ package scala.scalajs.compiler.test.util
 import language.implicitConversions
 
 import scala.tools.nsc._
+import scala.reflect.internal.util.SourceFile
 
 import scala.util.control.ControlThrowable
 
@@ -17,9 +18,7 @@ abstract class JSASTTest extends DirectTest {
 
   private var lastAST: JSAST = _
 
-  abstract class JSAST {
-    val clDefs: List[js.Tree]
-
+  class JSAST(val clDefs: List[js.Tree]) {
     type Pat = PartialFunction[js.Tree, Unit]
 
     class PFTraverser(pf: Pat) extends ir.Transformers.Transformer {
@@ -94,14 +93,19 @@ abstract class JSASTTest extends DirectTest {
 
   override def newScalaJSPlugin(global: Global) = new ScalaJSPlugin(global) {
     override def generatedJSAST(cld: List[js.Tree]): Unit = {
-      lastAST = new JSAST { val trees = jsAddons; val clDefs = cld }
+      lastAST = new JSAST(cld)
     }
   }
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
-
   def stringAST(global: Global)(code: String): JSAST = {
     compileString(global)(code)
+    lastAST
+  }
+
+  def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
+  def sourceAST(global: Global)(source: SourceFile): JSAST = {
+    compileSources(global)(source)
     lastAST
   }
 

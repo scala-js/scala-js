@@ -50,10 +50,13 @@ abstract class DirectTest {
     f(new global.Run)
   }
 
-  def compileString(global: Global)(sourceCode: String): Boolean = {
-    withRun(global)(_ compileSources newSources(sourceCode))
+  def compileSources(global: Global)(sources: SourceFile*): Boolean = {
+    withRun(global)(_ compileSources sources.toList)
     !global.reporter.hasErrors
   }
+
+  def compileString(global: Global)(sourceCode: String): Boolean =
+    compileSources(global)(newSources(sourceCode): _*)
 
   def compileString(sourceCode: String): Boolean =
     compileString(defaultGlobal)(sourceCode)
