@@ -2,6 +2,7 @@ package scala.scalajs.compiler.test.util
 
 import scala.tools.nsc._
 import scala.scalajs.compiler.{ScalaJSPlugin, JSTrees, JSTreeExtractors}
+import scala.reflect.internal.util.SourceFile
 
 import scala.util.control.ControlThrowable
 
@@ -99,9 +100,14 @@ abstract class JSASTTest extends DirectTest {
   }
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
-
   def stringAST(global: Global)(code: String): JSAST = {
     compileString(global)(code)
+    lastAST
+  }
+
+  def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
+  def sourceAST(global: Global)(source: SourceFile): JSAST = {
+    compileSources(global)(source)
     lastAST
   }
 
