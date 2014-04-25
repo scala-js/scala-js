@@ -18,9 +18,7 @@ abstract class JSASTTest extends DirectTest {
 
   private var lastAST: JSAST = _
 
-  abstract class JSAST {
-    val clDefs: List[js.Tree]
-
+  class JSAST(val clDefs: List[js.Tree]) {
     type Pat = PartialFunction[js.Tree, Unit]
 
     class PFTraverser(pf: Pat) extends ir.Transformers.Transformer {
@@ -95,7 +93,7 @@ abstract class JSASTTest extends DirectTest {
 
   override def newScalaJSPlugin(global: Global) = new ScalaJSPlugin(global) {
     override def generatedJSAST(cld: List[js.Tree]): Unit = {
-      lastAST = new JSAST { val trees = jsAddons; val clDefs = cld }
+      lastAST = new JSAST(cld)
     }
   }
 
