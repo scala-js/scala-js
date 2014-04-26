@@ -59,7 +59,8 @@ object Infos {
       val calledMethodsStatic: Map[String, List[String]],
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
-      val accessedClassData: List[String]
+      val accessedClassData: List[String],
+      val optimizerHints: OptimizerHints
   )
 
   object MethodInfo {
@@ -71,11 +72,45 @@ object Infos {
         calledMethodsStatic: Map[String, List[String]] = Map.empty,
         instantiatedClasses: List[String] = Nil,
         accessedModules: List[String] = Nil,
-        accessedClassData: List[String] = Nil): MethodInfo = {
+        accessedClassData: List[String] = Nil,
+        optimizerHints: OptimizerHints = OptimizerHints.empty): MethodInfo = {
       new MethodInfo(encodedName, isAbstract, isExported, calledMethods,
           calledMethodsStatic, instantiatedClasses, accessedModules,
-          accessedClassData)
+          accessedClassData, optimizerHints)
     }
+  }
+
+  final class OptimizerHints(val bits: Int) extends AnyVal {
+    import OptimizerHints._
+
+    private[scalajs] def isAccessor: Boolean = (bits & AccessorMask) != 0
+    private[scalajs] def hasInlineAnnot: Boolean = (bits & InlineAnnotMask) != 0
+
+    private[scalajs] def copy(
+        isAccessor: Boolean = this.isAccessor,
+        hasInlineAnnot: Boolean = this.hasInlineAnnot
+    ): OptimizerHints = {
+      var bits: Int = 0
+      if (isAccessor)
+        bits |= AccessorMask
+      if (hasInlineAnnot)
+        bits |= InlineAnnotMask
+      new OptimizerHints(bits)
+    }
+
+    override def toString(): String =
+      s"OptimizerHints($bits)"
+  }
+
+  object OptimizerHints {
+    private final val AccessorShift = 0
+    private final val AccessorMask = 1 << AccessorShift
+
+    private final val InlineAnnotShift = 1
+    private final val InlineAnnotMask = 1 << InlineAnnotShift
+
+    final val empty: OptimizerHints =
+      new OptimizerHints(0)
   }
 
 }
