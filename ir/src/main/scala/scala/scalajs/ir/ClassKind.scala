@@ -9,6 +9,8 @@
 
 package scala.scalajs.ir
 
+import scala.annotation.switch
+
 sealed abstract class ClassKind {
   import ClassKind._
 
@@ -30,4 +32,22 @@ object ClassKind {
   case object RawJSType extends ClassKind
   case object HijackedClass extends ClassKind
   case object TraitImpl extends ClassKind
+
+  private[ir] def toByte(kind: ClassKind): Byte = kind match {
+    case ClassKind.Class         => 1
+    case ClassKind.ModuleClass   => 2
+    case ClassKind.Interface     => 3
+    case ClassKind.RawJSType     => 4
+    case ClassKind.HijackedClass => 5
+    case ClassKind.TraitImpl     => 6
+  }
+
+  private[ir] def fromByte(b: Byte): ClassKind = (b: @switch) match {
+    case 1 => ClassKind.Class
+    case 2 => ClassKind.ModuleClass
+    case 3 => ClassKind.Interface
+    case 4 => ClassKind.RawJSType
+    case 5 => ClassKind.HijackedClass
+    case 6 => ClassKind.TraitImpl
+  }
 }

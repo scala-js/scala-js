@@ -15,17 +15,13 @@ import scala.collection.mutable
 
 import java.net.URI
 
-import org.json.simple.JSONValue
-
 import scala.scalajs.ir
+import ir.Infos
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
-import scala.scalajs.tools.json._
-
-import OptData._
 
 import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
 
@@ -66,11 +62,10 @@ class ScalaJSOptimizer {
 
   private def readClasspathAndCreateAnalyzer(
       classpath: ScalaJSClasspath): Analyzer = {
-    val coreData = classpath.coreInfoFiles.map(f => readData(f.content))
-    val userData = classpath.irFiles map { irFile =>
+    val userInfo = classpath.irFiles map { irFile =>
       PersistentState.getPersistentIRFile(irFile).info
     }
-    new Analyzer(logger, coreData ++ userData)
+    new Analyzer(logger, CoreData.CoreClassesInfo ++ userInfo)
   }
 
   private[this] object PersistentState {
@@ -268,7 +263,7 @@ object ScalaJSOptimizer {
 
     private[this] var irFile: VirtualScalaJSIRFile = null
     private[this] var version: Option[Any] = None
-    private[this] var _info: ClassInfoData = null
+    private[this] var _info: Infos.ClassInfo = null
     private[this] var _tree: ClassDef = null
     private[this] var _desugared: Desugared = null
 
@@ -285,13 +280,13 @@ object ScalaJSOptimizer {
         true
       } else {
         version = irFile.version
-        _info = readData(irFile.info)
+        _info = irFile.info
         _desugared = null
         false
       }
     }
 
-    def info: ClassInfoData = _info
+    def info: Infos.ClassInfo = _info
 
     def desugared: Desugared = {
       desugaredUsedInThisRun = true
@@ -338,28 +333,5 @@ object ScalaJSOptimizer {
         value = v
       value
     }
-  }
-
-  private def readData(infoFile: String): ClassInfoData =
-    fromJSON[ClassInfoData](JSONValue.parse(infoFile))
-
-  private def readData(info: ir.Trees.Tree): ClassInfoData = {
-    // TODO Definitely not the most efficient way to do this
-    import ir.Trees._
-    import scala.collection.JavaConverters._
-
-    def toJSONValue(tree: Tree): Any = {
-      (tree: @unchecked) match {
-        case Null()                  => null
-        case BooleanLiteral(value)   => value
-        case IntLiteral(value)       => value
-        case DoubleLiteral(value)    => value
-        case StringLiteral(value, _) => value
-        case JSArrayConstr(items)    => items.map(toJSONValue).asJava
-        case JSObjectConstr(fields)  =>
-          fields.map(x => (x._1.name, toJSONValue(x._2))).toMap.asJava
-      }
-    }
-    fromJSON[ClassInfoData](toJSONValue(info).asInstanceOf[AnyRef])
   }
 }

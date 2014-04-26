@@ -89,38 +89,48 @@ object VirtualScalaJSPackfile {
 }
 
 /** A virtual Scala.js IR file.
- *  It contains the IR tree.
- *  It can also offer a [[VirtualJSFile]] view of its desugared content.
+ *  It contains the class info and the IR tree.
  */
 trait VirtualScalaJSIRFile extends VirtualFile {
-  /** Info tree of this file. */
-  def info: ir.Trees.Tree =
+  /** Rough class info of this file. */
+  def roughInfo: ir.Infos.RoughClassInfo = info
+
+  /** Class info of this file. */
+  def info: ir.Infos.ClassInfo =
     infoAndTree._1
 
   /** IR Tree of this file. */
   def tree: ir.Trees.ClassDef =
     infoAndTree._2
 
-  /** Info tree and IR tree of this file. */
-  def infoAndTree: (ir.Trees.Tree, ir.Trees.ClassDef)
+  /** Class info and IR tree of this file. */
+  def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)
 }
 
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
  */
 trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScalaJSIRFile {
-  /** Info of this file. */
-  override def info: ir.Trees.Tree = {
-    // Overridden to avoid reading and deserializing the tree
+  /** Rough class info of this file. */
+  override def roughInfo: ir.Infos.RoughClassInfo = {
+    // Overridden to read only the necessary parts
     val stream = inputStream
-    try ir.Serializers.deserialize(stream)
+    try ir.InfoSerializers.deserializeRoughInfo(stream)
     finally stream.close()
   }
 
-  /** IR Tree of this file. */
-  override def infoAndTree: (ir.Trees.Tree, ir.Trees.ClassDef) = {
+  /** Class info of this file. */
+  override def info: ir.Infos.ClassInfo = {
+    // Overridden to read only the necessary parts
+    val stream = inputStream
+    try ir.InfoSerializers.deserializeFullInfo(stream)
+    finally stream.close()
+  }
+
+  /** Class info and IR tree of this file. */
+  override def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef) = {
     val stream = inputStream
     try {
-      val info = ir.Serializers.deserialize(stream)
+      val info = ir.InfoSerializers.deserializeFullInfo(stream)
       val tree = ir.Serializers.deserialize(stream).asInstanceOf[ir.Trees.ClassDef]
       (info, tree)
     } finally {

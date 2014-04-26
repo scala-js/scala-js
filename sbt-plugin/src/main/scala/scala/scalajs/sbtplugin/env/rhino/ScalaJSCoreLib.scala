@@ -22,17 +22,14 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {
-    import ir.Trees._
-
     val providers = mutable.Map.empty[String, VirtualScalaJSIRFile]
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
     for (irFile <- classpath.irFiles) {
-      val (encodedName, _, isExported) =
-        ScalaJSClasspath.extractCoreInfo(irFile.info)
-      providers += encodedName -> irFile
-      if (isExported)
-        exportedSymbols += encodedName
+      val info = irFile.roughInfo
+      providers += info.encodedName -> irFile
+      if (info.isExported)
+        exportedSymbols += info.encodedName
     }
 
     (providers, exportedSymbols)

@@ -15,6 +15,7 @@ import java.net.URI
 import Position._
 import Trees._
 import Types._
+import Infos._
 
 object Printers {
 
@@ -558,6 +559,84 @@ object Printers {
       sourceMap.close()
       super.close()
     }
+  }
+
+  class InfoPrinter(val out: Writer) extends IndentationManager {
+    def printClassInfo(classInfo: ClassInfo): Unit = {
+      import classInfo._
+      println("name: ", escapeJS(name))
+      println("encodedName: ", escapeJS(encodedName))
+      println("isExported: ", isExported)
+      println("ancestorCount: ", ancestorCount)
+      println("kind: ", kind)
+      println("superClass: ", superClass)
+
+      if (ancestors.nonEmpty) {
+        println("ancestors: ",
+            ancestors.map(escapeJS).mkString("[", ", ", "]"))
+      }
+
+      print("methods:")
+      indent(); println()
+      methods.foreach(printMethodInfo)
+      undent(); println()
+    }
+
+    def printMethodInfo(methodInfo: MethodInfo): Unit = {
+      import methodInfo._
+      print(escapeJS(encodedName), ":")
+      indent(); println()
+
+      if (isAbstract)
+        println("isAbstract: ", isAbstract)
+      if (isExported)
+        println("isExported: ", isExported)
+      if (calledMethods.nonEmpty) {
+        print("calledMethods:")
+        indent(); println()
+        printSeq(calledMethods.toList) { case (caller, callees) =>
+          print(escapeJS(caller), ": ")
+          print(callees.map(escapeJS).mkString("[", ", ", "]"))
+        } { _ => println() }
+        undent(); println()
+      }
+      if (calledMethodsStatic.nonEmpty) {
+        print("calledMethodsStatic:")
+        indent(); println()
+        printSeq(calledMethodsStatic.toList) { case (caller, callees) =>
+          print(escapeJS(caller), ": ")
+          print(callees.map(escapeJS).mkString("[", ", ", "]"))
+        } { _ => println() }
+        undent(); println()
+      }
+      if (instantiatedClasses.nonEmpty) {
+        println("instantiatedClasses: ",
+            instantiatedClasses.map(escapeJS).mkString("[", ", ", "]"))
+      }
+      if (accessedModules.nonEmpty) {
+        println("accessedModules: ",
+            accessedModules.map(escapeJS).mkString("[", ", ", "]"))
+      }
+      if (accessedClassData.nonEmpty) {
+        println("accessedClassData: ",
+            accessedClassData.map(escapeJS).mkString("[", ", ", "]"))
+      }
+
+      undent(); println()
+    }
+
+    private def println(arg1: Any, args: Any*): Unit = {
+      print((arg1 +: args): _*)
+      println()
+    }
+
+    def print(args: Any*): Unit = args foreach {
+      case classInfo: ClassInfo   => printClassInfo(classInfo)
+      case methodInfo: MethodInfo => printMethodInfo(methodInfo)
+      case arg                    => out.write(arg.toString())
+    }
+
+    def close(): Unit = ()
   }
 
 }

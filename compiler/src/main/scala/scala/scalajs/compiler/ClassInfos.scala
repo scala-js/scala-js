@@ -12,31 +12,34 @@ import scala.tools.nsc._
 
 import java.io.{ File, PrintWriter, BufferedOutputStream, FileOutputStream }
 
-import scala.scalajs.ir.{Trees => js}
+import scala.scalajs.ir
+import ir.{Trees => js, ClassKind}
+import ir.Infos._
 
 trait ClassInfos extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  /* This component uses our js.Tree API to build JSON data to be output in
-   * the .sjsinfo file. The JSONBuilder object below provides helpers to do so.
-   */
-  import JSONBuilder._
-
   class ClassInfoBuilder(val symbol: ClassSymbol) {
-    val isStaticModule = ClassInfos.this.isStaticModule(symbol)
-    val isInterface = symbol.isInterface
-    val isImplClass = symbol.isImplClass
-    val isRawJSType = ClassInfos.this.isRawJSType(symbol.tpe)
     val name = classNameOf(symbol)
-    val ancestorCount = symbol.ancestors.count(!_.isInterface)
     val encodedName = encodeClassFullName(symbol)
+    var isExported: Boolean = false
+    val ancestorCount = symbol.ancestors.count(!_.isInterface)
+    val kind = {
+      if (isStaticModule(symbol))            ClassKind.ModuleClass
+      else if (symbol.isInterface)           ClassKind.Interface
+      else if (isRawJSType(symbol.tpe))      ClassKind.RawJSType
+      else if (isHijackedBoxedClass(symbol)) ClassKind.HijackedClass
+      else if (symbol.isImplClass)           ClassKind.TraitImpl
+      else                                   ClassKind.Class
+    }
     val superClass =
-      if (!isInterface && !isImplClass) encodeClassFullName(symbol.superClass)
-      else ""
+      if (kind.isClass || kind == ClassKind.HijackedClass)
+        encodeClassFullName(symbol.superClass)
+      else
+        ""
     val ancestors = (symbol :: symbol.ancestors) map encodeClassFullName
 
-    var isExported: Boolean = false
     val methodInfos = mutable.ListBuffer.empty[MethodInfoBuilder]
 
     def addMethod(encodedName: String, isAbstract: Boolean = false,
@@ -46,24 +49,14 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       b
     }
 
-    def toJSON: js.Tree = {
-      obj(
-          "name" -> name,
-          "ancestorCount" -> ancestorCount,
-          "isStaticModule" -> isStaticModule,
-          "isInterface" -> isInterface,
-          "isImplClass" -> isImplClass,
-          "isRawJSType" -> isRawJSType,
-          "encodedName" -> encodedName,
-          "superClass" -> superClass,
-          "ancestors" -> ancestors,
-          "isExported" -> isExported,
-          "methods" -> obj(methodInfos.map(_.toJSONPair): _*)
-      )
+    def result(): ClassInfo = {
+      ClassInfo(name, encodedName, isExported, ancestorCount, kind,
+          superClass, ancestors, methodInfos.map(_.result()).result())
     }
   }
 
-  class MethodInfoBuilder(val encodedName: String, val isAbstract: Boolean = false,
+  class MethodInfoBuilder(val encodedName: String,
+      val isAbstract: Boolean = false,
       val isExported: Boolean = false) {
 
     val calledMethods = mutable.Set.empty[(String, String)] // (tpe, method)
@@ -111,64 +104,21 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       case _ => name
     }
 
-    def toJSONPair: (String, js.Tree) = {
-      val fields = mutable.ListBuffer.empty[(String, js.Tree)]
-      if (isAbstract)
-        fields += "isAbstract" -> true
-      if (isExported)
-        fields += "isExported" -> true
-      if (calledMethods.nonEmpty) {
-        val groupedByType = calledMethods.toList.groupBy(_._1)
-        fields += ("calledMethods" ->
-            obj(groupedByType.mapValues(_.map(_._2): js.Tree).toList: _*))
-      }
-      if (calledMethodsStatic.nonEmpty) {
-        val groupedByType = calledMethodsStatic.toList.groupBy(_._1)
-        fields += ("calledMethodsStatic" ->
-            obj(groupedByType.mapValues(_.map(_._2): js.Tree).toList: _*))
-      }
-      if (instantiatedClasses.nonEmpty)
-        fields += "instantiatedClasses" -> instantiatedClasses.toList
-      if (accessedModules.nonEmpty)
-        fields += "accessedModules" -> accessedModules.toList
-      if (accessedClassData.nonEmpty)
-        fields += "accessedClassData" -> accessedClassData.toList
-      (encodedName, obj(fields: _*))
+    def result(): MethodInfo = {
+      MethodInfo(
+          encodedName,
+          isAbstract,
+          isExported,
+          calledMethods.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          calledMethodsStatic.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          instantiatedClasses.toList,
+          accessedModules.result.toList,
+          accessedClassData.result.toList
+      )
     }
   }
 
   private def classNameOf(sym: Symbol): String =
     if (needsModuleClassSuffix(sym)) sym.fullName + nme.MODULE_SUFFIX_STRING
     else sym.fullName
-
-  /** Helper methods and implicits to build js.Trees in a JSON way. */
-  private object JSONBuilder {
-    /* JSON trees do not have/need positions, since we don't emit source maps
-     * for them. Since all js.Tree constructors require their position as an
-     * implicit argument, we put NoPosition in the implicit scope for JSON
-     * building.
-     */
-    implicit val dummyPos: Position = NoPosition
-
-    /** Object construction. */
-    def obj(fields: (String, js.Tree)*): js.Tree =
-      js.JSObjectConstr(fields.map(f => (js.StringLiteral(f._1), f._2)).toList)
-
-    implicit def string2lit(s: String): js.StringLiteral =
-      js.StringLiteral(s)
-
-    implicit def int2lit(i: Int): js.IntLiteral =
-      js.IntLiteral(i)
-
-    implicit def bool2lit(b: Boolean): js.BooleanLiteral =
-      js.BooleanLiteral(b)
-
-    implicit def seq2array[A](seq: Seq[A])(
-        implicit convA: A => js.Tree): js.JSArrayConstr =
-      js.JSArrayConstr(seq.map(convA).toList)
-
-    implicit def pair2array[A, B](pair: (A, B))(
-        implicit convA: A => js.Tree, convB: B => js.Tree): js.JSArrayConstr =
-      js.JSArrayConstr(List(convA(pair._1), convB(pair._2)))
-  }
 }

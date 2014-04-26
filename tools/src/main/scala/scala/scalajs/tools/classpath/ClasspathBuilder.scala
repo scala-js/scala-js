@@ -12,7 +12,6 @@ import scala.annotation.tailrec
 private[classpath] class ClasspathBuilder {
 
   private var coreJSLibFile: Option[VirtualJSFile] = None
-  private val coreInfoFiles = mutable.ListBuffer.empty[VirtualTextFile]
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
   private val packFiles = mutable.Map.empty[String, VirtualScalaJSPackfile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
@@ -21,10 +20,6 @@ private[classpath] class ClasspathBuilder {
     if (coreJSLibFile.nonEmpty)
       throw new IllegalStateException("Duplicate core JS lib on the classpath")
     coreJSLibFile = Some(file)
-  }
-
-  def addCoreInfoFile(file: VirtualTextFile): Unit = {
-    coreInfoFiles += file
   }
 
   def hasIRFile(relativePathOfIRFile: String): Boolean =
@@ -84,8 +79,7 @@ private[classpath] class ClasspathBuilder {
     if (!isScalaJSClasspath)
       throw new IllegalStateException("Missing core JS lib on the classpath")
     ScalaJSClasspath(
-        coreJSLibFile.get, coreInfoFiles.toSeq, irFiles.values.toSeq,
-        otherJSFiles.values.toSeq)
+        coreJSLibFile.get, irFiles.values.toSeq, otherJSFiles.values.toSeq)
   }
 
   /** Returns a partial result of the builder.
@@ -98,8 +92,7 @@ private[classpath] class ClasspathBuilder {
     val coreJSLib = coreJSLibFile.getOrElse(
         VirtualJSFile.empty("scalajs-corejslib.js"))
     ScalaJSClasspath(
-        coreJSLib, coreInfoFiles.toSeq, irFiles.values.toSeq,
-        otherJSFiles.values.toSeq)
+        coreJSLib, irFiles.values.toSeq, otherJSFiles.values.toSeq)
   }
 
   /** Returns a packed classpath. There may only be packFiles and
@@ -153,9 +146,6 @@ private[classpath] class ClasspathBuilder {
           path match {
             case "scalajs-corejslib.js" =>
               addCoreJSLibFile(FileVirtualJSFile(file))
-
-            case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
-              addCoreInfoFile(FileVirtualJSFile(file))
 
             case _ if name.endsWith(".js") =>
               addJSFileIfNew(path, FileVirtualJSFile(file))
@@ -225,12 +215,6 @@ private[classpath] class ClasspathBuilder {
           case "scalajs-corejslib.js.map" =>
             getOrCreateCorejslib(jarPath)
               .withSourceMap(Some(entryContent))
-
-          case "javalangObject.sjsinfo" | "javalangString.sjsinfo" =>
-            addCoreInfoFile(
-                new MemVirtualTextFile(fullPath)
-                  .withContent(entryContent)
-                  .withVersion(entryVersion))
 
           case _ =>
             if (name.endsWith(".js")) {
