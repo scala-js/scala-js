@@ -12,11 +12,11 @@
  * Hence, we only define data and instance tests.
  */
 
-ScalaJS.is.java_lang_String = (function(obj) {
+ScalaJS.is.T = (function(obj) {
   return typeof(obj) === "string"
 });
 
-ScalaJS.as.java_lang_String = (function(obj) {
+ScalaJS.as.T = (function(obj) {
   if (typeof(obj) === "string" || obj === null) {
     return obj
   } else {
@@ -24,27 +24,27 @@ ScalaJS.as.java_lang_String = (function(obj) {
   }
 });
 
-ScalaJS.isArrayOf.java_lang_String = (function(obj, depth) {
-  return (!(!(((obj && obj.$classData) && (obj.$classData.arrayDepth === depth)) && obj.$classData.arrayBase.ancestors.java_lang_String)))
+ScalaJS.isArrayOf.T = (function(obj, depth) {
+  return (!(!(((obj && obj.$classData) && (obj.$classData.arrayDepth === depth)) && obj.$classData.arrayBase.ancestors.T)))
 });
 
-ScalaJS.asArrayOf.java_lang_String = (function(obj, depth) {
-  if ((ScalaJS.isArrayOf.java_lang_String(obj, depth) || (obj === null))) {
+ScalaJS.asArrayOf.T = (function(obj, depth) {
+  if ((ScalaJS.isArrayOf.T(obj, depth) || (obj === null))) {
     return obj
   } else {
     ScalaJS.throwArrayCastException(obj, "Ljava.lang.String;", depth)
   }
 });
 
-ScalaJS.data.java_lang_String =
+ScalaJS.d.T =
   new ScalaJS.ClassTypeData(
-    {java_lang_String:0},
-    false, "java.lang.String", ScalaJS.data.java_lang_Object,
+    {T:0},
+    false, "java.lang.String", ScalaJS.d.O,
     {
-      java_lang_String: 1,
-      java_io_Serializable: 1,
-      java_lang_CharSequence: 1,
-      java_lang_Comparable: 1,
-      java_lang_Object: 1
+      T: 1,
+      Ljava_io_Serializable: 1,
+      jl_CharSequence: 1,
+      jl_Comparable: 1,
+      O: 1
     },
-    ScalaJS.is.java_lang_String);
+    ScalaJS.is.T);

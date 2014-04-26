@@ -96,12 +96,12 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     }
 
     private def patchClassName(name: String): String = name match {
-      case "java_lang_String$" => "scala_scalajs_runtime_RuntimeString$"
+      case "jl_String$" => "sjsr_RuntimeString$"
       case _ => name
     }
 
     private def patchModuleName(name: String): String = name match {
-      case "java_lang_String" => "scala_scalajs_runtime_RuntimeString"
+      case "jl_String" => "sjsr_RuntimeString"
       case _ => name
     }
 

@@ -4,40 +4,40 @@
  */
 
 /** @constructor */
-ScalaJS.inheritable.java_beans_SimpleBeanInfo = function() {};
+ScalaJS.h.Ljava_beans_SimpleBeanInfo = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_io_FilterInputStream = function() {};
+ScalaJS.h.Ljava_io_FilterInputStream = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_lang_Thread = function() {};
+ScalaJS.h.jl_Thread = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_AbstractCollection = function() {};
+ScalaJS.h.ju_AbstractCollection = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_AbstractList = function() {};
+ScalaJS.h.ju_AbstractList = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_AbstractMap = function() {};
+ScalaJS.h.ju_AbstractMap = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_AbstractSet = function() {};
+ScalaJS.h.ju_AbstractSet = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_Dictionary = function() {};
+ScalaJS.h.ju_Dictionary = function() {};
 /** @constructor */
-ScalaJS.inheritable.java_util_concurrent_locks_AbstractQueuedSynchronizer = function() {};
+ScalaJS.h.ju_concurrent_locks_AbstractQueuedSynchronizer = function() {};
 /** @constructor */
-ScalaJS.inheritable.org_xml_sax_helpers_DefaultHandler = function() {};
+ScalaJS.h.Lorg_xml_sax_helpers_DefaultHandler = function() {};
 /** @constructor */
-ScalaJS.inheritable.org_xml_sax_helpers_XMLFilterImpl = function() {};
+ScalaJS.h.Lorg_xml_sax_helpers_XMLFilterImpl = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_collection_concurrent_BasicNode = function() {};
+ScalaJS.h.sc_concurrent_BasicNode = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_collection_concurrent_CNodeBase = function() {};
+ScalaJS.h.sc_concurrent_CNodeBase = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_collection_concurrent_INodeBase = function() {};
+ScalaJS.h.sc_concurrent_INodeBase = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_collection_concurrent_MainNode = function() {};
+ScalaJS.h.sc_concurrent_MainNode = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_concurrent_forkjoin_ForkJoinTask = function() {};
+ScalaJS.h.s_concurrent_forkjoin_ForkJoinTask = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_concurrent_forkjoin_ForkJoinWorkerThread = function() {};
+ScalaJS.h.s_concurrent_forkjoin_ForkJoinWorkerThread = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_concurrent_forkjoin_RecursiveAction = function() {};
+ScalaJS.h.s_concurrent_forkjoin_RecursiveAction = function() {};
 /** @constructor */
-ScalaJS.inheritable.scala_math_ScalaNumber = function() {};
+ScalaJS.h.s_math_ScalaNumber = function() {};

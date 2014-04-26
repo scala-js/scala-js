@@ -2,6 +2,8 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
+import scala.scalajs.ir
+
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
@@ -71,7 +73,7 @@ class MainGenericRunner {
     val logger    = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
 
-    val mainObjName = thingToRun.replace('.', '_')
+    val mainObjName = ir.Definitions.encodeClassName(thingToRun)
     val baseRunner  = runnerJSFile(mainObjName, command.arguments)
 
     def fastOpted = fastOptimize(classpath, mainObjName, logger)
@@ -91,7 +93,7 @@ class MainGenericRunner {
   }
 
   private def runnerJSFile(mainObj: String, args: List[String]) = {
-    val jsObj = "ScalaJS.modules." + mainObj
+    val jsObj = "ScalaJS.m." + mainObj
     val jsArgs = argArray(args)
     new MemVirtualJSFile("Generated launcher file").
       withContent(s"$jsObj().main__AT__V($jsArgs);")
@@ -100,7 +102,7 @@ class MainGenericRunner {
   /** constructs a scala.Array[String] with the given elements */
   private def argArray(args: List[String]) = {
     s"""ScalaJS.makeNativeArrayWrapper(
-          ScalaJS.data.java_lang_String.getArrayOf(),
+          ScalaJS.d.T.getArrayOf(),
           ${listToJS(args)})"""
   }
 

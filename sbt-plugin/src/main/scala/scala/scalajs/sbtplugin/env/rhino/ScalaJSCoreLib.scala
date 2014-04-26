@@ -47,12 +47,12 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   }
 
   private val scalaJSLazyFields = Seq(
-      Info("data"),
+      Info("d"),
       Info("c"),
-      Info("inheritable"),
-      Info("impls", isTraitImpl = true),
-      Info("moduleInstances", isModule = true),
-      Info("modules", isModule = true),
+      Info("h"),
+      Info("i", isTraitImpl = true),
+      Info("n", isModule = true),
+      Info("m", isModule = true),
       Info("is"),
       Info("as"),
       Info("isArrayOf"),

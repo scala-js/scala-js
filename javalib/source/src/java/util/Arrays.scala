@@ -5,7 +5,7 @@ import scala.scalajs.js
 object Arrays {
   def sort[T](array: Array[Any], comparator: Comparator[T]): Unit = {
     val jsArray: js.Array[T] =
-        array.asInstanceOf[js.Dynamic].underlying.asInstanceOf[js.Array[T]]
+        array.asInstanceOf[js.Dynamic].u.asInstanceOf[js.Array[T]]
     jsArray.sort((o1: T, o2: T) => comparator.compare(o1, o2))
   }
 

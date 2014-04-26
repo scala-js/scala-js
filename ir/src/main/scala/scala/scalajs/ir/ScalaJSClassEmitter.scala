@@ -96,13 +96,13 @@ object ScalaJSClassEmitter {
       val ctorDef = Assign(typeVar, ctorFun)
       val chainProto =
         Assign(typeVar.prototype,
-            JSNew(JSDotSelect(envField("inheritable"), parentIdent), Nil))
+            JSNew(JSDotSelect(envField("h"), parentIdent), Nil))
       val reassignConstructor =
         genAddToPrototype(tree, Ident("constructor"), typeVar)
 
       val inheritableCtorDef = {
         val inheritableCtorVar =
-          JSDotSelect(envField("inheritable"), classIdent)
+          JSDotSelect(envField("h"), classIdent)
         Block(
           DocComment("@constructor"),
           Assign(inheritableCtorVar, Function(Nil, UndefType, Skip())),
@@ -296,7 +296,7 @@ object ScalaJSClassEmitter {
     val parentData = tree.parent.fold[Tree] {
       Undefined()
     } { parent =>
-      envField("data") DOT parent
+      envField("d") DOT parent
     }
 
     val ancestorsRecord = JSObjectConstr(
@@ -326,7 +326,7 @@ object ScalaJSClassEmitter {
         }
     ))
 
-    envField("data") DOT classIdent := typeData
+    envField("d") DOT classIdent := typeData
   }
 
   def genSetTypeData(tree: ClassDef): Tree = {
@@ -337,7 +337,7 @@ object ScalaJSClassEmitter {
     assert(tree.kind.isClass)
 
     encodeClassVar(tree.name).prototype DOT "$classData" :=
-      envField("data") DOT tree.name
+      envField("d") DOT tree.name
   }
 
   def genModuleAccessor(tree: ClassDef): Tree = {
@@ -356,8 +356,8 @@ object ScalaJSClassEmitter {
     val moduleName = className.dropRight(1)
     val moduleIdent = Ident(moduleName)
 
-    val moduleInstanceVar = envField("moduleInstances") DOT moduleIdent
-    val accessorVar = envField("modules") DOT moduleIdent
+    val moduleInstanceVar = envField("n") DOT moduleIdent
+    val accessorVar = envField("m") DOT moduleIdent
 
     val createModuleInstanceField = {
       moduleInstanceVar := Undefined()
@@ -412,7 +412,7 @@ object ScalaJSClassEmitter {
     implicit val pos = tree.pos
 
     val baseAccessor =
-      envField("modules") DOT cd.name.name.dropRight(1)
+      envField("m") DOT cd.name.name.dropRight(1)
     val (createNamespace, expAccessorVar) =
       genCreateNamespaceInExports(tree.fullName)
 
@@ -434,7 +434,7 @@ object ScalaJSClassEmitter {
     implicit val pos = tree.pos
     val MethodDef(name: Ident, args, resultType, body) = tree
     Assign(
-        JSDotSelect(envField("impls"), name),
+        JSDotSelect(envField("i"), name),
         Function(args, resultType, body))
   }
 

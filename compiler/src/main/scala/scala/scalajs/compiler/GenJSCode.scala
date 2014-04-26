@@ -3297,7 +3297,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       private val AnonFunPrefScala =
         "scala.scalajs.runtime.AnonFunction"
       private val AnonFunPrefJS =
-        AnonFunPrefScala.replace('.', '_')
+        "sjsr_AnonFunction"
 
       def apply(jsFunction: js.Tree, arity: Int)(
           implicit pos: Position): js.Tree = {
