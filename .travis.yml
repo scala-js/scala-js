@@ -11,6 +11,7 @@ script:
   - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == tools ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package; fi
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package scalajs-sbt-plugin/package scalajs-sbt-plugin/test; fi
+  - if [ $KIND == partestc ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-partest/compile; fi
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION publish; fi
   - if [[ "${PUBLISH_COMPILER}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/publish; fi
@@ -52,6 +53,10 @@ matrix:
       env:
         - KIND=tools
         - PUBLISH_ENABLED=true
+    - jdk: openjdk6
+      scala: 2.11.0
+      env:
+        - KIND=partestc
     - jdk: oraclejdk7
       scala: 2.10.2
       env:
