@@ -314,9 +314,10 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
       }
     }
 
-    def checkExistent(): Unit = {
+    def checkExistent()(implicit from: From): Unit = {
       if (nonExistent && warnEnabled) {
         logger.warn(s"Referring to non-existent class $encodedName")
+        warnCallStack()
         nonExistent = false
       }
     }
@@ -415,10 +416,10 @@ class Analyzer(logger0: Logger, allData: Seq[ClassInfoData]) {
 
     private[this] def doReach(): Unit = {
       logger.debugIndent(s"$this.doReach()") {
+        implicit val from = FromMethod(this)
+
         if (owner.isImplClass)
           owner.checkExistent()
-
-        implicit val from = FromMethod(this)
 
         for (moduleName <- data.accessedModules.getOrElse(Nil)) {
           lookupModule(moduleName).accessModule()
