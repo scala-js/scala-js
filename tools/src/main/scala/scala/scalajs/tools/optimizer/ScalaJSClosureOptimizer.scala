@@ -39,6 +39,7 @@ class ScalaJSClosureOptimizer {
     options.prettyPrint = outputConfig.prettyPrint
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
+    options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
     val compiler = new ClosureCompiler
     val result = compiler.compile(

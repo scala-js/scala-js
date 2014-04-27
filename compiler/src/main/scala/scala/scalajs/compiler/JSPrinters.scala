@@ -436,7 +436,12 @@ trait JSPrinters { self: JSGlobalAddons =>
     /** Relatively hacky way to get a Web-friendly URI to the source file */
     private def sourceToURI(source: SourceFile): String = {
       source.file.file match {
-        case null => source.path
+        case null =>
+          new java.net.URI(
+              "virtualfile",    // Pseudo-Scheme
+              source.file.path, // Scheme specific part
+              null              // Fragment
+          ).toASCIIString
         case file =>
           val uri = file.toURI
           val relUri = relativizeURI.map(_.relativize(uri)).getOrElse(uri)
