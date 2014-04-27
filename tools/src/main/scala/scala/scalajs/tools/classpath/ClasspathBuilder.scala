@@ -126,13 +126,6 @@ private[classpath] class ClasspathBuilder {
     }
   }
 
-  def readJSFile(file: File, path: String) = {
-    if (FileVirtualScalaJSIRFile.isScalaJSIRFile(file))
-      addIRFileIfNew(path, FileVirtualScalaJSIRFile(file))
-    else
-      addJSFileIfNew(path, FileVirtualJSFile(file))
-  }
-
   /** Adds the Scala.js classpath entries in a directory to a builder. */
   def readEntriesInDir(dir: File): Unit = {
     def recurse(dir: File, dirPath: String): Unit = {
@@ -180,12 +173,12 @@ private[classpath] class ClasspathBuilder {
     val jsFiles = mutable.Map.empty[String, MemVirtualJSFile]
     var coreJSLib: Option[MemVirtualJSFile] = None
 
-    def getOrCreateJSFile(path: String): MemVirtualJSFile =
-      jsFiles.getOrElseUpdate(path, new MemVirtualJSFile(path))
+    def getOrCreateJSFile(relPath: String, fullPath: String): MemVirtualJSFile =
+      jsFiles.getOrElseUpdate(relPath, new MemVirtualJSFile(fullPath))
 
-    def getOrCreateCorejslib(jarPath: String): MemVirtualJSFile = {
+    def getOrCreateCorejslib(fullPath: String): MemVirtualJSFile = {
       coreJSLib.getOrElse {
-        val file = new MemVirtualJSFile(jarPath + ":scalajs-corejslib.js")
+        val file = new MemVirtualJSFile(fullPath)
         coreJSLib = Some(file)
         file
       }
@@ -196,7 +189,6 @@ private[classpath] class ClasspathBuilder {
       val entry = zipStream.getNextEntry()
       if (entry != null) {
         val longName = entry.getName
-        val name = longName.substring(longName.lastIndexOf('/')+1)
         val fullPath = jarPath + ":" + longName
 
         def entryContent: String =
@@ -208,7 +200,7 @@ private[classpath] class ClasspathBuilder {
 
         longName match {
           case "scalajs-corejslib.js" =>
-            getOrCreateCorejslib(jarPath)
+            getOrCreateCorejslib(fullPath)
               .withContent(entryContent)
               .withVersion(entryVersion)
 
@@ -217,27 +209,27 @@ private[classpath] class ClasspathBuilder {
               .withSourceMap(Some(entryContent))
 
           case _ =>
-            if (name.endsWith(".js")) {
+            if (longName.endsWith(".js")) {
               // content of a JS file
-              val path = fullPath
-              if (!hasJSFile(path)) {
-                getOrCreateJSFile(path)
+              val relPath = longName
+              if (!hasJSFile(relPath)) {
+                getOrCreateJSFile(relPath, fullPath)
                   .withContent(entryContent)
                   .withVersion(entryVersion)
               }
-            } else if (name.endsWith(".js.map")) {
+            } else if (longName.endsWith(".js.map")) {
               // assume the source map of a JS file
-              val path = fullPath.dropRight(".map".length)
-              if (!hasJSFile(path)) {
-                getOrCreateJSFile(path)
+              val relPath = longName.dropRight(".map".length)
+              if (!hasJSFile(relPath)) {
+                getOrCreateJSFile(relPath, fullPath)
                   .withSourceMap(Some(entryContent))
               }
-            } else if (name.endsWith(".sjsir")) {
+            } else if (longName.endsWith(".sjsir")) {
               // a Scala.js IR file
-              val path = fullPath
-              if (!hasIRFile(path)) {
-                addIRFile(path,
-                    new MemVirtualSerializedScalaJSIRFile(path)
+              val relPath = longName
+              if (!hasIRFile(relPath)) {
+                addIRFile(relPath,
+                    new MemVirtualSerializedScalaJSIRFile(fullPath)
                       .withContent(entryBinaryContent)
                       .withVersion(entryVersion))
               }
