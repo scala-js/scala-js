@@ -353,6 +353,10 @@ var ScalaJS = {
     return instance !== instance;
   },
 
+  isInfinite: function(instance) {
+    return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
+  },
+
   propertiesOf: function(obj) {
     var result = new Array();
     for (var prop in obj)

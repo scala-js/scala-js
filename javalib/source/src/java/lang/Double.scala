@@ -22,6 +22,7 @@ final class Double(private val value: scala.Double)
   override def toString(): String = sys.error("stub")
 
   def isNaN(): scala.Boolean = sys.error("stub")
+  def isInfinite(): scala.Boolean = sys.error("stub")
 
 }
 

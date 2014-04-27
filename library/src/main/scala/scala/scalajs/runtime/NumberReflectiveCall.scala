@@ -25,6 +25,7 @@ class NumberReflectiveCall(value: Double) {
     new JDouble(value).compareTo(that.asInstanceOf[JDouble])
 
   def isNaN(): scala.Boolean = new JDouble(value).isNaN()
+  def isInfinite(): scala.Boolean = new JDouble(value).isInfinite()
 
   // Methods of scala.Double
 

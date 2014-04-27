@@ -28,6 +28,8 @@ object DoubleTest extends JasmineTest {
       expect(0.0.toString).toEqual("0")
       expect(-0.0.toString).toEqual("0")
       expect(Double.NaN.toString).toEqual("NaN")
+      expect(Double.PositiveInfinity.toString).toEqual("Infinity")
+      expect(Double.NegativeInfinity.toString).toEqual("-Infinity")
       expect(5.0.toString).toEqual("5")
       expect(-5.0.toString).toEqual("-5")
       expect(1.2.toString).toEqual("1.2")
@@ -90,6 +92,14 @@ object DoubleTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Double.NaN, Double.NaN)).toEqual(0)
+    }
+
+    it("should provide isInfinite - #515") {
+      expect(Double.PositiveInfinity.isInfinite).toBeTruthy
+      expect(Double.NegativeInfinity.isInfinite).toBeTruthy
+      expect((1.0/0).isInfinite).toBeTruthy
+      expect((-1.0/0).isInfinite).toBeTruthy
+      expect((0.0).isInfinite).toBeFalsy
     }
 
   }
