@@ -12,10 +12,7 @@ package scala.scalajs.tools.optimizer
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 
-import scala.scalajs.tools.classpath.ScalaJSPackedClasspath.{
-  writePackInfo,
-  PackInfoData
-}
+import scala.scalajs.tools.classpath.ScalaJSPackedClasspath.packOrderLine
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -65,11 +62,15 @@ class ScalaJSClosureOptimizer {
       "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
     }
 
-    // Write optimized code
-    outputConfig.writer.contentWriter.write(outputContent)
+    val writer = outputConfig.writer.contentWriter
+    // Write out pack order line (constant: file is stand alone)
+    writer.write(packOrderLine(0))
+    writer.write('\n')
 
-    // Write out pack order (constant: file is stand alone)
-    writePackInfo(outputConfig.writer, PackInfoData(packOrder = 0))
+    // Write optimized code
+    writer.write(outputContent)
+
+    // don't close writer. calling code has ownership
   }
 }
 
@@ -87,7 +88,7 @@ object ScalaJSClosureOptimizer {
       /** Name of the output file. (used to refer to sourcemaps) */
       name: String,
       /** Writer for the output */
-      writer: VirtualScalaJSPackfileWriter,
+      writer: VirtualJSFileWriter,
       /** Ask to produce source map for the output (currently ignored). */
       wantSourceMap: Boolean = false,
       /** Pretty-print the output. */

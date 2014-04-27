@@ -124,14 +124,14 @@ object ScalaJSPlugin extends Plugin {
 
         IO.createDirectory(output.getParentFile)
 
-        val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
+        val outputWriter = new FileVirtualJSFileWriter(output)
 
         try {
           if (classpath.isEmpty) {
-            import ScalaJSPackedClasspath.{ writePackInfo, PackInfoData }
+            import ScalaJSPackedClasspath.packOrderLine
 
+            outputWriter.contentWriter.write(packOrderLine(packOrder))
             outputWriter.contentWriter.write("/* dummy empty file */\n")
-            writePackInfo(outputWriter, PackInfoData(packOrder))
           } else {
             FileFunction.cached(taskCacheDir,
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
@@ -236,7 +236,7 @@ object ScalaJSPlugin extends Plugin {
           import ScalaJSOptimizer._
           val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
           val optimizer = (scalaJSOptimizer in fastOptJS).value
-          val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
+          val outputWriter = new FileVirtualJSFileWriter(output)
           val relSourceMapBase =
               if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
               else None
@@ -279,7 +279,7 @@ object ScalaJSPlugin extends Plugin {
           s.log.info("Optimizing %s ..." format output)
           import ScalaJSClosureOptimizer._
           val optimizer = new ScalaJSClosureOptimizer
-          val outputWriter = new FileVirtualScalaJSPackfileWriter(output)
+          val outputWriter = new FileVirtualJSFileWriter(output)
           val relSourceMapBase =
               if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
               else None

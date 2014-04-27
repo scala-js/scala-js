@@ -44,22 +44,3 @@ class MemVirtualJSFileWriter extends MemVirtualTextFileWriter
     vf
   }
 }
-
-class MemVirtualScalaJSPackfileWriter extends MemVirtualJSFileWriter
-                                         with VirtualScalaJSPackfileWriter {
-  val packInfoWriter = new StringWriter
-
-  override def toVirtualFile(name: String): MemVirtualScalaJSPackfile =
-    addToFile(new MemVirtualScalaJSPackfile(name))
-
-  protected def addToFile(vf: MemVirtualScalaJSPackfile): vf.type = {
-    super.addToFile(vf)
-    vf.withPackInfo(packInfoWriter.toString)
-  }
-
-  override def close() = {
-    super.close()
-    packInfoWriter.close()
-  }
-
-}

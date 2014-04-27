@@ -13,7 +13,7 @@ private[classpath] class ClasspathBuilder {
 
   private var coreJSLibFile: Option[VirtualJSFile] = None
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
-  private val packFiles = mutable.Map.empty[String, VirtualScalaJSPackfile]
+  private val packFiles = mutable.Map.empty[String, VirtualJSFile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
 
   def addCoreJSLibFile(file: VirtualJSFile): Unit = {
@@ -42,11 +42,11 @@ private[classpath] class ClasspathBuilder {
     packFiles.contains(relativePathOfJSFile)
 
   def addPackFile(relativePathOfJSFile: String,
-      file: VirtualScalaJSPackfile): Unit =
+      file: VirtualJSFile): Unit =
     packFiles += ((relativePathOfJSFile, file))
 
   def addPackFileIfNew(relativePathOfJSFile: String,
-      file: => VirtualScalaJSPackfile): Boolean = {
+      file: => VirtualJSFile): Boolean = {
     if (hasPackFile(relativePathOfJSFile)) false
     else {
       addPackFile(relativePathOfJSFile, file)
@@ -116,10 +116,11 @@ private[classpath] class ClasspathBuilder {
     if (element.isDirectory)
       readEntriesInDir(element)
     else if (element.isFile) {
-      if (FileVirtualScalaJSPackfile.isScalaJSPackfile(element))
-        // A classpath entry may be a packfile
-        // Note that this is NOT a valid location for a scalajs-corejslib.js
-        addPackFileIfNew(element.getName, FileVirtualScalaJSPackfile(element))
+      val name = element.getName
+      if (name.endsWith(".js"))
+        // A classpath entry which is a js file must a packfile
+        // Note that this is NOT a valid location for any other js file
+        addPackFileIfNew(name, FileVirtualJSFile(element))
       else
         // We assume it is a jar
         readEntriesInJar(element)
