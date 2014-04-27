@@ -28,6 +28,8 @@ object FloatTest extends JasmineTest {
       expect(0.0f.toString).toEqual("0")
       expect(-0.0f.toString).toEqual("0")
       expect(Float.NaN.toString).toEqual("NaN")
+      expect(Float.PositiveInfinity.toString).toEqual("Infinity")
+      expect(Float.NegativeInfinity.toString).toEqual("-Infinity")
       expect(5.0f.toString).toEqual("5")
       expect(-5.0f.toString).toEqual("-5")
 
