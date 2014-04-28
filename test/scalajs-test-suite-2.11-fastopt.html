@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scala.js Test Suite - Jasmine HTML reporter</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <link rel="stylesheet" type="text/css" href="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine.css"></link>
+</head>
+<body>
+<script type="text/javascript" src="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine.js"></script>
+<script type="text/javascript" src="http://cdn.jsdelivr.net/jasmine/1.3.1/jasmine-html.js"></script>
+<script type="text/javascript" src="./target/scala-2.11/scalajs-test-suite-test-fastopt.js"></script>
+
+<script type="text/javascript">
+window.onload = function() {
+  // Load tests (we know we only export test modules, so we can use all exports)
+  var testPackage = scala.scalajs.test;
+  for (var pName in testPackage)
+    for (var testName in testPackage[pName])
+      testPackage[pName][testName]();
+
+  // Setup and run Jasmine
+  var jasmineEnv = jasmine.getEnv();
+  var htmlReporter = new jasmine.HtmlReporter();
+  jasmineEnv.addReporter(htmlReporter);
+  jasmineEnv.specFilter = function(spec) {
+    return htmlReporter.specFilter(spec);
+  };
+  jasmineEnv.execute();
+};
+</script>
+
+</body>
+</html>

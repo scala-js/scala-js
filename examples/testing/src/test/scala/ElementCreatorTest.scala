@@ -19,8 +19,8 @@ object ElementCreatorTest extends JasmineTest {
         .asInstanceOf[js.Array[js.Dynamic]].head
 
       // the Scala.js DOM API would make this easier
-      expect(body.firstChild.tagName.toString == "H1").toBeTruthy
-      expect(body.firstChild.innerHTML.toString == "Test").toBeTruthy
+      expect(body.lastChild.tagName.toString == "H1").toBeTruthy
+      expect(body.lastChild.innerHTML.toString == "Test").toBeTruthy
     }
   }
 }
