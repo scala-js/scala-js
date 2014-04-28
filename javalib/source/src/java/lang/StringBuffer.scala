@@ -12,14 +12,14 @@ class StringBuffer(private var content: String) extends CharSequence
     this
   }
 
-  def append(b: Boolean): StringBuffer = append(b.toString())
-  def append(c: Char): StringBuffer = append(c.toString())
-  def append(b: Byte): StringBuffer = append(b.toString())
-  def append(s: Short): StringBuffer = append(s.toString())
-  def append(i: Int): StringBuffer = append(i.toString())
-  def append(lng: Long): StringBuffer = append(lng.toString())
-  def append(f: Float): StringBuffer = append(f.toString())
-  def append(d: Double): StringBuffer = append(d.toString())
+  def append(b: scala.Boolean): StringBuffer = append(b.toString())
+  def append(c: scala.Char): StringBuffer = append(c.toString())
+  def append(b: scala.Byte): StringBuffer = append(b.toString())
+  def append(s: scala.Short): StringBuffer = append(s.toString())
+  def append(i: scala.Int): StringBuffer = append(i.toString())
+  def append(lng: scala.Long): StringBuffer = append(lng.toString())
+  def append(f: scala.Float): StringBuffer = append(f.toString())
+  def append(d: scala.Double): StringBuffer = append(d.toString())
 
   def append(obj: AnyRef): StringBuffer = {
     if (obj == null) append(null: String)
@@ -54,7 +54,7 @@ class StringBuffer(private var content: String) extends CharSequence
     this
   }
 
-  def setCharAt(index: Int, ch: Char): Unit = {
+  def setCharAt(index: Int, ch: scala.Char): Unit = {
     if (index < 0 || index >= content.length)
       throw new IndexOutOfBoundsException("String index out of range: " + index)
     content = content.substring(0, index) + ch + content.substring(index + 1)
