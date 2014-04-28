@@ -23,6 +23,13 @@ object StringBufferTest extends JasmineTest {
       expect(newBuf.append(null: String).toString).toEqual("null")
       expect(newBuf.append(null: CharSequence,0,2).toString).toEqual("nu")
       expect(newBuf.append(js.undefined).toString).toEqual("undefined")
+      expect(newBuf.append(true).toString).toEqual("true")
+      expect(newBuf.append('a').toString).toEqual("a")
+      expect(newBuf.append(4.toByte).toString).toEqual("4")
+      expect(newBuf.append(304.toShort).toString).toEqual("304")
+      expect(newBuf.append(100000).toString).toEqual("100000")
+      expect(newBuf.append(2.5f).toString).toEqual("2.5")
+      expect(newBuf.append(3.5).toString).toEqual("3.5")
     }
 
     it("should respond to `setCharAt`") {
@@ -51,6 +58,13 @@ object StringBufferTest extends JasmineTest {
       expect(newBuf.append(null: String).toString).toEqual("null")
       expect(newBuf.append(null: CharSequence,0,2).toString).toEqual("nu")
       expect(newBuf.append(js.undefined).toString).toEqual("undefined")
+      expect(newBuf.append(true).toString).toEqual("true")
+      expect(newBuf.append('a').toString).toEqual("a")
+      expect(newBuf.append(4.toByte).toString).toEqual("4")
+      expect(newBuf.append(304.toShort).toString).toEqual("304")
+      expect(newBuf.append(100000).toString).toEqual("100000")
+      expect(newBuf.append(2.5f).toString).toEqual("2.5")
+      expect(newBuf.append(3.5).toString).toEqual("3.5")
     }
 
     it("should allow string interpolation to survive `null` and `undefined`") {
