@@ -12,14 +12,14 @@ class StringBuilder(private var content: String) extends CharSequence
     this
   }
 
-  def append(b: Boolean): StringBuilder = append(b.toString())
-  def append(c: Char): StringBuilder = append(c.toString())
-  def append(b: Byte): StringBuilder = append(b.toString())
-  def append(s: Short): StringBuilder = append(s.toString())
-  def append(i: Int): StringBuilder = append(i.toString())
-  def append(lng: Long): StringBuilder = append(lng.toString())
-  def append(f: Float): StringBuilder = append(f.toString())
-  def append(d: Double): StringBuilder = append(d.toString())
+  def append(b: scala.Boolean): StringBuilder = append(b.toString())
+  def append(c: scala.Char): StringBuilder = append(c.toString())
+  def append(b: scala.Byte): StringBuilder = append(b.toString())
+  def append(s: scala.Short): StringBuilder = append(s.toString())
+  def append(i: scala.Int): StringBuilder = append(i.toString())
+  def append(lng: scala.Long): StringBuilder = append(lng.toString())
+  def append(f: scala.Float): StringBuilder = append(f.toString())
+  def append(d: scala.Double): StringBuilder = append(d.toString())
 
   def append(obj: AnyRef): StringBuilder = {
     if (obj == null) append(null: String)
@@ -73,7 +73,7 @@ class StringBuilder(private var content: String) extends CharSequence
     this
   }
 
-  def setCharAt(index: Int, ch: Char): Unit = {
+  def setCharAt(index: Int, ch: scala.Char): Unit = {
     if (index < 0 || index >= content.length)
       throw new IndexOutOfBoundsException("String index out of range: " + index)
     content = content.substring(0, index) + ch + content.substring(index + 1)
