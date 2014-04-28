@@ -29,9 +29,43 @@ object Serializers {
     new Deserializer(stream).deserialize()
   }
 
-  // true for easier debugging (not for "production", it adds 4 bytes per node)
+  // true for easier debugging (not for "production", it adds 8 bytes per node)
   private final val UseDebugMagic = false
   private final val DebugMagic = 0x3fa8ef84
+  private final val PosDebugMagic = 0x65f0ec32
+
+  private object PositionFormat {
+    /* Positions are serialized incrementally as diffs wrt the last position.
+     *
+     * Formats are (the first byte is decomposed in bits):
+     *
+     *   1st byte | next bytes |  description
+     *  -----------------------------------------
+     *   ccccccc0 |            | Column diff (7-bit signed)
+     *   llllll01 | CC         | Line diff (6-bit signed), column (8-bit unsigned)
+     *   ____0011 | LL LL CC   | Line diff (16-bit signed), column (8-bit unsigned)
+     *   ____0111 | 12 bytes   | File index, line, column (all 32-bit signed)
+     *   11111111 |            | NoPosition (is not compared/stored in last position)
+     *
+     * Underscores are irrelevant and must be set to 0.
+     */
+
+    final val Format1Mask = 0x01
+    final val Format1MaskValue = 0x00
+    final val Format1Shift = 1
+
+    final val Format2Mask = 0x03
+    final val Format2MaskValue = 0x01
+    final val Format2Shift = 2
+
+    final val Format3Mask = 0x0f
+    final val Format3MaskValue = 0x03
+
+    final val FormatFullMask = 0x0f
+    final val FormatFullMaskValue = 0x7
+
+    final val FormatNoPositionValue = -1
+  }
 
   private final class Serializer {
     private[this] val bufferUnderlying = new ByteArrayOutputStream
@@ -46,6 +80,8 @@ object Serializers {
     private[this] val stringIndexMap = mutable.Map.empty[String, Int]
     private def stringToIndex(str: String): Int =
       stringIndexMap.getOrElseUpdate(str, (strings += str).size - 1)
+
+    private[this] var lastPosition: Position = Position.NoPosition
 
     def serialize(stream: OutputStream, tree: Tree): Unit = {
       // Write tree to buffer and record files and strings
@@ -409,11 +445,47 @@ object Serializers {
     }
 
     def writePosition(pos: Position): Unit = {
-      // TODO Serialize positions "incrementally"
       import buffer._
-      writeInt(fileToIndex(pos.source))
-      writeInt(pos.line)
-      writeInt(pos.column)
+      import PositionFormat._
+
+      def writeFull(): Unit = {
+        writeByte(FormatFullMaskValue)
+        writeInt(fileToIndex(pos.source))
+        writeInt(pos.line)
+        writeInt(pos.column)
+      }
+
+      if (pos == Position.NoPosition) {
+        writeByte(FormatNoPositionValue)
+      } else if (lastPosition == Position.NoPosition ||
+          pos.source != lastPosition.source) {
+        writeFull()
+        lastPosition = pos
+      } else {
+        val line = pos.line
+        val column = pos.column
+        val lineDiff = line - lastPosition.line
+        val columnDiff = column - lastPosition.column
+        val columnIsByte = column >= 0 && column < 256
+
+        if (lineDiff == 0 && columnDiff >= -64 && columnDiff < 64) {
+          writeByte((columnDiff << Format1Shift) | Format1MaskValue)
+        } else if (lineDiff >= -32 && lineDiff < 32 && columnIsByte) {
+          writeByte((lineDiff << Format2Shift) | Format2MaskValue)
+          writeByte(column)
+        } else if (lineDiff >= Short.MinValue && lineDiff <= Short.MaxValue && columnIsByte) {
+          writeByte(Format3MaskValue)
+          writeShort(lineDiff)
+          writeByte(column)
+        } else {
+          writeFull()
+        }
+
+        lastPosition = pos
+      }
+
+      if (UseDebugMagic)
+        writeInt(PosDebugMagic)
     }
 
     def writeString(s: String): Unit =
@@ -428,6 +500,8 @@ object Serializers {
 
     private[this] val strings =
       Array.fill(input.readInt())(input.readUTF())
+
+    private[this] var lastPosition: Position = Position.NoPosition
 
     def deserialize(): Tree = {
       readTree()
@@ -592,10 +666,50 @@ object Serializers {
 
     def readPosition(): Position = {
       import input._
-      val file = files(readInt())
-      val line = readInt()
-      val column = readInt()
-      Position(file, line, column)
+      import PositionFormat._
+
+      val first = readByte()
+
+      val result = if (first == FormatNoPositionValue) {
+        Position.NoPosition
+      } else {
+        val result = if ((first & FormatFullMask) == FormatFullMaskValue) {
+          val file = files(readInt())
+          val line = readInt()
+          val column = readInt()
+          Position(file, line, column)
+        } else {
+          assert(lastPosition != NoPosition,
+              "Position format error: first position must be full")
+          if ((first & Format1Mask) == Format1MaskValue) {
+            val columnDiff = first >> Format1Shift
+            Position(lastPosition.source, lastPosition.line,
+                lastPosition.column + columnDiff)
+          } else if ((first & Format2Mask) == Format2MaskValue) {
+            val lineDiff = first >> Format2Shift
+            val column = readByte() & 0xff // unsigned
+            Position(lastPosition.source,
+                lastPosition.line + lineDiff, column)
+          } else {
+            assert((first & Format3Mask) == Format3MaskValue,
+                s"Position format error: first byte $first does not match any format")
+            val lineDiff = readShort()
+            val column = readByte() & 0xff // unsigned
+            Position(lastPosition.source,
+                lastPosition.line + lineDiff, column)
+          }
+        }
+        lastPosition = result
+        result
+      }
+
+      if (UseDebugMagic) {
+        val magic = readInt()
+        assert(magic == PosDebugMagic,
+            s"Bad magic after reading position with first byte $first")
+      }
+
+      result
     }
 
     def readString(): String = {
