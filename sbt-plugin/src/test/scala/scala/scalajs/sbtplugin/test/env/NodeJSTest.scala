@@ -32,4 +32,23 @@ class NodeJSTest extends JSEnvTest {
     codes.mkString("").hasOutput(result)
   }
 
+  /** Node.js console.log hack didn't allow to log non-Strings - #561 */
+  @Test
+  def nonStringTest = {
+
+    """
+    console.log(1);
+    console.log(undefined);
+    console.log(null);
+    console.log({});
+    console.log([1,2]);
+    """ hasOutput
+    """|1
+       |undefined
+       |null
+       |[object Object]
+       |1,2
+       |""".stripMargin
+  }
+
 }
