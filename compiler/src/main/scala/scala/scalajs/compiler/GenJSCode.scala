@@ -543,6 +543,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           withScopedVars(
               currentMethodInfoBuilder := createInfoBuilder()
           ) {
+            currentMethodInfoBuilder.optimizerHints =
+              currentMethodInfoBuilder.optimizerHints.copy(
+                  isAccessor = sym.isAccessor,
+                  hasInlineAnnot = sym.hasAnnotation(InlineAnnotationClass))
+
             val jsParams = for (param <- params) yield {
               implicit val pos = param.pos
               js.ParamDef(encodeLocalSym(param, freshName),
@@ -3735,6 +3740,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   protected lazy val isHijackedBoxedClass: Set[Symbol] =
     HijackedBoxedClasses.toSet
+
+  private lazy val InlineAnnotationClass = requiredClass[scala.inline]
 
   private def isMaybeJavaScriptException(tpe: Type) =
     JavaScriptExceptionClass isSubClass tpe.typeSymbol

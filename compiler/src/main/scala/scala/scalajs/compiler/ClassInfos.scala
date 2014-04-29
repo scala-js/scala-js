@@ -64,6 +64,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val instantiatedClasses = mutable.Set.empty[String]
     val accessedModules = mutable.Set.empty[String]
     val accessedClassData = mutable.Set.empty[String]
+    var optimizerHints: OptimizerHints = OptimizerHints.empty
 
     def callsMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
       calledMethods += ((patchClassName(ownerIdent.name), method.name))
@@ -113,7 +114,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
           calledMethodsStatic.toList.groupBy(_._1).mapValues(_.map(_._2)),
           instantiatedClasses.toList,
           accessedModules.result.toList,
-          accessedClassData.result.toList
+          accessedClassData.result.toList,
+          optimizerHints
       )
     }
   }

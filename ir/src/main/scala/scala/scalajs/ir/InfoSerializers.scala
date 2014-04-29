@@ -61,6 +61,7 @@ object InfoSerializers {
         writeStrings(instantiatedClasses)
         writeStrings(accessedModules)
         writeStrings(accessedClassData)
+        s.writeInt(optimizerHints.bits)
       }
 
       writeSeq(methods)(writeMethodInfo(_))
@@ -107,9 +108,11 @@ object InfoSerializers {
         val instantiatedClasses = readStrings()
         val accessedModules = readStrings()
         val accessedClassData = readStrings()
+        val optimizerHints = new OptimizerHints(readInt())
         MethodInfo(encodedName, isAbstract, isExported,
             calledMethods, calledMethodsStatic,
-            instantiatedClasses, accessedModules, accessedClassData)
+            instantiatedClasses, accessedModules, accessedClassData,
+            optimizerHints)
       }
 
       val methods = readList(readMethod())

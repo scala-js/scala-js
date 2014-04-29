@@ -621,6 +621,8 @@ object Printers {
         println("accessedClassData: ",
             accessedClassData.map(escapeJS).mkString("[", ", ", "]"))
       }
+      if (optimizerHints != OptimizerHints.empty)
+        println("optimizerHints: ", optimizerHints)
 
       undent(); println()
     }
