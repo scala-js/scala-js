@@ -6,6 +6,7 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.optimizer.ScalaJSOptimizer
+import scala.scalajs.tools.optimizer.ScalaJSClosureOptimizer
 import scala.scalajs.tools.env.JSConsole
 
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
@@ -32,7 +33,9 @@ class MainGenericRunner {
     false
   }
 
-  val optimize = sys.props.contains("scalajs.partest.optimize")
+  val fullOpt = sys.props.contains("scalajs.partest.fullOpt")
+  val fastOpt = sys.props.contains("scalajs.partest.fastOpt")
+
   def noWarnMissing = {
     import ScalaJSOptimizer._
 
@@ -57,6 +60,7 @@ class MainGenericRunner {
     if (howToRun != AsObject)
       return errorFn("Scala.js runner can only run an object")
 
+    // Load basic Scala.js classpath (used for running or further packaging)
     val usefulClasspathEntries = for {
       url <- settings.classpathURLs
       f = urlToFile(url)
@@ -64,54 +68,30 @@ class MainGenericRunner {
     } yield f
     val classpath = ScalaJSClasspath.fromClasspath(usefulClasspathEntries)
 
-    val logger = new ScalaConsoleLogger(Level.Warn)
+    val logger    = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
-    val runnerFile = runnerJSFile(thingToRun, command.arguments)
 
-    if (optimize) {
-      import ScalaJSOptimizer._
+    val mainObjName = thingToRun.replace('.', '_')
+    val baseRunner  = runnerJSFile(mainObjName, command.arguments)
 
-      val optimizer = new ScalaJSOptimizer
-      val objName = thingToRun.replace('.', '_')
+    def fastOpted = fastOptimize(classpath, mainObjName, logger)
+    def fullOpted = fullOptimize(fastOpted, mainObjName, logger, baseRunner)
 
-      val fileName = "partest optimized file"
-      val packFileWriter = new MemVirtualJSFileWriter
-
-      try {
-        optimizer.optimize(
-            Inputs(classpath,
-                manuallyReachable = Seq(
-                  ReachObject(objName),
-                  ReachMethod(objName + '$', "main__AT__V", static = false)
-                ),
-                noWarnMissing = noWarnMissing
-            ),
-            OutputConfig(
-                name          = fileName,
-                writer        = packFileWriter,
-                wantSourceMap = false
-                ),
-            logger
-        )
-      } finally {
-        packFileWriter.close()
-      }
-
-      val packFile = packFileWriter.toVirtualFile(fileName)
-      val packedClasspath = ScalaJSPackedClasspath(Seq(packFile), Nil)
-      val env = new NodeJSEnv
-
-      env.runJS(packedClasspath, runnerFile, logger, jsConsole)
-    } else {
-      val env = new RhinoJSEnv
-      env.runJS(classpath, runnerFile, logger, jsConsole)
+    val runner = if (fullOpt) fullOptRunner() else baseRunner
+    val env    = if (fullOpt || fastOpt) new NodeJSEnv else new RhinoJSEnv
+    val runClasspath = {
+      if (fullOpt)      ScalaJSPackedClasspath(Seq(fullOpted), Nil)
+      else if (fastOpt) ScalaJSPackedClasspath(Seq(fastOpted), Nil)
+      else classpath
     }
+
+    env.runJS(runClasspath, runner, logger, jsConsole)
 
     true
   }
 
   private def runnerJSFile(mainObj: String, args: List[String]) = {
-    val jsObj = "ScalaJS.modules." + mainObj.replace('.', '_')
+    val jsObj = "ScalaJS.modules." + mainObj
     val jsArgs = argArray(args)
     new MemVirtualJSFile("Generated launcher file").
       withContent(s"$jsObj().main__AT__V($jsArgs);")
@@ -123,6 +103,79 @@ class MainGenericRunner {
           ScalaJS.data.java_lang_String.getArrayOf(),
           ${listToJS(args)})"""
   }
+
+  private def fastOptimize(
+      classpath: ScalaJSClasspath,
+      mainObjName: String,
+      logger: Logger) = {
+    import ScalaJSOptimizer._
+
+    val optimizer = new ScalaJSOptimizer
+
+    val fileName = "partest fastOpt file"
+    val jsFileWriter = new MemVirtualJSFileWriter
+
+    try {
+      optimizer.optimize(
+          Inputs(classpath,
+              manuallyReachable = Seq(
+                ReachObject(mainObjName),
+                ReachMethod(mainObjName + '$', "main__AT__V", static = false)
+              ),
+              noWarnMissing = noWarnMissing
+          ),
+          OutputConfig(
+              name          = fileName,
+              writer        = jsFileWriter,
+              wantSourceMap = false
+              ),
+          logger
+      )
+    } finally {
+      jsFileWriter.close()
+    }
+
+    jsFileWriter.toVirtualFile(fileName)
+  }
+
+  private def fullOptimize(
+      jsFile: VirtualJSFile,
+      mainObjName: String,
+      logger: Logger,
+      runner: VirtualJSFile) = {
+    import ScalaJSClosureOptimizer._
+
+    val optimizer = new ScalaJSClosureOptimizer
+
+    val fileName = "partest fullOpt file"
+    val jsFileWriter = new MemVirtualJSFileWriter
+
+    val exportFile = fullOptExportFile(runner)
+
+    try {
+      optimizer.optimize(
+        Inputs(Seq(jsFile, exportFile)),
+        OutputConfig(fileName, jsFileWriter),
+        logger
+      )
+    } finally {
+      jsFileWriter.close()
+    }
+
+    jsFileWriter.toVirtualFile(fileName)
+  }
+
+  /** generates an exporter statement for the google closure compiler that runs
+   *  what the normal test would
+   */
+  private def fullOptExportFile(runnerFile: VirtualJSFile) = {
+    new MemVirtualJSFile("partest fullOpt exports").withContent(
+      s"""this["runFullOptPartest"] = function() { ${runnerFile.content} };"""
+    )
+  }
+
+  private def fullOptRunner() = new MemVirtualJSFile("partest fullOpt runner").
+    withContent("runFullOptPartest();")
 
   private def urlToFile(url: java.net.URL) = {
     try {
