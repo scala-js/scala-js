@@ -6,7 +6,7 @@ import java.lang.Class
 
 object Array {
   private[lang] def getUnderlying[A](array: AnyRef): js.Array[A] =
-    array.asInstanceOf[js.Dynamic].underlying.asInstanceOf[js.Array[A]]
+    array.asInstanceOf[js.Dynamic].u.asInstanceOf[js.Array[A]]
 
   def newInstance(componentType: Class[_], length: Int) =
     newArray(componentType, length)

@@ -20,7 +20,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("runtime.AnonFunction ctor") {
-      case js.New(jstpe.ClassType("scala_scalajs_runtime_AnonFunction1"), _, _) =>
+      case js.New(jstpe.ClassType("sjsr_AnonFunction1"), _, _) =>
     }
 
     // Make sure our wrapper matcher has the right name
@@ -33,7 +33,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     has("runtime.AnonFunction ctor") {
-      case js.New(jstpe.ClassType("scala_scalajs_runtime_AnonFunction1"), _, _) =>
+      case js.New(jstpe.ClassType("sjsr_AnonFunction1"), _, _) =>
     }
 
   }

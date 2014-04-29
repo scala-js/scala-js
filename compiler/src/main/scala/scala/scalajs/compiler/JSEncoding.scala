@@ -7,7 +7,8 @@ package scala.scalajs.compiler
 
 import scala.tools.nsc._
 
-import scala.scalajs.ir.{Trees => js, Types => jstpe}
+import scala.scalajs.ir
+import ir.{Trees => js, Types => jstpe}
 
 /** Encoding of symbol names for JavaScript
  *
@@ -179,20 +180,15 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassFullName(sym: Symbol): String = {
-    val base = encodeFullNameInternal(sym)
-    if (needsModuleClassSuffix(sym)) base + "$" else base
+    ir.Definitions.encodeClassName(
+        sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
   }
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
     sym.isModuleClass && !foreignIsImplClass(sym)
 
   def encodeModuleFullName(sym: Symbol): String =
-    encodeFullNameInternal(sym)
-
-  private def encodeFullNameInternal(sym: Symbol): String = {
-    val tmp = sym.fullName.replace("_", "$und").replace(".", "_")
-    mangleJSName(tmp)
-  }
+    ir.Definitions.encodeClassName(sym.fullName + "$").dropRight(1)
 
   private def encodeMemberNameInternal(sym: Symbol): String =
     sym.name.toString.replace("_", "$und")
@@ -214,33 +210,13 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def makeParamsString(paramAndResultTypeNames: List[String]) =
     paramAndResultTypeNames.mkString(OuterSep, OuterSep, "")
 
-  /** Compute the internal name for a type
-   *  The internal name is inspired by the encoding of the JVM, with some
-   *  tweaks to use only valid JS identifier characters
-   *  - I for Int, Z for Boolean, V for Unit, etc. for primitive types
-   *  - Lclassname where classname is the full name of a class
-   *  - Aelem for arrays
-   *  and for further default compression in the context of Scala.js:
-   *  - O for java.lang.Object and T for java.lang.String
-   *
-   *  It might be worth investigating other special cases for classes of the
-   *  Scala language: Function types, Tuple types?
-   */
+  /** Computes the internal name for a type. */
   private def internalName(tpe: Type): String = internalName(toTypeKind(tpe))
 
   private def internalName(kind: TypeKind): String = kind match {
     case kind: ValueTypeKind => kind.primitiveCharCode
-    case REFERENCE(cls) =>
-      /* Give shorter names to classes used *very* often:
-       * - Object, since it is the erasure of most type parameters
-       * - String, if only for the ubiquitous toString()
-       */
-      cls match {
-        case definitions.ObjectClass => "O"
-        case definitions.StringClass => "T" // S is taken, use T for Text
-        case _ => "L"+encodeClassFullName(cls)
-      }
-    case ARRAY(elem) => "A"+internalName(elem)
+    case REFERENCE(cls)      => encodeClassFullName(cls)
+    case ARRAY(elem)         => "A"+internalName(elem)
   }
 
   /** mangles names that are illegal in JavaScript by prepending a $

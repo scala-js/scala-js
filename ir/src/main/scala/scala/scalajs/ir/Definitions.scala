@@ -10,25 +10,25 @@
 package scala.scalajs.ir
 
 object Definitions {
-  val ObjectClass = "java_lang_Object"
-  val ClassClass  = "java_lang_Class"
+  val ObjectClass = "O"
+  val ClassClass  = "jl_Class"
 
-  val StringClass = "java_lang_String"
+  val StringClass = "T"
 
-  val BoxedUnitClass      = "scala_runtime_BoxedUnit"
-  val BoxedBooleanClass   = "java_lang_Boolean"
-  val BoxedCharacterClass = "java_lang_Character"
-  val BoxedByteClass      = "java_lang_Byte"
-  val BoxedShortClass     = "java_lang_Short"
-  val BoxedIntegerClass   = "java_lang_Integer"
-  val BoxedLongClass      = "java_lang_Long"
-  val BoxedFloatClass     = "java_lang_Float"
-  val BoxedDoubleClass    = "java_lang_Double"
+  val BoxedUnitClass      = "sr_BoxedUnit"
+  val BoxedBooleanClass   = "jl_Boolean"
+  val BoxedCharacterClass = "jl_Character"
+  val BoxedByteClass      = "jl_Byte"
+  val BoxedShortClass     = "jl_Short"
+  val BoxedIntegerClass   = "jl_Integer"
+  val BoxedLongClass      = "jl_Long"
+  val BoxedFloatClass     = "jl_Float"
+  val BoxedDoubleClass    = "jl_Double"
 
-  val CharSequenceClass = "java_lang_CharSequence"
-  val SerializableClass = "java_io_Serializable"
-  val ComparableClass   = "java_lang_Comparable"
-  val NumberClass       = "java_lang_Number"
+  val CharSequenceClass = "jl_CharSequence"
+  val SerializableClass = "Ljava_io_Serializable"
+  val ComparableClass   = "jl_Comparable"
+  val NumberClass       = "jl_Number"
 
   val HijackedBoxedClasses = Set(
       BoxedUnitClass, BoxedBooleanClass, BoxedByteClass, BoxedShortClass,
@@ -47,9 +47,79 @@ object Definitions {
     AncestorsOfStringClass ++ AncestorsOfHijackedNumberClasses ++
     AncestorsOfBoxedBooleanClass
 
-  val RuntimeLongClass = "scala_scalajs_runtime_RuntimeLong"
+  val RuntimeLongClass = "sjsr_RuntimeLong"
 
-  def decodeClassName(encodedName: String): String = {
-    encodedName.replace("_", ".").replace("$und", "_")
+  /** Encodes a class name. */
+  def encodeClassName(fullName: String): String = {
+    val base = fullName.replace("_", "$und").replace(".", "_")
+    val encoded = compressedClasses.getOrElse(base, {
+      compressedPrefixes collectFirst {
+        case (prefix, compressed) if base.startsWith(prefix) =>
+          compressed + base.substring(prefix.length)
+      } getOrElse {
+        "L"+base
+      }
+    })
+    if (Trees.isKeyword(encoded) || encoded.charAt(0).isDigit ||
+        encoded.charAt(0) == '$') {
+      "$" + encoded
+    } else encoded
   }
+
+  /** Decodes a class name encoded with [[encodeClassName]]. */
+  def decodeClassName(encodedName: String): String = {
+    val encoded =
+      if (encodedName.charAt(0) == '$') encodedName.substring(1)
+      else encodedName
+    val base = decompressedClasses.getOrElse(encoded, {
+      decompressedPrefixes collectFirst {
+        case (prefix, decompressed) if encodedName.startsWith(prefix) =>
+          decompressed + encodedName.substring(prefix.length)
+      } getOrElse {
+        assert(!encodedName.isEmpty && encodedName.charAt(0) == 'L',
+            s"Cannot decode invalid encoded name '$encodedName'")
+        encodedName.substring(1)
+      }
+    })
+    base.replace("_", ".").replace("$und", "_")
+  }
+
+  private val compressedClasses: Map[String, String] = Map(
+      "java_lang_Object" -> "O",
+      "java_lang_String" -> "T",
+      "scala_Unit" -> "V",
+      "scala_Boolean" -> "Z",
+      "scala_Char" -> "C",
+      "scala_Byte" -> "B",
+      "scala_Short" -> "S",
+      "scala_Int" -> "I",
+      "scala_Long" -> "J",
+      "scala_Float" -> "F",
+      "scala_Double" -> "D"
+  ) ++ (
+      for (index <- 2 to 22)
+        yield s"scala_Tuple$index" -> ("T"+index)
+  ) ++ (
+      for (index <- 0 to 22)
+        yield s"scala_Function$index" -> ("F"+index)
+  )
+
+  private val decompressedClasses: Map[String, String] =
+    compressedClasses map { case (a, b) => (b, a) }
+
+  private val compressedPrefixes = Seq(
+      "scala_scalajs_runtime_" -> "sjsr_",
+      "scala_scalajs_" -> "sjs_",
+      "scala_collection_immutable_" -> "sci_",
+      "scala_collection_mutable_" -> "scm_",
+      "scala_collection_generic_" -> "scg_",
+      "scala_collection_" -> "sc_",
+      "scala_runtime_" -> "sr_",
+      "scala_" -> "s_",
+      "java_lang_" -> "jl_",
+      "java_util_" -> "ju_"
+  )
+
+  private val decompressedPrefixes: Seq[(String, String)] =
+    compressedPrefixes map { case (a, b) => (b, a) }
 }

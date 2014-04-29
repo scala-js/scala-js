@@ -71,9 +71,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
   case object FromManual extends From
 
   private val HijackedBoxedClassNames = Set(
-      "scala_runtime_BoxedUnit", "java_lang_Boolean",
-      "java_lang_Byte", "java_lang_Short", "java_lang_Integer",
-      "java_lang_Long", "java_lang_Float", "java_lang_Double"
+      "sr_BoxedUnit", "jl_Boolean", "jl_Byte", "jl_Short", "jl_Integer",
+      "jl_Long", "jl_Float", "jl_Double"
   )
 
   val classInfos: mutable.Map[String, ClassInfo] = {
@@ -130,22 +129,22 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
       info
     }
 
-    val ObjectClass = instantiateClassWith("java_lang_Object", "init___")
+    val ObjectClass = instantiateClassWith("O", "init___")
     ObjectClass.callMethod("toString__T")
 
-    instantiateClassWith(s"java_lang_Character", s"init___C")
+    instantiateClassWith(s"jl_Character", s"init___C")
 
-    instantiateClassWith("java_lang_ClassCastException", "init___T")
-    instantiateClassWith("scala_scalajs_js_JavaScriptException", "init___Lscala_scalajs_js_Any")
+    instantiateClassWith("jl_ClassCastException", "init___T")
+    instantiateClassWith("sjs_js_JavaScriptException", "init___sjs_js_Any")
 
-    instantiateClassWith("java_lang_Class", "init___Lscala_scalajs_js_Dynamic")
+    instantiateClassWith("jl_Class", "init___sjs_js_Dynamic")
 
-    val LongModule = lookupClass("scala_scalajs_runtime_RuntimeLong$")
+    val LongModule = lookupClass("sjsr_RuntimeLong$")
     LongModule.accessModule()
-    LongModule.callMethod("zero__Lscala_scalajs_runtime_RuntimeLong")
-    LongModule.callMethod("fromDouble__D__Lscala_scalajs_runtime_RuntimeLong")
+    LongModule.callMethod("zero__sjsr_RuntimeLong")
+    LongModule.callMethod("fromDouble__D__sjsr_RuntimeLong")
 
-    val BoxesRunTime = lookupClass("scala_runtime_BoxesRunTime$")
+    val BoxesRunTime = lookupClass("sr_BoxesRunTime$")
     BoxesRunTime.accessModule()
     BoxesRunTime.callMethod("equals__O__O__Z")
 
@@ -469,8 +468,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
         isExported = false,
         ancestorCount = if (kind.isClass) 1 else 0,
         kind = kind,
-        superClass = if (kind.isClass) "java_lang_Object" else "",
-        ancestors = List(encodedName, "java_lang_Object"),
+        superClass = if (kind.isClass) "O" else "",
+        ancestors = List(encodedName, "O"),
         methods = List(
             createMissingMethodInfo("__init__"),
             createMissingMethodInfo("init___"))

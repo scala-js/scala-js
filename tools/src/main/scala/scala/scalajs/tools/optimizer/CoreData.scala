@@ -18,51 +18,51 @@ object CoreData {
 
   private def ObjectInfo = ClassInfo(
     name = "java.lang.Object",
-    encodedName = "java_lang_Object",
+    encodedName = "O",
     ancestorCount = 0,
     kind = ClassKind.Class,
     superClass = "",
-    ancestors = List("java_lang_Object"),
+    ancestors = List("O"),
     methods = List(
       MethodInfo("__init__"),
       MethodInfo("init___"),
-      MethodInfo("getClass__Ljava_lang_Class"),
+      MethodInfo("getClass__jl_Class"),
       MethodInfo("hashCode__I"),
       MethodInfo("equals__O__Z"),
       MethodInfo("clone__O",
         calledMethods = Map(
-          "java_lang_CloneNotSupportedException" -> List("init___")
+          "jl_CloneNotSupportedException" -> List("init___")
         ),
-        instantiatedClasses = List("java_lang_CloneNotSupportedException"),
-        accessedClassData = List("java_lang_Cloneable")
+        instantiatedClasses = List("jl_CloneNotSupportedException"),
+        accessedClassData = List("jl_Cloneable")
       ),
       MethodInfo("notify__V"),
       MethodInfo("notifyAll__V"),
       MethodInfo("toString__T",
         calledMethods = Map(
-          "java_lang_Object" -> List("getClass__Ljava_lang_Class", "hashCode__I"),
-          "java_lang_Class" -> List("getName__T")
+          "O" -> List("getClass__jl_Class", "hashCode__I"),
+          "jl_Class" -> List("getName__T")
         )
       ),
       MethodInfo("finalize__V"),
       MethodInfo("clone__",
         calledMethods = Map(
-          "java_lang_Object" -> List("clone__O")
+          "O" -> List("clone__O")
         )
       ),
       MethodInfo("notify__",
         calledMethods = Map(
-          "java_lang_Object" -> List("notify__V")
+          "O" -> List("notify__V")
         )
       ),
       MethodInfo("notifyAll__",
         calledMethods = Map(
-          "java_lang_Object" -> List("notifyAll__V")
+          "O" -> List("notifyAll__V")
         )
       ),
       MethodInfo("finalize__",
         calledMethods = Map(
-          "java_lang_Object" -> List("finalize__V")
+          "O" -> List("finalize__V")
         )
       )
     )
@@ -70,12 +70,11 @@ object CoreData {
 
   private def StringInfo = ClassInfo(
     name = "java.lang.String",
-    encodedName = "java_lang_String",
+    encodedName = "T",
     ancestorCount = 1,
     kind = ClassKind.HijackedClass,
-    superClass = "java_lang_Object",
+    superClass = "O",
     ancestors = List(
-      "java_lang_String", "java_io_Serializable",
-      "java_lang_CharSequence", "java_lang_Comparable", "java_lang_Object")
+      "T", "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable", "O")
   )
 }

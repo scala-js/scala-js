@@ -152,7 +152,7 @@ object JSDesugaring {
             case List(newArray, newIndex, newRhs) =>
               Assign(
                   JSBracketSelect(JSDotSelect(transformExpr(newArray),
-                      Ident("underlying"))(select.pos),
+                      Ident("u"))(select.pos),
                       transformExpr(newIndex))(select.pos),
                   transformExpr(newRhs))
           }
@@ -185,7 +185,7 @@ object JSDesugaring {
           val moduleName = cls.className.dropRight(1)
           unnest(value) { newValue =>
             Assign(
-                JSDotSelect(envField("moduleInstances"), Ident(moduleName)),
+                JSDotSelect(envField("n"), Ident(moduleName)),
                 newValue)
           }
 
@@ -763,7 +763,7 @@ object JSDesugaring {
           assert(cls.className.endsWith("$"),
               s"Trying to load module for non-module class $cls")
           val moduleName = cls.className.dropRight(1)
-          JSApply(envField("modules") DOT moduleName, Nil)
+          JSApply(envField("m") DOT moduleName, Nil)
 
         case Select(qualifier, item, _) =>
           transformExpr(qualifier) DOT item
@@ -776,7 +776,7 @@ object JSDesugaring {
           JSApply(fun DOT "call", (receiver :: args) map transformExpr)
 
         case TraitImplApply(impl, method, args) =>
-          JSApply(envField("impls") DOT method, args map transformExpr)
+          JSApply(envField("i") DOT method, args map transformExpr)
 
         case UnaryOp(op, lhs, tpe) =>
           // All our unary ops translate straightforwardly
@@ -811,11 +811,11 @@ object JSDesugaring {
 
         case ArrayLength(array) =>
           JSBracketSelect(JSDotSelect(transformExpr(array),
-              Ident("underlying")), StringLiteral("length"))
+              Ident("u")), StringLiteral("length"))
 
         case ArraySelect(array, index) =>
           JSBracketSelect(JSDotSelect(transformExpr(array),
-              Ident("underlying")), transformExpr(index))
+              Ident("u")), transformExpr(index))
 
         case IsInstanceOf(expr, cls) =>
           genIsInstanceOf(transformExpr(expr), cls)
@@ -848,9 +848,9 @@ object JSDesugaring {
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): Tree = {
       cls match {
         case ClassType(className) =>
-          encodeClassField("data", className)
+          encodeClassField("d", className)
         case ArrayType(base, dims) =>
-          (1 to dims).foldLeft(encodeClassField("data", base)) { (prev, _) =>
+          (1 to dims).foldLeft(encodeClassField("d", base)) { (prev, _) =>
             JSApply(JSDotSelect(prev, Ident("getArrayOf")), Nil)
           }
       }

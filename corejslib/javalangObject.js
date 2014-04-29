@@ -8,33 +8,32 @@
  * ------------------ */
 
 /** @constructor */
-ScalaJS.c.java_lang_Object = function() {
+ScalaJS.c.O = function() {
 };
 
 /** @constructor */
-ScalaJS.inheritable.java_lang_Object = function() {};
-ScalaJS.inheritable.java_lang_Object.prototype =
-  ScalaJS.c.java_lang_Object.prototype;
+ScalaJS.h.O = function() {};
+ScalaJS.h.O.prototype = ScalaJS.c.O.prototype;
 
-ScalaJS.c.java_lang_Object.prototype.init___ = function() {
+ScalaJS.c.O.prototype.init___ = function() {
   return this;
 }
 
-ScalaJS.c.java_lang_Object.prototype.getClass__Ljava_lang_Class = function() {
+ScalaJS.c.O.prototype.getClass__jl_Class = function() {
   return this.$classData.getClassOf();
 }
 
-ScalaJS.c.java_lang_Object.prototype.hashCode__I = function() {
+ScalaJS.c.O.prototype.hashCode__I = function() {
   // TODO
   return 42;
 }
 
-ScalaJS.c.java_lang_Object.prototype.equals__O__Z = function(rhs) {
+ScalaJS.c.O.prototype.equals__O__Z = function(rhs) {
   return this === rhs;
 }
 
-ScalaJS.c.java_lang_Object.prototype.clone__O = function() {
-  if (ScalaJS.is.java_lang_Cloneable(this)) {
+ScalaJS.c.O.prototype.clone__O = function() {
+  if (ScalaJS.is.jl_Cloneable(this)) {
     function Clone(from) {
       for (var field in from)
         if (from["hasOwnProperty"](field))
@@ -43,13 +42,13 @@ ScalaJS.c.java_lang_Object.prototype.clone__O = function() {
     Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](this);
     return new Clone(this);
   } else {
-    throw new ScalaJS.c.java_lang_CloneNotSupportedException().init___();
+    throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
   }
 }
 
-ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
+ScalaJS.c.O.prototype.toString__T = function() {
   // getClass().getName() + "@" + Integer.toHexString(hashCode())
-  var className = this.getClass__Ljava_lang_Class().getName__T();
+  var className = this.getClass__jl_Class().getName__T();
   var hashCode = this.hashCode__I();
   return className + '@' + hashCode.toString(16);
 }
@@ -57,7 +56,7 @@ ScalaJS.c.java_lang_Object.prototype.toString__T = function() {
 // JSExport for toString(). We always need to export this, since we
 // rely on JS calling it automatically when we do things like:
 // `"" + obj`
-ScalaJS.c.java_lang_Object.prototype.toString = function() {
+ScalaJS.c.O.prototype.toString = function() {
   return this.toString__T();
 }
 
@@ -67,10 +66,10 @@ ScalaJS.c.java_lang_Object.prototype.toString = function() {
 // never wait. Further, note that these methods are not in the sjsinfo file.
 // Therefore, dce will complain about them not being reachable, but the code
 // will still work.
-ScalaJS.c.java_lang_Object.prototype.notify__V = function() {}
-ScalaJS.c.java_lang_Object.prototype.notifyAll__V = function() {}
+ScalaJS.c.O.prototype.notify__V = function() {}
+ScalaJS.c.O.prototype.notifyAll__V = function() {}
 
-ScalaJS.c.java_lang_Object.prototype.finalize__V = function() {}
+ScalaJS.c.O.prototype.finalize__V = function() {}
 
 // Reflective call proxies for methods on java.lang.Object
 // Note that we do not need to proxy the following methods, since they are
@@ -80,38 +79,38 @@ ScalaJS.c.java_lang_Object.prototype.finalize__V = function() {}
 // - getClass
 // - hashCode
 // - toString
-ScalaJS.c.java_lang_Object.prototype.clone__ = function() {
+ScalaJS.c.O.prototype.clone__ = function() {
   return this.clone__O()
 }
-ScalaJS.c.java_lang_Object.prototype.notify__ = function() {
+ScalaJS.c.O.prototype.notify__ = function() {
   return this.notify__V()
 }
-ScalaJS.c.java_lang_Object.prototype.notifyAll__ = function() {
+ScalaJS.c.O.prototype.notifyAll__ = function() {
   return this.notifyAll__V()
 }
-ScalaJS.c.java_lang_Object.prototype.finalize__ = function() {
+ScalaJS.c.O.prototype.finalize__ = function() {
   return this.finalize__V()
 }
 
 // Instance tests
 
-ScalaJS.is.java_lang_Object = function(obj) {
+ScalaJS.is.O = function(obj) {
   return !!((obj && obj.$classData &&
-    obj.$classData.ancestors.java_lang_Object) ||
+    obj.$classData.ancestors.O) ||
     (typeof(obj) === "string") ||
     (typeof(obj) === "number") ||
     (typeof(obj) === "boolean") ||
     obj === void 0);
 };
 
-ScalaJS.as.java_lang_Object = function(obj) {
-  if (ScalaJS.is.java_lang_Object(obj) || obj === null)
+ScalaJS.as.O = function(obj) {
+  if (ScalaJS.is.O(obj) || obj === null)
     return obj;
   else
     ScalaJS.throwClassCastException(obj, "java.lang.Object");
 };
 
-ScalaJS.isArrayOf.java_lang_Object = (function(obj, depth) {
+ScalaJS.isArrayOf.O = (function(obj, depth) {
   var data = obj && obj.$classData;
   if (!data)
     return false;
@@ -125,8 +124,8 @@ ScalaJS.isArrayOf.java_lang_Object = (function(obj, depth) {
     return !data.arrayBase.isPrimitive; // because Array[Int] </: Array[Object]
 });
 
-ScalaJS.asArrayOf.java_lang_Object = (function(obj, depth) {
-  if ((ScalaJS.isArrayOf.java_lang_Object(obj, depth) || (obj === null))) {
+ScalaJS.asArrayOf.O = (function(obj, depth) {
+  if ((ScalaJS.isArrayOf.O(obj, depth) || (obj === null))) {
     return obj
   } else {
     ScalaJS.throwArrayCastException(obj, "Ljava.lang.Object;", depth)
@@ -135,13 +134,12 @@ ScalaJS.asArrayOf.java_lang_Object = (function(obj, depth) {
 
 // Data
 
-ScalaJS.data.java_lang_Object =
+ScalaJS.d.O =
   new ScalaJS.ClassTypeData(
-    {java_lang_Object:0},
+    {O:0},
     false, "java.lang.Object", null,
-    {java_lang_Object: 1},
-    ScalaJS.is.java_lang_Object,
-    ScalaJS.isArrayOf.java_lang_Object);
+    {O:1},
+    ScalaJS.is.O,
+    ScalaJS.isArrayOf.O);
 
-ScalaJS.c.java_lang_Object.prototype.$classData =
-  ScalaJS.data.java_lang_Object;
+ScalaJS.c.O.prototype.$classData = ScalaJS.d.O;
