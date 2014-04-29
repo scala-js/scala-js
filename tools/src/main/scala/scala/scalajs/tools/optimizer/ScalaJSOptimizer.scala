@@ -281,6 +281,7 @@ object ScalaJSOptimizer {
       } else {
         version = irFile.version
         _info = irFile.info
+        _tree = null
         _desugared = null
         false
       }
