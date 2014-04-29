@@ -2871,3 +2871,4 @@ pos/t8411
 pos/t8460.scala
 run/t8428.scala
 run/t8437
+run/issue192.scala

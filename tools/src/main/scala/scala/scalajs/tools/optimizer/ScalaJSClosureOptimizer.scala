@@ -44,23 +44,13 @@ class ScalaJSClosureOptimizer {
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
     val compiler = new ClosureCompiler
+    compiler.setErrorManager(new LoggerErrorManager(logger))
+
     val result = compiler.compile(
         closureExterns.asJava, closureSources.asJava, options)
 
-    val errors = result.errors.toList
-    val warnings = result.warnings.toList
-
-    val outputContent = if (!errors.isEmpty) {
-      logger.error(errors.length + " Closure errors:")
-      errors.foreach(err => logger.error(err.toString))
-      ""
-    } else {
-      if (!warnings.isEmpty) {
-        logger.warn(warnings.length + " Closure warnings:")
-        warnings.foreach(err => logger.warn(err.toString))
-      }
-      "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
-    }
+    val outputContent = if (result.errors.nonEmpty) ""
+    else "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
 
     val writer = outputConfig.writer.contentWriter
     // Write out pack order line (constant: file is stand alone)
