@@ -9,6 +9,3 @@ run/t7015.scala
 
 # Fail after full opt
 run/finally.scala
-
-# Filed as #554
-run/issue192.scala
