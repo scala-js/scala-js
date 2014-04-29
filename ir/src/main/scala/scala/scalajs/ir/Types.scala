@@ -77,6 +77,13 @@ object Types {
   /** Array type. */
   final case class ArrayType(baseClassName: String, dimensions: Int) extends ReferenceType
 
+  object ArrayType {
+    def apply(innerType: ReferenceType): ArrayType = innerType match {
+      case ClassType(className)      => ArrayType(className, 1)
+      case ArrayType(className, dim) => ArrayType(className, dim + 1)
+    }
+  }
+
   /** Dynamic type.
    *  Used for raw JavaScript values, among others.
    *  A variable of this type can contain any value (just like [[AnyType]]).
