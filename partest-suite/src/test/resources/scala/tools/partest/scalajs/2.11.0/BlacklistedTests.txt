@@ -10,17 +10,9 @@ pos/t533.scala
 pos/functions.scala
 pos/MailBox.scala
 
-# Failing due to bug SI-7288 in scalac
-pos/SI-4012-a.scala
-pos/SI-7638.scala
-
 #
 # NEG
 #
-
-# Implementation restrictions on the JVM not applying to JavaScript
-
-neg/t3692-new.scala
 
 # Using the compiler API
 
@@ -93,8 +85,6 @@ run/t2417.scala
 run/t6197.scala
 run/t4813.scala
 run/lazy-concurrent.scala
-run/arrays.scala
-run/bugs.scala
 run/t5880.scala
 run/mapConserve.scala
 run/t3667.scala
@@ -106,7 +96,6 @@ run/t4658.scala
 run/t4201.scala
 run/t5590.scala
 run/deeps.scala
-run/duration-coarsest.scala
 run/t3895b.scala
 run/t2813.2.scala
 run/t5974.scala
@@ -117,8 +106,6 @@ run/t5293-map.scala
 run/serialize-stream.scala
 run/sysprops.scala
 
-run/SymbolsTest.scala
-run/t4601.scala
 run/colltest.scala
 run/equality.scala
 run/t2849.scala
@@ -140,15 +127,9 @@ run/stringinterpolation_macro-run.scala
 run/t5356.scala
 run/t6064.scala
 
-#  This test uses range on Doubles which uses BigDecimal in return
-run/t5857.scala
-
 # Documented semantic difference on numbers (float precision)
 run/interpolation.scala
 run/interpolationMultiline1.scala
-
-# Documented semantic difference on numbers (overflow)
-run/streams.scala
 
 # Documented semantic difference on String.split(x: Array[Char])
 run/t0325.scala
@@ -247,7 +228,6 @@ run/showraw_tree_types_typed.scala
 run/showraw_tree_ids.scala
 run/showraw_tree_ultimate.scala
 run/t5266_2.scala
-run/t1505.scala
 run/t5274_1.scala
 run/t5224.scala
 run/reflection-sanitychecks.scala
@@ -483,7 +463,6 @@ run/t4023.scala
 run/t4024.scala
 run/t6380.scala
 run/t5273_2b_oldpatmat.scala
-run/iterator-from.scala
 run/t8104
 run/t8047.scala
 run/t6992
@@ -665,7 +644,6 @@ run/macro-reify-unreify
 
 # Using Enumeration in a way we cannot fix
 
-run/t2111.scala
 run/enums.scala
 run/t3719.scala
 
@@ -675,7 +653,6 @@ run/MeterCaseClass.scala
 run/t5608.scala
 run/caseClassHash.scala
 run/Meter.scala
-run/t1074.scala
 
 # Exceptions that become JavaScriptException
 
@@ -934,9 +911,6 @@ run/t4729
 
 # Using scala-script
 run/t7791-script-linenums.scala
-
-# Using arguments to partests
-run/absoverride.scala
 
 # Prints phase list
 run/t6102.scala
