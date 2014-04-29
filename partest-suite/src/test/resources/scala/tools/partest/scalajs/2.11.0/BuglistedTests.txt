@@ -6,3 +6,9 @@
 # Fail after fast opt
 run/range-unit.scala
 run/t7015.scala
+
+# Fail after full opt
+run/finally.scala
+
+# Filed as #554
+run/issue192.scala

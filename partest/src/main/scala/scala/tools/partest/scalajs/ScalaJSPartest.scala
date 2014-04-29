@@ -37,8 +37,11 @@ trait ScalaJSRunner extends nest.Runner {
   override def extraJavaOptions = {
     val opts = super.extraJavaOptions :+
       s"-Dscala.partest.noWarnFile=$noWarnFile"
-    if (options.optimize)
-      opts :+ "-Dscalajs.partest.optimize=true"
+
+    if (options.fullOpt)
+      opts :+ "-Dscalajs.partest.fullOpt=true"
+    else if (options.fastOpt)
+      opts :+ "-Dscalajs.partest.fastOpt=true"
     else
       opts
   }
