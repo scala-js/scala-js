@@ -2345,10 +2345,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               jstpe.AnyType)
 
         if (isArrayLikeUpdate) {
-          callStatement = js.If(
-              js.CallHelper("isScalaJSArray", callTrg)(jstpe.BooleanType), {
-            js.JSApply(js.JSDotSelect(js.Cast(callTrg, jstpe.DynType),
-                js.Ident("update__I__elementType__")), arguments)
+          val elemIRTpe = toTypeKind(sym.tpe.params(1).tpe).toReferenceType
+          val arrIRTpe  = jstpe.ArrayType(elemIRTpe)
+          callStatement = js.If(js.IsInstanceOf(callTrg, arrIRTpe), statToExpr {
+            val castCallTrg = js.AsInstanceOf(callTrg, arrIRTpe)
+            js.Assign(
+                js.ArraySelect(castCallTrg, arguments(0))(elemIRTpe),
+                arguments(1))
           }, {
             callStatement
           })(jstpe.AnyType)

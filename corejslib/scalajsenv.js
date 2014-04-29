@@ -64,10 +64,6 @@ var ScalaJS = {
     return !!(obj && obj.$classData);
   },
 
-  isScalaJSArray: function(obj) {
-    return obj && obj.$classData && obj.$classData.isArrayClass
-  },
-
   dynamicIsAssignableFrom: function(lhsData, rhsData) {
     if (lhsData.isPrimitive || rhsData.isPrimitive)
       return lhsData === rhsData;
@@ -572,13 +568,11 @@ ScalaJS.ArrayTypeData = function(componentData) {
     return this.underlying["length"];
   }
 
-  // Note that this method is actually typed on the true element type, since
-  // array types are not erased. The compiler does some magic to artificially
-  // erase the element type when reflectively calling the update method of a
-  // ScalaJSArray
-  ArrayClass.prototype.update__I__elementType__ = function(i,x) {
-    this.underlying[i] = x;
-  }
+  // Don't create a reflective call proxy for Array.update:
+  // Array.update is actually typed on the array's true element type, since
+  // array types are not erased. Therefore, we cannot properly type
+  // the method (in Scala.js types) and resign to having the compiler
+  // generate the call in-place.
 
   // The data
 
