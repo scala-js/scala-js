@@ -941,6 +941,9 @@ run/absoverride.scala
 # Prints phase list
 run/t6102.scala
 
+# Suffers from bug in Node.js (https://github.com/joyent/node/issues/7528)
+run/range-unit.scala
+
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
 run/t429.scala
