@@ -3,8 +3,5 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# Filed as #562
-run/t7015.scala
-
 # Filed as #563
 run/finally.scala

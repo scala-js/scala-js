@@ -2887,3 +2887,4 @@ run/t5857.scala
 pos/SI-4012-a.scala
 pos/SI-7638.scala
 neg/t3692-new.scala
+run/t7015.scala

@@ -162,6 +162,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     }
   }
 
+  def encodeArrayType(tpe: Type)(implicit pos: Position): (jstpe.ArrayType, Symbol) = {
+    (encodeReferenceType(tpe): @unchecked) match {
+      case (arrayType: jstpe.ArrayType, sym) => (arrayType, sym)
+    }
+  }
+
   def encodeClassType(sym: Symbol): jstpe.Type = {
     if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
     else {

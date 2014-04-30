@@ -1777,12 +1777,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         abort("too many arguments for array constructor: found " + argsLength +
           " but array has only " + dimensions + " dimension(s)")
 
-      (toTypeKind(arrayType): @unchecked) match {
-        case kind: ARRAY =>
-          currentMethodInfoBuilder.accessesClassData(
-              kind.elementKind.toType.typeSymbol)
-          js.NewArray(kind.toIRType, arguments)
-      }
+      val (irType, sym) = encodeArrayType(arrayType)
+      currentMethodInfoBuilder.accessesClassData(sym)
+      js.NewArray(irType, arguments)
     }
 
     /** Gen JS code for an array literal
@@ -1793,12 +1790,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
-      (toTypeKind(tree.tpe): @unchecked) match {
-        case kind: ARRAY =>
-          currentMethodInfoBuilder.accessesClassData(
-              kind.elementKind.toType.typeSymbol)
-          js.ArrayValue(kind.toIRType, elems map genExpr)
-      }
+      val (irType, sym) = encodeArrayType(tree.tpe)
+      currentMethodInfoBuilder.accessesClassData(sym)
+      js.ArrayValue(irType, elems map genExpr)
     }
 
     /** Gen JS code for a Match, i.e., a switch-able pattern match
