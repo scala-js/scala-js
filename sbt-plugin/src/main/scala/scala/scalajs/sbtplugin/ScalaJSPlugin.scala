@@ -26,10 +26,12 @@ import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 
 import scala.scalajs.sbtplugin.testing.TestFramework
 
-object ScalaJSPlugin extends Plugin {
+object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = "0.5.0-SNAPSHOT"
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
   val scalaJSScalaVersion = "2.11.0"
+  val scalaJSBinaryVersion =
+    ScalaJSCrossVersion.binaryScalaJSVersion(scalaJSVersion)
 
   object ScalaJSKeys {
     val packageJS = taskKey[Seq[File]](
@@ -469,6 +471,9 @@ object ScalaJSPlugin extends Plugin {
           "org.scala-lang.modules.scalajs" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 
       // and of course the Scala.js library
-      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % scalaJSVersion
+      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % scalaJSVersion,
+
+      // and you will want to be cross-compiled on the Scala.js binary version
+      crossVersion := ScalaJSCrossVersion.binary
   )
 }
