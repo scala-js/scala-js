@@ -59,8 +59,8 @@ class NodeJSEnv(
           var oldLog = console.log;
           var newLog = function() {
             var args = arguments;
-            if (args.length >= 1) {
-              args[0] = args[0].replace(/%/g, "%%");
+            if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
+              args[0] = args[0].toString().replace(/%/g, "%%");
             }
             oldLog.apply(console, args);
           };

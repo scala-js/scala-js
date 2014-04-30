@@ -3,9 +3,8 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# Fail after fast opt
-run/range-unit.scala
+# Filed as #562
 run/t7015.scala
 
-# Fail after full opt
+# Filed as #563
 run/finally.scala
