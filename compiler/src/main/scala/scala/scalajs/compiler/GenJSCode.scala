@@ -2525,26 +2525,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       lazy val js.JSArrayConstr(genArgs) = genArgArray
 
-      /* The implementations of java.lang.Class, java.lang.reflect.Array
-       * and java.util.Arrays use fields and methods of the Scala.js global
-       * environment through js.Dynamic calls.
-       * These must be emitted as dot-selects when possible.
-       */
-      def shouldUseDotSelect: Boolean =
-        currentClassSym.get == ClassClass ||
-        currentClassSym.get == ReflectArrayModuleClass ||
-        currentClassSym.get == UtilArraysModuleClass
-
-      def maybeDotSelect(receiver: js.Tree, item: js.Tree): js.Tree = {
-        if (shouldUseDotSelect) {
-          // Now that's a cute hack ...
-          js.JSDotSelect(receiver,
-              js.Ident(item.asInstanceOf[js.StringLiteral].value))
-        } else {
-          js.JSBracketSelect(receiver, item)
-        }
-      }
-
       def extractFirstArg() = {
         (genArgArray: @unchecked) match {
           case js.JSArrayConstr(firstArg :: otherArgs) =>
@@ -2571,14 +2551,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val (methodName, actualArgArray) = extractFirstArg()
         actualArgArray match {
           case js.JSArrayConstr(actualArgs) =>
-            receiver match {
-              // follow up on the cute hack ...
-              case js.JSDotSelect(js.JSGlobal(), js.Ident("ScalaJS", _)) if shouldUseDotSelect =>
-                js.CallHelper(methodName.asInstanceOf[js.StringLiteral].value,
-                    actualArgs: _*)(jstpe.DynType)
-              case _ =>
-                js.JSApply(maybeDotSelect(receiver, methodName), actualArgs)
-            }
+            js.JSApply(js.JSBracketSelect(receiver, methodName), actualArgs)
           case _ =>
             js.CallHelper("applyMethodWithVarargs",
                 receiver, methodName, actualArgArray)(jstpe.DynType)
@@ -2660,6 +2633,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements:_*)
         genArgArray
+      } else if (code == ARRAYCOPY) {
+        // System.arraycopy - not a helper because receiver is dropped
+        js.CallHelper("systemArraycopy", genArgs)(toIRType(tree.tpe))
       } else (genArgs match {
         case Nil =>
           code match {
@@ -2792,7 +2768,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
-              maybeDotSelect(receiver, arg)
+              js.JSBracketSelect(receiver, arg)
 
             case DICT_DEL =>
               // js.Dictionary.delete(arg)
@@ -2814,7 +2790,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           code match {
             case DYNUPDATE =>
               // js.Dynamic.updateDynamic(arg1)(arg2)
-              statToExpr(js.Assign(maybeDotSelect(receiver, arg1), arg2))
+              statToExpr(js.Assign(js.JSBracketSelect(receiver, arg1), arg2))
 
             case HASPROP =>
               // js.Object.hasProperty(arg1, arg2)

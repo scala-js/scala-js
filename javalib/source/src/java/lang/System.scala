@@ -30,25 +30,8 @@ object System {
   def nanoTime(): scala.Long =
     (getHighPrecisionTime() * 1000000).toLong
 
-  def arraycopy(src: Object, srcPos: scala.Int,
-      dest: Object, destPos: scala.Int, length: scala.Int): Unit = {
-    val jsSrc = reflect.Array.getUnderlying[Any](src)
-    val jsDest = reflect.Array.getUnderlying[Any](dest)
-
-    if ((jsSrc ne jsDest) || destPos < srcPos || srcPos + length < destPos) {
-      var i = 0
-      while (i < length) {
-        jsDest(destPos+i) = jsSrc(srcPos+i)
-        i += 1
-      }
-    } else {
-      var i = length - 1
-      while (i >= 0) {
-        jsDest(destPos+i) = jsSrc(srcPos+i)
-        i -= 1
-      }
-    }
-  }
+  def arraycopy(src: Object, srcPos: scala.Int, dest: Object,
+      destPos: scala.Int, length: scala.Int): Unit = sys.error("stub")
 
   def identityHashCode(x: Object): scala.Int = {
     // TODO

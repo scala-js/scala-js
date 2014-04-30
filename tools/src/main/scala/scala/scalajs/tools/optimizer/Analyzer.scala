@@ -137,7 +137,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
     instantiateClassWith("jl_ClassCastException", "init___T")
     instantiateClassWith("sjs_js_JavaScriptException", "init___sjs_js_Any")
 
-    instantiateClassWith("jl_Class", "init___sjs_js_Dynamic")
+    instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
     val LongModule = lookupClass("sjsr_RuntimeLong$")
     LongModule.accessModule()

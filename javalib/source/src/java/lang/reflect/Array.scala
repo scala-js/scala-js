@@ -5,14 +5,11 @@ import scala.scalajs.js
 import java.lang.Class
 
 object Array {
-  private[lang] def getUnderlying[A](array: AnyRef): js.Array[A] =
-    array.asInstanceOf[js.Dynamic].u.asInstanceOf[js.Array[A]]
+  def newInstance(componentType: Class[_], length: Int): AnyRef =
+    componentType.newArrayOfThisClass(js.Array(length))
 
-  def newInstance(componentType: Class[_], length: Int) =
-    newArray(componentType, length)
-
-  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]) =
-    multiNewArray(componentType, dimensions)
+  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef =
+    componentType.newArrayOfThisClass(dimensions)
 
   def getLength(array: AnyRef): Int = array match {
     // yes, this is kind of stupid, but that's how it is
@@ -175,22 +172,5 @@ object Array {
     case array: Array[Float]  => array(index) = value.toFloat
     case array: Array[Double] => array(index) = value
     case _ => throw new IllegalArgumentException("argument type mismatch")
-  }
-
-  private def newArray(componentType: Class[_], length: Int): AnyRef = {
-    js.Dynamic.global.ScalaJS.newArrayObject(
-        componentType.data.getArrayOf(), js.Array(length))
-  }
-
-  private def multiNewArray(componentType: Class[_],
-      dimensions: scala.Array[Int]): AnyRef = {
-    val lengths = getUnderlying[Int](dimensions)
-    var arrayClassData = componentType.data
-    var i = 0
-    while (i < lengths.length) {
-      arrayClassData = arrayClassData.getArrayOf()
-      i += 1
-    }
-    js.Dynamic.global.ScalaJS.newArrayObject(arrayClassData, lengths)
   }
 }
