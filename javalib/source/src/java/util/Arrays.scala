@@ -3,10 +3,10 @@ package java.util
 import scala.scalajs.js
 
 object Arrays {
-  def sort[T](array: Array[Any], comparator: Comparator[T]): Unit = {
-    val jsArray: js.Array[T] =
-        array.asInstanceOf[js.Dynamic].u.asInstanceOf[js.Array[T]]
-    jsArray.sort((o1: T, o2: T) => comparator.compare(o1, o2))
+  def sort[T <: Object](array: Array[Object], comparator: Comparator[T]): Unit = {
+    scala.util.Sorting.stableSort[Object](array,
+        (a: Object, b: Object) =>
+          comparator.compare(a.asInstanceOf[T], b.asInstanceOf[T]) < 0)
   }
 
   def fill(a: Array[Boolean], value: Boolean): Unit = {

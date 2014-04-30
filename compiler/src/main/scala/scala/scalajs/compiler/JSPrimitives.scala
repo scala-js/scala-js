@@ -71,6 +71,8 @@ abstract class JSPrimitives {
   val UNITVAL = 348        // () value, which is undefined
   val UNITTYPE = 349       // BoxedUnit.TYPE (== classOf[Unit])
 
+  val ARRAYCOPY = 350 // System.arraycopy
+
   /** Initialize the map of primitive methods */
   def init() {
 
@@ -134,8 +136,11 @@ abstract class JSPrimitives {
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
     addPrimitive(BoxedUnit_TYPE, UNITTYPE)
+
+    addPrimitive(getMember(getRequiredModule("java.lang.System"),
+        newTermName("arraycopy")), ARRAYCOPY)
   }
 
   def isJavaScriptPrimitive(code: Int) =
-    code >= 300 && code < 350
+    code >= 300 && code < 360
 }

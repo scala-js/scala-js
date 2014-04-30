@@ -64,29 +64,6 @@ var ScalaJS = {
     return !!(obj && obj.$classData);
   },
 
-  dynamicIsAssignableFrom: function(lhsData, rhsData) {
-    if (lhsData.isPrimitive || rhsData.isPrimitive)
-      return lhsData === rhsData;
-    var fakeInstance;
-    if (rhsData === ScalaJS.d.T)
-      fakeInstance = "some string";
-    else if (rhsData === ScalaJS.d.jl_Boolean)
-      fakeInstance = false;
-    else if (rhsData === ScalaJS.d.jl_Byte ||
-             rhsData === ScalaJS.d.jl_Short ||
-             rhsData === ScalaJS.d.jl_Integer ||
-             rhsData === ScalaJS.d.jl_Float ||
-             rhsData === ScalaJS.d.jl_Double)
-      fakeInstance = 0;
-    else if (rhsData === ScalaJS.d.jl_Long)
-      fakeInstance = ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong();
-    else if (rhsData === ScalaJS.d.sr_BoxedUnit)
-      fakeInstance = void 0;
-    else
-      fakeInstance = {$classData: rhsData};
-    return lhsData.isInstance(fakeInstance);
-  },
-
   throwClassCastException: function(instance, classFullName) {
     throw new ScalaJS.c.jl_ClassCastException().init___T(
       instance + " is not an instance of " + classFullName);
@@ -355,6 +332,18 @@ var ScalaJS = {
     return result;
   },
 
+  systemArraycopy: function(src, srcPos, dest, destPos, length) {
+    var srcu = src.u;
+    var destu = dest.u;
+    if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
+      for (var i = 0; i < length; i++)
+        destu[destPos+i] = srcu[srcPos+i];
+    } else {
+      for (var i = length-1; i >= 0; i--)
+        destu[destPos+i] = srcu[srcPos+i];
+    }
+  },
+
   // is/as for hijacked boxed classes (the non-trivial ones)
 
   isByte: function(v) {
@@ -465,22 +454,25 @@ this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 
 /** @constructor */
 ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun) {
+  // Runtime support
   this.constr = undefined;
   this.parentData = undefined;
   this.ancestors = {};
-  this.isPrimitive = true;
-  this.isInterface = false;
-  this.isArrayClass = false;
   this.componentData = null;
   this.zero = zero;
   this.arrayEncodedName = arrayEncodedName;
-  this.displayName = displayName;
   this._classOf = undefined;
   this._arrayOf = undefined;
-  this.isInstance = function(obj) { return false; };
   this.isArrayOf = function(obj, depth) { return false; };
   if (boxFun)
     this.boxValue = boxFun;
+
+  // java.lang.Class support
+  this["name"] = displayName;
+  this["isPrimitive"] = true;
+  this["isInterface"] = false;
+  this["isArrayClass"] = false;
+  this["isInstance"] = function(obj) { return false; };
 };
 
 /** @constructor */
@@ -497,20 +489,23 @@ ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
       && obj.$classData.arrayBase.ancestors[internalName])
   };
 
+  // Runtime support
   this.constr = undefined;
   this.parentData = parentData;
   this.ancestors = ancestors;
-  this.isPrimitive = false;
-  this.isInterface = isInterface;
-  this.isArrayClass = false;
   this.componentData = null;
   this.zero = null;
   this.arrayEncodedName = "L"+fullName+";";
-  this.displayName = fullName;
   this._classOf = undefined;
   this._arrayOf = undefined;
-  this.isInstance = isInstance;
   this.isArrayOf = isArrayOf;
+
+  // java.lang.Class support
+  this["name"] = fullName;
+  this["isPrimitive"] = false;
+  this["isInterface"] = isInterface;
+  this["isArrayClass"] = false;
+  this["isInstance"] = isInstance;
 };
 
 /** @constructor */
@@ -578,27 +573,30 @@ ScalaJS.ArrayTypeData = function(componentData) {
     return componentBase.isArrayOf(obj, arrayDepth);
   }
 
+  // Runtime support
   this.constr = ArrayClass;
   this.parentData = ScalaJS.d.O;
   this.ancestors = {O: 1};
-  this.isPrimitive = false;
-  this.isInterface = false;
-  this.isArrayClass = true;
   this.componentData = componentData;
   this.arrayBase = componentBase;
   this.arrayDepth = arrayDepth;
   this.zero = null;
   this.arrayEncodedName = encodedName;
-  this.displayName = encodedName;
   this._classOf = undefined;
   this._arrayOf = undefined;
-  this.isInstance = isInstance;
   this.isArrayOf = undefined;
+
+  // java.lang.Class support
+  this["name"] = encodedName;
+  this["isPrimitive"] = false;
+  this["isInterface"] = false;
+  this["isArrayClass"] = true;
+  this["isInstance"] = isInstance;
 };
 
 ScalaJS.ClassTypeData.prototype.getClassOf = function() {
   if (!this._classOf)
-    this._classOf = new ScalaJS.c.jl_Class().init___sjs_js_Dynamic(this);
+    this._classOf = new ScalaJS.c.jl_Class().init___jl_ScalaJSClassData(this);
   return this._classOf;
 };
 
@@ -606,6 +604,42 @@ ScalaJS.ClassTypeData.prototype.getArrayOf = function() {
   if (!this._arrayOf)
     this._arrayOf = new ScalaJS.ArrayTypeData(this);
   return this._arrayOf;
+};
+
+// java.lang.Class support
+
+ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
+  if (this === ScalaJS.d.T)
+    return "some string";
+  else if (this === ScalaJS.d.jl_Boolean)
+    return false;
+  else if (this === ScalaJS.d.jl_Byte ||
+           this === ScalaJS.d.jl_Short ||
+           this === ScalaJS.d.jl_Integer ||
+           this === ScalaJS.d.jl_Float ||
+           this === ScalaJS.d.jl_Double)
+    return 0;
+  else if (this === ScalaJS.d.jl_Long)
+    return ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong();
+  else if (this === ScalaJS.d.sr_BoxedUnit)
+    return void 0;
+  else
+    return {$classData: this};
+};
+
+ScalaJS.ClassTypeData.prototype["getSuperclass"] = function() {
+  return this.parentData ? this.parentData.getClassOf() : null;
+};
+
+ScalaJS.ClassTypeData.prototype["getComponentType"] = function() {
+  return this.componentData ? this.componentData.getClassOf() : null;
+};
+
+ScalaJS.ClassTypeData.prototype["newArrayOfThisClass"] = function(lengths) {
+  var arrayClassData = this;
+  for (var i = 0; i < lengths.length; i++)
+    arrayClassData = arrayClassData.getArrayOf();
+  return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
 
 // Boxes a value. This is identity, except for primitive value types

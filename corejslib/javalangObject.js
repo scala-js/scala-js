@@ -121,7 +121,7 @@ ScalaJS.isArrayOf.O = (function(obj, depth) {
   else if (arrayDepth > depth)
     return true; // because Array[Array[A]] <: Array[Object]
   else
-    return !data.arrayBase.isPrimitive; // because Array[Int] </: Array[Object]
+    return !data.arrayBase["isPrimitive"]; // because Array[Int] </: Array[Object]
 });
 
 ScalaJS.asArrayOf.O = (function(obj, depth) {
