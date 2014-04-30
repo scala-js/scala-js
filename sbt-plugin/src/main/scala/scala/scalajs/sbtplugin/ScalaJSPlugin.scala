@@ -18,6 +18,7 @@ import Implicits._
 import scala.scalajs.tools.io.{IO => _, _}
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.packager._
+import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 
 import scala.scalajs.tools.env._
@@ -25,6 +26,8 @@ import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 
 import scala.scalajs.sbtplugin.testing.TestFramework
+
+import scala.util.Try
 
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = "0.5.0-SNAPSHOT"
@@ -76,6 +79,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val scalaJSOptimizer = settingKey[ScalaJSOptimizer](
         "Scala.js optimizer")
+
+    val jsDependencies = settingKey[Seq[JSModuleID]](
+        "JavaScript libraries this project depends upon")
 
     // Task keys to re-wire sources and run with other VM
     val packageStage = taskKey[Unit]("Run stuff after packageJS")
@@ -306,6 +312,44 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         output
       },
 
+      compile <<= compile.dependsOn(Def.task {
+        val myModule = thisProject.value.id
+        val config = configuration.value.name
+
+        // Collect all libraries
+        val jsDeps = for {
+          dep <- jsDependencies.value
+          if dep.configurations.forall(_ == config)
+        } yield dep.jsDep
+
+        val manifest = JSDependencyManifest(
+            Origin(myModule, config), jsDeps.toList)
+
+        // Write dependency file to class directory
+        val targetDir = classDirectory.value
+        IO.createDirectory(targetDir)
+
+        val file = targetDir / JSDependencyManifest.ManifestFileName
+
+        // Prevent writing if unnecessary to not invalidate dependencies
+        // TODO this can probably be improved using an SBT internal state
+        // mechanism or a custom global cache
+        val needWrite = !file.exists || {
+          Try {
+            val vfile = new FileVirtualTextFile(file)
+            val readManifest = JSDependencyManifest.read(vfile)
+            readManifest != manifest
+          } getOrElse true
+        }
+
+        if (needWrite) {
+          val writer = new FileVirtualTextFileWriter(file)
+
+          try { JSDependencyManifest.write(manifest, writer) }
+          finally { writer.close() }
+        }
+      }),
+
       console <<= console.dependsOn(Def.task(
           streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
               "are running a JVM REPL. JavaScript things won't work.")
@@ -319,9 +363,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       jsEnv in fastOptStage := postLinkJSEnv.value,
       jsEnv in fullOptStage := postLinkJSEnv.value,
 
-      exportedProducts in packageStage := Attributed.blankSeq( packageJS.value),
-      exportedProducts in fastOptStage := Seq(Attributed.blank(fastOptJS.value)),
-      exportedProducts in fullOptStage := Seq(Attributed.blank(fullOptJS.value))
+      exportedProducts in packageStage :=
+        Attributed.blankSeq(packageJS.value) ++ exportedProducts.value,
+      exportedProducts in fastOptStage :=
+        Attributed.blank(fastOptJS.value) +: exportedProducts.value,
+      exportedProducts in fullOptStage :=
+        Attributed.blank(fullOptJS.value) +: exportedProducts.value
 
   )
 
@@ -427,12 +474,14 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       }
   )
 
-  def defaultLoggingConsole =
-      loggingConsole := Some(new LoggerJSConsole(streams.value.log))
-
   val scalaJSDefaultConfigs = (
       inConfig(Compile)(scalaJSCompileSettings) ++
       inConfig(Test)(scalaJSTestSettings)
+  ) ++ Seq(
+      // add all the webjars your jsDependencies depend upon
+      libraryDependencies ++= jsDependencies.value.collect {
+        case JarJSModuleID(module, _) => module
+      }
   )
 
   val scalaJSProjectBaseSettings = Seq(
@@ -446,7 +495,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,
 
-      defaultLoggingConsole
+      jsDependencies := Seq(),
+
+      loggingConsole := Some(new LoggerJSConsole(streams.value.log))
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (

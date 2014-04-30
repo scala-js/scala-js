@@ -1,6 +1,7 @@
 package scala.scalajs.tools.classpath
 
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.jsdep._
 
 import java.io._
 import java.util.zip._
@@ -15,6 +16,7 @@ private[classpath] class ClasspathBuilder {
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
   private val packFiles = mutable.Map.empty[String, VirtualJSFile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
+  private val jsDepManifests = mutable.ListBuffer.empty[JSDependencyManifest]
 
   def addCoreJSLibFile(file: VirtualJSFile): Unit = {
     if (coreJSLibFile.nonEmpty)
@@ -68,9 +70,22 @@ private[classpath] class ClasspathBuilder {
     }
   }
 
+  def addDependencyManifestFile(file: VirtualTextFile): Unit = {
+    jsDepManifests += JSDependencyManifest.read(file)
+  }
+
   def isScalaJSClasspath = coreJSLibFile.isDefined && packFiles.isEmpty
   def isPartialScalaJSClasspath = packFiles.isEmpty
   def isScalaJSPackedClasspath = packFiles.nonEmpty
+
+  def jsDependencies = {
+    val includeList = JSDependencyManifest.createIncludeList(jsDepManifests)
+    for {
+      name <- includeList
+    } yield otherJSFiles.find(_._1.endsWith(name)).getOrElse(
+        sys.error(s"$name is declared as JS dependency but not on classpath")
+    )._2
+  }
 
   /** Returns the result of the builder.
    *  A core JS lib must have been found.
@@ -79,7 +94,7 @@ private[classpath] class ClasspathBuilder {
     if (!isScalaJSClasspath)
       throw new IllegalStateException("Missing core JS lib on the classpath")
     ScalaJSClasspath(
-        coreJSLibFile.get, irFiles.values.toSeq, otherJSFiles.values.toSeq)
+        coreJSLibFile.get, irFiles.values.toSeq, jsDependencies)
   }
 
   /** Returns a partial result of the builder.
@@ -92,7 +107,7 @@ private[classpath] class ClasspathBuilder {
     val coreJSLib = coreJSLibFile.getOrElse(
         VirtualJSFile.empty("scalajs-corejslib.js"))
     ScalaJSClasspath(
-        coreJSLib, irFiles.values.toSeq, otherJSFiles.values.toSeq)
+        coreJSLib, irFiles.values.toSeq, jsDependencies)
   }
 
   /** Returns a packed classpath. There may only be packFiles and
@@ -102,7 +117,7 @@ private[classpath] class ClasspathBuilder {
       throw new IllegalStateException("Packed classpaths may only contain packed files and others")
 
     // Note that we ignore a potential coreJSLib, coreInfoFile and classFiles
-    ScalaJSPackedClasspath(packFiles.values.toSeq, otherJSFiles.values.toSeq)
+    ScalaJSPackedClasspath(packFiles.values.toSeq, jsDependencies)
   }
 
   /** Reads the Scala.js classpath entries in a File-based classpath. */
@@ -140,6 +155,9 @@ private[classpath] class ClasspathBuilder {
           path match {
             case "scalajs-corejslib.js" =>
               addCoreJSLibFile(FileVirtualJSFile(file))
+
+            case JSDependencyManifest.ManifestFileName =>
+              addDependencyManifestFile(FileVirtualTextFile(file))
 
             case _ if name.endsWith(".js") =>
               addJSFileIfNew(path, FileVirtualJSFile(file))
@@ -208,6 +226,10 @@ private[classpath] class ClasspathBuilder {
           case "scalajs-corejslib.js.map" =>
             getOrCreateCorejslib(jarPath)
               .withSourceMap(Some(entryContent))
+
+          case JSDependencyManifest.ManifestFileName =>
+              addDependencyManifestFile(
+                  new MemVirtualTextFile(fullPath).withContent(entryContent))
 
           case _ =>
             if (longName.endsWith(".js")) {

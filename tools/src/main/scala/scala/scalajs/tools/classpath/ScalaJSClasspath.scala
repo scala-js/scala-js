@@ -21,7 +21,7 @@ final case class ScalaJSClasspath(
      *  use mainJSFiles for ordered class files
      */
     irFiles: Seq[VirtualScalaJSIRFile],
-    otherJSFiles: Seq[VirtualJSFile] = Nil
+    jsDependencies: Seq[VirtualJSFile]
 ) extends JSClasspath {
   import ScalaJSClasspath.desugarIRFiles
   lazy val mainJSFiles: Seq[VirtualJSFile] =

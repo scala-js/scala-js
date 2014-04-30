@@ -39,19 +39,8 @@ class NodeJSEnv(
 
   def this() = this(None, Seq.empty, Seq.empty)
 
-  // We need to define importScripts and hack console.log
+  // We need to hack console.log (for duplicate %)
   override protected def initFiles: Seq[VirtualJSFile] = Seq(
-    new MemVirtualJSFile("importScripts.js").withContent(
-        """
-        global.importScripts = function() {
-          for (i in arguments) {
-            // Require script and add stuff to global object
-            var module = require(arguments[i]);
-            for (elem in module)
-              global[elem] = module[elem];
-          }
-        };
-        """),
      new MemVirtualJSFile("nodeConsoleHack.js").withContent(
         """
         // Hack console log to duplicate double % signs
@@ -75,11 +64,7 @@ class NodeJSEnv(
   }
 
   // Node.js specific (system) environment
-  override protected def getVMEnv(args: RunJSArgs) = {
-    val nodeIncludePath = getRequirePath(args).getAbsolutePath
-
-    Seq(s"NODE_PATH=$nodeIncludePath",
-         "NODE_MODULE_CONTEXTS=0") ++ super.getVMEnv(args)
-  }
+  override protected def getVMEnv(args: RunJSArgs) =
+    "NODE_MODULE_CONTEXTS=0" +: super.getVMEnv(args)
 
 }

@@ -72,9 +72,7 @@ class SourceMapper(classpath: JSClasspath) {
   }
 
   private def findSourceMap(path: String) = {
-    val candidates = classpath.mainJSFiles.filter(_.path == path) ++
-      classpath.otherJSFiles.filter(_.path == path)
-
+    val candidates = classpath.jsFiles.filter(_.path == path)
     if (candidates.size != 1) None // better no sourcemap than a wrong one
     else candidates.head.sourceMap
   }
