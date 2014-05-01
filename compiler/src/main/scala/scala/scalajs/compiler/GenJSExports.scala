@@ -347,14 +347,28 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val jsArgPrep = for {
         (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
       } yield {
-        // Code to unbox the argument (if it is defined)
-        val jsUnboxArg = {
-          val unboxedArg = ensureUnboxed(jsArg.ref,
-              enteringPhase(currentRun.posterasurePhase)(param.tpe))
-          if (unboxedArg eq jsArg)
-            js.Skip()
-          else
-            js.Assign(jsArg.ref, unboxedArg)
+
+        // Code to verify the type of the argument (if it is defined)
+        val jsVerifyArg = {
+          val tpePosterasure =
+            enteringPhase(currentRun.posterasurePhase)(param.tpe)
+          val argRef = jsArg.ref
+          val unboxed = ensureUnboxed(argRef, tpePosterasure)
+
+          val verifiedArg = {
+            if (isPrimitiveValueType(param.tpe))
+              // Ensure we don't convert null to a primitive value type
+              js.If(js.BinaryOp("===", argRef, js.Null(), jstpe.BooleanType),
+                genThrowTypeError(s"Found null, expected ${param.tpe}"),
+                unboxed)(unboxed.tpe)
+            else if (argRef ne unboxed)
+              // This is the value class case
+              unboxed
+            else 
+              genAsInstanceOf(param.tpe, argRef)
+          }
+
+          js.Assign(argRef, verifiedArg)
         }
 
         // If argument is undefined and there is a default getter, call it
@@ -381,11 +395,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                 jsArgs.take(defaultGetter.tpe.params.size).map(_.ref)))
           }, {
             // Otherwise, unbox the argument
-            jsUnboxArg
+            jsVerifyArg
           })(jstpe.UndefType)
         } else {
           // Otherwise, it is always the unboxed argument
-          jsUnboxArg
+          jsVerifyArg
         }
       }
 
@@ -533,9 +547,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     m.toList
   }
 
-  private def genThrowTypeError()(
+  private def genThrowTypeError(msg: String = "No matching overload")(
       implicit pos: Position): js.Tree = {
-    js.Throw(js.StringLiteral("No matching overload"))
+    js.Throw(js.StringLiteral(msg))
   }
 
   private def genFormalArgs(count: Int)(implicit pos: Position): List[js.ParamDef] =
