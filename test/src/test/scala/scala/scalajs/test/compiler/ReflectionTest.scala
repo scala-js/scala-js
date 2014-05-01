@@ -8,6 +8,10 @@
 package scala.scalajs.test
 package compiler
 
+import scala.language.implicitConversions
+
+import scala.scalajs.js
+
 /** Tests the little reflection we support */
 object ReflectionTest extends JasmineTest {
 
@@ -23,6 +27,20 @@ object ReflectionTest extends JasmineTest {
       val b = new B
       expect(classOf[A].isInstance(b)).toBeTruthy
       expect(classOf[A].isInstance("hello")).toBeFalsy
+    }
+
+    it("getClass() for anti-boxed primitive types") {
+      implicit def classAsAny(c: java.lang.Class[_]): js.Any =
+        c.asInstanceOf[js.Any]
+      expect((false: Any).getClass).toBe(classOf[java.lang.Boolean])
+      expect(('a': Any).getClass).toBe(classOf[java.lang.Character])
+      expect((1.toByte: Any).getClass).toBe(classOf[java.lang.Integer])
+      expect((1.toShort: Any).getClass).toBe(classOf[java.lang.Integer])
+      expect((1: Any).getClass).toBe(classOf[java.lang.Integer])
+      expect((1L: Any).getClass).toBe(classOf[java.lang.Long])
+      expect((1.5f: Any).getClass).toBe(classOf[java.lang.Double])
+      expect((1.5: Any).getClass).toBe(classOf[java.lang.Double])
+      expect(((): Any).getClass).toBe(classOf[scala.runtime.BoxedUnit])
     }
   }
 

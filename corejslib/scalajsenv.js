@@ -167,7 +167,9 @@ var ScalaJS = {
   },
 
   objectGetClass: function(instance) {
-    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+    if (ScalaJS.is.sjsr_RuntimeLong(instance))
+      return ScalaJS.d.jl_Long.getClassOf();
+    else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
       return instance.getClass__jl_Class();
     else if (typeof(instance) === "string")
       return ScalaJS.d.T.getClassOf();
