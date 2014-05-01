@@ -14,6 +14,15 @@ import java.io._
 import Infos._
 
 object InfoSerializers {
+
+  /** Scala.js IR File Magic Number
+   *
+   *    CA FE : first part of magic number of Java class files
+   *    4A 53 : "JS" in ASCII
+   *
+   */
+  final val IRMagicNumber = 0xCAFE4A53
+
   def serialize(stream: OutputStream, classInfo: ClassInfo): Unit = {
     new Serializer().serialize(stream, classInfo)
   }
@@ -37,6 +46,12 @@ object InfoSerializers {
 
       def writeStrings(seq: Seq[String]): Unit =
         writeSeq(seq)(s.writeUTF(_))
+
+      // Write the Scala.js IR magic number
+      s.writeInt(IRMagicNumber)
+
+      // Write the Scala.js Version
+      s.writeUTF(ScalaJSVersions.current)
 
       import classInfo._
       s.writeUTF(name)
@@ -80,6 +95,8 @@ object InfoSerializers {
       readList(input.readUTF())
 
     def deserializeRough(): RoughClassInfo = {
+      readHeader()
+
       import input._
       val name = readUTF()
       val encodedName = readUTF()
@@ -89,6 +106,8 @@ object InfoSerializers {
     }
 
     def deserializeFull(): ClassInfo = {
+      readHeader()
+
       import input._
 
       val name = readUTF()
@@ -119,6 +138,22 @@ object InfoSerializers {
 
       ClassInfo(name, encodedName, isExported, ancestorCount, kind,
           superClass, ancestors, methods)
+    }
+
+    /** Reads the Scala.js IR header and verifies the version compatibility */
+    def readHeader(): Unit = {
+      // Check magic number
+      if (input.readInt() != IRMagicNumber)
+        throw new IOException("Not a Scala.js IR file")
+
+      // Check that we support this version of the IR
+      val version = input.readUTF()
+      val supported = ScalaJSVersions.binarySupported
+      if (!supported.contains(version)) {
+        throw new IOException(
+            s"This version ($version) of Scala.js IR is not supported. " +
+            s"Supported versions are: ${supported.mkString(", ")}")
+      }
     }
   }
 }
