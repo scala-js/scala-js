@@ -76,7 +76,7 @@ class RhinoJSEnv extends JSEnv {
         None
       } catch {
         case e: RhinoException =>
-          logger.error(e.getStackTraceString)
+          logger.trace(e)
           Some(s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
