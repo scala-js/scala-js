@@ -23,7 +23,7 @@ object ScalaJSCrossVersion {
   private final val ReleaseVersion = raw"""(\d+)\.(\d+)\.(\d+)""".r
 
   def binaryScalaJSVersion(full: String): String = full match {
-    case ReleaseVersion(major, minor, release) => "$major.$minor"
+    case ReleaseVersion(major, minor, release) => s"$major.$minor"
     case _                                     => full
   }
 
