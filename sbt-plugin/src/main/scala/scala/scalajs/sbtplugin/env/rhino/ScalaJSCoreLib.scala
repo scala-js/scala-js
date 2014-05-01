@@ -82,7 +82,7 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
       printer.close()
       val ctx = Context.getCurrentContext()
       ctx.evaluateString(scope, codeWriter.toString(),
-          classDef.pos.source.toString, classDef.pos.line, null)
+          classDef.pos.source.toString, 1, null)
     }
   }
 }
