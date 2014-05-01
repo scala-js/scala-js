@@ -39,11 +39,13 @@ class SourceMapper(classpath: JSClasspath) {
     val originalMapping =
       sourceMapConsumer.getMappingForLine(lineNumber, column)
 
-    new StackTraceElement(
-      ste.getClassName,
-      ste.getMethodName,
-      originalMapping.getOriginalFile,
-      originalMapping.getLineNumber)
+    if (originalMapping != null) {
+      new StackTraceElement(
+          ste.getClassName,
+          ste.getMethodName,
+          originalMapping.getOriginalFile,
+          originalMapping.getLineNumber)
+    } else ste
   }
 
   private def getFirstColumn(sourceMapConsumer: SourceMapConsumerV3,
