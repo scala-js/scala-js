@@ -15,6 +15,17 @@ import js.annotation.{ JSExportDescendentObjects, JSExport }
 @JSExportDescendentObjects
 trait TestFramework {
   @JSExport
+  final def safeRunTests(testOutput: TestOutput, args: js.Array[String])(
+    tests: js.Function0[Unit]): Unit = {
+    try {
+      runTests(testOutput, args)(tests)
+    } catch {
+      case e: Throwable =>
+        testOutput.error(s"Test framework ${getClass.getName} failed:")
+        testOutput.error(e.getMessage, e.getStackTrace)
+    }
+  }
+
   def runTests(testOutput: TestOutput, args: js.Array[String])(
     tests: js.Function0[Unit]): Unit
 }
