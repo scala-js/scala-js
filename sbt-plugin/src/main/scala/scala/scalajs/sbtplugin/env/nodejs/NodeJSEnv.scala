@@ -40,7 +40,7 @@ class NodeJSEnv(
   def this() = this(None, Seq.empty, Seq.empty)
 
   // We need to hack console.log (for duplicate %)
-  override protected def initFiles: Seq[VirtualJSFile] = Seq(
+  override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
      new MemVirtualJSFile("nodeConsoleHack.js").withContent(
         """
         // Hack console log to duplicate double % signs

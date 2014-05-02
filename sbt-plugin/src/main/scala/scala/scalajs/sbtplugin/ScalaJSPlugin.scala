@@ -24,6 +24,7 @@ import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
 import scala.scalajs.tools.env._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
+import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
 
 import scala.scalajs.ir.ScalaJSVersions
 
@@ -66,6 +67,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val jsEnv = settingKey[JSEnv](
         "A JVM-like environment where Scala.js files can be run and tested")
+
+    val requiresDOM = settingKey[Boolean]("Whether this projects needs the DOM")
 
     val scalaJSSetupRunner = settingKey[Boolean](
         "Configure the run task to run the main object with the Scala.js environment")
@@ -487,12 +490,15 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   )
 
   val scalaJSProjectBaseSettings = Seq(
-      relativeSourceMaps := false,
-
+      relativeSourceMaps   := false,
       fullOptJSPrettyPrint := false,
+      requiresDOM          := false,
 
-      preLinkJSEnv  := new RhinoJSEnv,
-      postLinkJSEnv := new NodeJSEnv,
+      preLinkJSEnv  := new RhinoJSEnv(withDOM = requiresDOM.value),
+      postLinkJSEnv := {
+        if (requiresDOM.value) new PhantomJSEnv
+        else new NodeJSEnv
+      },
 
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,

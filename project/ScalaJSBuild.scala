@@ -514,12 +514,11 @@ object ScalaJSBuild extends Build {
       settings = exampleSettings ++ Seq(
           name := "Testing - Scala.js example",
           moduleName := "testing",
+          requiresDOM := true,
 
           jsDependencies ++= Seq(
             "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
-          ),
-
-          preLinkJSEnv := new RhinoJSEnv(withDOM = true)
+          )
       )
   ).dependsOn(compiler % "plugin")
 
