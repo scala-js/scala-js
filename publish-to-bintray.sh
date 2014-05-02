@@ -14,7 +14,7 @@ fi
     BIN_VERSIONS="2.10.4 2.11.0"
     SBT_VERSION="2.10.4"
 
-    LIBS="scalajs-library scalajs-jasmine-test-framework scalajs-tools"
+    LIBS="scalajs-library scalajs-jasmine-test-framework scalajs-tools scalajs-test-bridge"
 
     echo "clean"
 
