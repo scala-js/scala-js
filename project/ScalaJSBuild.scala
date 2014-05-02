@@ -194,7 +194,7 @@ object ScalaJSBuild extends Build {
       base = file("tools"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js tools",
-          scalaVersion := "2.10.2",
+          scalaVersion := "2.10.4",
           unmanagedSourceDirectories in Compile +=
             (scalaSource in (ir, Compile)).value,
           libraryDependencies ++= Seq(
