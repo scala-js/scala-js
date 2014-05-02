@@ -13,7 +13,7 @@ import sbt._
 
 import scala.scalajs.tools.io.MemVirtualJSFile
 import scala.scalajs.tools.classpath.JSClasspath
-import scala.scalajs.tools.env.JSEnv
+import scala.scalajs.tools.env._
 
 import scala.util.control.NonFatal
 
@@ -36,8 +36,7 @@ class ScalaJSEnvRun(env: JSEnv) extends ScalaRun {
       log.debug(s"Type of JSClasspath is: ${jsCp.getClass()}")
 
       // Actually run code
-      env.runJS(jsCp, runnerVirtualFile(mainClass), log,
-          new LoggerJSConsole(log))
+      env.runJS(jsCp, runnerVirtualFile(mainClass), log, ConsoleJSConsole)
     } catch {
       case NonFatal(e) =>
         Some(s"Failed to run JS env ($env): ${e.getMessage}")

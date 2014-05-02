@@ -36,8 +36,8 @@ class TestTask(
       loggers: Array[Logger]): Array[Task] = {
 
     val runnerFile = testRunnerFile(options.frameworkArgs)
-    val testConsole = new TestOutputConsole(eventHandler, loggers,
-        new Events(taskDef), jsClasspath, options.noSourceMap)
+    val testConsole = new TestOutputConsole(ConsoleJSConsole, eventHandler,
+        loggers, new Events(taskDef), jsClasspath, options.noSourceMap)
     val logger = new SbtTestLoggerAccWrapper(loggers)
 
     try {
