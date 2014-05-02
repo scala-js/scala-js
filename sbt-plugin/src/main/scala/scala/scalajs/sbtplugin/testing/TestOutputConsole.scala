@@ -21,6 +21,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 class TestOutputConsole(
+    base: JSConsole,
     handler: EventHandler,
     loggers: Array[Logger],
     events: Events,
@@ -106,7 +107,7 @@ class TestOutputConsole(
             log(_.error, s"Unknown op: $op. Originating log message: $msgStr")
         }
       }
-    } else log(_.info, msgStr)
+    } else base.log(msg)
   }
 
   private def noTrace() = {
