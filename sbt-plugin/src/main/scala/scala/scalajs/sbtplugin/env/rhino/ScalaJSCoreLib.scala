@@ -17,6 +17,7 @@ import scala.scalajs.ir
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.corelib._
 
 class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   import ScalaJSCoreLib._
@@ -36,7 +37,7 @@ class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
   }
 
   def insertInto(context: Context, scope: Scriptable) = {
-    context.evaluateFile(scope, classpath.coreJSLibFile)
+    CoreJSLibs.libs.foreach(context.evaluateFile(scope, _))
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded

@@ -22,6 +22,7 @@ import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.corelib._
 
 import ScalaJSPackedClasspath.packOrderLine
 
@@ -121,7 +122,7 @@ class ScalaJSOptimizer {
     // Write out pack order (constant: file is stand alone)
     builder.addLine(packOrderLine(0))
 
-    builder.addFile(inputs.classpath.coreJSLibFile)
+    CoreJSLibs.libs.foreach(builder.addFile _)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount

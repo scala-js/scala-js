@@ -15,7 +15,7 @@ import scala.collection.mutable
 
 import java.io._
 import java.util.regex.Pattern
-import java.net.URI
+import java.net.{ URI, URISyntaxException }
 
 import com.google.debugging.sourcemap.{ FilePosition, _ }
 
@@ -188,8 +188,15 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     case file: FileVirtualJSFile =>
       file.file.toURI
     case _ =>
-      // Default to relative URI with name. Source map will probably not work
-      new URI(file.name)
+      try new URI(file.path)
+      catch {
+        case e: URISyntaxException =>
+          new URI(
+               "virtualfile", // Pseudo-Scheme
+               file.path,     // Scheme specific part
+               null           // Fragment
+          )
+      }
   }
 }
 

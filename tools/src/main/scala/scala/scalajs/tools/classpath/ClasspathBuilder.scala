@@ -12,17 +12,10 @@ import scala.annotation.tailrec
 
 private[classpath] class ClasspathBuilder {
 
-  private var coreJSLibFile: Option[VirtualJSFile] = None
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
   private val packFiles = mutable.Map.empty[String, VirtualJSFile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
   private val jsDepManifests = mutable.ListBuffer.empty[JSDependencyManifest]
-
-  def addCoreJSLibFile(file: VirtualJSFile): Unit = {
-    if (coreJSLibFile.nonEmpty)
-      throw new IllegalStateException("Duplicate core JS lib on the classpath")
-    coreJSLibFile = Some(file)
-  }
 
   def hasIRFile(relativePathOfIRFile: String): Boolean =
     irFiles.contains(relativePathOfIRFile)
@@ -74,8 +67,7 @@ private[classpath] class ClasspathBuilder {
     jsDepManifests += JSDependencyManifest.read(file)
   }
 
-  def isScalaJSClasspath = coreJSLibFile.isDefined && packFiles.isEmpty
-  def isPartialScalaJSClasspath = packFiles.isEmpty
+  def isScalaJSClasspath = packFiles.isEmpty
   def isScalaJSPackedClasspath = packFiles.nonEmpty
 
   def jsDependencies = {
@@ -87,36 +79,19 @@ private[classpath] class ClasspathBuilder {
     )._2
   }
 
-  /** Returns the result of the builder.
-   *  A core JS lib must have been found.
-   */
+  /** Returns the result of the builder. There may not be any packFiles */
   def result: ScalaJSClasspath = {
     if (!isScalaJSClasspath)
-      throw new IllegalStateException("Missing core JS lib on the classpath")
-    ScalaJSClasspath(
-        coreJSLibFile.get, irFiles.values.toSeq, jsDependencies)
+      sys.error("Not an unpacked classpath (has packfiles)")
+    ScalaJSClasspath(irFiles.values.toSeq, jsDependencies)
   }
 
-  /** Returns a partial result of the builder.
-   *  There may or may not be a core JS lib (in which case it is an empty
-   *  file).
-   */
-  def partialResult: ScalaJSClasspath = {
-    if (!isPartialScalaJSClasspath)
-      throw new IllegalStateException("Pack files on classpath")
-    val coreJSLib = coreJSLibFile.getOrElse(
-        VirtualJSFile.empty("scalajs-corejslib.js"))
-    ScalaJSClasspath(
-        coreJSLib, irFiles.values.toSeq, jsDependencies)
-  }
-
-  /** Returns a packed classpath. There may only be packFiles and
-   *  otherJSFiles */
+  /** Returns a packed classpath. There must be packFiles */
   def packedResult: ScalaJSPackedClasspath = {
     if (!isScalaJSPackedClasspath)
-      throw new IllegalStateException("Packed classpaths may only contain packed files and others")
+      sys.error("Not a packed classpath (no packfile)")
 
-    // Note that we ignore a potential coreJSLib, coreInfoFile and classFiles
+    // Note that we ignore potential irFiles
     ScalaJSPackedClasspath(packFiles.values.toSeq, jsDependencies)
   }
 
@@ -153,9 +128,6 @@ private[classpath] class ClasspathBuilder {
         } else {
           val path = dirPath + name
           path match {
-            case "scalajs-corejslib.js" =>
-              addCoreJSLibFile(FileVirtualJSFile(file))
-
             case JSDependencyManifest.ManifestFileName =>
               addDependencyManifestFile(FileVirtualTextFile(file))
 
@@ -190,18 +162,9 @@ private[classpath] class ClasspathBuilder {
       jarPath: String): Unit = {
     val zipStream = new ZipInputStream(stream)
     val jsFiles = mutable.Map.empty[String, MemVirtualJSFile]
-    var coreJSLib: Option[MemVirtualJSFile] = None
 
     def getOrCreateJSFile(relPath: String, fullPath: String): MemVirtualJSFile =
       jsFiles.getOrElseUpdate(relPath, new MemVirtualJSFile(fullPath))
-
-    def getOrCreateCorejslib(fullPath: String): MemVirtualJSFile = {
-      coreJSLib.getOrElse {
-        val file = new MemVirtualJSFile(fullPath)
-        coreJSLib = Some(file)
-        file
-      }
-    }
 
     @tailrec
     def loop(): Unit = {
@@ -218,15 +181,6 @@ private[classpath] class ClasspathBuilder {
           Some(entry.getTime)
 
         longName match {
-          case "scalajs-corejslib.js" =>
-            getOrCreateCorejslib(fullPath)
-              .withContent(entryContent)
-              .withVersion(entryVersion)
-
-          case "scalajs-corejslib.js.map" =>
-            getOrCreateCorejslib(jarPath)
-              .withSourceMap(Some(entryContent))
-
           case JSDependencyManifest.ManifestFileName =>
               addDependencyManifestFile(
                   new MemVirtualTextFile(fullPath).withContent(entryContent))
@@ -264,8 +218,6 @@ private[classpath] class ClasspathBuilder {
       }
     }
     loop()
-
-    coreJSLib.foreach(addCoreJSLibFile _)
 
     for ((path, jsFile) <- jsFiles) {
       if (jsFile.content != "") // it is not just an unpaired .js.map file

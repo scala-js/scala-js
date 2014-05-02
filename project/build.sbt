@@ -23,3 +23,8 @@ unmanagedSourceDirectories in Compile ++= {
     root / "sbt-plugin/src/main/scala"
   )
 }
+
+unmanagedResourceDirectories in Compile += {
+  val root = baseDirectory.value.getParentFile
+  root / "tools/src/main/resources"
+}
