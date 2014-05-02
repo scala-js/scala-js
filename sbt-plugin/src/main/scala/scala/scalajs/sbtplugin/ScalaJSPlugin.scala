@@ -24,10 +24,12 @@ import scala.scalajs.tools.env._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 
+import scala.scalajs.ir.ScalaJSVersions
+
 import scala.scalajs.sbtplugin.testing.TestFramework
 
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
-  val scalaJSVersion = "0.5.0-SNAPSHOT"
+  val scalaJSVersion = ScalaJSVersions.current
   val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
   val scalaJSScalaVersion = "2.11.0"
   val scalaJSBinaryVersion =
