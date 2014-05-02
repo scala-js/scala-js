@@ -4,9 +4,6 @@ import scala.scalajs.test.JasmineTest
 
 object ElementCreatorTest extends JasmineTest {
 
-  // ElementCreator expects jquery to be present
-  global.importScripts("jquery.js")
-
   describe("ElementCreator") {
 
     it("should be able to create an element in the body") {

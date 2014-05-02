@@ -15,22 +15,6 @@ import scala.scalajs.js.JavaScriptException
 import scala.scalajs.js.annotation.JSExport
 
 object JasmineTestFramework extends TestFramework {
-
-  /* Stub-out timer methods used by Jasmine and not provided by Rhino. */
-  if (!global.setTimeout) {
-    global.setTimeout = scalaJSStub("setTimeout")
-    global.clearTimeout = scalaJSStub("clearTimeout")
-    global.setInterval = scalaJSStub("setInterval")
-    global.clearInterval = scalaJSStub("clearInterval")
-  }
-
-  def scalaJSStub(name: String): js.Function = { () =>
-    global.console.log("Stub for " + name + " called")
-  }
-
-  // make sure jasmine is loaded
-  global.importScripts("jasmine.js")
-
   def runTests(testOutput: TestOutput, args: js.Array[String])(
     tests: js.Function0[Unit]): Unit = {
 

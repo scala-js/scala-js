@@ -5,10 +5,10 @@ import scala.scalajs.tools.io.VirtualJSFile
 import java.io._
 
 trait JSClasspath {
-  /** files that are loaded right away */
   def mainJSFiles: Seq[VirtualJSFile]
-  /** files made available through a load mechanism */
-  def otherJSFiles: Seq[VirtualJSFile]
+  def jsDependencies: Seq[VirtualJSFile]
+  /** all JS files in the classpath */
+  final def jsFiles: Seq[VirtualJSFile] = jsDependencies ++ mainJSFiles
 }
 
 object JSClasspath {

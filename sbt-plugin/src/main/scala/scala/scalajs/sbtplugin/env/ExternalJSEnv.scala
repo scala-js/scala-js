@@ -108,20 +108,9 @@ abstract class ExternalJSEnv(
    */
   protected def getVMEnv(args: RunJSArgs): Seq[String] = additionalEnv
 
-  /** Get the path where available files from classpath are stored.
-   *  Uses caching mechanism to create a temp dir with all files
-   */
-  protected def getRequirePath(args: RunJSArgs): File =
-    availFileCache.get.cacheFiles(args.classpath.otherJSFiles)
-
   /** Get files that are passed to VM */
   protected def getJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    initFiles ++ (args.classpath.mainJSFiles :+ args.code)
-
-  // File Cache for files to be imported
-  private val availFileCache = new ThreadLocal[AvailableFilesCache] {
-    override def initialValue() = new AvailableFilesCache
-  }
+    initFiles ++ (args.classpath.jsFiles :+ args.code)
 
 }
 

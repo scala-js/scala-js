@@ -7,6 +7,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import scala.scalajs.sbtplugin._
+import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import ExternalCompile.scalaJSExternalCompileSettings
@@ -213,6 +214,7 @@ object ScalaJSBuild extends Build {
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           libraryDependencies ++= Seq(
               "org.mozilla" % "rhino" % "1.7R4",
+              "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           )
       )
@@ -494,8 +496,10 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js jasmine test framework",
 
-          libraryDependencies ++= Seq(
-            "org.webjars" % "jasmine" % "1.3.1"
+          jsDependencies ++= Seq(
+            ProvidedJS / "jasmine-polyfills.js",
+            "org.webjars" % "jasmine" % "1.3.1" /
+              "jasmine.js" dependsOn "jasmine-polyfills.js"
           ),
           scalaJSSourceMapSettings
       )
@@ -567,10 +571,11 @@ object ScalaJSBuild extends Build {
           name := "Testing - Scala.js example",
           moduleName := "testing",
 
-          libraryDependencies ++= Seq(
-            "org.webjars" % "jquery" % "1.10.2" % "test",
-            "org.webjars" % "envjs" % "1.2" % "test"
-          )
+          jsDependencies ++= Seq(
+            "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
+          ),
+
+          preLinkJSEnv := new RhinoJSEnv(withDOM = true)
       )
   ).dependsOn(compiler % "plugin")
 

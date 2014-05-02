@@ -16,7 +16,7 @@ import scala.util.Try
 
 final class ScalaJSPackedClasspath private (
     val mainJSFiles: Seq[VirtualJSFile],
-    val otherJSFiles: Seq[VirtualJSFile]
+    val jsDependencies: Seq[VirtualJSFile]
 ) extends JSClasspath
 
 object ScalaJSPackedClasspath {
@@ -43,9 +43,9 @@ object ScalaJSPackedClasspath {
   }
 
   def apply(unorderedPackfiles: Seq[VirtualJSFile],
-      otherJSFiles: Seq[VirtualJSFile]): ScalaJSPackedClasspath = {
+      jsDependencies: Seq[VirtualJSFile]): ScalaJSPackedClasspath = {
     val orderedPackfiles = unorderedPackfiles.sortBy(readPackOrder _)
-    new ScalaJSPackedClasspath(orderedPackfiles, otherJSFiles)
+    new ScalaJSPackedClasspath(orderedPackfiles, jsDependencies)
   }
 
 }
