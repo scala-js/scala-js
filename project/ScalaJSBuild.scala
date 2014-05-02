@@ -120,7 +120,7 @@ object ScalaJSBuild extends Build {
           clean := clean.dependsOn(
               // compiler, library and jasmineTestFramework are aggregated
               clean in tools, clean in plugin,
-              clean in corejslib, clean in javalib, clean in scalalib,
+              clean in javalib, clean in scalalib,
               clean in libraryAux,
               clean in examples, clean in exampleHelloWorld,
               clean in exampleReversi, clean in exampleTesting,
@@ -219,50 +219,6 @@ object ScalaJSBuild extends Build {
           )
       )
   ).dependsOn(tools)
-
-  lazy val corejslib: Project = Project(
-      id = "scalajs-corejslib",
-      base = file("corejslib"),
-      settings = defaultSettings ++ Seq(
-          name := "Scala.js core JS runtime",
-          publishArtifact in Compile := false,
-
-          packageJS in Compile := {
-            val s = streams.value
-            val targetDir = (target in Compile).value
-
-            // hard-coded because order matters!
-            val fileNames =
-              Seq("scalajsenv.js", "javalangObject.js",
-                  "javalangString.js", "DummyParents.js")
-
-            val allJSFiles = fileNames map (baseDirectory.value / _)
-            val output = targetDir / ("scalajs-corejslib.js")
-
-            FileFunction.cached(s.cacheDirectory / "package-js",
-                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-              targetDir.mkdir()
-
-              val writer = new FileVirtualJSFileWriter(output)
-              try {
-                val builder = new JSFileBuilderWithSourceMap(output.getName,
-                    writer.contentWriter, writer.sourceMapWriter, None)
-
-                for (jsFile <- allJSFiles)
-                  builder.addFile(FileVirtualJSFile(jsFile))
-
-                builder.complete()
-              } finally {
-                writer.close()
-              }
-
-              Set(output)
-            } (allJSFiles.toSet)
-
-            Seq(output)
-          }
-      )
-  )
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -463,18 +419,6 @@ object ScalaJSBuild extends Build {
                 (products in libraryAux).value)
             val filter = ("*.sjsir": NameFilter)
             allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
-          },
-
-          // Add the core JS library
-          mappings in packageBin ++= {
-            val lib = (packageJS in corejslib).value.head
-            val sourcemap = new File(lib.getAbsolutePath + ".map")
-
-            Seq(lib -> "scalajs-corejslib.js") ++ {
-              if (sourcemap.isFile)
-                Seq(sourcemap -> "scalajs-corejslib.js.map")
-              else Seq()
-            }
           }
       ))
   ).dependsOn(compiler % "plugin")
@@ -640,6 +584,10 @@ object ScalaJSBuild extends Build {
               toolsBase
             )
           },
+
+          unmanagedResourceDirectories in Compile ++=
+            (unmanagedResourceDirectories in (tools, Compile)).value,
+
           sources in Compile := {
             if (shouldPartest.value) {
               val baseSrcs = (sources in Compile).value

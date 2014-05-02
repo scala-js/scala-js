@@ -14,9 +14,9 @@ import java.io._
 import scala.scalajs.ir
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.corelib._
 
 final case class ScalaJSClasspath(
-    coreJSLibFile: VirtualJSFile,
     /** note that the class files are unordered
      *  use mainJSFiles for ordered class files
      */
@@ -25,7 +25,7 @@ final case class ScalaJSClasspath(
 ) extends JSClasspath {
   import ScalaJSClasspath.desugarIRFiles
   lazy val mainJSFiles: Seq[VirtualJSFile] =
-    coreJSLibFile +: desugarIRFiles(irFiles)
+    CoreJSLibs.libs ++ desugarIRFiles(irFiles)
 }
 
 object ScalaJSClasspath {
@@ -35,13 +35,6 @@ object ScalaJSClasspath {
     val builder = new ClasspathBuilder
     builder.readEntriesInClasspath(classpath)
     builder.result
-  }
-
-  /** Reads and builds the Scala.js classpath entries in a File-based classpath. */
-  def partialFromClasspath(classpath: Seq[File]): ScalaJSClasspath = {
-    val builder = new ClasspathBuilder
-    builder.readEntriesInClasspath(classpath)
-    builder.partialResult
   }
 
   private def desugarIRFiles(irFiles: Seq[VirtualScalaJSIRFile]): Seq[VirtualJSFile] = {

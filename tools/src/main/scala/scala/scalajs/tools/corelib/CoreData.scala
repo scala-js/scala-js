@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.tools.optimizer
+package scala.scalajs.tools.corelib
 
 import scala.scalajs.ir
 import ir.ClassKind

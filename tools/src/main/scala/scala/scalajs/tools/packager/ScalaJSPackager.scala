@@ -18,6 +18,7 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
 
 import ScalaJSPackedClasspath.packOrderLine
+import scala.scalajs.tools.corelib.CoreJSLibs
 
 /** Scala.js packager: concatenates blindly all Scala.js class files. */
 class ScalaJSPackager {
@@ -54,14 +55,15 @@ class ScalaJSPackager {
     builder.addLine(packOrderLine(packOrder))
 
     classpath match {
-      case ScalaJSClasspath(coreJSLibFile, irFiles, _) =>
+      case ScalaJSClasspath(irFiles, _) =>
         /* For a Scala.js classpath, we can emit the IR tree directly to our
          * builder, instead of emitting each in a virtual file then appending
          * that to the builder.
          * This is mostly important for the source map, because otherwise the
          * intermediate source map has to be parsed again.
          */
-        builder.addFile(coreJSLibFile)
+        if (addCoreJSLibs)
+          CoreJSLibs.libs.foreach(builder.addFile _)
 
         val infoAndTrees = irFiles.map(_.infoAndTree)
         for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
@@ -98,6 +100,8 @@ object ScalaJSPackager {
        *  other tools (notably when reading a JSClasspath from the packed files)
        */
       packOrder: Int,
+      /** Whether or not corejslibs should be added at the beginning */
+      addCoreJSLibs: Boolean,
       /** Ask to produce source map for the output. */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */

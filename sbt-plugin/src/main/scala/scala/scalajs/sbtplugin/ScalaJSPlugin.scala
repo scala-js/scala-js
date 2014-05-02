@@ -33,7 +33,7 @@ import scala.util.Try
 
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = ScalaJSVersions.current
-  val scalaJSIsSnapshotVersion = scalaJSVersion endsWith "-SNAPSHOT"
+  val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
   val scalaJSScalaVersion = "2.11.0"
   val scalaJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(scalaJSVersion)
@@ -147,8 +147,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
               s.log.info("Packaging %s ..." format output)
               import ScalaJSPackager._
-              val classpathEntries =
-                ScalaJSClasspath.partialFromClasspath(classpath)
+              val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
               val packager = new ScalaJSPackager
               val relSourceMapBase =
                 if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
@@ -161,6 +160,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
                         name = output.name,
                         writer = outputWriter,
                         packOrder = packOrder,
+                        addCoreJSLibs = packageJSKey == packageExternalDepsJS,
                         wantSourceMap = (emitSourceMaps in packageJSKey).value,
                         relativizeSourceMapBase = relSourceMapBase),
                     s.log)
