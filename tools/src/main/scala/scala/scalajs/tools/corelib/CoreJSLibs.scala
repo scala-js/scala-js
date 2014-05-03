@@ -12,6 +12,8 @@ package scala.scalajs.tools.corelib
 import java.io.File
 import java.net.URI
 
+import scala.io.Source
+
 import scala.scalajs.ir.ScalaJSVersions
 import scala.scalajs.tools.io._
 
@@ -29,17 +31,18 @@ object CoreJSLibs {
     for {
       libName <- libNames
     } yield {
-      val url = getClass.getResource(libName)
-      assert(url != null, s"Require $libName on the classpath")
+      val stream = getClass.getResourceAsStream(libName)
+      assert(stream != null, s"Require $libName on the classpath")
+      val content =
+        try Source.fromInputStream(stream, "UTF-8").mkString
+        finally stream.close()
 
-      val uri = url.toURI
-      val file = new FileVirtualJSFile(new File(uri))
       val publicURI =
-        if (ScalaJSVersions.currentIsSnapshot) uri
-        else githubCoreLibURI.resolve(file.name)
+        if (ScalaJSVersions.currentIsSnapshot) getClass.getResource(libName).toURI
+        else githubCoreLibURI.resolve(libName)
 
       new MemVirtualJSFile(publicURI.toString)
-        .withContent(file.content)
+        .withContent(content)
         .withVersion(Some(())) // it won't change
     }
   }
