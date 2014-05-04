@@ -41,3 +41,7 @@ ScalaJS.h.s_concurrent_forkjoin_ForkJoinWorkerThread = function() {};
 ScalaJS.h.s_concurrent_forkjoin_RecursiveAction = function() {};
 /** @constructor */
 ScalaJS.h.s_math_ScalaNumber = function() {};
+/** @constructor */
+ScalaJS.h.s_reflect_api_TypeCreator = function() {};
+/** @constructor */
+ScalaJS.h.s_reflect_api_Trees$Transformer = function() {};
