@@ -575,6 +575,104 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(ExportedUnderOrgObject.asInstanceOf[js.Any])
     }
 
+    it("should reject bad values for arguments of primitive value type") {
+      class Foo {
+        @JSExport
+        def doBool(x: Boolean) = x
+        @JSExport
+        def doChar(x: Char) = x
+        @JSExport
+        def doByte(x: Byte) = x
+        @JSExport
+        def doShort(x: Short) = x
+        @JSExport
+        def doInt(x: Int) = x
+        @JSExport
+        def doLong(x: Long) = x
+        @JSExport
+        def doFloat(x: Float) = x
+        @JSExport
+        def doDouble(x: Double) = x
+        @JSExport
+        def doUnit(x: Unit) = x
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      // Nulls
+      expect(() => foo.doBool(null)).toThrow
+      expect(() => foo.doChar(null)).toThrow
+      expect(() => foo.doByte(null)).toThrow
+      expect(() => foo.doShort(null)).toThrow
+      expect(() => foo.doInt(null)).toThrow
+      expect(() => foo.doLong(null)).toThrow
+      expect(() => foo.doFloat(null)).toThrow
+      expect(() => foo.doDouble(null)).toThrow
+      expect(() => foo.doUnit(null)).toThrow
+
+      // Class type
+      expect(() => foo.doBool(foo)).toThrow
+      expect(() => foo.doChar(foo)).toThrow
+      expect(() => foo.doByte(foo)).toThrow
+      expect(() => foo.doShort(foo)).toThrow
+      expect(() => foo.doInt(foo)).toThrow
+      expect(() => foo.doLong(foo)).toThrow
+      expect(() => foo.doFloat(foo)).toThrow
+      expect(() => foo.doDouble(foo)).toThrow
+      expect(() => foo.doUnit(foo)).toThrow
+
+      // Bad values
+      expect(() => foo.doBool(1)).toThrow
+      expect(() => foo.doBool("a")).toThrow
+
+      expect(() => foo.doChar(1)).toThrow
+      expect(() => foo.doChar("a")).toThrow
+
+      expect(() => foo.doByte(300)).toThrow
+      expect(() => foo.doByte("a")).toThrow
+
+      expect(() => foo.doShort(32768)).toThrow
+      expect(() => foo.doShort("a")).toThrow
+
+      expect(() => foo.doInt(3.2)).toThrow
+      expect(() => foo.doInt("a")).toThrow
+
+      expect(() => foo.doLong(3.2)).toThrow
+      expect(() => foo.doLong(3)).toThrow
+      expect(() => foo.doLong("a")).toThrow
+
+      expect(() => foo.doFloat("a")).toThrow
+    }
+
+    it("should reject bad values for arguments of value class type") {
+      class Foo {
+        @JSExport
+        def doVC(x: SomeValueClass) = x
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(() => foo.doVC(null)).toThrow
+      expect(() => foo.doVC(foo)).toThrow
+      expect(() => foo.doVC(1)).toThrow
+      expect(() => foo.doVC("a")).toThrow
+    }
+
+    it("should reject bad values for arguments of class type") {
+      class A
+      class B
+
+      class Foo {
+        @JSExport
+        def doA(x: A) = x
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(() => foo.doA(1)).toThrow
+      expect(() => foo.doA((new B).asInstanceOf[js.Any])).toThrow
+      expect(() => foo.doA("a")).toThrow
+    }
   } // describe
 
   describe("@JSExportDescendentObjects") {
