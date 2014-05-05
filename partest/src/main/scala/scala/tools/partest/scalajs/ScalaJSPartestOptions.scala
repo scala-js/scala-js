@@ -8,12 +8,23 @@ class ScalaJSPartestOptions private (
 
 object ScalaJSPartestOptions {
 
-  sealed abstract class TestFilter
-  case object UnknownTests extends TestFilter
-  case object BlacklistedTests extends TestFilter
-  case object WhitelistedTests extends TestFilter
-  case object BuglistedTests extends TestFilter
+  sealed abstract class TestFilter {
+    def descr: String
+  }
+  case object UnknownTests extends TestFilter {
+    override def descr: String = "Unknown"
+  }
+  case object BlacklistedTests extends TestFilter {
+    override def descr: String = "Blacklisted"
+  }
+  case object WhitelistedTests extends TestFilter {
+    override def descr: String = "Whitelisted"
+  }
+  case object BuglistedTests extends TestFilter {
+    override def descr: String = "Buglisted"
+  }
   case class SomeTests(names: List[String]) extends TestFilter {
+    override def descr: String = "Custom " + this.toString
     override def toString() =
       names.map(x => s""""$x"""").mkString("[", ", ", "]")
   }
