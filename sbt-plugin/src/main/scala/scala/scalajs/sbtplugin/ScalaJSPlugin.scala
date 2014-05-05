@@ -486,7 +486,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       // add all the webjars your jsDependencies depend upon
       libraryDependencies ++= jsDependencies.value.collect {
         case JarJSModuleID(module, _) => module
-      }
+      },
+      // have clean reset incremental optimizer state
+      clean <<= clean.dependsOn(Def.task {
+        scalaJSOptimizer.in(Compile, fastOptJS).value.clean()
+        scalaJSOptimizer.in(Test,    fastOptJS).value.clean()
+      })
   )
 
   val scalaJSProjectBaseSettings = Seq(
