@@ -56,7 +56,23 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   /** Full scala version name. Used to discover blacklist (etc.) files */
   val scalaVersion: String
 
-  // Stuf we provide
+  // Stuff we provide
+
+  override def banner: String = {
+    import scala.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+
+    val optimizer = {
+      if (options.fullOpt) "Full"
+      else if (options.fastOpt) "Fast"
+      else "None"
+    }
+    super.banner.trim + s"""
+    |Scala.js version is: $currentVersion
+    |Scala.js options are:
+    |optimizer:           $optimizer
+    |testFilter:          ${options.testFilter.descr}
+    """.stripMargin
+  }
 
   override def runTest(testFile: File): TestState = {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
