@@ -30,7 +30,7 @@ import ScalaJSPackedClasspath.packOrderLine
 class ScalaJSOptimizer {
   import ScalaJSOptimizer._
 
-  private[this] var logger: Logger = _
+  private[this] var persistentState: PersistentState = new PersistentState
 
   /** Applies Scala.js-specific optimizations to a Scala.js classpath.
    *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
@@ -45,64 +45,32 @@ class ScalaJSOptimizer {
    */
   def optimize(inputs: Inputs, outputConfig: OutputConfig,
       logger: Logger): Unit = {
-    this.logger = logger
-    PersistentState.startRun()
+    persistentState.startRun()
     try {
       import inputs._
-      val analyzer = readClasspathAndCreateAnalyzer(classpath)
+      val analyzer = readClasspathAndCreateAnalyzer(classpath, logger)
       analyzer.computeReachability(manuallyReachable, noWarnMissing)
       writeDCEedOutput(inputs, outputConfig, analyzer)
     } finally {
-      PersistentState.endRun()
-      this.logger = null
+      persistentState.endRun()
+      logger.debug(
+          s"Inc. opt stats: reused: ${persistentState.statsReused} -- "+
+          s"invalidated: ${persistentState.statsInvalidated} -- "+
+          s"trees read: ${persistentState.statsTreesRead}")
     }
+  }
+
+  /** Resets all persistent state of this optimizer */
+  def clean(): Unit = {
+    persistentState = new PersistentState
   }
 
   private def readClasspathAndCreateAnalyzer(
-      classpath: ScalaJSClasspath): Analyzer = {
+      classpath: ScalaJSClasspath, logger: Logger): Analyzer = {
     val userInfo = classpath.irFiles map { irFile =>
-      PersistentState.getPersistentIRFile(irFile).info
+      persistentState.getPersistentIRFile(irFile).info
     }
     new Analyzer(logger, CoreData.CoreClassesInfo ++ userInfo)
-  }
-
-  private[this] object PersistentState {
-
-    val files = mutable.Map.empty[String, PersistentIRFile]
-    val encodedNameToPersistentFile =
-      mutable.Map.empty[String, PersistentIRFile]
-
-    var statsReused: Int = 0
-    var statsInvalidated: Int = 0
-    var statsTreesRead: Int = 0
-
-    def startRun(): Unit = {
-      statsReused = 0
-      statsInvalidated = 0
-      statsTreesRead = 0
-      for (file <- files.values)
-        file.startRun()
-    }
-
-    def getPersistentIRFile(irFile: VirtualScalaJSIRFile): PersistentIRFile = {
-      val file = files.getOrElseUpdate(irFile.path,
-          new PersistentIRFile(irFile.path))
-      if (file.updateFile(irFile))
-        statsReused += 1
-      else
-        statsInvalidated += 1
-      encodedNameToPersistentFile += ((file.info.encodedName, file))
-      file
-    }
-
-    def endRun(): Unit = {
-      // "Garbage-collect" persisted versions of files that have disappeared
-      files.retain((_, f) => f.cleanAfterRun())
-      encodedNameToPersistentFile.clear()
-      logger.debug(
-          s"Inc. opt stats: reused: $statsReused -- "+
-          s"invalidated: $statsInvalidated -- trees read: $statsTreesRead")
-    }
   }
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
@@ -132,7 +100,7 @@ class ScalaJSOptimizer {
     for {
       classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
       if classInfo.isNeededAtAll
-      persistentFile <- PersistentState.encodedNameToPersistentFile.get(
+      persistentFile <- persistentState.encodedNameToPersistentFile.get(
           classInfo.encodedName)
     } {
       import ir.Trees._
@@ -141,7 +109,7 @@ class ScalaJSOptimizer {
 
       val d = persistentFile.desugared
       lazy val classDef = {
-        PersistentState.statsTreesRead += 1
+        persistentState.statsTreesRead += 1
         persistentFile.tree
       }
 
@@ -255,6 +223,41 @@ object ScalaJSOptimizer {
   )
 
   // Private helpers -----------------------------------------------------------
+
+  private final class PersistentState {
+    val files = mutable.Map.empty[String, PersistentIRFile]
+    val encodedNameToPersistentFile =
+      mutable.Map.empty[String, PersistentIRFile]
+
+    var statsReused: Int = 0
+    var statsInvalidated: Int = 0
+    var statsTreesRead: Int = 0
+
+    def startRun(): Unit = {
+      statsReused = 0
+      statsInvalidated = 0
+      statsTreesRead = 0
+      for (file <- files.values)
+        file.startRun()
+    }
+
+    def getPersistentIRFile(irFile: VirtualScalaJSIRFile): PersistentIRFile = {
+      val file = files.getOrElseUpdate(irFile.path,
+          new PersistentIRFile(irFile.path))
+      if (file.updateFile(irFile))
+        statsReused += 1
+      else
+        statsInvalidated += 1
+      encodedNameToPersistentFile += ((file.info.encodedName, file))
+      file
+    }
+
+    def endRun(): Unit = {
+      // "Garbage-collect" persisted versions of files that have disappeared
+      files.retain((_, f) => f.cleanAfterRun())
+      encodedNameToPersistentFile.clear()
+    }
+  }
 
   private final class PersistentIRFile(val path: String) {
     import ir.Trees._
