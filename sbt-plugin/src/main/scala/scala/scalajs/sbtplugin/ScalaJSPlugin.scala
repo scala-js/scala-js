@@ -437,29 +437,43 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   )
 
   /** Transformer to force keys (which are not in exclude list) to be
-   *  scoped in a given task.
+   *  scoped in a given task if they weren't scoped to the Global task
    */
   class ForceTaskScope[A](task: TaskKey[A],
       excl: Set[AttributeKey[_]]) extends (ScopedKey ~> ScopedKey) {
-    def apply[B](sc: ScopedKey[B]) = if (!excl.contains(sc.key)) {
-      val scope = sc.scope.copy(task = Select(task.key))
-      sc.copy(scope = scope)
-    } else sc
+    def apply[B](sc: ScopedKey[B]) = {
+      if (!excl.contains(sc.key) && sc.scope.task != Global) {
+        val scope = sc.scope.copy(task = Select(task.key))
+        sc.copy(scope = scope)
+      } else sc
+    }
+  }
+
+  private def filterTask(
+      settings: Seq[Def.Setting[_]],
+      task: TaskKey[_],
+      keys: Set[AttributeKey[_]],
+      excl: Set[AttributeKey[_]]) = {
+    val f = new ForceTaskScope(task, excl)
+
+    for {
+      setting <- settings if keys.contains(setting.key.key)
+    } yield setting mapKey f mapReferenced f
   }
 
   def stagedTestSettings[A](task: TaskKey[A]) = {
-    val keys = Set[AttributeKey[_]](
-        testLoader.key, executeTests.key, test.key, testOnly.key, testQuick.key)
-    val excl = Set[AttributeKey[_]](
-        testExecution.key, testFilter.key, testGrouping.key)
+    // Re-filter general settings
+    val hackedTestTasks = filterTask(Defaults.testTasks, task,
+        keys = Set(testLoader.key, executeTests.key, testListeners.key,
+            testOptions.key, test.key, testOnly.key, testExecution.key),
+        excl = Set(testFilter.key, testGrouping.key))
 
-    val f = new ForceTaskScope(task, excl)
-    val hackedTestTasks = for {
-      setting <- Defaults.testTasks
-      if keys.contains(setting.key.key)
-    } yield setting mapKey f mapReferenced f
+    // Re-filter settings specific to testQuick
+    val hackedTestQuickTasks = filterTask(Defaults.testTasks, task,
+        keys = Set(testFilter.key, testQuick.key),
+        excl = Set(testGrouping.key))
 
-    hackedTestTasks ++
+    hackedTestTasks ++ hackedTestQuickTasks ++
     inTask(task)(scalaJSStageSettings ++ scalaJSTestFrameworkSettings)
   }
 
