@@ -4,7 +4,11 @@ script:
     if [ $KIND == main ]; then
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION testing/test testing/fastOptStage::test testing/fullOptStage::test
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean
+      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
+      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION \
+        'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.test := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
+        'set definedTests.in(ScalaJSBuild.test, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
+        scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean
       sbt "${SBT_SETUP}" 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/test reversi/packageJS reversi/fullOptJS
     fi
