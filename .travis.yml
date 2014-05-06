@@ -1,17 +1,24 @@
 language: scala
 script:
+  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc; fi
+  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION testing/test testing/fastOptStage::test testing/fullOptStage::test; fi
+  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test; fi
   - |
     if [ $KIND == main ]; then
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION testing/test testing/fastOptStage::test testing/fullOptStage::test
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION \
+      # Bug in Phantom.js prevents us from running IntTest - #593
+      sbt "${SBT_SETUP}" \
         'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.test := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         'set definedTests.in(ScalaJSBuild.test, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
+        ++$TRAVIS_SCALA_VERSION \
         scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean
-      sbt "${SBT_SETUP}" 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/test reversi/packageJS reversi/fullOptJS
     fi
+  - |
+    if [ $KIND == main ]; then
+      sbt "${SBT_SETUP}" \
+        'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION \
+        scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
+    fi
+  - if [ $KIND == main ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/test reversi/packageJS reversi/fullOptJS; fi
   - if [ $KIND == main ]; then sh checksizes.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == main ]; then sh check-partest-coverage.sh $TRAVIS_SCALA_VERSION; fi
   - if [ $KIND == tools ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package; fi
@@ -62,10 +69,11 @@ matrix:
       scala: 2.11.0
       env:
         - KIND=partestc
-    - jdk: oraclejdk7
-      scala: 2.10.2
-      env:
-        - KIND=main
+# This strangely fails on travis - #498
+#    - jdk: oraclejdk7
+#      scala: 2.10.2
+#      env:
+#        - KIND=main
     - jdk: oraclejdk7
       scala: 2.11.0
       env:
