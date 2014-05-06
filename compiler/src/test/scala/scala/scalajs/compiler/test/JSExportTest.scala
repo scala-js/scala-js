@@ -146,31 +146,6 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noAnyValReturn = {
-    """
-    class AnyValRet {
-      @JSExport
-      def anyVal: AnyVal = 1
-
-      @JSExport
-      def badGen[T](x: T) = x
-    }
-    """ hasErrors
-    """
-       |newSource1.scala:4: error: You may not export a method whose return type is neither a subtype of
-       |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
-       |primitive value type).
-       |      @JSExport
-       |       ^
-       |newSource1.scala:7: error: You may not export a method whose return type is neither a subtype of
-       |AnyRef nor a concrete subtype of AnyVal (i.e. a value class or a
-       |primitive value type).
-       |      @JSExport
-       |       ^
-    """
-  }
-
-  @Test
   def noExportLocal = {
     // Local class
     """
