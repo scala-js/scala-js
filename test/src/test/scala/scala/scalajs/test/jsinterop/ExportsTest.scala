@@ -644,7 +644,7 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doFloat("a")).toThrow
     }
 
-    it("should reject bad values for arguments of value class type") {
+    xit("should reject bad values for arguments of value class type - #613") {
       class Foo {
         @JSExport
         def doVC(x: SomeValueClass) = x
