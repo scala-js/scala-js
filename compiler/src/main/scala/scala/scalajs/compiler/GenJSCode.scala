@@ -3373,8 +3373,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body foreach gen
           case vd @ ValDef(mods, name, tpt, rhs) =>
             val fsym = vd.symbol
-            assert(fsym.isParamAccessor,
-                s"Found field $fsym which is not a param accessor in anon function $cd")
+            if (!fsym.isParamAccessor)
+              onFailure(s"Found field $fsym which is not a param accessor in anon function $cd")
+
             if (fsym.isPrivate) {
               paramAccessors ::= fsym
             } else {
@@ -3384,8 +3385,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           case dd: DefDef =>
             val ddsym = dd.symbol
             if (ddsym.isClassConstructor) {
-              assert(ddsym.isPrimaryConstructor,
-                  s"Non-primary constructor $ddsym in anon function $cd")
+              if (!ddsym.isPrimaryConstructor)
+                onFailure(s"Non-primary constructor $ddsym in anon function $cd")
             } else {
               val name = dd.name.toString
               if (name == "apply" || (ddsym.isSpecialized && name.startsWith("apply$"))) {
@@ -3397,23 +3398,27 @@ abstract class GenJSCode extends plugins.PluginComponent
               }
             }
           case _ =>
-            abort("Illegal tree in gen of genAndRecordAnonFunctionClass(): " + tree)
+            onFailure("Illegal tree in gen of genAndRecordAnonFunctionClass(): " + tree)
         }
       }
       gen(cd.impl)
       paramAccessors = paramAccessors.reverse // preserve definition order
-      assert(applyDef ne null,
-          s"Did not find any apply method in anon function $cd")
+
+      if (applyDef eq null)
+        onFailure(s"Did not find any apply method in anon function $cd")
 
       // Second step: build the list of useful constructor parameters
 
       val ctorParams = sym.primaryConstructor.tpe.params
-      assert(
-          paramAccessors.size == ctorParams.size ||
-          (paramAccessors.size == ctorParams.size-1 &&
-              ctorParams.head.unexpandedName == newTermName("arg$outer")),
-          s"Have param accessors $paramAccessors but "+
-          s"ctor params $ctorParams in anon function $cd")
+
+      if (paramAccessors.size != ctorParams.size &&
+          !(paramAccessors.size == ctorParams.size-1 &&
+              ctorParams.head.unexpandedName == newTermName("arg$outer"))) {
+        onFailure(
+            s"Have param accessors $paramAccessors but "+
+            s"ctor params $ctorParams in anon function $cd")
+      }
+
       val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
       val usedCtorParams =
         if (hasUnusedOuterCtorParam) ctorParams.tail
