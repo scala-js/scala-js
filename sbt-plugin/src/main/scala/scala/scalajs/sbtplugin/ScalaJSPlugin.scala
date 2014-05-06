@@ -143,7 +143,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
           if (classpath.isEmpty) {
             import ScalaJSPackedClasspath.packOrderLine
 
-            outputWriter.contentWriter.write(packOrderLine(packOrder))
+            outputWriter.contentWriter.write(packOrderLine(packOrder) + "\n")
             outputWriter.contentWriter.write("/* dummy empty file */\n")
           } else {
             FileFunction.cached(taskCacheDir,
