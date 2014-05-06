@@ -12,6 +12,8 @@ package scala.scalajs.tools.packager
 import java.io._
 import java.net.URI
 
+import scala.scalajs.ir
+
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
@@ -66,6 +68,10 @@ class ScalaJSPackager {
           CoreJSLibs.libs.foreach(builder.addFile _)
 
         val infoAndTrees = irFiles.map(_.infoAndTree)
+
+        val dummyParents = createDummyParents(infoAndTrees.map(_._1))
+        builder.addFile(dummyParents)
+
         for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
           builder.addIRTree(tree)
 
@@ -78,6 +84,25 @@ class ScalaJSPackager {
       builder.addFile(file)
 
     builder.complete()
+  }
+
+  private def createDummyParents(infos: Seq[ir.Infos.ClassInfo]) = {
+    // Hardcode existence of java.lang.Object (O) and java.lang.String (T)
+    val existingClasses = Set("O", "T") ++ infos.map(_.encodedName)
+
+    val buf = new StringBuilder
+    buf.append("// Generated DummyParents.js file\n\n")
+
+    for {
+      info   <- infos
+      parent  = info.superClass
+      if parent != "" && !existingClasses.contains(parent)
+    } {
+      buf.append("/** @constructor */\n")
+      buf.append(s"ScalaJS.h.$parent = ScalaJS.h.$parent || function() {};\n")
+    }
+
+    new MemVirtualJSFile("DummyParents.js").withContent(buf.toString)
   }
 }
 

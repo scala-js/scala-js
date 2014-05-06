@@ -22,8 +22,7 @@ object CoreJSLibs {
   private val libNames = Seq(
       "scalajsenv.js",
       "javalangObject.js",
-      "javalangString.js",
-      "DummyParents.js")
+      "javalangString.js")
 
   lazy val libs: Seq[VirtualJSFile] = loadLibs()
 
