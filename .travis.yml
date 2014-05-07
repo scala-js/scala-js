@@ -5,9 +5,10 @@ script:
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION package packageDoc
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION testing/test testing/fastOptStage::test testing/fullOptStage::test
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
-      sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION \
+      sbt "${SBT_SETUP}" \
         'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.test := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         'set definedTests.in(ScalaJSBuild.test, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
+        ++$TRAVIS_SCALA_VERSION \
         scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean
       sbt "${SBT_SETUP}" 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$TRAVIS_SCALA_VERSION scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test
       sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/test reversi/packageJS reversi/fullOptJS
@@ -17,6 +18,14 @@ script:
   - if [ $KIND == tools ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package; fi
   - if [ $KIND == sbtplugin ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-tools/package scalajs-sbt-plugin/package scalajs-sbt-plugin/test; fi
   - if [ $KIND == partestc ]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-partest/compile; fi
+  - |
+    if [ $KIND == sbtplugin-test ]; then
+      # Publish Scala.js artifacts locally
+      sbt "${SBT_SETUP}" ++2.11.0 publishLocal ++2.10.4 scalajs-tools/publishLocal scalajs-sbt-plugin/publishLocal
+      # Go into standalone project and test
+      cd sbt-plugin-test
+      sbt "${SBT_SETUP}" noDOM/run withDOM/run test
+    fi
 after_success:
   - if [[ "${PUBLISH_ENABLED}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION publish; fi
   - if [[ "${PUBLISH_COMPILER}" == "true" && "${TRAVIS_PULL_REQUEST}" == "false" && "${KIND}" == "main" && "${PUBLISH_USER}" != "" && "${PUBLISH_PASS}" != "" ]]; then sbt "${SBT_SETUP}" ++$TRAVIS_SCALA_VERSION scalajs-compiler/publish; fi
@@ -62,6 +71,9 @@ matrix:
       scala: 2.11.0
       env:
         - KIND=partestc
+    - jdk: openjdk6
+      env:
+        - KIND=sbtplugin-test
     - jdk: oraclejdk7
       scala: 2.10.2
       env:
