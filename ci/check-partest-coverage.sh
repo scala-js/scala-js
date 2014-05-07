@@ -21,7 +21,7 @@ fi
 FULLVER="$1"
 
 # Config
-BASEDIR="`dirname $0`"
+BASEDIR="`dirname $0`/.."
 TESTDIR="$BASEDIR/scalalib/fetchedSources/$1/test/files"
 KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs/$1/"
 
