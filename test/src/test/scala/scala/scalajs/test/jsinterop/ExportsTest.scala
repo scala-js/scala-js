@@ -247,6 +247,19 @@ object ExportsTest extends JasmineTest {
       expect((result: Any) == (new SomeValueClass(5))).toBeTruthy
     }
 
+    it("should allow exports with Any as return type") {
+      class A
+      class Foo {
+        @JSExport
+        def foo(switch: Boolean): Any =
+          if (switch) 1 else new A
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(foo.foo(true).isInstanceOf[Int]).toBeTruthy
+      expect(foo.foo(false).isInstanceOf[A]).toBeTruthy
+    }
+
     it("should accept boxed value classes as parameter") {
       class Foo {
         @JSExport
@@ -644,7 +657,7 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doFloat("a")).toThrow
     }
 
-    it("should reject bad values for arguments of value class type") {
+    it("should reject bad values for arguments of value class type - #613") {
       class Foo {
         @JSExport
         def doVC(x: SomeValueClass) = x

@@ -2471,12 +2471,12 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen a boxing operation (tpe is the primitive type) */
-    private def makePrimitiveBox(expr: js.Tree, tpe: Type)(
+    def makePrimitiveBox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree =
       makePrimitiveBoxUnbox(expr, tpe, unbox = false)
 
     /** Gen an unboxing operation (tpe is the primitive type) */
-    private def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
+    def makePrimitiveUnbox(expr: js.Tree, tpe: Type)(
         implicit pos: Position): js.Tree =
       makePrimitiveBoxUnbox(expr, tpe, unbox = true)
 

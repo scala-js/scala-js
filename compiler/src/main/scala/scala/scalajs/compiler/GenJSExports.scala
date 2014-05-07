@@ -352,23 +352,24 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val jsVerifyArg = {
           val tpePosterasure =
             enteringPhase(currentRun.posterasurePhase)(param.tpe)
-          val argRef = jsArg.ref
-          val unboxed = ensureUnboxed(argRef, tpePosterasure)
-
-          val verifiedArg = {
-            if (isPrimitiveValueType(param.tpe))
+          val verifiedArg = tpePosterasure match {
+            case tpe if isPrimitiveValueType(tpe) =>
+              val unboxed = makePrimitiveUnbox(jsArg.ref, tpe)
               // Ensure we don't convert null to a primitive value type
-              js.If(js.BinaryOp("===", argRef, js.Null(), jstpe.BooleanType),
-                genThrowTypeError(s"Found null, expected ${param.tpe}"),
+              js.If(js.BinaryOp("===", jsArg.ref, js.Null(), jstpe.BooleanType),
+                genThrowTypeError(s"Found null, expected $tpe"),
                 unboxed)(unboxed.tpe)
-            else if (argRef ne unboxed)
-              // This is the value class case
-              unboxed
-            else 
-              genAsInstanceOf(param.tpe, argRef)
+            case tpe: ErasedValueType =>
+              val boxedClass = tpe.valueClazz
+              val unboxMethod = boxedClass.derivedValueClassUnbox
+              genApplyMethod(
+                  genAsInstanceOf(tpe, jsArg.ref),
+                  boxedClass, unboxMethod, Nil)
+            case tpe =>
+              genAsInstanceOf(tpe, jsArg.ref)
           }
 
-          js.Assign(argRef, verifiedArg)
+          js.Assign(jsArg.ref, verifiedArg)
         }
 
         // If argument is undefined and there is a default getter, call it
