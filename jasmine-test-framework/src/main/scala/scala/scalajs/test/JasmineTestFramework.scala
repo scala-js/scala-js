@@ -15,8 +15,8 @@ import scala.scalajs.js.JavaScriptException
 import scala.scalajs.js.annotation.JSExport
 
 object JasmineTestFramework extends TestFramework {
-  def runTests(testOutput: TestOutput, args: js.Array[String])(
-    tests: js.Function0[Unit]): Unit = {
+  def runTest(testOutput: TestOutput, args: js.Array[String])(
+    test: js.Function0[Test]): Unit = {
 
     val jasmine = global.jasmine
     val reporter = new JasmineTestReporter(testOutput)
@@ -25,7 +25,7 @@ object JasmineTestFramework extends TestFramework {
       testOutput.log.warn(s"Jasmine: Discarding arguments: $args")
 
     try {
-      tests()
+      test()
 
       val jasmineEnv = jasmine.getEnv()
       jasmineEnv.addReporter(reporter.asInstanceOf[js.Any])
