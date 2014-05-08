@@ -61,7 +61,7 @@ class TestTask(
     val jsArgArray = listToJS(args)
 
     new MemVirtualJSFile("Generated test launcher file").
-      withContent(s"""$testFramework().safeRunTests(
+      withContent(s"""$testFramework().safeRunTest(
                      |  scala.scalajs.test.internal.ConsoleTestOutput(),
                      |  $jsArgArray,
                      |  $testKey);""".stripMargin)

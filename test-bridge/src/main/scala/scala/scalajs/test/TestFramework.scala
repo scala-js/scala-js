@@ -12,13 +12,18 @@ package scala.scalajs.test
 import scala.scalajs.js
 import js.annotation.{ JSExportDescendentObjects, JSExport }
 
+/** This trait should be sub classed (as object) by a concrete test framework
+ *
+ *  It will receive a call to runTest for each object on the classpath
+ *  extending Test
+ */
 @JSExportDescendentObjects
 trait TestFramework {
   @JSExport
-  final def safeRunTests(testOutput: TestOutput, args: js.Array[String])(
-    tests: js.Function0[Unit]): Unit = {
+  final def safeRunTest(testOutput: TestOutput, args: js.Array[String])(
+    test: js.Function0[Test]): Unit = {
     try {
-      runTests(testOutput, args)(tests)
+      runTest(testOutput, args)(test)
     } catch {
       case e: Throwable =>
         testOutput.error(s"Test framework ${getClass.getName} failed:")
@@ -26,6 +31,6 @@ trait TestFramework {
     }
   }
 
-  def runTests(testOutput: TestOutput, args: js.Array[String])(
-    tests: js.Function0[Unit]): Unit
+  def runTest(testOutput: TestOutput, args: js.Array[String])(
+    test: js.Function0[Test]): Unit
 }
