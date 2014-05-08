@@ -2011,6 +2011,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           val rtree = toLong(rsrc, args(1).tpe)
           val rtLongTpe = RuntimeLongClass.tpe
 
+          def genShift(methodName: String): js.Tree = {
+            val rtree =
+              if (isLongType(args(1).tpe)) genLongCall(rsrc, "toInt")
+              else rsrc
+            genOlLongCall(ltree, methodName, rtree)(IntTpe)
+          }
+
           code match {
             case ADD => genOlLongCall(ltree, "+",   rtree)(rtLongTpe)
             case SUB => genOlLongCall(ltree, "-",   rtree)(rtLongTpe)
@@ -2020,15 +2027,15 @@ abstract class GenJSCode extends plugins.PluginComponent
             case OR  => genOlLongCall(ltree, "|",   rtree)(rtLongTpe)
             case XOR => genOlLongCall(ltree, "^",   rtree)(rtLongTpe)
             case AND => genOlLongCall(ltree, "&",   rtree)(rtLongTpe)
-            case LSL => genOlLongCall(ltree, "<<",  rtree)(IntTpe)
-            case LSR => genOlLongCall(ltree, ">>>", rtree)(IntTpe)
-            case ASR => genOlLongCall(ltree, ">>",  rtree)(IntTpe)
             case LT  => genOlLongCall(ltree, "<",   rtree)(rtLongTpe)
             case LE  => genOlLongCall(ltree, "<=",  rtree)(rtLongTpe)
             case GT  => genOlLongCall(ltree, ">",   rtree)(rtLongTpe)
             case GE  => genOlLongCall(ltree, ">=",  rtree)(rtLongTpe)
             case EQ  => genLongCall  (ltree, "equals", rtree)
             case NE  => genLongCall  (ltree, "notEquals", rtree)
+            case LSL => genShift("<<")
+            case LSR => genShift(">>>")
+            case ASR => genShift(">>")
             case _ =>
               abort("Unknown binary operation code: " + code)
           }
