@@ -41,6 +41,27 @@ object LongTest extends JasmineTest {
       expect(5F * 4L == 20F).toBeTruthy
     }
 
+    it("should support shifts with Longs - #622") {
+      def l(x: Long): Long = x
+      def i(x: Int): Int = x
+
+      expect(l(-7L) >>> 100L == 268435455L).toBeTruthy
+      expect(l(-7L) >> 100L == -1L).toBeTruthy
+      expect(l(-7L) >> 100 == -1L).toBeTruthy
+      expect(l(-7L) >>> 100 == 268435455).toBeTruthy
+      expect(l(-7L) << 100L == -481036337152L).toBeTruthy
+      expect(l(-7L) << 100 == -481036337152L).toBeTruthy
+      expect(l(7L) << 100L == 481036337152L).toBeTruthy
+      expect(l(8L) << 100L == 549755813888L).toBeTruthy
+      expect(l(-7L) >>> 4 == 1152921504606846975L).toBeTruthy
+
+      expect(i(7) << 100).toEqual(112)
+      expect(i(-7) >> 100).toEqual(-1)
+      expect(i(-7) >>> 100).toEqual(268435455)
+      expect(i(-65) >> 100).toEqual(-5)
+      expect(i(-65) >> 4).toEqual(-5)
+    }
+
     it("primitives should convert to Long") {
       // Byte
       expect(112.toByte.toLong == 112L).toBeTruthy
