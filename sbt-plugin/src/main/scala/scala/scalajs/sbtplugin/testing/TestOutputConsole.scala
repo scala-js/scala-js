@@ -37,8 +37,6 @@ class TestOutputConsole(
   import TestOutputConsole._
   import events._
 
-  private val messagePrefix = "``|%^scala.js-test-comm&&"
-
   private val traceBuf = new ArrayBuffer[StackTraceElement]
   private val logBuffer = new ArrayBuffer[LogElement]
 
@@ -51,80 +49,78 @@ class TestOutputConsole(
   private lazy val sourceMapper = new SourceMapper(classpath)
 
   override def log(msg: Any): Unit = {
-    val msgStr = msg.toString
-    if (msgStr.startsWith(messagePrefix)) {
-      val data = msgStr.stripPrefix(messagePrefix)
+    val data = msg.toString
+    val sepPos = data.indexOf("|")
 
-      val sepPos = data.indexOf("|")
+    if (sepPos == -1)
+      log(_.error, s"Malformed message: $data")
+    else {
+      val op = data.substring(0, sepPos)
+      val message = unescape(data.substring(sepPos + 1))
 
-      if (sepPos == -1)
-        log(_.error, s"Malformed message: $msgStr")
-      else {
-        val op = data.substring(0, sepPos)
-        val message = unescape(data.substring(sepPos + 1))
+      op match {
+        case "console-log" =>
+          base.log(message)
+        case "error" =>
+          val trace = getTrace()
+          logWithEvent(_.error,
+            messageWithStack(message, trace),
+            Error(new TestException(message, trace))
+          )
+        case "failure" =>
+          val trace = getTrace()
+          logWithEvent(_.error,
+            messageWithStack(message, trace),
+            Failure(new TestException(message, trace))
+          )
+        case "succeeded" =>
+          noTrace()
+          logWithEvent(_.info, message, Succeeded)
+        case "skipped" =>
+          noTrace()
+          logWithEvent(_.info, message, Skipped)
+        case "pending" =>
+          noTrace()
+          logWithEvent(_.info, message, Pending)
+        case "ignored" =>
+          noTrace()
+          logWithEvent(_.info, message, Ignored)
+        case "canceled" =>
+          noTrace()
+          logWithEvent(_.info, message, Canceled)
+        case "error-log" =>
+          noTrace()
+          log(_.error, message)
+        case "info" =>
+          noTrace()
+          log(_.info, message)
+        case "warn" =>
+          noTrace()
+          log(_.warn, message)
+        case "trace" =>
+          val Array(className, methodName, fileName,
+              lineNumberStr, columnNumberStr) = message.split('|')
 
-        op match {
-          case "error" =>
-            val trace = getTrace()
-            logWithEvent(_.error,
-              messageWithStack(message, trace),
-              Error(new TestException(message, trace))
-            )
-          case "failure" =>
-            val trace = getTrace()
-            logWithEvent(_.error,
-              messageWithStack(message, trace),
-              Failure(new TestException(message, trace))
-            )
-          case "succeeded" =>
-            noTrace()
-            logWithEvent(_.info, message, Succeeded)
-          case "skipped" =>
-            noTrace()
-            logWithEvent(_.info, message, Skipped)
-          case "pending" =>
-            noTrace()
-            logWithEvent(_.info, message, Pending)
-          case "ignored" =>
-            noTrace()
-            logWithEvent(_.info, message, Ignored)
-          case "canceled" =>
-            noTrace()
-            logWithEvent(_.info, message, Canceled)
-          case "error-log" =>
-            noTrace()
-            log(_.error, message)
-          case "info" =>
-            noTrace()
-            log(_.info, message)
-          case "warn" =>
-            noTrace()
-            log(_.warn, message)
-          case "trace" =>
-            val Array(className, methodName, fileName,
-                lineNumberStr, columnNumberStr) = message.split('|')
+          def tryParse(num: String, name: String) = Try(num.toInt).getOrElse {
+            log(_.warn, s"Couldn't parse $name number in StackTrace: $num")
+            -1
+          }
 
-            def tryParse(num: String, name: String) = Try(num.toInt).getOrElse {
-              log(_.warn, s"Couldn't parse $name number in StackTrace: $num")
-              -1
-            }
+          val lineNumber   = tryParse(lineNumberStr, "line")
+          val columnNumber = tryParse(columnNumberStr, "column")
 
-            val lineNumber   = tryParse(lineNumberStr, "line")
-            val columnNumber = tryParse(columnNumberStr, "column")
+          val ste =
+            new StackTraceElement(className, methodName, fileName, lineNumber)
 
-            val ste =
-              new StackTraceElement(className, methodName, fileName, lineNumber)
-
-            if (ignoreSourceMapping)
-              traceBuf += ste
-            else
-              traceBuf += sourceMapper.map(ste, columnNumber)
-          case _ =>
-            noTrace()
-            log(_.error, s"Unknown op: $op. Originating log message: $msgStr")
-        }
+          if (ignoreSourceMapping)
+            traceBuf += ste
+          else
+            traceBuf += sourceMapper.map(ste, columnNumber)
+        case _ =>
+          noTrace()
+          log(_.error, s"Unknown op: $op. Originating log message: $data")
       }
-    } else base.log(msg)
+    }
   }
 
   private def noTrace() = {
