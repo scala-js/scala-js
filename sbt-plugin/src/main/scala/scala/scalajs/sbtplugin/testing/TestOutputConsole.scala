@@ -140,7 +140,7 @@ class TestOutputConsole(
     log(method, message)
   }
 
-  private val colorPattern = raw"\033\[\d{1, 2}m"
+  private val colorPattern = raw"\033\[\d{1,2}m"
 
   private def removeColors(message: String): String =
     message.replaceAll(colorPattern, "")
