@@ -1,5 +1,7 @@
 #!/bin/sh
 
+BASEDIR="`dirname $0`/.."
+
 FULLVER="$1"
 
 case $FULLVER in
@@ -17,10 +19,10 @@ case $FULLVER in
     ;;
 esac
 
-REVERSI_EXTDEPS_SIZE=$(stat '-c%s' examples/reversi/target/scala-$VER/reversi-extdeps.js)
-REVERSI_SELF_SIZE=$(stat '-c%s' examples/reversi/target/scala-$VER/reversi.js)
-REVERSI_PREOPT_SIZE=$(stat '-c%s' examples/reversi/target/scala-$VER/reversi-fastopt.js)
-REVERSI_OPT_SIZE=$(stat '-c%s' examples/reversi/target/scala-$VER/reversi-opt.js)
+REVERSI_EXTDEPS_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-extdeps.js")
+REVERSI_SELF_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi.js")
+REVERSI_PREOPT_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-fastopt.js")
+REVERSI_OPT_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-opt.js")
 
 case $FULLVER in
   2.10.2)

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE ci [
+  <!ELEMENT ci (task*,matrix*)>
+  <!ELEMENT task (#PCDATA)>
+  <!ATTLIST task id ID #REQUIRED>
+  <!ELEMENT matrix (run*)>
+  <!ATTLIST matrix id ID #REQUIRED>
+  <!ELEMENT run (v*)>
+  <!ATTLIST run matrix IDREF #IMPLIED>
+  <!ATTLIST run task IDREF #IMPLIED>
+  <!ELEMENT v (#PCDATA)>
+  <!ATTLIST v n CDATA #REQUIRED>
+]>
+<ci>
+
+  <task id="main"><![CDATA[
+    sbt ++$scala package packageDoc &&
+    sbt ++$scala testing/test testing/fastOptStage::test testing/fullOptStage::test &&
+    sbt ++$scala scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test &&
+    sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.test := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
+        'set definedTests.in(ScalaJSBuild.test, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
+         ++$scala \
+         scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean &&
+    sbt 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$scala scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test &&
+    sbt ++$scala scalajs-compiler/test reversi/packageJS reversi/fullOptJS &&
+    sh ci/checksizes.sh $scala &&
+    sh ci/check-partest-coverage.sh $scala
+  ]]></task>
+
+  <task id="tools"><![CDATA[
+    sbt ++$scala scalajs-tools/package
+  ]]></task>
+
+  <task id="sbtplugin"><![CDATA[
+    sbt ++$scala scalajs-tools/package scalajs-sbt-plugin/package scalajs-sbt-plugin/test
+  ]]></task>
+
+  <task id="partestc"><![CDATA[
+    sbt ++$scala scalajs-partest/compile
+  ]]></task>
+
+  <task id="sbtplugin-test"><![CDATA[
+    # Publish Scala.js artifacts locally
+    sbt ++2.11.0 publishLocal ++2.10.4 scalajs-tools/publishLocal scalajs-sbt-plugin/publishLocal
+    # Go into standalone project and test
+    cd sbt-plugin-test
+    sbt noDOM/run withDOM/run test
+  ]]></task>
+
+  <task id="partest-noopt"><![CDATA[
+    sbt ++$scala package scalajs-partest/test
+  ]]></task>
+
+  <task id="partest-fastopt"><![CDATA[
+    sbt ++$scala package scalajs-partest/testOnly -- --fastOpt
+  ]]></task>
+
+  <task id="partest-fullopt"><![CDATA[
+    sbt ++$scala package scalajs-partest/testOnly -- --fullOpt
+  ]]></task>
+
+  <matrix id="pr">
+    <run task="main">
+      <v n="scala">2.10.2</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.3</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.4</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.0</v>
+    </run>
+    <run task="sbtplugin">
+      <v n="scala">2.10.4</v>
+    </run>
+    <run task="tools">
+      <v n="scala">2.11.0</v>
+    </run>
+    <run task="partestc">
+      <v n="scala">2.11.0</v>
+    </run>
+    <run task="sbtplugin-test" />
+  </matrix>
+
+  <matrix id="nightly">
+    <run matrix="pr" />
+    <run task="partest-noopt">
+      <v n="scala">2.11.0</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.0</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.0</v>
+    </run>
+  </matrix>
+
+</ci>
