@@ -48,15 +48,15 @@
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[
-    sbt ++$scala package scalajs-partest/test
+    sbt ++$scala package scalajs-partest-suite/test
   ]]></task>
 
   <task id="partest-fastopt"><![CDATA[
-    sbt ++$scala package scalajs-partest/testOnly -- --fastOpt
+    sbt ++$scala package scalajs-partest-suite/testOnly -- --fastOpt
   ]]></task>
 
   <task id="partest-fullopt"><![CDATA[
-    sbt ++$scala package scalajs-partest/testOnly -- --fullOpt
+    sbt ++$scala package scalajs-partest-suite/testOnly -- --fullOpt
   ]]></task>
 
   <matrix id="pr">
