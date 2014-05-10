@@ -2919,8 +2919,20 @@ abstract class GenJSCode extends plugins.PluginComponent
       boxedResult match {
         case js.UndefinedParam() => boxedResult
         case _ =>
-          ensureUnboxed(boxedResult,
-              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+          val tpePosterasure =
+            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
+          tpePosterasure match {
+            case tpe if isPrimitiveValueType(tpe) =>
+              makePrimitiveUnbox(boxedResult, tpe)
+            case tpe: ErasedValueType =>
+              val boxedClass = tpe.valueClazz
+              val unboxMethod = boxedClass.derivedValueClassUnbox
+              genApplyMethod(
+                  genAsInstanceOf(tpe, boxedResult),
+                  boxedClass, unboxMethod, Nil)
+            case tpe =>
+              genAsInstanceOf(tpe, boxedResult)
+          }
       }
     }
 
