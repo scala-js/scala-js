@@ -17,6 +17,12 @@ object BooleanTest extends JasmineTest {
 
   describe("java.lang.Boolean") {
 
+    it("should provide `booleanValue`") {
+      expect(JBoolean.TRUE.booleanValue()).toBe(true)
+      expect(JBoolean.FALSE.booleanValue()).toBe(false)
+      expect(() => (null: JBoolean).booleanValue()).toThrow
+    }
+
     it("should provide `compareTo`") {
       def compare(x: Boolean, y: Boolean): Int =
         new JBoolean(x).compareTo(new JBoolean(y))

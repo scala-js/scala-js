@@ -1568,6 +1568,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           addS(clazz, "compareTo", "comparableCompareTo")
       }
 
+      addS(BoxedBooleanClass, "booleanValue", "booleanBooleanValue")
+
       for (clazz <- NumberClass +: HijackedNumberClasses) {
         for (pref <- Seq("byte", "short", "int", "long", "float", "double")) {
           val meth = pref+"Value"
@@ -2647,8 +2649,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case DEBUGGER =>
               statToExpr(js.Debugger())
-            case RETURNRECEIVER =>
-              receiver
             case UNITVAL =>
               js.Undefined()
             case UNITTYPE =>
