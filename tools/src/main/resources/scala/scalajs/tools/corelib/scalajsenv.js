@@ -292,6 +292,11 @@ var ScalaJS = {
       return instance.subSequence__I__I__jl_CharSequence(start, end);
   },
 
+  booleanBooleanValue: function(instance) {
+    if (typeof instance === "boolean") return instance;
+    else                               return instance.booleanValue__Z();
+  },
+
   numberByteValue: function(instance) {
     if (typeof instance === "number") return (instance << 24) >> 24;
     else                              return instance.byteValue__B();

@@ -328,6 +328,42 @@ object InteroperabilityTest extends JasmineTest {
       expect(nullString: String).toBeNull
     }
 
+    it("should asInstanceOf values received from calling a JS interop method") {
+      trait InteroperabilityTestAsInstanceOfResult extends js.Object {
+        def testChar(): Char = ???
+        def testInt(): Int = ???
+        def testShort(): Short = ???
+        def testDouble(): Double = ???
+        def testString(): String = ???
+        def testValueClass(): SomeValueClass = ???
+        def testNormalClass(): List[Int] = ???
+        def testAny(): Any = ???
+      }
+
+      val obj = js.eval("""
+        var obj = {
+          testChar: function() { return 5; },
+          testInt: function() { return 6.4; },
+          testShort: function() { return 60000; },
+          testDouble: function() { return JSUtils().stringToChar('e'); },
+          testString: function() { return {}; },
+          testValueClass: function() { return "hello"; },
+          testNormalClass: function() { return 45; },
+          testAny: function() { return {}; }
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestAsInstanceOfResult]
+
+      expect(() => obj.testChar()).toThrow
+      expect(() => obj.testInt()).toThrow
+      expect(() => obj.testShort()).toThrow
+      expect(() => obj.testDouble()).toThrow
+      expect(() => obj.testString()).toThrow
+      expect(() => obj.testValueClass()).toThrow
+      expect(() => obj.testNormalClass()).toThrow
+      expect(() => obj.testAny()).not.toThrow
+    }
+
   }
 }
 

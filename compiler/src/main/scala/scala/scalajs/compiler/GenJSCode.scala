@@ -1568,6 +1568,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           addS(clazz, "compareTo", "comparableCompareTo")
       }
 
+      addS(BoxedBooleanClass, "booleanValue", "booleanBooleanValue")
+
       for (clazz <- NumberClass +: HijackedNumberClasses) {
         for (pref <- Seq("byte", "short", "int", "long", "float", "double")) {
           val meth = pref+"Value"
@@ -2647,8 +2649,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case DEBUGGER =>
               statToExpr(js.Debugger())
-            case RETURNRECEIVER =>
-              receiver
             case UNITVAL =>
               js.Undefined()
             case UNITTYPE =>
@@ -2919,8 +2919,20 @@ abstract class GenJSCode extends plugins.PluginComponent
       boxedResult match {
         case js.UndefinedParam() => boxedResult
         case _ =>
-          ensureUnboxed(boxedResult,
-              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+          val tpePosterasure =
+            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
+          tpePosterasure match {
+            case tpe if isPrimitiveValueType(tpe) =>
+              makePrimitiveUnbox(boxedResult, tpe)
+            case tpe: ErasedValueType =>
+              val boxedClass = tpe.valueClazz
+              val unboxMethod = boxedClass.derivedValueClassUnbox
+              genApplyMethod(
+                  genAsInstanceOf(tpe, boxedResult),
+                  boxedClass, unboxMethod, Nil)
+            case tpe =>
+              genAsInstanceOf(tpe, boxedResult)
+          }
       }
     }
 

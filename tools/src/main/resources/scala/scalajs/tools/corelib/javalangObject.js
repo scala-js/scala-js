@@ -95,19 +95,11 @@ ScalaJS.c.O.prototype.finalize__ = function() {
 // Instance tests
 
 ScalaJS.is.O = function(obj) {
-  return !!((obj && obj.$classData &&
-    obj.$classData.ancestors.O) ||
-    (typeof(obj) === "string") ||
-    (typeof(obj) === "number") ||
-    (typeof(obj) === "boolean") ||
-    obj === void 0);
+  return obj !== null;
 };
 
 ScalaJS.as.O = function(obj) {
-  if (ScalaJS.is.O(obj) || obj === null)
-    return obj;
-  else
-    ScalaJS.throwClassCastException(obj, "java.lang.Object");
+  return obj;
 };
 
 ScalaJS.isArrayOf.O = (function(obj, depth) {
