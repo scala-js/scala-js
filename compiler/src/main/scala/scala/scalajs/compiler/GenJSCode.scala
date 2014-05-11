@@ -1180,8 +1180,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             val bodyWithBoundVar = (boundVar match {
               case None => genExpr(body)
               case Some(bv) =>
+                val bvTpe = toIRType(tpe)
                 js.Block(
-                    js.VarDef(bv, toIRType(tpe), mutable = false, exceptVar),
+                    js.VarDef(bv, bvTpe, mutable = false, js.Cast(exceptVar, bvTpe)),
                     genExpr(body))
             })
 
@@ -2409,10 +2410,12 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val (implClass, methodIdent) =
                   encodeImplClassMethodSym(implMethodSym)
                 val retTpe = implMethodSym.tpe.resultType
+                val castCallTrg = js.Cast(callTrg,
+                    toIRType(RuntimeStringClass.toTypeConstructor))
                 val rawApply = genTraitImplApply(
                     encodeClassFullNameIdent(implClass),
                     methodIdent,
-                    callTrg :: arguments,
+                    castCallTrg :: arguments,
                     toIRType(retTpe))
                 // Box the result of the implementing method if required
                 if (isPrimitiveValueType(retTpe))
@@ -2420,18 +2423,23 @@ abstract class GenJSCode extends plugins.PluginComponent
                 else
                   rawApply
               } else {
-                val reflBoxClassPatched = {
+                val (reflBoxClassPatched, callTrg1) = {
                   if (primTypeOf == "number" &&
                       toTypeKind(implMethodSym.tpe.resultType) == DoubleKind &&
                       toTypeKind(sym.tpe.resultType).isInstanceOf[INT]) {
                     // This must be an Int, and not a Double
-                    IntegerReflectiveCallClass
+                    (IntegerReflectiveCallClass,
+                        js.AsInstanceOf(callTrg,
+                            encodeReferenceType(BoxedIntClass.toTypeConstructor)._1))
                   } else {
-                    reflBoxClass
+                    (reflBoxClass, callTrg)
                   }
                 }
+                val castCallTrg =
+                  js.Cast(callTrg1, toIRType(
+                      reflBoxClassPatched.primaryConstructor.tpe.params.head.tpe))
                 val reflBox = genNew(reflBoxClassPatched,
-                    reflBoxClassPatched.primaryConstructor, List(callTrg))
+                    reflBoxClassPatched.primaryConstructor, List(castCallTrg))
                 genApplyMethod(
                     reflBox,
                     reflBoxClassPatched,
@@ -3031,11 +3039,13 @@ abstract class GenJSCode extends plugins.PluginComponent
                |found multiple implementation class members.""".stripMargin)
 
         // Emit call to implementation class
+        val castReceiver = js.Cast(receiver,
+            toIRType(RuntimeStringClass.toTypeConstructor))
         val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
         genTraitImplApply(
             encodeClassFullNameIdent(implClass),
             methodIdent,
-            receiver :: args,
+            castReceiver :: args,
             toIRType(tree.tpe))
       }
     }
