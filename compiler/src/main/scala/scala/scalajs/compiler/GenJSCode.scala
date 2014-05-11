@@ -761,7 +761,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             } else {
               js.Block(
                   js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName),
-                      currentClassType, mutable = true,
+                      currentClassType, mutable = false,
                       js.This()(currentClassType)),
                   theLoop)
             }
@@ -793,7 +793,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               genStaticMember(sym)
             } else {
               js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = true)(toIRType(sym.tpe))
+                  mutable = sym.isMutable)(toIRType(sym.tpe))
             }
 
           js.Assign(member, genExpr(rhs))
@@ -802,7 +802,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Assign(lhs, rhs) =>
           val sym = lhs.symbol
           js.Assign(
-              js.VarRef(encodeLocalSym(sym, freshName), mutable = true)(
+              js.VarRef(encodeLocalSym(sym, freshName),
+                  mutable = sym.isMutable)(
                   (toIRType(sym.tpe))),
               genExpr(rhs))
 
@@ -916,7 +917,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (methodTailJumpThisSym.get != NoSymbol) {
             js.VarRef(
               encodeLocalSym(methodTailJumpThisSym, freshName),
-              mutable = true)(currentClassType)
+              mutable = false)(currentClassType)
           } else {
             js.This()(currentClassType)
           }
@@ -1414,7 +1415,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
                 case (formalArg, argType, _, actualArg) :: Nil =>
                   js.Block(js.Assign(
-                      js.VarRef(formalArg, mutable = true)(argType), actualArg),
+                      js.VarRef(formalArg, mutable = false)(argType), actualArg),
                       tailJump)
 
                 case _ =>
@@ -1424,7 +1425,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   val trueAssignments =
                     for ((formalArg, argType, tempArg, _) <- quadruplets)
                       yield js.Assign(
-                          js.VarRef(formalArg, mutable = true)(argType),
+                          js.VarRef(formalArg, mutable = false)(argType),
                           js.VarRef(tempArg, mutable = false)(argType))
                   js.Block(tempAssignments ++ trueAssignments :+ tailJump)
               }
