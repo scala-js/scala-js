@@ -779,11 +779,27 @@ object JSDesugaring {
           JSApply(envField("i") DOT method, args map transformExpr)
 
         case UnaryOp(op, lhs, tpe) =>
-          // All our unary ops translate straightforwardly
-          JSUnaryOp(op, transformExpr(lhs))
+          val newLhs = transformExpr(lhs)
+          op match {
+            case "(int)" => JSBinaryOp("|", newLhs, IntLiteral(0))
+            case _       => JSUnaryOp(op, newLhs)
+          }
 
         case BinaryOp(op, lhs, rhs, tpe) =>
-          val newLhs = transformExpr(lhs)
+          val lhs1 = lhs match {
+            case UnaryOp("(int)", inner, _) if op == "&" || op == "<<" =>
+              /* This case is emitted typically by conversions from
+               * Float/Double to Char/Byte/Short. We have to introduce an
+               * (int) cast in the IR so that it typechecks, but in JavaScript
+               * this is redundant because & and << already convert both their
+               * operands to ints. So we get rid of the conversion here.
+               */
+              inner
+            case _ =>
+              lhs
+          }
+
+          val newLhs = transformExpr(lhs1)
           val newRhs = transformExpr(rhs)
           val default = JSBinaryOp(op, newLhs, newRhs)
 

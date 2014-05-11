@@ -2207,6 +2207,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val source = genExpr(receiver)
 
+      def source2int = (code: @switch) match {
+        case F2C | D2C | F2B | D2B | F2S | D2S | F2I | D2I =>
+          js.UnaryOp("(int)", source, jstpe.IntType)
+        case _ =>
+          source
+      }
+
       (code: @scala.annotation.switch) match {
         // From Long to something
         case L2B =>
@@ -2238,25 +2245,25 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Conversions to chars (except for Long)
         case B2C | S2C | I2C | F2C | D2C =>
-          js.BinaryOp("&", source, js.IntLiteral(0xffff), jstpe.IntType)
+          js.BinaryOp("&", source2int, js.IntLiteral(0xffff), jstpe.IntType)
 
         // To Byte, need to crop at signed 8-bit
         case C2B | S2B | I2B | F2B | D2B =>
           // note: & 0xff would not work because of negative values
           js.BinaryOp(">>",
-              js.BinaryOp("<<", source, js.IntLiteral(24), jstpe.IntType),
+              js.BinaryOp("<<", source2int, js.IntLiteral(24), jstpe.IntType),
               js.IntLiteral(24), jstpe.IntType)
 
         // To Short, need to crop at signed 16-bit
         case C2S | I2S | F2S | D2S =>
           // note: & 0xffff would not work because of negative values
           js.BinaryOp(">>",
-              js.BinaryOp("<<", source, js.IntLiteral(16), jstpe.IntType),
+              js.BinaryOp("<<", source2int, js.IntLiteral(16), jstpe.IntType),
               js.IntLiteral(16), jstpe.IntType)
 
         // To Int, need to crop at signed 32-bit
         case F2I | D2I =>
-          js.BinaryOp("|", source, js.IntLiteral(0), jstpe.IntType)
+          source2int
 
         case _ => source
       }
