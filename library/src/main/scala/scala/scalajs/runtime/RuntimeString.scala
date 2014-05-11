@@ -191,26 +191,26 @@ private[runtime] object RuntimeString {
 
   // Constructors
 
-  def newString(): jsString = ""
-  def newString(value: Array[Char]): jsString =
+  def newString(): String = ""
+  def newString(value: Array[Char]): String =
     newString(value, 0, value.length)
-  def newString(value: Array[Char], offset: Int, count: Int): jsString = {
-    var res: jsString = ""
+  def newString(value: Array[Char], offset: Int, count: Int): String = {
+    var res: String = ""
     for (c <- value.view(offset, offset + count))
       res += c.toString
     res
   }
   /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], charsetName: String): jsString = ???
+  def newString(bytes: Array[Byte], charsetName: String): String = ???
   /** Unimplemented, unused, but referenced */
   def newString(bytes: Array[Byte], offest: Int, length: Int,
-      charsetName: String): jsString = ???
-  def newString(codePoints: Array[Int], offset: Int, count: Int): jsString =
+      charsetName: String): String = ???
+  def newString(codePoints: Array[Int], offset: Int, count: Int): String =
     js.String.fromCharCode(
         codePoints.view(offset, offset + count) :_*)
-  def newString(original: String): jsString = original
-  def newString(buffer: StringBuffer): jsString = buffer.toString
-  def newString(builder: java.lang.StringBuilder): jsString = builder.toString
+  def newString(original: String): String = original
+  def newString(buffer: StringBuffer): String = buffer.toString
+  def newString(builder: java.lang.StringBuilder): String = builder.toString
 
   // Static methods (aka methods on the companion object)
 

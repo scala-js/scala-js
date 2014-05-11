@@ -2957,13 +2957,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Filter members of target module for matching member
       val compMembers = for {
         mem <- RuntimeStringModule.tpe.members
-        if mem.name.decoded == "newString"
-        // Deconstruct method type.
-        MethodType(params, returnType) = mem.tpe
-        if returnType.typeSymbol == JSStringClass
-        // Construct fake type returning java.lang.String
-        fakeType = MethodType(params, StringClass.tpe)
-        if ctor.tpe.matches(fakeType)
+        if mem.name.decoded == "newString" && ctor.tpe.matches(mem.tpe)
       } yield mem
 
       if (compMembers.isEmpty) {
