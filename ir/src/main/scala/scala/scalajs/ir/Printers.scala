@@ -396,8 +396,10 @@ object Printers {
         case This() =>
           print("this")
 
-        case Function(args, resultType, body) =>
+        case Function(thisType, args, resultType, body) =>
           print("(function")
+          if (thisType != DynType)
+            print("[this: ", thisType, "]")
           printSig(args, resultType)
           printBlock(body)
           print(")")

@@ -144,8 +144,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Function(args, resultType, body) =>
-          Function(args, resultType, transformStat(body))
+        case Function(thisType, args, resultType, body) =>
+          Function(thisType, args, resultType, transformStat(body))
 
         // Type-related
 
@@ -279,8 +279,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Function(args, resultType, body) =>
-          Function(args, resultType, transformStat(body))
+        case Function(thisType, args, resultType, body) =>
+          Function(thisType, args, resultType, transformStat(body))
 
         // Type-related
 

@@ -2699,8 +2699,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           def captureWithin(ident: js.Ident, tpe: jstpe.Type, value: js.Tree)(
               within: js.Tree): js.Tree = {
             js.Cast(js.JSApply(
-                js.Function(List(js.ParamDef(ident, tpe)), within.tpe,
-                    js.Return(within)),
+                js.Function(jstpe.NoType, List(js.ParamDef(ident, tpe)),
+                    within.tpe, js.Return(within)),
                 List(value)), within.tpe)
           }
 
@@ -2736,12 +2736,15 @@ abstract class GenJSCode extends plugins.PluginComponent
                   val theFunction = js.Ident("$this")
                   val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
                   captureWithin(theFunction, inputIRType, arg) {
-                    js.Function(arguments.map(js.ParamDef(_, jstpe.AnyType)), jstpe.AnyType, {
+                    js.Function(
+                      jstpe.NoType,
+                      arguments.map(js.ParamDef(_, jstpe.AnyType)),
+                      jstpe.AnyType,
                       js.Return(genApplyMethod(
                           js.VarRef(theFunction, mutable = false)(inputIRType),
                           inputTpe, applyMeth,
                           arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                    })
+                    )
                   }
               }
 
@@ -2761,13 +2764,16 @@ abstract class GenJSCode extends plugins.PluginComponent
               val theFunction = js.Ident("f")
               val arguments = (1 until arity).toList map (x => js.Ident("arg"+x))
               captureWithin(theFunction, inputIRType, arg) {
-                js.Function(arguments.map(js.ParamDef(_, jstpe.AnyType)), jstpe.AnyType, {
+                js.Function(
+                  jstpe.AnyType,
+                  arguments.map(js.ParamDef(_, jstpe.AnyType)),
+                  jstpe.AnyType,
                   js.Return(genApplyMethod(
                       js.VarRef(theFunction, mutable = false)(inputIRType),
                       inputTpe, applyMeth,
                       js.This()(jstpe.AnyType) ::
                       arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                })
+                )
               }
 
             case JS2Z | JS2N =>
@@ -3479,17 +3485,17 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Fifth step: build the function maker
 
         val functionMakerFun =
-          js.Function(ctorParamDefs, jstpe.DynType, {
+          js.Function(jstpe.NoType, ctorParamDefs, jstpe.DynType, {
             js.Return {
               if (JSThisFunctionClasses.exists(sym isSubClass _)) {
                 assert(params.nonEmpty, s"Empty param list in ThisFunction: $cd")
-                js.Function(params.tail, jstpe.AnyType, js.Block(
+                js.Function(params.head.ptpe, params.tail, jstpe.AnyType, js.Block(
                     js.VarDef(params.head.name, params.head.ptpe,
                         mutable = false, js.This()(params.head.ptpe)),
                     patchedBody
                 ))
               } else {
-                js.Function(params, jstpe.AnyType, patchedBody)
+                js.Function(jstpe.NoType, params, jstpe.AnyType, patchedBody)
               }
             }
           })
@@ -3548,15 +3554,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         val jsParams = params map { p =>
           js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
         }
+        val thisType =
+          if (isInImplClass) jstpe.NoType
+          else toIRType(receiver.tpe)
         val jsBody = js.Return {
           if (isInImplClass)
             genTraitImplApply(target, actualArgs map genExpr)
           else
-            genApplyMethod(js.This()(toIRType(receiver.tpe)),
+            genApplyMethod(js.This()(thisType),
                 receiver.tpe, target, actualArgs map genExpr)
         }
         val patchedBody = patchFunBodyWithBoxes(target, jsParams, jsBody)
-        js.Function(jsParams, jstpe.AnyType, patchedBody)
+        js.Function(thisType, jsParams, jstpe.AnyType, patchedBody)
       }
 
       val boundFunction = {

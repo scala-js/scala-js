@@ -85,7 +85,7 @@ object ScalaJSClassEmitter {
         implicit val pos = field.pos
         Assign(JSDotSelect(This()(tpe), name), rhs)
       }
-      Function(Nil, UndefType,
+      Function(tpe, Nil, UndefType,
           Block(superCtorCall :: fieldDefs)(tree.pos))(tree.pos)
     }
 
@@ -105,7 +105,7 @@ object ScalaJSClassEmitter {
           JSDotSelect(envField("h"), classIdent)
         Block(
           DocComment("@constructor"),
-          Assign(inheritableCtorVar, Function(Nil, UndefType, Skip())),
+          Assign(inheritableCtorVar, Function(DynType, Nil, UndefType, Skip())),
           Assign(inheritableCtorVar.prototype, typeVar.prototype)
         )
       }
@@ -118,13 +118,15 @@ object ScalaJSClassEmitter {
   /** Generates a method. */
   def genMethod(cd: ClassDef, method: MethodDef): Tree = {
     implicit val pos = method.pos
-    val methodFun = Function(method.args, method.resultType, method.body)
+    val methodFun = Function(ClassType(cd.name.name),
+        method.args, method.resultType, method.body)
     genAddToPrototype(cd, method.name, methodFun)
   }
 
   /** Generates a property. */
   def genProperty(cd: ClassDef, property: PropertyDef): Tree = {
     implicit val pos = property.pos
+    val classType = ClassType(cd.name.name)
 
     // defineProperty method
     val defProp =
@@ -154,12 +156,12 @@ object ScalaJSClassEmitter {
       val wget =
         if (property.getterBody == EmptyTree) base
         else StringLiteral("get") ->
-          Function(Nil, DynType, property.getterBody) :: base
+          Function(classType, Nil, DynType, property.getterBody) :: base
 
       // Optionally add setter
       if (property.setterBody == EmptyTree) wget
       else StringLiteral("set") ->
-          Function(property.setterArg :: Nil,
+          Function(classType, property.setterArg :: Nil,
               UndefType, property.setterBody) :: wget
     }
 
@@ -200,7 +202,7 @@ object ScalaJSClassEmitter {
 
     val createIsStat = {
       envField("is") DOT classIdent :=
-        Function(List(objParam), DynType, Return {
+        Function(NoType, List(objParam), DynType, Return {
           var test = (obj && (obj DOT "$classData") &&
               (obj DOT "$classData" DOT "ancestors" DOT classIdent))
 
@@ -220,7 +222,7 @@ object ScalaJSClassEmitter {
 
     val createAsStat = {
       envField("as") DOT classIdent :=
-        Function(List(objParam), ClassType(className), {
+        Function(NoType, List(objParam), ClassType(className), {
           If(JSApply(envField("is") DOT classIdent, List(obj)) ||
               (obj === Null()), {
             Return(obj)
@@ -254,7 +256,7 @@ object ScalaJSClassEmitter {
 
     val createIsArrayOfStat = {
       envField("isArrayOf") DOT classIdent :=
-        Function(List(objParam, depthParam), DynType, Return {
+        Function(NoType, List(objParam, depthParam), DynType, Return {
           !(!(obj && (obj DOT "$classData") &&
               ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
               (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent)))
@@ -263,7 +265,7 @@ object ScalaJSClassEmitter {
 
     val createAsArrayOfStat = {
       envField("asArrayOf") DOT classIdent :=
-        Function(List(objParam, depthParam), DynType, {
+        Function(NoType, List(objParam, depthParam), DynType, {
           If(JSApply(envField("isArrayOf") DOT classIdent, List(obj, depth)) ||
               (obj === Null()), {
             Return(obj)
@@ -313,7 +315,7 @@ object ScalaJSClassEmitter {
         // Optional parameter isInstance
         if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
-          List(Function(List(ParamDef(Ident("x"), DynType)), BooleanType, Return {
+          List(Function(NoType, List(ParamDef(Ident("x"), DynType)), BooleanType, Return {
             IsInstanceOf(VarRef(Ident("x"), false)(DynType), ClassType(className))
           }))
         } else if (isAncestorOfHijackedClass) {
@@ -364,7 +366,7 @@ object ScalaJSClassEmitter {
     }
 
     val createAccessor = {
-      accessorVar := Function(Nil, DynType, Block(
+      accessorVar := Function(NoType, Nil, DynType, Block(
         If(!(moduleInstanceVar), {
           moduleInstanceVar := New(tpe, Ident("init___"), Nil)
         }, Skip())(UndefType),
@@ -390,6 +392,7 @@ object ScalaJSClassEmitter {
     import TreeDSL._
 
     implicit val pos = tree.pos
+    val classType = ClassType(cd.name.name)
     val ConstructorExportDef(fullName, args, body) = tree
 
     val baseCtor = envField("c") DOT cd.name
@@ -398,7 +401,7 @@ object ScalaJSClassEmitter {
     Block(
       createNamespace,
       DocComment("@constructor"),
-      expCtorVar := Function(args, DynType, Block(
+      expCtorVar := Function(classType, args, DynType, Block(
         JSApply(JSDotSelect(baseCtor, Ident("call")), List(This()(DynType))),
         body
       )),
@@ -435,7 +438,7 @@ object ScalaJSClassEmitter {
     val MethodDef(name: Ident, args, resultType, body) = tree
     Assign(
         JSDotSelect(envField("i"), name),
-        Function(args, resultType, body))
+        Function(NoType, args, resultType, body))
   }
 
   // Helpers

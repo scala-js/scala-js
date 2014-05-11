@@ -853,8 +853,8 @@ object JSDesugaring {
         case Cast(expr, _) =>
           transformExpr(expr)
 
-        case Function(params, resultType, body) =>
-          Function(params.map(eraseParamType), DynType, transformStat(body))
+        case Function(thisType, params, resultType, body) =>
+          Function(DynType, params.map(eraseParamType), DynType, transformStat(body))
 
         case _ =>
           super.transformExpr(tree)
