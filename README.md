@@ -99,6 +99,7 @@ Currently, two examples are provided:
 Simply publish it locally with:
 
     sbt> publishLocal
+    sbt> scalajs-tools/publishLocal
     sbt> scalajs-sbt-plugin/publishLocal
 
 ## License
