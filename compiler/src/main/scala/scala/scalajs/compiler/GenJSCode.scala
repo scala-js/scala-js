@@ -387,7 +387,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
       val classIdent = encodeClassFullNameIdent(sym)
-      js.ClassDef(classIdent, ClassKind.HijackedClass, None, Nil, Nil)
+      js.ClassDef(classIdent, ClassKind.HijackedClass, None,
+          sym.ancestors.map(encodeClassFullNameIdent), Nil)
     }
 
     // Generate an interface ---------------------------------------------------
