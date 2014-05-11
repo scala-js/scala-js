@@ -1555,7 +1555,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         Object_notify    -> "objectNotify",
         Object_notifyAll -> "objectNotifyAll",
         Object_equals    -> "objectEquals",
-        Object_hashCode  -> "objectHashCode"
+        Object_hashCode  -> "objectHashCode",
+        Array_clone      -> "objectClone"
       )
 
       def addN(clazz: Symbol, meth: TermName, helperName: String): Unit = {
