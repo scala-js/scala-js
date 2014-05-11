@@ -2164,21 +2164,26 @@ abstract class GenJSCode extends plugins.PluginComponent
       val arrayValue = genExpr(arrayObj)
       val arguments = args map genExpr
 
+      def genSelect() = {
+        val elemIRType =
+          toTypeKind(arrayObj.tpe).asInstanceOf[ARRAY].elem.toIRType
+        js.ArraySelect(arrayValue, arguments(0))(elemIRType)
+      }
+
       if (scalaPrimitives.isArrayGet(code)) {
         // get an item of the array
         if (settings.debug.value)
           assert(args.length == 1,
               s"Array get requires 1 argument, found ${args.length} in $tree")
-        js.ArraySelect(arrayValue, arguments(0))(toIRType(tree.tpe))
+        genSelect()
       } else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
         if (settings.debug.value)
           assert(args.length == 2,
               s"Array set requires 2 arguments, found ${args.length} in $tree")
+
         statToExpr {
-          js.Assign(
-              js.ArraySelect(arrayValue, arguments(0))(toIRType(tree.tpe)),
-              arguments(1))
+          js.Assign(genSelect(), arguments(1))
         }
       } else {
         // length of the array
