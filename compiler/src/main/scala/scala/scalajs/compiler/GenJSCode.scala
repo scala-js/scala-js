@@ -2688,39 +2688,44 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case List(arg) =>
 
-          /** get the apply method of a class extending FunctionN
-           *
-           *  only use when implementing a fromFunctionN primitive
-           *  as it uses the tree
-           */
-          def getFunApply(clSym: Symbol) = {
-            // Fetch symbol and resolve overload if necessary
-            val sym = getMemberMethod(clSym, newTermName("apply"))
-
-            if (sym.isOverloaded) {
-              // The symbol is overloaded. Figure out the arity
-              // from the name of the primitive function we are
-              // implementing. Then chose the overload with the right
-              // number of Object arguments
+          /** Factorization of F2JS and F2JSTHIS. */
+          def genFunctionToJSFunction(isThisFunction: Boolean): js.Tree = {
+            val arity = {
               val funName = tree.fun.symbol.name.encoded
               assert(funName.startsWith("fromFunction"))
-              val arity = funName.substring(12).toInt
-
-              sym.alternatives.find { s =>
-                val ps = s.paramss
-                ps.size == 1 &&
-                ps.head.size == arity &&
-                ps.head.forall(_.tpe.typeSymbol == ObjectClass)
-              }.get
-            } else sym
-          }
-
-          def captureWithin(ident: js.Ident, tpe: jstpe.Type, value: js.Tree)(
-              within: js.Tree): js.Tree = {
-            js.Cast(js.JSApply(
-                js.Function(jstpe.NoType, List(js.ParamDef(ident, tpe)),
-                    within.tpe, js.Return(within)),
-                List(value)), within.tpe)
+              funName.stripPrefix("fromFunction").toInt
+            }
+            val inputClass = FunctionClass(arity)
+            val inputIRType = encodeClassType(inputClass)
+            val applyMeth = getMemberMethod(inputClass, newTermName("apply")) suchThat { s =>
+              val ps = s.paramss
+              ps.size == 1 &&
+              ps.head.size == arity &&
+              ps.head.forall(_.tpe.typeSymbol == ObjectClass)
+            }
+            val fParam = js.ParamDef(js.Ident("f"), inputIRType)
+            val jsArity =
+              if (isThisFunction) arity - 1
+              else arity
+            val jsParams = (1 to jsArity).toList map {
+              x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType)
+            }
+            js.JSApply(
+              js.Function(jstpe.NoType, List(fParam), jstpe.DynType, js.Return {
+                js.Function(
+                  if (isThisFunction) jstpe.AnyType else jstpe.NoType,
+                  jsParams,
+                  jstpe.AnyType,
+                  js.Return(genApplyMethod(
+                      fParam.ref,
+                      inputClass, applyMeth,
+                      if (isThisFunction)
+                        js.This()(jstpe.AnyType) :: jsParams.map(_.ref)
+                      else
+                        jsParams.map(_.ref)))
+                )
+              }),
+              List(arg))
           }
 
           code match {
@@ -2729,42 +2734,23 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             /** Convert a scala.FunctionN f to a js.FunctionN
              *  Basically it binds the appropriate `apply` method of f to f.
-             *  (function($this) {
+             *  (function(f) {
              *    return function(args...) {
-             *      return $this.apply__something(args...);
+             *      return f.apply__something(args...);
              *    }
              *  })(f);
-             *
-             *  TODO Use the JS function Function.prototype.bind()?
              */
             case F2JS =>
               arg match {
-                /* This case will happend every time we have a Scala lambda
+                /* This case will happen every time we have a Scala lambda
                  * in js.FunctionN position. We remove the JS function to
                  * Scala function wrapper, instead of adding a Scala function
                  * to JS function wrapper.
                  */
                 case JSFunctionToScala(fun, arity) =>
                   fun
-
                 case _ =>
-                  val inputTpe = args.head.tpe
-                  val inputIRType = toIRType(inputTpe)
-                  val applyMeth = getFunApply(inputTpe.typeSymbol)
-                  val arity = applyMeth.tpe.params.size
-                  val theFunction = js.Ident("$this")
-                  val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
-                  captureWithin(theFunction, inputIRType, arg) {
-                    js.Function(
-                      jstpe.NoType,
-                      arguments.map(js.ParamDef(_, jstpe.AnyType)),
-                      jstpe.AnyType,
-                      js.Return(genApplyMethod(
-                          js.VarRef(theFunction, mutable = false)(inputIRType),
-                          inputTpe, applyMeth,
-                          arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                    )
-                  }
+                  genFunctionToJSFunction(isThisFunction = false)
               }
 
             /** Convert a scala.FunctionN f to a js.ThisFunction{N-1}
@@ -2776,24 +2762,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              *    })(f);
              */
             case F2JSTHIS =>
-              val inputTpe = args.head.tpe
-              val inputIRType = toIRType(inputTpe)
-              val applyMeth = getFunApply(inputTpe.typeSymbol)
-              val arity = applyMeth.tpe.params.size
-              val theFunction = js.Ident("f")
-              val arguments = (1 until arity).toList map (x => js.Ident("arg"+x))
-              captureWithin(theFunction, inputIRType, arg) {
-                js.Function(
-                  jstpe.AnyType,
-                  arguments.map(js.ParamDef(_, jstpe.AnyType)),
-                  jstpe.AnyType,
-                  js.Return(genApplyMethod(
-                      js.VarRef(theFunction, mutable = false)(inputIRType),
-                      inputTpe, applyMeth,
-                      js.This()(jstpe.AnyType) ::
-                      arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                )
-              }
+              genFunctionToJSFunction(isThisFunction = true)
 
             case JS2Z | JS2N =>
               makePrimitiveUnbox(arg, tree.tpe)
