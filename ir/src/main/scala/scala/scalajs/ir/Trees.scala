@@ -340,7 +340,7 @@ object Trees {
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
 
-  case class Function(args: List[ParamDef], resultType: Type, body: Tree)(implicit val pos: Position) extends Tree {
+  case class Function(thisType: Type, args: List[ParamDef], resultType: Type, body: Tree)(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }
 

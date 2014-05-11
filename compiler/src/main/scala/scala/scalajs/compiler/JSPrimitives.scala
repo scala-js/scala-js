@@ -61,11 +61,12 @@ abstract class JSPrimitives {
   val NTR_MOD_SUFF  = 340 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
   val NTR_NAME_JOIN = 341 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
-  val ISUNDEF = 342  // js.isUndefined
-  val TYPEOF = 343   // typeof x
-  val DEBUGGER = 344 // js.debugger()
-  val HASPROP = 345  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
-  val OBJPROPS = 346 // js.Object.properties(o), equiv to `for (p in o)` in JS
+  val UNDEFVAL = 342 // js.undefined
+  val ISUNDEF = 343  // js.isUndefined
+  val TYPEOF = 344   // typeof x
+  val DEBUGGER = 345 // js.debugger()
+  val HASPROP = 346  // js.Object.hasProperty(o, p), equiv to `p in o` in JS
+  val OBJPROPS = 347 // js.Object.properties(o), equiv to `for (p in o)` in JS
 
   val UNITVAL = 348  // () value, which is undefined
   val UNITTYPE = 349 // BoxedUnit.TYPE (== classOf[Unit])
@@ -116,7 +117,7 @@ abstract class JSPrimitives {
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
-    addPrimitive(JSPackage_undefined, UNITVAL)
+    addPrimitive(JSPackage_undefined, UNDEFVAL)
     addPrimitive(JSPackage_isUndefined, ISUNDEF)
 
     addPrimitive(JSObject_hasProperty, HASPROP)

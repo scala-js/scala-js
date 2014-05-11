@@ -127,6 +127,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def currentClassType = encodeClassType(currentClassSym)
 
+    val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
+    class CancelGenMethodAsJSFunction(message: String)
+        extends Throwable(message) with scala.util.control.ControlThrowable
+
     // Fresh local name generator ----------------------------------------------
 
     val usedLocalNames = mutable.Set.empty[String]
@@ -387,7 +391,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
       val classIdent = encodeClassFullNameIdent(sym)
-      js.ClassDef(classIdent, ClassKind.HijackedClass, None, Nil, Nil)
+      js.ClassDef(classIdent, ClassKind.HijackedClass, None,
+          sym.ancestors.map(encodeClassFullNameIdent), Nil)
     }
 
     // Generate an interface ---------------------------------------------------
@@ -760,7 +765,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             } else {
               js.Block(
                   js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName),
-                      currentClassType, mutable = true,
+                      currentClassType, mutable = false,
                       js.This()(currentClassType)),
                   theLoop)
             }
@@ -792,7 +797,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               genStaticMember(sym)
             } else {
               js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = true)(toIRType(sym.tpe))
+                  mutable = sym.isMutable)(toIRType(sym.tpe))
             }
 
           js.Assign(member, genExpr(rhs))
@@ -801,7 +806,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Assign(lhs, rhs) =>
           val sym = lhs.symbol
           js.Assign(
-              js.VarRef(encodeLocalSym(sym, freshName), mutable = true)(
+              js.VarRef(encodeLocalSym(sym, freshName),
+                  mutable = sym.isMutable)(
                   (toIRType(sym.tpe))),
               genExpr(rhs))
 
@@ -915,8 +921,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (methodTailJumpThisSym.get != NoSymbol) {
             js.VarRef(
               encodeLocalSym(methodTailJumpThisSym, freshName),
-              mutable = true)(currentClassType)
+              mutable = false)(currentClassType)
           } else {
+            if (tryingToGenMethodAsJSFunction)
+              throw new CancelGenMethodAsJSFunction(
+                  "Trying to generate `this` inside the body")
             js.This()(currentClassType)
           }
 
@@ -1178,8 +1187,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             val bodyWithBoundVar = (boundVar match {
               case None => genExpr(body)
               case Some(bv) =>
+                val bvTpe = toIRType(tpe)
                 js.Block(
-                    js.VarDef(bv, toIRType(tpe), mutable = false, exceptVar),
+                    js.VarDef(bv, bvTpe, mutable = false, js.Cast(exceptVar, bvTpe)),
                     genExpr(body))
             })
 
@@ -1413,7 +1423,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
                 case (formalArg, argType, _, actualArg) :: Nil =>
                   js.Block(js.Assign(
-                      js.VarRef(formalArg, mutable = true)(argType), actualArg),
+                      js.VarRef(formalArg, mutable = false)(argType), actualArg),
                       tailJump)
 
                 case _ =>
@@ -1423,7 +1433,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   val trueAssignments =
                     for ((formalArg, argType, tempArg, _) <- quadruplets)
                       yield js.Assign(
-                          js.VarRef(formalArg, mutable = true)(argType),
+                          js.VarRef(formalArg, mutable = false)(argType),
                           js.VarRef(tempArg, mutable = false)(argType))
                   js.Block(tempAssignments ++ trueAssignments :+ tailJump)
               }
@@ -1545,7 +1555,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         Object_notify    -> "objectNotify",
         Object_notifyAll -> "objectNotifyAll",
         Object_equals    -> "objectEquals",
-        Object_hashCode  -> "objectHashCode"
+        Object_hashCode  -> "objectHashCode",
+        Array_clone      -> "objectClone"
       )
 
       def addN(clazz: Symbol, meth: TermName, helperName: String): Unit = {
@@ -2164,21 +2175,26 @@ abstract class GenJSCode extends plugins.PluginComponent
       val arrayValue = genExpr(arrayObj)
       val arguments = args map genExpr
 
+      def genSelect() = {
+        val elemIRType =
+          toTypeKind(arrayObj.tpe).asInstanceOf[ARRAY].elem.toIRType
+        js.ArraySelect(arrayValue, arguments(0))(elemIRType)
+      }
+
       if (scalaPrimitives.isArrayGet(code)) {
         // get an item of the array
         if (settings.debug.value)
           assert(args.length == 1,
               s"Array get requires 1 argument, found ${args.length} in $tree")
-        js.ArraySelect(arrayValue, arguments(0))(toIRType(tree.tpe))
+        genSelect()
       } else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
         if (settings.debug.value)
           assert(args.length == 2,
               s"Array set requires 2 arguments, found ${args.length} in $tree")
+
         statToExpr {
-          js.Assign(
-              js.ArraySelect(arrayValue, arguments(0))(toIRType(tree.tpe)),
-              arguments(1))
+          js.Assign(genSelect(), arguments(1))
         }
       } else {
         // length of the array
@@ -2201,6 +2217,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val jspos = tree.pos
 
       val source = genExpr(receiver)
+
+      def source2int = (code: @switch) match {
+        case F2C | D2C | F2B | D2B | F2S | D2S | F2I | D2I =>
+          js.UnaryOp("(int)", source, jstpe.IntType)
+        case _ =>
+          source
+      }
 
       (code: @scala.annotation.switch) match {
         // From Long to something
@@ -2233,25 +2256,25 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Conversions to chars (except for Long)
         case B2C | S2C | I2C | F2C | D2C =>
-          js.BinaryOp("&", source, js.IntLiteral(0xffff), jstpe.IntType)
+          js.BinaryOp("&", source2int, js.IntLiteral(0xffff), jstpe.IntType)
 
         // To Byte, need to crop at signed 8-bit
         case C2B | S2B | I2B | F2B | D2B =>
           // note: & 0xff would not work because of negative values
           js.BinaryOp(">>",
-              js.BinaryOp("<<", source, js.IntLiteral(24), jstpe.IntType),
+              js.BinaryOp("<<", source2int, js.IntLiteral(24), jstpe.IntType),
               js.IntLiteral(24), jstpe.IntType)
 
         // To Short, need to crop at signed 16-bit
         case C2S | I2S | F2S | D2S =>
           // note: & 0xffff would not work because of negative values
           js.BinaryOp(">>",
-              js.BinaryOp("<<", source, js.IntLiteral(16), jstpe.IntType),
+              js.BinaryOp("<<", source2int, js.IntLiteral(16), jstpe.IntType),
               js.IntLiteral(16), jstpe.IntType)
 
         // To Int, need to crop at signed 32-bit
         case F2I | D2I =>
-          js.BinaryOp("|", source, js.IntLiteral(0), jstpe.IntType)
+          source2int
 
         case _ => source
       }
@@ -2348,12 +2371,12 @@ abstract class GenJSCode extends plugins.PluginComponent
               jstpe.AnyType)
 
         if (isArrayLikeUpdate) {
-          val elemIRTpe = toTypeKind(sym.tpe.params(1).tpe).toReferenceType
-          val arrIRTpe  = jstpe.ArrayType(elemIRTpe)
+          val elemKind = toTypeKind(sym.tpe.params(1).tpe)
+          val arrIRTpe = jstpe.ArrayType(elemKind.toReferenceType)
           callStatement = js.If(js.IsInstanceOf(callTrg, arrIRTpe), statToExpr {
             val castCallTrg = js.AsInstanceOf(callTrg, arrIRTpe)
             js.Assign(
-                js.ArraySelect(castCallTrg, arguments(0))(elemIRTpe),
+                js.ArraySelect(castCallTrg, arguments(0))(elemKind.toIRType),
                 arguments(1))
           }, {
             callStatement
@@ -2395,10 +2418,12 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val (implClass, methodIdent) =
                   encodeImplClassMethodSym(implMethodSym)
                 val retTpe = implMethodSym.tpe.resultType
+                val castCallTrg = js.Cast(callTrg,
+                    toIRType(RuntimeStringClass.toTypeConstructor))
                 val rawApply = genTraitImplApply(
                     encodeClassFullNameIdent(implClass),
                     methodIdent,
-                    callTrg :: arguments,
+                    castCallTrg :: arguments,
                     toIRType(retTpe))
                 // Box the result of the implementing method if required
                 if (isPrimitiveValueType(retTpe))
@@ -2406,18 +2431,23 @@ abstract class GenJSCode extends plugins.PluginComponent
                 else
                   rawApply
               } else {
-                val reflBoxClassPatched = {
+                val (reflBoxClassPatched, callTrg1) = {
                   if (primTypeOf == "number" &&
                       toTypeKind(implMethodSym.tpe.resultType) == DoubleKind &&
                       toTypeKind(sym.tpe.resultType).isInstanceOf[INT]) {
                     // This must be an Int, and not a Double
-                    IntegerReflectiveCallClass
+                    (IntegerReflectiveCallClass,
+                        js.AsInstanceOf(callTrg,
+                            encodeReferenceType(BoxedIntClass.toTypeConstructor)._1))
                   } else {
-                    reflBoxClass
+                    (reflBoxClass, callTrg)
                   }
                 }
+                val castCallTrg =
+                  js.Cast(callTrg1, toIRType(
+                      reflBoxClassPatched.primaryConstructor.tpe.params.head.tpe))
                 val reflBox = genNew(reflBoxClassPatched,
-                    reflBoxClassPatched.primaryConstructor, List(callTrg))
+                    reflBoxClassPatched.primaryConstructor, List(castCallTrg))
                 genApplyMethod(
                     reflBox,
                     reflBoxClassPatched,
@@ -2649,6 +2679,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case DEBUGGER =>
               statToExpr(js.Debugger())
+            case UNDEFVAL =>
+              js.Cast(js.Undefined(), jstpe.DynType)
             case UNITVAL =>
               js.Undefined()
             case UNITTYPE =>
@@ -2657,39 +2689,44 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case List(arg) =>
 
-          /** get the apply method of a class extending FunctionN
-           *
-           *  only use when implementing a fromFunctionN primitive
-           *  as it uses the tree
-           */
-          def getFunApply(clSym: Symbol) = {
-            // Fetch symbol and resolve overload if necessary
-            val sym = getMemberMethod(clSym, newTermName("apply"))
-
-            if (sym.isOverloaded) {
-              // The symbol is overloaded. Figure out the arity
-              // from the name of the primitive function we are
-              // implementing. Then chose the overload with the right
-              // number of Object arguments
+          /** Factorization of F2JS and F2JSTHIS. */
+          def genFunctionToJSFunction(isThisFunction: Boolean): js.Tree = {
+            val arity = {
               val funName = tree.fun.symbol.name.encoded
               assert(funName.startsWith("fromFunction"))
-              val arity = funName.substring(12).toInt
-
-              sym.alternatives.find { s =>
-                val ps = s.paramss
-                ps.size == 1 &&
-                ps.head.size == arity &&
-                ps.head.forall(_.tpe.typeSymbol == ObjectClass)
-              }.get
-            } else sym
-          }
-
-          def captureWithin(ident: js.Ident, tpe: jstpe.Type, value: js.Tree)(
-              within: js.Tree): js.Tree = {
-            js.Cast(js.JSApply(
-                js.Function(List(js.ParamDef(ident, tpe)), within.tpe,
-                    js.Return(within)),
-                List(value)), within.tpe)
+              funName.stripPrefix("fromFunction").toInt
+            }
+            val inputClass = FunctionClass(arity)
+            val inputIRType = encodeClassType(inputClass)
+            val applyMeth = getMemberMethod(inputClass, newTermName("apply")) suchThat { s =>
+              val ps = s.paramss
+              ps.size == 1 &&
+              ps.head.size == arity &&
+              ps.head.forall(_.tpe.typeSymbol == ObjectClass)
+            }
+            val fParam = js.ParamDef(js.Ident("f"), inputIRType)
+            val jsArity =
+              if (isThisFunction) arity - 1
+              else arity
+            val jsParams = (1 to jsArity).toList map {
+              x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType)
+            }
+            js.JSApply(
+              js.Function(jstpe.NoType, List(fParam), jstpe.DynType, js.Return {
+                js.Function(
+                  if (isThisFunction) jstpe.AnyType else jstpe.NoType,
+                  jsParams,
+                  jstpe.AnyType,
+                  js.Return(genApplyMethod(
+                      fParam.ref,
+                      inputClass, applyMeth,
+                      if (isThisFunction)
+                        js.This()(jstpe.AnyType) :: jsParams.map(_.ref)
+                      else
+                        jsParams.map(_.ref)))
+                )
+              }),
+              List(arg))
           }
 
           code match {
@@ -2698,39 +2735,23 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             /** Convert a scala.FunctionN f to a js.FunctionN
              *  Basically it binds the appropriate `apply` method of f to f.
-             *  (function($this) {
+             *  (function(f) {
              *    return function(args...) {
-             *      return $this.apply__something(args...);
+             *      return f.apply__something(args...);
              *    }
              *  })(f);
-             *
-             *  TODO Use the JS function Function.prototype.bind()?
              */
             case F2JS =>
               arg match {
-                /* This case will happend every time we have a Scala lambda
+                /* This case will happen every time we have a Scala lambda
                  * in js.FunctionN position. We remove the JS function to
                  * Scala function wrapper, instead of adding a Scala function
                  * to JS function wrapper.
                  */
                 case JSFunctionToScala(fun, arity) =>
                   fun
-
                 case _ =>
-                  val inputTpe = args.head.tpe
-                  val inputIRType = toIRType(inputTpe)
-                  val applyMeth = getFunApply(inputTpe.typeSymbol)
-                  val arity = applyMeth.tpe.params.size
-                  val theFunction = js.Ident("$this")
-                  val arguments = (1 to arity).toList map (x => js.Ident("arg"+x))
-                  captureWithin(theFunction, inputIRType, arg) {
-                    js.Function(arguments.map(js.ParamDef(_, jstpe.AnyType)), jstpe.AnyType, {
-                      js.Return(genApplyMethod(
-                          js.VarRef(theFunction, mutable = false)(inputIRType),
-                          inputTpe, applyMeth,
-                          arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                    })
-                  }
+                  genFunctionToJSFunction(isThisFunction = false)
               }
 
             /** Convert a scala.FunctionN f to a js.ThisFunction{N-1}
@@ -2742,21 +2763,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              *    })(f);
              */
             case F2JSTHIS =>
-              val inputTpe = args.head.tpe
-              val inputIRType = toIRType(inputTpe)
-              val applyMeth = getFunApply(inputTpe.typeSymbol)
-              val arity = applyMeth.tpe.params.size
-              val theFunction = js.Ident("f")
-              val arguments = (1 until arity).toList map (x => js.Ident("arg"+x))
-              captureWithin(theFunction, inputIRType, arg) {
-                js.Function(arguments.map(js.ParamDef(_, jstpe.AnyType)), jstpe.AnyType, {
-                  js.Return(genApplyMethod(
-                      js.VarRef(theFunction, mutable = false)(inputIRType),
-                      inputTpe, applyMeth,
-                      js.This()(jstpe.AnyType) ::
-                      arguments.map(js.VarRef(_, mutable = false)(jstpe.AnyType))))
-                })
-              }
+              genFunctionToJSFunction(isThisFunction = true)
 
             case JS2Z | JS2N =>
               makePrimitiveUnbox(arg, tree.tpe)
@@ -2950,13 +2957,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Filter members of target module for matching member
       val compMembers = for {
         mem <- RuntimeStringModule.tpe.members
-        if mem.name.decoded == "newString"
-        // Deconstruct method type.
-        MethodType(params, returnType) = mem.tpe
-        if returnType.typeSymbol == JSStringClass
-        // Construct fake type returning java.lang.String
-        fakeType = MethodType(params, StringClass.tpe)
-        if ctor.tpe.matches(fakeType)
+        if mem.name.decoded == "newString" && ctor.tpe.matches(mem.tpe)
       } yield mem
 
       if (compMembers.isEmpty) {
@@ -3011,11 +3012,13 @@ abstract class GenJSCode extends plugins.PluginComponent
                |found multiple implementation class members.""".stripMargin)
 
         // Emit call to implementation class
+        val castReceiver = js.Cast(receiver,
+            toIRType(RuntimeStringClass.toTypeConstructor))
         val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
         genTraitImplApply(
             encodeClassFullNameIdent(implClass),
             methodIdent,
-            receiver :: args,
+            castReceiver :: args,
             toIRType(tree.tpe))
       }
     }
@@ -3368,7 +3371,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  genAndRecordRawJSFunctionClass.
      */
     private def tryGenAndRecordAnonFunctionClassGeneric(cd: ClassDef)(
-        onFailure: (=> String) => Unit): (List[js.Tree] => js.Tree, Int) = {
+        onFailure: (=> String) => Nothing): (List[js.Tree] => js.Tree, Int) = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
@@ -3450,10 +3453,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Third step: emit the body of the apply method def
 
       val (applyMethod, methodInfoBuilder) = withScopedVars(
-          paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap
+          paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
+          tryingToGenMethodAsJSFunction := true
       ) {
-        genMethodWithInfoBuilder(applyDef).getOrElse(
-          abort(s"Oops, $applyDef did not produce a method"))
+        try {
+          genMethodWithInfoBuilder(applyDef).getOrElse(
+            abort(s"Oops, $applyDef did not produce a method"))
+        } catch {
+          case e: CancelGenMethodAsJSFunction =>
+            onFailure(e.getMessage)
+        }
       }
 
       withScopedVars(
@@ -3467,17 +3476,17 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Fifth step: build the function maker
 
         val functionMakerFun =
-          js.Function(ctorParamDefs, jstpe.DynType, {
+          js.Function(jstpe.NoType, ctorParamDefs, jstpe.DynType, {
             js.Return {
               if (JSThisFunctionClasses.exists(sym isSubClass _)) {
                 assert(params.nonEmpty, s"Empty param list in ThisFunction: $cd")
-                js.Function(params.tail, jstpe.AnyType, js.Block(
+                js.Function(params.head.ptpe, params.tail, jstpe.AnyType, js.Block(
                     js.VarDef(params.head.name, params.head.ptpe,
                         mutable = false, js.This()(params.head.ptpe)),
                     patchedBody
                 ))
               } else {
-                js.Function(params, jstpe.AnyType, patchedBody)
+                js.Function(jstpe.NoType, params, jstpe.AnyType, patchedBody)
               }
             }
           })
@@ -3536,15 +3545,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         val jsParams = params map { p =>
           js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
         }
+        val thisType =
+          if (isInImplClass) jstpe.NoType
+          else toIRType(receiver.tpe)
         val jsBody = js.Return {
           if (isInImplClass)
             genTraitImplApply(target, actualArgs map genExpr)
           else
-            genApplyMethod(js.This()(toIRType(receiver.tpe)),
+            genApplyMethod(js.This()(thisType),
                 receiver.tpe, target, actualArgs map genExpr)
         }
         val patchedBody = patchFunBodyWithBoxes(target, jsParams, jsBody)
-        js.Function(jsParams, jstpe.AnyType, patchedBody)
+        js.Function(thisType, jsParams, jstpe.AnyType, patchedBody)
       }
 
       val boundFunction = {

@@ -169,7 +169,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassType(sym: Symbol): jstpe.Type = {
-    if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
+    if (sym == definitions.ObjectClass) jstpe.AnyType
+    else if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
     else {
       assert(sym != definitions.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
@@ -221,7 +222,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   private def internalName(kind: TypeKind): String = kind match {
     case kind: ValueTypeKind => kind.primitiveCharCode
-    case REFERENCE(cls)      => encodeClassFullName(cls)
+    case REFERENCE(cls)      => encodeClassFullName(mapRuntimeClass(cls))
     case ARRAY(elem)         => "A"+internalName(elem)
   }
 

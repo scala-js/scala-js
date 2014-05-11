@@ -347,9 +347,9 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
-        case Function(args, resultType, body) =>
+        case Function(thisType, args, resultType, body) =>
           writeByte(TagFunction)
-          writeTrees(args); writeType(resultType); writeTree(body)
+          writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
 
         case Cast(expr, tpe) =>
           writeByte(TagCast)
@@ -581,7 +581,7 @@ object Serializers {
           StringLiteral(value, if (originalName.isEmpty) None else Some(originalName))
         case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
         case TagThis           => This()(readType())
-        case TagFunction       => Function(readParamDefs(), readType(), readTree())
+        case TagFunction       => Function(readType(), readParamDefs(), readType(), readTree())
         case TagCast           => Cast(readTree(), readType())
 
         case TagClassDef =>

@@ -135,9 +135,13 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
     def toType = cls.tpe
 
-    def toIRType =
-      if (cls == ObjectClass) Types.AnyType
-      else Types.ClassType(encodeClassFullName(cls))
+    def toIRType = {
+      cls match {
+        case NullClass    => Types.NullType
+        case NothingClass => Types.NothingType
+        case _            => encodeClassType(cls)
+      }
+    }
 
     override def toReferenceType: Types.ClassType =
       Types.ClassType(encodeClassFullName(mapRuntimeClass(cls)))
