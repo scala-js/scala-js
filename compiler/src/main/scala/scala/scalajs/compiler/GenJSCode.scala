@@ -127,6 +127,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def currentClassType = encodeClassType(currentClassSym)
 
+    val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
+    class CancelGenMethodAsJSFunction(message: String)
+        extends Throwable(message) with scala.util.control.ControlThrowable
+
     // Fresh local name generator ----------------------------------------------
 
     val usedLocalNames = mutable.Set.empty[String]
@@ -919,6 +923,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               encodeLocalSym(methodTailJumpThisSym, freshName),
               mutable = false)(currentClassType)
           } else {
+            if (tryingToGenMethodAsJSFunction)
+              throw new CancelGenMethodAsJSFunction(
+                  "Trying to generate `this` inside the body")
             js.This()(currentClassType)
           }
 
@@ -3400,7 +3407,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  genAndRecordRawJSFunctionClass.
      */
     private def tryGenAndRecordAnonFunctionClassGeneric(cd: ClassDef)(
-        onFailure: (=> String) => Unit): (List[js.Tree] => js.Tree, Int) = {
+        onFailure: (=> String) => Nothing): (List[js.Tree] => js.Tree, Int) = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
@@ -3482,10 +3489,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Third step: emit the body of the apply method def
 
       val (applyMethod, methodInfoBuilder) = withScopedVars(
-          paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap
+          paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
+          tryingToGenMethodAsJSFunction := true
       ) {
-        genMethodWithInfoBuilder(applyDef).getOrElse(
-          abort(s"Oops, $applyDef did not produce a method"))
+        try {
+          genMethodWithInfoBuilder(applyDef).getOrElse(
+            abort(s"Oops, $applyDef did not produce a method"))
+        } catch {
+          case e: CancelGenMethodAsJSFunction =>
+            onFailure(e.getMessage)
+        }
       }
 
       withScopedVars(
