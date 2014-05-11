@@ -2671,6 +2671,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case DEBUGGER =>
               statToExpr(js.Debugger())
+            case UNDEFVAL =>
+              js.Cast(js.Undefined(), jstpe.DynType)
             case UNITVAL =>
               js.Undefined()
             case UNITTYPE =>
