@@ -169,7 +169,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeClassType(sym: Symbol): jstpe.Type = {
-    if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
+    if (sym == definitions.ObjectClass) jstpe.AnyType
+    else if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
     else {
       assert(sym != definitions.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
