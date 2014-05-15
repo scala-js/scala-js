@@ -52,6 +52,8 @@ object Definitions {
   val RuntimeNullClass = "sr_Null$"
   val RuntimeNothingClass = "sr_Nothing$"
 
+  val ThrowableClass = "jl_Throwable"
+
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {
     val base = fullName.replace("_", "$und").replace(".", "_")

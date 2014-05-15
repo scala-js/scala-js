@@ -79,6 +79,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val relativeSourceMaps = settingKey[Boolean](
         "Make the referenced paths on source maps relative to target path")
 
+    val checkScalaJSIR = settingKey[Boolean](
+        "Perform expensive checks of the sanity of the Scala.js IR")
+
     val emitSourceMaps = settingKey[Boolean](
         "Whether package and optimize stages should emit source maps at all")
 
@@ -261,7 +264,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
                     name = output.name,
                     writer = outputWriter,
                     wantSourceMap = (emitSourceMaps in fastOptJS).value,
-                    relSourceMapBase),
+                    relativizeSourceMapBase = relSourceMapBase,
+                    checkIR = checkScalaJSIR.value),
                 s.log)
           } finally {
             outputWriter.close()
@@ -521,6 +525,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,
+
+      checkScalaJSIR := false,
 
       jsDependencies := Seq(),
 

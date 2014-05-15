@@ -129,7 +129,8 @@ class MainGenericRunner {
           OutputConfig(
               name          = fileName,
               writer        = jsFileWriter,
-              wantSourceMap = false
+              wantSourceMap = false,
+              checkIR       = true
               ),
           logger
       )
