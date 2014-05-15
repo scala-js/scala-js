@@ -149,7 +149,7 @@ object Printers {
 
         case Labeled(label, tpe, body) =>
           print(label)
-          if (tpe != UndefType)
+          if (tpe != NoType)
             print("[", tpe, "]")
           print(": ")
           printBlock(body)

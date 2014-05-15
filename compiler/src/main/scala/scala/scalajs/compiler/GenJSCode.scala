@@ -1904,8 +1904,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *
      *  To implement jumps to `matchEnd`, which have one argument which is the
      *  result of the match, we enclose all the cases in one big labeled block.
-     *  Jumps are then compiled as `break`s out of that block if the result has
-     *  type Unit, or `return`s out of the block otherwise.
+     *  Jumps are then compiled as `return`s out of the block.
      */
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
@@ -1936,8 +1935,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         genCaseBody(rhs)
       }
 
-      js.Labeled(encodeLabelSym(matchEnd.symbol, freshName),
-          toIRType(matchEnd.tpe), js.Block(translatedCases))
+      val encodedLabel = encodeLabelSym(matchEnd.symbol, freshName)
+      val labeledBody = js.Block(translatedCases)
+
+      toIRType(matchEnd.tpe) match {
+        case jstpe.UndefType =>
+          statToExpr(js.Labeled(encodedLabel, jstpe.NoType, labeledBody))
+        case irType =>
+          js.Labeled(encodedLabel, irType, labeledBody)
+      }
     }
 
     /** Gen JS code for a primitive method call */
