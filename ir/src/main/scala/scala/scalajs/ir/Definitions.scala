@@ -49,6 +49,9 @@ object Definitions {
 
   val RuntimeLongClass = "sjsr_RuntimeLong"
 
+  val RuntimeNullClass = "sr_Null$"
+  val RuntimeNothingClass = "sr_Nothing$"
+
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {
     val base = fullName.replace("_", "$und").replace(".", "_")

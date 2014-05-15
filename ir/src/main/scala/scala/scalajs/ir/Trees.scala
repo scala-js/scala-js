@@ -236,7 +236,11 @@ object Trees {
   }
 
   case class AsInstanceOf(expr: Tree, cls: ReferenceType)(implicit val pos: Position) extends Tree {
-    val tpe = cls
+    val tpe = cls match {
+      case ClassType(Definitions.RuntimeNullClass)    => NullType
+      case ClassType(Definitions.RuntimeNothingClass) => NothingType
+      case _                                          => cls
+    }
   }
 
   case class ClassOf(cls: ReferenceType)(implicit val pos: Position) extends Tree {
