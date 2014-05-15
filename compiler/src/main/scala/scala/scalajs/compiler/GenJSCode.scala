@@ -133,10 +133,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Fresh local name generator ----------------------------------------------
 
-    val usedLocalNames = mutable.Set.empty[String]
-    val localSymbolNames = mutable.Map.empty[Symbol, String]
+    val usedLocalNames = new ScopedVar[mutable.Set[String]]
+    val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
     private val isKeywordOrReserved =
       js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
+
+    def withNewLocalNameScope[A](body: => A): A =
+      withScopedVars(
+          usedLocalNames := mutable.Set.empty,
+          localSymbolNames := mutable.Map.empty
+      )(body)
 
     def freshName(base: String = "x"): String = {
       var suffix = 1
@@ -478,8 +484,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Generate a method -------------------------------------------------------
 
-    def genMethod(dd: DefDef): Option[js.MethodDef] =
+    def genMethod(dd: DefDef): Option[js.MethodDef] = withNewLocalNameScope {
       genMethodWithInfoBuilder(dd).map(_._1)
+    }
 
     /** Gen JS code for a method definition in a class.
      *  On the JS side, method names are mangled to encode the full signature
@@ -514,12 +521,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           methodTailJumpLabelSym   := NoSymbol,
           methodTailJumpFormalArgs := Nil
       ) {
-
-        /* Do NOT clear usedLocalNames and localSymbolNames!
-         * genAndRecordAnonFunctionClass() starts populating them before
-         * genMethod() starts.
-         */
-
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
@@ -576,9 +577,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
       }
-
-      usedLocalNames.clear()
-      localSymbolNames.clear()
 
       result
     }
@@ -698,25 +696,27 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val proxyIdent = encodeMethodSym(sym, reflProxy = true)
 
-      withScopedVars(
-          currentMethodInfoBuilder :=
-            currentClassInfoBuilder.addMethod(proxyIdent.name)
-      ) {
-        val jsParams = for (param <- sym.tpe.params) yield {
-          implicit val pos = param.pos
-          val name = encodeLocalSym(param, freshName)
-          val tpe = toTypeKind(param.tpe).toIRType
-          (js.ParamDef(name, tpe), js.VarRef(name, false)(tpe))
+      withNewLocalNameScope {
+        withScopedVars(
+            currentMethodInfoBuilder :=
+              currentClassInfoBuilder.addMethod(proxyIdent.name)
+        ) {
+          val jsParams = for (param <- sym.tpe.params) yield {
+            implicit val pos = param.pos
+            val name = encodeLocalSym(param, freshName)
+            val tpe = toTypeKind(param.tpe).toIRType
+            (js.ParamDef(name, tpe), js.VarRef(name, false)(tpe))
+          }
+
+          val call = genApplyMethod(js.This()(currentClassType), sym.owner, sym,
+              jsParams.map(_._2))
+          val value = ensureBoxed(call,
+              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+
+          val body = js.Return(value)
+
+          js.MethodDef(proxyIdent, jsParams.map(_._1), jstpe.AnyType, body)
         }
-
-        val call = genApplyMethod(js.This()(currentClassType), sym.owner, sym,
-            jsParams.map(_._2))
-        val value = ensureBoxed(call,
-            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
-
-        val body = js.Return(value)
-
-        js.MethodDef(proxyIdent, jsParams.map(_._1), jstpe.AnyType, body)
       }
     }
 
@@ -2487,12 +2487,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Ensures that the value of the given tree is unboxed.
-     *  @param expr Tree to be unboxed if needed.
+    /** Extracts a value typed as Any to the given type after posterasure.
+     *  @param expr Tree to be extracted.
      *  @param tpeEnteringPosterasure The type of `expr` as it was entering
      *    the posterasure phase.
      */
-    def ensureUnboxed(expr: js.Tree, tpeEnteringPosterasure: Type)(
+    def fromAny(expr: js.Tree, tpeEnteringPosterasure: Type)(
         implicit pos: Position): js.Tree = {
 
       tpeEnteringPosterasure match {
@@ -2502,10 +2502,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         case tpe: ErasedValueType =>
           val boxedClass = tpe.valueClazz
           val unboxMethod = boxedClass.derivedValueClassUnbox
-          genApplyMethod(expr, boxedClass, unboxMethod, Nil)
+          genApplyMethod(
+              genAsInstanceOf(tpe, expr),
+              boxedClass, unboxMethod, Nil)
 
-        case _ =>
-          expr
+        case tpe =>
+          genAsInstanceOf(tpe, expr)
       }
     }
 
@@ -2926,20 +2928,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       boxedResult match {
         case js.UndefinedParam() => boxedResult
         case _ =>
-          val tpePosterasure =
-            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType)
-          tpePosterasure match {
-            case tpe if isPrimitiveValueType(tpe) =>
-              makePrimitiveUnbox(boxedResult, tpe)
-            case tpe: ErasedValueType =>
-              val boxedClass = tpe.valueClazz
-              val unboxMethod = boxedClass.derivedValueClassUnbox
-              genApplyMethod(
-                  genAsInstanceOf(tpe, boxedResult),
-                  boxedClass, unboxMethod, Nil)
-            case tpe =>
-              genAsInstanceOf(tpe, boxedResult)
-          }
+          fromAny(boxedResult,
+              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
     }
 
@@ -3429,79 +3419,83 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (applyDef eq null)
         onFailure(s"Did not find any apply method in anon function $cd")
 
-      // Second step: build the list of useful constructor parameters
+      withNewLocalNameScope {
+        // Second step: build the list of useful constructor parameters
 
-      val ctorParams = sym.primaryConstructor.tpe.params
+        val ctorParams = sym.primaryConstructor.tpe.params
 
-      if (paramAccessors.size != ctorParams.size &&
-          !(paramAccessors.size == ctorParams.size-1 &&
-              ctorParams.head.unexpandedName == newTermName("arg$outer"))) {
-        onFailure(
-            s"Have param accessors $paramAccessors but "+
-            s"ctor params $ctorParams in anon function $cd")
-      }
-
-      val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
-      val usedCtorParams =
-        if (hasUnusedOuterCtorParam) ctorParams.tail
-        else ctorParams
-      val ctorParamDefs = usedCtorParams map { p =>
-        // in the apply method's context
-        js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
-      }
-
-      // Third step: emit the body of the apply method def
-
-      val (applyMethod, methodInfoBuilder) = withScopedVars(
-          paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
-          tryingToGenMethodAsJSFunction := true
-      ) {
-        try {
-          genMethodWithInfoBuilder(applyDef).getOrElse(
-            abort(s"Oops, $applyDef did not produce a method"))
-        } catch {
-          case e: CancelGenMethodAsJSFunction =>
-            onFailure(e.getMessage)
+        if (paramAccessors.size != ctorParams.size &&
+            !(paramAccessors.size == ctorParams.size-1 &&
+                ctorParams.head.unexpandedName == newTermName("arg$outer"))) {
+          onFailure(
+              s"Have param accessors $paramAccessors but "+
+              s"ctor params $ctorParams in anon function $cd")
         }
-      }
 
-      withScopedVars(
-          currentMethodInfoBuilder := methodInfoBuilder
-      ) {
-        // Fourth step: patch the body to unbox parameters and box result
+        val hasUnusedOuterCtorParam = paramAccessors.size != ctorParams.size
+        val usedCtorParams =
+          if (hasUnusedOuterCtorParam) ctorParams.tail
+          else ctorParams
+        val ctorParamDefs = usedCtorParams map { p =>
+          // in the apply method's context
+          js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
+        }
 
-        val js.MethodDef(_, params, _, body) = applyMethod
-        val patchedBody = patchFunBodyWithBoxes(applyDef.symbol, params, body)
+        // Third step: emit the body of the apply method def
 
-        // Fifth step: build the function maker
+        val (applyMethod, methodInfoBuilder) = withScopedVars(
+            paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
+            tryingToGenMethodAsJSFunction := true
+        ) {
+          try {
+            genMethodWithInfoBuilder(applyDef).getOrElse(
+              abort(s"Oops, $applyDef did not produce a method"))
+          } catch {
+            case e: CancelGenMethodAsJSFunction =>
+              onFailure(e.getMessage)
+          }
+        }
 
-        val functionMakerFun =
-          js.Function(jstpe.NoType, ctorParamDefs, jstpe.DynType, {
-            js.Return {
-              if (JSThisFunctionClasses.exists(sym isSubClass _)) {
-                assert(params.nonEmpty, s"Empty param list in ThisFunction: $cd")
-                js.Function(params.head.ptpe, params.tail, jstpe.AnyType, js.Block(
-                    js.VarDef(params.head.name, params.head.ptpe,
-                        mutable = false, js.This()(params.head.ptpe)),
-                    patchedBody
-                ))
-              } else {
-                js.Function(jstpe.NoType, params, jstpe.AnyType, patchedBody)
+        withScopedVars(
+            currentMethodInfoBuilder := methodInfoBuilder
+        ) {
+          // Fourth step: patch the body to unbox parameters and box result
+
+          val js.MethodDef(_, params, _, body) = applyMethod
+          val (patchedParams, patchedBody) =
+            patchFunBodyWithBoxes(applyDef.symbol, params, body)
+
+          // Fifth step: build the function maker
+
+          val functionMakerFun =
+            js.Function(jstpe.NoType, ctorParamDefs, jstpe.DynType, {
+              js.Return {
+                val pp = patchedParams // short-hand
+                if (JSThisFunctionClasses.exists(sym isSubClass _)) {
+                  assert(pp.nonEmpty, s"Empty param list in ThisFunction: $cd")
+                  js.Function(pp.head.ptpe, pp.tail, jstpe.AnyType, js.Block(
+                      js.VarDef(pp.head.name, pp.head.ptpe,
+                          mutable = false, js.This()(pp.head.ptpe)),
+                      patchedBody
+                  ))
+                } else {
+                  js.Function(jstpe.NoType, pp, jstpe.AnyType, patchedBody)
+                }
               }
-            }
-          })
+            })
 
-        val functionMaker = { capturedArgs0: List[js.Tree] =>
-          val capturedArgs =
-            if (hasUnusedOuterCtorParam) capturedArgs0.tail
-            else capturedArgs0
-          assert(capturedArgs.size == ctorParamDefs.size)
-          js.JSApply(functionMakerFun, capturedArgs)
+          val functionMaker = { capturedArgs0: List[js.Tree] =>
+            val capturedArgs =
+              if (hasUnusedOuterCtorParam) capturedArgs0.tail
+              else capturedArgs0
+            assert(capturedArgs.size == ctorParamDefs.size)
+            js.JSApply(functionMakerFun, capturedArgs)
+          }
+
+          val arity = params.size
+
+          (functionMaker, arity)
         }
-
-        val arity = params.size
-
-        (functionMaker, arity)
       }
     }
 
@@ -3555,8 +3549,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             genApplyMethod(js.This()(thisType),
                 receiver.tpe, target, actualArgs map genExpr)
         }
-        val patchedBody = patchFunBodyWithBoxes(target, jsParams, jsBody)
-        js.Function(thisType, jsParams, jstpe.AnyType, patchedBody)
+        val (patchedParams, patchedBody) =
+          patchFunBodyWithBoxes(target, jsParams, jsBody)
+        js.Function(thisType, patchedParams, jstpe.AnyType, patchedBody)
       }
 
       val boundFunction = {
@@ -3572,34 +3567,42 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private def patchFunBodyWithBoxes(methodSym: Symbol,
-        params: List[js.ParamDef], body: js.Tree)(implicit pos: Position): js.Tree = {
+        params: List[js.ParamDef], body: js.Tree)(
+        implicit pos: Position): (List[js.ParamDef], js.Tree) = {
       val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
 
-      val unboxParams = for {
-        (paramIdent, paramSym) <- params zip methodType.params
-        paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
-        paramRef = paramIdent.ref
-        unboxedParam = ensureUnboxed(paramRef, paramTpe)
-        if unboxedParam ne paramRef
+      val (paramsAny, paramsLocal) = (for {
+        (param, paramSym) <- params zip methodType.params
       } yield {
-        js.Assign(paramRef, unboxedParam)
-      }
+        val paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
+        val paramName = param.name
+        val js.Ident(name, origName) = paramName
+        val newOrigName = origName.getOrElse(name)
+        val newName = freshName(newOrigName)
+        val paramAny =
+          js.ParamDef(js.Ident(newName, Some(newOrigName))(paramName.pos),
+              jstpe.AnyType)(param.pos)
+        val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
+            fromAny(paramAny.ref, paramTpe))
+        (paramAny, paramLocal)
+      }).unzip
 
-      val returnStat = {
+      val patchedBody = {
         val resultType = methodType.resultType
         body match {
           case js.Return(expr, None) =>
-            js.Return(ensureBoxed(expr, resultType))
+            js.Return(js.Block(
+                paramsLocal :+ ensureBoxed(expr, resultType)))
           case _ =>
             assert(resultType.typeSymbol == UnitClass)
             /* In theory we should return a boxed () value, but that is the
              * undefined value, which is returned automatically in
              * JavaScript when there is no return statement. */
-            body
+            js.Block(paramsLocal :+ body)
         }
       }
 
-      js.Block(unboxParams :+ returnStat)
+      (paramsAny, patchedBody)
     }
 
     // Utilities ---------------------------------------------------------------
