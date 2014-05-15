@@ -486,7 +486,7 @@ object JSDesugaring {
           try {
             lhs match {
               case Return(_, _) => redo(body)
-              case _ => Labeled(label, UndefType, redo(body))
+              case _            => Labeled(label, NoType, redo(body))
             }
           } finally {
             labeledExprLHSes = savedMap
