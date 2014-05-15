@@ -2732,8 +2732,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           code match {
-            case V2JS               => statToExpr(exprToStat(arg))
-            case Z2JS | N2JS | S2JS => js.Cast(arg, jstpe.DynType)
+            case V2JS =>
+              js.Block(exprToStat(arg), js.Cast(js.Undefined(), jstpe.DynType))
+
+            case Z2JS | N2JS | S2JS =>
+              js.Cast(arg, jstpe.DynType)
 
             /** Convert a scala.FunctionN f to a js.FunctionN
              *  Basically it binds the appropriate `apply` method of f to f.
