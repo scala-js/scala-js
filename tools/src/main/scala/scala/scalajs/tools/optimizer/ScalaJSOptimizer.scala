@@ -50,6 +50,12 @@ class ScalaJSOptimizer {
       import inputs._
       val analyzer = readClasspathAndCreateAnalyzer(classpath, logger)
       analyzer.computeReachability(manuallyReachable, noWarnMissing)
+      if (outputConfig.checkIR) {
+        if (analyzer.allAvailable)
+          checkIR(analyzer, logger)
+        else if (inputs.noWarnMissing.isEmpty)
+          logger.warn("Could not check IR because there where linking errors.")
+      }
       writeDCEedOutput(inputs, outputConfig, analyzer)
     } finally {
       persistentState.endRun()
@@ -71,6 +77,17 @@ class ScalaJSOptimizer {
       persistentState.getPersistentIRFile(irFile).info
     }
     new Analyzer(logger, CoreData.CoreClassesInfo ++ userInfo)
+  }
+
+  private def checkIR(analyzer: Analyzer, logger: Logger): Unit = {
+    val allClassDefs = for {
+      classInfo <- analyzer.classInfos.values
+      persistentIRFile <- persistentState.encodedNameToPersistentFile.get(
+          classInfo.encodedName)
+    } yield persistentIRFile.tree
+    val checker = new IRChecker(analyzer, allClassDefs.toSeq, logger)
+    if (!checker.check())
+      sys.error(s"There were ${checker.errorCount} IR checking errors.")
   }
 
   private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
@@ -219,7 +236,9 @@ object ScalaJSOptimizer {
       /** Ask to produce source map for the output */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */
-      relativizeSourceMapBase: Option[URI] = None
+      relativizeSourceMapBase: Option[URI] = None,
+      /** If true, performs expensive checks of the IR for the used parts. */
+      checkIR: Boolean = false
   )
 
   // Private helpers -----------------------------------------------------------

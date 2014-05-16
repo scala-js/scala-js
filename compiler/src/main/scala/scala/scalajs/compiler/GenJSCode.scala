@@ -2508,9 +2508,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         case tpe: ErasedValueType =>
           val boxedClass = tpe.valueClazz
           val unboxMethod = boxedClass.derivedValueClassUnbox
-          genApplyMethod(
+          val content = genApplyMethod(
               genAsInstanceOf(tpe, expr),
               boxedClass, unboxMethod, Nil)
+          if (unboxMethod.tpe.resultType <:< tpe.erasedUnderlying)
+            content
+          else
+            fromAny(content, tpe.erasedUnderlying)
 
         case tpe =>
           genAsInstanceOf(tpe, expr)

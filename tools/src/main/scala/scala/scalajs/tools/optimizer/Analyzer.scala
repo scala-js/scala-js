@@ -75,6 +75,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
       "jl_Long", "jl_Float", "jl_Double"
   )
 
+  var allAvailable: Boolean = true
+
   val classInfos: mutable.Map[String, ClassInfo] = {
     val cs = for (classData <- allData)
       yield (classData.encodedName, new ClassInfo(classData))
@@ -316,10 +318,13 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
     }
 
     def checkExistent()(implicit from: From): Unit = {
-      if (nonExistent && warnEnabled) {
-        logger.warn(s"Referring to non-existent class $encodedName")
-        warnCallStack()
+      if (nonExistent) {
+        if (warnEnabled) {
+          logger.warn(s"Referring to non-existent class $encodedName")
+          warnCallStack()
+        }
         nonExistent = false
+        allAvailable = false
       }
     }
 
@@ -377,7 +382,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
       assert(!isAbstract,
           s"Trying to reach statically the abstract method $this")
 
-      warnIfNonExistent()
+      checkExistent()
 
       if (!isReachable) {
         logger.debugIndent(s"$this.isReachable = true") {
@@ -394,7 +399,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
       assert(!isConstructorName(encodedName),
           s"Trying to reach dynamically the constructor $this")
 
-      warnIfNonExistent()
+      checkExistent()
 
       if (!isReachable) {
         logger.debugIndent(s"$this.isReachable = true") {
@@ -406,12 +411,15 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
       }
     }
 
-    private def warnIfNonExistent()(implicit from: From) = {
-      if (warnEnabled && owner.warnEnabled && nonExistent) {
-        logger.temporarilyNotIndented {
-          logger.warn(s"Referring to non-existent method $this")
-          warnCallStack()
+    private def checkExistent()(implicit from: From) = {
+      if (nonExistent) {
+        if (warnEnabled && owner.warnEnabled) {
+          logger.temporarilyNotIndented {
+            logger.warn(s"Referring to non-existent method $this")
+            warnCallStack()
+          }
         }
+        allAvailable = false
       }
     }
 

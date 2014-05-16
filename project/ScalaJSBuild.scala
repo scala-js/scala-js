@@ -83,7 +83,8 @@ object ScalaJSBuild extends Build {
   )
 
   val myScalaJSSettings = scalaJSAbstractSettings ++ Seq(
-      autoCompilerPlugins := true
+      autoCompilerPlugins := true,
+      checkScalaJSIR := true
   )
 
   val scalaJSSourceMapSettings = scalacOptions ++= {
