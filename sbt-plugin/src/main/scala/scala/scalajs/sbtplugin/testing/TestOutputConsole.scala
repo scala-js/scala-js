@@ -14,7 +14,7 @@ import sbt.testing.EventHandler
 
 import scala.scalajs.tools.env.JSConsole
 import scala.scalajs.tools.sourcemap.SourceMapper
-import scala.scalajs.tools.classpath.JSClasspath
+import scala.scalajs.tools.classpath.CompleteClasspath
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -25,7 +25,7 @@ class TestOutputConsole(
     handler: EventHandler,
     loggers: Array[Logger],
     events: Events,
-    classpath: JSClasspath,
+    classpath: CompleteClasspath,
     noSourceMap: Boolean) extends JSConsole {
 
   import events._

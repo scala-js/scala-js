@@ -17,6 +17,7 @@ import Implicits._
 
 import scala.scalajs.tools.io.{IO => _, _}
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.classpath.builder._
 import scala.scalajs.tools.packager._
 import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
@@ -28,9 +29,10 @@ import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
 
 import scala.scalajs.ir.ScalaJSVersions
 
-import scala.scalajs.sbtplugin.testing.TestFramework
+import scala.scalajs.sbtplugin.testing.{TestFramework, JSClasspathLoader}
 
 import scala.util.Try
+import scala.util.control.NonFatal
 
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = ScalaJSVersions.current
@@ -40,19 +42,25 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     ScalaJSCrossVersion.binaryScalaJSVersion(scalaJSVersion)
 
   object ScalaJSKeys {
-    val packageJS = taskKey[Seq[File]](
+    val packageJS = taskKey[CompleteCIClasspath](
         "Package all the compiled .js files")
-    val fastOptJS = taskKey[File](
+    val fastOptJS = taskKey[CompleteCIClasspath](
         "Package and fast optimize all the compiled .js files in one file")
-    val fullOptJS = taskKey[File](
+    val fullOptJS = taskKey[CompleteNCClasspath](
         "Package and fully optimize all the compiled .js files in one file")
 
-    val packageExternalDepsJS = taskKey[Seq[File]](
+    val packageExternalDepsJS = taskKey[PartialClasspath](
         "Package the .js files of external dependencies")
-    val packageInternalDepsJS = taskKey[Seq[File]](
+    val packageInternalDepsJS = taskKey[PartialClasspath](
         "Package the .js files of internal dependencies")
-    val packageExportedProductsJS = taskKey[Seq[File]](
+    val packageExportedProductsJS = taskKey[PartialClasspath](
         "Package the .js files of the project")
+
+    val preLinkClasspath = taskKey[CompleteIRClasspath](
+        "Completely resolved classpath just after compilation")
+
+    val execClasspath = taskKey[CompleteClasspath](
+        "The classpath used for running and testing")
 
     val fullOptJSPrettyPrint = settingKey[Boolean](
         "Pretty-print the output of fullOptJS")
@@ -69,9 +77,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "A JVM-like environment where Scala.js files can be run and tested")
 
     val requiresDOM = settingKey[Boolean]("Whether this projects needs the DOM")
-
-    val scalaJSSetupRunner = settingKey[Boolean](
-        "Configure the run task to run the main object with the Scala.js environment")
 
     val scalaJSTestFramework = settingKey[String](
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
@@ -97,7 +102,16 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val fullOptStage = taskKey[Unit]("Run stuff after fullOptJS")
   }
 
+  /** Keys internal to the Scala.js plugin. Use of any of these keys is at your
+   *  own risk. Subject to change without notice.
+   */
+  object ScalaJSInternalKeys {
+    val ensureUnforked = settingKey[Boolean](
+        "Dummy setting to ensure we do not fork in Scala.js run & test.")
+  }
+
   import ScalaJSKeys._
+  import ScalaJSInternalKeys._
 
   private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
     item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
@@ -107,7 +121,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
       "scala-parser-combinators", "scala-xml") _
 
-  private def jsClasspath(cp: Seq[Attributed[File]]): Seq[File] = {
+  private def filterClasspath(cp: Seq[Attributed[File]]): Seq[File] = {
     for {
       entry <- cp
       f = entry.data
@@ -118,15 +132,15 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   private def filesToWatchForChanges(classpath: Seq[File]): Set[File] = {
     val seq = classpath flatMap { f =>
       if (f.isFile) List(f)
-      else (f ** (("*.sjsir": NameFilter) | "*.js")).get
+      else (f ** (("*.sjsir": NameFilter) | "*.js" |
+          JSDependencyManifest.ManifestFileName)).get
     }
     seq.toSet
   }
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
-      packageJSKey: TaskKey[Seq[File]],
-      outputSuffix: String,
-      packOrder: Int): Seq[Setting[_]] = Seq(
+      packageJSKey: TaskKey[PartialClasspath],
+      outputSuffix: String): Seq[Setting[_]] = Seq(
 
       artifactPath in packageJSKey :=
         ((crossTarget in packageJSKey).value /
@@ -134,54 +148,27 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       packageJSKey := {
         val s = streams.value
-        val classpath = jsClasspath((classpathKey in packageJSKey).value)
+        val classpathDirs =
+          filterClasspath((classpathKey in packageJSKey).value).toList
         val output = (artifactPath in packageJSKey).value
-        val taskCacheDir = s.cacheDirectory / "package-js"
+        val taskCache = WritableFileVirtualTextFile(
+            s.cacheDirectory / ("package-js" + outputSuffix))
+        val classpath = PartialClasspathBuilder(classpathDirs.toList).build()
 
         IO.createDirectory(output.getParentFile)
 
-        val outputWriter = new FileVirtualJSFileWriter(output)
+        val relSourceMapBase =
+          if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+          else None
 
-        try {
-          if (classpath.isEmpty) {
-            import ScalaJSPackedClasspath.packOrderLine
-
-            outputWriter.contentWriter.write(packOrderLine(packOrder) + "\n")
-            outputWriter.contentWriter.write("/* dummy empty file */\n")
-          } else {
-            FileFunction.cached(taskCacheDir,
-                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-              s.log.info("Packaging %s ..." format output)
-              import ScalaJSPackager._
-              val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
-              val packager = new ScalaJSPackager
-              val relSourceMapBase =
-                if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
-                else None
-
-              try {
-                packager.packageScalaJS(
-                    Inputs(classpath = classpathEntries),
-                    OutputConfig(
-                        name = output.name,
-                        writer = outputWriter,
-                        packOrder = packOrder,
-                        addCoreJSLibs = packageJSKey == packageExternalDepsJS,
-                        wantSourceMap = (emitSourceMaps in packageJSKey).value,
-                        relativizeSourceMapBase = relSourceMapBase),
-                    s.log)
-              } finally {
-                outputWriter.close()
-              }
-
-              Set(output)
-            } (filesToWatchForChanges(classpath))
-          }
-        } finally {
-          outputWriter.close()
-        }
-
-        Seq(output)
+        import ScalaJSPackager._
+        (new ScalaJSPackager).packageCP(classpath,
+            OutputConfig(
+                output = WritableFileVirtualJSFile(output),
+                cache = Some(taskCache),
+                wantSourceMap = (emitSourceMaps in packageJSKey).value,
+                relativizeSourceMapBase = relSourceMapBase),
+            s.log)
       }
   )
 
@@ -218,18 +205,27 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       packageClasspathJSTasks(externalDependencyClasspath,
-          packageExternalDepsJS, "-extdeps", 0) ++
+          packageExternalDepsJS, "-extdeps") ++
       packageClasspathJSTasks(internalDependencyClasspath,
-          packageInternalDepsJS, "-intdeps", 1) ++
+          packageInternalDepsJS, "-intdeps") ++
       packageClasspathJSTasks(exportedProducts,
-          packageExportedProductsJS, "", 2)
+          packageExportedProductsJS, "")
   ) ++ Seq(
 
-      packageJS := (
-          packageExternalDepsJS.value ++
-          packageInternalDepsJS.value ++
-          packageExportedProductsJS.value
-      ),
+      preLinkClasspath := {
+        val cp = fullClasspath.value
+        val pcp = PartialClasspathBuilder(Attributed.data(cp).toList).buildIR()
+        pcp.resolve()
+      },
+
+      packageJS := {
+        val cps = List(
+            packageExternalDepsJS.value,
+            packageInternalDepsJS.value,
+            packageExportedProductsJS.value)
+
+        cps.reduceLeft(_ append _).resolve()
+      },
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
@@ -240,44 +236,32 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       fastOptJS := {
         val s = streams.value
-        val classpath = jsClasspath((fullClasspath in fastOptJS).value)
         val output = (artifactPath in fastOptJS).value
-        val taskCacheDir = s.cacheDirectory / "fastopt-js"
+        val taskCache =
+          WritableFileVirtualTextFile(s.cacheDirectory / "fastopt-js")
 
         IO.createDirectory(output.getParentFile)
 
-        FileFunction.cached(taskCacheDir,
-            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-          s.log.info("Fast optimizing %s ..." format output)
-          import ScalaJSOptimizer._
-          val classpathEntries = ScalaJSClasspath.fromClasspath(classpath)
-          val optimizer = (scalaJSOptimizer in fastOptJS).value
-          val outputWriter = new FileVirtualJSFileWriter(output)
-          val relSourceMapBase =
-              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
-              else None
+        val relSourceMapBase =
+          if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+          else None
 
-          try {
-            optimizer.optimize(
-                Inputs(classpath = classpathEntries),
-                OutputConfig(
-                    name = output.name,
-                    writer = outputWriter,
-                    wantSourceMap = (emitSourceMaps in fastOptJS).value,
-                    relativizeSourceMapBase = relSourceMapBase,
-                    checkIR = checkScalaJSIR.value),
-                s.log)
-          } finally {
-            outputWriter.close()
-          }
-
-          Set(output)
-        } (filesToWatchForChanges(classpath))
-
-        output
+        import ScalaJSOptimizer._
+        (scalaJSOptimizer in fastOptJS).value.optimizeCP(
+            Inputs(input = (preLinkClasspath in fastOptJS).value),
+            OutputConfig(
+                output = WritableFileVirtualJSFile(output),
+                cache = Some(taskCache),
+                wantSourceMap = (emitSourceMaps in fastOptJS).value,
+                relativizeSourceMapBase = relSourceMapBase,
+                checkIR = checkScalaJSIR.value),
+            s.log)
       },
 
-      sources in fullOptJS := Seq(fastOptJS.value),
+      clean <<= clean.dependsOn(Def.task {
+        // have clean reset incremental optimizer state
+        (scalaJSOptimizer in fastOptJS).value.clean()
+      }),
 
       artifactPath in fullOptJS :=
         ((crossTarget in fullOptJS).value /
@@ -285,40 +269,26 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       fullOptJS := {
         val s = streams.value
-        val inputs = (sources in fullOptJS).value
         val output = (artifactPath in fullOptJS).value
-        val taskCacheDir = s.cacheDirectory / "fullopt-js"
+        val taskCache =
+          WritableFileVirtualTextFile(s.cacheDirectory / "fullopt-js")
 
         IO.createDirectory(output.getParentFile)
 
-        FileFunction.cached(taskCacheDir,
-            FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-          s.log.info("Optimizing %s ..." format output)
-          import ScalaJSClosureOptimizer._
-          val optimizer = new ScalaJSClosureOptimizer
-          val outputWriter = new FileVirtualJSFileWriter(output)
-          val relSourceMapBase =
-              if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
-              else None
+        val relSourceMapBase =
+          if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
+          else None
 
-          try {
-            optimizer.optimize(
-                Inputs(sources = inputs map FileVirtualJSFile),
-                OutputConfig(
-                    name = output.name,
-                    writer = outputWriter,
-                    wantSourceMap = (emitSourceMaps in fullOptJS).value,
-                    prettyPrint = fullOptJSPrettyPrint.value,
-                    relSourceMapBase),
-                s.log)
-          } finally {
-            outputWriter.close()
-          }
-
-          Set(output)
-        } (inputs.toSet)
-
-        output
+        import ScalaJSClosureOptimizer._
+        (new ScalaJSClosureOptimizer).optimizeCP(
+            Inputs(input = (fastOptJS in fullOptJS).value),
+            OutputConfig(
+                output = WritableFileVirtualJSFile(output),
+                cache = Some(taskCache),
+                wantSourceMap = (emitSourceMaps in fullOptJS).value,
+                prettyPrint = fullOptJSPrettyPrint.value,
+                relSourceMapBase),
+            s.log)
       },
 
       compile <<= compile.dependsOn(Def.task {
@@ -349,18 +319,22 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
           } getOrElse true
         }
 
-        if (needWrite) {
-          val writer = new FileVirtualTextFileWriter(file)
-
-          try { JSDependencyManifest.write(manifest, writer) }
-          finally { writer.close() }
-        }
+        if (needWrite)
+          JSDependencyManifest.write(manifest, file)
       }),
 
       console <<= console.dependsOn(Def.task(
           streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +
               "are running a JVM REPL. JavaScript things won't work.")
       )),
+
+      // Give tasks ability to check we are not forking at build reading time
+      ensureUnforked := {
+        if (fork.value)
+          sys.error("Scala.js cannot be run in a forked JVM")
+        else
+          true
+      },
 
       // Default jsEnv
       jsEnv := preLinkJSEnv.value,
@@ -370,37 +344,65 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       jsEnv in fastOptStage := postLinkJSEnv.value,
       jsEnv in fullOptStage := postLinkJSEnv.value,
 
-      exportedProducts in packageStage :=
-        Attributed.blankSeq(packageJS.value) ++ exportedProducts.value,
-      exportedProducts in fastOptStage :=
-        Attributed.blank(fastOptJS.value) +: exportedProducts.value,
-      exportedProducts in fullOptStage :=
-        Attributed.blank(fullOptJS.value) +: exportedProducts.value
+      // Define execution classpaths
+      execClasspath                 := preLinkClasspath.value,
+      execClasspath in packageStage := packageJS.value,
+      execClasspath in fastOptStage := fastOptJS.value,
+      execClasspath in fullOptStage := fullOptJS.value,
 
+      // Dummy task need dummy tags (used for concurrency restrictions)
+      tags in packageStage := Seq(),
+      tags in fastOptStage := Seq(),
+      tags in fullOptStage := Seq()
   )
 
-  val scalaJSStageSettings = Seq(
-    fullClasspath <<= Classpaths.concatDistinct(exportedProducts,
-        dependencyClasspath in (This, This, Global)),
+  /** Run a class in a given environment */
+  def jsRun(env: JSEnv, cp: CompleteClasspath, mainCl: String, log: Logger) = {
+    val launcher = {
+      new MemVirtualJSFile("Generated launcher file")
+        .withContent(s"$mainCl().main();")
+    }
 
-    // Dummy task needs dummy tag (used for concurrency restrictions)
-    tags := Seq()
-  )
+    log.info("Running " + mainCl)
+    log.debug(s"with JSEnv of type ${env.getClass()}")
+    log.debug(s"with classpath of type ${cp.getClass}")
+
+    try {
+      // Actually run code
+      env.runJS(cp, launcher, log, ConsoleJSConsole)
+    } catch {
+      case NonFatal(e) =>
+        log.error("Failed to run JS env ($env):")
+        log.trace(e)
+    }
+  }
 
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
-      scalaJSSetupRunner := true,
-      runner <<= Def.taskDyn {
-        if (scalaJSSetupRunner.value)
-          Def.task(new ScalaJSEnvRun(jsEnv.value))
-        else
-          runner
+      run <<= Def.inputTask {
+        // use assert to prevent warning about pure expr in stat pos
+        assert(ensureUnforked.value)
+
+        val mainCl = mainClass.value getOrElse error("No main class detected.")
+        jsRun(jsEnv.value, execClasspath.value, mainCl, streams.value.log)
       },
 
-      // Although these are the defaults, we add them again since they
-      // will be filtered
-      run <<= Defaults.runTask(fullClasspath, mainClass, runner),
-      runMain <<= Defaults.runMainTask(fullClasspath, runner)
+      runMain <<= {
+        // Implicits for parsing
+        import sbinary.DefaultProtocol.StringFormat
+        import Cache.seqFormat
+
+        val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
+          Defaults.runMainParser(s, names getOrElse Nil))
+
+        Def.inputTask {
+          // use assert to prevent warning about pure expr in stat pos
+          assert(ensureUnforked.value)
+
+          val mainCl = parser.parsed._1
+          jsRun(jsEnv.value, execClasspath.value, mainCl, streams.value.log)
+        }
+      }
   )
 
   val scalaJSCompileSettings = (
@@ -408,17 +410,28 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       scalaJSRunSettings ++
 
       // Staged runners
-      inTask(packageStage)(scalaJSStageSettings ++ scalaJSRunSettings) ++
-      inTask(fastOptStage)(scalaJSStageSettings ++ scalaJSRunSettings) ++
-      inTask(fullOptStage)(scalaJSStageSettings ++ scalaJSRunSettings)
+      inTask(packageStage)(scalaJSRunSettings) ++
+      inTask(fastOptStage)(scalaJSRunSettings) ++
+      inTask(fullOptStage)(scalaJSRunSettings)
   )
 
   val scalaJSTestFrameworkSettings = Seq(
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
 
+      // Copied from Defaults, but scoped. We need a JVM loader in
+      // loadedTestFrameworks to find out whether the framework exists.
+      testLoader in loadedTestFrameworks := {
+        TestFramework.createTestLoader(
+            Attributed.data(fullClasspath.value),
+            scalaInstance.value,
+            IO.createUniqueDirectory(taskTemporaryDirectory.value))
+      },
+
       loadedTestFrameworks := {
-        // Hard scope the loader since we cannot test presence in other stages
-        val loader = (testLoader in test).value
+        // use assert to prevent warning about pure expr in stat pos
+        assert(ensureUnforked.value)
+
+        val loader = (testLoader in loadedTestFrameworks).value
         val isTestFrameworkDefined = try {
           Class.forName(scalaJSTestFramework.value, false, loader)
           true
@@ -435,7 +448,10 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         } else {
           loadedTestFrameworks.value
         }
-      }
+      },
+
+      // Pseudo loader to pass classpath to test framework
+      testLoader := JSClasspathLoader(execClasspath.value)
   )
 
   /** Transformer to force keys (which are not in exclude list) to be
@@ -466,7 +482,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   def stagedTestSettings[A](task: TaskKey[A]) = {
     // Re-filter general settings
     val hackedTestTasks = filterTask(Defaults.testTasks, task,
-        keys = Set(testLoader.key, executeTests.key, testListeners.key,
+        keys = Set(executeTests.key, testListeners.key,
             testOptions.key, test.key, testOnly.key, testExecution.key),
         excl = Set(testFilter.key, testGrouping.key))
 
@@ -476,17 +492,11 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         excl = Set(testGrouping.key))
 
     hackedTestTasks ++ hackedTestQuickTasks ++
-    inTask(task)(scalaJSStageSettings ++ scalaJSTestFrameworkSettings)
+    inTask(task)(scalaJSTestFrameworkSettings)
   }
 
-  val scalaJSTestSettings = (
-      scalaJSConfigSettings ++
-      scalaJSTestFrameworkSettings ++
-
-      // Add staged tests
-      stagedTestSettings(packageStage) ++
-      stagedTestSettings(fastOptStage) ++
-      stagedTestSettings(fullOptStage)
+  val scalaJSTestBuildSettings = (
+      scalaJSConfigSettings
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
           packageExportedProductsJS,
@@ -495,19 +505,33 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       }
   )
 
-  val scalaJSDefaultConfigs = (
-      inConfig(Compile)(scalaJSCompileSettings) ++
-      inConfig(Test)(scalaJSTestSettings)
-  ) ++ Seq(
+  val scalaJSTestSettings = (
+      scalaJSTestBuildSettings ++
+      scalaJSTestFrameworkSettings ++
+
+      // Add staged tests
+      stagedTestSettings(packageStage) ++
+      stagedTestSettings(fastOptStage) ++
+      stagedTestSettings(fullOptStage)
+  )
+
+  val scalaJSDependenciesSettings = Seq(
       // add all the webjars your jsDependencies depend upon
       libraryDependencies ++= jsDependencies.value.collect {
         case JarJSModuleID(module, _) => module
-      },
-      // have clean reset incremental optimizer state
-      clean <<= clean.dependsOn(Def.task {
-        scalaJSOptimizer.in(Compile, fastOptJS).value.clean()
-        scalaJSOptimizer.in(Test,    fastOptJS).value.clean()
-      })
+      }
+  )
+
+  val scalaJSDefaultBuildConfigs = (
+      inConfig(Compile)(scalaJSConfigSettings) ++ // build settings for Compile
+      inConfig(Test)(scalaJSTestBuildSettings) ++
+      scalaJSDependenciesSettings
+  )
+
+  val scalaJSDefaultConfigs = (
+      inConfig(Compile)(scalaJSCompileSettings) ++
+      inConfig(Test)(scalaJSTestSettings) ++
+      scalaJSDependenciesSettings
   )
 
   val scalaJSProjectBaseSettings = Seq(
@@ -536,6 +560,11 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       scalaJSDefaultConfigs
   )
 
+  val scalaJSAbstractBuildSettings: Seq[Setting[_]] = (
+      scalaJSProjectBaseSettings ++
+      scalaJSDefaultBuildConfigs
+  )
+
   val scalaJSReleasesResolver = Resolver.url("scala-js-releases",
       url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
       Resolver.ivyStylePatterns)
@@ -543,7 +572,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       url("http://repo.scala-js.org/repo/snapshots/"))(
       Resolver.ivyStylePatterns)
 
-  val scalaJSSettings: Seq[Setting[_]] = scalaJSAbstractSettings ++ Seq(
+  val scalaJSEcosystemSettings = Seq(
       // the resolver to find the compiler and library (and others)
       resolvers ++= Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver),
 
@@ -557,5 +586,19 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       // and you will want to be cross-compiled on the Scala.js binary version
       crossVersion := ScalaJSCrossVersion.binary
+  )
+
+  /** All Scala.js settings */
+  val scalaJSSettings: Seq[Setting[_]] = (
+      scalaJSAbstractSettings ++
+      scalaJSEcosystemSettings
+  )
+
+  /** Scala.js build settings: Allows to build Scala.js, but doesn't change
+   *  run / test commands
+   */
+  val scalaJSBuildSettings: Seq[Setting[_]] = (
+      scalaJSAbstractBuildSettings ++
+      scalaJSEcosystemSettings
   )
 }

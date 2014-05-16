@@ -7,16 +7,9 @@
 \*                                                                      */
 
 
-package scala.scalajs.tools.env
+package scala.scalajs.sbtplugin.testing
 
-import scala.scalajs.tools.io._
-import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.logging._
+import scala.scalajs.tools.classpath.CompleteClasspath
 
-trait JSEnv {
-  /** Run the code in the virtual file. Return Some(<error message>) if failed
-   *  None otherwise
-   */
-  def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): Option[String]
-}
+/** A dummy ClassLoader to pass on Scala.js ClasspathContents to tests */
+final case class JSClasspathLoader(cp: CompleteClasspath) extends ClassLoader

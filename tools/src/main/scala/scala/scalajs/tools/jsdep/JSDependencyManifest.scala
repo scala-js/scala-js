@@ -3,6 +3,10 @@ package scala.scalajs.tools.jsdep
 import scala.scalajs.tools.json._
 import scala.scalajs.tools.io._
 
+import scala.collection.immutable.{Seq, Traversable}
+
+import java.io._
+
 import org.json.simple.JSONValue
 
 final case class JSDependencyManifest(
@@ -13,7 +17,8 @@ object JSDependencyManifest {
 
   final val ManifestFileName = "JS_DEPENDENCIES"
 
-  def createIncludeList(manifests: Seq[JSDependencyManifest]): List[String] = {
+  def createIncludeList(
+      manifests: Traversable[JSDependencyManifest]): List[String] = {
     val jsDeps = mergeManifests(manifests)
 
     // Verify all dependencies are met
@@ -63,13 +68,13 @@ object JSDependencyManifest {
   /** Merges multiple JSDependencyManifests into a map of map:
    *  dependency -> includeAfter -> origins
    */
-  private def mergeManifests(manifests: Seq[JSDependencyManifest]) = {
+  private def mergeManifests(manifests: Traversable[JSDependencyManifest]) = {
     val flatDeps = for {
       manifest <- manifests
       libDep   <- manifest.libDeps
     } yield (libDep, manifest.origin)
 
-    def mergedIncludeAfter(tups: Seq[(JSDependency, Origin)]) = {
+    def mergedIncludeAfter(tups: Traversable[(JSDependency, Origin)]) = {
       val flat = for {
         (jsdep, origin) <- tups
         includeAfter    <- jsdep.dependencies
@@ -99,15 +104,34 @@ object JSDependencyManifest {
     }
   }
 
-  def write(dep: JSDependencyManifest, writer: VirtualTextFileWriter): Unit = {
-    // caller is responsible to close file
-    JSONValue.writeJSONString(dep.toJSON, writer.contentWriter)
+  def write(dep: JSDependencyManifest, output: WritableVirtualTextFile): Unit = {
+    val writer = output.contentWriter
+    try write(dep, writer)
+    finally writer.close()
+  }
+
+  def write(dep: JSDependencyManifest, file: File): Unit = {
+    val writer = new BufferedWriter(new FileWriter(file))
+    try write(dep, writer)
+    finally writer.close()
+  }
+
+  def write(dep: JSDependencyManifest, writer: Writer): Unit =
+    JSONValue.writeJSONString(dep.toJSON, writer)
+
+  def read(file: File): JSDependencyManifest = {
+    val reader = new BufferedReader(new FileReader(file))
+    try read(reader)
+    finally reader.close()
   }
 
   def read(file: VirtualTextFile): JSDependencyManifest = {
     val reader = file.reader
-    try fromJSON[JSDependencyManifest](JSONValue.parse(reader))
+    try read(reader)
     finally reader.close()
   }
+
+  def read(reader: Reader): JSDependencyManifest =
+    fromJSON[JSDependencyManifest](JSONValue.parse(reader))
 
 }

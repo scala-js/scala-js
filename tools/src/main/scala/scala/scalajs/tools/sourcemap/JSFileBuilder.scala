@@ -56,6 +56,10 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
     // Do not close the printer: we do not have ownership of the writers
   }
 
+  def closeWriters(): Unit = {
+    outputWriter.close()
+  }
+
   def complete(): Unit = {
     // Can be overridden by subclasses
   }
@@ -178,6 +182,11 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     // Do not close the printer: we do not have ownership of the writers
   }
 
+  override def closeWriters() = {
+    super.closeWriters()
+    sourceMapWriter.close()
+  }
+
   private def getFileSourceFile(
       file: VirtualJSFile): ir.Position.SourceFile = file match {
     case file: FileVirtualJSFile =>
@@ -206,6 +215,5 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
   override def complete(): Unit = {
     addLine("//@ sourceMappingURL=" + name + ".map")
     super.complete()
-    sourceMapWriter.close()
   }
 }

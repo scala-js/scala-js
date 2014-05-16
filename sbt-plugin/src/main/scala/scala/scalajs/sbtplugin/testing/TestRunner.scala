@@ -16,7 +16,7 @@ import scala.scalajs.tools.classpath._
 
 class TestRunner(
     environment: JSEnv,
-    jsClasspath: JSClasspath,
+    classpath: CompleteClasspath,
     testFramework: String,
     val args: Array[String],
     val remoteArgs: Array[String]) extends Runner {
@@ -24,7 +24,7 @@ class TestRunner(
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = if (_done) {
     throw new IllegalStateException("Done has already been called")
   } else {
-    taskDefs.map(TestTask(environment, jsClasspath, testFramework, args))
+    taskDefs.map(TestTask(environment, classpath, testFramework, args))
   }
 
   def done(): String = {

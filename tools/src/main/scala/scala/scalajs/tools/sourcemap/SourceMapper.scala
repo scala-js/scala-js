@@ -9,11 +9,11 @@
 
 package scala.scalajs.tools.sourcemap
 
-import scala.scalajs.tools.classpath.JSClasspath
+import scala.scalajs.tools.classpath._
 
 import com.google.debugging.sourcemap._
 
-class SourceMapper(classpath: JSClasspath) {
+class SourceMapper(classpath: CompleteClasspath) {
 
   def map(ste: StackTraceElement, columnNumber: Int): StackTraceElement = {
     val mapped = for {
@@ -81,7 +81,7 @@ class SourceMapper(classpath: JSClasspath) {
   }
 
   private def findSourceMap(path: String) = {
-    val candidates = classpath.jsFiles.filter(_.path == path)
+    val candidates = classpath.allCode.filter(_.path == path)
     if (candidates.size != 1) None // better no sourcemap than a wrong one
     else candidates.head.sourceMap
   }

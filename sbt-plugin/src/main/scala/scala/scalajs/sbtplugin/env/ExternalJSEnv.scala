@@ -32,7 +32,7 @@ abstract class ExternalJSEnv(
     * Don't care about exceptions. Calling code will catch and display
     * an error message.
     */
-  def runJS(classpath: JSClasspath, code: VirtualJSFile,
+  def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
     logger: Logger, console: JSConsole): Option[String] = {
 
     val runJSArgs = RunJSArgs(classpath, code, logger, console)
@@ -114,7 +114,7 @@ abstract class ExternalJSEnv(
 
   /** Get files that are a library (i.e. that do not run anything) */
   protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    initFiles(args) ++ args.classpath.jsFiles
+    initFiles(args) ++ args.classpath.allCode
 
   /** Get all files that are passed to VM (libraries and code) */
   protected def getJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
@@ -125,7 +125,7 @@ abstract class ExternalJSEnv(
 object ExternalJSEnv {
 
   case class RunJSArgs(
-      classpath: JSClasspath,
+      classpath: CompleteClasspath,
       code: VirtualJSFile,
       logger: Logger,
       console: JSConsole)
