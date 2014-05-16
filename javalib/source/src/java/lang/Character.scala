@@ -203,7 +203,11 @@ object Character {
     else -1
   }
 
-  def isISOControl(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
+  def isISOControl(codePoint: scala.Int): scala.Boolean = {
+    (0x00 <= codePoint && codePoint <= 0x1F) || (0x7F <= codePoint && codePoint <= 0x9F)
+  }
+
   def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
