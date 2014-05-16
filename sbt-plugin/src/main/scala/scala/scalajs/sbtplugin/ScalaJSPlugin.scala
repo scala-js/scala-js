@@ -341,8 +341,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         val file = targetDir / JSDependencyManifest.ManifestFileName
 
         // Prevent writing if unnecessary to not invalidate dependencies
-        // TODO this can probably be improved using an SBT internal state
-        // mechanism or a custom global cache
         val needWrite = !file.exists || {
           Try {
             val vfile = new FileVirtualTextFile(file)
