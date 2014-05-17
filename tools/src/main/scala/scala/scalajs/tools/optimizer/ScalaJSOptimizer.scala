@@ -54,7 +54,7 @@ class ScalaJSOptimizer {
         if (analyzer.allAvailable)
           checkIR(analyzer, logger)
         else if (inputs.noWarnMissing.isEmpty)
-          logger.warn("Could not check IR because there where linking errors.")
+          sys.error("Could not check IR because there where linking errors.")
       }
       writeDCEedOutput(inputs, outputConfig, analyzer)
     } finally {
