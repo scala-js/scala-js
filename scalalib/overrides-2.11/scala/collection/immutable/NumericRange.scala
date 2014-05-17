@@ -177,14 +177,10 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
   final override def sum[B >: T](implicit num: Numeric[B]): B = {
     // arithmetic series formula  can be used for regular addition
     if ((num eq scala.math.Numeric.IntIsIntegral)||
-        (num eq scala.math.Numeric.BigIntIsIntegral)||
         (num eq scala.math.Numeric.ShortIsIntegral)||
         (num eq scala.math.Numeric.ByteIsIntegral)||
         (num eq scala.math.Numeric.CharIsIntegral)||
-        (num eq scala.math.Numeric.LongIsIntegral)||
-        (num eq scala.math.Numeric.FloatAsIfIntegral)||
-        (num eq scala.math.Numeric.BigDecimalIsFractional)||
-        (num eq scala.math.Numeric.DoubleAsIfIntegral)) {
+        (num eq scala.math.Numeric.LongIsIntegral)) {
       val numAsIntegral = num.asInstanceOf[Integral[B]]
       import numAsIntegral._
       if (isEmpty) num fromInt 0
@@ -339,15 +335,11 @@ object NumericRange {
     new Inclusive(start, end, step)
 
   private[collection] val defaultOrdering = Map[Numeric[_], Ordering[_]](
-    Numeric.BigIntIsIntegral -> Ordering.BigInt,
     Numeric.IntIsIntegral -> Ordering.Int,
     Numeric.ShortIsIntegral -> Ordering.Short,
     Numeric.ByteIsIntegral -> Ordering.Byte,
     Numeric.CharIsIntegral -> Ordering.Char,
-    Numeric.LongIsIntegral -> Ordering.Long,
-    Numeric.FloatAsIfIntegral -> Ordering.Float,
-    Numeric.DoubleAsIfIntegral -> Ordering.Double,
-    Numeric.BigDecimalAsIfIntegral -> Ordering.BigDecimal
+    Numeric.LongIsIntegral -> Ordering.Long
   )
 
 }
