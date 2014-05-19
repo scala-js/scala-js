@@ -1176,213 +1176,27 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  calls, super calls, constructor calls, isInstanceOf/asInstanceOf,
      *  primitives, JS calls, etc. They are further dispatched in here.
      */
-    def genApply(tree: Tree): js.Tree = {
+    def genApply(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
+      val Apply(fun, args) = tree
 
-      tree match {
-        /** isInstanceOf and asInstanceOf
-         *  The two only methods that keep their type argument until the
-         *  backend.
-         */
-        case Apply(TypeApply(fun, targs), _) =>
-          val sym = fun.symbol
-          val cast = sym match {
-            case Object_isInstanceOf => false
-            case Object_asInstanceOf => true
-            case _ =>
-              abort("Unexpected type application " + fun +
-                  "[sym: " + sym.fullName + "]" + " in: " + tree)
-          }
+      fun match {
+        case TypeApply(_, _) =>
+          genApplyTypeApply(tree)
 
-          val Select(obj, _) = fun
-          val to = targs.head.tpe
-          val l = toTypeKind(obj.tpe)
-          val r = toTypeKind(to)
-          val source = genExpr(obj)
+        case Select(Super(_, _), _) =>
+          genSuperCall(tree)
 
-          if (l.isValueType && r.isValueType) {
-            if (cast)
-              genConversion(l, r, source)
-            else
-              js.BooleanLiteral(l == r)
-          }
-          else if (l.isValueType) {
-            val result = if (cast) {
-              val ctor = ClassCastExceptionClass.info.member(
-                  nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
-              js.Throw(genNew(ClassCastExceptionClass, ctor, Nil))
-            } else {
-              js.BooleanLiteral(false)
-            }
-            js.Block(source, result) // eval and discard source
-          }
-          else if (r.isValueType && cast) {
-            // Erasure should have added an unboxing operation to prevent that.
-            assert(false, tree)
-            source
-          }
-          else if (r.isValueType)
-            genIsInstanceOf(boxedClass(to.typeSymbol).tpe, source)
-          else if (cast)
-            genAsInstanceOf(to, source)
-          else
-            genIsInstanceOf(to, source)
+        case Select(New(_), nme.CONSTRUCTOR) =>
+          genApplyNew(tree)
 
-        /** Super call of the form Class.super[mix].fun(args)
-         *  This does not include calls defined in mixin traits, as these are
-         *  already desugared by the 'mixin' phase. Only calls to super
-         *  classes remain.
-         *  Since a class has exactly one direct superclass, and calling a
-         *  method two classes above the current one is invalid, I believe
-         *  the `mix` item is irrelevant.
-         */
-        case Apply(fun @ Select(sup @ Super(_, mix), _), args) =>
-          val superCall = genStaticApplyMethod(
-              genThis()(sup.pos), fun.symbol, args map genExpr)
-
-          // We initialize the module instance just after the super constructor
-          // call.
-          if (isStaticModule(currentClassSym) && !isModuleInitialized &&
-              currentMethodSym.isClassConstructor) {
-            isModuleInitialized = true
-            val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
-            val initModule = js.StoreModule(thisType, js.This()(thisType))
-            js.Block(superCall, initModule, js.This()(thisType))
-          } else {
-            superCall
-          }
-
-        /** Constructor call (new)
-         *  Further refined into:
-         *  * new String(...)
-         *  * new of a hijacked boxed class
-         *  * new of a anonymous function class that was recorded as JS function
-         *  * new of a raw JS class
-         *  * new Array
-         *  * regular new
-         */
-        case app @ Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) =>
-          val ctor = fun.symbol
-          assert(ctor.isClassConstructor,
-              "'new' call to non-constructor: " + ctor.name)
-
-          val tpe = tpt.tpe
-          if (isStringType(tpe)) {
-            genNewString(app)
-          } else if (isHijackedBoxedClass(tpe.typeSymbol)) {
-            genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
-          } else if (translatedAnonFunctions contains tpe.typeSymbol) {
-            val (functionMaker, funInfo) = translatedAnonFunctions(tpe.typeSymbol)
-            currentMethodInfoBuilder.createsAnonFunction(funInfo)
-            functionMaker(args map genExpr)
-          } else if (isRawJSType(tpe)) {
-            genPrimitiveJSNew(app)
-          } else {
-            toTypeKind(tpt.tpe) match {
-              case arr @ ARRAY(elem) =>
-                genNewArray(tpt.tpe, arr.dimensions, args map genExpr)
-              case rt @ REFERENCE(cls) =>
-                genNew(cls, ctor, args map genExpr)
-              case generatedType =>
-                abort(s"Non reference type cannot be instantiated: $generatedType")
-            }
-          }
-
-        /** All other Applys, which cannot be refined by pattern matching
-         *  They are further refined by properties of the method symbol.
-         */
-        case app @ Apply(fun, args) =>
+        case _ =>
           val sym = fun.symbol
 
-          /** Jump to a label
-           *  Most label-applys are catched upstream (while and do..while
-           *  loops, jumps to next case of a pattern match), but some are
-           *  still handled here:
-           *  * Recursive tail call
-           *  * Jump to the end of a pattern match
-           */
           if (sym.isLabel) {
-            /** Recursive tail call
-             *  Basically this is compiled into
-             *  continue tailCallLoop;
-             *  but arguments need to be updated beforehand.
-             *
-             *  Since the rhs for the new value of an argument can depend on
-             *  the value of another argument (and since deciding if it is
-             *  indeed the case is impossible in general), new values are
-             *  computed in temporary variables first, then copied to the
-             *  actual variables representing the argument.
-             *
-             *  Trivial assignments (arg1 = arg1) are eliminated.
-             *
-             *  If, after elimination of trivial assignments, only one
-             *  assignment remains, then we do not use a temporary variable
-             *  for this one.
-             */
-            if (sym == methodTailJumpLabelSym.get) {
-              // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
-              // Do not include trivial assignments (when actualArg == formalArg)
-              val formalArgs = methodTailJumpFormalArgs.get
-              val actualArgs = args map genExpr
-              val quadruplets = {
-                for {
-                  (formalArgSym, actualArg) <- formalArgs zip actualArgs
-                  formalArg = encodeLocalSym(formalArgSym)
-                  if (actualArg match {
-                    case js.VarRef(`formalArg`, _) => false
-                    case _                         => true
-                  })
-                } yield {
-                  (formalArg, toIRType(formalArgSym.tpe),
-                      freshLocalIdent("temp$" + formalArg.name),
-                      actualArg)
-                }
-              }
-
-              // The actual jump (continue tailCallLoop;)
-              val tailJump = js.Continue(Some(js.Ident("tailCallLoop")))
-
-              quadruplets match {
-                case Nil => tailJump
-
-                case (formalArg, argType, _, actualArg) :: Nil =>
-                  js.Block(js.Assign(
-                      js.VarRef(formalArg, mutable = false)(argType), actualArg),
-                      tailJump)
-
-                case _ =>
-                  val tempAssignments =
-                    for ((_, argType, tempArg, actualArg) <- quadruplets)
-                      yield js.VarDef(tempArg, argType, mutable = false, actualArg)
-                  val trueAssignments =
-                    for ((formalArg, argType, tempArg, _) <- quadruplets)
-                      yield js.Assign(
-                          js.VarRef(formalArg, mutable = false)(argType),
-                          js.VarRef(tempArg, mutable = false)(argType))
-                  js.Block(tempAssignments ++ trueAssignments :+ tailJump)
-              }
-            } else // continues after the comment
-            /** Jump the to the end-label of a pattern match
-             *  Such labels have exactly one argument, which is the result of
-             *  the pattern match (of type Unit if the match is in statement
-             *  position). We simply `return` the argument as the result of the
-             *  labeled block surrounding the match.
-             */
-            if (sym.name.toString() startsWith "matchEnd") {
-              val labelIdent = encodeLabelSym(sym)
-              js.Return(genExpr(args.head), Some(labelIdent))
-            } else {
-              /* No other label apply should ever happen. If it does, then we
-               * have missed a pattern of LabelDef/LabelApply and some new
-               * translation must be found for it.
-               */
-              abort("Found unknown label apply at "+tree.pos+": "+tree)
-            }
-          } else // continues after the comment
-          /** Primitive method whose code is generated by the codegen */
-          if (scalaPrimitives.isPrimitive(sym)) {
-            // primitive operation
-            genPrimitiveOp(app)
+            genLabelApply(tree)
+          } else if (scalaPrimitives.isPrimitive(sym)) {
+            genPrimitiveOp(tree)
           } else if (currentRun.runDefinitions.isBox(sym)) {
             /** Box a primitive value */
             val arg = args.head
@@ -1392,51 +1206,261 @@ abstract class GenJSCode extends plugins.PluginComponent
             val arg = args.head
             makePrimitiveUnbox(genExpr(arg), tree.tpe)
           } else {
-            /** Actual method call
-             *  But even these are further refined into:
-             *  * Methods implemented by a helper in the environment
-             *    (typically because they are defined in an ancestor of a
-             *    hijacked class, which means that a value of that type can
-             *    be a JS value at runtime).
-             *  * Methods of java.lang.String, which are redirected to the
-             *    RuntimeString trait implementation.
-             *  * Calls to methods of raw JS types (Scala.js -> JS bridge)
-             *  * Calls to methods in impl classes of traits.
-             *  * Regular method call
-             */
-            val Select(receiver, _) = fun
-
-            if (MethodWithHelperInEnv contains fun.symbol) {
-              if (!isRawJSType(receiver.tpe)) {
-                currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
-                    encodeMethodSym(fun.symbol))
-              }
-              val helper = MethodWithHelperInEnv(fun.symbol)
-              val arguments = (receiver :: args) map genExpr
-              js.CallHelper(helper, arguments:_*)(toIRType(tree.tpe))
-            } else if (ToStringMaybeOnHijackedClass contains fun.symbol) {
-              js.Cast(js.JSApply(js.JSDotSelect(
-                  js.Cast(genExpr(receiver), jstpe.DynType),
-                  js.Ident("toString")), Nil), toIRType(tree.tpe))
-            } else if (isStringType(receiver.tpe)) {
-              genStringCall(app)
-            } else if (isRawJSType(receiver.tpe)) {
-              genPrimitiveJSCall(app)
-            } else if (foreignIsImplClass(sym.owner)) {
-              genTraitImplApply(sym, args map genExpr)
-            } else {
-              val instance = genExpr(receiver)
-              val arguments = args map genExpr
-
-              if (sym.isClassConstructor) {
-                /* See #66: we have to emit a static call to avoid calling a
-                 * constructor with the same signature in a subclass */
-                genStaticApplyMethod(instance, sym, arguments)
-              } else {
-                genApplyMethod(instance, receiver.tpe, sym, arguments)
-              }
-            }
+            genNormalApply(tree)
           }
+      }
+    }
+
+    /** Gen an Apply with a TypeApply method.
+     *  Only isInstanceOf and asInstanceOf keep their type argument until the
+     *  backend.
+     */
+    private def genApplyTypeApply(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(TypeApply(fun @ Select(obj, _), targs), _) = tree
+      val sym = fun.symbol
+
+      val cast = sym match {
+        case Object_isInstanceOf => false
+        case Object_asInstanceOf => true
+        case _ =>
+          abort("Unexpected type application " + fun +
+              "[sym: " + sym.fullName + "]" + " in: " + tree)
+      }
+
+      val to = targs.head.tpe
+      val l = toTypeKind(obj.tpe)
+      val r = toTypeKind(to)
+      val source = genExpr(obj)
+
+      if (l.isValueType && r.isValueType) {
+        if (cast)
+          genConversion(l, r, source)
+        else
+          js.BooleanLiteral(l == r)
+      } else if (l.isValueType) {
+        val result = if (cast) {
+          val ctor = ClassCastExceptionClass.info.member(
+              nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
+          js.Throw(genNew(ClassCastExceptionClass, ctor, Nil))
+        } else {
+          js.BooleanLiteral(false)
+        }
+        js.Block(source, result) // eval and discard source
+      } else if (r.isValueType) {
+        assert(!cast, s"Unexpected asInstanceOf from ref type to value type")
+        genIsInstanceOf(boxedClass(to.typeSymbol).tpe, source)
+      } else {
+        if (cast)
+          genAsInstanceOf(to, source)
+        else
+          genIsInstanceOf(to, source)
+      }
+    }
+
+    /** Gen JS code for a super call, of the form Class.super[mix].fun(args).
+     *
+     *  This does not include calls defined in mixin traits, as these are
+     *  already desugared by the 'mixin' phase. Only calls to super classes
+     *  remain.
+     *  Since a class has exactly one direct superclass, and calling a method
+     *  two classes above the current one is invalid, the `mix` item is
+     *  irrelevant.
+     */
+    private def genSuperCall(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
+
+      val superCall = genStaticApplyMethod(
+          genThis()(sup.pos), fun.symbol, args map genExpr)
+
+      // Initialize the module instance just after the super constructor call.
+      if (isStaticModule(currentClassSym) && !isModuleInitialized &&
+          currentMethodSym.isClassConstructor) {
+        isModuleInitialized = true
+        val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
+        val initModule = js.StoreModule(thisType, js.This()(thisType))
+        js.Block(superCall, initModule, js.This()(thisType))
+      } else {
+        superCall
+      }
+    }
+
+    /** Gen JS code for a constructor call (new).
+     *  Further refined into:
+     *  * new String(...)
+     *  * new of a hijacked boxed class
+     *  * new of an anonymous function class that was recorded as JS function
+     *  * new of a raw JS class
+     *  * new Array
+     *  * regular new
+     */
+    private def genApplyNew(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
+      val ctor = fun.symbol
+      val tpe = tpt.tpe
+
+      assert(ctor.isClassConstructor,
+          "'new' call to non-constructor: " + ctor.name)
+
+      if (isStringType(tpe)) {
+        genNewString(tree)
+      } else if (isHijackedBoxedClass(tpe.typeSymbol)) {
+        genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
+      } else if (translatedAnonFunctions contains tpe.typeSymbol) {
+        val (functionMaker, funInfo) = translatedAnonFunctions(tpe.typeSymbol)
+        currentMethodInfoBuilder.createsAnonFunction(funInfo)
+        functionMaker(args map genExpr)
+      } else if (isRawJSType(tpe)) {
+        genPrimitiveJSNew(tree)
+      } else {
+        toTypeKind(tpe) match {
+          case arr @ ARRAY(elem) =>
+            genNewArray(tpe, arr.dimensions, args map genExpr)
+          case rt @ REFERENCE(cls) =>
+            genNew(cls, ctor, args map genExpr)
+          case generatedType =>
+            abort(s"Non reference type cannot be instantiated: $generatedType")
+        }
+      }
+    }
+
+    /** Gen jump to a label.
+     *  Most label-applys are catched upstream (while and do..while loops,
+     *  jumps to next case of a pattern match), but some are still handled here:
+     *  * Recursive tail call
+     *  * Jump to the end of a pattern match
+     */
+    private def genLabelApply(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun, args) = tree
+      val sym = fun.symbol
+
+      if (sym == methodTailJumpLabelSym.get) {
+        genTailRecLabelApply(tree)
+      } else if (sym.name.toString() startsWith "matchEnd") {
+        /* Jump the to the end-label of a pattern match
+         * Such labels have exactly one argument, which is the result of
+         * the pattern match (of type Unit if the match is in statement
+         * position). We simply `return` the argument as the result of the
+         * labeled block surrounding the match.
+         */
+        js.Return(genExpr(args.head), Some(encodeLabelSym(sym)))
+      } else {
+        /* No other label apply should ever happen. If it does, then we
+         * have missed a pattern of LabelDef/LabelApply and some new
+         * translation must be found for it.
+         */
+        abort("Found unknown label apply at "+tree.pos+": "+tree)
+      }
+    }
+
+    /** Gen a tail-recursive call.
+     *
+     *  Basically this is compiled into
+     *  continue tailCallLoop;
+     *  but arguments need to be updated beforehand.
+     *
+     *  Since the rhs for the new value of an argument can depend on the value
+     *  of another argument (and since deciding if it is indeed the case is
+     *  impossible in general), new values are computed in temporary variables
+     *  first, then copied to the actual variables representing the argument.
+     *
+     *  Trivial assignments (arg1 = arg1) are eliminated.
+     *
+     *  If, after elimination of trivial assignments, only one assignment
+     *  remains, then we do not use a temporary variable for this one.
+     */
+    private def genTailRecLabelApply(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun, args) = tree
+      val sym = fun.symbol
+
+      // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
+      // Do not include trivial assignments (when actualArg == formalArg)
+      val formalArgs = methodTailJumpFormalArgs.get
+      val actualArgs = args map genExpr
+      val quadruplets = {
+        for {
+          (formalArgSym, actualArg) <- formalArgs zip actualArgs
+          formalArg = encodeLocalSym(formalArgSym)
+          if (actualArg match {
+            case js.VarRef(`formalArg`, _) => false
+            case _                         => true
+          })
+        } yield {
+          (formalArg, toIRType(formalArgSym.tpe),
+              freshLocalIdent("temp$" + formalArg.name),
+              actualArg)
+        }
+      }
+
+      // The actual jump (continue tailCallLoop;)
+      val tailJump = js.Continue(Some(js.Ident("tailCallLoop")))
+
+      quadruplets match {
+        case Nil => tailJump
+
+        case (formalArg, argType, _, actualArg) :: Nil =>
+          js.Block(js.Assign(
+              js.VarRef(formalArg, mutable = false)(argType), actualArg),
+              tailJump)
+
+        case _ =>
+          val tempAssignments =
+            for ((_, argType, tempArg, actualArg) <- quadruplets)
+              yield js.VarDef(tempArg, argType, mutable = false, actualArg)
+          val trueAssignments =
+            for ((formalArg, argType, tempArg, _) <- quadruplets)
+              yield js.Assign(
+                  js.VarRef(formalArg, mutable = false)(argType),
+                  js.VarRef(tempArg, mutable = false)(argType))
+          js.Block(tempAssignments ++ trueAssignments :+ tailJump)
+      }
+    }
+
+    /** Gen a "normal" apply (to a true method).
+     *
+     *  But even these are further refined into:
+     *  * Methods implemented by a helper in the environment (typically
+     *    because they are defined in an ancestor of a hijacked class, which
+     *    means that a value of that type can be a JS value at runtime).
+     *  * Methods of java.lang.String, which are redirected to the
+     *    RuntimeString trait implementation.
+     *  * Calls to methods of raw JS types (Scala.js -> JS bridge)
+     *  * Calls to methods in impl classes of traits.
+     *  * Regular method call
+     */
+    private def genNormalApply(tree: Apply): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun @ Select(receiver, _), args) = tree
+      val sym = fun.symbol
+
+      if (MethodWithHelperInEnv contains sym) {
+        if (!isRawJSType(receiver.tpe)) {
+          currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
+              encodeMethodSym(sym))
+        }
+        val helper = MethodWithHelperInEnv(sym)
+        val arguments = (receiver :: args) map genExpr
+        js.CallHelper(helper, arguments: _*)(toIRType(tree.tpe))
+      } else if (ToStringMaybeOnHijackedClass contains sym) {
+        js.Cast(js.JSApply(js.JSDotSelect(
+            js.Cast(genExpr(receiver), jstpe.DynType),
+            js.Ident("toString")), Nil), toIRType(tree.tpe))
+      } else if (isStringType(receiver.tpe)) {
+        genStringCall(tree)
+      } else if (isRawJSType(receiver.tpe)) {
+        genPrimitiveJSCall(tree)
+      } else if (foreignIsImplClass(sym.owner)) {
+        genTraitImplApply(sym, args map genExpr)
+      } else if (sym.isClassConstructor) {
+        /* See #66: we have to emit a static call to avoid calling a
+         * constructor with the same signature in a subclass */
+        genStaticApplyMethod(genExpr(receiver), sym, args map genExpr)
+      } else {
+        genApplyMethod(genExpr(receiver), receiver.tpe, sym, args map genExpr)
       }
     }
 
