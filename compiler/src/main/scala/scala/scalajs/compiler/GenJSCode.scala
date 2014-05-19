@@ -118,7 +118,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val currentClassInfoBuilder  = new ScopedVar[ClassInfoBuilder]
     val currentMethodSym         = new ScopedVar[Symbol]
     val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
-    val methodTailJumpThisSym    = new ScopedVar[Symbol]
+    val methodTailJumpThisSym    = new ScopedVar[Symbol](NoSymbol)
     val methodTailJumpLabelSym   = new ScopedVar[Symbol]
     val methodTailJumpFormalArgs = new ScopedVar[List[Symbol]]
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
@@ -524,8 +524,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val (resultType, body) = {
               if (sym.isClassConstructor) {
-                (currentClassType, js.Block(
-                    genStat(rhs), js.Return(js.This()(currentClassType))))
+                (currentClassType,
+                    js.Block(genStat(rhs), js.Return(genThis())))
               } else {
                 val resultKind = toTypeKind(sym.tpe.resultType)
                 (resultKind.toIRType, genMethodBody(rhs, params, resultKind))
@@ -670,7 +670,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             (js.ParamDef(name, tpe), js.VarRef(name, false)(tpe))
           }
 
-          val call = genApplyMethod(js.This()(currentClassType), sym.owner, sym,
+          val call = genApplyMethod(genThis(), sym.owner, sym,
               jsParams.map(_._2))
           val value = ensureBoxed(call,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
@@ -866,29 +866,16 @@ abstract class GenJSCode extends plugins.PluginComponent
         case app: ApplyDynamic =>
           genApplyDynamic(app)
 
-        /** this
-         *  Normally encoded straightforwardly as a JS this.
-         *  But must be replaced by the tail-jump-this local variable if there
-         *  is one.
-         */
         case This(qual) =>
-          val symIsModuleClass = tree.symbol.isModuleClass
-          assert(tree.symbol == currentClassSym.get || symIsModuleClass,
-              "Trying to access the this of another class: " +
-              "tree.symbol = " + tree.symbol +
-              ", class symbol = " + currentClassSym.get +
-              " compilation unit:" + currentUnit)
-          if (symIsModuleClass && tree.symbol != currentClassSym.get) {
-            genLoadModule(tree.symbol)
-          } else if (methodTailJumpThisSym.get != NoSymbol) {
-            js.VarRef(
-              encodeLocalSym(methodTailJumpThisSym),
-              mutable = false)(currentClassType)
+          if (tree.symbol == currentClassSym.get) {
+            genThis()
           } else {
-            if (tryingToGenMethodAsJSFunction)
-              throw new CancelGenMethodAsJSFunction(
-                  "Trying to generate `this` inside the body")
-            js.This()(currentClassType)
+            assert(tree.symbol.isModuleClass,
+                "Trying to access the this of another class: " +
+                "tree.symbol = " + tree.symbol +
+                ", class symbol = " + currentClassSym.get +
+                " compilation unit:" + currentUnit)
+            genLoadModule(tree.symbol)
           }
 
         case Select(Ident(nme.EMPTY_PACKAGE_NAME), module) =>
@@ -983,7 +970,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.Block(statements :+ expression)
 
         case Typed(Super(_, _), _) =>
-          genExpr(This(currentClassSym))
+          genThis()
 
         case Typed(expr, _) =>
           genExpr(expr)
@@ -1012,6 +999,24 @@ abstract class GenJSCode extends plugins.PluginComponent
               tree + "/" + tree.getClass + " at: " + tree.pos)
       }
     } // end of GenJSCode.genExpr()
+
+    /** Gen JS this of the current class.
+     *  Normally encoded straightforwardly as a JS this.
+     *  But must be replaced by the tail-jump-this local variable if there
+     *  is one.
+     */
+    private def genThis()(implicit pos: Position): js.Tree = {
+      if (methodTailJumpThisSym.get != NoSymbol) {
+        js.VarRef(
+          encodeLocalSym(methodTailJumpThisSym),
+          mutable = false)(currentClassType)
+      } else {
+        if (tryingToGenMethodAsJSFunction)
+          throw new CancelGenMethodAsJSFunction(
+              "Trying to generate `this` inside the body")
+        js.This()(currentClassType)
+      }
+    }
 
     /** Gen JS code for LabelDef
      *  The only LabelDefs that can reach here are the desugaring of
@@ -1250,17 +1255,8 @@ abstract class GenJSCode extends plugins.PluginComponent
          *  the `mix` item is irrelevant.
          */
         case Apply(fun @ Select(sup @ Super(_, mix), _), args) =>
-          val superCall = {
-            val thisArg = {
-              implicit val pos = sup.pos
-              if (methodTailJumpThisSym.get == NoSymbol)
-                js.This()(currentClassType)
-              else
-                js.VarRef(encodeLocalSym(methodTailJumpThisSym),
-                    mutable = false)(currentClassType)
-            }
-            genStaticApplyMethod(thisArg, fun.symbol, args map genExpr)
-          }
+          val superCall = genStaticApplyMethod(
+              genThis()(sup.pos), fun.symbol, args map genExpr)
 
           // We initialize the module instance just after the super constructor
           // call.
