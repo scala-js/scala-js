@@ -25,7 +25,8 @@ import scala.collection.mutable
  */
 abstract class PrepJSInterop extends plugins.PluginComponent
                                 with PrepJSExports
-                                with transform.Transform {
+                                with transform.Transform
+                                with Compat210Component {
   val jsAddons: JSGlobalAddons {
     val global: PrepJSInterop.this.global.type
   }
@@ -203,9 +204,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         if (!sym.isPublic)
           condErr("You may not export an non-public object")
-        else if (sym.isLocal)
+        else if (sym.isLocalToBlock)
           condErr("You may not export a local object")
-        else if (!sym.owner.isPackage)
+        else if (!sym.owner.hasPackageFlag)
           condErr("You may not export a nested object")
 
         super.transform(modDef)
@@ -251,7 +252,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       case memDef: MemberDef =>
         val sym = memDef.symbol
-        if (sym.isLocal) {
+        if (sym.isLocalToBlock) {
           for ((_, pos) <- jsInterop.exportsOf(sym)) {
             currentUnit.error(pos, "You may not export a local definition")
           }
@@ -475,8 +476,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       nameOrig: Symbol,
       intParam: Option[Tree]) = {
 
-    def enc(name: TermName) = name.encodedName
-
     val defaultName = nameOrig.asTerm.getterName.encoded
 
 
@@ -489,9 +488,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     //
     val nextNameTree = Select(This(thisSym), "nextName")
     val nullCompTree =
-      Apply(Select(nextNameTree, enc("!=")), Literal(Constant(null)) :: Nil)
+      Apply(Select(nextNameTree, nme.NE), Literal(Constant(null)) :: Nil)
     val hasNextTree = Select(nextNameTree, "hasNext")
-    val condTree = Apply(Select(nullCompTree, enc("&&")), hasNextTree :: Nil)
+    val condTree = Apply(Select(nullCompTree, nme.ZAND), hasNextTree :: Nil)
     val nameTree = If(condTree,
         Apply(Select(nextNameTree, "next"), Nil),
         Literal(Constant(defaultName)))

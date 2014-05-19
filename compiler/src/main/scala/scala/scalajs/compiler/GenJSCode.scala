@@ -954,7 +954,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case Ident(name) =>
           val sym = tree.symbol
-          if (!sym.isPackage) {
+          if (!sym.hasPackageFlag) {
             if (sym.isModule) {
               assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
               genLoadModule(sym)
