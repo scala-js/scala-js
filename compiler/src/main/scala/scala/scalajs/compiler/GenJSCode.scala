@@ -901,8 +901,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           val sym = tree.symbol
 
           if (sym.isModule) {
-            if (settings.debug.value)
-              log("LOAD_MODULE from Select(qualifier, selector): " + sym)
             assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
             genLoadModule(sym)
           } else if (sym.isStaticMember) {
@@ -1252,9 +1250,6 @@ abstract class GenJSCode extends plugins.PluginComponent
          *  the `mix` item is irrelevant.
          */
         case Apply(fun @ Select(sup @ Super(_, mix), _), args) =>
-          if (settings.debug.value)
-            log("Call to super: " + tree)
-
           val superCall = {
             val thisArg = {
               implicit val pos = sup.pos
@@ -1290,9 +1285,8 @@ abstract class GenJSCode extends plugins.PluginComponent
          */
         case app @ Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) =>
           val ctor = fun.symbol
-          if (settings.debug.value)
-            assert(ctor.isClassConstructor,
-                   "'new' call to non-constructor: " + ctor.name)
+          assert(ctor.isClassConstructor,
+              "'new' call to non-constructor: " + ctor.name)
 
           val tpe = tpt.tpe
           if (isStringType(tpe)) {
@@ -1306,19 +1300,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (isRawJSType(tpe)) {
             genPrimitiveJSNew(app)
           } else {
-            val arguments = args map genExpr
-
-            val generatedType = toTypeKind(tpt.tpe)
-            if (settings.debug.value)
-              assert(generatedType.isReferenceType || generatedType.isArrayType,
-                   "Non reference type cannot be instantiated: " + generatedType)
-
-            (generatedType: @unchecked) match {
+            toTypeKind(tpt.tpe) match {
               case arr @ ARRAY(elem) =>
-                genNewArray(tpt.tpe, arr.dimensions, arguments)
-
+                genNewArray(tpt.tpe, arr.dimensions, args map genExpr)
               case rt @ REFERENCE(cls) =>
-                genNew(cls, ctor, arguments)
+                genNew(cls, ctor, args map genExpr)
+              case generatedType =>
+                abort(s"Non reference type cannot be instantiated: $generatedType")
             }
           }
 
@@ -1438,9 +1426,6 @@ abstract class GenJSCode extends plugins.PluginComponent
              *  * Calls to methods in impl classes of traits.
              *  * Regular method call
              */
-            if (settings.debug.value)
-              log("Gen CALL_METHOD with sym: " + sym + " isStaticSymbol: " + sym.isStaticMember);
-
             val Select(receiver, _) = fun
 
             if (MethodWithHelperInEnv contains fun.symbol) {
@@ -2134,16 +2119,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (scalaPrimitives.isArrayGet(code)) {
         // get an item of the array
-        if (settings.debug.value)
-          assert(args.length == 1,
-              s"Array get requires 1 argument, found ${args.length} in $tree")
+        assert(args.length == 1,
+            s"Array get requires 1 argument, found ${args.length} in $tree")
         genSelect()
       } else if (scalaPrimitives.isArraySet(code)) {
         // set an item of the array
-        if (settings.debug.value)
-          assert(args.length == 2,
-              s"Array set requires 2 arguments, found ${args.length} in $tree")
-
+        assert(args.length == 2,
+            s"Array set requires 2 arguments, found ${args.length} in $tree")
         statToExpr {
           js.Assign(genSelect(), arguments(1))
         }
