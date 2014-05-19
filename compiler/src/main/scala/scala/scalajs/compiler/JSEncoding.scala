@@ -5,10 +5,15 @@
 
 package scala.scalajs.compiler
 
+import scala.collection.mutable
+
 import scala.tools.nsc._
 
 import scala.scalajs.ir
 import ir.{Trees => js, Types => jstpe}
+
+import util.ScopedVar
+import ScopedVar.withScopedVars
 
 /** Encoding of symbol names for JavaScript
  *
@@ -35,10 +40,44 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   /** Name given to all exported stuff of a class for DCE */
   final val dceExportName = "<exported>"
 
-  def encodeLabelSym(sym: Symbol, freshName: Symbol => String)(
-      implicit pos: Position): js.Ident = {
+  // Fresh local name generator ----------------------------------------------
+
+  private val usedLocalNames = new ScopedVar[mutable.Set[String]]
+  private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
+  private val isKeywordOrReserved =
+    js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
+
+  def withNewLocalNameScope[A](body: => A): A =
+    withScopedVars(
+        usedLocalNames := mutable.Set.empty,
+        localSymbolNames := mutable.Map.empty
+    )(body)
+
+  private def freshName(base: String = "x"): String = {
+    var suffix = 1
+    var longName = base
+    while (usedLocalNames(longName) || isKeywordOrReserved(longName)) {
+      suffix += 1
+      longName = base+"$"+suffix
+    }
+    usedLocalNames += longName
+    longName
+  }
+
+  def freshLocalIdent()(implicit pos: ir.Position): js.Ident =
+    js.Ident(freshName(), None)
+
+  def freshLocalIdent(base: String)(implicit pos: ir.Position): js.Ident =
+    js.Ident(freshName(base), Some(base))
+
+  private def localSymbolName(sym: Symbol): String =
+    localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
+
+  // Encoding methods ----------------------------------------------------------
+
+  def encodeLabelSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(sym.isLabel, "encodeLabelSym called with non-label symbol: " + sym)
-    js.Ident(freshName(sym), Some(sym.unexpandedName.decoded))
+    js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
   private lazy val allRefClasses: Set[Symbol] = {
@@ -140,11 +179,10 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         Some(sym.unexpandedName.decoded))
   }
 
-  def encodeLocalSym(sym: Symbol, freshName: Symbol => String)(
-      implicit pos: Position): js.Ident = {
+  def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
     require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.Ident(mangleJSName(freshName(sym)), Some(sym.unexpandedName.decoded))
+    js.Ident(mangleJSName(localSymbolName(sym)), Some(sym.unexpandedName.decoded))
   }
 
   def foreignIsImplClass(sym: Symbol): Boolean =

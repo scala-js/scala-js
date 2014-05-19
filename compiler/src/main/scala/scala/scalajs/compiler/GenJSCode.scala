@@ -131,33 +131,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     class CancelGenMethodAsJSFunction(message: String)
         extends Throwable(message) with scala.util.control.ControlThrowable
 
-    // Fresh local name generator ----------------------------------------------
-
-    val usedLocalNames = new ScopedVar[mutable.Set[String]]
-    val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
-    private val isKeywordOrReserved =
-      js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
-
-    def withNewLocalNameScope[A](body: => A): A =
-      withScopedVars(
-          usedLocalNames := mutable.Set.empty,
-          localSymbolNames := mutable.Map.empty
-      )(body)
-
-    def freshName(base: String = "x"): String = {
-      var suffix = 1
-      var longName = base
-      while (usedLocalNames(longName) || isKeywordOrReserved(longName)) {
-        suffix += 1
-        longName = base+"$"+suffix
-      }
-      usedLocalNames += longName
-      longName
-    }
-
-    def freshName(sym: Symbol): String =
-      localSymbolNames.getOrElseUpdate(sym, freshName(sym.name.toString))
-
     // Rewriting of anonymous function classes ---------------------------------
 
     private val translatedAnonFunctions =
@@ -556,7 +529,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val jsParams = for (param <- params) yield {
               implicit val pos = param.pos
-              js.ParamDef(encodeLocalSym(param, freshName),
+              js.ParamDef(encodeLocalSym(param),
                   toTypeKind(param.tpe).toIRType)
             }
 
@@ -703,7 +676,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         ) {
           val jsParams = for (param <- sym.tpe.params) yield {
             implicit val pos = param.pos
-            val name = encodeLocalSym(param, freshName)
+            val name = encodeLocalSym(param)
             val tpe = toTypeKind(param.tpe).toIRType
             (js.ParamDef(name, tpe), js.VarRef(name, false)(tpe))
           }
@@ -764,7 +737,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               theLoop
             } else {
               js.Block(
-                  js.VarDef(encodeLocalSym(methodTailJumpThisSym, freshName),
+                  js.VarDef(encodeLocalSym(methodTailJumpThisSym),
                       currentClassType, mutable = false,
                       js.This()(currentClassType)),
                   theLoop)
@@ -806,7 +779,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Assign(lhs, rhs) =>
           val sym = lhs.symbol
           js.Assign(
-              js.VarRef(encodeLocalSym(sym, freshName),
+              js.VarRef(encodeLocalSym(sym),
                   mutable = sym.isMutable)(
                   (toIRType(sym.tpe))),
               genExpr(rhs))
@@ -877,7 +850,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               undefinedDefaultParams += sym
               statToExpr(js.Skip())
             case _ =>
-              statToExpr(js.VarDef(encodeLocalSym(sym, freshName),
+              statToExpr(js.VarDef(encodeLocalSym(sym),
                   toIRType(sym.tpe), sym.isMutable, rhsTree))
           }
 
@@ -920,7 +893,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             genLoadModule(tree.symbol)
           } else if (methodTailJumpThisSym.get != NoSymbol) {
             js.VarRef(
-              encodeLocalSym(methodTailJumpThisSym, freshName),
+              encodeLocalSym(methodTailJumpThisSym),
               mutable = false)(currentClassType)
           } else {
             if (tryingToGenMethodAsJSFunction)
@@ -963,7 +936,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               // a local variable. Put a literal undefined param again
               js.UndefinedParam()(toIRType(sym.tpe))
             } else {
-              js.VarRef(encodeLocalSym(sym, freshName),
+              js.VarRef(encodeLocalSym(sym),
                   mutable = sym.isMutable)(toIRType(sym.tpe))
             }
           } else {
@@ -1144,7 +1117,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genExpr(block)
-      val exceptIdent = js.Ident(freshName("ex"))
+      val exceptIdent = freshLocalIdent("ex")
       val exceptVar = js.VarRef(exceptIdent, mutable = true)(jstpe.AnyType)
       val resultType = toIRType(tree.tpe)
 
@@ -1180,7 +1153,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               case Ident(nme.WILDCARD) =>
                 (ThrowableClass.tpe, None)
               case Bind(_, _) =>
-                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol, freshName)))
+                (pat.symbol.tpe, Some(encodeLocalSym(pat.symbol)))
             })
 
             // Generate the body that must be executed if the exception matches
@@ -1304,7 +1277,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               if (methodTailJumpThisSym.get == NoSymbol)
                 js.This()(currentClassType)
               else
-                js.VarRef(encodeLocalSym(methodTailJumpThisSym, freshName),
+                js.VarRef(encodeLocalSym(methodTailJumpThisSym),
                     mutable = false)(currentClassType)
             }
             genStaticApplyMethod(thisArg, fun.symbol, args map genExpr)
@@ -1403,14 +1376,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               val quadruplets = {
                 for {
                   (formalArgSym, actualArg) <- formalArgs zip actualArgs
-                  formalArg = encodeLocalSym(formalArgSym, freshName)
+                  formalArg = encodeLocalSym(formalArgSym)
                   if (actualArg match {
                     case js.VarRef(`formalArg`, _) => false
                     case _ => true
                   })
                 } yield {
                   (formalArg, toIRType(formalArgSym.tpe),
-                      js.Ident(freshName("temp$" + formalArg.name), None),
+                      freshLocalIdent("temp$" + formalArg.name),
                       actualArg)
                 }
               }
@@ -1445,7 +1418,7 @@ abstract class GenJSCode extends plugins.PluginComponent
              *  labeled block surrounding the match.
              */
             if (sym.name.toString() startsWith "matchEnd") {
-              val labelIdent = encodeLabelSym(sym, freshName)
+              val labelIdent = encodeLabelSym(sym)
               js.Return(genExpr(args.head), Some(labelIdent))
             } else {
               /* No other label apply should ever happen. If it does, then we
@@ -1935,7 +1908,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         genCaseBody(rhs)
       }
 
-      val encodedLabel = encodeLabelSym(matchEnd.symbol, freshName)
+      val encodedLabel = encodeLabelSym(matchEnd.symbol)
       val labeledBody = js.Block(translatedCases)
 
       toIRType(matchEnd.tpe) match {
@@ -2353,7 +2326,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         // Create a fully-fledged reflective call
         val receiverType = toIRType(receiver.tpe)
-        val callTrgIdent = js.Ident(freshName("dynCallTrg"))
+        val callTrgIdent = freshLocalIdent()
         val callTrgVarDef =
           js.VarDef(callTrgIdent, receiverType, mutable = false, genExpr(receiver))
         val callTrg = js.VarRef(callTrgIdent, mutable = false)(receiverType)
@@ -2638,7 +2611,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.JSArrayConstr(tups)) =>
 
             // Create tmp variable
-            val resIdent = js.Ident(freshName("obj"))
+            val resIdent = freshLocalIdent("obj")
             val resVarDef = js.VarDef(resIdent, jstpe.DynType, mutable = false,
                 js.JSObjectConstr(Nil))
             val res = js.VarRef(resIdent, mutable = false)(jstpe.DynType)
@@ -2650,7 +2623,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               case jse.Tuple2(name, value) =>
                 js.Assign(js.JSBracketSelect(res, name), value) :: Nil
               case tupExpr =>
-                val tupIdent = js.Ident(freshName("tup"))
+                val tupIdent = freshLocalIdent("tup")
                 val tup = js.VarRef(tupIdent, mutable = false)(tuple2Type)
                 js.VarDef(tupIdent, tuple2Type, mutable = false, tupExpr) ::
                 js.Assign(js.JSBracketSelect(res,
@@ -2823,7 +2796,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                * used operator, we don't try to avoid unnessary temp vars, and
                * simply always evaluate arg1 in a temp before doing the `in`.
                */
-              val temp = js.Ident(freshName())
+              val temp = freshLocalIdent()
               js.Block(
                   js.VarDef(temp, jstpe.DynType, mutable = false, arg1),
                   js.BinaryOp("in", arg2,
@@ -3451,7 +3424,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else ctorParams
         val ctorParamDefs = usedCtorParams map { p =>
           // in the apply method's context
-          js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
+          js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe))(p.pos)
         }
 
         // Third step: emit the body of the apply method def
@@ -3550,7 +3523,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val jsFunction = {
         val jsParams = params map { p =>
-          js.ParamDef(encodeLocalSym(p, freshName)(p.pos), toIRType(p.tpe))(p.pos)
+          js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe))(p.pos)
         }
         val thisType =
           if (isInImplClass) jstpe.NoType
@@ -3591,10 +3564,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val paramName = param.name
         val js.Ident(name, origName) = paramName
         val newOrigName = origName.getOrElse(name)
-        val newName = freshName(newOrigName)
-        val paramAny =
-          js.ParamDef(js.Ident(newName, Some(newOrigName))(paramName.pos),
-              jstpe.AnyType)(param.pos)
+        val newNameIdent = freshLocalIdent(newOrigName)(paramName.pos)
+        val paramAny = js.ParamDef(newNameIdent, jstpe.AnyType)(param.pos)
         val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
             fromAny(paramAny.ref, paramTpe))
         (paramAny, paramLocal)
