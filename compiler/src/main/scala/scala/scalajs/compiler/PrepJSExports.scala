@@ -7,6 +7,8 @@ package scala.scalajs.compiler
 
 import scala.annotation.tailrec
 
+import scala.tools.nsc.NoPhase
+
 /**
  *  Prepare export generation
  *
@@ -47,10 +49,11 @@ trait PrepJSExports { this: PrepJSInterop =>
     else if (hasIllegalDefaultParam(baseSym))
       err(s"In an exported $memType, all parameters with defaults " +
         "must be at the end")
-    else if (forScaladoc) {
-      /* Don't do anything under scaladoc because the uncurry phase does not
-       * exist in that setting (see bug #323). It's no big deal because we do
-       * not need exports for scaladoc
+    else if (currentRun.uncurryPhase == NoPhase) {
+      /* When using scaladoc, the uncurry phase does not exist. This makes
+       * our code down below blow up (see bug #323). So we do not do anything
+       * more here if the phase does not exist. It's no big deal because we do
+       * not need exports for scaladoc.
        */
       Nil
     } else if (baseSym.isConstructor) {
@@ -60,7 +63,7 @@ trait PrepJSExports { this: PrepJSInterop =>
 
       if (!clsSym.isPublic)
         err("You may not export a non-public class")
-      else if (clsSym.isLocal)
+      else if (clsSym.isLocalToBlock)
         err("You may not export a local class")
       else if (clsSym.isNestedClass)
         err("You may not export a nested class. Create an exported factory " +

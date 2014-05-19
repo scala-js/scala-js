@@ -23,6 +23,8 @@ trait Compat210Component {
   implicit final class SymbolCompat(self: Symbol) {
     def unexpandedName: Name = self.originalName
     def originalName: Name = sys.error("infinite loop in Compat")
+
+    def isLocalToBlock: Boolean = self.isLocal
   }
 
   // enteringPhase/exitingPhase replace beforePhase/afterPhase
