@@ -50,6 +50,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   override protected def newTransformer(unit: CompilationUnit) =
     new JSInteropTransformer(unit)
 
+  private object jsnme {
+    val hasNext  = newTermName("hasNext")
+    val next     = newTermName("next")
+    val nextName = newTermName("nextName")
+    val x        = newTermName("x")
+    val Value    = newTermName("Value")
+    val Val      = newTermName("Val")
+  }
+
+  private object jstpnme {
+    val scala_ = newTypeName("scala") // not defined in 2.10's tpnme
+  }
+
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
     // Force evaluation of JSDynamicLiteral: Strangely, we are unable to find
@@ -161,12 +174,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       // If we encounter such a tree, depending on the plugin options, we fail
       // here or silently fix those calls.
       case TypeApply(
-          classOfTree @ Select(Select(This(scala_?), predef_?), classOf_?),
-          List(tpeArg))
-        if (scala_?.decoded   == "scala"  &&
-            predef_?.decoded  == "Predef" &&
-            classOf_?.decoded == "classOf") =>
-
+          classOfTree @ Select(Select(This(jstpnme.scala_), nme.Predef), nme.classOf),
+          List(tpeArg)) =>
         if (scalaJSOpts.fixClassOf) {
           // Replace call by literal constant containing type
           if (typer.checkClassType(tpeArg)) {
@@ -213,30 +222,25 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Fix for issue with calls to js.Dynamic.x()
       // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
-      case Select(Select(trg, x_?), nme.apply) if (isJSDynamic(trg) &&
-          x_?.decoded == "x") =>
-
+      case Select(Select(trg, jsnme.x), nme.apply) if isJSDynamic(trg) =>
         val newTree = atPos(tree.pos) {
           Apply(
               Select(super.transform(trg), newTermName("applyDynamic")),
               List(Literal(Constant("x")))
           )
         }
-
         typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
 
       // Fix for issue with calls to js.Dynamic.x()
       // Rewrite (obj: js.Dynamic).x to obj.selectDynamic("x")
-      case Select(trg, x_?) if isJSDynamic(trg) && x_?.decoded == "x" =>
-
+      case Select(trg, jsnme.x) if isJSDynamic(trg) =>
         val newTree = atPos(tree.pos) {
           Apply(
               Select(super.transform(trg), newTermName("selectDynamic")),
               List(Literal(Constant("x")))
           )
         }
-
         typer.typed(newTree, Mode.FUNmode, tree.tpe)
 
       case _ => super.transform(tree)
@@ -246,7 +250,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case Template(parents, self, body) =>
         val clsSym = tree.symbol.owner
         val exports = exporters.get(clsSym).toIterable.flatten
-
         // Add exports to the template
         treeCopy.Template(tree, parents, self, body ++ exports)
 
@@ -257,8 +260,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             currentUnit.error(pos, "You may not export a local definition")
           }
         }
-
         memDef
+
       case _ => tree
     }
 
@@ -396,7 +399,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
    * these setters don't make sense in JS (in JS, assignment returns
    * the assigned value) and are therefore not allowed in facade types
    */
-  private def isNonJSScalaSetter(sym: Symbol) = sym.name.decoded.endsWith("_=") && {
+  private def isNonJSScalaSetter(sym: Symbol) = nme.isSetterName(sym.name) && {
     sym.tpe.paramss match {
       case List(List(arg)) =>
         !isScalaRepeatedParamType(arg.tpe) &&
@@ -453,14 +456,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private object ScalaEnumValue extends {
-    protected val methSym =
-      getMemberMethod(ScalaEnumClass, newTermName("Value"))
+    protected val methSym = getMemberMethod(ScalaEnumClass, jsnme.Value)
   } with ScalaEnumFctExtractors
 
   private object ScalaEnumVal extends {
-    private val valSym =
-      getMemberClass(ScalaEnumClass, newTermName("Val"))
-    protected val methSym = valSym.tpe.member(nme.CONSTRUCTOR)
+    protected val methSym = {
+      val valSym = getMemberClass(ScalaEnumClass, jsnme.Val)
+      valSym.tpe.member(nme.CONSTRUCTOR)
+    }
   } with ScalaEnumFctExtractors
 
   /**
@@ -486,18 +489,18 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     //   else
     //     <defaultName>
     //
-    val nextNameTree = Select(This(thisSym), "nextName")
+    val nextNameTree = Select(This(thisSym), jsnme.nextName)
     val nullCompTree =
       Apply(Select(nextNameTree, nme.NE), Literal(Constant(null)) :: Nil)
-    val hasNextTree = Select(nextNameTree, "hasNext")
+    val hasNextTree = Select(nextNameTree, jsnme.hasNext)
     val condTree = Apply(Select(nullCompTree, nme.ZAND), hasNextTree :: Nil)
     val nameTree = If(condTree,
-        Apply(Select(nextNameTree, "next"), Nil),
+        Apply(Select(nextNameTree, jsnme.next), Nil),
         Literal(Constant(defaultName)))
     val params = intParam.toList :+ nameTree
 
     typer.typed {
-      Apply(Select(This(thisSym),newTermName("Value")), params)
+      Apply(Select(This(thisSym), jsnme.Value), params)
     }
   }
 
