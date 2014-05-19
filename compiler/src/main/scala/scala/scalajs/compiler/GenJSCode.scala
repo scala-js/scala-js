@@ -1144,7 +1144,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             if (tpe == ThrowableClass.tpe) {
               bodyWithBoundVar
             } else {
-              val cond = genIsInstanceOf(tpe, exceptVar)
+              val cond = genIsInstanceOf(exceptVar, tpe)
               js.If(cond, bodyWithBoundVar, elsep)(resultType)
             }
           }
@@ -1249,12 +1249,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.Block(source, result) // eval and discard source
       } else if (r.isValueType) {
         assert(!cast, s"Unexpected asInstanceOf from ref type to value type")
-        genIsInstanceOf(boxedClass(to.typeSymbol).tpe, source)
+        genIsInstanceOf(source, boxedClass(to.typeSymbol).tpe)
       } else {
         if (cast)
-          genAsInstanceOf(to, source)
+          genAsInstanceOf(source, to)
         else
-          genIsInstanceOf(to, source)
+          genIsInstanceOf(source, to)
       }
     }
 
@@ -1572,7 +1572,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
-    def genIsInstanceOf(to: Type, value: js.Tree)(
+    def genIsInstanceOf(value: js.Tree, to: Type)(
         implicit pos: Position): js.Tree = {
 
       def genTypeOfTest(typeString: String) = {
@@ -1605,7 +1605,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for an asInstanceOf cast (for reference types only) */
-    def genAsInstanceOf(to: Type, value: js.Tree)(
+    def genAsInstanceOf(value: js.Tree, to: Type)(
         implicit pos: Position): js.Tree = {
 
       def default: js.Tree = {
@@ -2438,7 +2438,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val boxedClass = tpe.valueClazz
           val unboxMethod = boxedClass.derivedValueClassUnbox
           val content = genApplyMethod(
-              genAsInstanceOf(tpe, expr),
+              genAsInstanceOf(expr, tpe),
               boxedClass, unboxMethod, Nil)
           if (unboxMethod.tpe.resultType <:< tpe.erasedUnderlying)
             content
@@ -2446,7 +2446,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             fromAny(content, tpe.erasedUnderlying)
 
         case tpe =>
-          genAsInstanceOf(tpe, expr)
+          genAsInstanceOf(expr, tpe)
       }
     }
 
@@ -2707,7 +2707,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               makePrimitiveUnbox(arg, tree.tpe)
 
             case JS2S =>
-              genAsInstanceOf(tree.tpe, arg)
+              genAsInstanceOf(arg, tree.tpe)
 
             case RTJ2J | J2RTJ =>
               arg // TODO? What if (arg === null) for RTJ2J?
