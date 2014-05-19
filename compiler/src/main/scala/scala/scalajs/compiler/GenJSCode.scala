@@ -741,41 +741,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen JS code for a tree in statement position (in the IR)
-     *
-     *  Here we handle Assign trees directly. All other types of nodes are
-     *  redirected to `genExpr()`.
+    /** Gen JS code for a tree in statement position (in the IR).
      */
     def genStat(tree: Tree): js.Tree = {
-      implicit val pos = tree.pos
-
-      tree match {
-        /** qualifier.field = rhs */
-        case Assign(lhs @ Select(qualifier, _), rhs) =>
-          val sym = lhs.symbol
-
-          val member =
-            if (sym.isStaticMember) {
-              genStaticMember(sym)
-            } else {
-              js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
-            }
-
-          js.Assign(member, genExpr(rhs))
-
-        /** lhs = rhs */
-        case Assign(lhs, rhs) =>
-          val sym = lhs.symbol
-          js.Assign(
-              js.VarRef(encodeLocalSym(sym),
-                  mutable = sym.isMutable)(
-                  (toIRType(sym.tpe))),
-              genExpr(rhs))
-
-        case _ =>
-          exprToStat(genExpr(tree))
-      }
+      exprToStat(genExpr(tree))
     }
 
     /** Turn a JavaScript statement into an expression of type Unit */
@@ -787,16 +756,16 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Turn a JavaScript expression of type Unit into a statement */
     def exprToStat(tree: js.Tree): js.Tree = {
       /* Any JavaScript expression is also a statement, but at least we get rid
-       * of the stupid js.Block(..., js.Undefined()) that we create ourselves
-       * in statToExpr().
+       * of the stupid js.Undefined() and js.This() that we create ourselves
+       * in statToExpr() and after js.StoreModule, respectively.
        * We also remove any uV() wrapper.
        */
       implicit val pos = tree.pos
       tree match {
-        case js.Block(stats :+ js.Undefined()) => js.Block(stats)
-        case js.Undefined()                    => js.Skip()
-        case js.CallHelper("uV", List(expr))   => exprToStat(expr)
-        case _ => tree
+        case js.Block(stats :+ expr)         => js.Block(stats :+ exprToStat(expr))
+        case js.CallHelper("uV", List(expr)) => exprToStat(expr)
+        case _:js.Literal | js.This()        => js.Skip()
+        case _                               => tree
       }
     }
 
@@ -975,8 +944,21 @@ abstract class GenJSCode extends plugins.PluginComponent
         case Typed(expr, _) =>
           genExpr(expr)
 
-        case Assign(_, _) =>
-          statToExpr(genStat(tree))
+        case Assign(lhs, rhs) =>
+          val sym = lhs.symbol
+          if (sym.isStaticMember)
+            abort(s"Assignment to static member ${sym.fullName} not supported")
+          val genLhs = lhs match {
+            case Select(qualifier, _) =>
+              js.Select(genExpr(qualifier), encodeFieldSym(sym),
+                  mutable = sym.isMutable)(toIRType(sym.tpe))
+            case _ =>
+              js.VarRef(encodeLocalSym(sym),
+                  mutable = sym.isMutable)(toIRType(sym.tpe))
+          }
+          statToExpr {
+            js.Assign(genLhs, genExpr(rhs))
+          }
 
         /** Array constructor */
         case av: ArrayValue =>
