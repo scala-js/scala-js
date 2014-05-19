@@ -65,11 +65,9 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     protected val sourceMapWriter: ir.SourceMapWriter)
     extends JSFileBuilder(n, ow) {
 
-  protected var totalLineCount = 0
-
   override def addLine(line: String): Unit = {
     super.addLine(line)
-    totalLineCount += 1
+    sourceMapWriter.nextLine()
   }
 
   private final val NotSelected = -1
@@ -78,9 +76,6 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
       selector: String => Boolean): Unit = {
     val br = new BufferedReader(file.reader)
     try {
-      // Store starting offset
-      val startLine = totalLineCount
-
       // Select lines, and remember offsets
       val offsets = new mutable.ArrayBuffer[Int] // (maybe NotSelected)
       val selectedLineLengths = new mutable.ArrayBuffer[Int]
@@ -88,7 +83,7 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
       var selectedCount = 0
       while (line != null) {
         if (selector(line)) {
-          addLine(line)
+          super.addLine(line) // super call not to advance line in source map
           offsets += selectedCount
           selectedLineLengths += line.length
           selectedCount += 1

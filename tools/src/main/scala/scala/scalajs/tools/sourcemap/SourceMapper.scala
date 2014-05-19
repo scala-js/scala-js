@@ -31,10 +31,12 @@ class SourceMapper(classpath: JSClasspath) {
         .parse(sourceMap)
         .asInstanceOf[SourceMapConsumerV3]
 
+    /* **Attention**
+     * - StackTrace positions are 1-based
+     * - SourceMapConsumer.getMappingForLine() is 1-based
+     */
 
-    // StackTrace positions are 1-based. We need to adjust line and
-    // column numbers because source map positions are 0-based
-    val lineNumber = ste.getLineNumber - 1
+    val lineNumber = ste.getLineNumber
     val column =
       if (columnNumber == -1) getFirstColumn(sourceMapConsumer, lineNumber)
       else columnNumber
@@ -47,13 +49,19 @@ class SourceMapper(classpath: JSClasspath) {
           ste.getClassName,
           ste.getMethodName,
           originalMapping.getOriginalFile,
-          originalMapping.getLineNumber + 1)
+          originalMapping.getLineNumber)
     } else ste
   }
 
-  /** both `lineNumber` and the resulting column are 0-based */
+  /** both `lineNumber` and the resulting column are 1-based */
   private def getFirstColumn(sourceMapConsumer: SourceMapConsumerV3,
-      lineNumber: Int) = {
+      lineNumber1Based: Int) = {
+
+    /* **Attention**
+     * - SourceMapConsumerV3.EntryVisitor is 0-based!!!
+     */
+
+    val lineNumber = lineNumber1Based - 1
 
     var column: Option[Int] = None
 
@@ -68,7 +76,8 @@ class SourceMapper(classpath: JSClasspath) {
             column = Some(startPosition.getColumn)
       })
 
-    column.getOrElse(0)
+    val column0Based = column.getOrElse(0)
+    column0Based + 1
   }
 
   private def findSourceMap(path: String) = {
