@@ -870,17 +870,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             genLoadModule(tree.symbol)
           }
 
-        case Select(Ident(nme.EMPTY_PACKAGE_NAME), module) =>
-          assert(tree.symbol.isModule,
-              "Selection of non-module from empty package: " + tree +
-              " sym: " + tree.symbol + " at: " + (tree.pos))
-          genLoadModule(tree.symbol)
-
         case Select(qualifier, selector) =>
           val sym = tree.symbol
-
           if (sym.isModule) {
-            assert(!tree.symbol.isPackageClass, "Cannot use package as value: " + tree)
+            assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
             genLoadModule(sym)
           } else if (sym.isStaticMember) {
             genStaticMember(sym)
