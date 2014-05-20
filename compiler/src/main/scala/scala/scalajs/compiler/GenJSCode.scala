@@ -800,24 +800,18 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genExpr(tree: Tree): js.Tree = {
       implicit val pos = tree.pos
 
-      /** Predicate satisfied by LabelDefs produced by the pattern matcher */
-      def isCaseLabelDef(tree: Tree) =
-        tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree)
-
       tree match {
         /** LabelDefs (for while and do..while loops) */
         case lblDf: LabelDef =>
           genLabelDef(lblDf)
 
-        /** val nme.THIS = this
-         *  Must have been eliminated by the tail call transform performed
-         *  by `genMethodBody()`.
-         */
-        case ValDef(_, nme.THIS, _, _) =>
-          abort("ValDef(_, nme.THIS, _, _) found at: " + tree.pos)
-
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
+          /* Must have been eliminated by the tail call transform performed
+           * by genMethodBody(). */
+          assert(name != nme.THIS,
+              s"ValDef(_, nme.THIS, _, _) found at ${tree.pos}")
+
           val sym = tree.symbol
           val rhsTree =
             if (rhs == EmptyTree) genZeroOf(sym.tpe)
@@ -926,33 +920,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               genStaticMember(value.symbolValue)
           }
 
-        /** Block that appeared as the result of a translated match
-         *  Such blocks are recognized by having at least one element that is
-         *  a so-called case-label-def.
-         *  The method `genTranslatedMatch()` takes care of compiling the
-         *  actual match.
-         */
-        case Block(stats, expr) if (expr +: stats) exists isCaseLabelDef =>
-          /* The assumption is once we encounter a case, the remainder of the
-           * block will consist of cases.
-           * The prologue may be empty, usually it is the valdef that stores
-           * the scrut.
-           */
-          val (prologue, cases) = stats span (s => !isCaseLabelDef(s))
-          assert((expr +: cases) forall isCaseLabelDef,
-              "Assumption on the form of translated matches broken: " + tree)
-
-          val translatedMatch =
-            genTranslatedMatch(cases map (_.asInstanceOf[LabelDef]),
-                expr.asInstanceOf[LabelDef])
-
-          js.Block((prologue map genStat) :+ translatedMatch)
-
-        /** Normal block */
-        case Block(stats, expr) =>
-          val statements = stats map genStat
-          val expression = genExpr(expr)
-          js.Block(statements :+ expression)
+        case tree: Block =>
+          genBlock(tree)
 
         case Typed(Super(_, _), _) =>
           genThis()
@@ -1831,6 +1800,44 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       js.Match(expr, clauses.reverse, elseClause)(resultType)
+    }
+
+    private def genBlock(tree: Block): js.Tree = {
+      implicit val pos = tree.pos
+      val Block(stats, expr) = tree
+
+      /** Predicate satisfied by LabelDefs produced by the pattern matcher */
+      def isCaseLabelDef(tree: Tree) =
+        tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree)
+
+      if (isCaseLabelDef(expr)) {
+        /* Block that appeared as the result of a translated match
+         * Such blocks are recognized by having at least one element that is
+         * a so-called case-label-def.
+         * The method `genTranslatedMatch()` takes care of compiling the
+         * actual match.
+         *
+         * The assumption is once we encounter a case, the remainder of the
+         * block will consist of cases.
+         * The prologue may be empty, usually it is the valdef that stores
+         * the scrut.
+         */
+        val (prologue, cases) = stats.span(s => !isCaseLabelDef(s))
+        assert(cases.forall(isCaseLabelDef),
+            "Assumption on the form of translated matches broken: " + tree)
+
+        val genPrologue = prologue map genStat
+        val translatedMatch =
+          genTranslatedMatch(cases.map(_.asInstanceOf[LabelDef]),
+              expr.asInstanceOf[LabelDef])
+
+        js.Block(genPrologue :+ translatedMatch)
+      } else {
+        /* Normal block */
+        val statements = stats map genStat
+        val expression = genExpr(expr)
+        js.Block(statements :+ expression)
+      }
     }
 
     /** Gen JS code for a translated match
