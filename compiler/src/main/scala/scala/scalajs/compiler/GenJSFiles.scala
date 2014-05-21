@@ -23,7 +23,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
+  def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: js.ClassDef,
       classInfo: ClassInfo): Unit = {
     val outfile = getFileFor(cunit, sym, ".sjsir")
     val output = outfile.bufferedOutput
@@ -35,7 +35,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     }
   }
 
-  def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.Tree,
+  def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.ClassDef,
       classInfo: ClassInfo): Unit = {
     val outfile = getFileFor(cunit, sym, ".ir.js")
     val output = bufferedWriter(outfile)

@@ -301,7 +301,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                 }, genSubAlts, elsep)(jstpe.UndefType)
 
               case InstanceOfTypeTest(tpe) =>
-                js.If(orUndef(genIsInstanceOf(tpe, param.ref)),
+                js.If(orUndef(genIsInstanceOf(param.ref, tpe)),
                     genSubAlts, elsep)(jstpe.UndefType)
 
               case NoTypeTest =>
@@ -363,10 +363,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               val boxedClass = tpe.valueClazz
               val unboxMethod = boxedClass.derivedValueClassUnbox
               genApplyMethod(
-                  genAsInstanceOf(tpe, jsArg.ref),
+                  genAsInstanceOf(jsArg.ref, tpe),
                   boxedClass, unboxMethod, Nil)
             case tpe =>
-              genAsInstanceOf(tpe, jsArg.ref)
+              genAsInstanceOf(jsArg.ref, tpe)
           }
 
           js.Assign(jsArg.ref, verifiedArg)
