@@ -8,89 +8,75 @@ package scala.scalajs.compiler
 import scala.tools.nsc._
 
 import scala.scalajs.ir
-import ir.Types
+import ir.{Definitions, Types}
 
-/** Types as their are viewed by JavaScript
+/** Glue representation of types as seen from the IR but still with a
+ *  reference to the Symbols.
  *
  *  @author Sébastien Doeraene
  */
 trait TypeKinds extends SubComponent { this: GenJSCode =>
   import global._
   import jsAddons._
-
-  import definitions.{ UnitClass, BooleanClass, CharClass, ByteClass,
-    ShortClass, IntClass, LongClass, FloatClass, DoubleClass, ArrayClass,
-    AnyRefClass, ObjectClass, NullClass, NothingClass, arrayType,
-    RuntimeNullClass, RuntimeNothingClass }
+  import definitions._
 
   lazy val ObjectReference = REFERENCE(definitions.ObjectClass)
 
-  lazy val UndefinedKind = UNDEFINED
-  //lazy val NullKind = NULL
+  lazy val VoidKind    = VOID
   lazy val BooleanKind = BOOL
-  lazy val CharKind = INT(CharClass)
-  lazy val ByteKind = INT(ByteClass)
-  lazy val ShortKind = INT(ShortClass)
-  lazy val IntKind = INT(IntClass)
-  lazy val LongKind = INT(LongClass)
-  lazy val FloatKind = FLOAT(FloatClass)
-  lazy val DoubleKind = FLOAT(DoubleClass)
-  lazy val RefKind = ObjectReference
+  lazy val CharKind    = INT(CharClass)
+  lazy val ByteKind    = INT(ByteClass)
+  lazy val ShortKind   = INT(ShortClass)
+  lazy val IntKind     = INT(IntClass)
+  lazy val LongKind    = LONG
+  lazy val FloatKind   = DOUBLE(FloatClass)
+  lazy val DoubleKind  = DOUBLE(DoubleClass)
 
-  lazy val primitiveKinds = List(UndefinedKind, /*NullKind,*/ BooleanKind,
-      CharKind, ByteKind, ShortKind, IntKind, LongKind, FloatKind, DoubleKind)
-
-  /** A map from scala primitive Types to OzCode TypeKinds */
+  /** TypeKinds for Scala primitive types. */
   lazy val primitiveTypeMap: Map[Symbol, TypeKind] = {
     import definitions._
     Map(
-      UnitClass     -> UndefinedKind,
-      BooleanClass  -> BooleanKind,
-      CharClass     -> CharKind,
-      ByteClass     -> ByteKind,
-      ShortClass    -> ShortKind,
-      IntClass      -> IntKind,
-      LongClass     -> LongKind,
-      FloatClass    -> FloatKind,
-      DoubleClass   -> DoubleKind
+      UnitClass    -> VoidKind,
+      BooleanClass -> BooleanKind,
+      CharClass    -> CharKind,
+      ByteClass    -> ByteKind,
+      ShortClass   -> ShortKind,
+      IntClass     -> IntKind,
+      LongClass    -> LongKind,
+      FloatClass   -> FloatKind,
+      DoubleClass  -> DoubleKind
     )
   }
 
-  /**
-   * This class represents a type kind. Type kinds represent the types that
-   * JavaScript knows.
+  /** Glue representation of types as seen from the IR but still with a
+   *  reference to the Symbols.
    */
   sealed abstract class TypeKind {
     def isReferenceType = false
     def isArrayType = false
     def isValueType = false
 
-    def dimensions: Int = 0
-
-    override def toString = {
-      this.getClass.getName stripSuffix "$" dropWhile (_ != '$') drop 1
-    }
-
-    def toType: Type
-
     def toIRType: Types.Type
     def toReferenceType: Types.ReferenceType
   }
 
   sealed abstract class TypeKindButArray extends TypeKind {
-    override def toReferenceType: Types.ClassType
-  }
-
-  sealed abstract class ValueTypeKind(cls: Symbol) extends TypeKindButArray {
-    override def isValueType = true
-
-    def toType = cls.tpe
+    protected def typeSymbol: Symbol
 
     override def toReferenceType: Types.ClassType =
-      Types.ClassType(encodeClassFullName(cls))
+      Types.ClassType(encodeClassFullName(typeSymbol))
+  }
 
-    val primitiveCharCode = cls match {
-      case UnitClass     => "V"
+  /** The void, for trees that can only appear in statement position. */
+  case object VOID extends TypeKindButArray {
+    protected def typeSymbol = UnitClass
+    def toIRType: Types.NoType.type = Types.NoType
+  }
+
+  sealed abstract class ValueTypeKind extends TypeKindButArray {
+    override def isValueType = true
+
+    val primitiveCharCode = typeSymbol match {
       case BooleanClass  => "Z"
       case CharClass     => "C"
       case ByteClass     => "B"
@@ -103,59 +89,64 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     }
   }
 
-  /** The undefined value */
-  case object UNDEFINED extends ValueTypeKind(definitions.UnitClass) {
-    def toIRType = Types.UndefType
-  }
-
-  /** The null value */
-  //case object NULL extends ValueTypeKind(definitions.NullClass) {}
-
   /** Int */
-  case class INT(cls: Symbol) extends ValueTypeKind(cls) {
-    def toIRType =
-      if (cls == LongClass) Types.ClassType(ir.Definitions.RuntimeLongClass)
-      else Types.IntType
+  case class INT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
+    def toIRType: Types.IntType.type = Types.IntType
   }
 
-  /** Float */
-  case class FLOAT(cls: Symbol) extends ValueTypeKind(cls) {
-    def toIRType = Types.DoubleType
+  /** Long */
+  case object LONG extends ValueTypeKind {
+    protected def typeSymbol = definitions.LongClass
+    val toIRType: Types.ClassType =
+      Types.ClassType(ir.Definitions.RuntimeLongClass)
+  }
+
+  /** Double */
+  case class DOUBLE private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
+    def toIRType: Types.DoubleType.type = Types.DoubleType
   }
 
   /** Boolean */
-  case object BOOL extends ValueTypeKind(definitions.BooleanClass) {
-    def toIRType = Types.BooleanType
+  case object BOOL extends ValueTypeKind {
+    protected def typeSymbol = definitions.BooleanClass
+    def toIRType: Types.BooleanType.type = Types.BooleanType
+  }
+
+  /** Nothing */
+  case object NOTHING extends TypeKindButArray {
+    protected def typeSymbol = definitions.NothingClass
+    def toIRType: Types.NothingType.type = Types.NothingType
+    override def toReferenceType: Types.ClassType =
+      Types.ClassType(Definitions.RuntimeNothingClass)
+  }
+
+  /** Null */
+  case object NULL extends TypeKindButArray {
+    protected def typeSymbol = definitions.NullClass
+    def toIRType: Types.NullType.type = Types.NullType
+    override def toReferenceType: Types.ClassType =
+      Types.ClassType(Definitions.RuntimeNullClass)
   }
 
   /** An object */
-  case class REFERENCE(cls: Symbol) extends TypeKindButArray {
-    override def toString = "REFERENCE(" + cls.fullName + ")"
+  case class REFERENCE private[TypeKinds] (typeSymbol: Symbol) extends TypeKindButArray {
+    override def toString(): String = "REFERENCE(" + typeSymbol.fullName + ")"
     override def isReferenceType = true
 
-    def toType = cls.tpe
-
-    def toIRType = {
-      cls match {
-        case NullClass    => Types.NullType
-        case NothingClass => Types.NothingType
-        case _            => encodeClassType(cls)
-      }
-    }
-
-    override def toReferenceType: Types.ClassType =
-      Types.ClassType(encodeClassFullName(mapRuntimeClass(cls)))
+    def toIRType: Types.Type = encodeClassType(typeSymbol)
   }
 
   /** An array */
-  case class ARRAY(elem: TypeKind) extends TypeKind {
+  case class ARRAY private[TypeKinds] (elem: TypeKind) extends TypeKind {
     override def toString = "ARRAY[" + elem + "]"
     override def isArrayType = true
-    override def dimensions = elem.dimensions + 1
 
-    def toType = arrayType(elem.toType)
+    def dimensions: Int = elem match {
+      case a: ARRAY => a.dimensions + 1
+      case _        => 1
+    }
 
-    def toIRType = toReferenceType
+    override def toIRType: Types.ArrayType = toReferenceType
 
     override def toReferenceType: Types.ArrayType = {
       Types.ArrayType(
@@ -175,6 +166,9 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   def toIRType(t: Type): Types.Type =
     toTypeKind(t).toIRType
 
+  def toReferenceType(t: Type): Types.ReferenceType =
+    toTypeKind(t).toReferenceType
+
   // The following code is a hard copy-and-paste from backend.icode.TypeKinds
 
   /** Return the TypeKind of the given type
@@ -184,7 +178,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
    */
   def toTypeKind(t: Type): TypeKind = t.normalize match {
     case ThisType(ArrayClass)            => ObjectReference
-    case ThisType(sym)                   => REFERENCE(sym)
+    case ThisType(sym)                   => newReference(sym)
     case SingleType(_, sym)              => primitiveOrRefType(sym)
     case ConstantType(_)                 => toTypeKind(t.underlying)
     case TypeRef(_, sym, args)           => primitiveOrClassType(sym, args)
@@ -231,40 +225,27 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
    *  spurious errors, but if we treat them all as AnyRef we lose too
    *  much information.
    */
-  private def newReference(sym: Symbol): TypeKind = {
-    // Can't call .toInterface (at this phase) or we trip an assertion.
-    // See PackratParser#grow for a method which fails with an apparent mismatch
-    // between "object PackratParsers$class" and "trait PackratParsers"
-    if (sym.isImplClass) {
-      // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
-      val traitSym = sym.owner.info.decl(tpnme.interfaceName(sym.name))
-      if (traitSym != NoSymbol)
-        return REFERENCE(traitSym)
-    }
-    REFERENCE(sym)
+  private def newReference(sym: Symbol): TypeKind = sym match {
+    case NothingClass => NOTHING
+    case NullClass    => NULL
+    case _ =>
+      // Can't call .toInterface (at this phase) or we trip an assertion.
+      // See PackratParser#grow for a method which fails with an apparent mismatch
+      // between "object PackratParsers$class" and "trait PackratParsers"
+      if (sym.isImplClass) {
+        // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
+        val traitSym = sym.owner.info.decl(tpnme.interfaceName(sym.name))
+        if (traitSym != NoSymbol)
+          REFERENCE(traitSym)
+        else
+          REFERENCE(sym)
+      } else {
+        REFERENCE(sym)
+      }
   }
 
   private def primitiveOrRefType(sym: Symbol) =
     primitiveTypeMap.getOrElse(sym, newReference(sym))
   private def primitiveOrClassType(sym: Symbol, targs: List[Type]) =
     primitiveTypeMap.getOrElse(sym, arrayOrClassType(sym, targs))
-
-  /**
-   * Extractor object for Scala runtime mapped types
-   *
-   * These are types that are mapped to a different type at runtime.
-   * Currently scala.Nothing and scala.Null
-   */
-  object ScalaRTMapped {
-    def unapply(cls: Symbol) = cls match {
-      case NullClass    => Some(RuntimeNullClass)
-      case NothingClass => Some(RuntimeNothingClass)
-      case _ => None
-    }
-  }
-
-  def mapRuntimeClass(cls: Symbol): Symbol = cls match {
-    case ScalaRTMapped(rtCls) => rtCls
-    case _ => cls
-  }
 }

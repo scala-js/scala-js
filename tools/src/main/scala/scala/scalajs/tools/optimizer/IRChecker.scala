@@ -110,8 +110,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     for (ParamDef(name, tpe) <- params)
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
-    if (resultType == NoType)
-      reportError(s"Result type is NoType")
 
     val resultTypeForSig =
       if (isConstructorName(name)) NoType
@@ -160,7 +158,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
             reportError("Assignment to immutable variable.")
           case _ =>
         }*/
-        val lhsTpe = typecheck(select, env)
+        val lhsTpe = typecheckExpr(select, env)
         val expectedRhsTpe = select match {
           case _:JSDotSelect | _:JSBracketSelect => AnyType
           case _                                 => lhsTpe
@@ -213,9 +211,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         env
 
       case Switch(selector, cases, default) =>
-        typecheck(selector, env)
+        typecheckExpr(selector, env)
         for ((value, body) <- cases) {
-          typecheck(value, env)
+          typecheckExpr(value, env)
           typecheckStat(body, env)
         }
         if (default != EmptyTree)
@@ -223,9 +221,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         env
 
       case Match(selector, cases, default) =>
-        typecheck(selector, env)
+        typecheckExpr(selector, env)
         for ((alts, body) <- cases) {
-          alts.foreach(typecheck(_, env))
+          alts.foreach(typecheckExpr(_, env))
           typecheckStat(body, env)
         }
         typecheckStat(default, env)
@@ -242,17 +240,21 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
   def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
       implicit ctx: ErrorContext): Unit = {
-    val tpe = typecheck(tree, env)
+    val tpe = typecheckExpr(tree, env)
     if (!isSubtype(tpe, expectedType))
       reportError(s"$expectedType expected but $tpe found "+
           s"for tree of type ${tree.getClass.getName}")
   }
 
-  def typecheck(tree: Tree, env: Env): Type = {
+  def typecheckExpr(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
-
     if (tree.tpe == NoType)
       reportError(s"Expression tree has type NoType")
+    typecheck(tree, env)
+  }
+
+  def typecheck(tree: Tree, env: Env): Type = {
+    implicit val ctx = ErrorContext(tree)
 
     def checkApplyGeneric(methodName: String, methodFullName: String,
         args: List[Tree], inTraitImpl: Boolean): Unit = {
@@ -263,7 +265,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       for ((actual, formal) <- args zip methodParams) {
         typecheckExpect(actual, env, formal)
       }
-      if (!isConstructorName(methodName) && !isSubtype(resultType, tree.tpe))
+      if (!isConstructorName(methodName) && tree.tpe != resultType)
         reportError(s"Call to $methodFullName of type $resultType "+
             s"typed as ${tree.tpe}")
     }
@@ -276,7 +278,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         val envAfterStats = (env /: stats) { (prevEnv, stat) =>
           typecheckStat(stat, prevEnv)
         }
-        typecheck(expr, envAfterStats)
+        typecheckExpr(expr, envAfterStats)
 
       case Labeled(label, tpe, body) =>
         typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
@@ -284,7 +286,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Return(expr, label) =>
         env.returnTypes.get(label.map(_.name)).fold[Unit] {
           reportError(s"Cannot return to label $label.")
-          typecheck(expr, env)
+          typecheckExpr(expr, env)
         } { returnType =>
           typecheckExpect(expr, env, returnType)
         }
@@ -308,7 +310,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         }
 
       case Throw(expr) =>
-        typecheck(expr, env)
+        typecheckExpr(expr, env)
 
       case Break(label) =>
         /* Here we could check that it is indeed legal to break to the
@@ -322,9 +324,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       case Match(selector, cases, default) =>
         val tpe = tree.tpe
-        typecheck(selector, env)
+        typecheckExpr(selector, env)
         for ((alts, body) <- cases) {
-          alts.foreach(typecheck(_, env))
+          alts.foreach(typecheckExpr(_, env))
           typecheckExpect(body, env, tpe)
         }
         typecheckExpect(default, env, tpe)
@@ -343,7 +345,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           reportError("LoadModule of non-module class $cls")
 
       case Select(qualifier, Ident(item, _), mutable) =>
-        val qualType = typecheck(qualifier, env)
+        val qualType = typecheckExpr(qualifier, env)
         qualType match {
           case ClassType(cls) =>
             val clazz = lookupClass(cls)
@@ -366,7 +368,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         }
 
       case Apply(receiver, Ident(method, _), args) =>
-        val receiverType = typecheck(receiver, env)
+        val receiverType = typecheckExpr(receiver, env)
         if (!isReflProxyName(method)) {
           receiverType match {
             case ClassType(cls) =>
@@ -401,7 +403,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           case "typeof" =>
             if (tpe != StringType)
               reportError(s"typeof typed as $tpe")
-            typecheck(lhs, env)
+            typecheckExpr(lhs, env)
           case "+" | "-" =>
             if (tpe != IntType && tpe != DoubleType)
               reportError(s"Unary $op typed as $tpe")
@@ -420,7 +422,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
             typecheckExpect(lhs, env, DoubleType)
           case _ =>
             reportError(s"Invalid unary op $op")
-            typecheck(lhs, env)
+            typecheckExpr(lhs, env)
         }
 
       case BinaryOp(op, lhs, rhs, tpe) =>
@@ -428,11 +430,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           case "===" | "!==" =>
             if (tpe != BooleanType)
               reportError(s"Binary $op typed as $tpe")
-            typecheck(lhs, env)
-            typecheck(rhs, env)
+            typecheckExpr(lhs, env)
+            typecheckExpr(rhs, env)
           case "+" if tpe == StringType =>
-            typecheck(lhs, env)
-            typecheck(rhs, env)
+            typecheckExpr(lhs, env)
+            typecheckExpr(rhs, env)
           case "+" | "-" | "*" | "/" | "%" =>
             if (tpe != IntType && tpe != DoubleType)
               reportError(s"Binary $op typed as $tpe")
@@ -466,12 +468,12 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           case "instanceof" =>
             if (tpe != BooleanType)
               reportError(s"Binary $op typed as $tpe")
-            typecheck(lhs, env)
+            typecheckExpr(lhs, env)
             typecheckExpect(rhs, env, DynType)
           case _ =>
             reportError(s"Invalid binary op $op")
-            typecheck(lhs, env)
-            typecheck(rhs, env)
+            typecheckExpr(lhs, env)
+            typecheckExpr(rhs, env)
         }
 
       case NewArray(tpe, lengths) =>
@@ -484,13 +486,13 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           typecheckExpect(elem, env, elemType)
 
       case ArrayLength(array) =>
-        val arrayType = typecheck(array, env)
+        val arrayType = typecheckExpr(array, env)
         if (!arrayType.isInstanceOf[ArrayType])
           reportError(s"Array type expected but $arrayType found")
 
       case ArraySelect(array, index) =>
         typecheckExpect(index, env, IntType)
-        typecheck(array, env) match {
+        typecheckExpr(array, env) match {
           case arrayType: ArrayType =>
             if (tree.tpe != arrayElemType(arrayType))
               reportError(s"Array select of array type $arrayType typed as ${tree.tpe}")
@@ -499,24 +501,24 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         }
 
       case IsInstanceOf(expr, cls) =>
-        typecheck(expr, env)
+        typecheckExpr(expr, env)
 
       case AsInstanceOf(expr, cls) =>
-        typecheck(expr, env)
+        typecheckExpr(expr, env)
 
       case ClassOf(cls) =>
 
       case CallHelper(helper, args) =>
         if (!HelperSignature.contains(helper)) {
           reportError(s"Invalid helper $helper")
-          args.foreach(typecheck(_, env))
+          args.foreach(typecheckExpr(_, env))
         } else {
           val (params, resultType) = HelperSignature(helper)
           if (args.size != params.size)
             reportError(s"Arity mismatch: ${params.size} expected but ${args.size} found")
           for ((actual, formal) <- args.zip(params))
             typecheckExpect(actual, env, formal)
-          if (!isSubtype(resultType, tree.tpe))
+          if (tree.tpe != resultType)
             reportError(s"Helper $helper of type $resultType typed as ${tree.tpe}")
         }
 
@@ -527,23 +529,23 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case JSNew(ctor, args) =>
         typecheckExpect(ctor, env, DynType)
         for (arg <- args)
-          typecheck(arg, env)
+          typecheckExpr(arg, env)
 
       case JSDotSelect(qualifier, item) =>
         typecheckExpect(qualifier, env, DynType)
 
       case JSBracketSelect(qualifier, item) =>
         typecheckExpect(qualifier, env, DynType)
-        typecheck(item, env)
+        typecheckExpr(item, env)
 
       case JSApply(fun, args) =>
         typecheckExpect(fun, env, DynType)
         for (arg <- args)
-          typecheck(arg, env)
+          typecheckExpr(arg, env)
 
       case JSDelete(obj, prop) =>
         typecheckExpect(obj, env, DynType)
-        typecheck(prop, env)
+        typecheckExpr(prop, env)
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpect(lhs, env, DynType)
@@ -554,11 +556,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       case JSArrayConstr(items) =>
         for (item <- items)
-          typecheck(item, env)
+          typecheckExpr(item, env)
 
       case JSObjectConstr(fields) =>
         for ((_, value) <- fields)
-          typecheck(value, env)
+          typecheckExpr(value, env)
 
       // Literals
 
@@ -586,16 +588,13 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         for (ParamDef(name, tpe) <- params)
           if (tpe == NoType)
             reportError(s"Parameter $name has type NoType")
-        if (resultType == NoType)
-          reportError(s"Result type is NoType")
-
         typecheckStat(body, env.enteringFun(thisType, params, resultType))
 
 
       // Type-related
 
       case Cast(expr, tpe) =>
-        typecheck(expr, env)
+        typecheckExpr(expr, env)
 
       case _ =>
         reportError(s"Invalid expression tree")
@@ -641,7 +640,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ArrayType(base, dims)
     } else if (encodedName.length == 1) {
       (encodedName.charAt(0): @switch) match {
-        case 'V'                   => UndefType
+        case 'V'                   => NoType
         case 'Z'                   => BooleanType
         case 'C' | 'B' | 'S' | 'I' => IntType
         case 'J'                   => ClassType(RuntimeLongClass)
@@ -673,9 +672,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("objectToString" , List(AnyType) -> StringClassType),
       ("objectGetClass" , List(AnyType) -> ClassType(ClassClass)),
       ("objectClone"    , List(AnyType) -> AnyType),
-      ("objectFinalize" , List(AnyType) -> UndefType),
-      ("objectNotify"   , List(AnyType) -> UndefType),
-      ("objectNotifyAll", List(AnyType) -> UndefType),
+      ("objectFinalize" , List(AnyType) -> NoType),
+      ("objectNotify"   , List(AnyType) -> NoType),
+      ("objectNotifyAll", List(AnyType) -> NoType),
       ("objectEquals"   , List(AnyType, AnyType) -> BooleanType),
       ("objectHashCode" , List(AnyType) -> IntType),
 
@@ -702,7 +701,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("bC", List(IntType) -> ClassType(BoxedCharacterClass)),
 
-      ("uV", List(AnyType) -> UndefType),
       ("uZ", List(AnyType) -> BooleanType),
       ("uC", List(AnyType) -> IntType),
       ("uB", List(AnyType) -> IntType),
@@ -715,7 +713,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("newInstanceWithVarargs", List(DynType, DynType) -> DynType),
       ("applyMethodWithVarargs", List(DynType, StringClassType, DynType) -> DynType),
 
-      ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> UndefType),
+      ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
 
       ("propertiesOf", List(DynType) -> DynType),
 
@@ -829,7 +827,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       val paramLocalDefs =
         for (p @ ParamDef(name, tpe) <- params) yield
           name.name -> LocalDef(name.name, tpe, mutable = false)(p.pos)
-      new Env(thisType, locals ++ paramLocalDefs, Map(None -> resultType))
+      new Env(thisType, locals ++ paramLocalDefs,
+          Map(None -> (if (resultType == NoType) AnyType else resultType)))
     }
   }
 

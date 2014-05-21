@@ -335,7 +335,7 @@ object JSDesugaring {
         "isByte", "isShort", "isInt",
         "asUnit", "asBoolean", "asByte", "asShort", "asInt",
         "asFloat", "asDouble",
-        "bC", "uV", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD",
+        "bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD",
         "imul"
     )
 
@@ -854,7 +854,11 @@ object JSDesugaring {
           transformExpr(expr)
 
         case Function(thisType, params, resultType, body) =>
-          Function(DynType, params.map(eraseParamType), DynType, transformStat(body))
+          val newBody = transformStat(body) match {
+            case Block(stats :+ Return(Undefined(), None)) => Block(stats)
+            case newBody                                   => newBody
+          }
+          Function(DynType, params.map(eraseParamType), DynType, newBody)
 
         case _ =>
           super.transformExpr(tree)
