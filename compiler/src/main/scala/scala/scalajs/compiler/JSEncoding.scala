@@ -188,24 +188,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   def foreignIsImplClass(sym: Symbol): Boolean =
     sym.isModuleClass && nme.isImplClassName(sym.name)
 
-  def encodeReferenceType(tpe: Type)(implicit pos: Position): (jstpe.ReferenceType, Symbol) = {
-    toTypeKind(tpe) match {
-      case kind: ARRAY =>
-        val sym = mapRuntimeClass(kind.elementKind.toType.typeSymbol)
-        (jstpe.ArrayType(encodeClassFullName(sym), kind.dimensions), sym)
-
-      case kind =>
-        val sym = mapRuntimeClass(kind.toType.typeSymbol)
-        (jstpe.ClassType(encodeClassFullName(sym)), sym)
-    }
-  }
-
-  def encodeArrayType(tpe: Type)(implicit pos: Position): (jstpe.ArrayType, Symbol) = {
-    (encodeReferenceType(tpe): @unchecked) match {
-      case (arrayType: jstpe.ArrayType, sym) => (arrayType, sym)
-    }
-  }
-
   def encodeClassType(sym: Symbol): jstpe.Type = {
     if (sym == definitions.ObjectClass) jstpe.AnyType
     else if (isRawJSType(sym.toTypeConstructor)) jstpe.DynType
@@ -259,8 +241,11 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def internalName(tpe: Type): String = internalName(toTypeKind(tpe))
 
   private def internalName(kind: TypeKind): String = kind match {
+    case VOID                => "V"
     case kind: ValueTypeKind => kind.primitiveCharCode
-    case REFERENCE(cls)      => encodeClassFullName(mapRuntimeClass(cls))
+    case NOTHING             => ir.Definitions.RuntimeNothingClass
+    case NULL                => ir.Definitions.RuntimeNullClass
+    case REFERENCE(cls)      => encodeClassFullName(cls)
     case ARRAY(elem)         => "A"+internalName(elem)
   }
 

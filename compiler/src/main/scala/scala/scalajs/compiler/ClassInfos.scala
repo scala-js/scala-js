@@ -13,12 +13,21 @@ import scala.tools.nsc._
 import java.io.{ File, PrintWriter, BufferedOutputStream, FileOutputStream }
 
 import scala.scalajs.ir
-import ir.{Trees => js, ClassKind}
+import ir.{Trees => js, Types => jstpe, ClassKind}
 import ir.Infos._
 
 trait ClassInfos extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
+
+  /** Class data that are never eliminated by dce, so we don't need to
+   *  record them.
+   */
+  private val AlwaysPresentClassData = {
+    import ir.Definitions._
+    Set("V", "Z", "C", "B", "S", "I", "J", "F", "D",
+        ObjectClass, StringClass, RuntimeLongClass)
+  }
 
   class ClassInfoBuilder(val symbol: ClassSymbol) {
     val name = classNameOf(symbol)
@@ -81,9 +90,14 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     def accessesModule(moduleClassSym: Symbol): Unit =
       accessedModules += patchModuleName(encodeModuleFullName(moduleClassSym))
 
-    def accessesClassData(classSym: Symbol): Unit =
-      if (!classSym.isPrimitiveValueClass)
-        accessedClassData += encodeClassFullName(classSym)
+    def accessesClassData(refType: jstpe.ReferenceType): Unit = {
+      val className = refType match {
+        case jstpe.ClassType(name)    => name
+        case jstpe.ArrayType(base, _) => base
+      }
+      if (!AlwaysPresentClassData.contains(className))
+        accessedClassData += className
+    }
 
     def createsAnonFunction(funInfo: ClassInfoBuilder): Unit = {
       for (methodInfo <- funInfo.methodInfos) {

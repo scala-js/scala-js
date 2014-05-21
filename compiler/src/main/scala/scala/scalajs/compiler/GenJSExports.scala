@@ -504,14 +504,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       case _ =>
         (toTypeKind(tpe): @unchecked) match {
-          case UndefinedKind => TypeOfTypeTest("undefined")
-          case BooleanKind   => TypeOfTypeTest("boolean")
-          case CharKind      => InstanceOfTypeTest(boxedClass(CharClass).tpe)
-          case ByteKind      => HelperTypeTest("isByte", 0)
-          case ShortKind     => HelperTypeTest("isShort", 1)
-          case IntKind       => HelperTypeTest("isInt", 2)
-          case LongKind      => InstanceOfTypeTest(RuntimeLongClass.tpe)
-          case _:FLOAT       => TypeOfTypeTest("number")
+          case VoidKind    => TypeOfTypeTest("undefined")
+          case BooleanKind => TypeOfTypeTest("boolean")
+          case CharKind    => InstanceOfTypeTest(boxedClass(CharClass).tpe)
+          case ByteKind    => HelperTypeTest("isByte", 0)
+          case ShortKind   => HelperTypeTest("isShort", 1)
+          case IntKind     => HelperTypeTest("isInt", 2)
+          case LongKind    => InstanceOfTypeTest(RuntimeLongClass.tpe)
+          case _:DOUBLE    => TypeOfTypeTest("number")
 
           case REFERENCE(cls) =>
             if (cls == StringClass) TypeOfTypeTest("string")

@@ -422,9 +422,6 @@ var ScalaJS = {
 
   // Unboxes - inline all the way through obj.xValue()
 
-  uV: function(value) {
-    return undefined;
-  },
   uZ: function(value) {
     return null === value ? false : ScalaJS.asBoolean(value);
   },
