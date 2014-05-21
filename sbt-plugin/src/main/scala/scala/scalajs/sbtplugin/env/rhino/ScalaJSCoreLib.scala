@@ -19,14 +19,14 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.corelib._
 
-class ScalaJSCoreLib(classpath: ScalaJSClasspath) {
+class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {
     val providers = mutable.Map.empty[String, VirtualScalaJSIRFile]
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
-    for (irFile <- classpath.irFiles) {
+    for (irFile <- classpath.scalaJSIR) {
       val info = irFile.roughInfo
       providers += info.encodedName -> irFile
       if (info.isExported)

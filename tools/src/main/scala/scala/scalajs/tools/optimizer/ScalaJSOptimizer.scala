@@ -12,6 +12,7 @@ package scala.scalajs.tools.optimizer
 import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
+import scala.collection.immutable.{Seq, Traversable}
 
 import java.net.URI
 
@@ -24,39 +25,52 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
 import scala.scalajs.tools.corelib._
 
-import ScalaJSPackedClasspath.packOrderLine
-
 /** Scala.js optimizer: does type-aware global dce. */
 class ScalaJSOptimizer {
   import ScalaJSOptimizer._
 
   private[this] var persistentState: PersistentState = new PersistentState
 
-  /** Applies Scala.js-specific optimizations to a Scala.js classpath.
+  /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
    *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
    *  optional inputs.
    *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
    *  for the output of this method.
-   *  Returns a [[ScalaJSOptimizer.Result]] containing the result of the
-   *  optimizations. Its output file will contain, in that order:
-   *  1. The Scala.js core lib,
-   *  2. The result of dead code elimination applied to Scala.js class files,
-   *  3. The custom .js files, in the same order as they were listed in inputs.
+   *  Returns a [[CompleteCIClasspath]] containing the result of the
+   *  optimizations.
+   *
+   *  analyzes, dead code eliminates and concatenates IR content
+   *  - Maintains/establishes order
+   *  - No IR in result
+   *  - CoreJSLibs in result (since they are implicitly in the CompleteIRCP)
    */
-  def optimize(inputs: Inputs, outputConfig: OutputConfig,
-      logger: Logger): Unit = {
+  def optimizeCP(inputs: Inputs[CompleteIRClasspath], outCfg: OutputConfig,
+      logger: Logger): CompleteCIClasspath = {
+
+    val cp = inputs.input
+
+    CacheUtils.cached(cp.version, outCfg.cache) {
+      logger.info(s"Fast optimizing ${outCfg.output.path}")
+      optimizeIR(inputs.copy(input = inputs.input.scalaJSIR), outCfg, logger)
+    }
+
+    CompleteCIClasspath(cp.jsLibs, outCfg.output :: Nil, cp.version)
+  }
+
+  def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
+      outCfg: OutputConfig, logger: Logger): Unit = {
     persistentState.startRun()
     try {
       import inputs._
-      val analyzer = readClasspathAndCreateAnalyzer(classpath, logger)
+      val analyzer = readIRAndCreateAnalyzer(inputs.input, logger)
       analyzer.computeReachability(manuallyReachable, noWarnMissing)
-      if (outputConfig.checkIR) {
+      if (outCfg.checkIR) {
         if (analyzer.allAvailable)
           checkIR(analyzer, logger)
         else if (inputs.noWarnMissing.isEmpty)
           sys.error("Could not check IR because there where linking errors.")
       }
-      writeDCEedOutput(inputs, outputConfig, analyzer)
+      writeDCEedOutput(outCfg, analyzer)
     } finally {
       persistentState.endRun()
       logger.debug(
@@ -71,11 +85,9 @@ class ScalaJSOptimizer {
     persistentState = new PersistentState
   }
 
-  private def readClasspathAndCreateAnalyzer(
-      classpath: ScalaJSClasspath, logger: Logger): Analyzer = {
-    val userInfo = classpath.irFiles map { irFile =>
-      persistentState.getPersistentIRFile(irFile).info
-    }
+  private def readIRAndCreateAnalyzer(ir: Traversable[VirtualScalaJSIRFile],
+      logger: Logger): Analyzer = {
+    val userInfo = ir.map(persistentState.getPersistentIRFile(_).info)
     new Analyzer(logger, CoreData.CoreClassesInfo ++ userInfo)
   }
 
@@ -90,22 +102,19 @@ class ScalaJSOptimizer {
       sys.error(s"There were ${checker.errorCount} IR checking errors.")
   }
 
-  private def writeDCEedOutput(inputs: Inputs, outputConfig: OutputConfig,
+  private def writeDCEedOutput(outputConfig: OutputConfig,
       analyzer: Analyzer): Unit = {
 
     val builder = {
       import outputConfig._
       if (wantSourceMap)
-        new JSFileBuilderWithSourceMap(name,
-            writer.contentWriter,
-            writer.sourceMapWriter,
+        new JSFileBuilderWithSourceMap(output.name,
+            output.contentWriter,
+            output.sourceMapWriter,
             relativizeSourceMapBase)
       else
-        new JSFileBuilder(name, writer.contentWriter)
+        new JSFileBuilder(output.name, output.contentWriter)
     }
-
-    // Write out pack order (constant: file is stand alone)
-    builder.addLine(packOrderLine(0))
 
     CoreJSLibs.libs.foreach(builder.addFile _)
 
@@ -196,20 +205,16 @@ class ScalaJSOptimizer {
       }
     }
 
-    for (file <- inputs.customScripts)
-      builder.addFile(file)
-
     builder.complete()
+    builder.closeWriters()
   }
 }
 
 object ScalaJSOptimizer {
   /** Inputs of the Scala.js optimizer. */
-  final case class Inputs(
-      /** The Scala.js classpath entries. */
-      classpath: ScalaJSClasspath,
-      /** Additional scripts to be appended in the output. */
-      customScripts: Seq[VirtualJSFile] = Nil,
+  final case class Inputs[T](
+      /** The CompleteNCClasspath or the IR files to be packaged. */
+      input: T,
       /** Manual additions to reachability */
       manuallyReachable: Seq[ManualReachability] = Nil,
       /** Elements we won't warn even if they don't exist */
@@ -229,10 +234,10 @@ object ScalaJSOptimizer {
 
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. (used to refer to sourcemaps) */
-      name: String,
       /** Writer for the output. */
-      writer: VirtualJSFileWriter,
+      output: WritableVirtualJSFile,
+      /** Cache file */
+      cache: Option[WritableVirtualTextFile] = None,
       /** Ask to produce source map for the output */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */

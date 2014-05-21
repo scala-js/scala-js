@@ -9,10 +9,9 @@
 
 package scala.scalajs.tools.optimizer
 
+import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
-
-import scala.scalajs.tools.classpath.ScalaJSPackedClasspath.packOrderLine
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -21,6 +20,7 @@ import com.google.javascript.jscomp.{
   _
 }
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 
 import java.net.URI
 
@@ -31,9 +31,27 @@ class ScalaJSClosureOptimizer {
   private def toClosureSource(file: VirtualJSFile) =
     ClosureSource.fromCode(file.name, file.content)
 
-  def optimize(inputs: Inputs, outputConfig: OutputConfig,
-      logger: Logger): Unit = {
-    val closureSources = inputs.sources map toClosureSource
+  /**
+   * runs closure on CIJS content
+   * - Maintains order
+   * - Only NCJS in result
+   */
+  def optimizeCP(inputs: Inputs[CompleteCIClasspath],
+      outCfg: OutputConfig, logger: Logger): CompleteNCClasspath = {
+
+    val cp = inputs.input
+
+    CacheUtils.cached(cp.version, outCfg.cache) {
+      logger.info(s"Optimizing ${outCfg.output.path}")
+      optimizeFiles(inputs.copy(input = cp.cijsCode), outCfg, logger)
+    }
+
+    new CompleteNCClasspath(cp.jsLibs, outCfg.output :: Nil, cp.version)
+  }
+
+  def optimizeFiles(inputs: Inputs[Seq[VirtualJSFile]],
+      outputConfig: OutputConfig, logger: Logger): Unit = {
+    val closureSources = inputs.input map toClosureSource
     val closureExterns =
       (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
 
@@ -52,13 +70,10 @@ class ScalaJSClosureOptimizer {
     val outputContent = if (result.errors.nonEmpty) ""
     else "(function(){'use strict';" + compiler.toSource + "}).call(this);\n"
 
-    val writer = outputConfig.writer.contentWriter
-    // Write out pack order line (constant: file is stand alone)
-    writer.write(packOrderLine(0))
-    writer.write('\n')
-
     // Write optimized code
-    writer.write(outputContent)
+    val w = outputConfig.output.contentWriter
+    try w.write(outputContent)
+    finally w.close()
 
     // don't close writer. calling code has ownership
   }
@@ -66,19 +81,19 @@ class ScalaJSClosureOptimizer {
 
 object ScalaJSClosureOptimizer {
   /** Inputs of the Scala.js Closure optimizer. */
-  final case class Inputs(
-      /** Sources to be fed to Closure. */
-      sources: Seq[VirtualJSFile],
+  final case class Inputs[T](
+      /** Input to optimize (classpath or file-list) */
+      input: T,
       /** Additional externs files to be given to Closure. */
       additionalExterns: Seq[VirtualJSFile] = Nil
   )
 
   /** Configuration for the output of the Scala.js Closure optimizer. */
   final case class OutputConfig(
-      /** Name of the output file. (used to refer to sourcemaps) */
-      name: String,
       /** Writer for the output */
-      writer: VirtualJSFileWriter,
+      output: WritableVirtualJSFile,
+      /** Cache file */
+      cache: Option[WritableVirtualTextFile] = None,
       /** Ask to produce source map for the output (currently ignored). */
       wantSourceMap: Boolean = false,
       /** Pretty-print the output. */

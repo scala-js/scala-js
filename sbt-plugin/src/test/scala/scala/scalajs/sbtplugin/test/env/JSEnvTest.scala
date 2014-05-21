@@ -2,6 +2,7 @@ package scala.scalajs.sbtplugin.test.env
 
 import scala.scalajs.tools.env.JSEnv
 import scala.scalajs.tools.io.MemVirtualJSFile
+import scala.scalajs.tools.classpath.PartialClasspath
 
 import org.junit.Assert._
 
@@ -16,12 +17,13 @@ abstract class JSEnvTest {
       val logger  = new StoreLogger()
       val code    = new MemVirtualJSFile("testScript.js").withContent(codeStr)
 
-      val res = newJSEnv.runJS(EmptyJSClasspath, code, logger, console)
+      val emptyCP = PartialClasspath.empty.resolve()
+      val res = newJSEnv.runJS(emptyCP, code, logger, console)
 
       val log = logger.getLog
 
       assertTrue("VM shouldn't fail on snippet. Msg: " + res, res.isEmpty)
-      assertTrue("VM shouldn't procude log. Log:\n" +
+      assertTrue("VM shouldn't produce log. Log:\n" +
           log.mkString("\n"), log.isEmpty)
       assertEquals("Output should match", expectedOut, console.getLog)
     }

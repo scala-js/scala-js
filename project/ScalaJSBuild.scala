@@ -12,7 +12,6 @@ import ScalaJSPlugin._
 import ScalaJSKeys._
 import ExternalCompile.scalaJSExternalCompileSettings
 
-import scala.scalajs.tools.io.{ FileVirtualJSFile, FileVirtualJSFileWriter }
 import scala.scalajs.tools.sourcemap._
 
 object ScalaJSBuild extends Build {

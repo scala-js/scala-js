@@ -17,6 +17,8 @@ import scala.io.Source
 import scala.scalajs.ir.ScalaJSVersions
 import scala.scalajs.tools.io._
 
+import scala.collection.immutable.Seq
+
 object CoreJSLibs {
 
   private val libNames = Seq(
@@ -42,7 +44,7 @@ object CoreJSLibs {
 
       new MemVirtualJSFile(publicURI.toString)
         .withContent(content)
-        .withVersion(Some(())) // it won't change
+        .withVersion(Some("")) // it won't change
     }
   }
 

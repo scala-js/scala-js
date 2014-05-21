@@ -12,10 +12,12 @@ class FileVirtualFile(val file: File) extends VirtualFile {
 
   override def name = file.getName
 
-  override def version: Option[Any] = {
+  override def version: Option[String] = {
     if (!file.isFile) None
-    else Some(file.lastModified())
+    else Some(file.lastModified.toString)
   }
+
+  override def exists: Boolean = file.exists
 }
 
 object FileVirtualFile extends (File => FileVirtualFile) {
@@ -53,6 +55,7 @@ class FileVirtualTextFile(f: File) extends FileVirtualFile(f)
   import FileVirtualTextFile._
 
   override def content: String = readFileToString(file)
+  override def reader: Reader = new BufferedReader(new FileReader(f))
 }
 
 object FileVirtualTextFile extends (File => FileVirtualTextFile) {
@@ -67,13 +70,26 @@ object FileVirtualTextFile extends (File => FileVirtualTextFile) {
   }
 }
 
+trait WritableFileVirtualTextFile extends FileVirtualTextFile
+                                     with WritableVirtualTextFile {
+  override def contentWriter: Writer = {
+    new BufferedWriter(new OutputStreamWriter(
+        new FileOutputStream(file), "UTF-8"))
+  }
+}
+
+object WritableFileVirtualTextFile {
+  def apply(f: File): WritableFileVirtualTextFile =
+    new FileVirtualTextFile(f) with WritableFileVirtualTextFile
+}
+
 /** A [[VirtualBinaryFile]] implemented by an actual file on the file system. */
 class FileVirtualBinaryFile(f: File) extends FileVirtualFile(f)
                                         with VirtualBinaryFile {
   import FileVirtualBinaryFile._
 
   override def inputStream: InputStream =
-    new FileInputStream(file)
+    new BufferedInputStream(new FileInputStream(file))
 
   override def content: Array[Byte] =
     readFileToByteArray(file)
@@ -96,9 +112,10 @@ class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
   import FileVirtualFile._
   import FileVirtualTextFile._
 
+  val sourceMapFile: File = withExtension(file, ".js", ".js.map")
+
   override def sourceMap: Option[String] = {
-    val f = withExtension(file, ".js", ".js.map")
-    if (f.exists) Some(readFileToString(f))
+    if (sourceMapFile.exists) Some(readFileToString(f))
     else None
   }
 }
@@ -106,6 +123,21 @@ class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
 object FileVirtualJSFile extends (File => FileVirtualJSFile) {
   def apply(f: File): FileVirtualJSFile =
     new FileVirtualJSFile(f)
+}
+
+trait WritableFileVirtualJSFile extends FileVirtualJSFile
+                                   with WritableFileVirtualTextFile
+                                   with WritableVirtualJSFile {
+
+  override def sourceMapWriter: Writer = {
+    new BufferedWriter(new OutputStreamWriter(
+        new FileOutputStream(sourceMapFile), "UTF-8"))
+  }
+}
+
+object WritableFileVirtualJSFile {
+  def apply(f: File): WritableFileVirtualJSFile =
+    new FileVirtualJSFile(f) with WritableFileVirtualJSFile
 }
 
 class FileVirtualScalaJSIRFile(f: File)

@@ -12,12 +12,8 @@ trait VirtualFile {
    *  Unique if possible (used for lookup). */
   def path: String
 
-  /** Name of the file, including extension */
-  def name: String = {
-    val pos = path.lastIndexOf('/')
-    if (pos == -1) path
-    else path.substring(pos + 1)
-  }
+  /** Name of the file/writer, including extension */
+  def name: String = VirtualFile.nameFromPath(path)
 
   /** Optionally returns an implementation-dependent "version" token.
    *  Versions are compared with ==.
@@ -27,7 +23,19 @@ trait VirtualFile {
    *  Such a token can be used by caches: the file need not be read and
    *  processed again if its version has not changed.
    */
-  def version: Option[Any] = None
+  def version: Option[String] = None
+
+  /** Whether this file exists. Reading a non-existent file may fail */
+  def exists: Boolean
+}
+
+object VirtualFile {
+  /** Splits at the last slash and returns remainder */
+  def nameFromPath(path: String): String = {
+    val pos = path.lastIndexOf('/')
+    if (pos == -1) path
+    else path.substring(pos + 1)
+  }
 }
 
 /** A virtual input file.
@@ -48,6 +56,10 @@ trait VirtualTextFile extends VirtualFile {
 object VirtualTextFile {
   def empty(path: String): VirtualTextFile =
     new MemVirtualTextFile(path)
+}
+
+trait WritableVirtualTextFile extends VirtualTextFile {
+  def contentWriter: Writer
 }
 
 /** A virtual binary input file.
@@ -73,6 +85,10 @@ trait VirtualJSFile extends VirtualTextFile {
 object VirtualJSFile {
   def empty(path: String): VirtualJSFile =
     new MemVirtualJSFile(path).withVersion(Some(path))
+}
+
+trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
+  def sourceMapWriter: Writer
 }
 
 /** A virtual Scala.js IR file.

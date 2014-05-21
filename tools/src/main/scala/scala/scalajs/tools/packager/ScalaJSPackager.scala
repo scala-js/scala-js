@@ -18,72 +18,129 @@ import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
-
-import ScalaJSPackedClasspath.packOrderLine
 import scala.scalajs.tools.corelib.CoreJSLibs
 
-/** Scala.js packager: concatenates blindly all Scala.js class files. */
+import scala.collection.immutable.{Seq, Traversable}
+
+/** Scala.js packager: blindly concatenates all Scala.js code in a classpath */
 class ScalaJSPackager {
   import ScalaJSPackager._
 
-  /** Package Scala.js output files as a single .js file.
-   *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
-   *  optional inputs.
+  /**
+   *  Desugars any IR into JS and concatenates all scalaJSCode
+   *  - Maintains order
+   *  - No IR in result
    *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
    *  for the output of this method.
-   *  Returns a [[ScalaJSOptimizer.Result]] containing the result of the
-   *  packaging. Its output file will contain, in that order:
-   *  1. The Scala.js core lib,
-   *  2. The Scala.js class files ordered appropriately,
-   *  3. The custom .js files, in the same order as they were listed in inputs.
    */
-  def packageScalaJS(inputs: Inputs, outputConfig: OutputConfig,
+  def packageCP(pcp: PartialClasspath,
+      outCfg: OutputConfig, logger: Logger): PartialClasspath = {
+
+    CacheUtils.cached(pcp.version, outCfg.cache) {
+      logPackageMsg(outCfg, logger)
+      pcp match {
+        case pircp: PartialIRClasspath =>
+          packageIR(pircp.scalaJSIR, outCfg, logger, addCoreJSLib = false)
+        case _ =>
+          packageJS(pcp.scalaJSCode, outCfg, logger)
+      }
+    }
+
+    PartialClasspath(pcp.dependencies, pcp.availableLibs,
+        outCfg.output :: Nil, pcp.version)
+  }
+
+  /** Desugars any IR into JS and concatenates all cijsCode / scalaJSIR
+   *  - Maintains order
+   *  - No IR in result
+   *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
+   *  for the output of this method.
+   */
+  def packageCP(ccp: CompleteCIClasspath,
+      outCfg: OutputConfig, logger: Logger): CompleteCIClasspath = {
+
+    CacheUtils.cached(ccp.version, outCfg.cache) {
+      logPackageMsg(outCfg, logger)
+      ccp match {
+        case circp: CompleteIRClasspath =>
+          // The corejslib is implicit in the CompleteIRClasspath
+          // therefore we need to add it here.
+          packageIR(circp.scalaJSIR, outCfg, logger, addCoreJSLib = true)
+        case _ =>
+          packageJS(ccp.cijsCode, outCfg, logger)
+      }
+    }
+
+    CompleteCIClasspath(ccp.jsLibs, outCfg.output :: Nil, ccp.version)
+  }
+
+  /** Concatenates ncjsCode
+   *  - Maintains order
+   *  - No IR in result
+   *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
+   *  for the output of this method.
+   */
+  def packageCP(ccp: CompleteNCClasspath,
+      outCfg: OutputConfig, logger: Logger): CompleteNCClasspath = {
+
+    CacheUtils.cached(ccp.version, outCfg.cache) {
+      logPackageMsg(outCfg, logger)
+      packageJS(ccp.ncjsCode, outCfg, logger)
+    }
+
+    new CompleteNCClasspath(ccp.jsLibs, outCfg.output :: Nil, ccp.version)
+  }
+
+  def packageJS(js: Seq[VirtualJSFile], outCfg: OutputConfig,
       logger: Logger): Unit = {
-    val classpath = inputs.classpath
 
-    import outputConfig._
+    val builder = mkBuilder(outCfg)
+    js.foreach(builder.addFile _)
+    builder.complete()
+    builder.closeWriters()
+  }
 
-    val builder = {
-      if (wantSourceMap)
-        new JSFileBuilderWithSourceMap(name,
-            writer.contentWriter,
-            writer.sourceMapWriter,
-            relativizeSourceMapBase)
-      else
-        new JSFileBuilder(name, writer.contentWriter)
-    }
+  def packageIR(ir: Traversable[VirtualScalaJSIRFile],
+      outCfg: OutputConfig, logger: Logger,
+      addCoreJSLib: Boolean = false): Unit = {
 
-    // Write pack order line first
-    builder.addLine(packOrderLine(packOrder))
+    val builder = mkBuilder(outCfg)
 
-    classpath match {
-      case ScalaJSClasspath(irFiles, _) =>
-        /* For a Scala.js classpath, we can emit the IR tree directly to our
-         * builder, instead of emitting each in a virtual file then appending
-         * that to the builder.
-         * This is mostly important for the source map, because otherwise the
-         * intermediate source map has to be parsed again.
-         */
-        if (addCoreJSLibs)
-          CoreJSLibs.libs.foreach(builder.addFile _)
+    if (addCoreJSLib)
+      CoreJSLibs.libs.foreach(builder.addFile _)
 
-        val infoAndTrees = irFiles.map(_.infoAndTree)
-
-        val dummyParents = createDummyParents(infoAndTrees.map(_._1))
-        builder.addFile(dummyParents)
-
-        for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
-          builder.addIRTree(tree)
-
-      case _ =>
-        for (file <- classpath.mainJSFiles)
-          builder.addFile(file)
-    }
-
-    for (file <- inputs.customScripts)
-      builder.addFile(file)
+    addIR(ir, builder)
 
     builder.complete()
+    builder.closeWriters()
+  }
+
+  private def addIR(ir: Traversable[VirtualScalaJSIRFile],
+      builder: JSFileBuilder) = {
+    /* We can emit the IR tree directly to our builder, instead of emitting each
+     * in a virtual file then appending that to the builder.
+     * This is mostly important for the source map, because otherwise the
+     * intermediate source map has to be parsed again.
+     */
+     val infoAndTrees = ir.map(_.infoAndTree).toList
+
+     val dummyParents = createDummyParents(infoAndTrees.map(_._1))
+     builder.addFile(dummyParents)
+
+     for ((_, tree) <- infoAndTrees.sortBy(_._1.ancestorCount))
+       builder.addIRTree(tree)
+  }
+
+  private def mkBuilder(outputConfig: OutputConfig) = {
+    import outputConfig._
+
+    if (wantSourceMap)
+      new JSFileBuilderWithSourceMap(output.name,
+          output.contentWriter,
+          output.sourceMapWriter,
+          relativizeSourceMapBase)
+    else
+      new JSFileBuilder(output.name, output.contentWriter)
   }
 
   private def createDummyParents(infos: Seq[ir.Infos.ClassInfo]) = {
@@ -104,29 +161,19 @@ class ScalaJSPackager {
 
     new MemVirtualJSFile("DummyParents.js").withContent(buf.toString)
   }
+
+  private def logPackageMsg(outCfg: OutputConfig, log: Logger) =
+    log.info(s"Packaging ${outCfg.output.path} ...")
 }
 
 object ScalaJSPackager {
-  /** Inputs of the Scala.js optimizer. */
-  final case class Inputs(
-      /** The (partial) Scala.js classpath entries. */
-      classpath: JSClasspath,
-      /** Additional scripts to be appended in the output. */
-      customScripts: Seq[VirtualJSFile] = Nil
-  )
 
-  /** Configuration for the output of the Scala.js optimizer. */
+  /** Configuration for the output of the Scala.js packager. */
   final case class OutputConfig(
-      /** Name of the output file. (used to refer to sourcemaps) */
-      name: String,
-      /** Print writer for the output file. */
-      writer: VirtualJSFileWriter,
-      /** Pack order written to the .sjspack file to ensure proper ordering by
-       *  other tools (notably when reading a JSClasspath from the packed files)
-       */
-      packOrder: Int,
-      /** Whether or not corejslibs should be added at the beginning */
-      addCoreJSLibs: Boolean,
+      /** Virtual writer for the output file. */
+      output: WritableVirtualJSFile,
+      /** Cache file */
+      cache: Option[WritableVirtualTextFile] = None,
       /** Ask to produce source map for the output. */
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */

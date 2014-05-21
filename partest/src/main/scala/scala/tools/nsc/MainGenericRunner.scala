@@ -5,6 +5,7 @@ package scala.tools.nsc
 import scala.scalajs.ir
 
 import scala.scalajs.tools.classpath._
+import scala.scalajs.tools.classpath.builder._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.optimizer.ScalaJSOptimizer
@@ -42,7 +43,7 @@ class MainGenericRunner {
     import ScalaJSOptimizer._
 
     for {
-      fname <- sys.props.get("scala.partest.noWarnFile").toSeq
+      fname <- sys.props.get("scala.partest.noWarnFile").toList
       line  <- Source.fromFile(fname).getLines
       if !line.startsWith("#")
     } yield line.split('.') match {
@@ -68,7 +69,8 @@ class MainGenericRunner {
       f = urlToFile(url)
       if (f.isDirectory || f.getName.startsWith("scalajs-library"))
     } yield f
-    val classpath = ScalaJSClasspath.fromClasspath(usefulClasspathEntries)
+    val classpath =
+      PartialClasspathBuilder(usefulClasspathEntries).buildIR().resolve()
 
     val logger    = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
@@ -82,8 +84,8 @@ class MainGenericRunner {
     val runner = if (fullOpt) fullOptRunner() else baseRunner
     val env    = if (fullOpt || fastOpt) new NodeJSEnv else new RhinoJSEnv
     val runClasspath = {
-      if (fullOpt)      ScalaJSPackedClasspath(Seq(fullOpted), Nil)
-      else if (fastOpt) ScalaJSPackedClasspath(Seq(fastOpted), Nil)
+      if (fullOpt)      fullOpted
+      else if (fastOpt) fastOpted
       else classpath
     }
 
@@ -107,65 +109,50 @@ class MainGenericRunner {
   }
 
   private def fastOptimize(
-      classpath: ScalaJSClasspath,
+      classpath: CompleteIRClasspath,
       mainObjName: String,
       logger: Logger) = {
     import ScalaJSOptimizer._
 
     val optimizer = new ScalaJSOptimizer
+    val output = WritableMemVirtualJSFile("partest fastOpt file")
 
-    val fileName = "partest fastOpt file"
-    val jsFileWriter = new MemVirtualJSFileWriter
-
-    try {
-      optimizer.optimize(
-          Inputs(classpath,
-              manuallyReachable = Seq(
-                ReachObject(mainObjName),
-                ReachMethod(mainObjName + '$', "main__AT__V", static = false)
-              ),
-              noWarnMissing = noWarnMissing
-          ),
-          OutputConfig(
-              name          = fileName,
-              writer        = jsFileWriter,
-              wantSourceMap = false,
-              checkIR       = true
-              ),
-          logger
-      )
-    } finally {
-      jsFileWriter.close()
-    }
-
-    jsFileWriter.toVirtualFile(fileName)
+    optimizer.optimizeCP(
+        Inputs(classpath,
+            manuallyReachable = List(
+              ReachObject(mainObjName),
+              ReachMethod(mainObjName + '$', "main__AT__V", static = false)
+            ),
+            noWarnMissing = noWarnMissing
+        ),
+        OutputConfig(
+            output        = output,
+            wantSourceMap = false,
+            checkIR       = true
+            ),
+        logger)
   }
 
   private def fullOptimize(
-      jsFile: VirtualJSFile,
+      classpath: CompleteCIClasspath,
       mainObjName: String,
       logger: Logger,
       runner: VirtualJSFile) = {
     import ScalaJSClosureOptimizer._
 
     val optimizer = new ScalaJSClosureOptimizer
-
-    val fileName = "partest fullOpt file"
-    val jsFileWriter = new MemVirtualJSFileWriter
-
+    val output = WritableMemVirtualJSFile("partest fullOpt file")
     val exportFile = fullOptExportFile(runner)
 
-    try {
-      optimizer.optimize(
-        Inputs(Seq(jsFile, exportFile)),
-        OutputConfig(fileName, jsFileWriter),
-        logger
-      )
-    } finally {
-      jsFileWriter.close()
-    }
+    // Pseudo-classpath to pass execution code to closure
+    // Will be moved to tooling API as JSApplication
+    val dummyCP = CompleteCIClasspath(classpath.jsLibs,
+        classpath.cijsCode :+ exportFile, version = None)
 
-    jsFileWriter.toVirtualFile(fileName)
+    optimizer.optimizeCP(
+      Inputs(dummyCP),
+      OutputConfig(output),
+      logger)
   }
 
   /** generates an exporter statement for the google closure compiler that runs

@@ -26,7 +26,7 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
    *  Other .js scripts in the inputs are executed eagerly before the provided
    *  `code` is called.
    */
-  def runJS(classpath: JSClasspath, code: VirtualJSFile,
+  def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): Option[String] = {
 
     val context = Context.enter()
@@ -65,17 +65,17 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         // Make the classpath available. Either through lazy loading or by
         // simply inserting
         classpath match {
-          case cp: ScalaJSClasspath =>
+          case cp: CompleteIRClasspath =>
             // Load JS libraries
-            cp.jsDependencies.foreach(context.evaluateFile(scope, _))
+            cp.jsLibs.foreach(context.evaluateFile(scope, _))
 
             // Add lazy loading classpath
-            if (cp.irFiles.nonEmpty) {
+            if (cp.scalaJSIR.nonEmpty) {
               val loader = new ScalaJSCoreLib(cp)
               loader.insertInto(context, scope)
             }
-          case _ =>
-            classpath.jsFiles.foreach(context.evaluateFile(scope, _))
+          case cp =>
+            cp.allCode.foreach(context.evaluateFile(scope, _))
         }
 
         context.evaluateFile(scope, code)

@@ -9,17 +9,21 @@
 
 package scala.scalajs.tools.io
 
+import java.io._
+
 /** A base class for simple in-memory mutable virtual files. */
 class MemVirtualFile(val path: String) extends VirtualFile {
-  private[this] var _version: Option[Any] = None
+  private[this] var _version: Option[String] = None
 
-  override def version: Option[Any] = _version
-  def version_=(v: Option[Any]): Unit = _version = v
+  override def version: Option[String] = _version
+  def version_=(v: Option[String]): Unit = _version = v
 
-  final def withVersion(v: Option[Any]): this.type = {
+  final def withVersion(v: Option[String]): this.type = {
     version = v
     this
   }
+
+  override def exists: Boolean = true
 }
 
 /** A simple in-memory mutable virtual text file. */
@@ -34,6 +38,21 @@ class MemVirtualTextFile(p: String) extends MemVirtualFile(p)
     content = v
     this
   }
+}
+
+trait WritableMemVirtualTextFile extends MemVirtualTextFile
+                                    with WritableVirtualTextFile {
+  def contentWriter: Writer = new StringWriter {
+    override def close(): Unit = {
+      super.close()
+      WritableMemVirtualTextFile.this.content = this.toString
+    }
+  }
+}
+
+object WritableMemVirtualTextFile {
+  def apply(path: String): WritableMemVirtualTextFile =
+    new MemVirtualTextFile(path) with WritableMemVirtualTextFile
 }
 
 /** A simple in-memory mutable virtual binary file. */
@@ -62,6 +81,23 @@ class MemVirtualJSFile(p: String) extends MemVirtualTextFile(p)
     sourceMap = v
     this
   }
+}
+
+trait WritableMemVirtualJSFile extends MemVirtualJSFile
+                                  with WritableVirtualJSFile
+                                  with WritableMemVirtualTextFile {
+
+  def sourceMapWriter: Writer = new StringWriter {
+    override def close(): Unit = {
+      super.close()
+      WritableMemVirtualJSFile.this.sourceMap = Some(this.toString)
+    }
+  }
+}
+
+object WritableMemVirtualJSFile {
+  def apply(path: String): WritableMemVirtualJSFile =
+    new MemVirtualJSFile(path) with WritableMemVirtualJSFile
 }
 
 /** A simple in-memory mutable virtual serialized Scala.js IR file. */

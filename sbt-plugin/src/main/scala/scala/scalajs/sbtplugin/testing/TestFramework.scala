@@ -35,24 +35,16 @@ class TestFramework(
   def runner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader): Runner = {
 
-    val classpath = classLoader2Classpath(testClassLoader)
-
-    val jsClasspath = JSClasspath.fromClasspath(classpath)
-
+    val jsClasspath = extractClasspath(testClassLoader)
     new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
   }
 
-  /** extract (suspected) classpath from a ClassLoader since we cannot use
-   *  a ClassLoader to load JS files
-   */
-  private def classLoader2Classpath(cl: ClassLoader): Seq[File] = cl match {
-    case cl: URLClassLoader =>
-      cl.getURLs().map(url => new File(url.toURI())).toList
-    case sbtFilter: ClasspathFilter =>
-      classLoader2Classpath(sbtFilter.getParent())
+  /** extract classpath from ClassLoader (which must be a JSClasspathLoader) */
+  private def extractClasspath(cl: ClassLoader) = cl match {
+    case cl: JSClasspathLoader => cl.cp
     case _ =>
-      sys.error("You cannot use a Scala.js framework with a class loader of " +
-          s"type: ${cl.getClass()}.")
+      sys.error("The Scala.js framework only works with a class loader of " +
+          s"type JSClasspathLoader (${cl.getClass} given)")
   }
 
 }
