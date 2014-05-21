@@ -72,14 +72,23 @@
     <run task="main">
       <v n="scala">2.11.0</v>
     </run>
+    <run task="main">
+      <v n="scala">2.11.1</v>
+    </run>
     <run task="sbtplugin">
       <v n="scala">2.10.4</v>
     </run>
     <run task="tools">
       <v n="scala">2.11.0</v>
     </run>
+    <run task="tools">
+      <v n="scala">2.11.1</v>
+    </run>
     <run task="partestc">
       <v n="scala">2.11.0</v>
+    </run>
+    <run task="partestc">
+      <v n="scala">2.11.1</v>
     </run>
     <run task="sbtplugin-test" />
   </matrix>
@@ -94,6 +103,15 @@
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.0</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.1</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.1</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.1</v>
     </run>
   </matrix>
 
