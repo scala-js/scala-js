@@ -132,5 +132,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSArraySeqClass = getRequiredClass("scala.scalajs.runtime.JSArraySeq")
       lazy val JSArraySeq_ctor = JSArraySeqClass.primaryConstructor
 
+    // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
+    // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
+    def ScalaRunTime_isArray = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
+
   }
 }

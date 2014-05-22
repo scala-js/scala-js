@@ -153,29 +153,40 @@ object ReflectiveCallTest extends JasmineTest {
       type UPD = { def update(i: Int, x: String): Unit }
       type APL = { def apply(i: Int): String }
       type LEN = { def length: Int }
+      type CLONE = Any { def clone(): Object }
       def upd(obj: UPD, i: Int, x: String) = obj.update(i,x)
       def apl(obj: APL, i: Int) = obj.apply(i)
       def len(obj: LEN) = obj.length
+      def clone(obj: CLONE) = obj.clone
 
       val x = Array("asdf","foo","bar")
+      val y = clone(x).asInstanceOf[Array[String]]
 
       expect(len(x)).toEqual(3)
       expect(apl(x,0)).toEqual("asdf")
       upd(x,1,"2foo")
       expect(x(1)).toEqual("2foo")
+      expect(y(1)).toEqual("foo")
     }
 
     it("should work with Arrays of primitive values") {
       type UPD = { def update(i: Int, x: Int): Unit }
       type APL = { def apply(i: Int): Int}
+      type LEN = { def length: Int }
+      type CLONE = Any { def clone(): Object }
       def upd(obj: UPD, i: Int, x: Int) = obj.update(i,x)
       def apl(obj: APL, i: Int) = obj.apply(i)
+      def len(obj: LEN) = obj.length
+      def clone(obj: CLONE) = obj.clone
 
       val x = Array(5,2,8)
+      val y = clone(x).asInstanceOf[Array[Int]]
 
+      expect(len(x)).toEqual(3)
       expect(apl(x,0)).toEqual(5)
       upd(x,1,1000)
       expect(x(1)).toEqual(1000)
+      expect(y(1)).toEqual(2)
     }
 
     it("should work with Strings") {
