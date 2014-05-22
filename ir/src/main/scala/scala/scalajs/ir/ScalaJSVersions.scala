@@ -3,7 +3,7 @@ package scala.scalajs.ir
 object ScalaJSVersions {
 
   /** the Scala.js version of this build */
-  final val current = "0.5.0-M3"
+  final val current = "0.5.0-SNAPSHOT"
 
   /** true iff the Scala.js version of this build is a snapshot version. */
   final val currentIsSnapshot = current endsWith "-SNAPSHOT"
