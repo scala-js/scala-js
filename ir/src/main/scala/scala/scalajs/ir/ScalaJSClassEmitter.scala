@@ -85,7 +85,7 @@ object ScalaJSClassEmitter {
         implicit val pos = field.pos
         Assign(JSDotSelect(This()(tpe), name), rhs)
       }
-      Function(tpe, Nil, UndefType,
+      Function(tpe, Nil, NoType,
           Block(superCtorCall :: fieldDefs)(tree.pos))(tree.pos)
     }
 
@@ -105,7 +105,7 @@ object ScalaJSClassEmitter {
           JSDotSelect(envField("h"), classIdent)
         Block(
           DocComment("@constructor"),
-          Assign(inheritableCtorVar, Function(DynType, Nil, UndefType, Skip())),
+          Assign(inheritableCtorVar, Function(DynType, Nil, NoType, Skip())),
           Assign(inheritableCtorVar.prototype, typeVar.prototype)
         )
       }
@@ -162,7 +162,7 @@ object ScalaJSClassEmitter {
       if (property.setterBody == EmptyTree) wget
       else StringLiteral("set") ->
           Function(classType, property.setterArg :: Nil,
-              UndefType, property.setterBody) :: wget
+              NoType, property.setterBody) :: wget
     }
 
     JSApply(defProp, proto :: name :: descriptor :: Nil)
@@ -202,7 +202,7 @@ object ScalaJSClassEmitter {
 
     val createIsStat = {
       envField("is") DOT classIdent :=
-        Function(NoType, List(objParam), DynType, Return {
+        Function(NoType, List(objParam), DynType, {
           var test = (obj && (obj DOT "$classData") &&
               (obj DOT "$classData" DOT "ancestors" DOT classIdent))
 
@@ -225,11 +225,11 @@ object ScalaJSClassEmitter {
         Function(NoType, List(objParam), ClassType(className), {
           If(JSApply(envField("is") DOT classIdent, List(obj)) ||
               (obj === Null()), {
-            Return(obj)
+            obj
           }, {
             CallHelper("throwClassCastException",
                 obj :: StringLiteral(displayName) :: Nil)(NothingType)
-          })(NothingType)
+          })(ClassType(className))
       })
     }
 
@@ -256,7 +256,7 @@ object ScalaJSClassEmitter {
 
     val createIsArrayOfStat = {
       envField("isArrayOf") DOT classIdent :=
-        Function(NoType, List(objParam, depthParam), DynType, Return {
+        Function(NoType, List(objParam, depthParam), DynType, {
           !(!(obj && (obj DOT "$classData") &&
               ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
               (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent)))
@@ -268,11 +268,11 @@ object ScalaJSClassEmitter {
         Function(NoType, List(objParam, depthParam), DynType, {
           If(JSApply(envField("isArrayOf") DOT classIdent, List(obj, depth)) ||
               (obj === Null()), {
-            Return(obj)
+            obj
           }, {
             CallHelper("throwArrayCastException",
                 obj :: StringLiteral("L"+displayName+";") :: depth :: Nil)(NothingType)
-          })(NothingType)
+          })(DynType)
         })
     }
 
@@ -315,7 +315,7 @@ object ScalaJSClassEmitter {
         // Optional parameter isInstance
         if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
-          List(Function(NoType, List(ParamDef(Ident("x"), DynType)), BooleanType, Return {
+          List(Function(NoType, List(ParamDef(Ident("x"), DynType)), BooleanType, {
             IsInstanceOf(VarRef(Ident("x"), false)(DynType), ClassType(className))
           }))
         } else if (isAncestorOfHijackedClass) {
@@ -370,7 +370,7 @@ object ScalaJSClassEmitter {
         If(!(moduleInstanceVar), {
           moduleInstanceVar := New(tpe, Ident("init___"), Nil)
         }, Skip())(UndefType),
-        Return(moduleInstanceVar)
+        moduleInstanceVar
       ))
     }
 
@@ -401,7 +401,7 @@ object ScalaJSClassEmitter {
     Block(
       createNamespace,
       DocComment("@constructor"),
-      expCtorVar := Function(classType, args, DynType, Block(
+      expCtorVar := Function(classType, args, NoType, Block(
         JSApply(JSDotSelect(baseCtor, Ident("call")), List(This()(DynType))),
         body
       )),

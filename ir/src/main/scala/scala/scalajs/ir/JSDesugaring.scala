@@ -9,6 +9,8 @@
 
 package scala.scalajs.ir
 
+import scala.annotation.switch
+
 import Position._
 import Transformers._
 import Trees._
@@ -369,14 +371,14 @@ object JSDesugaring {
           (allowUnpure || !mutable) && test(qualifier)
 
         // Expressions preserving pureness
-        case BinaryOp(_, lhs, rhs, _) => test(lhs) && test(rhs)
-        case UnaryOp(_, lhs, _)       => test(lhs)
-        case JSBinaryOp(_, lhs, rhs)  => test(lhs) && test(rhs)
-        case JSUnaryOp(_, lhs)        => test(lhs)
-        case ArrayLength(array)       => test(array)
-        case IsInstanceOf(expr, _)    => test(expr)
-        case AsInstanceOf(expr, _)    => test(expr)
-        case Cast(expr, _)            => test(expr)
+        case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
+        case UnaryOp(_, lhs)         => test(lhs)
+        case JSBinaryOp(_, lhs, rhs) => test(lhs) && test(rhs)
+        case JSUnaryOp(_, lhs)       => test(lhs)
+        case ArrayLength(array)      => test(array)
+        case IsInstanceOf(expr, _)   => test(expr)
+        case AsInstanceOf(expr, _)   => test(expr)
+        case Cast(expr, _)           => test(expr)
 
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
@@ -453,7 +455,14 @@ object JSDesugaring {
       /** Push the current lhs further into a deeper rhs */
       @inline def redo(newRhs: Tree) = pushLhsInto(lhs, newRhs)
 
-      rhs match {
+      if (rhs.tpe == NothingType && lhs != EmptyTree && !lhs.isInstanceOf[VarDef]) {
+        /* A touch of peephole dead code elimination.
+         * We have to exclude VarDef from this treatment because a var should
+         * still be declared somewhere, in case it is used somewhere else in
+         * the function, where we can't dce it.
+         */
+        pushLhsInto(EmptyTree, rhs)
+      } else (rhs match {
         // Base case, rhs is already a regular JS expression
 
         case _ if isExpression(rhs) =>
@@ -573,20 +582,20 @@ object JSDesugaring {
             redo(TraitImplApply(impl, method, newArgs)(rhs.tpe))
           }
 
-        case UnaryOp(op, lhs, tpe) =>
+        case UnaryOp(op, lhs) =>
           unnest(lhs) { newLhs =>
-            redo(UnaryOp(op, newLhs, tpe))
+            redo(UnaryOp(op, newLhs))
           }
 
-        case BinaryOp("&&", lhs, rhs, BooleanType) =>
+        case BinaryOp(BinaryOp.Boolean_&&, lhs, rhs) =>
           redo(If(lhs, rhs, BooleanLiteral(false))(BooleanType))
 
-        case BinaryOp("||", lhs, rhs, BooleanType) =>
+        case BinaryOp(BinaryOp.Boolean_||, lhs, rhs) =>
           redo(If(lhs, BooleanLiteral(true), rhs)(BooleanType))
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
+        case BinaryOp(op, lhs, rhs) =>
           unnest(lhs, rhs) { (newLhs, newRhs) =>
-            redo(BinaryOp(op, newLhs, newRhs, tpe))
+            redo(BinaryOp(op, newLhs, newRhs))
           }
 
         case NewArray(tpe, lengths) =>
@@ -743,7 +752,7 @@ object JSDesugaring {
                 "lhs = " + lhs + "\n" + "rhs = " + rhs +
                 " of class " + rhs.getClass)
           }
-      }
+      })
     }
 
     // Desugar Scala operations to JavaScript operations -----------------------
@@ -778,16 +787,23 @@ object JSDesugaring {
         case TraitImplApply(impl, method, args) =>
           JSApply(envField("i") DOT method, args map transformExpr)
 
-        case UnaryOp(op, lhs, tpe) =>
+        case UnaryOp(op, lhs) =>
+          import UnaryOp._
           val newLhs = transformExpr(lhs)
-          op match {
-            case "(int)" => JSBinaryOp("|", newLhs, IntLiteral(0))
-            case _       => JSUnaryOp(op, newLhs)
+          (op: @switch) match {
+            case `typeof`         => JSUnaryOp("typeof", newLhs)
+            case Int_+ | Double_+ => JSUnaryOp("+", newLhs)
+            case Int_- | Double_- => JSUnaryOp("-", newLhs)
+            case Int_~            => JSUnaryOp("~", newLhs)
+            case Boolean_!        => JSUnaryOp("!", newLhs)
+            case DoubleToInt      => JSBinaryOp("|", newLhs, IntLiteral(0))
           }
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
+        case BinaryOp(op, lhs, rhs) =>
+          import BinaryOp._
           val lhs1 = lhs match {
-            case UnaryOp("(int)", inner, _) if op == "&" || op == "<<" =>
+            case UnaryOp(UnaryOp.DoubleToInt, inner)
+                if op == Int_& || op == Int_<< =>
               /* This case is emitted typically by conversions from
                * Float/Double to Char/Byte/Short. We have to introduce an
                * (int) cast in the IR so that it typechecks, but in JavaScript
@@ -801,20 +817,51 @@ object JSDesugaring {
 
           val newLhs = transformExpr(lhs1)
           val newRhs = transformExpr(rhs)
-          val default = JSBinaryOp(op, newLhs, newRhs)
 
-          op match {
-            case "+" if tpe == StringType =>
-              if (lhs.tpe == StringType || rhs.tpe == StringType) default
-              else JSBinaryOp("+", JSBinaryOp("+", StringLiteral(""), newLhs), newRhs)
-            case "+" | "-" | "/" | ">>>" if tpe == IntType =>
-              JSBinaryOp("|", default, IntLiteral(0))
-            case "*" if tpe == IntType =>
-              genCallHelper("imul", newLhs, newRhs)
-            case "|" | "&" | "^" if tpe == BooleanType =>
-              !(!default)
-            case _ =>
-              default
+          def or0(tree: Tree): Tree = JSBinaryOp("|", tree, IntLiteral(0))
+
+          (op: @switch) match {
+            case === => JSBinaryOp("===", newLhs, newRhs)
+            case !== => JSBinaryOp("!==", newLhs, newRhs)
+
+            case <  => JSBinaryOp("<", newLhs, newRhs)
+            case <= => JSBinaryOp("<=", newLhs, newRhs)
+            case >  => JSBinaryOp(">", newLhs, newRhs)
+            case >= => JSBinaryOp(">=", newLhs, newRhs)
+
+            case String_+ =>
+              if (lhs.tpe == StringType || rhs.tpe == StringType)
+                JSBinaryOp("+", newLhs, newRhs)
+              else
+                JSBinaryOp("+", JSBinaryOp("+", StringLiteral(""), newLhs), newRhs)
+
+            case `in`         => JSBinaryOp("in", newLhs, newRhs)
+            case `instanceof` => JSBinaryOp("instanceof", newLhs, newRhs)
+
+            case Int_+ => or0(JSBinaryOp("+", newLhs, newRhs))
+            case Int_- => or0(JSBinaryOp("-", newLhs, newRhs))
+            case Int_* => genCallHelper("imul", newLhs, newRhs)
+            case Int_/ => or0(JSBinaryOp("/", newLhs, newRhs))
+            case Int_% => JSBinaryOp("%", newLhs, newRhs)
+
+            case Int_|   => JSBinaryOp("|", newLhs, newRhs)
+            case Int_&   => JSBinaryOp("&", newLhs, newRhs)
+            case Int_^   => JSBinaryOp("^", newLhs, newRhs)
+            case Int_<<  => JSBinaryOp("<<", newLhs, newRhs)
+            case Int_>>> => or0(JSBinaryOp(">>>", newLhs, newRhs))
+            case Int_>>  => JSBinaryOp(">>", newLhs, newRhs)
+
+            case Double_+ => JSBinaryOp("+", newLhs, newRhs)
+            case Double_- => JSBinaryOp("-", newLhs, newRhs)
+            case Double_* => JSBinaryOp("*", newLhs, newRhs)
+            case Double_/ => JSBinaryOp("/", newLhs, newRhs)
+            case Double_% => JSBinaryOp("%", newLhs, newRhs)
+
+            case Boolean_|  => !(!JSBinaryOp("|", newLhs, newRhs))
+            case Boolean_&  => !(!JSBinaryOp("&", newLhs, newRhs))
+            case Boolean_^  => !(!JSBinaryOp("^", newLhs, newRhs))
+            case Boolean_|| => JSBinaryOp("||", newLhs, newRhs)
+            case Boolean_&& => JSBinaryOp("&&", newLhs, newRhs)
           }
 
         case NewArray(tpe, lengths) =>
@@ -854,7 +901,10 @@ object JSDesugaring {
           transformExpr(expr)
 
         case Function(thisType, params, resultType, body) =>
-          val newBody = transformStat(body) match {
+          val bodyWithReturn =
+            if (resultType == NoType) body
+            else Return(body)
+          val newBody = transformStat(bodyWithReturn) match {
             case Block(stats :+ Return(Undefined(), None)) => Block(stats)
             case newBody                                   => newBody
           }

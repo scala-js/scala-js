@@ -226,13 +226,13 @@ object Serializers {
           writeClassType(impl); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case UnaryOp(op, lhs, tpe) =>
+        case UnaryOp(op, lhs) =>
           writeByte(TagUnaryOp)
-          writeString(op); writeTree(lhs); writeType(tpe)
+          writeByte(op); writeTree(lhs)
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
+        case BinaryOp(op, lhs, rhs) =>
           writeByte(TagBinaryOp)
-          writeString(op); writeTree(lhs); writeTree(rhs); writeType(tpe)
+          writeByte(op); writeTree(lhs); writeTree(rhs)
 
         case NewArray(tpe, lengths) =>
           writeByte(TagNewArray)
@@ -547,8 +547,8 @@ object Serializers {
         case TagApply          => Apply(readTree(), readIdent(), readTrees())(readType())
         case TagStaticApply    => StaticApply(readTree(), readClassType(), readIdent(), readTrees())(readType())
         case TagTraitImplApply => TraitImplApply(readClassType(), readIdent(), readTrees())(readType())
-        case TagUnaryOp        => UnaryOp(readString(), readTree(), readType())
-        case TagBinaryOp       => BinaryOp(readString(), readTree(), readTree(), readType())
+        case TagUnaryOp        => UnaryOp(readByte(), readTree())
+        case TagBinaryOp       => BinaryOp(readByte(), readTree(), readTree())
         case TagNewArray       => NewArray(readArrayType(), readTrees())
         case TagArrayValue     => ArrayValue(readArrayType(), readTrees())
         case TagArrayLength    => ArrayLength(readTree())

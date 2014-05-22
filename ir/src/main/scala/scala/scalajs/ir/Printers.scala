@@ -9,6 +9,8 @@
 
 package scala.scalajs.ir
 
+import scala.annotation.switch
+
 import java.io.Writer
 import java.net.URI
 
@@ -271,11 +273,58 @@ object Printers {
           print(impl, "::", method)
           printArgs(args)
 
-        case UnaryOp(op, lhs, tpe) =>
-          print("(", op, "[", tpe, "]", lhs, ")")
+        case UnaryOp(op, lhs) =>
+          import UnaryOp._
+          print("(", (op: @switch) match {
+            case `typeof`         => "typeof"
+            case Int_+ | Double_+ => "+"
+            case Int_- | Double_- => "-"
+            case Int_~            => "~"
+            case Boolean_!        => "!"
+            case DoubleToInt      => "(int)"
+          }, lhs, ")")
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
-          print("(", lhs, " ", op, "[", tpe, "] ", rhs, ")")
+        case BinaryOp(op, lhs, rhs) =>
+          import BinaryOp._
+          print("(", lhs, " ", (op: @switch) match {
+            case === => "==="
+            case !== => "!=="
+
+            case <  => "<"
+            case <= => "<="
+            case >  => ">"
+            case >= => ">="
+
+            case String_+ => "+[string]"
+
+            case `in`         => "in"
+            case `instanceof` => "instanceof"
+
+            case Int_+ => "+[int]"
+            case Int_- => "-[int]"
+            case Int_* => "*[int]"
+            case Int_/ => "/[int]"
+            case Int_% => "%[int]"
+
+            case Int_|   => "|"
+            case Int_&   => "&"
+            case Int_^   => "^"
+            case Int_<<  => "<<"
+            case Int_>>> => ">>>"
+            case Int_>>  => ">>"
+
+            case Double_+ => "+"
+            case Double_- => "-"
+            case Double_* => "*"
+            case Double_/ => "/"
+            case Double_% => "%"
+
+            case Boolean_|  => "|[bool]"
+            case Boolean_&  => "&[bool]"
+            case Boolean_^  => "^[bool]"
+            case Boolean_|| => "||"
+            case Boolean_&& => "&&"
+          }, " ", rhs, ")")
 
         case NewArray(tpe, lengths) =>
           print("new ", tpe.baseClassName)

@@ -177,7 +177,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       // Generate a case block for each (methods, argCounts) tuple
       val cases = for {
         (methods, argcs) <- caseDefinitions
-        if methods.nonEmpty
+        if methods.nonEmpty && argcs.nonEmpty
 
         // exclude default case we're generating anyways for varargs
         if methods != varArgMeths.toSet
@@ -188,10 +188,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         // argc in reverse order
         argcList = argcs.toList.sortBy(- _)
-
-        // A case statement for each argc. Last one contains body
-        caseStmt <- genMultiValCase(argcList, caseBody)
-      } yield caseStmt
+      } yield (argcList.map(js.IntLiteral(_)), caseBody)
 
       val hasVarArg = varArgMeths.nonEmpty
 
@@ -208,13 +205,13 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else if (cases.size == 1 && !hasVarArg)
           cases.head._2
         else {
-          js.Switch(js.JSDotSelect(
+          js.Match(js.JSDotSelect(
               js.VarRef(js.Ident("arguments"), false)(jstpe.DynType), js.Ident("length")),
-              cases.toList, defaultCase)
+              cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
 
-      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.DynType, body)
+      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.AnyType, body)
     }
 
     /**
@@ -241,7 +238,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         currentUnit.error(pos,
             s"""Cannot disambiguate overloads for exported method ${alts.head.name} with types
                |  ${alts.map(_.tpe).mkString("\n  ")}""".stripMargin)
-        js.Return(js.Undefined())
+        js.Undefined()
       } else {
 
         val altsByTypeTest = groupByWithoutHashCode(alts) { alt =>
@@ -292,17 +289,17 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             typeTest match {
               case HelperTypeTest(helperName, _) =>
                 js.If(orUndef(js.CallHelper(helperName, param.ref)(jstpe.BooleanType)),
-                    genSubAlts, elsep)(jstpe.UndefType)
+                    genSubAlts, elsep)(jstpe.AnyType)
 
               case TypeOfTypeTest(typeString) =>
                 js.If(orUndef {
                   js.JSBinaryOp("===", js.JSUnaryOp("typeof", param.ref),
                       js.StringLiteral(typeString))
-                }, genSubAlts, elsep)(jstpe.UndefType)
+                }, genSubAlts, elsep)(jstpe.AnyType)
 
               case InstanceOfTypeTest(tpe) =>
                 js.If(orUndef(genIsInstanceOf(param.ref, tpe)),
-                    genSubAlts, elsep)(jstpe.UndefType)
+                    genSubAlts, elsep)(jstpe.AnyType)
 
               case NoTypeTest =>
                 genSubAlts // note: elsep is discarded, obviously
@@ -356,7 +353,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             case tpe if isPrimitiveValueType(tpe) =>
               val unboxed = makePrimitiveUnbox(jsArg.ref, tpe)
               // Ensure we don't convert null to a primitive value type
-              js.If(js.BinaryOp("===", jsArg.ref, js.Null(), jstpe.BooleanType),
+              js.If(js.BinaryOp(js.BinaryOp.===, jsArg.ref, js.Null()),
                 genThrowTypeError(s"Found null, expected $tpe"),
                 unboxed)(unboxed.tpe)
             case tpe: ErasedValueType =>
@@ -374,7 +371,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         // If argument is undefined and there is a default getter, call it
         if (param.hasFlag(Flags.DEFAULTPARAM)) {
-          js.If(js.BinaryOp("===", jsArg.ref, js.Undefined(), jstpe.BooleanType), {
+          js.If(js.BinaryOp(js.BinaryOp.===, jsArg.ref, js.Undefined()), {
             val trgSym = {
               if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
               else sym.owner
@@ -397,21 +394,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           }, {
             // Otherwise, unbox the argument
             jsVerifyArg
-          })(jstpe.UndefType)
+          })(jstpe.AnyType)
         } else {
           // Otherwise, it is always the unboxed argument
           jsVerifyArg
         }
       }
 
-      val jsReturn = js.Return {
+      val jsResult = {
         val call = genApplyMethod(js.This()(encodeClassType(sym.owner)),
             sym.owner, sym, jsArgs.map(_.ref) ++ jsVarArg)
         ensureBoxed(call,
             enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
 
-      js.Block(jsArgPrep :+ jsReturn)
+      js.Block(jsArgPrep :+ jsResult)
     }
 
   }
@@ -558,30 +555,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
     js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType)
-
-
-  /**
-   * Generate a JS tree like:
-   *
-   *    case x1:
-   *    case x2:
-   *    case x3:
-   *      <body>
-   *
-   * @param ris literals on cases in reverse order
-   * @param body the body to put in the last statement
-   */
-  private def genMultiValCase(ris: Seq[Int], body: => js.Tree)(
-      implicit pos: Position): List[(js.Tree,js.Tree)] = {
-
-    if (ris.isEmpty) Nil
-    else {
-      val bodyCase = (js.IntLiteral(ris.head), body)
-      val emptyCases = ris.tail.map(i => (js.IntLiteral(i), js.Skip()))
-
-      (emptyCases.reverse :+ bodyCase).toList
-    }
-  }
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {

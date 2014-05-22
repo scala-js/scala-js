@@ -84,11 +84,11 @@ object Transformers {
         case TraitImplApply(impl, method, args) =>
           TraitImplApply(impl, method, args map transformExpr)(tree.tpe)
 
-        case UnaryOp(op, lhs, tpe) =>
-          UnaryOp(op, transformExpr(lhs), tpe)
+        case UnaryOp(op, lhs) =>
+          UnaryOp(op, transformExpr(lhs))
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
-          BinaryOp(op, transformExpr(lhs), transformExpr(rhs), tpe)
+        case BinaryOp(op, lhs, rhs) =>
+          BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
         case NewArray(tpe, lengths) =>
           NewArray(tpe, lengths map transformExpr)
@@ -219,11 +219,11 @@ object Transformers {
         case TraitImplApply(impl, method, args) =>
           TraitImplApply(impl, method, args map transformExpr)(tree.tpe)
 
-        case UnaryOp(op, lhs, tpe) =>
-          UnaryOp(op, transformExpr(lhs), tpe)
+        case UnaryOp(op, lhs) =>
+          UnaryOp(op, transformExpr(lhs))
 
-        case BinaryOp(op, lhs, rhs, tpe) =>
-          BinaryOp(op, transformExpr(lhs), transformExpr(rhs), tpe)
+        case BinaryOp(op, lhs, rhs) =>
+          BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
         case NewArray(tpe, lengths) =>
           NewArray(tpe, lengths map transformExpr)

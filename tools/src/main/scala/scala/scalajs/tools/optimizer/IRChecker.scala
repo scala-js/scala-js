@@ -127,7 +127,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val thisType =
       if (!classDef.kind.isClass) NoType
       else ClassType(classDef.name.name)
-    typecheckStat(body, Env.empty.enteringFun(thisType, params, resultType))
+    val bodyEnv = Env.empty.enteringFun(thisType, params, resultType)
+    if (resultType == NoType)
+      typecheckStat(body, bodyEnv)
+    else
+      typecheckExpect(body, bodyEnv, resultType)
   }
 
   def typecheckStat(tree: Tree, env: Env): Env = {
@@ -297,6 +301,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
+      case While(BooleanLiteral(true), body, label) if tree.tpe == NothingType =>
+        typecheckExpect(body, env, NothingType)
+
       case Try(block, errVar, handler, finalizer) =>
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
@@ -312,15 +319,12 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Throw(expr) =>
         typecheckExpr(expr, env)
 
-      case Break(label) =>
+      case Continue(label) =>
         /* Here we could check that it is indeed legal to break to the
          * specified label. However, if we do anything illegal here, it will
          * result in a SyntaxError in JavaScript anyway, so we do not really
          * care.
          */
-
-      case Continue(label) =>
-        // Same remark as for Break.
 
       case Match(selector, cases, default) =>
         val tpe = tree.tpe
@@ -398,82 +402,42 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           reportError(s"Cannot trait-impl apply method of non-trait-impl $impl")
         checkApplyGeneric(method, s"$impl.$method", args, inTraitImpl = true)
 
-      case UnaryOp(op, lhs, tpe) =>
-        op match {
-          case "typeof" =>
-            if (tpe != StringType)
-              reportError(s"typeof typed as $tpe")
+      case UnaryOp(op, lhs) =>
+        import UnaryOp._
+        (op: @switch) match {
+          case `typeof` =>
             typecheckExpr(lhs, env)
-          case "+" | "-" =>
-            if (tpe != IntType && tpe != DoubleType)
-              reportError(s"Unary $op typed as $tpe")
-            typecheckExpect(lhs, env, tpe)
-          case "~" =>
-            if (tpe != IntType)
-              reportError(s"Unary $op typed as $tpe")
+          case Int_+ | Int_- | Int_~ =>
             typecheckExpect(lhs, env, IntType)
-          case "!" =>
-            if (tpe != BooleanType)
-              reportError(s"Unary $op typed as $tpe")
-            typecheckExpect(lhs, env, BooleanType)
-          case "(int)" =>
-            if (tpe != IntType)
-              reportError(s"Unary $op typed as $tpe")
+          case Double_+ | Double_- | DoubleToInt =>
             typecheckExpect(lhs, env, DoubleType)
-          case _ =>
-            reportError(s"Invalid unary op $op")
-            typecheckExpr(lhs, env)
+          case Boolean_! =>
+            typecheckExpect(lhs, env, BooleanType)
         }
 
-      case BinaryOp(op, lhs, rhs, tpe) =>
-        op match {
-          case "===" | "!==" =>
-            if (tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
+      case BinaryOp(op, lhs, rhs) =>
+        import BinaryOp._
+        (op: @switch) match {
+          case === | !== | String_+ =>
             typecheckExpr(lhs, env)
             typecheckExpr(rhs, env)
-          case "+" if tpe == StringType =>
-            typecheckExpr(lhs, env)
-            typecheckExpr(rhs, env)
-          case "+" | "-" | "*" | "/" | "%" =>
-            if (tpe != IntType && tpe != DoubleType)
-              reportError(s"Binary $op typed as $tpe")
-            typecheckExpect(lhs, env, tpe)
-            typecheckExpect(rhs, env, tpe)
-          case "|" | "&" | "^" =>
-            if (tpe != IntType && tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
-            typecheckExpect(lhs, env, tpe)
-            typecheckExpect(rhs, env, tpe)
-          case "||" | "&&" =>
-            if (tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
-            typecheckExpect(lhs, env, tpe)
-            typecheckExpect(rhs, env, tpe)
-          case "<<" | ">>>" | ">>" =>
-            if (tpe != IntType)
-              reportError(s"Binary $op typed as $tpe")
-            typecheckExpect(lhs, env, tpe)
-            typecheckExpect(rhs, env, tpe)
-          case "<" | "<=" | ">" | ">=" =>
-            if (tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
-            typecheckExpect(lhs, env, DoubleType)
-            typecheckExpect(rhs, env, DoubleType)
-          case "in" =>
-            if (tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
+          case `in` =>
             typecheckExpect(lhs, env, ClassType(StringClass))
             typecheckExpect(rhs, env, DynType)
-          case "instanceof" =>
-            if (tpe != BooleanType)
-              reportError(s"Binary $op typed as $tpe")
+          case `instanceof` =>
             typecheckExpr(lhs, env)
             typecheckExpect(rhs, env, DynType)
-          case _ =>
-            reportError(s"Invalid binary op $op")
-            typecheckExpr(lhs, env)
-            typecheckExpr(rhs, env)
+          case Int_+ | Int_- | Int_* | Int_/ | Int_% |
+              Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
+            typecheckExpect(lhs, env, IntType)
+            typecheckExpect(rhs, env, IntType)
+          case Double_+ | Double_- | Double_* | Double_/ | Double_% |
+              < | <= | > | >= =>
+            typecheckExpect(lhs, env, DoubleType)
+            typecheckExpect(lhs, env, DoubleType)
+          case Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
+            typecheckExpect(lhs, env, BooleanType)
+            typecheckExpect(rhs, env, BooleanType)
         }
 
       case NewArray(tpe, lengths) =>
@@ -588,8 +552,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         for (ParamDef(name, tpe) <- params)
           if (tpe == NoType)
             reportError(s"Parameter $name has type NoType")
-        typecheckStat(body, env.enteringFun(thisType, params, resultType))
-
+        val bodyEnv = env.enteringFun(thisType, params, resultType)
+        if (resultType == NoType)
+          typecheckStat(body, bodyEnv)
+        else
+          typecheckExpect(body, bodyEnv, resultType)
 
       // Type-related
 
