@@ -424,6 +424,19 @@ object ScalaJSBuild extends Build {
       ))
   ).dependsOn(compiler % "plugin")
 
+  // Scala.js command line interface
+  lazy val cli: Project = Project(
+      id = "scalajs-cli",
+      base = file("cli"),
+      settings = defaultSettings ++ publishSettings ++ Seq(
+          name := "Scala.js CLI",
+          scalaVersion := "2.10.4", // adapt version to tools
+          libraryDependencies ++= Seq(
+              "com.github.scopt" %% "scopt" % "3.2.0"
+          )
+      )
+  ).dependsOn(tools)
+
   // Test framework
   lazy val testBridge = Project(
       id = "scalajs-test-bridge",
