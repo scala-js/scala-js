@@ -127,7 +127,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val thisType =
       if (!classDef.kind.isClass) NoType
       else ClassType(classDef.name.name)
-    typecheckStat(body, Env.empty.enteringFun(thisType, params, resultType))
+    val bodyEnv = Env.empty.enteringFun(thisType, params, resultType)
+    if (resultType == NoType)
+      typecheckStat(body, bodyEnv)
+    else
+      typecheckExpect(body, bodyEnv, NothingType)
   }
 
   def typecheckStat(tree: Tree, env: Env): Env = {
@@ -297,6 +301,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
+      case While(BooleanLiteral(true), body, label) if tree.tpe == NothingType =>
+        typecheckExpect(body, env, NothingType)
+
       case Try(block, errVar, handler, finalizer) =>
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
@@ -312,15 +319,12 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Throw(expr) =>
         typecheckExpr(expr, env)
 
-      case Break(label) =>
+      case Continue(label) =>
         /* Here we could check that it is indeed legal to break to the
          * specified label. However, if we do anything illegal here, it will
          * result in a SyntaxError in JavaScript anyway, so we do not really
          * care.
          */
-
-      case Continue(label) =>
-        // Same remark as for Break.
 
       case Match(selector, cases, default) =>
         val tpe = tree.tpe
@@ -548,8 +552,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         for (ParamDef(name, tpe) <- params)
           if (tpe == NoType)
             reportError(s"Parameter $name has type NoType")
-        typecheckStat(body, env.enteringFun(thisType, params, resultType))
-
+        val bodyEnv = env.enteringFun(thisType, params, resultType)
+        if (resultType == NoType)
+          typecheckStat(body, bodyEnv)
+        else
+          typecheckExpect(body, bodyEnv, NothingType)
 
       // Type-related
 

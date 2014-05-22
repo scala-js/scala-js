@@ -3573,10 +3573,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 paramsLocal :+ ensureBoxed(expr, resultType)))
           case _ =>
             assert(resultType.typeSymbol == UnitClass)
-            /* In theory we should return a boxed () value, but that is the
-             * undefined value, which is returned automatically in
-             * JavaScript when there is no return statement. */
-            js.Block(paramsLocal :+ body)
+            js.Block(paramsLocal :+ body :+ js.Return(js.Undefined()))
         }
       }
 
