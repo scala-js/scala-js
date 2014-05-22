@@ -2251,16 +2251,24 @@ abstract class GenJSCode extends plugins.PluginComponent
       val isEqOrNeq = (sym.name == nme.eq || sym.name == nme.ne) &&
         params.size == 1 && params.head.tpe.typeSymbol == ObjectClass
 
-      /** check if the method we are invoking conforms to the update
-       *  method on scala.Array. If this is the case, we have to check
-       *  that case specially at runtime, since the arrays element type is not
-       *  erased and therefore the method name mangling turns out wrong.
+      /** check if the method we are invoking conforms to a method on
+       *  scala.Array. If this is the case, we check that case specially at
+       *  runtime to avoid having reflective call proxies on scala.Array.
+       *  (Also, note that the element type of Array#update is not erased and
+       *  therefore the method name mangling would turn out wrong)
        *
-       *  Note that we cannot check if Unit conforms to the expected return
-       *  type, since this type information is already erased.
+       *  Note that we cannot check if the expected return type is correct,
+       *  since this type information is already erased.
        */
-      def isArrayLikeUpdate = sym.name == nme.update && {
-        params.size == 2 && params.head.tpe.typeSymbol == IntClass
+      def isArrayLikeOp = {
+        sym.name == nme.update &&
+          params.size == 2 && params.head.tpe.typeSymbol == IntClass ||
+        sym.name == nme.apply &&
+          params.size == 1 && params.head.tpe.typeSymbol == IntClass ||
+        sym.name == nme.length &&
+          params.size == 0 ||
+        sym.name == nme.clone_ &&
+          params.size == 0
       }
 
       /**
@@ -2314,16 +2322,27 @@ abstract class GenJSCode extends plugins.PluginComponent
           genApplyMethod(callTrg, receiver.tpe, proxyIdent, arguments,
               jstpe.AnyType)
 
-        if (isArrayLikeUpdate) {
-          val elemKind = toTypeKind(sym.tpe.params(1).tpe)
-          val arrIRTpe = jstpe.ArrayType(elemKind.toReferenceType)
-          callStatement = js.If(js.IsInstanceOf(callTrg, arrIRTpe), {
-            val castCallTrg = js.AsInstanceOf(callTrg, arrIRTpe)
-            js.Block(
-                js.Assign(
-                    js.ArraySelect(castCallTrg, arguments(0))(elemKind.toIRType),
-                    arguments(1)),
-                js.Undefined()) // boxed unit
+        if (isArrayLikeOp) {
+          def genRTCall(method: Symbol, args: js.Tree*) =
+            genApplyMethod(genLoadModule(ScalaRunTimeModule),
+                ScalaRunTimeModule.moduleClass, method, args.toList)
+          val isArrayTree =
+            genRTCall(ScalaRunTime_isArray, callTrg, js.IntLiteral(1))
+          callStatement = js.If(isArrayTree, {
+            sym.name match {
+              case nme.update =>
+                js.Block(
+                    genRTCall(currentRun.runDefinitions.arrayUpdateMethod,
+                        callTrg, arguments(0), arguments(1)),
+                    js.Undefined()) // Boxed Unit
+              case nme.apply =>
+                genRTCall(currentRun.runDefinitions.arrayApplyMethod, callTrg,
+                    arguments(0))
+              case nme.length =>
+                genRTCall(currentRun.runDefinitions.arrayLengthMethod, callTrg)
+              case nme.clone_ =>
+                js.CallHelper("objectClone", callTrg)(jstpe.AnyType)
+            }
           }, {
             callStatement
           })(jstpe.AnyType)

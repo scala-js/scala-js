@@ -547,24 +547,8 @@ ScalaJS.ArrayTypeData = function(componentData) {
     return new ArrayClass(this.u["slice"](0));
   };
 
-  // Methods for reflective calls
-  ArrayClass.prototype.apply__I__ = function(i) {
-    return componentData.boxValue(this.u[i]);
-  }
-
-  ArrayClass.prototype.clone__ = function() {
-    return this.clone__O();
-  }
-
-  ArrayClass.prototype.length__ = function() {
-    return this.u["length"];
-  }
-
-  // Don't create a reflective call proxy for Array.update:
-  // Array.update is actually typed on the array's true element type, since
-  // array types are not erased. Therefore, we cannot properly type
-  // the method (in Scala.js types) and resign to having the compiler
-  // generate the call in-place.
+  // Don't generate reflective call proxies. The compiler special cases
+  // reflective calls to methods on scala.Array
 
   // The data
 
