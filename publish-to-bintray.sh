@@ -10,8 +10,8 @@ fi
 # Subshell to generate SBT commands
 (
     SET_BINTRAY="set PublishToBintray.publishToBintraySettings ++ Seq(publishMavenStyle := false)"
-    FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0"
-    BIN_VERSIONS="2.10.4 2.11.0"
+    FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0 2.11.1"
+    BIN_VERSIONS="2.10.4 2.11.1"
     SBT_VERSION="2.10.4"
 
     LIBS="scalajs-library scalajs-jasmine-test-framework scalajs-tools scalajs-test-bridge"
