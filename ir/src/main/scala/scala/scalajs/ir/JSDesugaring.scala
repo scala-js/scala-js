@@ -455,7 +455,14 @@ object JSDesugaring {
       /** Push the current lhs further into a deeper rhs */
       @inline def redo(newRhs: Tree) = pushLhsInto(lhs, newRhs)
 
-      rhs match {
+      if (rhs.tpe == NothingType && lhs != EmptyTree && !lhs.isInstanceOf[VarDef]) {
+        /* A touch of peephole dead code elimination.
+         * We have to exclude VarDef from this treatment because a var should
+         * still be declared somewhere, in case it is used somewhere else in
+         * the function, where we can't dce it.
+         */
+        pushLhsInto(EmptyTree, rhs)
+      } else (rhs match {
         // Base case, rhs is already a regular JS expression
 
         case _ if isExpression(rhs) =>
@@ -745,7 +752,7 @@ object JSDesugaring {
                 "lhs = " + lhs + "\n" + "rhs = " + rhs +
                 " of class " + rhs.getClass)
           }
-      }
+      })
     }
 
     // Desugar Scala operations to JavaScript operations -----------------------
@@ -894,7 +901,10 @@ object JSDesugaring {
           transformExpr(expr)
 
         case Function(thisType, params, resultType, body) =>
-          val newBody = transformStat(body) match {
+          val bodyWithReturn =
+            if (resultType == NoType) body
+            else Return(body)
+          val newBody = transformStat(bodyWithReturn) match {
             case Block(stats :+ Return(Undefined(), None)) => Block(stats)
             case newBody                                   => newBody
           }

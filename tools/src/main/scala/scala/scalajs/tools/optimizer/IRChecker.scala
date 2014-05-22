@@ -131,7 +131,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     if (resultType == NoType)
       typecheckStat(body, bodyEnv)
     else
-      typecheckExpect(body, bodyEnv, NothingType)
+      typecheckExpect(body, bodyEnv, resultType)
   }
 
   def typecheckStat(tree: Tree, env: Env): Env = {
@@ -556,7 +556,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         if (resultType == NoType)
           typecheckStat(body, bodyEnv)
         else
-          typecheckExpect(body, bodyEnv, NothingType)
+          typecheckExpect(body, bodyEnv, resultType)
 
       // Type-related
 

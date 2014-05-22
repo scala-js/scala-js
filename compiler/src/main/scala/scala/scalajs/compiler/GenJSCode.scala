@@ -546,8 +546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val (resultType, body) = {
               if (sym.isClassConstructor) {
-                (currentClassType,
-                    js.Block(genStat(rhs), js.Return(genThis())))
+                (currentClassType, js.Block(genStat(rhs), genThis()))
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 (resultIRType, genMethodBody(rhs, params, resultIRType))
@@ -692,10 +691,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val call = genApplyMethod(genThis(), sym.owner, sym,
               jsParams.map(_.ref))
-          val value = ensureBoxed(call,
+          val body = ensureBoxed(call,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
-
-          val body = js.Return(value)
 
           js.MethodDef(proxyIdent, jsParams, jstpe.AnyType, body)
         }
@@ -706,7 +703,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *
      *  Most normal methods are emitted straightforwardly. If the result
      *  type is Unit, then the body is emitted as a statement. Otherwise, it is
-     *  emitted as an expression and wrapped in a `js.Return()` statement.
+     *  emitted as an expression.
      *
      *  The additional complexity of this method handles the transformation of
      *  recursive tail calls. The `tailcalls` phase unhelpfully transforms
@@ -760,7 +757,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case _ =>
           if (bodyIsStat) genStat(tree)
-          else js.Return(genExpr(tree))
+          else genExpr(tree)
       }
     }
 
@@ -2697,18 +2694,18 @@ abstract class GenJSCode extends plugins.PluginComponent
               x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType)
             }
             js.JSApply(
-              js.Function(jstpe.NoType, List(fParam), jstpe.DynType, js.Return {
+              js.Function(jstpe.NoType, List(fParam), jstpe.DynType, {
                 js.Function(
                   if (isThisFunction) jstpe.AnyType else jstpe.NoType,
                   jsParams,
                   jstpe.AnyType,
-                  js.Return(genApplyMethod(
+                  genApplyMethod(
                       fParam.ref,
                       inputClass, applyMeth,
                       if (isThisFunction)
                         js.This()(jstpe.AnyType) :: jsParams.map(_.ref)
                       else
-                        jsParams.map(_.ref)))
+                        jsParams.map(_.ref))
                 )
               }),
               List(arg))
@@ -3449,18 +3446,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           val functionMakerFun =
             js.Function(jstpe.NoType, ctorParamDefs, jstpe.DynType, {
-              js.Return {
-                val pp = patchedParams // short-hand
-                if (JSThisFunctionClasses.exists(sym isSubClass _)) {
-                  assert(pp.nonEmpty, s"Empty param list in ThisFunction: $cd")
-                  js.Function(pp.head.ptpe, pp.tail, jstpe.AnyType, js.Block(
-                      js.VarDef(pp.head.name, pp.head.ptpe,
-                          mutable = false, js.This()(pp.head.ptpe)),
-                      patchedBody
-                  ))
-                } else {
-                  js.Function(jstpe.NoType, pp, jstpe.AnyType, patchedBody)
-                }
+              val pp = patchedParams // short-hand
+              if (JSThisFunctionClasses.exists(sym isSubClass _)) {
+                assert(pp.nonEmpty, s"Empty param list in ThisFunction: $cd")
+                js.Function(pp.head.ptpe, pp.tail, jstpe.AnyType, js.Block(
+                    js.VarDef(pp.head.name, pp.head.ptpe,
+                        mutable = false, js.This()(pp.head.ptpe)),
+                    patchedBody
+                ))
+              } else {
+                js.Function(jstpe.NoType, pp, jstpe.AnyType, patchedBody)
               }
             })
 
@@ -3522,7 +3517,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val thisType =
           if (isInImplClass) jstpe.NoType
           else toIRType(receiver.tpe)
-        val jsBody = js.Return {
+        val jsBody = {
           if (isInImplClass)
             genTraitImplApply(target, actualArgs map genExpr)
           else
@@ -3565,17 +3560,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         (paramAny, paramLocal)
       }).unzip
 
-      val patchedBody = {
-        val resultType = methodType.resultType
-        body match {
-          case js.Return(expr, None) =>
-            js.Return(js.Block(
-                paramsLocal :+ ensureBoxed(expr, resultType)))
-          case _ =>
-            assert(resultType.typeSymbol == UnitClass)
-            js.Block(paramsLocal :+ body :+ js.Return(js.Undefined()))
-        }
-      }
+      val patchedBody = js.Block(
+          paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
       (paramsAny, patchedBody)
     }
