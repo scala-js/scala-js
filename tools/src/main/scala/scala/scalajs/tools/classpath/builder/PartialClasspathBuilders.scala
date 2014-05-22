@@ -13,13 +13,11 @@ import scala.scalajs.tools.jsdep.JSDependencyManifest
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.io._
 
-import java.io._
-
 import scala.collection.mutable
 import scala.collection.immutable.Seq
 
-class PartialClasspathBuilder(cp: Seq[File]) extends ClasspathContentHandler
-                                                with ClasspathElementsTraverser {
+trait AbstractPartialClasspathBuilder extends ClasspathContentHandler
+                                         with ClasspathElementsTraverser {
 
   private val jsDepManifests = mutable.ListBuffer.empty[JSDependencyManifest]
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
@@ -48,7 +46,7 @@ class PartialClasspathBuilder(cp: Seq[File]) extends ClasspathContentHandler
     jsDepManifests += m
   }
 
-  def build(): PartialClasspath = {
+  def build(cp: Seq[File]): PartialClasspath = {
     val version = traverseClasspathElements(cp)
     if (useIR)
       mkIRCP(version)
@@ -56,7 +54,7 @@ class PartialClasspathBuilder(cp: Seq[File]) extends ClasspathContentHandler
       mkCP(version)
   }
 
-  def buildIR(): PartialIRClasspath = {
+  def buildIR(cp: Seq[File]): PartialIRClasspath = {
     val version = traverseClasspathElements(cp)
     if (!useIR) sys.error("This is not a PartialIRClasspath")
     mkIRCP(version)
@@ -75,22 +73,35 @@ class PartialClasspathBuilder(cp: Seq[File]) extends ClasspathContentHandler
   }
 }
 
-object PartialClasspathBuilder {
+/**
+ * Allows to create a PartialClasspathBuilder from a (filesystem) classpath
+ *
+ * Rules for classpath reading:
+ * - If top-level JS is present, all IR is ignored
+ * - Top-level JS goes to scalaJSCode / IR goes to scalaJSIR
+ * - If top-level JS is present, a PartialClasspath is created, otherwise a
+ *   PartialIRClasspath is created
+ * - Descends into JARs, no top-level JS in JARs
+ * - Entries stay in order of ‘cp‘, IR remains unordered
+ * - Earlier IR entries shadow later IR entries with the same relative path
+ * - Non-top level JS goes to availableLibs (earlier libs take precedence)
+ * - JS_DEPENDENCIES are added to dependencies
+ */
+class PartialClasspathBuilder extends AbstractPartialClasspathBuilder
+                                 with PhysicalFileSystem
 
-  /**
-   * Create a PartialClasspathBuilder from the given (filesystem) classpath
+object PartialClasspathBuilder {
+  /** Convenience method. The same as
    *
-   * Rules for classpath reading:
-   * - If top-level JS is present, all IR is ignored
-   * - Top-level JS goes to scalaJSCode / IR goes to scalaJSIR
-   * - If top-level JS is present, a PartialClasspath is created, otherwise a
-   *   PartialIRClasspath is created
-   * - Descends into JARs, no top-level JS in JARs
-   * - Entries stay in order of ‘cp‘, IR remains unordered
-   * - Earlier IR entries shadow later IR entries with the same relative path
-   * - Non-top level JS goes to availableLibs (earlier libs take precedence)
-   * - JS_DEPENDENCIES are added to dependencies
+   *    (new PartialClasspathBuilder).build(cp)
    */
-  def apply(cp: Seq[File]): PartialClasspathBuilder =
-    new PartialClasspathBuilder(cp)
+  def build(cp: Seq[java.io.File]): PartialClasspath =
+    (new PartialClasspathBuilder).build(cp)
+
+  /** Convenience method. The same as
+   *
+   *    (new PartialClasspathBuilder).buildIR(cp)
+   */
+  def buildIR(cp: Seq[java.io.File]): PartialIRClasspath =
+    (new PartialClasspathBuilder).buildIR(cp)
 }

@@ -153,7 +153,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         val output = (artifactPath in packageJSKey).value
         val taskCache = WritableFileVirtualTextFile(
             s.cacheDirectory / ("package-js" + outputSuffix))
-        val classpath = PartialClasspathBuilder(classpathDirs.toList).build()
+        val classpath = PartialClasspathBuilder.build(classpathDirs.toList)
 
         IO.createDirectory(output.getParentFile)
 
@@ -214,7 +214,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       preLinkClasspath := {
         val cp = fullClasspath.value
-        val pcp = PartialClasspathBuilder(Attributed.data(cp).toList).buildIR()
+        val pcp = PartialClasspathBuilder.buildIR(Attributed.data(cp).toList)
         pcp.resolve()
       },
 

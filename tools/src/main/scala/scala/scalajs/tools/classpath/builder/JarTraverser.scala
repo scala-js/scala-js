@@ -12,22 +12,21 @@ package scala.scalajs.tools.classpath.builder
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-import java.io._
 import java.util.zip._
+import java.io.{InputStream, InputStreamReader, Reader}
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.jsdep.JSDependencyManifest
 
-trait JarTraverser extends ClasspathContentHandler {
+trait JarTraverser extends ClasspathContentHandler with FileSystem {
 
   private val jsFiles = mutable.Map.empty[String, MemVirtualJSFile]
 
   /** Traverse a Jar and return a version */
   protected def traverseJar(jar: File): String = {
-    val zipStream =
-      new ZipInputStream(new BufferedInputStream(new FileInputStream(jar)))
+    val zipStream = new ZipInputStream(toInputStream(jar))
 
-    try readEntries(zipStream, jar.getAbsolutePath)
+    try readEntries(zipStream, getAbsolutePath(jar))
     finally zipStream.close()
 
     for {
@@ -35,7 +34,7 @@ trait JarTraverser extends ClasspathContentHandler {
       if jsFile.content != "" // drop if this is just a lone sourcemap
     } handleJS(jsFile)
 
-    CacheUtils.joinVersions(jar.getAbsolutePath, jar.lastModified.toString)
+    getGlobalVersion(jar)
   }
 
   private def getOrCreateJSFile(relPath: String, fullPath: String, fn: String) =

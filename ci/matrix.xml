@@ -28,11 +28,11 @@
   ]]></task>
 
   <task id="tools"><![CDATA[
-    sbt ++$scala scalajs-tools/package
+    sbt ++$scala scalajs-tools/package scalajs-tools/test
   ]]></task>
 
   <task id="sbtplugin"><![CDATA[
-    sbt ++$scala scalajs-tools/package scalajs-sbt-plugin/package scalajs-sbt-plugin/test
+    sbt ++$scala scalajs-tools/package scalajs-tools/test scalajs-sbt-plugin/package scalajs-sbt-plugin/test
   ]]></task>
 
   <task id="partestc"><![CDATA[

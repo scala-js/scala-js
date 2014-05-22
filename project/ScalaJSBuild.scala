@@ -200,7 +200,8 @@ object ScalaJSBuild extends Build {
             (scalaSource in (ir, Compile)).value,
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "com.googlecode.json-simple" % "json-simple" % "1.1.1"
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1",
+              "com.novocode" % "junit-interface" % "0.9" % "test"
           )
       )
   )
