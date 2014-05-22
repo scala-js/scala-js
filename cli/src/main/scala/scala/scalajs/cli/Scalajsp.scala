@@ -30,7 +30,7 @@ object Scalajsp {
     fileNames: Seq[String] = Seq.empty)
 
   def main(args: Array[String]): Unit = {
-    val parser = new scopt.OptionParser[Options]("scalajs") {
+    val parser = new scopt.OptionParser[Options]("scalajsp") {
       head("scalajsp", ScalaJSVersions.current)
       arg[String]("<file> ...")
         .unbounded()
