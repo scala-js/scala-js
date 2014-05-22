@@ -356,7 +356,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             case tpe if isPrimitiveValueType(tpe) =>
               val unboxed = makePrimitiveUnbox(jsArg.ref, tpe)
               // Ensure we don't convert null to a primitive value type
-              js.If(js.BinaryOp("===", jsArg.ref, js.Null(), jstpe.BooleanType),
+              js.If(js.BinaryOp(js.BinaryOp.===, jsArg.ref, js.Null()),
                 genThrowTypeError(s"Found null, expected $tpe"),
                 unboxed)(unboxed.tpe)
             case tpe: ErasedValueType =>
@@ -374,7 +374,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         // If argument is undefined and there is a default getter, call it
         if (param.hasFlag(Flags.DEFAULTPARAM)) {
-          js.If(js.BinaryOp("===", jsArg.ref, js.Undefined(), jstpe.BooleanType), {
+          js.If(js.BinaryOp(js.BinaryOp.===, jsArg.ref, js.Undefined()), {
             val trgSym = {
               if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
               else sym.owner

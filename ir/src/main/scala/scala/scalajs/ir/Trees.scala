@@ -9,6 +9,8 @@
 
 package scala.scalajs.ir
 
+import scala.annotation.switch
+
 import Position.NoPosition
 import Types._
 
@@ -214,10 +216,93 @@ object Trees {
   case class TraitImplApply(impl: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */
-  case class UnaryOp(op: String, lhs: Tree, tpe: Type)(implicit val pos: Position) extends Tree
+  case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
+    import UnaryOp._
+    val tpe = (op: @switch) match {
+      case `typeof`                            => StringType
+      case Int_+ | Int_- | Int_~ | DoubleToInt => IntType
+      case Double_+ | Double_-                 => DoubleType
+      case Boolean_!                           => BooleanType
+    }
+  }
+
+  object UnaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val typeof = 1
+
+    final val Int_+ = 2
+    final val Int_- = 3
+    final val Int_~ = 4
+
+    final val Double_+ = 5
+    final val Double_- = 6
+
+    final val Boolean_! = 7
+
+    final val DoubleToInt = 8
+  }
 
   /** Binary operation (always preserves pureness). */
-  case class BinaryOp(op: String, lhs: Tree, rhs: Tree, tpe: Type)(implicit val pos: Position) extends Tree
+  case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
+    import BinaryOp._
+    val tpe = (op: @switch) match {
+      case === | !== | < | <= | > | >= | `in` | `instanceof` |
+          Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
+        BooleanType
+      case String_+ =>
+        StringType
+      case Int_+ | Int_- | Int_* | Int_/ | Int_% |
+          Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
+        IntType
+      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
+        DoubleType
+    }
+  }
+
+  object BinaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val === = 1
+    final val !== = 2
+
+    final val <  = 3
+    final val <= = 4
+    final val >  = 5
+    final val >= = 6
+
+    final val String_+ = 7
+
+    final val in         = 8
+    final val instanceof = 9
+
+    final val Int_+ = 10
+    final val Int_- = 11
+    final val Int_* = 12
+    final val Int_/ = 13
+    final val Int_% = 14
+
+    final val Int_|   = 15
+    final val Int_&   = 16
+    final val Int_^   = 17
+    final val Int_<<  = 18
+    final val Int_>>> = 19
+    final val Int_>>  = 20
+
+    final val Double_+ = 21
+    final val Double_- = 22
+    final val Double_* = 23
+    final val Double_/ = 24
+    final val Double_% = 25
+
+    final val Boolean_|  = 26
+    final val Boolean_&  = 27
+    final val Boolean_^  = 28
+    final val Boolean_|| = 29
+    final val Boolean_&& = 30
+  }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {
     require(lengths.nonEmpty && lengths.size <= tpe.dimensions)
