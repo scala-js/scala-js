@@ -70,7 +70,7 @@ class MainGenericRunner {
       if (f.isDirectory || f.getName.startsWith("scalajs-library"))
     } yield f
     val classpath =
-      PartialClasspathBuilder(usefulClasspathEntries).buildIR().resolve()
+      PartialClasspathBuilder.buildIR(usefulClasspathEntries).resolve()
 
     val logger    = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole

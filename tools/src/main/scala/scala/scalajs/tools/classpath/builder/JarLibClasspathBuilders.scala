@@ -11,8 +11,6 @@ package scala.scalajs.tools.classpath.builder
 
 import scala.collection.mutable
 
-import java.io._
-
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.jsdep.JSDependencyManifest
 import scala.scalajs.tools.classpath._
@@ -22,13 +20,13 @@ import scala.scalajs.tools.classpath._
  *  - JS files go to availableLibs
  *  - Reads a potential top-level JS_DEPENDENCIES file
  */
-final class JarLibClasspathBuilder(jar: File) extends JarTraverser {
+trait AbstractJarLibClasspathBuilder extends JarTraverser {
 
   private val irFiles = mutable.ListBuffer.empty[VirtualScalaJSIRFile]
   private val jsFiles = mutable.Map.empty[String, VirtualJSFile]
   private var dependency: Option[JSDependencyManifest] = None
 
-  def build(): PartialIRClasspath = {
+  def build(jar: File): PartialIRClasspath = {
     val v = traverseJar(jar)
     new PartialIRClasspath(dependency.toList,
         jsFiles.toMap, irFiles.toList, Some(v))
@@ -56,3 +54,6 @@ final class JarLibClasspathBuilder(jar: File) extends JarTraverser {
   }
 
 }
+
+class JarLibClasspathBuilder extends AbstractJarLibClasspathBuilder
+                                with PhysicalFileSystem

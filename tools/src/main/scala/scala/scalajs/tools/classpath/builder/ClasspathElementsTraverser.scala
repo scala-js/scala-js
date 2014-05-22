@@ -9,14 +9,14 @@
 
 package scala.scalajs.tools.classpath.builder
 
-import java.io._
-
 import scala.scalajs.tools.io._
 
 /** A helper trait to traverse an arbitrary classpath element
  *  (i.e. a JAR or a directory).
  */
-trait ClasspathElementsTraverser extends JarTraverser with DirTraverser {
+trait ClasspathElementsTraverser extends JarTraverser
+                                    with DirTraverser
+                                    with FileSystem {
 
   protected def traverseClasspathElements(cp: Seq[File]): String =
     CacheUtils.joinVersions(cp.map(readEntriesInClasspathElement _): _*)
@@ -25,19 +25,16 @@ trait ClasspathElementsTraverser extends JarTraverser with DirTraverser {
    *  Returns the accumulated version
    */
   private def readEntriesInClasspathElement(element: File): String = {
-    if (element.isDirectory)
+    if (isDirectory(element))
       traverseDir(element)
-    else if (element.isFile) {
-      val name = element.getName
-      if (name.endsWith(".js")) {
-        handleTopLvlJS(FileVirtualJSFile(element))
-        CacheUtils.joinVersions(
-            element.getAbsolutePath, element.lastModified.toString)
-      } else {
-        // We assume it is a jar
-        traverseJar(element)
-      }
-    } else sys.error("Element in classpath which is neither file nor directory")
+    else if (isJSFile(element)) {
+      handleTopLvlJS(toJSFile(element))
+      getGlobalVersion(element)
+    } else if (isJARFile(element)) {
+      // We assume it is a jar
+      traverseJar(element)
+    } else
+      sys.error("Element in classpath which is neither JS, JAR or directory")
   }
 
 }
