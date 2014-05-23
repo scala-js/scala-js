@@ -41,10 +41,10 @@ To compile your fork, simply run:
 
     sbt> package
 
-By default the sbt environment uses Scala 2.10.2. You can switch to any of the
+By default the sbt environment uses Scala 2.11.0. You can switch to any of the
 supported versions with, e.g.,
 
-    sbt> ++2.11.0-M7
+    sbt> ++2.10.4
 
 ### Run the test suite
 
@@ -55,15 +55,19 @@ Compile and run the Scala.js-specific test suite with
 (you must have run `package` before running the test suite)
 
 To run the Scala test suite (aka partest), you have to use a 2.11 version, e.g.,
-2.11.0-M7, and run:
+2.11.0 or 2.11.1, and run:
 
     sbt> scalajs-partest-suite/test
 
-Beware, this takes a very long time.
+Beware, this takes a very long time. You may use the `--fastOpt` and
+`--fullOpt` switches to run Scala.js DCE or the full Google Closure
+Compiler:
 
-A complete test session from scratch on 2.11.0-M7 would then be
+    sbt> scalajs-partest-suite/testOnly -- --fastOpt
 
-    sbt> ++2.11.0-M7
+A complete test session from scratch on 2.11.1 would then be
+
+    sbt> ++2.11.1
     sbt> package
     sbt> scalajs-test/test
     sbt> scalajs-partest-suite/test
@@ -72,18 +76,19 @@ A complete test session from scratch on 2.11.0-M7 would then be
 
 After having compiled Scala.js, you can compile the example applications with:
 
-    sbt> examples/optimizeJS
+    sbt> examples/fullOptJS
 
 (you must have run `package` before compiling the examples)
 
 Then, you can "execute" them by opening their respective HTML files in your
-favorite browser. Since optimizing the JavaScript takes time (tens of seconds
-to several minutes, depending on your hardware), it is also possible not to
-optimize JS by doing instead:
+favorite browser. Since fully optimizing the JavaScript takes time
+(up to ten seconds, depending on your hardware), it is also possible
+to only partially optimize JS by doing instead:
 
-    sbt> examples/packageJS
+    sbt> examples/fastOptJS
 
-In this case, you have to open the `-dev` version of the HTML files.
+In this case, you have to open the `-fastopt` version of the HTML
+files.
 
 Currently, two examples are provided:
 
@@ -92,7 +97,12 @@ Currently, two examples are provided:
     JavaScript).
 *   `examples/reversi/reversi.html`, an implementation of a
     [Reversi](http://en.wikipedia.org/wiki/Reversi) game. Note that it uses the
-    HTML5 Canvas element, so it won't work with Internet Explorer 8 or below.
+    HTML5 Canvas element, so it won't work with Internet Explorer 8 or
+    below.
+
+If both `fastOptJS` and `fullOptJS` break, you can try and use
+`packageJS` which doesn't perform any optimizations (use the `-dev`
+version of the HTML files).
 
 ### Use your fork with your own projects
 
