@@ -72,7 +72,7 @@ class ScalaJSOptimizer {
       }
       writeDCEedOutput(outCfg, analyzer)
     } finally {
-      persistentState.endRun()
+      persistentState.endRun(outCfg.unCache)
       logger.debug(
           s"Inc. opt stats: reused: ${persistentState.statsReused} -- "+
           s"invalidated: ${persistentState.statsInvalidated} -- "+
@@ -243,7 +243,11 @@ object ScalaJSOptimizer {
       /** Base path to relativize paths in the source map. */
       relativizeSourceMapBase: Option[URI] = None,
       /** If true, performs expensive checks of the IR for the used parts. */
-      checkIR: Boolean = false
+      checkIR: Boolean = false,
+      /** If true, the optimizer removes trees that have not been used in the
+       *  last run from the cache. Otherwise, all trees that has been used once,
+       *  are kept in memory. */
+      unCache: Boolean = true
   )
 
   // Private helpers -----------------------------------------------------------
@@ -276,9 +280,9 @@ object ScalaJSOptimizer {
       file
     }
 
-    def endRun(): Unit = {
+    def endRun(unCache: Boolean): Unit = {
       // "Garbage-collect" persisted versions of files that have disappeared
-      files.retain((_, f) => f.cleanAfterRun())
+      files.retain((_, f) => f.cleanAfterRun(unCache))
       encodedNameToPersistentFile.clear()
     }
   }
@@ -331,9 +335,9 @@ object ScalaJSOptimizer {
     }
 
     /** Returns true if this file should be kept for the next run at all. */
-    def cleanAfterRun(): Boolean = {
+    def cleanAfterRun(unCache: Boolean): Boolean = {
       irFile = null
-      if (!desugaredUsedInThisRun)
+      if (unCache && !desugaredUsedInThisRun)
         _desugared = null // free desugared if unused in this run
       existedInThisRun
     }
