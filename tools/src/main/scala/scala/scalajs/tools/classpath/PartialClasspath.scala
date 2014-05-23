@@ -59,6 +59,11 @@ abstract class PartialClasspath(
    */
   protected def resolvedDependencies: List[VirtualJSFile] = {
     val includeList = JSDependencyManifest.createIncludeList(dependencies)
+
+    val missingDeps = includeList.filterNot(availableLibs.contains _)
+    if (missingDeps.nonEmpty)
+      sys.error(s"Missing dependencies: ${missingDeps.mkString(", ")}")
+
     includeList.map(availableLibs.apply _)
   }
 

@@ -34,7 +34,7 @@ trait ClasspathElementsTraverser extends JarTraverser
       // We assume it is a jar
       traverseJar(element)
     } else
-      sys.error("Element in classpath which is neither JS, JAR or directory")
+      sys.error(s"$element (in classpath) is neither JS, JAR or directory")
   }
 
 }
