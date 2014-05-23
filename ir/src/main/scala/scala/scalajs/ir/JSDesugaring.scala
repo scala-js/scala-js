@@ -517,7 +517,24 @@ object JSDesugaring {
             if (handler == EmptyTree) handler else redo(handler)
           val newFinalizer =
             if (finalizer == EmptyTree) finalizer else transformStat(finalizer)
-          Try(redo(block), errVar, newHandler, newFinalizer)(UndefType)
+
+          if (newHandler != EmptyTree && newFinalizer != EmptyTree) {
+            /* The Google Closure Compiler wrongly eliminates finally blocks, if
+             * the catch block throws an exception.
+             * Issues: #563, google/closure-compiler#186
+             *
+             * Therefore, we desugar
+             *
+             *   try { ... } catch { ... } finally { ... }
+             *
+             * into
+             *
+             *   try { try { ... } catch { ... } } finally { ... }
+             */
+            Try(Try(redo(block), errVar, newHandler, EmptyTree)(UndefType),
+                errVar, EmptyTree, newFinalizer)(UndefType)
+          } else
+            Try(redo(block), errVar, newHandler, newFinalizer)(UndefType)
 
         // TODO Treat throw as an LHS?
         case Throw(expr) =>
