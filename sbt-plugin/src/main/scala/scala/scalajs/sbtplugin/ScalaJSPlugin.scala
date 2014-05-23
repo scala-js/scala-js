@@ -451,6 +451,20 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         }
       },
 
+      discoveredMainClasses ++= {
+        import xsbt.api.{Discovered, Discovery}
+
+        val jsApp = "scala.scalajs.js.JSApp"
+
+        def isJSApp(discovered: Discovered) =
+          discovered.isModule && discovered.baseClasses.contains(jsApp)
+
+        Discovery(Set(jsApp), Set.empty)(Tests.allDefs(compile.value)) collect {
+          case (definition, discovered) if isJSApp(discovered) =>
+            definition.name
+        }
+      },
+
       run <<= Def.inputTask {
         // use assert to prevent warning about pure expr in stat pos
         assert(ensureUnforked.value)
