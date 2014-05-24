@@ -540,7 +540,7 @@ object Printers {
       out.write(s)
     }
 
-    def close(): Unit = ()
+    def complete(): Unit = ()
   }
 
   def escapeJS(str: String): String = {
@@ -606,9 +606,9 @@ object Printers {
       column += s.length()
     }
 
-    override def close(): Unit = {
-      sourceMap.close()
-      super.close()
+    override def complete(): Unit = {
+      sourceMap.complete()
+      super.complete()
     }
   }
 
@@ -689,7 +689,7 @@ object Printers {
       case arg                    => out.write(arg.toString())
     }
 
-    def close(): Unit = ()
+    def complete(): Unit = ()
   }
 
 }

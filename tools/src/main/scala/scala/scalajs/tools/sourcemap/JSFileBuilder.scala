@@ -56,12 +56,17 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
     // Do not close the printer: we do not have ownership of the writers
   }
 
-  def closeWriters(): Unit = {
-    outputWriter.close()
-  }
-
+  /** Completes the builder.
+   *  Does not close the underlying writer(s).
+   */
   def complete(): Unit = {
     // Can be overridden by subclasses
+  }
+
+  /** Closes the underlying writer(s).
+   */
+  def closeWriters(): Unit = {
+    outputWriter.close()
   }
 }
 
@@ -182,9 +187,9 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     // Do not close the printer: we do not have ownership of the writers
   }
 
-  override def closeWriters() = {
-    super.closeWriters()
-    sourceMapWriter.close()
+  override def complete(): Unit = {
+    super.complete()
+    sourceMapWriter.complete()
   }
 
   private def getFileSourceFile(
@@ -215,5 +220,10 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
   override def complete(): Unit = {
     addLine("//@ sourceMappingURL=" + name + ".map")
     super.complete()
+  }
+
+  override def closeWriters(): Unit = {
+    super.closeWriters()
+    sourceMapOutputWriter.close()
   }
 }

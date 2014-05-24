@@ -177,7 +177,7 @@ class SourceMapWriter(
     }
   }
 
-  def close(): Unit = {
+  def complete(): Unit = {
     writePendingSegment()
 
     out.write("\",\n")

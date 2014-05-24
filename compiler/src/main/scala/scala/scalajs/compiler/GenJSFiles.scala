@@ -42,11 +42,11 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     try {
       val printer = new Printers.IRTreePrinter(output)
       printer.printTopLevelTree(tree)
-      printer.close()
+      printer.complete()
 
       val infoPrinter = new Printers.InfoPrinter(output)
       infoPrinter.printClassInfo(classInfo)
-      infoPrinter.close()
+      infoPrinter.complete()
     } finally {
       output.close()
     }
