@@ -119,6 +119,16 @@ var ScalaJS = {
     return x;
   },
 
+  cloneObject: function(obj) {
+    function Clone(from) {
+      for (var field in from)
+        if (from["hasOwnProperty"](field))
+          this[field] = from[field];
+    }
+    Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](obj);
+    return new Clone(obj);
+  },
+
   applyMethodWithVarargs: function(instance, methodName, argArray) {
     // Note: cannot be inlined because `instance` would be evaluated twice
     return instance[methodName].apply(instance, argArray);

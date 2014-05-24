@@ -3,9 +3,12 @@ import Keys._
 
 import PublishToBintray.publishToBintraySettings
 
+import java.io.{BufferedOutputStream, FileOutputStream}
+
 import scala.collection.mutable
 import scala.util.Properties
 
+import scala.scalajs.ir
 import scala.scalajs.sbtplugin._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import ScalaJSPlugin._
@@ -141,7 +144,7 @@ object ScalaJSBuild extends Build {
    * have code in a project that lives outside the project's directory, and
    * like even less that code be shared by different projects.
    */
-  lazy val ir: Project = Project(
+  lazy val irProject: Project = Project(
       id = "scalajs-ir",
       base = file("ir"),
       settings = defaultSettings ++ Seq(
@@ -157,7 +160,7 @@ object ScalaJSBuild extends Build {
           name := "Scala.js compiler",
           crossVersion := CrossVersion.full, // because compiler api is not binary compatible
           unmanagedSourceDirectories in Compile +=
-            (scalaSource in (ir, Compile)).value,
+            (scalaSource in (irProject, Compile)).value,
           libraryDependencies ++= Seq(
               "org.scala-lang" % "scala-compiler" % scalaVersion.value,
               "org.scala-lang" % "scala-reflect" % scalaVersion.value,
@@ -197,7 +200,7 @@ object ScalaJSBuild extends Build {
           name := "Scala.js tools",
           scalaVersion := "2.10.4",
           unmanagedSourceDirectories in Compile +=
-            (scalaSource in (ir, Compile)).value,
+            (scalaSource in (irProject, Compile)).value,
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1",
@@ -228,6 +231,22 @@ object ScalaJSBuild extends Build {
         else Seq("-Ydelambdafy:method"))
   }
 
+  private def serializeHardcodedIR(base: File,
+      infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)): File = {
+    // We assume that there are no weird characters in the full name
+    val fullName = infoAndTree._1.name
+    val output = base / (fullName.replace('.', '/') + ".sjsir")
+    IO.createDirectory(output.getParentFile)
+    val stream = new BufferedOutputStream(new FileOutputStream(output))
+    try {
+      ir.InfoSerializers.serialize(stream, infoAndTree._1)
+      ir.Serializers.serialize(stream, infoAndTree._2)
+    } finally {
+      stream.close()
+    }
+    output
+  }
+
   lazy val javalib: Project = Project(
       id = "scalajs-javalib",
       base = file("javalib"),
@@ -236,7 +255,15 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings
+          scalaJSSourceMapSettings,
+
+          resourceGenerators in Compile <+= Def.task {
+            val base = (resourceManaged in Compile).value
+            Seq(
+                serializeHardcodedIR(base, JavaLangObject.InfoAndTree),
+                serializeHardcodedIR(base, JavaLangString.InfoAndTree)
+            )
+          }
       ) ++ (
           scalaJSExternalCompileSettings
       )

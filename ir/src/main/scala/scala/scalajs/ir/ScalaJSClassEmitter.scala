@@ -35,7 +35,8 @@ object ScalaJSClassEmitter {
     } else {
       if (kind.isClass)
         reverseParts ::= genClass(tree)
-      if (kind.isClass || kind == ClassKind.Interface)
+      if (kind.isClass || kind == ClassKind.Interface ||
+          tree.name.name == Definitions.StringClass)
         reverseParts ::= genInstanceTests(tree)
       reverseParts ::= genArrayInstanceTests(tree)
       reverseParts ::= genTypeData(tree)
@@ -65,18 +66,20 @@ object ScalaJSClassEmitter {
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: ClassDef): Tree = {
     assert(tree.kind.isClass)
-    assert(tree.parent.isDefined)
 
     val classIdent = tree.name
     val tpe = ClassType(classIdent.name)
-    val parentIdent = tree.parent.get
-    val parentTpe = ClassType(parentIdent.name)
+
+    assert(tree.parent.isDefined || classIdent.name == Definitions.ObjectClass,
+        "Class ${classIdent.name} is missing a parent class")
 
     val ctorFun = {
-      val superCtorCall = {
+      val superCtorCall = tree.parent.fold[Tree] {
+        Skip()(tree.pos)
+      } { parentIdent =>
         implicit val pos = tree.pos
         JSApply(
-            JSDotSelect(encodeClassVar(parentTpe), Ident("call")),
+            JSDotSelect(encodeClassVar(ClassType(parentIdent.name)), Ident("call")),
             List(This()(tpe)))
       }
       val fieldDefs = for {
@@ -94,11 +97,16 @@ object ScalaJSClassEmitter {
       val typeVar = encodeClassVar(tpe)
       val docComment = DocComment("@constructor")
       val ctorDef = Assign(typeVar, ctorFun)
-      val chainProto =
-        Assign(typeVar.prototype,
-            JSNew(JSDotSelect(envField("h"), parentIdent), Nil))
-      val reassignConstructor =
-        genAddToPrototype(tree, Ident("constructor"), typeVar)
+
+      val chainProto = tree.parent.fold[Tree] {
+        Skip()
+      } { parentIdent =>
+        Block(
+          Assign(typeVar.prototype,
+              JSNew(JSDotSelect(envField("h"), parentIdent), Nil)),
+          genAddToPrototype(tree, Ident("constructor"), typeVar)
+        )
+      }
 
       val inheritableCtorDef = {
         val inheritableCtorVar =
@@ -110,8 +118,7 @@ object ScalaJSClassEmitter {
         )
       }
 
-      Block(docComment, ctorDef, chainProto, reassignConstructor,
-          inheritableCtorDef)
+      Block(docComment, ctorDef, chainProto, inheritableCtorDef)
     }
   }
 
@@ -202,34 +209,45 @@ object ScalaJSClassEmitter {
 
     val createIsStat = {
       envField("is") DOT classIdent :=
-        Function(NoType, List(objParam), DynType, {
-          var test = (obj && (obj DOT "$classData") &&
-              (obj DOT "$classData" DOT "ancestors" DOT classIdent))
+        Function(NoType, List(objParam), DynType, className match {
+          case Definitions.ObjectClass =>
+            BinaryOp(BinaryOp.!==, obj, Null())
 
-          if (isAncestorOfString)
-            test = test || (
-                JSUnaryOp("typeof", obj) === StringLiteral("string"))
-          if (isAncestorOfHijackedNumberClass)
-            test = test || (
-                JSUnaryOp("typeof", obj) === StringLiteral("number"))
-          if (isAncestorOfBoxedBooleanClass)
-            test = test || (
-                JSUnaryOp("typeof", obj) === StringLiteral("boolean"))
+          case Definitions.StringClass =>
+            JSUnaryOp("typeof", obj) === StringLiteral("string")
 
-          !(!test)
+          case _ =>
+            var test = (obj && (obj DOT "$classData") &&
+                (obj DOT "$classData" DOT "ancestors" DOT classIdent))
+
+            if (isAncestorOfString)
+              test = test || (
+                  JSUnaryOp("typeof", obj) === StringLiteral("string"))
+            if (isAncestorOfHijackedNumberClass)
+              test = test || (
+                  JSUnaryOp("typeof", obj) === StringLiteral("number"))
+            if (isAncestorOfBoxedBooleanClass)
+              test = test || (
+                  JSUnaryOp("typeof", obj) === StringLiteral("boolean"))
+
+            !(!test)
         })
     }
 
     val createAsStat = {
       envField("as") DOT classIdent :=
-        Function(NoType, List(objParam), ClassType(className), {
-          If(JSApply(envField("is") DOT classIdent, List(obj)) ||
-              (obj === Null()), {
+        Function(NoType, List(objParam), ClassType(className), className match {
+          case Definitions.ObjectClass =>
             obj
-          }, {
-            CallHelper("throwClassCastException",
-                obj :: StringLiteral(displayName) :: Nil)(NothingType)
-          })(ClassType(className))
+
+          case _ =>
+            If(JSApply(envField("is") DOT classIdent, List(obj)) ||
+                (obj === Null()), {
+              obj
+            }, {
+              CallHelper("throwClassCastException",
+                  obj :: StringLiteral(displayName) :: Nil)(NothingType)
+            })(ClassType(className))
       })
     }
 
@@ -256,10 +274,37 @@ object ScalaJSClassEmitter {
 
     val createIsArrayOfStat = {
       envField("isArrayOf") DOT classIdent :=
-        Function(NoType, List(objParam, depthParam), DynType, {
-          !(!(obj && (obj DOT "$classData") &&
-              ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
-              (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent)))
+        Function(NoType, List(objParam, depthParam), DynType, className match {
+          case Definitions.ObjectClass =>
+            val dataVarDef = VarDef(Ident("data"), DynType, false, {
+              obj && (obj DOT "$classData")
+            })
+            val data = dataVarDef.ref
+            Block(
+              dataVarDef,
+              If(!data, {
+                BooleanLiteral(false)
+              }, {
+                val arrayDepthVarDef = VarDef(Ident("arrayDepth"), DynType, false, {
+                  (data DOT "arrayDepth") || IntLiteral(0)
+                })
+                val arrayDepth = arrayDepthVarDef.ref
+                Block(
+                  arrayDepthVarDef,
+                  If(JSBinaryOp("<", arrayDepth, depth), {
+                    BooleanLiteral(false) // because Array[A] </: Array[Array[A]]
+                  }, If(JSBinaryOp(">", arrayDepth, depth), {
+                    BooleanLiteral(true) // because Array[Array[A]] <: Array[Object]
+                  }, {
+                    !JSBracketSelect(data DOT "arrayBase", StringLiteral("isPrimitive"))
+                    // because Array[Int] </: Array[Object]
+                  })(BooleanType))(BooleanType))
+              })(BooleanType))
+
+          case _ =>
+            !(!(obj && (obj DOT "$classData") &&
+                ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
+                (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT classIdent)))
         })
     }
 
@@ -290,13 +335,16 @@ object ScalaJSClassEmitter {
     val kind = tree.kind
     assert(kind.isType)
 
+    val isObjectClass =
+      className == ObjectClass
     val isHijackedBoxedClass =
       HijackedBoxedClasses.contains(className)
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
 
     val parentData = tree.parent.fold[Tree] {
-      Undefined()
+      if (isObjectClass) Null()
+      else Undefined()
     } { parent =>
       envField("d") DOT parent
     }
@@ -313,13 +361,18 @@ object ScalaJSClassEmitter {
         ancestorsRecord
     ) ++ (
         // Optional parameter isInstance
-        if (isHijackedBoxedClass) {
+        if (isObjectClass) {
+          /* Object has special ScalaJS.is.O *and* ScalaJS.isArrayOf.O. */
+          List(
+            envField("is") DOT classIdent,
+            envField("isArrayOf") DOT classIdent)
+        } else if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
           List(Function(NoType, List(ParamDef(Ident("x"), DynType)), BooleanType, {
             IsInstanceOf(VarRef(Ident("x"), false)(DynType), ClassType(className))
           }))
-        } else if (isAncestorOfHijackedClass) {
-          /* Ancestors of hijacked classes have a normal
+        } else if (isAncestorOfHijackedClass || className == StringClass) {
+          /* java.lang.String and ancestors of hijacked classes have a normal
            * ScalaJS.is.pack_Class test but with a non-standard behavior. */
           List(envField("is") DOT classIdent)
         } else {

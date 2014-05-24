@@ -30,12 +30,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   def errorCount: Int = _errorCount
 
   private val classes: mutable.Map[String, CheckedClass] = {
-    val Obj = new CheckedClass(ObjectClass, ClassKind.Class, None, Set.empty)
-    val Str = new CheckedClass(StringClass, ClassKind.HijackedClass,
-        Some(ObjectClass), AncestorsOfStringClass + ObjectClass)
-    val userDefined = allClassDefs.map(new CheckedClass(_))
     mutable.Map.empty[String, CheckedClass] ++=
-      (Obj +: Str +: userDefined).map(c => c.name -> c)
+      allClassDefs.map(new CheckedClass(_)).map(c => c.name -> c)
   }
 
   def check(): Boolean = {
@@ -684,7 +680,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("propertiesOf", List(DynType) -> DynType),
 
-      ("protect", List(DynType) -> DynType)
+      ("protect", List(DynType) -> DynType),
+      ("cloneObject", List(AnyType) -> AnyType)
     )
   }
 
