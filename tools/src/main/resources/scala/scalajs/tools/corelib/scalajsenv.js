@@ -167,23 +167,26 @@ var ScalaJS = {
   },
 
   objectGetClass: function(instance) {
-    if (ScalaJS.is.sjsr_RuntimeLong(instance))
-      return ScalaJS.d.jl_Long.getClassOf();
-    else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.getClass__jl_Class();
-    else if (typeof(instance) === "string")
-      return ScalaJS.d.T.getClassOf();
-    else if (typeof(instance) === "number") {
-      if (ScalaJS.isInt(instance))
-        return ScalaJS.d.jl_Integer.getClassOf();
-      else
-        return ScalaJS.d.jl_Double.getClassOf();
-    } else if (typeof(instance) === "boolean")
-      return ScalaJS.d.jl_Boolean.getClassOf();
-    else if (instance === void 0)
-      return ScalaJS.d.sr_BoxedUnit.getClassOf();
-    else
-      return null; // Exception?
+    switch (typeof instance) {
+      case "string":
+        return ScalaJS.d.T.getClassOf();
+      case "number":
+        if (ScalaJS.isInt(instance))
+          return ScalaJS.d.jl_Integer.getClassOf();
+        else
+          return ScalaJS.d.jl_Double.getClassOf();
+      case "boolean":
+        return ScalaJS.d.jl_Boolean.getClassOf();
+      case "undefined":
+        return ScalaJS.d.sr_BoxedUnit.getClassOf();
+      default:
+        if (ScalaJS.is.sjsr_RuntimeLong(instance))
+          return ScalaJS.d.jl_Long.getClassOf();
+        else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+          return instance.getClass__jl_Class();
+        else
+          return null; // Exception?
+    }
   },
 
   objectClone: function(instance) {
@@ -230,34 +233,35 @@ var ScalaJS = {
   },
 
   objectHashCode: function(instance) {
-    if (ScalaJS.isScalaJSObject(instance))
-      return instance.hashCode__I();
-    else if (typeof(instance) === "string") {
-      // calculate hash of String as specified by JavaDoc
-      var n = instance["length"];
-      var res = 0;
-      var mul = 1; // holds pow(31, n-i-1)
-      // multiplications with `mul` do never overflow the 52 bits of precision:
-      // - we truncate `mul` to 32 bits on each operation
-      // - 31 has 5 significant bits only
-      // - s[i] has 16 significant bits max
-      // 32 + max(5, 16) = 48 < 52 => no overflow
-      for (var i = n-1; i >= 0; --i) {
-        // calculate s[i] * pow(31, n-i-1)
-        res = res + (instance["charCodeAt"](i) * mul | 0) | 0
-        // update mul for next iteration
-        mul = mul * 31 | 0
-      }
-
-      return res;
-    } else if (typeof instance === "number") {
-      return instance | 0;
-    } else if (typeof instance === "boolean") {
-      return instance ? 1231 : 1237;
-    } else if (instance === void 0) {
-      return 0;
-    } else {
-      return 42; // TODO
+    switch (typeof instance) {
+      case "string":
+        // calculate hash of String as specified by JavaDoc
+        var n = instance["length"];
+        var res = 0;
+        var mul = 1; // holds pow(31, n-i-1)
+        // multiplications with `mul` do never overflow the 52 bits of precision:
+        // - we truncate `mul` to 32 bits on each operation
+        // - 31 has 5 significant bits only
+        // - s[i] has 16 significant bits max
+        // 32 + max(5, 16) = 48 < 52 => no overflow
+        for (var i = n-1; i >= 0; --i) {
+          // calculate s[i] * pow(31, n-i-1)
+          res = res + (instance["charCodeAt"](i) * mul | 0) | 0
+          // update mul for next iteration
+          mul = mul * 31 | 0
+        }
+        return res;
+      case "number":
+        return instance | 0;
+      case "boolean":
+        return instance ? 1231 : 1237;
+      case "undefined":
+        return 0;
+      default:
+        if (ScalaJS.isScalaJSObject(instance) || instance === null)
+          return instance.hashCode__I();
+        else
+          return 42; // TODO?
     }
   },
 
