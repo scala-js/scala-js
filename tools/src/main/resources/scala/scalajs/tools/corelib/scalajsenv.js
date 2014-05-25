@@ -414,38 +414,39 @@ var ScalaJS = {
       ScalaJS.throwClassCastException(v, "java.lang.Double");
   },
 
-  // Boxes - inline all the way through java.lang.X.valueOf()
+  // Boxes
 
   bC: function(value) {
     return new ScalaJS.c.jl_Character().init___C(value);
   },
 
-  // Unboxes - inline all the way through obj.xValue()
+  // Unboxes
 
   uZ: function(value) {
-    return null === value ? false : ScalaJS.asBoolean(value);
+    return ScalaJS.asBoolean(value) || false;
   },
   uC: function(value) {
     return null === value ? 0 : ScalaJS.as.jl_Character(value).value$1;
   },
   uB: function(value) {
-    return null === value ? 0 : ScalaJS.asByte(value);
+    return ScalaJS.asByte(value) || 0;
   },
   uS: function(value) {
-    return null === value ? 0 : ScalaJS.asShort(value);
+    return ScalaJS.asShort(value) || 0;
   },
   uI: function(value) {
-    return null === value ? 0 : ScalaJS.asInt(value);
+    return ScalaJS.asInt(value) || 0;
   },
   uJ: function(value) {
-    return null === value ?
-      ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong() :
-      ScalaJS.as.sjsr_RuntimeLong(value);
+    return ScalaJS.as.sjsr_RuntimeLong(value) ||
+      ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong();
   },
   uF: function(value) {
+    // NaN || 0.0 is unfortunately 0.0
     return null === value ? 0.0 : ScalaJS.asFloat(value);
   },
   uD: function(value) {
+    // NaN || 0.0 is unfortunately 0.0
     return null === value ? 0.0 : ScalaJS.asDouble(value);
   }
 }
