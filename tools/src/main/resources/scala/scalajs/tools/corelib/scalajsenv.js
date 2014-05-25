@@ -354,11 +354,11 @@ var ScalaJS = {
   // is/as for hijacked boxed classes (the non-trivial ones)
 
   isByte: function(v) {
-    return ScalaJS.isInt(v) && (v >= -128) && (v < 128);
+    return (v << 24 >> 24) === v;
   },
 
   isShort: function(v) {
-    return ScalaJS.isInt(v) && (v >= -32768) && (v < 32768);
+    return (v << 16 >> 16) === v;
   },
 
   isInt: function(v) {
