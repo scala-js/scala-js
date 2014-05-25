@@ -460,7 +460,7 @@ this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 // Type data constructors
 
 /** @constructor */
-ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun) {
+ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
   // Runtime support
   this.constr = undefined;
   this.parentData = undefined;
@@ -471,8 +471,6 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun
   this._classOf = undefined;
   this._arrayOf = undefined;
   this.isArrayOf = function(obj, depth) { return false; };
-  if (boxFun)
-    this.boxValue = boxFun;
 
   // java.lang.Class support
   this["name"] = displayName;
@@ -633,9 +631,6 @@ ScalaJS.ClassTypeData.prototype["newArrayOfThisClass"] = function(lengths) {
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
 
-// Boxes a value. This is identity, except for primitive value types
-ScalaJS.ClassTypeData.prototype.boxValue = function(v) { return v; }
-
 ScalaJS.PrimitiveTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
@@ -643,7 +638,7 @@ ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
 ScalaJS.d.V = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
 ScalaJS.d.Z = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char", ScalaJS.bC);
+ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char");
 ScalaJS.d.B = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
 ScalaJS.d.S = new ScalaJS.PrimitiveTypeData(0, "S", "short");
 ScalaJS.d.I = new ScalaJS.PrimitiveTypeData(0, "I", "int");
