@@ -193,16 +193,22 @@ var ScalaJS = {
       throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
   },
 
-  objectFinalize: function(instance) {
-    // TODO?
-  },
-
   objectNotify: function(instance) {
-    // TODO?
+    // final and no-op in java.lang.Object
+    if (instance === null)
+      instance.notify__V();
   },
 
   objectNotifyAll: function(instance) {
-    // TODO?
+    // final and no-op in java.lang.Object
+    if (instance === null)
+      instance.notifyAll__V();
+  },
+
+  objectFinalize: function(instance) {
+    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+      instance.finalize__V();
+    // else no-op
   },
 
   objectEquals: function(instance, rhs) {
