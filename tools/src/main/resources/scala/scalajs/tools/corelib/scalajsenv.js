@@ -438,7 +438,9 @@ var ScalaJS = {
     return null === value ? 0 : ScalaJS.asInt(value);
   },
   uJ: function(value) {
-    return null === value ? 0 : ScalaJS.as.sjsr_RuntimeLong(value);
+    return null === value ?
+      ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong() :
+      ScalaJS.as.sjsr_RuntimeLong(value);
   },
   uF: function(value) {
     return null === value ? 0.0 : ScalaJS.asFloat(value);
