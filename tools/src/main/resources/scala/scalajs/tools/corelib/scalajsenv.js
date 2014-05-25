@@ -537,9 +537,6 @@ ScalaJS.ArrayTypeData = function(componentData) {
 
   /** @constructor */
   var ArrayClass = function(arg) {
-    ScalaJS.c.O.call(this);
-    ScalaJS.c.O.prototype.init___.call(this);
-
     if (typeof(arg) === "number") {
       // arg is the length of the array
       this.u = new Array(arg);
