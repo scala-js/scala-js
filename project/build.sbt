@@ -5,6 +5,8 @@ resolvers += Resolver.url(
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.1")
 
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
+
 libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
 libraryDependencies += "org.mozilla" % "rhino" % "1.7R4"

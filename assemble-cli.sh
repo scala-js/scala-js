@@ -1,0 +1,89 @@
+#! /bin/sh
+
+set -e
+
+# Assembles the CLI tools for a given Scala binary version.
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $(basename $0) <binary scala version> [noclean|nobuild]" >&2
+    exit 1
+fi
+
+BINVER=$1
+case $BINVER in
+    2.10)
+        FULLVERS="2.10.2 2.10.3 2.10.4"
+        BASEVER="2.10.4"
+        ;;
+    2.11)
+        FULLVERS="2.11.0 2.11.1"
+        BASEVER="2.11.1"
+        ;;
+    *)
+        echo "Invalid Scala version $BINVER" >&2
+        exit 2
+esac
+
+if [ "$2" != "nobuild" ]; then
+    # Subshell to generate SBT commands
+    (
+        if [ "$2" != "noclean" ]; then
+            echo "clean"
+        fi
+
+        # Assemble cli-tools
+        echo "project scalajs-cli"
+        echo "++$BASEVER"
+        echo "assembly"
+
+        # Package Scala.js library
+        echo "project scalajs-library"
+        echo "++$BASEVER"
+        echo "package"
+
+        # Package compiler
+        echo "project scalajs-compiler"
+        for i in $FULLVERS; do
+            echo "++$i"
+            echo "package"
+        done
+    ) | sbt || exit $?
+fi
+
+# Copy stuff to right location
+BASE=$(dirname $0)
+
+# Target directories
+TRG_BASE="$BASE/cli/pack"
+TRG_VER="$TRG_BASE/$BINVER"
+TRG_LIB="$TRG_VER/lib"
+TRG_BIN="$TRG_VER/bin"
+
+rm -rf $TRG_VER
+mkdir -p $TRG_LIB
+mkdir -p $TRG_BIN
+
+SCALAJS_VER=$(ls $BASE/cli/target/scala-$BINVER/scalajs-cli-assembly_$BINVER-*.jar | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?')
+
+cp $BASE/cli/target/scala-$BINVER/scalajs-cli-assembly_$BINVER-$SCALAJS_VER.jar $TRG_LIB
+cp $BASE/library/target/scala-$BINVER/scalajs-library_$BINVER-$SCALAJS_VER.jar $TRG_LIB
+
+for i in $FULLVERS; do
+    cp $BASE/compiler/target/scala-$BINVER/scalajs-compiler_$i-$SCALAJS_VER.jar $TRG_LIB
+done
+
+PAT="s/@SCALA_BIN_VER@/$BINVER/; s/@SCALAJS_VER@/$SCALAJS_VER/"
+PREF=$BASE/cli/src/main/resources/
+for i in $PREF*; do
+    sed "$PAT" $i > $TRG_BIN/${i#$PREF}
+done
+
+# Tar and zip the whole thing up
+OUT=scalajs_$BINVER-$SCALAJS_VER
+
+tar cfz $TRG_BASE/$OUT.tgz --exclude '*~' -C $TRG_VER lib bin
+(
+  if [ -f $OUT.zip ]; then rm $OUT.zip; fi
+  cd $TRG_VER
+  zip -r ../$OUT.zip -r lib bin -x '*~'
+)
