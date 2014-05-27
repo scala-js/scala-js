@@ -18,11 +18,10 @@ abstract class JSEnvTest {
       val code    = new MemVirtualJSFile("testScript.js").withContent(codeStr)
 
       val emptyCP = PartialClasspath.empty.resolve()
-      val res = newJSEnv.runJS(emptyCP, code, logger, console)
+      newJSEnv.runJS(emptyCP, code, logger, console)
 
       val log = logger.getLog
 
-      assertTrue("VM shouldn't fail on snippet. Msg: " + res, res.isEmpty)
       assertTrue("VM shouldn't produce log. Log:\n" +
           log.mkString("\n"), log.isEmpty)
       assertEquals("Output should match", expectedOut, console.getLog)

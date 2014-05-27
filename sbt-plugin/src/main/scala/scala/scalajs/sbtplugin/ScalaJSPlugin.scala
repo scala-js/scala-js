@@ -437,14 +437,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     log.debug(s"with JSEnv of type ${env.getClass()}")
     log.debug(s"with classpath of type ${cp.getClass}")
 
-    try {
-      // Actually run code
-      env.runJS(cp, launcher, log, ConsoleJSConsole)
-    } catch {
-      case NonFatal(e) =>
-        log.error("Failed to run JS env ($env):")
-        log.trace(e)
-    }
+    // Actually run code
+    env.runJS(cp, launcher, log, ConsoleJSConsole)
   }
 
   private def memLauncher(mainCl: String) = {

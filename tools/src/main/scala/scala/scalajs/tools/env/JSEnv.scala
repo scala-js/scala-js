@@ -14,9 +14,7 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 
 trait JSEnv {
-  /** Run the code in the virtual file. Return Some(<error message>) if failed
-   *  None otherwise
-   */
+  /** Run the code in the virtual file. Throw if failure */
   def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): Option[String]
+      logger: Logger, console: JSConsole): Unit
 }

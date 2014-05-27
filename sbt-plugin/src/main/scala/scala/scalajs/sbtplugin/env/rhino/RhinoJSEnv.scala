@@ -27,7 +27,7 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
    *  `code` is called.
    */
   def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): Option[String] = {
+      logger: Logger, console: JSConsole): Unit = {
 
     val context = Context.enter()
     try {
@@ -79,12 +79,11 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         }
 
         context.evaluateFile(scope, code)
-
-        None
       } catch {
         case e: RhinoException =>
+          // Trace here, since we want to be in the context to trace.
           logger.trace(e)
-          Some(s"Exception while running JS code: ${e.getMessage}")
+          sys.error(s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
       Context.exit()
