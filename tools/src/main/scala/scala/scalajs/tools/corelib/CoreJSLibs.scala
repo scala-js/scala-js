@@ -21,10 +21,7 @@ import scala.collection.immutable.Seq
 
 object CoreJSLibs {
 
-  private val libNames = Seq(
-      "scalajsenv.js",
-      "javalangObject.js",
-      "javalangString.js")
+  private val libNames = Seq("scalajsenv.js")
 
   lazy val libs: Seq[VirtualJSFile] = loadLibs()
 

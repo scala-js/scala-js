@@ -87,8 +87,8 @@ class ScalaJSOptimizer {
 
   private def readIRAndCreateAnalyzer(ir: Traversable[VirtualScalaJSIRFile],
       logger: Logger): Analyzer = {
-    val userInfo = ir.map(persistentState.getPersistentIRFile(_).info)
-    new Analyzer(logger, CoreData.CoreClassesInfo ++ userInfo)
+    val infos = ir.map(persistentState.getPersistentIRFile(_).info).toSeq
+    new Analyzer(logger, infos)
   }
 
   private def checkIR(analyzer: Analyzer, logger: Logger): Unit = {

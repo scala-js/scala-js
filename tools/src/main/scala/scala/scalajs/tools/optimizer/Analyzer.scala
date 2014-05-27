@@ -70,9 +70,9 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
   case object FromExports extends From
   case object FromManual extends From
 
-  private val HijackedBoxedClassNames = Set(
+  private val HijackedClassNames = Set(
       "sr_BoxedUnit", "jl_Boolean", "jl_Byte", "jl_Short", "jl_Integer",
-      "jl_Long", "jl_Float", "jl_Double"
+      "jl_Long", "jl_Float", "jl_Double", "T"
   )
 
   var allAvailable: Boolean = true
@@ -102,6 +102,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
   linkClasses()
 
   def linkClasses(): Unit = {
+    if (!classInfos.contains(ir.Definitions.ObjectClass))
+      sys.error("Fatal error: could not find java.lang.Object on the classpath")
     for (classInfo <- classInfos.values.toList)
       classInfo.linkClasses()
   }
@@ -150,7 +152,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
     BoxesRunTime.accessModule()
     BoxesRunTime.callMethod("equals__O__O__Z")
 
-    for (hijacked <- HijackedBoxedClassNames)
+    for (hijacked <- HijackedClassNames)
       lookupClass(hijacked).accessData()
   }
 
@@ -181,11 +183,11 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
     val isInterface = data.kind == ClassKind.Interface
     val isImplClass = data.kind == ClassKind.TraitImpl
     val isRawJSType = data.kind == ClassKind.RawJSType
-    val isHijackedBoxedClass = HijackedBoxedClassNames.contains(encodedName)
+    val isHijackedClass = HijackedClassNames.contains(encodedName)
     val isClass = !isInterface && !isImplClass && !isRawJSType
     val isExported = data.isExported
 
-    val hasInstantiation = isClass && !isHijackedBoxedClass
+    val hasInstantiation = isClass && !isHijackedClass
     val hasData = !isImplClass
 
     var superClass: ClassInfo = _
