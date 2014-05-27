@@ -6,7 +6,7 @@
 package helloworld
 
 import scala.scalajs.js
-import js.annotation.{ JSName, JSExport }
+import js.annotation.JSName
 
 object HelloWorld extends js.JSApp {
   def main() {

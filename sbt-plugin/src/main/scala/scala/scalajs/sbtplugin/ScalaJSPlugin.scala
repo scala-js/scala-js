@@ -10,7 +10,7 @@
 package scala.scalajs.sbtplugin
 
 import sbt._
-import sbt.inc.{ IncOptions, ClassfileManager }
+import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 
 import Implicits._
@@ -34,6 +34,8 @@ import scala.scalajs.sbtplugin.testing.{TestFramework, JSClasspathLoader}
 import scala.util.Try
 import scala.util.control.NonFatal
 
+import java.nio.charset.Charset
+
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = ScalaJSVersions.current
   val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
@@ -56,11 +58,20 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val packageExportedProductsJS = taskKey[PartialClasspath](
         "Package the .js files of the project")
 
+    val packageLauncher = taskKey[File](
+        "Writes the persistent launcher file. Fails if the mainClass is ambigous")
+
+    val packageJSDependencies = taskKey[File](
+        "Packages all dependencies of the preLink classpath in a single file")
+
     val preLinkClasspath = taskKey[CompleteIRClasspath](
         "Completely resolved classpath just after compilation")
 
     val execClasspath = taskKey[CompleteClasspath](
         "The classpath used for running and testing")
+
+    val launcher = taskKey[VirtualJSFile](
+        "Code used to run")
 
     val fullOptJSPrettyPrint = settingKey[Boolean](
         "Pretty-print the output of fullOptJS")
@@ -95,6 +106,10 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val jsDependencies = settingKey[Seq[JSModuleID]](
         "JavaScript libraries this project depends upon")
+
+    val persistLauncher = settingKey[Boolean](
+        "Tell optimize/package tasks to write the laucher file to disk. " +
+        "If this is set, your project may only have a single mainClass or you must explicitly set it")
 
     // Task keys to re-wire sources and run with other VM
     val packageStage = taskKey[Unit]("Run stuff after packageJS")
@@ -226,6 +241,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
         cps.reduceLeft(_ append _).resolve()
       },
+      packageJS <<=
+        packageJS.dependsOn(packageJSDependencies, packageLauncher),
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
@@ -257,6 +274,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
                 checkIR = checkScalaJSIR.value),
             s.log)
       },
+      fastOptJS <<=
+        fastOptJS.dependsOn(packageJSDependencies, packageLauncher),
 
       clean <<= clean.dependsOn(Def.task {
         // have clean reset incremental optimizer state
@@ -289,6 +308,46 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
                 prettyPrint = fullOptJSPrettyPrint.value,
                 relSourceMapBase),
             s.log)
+      },
+
+      artifactPath in packageLauncher :=
+        ((crossTarget in packageLauncher).value /
+            ((moduleName in packageLauncher).value + "-launcher.js")),
+
+      skip in packageLauncher := !persistLauncher.value,
+
+      packageLauncher <<= Def.taskDyn {
+        if ((skip in packageLauncher).value)
+          Def.task((artifactPath in packageLauncher).value)
+        else Def.task {
+          mainClass.value map { mainCl =>
+            val file = (artifactPath in packageLauncher).value
+            IO.write(file, s"$mainCl().main();\n", Charset.forName("UTF-8"))
+            file
+          } getOrElse {
+            error("Cannot write launcher file, since there is no or multiple mainClasses")
+          }
+        }
+      },
+
+      artifactPath in packageJSDependencies :=
+        ((crossTarget in packageJSDependencies).value /
+            ((moduleName in packageJSDependencies).value + "-jsdeps.js")),
+
+      packageJSDependencies <<= Def.taskDyn {
+        if ((skip in packageJSDependencies).value)
+          Def.task((artifactPath in packageJSDependencies).value)
+        else Def.task {
+          val cp = preLinkClasspath.value
+          val output = (artifactPath in packageJSDependencies).value
+
+          import ScalaJSPackager._
+          (new ScalaJSPackager).packageJS(cp.jsLibs,
+               OutputConfig(WritableFileVirtualJSFile(output)),
+               streams.value.log)
+
+          output
+        }
       },
 
       compile <<= compile.dependsOn(Def.task {
@@ -331,7 +390,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       // Give tasks ability to check we are not forking at build reading time
       ensureUnforked := {
         if (fork.value)
-          sys.error("Scala.js cannot be run in a forked JVM")
+          error("Scala.js cannot be run in a forked JVM")
         else
           true
       },
@@ -356,12 +415,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       tags in fullOptStage := Seq()
   )
 
-  /** Run a class in a given environment */
-  def jsRun(env: JSEnv, cp: CompleteClasspath, mainCl: String, log: Logger) = {
-    val launcher = {
-      new MemVirtualJSFile("Generated launcher file")
-        .withContent(s"$mainCl().main();")
-    }
+  /** Run a class in a given environment using a given launcher */
+  private def jsRun(env: JSEnv, cp: CompleteClasspath, mainCl: String,
+      launcher: VirtualJSFile, log: Logger) = {
 
     log.info("Running " + mainCl)
     log.debug(s"with JSEnv of type ${env.getClass()}")
@@ -377,14 +433,46 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     }
   }
 
+  private def memLauncher(mainCl: String) = {
+    new MemVirtualJSFile("Generated launcher file")
+      .withContent(s"$mainCl().main();")
+  }
+
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
+      mainClass in launcher := (mainClass in run).value,
+      launcher <<= Def.taskDyn {
+        if (persistLauncher.value) Def.task {
+          FileVirtualJSFile(packageLauncher.value)
+        } else Def.task {
+          val mainCl = (mainClass in launcher).value.getOrElse(
+              error("No main class detected."))
+          memLauncher(mainCl)
+        }
+      },
+
+      discoveredMainClasses ++= {
+        import xsbt.api.{Discovered, Discovery}
+
+        val jsApp = "scala.scalajs.js.JSApp"
+
+        def isJSApp(discovered: Discovered) =
+          discovered.isModule && discovered.baseClasses.contains(jsApp)
+
+        Discovery(Set(jsApp), Set.empty)(Tests.allDefs(compile.value)) collect {
+          case (definition, discovered) if isJSApp(discovered) =>
+            definition.name
+        }
+      },
+
       run <<= Def.inputTask {
         // use assert to prevent warning about pure expr in stat pos
         assert(ensureUnforked.value)
 
-        val mainCl = mainClass.value getOrElse error("No main class detected.")
-        jsRun(jsEnv.value, execClasspath.value, mainCl, streams.value.log)
+        val mainCl =
+          (mainClass in run).value getOrElse error("No main class detected.")
+        jsRun(jsEnv.value, execClasspath.value, mainCl,
+            launcher.value, streams.value.log)
       },
 
       runMain <<= {
@@ -400,7 +488,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
           assert(ensureUnforked.value)
 
           val mainCl = parser.parsed._1
-          jsRun(jsEnv.value, execClasspath.value, mainCl, streams.value.log)
+          jsRun(jsEnv.value, execClasspath.value, mainCl,
+              memLauncher(mainCl), streams.value.log)
         }
       }
   )
@@ -500,7 +589,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
           packageExportedProductsJS,
-          fastOptJS, fullOptJS) map { packageJSTask =>
+          fastOptJS, fullOptJS, packageLauncher,
+          packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
   )
@@ -538,6 +628,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       relativeSourceMaps   := false,
       fullOptJSPrettyPrint := false,
       requiresDOM          := false,
+      persistLauncher      := false,
+
+      skip in packageJSDependencies := true,
 
       preLinkJSEnv  := new RhinoJSEnv(withDOM = requiresDOM.value),
       postLinkJSEnv := {

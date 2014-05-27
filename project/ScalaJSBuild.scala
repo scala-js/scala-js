@@ -537,7 +537,8 @@ object ScalaJSBuild extends Build {
       base = file("examples") / "helloworld",
       settings = exampleSettings ++ Seq(
           name := "Hello World - Scala.js example",
-          moduleName := "helloworld"
+          moduleName := "helloworld",
+          persistLauncher := true
       )
   ).dependsOn(compiler % "plugin")
 
