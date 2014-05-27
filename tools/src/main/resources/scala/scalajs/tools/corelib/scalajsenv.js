@@ -167,23 +167,26 @@ var ScalaJS = {
   },
 
   objectGetClass: function(instance) {
-    if (ScalaJS.is.sjsr_RuntimeLong(instance))
-      return ScalaJS.d.jl_Long.getClassOf();
-    else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.getClass__jl_Class();
-    else if (typeof(instance) === "string")
-      return ScalaJS.d.T.getClassOf();
-    else if (typeof(instance) === "number") {
-      if (ScalaJS.isInt(instance))
-        return ScalaJS.d.jl_Integer.getClassOf();
-      else
-        return ScalaJS.d.jl_Double.getClassOf();
-    } else if (typeof(instance) === "boolean")
-      return ScalaJS.d.jl_Boolean.getClassOf();
-    else if (instance === void 0)
-      return ScalaJS.d.sr_BoxedUnit.getClassOf();
-    else
-      return null; // Exception?
+    switch (typeof instance) {
+      case "string":
+        return ScalaJS.d.T.getClassOf();
+      case "number":
+        if (ScalaJS.isInt(instance))
+          return ScalaJS.d.jl_Integer.getClassOf();
+        else
+          return ScalaJS.d.jl_Double.getClassOf();
+      case "boolean":
+        return ScalaJS.d.jl_Boolean.getClassOf();
+      case "undefined":
+        return ScalaJS.d.sr_BoxedUnit.getClassOf();
+      default:
+        if (ScalaJS.is.sjsr_RuntimeLong(instance))
+          return ScalaJS.d.jl_Long.getClassOf();
+        else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+          return instance.getClass__jl_Class();
+        else
+          return null; // Exception?
+    }
   },
 
   objectClone: function(instance) {
@@ -193,16 +196,22 @@ var ScalaJS = {
       throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
   },
 
-  objectFinalize: function(instance) {
-    // TODO?
-  },
-
   objectNotify: function(instance) {
-    // TODO?
+    // final and no-op in java.lang.Object
+    if (instance === null)
+      instance.notify__V();
   },
 
   objectNotifyAll: function(instance) {
-    // TODO?
+    // final and no-op in java.lang.Object
+    if (instance === null)
+      instance.notifyAll__V();
+  },
+
+  objectFinalize: function(instance) {
+    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+      instance.finalize__V();
+    // else no-op
   },
 
   objectEquals: function(instance, rhs) {
@@ -224,34 +233,35 @@ var ScalaJS = {
   },
 
   objectHashCode: function(instance) {
-    if (ScalaJS.isScalaJSObject(instance))
-      return instance.hashCode__I();
-    else if (typeof(instance) === "string") {
-      // calculate hash of String as specified by JavaDoc
-      var n = instance["length"];
-      var res = 0;
-      var mul = 1; // holds pow(31, n-i-1)
-      // multiplications with `mul` do never overflow the 52 bits of precision:
-      // - we truncate `mul` to 32 bits on each operation
-      // - 31 has 5 significant bits only
-      // - s[i] has 16 significant bits max
-      // 32 + max(5, 16) = 48 < 52 => no overflow
-      for (var i = n-1; i >= 0; --i) {
-        // calculate s[i] * pow(31, n-i-1)
-        res = res + (instance["charCodeAt"](i) * mul | 0) | 0
-        // update mul for next iteration
-        mul = mul * 31 | 0
-      }
-
-      return res;
-    } else if (typeof instance === "number") {
-      return instance | 0;
-    } else if (typeof instance === "boolean") {
-      return instance ? 1231 : 1237;
-    } else if (instance === void 0) {
-      return 0;
-    } else {
-      return 42; // TODO
+    switch (typeof instance) {
+      case "string":
+        // calculate hash of String as specified by JavaDoc
+        var n = instance["length"];
+        var res = 0;
+        var mul = 1; // holds pow(31, n-i-1)
+        // multiplications with `mul` do never overflow the 52 bits of precision:
+        // - we truncate `mul` to 32 bits on each operation
+        // - 31 has 5 significant bits only
+        // - s[i] has 16 significant bits max
+        // 32 + max(5, 16) = 48 < 52 => no overflow
+        for (var i = n-1; i >= 0; --i) {
+          // calculate s[i] * pow(31, n-i-1)
+          res = res + (instance["charCodeAt"](i) * mul | 0) | 0
+          // update mul for next iteration
+          mul = mul * 31 | 0
+        }
+        return res;
+      case "number":
+        return instance | 0;
+      case "boolean":
+        return instance ? 1231 : 1237;
+      case "undefined":
+        return 0;
+      default:
+        if (ScalaJS.isScalaJSObject(instance) || instance === null)
+          return instance.hashCode__I();
+        else
+          return 42; // TODO?
     }
   },
 
@@ -354,11 +364,11 @@ var ScalaJS = {
   // is/as for hijacked boxed classes (the non-trivial ones)
 
   isByte: function(v) {
-    return ScalaJS.isInt(v) && (v >= -128) && (v < 128);
+    return (v << 24 >> 24) === v;
   },
 
   isShort: function(v) {
-    return ScalaJS.isInt(v) && (v >= -32768) && (v < 32768);
+    return (v << 16 >> 16) === v;
   },
 
   isInt: function(v) {
@@ -414,36 +424,39 @@ var ScalaJS = {
       ScalaJS.throwClassCastException(v, "java.lang.Double");
   },
 
-  // Boxes - inline all the way through java.lang.X.valueOf()
+  // Boxes
 
   bC: function(value) {
     return new ScalaJS.c.jl_Character().init___C(value);
   },
 
-  // Unboxes - inline all the way through obj.xValue()
+  // Unboxes
 
   uZ: function(value) {
-    return null === value ? false : ScalaJS.asBoolean(value);
+    return ScalaJS.asBoolean(value) || false;
   },
   uC: function(value) {
     return null === value ? 0 : ScalaJS.as.jl_Character(value).value$1;
   },
   uB: function(value) {
-    return null === value ? 0 : ScalaJS.asByte(value);
+    return ScalaJS.asByte(value) || 0;
   },
   uS: function(value) {
-    return null === value ? 0 : ScalaJS.asShort(value);
+    return ScalaJS.asShort(value) || 0;
   },
   uI: function(value) {
-    return null === value ? 0 : ScalaJS.asInt(value);
+    return ScalaJS.asInt(value) || 0;
   },
   uJ: function(value) {
-    return null === value ? 0 : ScalaJS.as.sjsr_RuntimeLong(value);
+    return ScalaJS.as.sjsr_RuntimeLong(value) ||
+      ScalaJS.m.sjsr_RuntimeLong().zero__sjsr_RuntimeLong();
   },
   uF: function(value) {
+    // NaN || 0.0 is unfortunately 0.0
     return null === value ? 0.0 : ScalaJS.asFloat(value);
   },
   uD: function(value) {
+    // NaN || 0.0 is unfortunately 0.0
     return null === value ? 0.0 : ScalaJS.asDouble(value);
   }
 }
@@ -457,7 +470,7 @@ this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 // Type data constructors
 
 /** @constructor */
-ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun) {
+ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
   // Runtime support
   this.constr = undefined;
   this.parentData = undefined;
@@ -468,8 +481,6 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName, boxFun
   this._classOf = undefined;
   this._arrayOf = undefined;
   this.isArrayOf = function(obj, depth) { return false; };
-  if (boxFun)
-    this.boxValue = boxFun;
 
   // java.lang.Class support
   this["name"] = displayName;
@@ -526,9 +537,6 @@ ScalaJS.ArrayTypeData = function(componentData) {
 
   /** @constructor */
   var ArrayClass = function(arg) {
-    ScalaJS.c.O.call(this);
-    ScalaJS.c.O.prototype.init___.call(this);
-
     if (typeof(arg) === "number") {
       // arg is the length of the array
       this.u = new Array(arg);
@@ -630,9 +638,6 @@ ScalaJS.ClassTypeData.prototype["newArrayOfThisClass"] = function(lengths) {
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
 
-// Boxes a value. This is identity, except for primitive value types
-ScalaJS.ClassTypeData.prototype.boxValue = function(v) { return v; }
-
 ScalaJS.PrimitiveTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
@@ -640,7 +645,7 @@ ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
 
 ScalaJS.d.V = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
 ScalaJS.d.Z = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char", ScalaJS.bC);
+ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char");
 ScalaJS.d.B = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
 ScalaJS.d.S = new ScalaJS.PrimitiveTypeData(0, "S", "short");
 ScalaJS.d.I = new ScalaJS.PrimitiveTypeData(0, "I", "int");

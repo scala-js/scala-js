@@ -184,5 +184,51 @@ object RegressionTest extends JasmineTest {
       expect(x == y).toBeTruthy
       expect(y == x).toBeTruthy
     }
+
+    it("should unbox null to the zero of types - #674") {
+      class Box[A] {
+        var value: A = _
+      }
+      def zero[A]: A = new Box[A].value
+
+      /* Note: the same shape of test for Unit does not work, but it seems to
+       * be a problem in scalac because it does not work on the JVM either.
+       */
+
+      val bool = zero[Boolean]
+      expect((bool: Any).isInstanceOf[Boolean]).toBeTruthy
+      expect(bool == false).toBeTruthy
+
+      val char = zero[Char]
+      expect((char: Any).isInstanceOf[Char]).toBeTruthy
+      expect(char == '\u0000').toBeTruthy
+
+      val byte = zero[Byte]
+      expect((byte: Any).isInstanceOf[Byte]).toBeTruthy
+      expect(byte == 0.toByte).toBeTruthy
+
+      val short = zero[Short]
+      expect((short: Any).isInstanceOf[Short]).toBeTruthy
+      expect(short == 0.toShort).toBeTruthy
+
+      val int = zero[Int]
+      expect((int: Any).isInstanceOf[Int]).toBeTruthy
+      expect(int == 0).toBeTruthy
+
+      val long = zero[Long]
+      expect((long: Any).isInstanceOf[Long]).toBeTruthy
+      expect(long == 0L).toBeTruthy
+
+      val float = zero[Float]
+      expect((float: Any).isInstanceOf[Float]).toBeTruthy
+      expect(float == 0.0f).toBeTruthy
+
+      val double = zero[Double]
+      expect((double: Any).isInstanceOf[Double]).toBeTruthy
+      expect(double == 0.0).toBeTruthy
+
+      val ref = zero[AnyRef]
+      expect(ref == null).toBeTruthy
+    }
   }
 }
