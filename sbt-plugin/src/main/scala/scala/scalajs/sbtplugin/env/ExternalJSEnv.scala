@@ -33,7 +33,7 @@ abstract class ExternalJSEnv(
     * an error message.
     */
   def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-    logger: Logger, console: JSConsole): Option[String] = {
+    logger: Logger, console: JSConsole): Unit = {
 
     val runJSArgs = RunJSArgs(classpath, code, logger, console)
 
@@ -57,10 +57,8 @@ abstract class ExternalJSEnv(
 
     // Get return value and return
     val retVal = vmInst.exitValue
-
-    if (retVal == 0) None
-    else Some(s"$vmName exited with code $retVal")
-
+    if (retVal != 0)
+      sys.error(s"$vmName exited with code $retVal")
   }
 
   /** send a bunch of JS files to an output stream */

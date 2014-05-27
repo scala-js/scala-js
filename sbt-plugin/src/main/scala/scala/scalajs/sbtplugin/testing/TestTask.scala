@@ -40,12 +40,8 @@ class TestTask(
         loggers, new Events(taskDef), classpath, options.noSourceMap)
     val logger = new SbtTestLoggerAccWrapper(loggers)
 
-    try {
-      // Actually execute test
-      env.runJS(classpath, runnerFile, logger, testConsole)
-    } catch {
-      case NonFatal(e) => logger.trace(e)
-    }
+    // Actually execute test
+    env.runJS(classpath, runnerFile, logger, testConsole)
 
     Array.empty
   }
