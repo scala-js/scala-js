@@ -116,6 +116,7 @@ class ScalaJSOptimizer {
         new JSFileBuilder(output.name, output.contentWriter)
     }
 
+    builder.addLine("'use strict';")
     CoreJSLibs.libs.foreach(builder.addFile _)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {

@@ -95,6 +95,7 @@ class ScalaJSPackager {
       logger: Logger): Unit = {
 
     val builder = mkBuilder(outCfg)
+    builder.addLine("'use strict';")
     js.foreach(builder.addFile _)
     builder.complete()
     builder.closeWriters()
@@ -105,6 +106,7 @@ class ScalaJSPackager {
       addCoreJSLib: Boolean = false): Unit = {
 
     val builder = mkBuilder(outCfg)
+    builder.addLine("'use strict';")
 
     if (addCoreJSLib)
       CoreJSLibs.libs.foreach(builder.addFile _)
