@@ -28,13 +28,13 @@ object DictionaryTest extends JasmineTest {
       expect(obj("bar")).toEqual("foobar")
     }
 
-    // This fails on fullOpt. We don't know why. Filed as #461
-    xit("should behave as specified when deleting a non-configurable property - #461") {
+    // This doesn't work on Rhino due to lack of full strict mode support - #679
+    xit("should behave as specified when deleting a non-configurable property - #461 - #679") {
       val obj = js.Dictionary.empty[js.Any]
       js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
           js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
       expect(obj("nonconfig")).toEqual(4)
-      expect(obj.delete("nonconfig")).toBeFalsy
+      expect(() => obj.delete("nonconfig")).toThrow
       expect(obj("nonconfig")).toEqual(4)
     }
 
