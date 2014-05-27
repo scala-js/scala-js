@@ -588,6 +588,19 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
+  lazy val noIrCheckTest: Project = Project(
+      id = "scalajs-no-ir-check-test",
+      base = file("no-ir-check-test"),
+      settings = defaultSettings ++ myScalaJSSettings ++ (
+          useLibraryButDoNotDependOnIt ++
+          useJasmineTestFrameworkButDoNotDependOnIt
+      ) ++ Seq(
+          name := "Scala.js not IR checked tests",
+          checkScalaJSIR := false,
+          publishArtifact in Compile := false
+     )
+  ).dependsOn(compiler % "plugin")
+
   lazy val partest: Project = Project(
       id = "scalajs-partest",
       base = file("partest"),

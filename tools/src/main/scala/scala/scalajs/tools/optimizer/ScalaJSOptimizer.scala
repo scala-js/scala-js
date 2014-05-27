@@ -124,12 +124,8 @@ class ScalaJSOptimizer {
       else lhs.encodedName.compareTo(rhs.encodedName) < 0
     }
 
-    for {
-      classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
-      if classInfo.isNeededAtAll
-      persistentFile <- persistentState.encodedNameToPersistentFile.get(
-          classInfo.encodedName)
-    } {
+    def addPersistentFile(classInfo: analyzer.ClassInfo,
+        persistentFile: PersistentIRFile) = {
       import ir.Trees._
       import ir.{ScalaJSClassEmitter => Emitter}
       import ir.JSDesugaring.{desugarJavaScript => desugar}
@@ -204,6 +200,26 @@ class ScalaJSOptimizer {
         addTree(d.classExports.getOrElseUpdate(
             desugar(Emitter.genClassExports(classDef))))
       }
+    }
+
+
+    for {
+      classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
+      if classInfo.isNeededAtAll
+    } {
+      val optPersistentFile =
+        persistentState.encodedNameToPersistentFile.get(classInfo.encodedName)
+
+      // if we have a persistent file, this is not a dummy class
+      optPersistentFile.fold {
+        if (classInfo.isAnySubclassInstantiated) {
+          // Subclass will emit constructor that references this dummy class.
+          // Therefore, we need to emit a dummy parent.
+          val name = classInfo.encodedName
+          builder.addLine("/** @constructor (dummy parent) */")
+          builder.addLine(s"ScalaJS.h.$name = function() {};")
+        }
+      } { pf => addPersistentFile(classInfo, pf) }
     }
 
     builder.complete()
