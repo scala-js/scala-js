@@ -232,6 +232,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Debugger() =>
         env
 
+      case JSDelete(obj, prop) =>
+        typecheckExpect(obj, env, DynType)
+        typecheckExpr(prop, env)
+        env
+
       case _ =>
         typecheck(tree, env)
         env
@@ -502,10 +507,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(fun, env, DynType)
         for (arg <- args)
           typecheckExpr(arg, env)
-
-      case JSDelete(obj, prop) =>
-        typecheckExpect(obj, env, DynType)
-        typecheckExpr(prop, env)
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpect(lhs, env, DynType)
