@@ -22,7 +22,7 @@ object DictionaryTest extends JasmineTest {
 
       expect(obj("foo")).toEqual(42)
       expect(obj("bar")).toEqual("foobar")
-      expect(obj.delete("foo")).toBeTruthy
+      obj.delete("foo")
       expect(obj("foo")).toBeUndefined
       expect(obj.asInstanceOf[js.Object].hasOwnProperty("foo")).toBeFalsy
       expect(obj("bar")).toEqual("foobar")

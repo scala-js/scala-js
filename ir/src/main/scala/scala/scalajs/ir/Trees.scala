@@ -367,7 +367,7 @@ object Trees {
   }
 
   case class JSDelete(obj: Tree, prop: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = BooleanType
+    val tpe = NoType
   }
 
   /** Unary operation (always preserves pureness). */

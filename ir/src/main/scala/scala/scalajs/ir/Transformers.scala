@@ -260,9 +260,6 @@ object Transformers {
         case JSApply(fun, args) =>
           JSApply(transformExpr(fun), args map transformExpr)
 
-        case JSDelete(obj, prop) =>
-          JSDelete(transformExpr(obj), transformExpr(prop))
-
         case JSUnaryOp(op, lhs) =>
           JSUnaryOp(op, transformExpr(lhs))
 

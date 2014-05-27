@@ -229,6 +229,11 @@ object JSDesugaring {
         case Debugger() =>
           tree
 
+        case JSDelete(obj, prop) =>
+          unnest(obj, prop) { (newObj, newProp) =>
+            JSDelete(newObj, newProp)
+          }
+
         // Treat 'return' as an LHS
 
         case Return(expr, label) =>
@@ -685,11 +690,6 @@ object JSDesugaring {
             redo(JSApply(newFun, newArgs))
           }
 
-        case JSDelete(obj, prop) =>
-          unnest(obj, prop) { (newObj, newProp) =>
-            redo(JSDelete(newObj, newProp))
-          }
-
         case JSDotSelect(qualifier, item) =>
           unnest(qualifier) { newQualifier =>
             redo(JSDotSelect(newQualifier, item))
@@ -756,8 +756,8 @@ object JSDesugaring {
              */
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
-                  _:Switch | _:Debugger | _:DocComment | _:StoreModule |
-                  _:ClassDef =>
+                  _:Switch | _:Debugger | _:JSDelete | _:DocComment |
+                  _:StoreModule | _:ClassDef =>
                 transformStat(rhs)
               case _ =>
                 sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +

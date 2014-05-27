@@ -29,10 +29,11 @@ sealed trait Dictionary[A] extends Object {
   /** Deletes a property of this object by its name.
    *  The property must be configurable.
    *  This method is equivalent to the "delete" keyword in JavaScript.
-   *  @return true on success (the property did not exist or was configurable),
-   *          false otherwise
+   *
+   *  Since we are using strict mode, this throws an exception, if the property
+   *  isn't configurable.
    */
-  def delete(key: String): Boolean = sys.error("stub")
+  def delete(key: String): Unit = sys.error("stub")
 }
 
 /** Factory for [[Dictionary]] instances. */
