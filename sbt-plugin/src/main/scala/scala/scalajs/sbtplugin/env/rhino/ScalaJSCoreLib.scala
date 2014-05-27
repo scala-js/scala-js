@@ -80,7 +80,7 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
       val classDef = irFile.tree
       val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
       printer.printTopLevelTree(desugared)
-      printer.close()
+      printer.complete()
       val ctx = Context.getCurrentContext()
       ctx.evaluateString(scope, codeWriter.toString(),
           classDef.pos.source.toString, 1, null)
