@@ -16,11 +16,14 @@
   <task id="main"><![CDATA[
     sbt ++$scala package packageDoc &&
     sbt ++$scala testing/test testing/packageStage::test testing/fastOptStage::test testing/fullOptStage::test &&
-    sbt ++$scala scalajs-test/test scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test &&
+    sbt ++$scala scalajs-test/test scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test \
+      scalajs-no-ir-check-test/test scalajs-no-ir-check-test/packageStage::test scalajs-no-ir-check-test/fastOptStage::test scalajs-no-ir-check-test/fullOptStage::test &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.test := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         'set definedTests.in(ScalaJSBuild.test, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
          ++$scala \
-         scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test scalajs-test/clean &&
+         scalajs-test/packageStage::test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test \
+         scalajs-no-ir-check-test/packageStage::test scalajs-no-ir-check-test/fastOptStage::test scalajs-no-ir-check-test/fullOptStage::test \
+         scalajs-test/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.test += "-Xexperimental"' ++$scala scalajs-test/test scalajs-test/fastOptStage::test scalajs-test/fullOptStage::test &&
     sbt ++$scala scalajs-compiler/test reversi/packageJS reversi/fullOptJS &&
     sh ci/checksizes.sh $scala &&
