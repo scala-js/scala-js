@@ -32,7 +32,7 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
     lines.foreach(addLine)
 
   def addFile(file: VirtualJSFile): Unit =
-    addPartsOfFile(file)(!_.startsWith("//@ sourceMappingURL="))
+    addPartsOfFile(file)(!_.startsWith("//# sourceMappingURL="))
 
   def addPartsOfFile(file: VirtualJSFile)(selector: String => Boolean): Unit = {
     for (line <- file.readLines() if selector(line))
@@ -218,7 +218,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
             relativizeSourceMapBasePath)) {
 
   override def complete(): Unit = {
-    addLine("//@ sourceMappingURL=" + name + ".map")
+    addLine("//# sourceMappingURL=" + name + ".map")
     super.complete()
   }
 
