@@ -21,6 +21,7 @@ import scala.scalajs.tools.classpath.builder._
 import scala.scalajs.tools.packager._
 import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
+import scala.scalajs.tools.corelib._
 
 import scala.scalajs.tools.env._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
@@ -233,7 +234,20 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         pcp.resolve()
       },
 
+      // The artifactPath of packageJS is the location of the corejslibs.js
+      artifactPath in packageJS :=
+        ((crossTarget in packageJS).value / "corejslibs.js"),
+
       packageJS := {
+        // If it doesn't exist, we need to write the corejslibs so they are
+        // available to HTML files
+        val envFile = (artifactPath in packageJS).value
+        if (!envFile.exists) {
+          IO.createDirectory(envFile.getParentFile)
+          for (lib <- CoreJSLibs.libs)
+            IO.append(envFile, lib.content, Charset.forName("UTF-8"))
+        }
+
         val cps = List(
             packageExternalDepsJS.value,
             packageInternalDepsJS.value,
