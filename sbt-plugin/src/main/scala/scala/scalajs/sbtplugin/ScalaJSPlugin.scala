@@ -59,7 +59,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val packageExportedProductsJS = taskKey[PartialClasspath](
         "Package the .js files of the project")
 
-    val packageLauncher = taskKey[File](
+    val packageLauncher = taskKey[Attributed[File]](
         "Writes the persistent launcher file. Fails if the mainClass is ambigous")
 
     val packageJSDependencies = taskKey[File](
@@ -71,8 +71,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val execClasspath = taskKey[CompleteClasspath](
         "The classpath used for running and testing")
 
-    val launcher = taskKey[VirtualJSFile](
-        "Code used to run")
+    val launcher = taskKey[Attributed[VirtualJSFile]](
+        "Code used to run. (Attributed with used class name)")
 
     val fullOptJSPrettyPrint = settingKey[Boolean](
         "Pretty-print the output of fullOptJS")
@@ -332,12 +332,14 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       packageLauncher <<= Def.taskDyn {
         if ((skip in packageLauncher).value)
-          Def.task((artifactPath in packageLauncher).value)
+          Def.task(Attributed.blank((artifactPath in packageLauncher).value))
         else Def.task {
           mainClass.value map { mainCl =>
             val file = (artifactPath in packageLauncher).value
             IO.write(file, s"$mainCl().main();\n", Charset.forName("UTF-8"))
-            file
+
+            // Attach the name of the main class used, (ab?)using the name key
+            Attributed(file)(AttributeMap.empty.put(name.key, mainCl))
           } getOrElse {
             error("Cannot write launcher file, since there is no or multiple mainClasses")
           }
@@ -456,12 +458,16 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSRunSettings = Seq(
       mainClass in launcher := (mainClass in run).value,
       launcher <<= Def.taskDyn {
-        if (persistLauncher.value) Def.task {
-          FileVirtualJSFile(packageLauncher.value)
-        } else Def.task {
-          val mainCl = (mainClass in launcher).value.getOrElse(
-              error("No main class detected."))
-          memLauncher(mainCl)
+        if (persistLauncher.value)
+          Def.task(packageLauncher.value.map(FileVirtualJSFile))
+        else Def.task {
+          (mainClass in launcher).value map { mainClass =>
+            val memLaunch = memLauncher(mainClass)
+            Attributed[VirtualJSFile](memLaunch)(
+                AttributeMap.empty.put(name.key, mainClass))
+          } getOrElse {
+            error("No main class detected.")
+          }
         }
       },
 
@@ -483,10 +489,10 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         // use assert to prevent warning about pure expr in stat pos
         assert(ensureUnforked.value)
 
-        val mainCl =
-          (mainClass in run).value getOrElse error("No main class detected.")
-        jsRun(jsEnv.value, execClasspath.value, mainCl,
-            launcher.value, streams.value.log)
+        val launch = launcher.value
+        val className = launch.get(name.key).getOrElse("<unknown class>")
+        jsRun(jsEnv.value, execClasspath.value, className,
+            launch.data, streams.value.log)
       },
 
       runMain <<= {
