@@ -35,3 +35,24 @@ For each major Scala version on a *NIX distro and a Windows distro:
         node test.js # Or your favorite thing to run JS
 
         # Expect "asdf 2"
+
+## HTML-Runners
+
+The following HTML-runners/testers must be manually tested:
+
+    examples/helloworld/helloworld-{2.10|2.11}{|-dev|-fastopt}.html
+    examples/reversi/reversi-{2.10|2.11}{|-dev|-fastopt}.html
+    examples/testing/testing-{2.10|2.11}{|-dev|-fastopt}.html
+    test/scalajs-test-suite-{2.10|2.11}{|-dev|-fastopt}.html
+
+## Sourcemaps
+
+To test source maps, do the following on:
+
+    examples/reversi/reversi-{2.10|2.11}{-dev|-fastopt}.html
+
+1. Open the respective file in Google Chrome
+2. Set a break-point in the HTML launcher on the `new Reversi` statement
+3. Step over calls to jQuery into constructor
+4. Single step through constructor, until you reach `buildUI()`
+5. Step into `buildUI()`
