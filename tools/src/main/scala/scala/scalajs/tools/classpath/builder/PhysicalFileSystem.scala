@@ -23,7 +23,9 @@ trait PhysicalFileSystem extends FileSystem {
 
   def listFiles(d: File): Traversable[File] = {
     require(d.isDirectory)
-    d.listFiles.toList
+    Option(d.listFiles).map(_.toList).getOrElse {
+      throw new IOException(s"Couldn't list files in $d")
+    }
   }
 
   def toJSFile(f: File): VirtualJSFile = FileVirtualJSFile(f)
