@@ -221,11 +221,11 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
       packageClasspathJSTasks(externalDependencyClasspath,
-          packageExternalDepsJS, "-extdeps") ++
+          packageExternalDepsJS, "-pack-extdeps") ++
       packageClasspathJSTasks(internalDependencyClasspath,
-          packageInternalDepsJS, "-intdeps") ++
+          packageInternalDepsJS, "-pack-intdeps") ++
       packageClasspathJSTasks(exportedProducts,
-          packageExportedProductsJS, "")
+          packageExportedProductsJS, "-pack-app")
   ) ++ Seq(
 
       preLinkClasspath := {
