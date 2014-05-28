@@ -465,7 +465,18 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         }
       },
 
-      discoveredMainClasses ++= {
+      /* We do currently not discover objects containing a
+       *
+       *   def main(args: Array[String]): Unit
+       *
+       * Support will be added again, as soon as we can run them
+       * reliably (e.g. without implicitly requiring that an exported
+       *
+       *   def main(): Unit
+       *
+       * exists alongside.
+       */
+      discoveredMainClasses := {
         import xsbt.api.{Discovered, Discovery}
 
         val jsApp = "scala.scalajs.js.JSApp"
