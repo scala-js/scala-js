@@ -63,7 +63,7 @@ rm -rf $TRG_VER
 mkdir -p $TRG_LIB
 mkdir -p $TRG_BIN
 
-SCALAJS_VER=$(ls $BASE/cli/target/scala-$BINVER/scalajs-cli-assembly_$BINVER-*.jar | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?')
+SCALAJS_VER=$(ls $BASE/cli/target/scala-$BINVER/scalajs-cli-assembly_$BINVER-*.jar | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT|-RC[0-9]+|-M[0-9]+)?')
 
 cp $BASE/cli/target/scala-$BINVER/scalajs-cli-assembly_$BINVER-$SCALAJS_VER.jar $TRG_LIB
 cp $BASE/library/target/scala-$BINVER/scalajs-library_$BINVER-$SCALAJS_VER.jar $TRG_LIB
