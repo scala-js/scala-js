@@ -22,8 +22,8 @@ case $FULLVER in
     ;;
 esac
 
-REVERSI_EXTDEPS_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-extdeps.js")
-REVERSI_SELF_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi.js")
+REVERSI_EXTDEPS_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-pack-extdeps.js")
+REVERSI_SELF_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-pack-app.js")
 REVERSI_PREOPT_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-fastopt.js")
 REVERSI_OPT_SIZE=$(stat '-c%s' "$BASEDIR/examples/reversi/target/scala-$VER/reversi-opt.js")
 
