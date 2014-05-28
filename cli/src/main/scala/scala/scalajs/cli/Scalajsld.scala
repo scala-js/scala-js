@@ -36,7 +36,8 @@ object Scalajsld {
     prettyPrint: Boolean = false,
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
-    checkIR: Boolean = false)
+    checkIR: Boolean = false,
+    stdLib: Option[File] = None)
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[Options]("scalajsld") {
@@ -77,6 +78,16 @@ object Scalajsld {
         .valueName("<path>")
         .action { (x, c) => c.copy(relativizeSourceMap = Some(x.toURI)) }
         .text("Relativize source map with respect to given path (meaningful with -s)")
+      opt[Unit]("noStdlib")
+        .action { (_, c) => c.copy(stdLib = None) }
+        .text("Don't automatcially include Scala.js standard library")
+      opt[File]("stdlib")
+        .valueName("<scala.js stdlib jar>")
+        .hidden()
+        .action { (x, c) => c.copy(stdLib = Some(x)) }
+        .text("Location of Scala.js standard libarary. This is set by the " +
+            "runner script and automatically prepended to the classpath. " +
+            "Use -n to not include it.")
       version("version")
         .abbr("v")
         .text("Show scalajsld version")
@@ -88,8 +99,9 @@ object Scalajsld {
     }
 
     for (options <- parser.parse(args, Options())) {
+      val cpFiles = options.stdLib.toList ++ options.cp
       // Load and resolve classpath
-      val cp = PartialClasspathBuilder.buildIR(options.cp).resolve()
+      val cp = PartialClasspathBuilder.buildIR(cpFiles).resolve()
 
       // Write JS dependencies if requested
       for (jsout <- options.jsoutput) {

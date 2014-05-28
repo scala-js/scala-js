@@ -1,0 +1,37 @@
+This file contains test cases that should be manually executed.
+
+## CLI Distribution
+
+For each major Scala version on a *NIX distro and a Windows distro:
+
+1. Download packaged Scala from scala-lang.org
+2. Build Scala.js CLI distribution (e.g. `./assemble-cli.sh 2.10`)
+3. Unpack Scala and Scala.js distro
+4. Add `bin/` directories of both distributions to path (`export PATH=$PATH:<scala path>/bin:<scala.js path>/bin`)
+5. Create a temporary directory and do:
+
+        mkdir bin
+        echo 'import scala.scalajs.js.JSApp
+          object Foo extends JSApp {
+
+            def main() = {
+              println(s"asdf ${1 + 1}")
+              new A
+            }
+
+            class A
+          }' > foo.scala
+        scalajsc -d bin foo.scala
+
+        scalajsp bin/Foo$.sjsir
+        # Verify output
+        scalajsp bin/Foo\$A.sjsir
+        # Verify output
+
+        scalajsld -o test.js bin
+        # Verify output
+
+        echo "Foo().main()" >> test.js
+        node test.js # Or your favorite thing to run JS
+
+        # Expect "asdf 2"

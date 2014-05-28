@@ -17,6 +17,9 @@ import ExternalCompile.scalaJSExternalCompileSettings
 
 import scala.scalajs.tools.sourcemap._
 
+import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
+import AssemblyKeys.{assembly, assemblyOption}
+
 object ScalaJSBuild extends Build {
 
   val fetchedScalaSourceDir = settingKey[File](
@@ -456,12 +459,18 @@ object ScalaJSBuild extends Build {
   lazy val cli: Project = Project(
       id = "scalajs-cli",
       base = file("cli"),
-      settings = defaultSettings ++ publishSettings ++ Seq(
+      settings = defaultSettings ++ assemblySettings ++ Seq(
           name := "Scala.js CLI",
           scalaVersion := "2.10.4", // adapt version to tools
           libraryDependencies ++= Seq(
               "com.github.scopt" %% "scopt" % "3.2.0"
-          )
+          ),
+
+          // assembly options
+          mainClass in assembly := None, // don't want an executable JAR
+          assemblyOption in assembly ~= { _.copy(includeScala = false) },
+          AssemblyKeys.jarName in assembly :=
+            s"${normalizedName.value}-assembly_${scalaBinaryVersion.value}-${version.value}.jar"
       )
   ).dependsOn(tools)
 

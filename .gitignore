@@ -4,3 +4,4 @@ target/
 .project
 .settings/
 /scalalib/fetchedSources/
+/cli/pack/
