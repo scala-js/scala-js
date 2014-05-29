@@ -36,7 +36,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   object scalaJSOpts extends ScalaJSOptions {
     var fixClassOf:   Boolean     = false
-    var noSourceMap:  Boolean     = false
     var relSourceMap: Option[URI] = None
     var absSourceMap: Option[URI] = None
   }
@@ -67,9 +66,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     for (option <- options) {
       if (option == "fixClassOf") {
         fixClassOf = true
-
-      } else if (option == "noSourceMap") {
-        noSourceMap = true
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
         try { relSourceMap = Some(new URI(uriStr)) }
@@ -93,7 +89,6 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   }
 
   override val optionsHelp: Option[String] = Some(s"""
-      |  -P:$name:noSourceMap         turn off source map generation
       |  -P:$name:relSourceMap:<URI>  relativize emitted source maps with <URI>
       |  -P:$name:absSourceMap:<URI>  absolutize emitted source maps with <URI>
             This option requires the use of relSourceMap
