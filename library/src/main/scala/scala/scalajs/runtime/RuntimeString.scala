@@ -203,7 +203,7 @@ private[runtime] object RuntimeString {
   /** Unimplemented, unused, but referenced */
   def newString(bytes: Array[Byte], charsetName: String): String = ???
   /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], offest: Int, length: Int,
+  def newString(bytes: Array[Byte], offset: Int, length: Int,
       charsetName: String): String = ???
   def newString(codePoints: Array[Int], offset: Int, count: Int): String =
     js.String.fromCharCode(
