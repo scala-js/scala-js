@@ -111,7 +111,7 @@ private[runtime] trait RuntimeString { this: jsString =>
    */
   def intern(): String = this
 
-  def isEmpty(): Boolean = !(this: jsString).length
+  def isEmpty(): Boolean = (this: jsString).length.toInt == 0
 
   def lastIndexOf(ch: Int): Int = {
     val search = js.String.fromCharCode(ch)
