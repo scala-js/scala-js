@@ -25,8 +25,20 @@ private[runtime] trait RuntimeString { this: jsString =>
 
   def charAt(index: Int): Char =
     (this: jsString).charCodeAt(index).toChar
-  def codePointAt(index: Int): Int =
-    (this: jsString).charCodeAt(index).toInt
+
+  def codePointAt(index: Int): Int = {
+    val thisjs: jsString = this
+    val high = thisjs.charCodeAt(index).toChar
+    if (index+1 < thisjs.length.asInstanceOf[Int]) {
+      val low = thisjs.charCodeAt(index+1).toChar
+      if (Character.isSurrogatePair(high, low))
+        Character.toCodePoint(high, low)
+      else
+        high.toInt
+    } else {
+      high.toInt
+    }
+  }
 
   def compareTo(anotherString: String): Int = {
     val thatjs: jsString = anotherString

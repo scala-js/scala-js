@@ -221,6 +221,11 @@ object Character {
   def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
     isHighSurrogate(high) && isLowSurrogate(low)
 
+  def toCodePoint(high: scala.Char, low: scala.Char): scala.Int = {
+    // http://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+    (high.toInt - 0xD800) * 0x400 + low.toInt - 0xDC00 + 0x10000
+  }
+
   def isUnicodeIdentifierStart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isUnicodeIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isIdentifierIgnorable(c: scala.Char): scala.Boolean = sys.error("unimplemented")
