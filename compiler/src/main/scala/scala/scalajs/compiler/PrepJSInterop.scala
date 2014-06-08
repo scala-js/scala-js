@@ -507,7 +507,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   private def rawJSAnnot =
     Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
 
-  private val ScalaEnumClass = getRequiredClass("scala.Enumeration")
+  private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
 
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
