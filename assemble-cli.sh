@@ -75,7 +75,14 @@ done
 PAT="s/@SCALA_BIN_VER@/$BINVER/; s/@SCALAJS_VER@/$SCALAJS_VER/"
 PREF=$BASE/cli/src/main/resources/
 for i in $PREF*; do
-    sed "$PAT" $i > $TRG_BIN/${i#$PREF}
+    out=$TRG_BIN/${i#$PREF}
+    # Redirect sed output, since in-place edit doesn't work
+    # cross-platform
+    sed "$PAT" $i > $out
+    # Add executable flag if required
+    if [ -x $i ]; then
+        chmod +x $out
+    fi
 done
 
 # Tar and zip the whole thing up
