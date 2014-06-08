@@ -47,9 +47,43 @@ object DynamicTest extends JasmineTest {
     }
 
     it("should allow instanciating JS classes dynamically - #10") {
-      js.eval("function DynamicTestClass(x) { this.x = x; };")
-      val obj = js.Dynamic.newInstance(js.Dynamic.global.DynamicTestClass)("Scala.js")
+      val DynamicTestClass = js.eval("""
+          var DynamicTestClass = function(x) {
+            this.x = x;
+          };
+          DynamicTestClass;
+          """).asInstanceOf[js.Dynamic]
+      val obj = js.Dynamic.newInstance(DynamicTestClass)("Scala.js")
       expect(obj.x).toEqual("Scala.js")
+    }
+
+    it("should allow instantiating JS classes dynamically with varargs - #708") {
+      val DynamicTestClassVarArgs = js.eval("""
+          var DynamicTestClassVarArgs = function() {
+            this.count = arguments.length;
+            for (var i = 0; i < arguments.length; i++)
+              this['elem'+i] = arguments[i];
+          };
+          DynamicTestClassVarArgs;
+          """).asInstanceOf[js.Dynamic]
+
+      val obj1 = js.Dynamic.newInstance(DynamicTestClassVarArgs)("Scala.js")
+      expect(obj1.count).toEqual(1)
+      expect(obj1.elem0).toEqual("Scala.js")
+
+      val obj2 = js.Dynamic.newInstance(DynamicTestClassVarArgs)(
+          "Scala.js", 42, true)
+      expect(obj2.count).toEqual(3)
+      expect(obj2.elem0).toEqual("Scala.js")
+      expect(obj2.elem1).toEqual(42)
+      expect(obj2.elem2).toEqual(true)
+
+      def obj3Args: Seq[js.Any] = Seq("Scala.js", 42, true)
+      val obj3 = js.Dynamic.newInstance(DynamicTestClassVarArgs)(obj3Args: _*)
+      expect(obj3.count).toEqual(3)
+      expect(obj3.elem0).toEqual("Scala.js")
+      expect(obj3.elem1).toEqual(42)
+      expect(obj3.elem2).toEqual(true)
     }
 
     it("should provide an object literal construction") {

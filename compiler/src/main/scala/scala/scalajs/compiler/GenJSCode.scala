@@ -2566,9 +2566,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         (genArgArray: @unchecked) match {
           case js.JSArrayConstr(firstArg :: otherArgs) =>
             (firstArg, js.JSArrayConstr(otherArgs))
-          case js.JSApply(js.JSDotSelect(
+          case js.JSApply(js.JSBracketSelect(
               js.JSArrayConstr(firstArg :: firstPart), concat), otherParts) =>
-            (firstArg, js.JSApply(js.JSDotSelect(
+            (firstArg, js.JSApply(js.JSBracketSelect(
                 js.JSArrayConstr(firstPart), concat), otherParts))
         }
       }
