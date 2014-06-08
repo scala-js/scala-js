@@ -103,21 +103,37 @@ object StackTrace {
   /** Tries and extract the class name and method from the JS function name.
    *  The recognized patterns are
    *    ScalaJS.c.<encoded class name>.prototype.<encoded method name>
-   *  and
    *    ScalaJS.c.<encoded class name>.<encoded method name>
-   *  When the function name is neither of those, the pair
+   *    ScalaJS.i.<encoded trait impl name>__<encoded method name>
+   *    ScalaJS.m.<encoded module name>
+   *  When the function name is none of those, the pair
    *    ("<jscode>", functionName)
    *  is returned, which will instruct StackTraceElement.toString() to only
    *  display the function name.
    */
   private def extractClassMethod(functionName: String): (String, String) = {
-    val Pat = """^ScalaJS\.c\.([^\.]+)(\.prototype)?\.([^\.]+)$""".re
-    val mtch = Pat.exec(functionName)
+    val PatC = """^ScalaJS\.c\.([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatI = """^(?:Object\.)?ScalaJS\.i\.((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatM = """^(?:Object\.)?ScalaJS\.m\.([^.\.]+)$""".re
+
+    var isModule = false
+    var mtch = PatC.exec(functionName)
+    if (mtch eq null) {
+      mtch = PatI.exec(functionName)
+      if (mtch eq null) {
+        mtch = PatM.exec(functionName)
+        isModule = true
+      }
+    }
+
     if (mtch ne null) {
-      val classEncoding = mtch(1).get
-      val methodEncoding = mtch(3).get
+      val classEncoding = mtch(1).get + (if (isModule) "$" else "")
       val className = classEncoding.replace("_", ".").replace("$und", "_")
-      val methodName = {
+
+      val methodName = if (isModule) {
+        "<clinit>" // that's how it would be reported on the JVM
+      } else {
+        val methodEncoding = mtch(2).get
         if (methodEncoding startsWith "init___") {
           "<init>"
         } else {
