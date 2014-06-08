@@ -17,9 +17,6 @@ trait ScalaJSOptions {
    *  If false, bad calls to classOf will cause an error. */
   def fixClassOf: Boolean
 
-  /** can be used to turn off source map generation */
-  def noSourceMap: Boolean
-
   /** URI to relativize referenced file in source maps with */
   def relSourceMap: Option[URI]
 
