@@ -103,8 +103,21 @@ object StringTest extends JasmineTest {
     }
 
     it("should respond to `codePointAt`") {
-      expect("Scala.js".codePointAt(5)).toBe('.')
-      expect("Scala.js".codePointAt(6)).not.toBe('.')
+      // String that starts with a BMP symbol
+      expect("abc\uD834\uDF06def".codePointAt(0)).toEqual(0x61)
+      expect("abc\uD834\uDF06def".codePointAt(3)).toEqual(0x1D306)
+      expect("abc\uD834\uDF06def".codePointAt(4)).toEqual(0xDF06)
+      expect("abc\uD834\uDF06def".codePointAt(5)).toEqual(0x64)
+
+      // String that starts with an astral symbol
+      expect("\uD834\uDF06def".codePointAt(0)).toEqual(0x1D306)
+      expect("\uD834\uDF06def".codePointAt(1)).toEqual(0xDF06)
+
+      // Lone high surrogates
+      expect("\uD834abc".codePointAt(0)).toEqual(0xD834)
+
+      // Lone low surrogates
+      expect("\uDF06abc".codePointAt(0)).toEqual(0xDF06)
     }
 
     it("should respond to `subSequence`") {
