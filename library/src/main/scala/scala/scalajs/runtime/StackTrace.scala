@@ -321,7 +321,7 @@ object StackTrace {
       .replace("""^\s+(at eval )?at\s+""".re("gm"), "") // remove 'at' and indentation
       .replace("""^([^\(]+?)([\n])""".re("gm"), "{anonymous}() ($1)$2") // see note
       .replace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
-      .replace("""^(.+) \((.+)\)$""".re("gm"), "$1@$2")
+      .replace("""^([^\(]+) \((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
       .slice(0, -1)
 
@@ -341,7 +341,7 @@ object StackTrace {
     (e.stack.asInstanceOf[jsString])
       .replace("""^\s*at\s+(.*)$""".re("gm"), "$1")
       .replace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
-      .replace("""^(.+)\s+\((.+)\)$""".re("gm"), "$1@$2")
+      .replace("""^([^\(]+)\s+\((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
       .slice(1)
   }
