@@ -26,6 +26,8 @@ import scala.collection.{ immutable, mutable }
  *  boxing of proxying of any kind.
  */
 trait Any extends scala.AnyRef {
+  @deprecated("Considered abuse in typed JavaScript, will be removed in 0.6. "+
+      "Use js.Dynamic or js.prim.Boolean instead.", "0.5.0")
   def unary_!(): Boolean = sys.error("stub")
 }
 
@@ -150,6 +152,8 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def apply(args: Any*): Dynamic
 
   import prim.Number
+
+  override def unary_!(): Boolean = sys.error("stub")
 
   def unary_+(): Number
   def unary_-(): Number

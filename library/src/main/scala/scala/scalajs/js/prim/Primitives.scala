@@ -155,6 +155,8 @@ object Number extends Object {
 
 /** Primitive JavaScript boolean. */
 sealed trait Boolean extends Any {
+  override def unary_!(): scala.Boolean = sys.error("stub")
+
   def &&(that: Boolean): Boolean
   def ||(that: Boolean): Boolean
 

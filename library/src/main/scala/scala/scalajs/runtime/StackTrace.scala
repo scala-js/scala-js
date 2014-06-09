@@ -78,7 +78,7 @@ object StackTrace {
     var i = 0
     while (i < lines.length) {
       val line = lines(i)
-      if (!(!line)) {
+      if (!line.isEmpty) {
         val mtch1 = NormalizedFrameLineWithColumn.exec(line)
         if (mtch1 ne null) {
           val (className, methodName) = extractClassMethod(mtch1(1).get)
