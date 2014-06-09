@@ -15,6 +15,30 @@ import scala.scalajs.js.JavaScriptException
 import scala.scalajs.js.annotation.JSExport
 
 object JasmineTestFramework extends TestFramework {
+  createStackPropertyOnThrowable()
+
+  private def createStackPropertyOnThrowable(): Unit = {
+    /* All Jasmine cares about when looking for stack trace data is a field
+     * `stack` on the error object. Our Throwables do not have a `stack` field
+     * because they are not subclasses of the JavaScript class Error.
+     * However, a genuine Error object with the proper (lazy) stack field is
+     * stored under the property stackdata by StackTrace.
+     * This code installs a property getter on Throwable that will redirect
+     * `throwable.stack` to `throwable.stackdata.stack` (when it exists).
+     */
+
+    val ThrowablePrototype = js.Object.getPrototypeOf(
+        (new Throwable).asInstanceOf[js.Object]).asInstanceOf[js.Object]
+
+    js.Object.defineProperty(ThrowablePrototype, "stack", js.Dynamic.literal(
+        configurable = false,
+        enumerable = false,
+        get = { (self: js.Dynamic) =>
+          self.stackdata && self.stackdata.stack
+        }: js.ThisFunction
+    ).asInstanceOf[js.PropertyDescriptor])
+  }
+
   def runTest(testOutput: TestOutput, args: js.Array[String])(
     test: js.Function0[Test]): Unit = {
 

@@ -71,6 +71,8 @@ object Definitions {
     } else encoded
   }
 
+  // !!! Duplicate logic: this code must be in sync with runtime.StackTrace
+
   /** Decodes a class name encoded with [[encodeClassName]]. */
   def decodeClassName(encodedName: String): String = {
     val encoded =
@@ -78,12 +80,12 @@ object Definitions {
       else encodedName
     val base = decompressedClasses.getOrElse(encoded, {
       decompressedPrefixes collectFirst {
-        case (prefix, decompressed) if encodedName.startsWith(prefix) =>
-          decompressed + encodedName.substring(prefix.length)
+        case (prefix, decompressed) if encoded.startsWith(prefix) =>
+          decompressed + encoded.substring(prefix.length)
       } getOrElse {
-        assert(!encodedName.isEmpty && encodedName.charAt(0) == 'L',
+        assert(!encoded.isEmpty && encoded.charAt(0) == 'L',
             s"Cannot decode invalid encoded name '$encodedName'")
-        encodedName.substring(1)
+        encoded.substring(1)
       }
     })
     base.replace("_", ".").replace("$und", "_")

@@ -1,11 +1,20 @@
 package scala.scalajs.runtime
 
+import scala.annotation.tailrec
+
 import scala.scalajs.js
 import scala.scalajs.js.prim.{String => jsString}
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
 object StackTrace {
+
+  /* !!! Note that in this unit, we go to great lengths *not* to use anything
+   * from the Scala collections library.
+   *
+   * This minimizes the risk of runtime errors during the process of decoding
+   * errors, which would be very bad if it happened.
+   */
 
   /** Captures browser-specific state recording the current stack trace.
    *  The state is stored as a magic field of the throwable, and will be used
@@ -103,32 +112,121 @@ object StackTrace {
   /** Tries and extract the class name and method from the JS function name.
    *  The recognized patterns are
    *    ScalaJS.c.<encoded class name>.prototype.<encoded method name>
-   *  and
    *    ScalaJS.c.<encoded class name>.<encoded method name>
-   *  When the function name is neither of those, the pair
+   *    ScalaJS.i.<encoded trait impl name>__<encoded method name>
+   *    ScalaJS.m.<encoded module name>
+   *  When the function name is none of those, the pair
    *    ("<jscode>", functionName)
    *  is returned, which will instruct StackTraceElement.toString() to only
    *  display the function name.
    */
   private def extractClassMethod(functionName: String): (String, String) = {
-    val Pat = """^ScalaJS\.c\.([^\.]+)(\.prototype)?\.([^\.]+)$""".re
-    val mtch = Pat.exec(functionName)
-    if (mtch ne null) {
-      val classEncoding = mtch(1).get
-      val methodEncoding = mtch(3).get
-      val className = classEncoding.replace("_", ".").replace("$und", "_")
-      val methodName = {
-        if (methodEncoding startsWith "init___") {
-          "<init>"
-        } else {
-          val methodNameLen = methodEncoding.indexOf("__")
-          if (methodNameLen < 0) methodEncoding
-          else methodEncoding.substring(0, methodNameLen)
-        }
+    val PatC = """^ScalaJS\.c\.([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatI = """^(?:Object\.)?ScalaJS\.i\.((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatM = """^(?:Object\.)?ScalaJS\.m\.([^.\.]+)$""".re
+
+    var isModule = false
+    var mtch = PatC.exec(functionName)
+    if (mtch eq null) {
+      mtch = PatI.exec(functionName)
+      if (mtch eq null) {
+        mtch = PatM.exec(functionName)
+        isModule = true
       }
+    }
+
+    if (mtch ne null) {
+      val className = decodeClassName(mtch(1).get + (if (isModule) "$" else ""))
+      val methodName = if (isModule)
+        "<clinit>" // that's how it would be reported on the JVM
+      else
+        decodeMethodName(mtch(2).get)
       (className, methodName)
     } else {
       ("<jscode>", functionName)
+    }
+  }
+
+  // decodeClassName -----------------------------------------------------------
+
+  // !!! Duplicate logic: this code must be in sync with ir.Definitions
+
+  private def decodeClassName(encodedName: String): String = {
+    val encoded =
+      if (encodedName.charAt(0) == '$') encodedName.substring(1)
+      else encodedName
+    val base = if (decompressedClasses.hasOwnProperty(encoded)) {
+      decompressedClasses(encoded)
+    } else {
+      @tailrec
+      def loop(i: Int): String = {
+        if (i < compressedPrefixes.length) {
+          val prefix = compressedPrefixes(i)
+          if (encoded.startsWith(prefix))
+            decompressedPrefixes(prefix) + encoded.substring(prefix.length)
+          else
+            loop(i+1)
+        } else {
+          // no prefix matches
+          if (encoded.startsWith("L")) encoded.substring(1)
+          else encoded // just in case
+        }
+      }
+      loop(0)
+    }
+    base.replace("_", ".").replace("$und", "_")
+  }
+
+  private val decompressedClasses: js.Dictionary[String] = {
+    val dict = js.Dynamic.literal(
+        O = "java_lang_Object",
+        T = "java_lang_String",
+        V = "scala_Unit",
+        Z = "scala_Boolean",
+        C = "scala_Char",
+        B = "scala_Byte",
+        S = "scala_Short",
+        I = "scala_Int",
+        J = "scala_Long",
+        F = "scala_Float",
+        D = "scala_Double"
+    ).asInstanceOf[js.Dictionary[String]]
+
+    var index = 0
+    while (index <= 22) {
+      if (index >= 2)
+        dict("T"+index) = "scala_Tuple"+index
+      dict("F"+index) = "scala_Function"+index
+      index += 1
+    }
+
+    dict
+  }
+
+  private val decompressedPrefixes = js.Dynamic.literal(
+      sjsr_ = "scala_scalajs_runtime_",
+      sjs_  = "scala_scalajs_",
+      sci_  = "scala_collection_immutable_",
+      scm_  = "scala_collection_mutable_",
+      scg_  = "scala_collection_generic_",
+      sc_   = "scala_collection_",
+      sr_   = "scala_runtime_",
+      s_    = "scala_",
+      jl_   = "java_lang_",
+      ju_   = "java_util_"
+  ).asInstanceOf[js.Dictionary[String]]
+
+  private val compressedPrefixes = js.Object.keys(decompressedPrefixes)
+
+  // end of decodeClassName ----------------------------------------------------
+
+  private def decodeMethodName(encodedName: String): String = {
+    if (encodedName startsWith "init___") {
+      "<init>"
+    } else {
+      val methodNameLen = encodedName.indexOf("__")
+      if (methodNameLen < 0) encodedName
+      else encodedName.substring(0, methodNameLen)
     }
   }
 
@@ -223,7 +321,7 @@ object StackTrace {
       .replace("""^\s+(at eval )?at\s+""".re("gm"), "") // remove 'at' and indentation
       .replace("""^([^\(]+?)([\n])""".re("gm"), "{anonymous}() ($1)$2") // see note
       .replace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
-      .replace("""^(.+) \((.+)\)$""".re("gm"), "$1@$2")
+      .replace("""^([^\(]+) \((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
       .slice(0, -1)
 
@@ -243,7 +341,7 @@ object StackTrace {
     (e.stack.asInstanceOf[jsString])
       .replace("""^\s*at\s+(.*)$""".re("gm"), "$1")
       .replace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
-      .replace("""^(.+)\s+\((.+)\)$""".re("gm"), "$1@$2")
+      .replace("""^([^\(]+)\s+\((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
       .slice(1)
   }
