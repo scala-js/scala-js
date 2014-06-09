@@ -20,6 +20,7 @@ import java.net.URLClassLoader
 
 class TestFramework(
     environment: JSEnv,
+    jsConsole: JSConsole,
     testFramework: String) extends Framework {
 
   val name = "Scala.js Test Framework"
@@ -36,7 +37,8 @@ class TestFramework(
       testClassLoader: ClassLoader): Runner = {
 
     val jsClasspath = extractClasspath(testClassLoader)
-    new TestRunner(environment, jsClasspath, testFramework, args, remoteArgs)
+    new TestRunner(environment, jsClasspath, jsConsole,
+      testFramework, args, remoteArgs)
   }
 
   /** extract classpath from ClassLoader (which must be a JSClasspathLoader) */

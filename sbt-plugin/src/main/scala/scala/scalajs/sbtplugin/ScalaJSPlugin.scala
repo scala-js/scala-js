@@ -77,8 +77,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val fullOptJSPrettyPrint = settingKey[Boolean](
         "Pretty-print the output of fullOptJS")
 
-    val loggingConsole = taskKey[Option[JSConsole]](
-        "The logging console used by the Scala.js jvm environment")
+    val jsConsole = taskKey[JSConsole](
+        "The JS console used by the Scala.js runner/tester")
 
     val preLinkJSEnv = settingKey[JSEnv](
         "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files")
@@ -433,14 +433,14 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
   /** Run a class in a given environment using a given launcher */
   private def jsRun(env: JSEnv, cp: CompleteClasspath, mainCl: String,
-      launcher: VirtualJSFile, log: Logger) = {
+      launcher: VirtualJSFile, jsConsole: JSConsole, log: Logger) = {
 
     log.info("Running " + mainCl)
     log.debug(s"with JSEnv of type ${env.getClass()}")
     log.debug(s"with classpath of type ${cp.getClass}")
 
     // Actually run code
-    env.runJS(cp, launcher, log, ConsoleJSConsole)
+    env.runJS(cp, launcher, log, jsConsole)
   }
 
   private def memLauncher(mainCl: String) = {
@@ -497,7 +497,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         val launch = launcher.value
         val className = launch.get(name.key).getOrElse("<unknown class>")
         jsRun(jsEnv.value, execClasspath.value, className,
-            launch.data, streams.value.log)
+            launch.data, jsConsole.value, streams.value.log)
       },
 
       runMain <<= {
@@ -514,7 +514,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
           val mainCl = parser.parsed._1
           jsRun(jsEnv.value, execClasspath.value, mainCl,
-              memLauncher(mainCl), streams.value.log)
+              memLauncher(mainCl), jsConsole.value, streams.value.log)
         }
       }
   )
@@ -557,6 +557,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
               sbt.TestFramework(classOf[TestFramework].getName),
               new TestFramework(
                   environment = jsEnv.value,
+                  jsConsole = jsConsole.value,
                   testFramework = scalaJSTestFramework.value)
           )
         } else {
@@ -670,7 +671,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
       jsDependencies := Seq(),
 
-      loggingConsole := Some(new LoggerJSConsole(streams.value.log))
+      jsConsole := ConsoleJSConsole
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (

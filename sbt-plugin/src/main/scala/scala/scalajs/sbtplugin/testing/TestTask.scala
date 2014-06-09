@@ -23,6 +23,7 @@ import scala.util.control.NonFatal
 class TestTask(
     env: JSEnv,
     classpath: CompleteClasspath,
+    jsConsole: JSConsole,
     testFramework: String,
     args: Array[String],
     val taskDef: TaskDef) extends Task {
@@ -36,8 +37,8 @@ class TestTask(
       loggers: Array[Logger]): Array[Task] = {
 
     val runnerFile = testRunnerFile(options.frameworkArgs)
-    val testConsole = new TestOutputConsole(ConsoleJSConsole, eventHandler,
-        loggers, new Events(taskDef), classpath, options.noSourceMap)
+    val testConsole = new TestOutputConsole(jsConsole, eventHandler,
+      loggers, new Events(taskDef), classpath, options.noSourceMap)
     val logger = new SbtTestLoggerAccWrapper(loggers)
 
     // Actually execute test
@@ -69,8 +70,10 @@ class TestTask(
 object TestTask {
 
   def apply(environment: JSEnv, classpath: CompleteClasspath,
-    testFramework: String, args: Array[String])(taskDef: TaskDef) =
-      new TestTask(environment, classpath, testFramework, args, taskDef)
+    jsConsole: JSConsole, testFramework: String, args: Array[String]
+  )(taskDef: TaskDef) =
+    new TestTask(environment, classpath, jsConsole,
+      testFramework, args, taskDef)
 
   case class ArgOptions(
     noSourceMap: Boolean,
