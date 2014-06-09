@@ -14,7 +14,7 @@ import sbt.testing.EventHandler
 
 import scala.scalajs.tools.env.JSConsole
 import scala.scalajs.tools.sourcemap.SourceMapper
-import scala.scalajs.tools.classpath.CompleteClasspath
+import scala.scalajs.tools.classpath.{CompleteClasspath, CompleteIRClasspath}
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -33,6 +33,12 @@ class TestOutputConsole(
   private val messagePrefix = "``|%^scala.js-test-comm&&"
 
   private val traceBuf = new ArrayBuffer[StackTraceElement]
+
+  /* See #727: source mapping does not work with CompleteIRClasspath, so
+   * don't bother to try.
+   */
+  private val ignoreSourceMapping =
+    noSourceMap || classpath.isInstanceOf[CompleteIRClasspath]
 
   private lazy val sourceMapper = new SourceMapper(classpath)
 
@@ -98,7 +104,7 @@ class TestOutputConsole(
             val ste =
               new StackTraceElement(className, methodName, fileName, lineNumber)
 
-            if (noSourceMap)
+            if (ignoreSourceMapping)
               traceBuf += ste
             else
               traceBuf += sourceMapper.map(ste, columnNumber)

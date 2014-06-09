@@ -29,7 +29,7 @@ class CompleteIRClasspath(
    *  Consider using ScalaJSPackager for a canonical way to do so. It allows to
    *  persist the resulting file and create a source map.
    */
-  override def cijsCode: Seq[VirtualJSFile] = {
+  override lazy val cijsCode: Seq[VirtualJSFile] = {
     import ScalaJSPackager._
 
     val output = WritableMemVirtualJSFile("temporary-package.js")

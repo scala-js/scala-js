@@ -82,8 +82,9 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
       printer.printTopLevelTree(desugared)
       printer.complete()
       val ctx = Context.getCurrentContext()
+      val fakeFileName = irFile.path.stripSuffix(".sjsir") + ".js"
       ctx.evaluateString(scope, codeWriter.toString(),
-          classDef.pos.source.toString, 1, null)
+          fakeFileName, 1, null)
     }
   }
 }
