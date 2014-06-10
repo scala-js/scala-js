@@ -20,6 +20,8 @@ import scala.collection.mutable.ArrayBuffer
 
 import scala.util.Try
 
+import java.util.regex._
+
 class TestOutputConsole(
     base: JSConsole,
     handler: EventHandler,
@@ -53,7 +55,7 @@ class TestOutputConsole(
         log(_.error, s"Malformed message: $msgStr")
       else {
         val op = data.substring(0, sepPos)
-        val message = data.substring(sepPos + 1)
+        val message = unescape(data.substring(sepPos + 1))
 
         op match {
           case "error" =>
@@ -153,4 +155,21 @@ class TestOutputConsole(
 
   private def removeColors(message: String): String =
     message.replaceAll(colorPattern, "")
+
+  private val unEscPat = Pattern.compile("(\\\\\\\\|\\\\n|\\\\r)")
+  private def unescape(message: String): String = {
+    val m = unEscPat.matcher(message)
+    val res = new StringBuffer()
+    while (m.find()) {
+      val repl = m.group() match {
+        case "\\\\" => "\\\\"
+        case "\\n" => "\n"
+        case "\\r" => "\r"
+      }
+      m.appendReplacement(res, repl);
+    }
+    m.appendTail(res);
+    res.toString
+  }
+
 }
