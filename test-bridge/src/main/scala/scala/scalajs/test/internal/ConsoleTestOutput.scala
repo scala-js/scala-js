@@ -65,8 +65,13 @@ object ConsoleTestOutput extends TestOutput {
 
   private val messagePrefix = "``|%^scala.js-test-comm&&"
 
-  private def send(fct: String, msg: String) =
-    println(messagePrefix + fct + "|" + msg)
+  private def send(fct: String, msg: String) = {
+    val escaped = msg
+      .replace("\\", "\\\\")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+    println(messagePrefix + fct + "|" + escaped)
+  }
 
   private def sendTrace(stack: Array[StackTraceElement]) = for {
     el <- stack
