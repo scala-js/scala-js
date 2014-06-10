@@ -9,7 +9,7 @@ object ScalaJSVersions {
   final val currentIsSnapshot = current endsWith "-SNAPSHOT"
 
   /** Versions whose binary files we can support (used by deserializer) */
-  val binarySupported: Set[String] = Set(current)
+  val binarySupported: Set[String] = Set(current, "0.5.0-RC1")
 
   // Just to be extra safe
   assert(binarySupported contains current)
