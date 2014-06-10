@@ -60,7 +60,7 @@ object ConsoleTestOutput extends TestOutput {
     new TestOutputLog {
       def info(message: String): Unit = send("info", message)
       def warn(message: String): Unit = send("warn", message)
-      def error(message: String): Unit = send("error", message)
+      def error(message: String): Unit = send("error-log", message)
     }
 
   private val messagePrefix = "``|%^scala.js-test-comm&&"

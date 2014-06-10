@@ -83,6 +83,9 @@ class TestOutputConsole(
           case "canceled" =>
             noTrace()
             logWithEvent(_.info, message, Canceled)
+          case "error-log" =>
+            noTrace()
+            log(_.error, message)
           case "info" =>
             noTrace()
             log(_.info, message)
