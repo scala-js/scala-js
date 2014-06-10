@@ -105,8 +105,12 @@ private[lang] object StandardErrPrintStream
 extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
 
   override protected def doWriteLine(line: String): Unit = {
-    if (!(!global.console))
-      global.console.error(line)
+    if (!(!global.console)) {
+      if (!(!global.console.error))
+        global.console.error(line)
+      else
+        global.console.log(line)
+    }
   }
 }
 
