@@ -16,7 +16,34 @@ package scala.scalajs.js
 
 import annotation.JSBracketAccess
 
-/** Dictionary "view" of a JavaScript value. */
+/** Dictionary "view" of a JavaScript value.
+ *
+ *  Using objects as dictionaries (maps from strings to values) through their
+ *  properties is a common idiom in JavaScript. This trait lets you treat an
+ *  object as such a dictionary.
+ *
+ *  To use it, cast your object, say `x`, into a [[Dictionary]] using
+ *  {{{
+ *  val xDict = x.asInstanceOf[js.Dictionary[Int]]
+ *  }}}
+ *  then use it as
+ *  {{{
+ *  xDict("prop") = 5
+ *  println(xDict("prop")) // displays 5
+ *  xDict.delete("prop")   // removes the property "prop"
+ *  println(xDict("prop")) // displays undefined
+ *  }}}
+ *
+ *  To enumerate all the keys of a dictionary, use [[js.Object.keys]], which
+ *  returns a [[js.Array]] of the properties. It can be used in a for
+ *  comprehension like this:
+ *  {{{
+ *  for (prop <- js.Object.keys(xDict)) {
+ *    val value = xDict(prop)
+ *    println(prop + " -> " + value)
+ *  }
+ *  }}}
+ */
 sealed trait Dictionary[A] extends Object {
   /** Reads a field of this object by its name. */
   @JSBracketAccess

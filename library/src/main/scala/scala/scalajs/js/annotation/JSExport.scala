@@ -10,7 +10,10 @@
 
 package scala.scalajs.js.annotation
 
-/** Specifies that the given entity should be exported for use in raw JS */
+/** Specifies that the given entity should be exported for use in raw JS.
+ *
+ *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
+ */
 class JSExport private (name: Option[String]) extends scala.annotation.StaticAnnotation {
   def this() = this(None)
   def this(name: String) = this(Some(name))

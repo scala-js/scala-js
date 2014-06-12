@@ -15,5 +15,7 @@ package scala.scalajs.js
  *  When calling method on a top-level object or package object that is a
  *  subtype of GlobalScope, the receiver is dropped, and the JavaScript global
  *  scope is used instead.
+ *
+ *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 trait GlobalScope extends Object

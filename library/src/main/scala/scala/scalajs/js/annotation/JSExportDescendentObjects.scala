@@ -14,5 +14,7 @@ package scala.scalajs.js.annotation
  *  should be exported for use in raw JS.
  *  Note that objects exported this way are exported under their fully
  *  qualified name.
+ *
+ *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
 class JSExportDescendentObjects extends scala.annotation.StaticAnnotation

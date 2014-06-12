@@ -21,15 +21,11 @@ package scala.scalajs
  *  == Guide ==
  *
  *  General documentation on Scala.js can is available at
- *  [[http://lampwww.epfl.ch/~doeraene/scala-js/doc/]].
+ *  [[http://www.scala-js.org/doc/]].
  *
  *  == Overview ==
  *
- *  The trait [[js.Any]] is the super type of all JavaScript values. It has
- *  subtraits [[js.Number]], [[js.Boolean]], [[js.String]] and [[js.Undefined]]
- *  which represent values of primitive JavaScript types. It also has a
- *  subclass [[js.Object]], which is the base class of all JavaScript objects,
- *  and represents the predefined `Object` class of JavaScript.
+ *  The trait [[js.Any]] is the super type of all JavaScript values.
  *
  *  All class, trait and object definitions that inherit, directly or
  *  indirectly, from [[js.Any]] do not have actual implementations in Scala.
@@ -38,14 +34,39 @@ package scala.scalajs
  *  a subclass of [[js.Any]]: all the method definitions will be ignored when
  *  compiling to JavaScript.
  *
+ *  Implicit conversions to and from standard Scala types to their equivalent
+ *  in JavaScript are provided. For example, from Scala arrays to JavaScript
+ *  arrays and back.
+ *
+ *  The most important subclasses of [[js.Any]] are:
+ *  - [[js.Dynamic]], a dynamically typed interface to JavaScript APIs
+ *  - [[js.Object]], the superclass of all statically typed JavaScript classes,
+ *    which has subclasses for all the classes standardized in ECMAScript 5.1,
+ *    among which:
+ *    - [[js.Array]]
+ *    - [[js.Function]] (and subtraits with specific number of parameters)
+ *    - [[js.ThisFunction]] and its subtraits for functions that take the
+ *      JavaScript `this` as an explicit parameters
+ *    - [[js.Dictionary]] to access the properties of an object in a
+ *      dictionary-like way
+ *    - [[js.Date]]
+ *    - [[js.RegExp]]
+ *
  *  The trait [[js.Dynamic]] is a special subtrait of [[js.Any]]. It can
  *  represent any JavaScript value in a dynamically typed way. It is possible
  *  to call any method and read and write any field of a value of type
  *  [[js.Dynamic]].
  *
- *  The trait [[js.Dictionary]] provides read and write access to any field of
- *  any JavaScript value with the array access syntax of Scala, mapping to the
- *  array access syntax of JavaScript.
+ *  The package [[scala.scalajs.js.prim]] gives definition for the four
+ *  primitive types of JavaScript as subtraits of [[js.Any]], but generally
+ *  it is preferable to use the corresponding Scala type.
+ *  - [[js.prim.Number]] corresponds to [[scala.Double]]
+ *  - [[js.prim.Boolean]] corresponds to [[scala.Boolean]]
+ *  - [[js.prim.String]] corresponds to [[java.lang.String]]
+ *  - [[js.prim.Undefined]] corresponds to [[scala.Unit]]
+ *
+ *  [[js.UndefOr]] gives a [[scala.Option]]-like interface where the JavaScript
+ *  value `undefined` takes the role of `None`.
  */
 package object js extends js.GlobalScope {
   /** The type of JavaScript numbers, which is [[scala.Double]]. */
@@ -84,9 +105,9 @@ package object js extends js.GlobalScope {
    *  MDN
    *
    *  Browser support:
-   *    * Has no effect in Rhino nor, apparently, in Firefox
-   *    * In Chrome, it has no effect unless the developer tools are opened
-   *      beforehand.
+   *  - Has no effect in Rhino nor, apparently, in Firefox
+   *  - In Chrome, it has no effect unless the developer tools are opened
+   *    beforehand.
    */
   def debugger(): Unit = sys.error("stub")
 
