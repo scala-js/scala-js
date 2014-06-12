@@ -45,7 +45,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
   private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
   private val isKeywordOrReserved =
-    js.isKeyword ++ Seq("arguments", ScalaJSEnvironmentName)
+    js.isKeyword ++ Seq("arguments", "eval", ScalaJSEnvironmentName)
 
   def withNewLocalNameScope[A](body: => A): A =
     withScopedVars(

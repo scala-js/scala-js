@@ -158,6 +158,13 @@ object RegressionTest extends JasmineTest {
       expect(x.`3`).toEqual(3)
     }
 
+    it("should reserve `eval` and `arguments` - #743") {
+      val eval = 5
+      expect(eval).toEqual(5)
+      val arguments = "hello"
+      expect(arguments).toEqual("hello")
+    }
+
     it("should support class literals for existential value types - #218") {
       expect(scala.reflect.classTag[Bug218Foo[_]].toString).toEqual(
           "scala.scalajs.test.compiler.RegressionTest$Bug218Foo")
