@@ -16,8 +16,9 @@ package scala.scalajs.js
 
 import scala.language.implicitConversions
 
-/**
- * A JavaScript function where `this` is considered as a first parameter.
+/** A JavaScript function where `this` is considered as a first parameter.
+ *
+ *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 trait ThisFunction extends Function {
 }

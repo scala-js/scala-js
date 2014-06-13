@@ -437,7 +437,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
-          scalaJSSourceMapSettings
+          scalaJSSourceMapSettings,
+          scalacOptions in (Compile, doc) += "-implicits"
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(

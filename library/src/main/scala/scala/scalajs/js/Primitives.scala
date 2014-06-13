@@ -259,32 +259,24 @@ class Object extends Any {
   def toLocaleString(): String = ???
   def valueOf(): scala.Any = ???
 
-  /**
-   * Every object descended from Object inherits the hasOwnProperty method.
-   * This method can be used to determine whether an object has the specified
-   * property as a direct property of that object; unlike the in operator,
-   * this method does not check down the object's prototype chain.
+  /** Tests whether this object has the specified property as a direct property.
+   *
+   *  Unlike [[js.Object.hasProperty]], this method does not check down the
+   *  object's prototype chain.
    *
    * MDN
    */
   def hasOwnProperty(v: String): Boolean = ???
 
-  /**
-   * The isPrototypeOf mehtod allows you to check whether or not an object exists
-   * within another object's prototype chain.
-   *
-   * MDN
-   */
+  /** Tests whether this object is in the prototype chain of another object. */
   def isPrototypeOf(v: Object): Boolean = ???
 
-  /**
-   * Every object has a propertyIsEnumerable method. This method can determine
-   * whether the specified property in an object can be enumerated by a for...in
-   * loop, with the exception of properties inherited through the prototype
-   * chain. If the object does not have the specified property, this method
-   * returns false.
+  /** Tests whether the specified property in an object can be enumerated by a
+   *  call to [[js.Object.properties]], with the exception of properties
+   *  inherited through the prototype chain. If the object does not have the
+   *  specified property, this method returns false.
    *
-   * MDN
+   *  MDN
    */
   def propertyIsEnumerable(v: String): Boolean = ???
 }

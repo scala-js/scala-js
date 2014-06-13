@@ -10,8 +10,8 @@
 
 package scala.scalajs.js.annotation
 
-/** Marks the target method as representing bracket access in JavaScript.
+/** Marks the annotated method as representing bracket access in JavaScript.
  *
- *  @see [[http://lampwww.epfl.ch/~doeraene/scala-js/doc/js-interoperability.html Guide to JavaScript interoperability in Scala.js]]
+ *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
 class JSBracketAccess extends scala.annotation.StaticAnnotation

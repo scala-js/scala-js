@@ -18,7 +18,11 @@ import scala.language.implicitConversions
 
 import scala.scalajs.js.{Any, Dynamic, Object, Array, RegExp, prim}
 
-/** Primitive JavaScript number. */
+/** Primitive JavaScript number.
+ *
+ *  In most situations, you should not need this trait, and use
+ *  [[scala.Double]] instead (or [[scala.Int]] where appropriate).
+ */
 sealed trait Number extends Any {
   def unary_+(): Number
   def unary_-(): Number
@@ -153,7 +157,11 @@ object Number extends Object {
   val POSITIVE_INFINITY: Double = ???
 }
 
-/** Primitive JavaScript boolean. */
+/** Primitive JavaScript boolean.
+ *
+ *  In most situations, you should not need this trait, and use
+ *  [[scala.Boolean]] instead.
+ */
 sealed trait Boolean extends Any {
   override def unary_!(): scala.Boolean = sys.error("stub")
 
@@ -170,7 +178,11 @@ object Boolean extends Object {
   implicit def toBoolean(value: prim.Boolean): scala.Boolean = sys.error("stub")
 }
 
-/** Primitive JavaScript string. */
+/** Primitive JavaScript string.
+ *
+ *  In most situations, you should not need this trait, and use
+ *  [[java.lang.String]] instead.
+ */
 sealed trait String extends Any {
   def +(that: String): String
   def +(that: Any): String
@@ -414,5 +426,9 @@ object String extends Object {
   def fromCharCode(codes: Int*): java.lang.String = ???
 }
 
-/** Primitive JavaScript undefined value. */
+/** Primitive JavaScript undefined value.
+ *
+ *  In most situations, you should not need this trait, and use
+ *  [[scala.Unit]] instead.
+ */
 sealed trait Undefined extends Any
