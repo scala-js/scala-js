@@ -36,6 +36,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 import java.nio.charset.Charset
+import sbt.testing.Framework
 
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = ScalaJSVersions.current
@@ -90,8 +91,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val requiresDOM = settingKey[Boolean]("Whether this projects needs the DOM")
 
-    val scalaJSTestFramework = settingKey[String](
+    val scalaJSIncludedTestFramework = settingKey[String](
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine")
+
+    val scalaJSTestFrameworks = taskKey[Seq[(sbt.TestFramework,Framework)]](
+        "Get instances of the test frameworks to run on ScalaJs"
+    )
 
     val relativeSourceMaps = settingKey[Boolean](
         "Make the referenced paths on source maps relative to target path")
@@ -530,7 +535,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   )
 
   val scalaJSTestFrameworkSettings = Seq(
-      scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
+
+      scalaJSIncludedTestFramework := "scala.scalajs.test.JasmineTestFramework",
 
       // Copied from Defaults, but scoped. We need a JVM loader in
       // loadedTestFrameworks to find out whether the framework exists.
@@ -541,28 +547,30 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
             IO.createUniqueDirectory(taskTemporaryDirectory.value))
       },
 
-      loadedTestFrameworks := {
-        // use assert to prevent warning about pure expr in stat pos
-        assert(ensureUnforked.value)
-
+      scalaJSTestFrameworks := Nil,
+      scalaJSTestFrameworks ++= {
         val loader = (testLoader in loadedTestFrameworks).value
         val isTestFrameworkDefined = try {
-          Class.forName(scalaJSTestFramework.value, false, loader)
+          Class.forName(scalaJSIncludedTestFramework.value, false, loader)
           true
         } catch {
           case _: ClassNotFoundException => false
         }
         if (isTestFrameworkDefined) {
-          loadedTestFrameworks.value.updated(
-              sbt.TestFramework(classOf[TestFramework].getName),
-              new TestFramework(
-                  environment = jsEnv.value,
-                  jsConsole = jsConsole.value,
-                  testFramework = scalaJSTestFramework.value)
-          )
+          List(sbt.TestFramework(classOf[TestFramework].getName) ->
+            new TestFramework(
+                environment = jsEnv.value,
+                jsConsole = jsConsole.value,
+                testFramework = scalaJSIncludedTestFramework.value))
         } else {
-          loadedTestFrameworks.value
+          Nil
         }
+      },
+
+      loadedTestFrameworks := {
+        // use assert to prevent warning about pure expr in stat pos
+        assert(ensureUnforked.value)
+        loadedTestFrameworks.value ++ scalaJSTestFrameworks.value
       },
 
       // Pseudo loader to pass classpath to test framework
