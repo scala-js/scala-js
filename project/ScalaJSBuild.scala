@@ -47,7 +47,9 @@ object ScalaJSBuild extends Build {
             / "tools" / "partest" / "scalajs" / scalaVersion.value
         )
         testListDir.exists
-      }
+      },
+
+      shellPrompt := { s => Project.extract(s).currentProject.id + " > " }
   )
 
   private val snapshotsOrReleases =
