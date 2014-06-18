@@ -22,19 +22,25 @@ import scala.util.Try
 
 import java.util.regex._
 
+/** This parses the messages sent from the test bridge and forwards
+ *  the calls to SBT. It also buffers all log messages and allows to
+ *  pipe them to multiple loggers in a synchronized fashion. This
+ *  ensures that log messages aren't interleaved due to parallelism.
+ */
 class TestOutputConsole(
     base: JSConsole,
     handler: EventHandler,
-    loggers: Array[Logger],
     events: Events,
     classpath: CompleteClasspath,
     noSourceMap: Boolean) extends JSConsole {
 
+  import TestOutputConsole._
   import events._
 
   private val messagePrefix = "``|%^scala.js-test-comm&&"
 
   private val traceBuf = new ArrayBuffer[StackTraceElement]
+  private val logBuffer = new ArrayBuffer[LogElement]
 
   /* See #727: source mapping does not work with CompleteIRClasspath, so
    * don't bother to try.
@@ -136,20 +142,28 @@ class TestOutputConsole(
   private def messageWithStack(message: String, stack: Array[StackTraceElement]): String =
     message + stack.mkString("\n", "\n", "")
 
-  private def log(method: Logger => (String => Unit), message: String): Unit = {
-    for (logger <- loggers) {
-      method(logger) {
+  private def log(method: LogMethod, message: String): Unit =
+    logBuffer.append(LogElement(method, message))
+
+  private def logWithEvent(method: LogMethod,
+      message: String, event: Event): Unit = {
+    handler handle event
+    log(method, message)
+  }
+
+  def pipeLogsTo(loggers: Array[Logger]): Unit = {
+    TestOutputConsole.synchronized {
+      for {
+        LogElement(method, message) <- logBuffer
+        logger <- loggers
+      } method(logger) {
         if (logger.ansiCodesSupported) message
         else removeColors(message)
       }
     }
   }
 
-  private def logWithEvent(method: Logger => (String => Unit),
-      message: String, event: Event): Unit = {
-    handler handle event
-    log(method, message)
-  }
+  def allLogs: List[LogElement] = logBuffer.toList
 
   private val colorPattern = raw"\033\[\d{1,2}m"
 
@@ -172,4 +186,9 @@ class TestOutputConsole(
     res.toString
   }
 
+}
+
+object TestOutputConsole {
+  type LogMethod = Logger => (String => Unit)
+  case class LogElement(method: LogMethod, message: String)
 }
