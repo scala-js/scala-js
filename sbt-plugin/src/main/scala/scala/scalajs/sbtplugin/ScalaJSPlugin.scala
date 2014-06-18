@@ -360,7 +360,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
           import ScalaJSPackager._
           (new ScalaJSPackager).packageJS(cp.jsLibs,
                OutputConfig(WritableFileVirtualJSFile(output)),
-               streams.value.log)
+               streams.value.log,
+               strictMode = false)
 
           output
         }

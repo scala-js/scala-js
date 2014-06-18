@@ -92,10 +92,13 @@ class ScalaJSPackager {
   }
 
   def packageJS(js: Seq[VirtualJSFile], outCfg: OutputConfig,
-      logger: Logger): Unit = {
+      logger: Logger, strictMode: Boolean = true): Unit = {
 
     val builder = mkBuilder(outCfg)
-    builder.addLine("'use strict';")
+
+    if (strictMode)
+      builder.addLine("'use strict';")
+
     js.foreach(builder.addFile _)
     builder.complete()
     builder.closeWriters()
