@@ -38,11 +38,13 @@ class TestTask(
 
     val runnerFile = testRunnerFile(options.frameworkArgs)
     val testConsole = new TestOutputConsole(jsConsole, eventHandler,
-      loggers, new Events(taskDef), classpath, options.noSourceMap)
+      new Events(taskDef), classpath, options.noSourceMap)
     val logger = new SbtTestLoggerAccWrapper(loggers)
 
     // Actually execute test
     env.runJS(classpath, runnerFile, logger, testConsole)
+
+    testConsole.pipeLogsTo(loggers)
 
     Array.empty
   }
