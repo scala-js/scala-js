@@ -8,10 +8,18 @@ object ScalaJSVersions {
   /** true iff the Scala.js version of this build is a snapshot version. */
   final val currentIsSnapshot = current endsWith "-SNAPSHOT"
 
+  /** Version of binary IR this Scala.js version emits
+   *
+   *  This should be either of:
+   *  - a prior release version (i.e. "0.5.0", *not* "0.5.0-SNAPSHOT")
+   *  - `current`
+   */
+  final val binaryEmitted = "0.5.0"
+
   /** Versions whose binary files we can support (used by deserializer) */
-  val binarySupported: Set[String] = Set("0.5.0", current)
+  val binarySupported: Set[String] = Set("0.5.0", binaryEmitted)
 
   // Just to be extra safe
-  assert(binarySupported contains current)
+  assert(binarySupported contains binaryEmitted)
 
 }
