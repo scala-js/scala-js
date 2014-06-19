@@ -28,4 +28,8 @@ object JSUtils {
     builder.append('"')
     builder.result()
   }
+
+  def dot2bracket(name: String): String = {
+    name.split('.').map(s => s"""[${toJSstr(s)}]""").mkString
+  }
 }
