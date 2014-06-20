@@ -74,8 +74,10 @@ object Scalajsp {
   }
 
   def printSupported(): Unit = {
+    import ScalaJSVersions._
+    println(s"Emitted Scala.js IR version is: $binaryEmitted")
     println("Supported Scala.js IR versions are")
-    ScalaJSVersions.binarySupported.foreach(v => println(s"* $v"))
+    binarySupported.foreach(v => println(s"* $v"))
   }
 
   def displayFileContent(vfile: VirtualScalaJSIRFile, opts: Options): Unit = {

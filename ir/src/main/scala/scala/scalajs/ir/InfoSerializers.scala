@@ -51,7 +51,7 @@ object InfoSerializers {
       s.writeInt(IRMagicNumber)
 
       // Write the Scala.js Version
-      s.writeUTF(ScalaJSVersions.current)
+      s.writeUTF(ScalaJSVersions.binaryEmitted)
 
       import classInfo._
       s.writeUTF(name)
