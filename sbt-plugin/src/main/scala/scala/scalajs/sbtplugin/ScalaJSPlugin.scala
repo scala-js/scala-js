@@ -14,6 +14,7 @@ import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 
 import Implicits._
+import JSUtils._
 
 import scala.scalajs.tools.io.{IO => _, _}
 import scala.scalajs.tools.classpath._
@@ -336,7 +337,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         else Def.task {
           mainClass.value map { mainCl =>
             val file = (artifactPath in packageLauncher).value
-            IO.write(file, s"$mainCl().main();\n", Charset.forName("UTF-8"))
+            IO.write(file, launcherContent(mainCl), Charset.forName("UTF-8"))
 
             // Attach the name of the main class used, (ab?)using the name key
             Attributed(file)(AttributeMap.empty.put(name.key, mainCl))
@@ -444,9 +445,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     env.runJS(cp, launcher, log, jsConsole)
   }
 
+  private def launcherContent(mainCl: String) =
+    s"this${dot2bracket(mainCl)}().main();\n"
+
   private def memLauncher(mainCl: String) = {
     new MemVirtualJSFile("Generated launcher file")
-      .withContent(s"$mainCl().main();")
+      .withContent(launcherContent(mainCl))
   }
 
   // These settings will be filtered by the stage dummy tasks

@@ -58,12 +58,11 @@ class TestTask(
     // ignore them.
 
     val jsArgArray = listToJS(args)
-
     new MemVirtualJSFile("Generated test launcher file").
-      withContent(s"""$testFramework().safeRunTest(
+      withContent(s"""this${dot2bracket(testFramework)}().safeRunTest(
                      |  scala.scalajs.test.internal.ConsoleTestOutput(),
                      |  $jsArgArray,
-                     |  $testKey);""".stripMargin)
+                     |  this${dot2bracket(testKey)});""".stripMargin)
   }
 
 
