@@ -535,8 +535,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   )
 
   val scalaJSTestFrameworkSettings = Seq(
-      scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
-
       // Copied from Defaults, but scoped. We need a JVM loader in
       // loadedTestFrameworks to find out whether the framework exists.
       testLoader in loadedTestFrameworks := {
@@ -662,6 +660,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       persistLauncher      := false,
 
       skip in packageJSDependencies := true,
+
+      scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
 
       preLinkJSEnv  := new RhinoJSEnv(withDOM = requiresDOM.value),
       postLinkJSEnv := {
