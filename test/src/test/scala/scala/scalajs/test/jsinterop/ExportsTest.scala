@@ -421,6 +421,27 @@ object ExportsTest extends JasmineTest {
 
     }
 
+    it("should correctly overload exports called `toString`") {
+      class A {
+        override def toString(): String = "no arg"
+        @JSExport
+        def toString(x: Int): String = s"with arg: $x"
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+      expect(a.applyDynamic("toString")()).toEqual("no arg")
+      expect(a.applyDynamic("toString")(1)).toEqual("with arg: 1")
+    }
+
+    it("should allow to explicitly export toString") {
+      class A {
+        @JSExport("toString")
+        override def toString(): String = "called"
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+      expect(a.applyDynamic("toString")()).toEqual("called")
+    }
 
     it("should correctly box repeated parameter lists with value classes") {
       class A {

@@ -115,11 +115,20 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     /** generates the exporter function (i.e. exporter for non-properties) for
      *  a given name */
-    private def genExportMethod(alts: List[Symbol], jsName: String) = {
-      implicit val pos = alts.head.pos
-
-      assert(alts.nonEmpty,
+    private def genExportMethod(alts0: List[Symbol], jsName: String) = {
+      assert(alts0.nonEmpty,
           "need at least one alternative to generate exporter method")
+
+      implicit val pos = alts0.head.pos
+
+      val alts = {
+        // toString() is always exported. We might need to add it here
+        // to get correct overloading.
+        if (jsName == "toString" && alts0.forall(_.tpe.params.nonEmpty))
+          Object_toString :: alts0
+        else
+          alts0
+      }
 
       // Factor out methods with variable argument lists. Note that they can
       // only be at the end of the lists as enforced by PrepJSExports

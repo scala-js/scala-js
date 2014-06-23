@@ -78,6 +78,14 @@ trait JSGlobalAddons extends JSDefinitions
               "An exported name may not contain a double underscore (`__`)")
         }
 
+        // Make sure we do not override the default export of toString
+        if (!sym.isConstructor && name == "toString" &&
+            sym.name != nme.toString_ && sym.tpe.params.isEmpty &&
+            !isJSGetter(sym)) {
+          currentUnit.error(annot.pos, "You may not export a zero-argument " +
+              "method named other than 'toString' under the name 'toString'")
+        }
+
         (name, annot.pos)
       }
 

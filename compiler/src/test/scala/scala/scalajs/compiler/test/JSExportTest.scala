@@ -471,6 +471,23 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noBadToStringExport = {
+
+    """
+    class A {
+      @JSExport("toString")
+      def a(): Int = 5
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a zero-argument method named other than 'toString' under the name 'toString'
+      |      @JSExport("toString")
+      |       ^
+    """
+
+  }
+
+  @Test
   def gracefulDoubleDefaultFail = {
     // This used to blow up (i.e. not just fail), because PrepJSExports asked
     // for the symbol of the default parameter getter of [[y]], and asserted its
