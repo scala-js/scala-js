@@ -587,6 +587,8 @@ object ScalaJSBuild extends Build {
           name := "Scala.js test suite",
           publishArtifact in Compile := false,
 
+          scalacOptions ~= (_.filter(_ != "-deprecation")),
+
           sources in Test ++= {
             if (!scalaVersion.value.startsWith("2.10") &&
                 scalacOptions.value.contains("-Xexperimental")) {
