@@ -45,9 +45,24 @@ import annotation.JSBracketAccess
  *  }}}
  */
 sealed trait Dictionary[A] extends Object {
-  /** Reads a field of this object by its name. */
+  /** Reads a field of this object by its name.
+   *
+   *  This will fail with a ClassCastException if the key doesn't exist and
+   *  the return type doesn't allow js.undefined as value. If the return type
+   *  does allow js.undefined, applying with a non-existent key will return
+   *  js.undefined.
+   */
   @JSBracketAccess
   def apply(key: String): A
+
+  /** Reads a field of this object by its name.
+   *
+   *  This will return undefined if the key doesn't exist. It will also return
+   *  undefined if the value associated with the key is undefined. To truly
+   *  check for the existence of a property, use [[js.Object.hasOwnProperty]].
+   */
+  @JSBracketAccess
+  def get(key: String): UndefOr[A]
 
   /** Writes a field of this object by its name. */
   @JSBracketAccess

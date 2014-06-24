@@ -38,5 +38,13 @@ object DictionaryTest extends JasmineTest {
       expect(obj("nonconfig")).toEqual(4)
     }
 
+    it("should provide `get`") {
+      val obj = js.Dictionary.empty[Int]
+      obj("hello") = 1
+
+      expect(obj.get("hello").isDefined).toBeTruthy
+      expect(obj.get("world").isDefined).toBeFalsy
+    }
+
   }
 }
