@@ -19,6 +19,7 @@ import annotation.JSBracketAccess
 import scala.language.{ dynamics, implicitConversions }
 import scala.reflect.ClassTag
 import scala.collection.{ immutable, mutable }
+import scala.collection.generic.CanBuildFrom
 
 /** Super-type of all JavaScript values.
  *
@@ -32,7 +33,7 @@ trait Any extends scala.AnyRef {
 }
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
-object Any {
+object Any extends LowPrioAnyImplicits {
   implicit def fromUnit(value: Unit): prim.Undefined = sys.error("stub")
 
   implicit def fromBoolean(value: scala.Boolean): prim.Boolean = sys.error("stub")
@@ -74,14 +75,28 @@ object Any {
     result
   }
 
-  implicit def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
+  @deprecated("Converts js.Array to scala.Array. " +
+      "Use jsArrayOps instead for operations, toArray for conversion", "0.5.1")
+  def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
     genericArrayOps(toArray(array))
+
+  implicit def jsArrayOps[A](array: Array[A]): ArrayOps[A] =
+    new ArrayOps(array)
   implicit def stringOps(string: prim.String): immutable.StringOps =
     new immutable.StringOps(string: java.lang.String)
   implicit def richDouble(num: prim.Number): scala.runtime.RichDouble =
     new scala.runtime.RichDouble(num: scala.Double)
   implicit def richBoolean(b: prim.Boolean): scala.runtime.RichBoolean =
     new scala.runtime.RichBoolean(b: scala.Boolean)
+
+  implicit def canBuildFromArray[A]: CanBuildFrom[Array[_], A, Array[A]] = {
+    new CanBuildFrom[Array[_], A, Array[A]] {
+      def apply(from: Array[_]): mutable.Builder[A, Array[A]] =
+        new ArrayOps.ArrayBuilder[A]
+      def apply(): mutable.Builder[A, Array[A]] =
+        new ArrayOps.ArrayBuilder[A]
+    }
+  }
 
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): Function1[T1, R] = sys.error("stub")
@@ -130,6 +145,13 @@ object Any {
   implicit def toFunction20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R](f: Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R]): scala.Function20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20)
   implicit def toFunction21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R](f: Function21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R]): scala.Function21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21)
   implicit def toFunction22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R](f: Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R]): scala.Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] = (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) => f(x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22)
+}
+
+trait LowPrioAnyImplicits {
+  implicit def wrapArray[A](array: Array[A]): WrappedArray[A] =
+    new WrappedArray(array)
+  implicit def wrapDictionary[A](dict: Dictionary[A]): WrappedDictionary[A] =
+    new WrappedDictionary(dict)
 }
 
 /** Dynamically typed JavaScript value.
