@@ -87,7 +87,7 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  val myScalaJSSettings = scalaJSAbstractSettings ++ Seq(
+  val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
       autoCompilerPlugins := true,
       checkScalaJSIR := true
   )
