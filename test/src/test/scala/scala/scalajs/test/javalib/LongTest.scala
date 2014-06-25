@@ -80,5 +80,22 @@ object LongTest extends JasmineTest {
       test("-90000", -0x90000L)
     }
 
+    it("should correctly compute trailing zeros") {
+      expect(JLong.numberOfTrailingZeros(0xff10000000000000L)).toEqual(52)
+      expect(JLong.numberOfTrailingZeros(0xff20000000000000L)).toEqual(53)
+      expect(JLong.numberOfTrailingZeros(0xff40000000000000L)).toEqual(54)
+      expect(JLong.numberOfTrailingZeros(0xff80000000000000L)).toEqual(55)
+
+      expect(JLong.numberOfTrailingZeros(0x0000010000000000L)).toEqual(40)
+      expect(JLong.numberOfTrailingZeros(0x0000020000000000L)).toEqual(41)
+      expect(JLong.numberOfTrailingZeros(0x0000040000000000L)).toEqual(42)
+      expect(JLong.numberOfTrailingZeros(0x0000080000000000L)).toEqual(43)
+
+      expect(JLong.numberOfTrailingZeros(0x0000000000010000L)).toEqual(16)
+      expect(JLong.numberOfTrailingZeros(0x0000000000020000L)).toEqual(17)
+      expect(JLong.numberOfTrailingZeros(0x0000000000040000L)).toEqual(18)
+      expect(JLong.numberOfTrailingZeros(0x0000000000080000L)).toEqual(19)
+    }
+
   }
 }

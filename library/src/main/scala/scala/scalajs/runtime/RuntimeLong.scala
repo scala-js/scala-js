@@ -332,13 +332,21 @@ final class RuntimeLong private (
   private def isMinValue = x == MinValue
   private def isNegative = sign != 0
   private def abs = if (sign == 1) -x else x
-  def numberOfLeadingZeros =
+  def numberOfLeadingZeros: Int =
     if (h == 0 && m == 0)
       Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
     else if (h == 0)
       Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
     else
       Integer.numberOfLeadingZeros(h) - (32 - BITS2)
+
+  def numberOfTrailingZeros: Int =
+    if (l == 0 && m == 0)
+      Integer.numberOfTrailingZeros(h) + BITS01
+    else if (l == 0)
+      Integer.numberOfTrailingZeros(m) + BITS
+    else
+      Integer.numberOfTrailingZeros(l)
 
   /** return log_2(x) if power of 2 or -1 otherwise */
   private def powerOfTwo =
