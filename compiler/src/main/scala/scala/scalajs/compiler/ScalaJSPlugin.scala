@@ -35,7 +35,15 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   } with JSGlobalAddons with Compat210Component
 
   object scalaJSOpts extends ScalaJSOptions {
+    import ScalaJSOptions.URIMap
     var fixClassOf:   Boolean     = false
+    lazy val sourceURIMaps: List[URIMap] = {
+      if (_sourceURIMaps.nonEmpty)
+        _sourceURIMaps.reverse
+      else
+        relSourceMap.toList.map(URIMap(_, absSourceMap))
+    }
+    var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None
     var absSourceMap: Option[URI] = None
   }
@@ -61,11 +69,30 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   override def processOptions(options: List[String],
       error: String => Unit): Unit = {
+    import ScalaJSOptions.URIMap
     import scalaJSOpts._
 
     for (option <- options) {
       if (option == "fixClassOf") {
         fixClassOf = true
+
+      } else if (option.startsWith("mapSourceURI:")) {
+        val uris = option.stripPrefix("mapSourceURI:").split("->")
+
+        if (uris.length != 1 && uris.length != 2) {
+          error("relocateSourceMap needs one or two URIs as argument.")
+        } else {
+          try {
+            val from = new URI(uris.head)
+            val to = uris.lift(1).map(str => new URI(str))
+            _sourceURIMaps ::= URIMap(from, to)
+          } catch {
+            case e: URISyntaxException =>
+              error(s"${e.getInput} is not a valid URI")
+          }
+        }
+
+      // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
         try { relSourceMap = Some(new URI(uriStr)) }
@@ -83,17 +110,29 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       }
     }
 
-    // Verfiy constraits on flags that require others
-    if (absSourceMap.isDefined && relSourceMap.isEmpty)
+    // Verify constraints
+    if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined)
+      error("You may not use mapSourceURI and relSourceMap together. " +
+          "Use another mapSourceURI option without second URI.")
+    else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined)
+      error("You may not use mapSourceURI and absSourceMap together. " +
+          "Use another mapSourceURI option.")
+    else if (absSourceMap.isDefined && relSourceMap.isEmpty)
       error("absSourceMap requires the use of relSourceMap")
   }
 
   override val optionsHelp: Option[String] = Some(s"""
-      |  -P:$name:relSourceMap:<URI>  relativize emitted source maps with <URI>
-      |  -P:$name:absSourceMap:<URI>  absolutize emitted source maps with <URI>
-            This option requires the use of relSourceMap
+      |  -P:$name:mapSourceURI:FROM_URI[->TO_URI]
+      |     change the location the source URIs in the emitted IR point to
+      |     - strips away the prefix FROM_URI (if it matches)
+      |     - optionally prefixes the TO_URI, where stripping has been performed
+      |     - any number of occurences are allowed. Processing is done on a first match basis.
       |  -P:$name:fixClassOf          repair calls to Predef.classOf that reach ScalaJS
       |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
+      |Deprecated options
+      |  -P:$name:relSourceMap:<URI>  relativize emitted source maps with <URI>
+      |  -P:$name:absSourceMap:<URI>  absolutize emitted source maps with <URI>
+      |     This option requires the use of relSourceMap
       """.stripMargin)
 
 }

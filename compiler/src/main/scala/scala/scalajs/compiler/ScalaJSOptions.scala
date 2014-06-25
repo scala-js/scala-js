@@ -13,13 +13,18 @@ import java.net.URI
  *  options.
  */
 trait ScalaJSOptions {
+  import ScalaJSOptions.URIMap
+
   /** should calls to Predef.classOf[T] be fixed in the jsinterop phase.
    *  If false, bad calls to classOf will cause an error. */
   def fixClassOf: Boolean
 
-  /** URI to relativize referenced file in source maps with */
-  def relSourceMap: Option[URI]
+  /** which source locations in source maps should be relativized (or where
+   *  should they be mapped to)? */
+  def sourceURIMaps: List[URIMap]
 
-  /** URI to make referenced file absolute again (requires relSourceMap) */
-  def absSourceMap: Option[URI]
+}
+
+object ScalaJSOptions {
+  case class URIMap(from: URI, to: Option[URI])
 }

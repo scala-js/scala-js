@@ -96,9 +96,8 @@ object ScalaJSBuild extends Build {
     if (scalaJSIsSnapshotVersion) Seq()
     else Seq(
       // Link source maps to github sources
-      "-P:scalajs:relSourceMap:" + root.base.toURI,
-      "-P:scalajs:absSourceMap:" +
-      "https://raw.githubusercontent.com/scala-js/scala-js/v" +
+      "-P:scalajs:mapSourceURI:" + root.base.toURI +
+      "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
       scalaJSVersion + "/"
     )
   }
@@ -290,13 +289,15 @@ object ScalaJSBuild extends Build {
             "-Yskip:cleanup,icode,jvm",
             // Tell plugin to hack fix bad classOf trees
             "-P:scalajs:fixClassOf",
-            // Link source maps to github sources
-            "-P:scalajs:relSourceMap:" +
-            fetchedScalaSourceDir.value.toURI,
-            "-P:scalajs:absSourceMap:" +
-            "https://raw.githubusercontent.com/scala/scala/v" +
+            // Link source maps to github sources of original Scalalib
+            "-P:scalajs:mapSourceURI:" +
+            fetchedScalaSourceDir.value.toURI +
+            "->https://raw.githubusercontent.com/scala/scala/v" +
             scalaVersion.value + "/"
             ),
+
+          // Link sources in override directories to our GitHub repo
+          scalaJSSourceMapSettings,
 
           fetchedScalaSourceDir := (
             baseDirectory.value / "fetchedSources" /

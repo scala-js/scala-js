@@ -89,9 +89,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               null                 // Fragment
           )
         case file =>
-          val relURI = scalaJSOpts.relSourceMap.fold(file.toURI)(_.relativize(file.toURI))
-          val absURI = scalaJSOpts.absSourceMap.fold(relURI)(_.resolve(relURI))
-          absURI
+          val srcURI = file.toURI
+          def matches(pat: java.net.URI) = pat.relativize(srcURI) != srcURI
+
+          scalaJSOpts.sourceURIMaps.collectFirst {
+            case ScalaJSOptions.URIMap(from, to) if matches(from) =>
+              val relURI = from.relativize(srcURI)
+              to.fold(relURI)(_.resolve(relURI))
+          } getOrElse srcURI
       }
     }
 
