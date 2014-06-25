@@ -29,6 +29,8 @@ class PartialIRClasspath(
     version: Option[String]
 ) extends PartialClasspath(dependencies, availableLibs, version) {
 
+  import PartialClasspath.DependencyFilter
+
   /** Orders and desugars the contained IR.
    *
    *  Consider using ScalaJSPackager for a canonical way to do so. It allows to
@@ -44,8 +46,8 @@ class PartialIRClasspath(
     output :: Nil
   }
 
-  override def resolve(): CompleteIRClasspath =
-    new CompleteIRClasspath(resolvedDependencies, scalaJSIR, version)
+  override def resolve(filter: DependencyFilter): CompleteIRClasspath =
+    new CompleteIRClasspath(resolveDependencies(filter), scalaJSIR, version)
 
   /** The same as append, but does not preserve order between the IR files
    *  of both PartialIRClasspaths. This is always safe (if append is safe),

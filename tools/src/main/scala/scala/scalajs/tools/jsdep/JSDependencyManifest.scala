@@ -9,26 +9,28 @@ import java.io._
 
 import org.json.simple.JSONValue
 
+/** The information written to a "JS_DEPENDENCIES" manifest file. */
 final case class JSDependencyManifest(
     origin: Origin,
-    libDeps: List[JSDependency])
+    libDeps: List[JSDependency]) {
+  def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
+}
 
 object JSDependencyManifest {
 
   final val ManifestFileName = "JS_DEPENDENCIES"
 
   def createIncludeList(
-      manifests: Traversable[JSDependencyManifest]): List[String] = {
-    val jsDeps = mergeManifests(manifests)
+      flatDeps: Traversable[FlatJSDependency]): List[String] = {
+    val jsDeps = mergeManifests(flatDeps)
 
     // Verify all dependencies are met
     for {
-      manifest <- manifests
-      lib      <- manifest.libDeps
-      dep      <- lib.dependencies
+      lib <- flatDeps
+      dep <- lib.dependencies
       if !jsDeps.contains(dep)
     } yield sys.error(s"The JS dependency ${lib.resourceName} declared " +
-        s"from ${manifest.origin} has an unmet transitive dependency $dep")
+        s"from ${lib.origin} has an unmet transitive dependency $dep")
 
     // Sort according to dependencies and return
 
@@ -68,22 +70,17 @@ object JSDependencyManifest {
   /** Merges multiple JSDependencyManifests into a map of map:
    *  dependency -> includeAfter -> origins
    */
-  private def mergeManifests(manifests: Traversable[JSDependencyManifest]) = {
-    val flatDeps = for {
-      manifest <- manifests
-      libDep   <- manifest.libDeps
-    } yield (libDep, manifest.origin)
-
-    def mergedIncludeAfter(tups: Traversable[(JSDependency, Origin)]) = {
+  private def mergeManifests(flatDeps: Traversable[FlatJSDependency]) = {
+    def mergedIncludeAfter(tups: Traversable[FlatJSDependency]) = {
       val flat = for {
-        (jsdep, origin) <- tups
-        includeAfter    <- jsdep.dependencies
-      } yield (includeAfter, origin)
+        flatDep         <- tups
+        includeAfter    <- flatDep.dependencies
+      } yield (includeAfter, flatDep)
 
       flat.groupBy(_._1).mapValues(_.map(_._2))
     }
 
-    flatDeps.groupBy(_._1.resourceName).mapValues(mergedIncludeAfter)
+    flatDeps.groupBy(_.resourceName).mapValues(mergedIncludeAfter)
   }
 
   implicit object JSDepManJSONSerializer extends JSONSerializer[JSDependencyManifest] {

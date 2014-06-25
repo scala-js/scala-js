@@ -2,11 +2,20 @@ package scala.scalajs.tools.jsdep
 
 import scala.scalajs.tools.json._
 
+/** Expresses a dependency on a raw JS library and the JS libraries this library
+ *  itself depends on.
+ *
+ *  Both the [[resourceName]] and each element of [[dependencies]] is the
+ *  unqualified filename of the library (e.g. "jquery.js")
+ */
 final case class JSDependency(
     resourceName: String,
     dependencies: List[String] = Nil) {
 
-  def dependsOn(names: String*) = copy(dependencies = dependencies ++ names)
+  def dependsOn(names: String*): JSDependency =
+    copy(dependencies = dependencies ++ names)
+  def withOrigin(origin: Origin): FlatJSDependency =
+    FlatJSDependency(origin, resourceName, dependencies)
 }
 
 object JSDependency {

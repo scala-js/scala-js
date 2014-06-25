@@ -109,6 +109,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val jsDependencies = settingKey[Seq[JSModuleID]](
         "JavaScript libraries this project depends upon")
 
+    val jsDependencyFilter = settingKey[PartialClasspath.DependencyFilter](
+        "The filter applied to the raw JavaScript dependencies before execution")
+
     val persistLauncher = settingKey[Boolean](
         "Tell optimize/package tasks to write the laucher file to disk. " +
         "If this is set, your project may only have a single mainClass or you must explicitly set it")
@@ -232,7 +235,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       preLinkClasspath := {
         val cp = fullClasspath.value
         val pcp = PartialClasspathBuilder.buildIR(Attributed.data(cp).toList)
-        pcp.resolve()
+        pcp.resolve(jsDependencyFilter.value)
       },
 
       // The artifactPath of packageJS is the location of the corejslibs.js
@@ -254,7 +257,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
             packageInternalDepsJS.value,
             packageExportedProductsJS.value)
 
-        cps.reduceLeft(_ append _).resolve()
+        cps.reduceLeft(_ append _).resolve(jsDependencyFilter.value)
       },
       packageJS <<=
         packageJS.dependsOn(packageJSDependencies, packageLauncher),
@@ -675,6 +678,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
       checkScalaJSIR := false,
 
       jsDependencies := Seq(),
+      jsDependencyFilter := identity,
 
       jsConsole := ConsoleJSConsole
   )
