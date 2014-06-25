@@ -23,6 +23,7 @@ abstract class PartialClasspath(
     val availableLibs: Map[String, VirtualJSFile],
     val version: Option[String]
 ) {
+  import PartialClasspath.DependencyFilter
 
   /** Ordered Scala.js code in this PartialClasspath (packaged or IR) */
   def scalaJSCode: Seq[VirtualJSFile]
@@ -48,8 +49,8 @@ abstract class PartialClasspath(
    *
    *  PartialIRClasspath overrides this to return a CompleteIRClasspath
    */
-  def resolve(): CompleteCIClasspath = {
-    CompleteCIClasspath(resolvedDependencies,
+  def resolve(filter: DependencyFilter = identity): CompleteCIClasspath = {
+    CompleteCIClasspath(resolveDependencies(filter),
         CoreJSLibs.libs ++ scalaJSCode, version)
   }
 
@@ -57,8 +58,9 @@ abstract class PartialClasspath(
    *  - Dependencies have cycles
    *  - Not all dependencies are available
    */
-  protected def resolvedDependencies: List[VirtualJSFile] = {
-    val includeList = JSDependencyManifest.createIncludeList(dependencies)
+  protected def resolveDependencies(filter: DependencyFilter): List[VirtualJSFile] = {
+    val flatDeps = filter(dependencies.flatMap(_.flatten))
+    val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
     val missingDeps = includeList.filterNot(availableLibs.contains _)
     if (missingDeps.nonEmpty)
@@ -70,6 +72,9 @@ abstract class PartialClasspath(
 }
 
 object PartialClasspath {
+
+  type DependencyFilter =
+    Traversable[FlatJSDependency] => Traversable[FlatJSDependency]
 
   private class SimplePartialClasspath(
       dependencies: Traversable[JSDependencyManifest],
