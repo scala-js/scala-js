@@ -52,8 +52,11 @@ object Long {
   def signum(i: scala.Long): scala.Long =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
-  def numberOfLeadingZeros(l: scala.Long) =
+  def numberOfLeadingZeros(l: scala.Long): Int =
     toRuntimeLong(l).numberOfLeadingZeros
+
+  def numberOfTrailingZeros(l: scala.Long): Int =
+    toRuntimeLong(l).numberOfTrailingZeros
 
   def toBinaryString(l: scala.Long): String =
     dropLZ(toRuntimeLong(l).toBinaryString)
