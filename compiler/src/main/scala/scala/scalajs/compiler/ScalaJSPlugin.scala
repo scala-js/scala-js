@@ -24,7 +24,12 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   val name = "scalajs"
   val description = "Compile to JavaScript"
-  val components = List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
+  val components = {
+    if (global.forScaladoc)
+      List[NscPluginComponent](PrepInteropComponent)
+    else
+      List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
+  }
 
   /** Called when the JS ASTs are generated. Override for testing */
   def generatedJSAST(clDefs: List[Trees.Tree]): Unit = {}
