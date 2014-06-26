@@ -86,5 +86,15 @@ object StringBufferTest extends JasmineTest {
       expect(() => buf.setCharAt(6,  'h')).toThrow
     }
 
+    it("should properly setLength") {
+      val buf = newBuf
+      buf.append("foobar")
+
+      expect(() => buf.setLength(-3)).toThrow
+
+      expect({ buf.setLength(3); buf.toString }).toEqual("foo")
+      expect({ buf.setLength(6); buf.toString }).toEqual("foo\u0000\u0000\u0000")
+    }
+
   }
 }

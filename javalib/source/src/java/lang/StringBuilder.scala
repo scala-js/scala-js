@@ -79,4 +79,17 @@ class StringBuilder(private var content: String) extends CharSequence
     content = content.substring(0, index) + ch + content.substring(index + 1)
   }
 
+  def setLength(newLength: Int): Unit = {
+    if (newLength < 0)
+      throw new IndexOutOfBoundsException("New length is less than zero: " + newLength)
+
+    val len = length()
+    if (len == newLength) {
+    } else if (len < newLength) {
+      append("\u0000" * (newLength - len))
+    } else {
+      content = substring(0, newLength)
+    }
+  }
+
 }
