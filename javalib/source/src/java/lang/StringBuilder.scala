@@ -81,12 +81,16 @@ class StringBuilder(private var content: String) extends CharSequence
 
   def setLength(newLength: Int): Unit = {
     if (newLength < 0)
-      throw new IndexOutOfBoundsException("New length is less than zero: " + newLength)
+      throw new IndexOutOfBoundsException("String index out of range: " + newLength)
 
     val len = length()
     if (len == newLength) {
     } else if (len < newLength) {
-      append("\u0000" * (newLength - len))
+      var index = len
+      while (index < newLength) {
+        append("\u0000")
+        index += 1
+      }
     } else {
       content = substring(0, newLength)
     }
