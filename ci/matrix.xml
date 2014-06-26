@@ -19,8 +19,14 @@
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
     sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
-    sbt ++$scala testSuite/test testSuite/packageStage::test testSuite/fastOptStage::test testSuite/fullOptStage::test \
-      noIrCheckTest/test noIrCheckTest/packageStage::test noIrCheckTest/fastOptStage::test noIrCheckTest/fullOptStage::test &&
+    sbt ++$scala testSuite/test \
+         "testSuite/packageStage::testOnly -- -- -ttypedarray" \
+         "testSuite/fastOptStage::testOnly -- -- -ttypedarray" \
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray" \
+         "noIrCheckTest/testOnly" \
+         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray" \
+         "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray" \
+         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray" &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
          ++$scala \
          "testSuite/packageStage::testOnly -- -- -tphantomjs" \
@@ -30,7 +36,10 @@
          "noIrCheckTest/fastOptStage::testOnly -- -- -tphantomjs" \
          "noIrCheckTest/fullOptStage::testOnly -- -- -tphantomjs" \
          testSuite/clean &&
-    sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' ++$scala testSuite/test testSuite/fastOptStage::test testSuite/fullOptStage::test &&
+    sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
+         ++$scala testSuite/test \
+         "testSuite/fastOptStage::testOnly -- -- -ttypedarray" \
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray" &&
     sbt ++$scala compiler/test reversi/packageJS reversi/fullOptJS &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala

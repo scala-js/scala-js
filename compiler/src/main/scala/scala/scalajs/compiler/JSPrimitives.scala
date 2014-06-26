@@ -73,8 +73,22 @@ abstract class JSPrimitives {
 
   val ARRAYCOPY = 350 // System.arraycopy
 
+  val AB2TA = 370 // scala.Array[Byte] to TypedArray
+  val AS2TA = 371 // scala.Array[Short] to TypedArray
+  val AC2TA = 372 // scala.Array[Char] to TypedArray
+  val AI2TA = 373 // scala.Array[Int] to TypedArray
+  val AF2TA = 374 // scala.Array[Float] to TypedArray
+  val AD2TA = 375 // scala.Array[Double] to TypedArray
+
+  val TA2AB = 376 // TypedArray to scala.Array[Byte]
+  val TA2AS = 377 // TypedArray to scala.Array[Short]
+  val TA2AC = 378 // TypedArray to scala.Array[Char]
+  val TA2AI = 379 // TypedArray to scala.Array[Int]
+  val TA2AF = 380 // TypedArray to scala.Array[Float]
+  val TA2AD = 381 // TypedArray to scala.Array[Double]
+
   /** Initialize the map of primitive methods */
-  def init() {
+  def init(): Unit = {
 
     addPrimitive(JSAny_fromUnit, V2JS)
     addPrimitive(JSAny_fromBoolean, Z2JS)
@@ -128,8 +142,23 @@ abstract class JSPrimitives {
 
     addPrimitive(getMember(getRequiredModule("java.lang.System"),
         newTermName("arraycopy")), ARRAYCOPY)
+
+    val typedArrayPO = getPackageObject("scala.scalajs.js.typedarray")
+    addPrimitive(getMember(typedArrayPO, newTermName("byteArray2Int8Array")), AB2TA)
+    addPrimitive(getMember(typedArrayPO, newTermName("shortArray2Int16Array")), AS2TA)
+    addPrimitive(getMember(typedArrayPO, newTermName("charArray2Uint16Array")), AC2TA)
+    addPrimitive(getMember(typedArrayPO, newTermName("intArray2Int32Array")), AI2TA)
+    addPrimitive(getMember(typedArrayPO, newTermName("floatArray2Float32Array")), AF2TA)
+    addPrimitive(getMember(typedArrayPO, newTermName("doubleArray2Float64Array")), AD2TA)
+
+    addPrimitive(getMember(typedArrayPO, newTermName("int8Array2ByteArray")), TA2AB)
+    addPrimitive(getMember(typedArrayPO, newTermName("int16Array2ShortArray")), TA2AS)
+    addPrimitive(getMember(typedArrayPO, newTermName("uint16Array2CharArray")), TA2AC)
+    addPrimitive(getMember(typedArrayPO, newTermName("int32Array2IntArray")), TA2AI)
+    addPrimitive(getMember(typedArrayPO, newTermName("float32Array2FloatArray")), TA2AF)
+    addPrimitive(getMember(typedArrayPO, newTermName("float64Array2DoubleArray")), TA2AD)
   }
 
   def isJavaScriptPrimitive(code: Int) =
-    code >= 300 && code < 360
+    code >= 300 && code < 390
 }
