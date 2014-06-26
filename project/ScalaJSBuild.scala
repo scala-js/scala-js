@@ -128,8 +128,8 @@ object ScalaJSBuild extends Build {
               clean in tools, clean in plugin,
               clean in javalib, clean in scalalib,
               clean in libraryAux,
-              clean in examples, clean in exampleHelloWorld,
-              clean in exampleReversi, clean in exampleTesting,
+              clean in examples, clean in helloworld,
+              clean in reversi, clean in testingExample,
               clean in test, clean in partest, clean in partestSuite).value,
 
           publish := {},
@@ -147,7 +147,7 @@ object ScalaJSBuild extends Build {
    * like even less that code be shared by different projects.
    */
   lazy val irProject: Project = Project(
-      id = "scalajs-ir",
+      id = "ir",
       base = file("ir"),
       settings = defaultSettings ++ Seq(
           name := "Scala.js IR",
@@ -156,7 +156,7 @@ object ScalaJSBuild extends Build {
   )
 
   lazy val compiler: Project = Project(
-      id = "scalajs-compiler",
+      id = "compiler",
       base = file("compiler"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
@@ -196,7 +196,7 @@ object ScalaJSBuild extends Build {
   )
 
   lazy val tools: Project = Project(
-      id = "scalajs-tools",
+      id = "tools",
       base = file("tools"),
       settings = defaultSettings ++ publishSettings ++ Seq(
           name := "Scala.js tools",
@@ -212,7 +212,7 @@ object ScalaJSBuild extends Build {
   )
 
   lazy val plugin: Project = Project(
-      id = "scalajs-sbt-plugin",
+      id = "sbtPlugin",
       base = file("sbt-plugin"),
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js sbt plugin",
@@ -250,7 +250,7 @@ object ScalaJSBuild extends Build {
   }
 
   lazy val javalib: Project = Project(
-      id = "scalajs-javalib",
+      id = "javalib",
       base = file("javalib"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
@@ -272,7 +272,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin", library)
 
   lazy val scalalib: Project = Project(
-      id = "scalajs-scalalib",
+      id = "scalalib",
       base = file("scalalib"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
@@ -419,7 +419,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin", library)
 
   lazy val libraryAux: Project = Project(
-      id = "scalajs-library-aux",
+      id = "libraryAux",
       base = file("library-aux"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
@@ -433,7 +433,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin", library)
 
   lazy val library: Project = Project(
-      id = "scalajs-library",
+      id = "library",
       base = file("library"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
@@ -459,7 +459,7 @@ object ScalaJSBuild extends Build {
 
   // Scala.js command line interface
   lazy val cli: Project = Project(
-      id = "scalajs-cli",
+      id = "cli",
       base = file("cli"),
       settings = defaultSettings ++ assemblySettings ++ Seq(
           name := "Scala.js CLI",
@@ -478,7 +478,7 @@ object ScalaJSBuild extends Build {
 
   // Test framework
   lazy val testBridge = Project(
-      id = "scalajs-test-bridge",
+      id = "testBridge",
       base = file("test-bridge"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js test bridge",
@@ -488,7 +488,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin", library)
 
   lazy val jasmineTestFramework = Project(
-      id = "scalajs-jasmine-test-framework",
+      id = "jasmineTestFramework",
       base = file("jasmine-test-framework"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js jasmine test framework",
@@ -536,14 +536,14 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Scala.js examples"
       )
-  ).aggregate(exampleHelloWorld, exampleReversi)
+  ).aggregate(helloworld, reversi, testingExample)
 
   lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ (
       useLibraryButDoNotDependOnIt ++
       useJasmineTestFrameworkButDoNotDependOnIt
   )
 
-  lazy val exampleHelloWorld = Project(
+  lazy val helloworld: Project = Project(
       id = "helloworld",
       base = file("examples") / "helloworld",
       settings = exampleSettings ++ Seq(
@@ -553,7 +553,7 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
-  lazy val exampleReversi = Project(
+  lazy val reversi = Project(
       id = "reversi",
       base = file("examples") / "reversi",
       settings = exampleSettings ++ Seq(
@@ -562,8 +562,8 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin")
 
-  lazy val exampleTesting = Project(
-      id = "testing",
+  lazy val testingExample = Project(
+      id = "testingExample",
       base = file("examples") / "testing",
       settings = exampleSettings ++ Seq(
           name := "Testing - Scala.js example",
@@ -578,9 +578,9 @@ object ScalaJSBuild extends Build {
 
   // Testing
 
-  lazy val test: Project = Project(
-      id = "scalajs-test",
-      base = file("test"),
+  lazy val testSuite: Project = Project(
+      id = "testSuite",
+      base = file("test-suite"),
       settings = defaultSettings ++ myScalaJSSettings ++ (
           useLibraryButDoNotDependOnIt ++
           useJasmineTestFrameworkButDoNotDependOnIt
@@ -602,7 +602,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin")
 
   lazy val noIrCheckTest: Project = Project(
-      id = "scalajs-no-ir-check-test",
+      id = "noIrCheckTest",
       base = file("no-ir-check-test"),
       settings = defaultSettings ++ myScalaJSSettings ++ (
           useLibraryButDoNotDependOnIt ++
@@ -615,7 +615,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler % "plugin")
 
   lazy val partest: Project = Project(
-      id = "scalajs-partest",
+      id = "partest",
       base = file("partest"),
       settings = defaultSettings ++ Seq(
           name := "Partest for Scala.js",
@@ -664,7 +664,7 @@ object ScalaJSBuild extends Build {
   ).dependsOn(compiler)
 
   lazy val partestSuite: Project = Project(
-      id = "scalajs-partest-suite",
+      id = "partestSuite",
       base = file("partest-suite"),
       settings = defaultSettings ++ (
           useLibraryButDoNotDependOnIt
