@@ -5,6 +5,7 @@ import scala.scalajs.js
 /** A simple wrapper Seq for a native JS array. Is used by JSExports
   * for repeated parameter lists. The map function is used for boxing
   */
+@deprecated("Only exists for binary compat. Use WrappedArray instead.", "0.5.1")
 class JSArraySeq[A](
   private val arr: js.Array[A],
   private val offset: Int) extends Seq[A] {

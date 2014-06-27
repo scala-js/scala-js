@@ -58,7 +58,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val ctors = specs.map(_._2)
         implicit val pos = ctors.head.pos
 
-        val js.MethodDef(_, args, _, body) = genExportMethod(ctors, jsName)
+        val js.MethodDef(_, args, _, body) =
+          withNewLocalNameScope(genExportMethod(ctors, jsName))
+
         js.ConstructorExportDef(jsName, args, body)
       }
 
@@ -83,11 +85,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val (jsName, isProp) = jsInterop.jsExportInfo(name)
 
-      if (isProp)
-        genExportProperty(alts, jsName)
-      else
-        genExportMethod(alts, jsName)
-
+      withNewLocalNameScope {
+        if (isProp)
+          genExportProperty(alts, jsName)
+        else
+          genExportMethod(alts, jsName)
+      }
     }
 
     private def genExportProperty(alts: List[Symbol], jsName: String) = {
@@ -339,10 +342,50 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // optional repeated parameter list
       val jsVarArg = repeatedTpe map { tpe =>
-        // Construct a new JSArraySeq
-        genNew(JSArraySeqClass, JSArraySeq_ctor,
-          List(js.VarRef(js.Ident("arguments"), false)(jstpe.DynType),
-            js.IntLiteral(normalArgc)))
+        // Copy arguments that go to vararg into an array, put it in a wrapper
+
+        val countIdent = freshLocalIdent("count")
+        val count = js.VarRef(countIdent, true)(jstpe.IntType)
+
+        val counterIdent = freshLocalIdent("i")
+        val counter = js.VarRef(counterIdent, false)(jstpe.IntType)
+
+        val arrayIdent = freshLocalIdent("varargs")
+        val array = js.VarRef(arrayIdent, true)(jstpe.DynType)
+
+        val arguments = js.VarRef(js.Ident("arguments"), false)(jstpe.DynType)
+        val argLen = js.Cast(
+            js.JSBracketSelect(arguments, js.StringLiteral("length")),
+            jstpe.IntType)
+        val argOffset = js.IntLiteral(normalArgc)
+
+        val jsArrayCtor =
+          js.JSBracketSelect(js.JSGlobal(), js.StringLiteral("Array"))
+
+        js.Block(
+            // var i = 0
+            js.VarDef(counterIdent, jstpe.IntType, mutable = true,
+                rhs = js.IntLiteral(0)),
+            // val count = arguments.length - <normalArgc>
+            js.VarDef(countIdent, jstpe.IntType, mutable = false,
+                rhs = js.BinaryOp(js.BinaryOp.Int_-, argLen, argOffset)),
+            // var varargs = new Array(count)
+            js.VarDef(arrayIdent, jstpe.DynType, mutable = true,
+                rhs = js.JSNew(jsArrayCtor, List(count))),
+            // while (i < count)
+            js.While(js.BinaryOp(js.BinaryOp.<, counter, count), js.Block(
+                // vararg[i] = arguments[<normalArgc> + i];
+                js.Assign(
+                    js.JSBracketSelect(array, counter),
+                    js.JSBracketSelect(arguments,
+                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter))),
+                // i = i + 1 (++i won't work, desugar eliminates it)
+                js.Assign(counter, js.BinaryOp(js.BinaryOp.Int_+,
+                    counter, js.IntLiteral(1)))
+            )),
+            // new WrappedArray(vararg)
+            genNew(WrappedArrayClass, WrappedArray_ctor, List(array))
+        )
       }
 
       // normal arguments
