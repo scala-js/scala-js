@@ -370,12 +370,20 @@ object Trees {
     val tpe = NoType
   }
 
-  /** Unary operation (always preserves pureness). */
+  /** Unary operation (always preserves pureness).
+   *
+   *  Operations which do not preserve pureness are not allowed in this tree.
+   *  These are notably ++ and --
+   */
   case class JSUnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }
 
-  /** Binary operation (always preserves pureness). */
+  /** Binary operation (always preserves pureness).
+   *
+   *  Operations which do not preserve pureness are not allowed in this tree.
+   *  These are notably +=, -=, *=, /= and %=
+   */
   case class JSBinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }

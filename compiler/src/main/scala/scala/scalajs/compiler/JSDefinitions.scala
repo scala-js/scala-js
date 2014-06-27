@@ -129,8 +129,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
     lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
 
-    lazy val JSArraySeqClass = getRequiredClass("scala.scalajs.runtime.JSArraySeq")
-      lazy val JSArraySeq_ctor = JSArraySeqClass.primaryConstructor
+    lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
+      lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
 
     // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
