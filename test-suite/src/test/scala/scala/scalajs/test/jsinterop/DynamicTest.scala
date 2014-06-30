@@ -171,5 +171,18 @@ object DynamicTest extends JasmineTest {
         expect(checkQuotesProperty(o)).toEqual(true)
       }
     }
+
+    it("should return subclasses of js.Object in literal construction - #783") {
+      import js.Dynamic.{ literal => obj }
+
+      val a: js.Object = obj(theValue = 1)
+      expect(a.hasOwnProperty("theValue")).toBeTruthy
+      expect(a.hasOwnProperty("noValue")).toBeFalsy
+
+      val b: js.Object = obj("theValue" -> 2)
+      expect(b.hasOwnProperty("theValue")).toBeTruthy
+      expect(b.hasOwnProperty("noValue")).toBeFalsy
+
+    }
   }
 }

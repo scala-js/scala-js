@@ -259,7 +259,7 @@ object Dynamic {
      *  js.Dynamic.literal(name1 = "value", name2 = "value")
      */
     def applyDynamicNamed(name: java.lang.String)(
-        fields: (java.lang.String, Any)*): Dynamic = sys.error("stub")
+        fields: (java.lang.String, Any)*): Object with Dynamic = sys.error("stub")
 
     /** literal creation like this:
      *  js.Dynamic.literal("name1" -> "value", "name2" -> "value")
@@ -269,7 +269,7 @@ object Dynamic {
      *  be routed to the `def apply`, rather than def dynamic version.
      */
     def applyDynamic(name: java.lang.String)(
-        fields: (java.lang.String, Any)*): Dynamic = sys.error("stub")
+        fields: (java.lang.String, Any)*): Object with Dynamic = sys.error("stub")
 
   }
 }
