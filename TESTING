@@ -43,7 +43,7 @@ The following HTML-runners/testers must be manually tested:
     examples/helloworld/helloworld-{2.10|2.11}{|-pack|-fastopt}.html
     examples/reversi/reversi-{2.10|2.11}{|-pack|-fastopt}.html
     examples/testing/testing-{2.10|2.11}{|-pack|-fastopt}.html
-    test/scalajs-test-suite-{2.10|2.11}{|-pack|-fastopt}.html
+    test-suite/scalajs-test-suite-{2.10|2.11}{|-pack|-fastopt}.html
 
 ## Sourcemaps
 

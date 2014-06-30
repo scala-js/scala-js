@@ -32,17 +32,17 @@ if [ "$2" != "nobuild" ]; then
         fi
 
         # Assemble cli-tools
-        echo "project scalajs-cli"
+        echo "project cli"
         echo "++$BASEVER"
         echo "assembly"
 
         # Package Scala.js library
-        echo "project scalajs-library"
+        echo "project library"
         echo "++$BASEVER"
         echo "package"
 
         # Package compiler
-        echo "project scalajs-compiler"
+        echo "project compiler"
         for i in $FULLVERS; do
             echo "++$i"
             echo "package"
