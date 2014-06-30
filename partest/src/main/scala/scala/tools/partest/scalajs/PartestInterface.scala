@@ -91,7 +91,7 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
     maybeOptions foreach { options =>
       val runner = SBTRunner(
           Framework.fingerprint, eventHandler, loggers,
-          s"../scalalib/fetchedSources/${scalaVersion}/test/files",
+          new File(s"../scalalib/fetchedSources/${scalaVersion}"),
           classLoader, null, null, Array.empty[String], options, scalaVersion)
 
       try runner execute Array("run", "pos", "neg")
@@ -109,9 +109,9 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
 
   // use reflection to instantiate scala.tools.partest.scalajs.ScalaJSSBTRunner,
   // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
-  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], srcDir: String, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
+  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
     val runnerClass = Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, srcDir, testClassLoader, javaCmd, javacCmd, scalacArgs, options, scalaVersion).asInstanceOf[SBTRunner]
+    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testRoot, testClassLoader, javaCmd, javacCmd, scalacArgs, options, scalaVersion).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */

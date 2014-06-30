@@ -165,7 +165,7 @@ class ScalaJSSBTRunner(
     partestFingerprint: Fingerprint,
     eventHandler: EventHandler,
     loggers: Array[Logger],
-    srcDir: String,
+    testRoot: File,
     testClassLoader: URLClassLoader,
     javaCmd: File,
     javacCmd: File,
@@ -173,6 +173,12 @@ class ScalaJSSBTRunner(
     val options: ScalaJSPartestOptions,
     val scalaVersion: String
 ) extends SBTRunner(
-    partestFingerprint, eventHandler, loggers, srcDir, testClassLoader,
+    partestFingerprint, eventHandler, loggers, "test/files", testClassLoader,
     javaCmd, javacCmd, scalacArgs
-) with ScalaJSSuiteRunner
+) with ScalaJSSuiteRunner {
+
+  // The test root for partest is read out through the system properties, not
+  // not passed as an argument
+  sys.props("partest.root") = testRoot.getAbsolutePath()
+
+}
