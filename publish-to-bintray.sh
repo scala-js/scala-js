@@ -14,12 +14,10 @@ fi
     BIN_VERSIONS="2.10.4 2.11.1"
     SBT_VERSION="2.10.4"
 
-    LIBS="scalajs-library scalajs-jasmine-test-framework scalajs-tools scalajs-test-bridge"
-
-    echo "clean"
+    LIBS="library jasmineTestFramework tools testBridge"
 
     # Publish compiler
-    echo "project scalajs-compiler"
+    echo "project compiler"
     echo $SET_BINTRAY
     for v in $FULL_VERSIONS; do
         echo "++$v"
@@ -37,7 +35,7 @@ fi
     done
 
     # Publish sbt-plugin
-    echo "project scalajs-sbt-plugin"
+    echo "project sbtPlugin"
     echo $SET_BINTRAY
     echo "++$SBT_VERSION"
     echo "publish"
