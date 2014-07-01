@@ -15,6 +15,9 @@
 
   <task id="main"><![CDATA[
     sbt ++$scala package packageDoc &&
+    sbt ++$scala helloworld/run helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
+    sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
+        ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
     sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
     sbt ++$scala testSuite/test testSuite/packageStage::test testSuite/fastOptStage::test testSuite/fullOptStage::test \
       noIrCheckTest/test noIrCheckTest/packageStage::test noIrCheckTest/fastOptStage::test noIrCheckTest/fullOptStage::test &&
