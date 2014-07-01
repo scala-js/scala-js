@@ -357,8 +357,13 @@ object ScalaJSPluginInternal {
     env.runJS(cp, launcher, log, jsConsole)
   }
 
-  private def launcherContent(mainCl: String) =
-    s"this${dot2bracket(mainCl)}().main();\n"
+  private def launcherContent(mainCl: String) = {
+    // If we are running in Node.js, we need to bracket select on
+    // global rather than this
+    """((typeof global === "object" && global &&
+         global["Object"] === Object) ? global : this)""" +
+    s"${dot2bracket(mainCl)}().main();\n"
+  }
 
   private def memLauncher(mainCl: String) = {
     new MemVirtualJSFile("Generated launcher file")
