@@ -231,6 +231,19 @@ object InteroperabilityTest extends JasmineTest {
           `1` = 5))
     }
 
+    it("should properly handle default parameters for constructors - #791") {
+      js.eval("""
+        var InteroperabilityTestCtor = function(x,y) {
+          this.values = Array(x || 6, y || 8)
+        }
+      """);
+
+      expect(new InteroperabilityTestCtor().values).toEqual(js.Array(6,8))
+      expect(new InteroperabilityTestCtor(y = 7).values).toEqual(js.Array(6,7))
+      expect(new InteroperabilityTestCtor(3).values).toEqual(js.Array(3,8))
+      expect(new InteroperabilityTestCtor(10, 2).values).toEqual(js.Array(10,2))
+    }
+
     it("should generate exports for methods inherited from traits - #178") {
       import js.annotation.JSExport
 
@@ -396,4 +409,8 @@ object InteroperabilityTestGlobalScope extends js.GlobalScope {
 
 class SomeValueClass(val i: Int) extends AnyVal {
   override def toString(): String = s"SomeValueClass($i)"
+}
+
+class InteroperabilityTestCtor(x: Int = 5, y: Int = ???) extends js.Object {
+  def values: js.Array[Int] = ???
 }

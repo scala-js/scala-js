@@ -1425,6 +1425,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
+      def isRawJSCtorDefaultParam = {
+        sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
+        sym.owner.isModuleClass &&
+        isRawJSType(sym.owner.module.companionClass.tpe) &&
+        nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
+      }
+
       if (MethodWithHelperInEnv contains sym) {
         if (!isRawJSType(receiver.tpe)) {
           currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
@@ -1443,6 +1450,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         genPrimitiveJSCall(tree)
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
+      } else if (isRawJSCtorDefaultParam) {
+        js.UndefinedParam()(toIRType(sym.tpe.resultType))
       } else if (sym.isClassConstructor) {
         /* See #66: we have to emit a static call to avoid calling a
          * constructor with the same signature in a subclass */
