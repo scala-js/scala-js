@@ -22,12 +22,6 @@ object InteroperabilityTest extends JasmineTest {
   describe("JavaScript interoperability") {
 
     it("should support backquotes to escape Scala fields") {
-      trait InteroperabilityTestFieldEscape extends js.Object {
-        var `def`: Int
-        def `val`(): Int = ???
-        def `val`(n: Int): Int = ???
-      }
-
       val obj = js.eval("""
         var interoperabilityTestFieldEscape = {
           def: 0,
@@ -43,13 +37,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should support @JSName to specify the JavaScript name for fields") {
-      trait InteroperabilityTestJSName extends js.Object {
-        @JSName("val")
-        def value(): Int = ???
-        @JSName("val")
-        def value(n: Int): Int = ???
-      }
-
       val obj = js.eval("""
         var interoperabilityTestJSName = {
           def: 42,
@@ -63,10 +50,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should translate explicit getter and setter names to field access") {
-      trait InteroperabilityTestProperty extends js.Object {
-        def a_=(x: Int): Unit = ???
-        def a: Int = ???
-      }
       val obj = js.eval("""
         var interoperabilityTestProperty = { a: 1 };
         interoperabilityTestProperty;
@@ -78,13 +61,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should support @JSName together with field access") {
-      trait InteroperabilityTestPropertyNamed extends js.Object {
-        @JSName("b")
-        def a_=(x: Int): Unit = ???
-        @JSName("b")
-        def a: Int = ???
-        def b: Int = ???
-      }
       val obj = js.eval("""
         var interoperabilityTestProperty = { b: 1 };
         interoperabilityTestProperty;
@@ -97,13 +73,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should support @JSBracketAccess to specify access using []-subscription") {
-      trait InteroperabilityTestJSBracketAccess extends js.Object {
-        @JSBracketAccess
-        def apply(index: Int): Int = ???
-        @JSBracketAccess
-        def update(index: Int, v: Int): Unit = ???
-      }
-
       val obj = js.eval("""
         var interoperabilityTestJSBracketAccess = [ 0, 1, 7357 ];
         interoperabilityTestJSBracketAccess;
@@ -174,10 +143,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should protect receiver of raw JS apply if it's a select") {
-      trait InteroperabilityTestRawReceiver extends js.Object {
-        val check: js.Function1[Int, Int] = ???
-      }
-
       val rawReceiver = js.eval("""
         var interoperabilityTestRawReceiver = {
           member: 0xbad,
@@ -193,18 +158,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should properly handle default parameters") {
-      /** Trait with different method signatures, all forwarded to the same
-       *  JS raw function that returns the argument list for inspection
-       */
-      trait InteroperabilityTestDefaultParam extends js.Object {
-        @JSName("fun")
-        def simple(x: Int, y: Int = 5): js.Any = ???
-        @JSName("fun")
-        def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Any = ???
-        @JSName("fun")
-        def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Any = ???
-      }
-
       val obj = js.eval("""
         var interoperabilityTestDefaultParam = {
           fun: function() { return arguments; }
@@ -260,10 +213,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should unbox Chars received from calling a JS interop method") {
-      trait InteroperabilityTestCharResult extends js.Object {
-        def get(): Char = ???
-      }
-
       val obj = js.eval("""
         var obj = {
           get: function() { return JSUtils().stringToChar('e'); }
@@ -275,10 +224,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should box Chars given to a JS interop method") {
-      trait InteroperabilityTestCharParam extends js.Object {
-        def twice(c: Char): String = ???
-      }
-
       val obj = js.eval("""
         var obj = {
           twice: function(c) { c = JSUtils().charToString(c); return c+c; }
@@ -290,10 +235,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should unbox value classes received from calling a JS interop method") {
-      trait InteroperabilityTestValueClassResult extends js.Object {
-        def test(vc: Any): SomeValueClass = ???
-      }
-
       val obj = js.eval("""
         var obj = {
           test: function(vc) { return vc; }
@@ -306,10 +247,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should box value classes given to a JS interop method") {
-      trait InteroperabilityTestValueClassParam extends js.Object {
-        def stringOf(vc: SomeValueClass): String = ???
-      }
-
       val obj = js.eval("""
         var obj = {
           stringOf: function(vc) { return vc.toString(); }
@@ -342,17 +279,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     it("should asInstanceOf values received from calling a JS interop method") {
-      trait InteroperabilityTestAsInstanceOfResult extends js.Object {
-        def testChar(): Char = ???
-        def testInt(): Int = ???
-        def testShort(): Short = ???
-        def testDouble(): Double = ???
-        def testString(): String = ???
-        def testValueClass(): SomeValueClass = ???
-        def testNormalClass(): List[Int] = ???
-        def testAny(): Any = ???
-      }
-
       val obj = js.eval("""
         var obj = {
           testChar: function() { return 5; },
@@ -377,6 +303,82 @@ object InteroperabilityTest extends JasmineTest {
       expect(() => obj.testAny()).not.toThrow
     }
 
+  }
+
+  trait InteroperabilityTestFieldEscape extends js.Object {
+    var `def`: Int
+    def `val`(): Int = ???
+    def `val`(n: Int): Int = ???
+  }
+
+  trait InteroperabilityTestJSName extends js.Object {
+    @JSName("val")
+    def value(): Int = ???
+    @JSName("val")
+    def value(n: Int): Int = ???
+  }
+
+  trait InteroperabilityTestProperty extends js.Object {
+    def a_=(x: Int): Unit = ???
+    def a: Int = ???
+  }
+
+  trait InteroperabilityTestPropertyNamed extends js.Object {
+    @JSName("b")
+    def a_=(x: Int): Unit = ???
+    @JSName("b")
+    def a: Int = ???
+    def b: Int = ???
+  }
+
+  trait InteroperabilityTestJSBracketAccess extends js.Object {
+    @JSBracketAccess
+    def apply(index: Int): Int = ???
+    @JSBracketAccess
+    def update(index: Int, v: Int): Unit = ???
+  }
+
+  trait InteroperabilityTestRawReceiver extends js.Object {
+    val check: js.Function1[Int, Int] = ???
+  }
+
+  /** Trait with different method signatures, all forwarded to the same
+   *  JS raw function that returns the argument list for inspection
+   */
+  trait InteroperabilityTestDefaultParam extends js.Object {
+    @JSName("fun")
+    def simple(x: Int, y: Int = 5): js.Any = ???
+    @JSName("fun")
+    def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Any = ???
+    @JSName("fun")
+    def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Any = ???
+  }
+
+  trait InteroperabilityTestCharResult extends js.Object {
+    def get(): Char = ???
+  }
+
+  trait InteroperabilityTestCharParam extends js.Object {
+    def twice(c: Char): String = ???
+  }
+
+  trait InteroperabilityTestValueClassResult extends js.Object {
+    def test(vc: Any): SomeValueClass = ???
+  }
+
+  trait InteroperabilityTestValueClassParam extends js.Object {
+    def stringOf(vc: SomeValueClass): String = ???
+  }
+
+  trait InteroperabilityTestAsInstanceOfResult extends js.Object {
+    def testChar(): Char = ???
+    def testInt(): Int = ???
+    def testShort(): Short = ???
+    def testDouble(): Double = ???
+    def testString(): String = ???
+    def testValueClass(): SomeValueClass = ???
+    def testNormalClass(): List[Int] = ???
+    def testAny(): Any = ???
   }
 }
 

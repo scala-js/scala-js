@@ -156,4 +156,40 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def noLocalClass = {
+
+    """
+    object A {
+      def a = {
+        class B extends js.Object
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Local classes and objects may not extend js.Any
+      |        class B extends js.Object
+      |              ^
+    """
+
+  }
+
+  @Test
+  def noLocalObject = {
+
+    """
+    object A {
+      def a = {
+        object B extends js.Object
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Local classes and objects may not extend js.Any
+      |        object B extends js.Object
+      |               ^
+    """
+
+  }
+
 }
