@@ -314,12 +314,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           implDef.symbol != JSGlobalScopeClass =>
           unit.error(implDef.pos, "Only objects may extend js.GlobalScope")
 
-        // Check that primary ctor of a ClassDef is no-arg
-        // FIXME temporarily disabled until we have better handling.
-        //case cldef: ClassDef if !primCtorNoArg(cldef) =>
-        //  unit.error(cldef.pos, "The primary constructor of a class extending "+
-        //      "js.Any may only have a single, empty argument list")
-
         case _ =>
           // We cannot use sym directly, since the symbol
           // of a module is not its type's symbol but the value it declares
