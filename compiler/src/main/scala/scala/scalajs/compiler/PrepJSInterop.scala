@@ -309,6 +309,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           unit.error(implDef.pos, "Objects extending js.Any may not be " +
               "defined inside a class or trait")
 
+        case _ if sym.isLocalToBlock && !isJSLambda(sym) =>
+          unit.error(implDef.pos, "Local classes and objects may not " +
+              "extend js.Any")
+
         // Check that this is not a class extending js.GlobalScope
         case _: ClassDef if isJSGlobalScope(implDef) &&
           implDef.symbol != JSGlobalScopeClass =>
