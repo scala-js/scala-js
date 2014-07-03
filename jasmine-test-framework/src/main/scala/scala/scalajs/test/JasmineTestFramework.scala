@@ -14,6 +14,8 @@ import scala.scalajs.js.Dynamic.global
 import scala.scalajs.js.JavaScriptException
 import scala.scalajs.js.annotation.JSExport
 
+import scala.collection.mutable
+
 object JasmineTestFramework extends TestFramework {
   createStackPropertyOnThrowable()
 
@@ -39,14 +41,17 @@ object JasmineTestFramework extends TestFramework {
     ).asInstanceOf[js.PropertyDescriptor])
   }
 
+  private val tags = mutable.Set.empty[String]
+
+  def hasTag(tag: String): Boolean = tags.contains(tag)
+
   def runTest(testOutput: TestOutput, args: js.Array[String])(
     test: js.Function0[Test]): Unit = {
 
     val jasmine = global.jasmine
     val reporter = new JasmineTestReporter(testOutput)
 
-    if (args.length >= 1)
-      testOutput.log.warn(s"Jasmine: Discarding arguments: $args")
+    handleArgs(args, testOutput)
 
     try {
       test()
@@ -59,6 +64,28 @@ object JasmineTestFramework extends TestFramework {
       case throwable@JavaScriptException(exception) =>
         testOutput.error("Problem executing code in tests: " + exception,
             throwable.getStackTrace())
+    } finally {
+      clearTags()
+    }
+  }
+
+  /** Set tags used in tests. Only use when invoking with HTML reporter */
+  @JSExport
+  def setTags(newTags: String*): Unit = {
+    clearTags()
+    tags ++= newTags
+  }
+
+  /** Clear tags used in tests. Only use when invoking with HTML reporter */
+  @JSExport
+  def clearTags(): Unit = tags.clear()
+
+  private def handleArgs(args: js.Array[String], testOutput: TestOutput) = {
+    for (arg <- args) {
+      if (arg.startsWith("-t"))
+        tags += arg.stripPrefix("-t")
+      else
+        testOutput.log.warn(s"Jasmine: Discarding argument: $arg")
     }
   }
 }

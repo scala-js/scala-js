@@ -112,6 +112,7 @@ object IntTest extends JasmineTest {
       test(AlmostMaxVal, -123, AlmostMaxVal / -123)
     }
 
+    unless("phantomjs"). // see #593
     it("should support %") {
       def test(a: Int, b: Int, expected: Int): Unit =
         expect(a % b).toEqual(expected)

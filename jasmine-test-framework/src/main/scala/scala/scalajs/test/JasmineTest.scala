@@ -14,7 +14,7 @@ import java.util.regex.Pattern
 import org.scalajs.jasmine.Jasmine
 import org.scalajs.jasmine.JasmineExpectation
 
-class JasmineTest extends Test {
+class JasmineTest extends Test with TestSuiteContext {
   def jasmine = Jasmine.jasmine
   def describe(name: String)(suite: => Unit): Unit = Jasmine.describe(name, suite _)
   def it(title: String)(test: => Unit): Unit = Jasmine.it(title, test _)

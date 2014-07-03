@@ -22,10 +22,13 @@
     sbt ++$scala testSuite/test testSuite/packageStage::test testSuite/fastOptStage::test testSuite/fullOptStage::test \
       noIrCheckTest/test noIrCheckTest/packageStage::test noIrCheckTest/fastOptStage::test noIrCheckTest/fullOptStage::test &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
-        'set definedTests.in(ScalaJSBuild.testSuite, Test) ~= (_.filter(_.name != "scala.scalajs.test.compiler.IntTest"))' \
          ++$scala \
-         testSuite/packageStage::test testSuite/fastOptStage::test testSuite/fullOptStage::test \
-         noIrCheckTest/packageStage::test noIrCheckTest/fastOptStage::test noIrCheckTest/fullOptStage::test \
+         "testSuite/packageStage::testOnly -- -- -tphantomjs" \
+         "testSuite/fastOptStage::testOnly -- -- -tphantomjs" \
+         "testSuite/fullOptStage::testOnly -- -- -tphantomjs" \
+         "noIrCheckTest/packageStage::testOnly -- -- -tphantomjs" \
+         "noIrCheckTest/fastOptStage::testOnly -- -- -tphantomjs" \
+         "noIrCheckTest/fullOptStage::testOnly -- -- -tphantomjs" \
          testSuite/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' ++$scala testSuite/test testSuite/fastOptStage::test testSuite/fullOptStage::test &&
     sbt ++$scala compiler/test reversi/packageJS reversi/fullOptJS &&
