@@ -10,7 +10,8 @@ import js.annotation.JSName
 
 object HelloWorld extends js.JSApp {
   def main() {
-    if (!(!js.Dynamic.global.document)) {
+    if (!(!js.Dynamic.global.document) &&
+        !(!js.Dynamic.global.document.getElementById("playground"))) {
       sayHelloFromDOM()
       sayHelloFromTypedDOM()
       sayHelloFromJQuery()
