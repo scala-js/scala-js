@@ -126,6 +126,17 @@ class PhantomJSEnv(
              |page.onConsoleMessage = function(msg) {
              |  console.log(msg);
              |};
+             |page.onError = function(msg, trace) {
+             |  console.error(msg);
+             |  if (trace && trace.length) {
+             |    console.error('');
+             |    trace.forEach(function(t) {
+             |      console.error('  ' + t.file + ':' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
+             |    });
+             |  }
+             |
+             |  phantom.exit(2);
+             |};
              |page.open(url, function (status) {
              |  phantom.exit(status != 'success');
              |});
