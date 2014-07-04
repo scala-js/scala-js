@@ -682,7 +682,21 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("propertiesOf", List(DynType) -> DynType),
 
       ("protect", List(DynType) -> DynType),
-      ("cloneObject", List(AnyType) -> AnyType)
+      ("cloneObject", List(AnyType) -> AnyType),
+
+      ("byteArray2TypedArray", List(ArrayType("B", 1)) -> DynType),
+      ("shortArray2TypedArray", List(ArrayType("S", 1)) -> DynType),
+      ("charArray2TypedArray", List(ArrayType("C", 1)) -> DynType),
+      ("intArray2TypedArray", List(ArrayType("I", 1)) -> DynType),
+      ("floatArray2TypedArray", List(ArrayType("F", 1)) -> DynType),
+      ("doubleArray2TypedArray", List(ArrayType("D", 1)) -> DynType),
+
+      ("typedArray2ByteArray", List(DynType) -> ArrayType("B", 1)),
+      ("typedArray2ShortArray", List(DynType) -> ArrayType("S", 1)),
+      ("typedArray2CharArray", List(DynType) -> ArrayType("C", 1)),
+      ("typedArray2IntArray", List(DynType) -> ArrayType("I", 1)),
+      ("typedArray2FloatArray", List(DynType) -> ArrayType("F", 1)),
+      ("typedArray2DoubleArray", List(DynType) -> ArrayType("D", 1))
     )
   }
 

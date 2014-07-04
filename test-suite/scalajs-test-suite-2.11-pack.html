@@ -12,25 +12,7 @@
 <script type="text/javascript" src="./target/scala-2.11/scalajs-test-suite-test-pack-extdeps.js"></script>
 <script type="text/javascript" src="./target/scala-2.11/scalajs-test-suite-test-pack-intdeps.js"></script>
 <script type="text/javascript" src="./target/scala-2.11/scalajs-test-suite-test-pack-app.js"></script>
-
-<script type="text/javascript">
-window.onload = function() {
-  // Load tests (we know we only export test modules, so we can use all exports)
-  var testPackage = scala.scalajs.test;
-  for (var pName in testPackage)
-    for (var testName in testPackage[pName])
-      testPackage[pName][testName]();
-
-  // Setup and run Jasmine
-  var jasmineEnv = jasmine.getEnv();
-  var htmlReporter = new jasmine.HtmlReporter();
-  jasmineEnv.addReporter(htmlReporter);
-  jasmineEnv.specFilter = function(spec) {
-    return htmlReporter.specFilter(spec);
-  };
-  jasmineEnv.execute();
-};
-</script>
+<script type="text/javascript" src="run-jasmine-tests.js"></script>
 
 </body>
 </html>

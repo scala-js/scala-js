@@ -468,6 +468,40 @@ var ScalaJS = {
   uD: function(value) {
     // NaN || 0.0 is unfortunately 0.0
     return null === value ? 0.0 : ScalaJS.asDouble(value);
+  },
+
+  // TypeArray conversions
+
+  byteArray2TypedArray: function(value) { return new Int8Array(value.u); },
+  shortArray2TypedArray: function(value) { return new Int16Array(value.u); },
+  charArray2TypedArray: function(value) { return new Uint16Array(value.u); },
+  intArray2TypedArray: function(value) { return new Int32Array(value.u); },
+  floatArray2TypedArray: function(value) { return new Float32Array(value.u); },
+  doubleArray2TypedArray: function(value) { return new Float64Array(value.u); },
+
+  typedArray2ByteArray: function(value) {
+    var arrayClassData = ScalaJS.d.B.getArrayOf();
+    return new arrayClassData.constr(new Int8Array(value));
+  },
+  typedArray2ShortArray: function(value) {
+    var arrayClassData = ScalaJS.d.S.getArrayOf();
+    return new arrayClassData.constr(new Int16Array(value));
+  },
+  typedArray2CharArray: function(value) {
+    var arrayClassData = ScalaJS.d.C.getArrayOf();
+    return new arrayClassData.constr(new Uint16Array(value));
+  },
+  typedArray2IntArray: function(value) {
+    var arrayClassData = ScalaJS.d.I.getArrayOf();
+    return new arrayClassData.constr(new Int32Array(value));
+  },
+  typedArray2FloatArray: function(value) {
+    var arrayClassData = ScalaJS.d.F.getArrayOf();
+    return new arrayClassData.constr(new Float32Array(value));
+  },
+  typedArray2DoubleArray: function(value) {
+    var arrayClassData = ScalaJS.d.D.getArrayOf();
+    return new arrayClassData.constr(new Float64Array(value));
   }
 }
 
@@ -562,7 +596,11 @@ ScalaJS.ArrayTypeData = function(componentData) {
   ArrayClass.prototype.$classData = this;
 
   ArrayClass.prototype.clone__O = function() {
-    return new ArrayClass(this.u["slice"](0));
+    if (this.u instanceof Array)
+      return new ArrayClass(this.u["slice"](0));
+    else
+      // The underlying Array is a TypedArray
+      return new ArrayClass(this.u.constructor(this.u));
   };
 
   // Don't generate reflective call proxies. The compiler special cases
