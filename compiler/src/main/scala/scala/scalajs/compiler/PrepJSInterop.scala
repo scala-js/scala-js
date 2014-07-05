@@ -273,7 +273,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val sym = implDef.symbol
 
       lazy val badParent = sym.info.parents.find(t => !(t <:< JSAnyClass.tpe))
-      def inScalaJSJSPackage =
+      def extendsJSAny = implDef.impl.parents.exists(_.symbol == JSAnyClass)
+      val inScalaJSJSPackage =
         sym.enclosingPackage == ScalaJSJSPackage ||
         sym.enclosingPackage == ScalaJSJSPrimPackage
 
@@ -283,13 +284,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           unit.error(implDef.pos, "Classes and objects extending " +
               "js.Any may not have a case modifier")
 
+        // Check that we do not extend js.Any directly
+        case _ if !inScalaJSJSPackage && extendsJSAny =>
+          unit.error(implDef.pos, "A class or object may not " +
+            "extend js.Any directly. Extend js.Object instead.")
+
         // Check that we do not extends a trait that does not extends js.Any
         case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
           !isJSLambda(sym) =>
-          val badName = {
-            val names = (badParent.get.typeSymbol.fullName, sym.fullName).zipped
-            names.dropWhile(scala.Function.tupled(_ == _)).unzip._1.mkString
-          }
+          val badName = badParent.get.typeSymbol.fullName
           unit.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
               "which does not extend js.Any.")
 
