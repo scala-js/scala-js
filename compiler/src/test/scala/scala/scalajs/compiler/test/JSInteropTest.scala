@@ -63,6 +63,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
 
+    """
+    trait A
+    class B extends js.Object with Serializable
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: B extends scala.Serializable which does not extend js.Any.
+      |    class B extends js.Object with Serializable
+      |          ^
+    """
+
   }
 
   @Test
@@ -188,6 +198,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Local classes and objects may not extend js.Any
       |        object B extends js.Object
       |               ^
+    """
+
+  }
+
+  @Test
+  def noExtendJSAny = {
+
+    """
+    class A extends js.Any
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: A class or object may not extend js.Any directly. Extend js.Object instead.
+      |    class A extends js.Any
+      |          ^
     """
 
   }
