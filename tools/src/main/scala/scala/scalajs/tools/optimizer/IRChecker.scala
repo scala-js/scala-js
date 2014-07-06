@@ -496,9 +496,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         for (arg <- args)
           typecheckExpr(arg, env)
 
-      case JSDotSelect(qualifier, item) =>
-        typecheckExpect(qualifier, env, DynType)
-
       case JSBracketSelect(qualifier, item) =>
         typecheckExpect(qualifier, env, DynType)
         typecheckExpr(item, env)
