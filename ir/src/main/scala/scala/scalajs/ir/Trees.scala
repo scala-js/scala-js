@@ -156,9 +156,10 @@ object Trees {
 
   case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree {
     // cannot be in expression position, unless it is infinite
-    val tpe =
-      if (cond == BooleanLiteral(true) && body.tpe == NothingType) NothingType
-      else NoType
+    val tpe = cond match {
+      case BooleanLiteral(true) => NothingType
+      case _                    => NoType
+    }
   }
 
   case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree {
