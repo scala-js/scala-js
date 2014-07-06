@@ -10,8 +10,7 @@ package compiler
 
 import scala.scalajs.js
 import scala.scalajs.test.JasmineTest
-import scala.scalajs.js.annotation.JSName
-import scala.scalajs.js.annotation.JSBracketAccess
+import scala.scalajs.js.annotation._
 
 /*
  * Based on examples in:
@@ -142,7 +141,7 @@ object InteroperabilityTest extends JasmineTest {
       expect(Global.interoperabilityTestGlobalScopeValueAsInt).toEqual(42)
     }
 
-    it("should protect receiver of raw JS apply if it's a select") {
+    it("should protect receiver of raw JS apply if it's a select - #804") {
       val rawReceiver = js.eval("""
         var interoperabilityTestRawReceiver = {
           member: 0xbad,
@@ -155,6 +154,13 @@ object InteroperabilityTest extends JasmineTest {
 
       val check = rawReceiver.check
       expect(check(0x600d)).toEqual(0x600d)
+
+      class InScalaSelect(check: js.Function1[Int, Int]) {
+        @JSExport
+        val member: Int = 0xbad2
+        def test(): Unit = expect(check(5894)).toEqual(5894)
+      }
+      new InScalaSelect(check).test()
     }
 
     it("should properly handle default parameters") {

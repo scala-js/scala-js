@@ -424,6 +424,12 @@ object JSDesugaring {
           allowSideEffects && test(qualifier)
         case JSBracketSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
+        case JSFunctionApply(fun, args) =>
+          allowSideEffects && test(fun) && (args forall test)
+        case JSDotMethodApply(receiver, method, args) =>
+          allowSideEffects && test(receiver) && (args forall test)
+        case JSBracketMethodApply(receiver, method, args) =>
+          allowSideEffects && test(receiver) && test(method) && (args forall test)
         case JSApply(fun, args) =>
           allowSideEffects && test(fun) && (args forall test)
         case JSDelete(obj, prop) =>
@@ -663,31 +669,22 @@ object JSDesugaring {
             redo(JSNew(newCtor, newArgs))
           }
 
-        case JSApply(JSDotSelect(receiver, methodName), args) =>
-          /* We must special-case this because the top-level select must not
-           * be deconstructed. Thanks to JavaScript having different semantics
-           * for
-           * var f = x.m; f(y)
-           * than for
-           * x.m(y)
-           * Namely, in the former case, `this` is not bound to `x`
-           */
-          unnest(receiver :: args) { newReceiverAndArgs =>
-            val newReceiver :: newArgs = newReceiverAndArgs
-            redo(JSApply(JSDotSelect(newReceiver, methodName), newArgs))
-          }
-
-        case JSApply(JSBracketSelect(receiver, methodExpr), args) =>
-          // Same as above
-          unnest(receiver :: args) { newReceiverAndArgs =>
-            val newReceiver :: newArgs = newReceiverAndArgs
-            redo(JSApply(JSBracketSelect(newReceiver, methodExpr), newArgs))
-          }
-
-        case JSApply(fun, args) =>
+        case JSFunctionApply(fun, args) =>
           unnest(fun :: args) { newFunAndArgs =>
             val newFun :: newArgs = newFunAndArgs
-            redo(JSApply(newFun, newArgs))
+            redo(JSFunctionApply(newFun, newArgs))
+          }
+
+        case JSDotMethodApply(receiver, method, args) =>
+          unnest(receiver :: args) { newReceiverAndArgs =>
+            val newReceiver :: newArgs = newReceiverAndArgs
+            redo(JSDotMethodApply(newReceiver, method, newArgs))
+          }
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          unnest(receiver :: method :: args) { newReceiverAndArgs =>
+            val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
+            redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))
           }
 
         case JSDotSelect(qualifier, item) =>
@@ -911,6 +908,36 @@ object JSDesugaring {
 
         case JSGlobal() =>
           envField("g")
+
+        case JSFunctionApply(fun, args) =>
+          /* Protect the fun so that if it is, e.g.,
+           * path.f
+           * we emit
+           * ScalaJS.protect(path.f)(args...)
+           * instead of
+           * path.f(args...)
+           * where
+           * ScalaJS.protect = function(x) { return x; }
+           * If we emit the latter, then `this` will be bound to `path` in
+           * `f`, which is sometimes extremely harmful (e.g., for builtin
+           * methods of `window`).
+           */
+          val transformedFun = transformExpr(fun)
+          val protectedFun = transformedFun match {
+            case _:JSDotSelect | _:JSBracketSelect =>
+              genCallHelper("protect", transformedFun)
+            case _ =>
+              transformedFun
+          }
+          JSApply(protectedFun, args map transformExpr)
+
+        case JSDotMethodApply(receiver, method, args) =>
+          JSApply(JSDotSelect(transformExpr(receiver), method),
+              args map transformExpr)
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          JSApply(JSBracketSelect(transformExpr(receiver),
+              transformExpr(method)), args map transformExpr)
 
         // Remove types
 

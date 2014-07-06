@@ -122,6 +122,17 @@ object Transformers {
         case JSBracketSelect(qualifier, item) =>
           JSBracketSelect(transformExpr(qualifier), transformExpr(item))
 
+        case JSFunctionApply(fun, args) =>
+          JSFunctionApply(transformExpr(fun), args map transformExpr)
+
+        case JSDotMethodApply(receiver, method, args) =>
+          JSDotMethodApply(transformExpr(receiver), method,
+              args map transformExpr)
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
+              args map transformExpr)
+
         case JSApply(fun, args) =>
           JSApply(transformExpr(fun), args map transformExpr)
 
@@ -256,6 +267,17 @@ object Transformers {
 
         case JSBracketSelect(qualifier, item) =>
           JSBracketSelect(transformExpr(qualifier), transformExpr(item))
+
+        case JSFunctionApply(fun, args) =>
+          JSFunctionApply(transformExpr(fun), args map transformExpr)
+
+        case JSDotMethodApply(receiver, method, args) =>
+          JSDotMethodApply(transformExpr(receiver), method,
+              args map transformExpr)
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
+              args map transformExpr)
 
         case JSApply(fun, args) =>
           JSApply(transformExpr(fun), args map transformExpr)

@@ -283,6 +283,18 @@ object Serializers {
           writeByte(TagJSBracketSelect)
           writeTree(qualifier); writeTree(item)
 
+        case JSFunctionApply(fun, args) =>
+          writeByte(TagJSFunctionApply)
+          writeTree(fun); writeTrees(args)
+
+        case JSDotMethodApply(receiver, method, args) =>
+          writeByte(TagJSDotMethodApply)
+          writeTree(receiver); writeIdent(method); writeTrees(args)
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          writeByte(TagJSBracketMethodApply)
+          writeTree(receiver); writeTree(method); writeTrees(args)
+
         case JSApply(fun, args) =>
           writeByte(TagJSApply)
           writeTree(fun); writeTrees(args)
@@ -558,17 +570,30 @@ object Serializers {
         case TagClassOf        => ClassOf(readReferenceType())
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
-        case TagJSGlobal        => JSGlobal()
-        case TagJSNew           => JSNew(readTree(), readTrees())
-        case TagJSDotSelect     => JSDotSelect(readTree(), readIdent())
-        case TagJSBracketSelect => JSBracketSelect(readTree(), readTree())
-        case TagJSApply         => JSApply(readTree(), readTrees())
-        case TagJSDelete        => JSDelete(readTree(), readTree())
-        case TagJSUnaryOp       => JSUnaryOp(readString(), readTree())
-        case TagJSBinaryOp      => JSBinaryOp(readString(), readTree(), readTree())
-        case TagJSArrayConstr   => JSArrayConstr(readTrees())
-        case TagJSObjectConstr  =>
+        case TagJSGlobal             => JSGlobal()
+        case TagJSNew                => JSNew(readTree(), readTrees())
+        case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
+        case TagJSBracketSelect      => JSBracketSelect(readTree(), readTree())
+        case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
+        case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
+        case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
+        case TagJSDelete             => JSDelete(readTree(), readTree())
+        case TagJSUnaryOp            => JSUnaryOp(readString(), readTree())
+        case TagJSBinaryOp           => JSBinaryOp(readString(), readTree(), readTree())
+        case TagJSArrayConstr        => JSArrayConstr(readTrees())
+        case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+
+        // Deserialization-time fix for #804
+        case TagJSApply =>
+          val fun = readTree()
+          val args = readTrees()
+          fun match {
+            case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
+            case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
+            case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
+            case _                              => JSFunctionApply(fun, args)
+          }
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())
@@ -787,6 +812,10 @@ object Serializers {
   private final val TagPropertyDef = TagMethodDef + 1
   private final val TagConstructorExportDef = TagPropertyDef + 1
   private final val TagModuleExportDef = TagConstructorExportDef + 1
+
+  private final val TagJSFunctionApply = TagModuleExportDef + 1
+  private final val TagJSDotMethodApply = TagJSFunctionApply + 1
+  private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
 
   // Tags for Types
 

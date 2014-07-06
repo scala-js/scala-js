@@ -503,8 +503,19 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(qualifier, env, DynType)
         typecheckExpr(item, env)
 
-      case JSApply(fun, args) =>
+      case JSFunctionApply(fun, args) =>
         typecheckExpect(fun, env, DynType)
+        for (arg <- args)
+          typecheckExpr(arg, env)
+
+      case JSDotMethodApply(receiver, method, args) =>
+        typecheckExpect(receiver, env, DynType)
+        for (arg <- args)
+          typecheckExpr(arg, env)
+
+      case JSBracketMethodApply(receiver, method, args) =>
+        typecheckExpect(receiver, env, DynType)
+        typecheckExpr(method, env)
         for (arg <- args)
           typecheckExpr(arg, env)
 
@@ -681,7 +692,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("propertiesOf", List(DynType) -> DynType),
 
-      ("protect", List(DynType) -> DynType),
       ("cloneObject", List(AnyType) -> AnyType),
 
       ("byteArray2TypedArray", List(ArrayType("B", 1)) -> DynType),

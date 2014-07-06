@@ -381,6 +381,23 @@ object Printers {
         case JSBracketSelect(qualifier, item) =>
           print(qualifier, "[", item, "]")
 
+        case JSFunctionApply(fun, args) =>
+          fun match {
+            case _:JSDotSelect | _:JSBracketSelect | _:Select =>
+              print("protect(", fun, ")")
+            case _ =>
+              print(fun)
+          }
+          printArgs(args)
+
+        case JSDotMethodApply(receiver, method, args) =>
+          print(receiver, ".", method)
+          printArgs(args)
+
+        case JSBracketMethodApply(receiver, method, args) =>
+          print(receiver, "[", method, "]")
+          printArgs(args)
+
         case JSApply(fun, args) =>
           print(fun)
           printArgs(args)

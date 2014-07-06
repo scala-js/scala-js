@@ -362,6 +362,22 @@ object Trees {
     val tpe = DynType
   }
 
+  case class JSFunctionApply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = DynType
+  }
+
+  case class JSDotMethodApply(receiver: Tree, method: Ident, args: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = DynType
+  }
+
+  case class JSBracketMethodApply(receiver: Tree, method: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = DynType
+  }
+
+  /** Syntactic apply.
+   *  It is a method call if fun is a dot-select or bracket-select. It is a
+   *  function call otherwise. Just like in JavaScript.
+   */
   case class JSApply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }
