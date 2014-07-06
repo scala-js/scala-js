@@ -98,10 +98,11 @@ object JavaLangObject {
           ClassType(ClassClass),
           {
             Cast(
-              JSApply(
-                JSDotSelect(JSDotSelect(
+              JSDotMethodApply(
+                JSDotSelect(
                   Cast(This()(ThisType), DynType),
-                  Ident("$classData")), Ident("getClassOf")),
+                  Ident("$classData")),
+                Ident("getClassOf"),
                 Nil),
               ClassType(ClassClass))
           }),

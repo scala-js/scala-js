@@ -1441,9 +1441,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         val arguments = (receiver :: args) map genExpr
         js.CallHelper(helper, arguments: _*)(toIRType(tree.tpe))
       } else if (ToStringMaybeOnHijackedClass contains sym) {
-        js.Cast(js.JSApply(js.JSDotSelect(
+        js.Cast(js.JSDotMethodApply(
             js.Cast(genExpr(receiver), jstpe.DynType),
-            js.Ident("toString")), Nil), toIRType(tree.tpe))
+            js.Ident("toString"), Nil), toIRType(tree.tpe))
       } else if (isStringType(receiver.tpe)) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe)) {
@@ -2580,10 +2580,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         (genArgArray: @unchecked) match {
           case js.JSArrayConstr(firstArg :: otherArgs) =>
             (firstArg, js.JSArrayConstr(otherArgs))
-          case js.JSApply(js.JSBracketSelect(
-              js.JSArrayConstr(firstArg :: firstPart), concat), otherParts) =>
-            (firstArg, js.JSApply(js.JSBracketSelect(
-                js.JSArrayConstr(firstPart), concat), otherParts))
+          case js.JSBracketMethodApply(
+              js.JSArrayConstr(firstArg :: firstPart), concat, otherParts) =>
+            (firstArg, js.JSBracketMethodApply(
+                js.JSArrayConstr(firstPart), concat, otherParts))
         }
       }
 
@@ -2602,7 +2602,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val (methodName, actualArgArray) = extractFirstArg()
         actualArgArray match {
           case js.JSArrayConstr(actualArgs) =>
-            js.JSApply(js.JSBracketSelect(receiver, methodName), actualArgs)
+            js.JSBracketMethodApply(receiver, methodName, actualArgs)
           case _ =>
             js.CallHelper("applyMethodWithVarargs",
                 receiver, methodName, actualArgArray)(jstpe.DynType)
@@ -2726,7 +2726,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             val jsParams = (1 to jsArity).toList map {
               x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType)
             }
-            js.JSApply(
+            js.JSFunctionApply(
               js.Function(jstpe.NoType, List(fParam), jstpe.DynType, {
                 js.Function(
                   if (isThisFunction) jstpe.AnyType else jstpe.NoType,
@@ -2907,33 +2907,15 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.JSBinaryOp(funName, receiver, args.head)
 
         case "apply" if receiver0.tpe.typeSymbol.isSubClass(JSThisFunctionClass) =>
-          js.JSApply(js.JSBracketSelect(receiver, js.StringLiteral("call")), args)
+          js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
 
         case "apply" if !hasExplicitJSEncoding =>
-          /* Protect the receiver so that if the receiver is, e.g.,
-           * path.f
-           * we emit
-           * ScalaJS.protect(path.f)(args...)
-           * instead of
-           * path.f(args...)
-           * where
-           * ScalaJS.protect = function(x) { return x; }
-           * If we emit the latter, then `this` will be bound to `path` in
-           * `f`, which is sometimes extremely harmful (e.g., for builtin
-           * methods of `window`).
-           */
-          def protectedReceiver = receiver match {
-            case js.JSDotSelect(_, _) | js.JSBracketSelect(_, _) =>
-              js.CallHelper("protect", receiver)(receiver.tpe)
-            case _ =>
-              receiver
-          }
           argArray match {
             case js.JSArrayConstr(args) =>
-              js.JSApply(protectedReceiver, args)
+              js.JSFunctionApply(receiver, args)
             case _ =>
-              js.JSApply(js.JSBracketSelect(
-                receiver, js.StringLiteral("apply")), List(js.Null(), argArray))
+              js.JSBracketMethodApply(
+                receiver, js.StringLiteral("apply"), List(js.Null(), argArray))
           }
 
         case _ =>
@@ -2964,8 +2946,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else {
             argArray match {
               case js.JSArrayConstr(args) =>
-                js.JSApply(js.JSBracketSelect(
-                    receiver, js.StringLiteral(jsFunName)), args)
+                js.JSBracketMethodApply(
+                    receiver, js.StringLiteral(jsFunName), args)
               case _ =>
                 js.CallHelper("applyMethodWithVarargs", receiver,
                     js.StringLiteral(jsFunName), argArray)(jstpe.DynType)
@@ -3183,8 +3165,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         case List(part) => part
         case _ =>
           val partHead :: partTail = reversedParts.reverse
-          js.JSApply(js.JSBracketSelect(
-              partHead, js.StringLiteral("concat")), partTail)
+          js.JSBracketMethodApply(
+              partHead, js.StringLiteral("concat"), partTail)
       }
     }
 
@@ -3530,7 +3512,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               if (hasUnusedOuterCtorParam) capturedArgs0.tail
               else capturedArgs0
             assert(capturedArgs.size == ctorParamDefs.size)
-            js.JSApply(functionMakerFun, capturedArgs)
+            js.JSFunctionApply(functionMakerFun, capturedArgs)
           }
 
           val arity = params.size
@@ -3599,8 +3581,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (isInImplClass) {
           jsFunction
         } else {
-          js.JSApply(js.JSBracketSelect(
-              jsFunction, js.StringLiteral("bind")), List(genExpr(receiver)))
+          js.JSBracketMethodApply(
+              jsFunction, js.StringLiteral("bind"), List(genExpr(receiver)))
         }
       }
 
