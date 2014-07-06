@@ -204,11 +204,6 @@ object ScalaJSPluginInternal {
       fastOptJS <<=
         fastOptJS.dependsOn(packageJSDependencies, packageLauncher),
 
-      clean <<= clean.dependsOn(Def.task {
-        // have clean reset incremental optimizer state
-        (scalaJSOptimizer in fastOptJS).value.clean()
-      }),
-
       artifactPath in fullOptJS :=
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
@@ -594,7 +589,13 @@ object ScalaJSPluginInternal {
       jsDependencies := Seq(),
       jsDependencyFilter := identity,
 
-      jsConsole := ConsoleJSConsole
+      jsConsole := ConsoleJSConsole,
+
+      clean <<= clean.dependsOn(Def.task {
+        // have clean reset incremental optimizer state
+        (scalaJSOptimizer in (Compile, fastOptJS)).value.clean()
+        (scalaJSOptimizer in (Test, fastOptJS)).value.clean()
+      })
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
