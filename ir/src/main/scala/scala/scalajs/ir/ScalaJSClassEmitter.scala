@@ -79,14 +79,15 @@ object ScalaJSClassEmitter {
       } { parentIdent =>
         implicit val pos = tree.pos
         JSApply(
-            JSDotSelect(encodeClassVar(ClassType(parentIdent.name)), Ident("call")),
+            JSBracketSelect(encodeClassVar(ClassType(parentIdent.name)),
+                StringLiteral("call")),
             List(This()(tpe)))
       }
       val fieldDefs = for {
         field @ VarDef(name, vtpe, mutable, rhs) <- tree.defs
       } yield {
         implicit val pos = field.pos
-        Assign(JSDotSelect(This()(tpe), name), rhs)
+        Assign(Select(This()(tpe), name, mutable)(vtpe), rhs)
       }
       Function(tpe, Nil, NoType,
           Block(superCtorCall :: fieldDefs)(tree.pos))(tree.pos)
@@ -455,7 +456,8 @@ object ScalaJSClassEmitter {
       createNamespace,
       DocComment("@constructor"),
       expCtorVar := Function(classType, args, NoType, Block(
-        JSApply(JSDotSelect(baseCtor, Ident("call")), List(This()(DynType))),
+        JSApply(JSBracketSelect(baseCtor, StringLiteral("call")),
+            List(This()(DynType))),
         body
       )),
       expCtorVar DOT "prototype" := baseCtor DOT "prototype"

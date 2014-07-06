@@ -560,7 +560,6 @@ object Serializers {
 
         case TagJSGlobal        => JSGlobal()
         case TagJSNew           => JSNew(readTree(), readTrees())
-        case TagJSDotSelect     => JSDotSelect(readTree(), readIdent())
         case TagJSBracketSelect => JSBracketSelect(readTree(), readTree())
         case TagJSApply         => JSApply(readTree(), readTrees())
         case TagJSDelete        => JSDelete(readTree(), readTree())
@@ -569,6 +568,12 @@ object Serializers {
         case TagJSArrayConstr   => JSArrayConstr(readTrees())
         case TagJSObjectConstr  =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+
+        // Deserialization-time removal of JSDotSelect
+        case TagJSDotSelect =>
+          val qual = readTree()
+          val item = readIdent()
+          JSBracketSelect(qual, StringLiteral(item.name, item.originalName))
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())
