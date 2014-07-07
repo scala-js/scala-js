@@ -457,6 +457,15 @@ object Trees {
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** Closure with explicit captures.
+   *  The n captures map to the n first formal arguments.
+   */
+  case class Closure(
+      thisType: Type, args: List[ParamDef], resultType: Type, body: Tree,
+      captures: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = DynType
+  }
+
   case class Function(thisType: Type, args: List[ParamDef], resultType: Type, body: Tree)(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }

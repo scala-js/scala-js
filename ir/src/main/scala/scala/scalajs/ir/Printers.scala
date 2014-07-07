@@ -462,6 +462,15 @@ object Printers {
         case This() =>
           print("this")
 
+        case Closure(thisType, args, resultType, body, captures) =>
+          print("(lambda")
+          printRow(captures, "<", ", ", ">")
+          if (thisType != DynType)
+            print("[this: ", thisType, "]")
+          printSig(args, resultType)
+          printBlock(body)
+          print(")")
+
         case Function(thisType, args, resultType, body) =>
           print("(function")
           if (thisType != DynType)

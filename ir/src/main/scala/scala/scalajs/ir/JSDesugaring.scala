@@ -396,6 +396,8 @@ object JSDesugaring {
           allowUnpure && (items forall test)
         case JSObjectConstr(items) =>
           allowUnpure && (items forall (item => test(item._2)))
+        case Closure(thisType, args, resultType, body, captures) =>
+          allowUnpure && (captures forall test)
 
         // Call helper
         case CallHelper(helper, args) =>
@@ -737,6 +739,13 @@ object JSDesugaring {
             redo(JSObjectConstr(names.zip(newItems)))
           }
 
+        // Closures
+
+        case Closure(thisType, args, resultType, body, captures) =>
+          unnest(captures) { newCaptures =>
+            redo(Closure(thisType, args, resultType, body, newCaptures))
+          }
+
         // Type-related
 
         case Cast(expr, _) =>
@@ -938,6 +947,21 @@ object JSDesugaring {
         case JSBracketMethodApply(receiver, method, args) =>
           JSApply(JSBracketSelect(transformExpr(receiver),
               transformExpr(method)), args map transformExpr)
+
+        // Closures
+
+        case Closure(thisType, args, resultType, body, captures) =>
+          val desugared = if (captures.isEmpty) {
+            Function(thisType, args, resultType, body)
+          } else {
+            val (formalCaptures, formalArgs) = args.splitAt(captures.size)
+            JSApply(
+                Function(NoType, formalCaptures, DynType, {
+                  Function(thisType, formalArgs, resultType, body)
+                }),
+                captures)
+          }
+          transformExpr(desugared)
 
         // Remove types
 

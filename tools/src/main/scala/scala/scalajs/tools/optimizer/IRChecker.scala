@@ -123,7 +123,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val thisType =
       if (!classDef.kind.isClass) NoType
       else ClassType(classDef.name.name)
-    val bodyEnv = Env.empty.enteringFun(thisType, params, resultType)
+    val bodyEnv = Env.fromSignature(thisType, params, resultType)
     if (resultType == NoType)
       typecheckStat(body, bodyEnv)
     else
@@ -556,11 +556,13 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
-      case Function(thisType, params, resultType, body) =>
+      case Closure(thisType, params, resultType, body, captures) =>
         for (ParamDef(name, tpe) <- params)
           if (tpe == NoType)
             reportError(s"Parameter $name has type NoType")
-        val bodyEnv = env.enteringFun(thisType, params, resultType)
+        for ((ParamDef(name, tpe), capture) <- params zip captures)
+          typecheckExpect(capture, env, tpe)
+        val bodyEnv = Env.fromSignature(thisType, params, resultType)
         if (resultType == NoType)
           typecheckStat(body, bodyEnv)
         else
@@ -810,19 +812,19 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
     def withLabeledReturnType(label: String, returnType: Type): Env =
       new Env(this.thisTpe, this.locals, returnTypes + (Some(label) -> returnType))
-
-    def enteringFun(thisType: Type, params: List[ParamDef],
-        resultType: Type): Env = {
-      val paramLocalDefs =
-        for (p @ ParamDef(name, tpe) <- params) yield
-          name.name -> LocalDef(name.name, tpe, mutable = false)(p.pos)
-      new Env(thisType, locals ++ paramLocalDefs,
-          Map(None -> (if (resultType == NoType) AnyType else resultType)))
-    }
   }
 
   object Env {
     val empty: Env = new Env(NoType, Map.empty, Map.empty)
+
+    def fromSignature(thisType: Type, params: List[ParamDef],
+        resultType: Type): Env = {
+      val paramLocalDefs =
+        for (p @ ParamDef(name, tpe) <- params) yield
+          name.name -> LocalDef(name.name, tpe, mutable = false)(p.pos)
+      new Env(thisType, paramLocalDefs.toMap,
+          Map(None -> (if (resultType == NoType) AnyType else resultType)))
+    }
   }
 
   class CheckedClass(
