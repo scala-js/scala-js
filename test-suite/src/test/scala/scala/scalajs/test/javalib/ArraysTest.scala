@@ -12,7 +12,20 @@ import scala.scalajs.js
 import scala.scalajs.test.JasmineTest
 import java.util.{ Arrays, Comparator }
 
-object ArraysTest extends JasmineTest {
+import scala.reflect.ClassTag
+
+object ArraysTest extends ArraysTest
+
+/** This is also used in the typedarray package to test scala.Arrays backed
+ *  by TypedArrays
+ */
+trait ArraysTest extends JasmineTest {
+
+  /** Overridden by typedarray tests */
+  def Array[T : ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)
+
+  /** Overridden by typedarray tests */
+  def testBody(suite: => Unit) = describe("java.util.Arrays")(suite)
 
   val stringComparator = new Comparator[String]() {
     def compare(s1: String, s2: String) = s1.compareTo(s2)
@@ -22,7 +35,7 @@ object ArraysTest extends JasmineTest {
     def compare(i1: Int, i2: Int) = i1 - i2
   }
 
-  describe("java.util.Arrays") {
+  testBody {
 
     it("should respond to `sort` for Int") {
       val scalaInts = Array(5, 3, 6, 1, 2, 4)
