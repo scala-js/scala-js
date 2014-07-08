@@ -303,7 +303,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(elsep, env, tpe)
 
       case While(BooleanLiteral(true), body, label) if tree.tpe == NothingType =>
-        typecheckExpect(body, env, NothingType)
+        typecheckStat(body, env)
 
       case Try(block, errVar, handler, finalizer) =>
         val tpe = tree.tpe
