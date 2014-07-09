@@ -25,8 +25,13 @@ object Serializers {
     new Serializer().serialize(stream, tree)
   }
 
+  def deserialize(stream: InputStream, version: String): Tree = {
+    new Deserializer(stream, version).deserialize()
+  }
+
+  @deprecated("Use deserialize(InputStream, String) instead", "0.5.2")
   def deserialize(stream: InputStream): Tree = {
-    new Deserializer(stream).deserialize()
+    deserialize(stream, "0.5.0")
   }
 
   // true for easier debugging (not for "production", it adds 8 bytes per node)
@@ -509,7 +514,9 @@ object Serializers {
       buffer.writeInt(stringToIndex(s))
   }
 
-  private final class Deserializer(stream: InputStream) {
+  private final class Deserializer(stream: InputStream, sourceVersion: String) {
+    private[this] val useHacks050 = sourceVersion == "0.5.0"
+
     private[this] val input = new DataInputStream(stream)
 
     private[this] val files =
@@ -522,7 +529,10 @@ object Serializers {
 
     def deserialize(): Tree = {
       val result = readTree()
-      new FixClosuresTransformer().transformStat(result)
+      if (useHacks050)
+        new FixClosuresTransformer().transformStat(result)
+      else
+        result
     }
 
     def readTree(): Tree = {
@@ -594,11 +604,15 @@ object Serializers {
         case TagJSApply =>
           val fun = readTree()
           val args = readTrees()
-          fun match {
-            case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
-            case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
-            case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
-            case _                              => JSFunctionApply(fun, args)
+          if (useHacks050) {
+            fun match {
+              case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
+              case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
+              case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
+              case _                              => JSFunctionApply(fun, args)
+            }
+          } else {
+            JSApply(fun, args)
           }
 
         case TagUndefined      => Undefined()

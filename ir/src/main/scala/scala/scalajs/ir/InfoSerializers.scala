@@ -28,10 +28,18 @@ object InfoSerializers {
   }
 
   def deserializeRoughInfo(stream: InputStream): RoughClassInfo = {
-    new Deserializer(stream).deserializeRough()
+    deserializeVersionRoughInfo(stream)._2
   }
 
   def deserializeFullInfo(stream: InputStream): ClassInfo = {
+    deserializeVersionFullInfo(stream)._2
+  }
+
+  def deserializeVersionRoughInfo(stream: InputStream): (String, RoughClassInfo) = {
+    new Deserializer(stream).deserializeRough()
+  }
+
+  def deserializeVersionFullInfo(stream: InputStream): (String, ClassInfo) = {
     new Deserializer(stream).deserializeFull()
   }
 
@@ -94,19 +102,21 @@ object InfoSerializers {
     def readStrings(): List[String] =
       readList(input.readUTF())
 
-    def deserializeRough(): RoughClassInfo = {
-      readHeader()
+    def deserializeRough(): (String, RoughClassInfo) = {
+      val version = readHeader()
 
       import input._
       val name = readUTF()
       val encodedName = readUTF()
       val isExported = readBoolean()
       val ancestorCount = readInt()
-      RoughClassInfo(name, encodedName, isExported, ancestorCount)
+      val info = RoughClassInfo(name, encodedName, isExported, ancestorCount)
+
+      (version, info)
     }
 
-    def deserializeFull(): ClassInfo = {
-      readHeader()
+    def deserializeFull(): (String, ClassInfo) = {
+      val version = readHeader()
 
       import input._
 
@@ -136,12 +146,16 @@ object InfoSerializers {
 
       val methods = readList(readMethod())
 
-      ClassInfo(name, encodedName, isExported, ancestorCount, kind,
+      val info = ClassInfo(name, encodedName, isExported, ancestorCount, kind,
           superClass, ancestors, methods)
+
+      (version, info)
     }
 
-    /** Reads the Scala.js IR header and verifies the version compatibility */
-    def readHeader(): Unit = {
+    /** Reads the Scala.js IR header and verifies the version compatibility.
+     *  Returns the emitted binary version.
+     */
+    def readHeader(): String = {
       // Check magic number
       if (input.readInt() != IRMagicNumber)
         throw new IOException("Not a Scala.js IR file")
@@ -154,6 +168,8 @@ object InfoSerializers {
             s"This version ($version) of Scala.js IR is not supported. " +
             s"Supported versions are: ${supported.mkString(", ")}")
       }
+
+      version
     }
   }
 }

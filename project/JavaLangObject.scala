@@ -160,12 +160,11 @@ object JavaLangObject {
               // +
               StringLiteral("@")),
               // +
-              JSApply(
-                JSBracketSelect(
-                  JSBinaryOp(">>>",
-                    Cast(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType), DynType),
-                    Cast(IntLiteral(0), DynType)),
-                  StringLiteral("toString")),
+              JSBracketMethodApply(
+                JSBinaryOp(">>>",
+                  Cast(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType), DynType),
+                  Cast(IntLiteral(0), DynType)),
+                StringLiteral("toString"),
                 List(IntLiteral(16))))
           }),
 
