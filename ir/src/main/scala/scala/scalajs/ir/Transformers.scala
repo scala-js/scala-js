@@ -155,6 +155,12 @@ object Transformers {
 
         // Atomic expressions
 
+        case Closure(thisType, args, resultType, body, captures) =>
+          Closure(thisType, args, resultType,
+              if (resultType == Types.NoType) transformStat(body)
+              else transformExpr(body),
+              captures map transformExpr)
+
         case Function(thisType, args, resultType, body) =>
           Function(thisType, args, resultType, transformStat(body))
 
@@ -170,8 +176,8 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Break | _:Continue | _:LoadModule | _:JSGlobal |
-            _:Literal | _:VarRef | _:This | EmptyTree =>
+        case _:Skip | _:Break | _:Continue | _:LoadModule | _:ClassOf |
+            _:JSGlobal | _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 
         case _ =>
@@ -298,6 +304,12 @@ object Transformers {
 
         // Atomic expressions
 
+        case Closure(thisType, args, resultType, body, captures) =>
+          Closure(thisType, args, resultType,
+              if (resultType == Types.NoType) transformStat(body)
+              else transformExpr(body),
+              captures map transformExpr)
+
         case Function(thisType, args, resultType, body) =>
           Function(thisType, args, resultType, transformStat(body))
 
@@ -308,7 +320,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Break | _:Continue | _:LoadModule | _:JSGlobal |
+        case _:Break | _:Continue | _:LoadModule | _:ClassOf | _:JSGlobal |
             _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 

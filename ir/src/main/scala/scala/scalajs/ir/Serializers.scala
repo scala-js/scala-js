@@ -25,8 +25,13 @@ object Serializers {
     new Serializer().serialize(stream, tree)
   }
 
+  def deserialize(stream: InputStream, version: String): Tree = {
+    new Deserializer(stream, version).deserialize()
+  }
+
+  @deprecated("Use deserialize(InputStream, String) instead", "0.5.2")
   def deserialize(stream: InputStream): Tree = {
-    new Deserializer(stream).deserialize()
+    deserialize(stream, "0.5.0")
   }
 
   // true for easier debugging (not for "production", it adds 8 bytes per node)
@@ -359,6 +364,11 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
+        case Closure(thisType, args, resultType, body, captures) =>
+          writeByte(TagClosure)
+          writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
+          writeTrees(captures)
+
         case Function(thisType, args, resultType, body) =>
           writeByte(TagFunction)
           writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
@@ -504,7 +514,9 @@ object Serializers {
       buffer.writeInt(stringToIndex(s))
   }
 
-  private final class Deserializer(stream: InputStream) {
+  private final class Deserializer(stream: InputStream, sourceVersion: String) {
+    private[this] val useHacks050 = sourceVersion == "0.5.0"
+
     private[this] val input = new DataInputStream(stream)
 
     private[this] val files =
@@ -516,7 +528,11 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     def deserialize(): Tree = {
-      readTree()
+      val result = readTree()
+      if (useHacks050)
+        new FixClosuresTransformer().transformStat(result)
+      else
+        result
     }
 
     def readTree(): Tree = {
@@ -588,11 +604,15 @@ object Serializers {
         case TagJSApply =>
           val fun = readTree()
           val args = readTrees()
-          fun match {
-            case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
-            case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
-            case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
-            case _                              => JSFunctionApply(fun, args)
+          if (useHacks050) {
+            fun match {
+              case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
+              case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
+              case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
+              case _                              => JSFunctionApply(fun, args)
+            }
+          } else {
+            JSApply(fun, args)
           }
 
         case TagUndefined      => Undefined()
@@ -606,6 +626,8 @@ object Serializers {
           StringLiteral(value, if (originalName.isEmpty) None else Some(originalName))
         case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
         case TagThis           => This()(readType())
+        case TagClosure        =>
+          Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
         case TagFunction       => Function(readType(), readParamDefs(), readType(), readTree())
         case TagCast           => Cast(readTree(), readType())
 
@@ -742,6 +764,97 @@ object Serializers {
     }
   }
 
+  private class FixClosuresTransformer extends Transformers.Transformer {
+    import FixClosuresTransformer._
+
+    override def transformStat(tree: Tree): Tree =
+      super.transformStat(fixClosure(tree))
+
+    override def transformExpr(tree: Tree): Tree =
+      super.transformExpr(fixClosure(tree))
+
+    private def fixClosure(tree: Tree): Tree = {
+      implicit val pos = tree.pos
+      tree match {
+        case JSFunctionApply(
+            Function(NoType, formalCaptures, DynType,
+                Function(thisType, formalArgs, resultType, body)),
+            actualCaptures) =>
+          Closure(thisType, formalCaptures ++ formalArgs, resultType, body,
+              actualCaptures)
+
+        case JSBracketMethodApply(
+            Function(thisType, formalArgs, resultType,
+                body @ PatchedBody(patch,
+                    result @ Apply(receiver: This, method, args))),
+            StringLiteral("bind", _), List(thisActualCapture)) =>
+          // The compiler never emits a variable named "$_this"
+          val thisFormalCapture = ParamDef(Ident("$_this", None), thisType)
+          val thisCaptureArg = thisFormalCapture.ref
+          val (actualArgs, actualCaptures) = args.splitAt(formalArgs.size)
+          val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
+          Closure(thisType, thisFormalCapture :: formalCaptures ::: formalArgs, resultType,
+              patch(Apply(thisCaptureArg, method,
+                  actualArgs ::: captureArgs)(result.tpe)(result.pos)),
+              thisActualCapture :: actualCaptures)
+
+        case Function(NoType, formalArgs, resultType,
+            body @ PatchedBody(patch,
+                result @ TraitImplApply(traitImpl, method, args))) =>
+          val (thisActualCapture :: actualArgs, actualCaptures) =
+            args.splitAt(formalArgs.size+1)
+          val (formalCaptures, thisCaptureArg :: captureArgs) =
+            makeCaptures(thisActualCapture :: actualCaptures)
+          Closure(NoType, formalCaptures ::: formalArgs, resultType,
+              patch(TraitImplApply(traitImpl, method,
+                  thisCaptureArg :: actualArgs ::: captureArgs)(result.tpe)(result.pos)),
+              thisActualCapture :: actualCaptures)
+
+        case _: Function =>
+          sys.error(s"Found unrecognized function node at ${tree.pos}:\n$tree")
+
+        case _ =>
+          tree
+      }
+    }
+  }
+
+  private object FixClosuresTransformer {
+    private object PatchedBody {
+      def unapply(body: Tree): Option[(Tree => Tree, Tree)] = {
+        val stats = body match {
+          case Block(stats) => stats
+          case stat         => stat :: Nil
+        }
+        val (unboxedParams0, boxedResult) = stats.span(_.isInstanceOf[VarDef])
+        val unboxedParams = unboxedParams0.asInstanceOf[List[VarDef]]
+        boxedResult match {
+          case List(result, undef: Undefined) =>
+            Some((tree => Block(unboxedParams :+
+                tree :+ undef)(tree.pos), result))
+          case List(helper @ CallHelper("bC", List(result))) =>
+            Some((tree => Block(unboxedParams :+
+                CallHelper("bC", result)(helper.tpe)(helper.pos))(tree.pos), result))
+          case List(New(cls, ctor, List(result))) =>
+            Some((tree => Block(unboxedParams :+
+                New(cls, ctor, List(tree))(tree.pos))(tree.pos), result))
+          case List(result) =>
+            Some((tree => Block(unboxedParams :+
+                tree)(tree.pos), result))
+          case _ =>
+            None
+        }
+      }
+    }
+
+    private def makeCaptures(actualCaptures: List[Tree]) = {
+      (actualCaptures map { c => (c: @unchecked) match {
+        case VarRef(ident, _) =>
+          (ParamDef(ident, c.tpe)(c.pos), VarRef(ident, false)(c.tpe)(c.pos))
+      }}).unzip
+    }
+  }
+
   // Tags for Trees
 
   private final val TagEmptyTree = 1
@@ -816,6 +929,8 @@ object Serializers {
   private final val TagJSFunctionApply = TagModuleExportDef + 1
   private final val TagJSDotMethodApply = TagJSFunctionApply + 1
   private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
+
+  private final val TagClosure = TagJSBracketMethodApply + 1
 
   // Tags for Types
 

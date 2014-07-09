@@ -133,8 +133,9 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
   override def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef) = {
     val stream = inputStream
     try {
-      val info = ir.InfoSerializers.deserializeFullInfo(stream)
-      val tree = ir.Serializers.deserialize(stream).asInstanceOf[ir.Trees.ClassDef]
+      val (version, info) = ir.InfoSerializers.deserializeVersionFullInfo(stream)
+      val tree = ir.Serializers.deserialize(
+          stream, version).asInstanceOf[ir.Trees.ClassDef]
       (info, tree)
     } finally {
       stream.close()
