@@ -30,6 +30,7 @@ class ScalaJSOptimizer {
   import ScalaJSOptimizer._
 
   private[this] var persistentState: PersistentState = new PersistentState
+  private[this] var inliner: IncOptimizer = new IncOptimizer
 
   /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
    *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
@@ -62,15 +63,40 @@ class ScalaJSOptimizer {
     persistentState.startRun()
     try {
       import inputs._
-      val analyzer = readIRAndCreateAnalyzer(inputs.input, logger)
-      analyzer.computeReachability(manuallyReachable, noWarnMissing)
-      if (outCfg.checkIR) {
-        if (analyzer.allAvailable)
-          checkIR(analyzer, logger)
-        else if (inputs.noWarnMissing.isEmpty)
-          sys.error("Could not check IR because there where linking errors.")
+      val analyzer =
+        IncOptimizer.logTime(logger, "Read info") {
+          readIRAndCreateAnalyzer(inputs.input, logger)
+        }
+      val useInliner = IncOptimizer.logTime(logger, "Optimizations part") {
+        IncOptimizer.logTime(logger, "Compute reachability") {
+          analyzer.computeReachability(manuallyReachable, noWarnMissing)
+        }
+        if (outCfg.checkIR) {
+          IncOptimizer.logTime(logger, "Check IR") {
+            if (analyzer.allAvailable)
+              checkIR(analyzer, logger)
+            else if (inputs.noWarnMissing.isEmpty)
+              sys.error("Could not check IR because there where linking errors.")
+          }
+        }
+        def getClassTreeIfChanged(encodedName: String,
+            lastVersion: Option[String]): Option[(ir.Trees.ClassDef, Option[String])] = {
+          val persistentFile = persistentState.encodedNameToPersistentFile(encodedName)
+          persistentFile.treeIfChanged(lastVersion)
+        }
+        val useInliner = analyzer.allAvailable
+        if (useInliner) {
+          IncOptimizer.logTime(logger, "Inliner") {
+            inliner.update(analyzer, getClassTreeIfChanged, logger)
+          }
+        } else {
+          logger.warn("Not running the inliner because there where linking errors.")
+        }
+        useInliner
       }
-      writeDCEedOutput(outCfg, analyzer)
+      IncOptimizer.logTime(logger, "Write DCE'ed output") {
+        writeDCEedOutput(outCfg, analyzer, useInliner)
+      }
     } finally {
       persistentState.endRun(outCfg.unCache)
       logger.debug(
@@ -83,6 +109,7 @@ class ScalaJSOptimizer {
   /** Resets all persistent state of this optimizer */
   def clean(): Unit = {
     persistentState = new PersistentState
+    inliner = new IncOptimizer
   }
 
   private def readIRAndCreateAnalyzer(ir: Traversable[VirtualScalaJSIRFile],
@@ -103,7 +130,7 @@ class ScalaJSOptimizer {
   }
 
   private def writeDCEedOutput(outputConfig: OutputConfig,
-      analyzer: Analyzer): Unit = {
+      analyzer: Analyzer, useInliner: Boolean): Unit = {
 
     val builder = {
       import outputConfig._
@@ -139,7 +166,7 @@ class ScalaJSOptimizer {
       def addTree(tree: Tree): Unit =
         builder.addJSTree(tree)
 
-      def addReachableMethods(emitFun: (ClassDef, MethodDef) => Tree): Unit = {
+      def addReachableMethods(emitFun: (String, MethodDef) => Tree): Unit = {
         /* This is a bit convoluted because we have to:
          * * avoid to use classDef at all if we already know all the needed methods
          * * if any new method is needed, better to go through the defs once
@@ -158,14 +185,20 @@ class ScalaJSOptimizer {
           for (m @ MethodDef(Ident(encodedName, _), _, _, _) <- classDef.defs) {
             if (classInfo.methodInfos(encodedName).isReachable) {
               addTree(d.methods.getOrElseUpdate(encodedName,
-                  desugar(emitFun(classDef, m))))
+                  desugar(emitFun(classInfo.encodedName, m))))
             }
           }
         }
       }
 
       if (classInfo.isImplClass) {
-        addReachableMethods(Emitter.genTraitImplMethod)
+        if (useInliner) {
+          for ((_, method) <- inliner.findTraitImpl(classInfo.encodedName).methods) {
+            addTree(method.desugaredDef)
+          }
+        } else {
+          addReachableMethods(Emitter.genTraitImplMethod)
+        }
       } else if (!classInfo.hasInstantiation) {
         // there is only the data anyway
         addTree(d.wholeClass.getOrElseUpdate(
@@ -174,13 +207,19 @@ class ScalaJSOptimizer {
         if (classInfo.isAnySubclassInstantiated) {
           addTree(d.constructor.getOrElseUpdate(
               desugar(Emitter.genConstructor(classDef))))
-          addReachableMethods(Emitter.genMethod)
+          if (useInliner) {
+            for ((_, method) <- inliner.findClass(classInfo.encodedName).methods) {
+              addTree(method.desugaredDef)
+            }
+          } else {
+            addReachableMethods(Emitter.genMethod)
+          }
           addTree(d.exportedMembers.getOrElseUpdate(desugar(Block {
             classDef.defs collect {
               case m @ MethodDef(_: StringLiteral, _, _, _) =>
-                Emitter.genMethod(classDef, m)
+                Emitter.genMethod(classInfo.encodedName, m)
               case p: PropertyDef =>
-                Emitter.genProperty(classDef, p)
+                Emitter.genProperty(classInfo.encodedName, p)
             }
           }(classDef.pos))))
         }
@@ -311,7 +350,7 @@ object ScalaJSOptimizer {
     private[this] var desugaredUsedInThisRun: Boolean = false
 
     private[this] var irFile: VirtualScalaJSIRFile = null
-    private[this] var version: Option[Any] = None
+    private[this] var version: Option[String] = None
     private[this] var _info: Infos.ClassInfo = null
     private[this] var _tree: ClassDef = null
     private[this] var _desugared: Desugared = null
@@ -349,6 +388,11 @@ object ScalaJSOptimizer {
       if (_tree == null)
         _tree = irFile.tree
       _tree
+    }
+
+    def treeIfChanged(lastVersion: Option[String]): Option[(ClassDef, Option[String])] = {
+      if (lastVersion.isDefined && lastVersion == version) None
+      else Some((tree, version))
     }
 
     /** Returns true if this file should be kept for the next run at all. */

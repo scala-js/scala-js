@@ -788,7 +788,7 @@ object JSDesugaring {
 
       tree match {
         case New(cls, ctor, args) =>
-          JSApply(JSNew(encodeClassVar(cls), Nil) DOT ctor,
+          JSApply(JSNew(encodeClassVar(cls.className), Nil) DOT ctor,
               args map transformExpr)
 
         case LoadModule(cls) =>
@@ -804,7 +804,7 @@ object JSDesugaring {
           JSApply(transformExpr(receiver) DOT method, args map transformExpr)
 
         case StaticApply(receiver, cls, method, args) =>
-          val fun = encodeClassVar(cls).prototype DOT method
+          val fun = encodeClassVar(cls.className).prototype DOT method
           JSApply(fun DOT "call", (receiver :: args) map transformExpr)
 
         case TraitImplApply(impl, method, args) =>
@@ -1056,12 +1056,6 @@ object JSDesugaring {
   private[ir] def genCallHelper(helperName: String, args: Tree*)(
       implicit pos: Position): Tree =
     JSApply(envField(helperName), args.toList)
-
-  private[ir] def encodeClassVar(cls: ClassType)(implicit pos: Position): Tree =
-    encodeClassVar(cls.className)
-
-  private[ir] def encodeClassVar(classIdent: Ident)(implicit pos: Position): Tree =
-    encodeClassVar(classIdent.name)
 
   private[ir] def encodeClassVar(className: String)(
       implicit pos: Position): Tree =

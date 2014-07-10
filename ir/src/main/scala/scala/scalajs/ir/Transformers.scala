@@ -203,6 +203,9 @@ object Transformers {
         case If(cond, thenp, elsep) =>
           If(transformExpr(cond), transformExpr(thenp), transformExpr(elsep))(tree.tpe)
 
+        case While(cond, body, label) =>
+          While(transformExpr(cond), transformStat(body), label)
+
         case Try(block, errVar, handler, finalizer) =>
           Try(transformExpr(block), errVar, transformExpr(handler), transformStat(finalizer))(tree.tpe)
 

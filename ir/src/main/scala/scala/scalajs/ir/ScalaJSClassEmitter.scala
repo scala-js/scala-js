@@ -52,12 +52,13 @@ object ScalaJSClassEmitter {
   }
 
   def genClass(tree: ClassDef): Tree = {
+    val className = tree.name.name
     val typeFunctionDef = genConstructor(tree)
     val memberDefs = tree.defs collect {
       case m: MethodDef =>
-        genMethod(tree, m)
+        genMethod(className, m)
       case p: PropertyDef =>
-        genProperty(tree, p)
+        genProperty(className, p)
     }
 
     Block(typeFunctionDef :: memberDefs)(tree.pos)
@@ -68,10 +69,11 @@ object ScalaJSClassEmitter {
     assert(tree.kind.isClass)
 
     val classIdent = tree.name
-    val tpe = ClassType(classIdent.name)
+    val className = classIdent.name
+    val tpe = ClassType(className)
 
-    assert(tree.parent.isDefined || classIdent.name == Definitions.ObjectClass,
-        "Class ${classIdent.name} is missing a parent class")
+    assert(tree.parent.isDefined || className == Definitions.ObjectClass,
+        "Class $className is missing a parent class")
 
     val ctorFun = {
       val superCtorCall = tree.parent.fold[Tree] {
@@ -79,7 +81,7 @@ object ScalaJSClassEmitter {
       } { parentIdent =>
         implicit val pos = tree.pos
         JSApply(
-            JSDotSelect(encodeClassVar(ClassType(parentIdent.name)), Ident("call")),
+            JSDotSelect(encodeClassVar(parentIdent.name), Ident("call")),
             List(This()(tpe)))
       }
       val fieldDefs = for {
@@ -94,7 +96,7 @@ object ScalaJSClassEmitter {
 
     {
       implicit val pos = tree.pos
-      val typeVar = encodeClassVar(tpe)
+      val typeVar = encodeClassVar(className)
       val docComment = DocComment("@constructor")
       val ctorDef = Assign(typeVar, ctorFun)
 
@@ -104,7 +106,7 @@ object ScalaJSClassEmitter {
         Block(
           Assign(typeVar.prototype,
               JSNew(JSDotSelect(envField("h"), parentIdent), Nil)),
-          genAddToPrototype(tree, Ident("constructor"), typeVar)
+          genAddToPrototype(className, Ident("constructor"), typeVar)
         )
       }
 
@@ -123,17 +125,17 @@ object ScalaJSClassEmitter {
   }
 
   /** Generates a method. */
-  def genMethod(cd: ClassDef, method: MethodDef): Tree = {
+  def genMethod(className: String, method: MethodDef): Tree = {
     implicit val pos = method.pos
-    val methodFun = Function(ClassType(cd.name.name),
+    val methodFun = Function(ClassType(className),
         method.args, method.resultType, method.body)
-    genAddToPrototype(cd, method.name, methodFun)
+    genAddToPrototype(className, method.name, methodFun)
   }
 
   /** Generates a property. */
-  def genProperty(cd: ClassDef, property: PropertyDef): Tree = {
+  def genProperty(className: String, property: PropertyDef): Tree = {
     implicit val pos = property.pos
-    val classType = ClassType(cd.name.name)
+    val classType = ClassType(className)
 
     // defineProperty method
     val defProp =
@@ -141,7 +143,7 @@ object ScalaJSClassEmitter {
           StringLiteral("defineProperty"))
 
     // class prototype
-    val proto = encodeClassVar(cd.name).prototype
+    val proto = encodeClassVar(className).prototype
 
     // property name
     val name = property.name match {
@@ -176,9 +178,9 @@ object ScalaJSClassEmitter {
   }
 
   /** Generate `classVar.prototype.name = value` */
-  def genAddToPrototype(cd: ClassDef, name: PropertyName,
+  def genAddToPrototype(className: String, name: PropertyName,
       value: Tree)(implicit pos: Position = value.pos): Tree = {
-    val proto = encodeClassVar(cd.name).prototype
+    val proto = encodeClassVar(className).prototype
     val select = name match {
       case name: Ident         => JSDotSelect(proto, name)
       case name: StringLiteral => JSBracketSelect(proto, name)
@@ -391,7 +393,7 @@ object ScalaJSClassEmitter {
 
     assert(tree.kind.isClass)
 
-    encodeClassVar(tree.name).prototype DOT "$classData" :=
+    encodeClassVar(tree.name.name).prototype DOT "$classData" :=
       envField("d") DOT tree.name
   }
 
@@ -479,14 +481,15 @@ object ScalaJSClassEmitter {
   }
 
   def genTraitImpl(tree: ClassDef): Tree = {
+    val traitImplName = tree.name.name
     val defs = tree.defs collect {
       case m: MethodDef =>
-        genTraitImplMethod(tree, m)
+        genTraitImplMethod(traitImplName, m)
     }
     Block(defs)(tree.pos)
   }
 
-  def genTraitImplMethod(cd: ClassDef, tree: MethodDef): Tree = {
+  def genTraitImplMethod(traitImplName: String, tree: MethodDef): Tree = {
     implicit val pos = tree.pos
     val MethodDef(name: Ident, args, resultType, body) = tree
     Assign(

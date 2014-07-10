@@ -32,7 +32,7 @@ object Infos {
       ancestorCount: Int,
       val kind: ClassKind,
       val superClass: String,
-      val ancestors: List[String],
+      val ancestors: List[String], // includes this class
       val methods: List[MethodInfo]
   ) extends RoughClassInfo(name, encodedName, isExported, ancestorCount)
 
