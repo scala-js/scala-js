@@ -370,6 +370,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
 
+    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
+
     var isReachable: Boolean = false
 
     var calledFrom: Option[From] = None

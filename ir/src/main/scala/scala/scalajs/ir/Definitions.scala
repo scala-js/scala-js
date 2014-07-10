@@ -129,4 +129,13 @@ object Definitions {
 
   private val decompressedPrefixes: Seq[(String, String)] =
     compressedPrefixes map { case (a, b) => (b, a) }
+
+  /* Common predicates on encoded names */
+
+  def isConstructorName(name: String): Boolean =
+    name.startsWith("init___")
+
+  def isReflProxyName(name: String): Boolean =
+    name.endsWith("__") && !isConstructorName(name)
+
 }
