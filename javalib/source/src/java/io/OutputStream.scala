@@ -1,15 +1,15 @@
 package java.io
 
 abstract class OutputStream extends Object with Closeable with Flushable {
-  def close() {}
+  def close(): Unit = {}
 
-  def flush() {}
+  def flush(): Unit = {}
 
-  def write(b: Array[Byte]) {
+  def write(b: Array[Byte]): Unit = {
     write(b, 0, b.length)
   }
 
-  def write(b: Array[Byte], off: Int, len: Int) {
+  def write(b: Array[Byte], off: Int, len: Int): Unit = {
     var n = off;
     val stop = off+len
     while (n < stop) {
