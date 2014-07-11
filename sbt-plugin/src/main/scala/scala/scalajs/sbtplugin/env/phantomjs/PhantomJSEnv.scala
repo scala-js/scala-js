@@ -45,15 +45,23 @@ class PhantomJSEnv(
   override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
     file match {
       case file: FileVirtualJSFile =>
-        val fname = toJSstr(file.file.getAbsolutePath)
+        val fname = htmlEscape(file.file.getAbsolutePath)
         writer.write(
-            s"""<script type="text/javascript" src=$fname></script>""" + "\n")
+            s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
       case _ =>
         writer.write("""<script type="text/javascript">""" + "\n")
         writer.write(s"// Virtual File: ${file.path}\n")
         writer.write(file.content)
         writer.write("</script>\n")
     }
+  }
+
+  def htmlEscape(str: String): String = str.flatMap {
+    case '<' => "&lt;"
+    case '>' => "&gt;"
+    case '"' => "&quot;"
+    case '&' => "&amp;"
+    case c   => c :: Nil
   }
 
   /**
