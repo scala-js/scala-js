@@ -203,6 +203,10 @@ object ScalaJSBuild extends Build {
           scalaVersion := "2.10.4",
           unmanagedSourceDirectories in Compile +=
             (scalaSource in (irProject, Compile)).value,
+          sourceGenerators in Compile <+= Def.task {
+            ScalaJSEnvGenerator.generateEnvHolder(
+                baseDirectory.value, (sourceManaged in Compile).value)
+          },
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1",
@@ -682,27 +686,26 @@ object ScalaJSBuild extends Build {
           },
 
           unmanagedSourceDirectories in Compile ++= {
-            val toolsBase = (scalaSource in (tools, Compile)).value /
-                "scala/scalajs/tools"
             val pluginBase = ((scalaSource in (plugin, Compile)).value /
                 "scala/scalajs/sbtplugin")
             Seq(
               pluginBase / "env",
-              pluginBase / "sourcemap",
-              toolsBase
+              pluginBase / "sourcemap"
             )
           },
 
-          unmanagedResourceDirectories in Compile ++=
-            (unmanagedResourceDirectories in (tools, Compile)).value,
-
           sources in Compile := {
             if (shouldPartest.value) {
+              // Partest sources and some sources of sbtplugin (see above)
               val baseSrcs = (sources in Compile).value
-              val d = (scalaSource in (plugin, Compile)).value
-              val newSrcs = Seq(
-                d / "scala/scalajs/sbtplugin/JSUtils.scala")
-              baseSrcs ++ newSrcs
+              // Sources for tools (and hence IR)
+              val toolSrcs = (sources in (tools, Compile)).value
+              // Individual sources from the sbtplugin
+              val pluginSrcs = {
+                val d = (scalaSource in (plugin, Compile)).value
+                Seq(d / "scala/scalajs/sbtplugin/JSUtils.scala")
+              }
+              toolSrcs ++ baseSrcs ++ pluginSrcs
             } else Seq()
           }
 

@@ -26,6 +26,16 @@ unmanagedSourceDirectories in Compile ++= {
   )
 }
 
+// Add the ScalaJSEnvGenerator to the build (its in the build of the build)
+sources in Compile +=
+  baseDirectory.value / "project" / "ScalaJSEnvGenerator.scala" 
+
+sourceGenerators in Compile <+= Def.task {
+  ScalaJSEnvGenerator.generateEnvHolder(
+    baseDirectory.value.getParentFile / "tools",
+    (sourceManaged in Compile).value)
+}
+
 unmanagedResourceDirectories in Compile += {
   val root = baseDirectory.value.getParentFile
   root / "tools/src/main/resources"
