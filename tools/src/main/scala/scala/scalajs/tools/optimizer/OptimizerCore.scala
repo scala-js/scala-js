@@ -123,7 +123,8 @@ abstract class OptimizerCore extends Transformers.Transformer {
     transform(tree, isStat = false)
 
   private def transform(tree: Tree, isStat: Boolean): Tree = {
-    tree match {
+    @inline implicit def pos = tree.pos
+    val result = tree match {
       case VarDef(_, _, _, rhs) =>
         /* A local var that is last (or alone) in its block is not terribly
          * useful. Get rid of it.
@@ -133,14 +134,14 @@ abstract class OptimizerCore extends Transformers.Transformer {
 
       case VarRef(ident @ Ident(name, _), mutable) =>
         val localDef = env.localDefs.getOrElse(name,
-            sys.error(s"Cannot find local def '$name' at ${tree.pos}"))
+            sys.error(s"Cannot find local def '$name' at $pos"))
         localDef.newReplacement(tree.pos)
 
       case This() =>
         env.localDefs.get("this").fold {
           tree
         } { thisRep =>
-          thisRep.newReplacement(tree.pos)
+          thisRep.newReplacement
         }
 
       case tree: Block =>
@@ -166,6 +167,20 @@ abstract class OptimizerCore extends Transformers.Transformer {
         val newLabelIdent = Ident(env.labelReps(label), None)(labelIdent.pos)
         Return(transformExpr(expr), Some(newLabelIdent))(tree.pos)
 
+      case If(cond, thenp, elsep) =>
+        val newCond = transformExpr(cond)
+        newCond match {
+          case BooleanLiteral(condValue) =>
+            if (condValue) transform(thenp, isStat)
+            else           transform(elsep, isStat)
+          case _ =>
+            val newThenp = transform(thenp, isStat)
+            val newElsep = transform(elsep, isStat)
+            val refinedType =
+              constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
+            foldIf(newCond, newThenp, newElsep)(refinedType)
+        }
+
       case While(cond, body, None) =>
         superTransform(tree, isStat)
 
@@ -175,7 +190,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
           withEnv(env.withLabelRep(label, newLabel)) {
             transformStat(body)
           }
-        }, Some(Ident(newLabel, None)(labelIdent.pos)))(tree.pos)
+        }, Some(Ident(newLabel, None)(labelIdent.pos)))
 
       case Try(block, errVar, EmptyTree, finalizer) =>
         superTransform(tree, isStat)
@@ -191,19 +206,19 @@ abstract class OptimizerCore extends Transformers.Transformer {
         }
         val newFinalizer = transformStat(finalizer)
         Try(newBlock, Ident(newName, newOriginalName)(errVar.pos),
-            newHandler, newFinalizer)(tree.tpe)(tree.pos)
+            newHandler, newFinalizer)(tree.tpe)
 
       case Continue(optLabel) =>
         val newOptLabel = optLabel map { label =>
-          Ident(env.labelReps(label.name), None)(label.pos)
+          Ident(env.labelInfos(label.name).newName, None)(label.pos)
         }
-        Continue(newOptLabel)(tree.pos)
+        Continue(newOptLabel)
 
       case Closure(thisType, params, resultType, body, captures) =>
         val (newParams, newBody) =
           transformIsolatedBody(params, resultType, body)
         Closure(thisType, newParams, resultType, newBody,
-            captures.map(transformExpr))(tree.pos)
+            captures.map(transformExpr))
 
       case tree: Apply =>
         transformApply(tree, isStat)
@@ -218,7 +233,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         foldUnaryOp(op, transformExpr(arg))(tree.pos)
 
       case BinaryOp(op, lhs, rhs) =>
-        foldBinaryOp(op, transformExpr(lhs), transformExpr(rhs))(tree.pos)
+        foldBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
       case CallHelper(helperName, List(arg))
           if helperName.length == 2 && helperName(0) == 'u' =>
@@ -483,6 +498,44 @@ abstract class OptimizerCore extends Transformers.Transformer {
         }
       case None =>
         transformWithArgs(formals zip args)
+    }
+  }
+
+  private def foldIf(cond: Tree, thenp: Tree, elsep: Tree)(tpe: Type)(
+      implicit pos: Position): Tree = {
+    @inline def default = If(cond, thenp, elsep)(tpe)
+    cond match {
+      case BooleanLiteral(v) =>
+        if (v) thenp
+        else elsep
+
+      case _ =>
+        @inline def negCond = foldUnaryOp(UnaryOp.Boolean_!, cond)
+        if (thenp.tpe == BooleanType && elsep.tpe == BooleanType) {
+          (thenp, elsep) match {
+            case (BooleanLiteral(true), BooleanLiteral(false)) => cond
+            case (BooleanLiteral(false), BooleanLiteral(true)) => negCond
+
+            case (BooleanLiteral(true), _) =>
+              foldBinaryOp(BinaryOp.Boolean_||, cond, elsep)
+            case (_, BooleanLiteral(false)) =>
+              foldBinaryOp(BinaryOp.Boolean_&&, cond, thenp)
+
+            case (BooleanLiteral(false), _) =>
+              foldBinaryOp(BinaryOp.Boolean_&&, negCond, elsep)
+            case (_, BooleanLiteral(true)) =>
+              foldBinaryOp(BinaryOp.Boolean_||, negCond, thenp)
+
+            case _ => default
+          }
+        } else {
+          (thenp, elsep) match {
+            case (Skip(), Skip()) => cond
+            case (Skip(), _)      => foldIf(negCond, elsep, thenp)(tpe)
+
+            case _ => default
+          }
+        }
     }
   }
 
@@ -810,6 +863,19 @@ abstract class OptimizerCore extends Transformers.Transformer {
           withDedicatedVar(refinedType)
       }
     }
+  }
+
+  /** Finds a type as precise as possible which is a supertype of lhs and rhs
+   *  but still a subtype of upperBound.
+   *  Requires that lhs and rhs be subtypes of upperBound, obviously.
+   */
+  private def constrainedLub(lhs: Type, rhs: Type, upperBound: Type): Type = {
+    // TODO Improve this
+    if (upperBound == NoType) upperBound
+    else if (lhs == rhs) lhs
+    else if (lhs == NothingType) rhs
+    else if (rhs == NothingType) lhs
+    else upperBound
   }
 
 }
