@@ -148,24 +148,22 @@ abstract class OptimizerCore extends Transformers.Transformer {
         transformBlock(tree, isStat)
 
       case Labeled(ident @ Ident(label, _), tpe, body) =>
-        val newLabel = freshLabelName(label)
-        Labeled(Ident(newLabel, None)(ident.pos), tpe, {
-          withEnv(env.withLabelRep(label, newLabel)) {
-            transform(body, isStat)
-          }
-        })(tree.pos)
+        returnable(label, if (isStat) NoType else tpe, body)
 
       case Return(expr, None) =>
-        env.returnRep.fold {
+        env.labelInfos.get("").fold {
           superTransform(tree, isStat)
-        } { returnRep =>
-          val returnLabel = Ident(returnRep(), None)(tree.pos)
-          Return(transformExpr(expr), Some(returnLabel))(tree.pos)
+        } { info =>
+          val newExpr = transformExpr(expr)
+          info.returnedTypes.value ::= newExpr.tpe
+          Return(newExpr, Some(Ident(info.newName, None)))
         }
 
       case Return(expr, Some(labelIdent @ Ident(label, _))) =>
-        val newLabelIdent = Ident(env.labelReps(label), None)(labelIdent.pos)
-        Return(transformExpr(expr), Some(newLabelIdent))(tree.pos)
+        val info = env.labelInfos(label)
+        val newExpr = transformExpr(expr)
+        info.returnedTypes.value ::= newExpr.tpe
+        Return(newExpr, Some(Ident(info.newName, None)))
 
       case If(cond, thenp, elsep) =>
         val newCond = transformExpr(cond)
@@ -186,8 +184,9 @@ abstract class OptimizerCore extends Transformers.Transformer {
 
       case While(cond, body, Some(labelIdent @ Ident(label, _))) =>
         val newLabel = freshLabelName(label)
+        val info = new LabelInfo(newLabel)
         While(transformExpr(cond), {
-          withEnv(env.withLabelRep(label, newLabel)) {
+          withEnv(env.withLabelInfo(label, info)) {
             transformStat(body)
           }
         }, Some(Ident(newLabel, None)(labelIdent.pos)))
@@ -483,23 +482,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
             transformWithArgs(rest)
           }
         case Nil =>
-          var returnLabel: Option[String] = None
-          val getReturnLabel: () => String = { () =>
-            returnLabel.getOrElse {
-              val label = freshLabelName("inlinereturn")
-              returnLabel = Some(label)
-              label
-            }
-          }
-          val inlinedBody = withEnv(env.withReturnRep(getReturnLabel)) {
-            transform(body, isStat)
-          }
-          returnLabel.fold {
-            inlinedBody
-          } { retLabel =>
-            Labeled(Ident(retLabel, None)(tree.pos),
-                resultType, inlinedBody)(tree.pos)
-          }
+          returnable("", resultType, body)(tree.pos)
       }
     }
     optReceiver match {
@@ -824,6 +807,82 @@ abstract class OptimizerCore extends Transformers.Transformer {
     (newParamDefs, newBody)
   }
 
+  private def returnable(oldLabelName: String, resultType: Type,
+      body: Tree)(implicit pos: Position): Tree = {
+    val newLabel = freshLabelName(
+        if (oldLabelName.isEmpty) "inlinereturn" else oldLabelName)
+    val info = new LabelInfo(newLabel)
+    withState(info.returnedTypes) {
+      val newBody = withEnv(env.withLabelInfo(oldLabelName, info)) {
+        transform(body, resultType == NoType)
+      }
+      val returnedTypes = info.returnedTypes.value
+      if (returnedTypes.isEmpty) {
+        // no return to that label, we can eliminate it
+        newBody
+      } else {
+        val refinedType =
+          returnedTypes.foldLeft(newBody.tpe)(constrainedLub(_, _, resultType))
+        val returnCount = returnedTypes.size
+
+        tryOptimizePatternMatch(oldLabelName, refinedType, returnCount,
+            newBody) getOrElse {
+          Labeled(Ident(newLabel, None), refinedType, newBody)
+        }
+      }
+    }
+  }
+
+  def tryOptimizePatternMatch(oldLabelName: String, refinedType: Type,
+      returnCount: Int, newBody: Tree): Option[Tree] = {
+    if (!oldLabelName.startsWith("matchEnd")) None
+    else {
+      newBody match {
+        case Block(stats) =>
+          @tailrec
+          def createRevAlts(xs: List[Tree], acc: List[(Tree, Tree)]): List[(Tree, Tree)] = xs match {
+            case If(cond, body, Skip()) :: xr =>
+              createRevAlts(xr, (cond, body) :: acc)
+            case remaining =>
+              (EmptyTree, Block(remaining)(remaining.head.pos)) :: acc
+          }
+          val revAlts = createRevAlts(stats, Nil)
+
+          if (revAlts.size == returnCount) {
+            @tailrec
+            def constructOptimized(revAlts: List[(Tree, Tree)], elsep: Tree): Option[Tree] = {
+              revAlts match {
+                case (cond, body) :: revAltsRest =>
+                  body match {
+                    case BlockOrAlone(prep,
+                        Return(result, Some(Ident(newLabel, _)))) =>
+                      val result1 =
+                        if (refinedType == NoType) discardSideEffectFree(result)
+                        else result
+                      val prepAndResult = Block(prep :+ result1)(body.pos)
+                      if (cond == EmptyTree) {
+                        assert(elsep == EmptyTree)
+                        constructOptimized(revAltsRest, prepAndResult)
+                      } else {
+                        assert(elsep != EmptyTree)
+                        constructOptimized(revAltsRest,
+                            foldIf(cond, prepAndResult, elsep)(refinedType)(cond.pos))
+                      }
+                    case _ =>
+                      None
+                  }
+                case Nil =>
+                  Some(elsep)
+              }
+            }
+            constructOptimized(revAlts, EmptyTree)
+          } else None
+        case _ =>
+          None
+      }
+    }
+  }
+
   private def newLocalDefIn(name: String,
       originalName: Option[String], declaredType: Type,
       mutable: Boolean, transformedRhs: Tree, pos: Position)(
@@ -931,29 +990,29 @@ object OptimizerCore {
       alreadyUsed: SimpleState[Boolean],
       cancelFun: CancelFun) extends LocalDefReplacement
 
+  private final class LabelInfo(
+      val newName: String,
+      val returnedTypes: SimpleState[List[Type]] = new SimpleState(Nil))
+
   private class OptEnv(
       val localDefs: Map[String, LocalDef],
-      val returnRep: Option[() => String],
-      val labelReps: Map[String, String]) {
+      val labelInfos: Map[String, LabelInfo]) {
 
     def withLocalDef(oldName: String, rep: LocalDef): OptEnv =
-      new OptEnv(localDefs + (oldName -> rep), returnRep, labelReps)
+      new OptEnv(localDefs + (oldName -> rep), labelInfos)
 
     def withLocalDefs(reps: List[(String, LocalDef)]): OptEnv =
-      new OptEnv(localDefs ++ reps, returnRep, labelReps)
+      new OptEnv(localDefs ++ reps, labelInfos)
 
-    def withReturnRep(rep: () => String): OptEnv =
-      new OptEnv(localDefs, Some(rep), labelReps)
-
-    def withLabelRep(oldName: String, newName: String): OptEnv =
-      new OptEnv(localDefs, returnRep, labelReps + (oldName -> newName))
+    def withLabelInfo(oldName: String, info: LabelInfo): OptEnv =
+      new OptEnv(localDefs, labelInfos + (oldName -> info))
 
     def withinFunction(paramLocalDefs: List[(String, LocalDef)]): OptEnv =
-      new OptEnv(localDefs ++ paramLocalDefs, None, Map.empty)
+      new OptEnv(localDefs ++ paramLocalDefs, Map.empty)
   }
 
   private object OptEnv {
-    val Empty: OptEnv = new OptEnv(Map.empty, None, Map.empty)
+    val Empty: OptEnv = new OptEnv(Map.empty, Map.empty)
   }
 
   private object IntOrDoubleLit {
@@ -1051,6 +1110,13 @@ object OptimizerCore {
 
     private val isBoxUnboxHelper =
       Set("bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD")
+  }
+
+  private object BlockOrAlone {
+    def unapply(tree: Tree): Some[(List[Tree], Tree)] = Some(tree match {
+      case Block(init :+ last) => (init, last)
+      case _                   => (Nil, tree)
+    })
   }
 
   /** Recreates precise [[Infos.MethodInfo]] from the optimized [[MethodDef]]. */
