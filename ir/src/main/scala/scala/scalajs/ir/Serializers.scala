@@ -516,6 +516,7 @@ object Serializers {
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
     private[this] val useHacks050 = sourceVersion == "0.5.0"
+    private[this] val useHacks052 = useHacks050 || sourceVersion == "0.5.2"
 
     private[this] val input = new DataInputStream(stream)
 
@@ -542,10 +543,12 @@ object Serializers {
       val result = (tag: @switch) match {
         case TagEmptyTree => EmptyTree
 
-        case TagDocComment  => DocComment(readString())
-        case TagVarDef      => VarDef(readIdent(), readType(), readBoolean(), readTree())
-        case TagParamDefOld => ParamDef(readIdent(), readType(), false)
-        case TagParamDef    => ParamDef(readIdent(), readType(), readBoolean())
+        case TagDocComment => DocComment(readString())
+        case TagVarDef     => VarDef(readIdent(), readType(), readBoolean(), readTree())
+        case TagParamDef   => ParamDef(readIdent(), readType(), readBoolean())
+
+        case TagParamDefOld if useHacks052 =>
+          ParamDef(readIdent(), readType(), false)
 
         case TagSkip     => Skip()
         case TagBlock    => Block(readTrees())
@@ -642,7 +645,8 @@ object Serializers {
 
         case TagMethodDef =>
           val m = MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
-          new FixMethodDefTransformer().fixMethodDef(m)
+          if (useHacks052) new FixMethodDefTransformer().fixMethodDef(m)
+          else m
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())
