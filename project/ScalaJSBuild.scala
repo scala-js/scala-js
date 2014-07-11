@@ -127,7 +127,7 @@ object ScalaJSBuild extends Build {
               // compiler, library and jasmineTestFramework are aggregated
               clean in tools, clean in plugin,
               clean in javalib, clean in scalalib,
-              clean in libraryAux,
+              clean in libraryAux, clean in javalibEx,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in test, clean in partest, clean in partestSuite).value,
@@ -455,6 +455,22 @@ object ScalaJSBuild extends Build {
             allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
           }
       ))
+  ).dependsOn(compiler % "plugin")
+
+  lazy val javalibEx: Project = Project(
+      id = "javalibEx",
+      base = file("javalib-ex"),
+      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ (
+          useLibraryButDoNotDependOnIt ++
+          useJasmineTestFrameworkButDoNotDependOnIt
+      ) ++ Seq(
+          name := "Scala.js JavaLib Ex",
+          delambdafySetting,
+          scalacOptions += "-Yskip:cleanup,icode,jvm",
+          scalaJSSourceMapSettings
+      ) ++ (
+          scalaJSExternalCompileSettings
+      )
   ).dependsOn(compiler % "plugin")
 
   // Scala.js command line interface
