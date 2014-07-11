@@ -21,7 +21,8 @@ unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
     root / "ir/src/main/scala",
-    root / "tools/src/main/scala",
+    root / "tools/shared/src/main/scala",
+    root / "tools/jvm/src/main/scala",
     root / "sbt-plugin/src/main/scala"
   )
 }

@@ -39,9 +39,8 @@ object IO {
     }
   }
 
-  /** Reads the entire content of an input stream as a UTF-8 string. */
-  def readInputStreamToString(stream: InputStream): String = {
-    val reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"))
+  /** Reads the entire content of a reader as a string. */
+  def readReaderToString(reader: Reader): String = {
     val buffer = new Array[Char](4096)
     val builder = new StringBuilder
     @tailrec
@@ -54,6 +53,12 @@ object IO {
     }
     loop()
     builder.toString()
+  }
+
+  /** Reads the entire content of an input stream as a UTF-8 string. */
+  def readInputStreamToString(stream: InputStream): String = {
+    val reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"))
+    readReaderToString(reader)
   }
 
   /** Reads the entire content of an input stream as a byte array. */

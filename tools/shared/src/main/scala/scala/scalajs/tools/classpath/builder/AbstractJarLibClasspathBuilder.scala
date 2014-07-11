@@ -54,6 +54,3 @@ trait AbstractJarLibClasspathBuilder extends JarTraverser {
   }
 
 }
-
-class JarLibClasspathBuilder extends AbstractJarLibClasspathBuilder
-                                with PhysicalFileSystem
