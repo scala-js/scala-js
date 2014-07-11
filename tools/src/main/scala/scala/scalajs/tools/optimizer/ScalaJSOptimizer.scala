@@ -89,7 +89,7 @@ class ScalaJSOptimizer {
           IncOptimizer.logTime(logger, "Inliner") {
             inliner.update(analyzer, getClassTreeIfChanged, logger)
           }
-        } else {
+        } else if (inputs.noWarnMissing.isEmpty) {
           logger.warn("Not running the inliner because there where linking errors.")
         }
         useInliner

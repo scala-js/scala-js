@@ -555,7 +555,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l - r)
           case (_, IntLiteral(0))             => lhs
-          case (IntLiteral(0), _)             => foldUnaryOp(Int_-, rhs)
+          case (IntLiteral(0), _)             => foldUnaryOp(UnaryOp.Int_-, rhs)
           case (_, UnaryOp(UnaryOp.Int_-, x)) => foldBinaryOp(Int_+, lhs, x)
           case _                              => default
         }
@@ -565,8 +565,8 @@ abstract class OptimizerCore extends Transformers.Transformer {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l * r)
           case (_, IntLiteral(1))             => lhs
           case (IntLiteral(1), _)             => rhs
-          case (_, IntLiteral(-1))            => foldUnaryOp(Int_-, lhs)
-          case (IntLiteral(-1), _)            => foldUnaryOp(Int_-, rhs)
+          case (_, IntLiteral(-1))            => foldUnaryOp(UnaryOp.Int_-, lhs)
+          case (IntLiteral(-1), _)            => foldUnaryOp(UnaryOp.Int_-, rhs)
           case _                              => default
         }
 
@@ -574,7 +574,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) if r != 0 => IntLiteral(l / r)
           case (_, IntLiteral(1))                       => lhs
-          case (_, IntLiteral(-1))                      => foldUnaryOp(Int_-, lhs)
+          case (_, IntLiteral(-1))                      => foldUnaryOp(UnaryOp.Int_-, lhs)
           case _                                        => default
         }
 
@@ -644,7 +644,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         (lhs, rhs) match {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l - r)
           case (_, IntOrDoubleLit(0))                 => lhs
-          case (IntOrDoubleLit(0), _)                 => foldUnaryOp(Double_-, rhs)
+          case (IntOrDoubleLit(0), _)                 => foldUnaryOp(UnaryOp.Double_-, rhs)
           case (_, UnaryOp(UnaryOp.Double_-, x))      => foldBinaryOp(Double_+, lhs, x)
           case _                                      => default
         }
@@ -654,8 +654,8 @@ abstract class OptimizerCore extends Transformers.Transformer {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l * r)
           case (_, IntOrDoubleLit(1))                 => lhs
           case (IntOrDoubleLit(1), _)                 => rhs
-          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(Double_-, lhs)
-          case (IntOrDoubleLit(-1), _)                => foldUnaryOp(Double_-, rhs)
+          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(UnaryOp.Double_-, lhs)
+          case (IntOrDoubleLit(-1), _)                => foldUnaryOp(UnaryOp.Double_-, rhs)
           case _                                      => default
         }
 
@@ -663,7 +663,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         (lhs, rhs) match {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l / r)
           case (_, IntOrDoubleLit(1))                 => lhs
-          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(Double_-, lhs)
+          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(UnaryOp.Double_-, lhs)
           case _                                      => default
         }
 
