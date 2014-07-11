@@ -8,6 +8,8 @@
 package scala.scalajs.test
 package compiler
 
+import scala.annotation.tailrec
+
 import scala.scalajs.js
 import scala.scalajs.test.JasmineTest
 
@@ -236,6 +238,18 @@ object RegressionTest extends JasmineTest {
 
       val ref = zero[AnyRef]
       expect(ref == null).toBeTruthy
+    }
+
+    it("Param defs in tailrec methods should be considered mutable - #825") {
+      @tailrec
+      def foo(x: Int, y: Int): Unit = {
+        if (x < y) foo(y, x)
+        else {
+          expect(x).toEqual(4)
+          expect(y).toEqual(2)
+        }
+      }
+      foo(2, 4)
     }
   }
 }
