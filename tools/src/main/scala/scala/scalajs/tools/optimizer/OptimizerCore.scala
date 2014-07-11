@@ -935,10 +935,44 @@ object OptimizerCore {
           case Block(List(StaticApply(This(), _, _, Nil), This()))
               if params.isEmpty && isConstructorName(encodedName)   => true
 
+          // Simple method
+          case SimpleMethodBody()                                   => true
+
           case _ => false
         }
       }
     }
+  }
+
+  private object SimpleMethodBody {
+    @tailrec
+    def unapply(body: Tree): Boolean = body match {
+      case Apply(receiver, _, args)          => areSimpleArgs(receiver :: args)
+      case StaticApply(receiver, _, _, args) => areSimpleArgs(receiver :: args)
+      case TraitImplApply(_, _, args)        => areSimpleArgs(args)
+      case Select(qual, _, _)                => isSimpleArg(qual)
+
+      case CallHelper(helper, List(inner)) =>
+        isBoxUnboxHelper(helper) && unapply(inner)
+      case Block(List(inner, Undefined())) =>
+        unapply(inner)
+
+      case _ => false
+    }
+
+    private def areSimpleArgs(args: List[Tree]): Boolean =
+      args.forall(isSimpleArg)
+
+    @tailrec
+    private def isSimpleArg(arg: Tree): Boolean = arg match {
+      case _:VarRef | _:This | _:Literal => true
+      case CallHelper(helper, List(inner)) =>
+        isBoxUnboxHelper(helper) && isSimpleArg(inner)
+      case _ => false
+    }
+
+    private val isBoxUnboxHelper =
+      Set("bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD")
   }
 
   /** Recreates precise [[Infos.MethodInfo]] from the optimized [[MethodDef]]. */
