@@ -124,9 +124,9 @@ object Serializers {
           writeByte(TagVarDef)
           writeIdent(ident); writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
 
-        case ParamDef(ident, ptpe) =>
+        case ParamDef(ident, ptpe, mutable) =>
           writeByte(TagParamDef)
-          writeIdent(ident); writeType(ptpe)
+          writeIdent(ident); writeType(ptpe); writeBoolean(mutable)
 
         case Skip() =>
           writeByte(TagSkip)
@@ -542,9 +542,10 @@ object Serializers {
       val result = (tag: @switch) match {
         case TagEmptyTree => EmptyTree
 
-        case TagDocComment => DocComment(readString())
-        case TagVarDef     => VarDef(readIdent(), readType(), readBoolean(), readTree())
-        case TagParamDef   => ParamDef(readIdent(), readType())
+        case TagDocComment  => DocComment(readString())
+        case TagVarDef      => VarDef(readIdent(), readType(), readBoolean(), readTree())
+        case TagParamDefOld => ParamDef(readIdent(), readType(), false)
+        case TagParamDef    => ParamDef(readIdent(), readType(), readBoolean())
 
         case TagSkip     => Skip()
         case TagBlock    => Block(readTrees())
@@ -640,7 +641,8 @@ object Serializers {
           ClassDef(name, kind, parent, ancestors, defs)
 
         case TagMethodDef =>
-          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
+          val m = MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
+          new FixMethodDefTransformer().fixMethodDef(m)
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())
@@ -789,7 +791,7 @@ object Serializers {
                     result @ Apply(receiver: This, method, args))),
             StringLiteral("bind", _), List(thisActualCapture)) =>
           // The compiler never emits a variable named "$_this"
-          val thisFormalCapture = ParamDef(Ident("$_this", None), thisType)
+          val thisFormalCapture = ParamDef(Ident("$_this", None), thisType, false)
           val thisCaptureArg = thisFormalCapture.ref
           val (actualArgs, actualCaptures) = args.splitAt(formalArgs.size)
           val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
@@ -850,8 +852,69 @@ object Serializers {
     private def makeCaptures(actualCaptures: List[Tree]) = {
       (actualCaptures map { c => (c: @unchecked) match {
         case VarRef(ident, _) =>
-          (ParamDef(ident, c.tpe)(c.pos), VarRef(ident, false)(c.tpe)(c.pos))
+          (ParamDef(ident, c.tpe, false)(c.pos), VarRef(ident, false)(c.tpe)(c.pos))
       }}).unzip
+    }
+  }
+
+  private class FixMethodDefTransformer extends Transformers.Transformer {
+    private var patchedVarNames: Set[String] = Set.empty
+
+    def fixMethodDef(tree: MethodDef): MethodDef = tree.body match {
+      case body if isTailRecWhileLoop(body) =>
+        val MethodDef(name, params, resultType, _) = tree
+        patchedVarNames = params.map(_.name.name).toSet
+        val newParams = params.map(p => p.copy(mutable = true)(p.pos))
+        val newBody =
+          if (resultType == NoType) transformStat(body)
+          else transformExpr(body)
+        MethodDef(name, newParams, resultType, newBody)(tree.pos)
+
+      case Block(List(
+          thisDef @ VarDef(thisName, thisType, _, _: This),
+          body)) if isTailRecWhileLoop(body) =>
+        val MethodDef(name, params, resultType, wholeBody) = tree
+        patchedVarNames = (thisName.name :: params.map(_.name.name)).toSet
+        val newParams = params.map(p => p.copy(mutable = true)(p.pos))
+        val newThisDef = thisDef.copy(mutable = true)(thisDef.pos)
+        val newBody =
+          if (resultType == NoType) transformStat(body)
+          else transformExpr(body)
+        val newWholeBody =
+          Block(newThisDef, newBody)(wholeBody.pos)
+        MethodDef(name, newParams, resultType, newWholeBody)(tree.pos)
+
+      case _ =>
+        tree
+    }
+
+    private def isTailRecWhileLoop(tree: Tree): Boolean = tree match {
+      case While(BooleanLiteral(true), _, Some(Ident("tailCallLoop", _))) =>
+        true
+      case _ =>
+        false
+    }
+
+    override def transformStat(tree: Tree): Tree =
+      transform(tree, isStat = true)
+
+    override def transformExpr(tree: Tree): Tree =
+      transform(tree, isStat = false)
+
+    private def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+      case VarRef(ident @ Ident(name, _), false) if patchedVarNames.contains(name) =>
+        VarRef(ident, true)(tree.tpe)(tree.pos)
+
+      case Function(_, _, _, _) =>
+        tree
+
+      case Closure(thisType, params, resultType, body, captures) =>
+        Closure(thisType, params, resultType, body,
+            captures.map(transformExpr))(tree.pos)
+
+      case _ =>
+        if (isStat) super.transformStat(tree)
+        else super.transformExpr(tree)
     }
   }
 
@@ -861,9 +924,9 @@ object Serializers {
 
   private final val TagDocComment = TagEmptyTree + 1
   private final val TagVarDef = TagDocComment + 1
-  private final val TagParamDef = TagVarDef + 1
+  private final val TagParamDefOld = TagVarDef + 1
 
-  private final val TagSkip = TagParamDef + 1
+  private final val TagSkip = TagParamDefOld + 1
   private final val TagBlock = TagSkip + 1
   private final val TagLabeled = TagBlock + 1
   private final val TagAssign = TagLabeled + 1
@@ -931,6 +994,8 @@ object Serializers {
   private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
 
   private final val TagClosure = TagJSBracketMethodApply + 1
+
+  private final val TagParamDef = TagClosure + 1
 
   // Tags for Types
 

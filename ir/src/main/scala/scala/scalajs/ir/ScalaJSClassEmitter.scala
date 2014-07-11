@@ -205,9 +205,8 @@ object ScalaJSClassEmitter {
     val isAncestorOfBoxedBooleanClass =
       AncestorsOfBoxedBooleanClass.contains(className)
 
-    val objIdent = Ident("obj")
-    val objParam = ParamDef(objIdent, DynType)
-    val obj = VarRef(objIdent, mutable = false)(DynType)
+    val objParam = ParamDef(Ident("obj"), DynType, mutable = false)
+    val obj = objParam.ref
 
     val createIsStat = {
       envField("is") DOT classIdent :=
@@ -266,13 +265,11 @@ object ScalaJSClassEmitter {
     val className = classIdent.name
     val displayName = decodeClassName(className)
 
-    val objIdent = Ident("obj")
-    val objParam = ParamDef(objIdent, DynType)
-    val obj = VarRef(objIdent, mutable = false)(DynType)
+    val objParam = ParamDef(Ident("obj"), DynType, mutable = false)
+    val obj = objParam.ref
 
-    val depthIdent = Ident("depth")
-    val depthParam = ParamDef(depthIdent, IntType)
-    val depth = VarRef(depthIdent, mutable = false)(IntType)
+    val depthParam = ParamDef(Ident("depth"), IntType, mutable = false)
+    val depth = depthParam.ref
 
     val createIsArrayOfStat = {
       envField("isArrayOf") DOT classIdent :=
@@ -370,8 +367,9 @@ object ScalaJSClassEmitter {
             envField("isArrayOf") DOT classIdent)
         } else if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
-          List(Function(NoType, List(ParamDef(Ident("x"), DynType)), BooleanType, {
-            IsInstanceOf(VarRef(Ident("x"), false)(DynType), ClassType(className))
+          val xParam = ParamDef(Ident("x"), DynType, mutable = false)
+          List(Function(NoType, List(xParam), BooleanType, {
+            IsInstanceOf(xParam.ref, ClassType(className))
           }))
         } else if (isAncestorOfHijackedClass || className == StringClass) {
           /* java.lang.String and ancestors of hijacked classes have a normal

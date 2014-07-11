@@ -546,7 +546,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val jsParams = for (param <- params) yield {
               implicit val pos = param.pos
-              js.ParamDef(encodeLocalSym(param), toIRType(param.tpe))
+              js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+                  mutable = false)
             }
 
             val (resultType, body) = {
@@ -691,7 +692,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         ) {
           val jsParams = for (param <- sym.tpe.params) yield {
             implicit val pos = param.pos
-            js.ParamDef(encodeLocalSym(param), toIRType(param.tpe))
+            js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+                mutable = false)
           }
 
           val call = genApplyMethod(genThis(), sym.owner, sym,
@@ -2719,12 +2721,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               ps.head.size == arity &&
               ps.head.forall(_.tpe.typeSymbol == ObjectClass)
             }
-            val fParam = js.ParamDef(js.Ident("f"), inputIRType)
+            val fParam = js.ParamDef(js.Ident("f"), inputIRType,
+                mutable = false)
             val jsArity =
               if (isThisFunction) arity - 1
               else arity
             val jsParams = (1 to jsArity).toList map {
-              x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType)
+              x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType,
+                  mutable = false)
             }
             js.Closure(
                 if (isThisFunction) jstpe.AnyType else jstpe.NoType,
@@ -3445,7 +3449,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           else ctorParams
         val ctorParamDefs = usedCtorParams map { p =>
           // in the apply method's context
-          js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe))(p.pos)
+          js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe),
+              mutable = false)(p.pos)
         }
 
         // Third step: emit the body of the apply method def
@@ -3539,7 +3544,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val allArgs = allArgs0 map genExpr
 
       val formalArgs = params map { p =>
-        js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe))(p.pos)
+        js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe),
+            mutable = false)(p.pos)
       }
 
       val isInImplClass = target.owner.isImplClass
@@ -3547,7 +3553,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       def makeCaptures(actualCaptures: List[js.Tree]) = {
         (actualCaptures map { c => (c: @unchecked) match {
           case js.VarRef(ident, _) =>
-            (js.ParamDef(ident, c.tpe)(c.pos), js.VarRef(ident, false)(c.tpe)(c.pos))
+            (js.ParamDef(ident, c.tpe, mutable = false)(c.pos),
+                js.VarRef(ident, false)(c.tpe)(c.pos))
         }}).unzip
       }
 
@@ -3555,7 +3562,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val thisActualCapture = genExpr(receiver)
         val thisFormalCapture = js.ParamDef(
             freshLocalIdent("this")(receiver.pos),
-            thisActualCapture.tpe)(receiver.pos)
+            thisActualCapture.tpe, mutable = false)(receiver.pos)
         val thisCaptureArg = thisFormalCapture.ref
         val (actualArgs, actualCaptures) = allArgs.splitAt(formalArgs.size)
         val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
@@ -3601,7 +3608,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val js.Ident(name, origName) = paramName
         val newOrigName = origName.getOrElse(name)
         val newNameIdent = freshLocalIdent(newOrigName)(paramName.pos)
-        val paramAny = js.ParamDef(newNameIdent, jstpe.AnyType)(param.pos)
+        val paramAny = js.ParamDef(newNameIdent, jstpe.AnyType,
+            mutable = false)(param.pos)
         val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
             fromAny(paramAny.ref, paramTpe))
         (paramAny, paramLocal)

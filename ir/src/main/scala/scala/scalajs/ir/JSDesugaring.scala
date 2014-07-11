@@ -976,7 +976,10 @@ object JSDesugaring {
             case Block(stats :+ Return(Undefined(), None)) => Block(stats)
             case newBody                                   => newBody
           }
-          Function(DynType, params.map(eraseParamType), DynType, newBody)
+          val newParams = params map { param =>
+            ParamDef(param.name, DynType, mutable = true)(param.pos)
+          }
+          Function(DynType, newParams, DynType, newBody)
 
         case _ =>
           super.transformExpr(tree)
@@ -1045,9 +1048,6 @@ object JSDesugaring {
               List(expr, IntLiteral(depth)))
       }
     }
-
-    def eraseParamType(param: ParamDef): ParamDef =
-      ParamDef(param.name, DynType)(param.pos)
 
   }
 

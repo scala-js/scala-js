@@ -606,7 +606,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     (1 to count map genFormalArg).toList
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType)
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = false)
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {
