@@ -242,6 +242,9 @@ abstract class OptimizerCore extends Transformers.Transformer {
       case _ =>
         superTransform(tree, isStat)
     }
+
+    if (isStat) discardSideEffectFree(result)
+    else result
   }
 
   private def transformBlock(tree: Block, isStat: Boolean): Tree = {
@@ -263,6 +266,15 @@ abstract class OptimizerCore extends Transformers.Transformer {
         Skip()(tree.pos)
     }
     transformList(tree.stats)
+  }
+
+  private def discardSideEffectFree(stat: Tree): Tree = stat match {
+    case _:VarRef | _:This | _:Literal | _:Closure =>
+      Skip()(stat.pos)
+    case Block(init :+ last) =>
+      Block(init :+ discardSideEffectFree(last))(stat.pos)
+    case _ =>
+      stat
   }
 
   private def transformApply(tree: Apply, isStat: Boolean): Tree = {
@@ -423,10 +435,10 @@ abstract class OptimizerCore extends Transformers.Transformer {
     body match {
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
-        Block(optReceiver ++: args)(tree.pos)
+        Block((optReceiver ++: args).map(discardSideEffectFree))(tree.pos)
 
       case _:Literal =>
-        Block(optReceiver ++: (args :+ body))(tree.pos)
+        Block((optReceiver ++: args).map(discardSideEffectFree) :+ body)(tree.pos)
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
