@@ -142,14 +142,15 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Some state --------------------------------------------------------------
 
-    val currentClassSym          = new ScopedVar[Symbol]
-    val currentClassInfoBuilder  = new ScopedVar[ClassInfoBuilder]
-    val currentMethodSym         = new ScopedVar[Symbol]
-    val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
-    val methodTailJumpThisSym    = new ScopedVar[Symbol](NoSymbol)
-    val methodTailJumpLabelSym   = new ScopedVar[Symbol]
-    val methodTailJumpFormalArgs = new ScopedVar[List[Symbol]]
-    val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
+    val currentClassSym             = new ScopedVar[Symbol]
+    val currentClassInfoBuilder     = new ScopedVar[ClassInfoBuilder]
+    val currentMethodSym            = new ScopedVar[Symbol]
+    val currentMethodInfoBuilder    = new ScopedVar[MethodInfoBuilder]
+    val methodTailJumpThisSym       = new ScopedVar[Symbol](NoSymbol)
+    val methodTailJumpLabelSym      = new ScopedVar[Symbol]
+    val methodTailJumpFormalArgs    = new ScopedVar[List[Symbol]]
+    val methodTailJumpFormalArgsSet = new ScopedVar[Set[Symbol]]
+    val paramAccessorLocals         = new ScopedVar(Map.empty[Symbol, js.ParamDef])
 
     var isModuleInitialized: Boolean = false // see genApply for super calls
 
@@ -506,10 +507,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       isModuleInitialized = false
 
       val result = withScopedVars(
-          currentMethodSym         := sym,
-          methodTailJumpThisSym    := NoSymbol,
-          methodTailJumpLabelSym   := NoSymbol,
-          methodTailJumpFormalArgs := Nil
+          currentMethodSym            := sym,
+          methodTailJumpThisSym       := NoSymbol,
+          methodTailJumpLabelSym      := NoSymbol,
+          methodTailJumpFormalArgs    := Nil,
+          methodTailJumpFormalArgsSet := Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
@@ -544,23 +546,20 @@ abstract class GenJSCode extends plugins.PluginComponent
                   isAccessor = sym.isAccessor,
                   hasInlineAnnot = sym.hasAnnotation(InlineAnnotationClass))
 
-            val jsParams = for (param <- params) yield {
-              implicit val pos = param.pos
-              js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-                  mutable = false)
-            }
-
-            val (resultType, body) = {
+            val methodDef = {
               if (sym.isClassConstructor) {
-                (currentClassType, js.Block(genStat(rhs), genThis()))
+                val jsParams = for (param <- params) yield {
+                  implicit val pos = param.pos
+                  js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+                      mutable = false)
+                }
+                js.MethodDef(methodIdent, jsParams, currentClassType,
+                    js.Block(genStat(rhs), genThis()))
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                (resultIRType, genMethodBody(rhs, params, resultIRType))
+                genMethodDef(methodIdent, params, resultIRType, rhs)
               }
             }
-
-            val methodDef =
-              js.MethodDef(methodIdent, jsParams, resultType, body)
 
             Some((methodDef, currentMethodInfoBuilder.get))
           }
@@ -706,25 +705,32 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Generate the body of a (non-constructor) method
+    /** Generates the MethodDef of a (non-constructor) method
      *
      *  Most normal methods are emitted straightforwardly. If the result
      *  type is Unit, then the body is emitted as a statement. Otherwise, it is
      *  emitted as an expression.
      *
      *  The additional complexity of this method handles the transformation of
-     *  recursive tail calls. The `tailcalls` phase unhelpfully transforms
-     *  them as one big LabelDef surrounding the body of the method, and
-     *  label-Apply's for recursive tail calls.
+     *  recursive tail calls. The `tailcalls` phase transforms them as one big
+     *  LabelDef surrounding the body of the method, and label-Apply's for
+     *  recursive tail calls.
      *  Here, we transform the outer LabelDef into a labeled `while (true)`
      *  loop. Label-Apply's to the LabelDef are turned into a `continue` of
      *  that loop. The body of the loop is a `js.Return()` of the body of the
      *  LabelDef (even if the return type is Unit), which will break out of
      *  the loop as necessary.
+     *  In that case, the ParamDefs are marked as mutable, as well as the
+     *  variable that replaces `this` (if there is one).
      */
-    def genMethodBody(tree: Tree, paramsSyms: List[Symbol],
-        resultIRType: jstpe.Type): js.Tree = {
+    def genMethodDef(methodIdent: js.Ident, paramsSyms: List[Symbol],
+        resultIRType: jstpe.Type, tree: Tree): js.MethodDef = {
       implicit val pos = tree.pos
+
+      def jsParams(mutable: Boolean) = for (param <- paramsSyms) yield {
+        implicit val pos = param.pos
+        js.ParamDef(encodeLocalSym(param), toIRType(param.tpe), mutable)
+      }
 
       val bodyIsStat = resultIRType == jstpe.NoType
 
@@ -737,11 +743,13 @@ abstract class GenJSCode extends plugins.PluginComponent
             (methodTailJumpLabelSym := ld.symbol) +:
             (initialThis match {
               case This(_) => Seq(
-                methodTailJumpThisSym    := thisDef.symbol,
-                methodTailJumpFormalArgs := thisDef.symbol :: paramsSyms)
+                methodTailJumpThisSym       := thisDef.symbol,
+                methodTailJumpFormalArgs    := thisDef.symbol :: paramsSyms,
+                methodTailJumpFormalArgsSet := paramsSyms.toSet + thisDef.symbol)
               case Ident(_) => Seq(
-                methodTailJumpThisSym    := NoSymbol,
-                methodTailJumpFormalArgs := paramsSyms)
+                methodTailJumpThisSym       := NoSymbol,
+                methodTailJumpFormalArgs    := paramsSyms,
+                methodTailJumpFormalArgsSet := paramsSyms.toSet)
             }): _*
           ) {
             val theLoop =
@@ -750,21 +758,23 @@ abstract class GenJSCode extends plugins.PluginComponent
                   else            js.Return(genExpr(rhs)),
                   Some(js.Ident("tailCallLoop")))
 
-            if (methodTailJumpThisSym.get == NoSymbol) {
+            val body = if (methodTailJumpThisSym.get == NoSymbol) {
               theLoop
             } else {
               js.Block(
                   js.VarDef(encodeLocalSym(methodTailJumpThisSym),
-                      currentClassType, mutable = false,
+                      currentClassType, mutable = true,
                       js.This()(currentClassType)),
                   theLoop)
             }
-
+            js.MethodDef(methodIdent, jsParams(true), resultIRType, body)
           }
 
         case _ =>
-          if (bodyIsStat) genStat(tree)
-          else genExpr(tree)
+          val body =
+            if (bodyIsStat) genStat(tree)
+            else genExpr(tree)
+          js.MethodDef(methodIdent, jsParams(false), resultIRType, body)
       }
     }
 
@@ -897,8 +907,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               // a local variable. Put a literal undefined param again
               js.UndefinedParam()(toIRType(sym.tpe))
             } else {
-              js.VarRef(encodeLocalSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
+              val mutable =
+                sym.isMutable || methodTailJumpFormalArgsSet.contains(sym)
+              js.VarRef(encodeLocalSym(sym), mutable)(toIRType(sym.tpe))
             }
           } else {
             sys.error("Cannot use package as value: " + tree)
@@ -946,8 +957,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.Select(genExpr(qualifier), encodeFieldSym(sym),
                   mutable = sym.isMutable)(toIRType(sym.tpe))
             case _ =>
-              js.VarRef(encodeLocalSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
+              val mutable =
+                sym.isMutable || methodTailJumpFormalArgsSet.contains(sym)
+              js.VarRef(encodeLocalSym(sym), mutable)(toIRType(sym.tpe))
           }
           js.Assign(genLhs, genExpr(rhs))
 
@@ -981,7 +993,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (methodTailJumpThisSym.get != NoSymbol) {
         js.VarRef(
           encodeLocalSym(methodTailJumpThisSym),
-          mutable = false)(currentClassType)
+          mutable = true)(currentClassType)
       } else {
         if (tryingToGenMethodAsJSFunction)
           throw new CancelGenMethodAsJSFunction(
@@ -1394,7 +1406,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case (formalArg, argType, _, actualArg) :: Nil =>
           js.Block(js.Assign(
-              js.VarRef(formalArg, mutable = false)(argType), actualArg),
+              js.VarRef(formalArg, mutable = true)(argType), actualArg),
               tailJump)
 
         case _ =>
@@ -1404,7 +1416,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
               yield js.Assign(
-                  js.VarRef(formalArg, mutable = false)(argType),
+                  js.VarRef(formalArg, mutable = true)(argType),
                   js.VarRef(tempArg, mutable = false)(argType))
           js.Block(tempAssignments ++ trueAssignments :+ tailJump)
       }

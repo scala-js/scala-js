@@ -645,7 +645,7 @@ object Serializers {
 
         case TagMethodDef =>
           val m = MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
-          if (!useHacks050)
+          if (useHacks052 && !useHacks050)
             new FixMethodDefTransformer().fixMethodDef(m)
           else
             m
@@ -822,6 +822,9 @@ object Serializers {
           sys.error(s"Found unrecognized function node at ${tree.pos}:\n$tree")
 
         case _: MethodDef =>
+          /* We are here because useHacks050 is true. In that case, useHacks052
+           * is also true.
+           */
           val m = super.transformDef(tree).asInstanceOf[MethodDef]
           new FixMethodDefTransformer().fixMethodDef(m)
 
