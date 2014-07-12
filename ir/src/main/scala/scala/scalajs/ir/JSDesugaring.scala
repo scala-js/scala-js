@@ -468,13 +468,21 @@ object JSDesugaring {
       /** Push the current lhs further into a deeper rhs */
       @inline def redo(newRhs: Tree) = pushLhsInto(lhs, newRhs)
 
-      if (rhs.tpe == NothingType && lhs != EmptyTree && !lhs.isInstanceOf[VarDef]) {
+      if (rhs.tpe == NothingType && lhs != EmptyTree) {
         /* A touch of peephole dead code elimination.
-         * We have to exclude VarDef from this treatment because a var should
-         * still be declared somewhere, in case it is used somewhere else in
-         * the function, where we can't dce it.
+         * Actually necessary to handle pushing an lhs into an infinite loop,
+         * for example.
          */
-        pushLhsInto(EmptyTree, rhs)
+        val transformedRhs = pushLhsInto(EmptyTree, rhs)
+        lhs match {
+          case VarDef(name, tpe, mutable, _) =>
+            /* We still need to declare the var, in case it is used somewhere
+             * else in the function, where we can't dce it.
+             */
+            Block(VarDef(name, DynType, true, EmptyTree), transformedRhs)
+          case _ =>
+            transformedRhs
+        }
       } else (rhs match {
         // Base case, rhs is already a regular JS expression
 
