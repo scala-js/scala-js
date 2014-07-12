@@ -143,17 +143,8 @@ abstract class OptimizerCore(
          */
         transformStat(rhs)
 
-      case VarRef(ident @ Ident(name, _), mutable) =>
-        val localDef = env.localDefs.getOrElse(name,
-            sys.error(s"Cannot find local def '$name' at $pos"))
-        localDef.newReplacement(tree.pos)
-
-      case This() =>
-        env.localDefs.get("this").fold {
-          tree
-        } { thisRep =>
-          thisRep.newReplacement
-        }
+      case _:VarRef | _:This =>
+        pretransformExpr(tree).force()
 
       case tree: Block =>
         transformBlock(tree, isStat)
@@ -265,7 +256,7 @@ abstract class OptimizerCore(
       case (vDef @ VarDef(ident @ Ident(name, originalName),
           vtpe, mutable, rhs)) :: rest =>
         newLocalDefIn(name, originalName, vtpe, mutable,
-            transformExpr(rhs), vDef.pos) {
+            pretransformExpr(rhs), vDef.pos) {
           transformList(rest)
         }
 
@@ -278,6 +269,11 @@ abstract class OptimizerCore(
     transformList(tree.stats)
   }
 
+  private def discardSideEffectFree(stat: PreTransform): Tree = stat match {
+    case PreTransLocalDef(_) => Skip()(stat.pos)
+    case PreTransTree(tree)  => discardSideEffectFree(tree)
+  }
+
   private def discardSideEffectFree(stat: Tree): Tree = stat match {
     case _:VarRef | _:This | _:Literal | _:Closure =>
       Skip()(stat.pos)
@@ -288,20 +284,22 @@ abstract class OptimizerCore(
   }
 
   private def transformApply(tree: Apply, isStat: Boolean): Tree = {
-    tryInlineAnonFunction(tree, isStat).getOrElse {
-      val Apply(receiver, methodIdent @ Ident(methodName, _), args) = tree
+    val Apply(receiver0, methodIdent @ Ident(methodName, _), args0) = tree
+    implicit val pos = tree.pos
 
-      val treceiver = transformExpr(receiver)
-      val targs = args.map(transformExpr)
+    val receiver = pretransformExpr(receiver0)
+    val args = args0.map(pretransformExpr)
 
+    tryInlineAnonFunction(receiver, methodName, args, isStat).getOrElse {
       def treeNotInlined =
-        Apply(treceiver, methodIdent, targs)(tree.tpe)(tree.pos)
+        Apply(receiver.force(), methodIdent,
+            args.map(_.force()))(tree.tpe)(tree.pos)
 
       if (isReflProxyName(methodName)) {
         // Never inline reflective proxies
         treeNotInlined
       } else {
-        val ClassType(cls) = treceiver.tpe
+        val ClassType(cls) = receiver.tpe
         val impls = dynamicCall(cls, methodName)
         if (impls.isEmpty || impls.exists(implsBeingInlined)) {
           // isEmpty could happen, have to leave it as is for the TypeError
@@ -311,7 +309,7 @@ abstract class OptimizerCore(
           if (!target.inlineable) {
             treeNotInlined
           } else {
-            inline(tree, Some(treceiver), targs, target, isStat)
+            inline(Some(receiver), args, target, isStat)
           }
         } else {
           if (impls.forall(_.isTraitImplForwarder)) {
@@ -326,7 +324,7 @@ abstract class OptimizerCore(
               // Not all calling the same method in the same trait impl
               treeNotInlined
             } else {
-              inline(tree, Some(treceiver), targs, reference, isStat)
+              inline(Some(receiver), args, reference, isStat)
             }
           } else {
             // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
@@ -337,13 +335,11 @@ abstract class OptimizerCore(
     }
   }
 
-  private def tryInlineAnonFunction(tree: Apply, isStat: Boolean): Option[Tree] = {
-    val Apply(receiver, Ident(methodName, _), args) = tree
-
+  private def tryInlineAnonFunction(receiver: PreTransform,
+      methodName: String, args: List[PreTransform], isStat: Boolean)(
+      implicit pos: Position): Option[Tree] = {
     receiver match {
-      case VarRef(Ident(f, _), false) =>
-        val localDef = env.localDefs.getOrElse(f,
-            sys.error(s"Cannot find local def '$f' at ${receiver.pos}"))
+      case PreTransLocalDef(localDef) if !localDef.mutable =>
         localDef.replacement match {
           case TentativeAnonFunReplacement(closure, alreadyUsed, cancelFun) =>
             if (alreadyUsed.value)
@@ -351,7 +347,7 @@ abstract class OptimizerCore(
             if (methodName.matches("""^apply(__O)+$""")) {
               // Generic one, the one we can inline easily
               alreadyUsed.value = true
-              Some(inlineClosure(tree, closure, args.map(transformExpr), isStat))
+              Some(inlineClosure(closure, args, isStat))
             } else if (methodName.startsWith("apply$mc") &&
                 !isReflProxyName(methodName)) {
               // A specialized one, we have to introduce the box/unbox
@@ -364,16 +360,16 @@ abstract class OptimizerCore(
               assert(paramCharCodes.length == args.size)
               assert(paramCharCodes.forall(isPrimitiveCharCode))
               val boxedArgs = for {
-                (charCode, arg) <- paramCharCodes zip args.map(transformExpr)
+                (charCode, arg) <- paramCharCodes zip args
               } yield {
                 if (charCode == 'C')
-                  CallHelper("bC", arg)(
-                      ClassType(Definitions.BoxedCharacterClass))(arg.pos)
+                  PreTransTree(CallHelper("bC", arg.force())(
+                      ClassType(Definitions.BoxedCharacterClass))(arg.pos))
                 else
                   arg
               }
               val isVoid = resultCharCode == 'V'
-              val inlined = inlineClosure(tree, closure, boxedArgs, isVoid)
+              val inlined = inlineClosure(closure, boxedArgs, isVoid)
               if (isVoid) Some(inlined)
               else Some(foldUnbox(resultCharCode, inlined))
             } else {
@@ -388,13 +384,16 @@ abstract class OptimizerCore(
   }
 
   private def transformStaticApply(tree: StaticApply, isStat: Boolean): Tree = {
-    val StaticApply(receiver, clsType @ ClassType(cls),
-        methodIdent @ Ident(methodName, _), args) = tree
-    val treceiver = transformExpr(receiver)
-    val targs = args.map(transformExpr)
+    val StaticApply(receiver0, clsType @ ClassType(cls),
+        methodIdent @ Ident(methodName, _), args0) = tree
+    implicit val pos = tree.pos
+
+    val receiver = pretransformExpr(receiver0)
+    val args = args0.map(pretransformExpr)
 
     def treeNotInlined =
-      StaticApply(treceiver, clsType, methodIdent, targs)(tree.tpe)(tree.pos)
+      StaticApply(receiver.force(), clsType, methodIdent,
+          args.map(_.force()))(tree.tpe)
 
     if (isReflProxyName(methodName)) {
       // Never inline reflective proxies
@@ -409,7 +408,7 @@ abstract class OptimizerCore(
         if (!target.inlineable || implsBeingInlined(target)) {
           treeNotInlined
         } else {
-          inline(tree, Some(treceiver), targs, target, isStat)
+          inline(Some(receiver), args, target, isStat)
         }
       }
     }
@@ -418,11 +417,13 @@ abstract class OptimizerCore(
   private def transformTraitImplApply(tree: TraitImplApply,
       isStat: Boolean): Tree = {
     val TraitImplApply(implType @ ClassType(impl),
-        methodIdent @ Ident(methodName, _), args) = tree
-    val targs = args.map(transformExpr)
+        methodIdent @ Ident(methodName, _), args0) = tree
+    implicit val pos = tree.pos
+
+    val args = args0.map(pretransformExpr)
 
     def treeNotInlined =
-      TraitImplApply(implType, methodIdent, targs)(tree.tpe)(tree.pos)
+      TraitImplApply(implType, methodIdent, args.map(_.force()))(tree.tpe)
 
     val optTarget = traitImplCall(impl, methodName)
     if (optTarget.isEmpty) {
@@ -433,14 +434,14 @@ abstract class OptimizerCore(
       if (!target.inlineable || implsBeingInlined(target)) {
         treeNotInlined
       } else {
-        inline(tree, None, targs, target, isStat)
+        inline(None, args, target, isStat)
       }
     }
   }
 
-  private def inline(tree: Tree, optReceiver: Option[Tree],
-      args: List[Tree], target: MethodImpl,
-      isStat: Boolean): Tree = inlining(target) {
+  private def inline(optReceiver: Option[PreTransform],
+      args: List[PreTransform], target: MethodImpl, isStat: Boolean)(
+      implicit pos: Position): Tree = inlining(target) {
 
     assert(target.inlineable, s"Trying to inline non-inlineable method $target")
 
@@ -449,20 +450,20 @@ abstract class OptimizerCore(
     body match {
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
-        Block((optReceiver ++: args).map(discardSideEffectFree))(tree.pos)
+        Block((optReceiver ++: args).map(discardSideEffectFree))
 
       case _:Literal =>
-        Block((optReceiver ++: args).map(discardSideEffectFree) :+ body)(tree.pos)
+        Block((optReceiver ++: args).map(discardSideEffectFree) :+ body)
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        optReceiver.get
+        optReceiver.get.force()
 
       case Select(This(), field, mutable) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        Select(optReceiver.get, field, mutable)(body.tpe)(body.pos)
+        Select(optReceiver.get.force(), field, mutable)(body.tpe)(body.pos)
 
       case body @ Assign(sel @ Select(This(), field, mutable),
           rhs @ VarRef(Ident(rhsName, _), _))
@@ -470,26 +471,26 @@ abstract class OptimizerCore(
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
         Assign(
-            Select(optReceiver.get, field, mutable)(sel.tpe)(sel.pos),
-            args.head)(body.pos)
+            Select(optReceiver.get.force(), field, mutable)(sel.tpe)(sel.pos),
+            args.head.force())(body.pos)
 
       case _ =>
-        inlineBody(tree, optReceiver, formals, resultType, body,
-            args, isStat)
+        inlineBody(optReceiver, formals, resultType, body, args, isStat)
     }
   }
 
-  private def inlineClosure(tree: Tree, closure: Closure,
-      args: List[Tree], isStat: Boolean): Tree = {
+  private def inlineClosure(closure: Closure, args: List[PreTransform],
+      isStat: Boolean)(implicit pos: Position): Tree = {
     val Closure(thisType, formals, resultType, body, captures) = closure
-    inlineBody(tree, None, formals, resultType, body,
-        captures ++ args, isStat)
+    inlineBody(None, formals, resultType, body,
+        captures.map(PreTransTree) ++ args, isStat)
   }
 
-  private def inlineBody(tree: Tree, optReceiver: Option[Tree],
+  private def inlineBody(optReceiver: Option[PreTransform],
       formals: List[ParamDef], resultType: Type, body: Tree,
-      args: List[Tree], isStat: Boolean): Tree = {
-    def transformWithArgs(formalsAndArgs: List[(ParamDef, Tree)]): Tree = {
+      args: List[PreTransform], isStat: Boolean)(
+      implicit pos: Position): Tree = {
+    def transformWithArgs(formalsAndArgs: List[(ParamDef, PreTransform)]): Tree = {
       formalsAndArgs match {
         case (formal @ ParamDef(ident @ Ident(name, originalName),
             ptpe, mutable), arg) :: rest =>
@@ -497,7 +498,7 @@ abstract class OptimizerCore(
             transformWithArgs(rest)
           }
         case Nil =>
-          returnable("", resultType, body)(tree.pos)
+          returnable("", resultType, body)
       }
     }
     optReceiver match {
@@ -900,10 +901,10 @@ abstract class OptimizerCore(
 
   private def newLocalDefIn(name: String,
       originalName: Option[String], declaredType: Type,
-      mutable: Boolean, transformedRhs: Tree, pos: Position)(
+      mutable: Boolean, preTransRhs: PreTransform, pos: Position)(
       body: => Tree): Tree = {
 
-    def bodyWithLocalDef(oldName: String, localDef: LocalDef) = {
+    def bodyWithLocalDef(localDef: LocalDef) = {
       withEnv(env.withLocalDef(name, localDef)) {
         body
       }
@@ -916,39 +917,64 @@ abstract class OptimizerCore(
           ReplaceWithVarRef(newName, newOriginalName))
       val varDef =
         VarDef(Ident(newName, newOriginalName)(pos),
-            tpe, mutable, transformedRhs)(pos)
-      Block(varDef, bodyWithLocalDef(name, localDef))(pos)
+            tpe, mutable, preTransRhs.force())(pos)
+      Block(varDef, bodyWithLocalDef(localDef))(pos)
     }
 
     if (mutable) {
       withDedicatedVar(declaredType)
     } else {
-      val refinedType = transformedRhs.tpe
-      transformedRhs match {
-        case literal: Literal =>
-          bodyWithLocalDef(name, LocalDef(refinedType, false,
-              ReplaceWithConstant(literal)))
-
-        case VarRef(Ident(refName, refOriginalName), false) =>
-          bodyWithLocalDef(name, LocalDef(refinedType, false,
-              ReplaceWithVarRef(refName, refOriginalName)))
-
-        case New(ClassType(wrapperName), _, List(closure: Closure))
-            if wrapperName.startsWith(AnonFunctionClassPrefix) =>
-          tryOrRollback { cancelFun =>
-            val alreadyUsedState = new SimpleState[Boolean](false)
-            withState(alreadyUsedState) {
-              bodyWithLocalDef(name, LocalDef(refinedType, false,
-                  TentativeAnonFunReplacement(closure, alreadyUsedState, cancelFun)))
-            }
-          } getOrElse {
-            withDedicatedVar(refinedType)
-          }
+      val refinedType = preTransRhs.tpe
+      preTransRhs match {
+        case PreTransLocalDef(localDef) if !localDef.mutable =>
+          bodyWithLocalDef(localDef)
 
         case _ =>
-          withDedicatedVar(refinedType)
+          val transformedRhs = preTransRhs.force()
+          transformedRhs match {
+            case literal: Literal =>
+              bodyWithLocalDef(LocalDef(refinedType, false,
+                  ReplaceWithConstant(literal)))
+
+            case VarRef(Ident(refName, refOriginalName), false) =>
+              bodyWithLocalDef(LocalDef(refinedType, false,
+                  ReplaceWithVarRef(refName, refOriginalName)))
+
+            case New(ClassType(wrapperName), _, List(closure: Closure))
+                if wrapperName.startsWith(AnonFunctionClassPrefix) =>
+              tryOrRollback { cancelFun =>
+                val alreadyUsedState = new SimpleState[Boolean](false)
+                withState(alreadyUsedState) {
+                  bodyWithLocalDef(LocalDef(refinedType, false,
+                      TentativeAnonFunReplacement(closure, alreadyUsedState, cancelFun)))
+                }
+              } getOrElse {
+                withDedicatedVar(refinedType)
+              }
+
+            case _ =>
+              withDedicatedVar(refinedType)
+          }
       }
     }
+  }
+
+  private def pretransformExpr(tree: Tree): PreTransform = tree match {
+    case VarRef(Ident(name, _), _) =>
+      implicit val pos = tree.pos
+      val localDef = env.localDefs.getOrElse(name,
+          sys.error(s"Cannot find local def '$name' at $pos"))
+      PreTransLocalDef(localDef)
+
+    case This() =>
+      env.localDefs.get("this").fold[PreTransform] {
+        PreTransTree(tree)
+      } { thisRep =>
+        PreTransLocalDef(thisRep)(tree.pos)
+      }
+
+    case _ =>
+      PreTransTree(transformExpr(tree))
   }
 
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
@@ -1028,6 +1054,26 @@ object OptimizerCore {
 
   private object OptEnv {
     val Empty: OptEnv = new OptEnv(Map.empty, Map.empty)
+  }
+
+  private sealed abstract class PreTransform {
+    def pos: Position
+    val tpe: Type
+
+    def force(): Tree = this match {
+      case ld @ PreTransLocalDef(localDef) => localDef.newReplacement(ld.pos)
+      case PreTransTree(tree)              => tree
+    }
+  }
+
+  private final case class PreTransLocalDef(localDef: LocalDef)(
+      implicit val pos: Position) extends PreTransform {
+    val tpe: Type = localDef.tpe
+  }
+
+  private final case class PreTransTree(tree: Tree) extends PreTransform {
+    def pos: Position = tree.pos
+    val tpe: Type = tree.tpe
   }
 
   private object IntOrDoubleLit {
