@@ -1115,7 +1115,7 @@ object OptimizerCore {
     var isTraitImplForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(_, params, _, body) = originalDef
+      val MethodDef(Ident(methodName, _), params, _, body) = originalDef
 
       isTraitImplForwarder = body match {
         // Shape of forwarders to trait impls
@@ -1131,7 +1131,13 @@ object OptimizerCore {
         case _ => false
       }
 
-      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder || {
+      val adHocInlineAnnot = {
+        (methodName.contains("sc_IndexedSeqOptimized$class") &&
+            (methodName.contains("__F1__") || methodName.contains("__F2__")))
+      }
+
+      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder ||
+          adHocInlineAnnot || {
         val MethodDef(_, params, _, body) = originalDef
         body match {
           case _:Skip | _:This | _:Literal                          => true
