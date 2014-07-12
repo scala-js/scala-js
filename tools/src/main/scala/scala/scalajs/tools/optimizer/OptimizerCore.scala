@@ -47,11 +47,13 @@ abstract class OptimizerCore extends Transformers.Transformer {
   private val usedLabelNames = mutable.Set.empty[String]
   private var statesInUse: List[State[_]] = Nil
 
-  def optimize(originalDef: MethodDef): MethodDef = {
+  def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     val MethodDef(name, params, resultType, body) = originalDef
     val (newParams, newBody) =
       transformIsolatedBody(params, resultType, body)
-    MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
+    val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
+    val info = recreateInfo(m)
+    (m, info)
   }
 
   private def withEnv[A](env: OptEnv)(body: => A): A = {
@@ -935,6 +937,131 @@ object OptimizerCore {
           case _ => false
         }
       }
+    }
+  }
+
+  /** Recreates precise [[Infos.MethodInfo]] from the optimized [[MethodDef]]. */
+  private def recreateInfo(methodDef: MethodDef): Infos.MethodInfo = {
+    new RecreateInfoTraverser().recreateInfo(methodDef)
+  }
+
+  private final class RecreateInfoTraverser extends Traversers.Traverser {
+    import RecreateInfoTraverser._
+
+    private val calledMethods = mutable.Map.empty[String, mutable.Set[String]]
+    private val calledMethodsStatic = mutable.Map.empty[String, mutable.Set[String]]
+    private val instantiatedClasses = mutable.Set.empty[String]
+    private val accessedModules = mutable.Set.empty[String]
+    private val accessedClassData = mutable.Set.empty[String]
+
+    def recreateInfo(methodDef: MethodDef): Infos.MethodInfo = {
+      traverse(methodDef.body)
+      Infos.MethodInfo(
+          encodedName = methodDef.name.name,
+          calledMethods = calledMethods.toMap.mapValues(_.toList),
+          calledMethodsStatic = calledMethodsStatic.toMap.mapValues(_.toList),
+          instantiatedClasses = instantiatedClasses.toList,
+          accessedModules = accessedModules.toList,
+          accessedClassData = accessedClassData.toList)
+    }
+
+    private def addCalledMethod(container: String, methodName: String): Unit =
+      calledMethods.getOrElseUpdate(container, mutable.Set.empty) += methodName
+
+    private def addCalledMethodStatic(container: String, methodName: String): Unit =
+      calledMethodsStatic.getOrElseUpdate(container, mutable.Set.empty) += methodName
+
+    private def typeToContainer(tpe: Type): String = tpe match {
+      case ClassType(cls) => cls
+      case _              => Definitions.ObjectClass
+    }
+
+    private def refTypeToClassData(tpe: ReferenceType): String = tpe match {
+      case ClassType(cls)     => cls
+      case ArrayType(base, _) => base
+    }
+
+    def addAccessedClassData(encodedName: String): Unit = {
+      if (!AlwaysPresentClassData.contains(encodedName))
+        accessedClassData += encodedName
+    }
+
+    def addAccessedClassData(tpe: ReferenceType): Unit =
+      addAccessedClassData(refTypeToClassData(tpe))
+
+    override def traverse(tree: Tree): Unit = {
+      tree match {
+        case New(ClassType(cls), ctor, _) =>
+          instantiatedClasses += cls
+          addCalledMethodStatic(cls, ctor.name)
+
+        case Apply(receiver, method, _) =>
+          addCalledMethod(typeToContainer(receiver.tpe), method.name)
+        case StaticApply(_, ClassType(cls), method, _) =>
+          addCalledMethodStatic(cls, method.name)
+        case TraitImplApply(ClassType(impl), method, _) =>
+          addCalledMethodStatic(impl, method.name)
+
+        case LoadModule(ClassType(cls)) =>
+          accessedModules += cls.stripSuffix("$")
+
+        case NewArray(tpe, _) =>
+          addAccessedClassData(tpe)
+        case ArrayValue(tpe, _) =>
+          addAccessedClassData(tpe)
+        case IsInstanceOf(_, cls) =>
+          addAccessedClassData(cls)
+        case AsInstanceOf(_, cls) =>
+          addAccessedClassData(cls)
+        case ClassOf(cls) =>
+          addAccessedClassData(cls)
+
+        case CallHelper(helper, _) =>
+          HelperTargets.get(helper) foreach {
+            case (cls, method) => addCalledMethod(cls, method)
+          }
+
+        case _ =>
+      }
+      super.traverse(tree)
+    }
+
+    private val HelperTargets = {
+      import Definitions._
+      Map[String, (String, String)](
+        "objectToString"  -> (ObjectClass, "toString__T"),
+        "objectGetClass"  -> (ObjectClass, s"getClass__$ClassClass"),
+        "objectClone"     -> (ObjectClass, "clone__O"),
+        "objectFinalize"  -> (ObjectClass, "finalize__V"),
+        "objectNotify"    -> (ObjectClass, "notify__V"),
+        "objectNotifyAll" -> (ObjectClass, "notifyAll__V"),
+        "objectEquals"    -> (ObjectClass, "equals__O__Z"),
+        "objectHashCode"  -> (ObjectClass, "hashCode__I"),
+
+        "charSequenceLength"      -> (CharSequenceClass, "length__I"),
+        "charSequenceCharAt"      -> (CharSequenceClass, "charAt__I__C"),
+        "charSequenceSubSequence" -> (CharSequenceClass, s"subSequence__I__I__$CharSequenceClass"),
+
+        "comparableCompareTo" -> (ComparableClass, "compareTo__O__I"),
+
+        "numberByteValue"   -> (NumberClass, "byteValue__B"),
+        "numberShortValue"  -> (NumberClass, "shortValue__S"),
+        "numberIntValue"    -> (NumberClass, "intValue__I"),
+        "numberLongValue"   -> (NumberClass, "longValue__J"),
+        "numberFloatValue"  -> (NumberClass, "floatValue__F"),
+        "numberDoubleValue" -> (NumberClass, "doubleValue__D")
+      )
+    }
+  }
+
+  private object RecreateInfoTraverser {
+    /** Class data that are never eliminated by dce, so we don't need to
+     *  record them.
+     */
+    private val AlwaysPresentClassData = {
+      import Definitions._
+      Set("V", "Z", "C", "B", "S", "I", "J", "F", "D",
+          ObjectClass, StringClass, RuntimeLongClass)
     }
   }
 

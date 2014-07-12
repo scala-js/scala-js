@@ -18,6 +18,7 @@ import java.net.URI
 
 import scala.scalajs.ir
 import ir.Infos
+import ir.ClassKind
 
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
@@ -63,14 +64,18 @@ class ScalaJSOptimizer {
     persistentState.startRun()
     try {
       import inputs._
-      val analyzer =
+      val allData =
         IncOptimizer.logTime(logger, "Read info") {
-          readIRAndCreateAnalyzer(inputs.input, logger)
+          readAllData(inputs.input, logger)
         }
-      val useInliner = IncOptimizer.logTime(logger, "Optimizations part") {
-        IncOptimizer.logTime(logger, "Compute reachability") {
-          analyzer.computeReachability(manuallyReachable, noWarnMissing)
-        }
+      val (useInliner, refinedAnalyzer) = IncOptimizer.logTime(
+          logger, "Optimizations part") {
+        val analyzer =
+          IncOptimizer.logTime(logger, "Compute reachability") {
+            val analyzer = new Analyzer(logger, allData)
+            analyzer.computeReachability(manuallyReachable, noWarnMissing)
+            analyzer
+          }
         if (outCfg.checkIR) {
           IncOptimizer.logTime(logger, "Check IR") {
             if (analyzer.allAvailable)
@@ -85,17 +90,26 @@ class ScalaJSOptimizer {
           persistentFile.treeIfChanged(lastVersion)
         }
         val useInliner = analyzer.allAvailable
-        if (useInliner) {
+        val refinedAnalyzer = if (useInliner) {
           IncOptimizer.logTime(logger, "Inliner") {
             inliner.update(analyzer, getClassTreeIfChanged, logger)
           }
-        } else if (inputs.noWarnMissing.isEmpty) {
-          logger.warn("Not running the inliner because there where linking errors.")
+          IncOptimizer.logTime(logger, "Refined reachability analysis") {
+            val refinedData = computeRefinedData(allData, inliner)
+            val refinedAnalyzer = new Analyzer(logger, refinedData,
+                globalWarnEnabled = false)
+            refinedAnalyzer.computeReachability(manuallyReachable, noWarnMissing)
+            refinedAnalyzer
+          }
+        } else {
+          if (inputs.noWarnMissing.isEmpty)
+            logger.warn("Not running the inliner because there where linking errors.")
+          analyzer
         }
-        useInliner
+        (useInliner, refinedAnalyzer)
       }
       IncOptimizer.logTime(logger, "Write DCE'ed output") {
-        writeDCEedOutput(outCfg, analyzer, useInliner)
+        writeDCEedOutput(outCfg, refinedAnalyzer, useInliner)
       }
     } finally {
       persistentState.endRun(outCfg.unCache)
@@ -112,10 +126,9 @@ class ScalaJSOptimizer {
     inliner = new IncOptimizer
   }
 
-  private def readIRAndCreateAnalyzer(ir: Traversable[VirtualScalaJSIRFile],
-      logger: Logger): Analyzer = {
-    val infos = ir.map(persistentState.getPersistentIRFile(_).info).toSeq
-    new Analyzer(logger, infos)
+  private def readAllData(ir: Traversable[VirtualScalaJSIRFile],
+      logger: Logger): scala.collection.Seq[Infos.ClassInfo] = {
+    ir.map(persistentState.getPersistentIRFile(_).info).toSeq
   }
 
   private def checkIR(analyzer: Analyzer, logger: Logger): Unit = {
@@ -127,6 +140,50 @@ class ScalaJSOptimizer {
     val checker = new IRChecker(analyzer, allClassDefs.toSeq, logger)
     if (!checker.check())
       sys.error(s"There were ${checker.errorCount} IR checking errors.")
+  }
+
+  private def computeRefinedData(
+      allData: scala.collection.Seq[Infos.ClassInfo],
+      inliner: IncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
+
+    def refineMethodInfo(container: inliner.MethodContainer,
+        methodInfo: Infos.MethodInfo): Infos.MethodInfo = {
+      container.methods.get(methodInfo.encodedName).fold(methodInfo) {
+        methodImpl => methodImpl.preciseInfo
+      }
+    }
+
+    def refineMethodInfos(container: inliner.MethodContainer,
+        methodInfos: List[Infos.MethodInfo]): List[Infos.MethodInfo] = {
+      methodInfos.map(m => refineMethodInfo(container, m))
+    }
+
+    def refineClassInfo(container: inliner.MethodContainer,
+        info: Infos.ClassInfo): Infos.ClassInfo = {
+      val refinedMethods = refineMethodInfos(container, info.methods)
+      Infos.ClassInfo(info.name, info.encodedName, info.isExported,
+          info.ancestorCount, info.kind, info.superClass, info.ancestors,
+          refinedMethods)
+    }
+
+    for {
+      info <- allData
+    } yield {
+      info.kind match {
+        case ClassKind.Class | ClassKind.ModuleClass =>
+          inliner.getClass(info.encodedName).fold(info) {
+            cls => refineClassInfo(cls, info)
+          }
+
+        case ClassKind.TraitImpl =>
+          inliner.getTraitImpl(info.encodedName).fold(info) {
+            impl => refineClassInfo(impl, info)
+          }
+
+        case _ =>
+          info
+      }
+    }
   }
 
   private def writeDCEedOutput(outputConfig: OutputConfig,
@@ -193,7 +250,10 @@ class ScalaJSOptimizer {
 
       if (classInfo.isImplClass) {
         if (useInliner) {
-          for ((_, method) <- inliner.findTraitImpl(classInfo.encodedName).methods) {
+          for {
+            method <- inliner.findTraitImpl(classInfo.encodedName).methods.values
+            if (classInfo.methodInfos(method.encodedName).isReachable)
+          } {
             addTree(method.desugaredDef)
           }
         } else {
@@ -208,7 +268,10 @@ class ScalaJSOptimizer {
           addTree(d.constructor.getOrElseUpdate(
               desugar(Emitter.genConstructor(classDef))))
           if (useInliner) {
-            for ((_, method) <- inliner.findClass(classInfo.encodedName).methods) {
+            for {
+              method <- inliner.findClass(classInfo.encodedName).methods.values
+              if (classInfo.methodInfos(method.encodedName).isReachable)
+            } {
               addTree(method.desugaredDef)
             }
           } else {

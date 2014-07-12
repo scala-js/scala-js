@@ -47,6 +47,9 @@ class IncOptimizer {
   def findTraitImpl(encodedName: String): TraitImpl = traitImpls(encodedName)
   def findClass(encodedName: String): Class = classes(encodedName)
 
+  def getTraitImpl(encodedName: String): Option[TraitImpl] = traitImpls.get(encodedName)
+  def getClass(encodedName: String): Option[Class] = classes.get(encodedName)
+
   private def getInterface(encodedName: String): InterfaceType =
     _interfaces.getOrElseUpdate(encodedName, new InterfaceType(encodedName))
 
@@ -501,6 +504,7 @@ class IncOptimizer {
     var optimizerHints: OptimizerHints = OptimizerHints.empty
     var originalDef: MethodDef = _
     var desugaredDef: Tree = _
+    var preciseInfo: Infos.MethodInfo = _
 
     private val registeredTo = mutable.Set.empty[InterfaceType]
 
@@ -534,6 +538,7 @@ class IncOptimizer {
         optimizerHints = hints
         originalDef = methodDef
         desugaredDef = null
+        preciseInfo = null
         val wasInlineable = inlineable
         updateInlineable()
         tag()
@@ -559,13 +564,14 @@ class IncOptimizer {
     def process(): Unit = {
       assert(!deleted, "process() called on a deleted method")
 
-      val optimizedDef = new Optimizer().optimize(originalDef)
+      val (optimizedDef, info) = new Optimizer().optimize(originalDef)
       val emitted =
         if (owner.isInstanceOf[Class])
           ScalaJSClassEmitter.genMethod(owner.encodedName, optimizedDef)
         else
           ScalaJSClassEmitter.genTraitImplMethod(owner.encodedName, optimizedDef)
       desugaredDef = JSDesugaring.desugarJavaScript(emitted)
+      preciseInfo = info
     }
 
     private class Optimizer extends OptimizerCore {
