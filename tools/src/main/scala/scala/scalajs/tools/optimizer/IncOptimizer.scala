@@ -574,7 +574,7 @@ class IncOptimizer {
       preciseInfo = info
     }
 
-    private class Optimizer extends OptimizerCore {
+    private class Optimizer extends OptimizerCore(MethodImpl.this) {
       protected def dynamicCall(intfName: String,
           methodName: String): List[MethodImpl] = {
         val intf = getInterface(intfName)
