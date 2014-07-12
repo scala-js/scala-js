@@ -218,6 +218,8 @@ class IncOptimizer {
 
   /** Base class for [[Class]] and [[TraitImpl]]. */
   abstract class MethodContainer(val encodedName: String) {
+    def thisType: Type
+
     val methods = mutable.Map.empty[String, MethodImpl]
 
     var lastVersion: Option[String] = None
@@ -305,6 +307,8 @@ class IncOptimizer {
       parentChain.reverse
 
     classes += encodedName -> this
+
+    def thisType: Type = ClassType(encodedName)
 
     val myInterface = getInterface(encodedName)
 
@@ -460,6 +464,8 @@ class IncOptimizer {
 
   /** Trait impl. */
   class TraitImpl(_encodedName: String) extends MethodContainer(_encodedName) {
+    def thisType: Type = NoType
+
     val interface = getInterface(encodedName)
   }
 
@@ -505,6 +511,8 @@ class IncOptimizer {
     var originalDef: MethodDef = _
     var desugaredDef: Tree = _
     var preciseInfo: Infos.MethodInfo = _
+
+    def thisType: Type = owner.thisType
 
     private val registeredTo = mutable.Set.empty[InterfaceType]
 

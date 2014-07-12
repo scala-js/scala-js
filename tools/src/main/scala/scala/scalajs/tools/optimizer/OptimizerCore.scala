@@ -51,8 +51,9 @@ abstract class OptimizerCore(
 
   def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     val MethodDef(name, params, resultType, body) = originalDef
+    val thisType = myself.thisType
     val (newParams, newBody) = inlining(myself) {
-      transformIsolatedBody(params, resultType, body)
+      transformIsolatedBody(thisType, params, resultType, body)
     }
     val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
     val info = recreateInfo(m)
@@ -217,7 +218,7 @@ abstract class OptimizerCore(
 
       case Closure(thisType, params, resultType, body, captures) =>
         val (newParams, newBody) =
-          transformIsolatedBody(params, resultType, body)
+          transformIsolatedBody(thisType, params, resultType, body)
         Closure(thisType, newParams, resultType, newBody,
             captures.map(transformExpr))
 
@@ -802,8 +803,8 @@ abstract class OptimizerCore(
     }
   }
 
-  def transformIsolatedBody(params: List[ParamDef], resultType: Type,
-      body: Tree): (List[ParamDef], Tree) = {
+  def transformIsolatedBody(thisType: Type, params: List[ParamDef],
+      resultType: Type, body: Tree): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
       p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable) <- params
     } yield {
@@ -816,7 +817,13 @@ abstract class OptimizerCore(
       ((name -> localDef), newParamDef)
     }).unzip
 
-    val newBody = withEnv(OptEnv.Empty.withLocalDefs(paramLocalDefs)) {
+    val thisLocalDef =
+      if (thisType == NoType) None
+      else Some("this" -> LocalDef(thisType, false, ReplaceWithThis()))
+
+    val allLocalDefs = thisLocalDef ++: paramLocalDefs
+
+    val newBody = withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs)) {
       transform(body, resultType == NoType)
     }
 
@@ -967,11 +974,10 @@ abstract class OptimizerCore(
       PreTransLocalDef(localDef)
 
     case This() =>
-      env.localDefs.get("this").fold[PreTransform] {
-        PreTransTree(tree)
-      } { thisRep =>
-        PreTransLocalDef(thisRep)(tree.pos)
-      }
+      implicit val pos = tree.pos
+      val localDef = env.localDefs.getOrElse("this",
+          sys.error(s"Found invalid 'this' at $pos"))
+      PreTransLocalDef(localDef)
 
     case _ =>
       PreTransTree(transformExpr(tree))
@@ -1010,6 +1016,9 @@ object OptimizerCore {
       case ReplaceWithVarRef(name, originalName) =>
         VarRef(Ident(name, originalName), mutable)(tpe)
 
+      case ReplaceWithThis() =>
+        This()(tpe)
+
       case ReplaceWithConstant(value) =>
         value
 
@@ -1022,6 +1031,8 @@ object OptimizerCore {
 
   private final case class ReplaceWithVarRef(name: String,
       originalName: Option[String]) extends LocalDefReplacement
+
+  private final case class ReplaceWithThis() extends LocalDefReplacement
 
   private final case class ReplaceWithConstant(
       value: Tree) extends LocalDefReplacement
@@ -1098,6 +1109,7 @@ object OptimizerCore {
     def encodedName: String
     def optimizerHints: OptimizerHints
     def originalDef: MethodDef
+    def thisType: Type
 
     var inlineable: Boolean = false
     var isTraitImplForwarder: Boolean = false
