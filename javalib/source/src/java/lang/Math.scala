@@ -6,58 +6,58 @@ import scala.scalajs.js
 object Math {
   private lazy val internalRandom = new java.util.Random()
 
-  val E: scala.Double = js.Math.E
-  val PI: scala.Double = js.Math.PI
+  final val E  = 2.718281828459045
+  final val PI = 3.141592653589793
 
-  def abs(a: scala.Int) = js.Math.abs(a).toInt
-  def abs(a: scala.Long) = js.Math.abs(a).toLong
-  def abs(a: scala.Float) = js.Math.abs(a).toFloat
-  def abs(a: scala.Double) = js.Math.abs(a).toDouble
+  @inline def abs(a: scala.Int): scala.Int = if (a < 0) -a else a
+  @inline def abs(a: scala.Long): scala.Long = if (a < 0) -a else a
+  @inline def abs(a: scala.Float): scala.Float = if (a < 0) -a else a
+  @inline def abs(a: scala.Double): scala.Double = if (a < 0) -a else a
 
-  def max(a: scala.Int, b: scala.Int) = js.Math.max(a, b).toInt
-  def max(a: scala.Long, b: scala.Long) = js.Math.max(a, b).toLong
-  def max(a: scala.Float, b: scala.Float) = js.Math.max(a, b).toFloat
-  def max(a: scala.Double, b: scala.Double) = js.Math.max(a, b).toDouble
+  @inline def max(a: scala.Int, b: scala.Int): scala.Int = if (a > b) a else b
+  @inline def max(a: scala.Long, b: scala.Long): scala.Long = if (a > b) a else b
+  @inline def max(a: scala.Float, b: scala.Float): scala.Float = if (a > b) a else b
+  @inline def max(a: scala.Double, b: scala.Double): scala.Double = if (a > b) a else b
 
-  def min(a: scala.Int, b: scala.Int) = js.Math.min(a, b).toInt
-  def min(a: scala.Long, b: scala.Long) = js.Math.min(a, b).toLong
-  def min(a: scala.Float, b: scala.Float) = js.Math.min(a, b).toFloat
-  def min(a: scala.Double, b: scala.Double) = js.Math.min(a, b).toDouble
+  @inline def min(a: scala.Int, b: scala.Int): scala.Int = if (a < b) a else b
+  @inline def min(a: scala.Long, b: scala.Long): scala.Long = if (a < b) a else b
+  @inline def min(a: scala.Float, b: scala.Float): scala.Float = if (a < b) a else b
+  @inline def min(a: scala.Double, b: scala.Double): scala.Double = if (a < b) a else b
 
-  def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
-  def floor(a: scala.Double): scala.Double = js.Math.floor(a)
+  @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
+  @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
 
-  def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
-  def round(a: scala.Double): scala.Long = js.Math.round(a).toLong
+  @inline def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
+  @inline def round(a: scala.Double): scala.Long = js.Math.round(a).toLong
 
-  def sqrt(a: scala.Double): scala.Double = js.Math.sqrt(a)
-  def pow(a: scala.Double, b: scala.Double): scala.Double = js.Math.pow(a, b)
+  @inline def sqrt(a: scala.Double): scala.Double = js.Math.sqrt(a)
+  @inline def pow(a: scala.Double, b: scala.Double): scala.Double = js.Math.pow(a, b)
 
-  def exp(a: scala.Double): scala.Double = js.Math.exp(a)
-  def log(a: scala.Double): scala.Double = js.Math.log(a)
-  def log10(a: scala.Double): scala.Double = log(a) / js.Math.LN10
-  def log1p(a: scala.Double): scala.Double = log(a + 1)
+  @inline def exp(a: scala.Double): scala.Double = js.Math.exp(a)
+  @inline def log(a: scala.Double): scala.Double = js.Math.log(a)
+  @inline def log10(a: scala.Double): scala.Double = log(a) / 2.302585092994046
+  @inline def log1p(a: scala.Double): scala.Double = log(a + 1)
 
-  def sin(a: scala.Double): scala.Double = js.Math.sin(a)
-  def cos(a: scala.Double): scala.Double = js.Math.cos(a)
-  def tan(a: scala.Double): scala.Double = js.Math.tan(a)
-  def asin(a: scala.Double): scala.Double = js.Math.asin(a)
-  def acos(a: scala.Double): scala.Double = js.Math.acos(a)
-  def atan(a: scala.Double): scala.Double = js.Math.atan(a)
-  def atan2(y: scala.Double, x: scala.Double): scala.Double = js.Math.atan2(y, x)
+  @inline def sin(a: scala.Double): scala.Double = js.Math.sin(a)
+  @inline def cos(a: scala.Double): scala.Double = js.Math.cos(a)
+  @inline def tan(a: scala.Double): scala.Double = js.Math.tan(a)
+  @inline def asin(a: scala.Double): scala.Double = js.Math.asin(a)
+  @inline def acos(a: scala.Double): scala.Double = js.Math.acos(a)
+  @inline def atan(a: scala.Double): scala.Double = js.Math.atan(a)
+  @inline def atan2(y: scala.Double, x: scala.Double): scala.Double = js.Math.atan2(y, x)
 
   def random(): scala.Double = internalRandom.nextDouble()
 
-  def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
-  def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
+  @inline def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
+  @inline def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
 
-  def signum(a: scala.Double): scala.Double = {
+  @inline def signum(a: scala.Double): scala.Double = {
     if (a > 0) 1.0
     else if (a < 0) -1.0
     else a
   }
 
-  def signum(a: scala.Float): scala.Float = {
+  @inline def signum(a: scala.Float): scala.Float = {
     if (a > 0) 1.0f
     else if (a < 0) -1.0f
     else a
