@@ -43,6 +43,12 @@ abstract class OptimizerCore(
   protected def traitImplCall(traitImplName: String,
       methodName: String): Option[MethodImpl]
 
+  /** Tests whether the given module class has an elidable accessor.
+   *  In other words, whether it is safe to discard a LoadModule of that
+   *  module class which is not used.
+   */
+  protected def hasElidableModuleAccessor(moduleClassName: String): Boolean
+
   private var implsBeingInlined: Set[MethodImpl] = Set.empty
   private var env: OptEnv = OptEnv.Empty
   private val usedLocalNames = mutable.Set.empty[String]
@@ -280,6 +286,9 @@ abstract class OptimizerCore(
       Skip()(stat.pos)
     case Block(init :+ last) =>
       Block(init :+ discardSideEffectFree(last))(stat.pos)
+    case LoadModule(ClassType(moduleClassName)) =>
+      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
+      else stat
     case _ =>
       stat
   }
