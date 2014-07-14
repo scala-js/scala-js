@@ -474,7 +474,7 @@ class IncOptimizer {
         case StaticApply(This(), ClassType(cls), methodName, args) =>
           Definitions.isConstructorName(methodName.name) &&
           args.forall(isTriviallySideEffectFree) &&
-          superClass.exists { superCls =>
+          impl.owner.asInstanceOf[Class].superClass.exists { superCls =>
             superCls.encodedName == cls &&
             superCls.lookupMethod(methodName.name).exists(isElidableModuleConstructor)
           }
