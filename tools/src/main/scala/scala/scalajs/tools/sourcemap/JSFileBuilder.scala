@@ -51,7 +51,7 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
    *  desugaring a full-fledged IR tree).
    */
   def addJSTree(tree: ir.Trees.Tree): Unit = {
-    val printer = new ir.Printers.IRTreePrinter(outputWriter)
+    val printer = new ir.Printers.IRTreePrinter(outputWriter, jsMode = true)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
@@ -182,7 +182,7 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
 
   override def addJSTree(tree: ir.Trees.Tree): Unit = {
     val printer = new ir.Printers.IRTreePrinterWithSourceMap(
-        outputWriter, sourceMapWriter)
+        outputWriter, jsMode = true, sourceMapWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
