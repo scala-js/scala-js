@@ -20,7 +20,8 @@ import scala.scalajs.tools.logging._
 
 import ScalaJSOptimizer._
 
-class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
+class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
+    globalWarnEnabled: Boolean = true) {
   /* Set this to true to debug the DCE analyzer.
    * We don't rely on config to disable 'debug' messages because we want
    * to use 'debug' for displaying more stack trace info that the user can
@@ -321,7 +322,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
 
     def checkExistent()(implicit from: From): Unit = {
       if (nonExistent) {
-        if (warnEnabled) {
+        if (warnEnabled && globalWarnEnabled) {
           logger.warn(s"Referring to non-existent class $encodedName")
           warnCallStack()
         }
@@ -417,7 +418,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo]) {
 
     private def checkExistent()(implicit from: From) = {
       if (nonExistent) {
-        if (warnEnabled && owner.warnEnabled) {
+        if (warnEnabled && owner.warnEnabled && globalWarnEnabled) {
           logger.temporarilyNotIndented {
             logger.warn(s"Referring to non-existent method $this")
             warnCallStack()
