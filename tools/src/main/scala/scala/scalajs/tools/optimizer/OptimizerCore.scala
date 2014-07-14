@@ -27,7 +27,8 @@ import scala.scalajs.tools.logging._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-abstract class OptimizerCore extends Transformers.Transformer {
+abstract class OptimizerCore(
+    myself: OptimizerCore.MethodImpl) extends Transformers.Transformer {
   import OptimizerCore._
 
   /** Returns the list of possible targets for a dynamically linked call. */
@@ -42,6 +43,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
   protected def traitImplCall(traitImplName: String,
       methodName: String): Option[MethodImpl]
 
+  private var implsBeingInlined: Set[MethodImpl] = Set.empty
   private var env: OptEnv = OptEnv.Empty
   private val usedLocalNames = mutable.Set.empty[String]
   private val usedLabelNames = mutable.Set.empty[String]
@@ -49,11 +51,20 @@ abstract class OptimizerCore extends Transformers.Transformer {
 
   def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     val MethodDef(name, params, resultType, body) = originalDef
-    val (newParams, newBody) =
+    val (newParams, newBody) = inlining(myself) {
       transformIsolatedBody(params, resultType, body)
+    }
     val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
     val info = recreateInfo(m)
     (m, info)
+  }
+
+  private def inlining[A](impl: MethodImpl)(body: => A): A = {
+    assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
+    val saved = implsBeingInlined
+    implsBeingInlined += impl
+    try body
+    finally implsBeingInlined = saved
   }
 
   private def withEnv[A](env: OptEnv)(body: => A): A = {
@@ -292,8 +303,8 @@ abstract class OptimizerCore extends Transformers.Transformer {
       } else {
         val ClassType(cls) = treceiver.tpe
         val impls = dynamicCall(cls, methodName)
-        if (impls.isEmpty) {
-          // Could happen, have to leave it as is for the TypeError
+        if (impls.isEmpty || impls.exists(implsBeingInlined)) {
+          // isEmpty could happen, have to leave it as is for the TypeError
           treeNotInlined
         } else if (impls.size == 1) {
           val target = impls.head
@@ -395,7 +406,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
         treeNotInlined
       } else {
         val target = optTarget.get
-        if (!target.inlineable) {
+        if (!target.inlineable || implsBeingInlined(target)) {
           treeNotInlined
         } else {
           inline(tree, Some(treceiver), targs, target, isStat)
@@ -419,7 +430,7 @@ abstract class OptimizerCore extends Transformers.Transformer {
       treeNotInlined
     } else {
       val target = optTarget.get
-      if (!target.inlineable) {
+      if (!target.inlineable || implsBeingInlined(target)) {
         treeNotInlined
       } else {
         inline(tree, None, targs, target, isStat)
@@ -428,7 +439,11 @@ abstract class OptimizerCore extends Transformers.Transformer {
   }
 
   private def inline(tree: Tree, optReceiver: Option[Tree],
-      args: List[Tree], target: MethodImpl, isStat: Boolean): Tree = {
+      args: List[Tree], target: MethodImpl,
+      isStat: Boolean): Tree = inlining(target) {
+
+    assert(target.inlineable, s"Trying to inline non-inlineable method $target")
+
     val MethodDef(_, formals, resultType, body) = target.originalDef
 
     body match {
