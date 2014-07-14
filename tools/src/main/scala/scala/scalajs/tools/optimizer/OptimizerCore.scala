@@ -43,6 +43,12 @@ abstract class OptimizerCore(
   protected def traitImplCall(traitImplName: String,
       methodName: String): Option[MethodImpl]
 
+  /** Tests whether the given module class has an elidable accessor.
+   *  In other words, whether it is safe to discard a LoadModule of that
+   *  module class which is not used.
+   */
+  protected def hasElidableModuleAccessor(moduleClassName: String): Boolean
+
   private var implsBeingInlined: Set[MethodImpl] = Set.empty
   private var env: OptEnv = OptEnv.Empty
   private val usedLocalNames = mutable.Set.empty[String]
@@ -201,7 +207,7 @@ abstract class OptimizerCore(
         val newName = freshLocalName(name)
         val newOriginalName = originalName.orElse(Some(name))
         val localDef = LocalDef(AnyType, true,
-            ReplaceWithVarRef(newName, newOriginalName))
+            ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
         val newBlock = transform(block, isStat)
         val newHandler = withEnv(env.withLocalDef(name, localDef)) {
           transform(handler, isStat)
@@ -280,6 +286,9 @@ abstract class OptimizerCore(
       Skip()(stat.pos)
     case Block(init :+ last) =>
       Block(init :+ discardSideEffectFree(last))(stat.pos)
+    case LoadModule(ClassType(moduleClassName)) =>
+      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
+      else stat
     case _ =>
       stat
   }
@@ -811,7 +820,7 @@ abstract class OptimizerCore(
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(newName))
       val localDef = LocalDef(ptpe, mutable,
-          ReplaceWithVarRef(newName, newOriginalName))
+          ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
       val newParamDef = ParamDef(
           Ident(newName, newOriginalName)(ident.pos), ptpe, mutable)(p.pos)
       ((name -> localDef), newParamDef)
@@ -920,12 +929,21 @@ abstract class OptimizerCore(
     def withDedicatedVar(tpe: Type) = {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(name))
-      val localDef = LocalDef(tpe, mutable,
-          ReplaceWithVarRef(newName, newOriginalName))
-      val varDef =
-        VarDef(Ident(newName, newOriginalName)(pos),
-            tpe, mutable, preTransRhs.force())(pos)
-      Block(varDef, bodyWithLocalDef(localDef))(pos)
+      val used = new SimpleState(false)
+      withState(used) {
+        val localDef = LocalDef(tpe, mutable,
+            ReplaceWithVarRef(newName, newOriginalName, used))
+        val newBody = bodyWithLocalDef(localDef)
+        if (used.value) {
+          val varDef =
+            VarDef(Ident(newName, newOriginalName)(pos),
+                tpe, mutable, preTransRhs.force())(pos)
+          Block(varDef, newBody)(pos)
+        } else {
+          val rhsSideEffects = discardSideEffectFree(preTransRhs)
+          Block(rhsSideEffects, newBody)(pos)
+        }
+      }
     }
 
     if (mutable) {
@@ -945,7 +963,8 @@ abstract class OptimizerCore(
 
             case VarRef(Ident(refName, refOriginalName), false) =>
               bodyWithLocalDef(LocalDef(refinedType, false,
-                  ReplaceWithVarRef(refName, refOriginalName)))
+                  ReplaceWithVarRef(refName, refOriginalName,
+                      new SimpleState(true))))
 
             case New(ClassType(wrapperName), _, List(closure: Closure))
                 if wrapperName.startsWith(AnonFunctionClassPrefix) =>
@@ -1013,7 +1032,8 @@ object OptimizerCore {
       replacement: LocalDefReplacement) {
 
     def newReplacement(implicit pos: Position): Tree = replacement match {
-      case ReplaceWithVarRef(name, originalName) =>
+      case ReplaceWithVarRef(name, originalName, used) =>
+        used.value = true
         VarRef(Ident(name, originalName), mutable)(tpe)
 
       case ReplaceWithThis() =>
@@ -1030,7 +1050,8 @@ object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: String,
-      originalName: Option[String]) extends LocalDefReplacement
+      originalName: Option[String],
+      used: SimpleState[Boolean]) extends LocalDefReplacement
 
   private final case class ReplaceWithThis() extends LocalDefReplacement
 

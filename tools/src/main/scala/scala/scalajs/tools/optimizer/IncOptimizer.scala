@@ -118,7 +118,7 @@ class IncOptimizer {
         } { traitImplInfo =>
           /* Existing trait impl. Update it. */
           val (added, changed, removed) =
-            traitImpl.updateMethodsWith(traitImplInfo, getClassTreeIfChanged)
+            traitImpl.updateWith(traitImplInfo, getClassTreeIfChanged)
           for (method <- changed)
             traitImpl.interface.tagStaticCallersOf(method)
           true
@@ -132,7 +132,7 @@ class IncOptimizer {
     for (traitImplInfo <- neededTraitImpls.values) {
       val traitImpl = new TraitImpl(traitImplInfo.encodedName)
       traitImpls += traitImpl.encodedName -> traitImpl
-      traitImpl.updateMethodsWith(traitImplInfo, getClassTreeIfChanged)
+      traitImpl.updateWith(traitImplInfo, getClassTreeIfChanged)
     }
 
     if (!batchMode) {
@@ -170,7 +170,7 @@ class IncOptimizer {
       val cls = new Class(
           Option(superClassInfo).map(info => classes(info.encodedName)),
           classInfo.encodedName)
-      cls.updateMethodsWith(classInfo, getClassTreeIfChanged)
+      cls.updateWith(classInfo, getClassTreeIfChanged)
       cls.interfaces =
         classInfo.ancestors.map(info => getInterface(info.encodedName)).toSet
 
@@ -205,6 +205,8 @@ class IncOptimizer {
         for (methodName <- allMethodNames)
           cls.myInterface.tagStaticCallersOf(methodName)
       }
+
+      cls.updateHasElidableModuleAccessor()
     }
   }
 
@@ -233,7 +235,7 @@ class IncOptimizer {
       }).toSet
     }
 
-    def updateMethodsWith(info: Analyzer#ClassInfo,
+    def updateWith(info: Analyzer#ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged): (Set[String], Set[String], Set[String]) = {
       val addedMethods = Set.newBuilder[String]
       val changedMethods = Set.newBuilder[String]
@@ -258,6 +260,10 @@ class IncOptimizer {
       }
       for ((tree, version) <- getClassTreeIfChanged(encodedName, lastVersion)) {
         lastVersion = version
+        this match {
+          case cls: Class => cls.isModuleClass = tree.kind == ClassKind.ModuleClass
+          case _          =>
+        }
         for {
           (methodDef @ MethodDef(Ident(methodName, _), _, _, _)) <- tree.defs
           if reachableMethods.contains(methodName)
@@ -315,6 +321,9 @@ class IncOptimizer {
     var interfaces: Set[InterfaceType] = Set.empty
     var subclasses: List[Class] = Nil
     var isInstantiated: Boolean = false
+
+    var isModuleClass: Boolean = false
+    var hasElidableModuleAccessor: Boolean = false
 
     override def toString(): String =
       encodedName
@@ -381,7 +390,7 @@ class IncOptimizer {
       val classInfo = getClassInfo(encodedName)
 
       val (addedMethods, changedMethods, deletedMethods) =
-        updateMethodsWith(classInfo, getClassTreeIfChanged)
+        updateWith(classInfo, getClassTreeIfChanged)
 
       val oldInterfaces = interfaces
       val newInterfaces =
@@ -433,10 +442,48 @@ class IncOptimizer {
       for (methodName <- inlineableMethodChanges)
         myInterface.tagStaticCallersOf(methodName)
 
+      // Module class specifics
+      updateHasElidableModuleAccessor()
+
       // Recurse in subclasses
       for (cls <- subclasses)
         cls.walkForChanges(getClassInfo, getClassTreeIfChanged,
             inlineableMethodChanges)
+    }
+
+    def updateHasElidableModuleAccessor(): Unit = {
+      hasElidableModuleAccessor =
+        isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor)
+    }
+
+    private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
+      def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
+        case _:VarRef | _:Literal | _:This => true
+        case _                             => false
+      }
+      def isElidableStat(tree: Tree): Boolean = tree match {
+        case Block(stats) =>
+          stats.forall(isElidableStat)
+        case Assign(Select(This(), _, _), rhs) =>
+          isTriviallySideEffectFree(rhs)
+        case TraitImplApply(ClassType(traitImpl), methodName, List(This())) =>
+          traitImpls(traitImpl).methods(methodName.name).originalDef.body match {
+            case Skip() => true
+            case _      => false
+          }
+        case StaticApply(This(), ClassType(cls), methodName, args) =>
+          Definitions.isConstructorName(methodName.name) &&
+          args.forall(isTriviallySideEffectFree) &&
+          superClass.exists { superCls =>
+            superCls.encodedName == cls &&
+            superCls.lookupMethod(methodName.name).exists(isElidableModuleConstructor)
+          }
+        case StoreModule(_, _) =>
+          true
+        case _ =>
+          isTriviallySideEffectFree(tree)
+      }
+      isElidableStat(impl.originalDef.body)
     }
 
     /** All the methods of this class, including inherited ones.
@@ -603,6 +650,9 @@ class IncOptimizer {
         registerStaticCall(traitImpl.interface, methodName)
         traitImpl.methods.get(methodName)
       }
+
+      protected def hasElidableModuleAccessor(moduleClassName: String): Boolean =
+        classes(moduleClassName).hasElidableModuleAccessor
     }
   }
 
