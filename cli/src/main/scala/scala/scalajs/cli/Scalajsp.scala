@@ -84,9 +84,10 @@ object Scalajsp {
     if (opts.infos)
       new InfoPrinter(stdout).printClassInfo(vfile.info)
     else if (opts.desugar)
-      new IRTreePrinter(stdout).printTopLevelTree(desugarJavaScript(vfile.tree))
+      new IRTreePrinter(stdout, jsMode = true).printTopLevelTree(
+          desugarJavaScript(vfile.tree))
     else
-      new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
+      new IRTreePrinter(stdout, jsMode = false).printTopLevelTree(vfile.tree)
 
     stdout.flush()
   }

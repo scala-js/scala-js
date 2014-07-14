@@ -136,8 +136,8 @@ object JSDesugaring {
         case Skip() =>
           tree
 
-        case VarDef(name, _, _, EmptyTree) =>
-          VarDef(name, DynType, mutable = true, EmptyTree)
+        case VarDef(_, _, _, EmptyTree) =>
+          tree
 
         case VarDef(_, _, _, rhs) =>
           pushLhsInto(tree, rhs)
@@ -199,7 +199,7 @@ object JSDesugaring {
           else {
             While(BooleanLiteral(true), {
               transformStat {
-                If(cond, body, Break())(UndefType)
+                If(cond, body, Break())(NoType)
               }
             }, label)
           }
@@ -216,7 +216,7 @@ object JSDesugaring {
              */
             While(BooleanLiteral(true), {
               transformStat {
-                Block(body, If(cond, Skip(), Break())(UndefType))
+                Block(body, If(cond, Skip(), Break())(NoType))
               }
             }, label)
           }
@@ -479,7 +479,7 @@ object JSDesugaring {
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
-            Block(VarDef(name, DynType, true, EmptyTree), transformedRhs)
+            Block(VarDef(name, tpe, true, EmptyTree), transformedRhs)
           case _ =>
             transformedRhs
         }
@@ -492,8 +492,8 @@ object JSDesugaring {
             case EmptyTree =>
               if (isSideEffectFreeExpression(newRhs)) Skip()
               else newRhs
-            case VarDef(name, _, _, _) =>
-              VarDef(name, DynType, mutable = true, newRhs)
+            case VarDef(name, tpe, mutable, _) =>
+              VarDef(name, tpe, mutable, newRhs)
             case Assign(lhs, _) => Assign(lhs, newRhs)
             case Return(_, None) => Return(newRhs, None)
             case Return(_, label @ Some(l)) =>
@@ -530,7 +530,7 @@ object JSDesugaring {
 
         case If(cond, thenp, elsep) =>
           unnest(cond) { newCond =>
-            If(transformExpr(newCond), redo(thenp), redo(elsep))(UndefType)
+            If(transformExpr(newCond), redo(thenp), redo(elsep))(NoType)
           }
 
         case Try(block, errVar, handler, finalizer) =>
@@ -552,10 +552,10 @@ object JSDesugaring {
              *
              *   try { try { ... } catch { ... } } finally { ... }
              */
-            Try(Try(redo(block), errVar, newHandler, EmptyTree)(UndefType),
-                errVar, EmptyTree, newFinalizer)(UndefType)
+            Try(Try(redo(block), errVar, newHandler, EmptyTree)(NoType),
+                errVar, EmptyTree, newFinalizer)(NoType)
           } else
-            Try(redo(block), errVar, newHandler, newFinalizer)(UndefType)
+            Try(redo(block), errVar, newHandler, newFinalizer)(NoType)
 
         // TODO Treat throw as an LHS?
         case Throw(expr) =>
@@ -984,10 +984,7 @@ object JSDesugaring {
             case Block(stats :+ Return(Undefined(), None)) => Block(stats)
             case newBody                                   => newBody
           }
-          val newParams = params map { param =>
-            ParamDef(param.name, DynType, mutable = true)(param.pos)
-          }
-          Function(DynType, newParams, DynType, newBody)
+          Function(DynType, params, NoType, newBody)
 
         case _ =>
           super.transformExpr(tree)

@@ -75,7 +75,12 @@ object Printers {
     def print(args: Any*): Unit
   }
 
-  class IRTreePrinter(val out: Writer) extends IndentationManager {
+  class IRTreePrinter(val out: Writer,
+      val jsMode: Boolean) extends IndentationManager {
+
+    @deprecated("Use the constructor with jsMode", "0.5.3")
+    def this(out: Writer) = this(out, jsMode = true)
+
     def printBlock(tree: Tree) {
       tree match {
         case Block(_) =>
@@ -100,8 +105,10 @@ object Printers {
 
     def printSig(args: List[ParamDef], resultType: Type): Unit = {
       printRow(args, "(", ", ", ")")
-      printOptType(resultType)
-      print(" ")
+      if (!jsMode && resultType != NoType)
+        print(": ", resultType, " = ")
+      else
+        print(" ")
     }
 
     def printArgs(args: List[Tree]): Unit = {
@@ -130,16 +137,18 @@ object Printers {
         // Definitions
 
         case VarDef(ident, vtpe, mutable, rhs) =>
-          if (!mutable)
-            print("/*const*/ ")
-          print("var ", ident)
+          if (jsMode || mutable)
+            print("var ")
+          else
+            print("val ")
+          print(ident)
           printOptType(vtpe)
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
         case ParamDef(ident, ptpe, mutable) =>
-          if (!mutable)
-            print("/*const*/ ")
+          if (!jsMode && mutable)
+            print("var ")
           print(ident)
           printOptType(ptpe)
 
@@ -153,7 +162,7 @@ object Printers {
 
         case Labeled(label, tpe, body) =>
           print(label)
-          if (tpe != NoType)
+          if (!jsMode && tpe != NoType)
             print("[", tpe, "]")
           print(": ")
           printBlock(body)
@@ -439,7 +448,7 @@ object Printers {
         // Literals
 
         case Undefined() =>
-          print("undefined")
+          print("void 0")
 
         case UndefinedParam() =>
           print("<undefined param>")
@@ -470,7 +479,7 @@ object Printers {
         case Closure(thisType, args, resultType, body, captures) =>
           print("(lambda")
           printRow(captures, "<", ", ", ">")
-          if (thisType != DynType)
+          if (!jsMode && thisType != NoType)
             print("[this: ", thisType, "]")
           printSig(args, resultType)
           printBlock(body)
@@ -478,7 +487,7 @@ object Printers {
 
         case Function(thisType, args, resultType, body) =>
           print("(function")
-          if (thisType != DynType)
+          if (!jsMode && thisType != NoType)
             print("[this: ", thisType, "]")
           printSig(args, resultType)
           printBlock(body)
@@ -519,7 +528,7 @@ object Printers {
 
         case ConstructorExportDef(fullName, args, body) =>
           print("export \"", escapeJS(fullName), "\"")
-          printSig(args, DynType) // DynType as trick not to display a type
+          printSig(args, NoType) // NoType as trick not to display a type
           printBlock(body)
 
         case ModuleExportDef(fullName) =>
@@ -531,7 +540,7 @@ object Printers {
     }
 
     def printOptType(tpe: Type): Unit =
-      if (tpe != DynType) print(": ", tpe)
+      if (!jsMode) print(": ", tpe)
 
     def printType(tpe: Type): Unit = tpe match {
       case AnyType              => print("any")
@@ -596,8 +605,12 @@ object Printers {
     builder.result()
   }
 
-  class IRTreePrinterWithSourceMap(_out: Writer,
-      sourceMap: SourceMapWriter) extends IRTreePrinter(_out) {
+  class IRTreePrinterWithSourceMap(_out: Writer, jsMode: Boolean,
+      sourceMap: SourceMapWriter) extends IRTreePrinter(_out, jsMode) {
+
+    @deprecated("Use the constructor with jsMode", "0.5.3")
+    def this(out: Writer, sourceMap: SourceMapWriter) =
+      this(out, jsMode = true, sourceMap)
 
     private var column = 0
 

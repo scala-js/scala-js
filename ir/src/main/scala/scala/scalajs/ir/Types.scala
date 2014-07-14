@@ -15,9 +15,9 @@ object Types {
 
   /** Type of an expression in the IR. */
   abstract sealed class Type {
-    override def toString() = {
+    def show(): String = {
       val writer = new java.io.StringWriter
-      val printer = new Printers.IRTreePrinter(writer)
+      val printer = new Printers.IRTreePrinter(writer, jsMode = false)
       printer.printType(this)
       writer.toString()
     }

@@ -20,9 +20,9 @@ object Trees {
     val pos: Position
     val tpe: Type
 
-    override def toString() = {
+    def show(jsMode: Boolean): String = {
       val writer = new java.io.StringWriter
-      val printer = new Printers.IRTreePrinter(writer)
+      val printer = new Printers.IRTreePrinter(writer, jsMode)
       printer.printTree(this)
       writer.toString()
     }
