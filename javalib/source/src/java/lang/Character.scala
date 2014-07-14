@@ -156,7 +156,7 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
 object Character {
   val TYPE = classOf[scala.Char]
   val MIN_VALUE: scala.Char = 0
-  val MAX_VALUE: scala.Char = 0xff
+  val MAX_VALUE: scala.Char = 0xffff
 
   def valueOf(charValue: scala.Char) = new Character(charValue)
 
