@@ -137,7 +137,9 @@ object Printers {
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
-        case ParamDef(ident, ptpe) =>
+        case ParamDef(ident, ptpe, mutable) =>
+          if (!mutable)
+            print("/*const*/ ")
           print(ident)
           printOptType(ptpe)
 

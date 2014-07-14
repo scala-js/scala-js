@@ -120,7 +120,7 @@ object JavaLangObject {
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
           Ident("equals__O__Z", Some("equals__O__Z")),
-          List(ParamDef(Ident("that", Some("that")), AnyType)),
+          List(ParamDef(Ident("that", Some("that")), AnyType, mutable = false)),
           BooleanType,
           {
             BinaryOp(BinaryOp.===,

@@ -448,8 +448,9 @@ abstract class OptimizerCore extends Transformers.Transformer {
       args: List[Tree], isStat: Boolean): Tree = {
     def transformWithArgs(formalsAndArgs: List[(ParamDef, Tree)]): Tree = {
       formalsAndArgs match {
-        case (formal @ ParamDef(ident @ Ident(name, originalName), ptpe), arg) :: rest =>
-          newLocalDefIn(name, originalName, ptpe, false, arg, arg.pos) {
+        case (formal @ ParamDef(ident @ Ident(name, originalName),
+            ptpe, mutable), arg) :: rest =>
+          newLocalDefIn(name, originalName, ptpe, mutable, arg, arg.pos) {
             transformWithArgs(rest)
           }
         case Nil =>
@@ -738,14 +739,14 @@ abstract class OptimizerCore extends Transformers.Transformer {
   def transformIsolatedBody(params: List[ParamDef], resultType: Type,
       body: Tree): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
-      p @ ParamDef(ident @ Ident(name, originalName), ptpe) <- params
+      p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable) <- params
     } yield {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(newName))
-      val localDef = LocalDef(ptpe, false,
+      val localDef = LocalDef(ptpe, mutable,
           ReplaceWithVarRef(newName, newOriginalName))
       val newParamDef = ParamDef(
-          Ident(newName, newOriginalName)(ident.pos), ptpe)(p.pos)
+          Ident(newName, newOriginalName)(ident.pos), ptpe, mutable)(p.pos)
       ((name -> localDef), newParamDef)
     }).unzip
 
@@ -911,7 +912,7 @@ object OptimizerCore {
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
                 case (VarRef(Ident(aname, _), _),
-                    ParamDef(Ident(pname, _), _)) => aname == pname
+                    ParamDef(Ident(pname, _), _, _)) => aname == pname
                 case _ => false
               }))
 

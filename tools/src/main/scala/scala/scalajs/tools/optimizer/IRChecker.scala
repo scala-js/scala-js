@@ -103,7 +103,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     if (!analyzer.classInfos(classDef.name.name).methodInfos(name).isReachable)
       return
 
-    for (ParamDef(name, tpe) <- params)
+    for (ParamDef(name, tpe, _) <- params)
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
 
@@ -142,22 +142,21 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         env
 
       case Assign(select, rhs) =>
-        /* TODO In theory the following commented out match would verify that
-         * we never assign to an immutable field or local variable. But we
-         * cannot do that because we *do* emit such assigns:
-         * - Assignments to read-only fields are done in constructors
-         * - Assignments to local variables is done in tail calls
-         * In the future we might want to check that only these legal special
-         * cases happen, and nothing else. But it seems non-trivial to do so,
-         * so currently we trust scalac not to make us emit illegal assigns.
-         */
-        /*select match {
-          case Select(_, _, false) =>
-            reportError("Assignment to immutable field.")
-          case VarRef(_, false) =>
-            reportError("Assignment to immutable variable.")
+        select match {
+          case Select(_, Ident(name, _), false) =>
+            /* TODO In theory this case would verify that we never assign to
+             * an immutable field. But we cannot do that because we *do* emit
+             * such assigns in constructors.
+             * In the future we might want to check that only these legal
+             * special cases happen, and nothing else. But it seems non-trivial
+             * to do so, so currently we trust scalac not to make us emit
+             * illegal assigns.
+             */
+            //reportError(s"Assignment to immutable field $name.")
+          case VarRef(Ident(name, _), false) =>
+            reportError(s"Assignment to immutable variable $name.")
           case _ =>
-        }*/
+        }
         val lhsTpe = typecheckExpr(select, env)
         val expectedRhsTpe = select match {
           case _:JSDotSelect | _:JSBracketSelect => AnyType
@@ -557,11 +556,14 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
       case Closure(thisType, params, resultType, body, captures) =>
-        for (ParamDef(name, tpe) <- params)
+        for (ParamDef(name, tpe, _) <- params)
           if (tpe == NoType)
             reportError(s"Parameter $name has type NoType")
-        for ((ParamDef(name, tpe), capture) <- params zip captures)
+        for ((ParamDef(name, tpe, mutable), capture) <- params zip captures) {
+          if (mutable)
+            reportError(s"Capture parameter $name cannot be mutable")
           typecheckExpect(capture, env, tpe)
+        }
         val bodyEnv = Env.fromSignature(thisType, params, resultType)
         if (resultType == NoType)
           typecheckStat(body, bodyEnv)
@@ -820,8 +822,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     def fromSignature(thisType: Type, params: List[ParamDef],
         resultType: Type): Env = {
       val paramLocalDefs =
-        for (p @ ParamDef(name, tpe) <- params) yield
-          name.name -> LocalDef(name.name, tpe, mutable = false)(p.pos)
+        for (p @ ParamDef(name, tpe, mutable) <- params) yield
+          name.name -> LocalDef(name.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap,
           Map(None -> (if (resultType == NoType) AnyType else resultType)))
     }

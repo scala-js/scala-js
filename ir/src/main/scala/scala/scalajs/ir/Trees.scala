@@ -99,11 +99,11 @@ object Trees {
       VarRef(name, mutable = mutable)(vtpe)
   }
 
-  case class ParamDef(name: Ident, ptpe: Type)(implicit val pos: Position) extends Tree {
+  case class ParamDef(name: Ident, ptpe: Type, mutable: Boolean)(implicit val pos: Position) extends Tree {
     val tpe = NoType
 
     def ref(implicit pos: Position): Tree =
-      VarRef(name, mutable = false)(ptpe)
+      VarRef(name, mutable = mutable)(ptpe)
   }
 
   // Control flow constructs
