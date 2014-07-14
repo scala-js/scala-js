@@ -1115,7 +1115,7 @@ object OptimizerCore {
     var isTraitImplForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(_, params, _, body) = originalDef
+      val MethodDef(Ident(methodName, _), params, _, body) = originalDef
 
       isTraitImplForwarder = body match {
         // Shape of forwarders to trait impls
@@ -1131,7 +1131,13 @@ object OptimizerCore {
         case _ => false
       }
 
-      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder || {
+      val adHocInlineAnnot = {
+        (methodName.contains("sc_IndexedSeqOptimized$class") &&
+            (methodName.contains("__F1__") || methodName.contains("__F2__")))
+      }
+
+      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder ||
+          adHocInlineAnnot || {
         val MethodDef(_, params, _, body) = originalDef
         body match {
           case _:Skip | _:This | _:Literal                          => true
@@ -1157,6 +1163,7 @@ object OptimizerCore {
   private object SimpleMethodBody {
     @tailrec
     def unapply(body: Tree): Boolean = body match {
+      case New(_, _, args)                   => areSimpleArgs(args)
       case Apply(receiver, _, args)          => areSimpleArgs(receiver :: args)
       case StaticApply(receiver, _, _, args) => areSimpleArgs(receiver :: args)
       case TraitImplApply(_, _, args)        => areSimpleArgs(args)
@@ -1167,7 +1174,7 @@ object OptimizerCore {
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
-      case _ => false
+      case _ => isSimpleArg(body)
     }
 
     private def areSimpleArgs(args: List[Tree]): Boolean =
@@ -1175,10 +1182,23 @@ object OptimizerCore {
 
     @tailrec
     private def isSimpleArg(arg: Tree): Boolean = arg match {
-      case _:VarRef | _:This | _:Literal => true
+      case New(_, _, Nil)                   => true
+      case Apply(receiver, _, Nil)          => isTrivialArg(receiver)
+      case StaticApply(receiver, _, _, Nil) => isTrivialArg(receiver)
+      case TraitImplApply(_, _, Nil)        => true
+
+      case ArrayLength(array)        => isTrivialArg(array)
+      case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
+
       case CallHelper(helper, List(inner)) =>
         isBoxUnboxHelper(helper) && isSimpleArg(inner)
-      case _ => false
+      case _ =>
+        isTrivialArg(arg)
+    }
+
+    private def isTrivialArg(arg: Tree): Boolean = arg match {
+      case _:VarRef | _:This | _:Literal | _:LoadModule => true
+      case _                                            => false
     }
 
     private val isBoxUnboxHelper =
