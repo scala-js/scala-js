@@ -81,6 +81,10 @@ object MiscInteropTest extends JasmineTest {
       expect(propCount).toEqual(4)
       expect(propString).toEqual("7357")
     }
+
+    it("should compile js.undefined") {
+      expect(() => js.undefined.asInstanceOf[js.prim.Number].toString(10)).toThrow
+    }
   }
 
 }
