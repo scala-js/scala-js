@@ -448,7 +448,7 @@ object Printers {
         // Literals
 
         case Undefined() =>
-          print("void 0")
+          print("(void 0)")
 
         case UndefinedParam() =>
           print("<undefined param>")
