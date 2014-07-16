@@ -35,26 +35,6 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
     }
   }
 
-  def genIRFileText(cunit: CompilationUnit, sym: Symbol, tree: js.ClassDef,
-      classInfo: ClassInfo): Unit = {
-    val outfile = getFileFor(cunit, sym, ".ir.js")
-    val output = bufferedWriter(outfile)
-    try {
-      val printer = new Printers.IRTreePrinter(output)
-      printer.printTopLevelTree(tree)
-      printer.complete()
-
-      val infoPrinter = new Printers.InfoPrinter(output)
-      infoPrinter.printClassInfo(classInfo)
-      infoPrinter.complete()
-    } finally {
-      output.close()
-    }
-  }
-
-  private def bufferedWriter(file: AbstractFile): Writer =
-    new OutputStreamWriter(file.bufferedOutput, "UTF-8")
-
   private def getFileFor(cunit: CompilationUnit, sym: Symbol,
       suffix: String) = {
     val baseDir: AbstractFile =
