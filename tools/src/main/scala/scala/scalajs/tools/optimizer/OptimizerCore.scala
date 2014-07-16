@@ -1309,9 +1309,16 @@ object OptimizerCore {
         case ClassOf(cls) =>
           addAccessedClassData(cls)
 
-        case CallHelper(helper, _) =>
-          HelperTargets.get(helper) foreach {
-            case (cls, method) => addCalledMethod(cls, method)
+        case CallHelper(helper, receiver :: _) =>
+          import Definitions._
+          HelperTargets.get(helper) foreach { method =>
+            receiver.tpe match {
+              case AnyType =>
+                addCalledMethod(ObjectClass, method)
+              case ClassType(cls) if (!HijackedClasses.contains(cls)) =>
+                addCalledMethod(cls, method)
+              case _ =>
+            }
           }
 
         case _ =>
@@ -1321,28 +1328,28 @@ object OptimizerCore {
 
     private val HelperTargets = {
       import Definitions._
-      Map[String, (String, String)](
-        "objectToString"  -> (ObjectClass, "toString__T"),
-        "objectGetClass"  -> (ObjectClass, s"getClass__$ClassClass"),
-        "objectClone"     -> (ObjectClass, "clone__O"),
-        "objectFinalize"  -> (ObjectClass, "finalize__V"),
-        "objectNotify"    -> (ObjectClass, "notify__V"),
-        "objectNotifyAll" -> (ObjectClass, "notifyAll__V"),
-        "objectEquals"    -> (ObjectClass, "equals__O__Z"),
-        "objectHashCode"  -> (ObjectClass, "hashCode__I"),
+      Map[String, String](
+        "objectToString"  -> "toString__T",
+        "objectGetClass"  -> s"getClass__$ClassClass",
+        "objectClone"     -> "clone__O",
+        "objectFinalize"  -> "finalize__V",
+        "objectNotify"    -> "notify__V",
+        "objectNotifyAll" -> "notifyAll__V",
+        "objectEquals"    -> "equals__O__Z",
+        "objectHashCode"  -> "hashCode__I",
 
-        "charSequenceLength"      -> (CharSequenceClass, "length__I"),
-        "charSequenceCharAt"      -> (CharSequenceClass, "charAt__I__C"),
-        "charSequenceSubSequence" -> (CharSequenceClass, s"subSequence__I__I__$CharSequenceClass"),
+        "charSequenceLength"      -> "length__I",
+        "charSequenceCharAt"      -> "charAt__I__C",
+        "charSequenceSubSequence" -> s"subSequence__I__I__$CharSequenceClass",
 
-        "comparableCompareTo" -> (ComparableClass, "compareTo__O__I"),
+        "comparableCompareTo" -> "compareTo__O__I",
 
-        "numberByteValue"   -> (NumberClass, "byteValue__B"),
-        "numberShortValue"  -> (NumberClass, "shortValue__S"),
-        "numberIntValue"    -> (NumberClass, "intValue__I"),
-        "numberLongValue"   -> (NumberClass, "longValue__J"),
-        "numberFloatValue"  -> (NumberClass, "floatValue__F"),
-        "numberDoubleValue" -> (NumberClass, "doubleValue__D")
+        "numberByteValue"   -> "byteValue__B",
+        "numberShortValue"  -> "shortValue__S",
+        "numberIntValue"    -> "intValue__I",
+        "numberLongValue"   -> "longValue__J",
+        "numberFloatValue"  -> "floatValue__F",
+        "numberDoubleValue" -> "doubleValue__D"
       )
     }
   }
