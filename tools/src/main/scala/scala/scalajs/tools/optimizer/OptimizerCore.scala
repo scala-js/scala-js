@@ -262,8 +262,8 @@ abstract class OptimizerCore(
 
       case (vDef @ VarDef(ident @ Ident(name, originalName),
           vtpe, mutable, rhs)) :: rest =>
-        newLocalDefIn(name, originalName, vtpe, mutable,
-            pretransformExpr(rhs), vDef.pos) {
+        withBinding(Binding(name, originalName, vtpe, mutable,
+            pretransformExpr(rhs))) {
           transformList(rest)
         }
 
@@ -500,25 +500,19 @@ abstract class OptimizerCore(
       formals: List[ParamDef], resultType: Type, body: Tree,
       args: List[PreTransform], isStat: Boolean)(
       implicit pos: Position): Tree = {
-    def transformWithArgs(formalsAndArgs: List[(ParamDef, PreTransform)]): Tree = {
-      formalsAndArgs match {
-        case (formal @ ParamDef(ident @ Ident(name, originalName),
-            ptpe, mutable), arg) :: rest =>
-          newLocalDefIn(name, originalName, ptpe, mutable, arg, arg.pos) {
-            transformWithArgs(rest)
-          }
-        case Nil =>
-          returnable("", resultType, body)
-      }
+
+    val optReceiverBinding = optReceiver map { receiver =>
+      Binding("this", None, receiver.tpe, false, receiver)
     }
-    optReceiver match {
-      case Some(receiver) =>
-        newLocalDefIn("this", None, receiver.tpe, false,
-            receiver, receiver.pos) {
-          transformWithArgs(formals zip args)
-        }
-      case None =>
-        transformWithArgs(formals zip args)
+
+    val argsBindings = for {
+      (ParamDef(Ident(name, originalName), tpe, mutable), arg) <- formals zip args
+    } yield {
+      Binding(name, originalName, tpe, mutable, arg)
+    }
+
+    withBindings(optReceiverBinding ++: argsBindings) {
+      returnable("", resultType, body)
     }
   }
 
@@ -915,16 +909,45 @@ abstract class OptimizerCore(
     }
   }
 
-  private def newLocalDefIn(name: String,
-      originalName: Option[String], declaredType: Type,
-      mutable: Boolean, preTransRhs: PreTransform, pos: Position)(
-      body: => Tree): Tree = {
-
-    def bodyWithLocalDef(localDef: LocalDef) = {
-      withEnv(env.withLocalDef(name, localDef)) {
+  private def withBindings(bindings: List[Binding])(body: => Tree): Tree = {
+    withNewLocalDefs(bindings) { localDefs =>
+      val newMappings = for {
+        (binding, localDef) <- bindings zip localDefs
+      } yield {
+        binding.name -> localDef
+      }
+      withEnv(env.withLocalDefs(newMappings)) {
         body
       }
     }
+  }
+
+  private def withBinding(binding: Binding)(body: => Tree): Tree = {
+    withNewLocalDef(binding) { localDef =>
+      withEnv(env.withLocalDef(binding.name, localDef)) {
+        body
+      }
+    }
+  }
+
+  private def withNewLocalDefs(bindings: List[Binding])(
+      body: List[LocalDef] => Tree): Tree = {
+    bindings match {
+      case first :: rest =>
+        withNewLocalDef(first) { firstLocalDef =>
+          withNewLocalDefs(rest) { restLocalDefs =>
+            body(firstLocalDef :: restLocalDefs)
+          }
+        }
+
+      case Nil =>
+        body(Nil)
+    }
+  }
+
+  private def withNewLocalDef(binding: Binding)(body: LocalDef => Tree): Tree = {
+    val Binding(name, originalName, declaredType, mutable, value) = binding
+    implicit val pos = value.pos
 
     def withDedicatedVar(tpe: Type) = {
       val newName = freshLocalName(name)
@@ -933,15 +956,15 @@ abstract class OptimizerCore(
       withState(used) {
         val localDef = LocalDef(tpe, mutable,
             ReplaceWithVarRef(newName, newOriginalName, used))
-        val newBody = bodyWithLocalDef(localDef)
+        val newBody = body(localDef)
         if (used.value) {
           val varDef =
-            VarDef(Ident(newName, newOriginalName)(pos),
-                tpe, mutable, preTransRhs.force())(pos)
-          Block(varDef, newBody)(pos)
+            VarDef(Ident(newName, newOriginalName),
+                tpe, mutable, value.force())
+          Block(varDef, newBody)
         } else {
-          val rhsSideEffects = discardSideEffectFree(preTransRhs)
-          Block(rhsSideEffects, newBody)(pos)
+          val rhsSideEffects = discardSideEffectFree(value)
+          Block(rhsSideEffects, newBody)
         }
       }
     }
@@ -949,20 +972,20 @@ abstract class OptimizerCore(
     if (mutable) {
       withDedicatedVar(declaredType)
     } else {
-      val refinedType = preTransRhs.tpe
-      preTransRhs match {
+      val refinedType = value.tpe
+      value match {
         case PreTransLocalDef(localDef) if !localDef.mutable =>
-          bodyWithLocalDef(localDef)
+          body(localDef)
 
         case _ =>
-          val transformedRhs = preTransRhs.force()
+          val transformedRhs = value.force()
           transformedRhs match {
             case literal: Literal =>
-              bodyWithLocalDef(LocalDef(refinedType, false,
+              body(LocalDef(refinedType, false,
                   ReplaceWithConstant(literal)))
 
             case VarRef(Ident(refName, refOriginalName), false) =>
-              bodyWithLocalDef(LocalDef(refinedType, false,
+              body(LocalDef(refinedType, false,
                   ReplaceWithVarRef(refName, refOriginalName,
                       new SimpleState(true))))
 
@@ -971,7 +994,7 @@ abstract class OptimizerCore(
               tryOrRollback { cancelFun =>
                 val alreadyUsedState = new SimpleState[Boolean](false)
                 withState(alreadyUsedState) {
-                  bodyWithLocalDef(LocalDef(refinedType, false,
+                  body(LocalDef(refinedType, false,
                       TentativeAnonFunReplacement(closure, alreadyUsedState, cancelFun)))
                 }
               } getOrElse {
@@ -1107,6 +1130,9 @@ object OptimizerCore {
     def pos: Position = tree.pos
     val tpe: Type = tree.tpe
   }
+
+  private final case class Binding(name: String, originalName: Option[String],
+      declaredType: Type, mutable: Boolean, value: PreTransform)
 
   private object IntOrDoubleLit {
     def unapply(tree: Literal): Option[Double] = tree match {
