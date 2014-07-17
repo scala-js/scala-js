@@ -90,6 +90,18 @@ object WrappedDictionaryTest extends JasmineTest {
       expect(size).toBe(2)
     }
 
+    it("should implement toList") {
+      val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
+      val list = dict.toList
+      expect(list.size).toBe(3)
+    }
+
+    it("should implement to[T]") {
+      val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
+      val list = dict.to[List]
+      expect(list.size).toBe(3)
+    }
+
   }
 
 }
