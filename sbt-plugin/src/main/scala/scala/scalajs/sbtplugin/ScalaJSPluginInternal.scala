@@ -265,6 +265,8 @@ object ScalaJSPluginInternal {
           val cp = preLinkClasspath.value
           val output = (artifactPath in packageJSDependencies).value
 
+          IO.createDirectory(output.getParentFile)
+
           import ScalaJSPackager._
           (new ScalaJSPackager).packageJS(cp.jsLibs,
                OutputConfig(WritableFileVirtualJSFile(output)),
