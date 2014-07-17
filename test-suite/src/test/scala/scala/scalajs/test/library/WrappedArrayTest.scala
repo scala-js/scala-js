@@ -68,7 +68,19 @@ object WrappedArrayTest extends JasmineTest {
     it("should implement diff") {
       val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
       val diff = seq.diff(Seq(1,3,9))
-      expect(diff.toList == List(2,1,1,10))
+      expect(diff.toList == List(2,1,1,10)).toBeTruthy
+    }
+
+    it("should implement toList") {
+      val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
+      val list = seq.toList
+      expect(list == List(1,2,1,3,1,10,9)).toBeTruthy
+    }
+
+    it("should implement to[T]") {
+      val seq: Seq[Int] = js.Array(1,2,1,3,1,10,9)
+      val list = seq.to[List]
+      expect(list == List(1,2,1,3,1,10,9)).toBeTruthy
     }
 
   }
