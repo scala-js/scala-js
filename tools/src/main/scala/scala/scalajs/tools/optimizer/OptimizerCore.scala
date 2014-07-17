@@ -126,21 +126,36 @@ abstract class OptimizerCore(
     }
   }
 
-  private def superTransform(tree: Tree, isStat: Boolean): Tree =
-    if (isStat) super.transformStat(tree)
-    else super.transformExpr(tree)
-
-  private def retransform(oldTree: Tree, newTree: Tree, isStat: Boolean): Tree =
-    if (newTree eq oldTree) superTransform(oldTree, isStat)
-    else transform(newTree, isStat)
-
+  /** Transforms a statement.
+   *
+   *  It is always the case that
+   *  {{{
+   *  transformStat(tree)
+   *  ===
+   *  finishTransformStat(pretransform(tree))
+   *  }}}
+   */
   override def transformStat(tree: Tree): Tree =
     transform(tree, isStat = true)
 
+  /** Transforms an expression.
+   *
+   *  It is always the case that
+   *  {{{
+   *  transformExpr(tree)
+   *  ===
+   *  finishTransformExpr(pretransform(tree))
+   *  }}}
+   */
   override def transformExpr(tree: Tree): Tree =
     transform(tree, isStat = false)
 
+  /** Transforms a tree. */
   private def transform(tree: Tree, isStat: Boolean): Tree = {
+    def superTransform(tree: Tree, isStat: Boolean): Tree =
+      if (isStat) super.transformStat(tree)
+      else        super.transformExpr(tree)
+
     @inline implicit def pos = tree.pos
     val result = tree match {
       case VarDef(_, _, _, rhs) =>
@@ -151,7 +166,9 @@ abstract class OptimizerCore(
         transformStat(rhs)
 
       case _:VarRef | _:This =>
-        pretransformExpr(tree).force()
+        val preTrans = pretransform(tree)
+        if (isStat) finishTransformStat(preTrans)
+        else        finishTransformExpr(preTrans)
 
       case tree: Block =>
         transformBlock(tree, isStat)
@@ -251,7 +268,7 @@ abstract class OptimizerCore(
         superTransform(tree, isStat)
     }
 
-    if (isStat) discardSideEffectFree(result)
+    if (isStat) keepOnlySideEffects(result)
     else result
   }
 
@@ -262,8 +279,8 @@ abstract class OptimizerCore(
 
       case (vDef @ VarDef(ident @ Ident(name, originalName),
           vtpe, mutable, rhs)) :: rest =>
-        newLocalDefIn(name, originalName, vtpe, mutable,
-            pretransformExpr(rhs), vDef.pos) {
+        withBinding(Binding(name, originalName, vtpe, mutable,
+            pretransform(rhs))) {
           transformList(rest)
         }
 
@@ -276,19 +293,86 @@ abstract class OptimizerCore(
     transformList(tree.stats)
   }
 
-  private def discardSideEffectFree(stat: PreTransform): Tree = stat match {
-    case PreTransLocalDef(_) => Skip()(stat.pos)
-    case PreTransTree(tree)  => discardSideEffectFree(tree)
+  /** Pretransforms a tree to get a refined type while avoiding to force
+   *  things we might be able to optimize by folding and aliasing.
+   */
+  private def pretransform(tree: Tree): PreTransform = tree match {
+    case VarRef(Ident(name, _), _) =>
+      implicit val pos = tree.pos
+      val localDef = env.localDefs.getOrElse(name,
+          sys.error(s"Cannot find local def '$name' at $pos"))
+      PreTransLocalDef(localDef)
+
+    case This() =>
+      implicit val pos = tree.pos
+      val localDef = env.localDefs.getOrElse("this",
+          sys.error(s"Found invalid 'this' at $pos"))
+      PreTransLocalDef(localDef)
+
+    case New(cls, ctor, args) =>
+      PreTransNew(cls, ctor, args.map(pretransform))(tree.pos)
+
+    case Closure(thisType, params, resultType, body, captures) =>
+      PreTransClosure(thisType, params, resultType, body,
+          captures.map(pretransform))(tree.pos)
+
+    case _ =>
+      PreTransTree(transformExpr(tree))
   }
 
-  private def discardSideEffectFree(stat: Tree): Tree = stat match {
-    case _:VarRef | _:This | _:Literal | _:Closure =>
+  /** Finishes an expression pretransform to get a normal [[Tree]].
+   *  This method (together with finishTransformStat) must not be called more
+   *  than once per pretransform and per translation.
+   *  By "per translation", we mean in an alternative path through
+   *  `tryOrRollback`. It could still be called several times as long as
+   *  it is once in the 'try' part and once in the 'fallback' part.
+   */
+  def finishTransformExpr(preTrans: PreTransform): Tree = {
+    implicit val pos = preTrans.pos
+    preTrans match {
+      case PreTransLocalDef(localDef) =>
+        localDef.newReplacement
+      case PreTransNew(cls, ctor, args) =>
+        New(cls, ctor, args.map(finishTransformExpr))
+      case PreTransClosure(thisType, params, resultType, body, captures) =>
+        val (newParams, newBody) =
+          transformIsolatedBody(thisType, params, resultType, body)
+        Closure(thisType, newParams, newBody.tpe, newBody,
+            captures.map(finishTransformExpr))
+      case PreTransTree(tree) =>
+        tree
+    }
+  }
+
+  /** Finishes a statement pretransform to get a normal [[Tree]].
+   *  This method (together with finishTransformExpr) must not be called more
+   *  than once per pretransform and per translation.
+   *  By "per translation", we mean in an alternative path through
+   *  `tryOrRollback`. It could still be called several times as long as
+   *  it is once in the 'try' part and once in the 'fallback' part.
+   */
+  private def finishTransformStat(stat: PreTransform): Tree = stat match {
+    case PreTransLocalDef(_) =>
+      Skip()(stat.pos)
+    case PreTransNew(_, _, _) =>
+      finishTransformExpr(stat)
+    case PreTransClosure(_, _, _, _, captures) =>
+      Block(captures.map(finishTransformStat))(stat.pos)
+    case PreTransTree(tree) =>
+      keepOnlySideEffects(tree)
+  }
+
+  /** Keeps only the side effects of a Tree (overapproximation). */
+  private def keepOnlySideEffects(stat: Tree): Tree = stat match {
+    case _:VarRef | _:This | _:Literal =>
       Skip()(stat.pos)
     case Block(init :+ last) =>
-      Block(init :+ discardSideEffectFree(last))(stat.pos)
+      Block(init :+ keepOnlySideEffects(last))(stat.pos)
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
+    case Closure(_, _, _, _, captures) =>
+      Block(captures.map(keepOnlySideEffects))(stat.pos)
     case _ =>
       stat
   }
@@ -297,13 +381,13 @@ abstract class OptimizerCore(
     val Apply(receiver0, methodIdent @ Ident(methodName, _), args0) = tree
     implicit val pos = tree.pos
 
-    val receiver = pretransformExpr(receiver0)
-    val args = args0.map(pretransformExpr)
+    val receiver = pretransform(receiver0)
+    val args = args0.map(pretransform)
 
     tryInlineAnonFunction(receiver, methodName, args, isStat).getOrElse {
       def treeNotInlined =
-        Apply(receiver.force(), methodIdent,
-            args.map(_.force()))(tree.tpe)(tree.pos)
+        Apply(finishTransformExpr(receiver), methodIdent,
+            args.map(finishTransformExpr))(tree.tpe)(tree.pos)
 
       if (isReflProxyName(methodName)) {
         // Never inline reflective proxies
@@ -373,7 +457,7 @@ abstract class OptimizerCore(
                 (charCode, arg) <- paramCharCodes zip args
               } yield {
                 if (charCode == 'C')
-                  PreTransTree(CallHelper("bC", arg.force())(
+                  PreTransTree(CallHelper("bC", finishTransformExpr(arg))(
                       ClassType(Definitions.BoxedCharacterClass))(arg.pos))
                 else
                   arg
@@ -398,12 +482,12 @@ abstract class OptimizerCore(
         methodIdent @ Ident(methodName, _), args0) = tree
     implicit val pos = tree.pos
 
-    val receiver = pretransformExpr(receiver0)
-    val args = args0.map(pretransformExpr)
+    val receiver = pretransform(receiver0)
+    val args = args0.map(pretransform)
 
     def treeNotInlined =
-      StaticApply(receiver.force(), clsType, methodIdent,
-          args.map(_.force()))(tree.tpe)
+      StaticApply(finishTransformExpr(receiver), clsType, methodIdent,
+          args.map(finishTransformExpr))(tree.tpe)
 
     if (isReflProxyName(methodName)) {
       // Never inline reflective proxies
@@ -430,10 +514,11 @@ abstract class OptimizerCore(
         methodIdent @ Ident(methodName, _), args0) = tree
     implicit val pos = tree.pos
 
-    val args = args0.map(pretransformExpr)
+    val args = args0.map(pretransform)
 
     def treeNotInlined =
-      TraitImplApply(implType, methodIdent, args.map(_.force()))(tree.tpe)
+      TraitImplApply(implType, methodIdent,
+          args.map(finishTransformExpr))(tree.tpe)
 
     val optTarget = traitImplCall(impl, methodName)
     if (optTarget.isEmpty) {
@@ -460,20 +545,21 @@ abstract class OptimizerCore(
     body match {
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
-        Block((optReceiver ++: args).map(discardSideEffectFree))
+        Block((optReceiver ++: args).map(finishTransformStat))
 
       case _:Literal =>
-        Block((optReceiver ++: args).map(discardSideEffectFree) :+ body)
+        Block((optReceiver ++: args).map(finishTransformStat) :+ body)
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        optReceiver.get.force()
+        finishTransformExpr(optReceiver.get)
 
       case Select(This(), field, mutable) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        Select(optReceiver.get.force(), field, mutable)(body.tpe)(body.pos)
+        Select(finishTransformExpr(optReceiver.get),
+            field, mutable)(body.tpe)(body.pos)
 
       case body @ Assign(sel @ Select(This(), field, mutable),
           rhs @ VarRef(Ident(rhsName, _), _))
@@ -481,44 +567,39 @@ abstract class OptimizerCore(
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
         Assign(
-            Select(optReceiver.get.force(), field, mutable)(sel.tpe)(sel.pos),
-            args.head.force())(body.pos)
+            Select(finishTransformExpr(optReceiver.get),
+                field, mutable)(sel.tpe)(sel.pos),
+            finishTransformExpr(args.head))(body.pos)
 
       case _ =>
         inlineBody(optReceiver, formals, resultType, body, args, isStat)
     }
   }
 
-  private def inlineClosure(closure: Closure, args: List[PreTransform],
+  private def inlineClosure(closure: PreTransClosure, args: List[PreTransform],
       isStat: Boolean)(implicit pos: Position): Tree = {
-    val Closure(thisType, formals, resultType, body, captures) = closure
+    val PreTransClosure(thisType, formals, resultType, body, captures) = closure
     inlineBody(None, formals, resultType, body,
-        captures.map(PreTransTree) ++ args, isStat)
+        captures ++ args, isStat)
   }
 
   private def inlineBody(optReceiver: Option[PreTransform],
       formals: List[ParamDef], resultType: Type, body: Tree,
       args: List[PreTransform], isStat: Boolean)(
       implicit pos: Position): Tree = {
-    def transformWithArgs(formalsAndArgs: List[(ParamDef, PreTransform)]): Tree = {
-      formalsAndArgs match {
-        case (formal @ ParamDef(ident @ Ident(name, originalName),
-            ptpe, mutable), arg) :: rest =>
-          newLocalDefIn(name, originalName, ptpe, mutable, arg, arg.pos) {
-            transformWithArgs(rest)
-          }
-        case Nil =>
-          returnable("", resultType, body)
-      }
+
+    val optReceiverBinding = optReceiver map { receiver =>
+      Binding("this", None, receiver.tpe, false, receiver)
     }
-    optReceiver match {
-      case Some(receiver) =>
-        newLocalDefIn("this", None, receiver.tpe, false,
-            receiver, receiver.pos) {
-          transformWithArgs(formals zip args)
-        }
-      case None =>
-        transformWithArgs(formals zip args)
+
+    val argsBindings = for {
+      (ParamDef(Ident(name, originalName), tpe, mutable), arg) <- formals zip args
+    } yield {
+      Binding(name, originalName, tpe, mutable, arg)
+    }
+
+    withBindings(optReceiverBinding ++: argsBindings) {
+      returnable("", resultType, body)
     }
   }
 
@@ -889,7 +970,7 @@ abstract class OptimizerCore(
                     case BlockOrAlone(prep,
                         Return(result, Some(Ident(newLabel, _)))) =>
                       val result1 =
-                        if (refinedType == NoType) discardSideEffectFree(result)
+                        if (refinedType == NoType) keepOnlySideEffects(result)
                         else result
                       val prepAndResult = Block(prep :+ result1)(body.pos)
                       if (cond == EmptyTree) {
@@ -915,16 +996,45 @@ abstract class OptimizerCore(
     }
   }
 
-  private def newLocalDefIn(name: String,
-      originalName: Option[String], declaredType: Type,
-      mutable: Boolean, preTransRhs: PreTransform, pos: Position)(
-      body: => Tree): Tree = {
-
-    def bodyWithLocalDef(localDef: LocalDef) = {
-      withEnv(env.withLocalDef(name, localDef)) {
+  private def withBindings(bindings: List[Binding])(body: => Tree): Tree = {
+    withNewLocalDefs(bindings) { localDefs =>
+      val newMappings = for {
+        (binding, localDef) <- bindings zip localDefs
+      } yield {
+        binding.name -> localDef
+      }
+      withEnv(env.withLocalDefs(newMappings)) {
         body
       }
     }
+  }
+
+  private def withBinding(binding: Binding)(body: => Tree): Tree = {
+    withNewLocalDef(binding) { localDef =>
+      withEnv(env.withLocalDef(binding.name, localDef)) {
+        body
+      }
+    }
+  }
+
+  private def withNewLocalDefs(bindings: List[Binding])(
+      body: List[LocalDef] => Tree): Tree = {
+    bindings match {
+      case first :: rest =>
+        withNewLocalDef(first) { firstLocalDef =>
+          withNewLocalDefs(rest) { restLocalDefs =>
+            body(firstLocalDef :: restLocalDefs)
+          }
+        }
+
+      case Nil =>
+        body(Nil)
+    }
+  }
+
+  private def withNewLocalDef(binding: Binding)(body: LocalDef => Tree): Tree = {
+    val Binding(name, originalName, declaredType, mutable, value) = binding
+    implicit val pos = value.pos
 
     def withDedicatedVar(tpe: Type) = {
       val newName = freshLocalName(name)
@@ -933,15 +1043,15 @@ abstract class OptimizerCore(
       withState(used) {
         val localDef = LocalDef(tpe, mutable,
             ReplaceWithVarRef(newName, newOriginalName, used))
-        val newBody = bodyWithLocalDef(localDef)
+        val newBody = body(localDef)
         if (used.value) {
           val varDef =
-            VarDef(Ident(newName, newOriginalName)(pos),
-                tpe, mutable, preTransRhs.force())(pos)
-          Block(varDef, newBody)(pos)
+            VarDef(Ident(newName, newOriginalName), tpe, mutable,
+                finishTransformExpr(value))
+          Block(varDef, newBody)
         } else {
-          val rhsSideEffects = discardSideEffectFree(preTransRhs)
-          Block(rhsSideEffects, newBody)(pos)
+          val rhsSideEffects = finishTransformStat(value)
+          Block(rhsSideEffects, newBody)
         }
       }
     }
@@ -949,57 +1059,36 @@ abstract class OptimizerCore(
     if (mutable) {
       withDedicatedVar(declaredType)
     } else {
-      val refinedType = preTransRhs.tpe
-      preTransRhs match {
+      val refinedType = value.tpe
+      value match {
         case PreTransLocalDef(localDef) if !localDef.mutable =>
-          bodyWithLocalDef(localDef)
+          body(localDef)
+
+        case PreTransNew(ClassType(wrapperName), _, List(closure: PreTransClosure))
+            if wrapperName.startsWith(AnonFunctionClassPrefix) =>
+          tryOrRollback { cancelFun =>
+            val alreadyUsedState = new SimpleState[Boolean](false)
+            withState(alreadyUsedState) {
+              body(LocalDef(refinedType, false,
+                  TentativeAnonFunReplacement(closure, alreadyUsedState, cancelFun)))
+            }
+          } getOrElse {
+            withDedicatedVar(refinedType)
+          }
+
+        case PreTransTree(literal: Literal) =>
+          body(LocalDef(refinedType, false,
+              ReplaceWithConstant(literal)))
+
+        case PreTransTree(VarRef(Ident(refName, refOriginalName), false)) =>
+          body(LocalDef(refinedType, false,
+              ReplaceWithVarRef(refName, refOriginalName,
+                  new SimpleState(true))))
 
         case _ =>
-          val transformedRhs = preTransRhs.force()
-          transformedRhs match {
-            case literal: Literal =>
-              bodyWithLocalDef(LocalDef(refinedType, false,
-                  ReplaceWithConstant(literal)))
-
-            case VarRef(Ident(refName, refOriginalName), false) =>
-              bodyWithLocalDef(LocalDef(refinedType, false,
-                  ReplaceWithVarRef(refName, refOriginalName,
-                      new SimpleState(true))))
-
-            case New(ClassType(wrapperName), _, List(closure: Closure))
-                if wrapperName.startsWith(AnonFunctionClassPrefix) =>
-              tryOrRollback { cancelFun =>
-                val alreadyUsedState = new SimpleState[Boolean](false)
-                withState(alreadyUsedState) {
-                  bodyWithLocalDef(LocalDef(refinedType, false,
-                      TentativeAnonFunReplacement(closure, alreadyUsedState, cancelFun)))
-                }
-              } getOrElse {
-                withDedicatedVar(refinedType)
-              }
-
-            case _ =>
-              withDedicatedVar(refinedType)
-          }
+          withDedicatedVar(refinedType)
       }
     }
-  }
-
-  private def pretransformExpr(tree: Tree): PreTransform = tree match {
-    case VarRef(Ident(name, _), _) =>
-      implicit val pos = tree.pos
-      val localDef = env.localDefs.getOrElse(name,
-          sys.error(s"Cannot find local def '$name' at $pos"))
-      PreTransLocalDef(localDef)
-
-    case This() =>
-      implicit val pos = tree.pos
-      val localDef = env.localDefs.getOrElse("this",
-          sys.error(s"Found invalid 'this' at $pos"))
-      PreTransLocalDef(localDef)
-
-    case _ =>
-      PreTransTree(transformExpr(tree))
   }
 
   /** Finds a type as precise as possible which is a supertype of lhs and rhs
@@ -1059,7 +1148,7 @@ object OptimizerCore {
       value: Tree) extends LocalDefReplacement
 
   private final case class TentativeAnonFunReplacement(
-      closure: Closure,
+      closure: PreTransClosure,
       alreadyUsed: SimpleState[Boolean],
       cancelFun: CancelFun) extends LocalDefReplacement
 
@@ -1088,14 +1177,15 @@ object OptimizerCore {
     val Empty: OptEnv = new OptEnv(Map.empty, Map.empty)
   }
 
+  /** The result of pretransform().
+   *  It has a `tpe` as precisely refined as if a full transformExpr() had
+   *  been performed.
+   *  It is also not dependent on the environment anymore. In some sense, it
+   *  has "captured" its environment at definition site.
+   */
   private sealed abstract class PreTransform {
     def pos: Position
     val tpe: Type
-
-    def force(): Tree = this match {
-      case ld @ PreTransLocalDef(localDef) => localDef.newReplacement(ld.pos)
-      case PreTransTree(tree)              => tree
-    }
   }
 
   private final case class PreTransLocalDef(localDef: LocalDef)(
@@ -1103,10 +1193,26 @@ object OptimizerCore {
     val tpe: Type = localDef.tpe
   }
 
+  private final case class PreTransNew(cls: ClassType, ctor: Ident,
+      args: List[PreTransform])(
+      implicit val pos: Position) extends PreTransform {
+    val tpe: Type = cls
+  }
+
+  private final case class PreTransClosure(
+      thisType: Type, params: List[ParamDef], resultType: Type, body: Tree,
+      captures: List[PreTransform])(
+      implicit val pos: Position) extends PreTransform {
+    val tpe: Type = DynType
+  }
+
   private final case class PreTransTree(tree: Tree) extends PreTransform {
     def pos: Position = tree.pos
     val tpe: Type = tree.tpe
   }
+
+  private final case class Binding(name: String, originalName: Option[String],
+      declaredType: Type, mutable: Boolean, value: PreTransform)
 
   private object IntOrDoubleLit {
     def unapply(tree: Literal): Option[Double] = tree match {
