@@ -126,7 +126,7 @@ object ScalaJSBuild extends Build {
           clean := clean.dependsOn(
               // compiler, library and jasmineTestFramework are aggregated
               clean in tools, clean in plugin,
-              clean in javalib, clean in scalalib,
+              clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in javalibEx,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
@@ -249,11 +249,11 @@ object ScalaJSBuild extends Build {
     output
   }
 
-  lazy val javalib: Project = Project(
-      id = "javalib",
-      base = file("javalib"),
+  lazy val javalanglib: Project = Project(
+      id = "javalanglib",
+      base = file("javalanglib"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
-          name := "Java library for Scala.js",
+          name := "java.lang library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
@@ -266,6 +266,20 @@ object ScalaJSBuild extends Build {
                 serializeHardcodedIR(base, JavaLangString.InfoAndTree)
             )
           }
+      ) ++ (
+          scalaJSExternalCompileSettings
+      )
+  ).dependsOn(compiler % "plugin", library)
+
+  lazy val javalib: Project = Project(
+      id = "javalib",
+      base = file("javalib"),
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+          name := "Java library for Scala.js",
+          publishArtifact in Compile := false,
+          delambdafySetting,
+          scalacOptions += "-Yskip:cleanup,icode,jvm",
+          scalaJSSourceMapSettings
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -448,6 +462,7 @@ object ScalaJSBuild extends Build {
            */
           mappings in packageBin ++= {
             val allProducts = (
+                (products in javalanglib).value ++
                 (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
