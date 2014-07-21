@@ -36,8 +36,8 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   // We also provide a method to create an ad-hoc data view of the next n bytes
   private val convBufLen = 8
   private val convBuf = new ArrayBuffer(convBufLen)
-  private val convInView = new Int8Array(buf)
-  private val convOutView = new DataView(buf)
+  private val convInView = new Int8Array(convBuf)
+  private val convOutView = new DataView(convBuf)
   private def view(len: Int) = {
     assert(len <= convBufLen)
     var i = 0
