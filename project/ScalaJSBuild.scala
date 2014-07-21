@@ -467,7 +467,8 @@ object ScalaJSBuild extends Build {
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings
+          scalaJSSourceMapSettings,
+          exportJars := true
       ) ++ (
           scalaJSExternalCompileSettings
       )
@@ -629,6 +630,20 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false
      )
   ).dependsOn(compiler % "plugin")
+
+  lazy val javalibExTestSuite: Project = Project(
+      id = "javalibExTestSuite",
+      base = file("javalib-ex-test-suite"),
+      settings = defaultSettings ++ myScalaJSSettings ++ (
+          useLibraryButDoNotDependOnIt ++
+          useJasmineTestFrameworkButDoNotDependOnIt
+      ) ++ Seq(
+          name := "JavaLib Ex Test Suite",
+          publishArtifact in Compile := false,
+
+          scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
+      )
+  ).dependsOn(compiler % "plugin", javalibEx)
 
   lazy val partest: Project = Project(
       id = "partest",

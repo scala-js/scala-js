@@ -40,6 +40,7 @@
          ++$scala testSuite/test \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray" \
          "testSuite/fullOptStage::testOnly -- -- -ttypedarray" &&
+    sbt ++$scala javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray &&
     sbt ++$scala compiler/test reversi/packageJS reversi/fullOptJS &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
