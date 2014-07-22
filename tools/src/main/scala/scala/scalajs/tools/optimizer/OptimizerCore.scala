@@ -52,11 +52,22 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   private val usedLabelNames = mutable.Set.empty[String]
   private var statesInUse: List[State[_]] = Nil
 
+  private var disableOptimisticOptimizations: Boolean = false
+  private var rollbacksCount: Int = 0
+
   def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     val MethodDef(name, params, resultType, body) = originalDef
     val thisType = myself.thisType
-    val (newParams, newBody) =
+    val (newParams, newBody) = try {
       transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+    } catch {
+      case _: TooManyRollbacksException =>
+        usedLocalNames.clear()
+        usedLabelNames.clear()
+        statesInUse = Nil
+        disableOptimisticOptimizations = true
+        transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+    }
     val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
     val info = recreateInfo(m)
     (m, info)
@@ -90,20 +101,28 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   }
 
   private def tryOrRollback[A](body: CancelFun => A): Option[A] = {
-    val savedUsedLocalNames = usedLocalNames.clone()
-    val savedUsedLabelNames = usedLabelNames.clone()
-    val savedStates = statesInUse.map(_.makeBackup())
-    val breaks = new scala.util.control.Breaks
-    breaks.tryBreakable[Option[A]] {
-      Some(body(() => breaks.break()))
-    } catchBreak {
-      usedLocalNames.clear()
-      usedLocalNames ++= savedUsedLocalNames
-      usedLabelNames.clear()
-      usedLabelNames ++= savedUsedLabelNames
-      for ((state, backup) <- statesInUse zip savedStates)
-        state.asInstanceOf[State[Any]].restore(backup)
+    if (disableOptimisticOptimizations) {
       None
+    } else {
+      val savedUsedLocalNames = usedLocalNames.clone()
+      val savedUsedLabelNames = usedLabelNames.clone()
+      val savedStates = statesInUse.map(_.makeBackup())
+      val breaks = new scala.util.control.Breaks
+      breaks.tryBreakable[Option[A]] {
+        Some(body(() => breaks.break()))
+      } catchBreak {
+        rollbacksCount += 1
+        if (rollbacksCount > MaxRollbacksPerMethod)
+          throw new TooManyRollbacksException
+
+        usedLocalNames.clear()
+        usedLocalNames ++= savedUsedLocalNames
+        usedLabelNames.clear()
+        usedLabelNames ++= savedUsedLabelNames
+        for ((state, backup) <- statesInUse zip savedStates)
+          state.asInstanceOf[State[Any]].restore(backup)
+        None
+      }
     }
   }
 
@@ -1428,6 +1447,11 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
 }
 
 object OptimizerCore {
+
+  private final val MaxRollbacksPerMethod = 256
+
+  private final class TooManyRollbacksException
+      extends scala.util.control.ControlThrowable
 
   private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
 
