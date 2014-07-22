@@ -3,9 +3,8 @@ package scala.scalajs.tools.json
 import scala.collection.mutable
 
 class JSONObjBuilder {
-  import scala.collection.JavaConverters._
 
-  private val flds = mutable.Map.empty[String, Object]
+  private val flds = mutable.Map.empty[String, JSON]
 
   def fld[T : JSONSerializer](name: String, v: T): this.type = {
     flds.put(name, v.toJSON)
@@ -17,5 +16,5 @@ class JSONObjBuilder {
     this
   }
 
-  def toJSON = flds.asJava
+  def toJSON: JSON = Impl.fromMap(flds.toMap)
 }

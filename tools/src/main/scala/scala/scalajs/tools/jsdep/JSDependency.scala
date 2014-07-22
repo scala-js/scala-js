@@ -37,7 +37,7 @@ final case class JSDependency(
 object JSDependency {
 
   implicit object JSDepJSONSerializer extends JSONSerializer[JSDependency] {
-    def serialize(x: JSDependency): Object = {
+    def serialize(x: JSDependency): JSON = {
       new JSONObjBuilder()
         .fld("resourceName", x.resourceName)
         .fld("dependencies", x.dependencies)
@@ -47,8 +47,8 @@ object JSDependency {
   }
 
   implicit object JSDepJSONDeserializer extends JSONDeserializer[JSDependency] {
-    def deserialize(x: Object): JSDependency = {
-      val obj = new JSONObjExtractor(x: Object)
+    def deserialize(x: JSON): JSDependency = {
+      val obj = new JSONObjExtractor(x)
       JSDependency(
           obj.fld[String]      ("resourceName"),
           obj.fld[List[String]]("dependencies"),

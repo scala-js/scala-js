@@ -9,7 +9,7 @@ final case class Origin(moduleName: String, configuration: String) {
 
 object Origin {
   implicit object OriginJSONSerializer extends JSONSerializer[Origin] {
-    def serialize(x: Origin): Object = {
+    def serialize(x: Origin): JSON = {
       new JSONObjBuilder()
         .fld("moduleName",    x.moduleName)
         .fld("configuration", x.configuration)
@@ -18,7 +18,7 @@ object Origin {
   }
 
   implicit object OriginDeserializer extends JSONDeserializer[Origin] {
-    def deserialize(x: Object): Origin = {
+    def deserialize(x: JSON): Origin = {
       val obj = new JSONObjExtractor(x)
       Origin(
           obj.fld[String]("moduleName"),

@@ -315,18 +315,18 @@ object ScalaJSPluginInternal {
         IO.createDirectory(targetDir)
 
         val file = targetDir / JSDependencyManifest.ManifestFileName
+        val vfile = WritableFileVirtualTextFile(file)
 
         // Prevent writing if unnecessary to not invalidate dependencies
-        val needWrite = !file.exists || {
+        val needWrite = !vfile.exists || {
           Try {
-            val vfile = new FileVirtualTextFile(file)
             val readManifest = JSDependencyManifest.read(vfile)
             readManifest != manifest
           } getOrElse true
         }
 
         if (needWrite)
-          JSDependencyManifest.write(manifest, file)
+          JSDependencyManifest.write(manifest, vfile)
 
         file
       },

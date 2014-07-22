@@ -1,38 +1,30 @@
 package scala.scalajs.tools.json
 
 trait JSONDeserializer[T] {
-  def deserialize(x: Object): T
+  def deserialize(x: JSON): T
 }
 
 object JSONDeserializer {
-  import scala.collection.JavaConverters._
 
-  trait IdentityDeserializer[T <: AnyRef] extends JSONDeserializer[T] {
-    def deserialize(x: Object): T = x.asInstanceOf[T]
+  implicit object stringJSON extends JSONDeserializer[String] {
+    def deserialize(x: JSON): String = Impl.toString(x)
   }
 
-  implicit object stringJSON extends IdentityDeserializer[String]
-  implicit object numberJSON extends IdentityDeserializer[java.lang.Number]
   implicit object intJSON extends JSONDeserializer[Int] {
-    def deserialize(x: Object): Int =
-      fromJSON[java.lang.Number](x).intValue()
+    def deserialize(x: JSON): Int = Impl.toNumber(x).intValue()
   }
+
   implicit object booleanJSON extends JSONDeserializer[Boolean] {
-    def deserialize(x: Object): Boolean = x.asInstanceOf[java.lang.Boolean]
+    def deserialize(x: JSON): Boolean = Impl.toBoolean(x)
   }
 
   implicit def listJSON[T : JSONDeserializer] = new JSONDeserializer[List[T]] {
-    def deserialize(x: Object): List[T] =
-      x.asInstanceOf[java.util.List[Object]].asScala.map(fromJSON[T] _).toList
+    def deserialize(x: JSON): List[T] = Impl.toList(x).map(fromJSON[T] _)
   }
 
-  implicit def mapJSON[K : JSONDeserializer, V : JSONDeserializer] = {
-    new JSONDeserializer[Map[K,V]] {
-      def deserialize(x: Object): Map[K,V] = {
-        val scmap = x.asInstanceOf[java.util.Map[Object, Object]].asScala
-        scmap.map { case (k,v) => (fromJSON[K](k), fromJSON[V](v)) }.toMap
-      }
-    }
+  implicit def mapJSON[V : JSONDeserializer] = new JSONDeserializer[Map[String, V]] {
+    def deserialize(x: JSON): Map[String, V] =
+      Impl.toMap(x).mapValues(fromJSON[V] _)
   }
 
 }

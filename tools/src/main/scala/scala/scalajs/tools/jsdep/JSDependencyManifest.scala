@@ -5,9 +5,7 @@ import scala.scalajs.tools.io._
 
 import scala.collection.immutable.{Seq, Traversable}
 
-import java.io._
-
-import org.json.simple.JSONValue
+import java.io.{Reader, Writer}
 
 /** The information written to a "JS_DEPENDENCIES" manifest file. */
 final case class JSDependencyManifest(
@@ -86,7 +84,7 @@ object JSDependencyManifest {
   }
 
   implicit object JSDepManJSONSerializer extends JSONSerializer[JSDependencyManifest] {
-    def serialize(x: JSDependencyManifest): Object = {
+    def serialize(x: JSDependencyManifest): JSON = {
       new JSONObjBuilder()
         .fld("origin",  x.origin)
         .fld("libDeps", x.libDeps)
@@ -96,7 +94,7 @@ object JSDependencyManifest {
   }
 
   implicit object JSDepManJSONDeserializer extends JSONDeserializer[JSDependencyManifest] {
-    def deserialize(x: Object): JSDependencyManifest = {
+    def deserialize(x: JSON): JSDependencyManifest = {
       val obj = new JSONObjExtractor(x)
       JSDependencyManifest(
           obj.fld[Origin]            ("origin"),
@@ -111,20 +109,8 @@ object JSDependencyManifest {
     finally writer.close()
   }
 
-  def write(dep: JSDependencyManifest, file: File): Unit = {
-    val writer = new BufferedWriter(new FileWriter(file))
-    try write(dep, writer)
-    finally writer.close()
-  }
-
   def write(dep: JSDependencyManifest, writer: Writer): Unit =
-    JSONValue.writeJSONString(dep.toJSON, writer)
-
-  def read(file: File): JSDependencyManifest = {
-    val reader = new BufferedReader(new FileReader(file))
-    try read(reader)
-    finally reader.close()
-  }
+    writeJSON(dep.toJSON, writer)
 
   def read(file: VirtualTextFile): JSDependencyManifest = {
     val reader = file.reader
@@ -133,6 +119,6 @@ object JSDependencyManifest {
   }
 
   def read(reader: Reader): JSDependencyManifest =
-    fromJSON[JSDependencyManifest](JSONValue.parse(reader))
+    fromJSON[JSDependencyManifest](readJSON(reader))
 
 }
