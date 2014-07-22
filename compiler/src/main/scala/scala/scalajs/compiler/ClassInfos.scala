@@ -49,6 +49,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
         ""
     val ancestors = (symbol :: symbol.ancestors) map encodeClassFullName
 
+    var optimizerHints: OptimizerHints = OptimizerHints.empty
+
     val methodInfos = mutable.ListBuffer.empty[MethodInfoBuilder]
 
     def addMethod(encodedName: String, isAbstract: Boolean = false,
@@ -60,7 +62,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     def result(): ClassInfo = {
       ClassInfo(name, encodedName, isExported, ancestorCount, kind,
-          superClass, ancestors, methodInfos.map(_.result()).result())
+          superClass, ancestors, optimizerHints,
+          methodInfos.map(_.result()).result())
     }
   }
 

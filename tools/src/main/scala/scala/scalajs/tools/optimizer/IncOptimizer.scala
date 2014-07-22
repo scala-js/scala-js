@@ -14,6 +14,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import scala.scalajs.ir._
+import Definitions.isConstructorName
 import Infos.OptimizerHints
 import Trees._
 import Types._
@@ -207,6 +208,7 @@ class IncOptimizer {
       }
 
       cls.updateHasElidableModuleAccessor()
+      cls.updateIsInlineable(classInfo)
     }
   }
 
@@ -261,7 +263,9 @@ class IncOptimizer {
       for ((tree, version) <- getClassTreeIfChanged(encodedName, lastVersion)) {
         lastVersion = version
         this match {
-          case cls: Class => cls.isModuleClass = tree.kind == ClassKind.ModuleClass
+          case cls: Class =>
+            cls.isModuleClass = tree.kind == ClassKind.ModuleClass
+            cls.fields = for (field @ VarDef(_, _, _, _) <- tree.defs) yield field
           case _          =>
         }
         for {
@@ -324,6 +328,10 @@ class IncOptimizer {
 
     var isModuleClass: Boolean = false
     var hasElidableModuleAccessor: Boolean = false
+
+    var fields: List[VarDef] = Nil
+    var isInlineable: Boolean = false
+    var tryNewInlineable: Option[RecordValue] = None
 
     override def toString(): String =
       encodedName
@@ -439,11 +447,17 @@ class IncOptimizer {
       }
 
       // Tag callers with static calls
-      for (methodName <- inlineableMethodChanges)
+      val constructorNames =
+        for (method <- methods.values; if isConstructorName(method.encodedName))
+          yield method.encodedName
+      for (methodName <- inlineableMethodChanges ++ constructorNames)
         myInterface.tagStaticCallersOf(methodName)
 
       // Module class specifics
       updateHasElidableModuleAccessor()
+
+      // Inlineable class
+      updateIsInlineable(classInfo)
 
       // Recurse in subclasses
       for (cls <- subclasses)
@@ -454,6 +468,22 @@ class IncOptimizer {
     def updateHasElidableModuleAccessor(): Unit = {
       hasElidableModuleAccessor =
         isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor)
+    }
+
+    def updateIsInlineable(classInfo: Analyzer#ClassInfo): Unit = {
+      isInlineable = classInfo.optimizerHints.hasInlineAnnot
+      if (!isInlineable) {
+        tryNewInlineable = None
+      } else {
+        val allFields = reverseParentChain.flatMap(_.fields)
+        val (fieldValues, fieldTypes) = (for {
+          VarDef(Ident(name, originalName), tpe, mutable, rhs) <- allFields
+        } yield {
+          (rhs, RecordType.Field(name, originalName, tpe, mutable))
+        }).unzip
+        tryNewInlineable = Some(
+            RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))
+      }
     }
 
     private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
@@ -653,6 +683,9 @@ class IncOptimizer {
 
       protected def hasElidableModuleAccessor(moduleClassName: String): Boolean =
         classes(moduleClassName).hasElidableModuleAccessor
+
+      protected def tryNewInlineableClass(className: String): Option[RecordValue] =
+        classes(className).tryNewInlineable
     }
   }
 

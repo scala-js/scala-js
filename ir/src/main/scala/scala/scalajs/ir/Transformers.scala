@@ -102,6 +102,9 @@ object Transformers {
         case ArraySelect(array, index) =>
           ArraySelect(transformExpr(array), transformExpr(index))(tree.tpe)
 
+        case RecordValue(tpe, elems) =>
+          RecordValue(tpe, elems map transformExpr)
+
         case IsInstanceOf(expr, cls) =>
           IsInstanceOf(transformExpr(expr), cls)
 
@@ -256,6 +259,9 @@ object Transformers {
 
         case ArraySelect(array, index) =>
           ArraySelect(transformExpr(array), transformExpr(index))(tree.tpe)
+
+        case RecordValue(tpe, elems) =>
+          RecordValue(tpe, elems map transformExpr)
 
         case IsInstanceOf(expr, cls) =>
           IsInstanceOf(transformExpr(expr), cls)

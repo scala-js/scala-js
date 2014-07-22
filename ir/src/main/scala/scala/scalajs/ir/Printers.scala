@@ -357,6 +357,16 @@ object Printers {
         case ArraySelect(array, index) =>
           print(array, "[", index, "]")
 
+        case RecordValue(tpe, elems) =>
+          print("(")
+          var first = true
+          for ((field, value) <- tpe.fields zip elems) {
+            if (first) first = false
+            else print(", ")
+            print(field.name, " = ", value)
+          }
+          print(")")
+
         case IsInstanceOf(expr, cls) =>
           print(expr, ".isInstanceOf[", cls, "]")
 
@@ -559,6 +569,18 @@ object Printers {
         print(base)
         for (i <- 1 to dims)
           print("[]")
+
+      case RecordType(fields) =>
+        print("(")
+        var first = false
+        for (RecordType.Field(name, _, tpe, mutable) <- fields) {
+          if (first) first = false
+          else print(", ")
+          if (mutable)
+            print("var ")
+          print(name, ": ", tpe)
+        }
+        print(")")
     }
 
     def printIdent(ident: Ident): Unit =
@@ -670,6 +692,9 @@ object Printers {
         println("ancestors: ",
             ancestors.map(escapeJS).mkString("[", ", ", "]"))
       }
+
+      if (optimizerHints != OptimizerHints.empty)
+        println("optimizerHints: ", optimizerHints)
 
       print("methods:")
       indent(); println()

@@ -256,6 +256,10 @@ object Serializers {
           writeTree(array); writeTree(index)
           writeType(tree.tpe)
 
+        case RecordValue(tpe, elems) =>
+          writeByte(TagRecordValue)
+          writeType(tpe); writeTrees(elems)
+
         case IsInstanceOf(expr, cls) =>
           writeByte(TagIsInstanceOf)
           writeTree(expr); writeReferenceType(cls)
@@ -445,6 +449,16 @@ object Serializers {
         case tpe: ArrayType =>
           buffer.write(TagArrayType)
           writeArrayType(tpe)
+
+        case RecordType(fields) =>
+          buffer.write(TagRecordType)
+          buffer.writeInt(fields.size)
+          for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
+            writeString(name)
+            writeString(originalName.getOrElse(""))
+            writeType(tpe)
+            buffer.writeBoolean(mutable)
+          }
       }
     }
 
@@ -585,6 +599,7 @@ object Serializers {
         case TagArrayValue     => ArrayValue(readArrayType(), readTrees())
         case TagArrayLength    => ArrayLength(readTree())
         case TagArraySelect    => ArraySelect(readTree(), readTree())(readType())
+        case TagRecordValue    => RecordValue(readType().asInstanceOf[RecordType], readTrees())
         case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
         case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
         case TagClassOf        => ClassOf(readReferenceType())
@@ -702,6 +717,17 @@ object Serializers {
 
         case TagClassType => readClassType()
         case TagArrayType => readArrayType()
+
+        case TagRecordType =>
+          RecordType(List.fill(input.readInt()) {
+            val name = readString()
+            val originalName = readString()
+            val tpe = readType()
+            val mutable = input.readBoolean()
+            RecordType.Field(name,
+                if (originalName.isEmpty) None else Some(originalName),
+                tpe, mutable)
+          })
       }
     }
 
@@ -1011,6 +1037,8 @@ object Serializers {
 
   private final val TagParamDef = TagClosure + 1
 
+  private final val TagRecordValue = TagParamDef + 1
+
   // Tags for Types
 
   private final val TagAnyType = 1
@@ -1025,4 +1053,5 @@ object Serializers {
   private final val TagArrayType = TagClassType + 1
   private final val TagDynType = TagArrayType + 1
   private final val TagNoType = TagDynType + 1
+  private final val TagRecordType = TagNoType + 1
 }
