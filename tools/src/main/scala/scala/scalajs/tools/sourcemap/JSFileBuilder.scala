@@ -17,8 +17,6 @@ import java.io._
 import java.util.regex.Pattern
 import java.net.{ URI, URISyntaxException }
 
-import com.google.debugging.sourcemap.{ FilePosition, _ }
-
 import scala.scalajs.ir
 import scala.scalajs.tools.io._
 
@@ -102,78 +100,21 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
         line = br.readLine()
       }
 
-      // Add the relevant parts of the source map
-      file.sourceMap match {
-        case Some(sourceMap) =>
-          /* The source map exists.
-           * Visit all the mappings in this source map, and add them to the
-           * concatenated source map with the appropriate offset.
-           * Ignore entries in lines that were not selected
-           */
-          val consumer = new SourceMapConsumerV3
-          consumer.parse(sourceMap)
+      /* We ignore a potential source map.
+       * This happens typically for corejslib.js and other helper files
+       * written directly in JS.
+       * We generate a fake line-by-line source map for these on the fly
+       */
+      val sourceFile = file.toURI
 
-          val entriesByLine = Array.fill(selectedCount)(
-              List.newBuilder[(Int, Int, ir.Position, String)])
-
-          consumer.visitMappings(new SourceMapConsumerV3.EntryVisitor {
-            override def visit(sourceName: String, symbolName: String,
-                sourceStartPos: FilePosition,
-                startPos: FilePosition, endPos: FilePosition): Unit = {
-
-              for (line <- startPos.getLine to endPos.getLine) {
-                if (line < 0 || line >= offsets.size)
-                  return
-                val offset = offsets(line)
-                if (offset == NotSelected)
-                  return
-
-                val startColumn =
-                  if (line == startPos.getLine) startPos.getColumn
-                  else 0
-                val endColumn0 =
-                  if (line == endPos.getLine) endPos.getColumn
-                  else selectedLineLengths(offset)
-                val endColumn = Math.max(endColumn0, startColumn)
-                val sourcePos = ir.Position(new URI(sourceName),
-                    sourceStartPos.getLine, sourceStartPos.getColumn)
-
-                entriesByLine(offset) +=
-                  ((startColumn, endColumn, sourcePos, symbolName))
-              }
-            }
-          })
-
-          for (lineNumber <- 0 until selectedCount) {
-            val entries = entriesByLine(lineNumber).result().sortBy(_._1)
-            var lastEndColumn = 0
-            for ((startColumn, endColumn, sourcePos, symbolName) <- entries) {
-              val startColumn1 = Math.max(startColumn, lastEndColumn)
-              sourceMapWriter.startNode(startColumn, sourcePos,
-                  Option(symbolName))
-              sourceMapWriter.endNode(endColumn)
-              lastEndColumn = endColumn
-            }
-            sourceMapWriter.nextLine()
-          }
-
-        case None =>
-          /* The source map does not exist.
-           * This happens typically for corejslib.js and other helper files
-           * written directly in JS.
-           * We generate a fake line-by-line source map for these on the fly
-           */
-          val sourceFile = file.toURI
-
-          for (lineNumber <- 0 until offsets.size) {
-            val offset = offsets(lineNumber)
-            if (offset != NotSelected) {
-              val originalPos = ir.Position(sourceFile, lineNumber, 0)
-              sourceMapWriter.startNode(0, originalPos, None)
-              sourceMapWriter.endNode(selectedLineLengths(offset))
-              sourceMapWriter.nextLine()
-            }
-          }
+      for (lineNumber <- 0 until offsets.size) {
+        val offset = offsets(lineNumber)
+        if (offset != NotSelected) {
+          val originalPos = ir.Position(sourceFile, lineNumber, 0)
+          sourceMapWriter.startNode(0, originalPos, None)
+          sourceMapWriter.endNode(selectedLineLengths(offset))
+          sourceMapWriter.nextLine()
+        }
       }
     } finally {
       br.close()
