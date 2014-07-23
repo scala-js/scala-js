@@ -2155,7 +2155,8 @@ object OptimizerCore {
 
       val adHocInlineAnnot = {
         (methodName.contains("sc_IndexedSeqOptimized$class") &&
-            (methodName.contains("__F1__") || methodName.contains("__F2__")))
+            (methodName.contains("__F1__") || methodName.contains("__F2__"))) ||
+        (methodName == "sc_TraversableLike$class__filterImpl__sc_TraversableLike__F1__Z__O")
       }
 
       inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder ||
