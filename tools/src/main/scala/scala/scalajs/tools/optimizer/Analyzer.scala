@@ -202,6 +202,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
       if (data.superClass != "")
         superClass = lookupClass(data.superClass)
       ancestors ++= data.ancestors.map(lookupClass)
+      if (encodedName == ir.Definitions.RuntimeLongClass)
+        ancestors += lookupClass(ir.Definitions.BoxedLongClass)
       for (ancestor <- ancestors)
         ancestor.descendants += this
     }
