@@ -561,7 +561,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           ) {
             def shouldMarkInline = {
               sym.hasAnnotation(InlineAnnotationClass) ||
-              (sym.name.startsWith(nme.apply) && sym.owner.isAnonymousFunction)
+              (sym.name.startsWith(nme.apply) && sym.owner.isAnonymousFunction) ||
+              sym.name.startsWith(nme.ANON_FUN_NAME)
             }
             currentMethodInfoBuilder.optimizerHints =
               currentMethodInfoBuilder.optimizerHints.copy(

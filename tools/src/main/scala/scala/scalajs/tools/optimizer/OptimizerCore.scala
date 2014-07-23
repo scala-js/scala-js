@@ -1371,7 +1371,15 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           case (Undefined(), Undefined())                 => lit(true)
           case (Null(), Null())                           => lit(true)
           case (_: Literal, _: Literal)                   => lit(false)
-          case _                                          => default
+
+          case (BooleanLiteral(l), _) =>
+            if (l == (op == ===)) rhs
+            else foldUnaryOp(UnaryOp.Boolean_!, rhs)
+          case (_, BooleanLiteral(r)) =>
+            if (r == (op == ===)) lhs
+            else foldUnaryOp(UnaryOp.Boolean_!, lhs)
+
+          case _ => default
         }
 
       case Int_+ =>
@@ -2155,7 +2163,8 @@ object OptimizerCore {
 
       val adHocInlineAnnot = {
         (methodName.contains("sc_IndexedSeqOptimized$class") &&
-            (methodName.contains("__F1__") || methodName.contains("__F2__")))
+            (methodName.contains("__F1__") || methodName.contains("__F2__"))) ||
+        (methodName == "sc_TraversableLike$class__filterImpl__sc_TraversableLike__F1__Z__O")
       }
 
       inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder ||
