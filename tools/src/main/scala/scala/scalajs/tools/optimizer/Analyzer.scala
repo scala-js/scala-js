@@ -208,6 +208,8 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
     lazy val descendentClasses = descendants.filter(_.isClass)
 
+    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
+
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false

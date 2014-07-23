@@ -115,6 +115,28 @@ object JSDesugaring {
       finally syntheticVarCounter = savedCounter
     }
 
+    // Record names
+
+    def makeRecordFieldIdent(recIdent: Ident, fieldIdent: Ident)(
+        implicit pos: Position): Ident =
+      makeRecordFieldIdent(recIdent.name, recIdent.originalName,
+          fieldIdent.name, fieldIdent.originalName)
+
+    def makeRecordFieldIdent(recIdent: Ident,
+        fieldName: String, fieldOrigiName: Option[String])(
+        implicit pos: Position): Ident =
+      makeRecordFieldIdent(recIdent.name, recIdent.originalName,
+          fieldName, fieldOrigiName)
+
+    def makeRecordFieldIdent(recName: String, recOrigName: Option[String],
+        fieldName: String, fieldOrigName: Option[String])(
+        implicit pos: Position): Ident = {
+      val name = recName + "_$_" + fieldName
+      val originalName = Some(recOrigName.getOrElse(recName) + "." +
+          fieldOrigName.getOrElse(fieldName))
+      Ident(name, originalName)
+    }
+
     // LHS'es for labeled expressions
 
     var labeledExprLHSes: Map[Ident, Tree] = Map.empty
@@ -136,11 +158,24 @@ object JSDesugaring {
         case Skip() =>
           tree
 
+        case VarDef(varIdent, RecordType(fields), recMutable, EmptyTree) =>
+          Block(for {
+            RecordType.Field(fieldName, fieldOrigName, tpe, fieldMutable) <- fields
+          } yield {
+            transformStat {
+              VarDef(makeRecordFieldIdent(varIdent, fieldName, fieldOrigName),
+                  tpe, recMutable || fieldMutable, EmptyTree)
+            }
+          })
+
         case VarDef(_, _, _, EmptyTree) =>
           tree
 
         case VarDef(_, _, _, rhs) =>
           pushLhsInto(tree, rhs)
+
+        case Assign(RecordFieldVarRef(lhs), rhs) =>
+          pushLhsInto(Assign(lhs, EmptyTree), rhs)
 
         case Assign(select @ Select(qualifier, item, mutable), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs) =>
@@ -254,6 +289,36 @@ object JSDesugaring {
 
         case _ =>
           pushLhsInto(EmptyTree, tree)
+      }
+    }
+
+    private object RecordFieldVarRef {
+      def unapply(tree: Tree): Option[VarRef] = {
+        tree match {
+          case Select(RecordVarRef(VarRef(recIdent, recMutable)),
+              fieldIdent, fieldMutable) =>
+            implicit val pos = tree.pos
+            Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent),
+                recMutable || fieldMutable)(tree.tpe))
+          case _ =>
+            None
+        }
+      }
+    }
+
+    private object RecordVarRef {
+      def unapply(tree: Tree): Option[VarRef] = {
+        if (!tree.tpe.isInstanceOf[RecordType]) None
+        else {
+          tree match {
+            case tree: VarRef => Some(tree)
+            case Select(RecordVarRef(VarRef(recIdent, recMutable)),
+                fieldIdent, fieldMutable) =>
+              implicit val pos = tree.pos
+              Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent),
+                  recMutable || fieldMutable)(tree.tpe))
+          }
+        }
       }
     }
 
@@ -458,6 +523,55 @@ object JSDesugaring {
     def isPureExpression(tree: Tree): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false)
 
+    def doVarDef(ident: Ident, tpe: Type, mutable: Boolean, rhs: Tree): Tree = {
+      implicit val pos = rhs.pos
+      tpe match {
+        case RecordType(fields) =>
+          val elems = (rhs: @unchecked) match {
+            case RecordValue(_, elems) =>
+              elems
+            case VarRef(rhsIdent, rhsMutable) =>
+              for (RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields)
+                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName),
+                    rhsMutable || fMutable)(fTpe)
+          }
+          Block(for {
+            (RecordType.Field(fName, fOrigName, fTpe, fMutable),
+                fRhs) <- fields zip elems
+          } yield {
+            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName),
+                fTpe, mutable || fMutable, fRhs)
+          })
+
+        case _ =>
+          VarDef(ident, tpe, mutable, rhs)
+      }
+    }
+
+    def doAssign(lhs: Tree, rhs: Tree): Tree = {
+      implicit val pos = rhs.pos
+      lhs.tpe match {
+        case RecordType(fields) =>
+          val VarRef(ident, mutable) = lhs
+          val elems = (rhs: @unchecked) match {
+            case VarRef(rhsIdent, rhsMutable) =>
+              for (RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields)
+                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName),
+                    rhsMutable || fMutable)(fTpe)
+          }
+          Block(for {
+            (RecordType.Field(fName, fOrigName, fTpe, fMutable),
+                fRhs) <- fields zip elems
+          } yield {
+            doAssign(VarRef(makeRecordFieldIdent(ident, fName, fOrigName),
+                mutable || fMutable)(fTpe), fRhs)
+          })
+
+        case _ =>
+          Assign(lhs, rhs)
+      }
+    }
+
     /** Push an lhs into a (potentially complex) rhs
      *  lhs can be either a EmptyTree, a VarDef, a Assign or a
      *  Return
@@ -479,7 +593,9 @@ object JSDesugaring {
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
-            Block(VarDef(name, tpe, true, EmptyTree), transformedRhs)
+            Block(
+                transformStat(VarDef(name, tpe, true, EmptyTree)),
+                transformedRhs)
           case _ =>
             transformedRhs
         }
@@ -493,8 +609,9 @@ object JSDesugaring {
               if (isSideEffectFreeExpression(newRhs)) Skip()
               else newRhs
             case VarDef(name, tpe, mutable, _) =>
-              VarDef(name, tpe, mutable, newRhs)
-            case Assign(lhs, _) => Assign(lhs, newRhs)
+              doVarDef(name, tpe, mutable, newRhs)
+            case Assign(lhs, _) =>
+              doAssign(lhs, newRhs)
             case Return(_, None) => Return(newRhs, None)
             case Return(_, label @ Some(l)) =>
               labeledExprLHSes(l) match {
@@ -503,6 +620,30 @@ object JSDesugaring {
                 case newLhs =>
                   Block(pushLhsInto(newLhs, rhs), Break(label))
               }
+          }
+
+        // Almost base case with RecordValue
+
+        case RecordValue(recTpe, elems) =>
+          (lhs: @unchecked) match {
+            case EmptyTree =>
+              Block(elems map transformStat)
+            case VarDef(name, tpe, mutable, _) =>
+              unnest(elems) { newElems0 =>
+                val newElems = newElems0 map transformExpr
+                doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))
+              }
+            case Assign(lhs, _) =>
+              unnest(elems) { newElems0 =>
+                val newElems = newElems0 map transformExpr
+                val temp = newSyntheticVar()
+                Block(
+                    doVarDef(temp, recTpe, false, RecordValue(recTpe, newElems)),
+                    doAssign(lhs, VarRef(temp, false)(recTpe)))
+              }
+            case Return(_, label @ Some(l)) =>
+              val newLhs = labeledExprLHSes(l)
+              Block(pushLhsInto(newLhs, rhs), Break(label))
           }
 
         // Control flow constructs
@@ -804,6 +945,9 @@ object JSDesugaring {
               s"Trying to load module for non-module class $cls")
           val moduleName = cls.className.dropRight(1)
           JSApply(envField("m") DOT moduleName, Nil)
+
+        case RecordFieldVarRef(varRef) =>
+          varRef
 
         case Select(qualifier, item, _) =>
           transformExpr(qualifier) DOT item

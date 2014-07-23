@@ -304,6 +304,20 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val classIdent = encodeClassFullNameIdent(sym)
 
+      // Optimizer hints
+
+      def isStdLibClassWithAdHocInlineAnnot(sym: Symbol): Boolean = {
+        val fullName = sym.fullName
+        (fullName.startsWith("scala.Tuple") && !fullName.endsWith("$")) ||
+        (fullName.startsWith("scala.collection.mutable.ArrayOps$of"))
+      }
+
+      if (sym.hasAnnotation(InlineAnnotationClass) ||
+          (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
+          isStdLibClassWithAdHocInlineAnnot(sym))
+        currentClassInfoBuilder.optimizerHints =
+          currentClassInfoBuilder.optimizerHints.copy(hasInlineAnnot = true)
+
       // Generate members (constructor + methods)
 
       val generatedMembers = new ListBuffer[js.Tree]
@@ -545,10 +559,14 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutableLocalVars := mutable.Set.empty,
               mutatedLocalVars := mutable.Set.empty
           ) {
+            def shouldMarkInline = {
+              sym.hasAnnotation(InlineAnnotationClass) ||
+              (sym.name.startsWith(nme.apply) && sym.owner.isAnonymousFunction)
+            }
             currentMethodInfoBuilder.optimizerHints =
               currentMethodInfoBuilder.optimizerHints.copy(
                   isAccessor = sym.isAccessor,
-                  hasInlineAnnot = sym.hasAnnotation(InlineAnnotationClass))
+                  hasInlineAnnot = shouldMarkInline)
 
             val methodDef = {
               if (sym.isClassConstructor) {

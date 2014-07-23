@@ -2,6 +2,7 @@ package scala.runtime
 
 import java.io.Serializable
 
+@inline
 class BooleanRef(var elem: Boolean) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -10,6 +11,7 @@ object BooleanRef {
   def zero(): BooleanRef = new BooleanRef(false)
 }
 
+@inline
 class VolatileBooleanRef(var elem: Boolean) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -18,6 +20,7 @@ object VolatileBooleanRef {
   def zero(): VolatileBooleanRef = new VolatileBooleanRef(false)
 }
 
+@inline
 class CharRef(var elem: Char) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -26,6 +29,7 @@ object CharRef {
   def zero(): CharRef = new CharRef(0.toChar)
 }
 
+@inline
 class VolatileCharRef(var elem: Char) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -34,6 +38,7 @@ object VolatileCharRef {
   def zero(): VolatileCharRef = new VolatileCharRef(0.toChar)
 }
 
+@inline
 class ByteRef(var elem: Byte) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -42,6 +47,7 @@ object ByteRef {
   def zero(): ByteRef = new ByteRef(0)
 }
 
+@inline
 class VolatileByteRef(var elem: Byte) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -50,6 +56,7 @@ object VolatileByteRef {
   def zero(): VolatileByteRef = new VolatileByteRef(0)
 }
 
+@inline
 class ShortRef(var elem: Short) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -58,6 +65,7 @@ object ShortRef {
   def zero(): ShortRef = new ShortRef(0)
 }
 
+@inline
 class VolatileShortRef(var elem: Short) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -66,6 +74,7 @@ object VolatileShortRef {
   def zero(): VolatileShortRef = new VolatileShortRef(0)
 }
 
+@inline
 class IntRef(var elem: Int) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -74,6 +83,7 @@ object IntRef {
   def zero(): IntRef = new IntRef(0)
 }
 
+@inline
 class VolatileIntRef(var elem: Int) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -82,6 +92,7 @@ object VolatileIntRef {
   def zero(): VolatileIntRef = new VolatileIntRef(0)
 }
 
+@inline
 class LongRef(var elem: Long) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -90,6 +101,7 @@ object LongRef {
   def zero(): LongRef = new LongRef(0)
 }
 
+@inline
 class VolatileLongRef(var elem: Long) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -98,6 +110,7 @@ object VolatileLongRef {
   def zero(): VolatileLongRef = new VolatileLongRef(0)
 }
 
+@inline
 class FloatRef(var elem: Float) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -106,6 +119,7 @@ object FloatRef {
   def zero(): FloatRef = new FloatRef(0)
 }
 
+@inline
 class VolatileFloatRef(var elem: Float) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -114,6 +128,7 @@ object VolatileFloatRef {
   def zero(): VolatileFloatRef = new VolatileFloatRef(0)
 }
 
+@inline
 class DoubleRef(var elem: Double) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -122,6 +137,7 @@ object DoubleRef {
   def zero(): DoubleRef = new DoubleRef(0)
 }
 
+@inline
 class VolatileDoubleRef(var elem: Double) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -130,6 +146,7 @@ object VolatileDoubleRef {
   def zero(): VolatileDoubleRef = new VolatileDoubleRef(0)
 }
 
+@inline
 class ObjectRef[A](var elem: A) extends Serializable {
   override def toString() = String.valueOf(elem)
 }
@@ -138,6 +155,7 @@ object ObjectRef {
   def zero(): ObjectRef[Object] = new ObjectRef(null)
 }
 
+@inline
 class VolatileObjectRef[A](var elem: A) extends Serializable {
   override def toString() = String.valueOf(elem)
 }

@@ -33,6 +33,7 @@ object Infos {
       val kind: ClassKind,
       val superClass: String,
       val ancestors: List[String], // includes this class
+      val optimizerHints: OptimizerHints,
       val methods: List[MethodInfo]
   ) extends RoughClassInfo(name, encodedName, isExported, ancestorCount)
 
@@ -45,9 +46,10 @@ object Infos {
         kind: ClassKind = ClassKind.Class,
         superClass: String = "",
         ancestors: List[String] = Nil,
+        optimizerHints: OptimizerHints = OptimizerHints.empty,
         methods: List[MethodInfo] = Nil): ClassInfo = {
       new ClassInfo(name, encodedName, isExported, ancestorCount,
-          kind, superClass, ancestors, methods)
+          kind, superClass, ancestors, optimizerHints, methods)
     }
   }
 

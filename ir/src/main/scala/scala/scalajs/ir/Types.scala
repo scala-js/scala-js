@@ -92,6 +92,23 @@ object Types {
    */
   case object DynType extends Type
 
+  /** Record type.
+   *  Used by the optimizer to inline classes as records with multiple fields.
+   *  They are desugared as several local variables by JSDesugaring.
+   *  Record types cannot cross method boundaries, so they cannot appear as
+   *  the type of fields or parameters, nor as result types of methods.
+   *  The compiler itself never generates record types.
+   */
+  final case class RecordType(fields: List[RecordType.Field]) extends Type {
+    def findField(name: String): RecordType.Field =
+      fields.find(_.name == name).get
+  }
+
+  object RecordType {
+    final case class Field(name: String, originalName: Option[String],
+        tpe: Type, mutable: Boolean)
+  }
+
   /** No type. */
   case object NoType extends Type
 }

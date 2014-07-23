@@ -108,6 +108,9 @@ object Traversers {
         traverse(array)
         traverse(index)
 
+      case RecordValue(tpe, elems) =>
+        elems foreach traverse
+
       case IsInstanceOf(expr, cls) =>
         traverse(expr)
 

@@ -320,6 +320,8 @@ object Trees {
 
   case class ArraySelect(array: Tree, index: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  case class RecordValue(tpe: RecordType, elems: List[Tree])(implicit val pos: Position) extends Tree
+
   case class IsInstanceOf(expr: Tree, cls: ReferenceType)(implicit val pos: Position) extends Tree {
     val tpe = BooleanType
   }
