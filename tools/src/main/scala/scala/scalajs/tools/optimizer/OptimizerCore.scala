@@ -2179,8 +2179,9 @@ object OptimizerCore {
               if params.size == 1                                   => true
 
           // Shape of trivial call-super constructors
-          case Block(List(StaticApply(This(), _, _, Nil), This()))
-              if params.isEmpty && isConstructorName(encodedName)   => true
+          case Block(stats)
+              if params.isEmpty && isConstructorName(encodedName) &&
+                  stats.forall(isTrivialConstructorStat)            => true
 
           // Simple method
           case SimpleMethodBody()                                   => true
@@ -2189,6 +2190,17 @@ object OptimizerCore {
         }
       }
     }
+  }
+
+  private def isTrivialConstructorStat(stat: Tree): Boolean = stat match {
+    case This() =>
+      true
+    case StaticApply(This(), _, _, Nil) =>
+      true
+    case TraitImplApply(_, Ident(methodName, _), This() :: Nil) =>
+      methodName.contains("__$init$__")
+    case _ =>
+      false
   }
 
   private object SimpleMethodBody {
