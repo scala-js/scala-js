@@ -467,7 +467,8 @@ class IncOptimizer {
 
     def updateHasElidableModuleAccessor(): Unit = {
       hasElidableModuleAccessor =
-        isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor)
+        isAdHocElidableModuleAccessor(encodedName) ||
+        (isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor))
     }
 
     def updateIsInlineable(classInfo: Analyzer#ClassInfo): Unit = {
@@ -692,6 +693,9 @@ class IncOptimizer {
 }
 
 object IncOptimizer {
+
+  private val isAdHocElidableModuleAccessor =
+    Set("s_Predef$")
 
   private[optimizer] def logTime[A](logger: Logger,
       title: String)(body: => A): A = {

@@ -343,46 +343,124 @@ object JSDesugaring {
         makeStat: List[Tree] => Tree): Tree = {
       if (args forall isExpression) makeStat(args)
       else {
-        var computeTemps: List[Tree] = Nil
-        var newArgs: List[Tree] = Nil
+        val extractedStatements = new scala.collection.mutable.ListBuffer[Tree]
 
-        val (safeArgsRev, unsafeArgsRev) = args.reverse.span(isExpression)
+        /* Attention! Everything must be processed recursively
+         * *right-to-left*! Indeed, the point is that noExtractYet will tell
+         * whether anything supposed to be evaluated *after* the currently
+         * being processed expression has been (at least partly) extracted
+         * in temporary variables (or simply statements, in the Block case).
+         * If nothing has, we can keep more in place without having to extract
+         * that expression in a temporary variable.
+         */
 
-        for (arg <- safeArgsRev)
-          newArgs = arg :: newArgs
+        def rec(arg: Tree): Tree = {
+          def noExtractYet = extractedStatements.isEmpty
 
-        for (arg <- unsafeArgsRev) {
-          if (isPureExpression(arg)) {
-            newArgs = arg :: newArgs
+          if (if (noExtractYet) isExpression(arg) else isPureExpression(arg)) {
+            arg
           } else {
             implicit val pos = arg.pos
-            val temp = newSyntheticVar()
-            val computeTemp =
-              pushLhsInto(VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
-            computeTemps = computeTemp :: computeTemps
-            newArgs = VarRef(temp, mutable = false)(arg.tpe) :: newArgs
+            arg match {
+              case Block(stats :+ expr) =>
+                val result = rec(expr) // right-to-left, remember?
+                // Put the stats in a Block because ++=: is not smart
+                Block(stats.map(transformStat)) +=: extractedStatements
+                result
+
+              case BinaryOp(op, lhs, rhs)
+                  if (op != BinaryOp.Boolean_&& && op != BinaryOp.Boolean_||) =>
+                val newRhs = rec(rhs)
+                BinaryOp(op, rec(lhs), newRhs)
+
+              case BinaryOp(op, lhs, rhs) if noExtractYet && isExpression(rhs) =>
+                assert(op == BinaryOp.Boolean_&& || op == BinaryOp.Boolean_||)
+                BinaryOp(op, rec(lhs), rhs)
+
+              case UnaryOp(op, lhs) =>
+                UnaryOp(op, rec(lhs))
+              case JSBinaryOp(op, lhs, rhs) =>
+                val newRhs = rec(rhs)
+                JSBinaryOp(op, rec(lhs), newRhs)
+              case JSUnaryOp(op, lhs) =>
+                JSUnaryOp(op, rec(lhs))
+              case IsInstanceOf(expr, tpe) =>
+                IsInstanceOf(rec(expr), tpe)
+              case AsInstanceOf(expr, tpe) =>
+                AsInstanceOf(rec(expr), tpe)
+              case Cast(expr, tpe) =>
+                Cast(rec(expr), tpe)
+
+              case NewArray(tpe, lengths) =>
+                NewArray(tpe, recs(lengths))
+              case ArrayValue(tpe, elems) =>
+                ArrayValue(tpe, recs(elems))
+              case JSArrayConstr(items) =>
+                JSArrayConstr(recs(items))
+              case JSObjectConstr(items) =>
+                val newValues = recs(items.map(_._2))
+                JSObjectConstr(items.map(_._1) zip newValues)
+              case Closure(thisType, args, resultType, body, captures) =>
+                Closure(thisType, args, resultType, body, recs(captures))
+
+              case CallHelper(helper, args)
+                  if noExtractYet || isHelperThatPreservesSideEffectFreedom(helper) =>
+                CallHelper(helper, recs(args))(arg.tpe)
+
+              case New(cls, constr, args) if noExtractYet =>
+                New(cls, constr, recs(args))
+              case Select(qualifier, item, mutable) if noExtractYet =>
+                Select(rec(qualifier), item, mutable)(arg.tpe)
+              case Apply(receiver, method, args) if noExtractYet =>
+                val newArgs = recs(args)
+                Apply(rec(receiver), method, newArgs)(arg.tpe)
+              case StaticApply(receiver, cls, method, args) if noExtractYet =>
+                val newArgs = recs(args)
+                StaticApply(rec(receiver), cls, method, newArgs)(arg.tpe)
+              case TraitImplApply(impl, method, args) if noExtractYet =>
+                TraitImplApply(impl, method, recs(args))(arg.tpe)
+              case ArrayLength(array) if noExtractYet =>
+                ArrayLength(rec(array))
+              case ArraySelect(array, index) if noExtractYet =>
+                val newIndex = rec(index)
+                ArraySelect(rec(array), newIndex)(arg.tpe)
+
+              case If(cond, thenp, elsep)
+                  if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
+                If(rec(cond), thenp, elsep)(arg.tpe)
+
+              case _ =>
+                val temp = newSyntheticVar()
+                val computeTemp =
+                  pushLhsInto(VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
+                computeTemp +=: extractedStatements
+                VarRef(temp, mutable = false)(arg.tpe)
+            }
           }
         }
 
-        assert(computeTemps.nonEmpty,
+        def recs(args: List[Tree]): List[Tree] = {
+          // This is a right-to-left map
+          args.foldRight[List[Tree]](Nil) { (arg, acc) =>
+            rec(arg) :: acc
+          }
+        }
+
+        val newArgs = recs(args)
+
+        assert(extractedStatements.nonEmpty,
             "Reached computeTemps with no temp to compute")
 
         val newStatement = makeStat(newArgs)
-        Block(computeTemps :+ newStatement)(newStatement.pos)
+        Block(extractedStatements.result() ::: List(newStatement))(newStatement.pos)
       }
     }
 
     /** Same as above, for a single argument */
     def unnest(arg: Tree)(
         makeStat: Tree => Tree): Tree = {
-      if (isExpression(arg)) makeStat(arg)
-      else {
-        val temp = newSyntheticVar()(arg.pos)
-        val computeTemp =
-          pushLhsInto(VarDef(temp, arg.tpe, mutable = false, EmptyTree)(arg.pos), arg)
-        val newStatement =
-          makeStat(VarRef(temp, mutable = false)(arg.tpe)(arg.pos))
-        Block(computeTemp, newStatement)(newStatement.pos)
+      unnest(List(arg)) {
+        case List(newArg) => makeStat(newArg)
       }
     }
 
@@ -441,6 +519,8 @@ object JSDesugaring {
           (allowUnpure || !mutable) && test(qualifier)
 
         // Expressions preserving pureness
+        case Block(trees)            => trees forall test
+        case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case UnaryOp(_, lhs)         => test(lhs)
         case JSBinaryOp(_, lhs, rhs) => test(lhs) && test(rhs)
