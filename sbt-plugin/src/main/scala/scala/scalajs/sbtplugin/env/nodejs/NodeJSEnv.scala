@@ -24,7 +24,7 @@ import scala.io.Source
 class NodeJSEnv(
   nodejsPath: Option[String],
   addArgs:    Seq[String],
-  addEnv:     Seq[String]) extends ExternalJSEnv(addArgs, addEnv) {
+  addEnv:     Map[String, String]) extends ExternalJSEnv(addArgs, addEnv) {
 
   import ExternalJSEnv._
 
@@ -32,12 +32,29 @@ class NodeJSEnv(
   protected def executable: String = nodejsPath.getOrElse("node")
 
   // Helper constructors
+
   def this(
       nodejsPath: String,
       args: Seq[String] = Seq.empty,
-      env: Seq[String] = Seq.empty) = this(Some(nodejsPath), args, env)
+      env: Map[String, String] = Map.empty) =
+    this(Some(nodejsPath), args, env)
 
-  def this() = this(None, Seq.empty, Seq.empty)
+  def this() = this(None, Seq.empty, Map.empty[String, String])
+
+  // Deprecated compat constructors
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(nodejsPath: String, env: Seq[String]) =
+    this(nodejsPath, env = ExternalJSEnv.splitEnv(env))
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(nodejsPath: String, args: Seq[String], env: Seq[String]) =
+    this(nodejsPath, args, env = ExternalJSEnv.splitEnv(env))
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(nodejsPath: Option[String], addArgs: Seq[String],
+      addEnv: Seq[String]) =
+    this(nodejsPath, addArgs, ExternalJSEnv.splitEnv(addEnv))
 
   // We need to hack console.log (for duplicate %)
   override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
@@ -64,7 +81,7 @@ class NodeJSEnv(
   }
 
   // Node.js specific (system) environment
-  override protected def getVMEnv(args: RunJSArgs) =
-    "NODE_MODULE_CONTEXTS=0" +: super.getVMEnv(args)
+  override protected def getVMEnv(args: RunJSArgs): Map[String, String] =
+    sys.env + ("NODE_MODULE_CONTEXTS" -> "0") ++ additionalEnv
 
 }

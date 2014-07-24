@@ -23,7 +23,7 @@ import scala.io.Source
 
 class PhantomJSEnv(
     phantomjsPath: Option[String],
-    addEnv: Seq[String]) extends ExternalJSEnv(Seq.empty, addEnv) {
+    addEnv: Map[String, String]) extends ExternalJSEnv(Seq.empty, addEnv) {
 
   import ExternalJSEnv._
 
@@ -33,9 +33,19 @@ class PhantomJSEnv(
   // Helper constructors
   def this(
       phantomjsPath: String,
-      env: Seq[String] = Seq.empty) = this(Some(phantomjsPath), env)
+      env: Map[String, String] = Map.empty) = this(Some(phantomjsPath), env)
 
-  def this() = this(None, Seq.empty)
+  def this() = this(None, Map.empty[String, String])
+
+  // Deprecated compat constructors
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(phantomJSpath: Option[String], env: Seq[String]) =
+    this(phantomJSpath, ExternalJSEnv.splitEnv(env))
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(phantomJSpath: String, env: Seq[String]) =
+    this(phantomJSpath, ExternalJSEnv.splitEnv(env))
 
   override protected def getVMArgs(args: RunJSArgs) =
     // Add launcher file to arguments

@@ -12,7 +12,11 @@ import scala.io.Source
 
 abstract class ExternalJSEnv(
   final protected val additionalArgs: Seq[String],
-  final protected val additionalEnv:  Seq[String]) extends JSEnv {
+  final protected val additionalEnv:  Map[String, String]) extends JSEnv {
+
+  @deprecated("Use Map as environment instead", "0.5.3")
+  def this(additionalArgs: Seq[String], additionalEnv: Seq[String]) =
+    this(additionalArgs, ExternalJSEnv.splitEnv(additionalEnv))
 
   import ExternalJSEnv._
 
@@ -96,8 +100,14 @@ abstract class ExternalJSEnv(
     val vmArgs = getVMArgs(args)
     val vmEnv  = getVMEnv(args)
 
-    val allArgs = (executable +: vmArgs).toArray
-    sys.runtime.exec(allArgs, vmEnv.toArray)
+    val allArgs = executable +: vmArgs
+    val pBuilder = new ProcessBuilder(allArgs: _*)
+
+    pBuilder.environment().clear()
+    for ((name, value) <- vmEnv)
+      pBuilder.environment().put(name, value)
+
+    pBuilder.start()
   }
 
   /** VM arguments excluding executable. Override to adapt.
@@ -106,9 +116,11 @@ abstract class ExternalJSEnv(
   protected def getVMArgs(args: RunJSArgs): Seq[String] = additionalArgs
 
   /** VM environment. Override to adapt.
-   *  Override is responsible to add additionalEnv
+   * 
+   *  Default is `sys.env` and [[additionalEnv]]
    */
-  protected def getVMEnv(args: RunJSArgs): Seq[String] = additionalEnv
+  protected def getVMEnv(args: RunJSArgs): Map[String, String] = 
+    sys.env ++ additionalEnv
 
   /** Get files that are a library (i.e. that do not run anything) */
   protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
@@ -121,6 +133,16 @@ abstract class ExternalJSEnv(
 }
 
 object ExternalJSEnv {
+
+  /** Helper for deprecated constructors */
+  @deprecated("This is only a helper for compat constructors", "0.5.3")
+  def splitEnv(env: Seq[String]): Map[String, String] = {
+    val tups = for (str <- env) yield {
+      val Array(name, value) = str.split("=", 2)
+      (name, value)
+    }
+    tups.toMap
+  }
 
   case class RunJSArgs(
       classpath: CompleteClasspath,
