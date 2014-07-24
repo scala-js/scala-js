@@ -425,6 +425,10 @@ object JSDesugaring {
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
 
+              case If(cond, thenp, elsep)
+                  if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
+                If(rec(cond), thenp, elsep)(arg.tpe)
+
               case _ =>
                 val temp = newSyntheticVar()
                 val computeTemp =
@@ -515,6 +519,8 @@ object JSDesugaring {
           (allowUnpure || !mutable) && test(qualifier)
 
         // Expressions preserving pureness
+        case Block(trees)            => trees forall test
+        case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case UnaryOp(_, lhs)         => test(lhs)
         case JSBinaryOp(_, lhs, rhs) => test(lhs) && test(rhs)

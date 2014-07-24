@@ -81,22 +81,35 @@ object Printers {
     @deprecated("Use the constructor with jsMode", "0.5.3")
     def this(out: Writer) = this(out, jsMode = true)
 
-    def printBlock(tree: Tree) {
-      tree match {
-        case Block(_) =>
-          printTree(tree)
-        case _ =>
-          printColumn(List(tree), "{", ";", "}")
+    def printBlock(tree: Tree, isStat: Boolean): Unit = {
+      def printStatBlock(trees: List[Tree]): Unit = {
+        print("{"); indent; println()
+        printSeq(trees){printStat(_)}{ needsSep =>
+          if (needsSep)
+            print(";")
+          println()
+        }
+        undent; println(); print("}")
       }
+      val trees = tree match {
+        case Block(trees) => trees
+        case _            => List(tree)
+      }
+      if (isStat || !jsMode)
+        printStatBlock(trees)
+      else
+        printRow(trees, "(", ", ", ")")
     }
 
     def printTopLevelTree(tree: Tree) {
       tree match {
+        case Skip() =>
+          // do not print anything
         case Block(stats) =>
           for (stat <- stats)
             printTopLevelTree(stat)
         case _ =>
-          printTree(tree)
+          printStat(tree)
           if (!tree.isInstanceOf[DocComment])
             print(";")
           println()
@@ -115,7 +128,10 @@ object Printers {
       printRow(args, "(", ", ", ")")
     }
 
-    def printTree(tree: Tree) {
+    def printStat(tree: Tree): Unit =
+      printTree(tree, isStat = true)
+
+    def printTree(tree: Tree, isStat: Boolean): Unit = {
       tree match {
         case EmptyTree =>
           print("<empty>")
@@ -157,15 +173,15 @@ object Printers {
         case Skip() =>
           print("/*<skip>*/")
 
-        case Block(stats) =>
-          printColumn(stats, "{", ";", "}")
+        case tree: Block =>
+          printBlock(tree, isStat)
 
         case Labeled(label, tpe, body) =>
           print(label)
           if (!jsMode && tpe != NoType)
             print("[", tpe, "]")
           print(": ")
-          printBlock(body)
+          printBlock(body, isStat = true)
 
         case Assign(lhs, rhs) =>
           print(lhs, " = ", rhs)
@@ -175,41 +191,45 @@ object Printers {
           else print("return(", label.get, ") ", expr)
 
         case If(cond, thenp, elsep) =>
-          print("if (", cond, ") ")
-          printBlock(thenp)
-          elsep match {
-            case Skip() => ()
-            case If(_, _, _) =>
-              print(" else ")
-              print(elsep)
-            case _ =>
-              print(" else ")
-              printBlock(elsep)
+          if (isStat || !jsMode) {
+            print("if (", cond, ") ")
+            printBlock(thenp, isStat)
+            elsep match {
+              case Skip() => ()
+              case If(_, _, _) =>
+                print(" else ")
+                printTree(elsep, isStat)
+              case _ =>
+                print(" else ")
+                printBlock(elsep, isStat)
+            }
+          } else {
+            print("(", cond, " ? ", thenp, " : ", elsep, ")")
           }
 
         case While(cond, body, label) =>
           if (label.isDefined)
             print(label.get, ": ")
           print("while (", cond, ") ")
-          printBlock(body)
+          printBlock(body, isStat = true)
 
         case DoWhile(body, cond, label) =>
           if (label.isDefined)
             print(label.get, ": ")
           print("do ")
-          printBlock(body)
+          printBlock(body, isStat = true)
           print(" while (", cond, ")")
 
         case Try(block, errVar, handler, finalizer) =>
           print("try ")
-          printBlock(block)
+          printBlock(block, isStat = true)
           if (handler != EmptyTree) {
             print(" catch (", errVar, ") ")
-            printBlock(handler)
+            printBlock(handler, isStat = true)
           }
           if (finalizer != EmptyTree) {
             print(" finally ")
-            printBlock(finalizer)
+            printBlock(finalizer, isStat = true)
           }
 
         case Throw(expr) =>
@@ -229,13 +249,15 @@ object Printers {
           for ((value, body) <- cases) {
             println()
             print("case ", value, ":"); indent; println()
-            print(body, ";")
+            printStat(body)
+            print(";")
             undent
           }
           if (default != EmptyTree) {
             println()
             print("default:"); indent; println()
-            print(default, ";")
+            printStat(default)
+            print(";")
             undent
           }
           undent; println(); print("}")
@@ -246,13 +268,15 @@ object Printers {
           for ((value, body) <- cases) {
             println()
             print("case ", value, ":"); indent; println()
-            print(body, ";")
+            printTree(body, isStat)
+            print(";")
             undent
           }
           if (default != EmptyTree) {
             println()
             print("default:"); indent; println()
-            print(default, ";")
+            printTree(default, isStat)
+            print(";")
             undent
           }
           undent; println(); print("}")
@@ -492,7 +516,7 @@ object Printers {
           if (!jsMode && thisType != NoType)
             print("[this: ", thisType, "]")
           printSig(args, resultType)
-          printBlock(body)
+          printBlock(body, isStat = resultType == NoType)
           print(")")
 
         case Function(thisType, args, resultType, body) =>
@@ -500,7 +524,7 @@ object Printers {
           if (!jsMode && thisType != NoType)
             print("[this: ", thisType, "]")
           printSig(args, resultType)
-          printBlock(body)
+          printBlock(body, isStat = true)
           print(")")
 
         // Type-related
@@ -530,7 +554,7 @@ object Printers {
         case MethodDef(name, args, resultType, body) =>
           print(name)
           printSig(args, resultType)
-          printBlock(body)
+          printBlock(body, isStat = resultType == NoType)
 
         case PropertyDef(name, _, _, _) =>
           // TODO
@@ -539,7 +563,7 @@ object Printers {
         case ConstructorExportDef(fullName, args, body) =>
           print("export \"", escapeJS(fullName), "\"")
           printSig(args, NoType) // NoType as trick not to display a type
-          printBlock(body)
+          printBlock(body, isStat = false)
 
         case ModuleExportDef(fullName) =>
           print("export \"", escapeJS(fullName), "\"")
@@ -588,8 +612,7 @@ object Printers {
 
     def print(args: Any*): Unit = args foreach {
       case tree: Tree =>
-        //printPosition(tree)
-        printTree(tree)
+        printTree(tree, isStat = false)
       case tpe: Type =>
         printType(tpe)
       case ident: Ident =>
@@ -636,7 +659,7 @@ object Printers {
 
     private var column = 0
 
-    override def printTree(tree: Tree): Unit = {
+    override def printTree(tree: Tree, isStat: Boolean): Unit = {
       val pos = tree.pos
       if (pos.isDefined) {
         val originalName = tree match {
@@ -646,7 +669,7 @@ object Printers {
         sourceMap.startNode(column, pos, originalName)
       }
 
-      super.printTree(tree)
+      super.printTree(tree, isStat)
 
       if (pos.isDefined)
         sourceMap.endNode(column)
