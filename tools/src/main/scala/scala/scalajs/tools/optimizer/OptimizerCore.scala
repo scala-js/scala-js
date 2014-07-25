@@ -193,7 +193,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 case _ =>
                   lhsCancelFun()
               }
-            case PreTransTree(lhsTree) =>
+            case PreTransTree(lhsTree, _) =>
               Assign(lhsTree, transformExpr(rhs))
           }
         }
@@ -217,7 +217,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           val newOptLabel = Some(Ident(info.newName, None))
           if (!info.acceptRecords) {
             val newExpr = transformExpr(expr)
-            info.returnedTypes.value ::= (newExpr.tpe, newExpr.tpe)
+            info.returnedTypes.value ::= (newExpr.tpe, RefinedType(newExpr.tpe))
             Return(newExpr, newOptLabel)
           } else {
             pretransformNoLocalDef(expr) { texpr =>
@@ -225,8 +225,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 case PreTransRecordTree(newExpr, origType, cancelFun) =>
                   info.returnedTypes.value ::= (newExpr.tpe, origType)
                   Return(newExpr, newOptLabel)
-                case PreTransTree(newExpr) =>
-                  info.returnedTypes.value ::= (newExpr.tpe, newExpr.tpe)
+                case PreTransTree(newExpr, tpe) =>
+                  info.returnedTypes.value ::= (newExpr.tpe, tpe)
                   Return(newExpr, newOptLabel)
               }
             }
@@ -271,7 +271,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
 
         val newName = freshLocalName(name)
         val newOriginalName = originalName.orElse(Some(name))
-        val localDef = LocalDef(AnyType, true,
+        val localDef = LocalDef(RefinedType(AnyType), true,
             ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
@@ -344,9 +344,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
           val isEqEq = (op == BinaryOp.===)
           (tlhs, trhs) match {
-            case (PreTransLocalDef(LocalDef(_, _,
-                ReplaceWithRecordVarRef(_, _, _, _, _))),
-                PreTransTree(Null())) =>
+            case (_, PreTransTree(Null(), _)) if !tlhs.tpe.isNullable =>
               BooleanLiteral(!isEqEq)
             case _ =>
               foldBinaryOp(op, finishTransformExpr(tlhs),
@@ -467,7 +465,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         pretransformExpr(rhs) { trhs =>
           withBinding(Binding(name, originalName, vtpe, mutable, trhs)) {
             (restScope, cont1) =>
-              cont1(PreTransTree(transformList(rest)(restScope)))
+              val newRest = transformList(rest)(restScope)
+              cont1(PreTransTree(newRest, RefinedType(newRest.tpe)))
           } (finishTransform(isStat))
         }
 
@@ -577,14 +576,14 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                           cancelFun))
 
                     case (PreTransRecordTree(thenTree, thenOrigType, thenCancelFun), _)
-                        if telsep.tpe == NothingType =>
+                        if telsep.tpe.isNothingType =>
                       cont(PreTransRecordTree(
                           If(newCond, thenTree, finishTransformExpr(telsep))(thenTree.tpe),
                           thenOrigType,
                           thenCancelFun))
 
                     case (_, PreTransRecordTree(elseTree, elseOrigType, elseCancelFun))
-                        if tthenp.tpe == NothingType =>
+                        if tthenp.tpe.isNothingType =>
                       cont(PreTransRecordTree(
                           If(newCond, finishTransformExpr(tthenp), elseTree)(elseTree.tpe),
                           elseOrigType,
@@ -595,7 +594,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                       val newElsep = finishTransformExpr(telsep)
                       val refinedType =
                         constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-                      cont(PreTransTree(If(newCond, newThenp, newElsep)(refinedType)))
+                      cont(PreTransTree(
+                          If(newCond, newThenp, newElsep)(refinedType),
+                          RefinedType(refinedType)))
                   }
                 }
               }
@@ -604,7 +605,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               val newElsep = transformExpr(elsep)
               val refinedType =
                 constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
-              cont(PreTransTree(If(newCond, newThenp, newElsep)(refinedType)))
+              cont(PreTransTree(
+                  If(newCond, newThenp, newElsep)(refinedType),
+                  RefinedType(refinedType)))
             }
         }
 
@@ -626,13 +629,16 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               val alreadyUsedState = new SimpleState[Boolean](false)
               val tclosure = TentativeClosureReplacement(
                   thisType, params, resultType, body, captureLocalDefs)
-              val localDef = LocalDef(tree.tpe, false,
+              val localDef = LocalDef(
+                  RefinedType(cls, isExact = true, isNullable = false), false,
                   TentativeAnonFunReplacement(tclosure, alreadyUsedState, cancelFun))
               cont1(PreTransLocalDef(localDef))
             } (cont)
           }
         } getOrElse {
-          cont(PreTransTree(New(cls, ctor, List(transformExpr(closure)))))
+          cont(PreTransTree(
+              New(cls, ctor, List(transformExpr(closure))),
+              RefinedType(cls, isExact = true, isNullable = false)))
         }
 
       case New(cls @ ClassType(className), ctor, args) =>
@@ -643,11 +649,15 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 inlineClassConstructor(
                     cls, initialValue, ctor, targs, cancelFun)(cont)
               } getOrElse {
-                cont(PreTransTree(New(cls, ctor, targs.map(finishTransformExpr))))
+                cont(PreTransTree(
+                    New(cls, ctor, targs.map(finishTransformExpr)),
+                    RefinedType(cls, isExact = true, isNullable = false)))
               }
             }
           case None =>
-            cont(PreTransTree(New(cls, ctor, args.map(transformExpr))))
+            cont(PreTransTree(
+                New(cls, ctor, args.map(transformExpr)),
+                RefinedType(cls, isExact = true, isNullable = false)))
         }
 
       case tree: Select =>
@@ -666,7 +676,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
             usePreTransform = true)(cont)
 
       case _ =>
-        cont(PreTransTree(transformExpr(tree)))
+        val result = transformExpr(tree)
+        cont(PreTransTree(result, RefinedType(result.tpe)))
     }
   }
 
@@ -695,7 +706,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
             pretransformList(rest)(cont)
           case _ =>
             if (transformedStat.tpe == NothingType)
-              cont(PreTransTree(transformedStat))
+              cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
               pretransformList(rest) { trest =>
                 cont(PreTransBlock(transformedStat :: Nil, trest))
@@ -747,13 +758,14 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
             val sel = Select(newQual, item, mutable)(field.tpe)
             sel.tpe match {
               case _: RecordType =>
-                cont(PreTransRecordTree(sel, expectedType, cancelFun))
+                cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
               case _ =>
-                cont(PreTransTree(sel))
+                cont(PreTransTree(sel, RefinedType(sel.tpe)))
             }
 
-          case PreTransTree(newQual) =>
-            cont(PreTransTree(Select(newQual, item, mutable)(expectedType)))
+          case PreTransTree(newQual, _) =>
+            cont(PreTransTree(Select(newQual, item, mutable)(expectedType),
+                RefinedType(expectedType)))
         }
     }
   }
@@ -766,8 +778,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         resolveLocalDef(result) match {
           case PreTransRecordTree(tree, tpe, cancelFun) =>
             PreTransRecordTree(Block(stats :+ tree), tpe, cancelFun)
-          case PreTransTree(tree) =>
-            PreTransTree(Block(stats :+ tree))
+          case PreTransTree(tree, tpe) =>
+            PreTransTree(Block(stats :+ tree), tpe)
         }
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, mutable, replacement)) =>
@@ -780,7 +792,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 tpe, cancelFun)
 
           case _ =>
-            PreTransTree(localDef.newReplacement)
+            PreTransTree(localDef.newReplacement, localDef.tpe)
         }
 
       case preTrans: PreTransGenTree =>
@@ -817,7 +829,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         localDef.newReplacement
       case PreTransRecordTree(_, _, cancelFun) =>
         cancelFun()
-      case PreTransTree(tree) =>
+      case PreTransTree(tree, _) =>
         tree
     }
   }
@@ -836,7 +848,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       Skip()(stat.pos)
     case PreTransRecordTree(tree, _, _) =>
       keepOnlySideEffects(tree)
-    case PreTransTree(tree) =>
+    case PreTransTree(tree, _) =>
       keepOnlySideEffects(tree)
   }
 
@@ -869,14 +881,16 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           usePreTransform)(cont).getOrElse {
         def treeNotInlined =
           cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-              args.map(transformExpr))(tree.tpe)(tree.pos)))
+              args.map(transformExpr))(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
 
         if (isReflProxyName(methodName)) {
           // Never inline reflective proxies
           treeNotInlined
         } else {
-          val ClassType(cls) = treceiver.tpe
-          val impls = dynamicCall(cls, methodName)
+          val ClassType(cls) = treceiver.tpe.base
+          val impls =
+            if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
+            else dynamicCall(cls, methodName)
           if (impls.isEmpty || impls.exists(scope.implsBeingInlined)) {
             // isEmpty could happen, have to leave it as is for the TypeError
             treeNotInlined
@@ -950,10 +964,12 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 val boxedTArgs = for {
                   (charCode, targ) <- paramCharCodes zip targs
                 } yield {
-                  if (charCode == 'C')
+                  if (charCode == 'C') {
+                    val bcClassType = ClassType(Definitions.BoxedCharacterClass)
                     PreTransTree(CallHelper("bC", finishTransformExpr(targ))(
-                        ClassType(Definitions.BoxedCharacterClass))(targ.pos))
-                  else
+                        bcClassType)(targ.pos),
+                        RefinedType(bcClassType, isExact = true, isNullable = false))
+                  } else
                     targ
                 }
                 val isVoid = resultCharCode == 'V'
@@ -983,7 +999,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
 
     def treeNotInlined =
       cont(PreTransTree(StaticApply(transformExpr(receiver), clsType,
-          methodIdent, args.map(transformExpr))(tree.tpe)))
+          methodIdent, args.map(transformExpr))(tree.tpe), RefinedType(tree.tpe)))
 
     if (isReflProxyName(methodName)) {
       // Never inline reflective proxies
@@ -1016,7 +1032,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
 
     def treeNotInlined =
       cont(PreTransTree(TraitImplApply(implType, methodIdent,
-          args.map(transformExpr))(tree.tpe)))
+          args.map(transformExpr))(tree.tpe), RefinedType(tree.tpe)))
 
     val optTarget = traitImplCall(impl, methodName)
     if (optTarget.isEmpty) {
@@ -1047,11 +1063,13 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
         cont(PreTransTree(
-            Block((optReceiver ++: args).map(finishTransformStat))))
+            Block((optReceiver ++: args).map(finishTransformStat)),
+            RefinedType.NoRefinedType))
 
       case _: Literal =>
         cont(PreTransTree(
-            Block((optReceiver ++: args).map(finishTransformStat) :+ body)))
+            Block((optReceiver ++: args).map(finishTransformStat) :+ body),
+            RefinedType(body.tpe)))
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
@@ -1074,7 +1092,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           // TODO Support assignment of record
           cont(PreTransTree(
               Assign(finishTransformExpr(preTransLhs),
-                  finishTransformExpr(args.head))))
+                  finishTransformExpr(args.head)),
+              RefinedType.NoRefinedType))
         }
 
       case _ =>
@@ -1103,7 +1122,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       implicit scope: Scope, pos: Position): Tree = {
 
     val optReceiverBinding = optReceiver map { receiver =>
-      Binding("this", None, receiver.tpe, false, receiver)
+      Binding("this", None, receiver.tpe.base, false, receiver)
     }
 
     val argsBindings = for {
@@ -1145,7 +1164,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               yield finalFieldLocalDefs(name).newReplacement
 
           cont2(PreTransRecordTree(
-              RecordValue(recordType, elems), cls, cancelFun))
+              RecordValue(recordType, elems),
+              RefinedType(cls, isExact = true, isNullable = false), cancelFun))
         } (cont1)
       } (cont)
     }
@@ -1172,7 +1192,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     }
 
     withBindings(argsBindings) { (bodyScope, cont1) =>
-      val thisLocalDef = LocalDef(cls, false,
+      val thisLocalDef = LocalDef(
+          RefinedType(cls, isExact = true, isNullable = false), false,
           InlineClassBeingConstructedReplacement(inputFieldsLocalDefs, cancelFun))
       val statsScope = bodyScope.inlining(target).withEnv(bodyScope.env.withLocalDef(
           "this", thisLocalDef))
@@ -1199,7 +1220,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               tvalue)) { (localDef, cont1) =>
             val newFieldsLocalDefs =
               inputFieldsLocalDefs.updated(fieldName, localDef)
-            val newThisLocalDef = LocalDef(cls, false,
+            val newThisLocalDef = LocalDef(
+                RefinedType(cls, isExact = true, isNullable = false), false,
                 InlineClassBeingConstructedReplacement(newFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
@@ -1236,7 +1258,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         pretransformExprs(args) { targs =>
           inlineClassConstructorBody(inputFieldsLocalDefs, cls, superClass,
               superCtor, targs, cancelFun) { (outputFieldsLocalDefs, cont1) =>
-            val newThisLocalDef = LocalDef(cls, false,
+            val newThisLocalDef = LocalDef(
+                RefinedType(cls, isExact = true, isNullable = false), false,
                 InlineClassBeingConstructedReplacement(outputFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
@@ -1261,7 +1284,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 rest, cancelFun)(buildInner)(cont)
           case _ =>
             if (transformedStat.tpe == NothingType)
-              cont(PreTransTree(transformedStat))
+              cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
               inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
                   rest, cancelFun) { (outputFieldsLocalDefs, cont1) =>
@@ -1563,9 +1586,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   private def foldUnbox(charCode: Char, arg: PreTransform)(
       cont: PreTransform => Tree): Tree = {
     (charCode: @switch) match {
-      case 'Z' if arg.tpe == BooleanType => cont(arg)
-      case 'I' if arg.tpe == IntType     => cont(arg)
-      case 'F' | 'D' if arg.tpe == DoubleType || arg.tpe == IntType => cont(arg)
+      case 'Z' if arg.tpe.base == BooleanType => cont(arg)
+      case 'I' if arg.tpe.base == IntType     => cont(arg)
+      case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
       case _ =>
         val resultType = (charCode: @switch) match {
           case 'Z'                   => BooleanType
@@ -1573,9 +1596,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           case 'J'                   => ClassType(Definitions.RuntimeLongClass)
           case 'F' | 'D'             => DoubleType
         }
-        cont(PreTransTree {
-          CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos)
-        })
+        cont(PreTransTree(
+            CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos),
+            RefinedType(resultType, isExact = true, isNullable = false)))
     }
   }
 
@@ -1587,7 +1610,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     } yield {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(newName))
-      val localDef = LocalDef(ptpe, mutable,
+      val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
       val newParamDef = ParamDef(
           Ident(newName, newOriginalName)(ident.pos), ptpe, mutable)(p.pos)
@@ -1596,7 +1619,11 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
 
     val thisLocalDef =
       if (thisType == NoType) None
-      else Some("this" -> LocalDef(thisType, false, ReplaceWithThis()))
+      else {
+        Some("this" -> LocalDef(
+            RefinedType(thisType, isExact = false, isNullable = false),
+            false, ReplaceWithThis()))
+      }
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
@@ -1626,10 +1653,6 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       }
     }
 
-    def needLabelNoRecord(newBody: Tree, returnedTypes: List[Type]): Tree = {
-      cont(PreTransTree(doMakeTree(newBody, returnedTypes)))
-    }
-
     val info = new LabelInfo(newLabel, acceptRecords = usePreTransform)
     withState(info.returnedTypes) {
       val bodyScope = scope.withEnv(scope.env.withLabelInfo(oldLabelName, info))
@@ -1647,24 +1670,25 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               val (newBody, returnedTypes) = tbody match {
                 case PreTransRecordTree(bodyTree, origType, _) =>
                   (bodyTree, (bodyTree.tpe, origType) :: returnedTypes0)
-                case PreTransTree(bodyTree) =>
-                  (bodyTree, (bodyTree.tpe, bodyTree.tpe) :: returnedTypes0)
+                case PreTransTree(bodyTree, tpe) =>
+                  (bodyTree, (bodyTree.tpe, tpe) :: returnedTypes0)
               }
               val (actualTypes, origTypes) = returnedTypes.unzip
+              val refinedOrigType =
+                origTypes.reduce(constrainedLub(_, _, resultType))
               actualTypes.collectFirst {
                 case actualType: RecordType => actualType
               }.fold[Tree] {
                 // None of the returned types are records
-                needLabelNoRecord(newBody, actualTypes)
+                cont(PreTransTree(
+                    doMakeTree(newBody, actualTypes), refinedOrigType))
               } { recordType =>
                 if (actualTypes.exists(t => t != recordType && t != NothingType))
                   cancelFun()
 
                 val resultTree = doMakeTree(newBody, actualTypes)
-                val refinedOrigType =
-                  origTypes.reduce(constrainedLub(_, _, resultType))
 
-                if (origTypes.exists(t => t != refinedOrigType && t != NothingType))
+                if (origTypes.exists(t => t != refinedOrigType && !t.isNothingType))
                   cancelFun()
 
                 cont(PreTransRecordTree(resultTree, refinedOrigType, cancelFun))
@@ -1680,10 +1704,11 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         val returnedTypes0 = info.returnedTypes.value.map(_._1)
         if (returnedTypes0.isEmpty) {
           // no return to that label, we can eliminate it
-          cont(PreTransTree(newBody))
+          cont(PreTransTree(newBody, RefinedType(newBody.tpe)))
         } else {
           val returnedTypes = newBody.tpe :: returnedTypes0
-          needLabelNoRecord(newBody, returnedTypes)
+          val tree = doMakeTree(newBody, returnedTypes)
+          cont(PreTransTree(tree, RefinedType(tree.tpe)))
         }
       }
     }
@@ -1785,7 +1810,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     val Binding(name, originalName, declaredType, mutable, value) = binding
     implicit val pos = value.pos
 
-    def withDedicatedVar(tpe: Type) = {
+    def withDedicatedVar(tpe: RefinedType) = {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(name))
 
@@ -1815,7 +1840,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                       cont(tinner)
                     case _ =>
                       if (rhsSideEffects.tpe == NothingType)
-                        cont(PreTransTree(rhsSideEffects))
+                        cont(PreTransTree(rhsSideEffects, RefinedType.Nothing))
                       else
                         cont(PreTransBlock(rhsSideEffects :: Nil, tinner))
                   }
@@ -1861,7 +1886,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
             val localDef = LocalDef(tpe, mutable,
                 ReplaceWithVarRef(newName, newOriginalName, used))
             doBuildInner(localDef) {
-              VarDef(Ident(newName, newOriginalName), tpe, mutable,
+              VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
                   finishTransformExpr(value))
             }
         }
@@ -1869,7 +1894,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     }
 
     if (mutable) {
-      withDedicatedVar(declaredType)
+      withDedicatedVar(RefinedType(declaredType))
     } else {
       val refinedType = value.tpe
       value match {
@@ -1887,11 +1912,11 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
               buildInner(localDef, cont)
           }
 
-        case PreTransTree(literal: Literal) =>
+        case PreTransTree(literal: Literal, _) =>
           buildInner(LocalDef(refinedType, false,
               ReplaceWithConstant(literal)), cont)
 
-        case PreTransTree(VarRef(Ident(refName, refOriginalName), false)) =>
+        case PreTransTree(VarRef(Ident(refName, refOriginalName), false), _) =>
           buildInner(LocalDef(refinedType, false,
               ReplaceWithVarRef(refName, refOriginalName,
                   new SimpleState(true))), cont)
@@ -1899,6 +1924,22 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
         case _ =>
           withDedicatedVar(refinedType)
       }
+    }
+  }
+
+  /** Finds a type as precise as possible which is a supertype of lhs and rhs
+   *  but still a subtype of upperBound.
+   *  Requires that lhs and rhs be subtypes of upperBound, obviously.
+   */
+  private def constrainedLub(lhs: RefinedType, rhs: RefinedType,
+      upperBound: Type): RefinedType = {
+    if (upperBound == NoType) RefinedType(upperBound)
+    else if (lhs == rhs) lhs
+    else if (lhs.isNothingType) rhs
+    else if (rhs.isNothingType) lhs
+    else {
+      RefinedType(constrainedLub(lhs.base, rhs.base, upperBound),
+          false, lhs.isNullable || rhs.isNullable)
     }
   }
 
@@ -1931,21 +1972,41 @@ object OptimizerCore {
 
   private type CancelFun = () => Nothing
 
+  private case class RefinedType(base: Type, isExact: Boolean,
+      isNullable: Boolean) {
+    def isNothingType: Boolean = base == NothingType
+  }
+
+  private object RefinedType {
+    def apply(tpe: Type): RefinedType = tpe match {
+      case BooleanType | IntType | DoubleType | StringType | UndefType |
+          NothingType | _:RecordType | NoType =>
+        RefinedType(tpe, isExact = true, isNullable = false)
+      case NullType =>
+        RefinedType(tpe, isExact = true, isNullable = true)
+      case _ =>
+        RefinedType(tpe, isExact = false, isNullable = true)
+    }
+
+    val NoRefinedType = RefinedType(NoType)
+    val Nothing = RefinedType(NothingType)
+  }
+
   private case class LocalDef(
-      tpe: Type,
+      tpe: RefinedType,
       mutable: Boolean,
       replacement: LocalDefReplacement) {
 
     def newReplacement(implicit pos: Position): Tree = replacement match {
       case ReplaceWithVarRef(name, originalName, used) =>
         used.value = true
-        VarRef(Ident(name, originalName), mutable)(tpe)
+        VarRef(Ident(name, originalName), mutable)(tpe.base)
 
       case ReplaceWithRecordVarRef(_, _, _, _, cancelFun) =>
         cancelFun()
 
       case ReplaceWithThis() =>
-        This()(tpe)
+        This()(tpe.base)
 
       case ReplaceWithConstant(value) =>
         value
@@ -1992,7 +2053,7 @@ object OptimizerCore {
       val newName: String,
       val acceptRecords: Boolean,
       /** (actualType, originalType), actualType can be a RecordType. */
-      val returnedTypes: SimpleState[List[(Type, Type)]] = new SimpleState(Nil))
+      val returnedTypes: SimpleState[List[(Type, RefinedType)]] = new SimpleState(Nil))
 
   private class OptEnv(
       val localDefs: Map[String, LocalDef],
@@ -2042,7 +2103,7 @@ object OptimizerCore {
    */
   private sealed abstract class PreTransform {
     def pos: Position
-    val tpe: Type
+    val tpe: RefinedType
 
     def contains(localDef: LocalDef): Boolean = this match {
       case PreTransBlock(_, result) =>
@@ -2079,8 +2140,8 @@ object OptimizerCore {
             new PreTransBlock(stats, result)
           case PreTransRecordTree(tree, tpe, cancelFun) =>
             PreTransRecordTree(Block(stats :+ tree)(tree.pos), tpe, cancelFun)
-          case PreTransTree(tree) =>
-            PreTransTree(Block(stats :+ tree)(tree.pos))
+          case PreTransTree(tree, tpe) =>
+            PreTransTree(Block(stats :+ tree)(tree.pos), tpe)
         }
       }
     }
@@ -2093,22 +2154,22 @@ object OptimizerCore {
 
   private final case class PreTransLocalDef(localDef: LocalDef)(
       implicit val pos: Position) extends PreTransNoBlock {
-    val tpe: Type = localDef.tpe
+    val tpe: RefinedType = localDef.tpe
   }
 
   private sealed abstract class PreTransGenTree extends PreTransNoBlock
 
   private final case class PreTransRecordTree(tree: Tree,
-      tpe: Type, cancelFun: CancelFun) extends PreTransGenTree {
+      tpe: RefinedType, cancelFun: CancelFun) extends PreTransGenTree {
     def pos = tree.pos
 
     assert(tree.tpe.isInstanceOf[RecordType],
         s"Cannot create a PreTransRecordTree with non-record type ${tree.tpe}")
   }
 
-  private final case class PreTransTree(tree: Tree) extends PreTransGenTree {
+  private final case class PreTransTree(tree: Tree,
+      tpe: RefinedType) extends PreTransGenTree {
     def pos: Position = tree.pos
-    val tpe: Type = tree.tpe
 
     assert(!tree.tpe.isInstanceOf[RecordType],
         s"Cannot create a Tree with record type ${tree.tpe}")
