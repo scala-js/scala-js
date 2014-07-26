@@ -146,6 +146,11 @@ object StringTest extends JasmineTest {
 
     it("should respond to `split` with char as argument") {
       expect("Scala.js".split('.')).toEqual(js.Array("Scala","js"))
+      for (i <- 0 to 32) {
+        val c = i.toChar
+        expect(s"blah${c}blah${c}blah${c}blah".split(c)).toEqual(
+          js.Array("blah", "blah", "blah", "blah"))
+      }
     }
 
     it("should respond to `toCharArray`") {

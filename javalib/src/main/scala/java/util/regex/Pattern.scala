@@ -106,5 +106,5 @@ object Pattern {
   }
 
   /** matches \Q<char>\E to support StringLike.split */
-  private val splitHackPat = new js.RegExp("^\\\\Q(.)\\\\E$")
+  private val splitHackPat = new js.RegExp("^\\\\Q(.|\\n|\\r)\\\\E$")
 }
