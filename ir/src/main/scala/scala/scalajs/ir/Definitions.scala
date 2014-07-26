@@ -15,6 +15,11 @@ object Definitions {
 
   val StringClass = "T"
 
+  val PrimitiveClasses = Set("V", "Z", "C", "B", "S", "I", "J", "F", "D")
+
+  def isPrimitiveClass(encodedName: String): Boolean =
+    PrimitiveClasses.contains(encodedName)
+
   val BoxedUnitClass      = "sr_BoxedUnit"
   val BoxedBooleanClass   = "jl_Boolean"
   val BoxedCharacterClass = "jl_Character"

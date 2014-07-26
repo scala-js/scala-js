@@ -121,7 +121,7 @@ class IncOptimizer {
           val (added, changed, removed) =
             traitImpl.updateWith(traitImplInfo, getClassTreeIfChanged)
           for (method <- changed)
-            traitImpl.interface.tagStaticCallersOf(method)
+            traitImpl.myInterface.tagStaticCallersOf(method)
           true
         }
       }
@@ -224,6 +224,8 @@ class IncOptimizer {
   abstract class MethodContainer(val encodedName: String) {
     def thisType: Type
 
+    val myInterface = getInterface(encodedName)
+
     val methods = mutable.Map.empty[String, MethodImpl]
 
     var lastVersion: Option[String] = None
@@ -239,6 +241,8 @@ class IncOptimizer {
 
     def updateWith(info: Analyzer#ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged): (Set[String], Set[String], Set[String]) = {
+      myInterface.ancestors = info.ancestors.map(_.encodedName).toList
+
       val addedMethods = Set.newBuilder[String]
       val changedMethods = Set.newBuilder[String]
       val deletedMethods = Set.newBuilder[String]
@@ -319,8 +323,6 @@ class IncOptimizer {
     classes += encodedName -> this
 
     def thisType: Type = ClassType(encodedName)
-
-    val myInterface = getInterface(encodedName)
 
     var interfaces: Set[InterfaceType] = Set.empty
     var subclasses: List[Class] = Nil
@@ -543,8 +545,6 @@ class IncOptimizer {
   /** Trait impl. */
   class TraitImpl(_encodedName: String) extends MethodContainer(_encodedName) {
     def thisType: Type = NoType
-
-    val interface = getInterface(encodedName)
   }
 
   /** Type of a class or interface.
@@ -552,13 +552,29 @@ class IncOptimizer {
    *  [[ClassType]].
    */
   class InterfaceType(val encodedName: String) {
+    private val ancestorsAskers = mutable.Set.empty[MethodImpl]
     private val dynamicCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
     private val staticCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
+
+    private var _ancestors: List[String] = encodedName :: Nil
 
     var instantiatedSubclasses: Set[Class] = Set.empty
 
     override def toString(): String =
       s"intf $encodedName"
+
+    def ancestors: List[String] = _ancestors
+
+    def ancestors_=(v: List[String]): Unit = {
+      if (v != _ancestors) {
+        _ancestors = v
+        ancestorsAskers.foreach(_.tag())
+        ancestorsAskers.clear()
+      }
+    }
+
+    def registerAskAncestors(asker: MethodImpl): Unit =
+      ancestorsAskers += asker
 
     def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit =
       dynamicCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
@@ -567,6 +583,7 @@ class IncOptimizer {
       staticCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
     def unregisterCaller(caller: MethodImpl): Unit = {
+      ancestorsAskers -= caller
       dynamicCallers.values.foreach(_ -= caller)
       staticCallers.values.foreach(_ -= caller)
     }
@@ -596,6 +613,11 @@ class IncOptimizer {
 
     override def toString(): String =
       s"$owner.$encodedName"
+
+    private def registerAskAncestors(intf: InterfaceType): Unit = {
+      intf.registerAskAncestors(this)
+      registeredTo += intf
+    }
 
     private def registerDynamicCall(intf: InterfaceType,
         methodName: String): Unit = {
@@ -678,8 +700,14 @@ class IncOptimizer {
       protected def traitImplCall(traitImplName: String,
           methodName: String): Option[MethodImpl] = {
         val traitImpl = traitImpls(traitImplName)
-        registerStaticCall(traitImpl.interface, methodName)
+        registerStaticCall(traitImpl.myInterface, methodName)
         traitImpl.methods.get(methodName)
+      }
+
+      protected def getAncestorsOf(intfName: String): List[String] = {
+        val intf = getInterface(intfName)
+        registerAskAncestors(intf)
+        intf.ancestors
       }
 
       protected def hasElidableModuleAccessor(moduleClassName: String): Boolean =

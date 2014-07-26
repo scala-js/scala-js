@@ -14,7 +14,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import scala.scalajs.ir._
-import Definitions.{isConstructorName, isReflProxyName}
+import Definitions.{ObjectClass, isConstructorName, isReflProxyName}
 import Infos.OptimizerHints
 import Trees._
 import Types._
@@ -41,6 +41,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   /** Returns the target of a trait impl call. */
   protected def traitImplCall(traitImplName: String,
       methodName: String): Option[MethodImpl]
+
+  /** Returns the list of ancestors of a class or interface. */
+  protected def getAncestorsOf(encodedName: String): List[String]
 
   /** Tests whether the given module class has an elidable accessor.
    *  In other words, whether it is safe to discard a LoadModule of that
@@ -131,6 +134,13 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       }
     }
   }
+
+  private def isSubclass(lhs: String, rhs: String): Boolean =
+    getAncestorsOf(lhs).contains(rhs)
+
+  private val isSubclassFun = isSubclass _
+  private def isSubtype(lhs: Type, rhs: Type): Boolean =
+    Types.isSubtype(lhs, rhs)(isSubclassFun)
 
   /** Transforms a statement.
    *
@@ -370,11 +380,23 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case RecordValue(tpe, elems) =>
         RecordValue(tpe, elems map transformExpr)
 
-      case IsInstanceOf(expr, cls) =>
-        IsInstanceOf(transformExpr(expr), cls)
+      case IsInstanceOf(expr, ClassType(ObjectClass)) =>
+        transformExpr(BinaryOp(BinaryOp.!==, expr, Null()))
+
+      case IsInstanceOf(expr, tpe) =>
+        pretransformExpr(expr) { texpr =>
+          if (!texpr.tpe.isNullable && isSubtype(texpr.tpe.base, tpe)) {
+            Block(finishTransformStat(texpr), BooleanLiteral(true))
+          } else {
+            IsInstanceOf(finishTransformExpr(texpr), tpe)
+          }
+        }
+
+      case AsInstanceOf(expr, ClassType(ObjectClass)) =>
+        transformExpr(expr)
 
       case AsInstanceOf(expr, cls) =>
-        AsInstanceOf(transformExpr(expr), cls)
+        pretransformExpr(tree)(finishTransform(isStat))
 
       case CallHelper(helperName, List(arg))
           if helperName.length == 2 && helperName(0) == 'u' =>
@@ -674,6 +696,21 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case tree: TraitImplApply =>
         pretransformTraitImplApply(tree, isStat = false,
             usePreTransform = true)(cont)
+
+      case AsInstanceOf(expr, tpe) =>
+        pretransformExpr(expr) { texpr =>
+          tpe match {
+            case ClassType(ObjectClass) =>
+              cont(texpr)
+            case _ =>
+              if (isSubtype(texpr.tpe.base, tpe)) {
+                cont(texpr)
+              } else {
+                cont(PreTransTree(
+                    AsInstanceOf(finishTransformExpr(texpr), tpe)))
+              }
+          }
+        }
 
       case _ =>
         val result = transformExpr(tree)
@@ -2173,6 +2210,11 @@ object OptimizerCore {
 
     assert(!tree.tpe.isInstanceOf[RecordType],
         s"Cannot create a Tree with record type ${tree.tpe}")
+  }
+
+  private object PreTransTree {
+    def apply(tree: Tree): PreTransTree =
+      PreTransTree(tree, RefinedType(tree.tpe))
   }
 
   private final case class Binding(name: String, originalName: Option[String],
