@@ -62,11 +62,14 @@ abstract class PartialClasspath(
     val flatDeps = filter(dependencies.flatMap(_.flatten))
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
-    val missingDeps = includeList.filterNot(availableLibs.contains _)
-    if (missingDeps.nonEmpty)
-      sys.error(s"Missing dependencies: ${missingDeps.mkString(", ")}")
+    val missingDeps = includeList.filterNot { info =>
+      availableLibs.contains(info.resourceName)
+    }
 
-    includeList.map(availableLibs.apply _)
+    if (missingDeps.nonEmpty)
+      throw new MissingJSLibException(missingDeps)
+
+    includeList.map(info => availableLibs(info.resourceName))
   }
 
 }

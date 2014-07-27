@@ -21,7 +21,7 @@ object JSDependencyManifest {
   final val ManifestFileName = "JS_DEPENDENCIES"
 
   def createIncludeList(
-      flatDeps: Traversable[FlatJSDependency]): List[String] = {
+      flatDeps: Traversable[FlatJSDependency]): List[ResolutionInfo] = {
     val jsDeps = mergeManifests(flatDeps)
 
     // Verify all dependencies are met
@@ -29,58 +29,44 @@ object JSDependencyManifest {
       lib <- flatDeps
       dep <- lib.dependencies
       if !jsDeps.contains(dep)
-    } yield sys.error(s"The JS dependency ${lib.resourceName} declared " +
-        s"from ${lib.origin} has an unmet transitive dependency $dep")
+    } throw new MissingDependencyException(lib, dep)
 
     // Sort according to dependencies and return
 
     // Very simple O(n²) topological sort for elements assumed to be distinct
     // Copied :( from GenJSExports (but different exception)
     @scala.annotation.tailrec
-    def loop(coll: List[String], acc: List[String]): List[String] = {
+    def loop(coll: List[ResolutionInfo],
+      acc: List[ResolutionInfo]): List[ResolutionInfo] = {
+
       if (coll.isEmpty) acc
       else if (coll.tail.isEmpty) coll.head :: acc
       else {
         val (selected, pending) = coll.partition { x =>
-          coll forall { y => (x eq y) || !jsDeps(y).contains(x) }
+          coll forall { y => (x eq y) || !y.dependencies.contains(x.resourceName) }
         }
 
         if (selected.nonEmpty)
           loop(pending, selected ::: acc)
-        else {
-          // We can't sort the set. Make a nice error message.
-          val msg = new StringBuilder()
-          msg.append("There is a loop in the following JS dependencies:\n")
-
-          for (dep <- pending) {
-            msg.append(s"  '$dep' which depends on\n")
-            for ((rdep, origins) <- jsDeps(dep)) {
-              msg.append(s"    - $rdep from: ${origins.mkString(", ")}\n")
-            }
-          }
-
-          sys.error(msg.toString())
-        }
+        else
+          throw new CyclicDependencyException(pending)
       }
     }
 
-    loop(jsDeps.keys.toList, Nil)
+    loop(jsDeps.values.toList, Nil)
   }
 
   /** Merges multiple JSDependencyManifests into a map of map:
-   *  dependency -> includeAfter -> origins
+   *  resourceName -> ResolutionInfo
    */
   private def mergeManifests(flatDeps: Traversable[FlatJSDependency]) = {
-    def mergedIncludeAfter(tups: Traversable[FlatJSDependency]) = {
-      val flat = for {
-        flatDep         <- tups
-        includeAfter    <- flatDep.dependencies
-      } yield (includeAfter, flatDep)
-
-      flat.groupBy(_._1).mapValues(_.map(_._2))
+    flatDeps.groupBy(_.resourceName).mapValues { sameName =>
+      ResolutionInfo(
+        resourceName = sameName.head.resourceName,
+        dependencies = sameName.flatMap(_.dependencies).toSet,
+        origins = sameName.map(_.origin).toList
+      )
     }
-
-    flatDeps.groupBy(_.resourceName).mapValues(mergedIncludeAfter)
   }
 
   implicit object JSDepManJSONSerializer extends JSONSerializer[JSDependencyManifest] {
