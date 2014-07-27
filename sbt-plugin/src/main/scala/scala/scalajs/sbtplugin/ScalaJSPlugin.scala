@@ -97,6 +97,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "Tell optimize/package tasks to write the laucher file to disk. " +
         "If this is set, your project may only have a single mainClass or you must explicitly set it", AMinusSetting)
 
+    val inliningMode = SettingKey[InliningMode]("inliningMode",
+        "Mode of the inliner: Incremental (default), Batch, Off", CSetting)
+
     // Task keys to re-wire sources and run with other VM
     val packageStage = TaskKey[Unit]("packageStage",
         "Run/test stuff after packageJS. (type packageStage::run)", CTask)

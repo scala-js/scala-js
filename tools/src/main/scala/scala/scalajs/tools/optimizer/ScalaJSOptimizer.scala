@@ -89,7 +89,12 @@ class ScalaJSOptimizer {
           val persistentFile = persistentState.encodedNameToPersistentFile(encodedName)
           persistentFile.treeIfChanged(lastVersion)
         }
-        val useInliner = analyzer.allAvailable
+
+        val useInliner = analyzer.allAvailable && !outCfg.disableInliner
+
+        if (outCfg.batchInline)
+          inliner = new IncOptimizer
+
         val refinedAnalyzer = if (useInliner) {
           IncOptimizer.logTime(logger, "Inliner") {
             inliner.update(analyzer, getClassTreeIfChanged, logger)
@@ -102,7 +107,7 @@ class ScalaJSOptimizer {
             refinedAnalyzer
           }
         } else {
-          if (inputs.noWarnMissing.isEmpty)
+          if (inputs.noWarnMissing.isEmpty && !outCfg.disableInliner)
             logger.warn("Not running the inliner because there where linking errors.")
           analyzer
         }
@@ -366,7 +371,11 @@ object ScalaJSOptimizer {
       /** If true, the optimizer removes trees that have not been used in the
        *  last run from the cache. Otherwise, all trees that has been used once,
        *  are kept in memory. */
-      unCache: Boolean = true
+      unCache: Boolean = true,
+      /** If true, no inlining is performed */
+      disableInliner: Boolean = false,
+      /** If true, inlining is not performed incrementally */
+      batchInline: Boolean = false
   )
 
   // Private helpers -----------------------------------------------------------
