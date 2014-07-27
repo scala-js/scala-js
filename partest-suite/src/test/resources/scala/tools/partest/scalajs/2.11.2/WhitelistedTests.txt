@@ -1570,7 +1570,6 @@ neg/gadts1.scala
 neg/cyclics.scala
 neg/t5060.scala
 neg/scopes.scala
-run/virtpatmat_typetag.scala
 run/t4013.scala
 run/value-class-extractor-seq.scala
 run/macro-expand-tparams-explicit

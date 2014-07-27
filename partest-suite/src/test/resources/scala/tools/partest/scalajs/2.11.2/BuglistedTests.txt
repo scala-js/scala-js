@@ -5,3 +5,6 @@
 
 # Filed under #874
 run/t8601d.scala
+
+# Filed under #879
+run/virtpatmat_typetag.scala
