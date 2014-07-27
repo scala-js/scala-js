@@ -42,6 +42,16 @@ object ReflectionTest extends JasmineTest {
       expect((1.5: Any).getClass).toBe(classOf[java.lang.Double])
       expect(((): Any).getClass).toBe(classOf[scala.runtime.BoxedUnit])
     }
+
+    it("Class.isAssignableFrom should mimic runtime type tests behavior - #879") {
+      expect(classOf[Short].isAssignableFrom(classOf[Byte])).toBeTruthy
+      expect(classOf[Byte].isAssignableFrom(classOf[Byte])).toBeTruthy
+      expect(classOf[Byte].isAssignableFrom(classOf[Short])).toBeFalsy
+      expect(classOf[Int].isAssignableFrom(classOf[Byte])).toBeTruthy
+      expect(classOf[Double].isAssignableFrom(classOf[Int])).toBeTruthy
+      expect(classOf[Int].isAssignableFrom(classOf[Double])).toBeFalsy
+      expect(classOf[Long].isAssignableFrom(classOf[Int])).toBeFalsy
+    }
   }
 
   object TestObject
