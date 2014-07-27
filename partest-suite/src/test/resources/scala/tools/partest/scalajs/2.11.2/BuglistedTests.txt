@@ -2,6 +2,3 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
-
-# Filed under #879
-run/virtpatmat_typetag.scala

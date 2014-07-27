@@ -28,8 +28,27 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
     data.isInstance(obj)
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
-    if (this.isPrimitive || that.isPrimitive) this eq that
-    else this.isInstance(that.getFakeInstance())
+    if (this.isPrimitive || that.isPrimitive) {
+      /* This differs from the JVM specification to mimic the behavior of
+       * runtime type tests of primitive numeric types.
+       */
+      (this eq that) || {
+        if (this eq classOf[scala.Short])
+          (that eq classOf[scala.Byte])
+        else if (this eq classOf[scala.Int])
+          (that eq classOf[scala.Byte]) || (that eq classOf[scala.Short])
+        else if (this eq classOf[scala.Float])
+          (that eq classOf[scala.Byte]) || (that eq classOf[scala.Short]) ||
+          (that eq classOf[scala.Int])
+        else if (this eq classOf[scala.Double])
+          (that eq classOf[scala.Byte]) || (that eq classOf[scala.Short]) ||
+          (that eq classOf[scala.Int])  || (that eq classOf[scala.Float])
+        else
+          false
+      }
+    } else {
+      this.isInstance(that.getFakeInstance())
+    }
 
   private def getFakeInstance(): Object =
     data.getFakeInstance()
