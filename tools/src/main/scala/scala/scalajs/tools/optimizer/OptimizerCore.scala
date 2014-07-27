@@ -355,7 +355,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
           val isEqEq = (op == BinaryOp.===)
           (tlhs, trhs) match {
             case (_, PreTransTree(Null(), _)) if !tlhs.tpe.isNullable =>
-              BooleanLiteral(!isEqEq)
+              Block(
+                  finishTransformStat(tlhs),
+                  BooleanLiteral(!isEqEq))
             case _ =>
               foldBinaryOp(op, finishTransformExpr(tlhs),
                   finishTransformExpr(trhs))
