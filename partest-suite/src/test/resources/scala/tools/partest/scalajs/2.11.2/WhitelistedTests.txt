@@ -2931,4 +2931,5 @@ run/t8610.scala
 run/macro-rangepos-subpatterns
 run/t8611c.scala
 run/macroPlugins-isBlackbox
+run/t8601d.scala
 run/t8607.scala

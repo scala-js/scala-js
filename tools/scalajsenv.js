@@ -154,6 +154,14 @@ var ScalaJS = {
     }
   },
 
+  checkNonNull: function(obj) {
+    return obj !== null ? obj : ScalaJS.throwNullPointerException();
+  },
+
+  throwNullPointerException: function() {
+    throw new ScalaJS.c.jl_NullPointerException().init___();
+  },
+
   anyEqEq: function(lhs, rhs) {
     if (ScalaJS.isScalaJSObject(lhs) || typeof lhs === "number") {
       return ScalaJS.m.sr_BoxesRunTime().equals__O__O__Z(lhs, rhs);

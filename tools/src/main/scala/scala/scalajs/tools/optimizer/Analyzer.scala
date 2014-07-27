@@ -140,6 +140,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
     instantiateClassWith(s"jl_Character", s"init___C")
 
     instantiateClassWith("jl_ClassCastException", "init___T")
+    instantiateClassWith("jl_NullPointerException", "init___")
     instantiateClassWith("sjs_js_JavaScriptException", "init___sjs_js_Any")
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
