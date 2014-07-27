@@ -22,6 +22,9 @@ sealed trait JSModuleID {
     withConfigs(Some(configurations))
   }
 
+  def commonJSName(name: String): JSModuleID =
+    withJSDep(jsDep = jsDep.commonJSName(name))
+
   def dependsOn(names: String*): JSModuleID =
     withJSDep(jsDep = jsDep.dependsOn(names: _*))
 }

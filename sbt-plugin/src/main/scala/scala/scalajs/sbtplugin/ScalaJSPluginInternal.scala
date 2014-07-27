@@ -268,7 +268,7 @@ object ScalaJSPluginInternal {
           IO.createDirectory(output.getParentFile)
 
           import ScalaJSPackager._
-          (new ScalaJSPackager).packageJS(cp.jsLibs,
+          (new ScalaJSPackager).packageJS(cp.jsLibs.map(_._1),
                OutputConfig(WritableFileVirtualJSFile(output)),
                streams.value.log,
                strictMode = false)

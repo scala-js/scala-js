@@ -60,11 +60,26 @@ object JSDependencyManifest {
    *  resourceName -> ResolutionInfo
    */
   private def mergeManifests(flatDeps: Traversable[FlatJSDependency]) = {
+    @inline
+    def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
+      x.commonJSName.isDefined &&
+      y.commonJSName.isDefined &&
+      (x.resourceName == y.resourceName ^
+       x.commonJSName == y.commonJSName)
+    )
+
+    val conflicts = flatDeps.filter(x =>
+      flatDeps.exists(y => hasConflict(x,y)))
+
+    if (conflicts.nonEmpty)
+      throw new ConflictingNameException(conflicts.toList)
+
     flatDeps.groupBy(_.resourceName).mapValues { sameName =>
       ResolutionInfo(
         resourceName = sameName.head.resourceName,
         dependencies = sameName.flatMap(_.dependencies).toSet,
-        origins = sameName.map(_.origin).toList
+        origins = sameName.map(_.origin).toList,
+        commonJSName = sameName.flatMap(_.commonJSName).headOption
       )
     }
   }

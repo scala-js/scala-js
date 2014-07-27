@@ -67,7 +67,7 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         classpath match {
           case cp: CompleteIRClasspath =>
             // Load JS libraries
-            cp.jsLibs.foreach(context.evaluateFile(scope, _))
+            cp.jsLibs.foreach(lib => context.evaluateFile(scope, lib._1))
 
             // Add lazy loading classpath
             if (cp.scalaJSIR.nonEmpty) {

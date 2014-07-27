@@ -14,11 +14,12 @@ import scala.collection.immutable.{Seq, Traversable}
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.packager.ScalaJSPackager
+import scala.scalajs.tools.jsdep.ResolutionInfo
 
 /** A CompleteCIClasspath that contains only IR as cijsCode */
 class CompleteIRClasspath(
     /** The JS libraries the IR code depends on */
-    jsLibs: Seq[VirtualJSFile],
+    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
     /** The IR itself. Ancestor count is used for later ordering */
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     version: Option[String]

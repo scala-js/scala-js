@@ -36,3 +36,24 @@ object CyclicDependencyException {
     msg.toString()
   }
 }
+
+class ConflictingNameException(
+  val participants: List[FlatJSDependency]
+) extends DependencyException(
+  ConflictingNameException.mkMsg(participants))
+
+object ConflictingNameException {
+  private def mkMsg(parts: List[FlatJSDependency]) = {
+    val resName = parts.head.resourceName
+
+    val msg = new StringBuilder()
+    msg.append(s"Name conflicts in:\n")
+
+    for (p <- parts) {
+      msg.append(p)
+      msg.append('\n')
+    }
+
+    sys.error(msg.toString())
+  }
+}

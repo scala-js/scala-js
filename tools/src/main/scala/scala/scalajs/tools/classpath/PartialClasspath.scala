@@ -58,7 +58,8 @@ abstract class PartialClasspath(
    *  - Dependencies have cycles
    *  - Not all dependencies are available
    */
-  protected def resolveDependencies(filter: DependencyFilter): List[VirtualJSFile] = {
+  protected def resolveDependencies(
+      filter: DependencyFilter): List[(VirtualJSFile, ResolutionInfo)] = {
     val flatDeps = filter(dependencies.flatMap(_.flatten))
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
@@ -69,7 +70,8 @@ abstract class PartialClasspath(
     if (missingDeps.nonEmpty)
       throw new MissingJSLibException(missingDeps)
 
-    includeList.map(info => availableLibs(info.resourceName))
+    for (info <- includeList)
+      yield (availableLibs(info.resourceName), info)
   }
 
 }
