@@ -251,5 +251,16 @@ object RegressionTest extends JasmineTest {
       }
       foo(2, 4)
     }
+
+    it("null.synchronized should throw - #874") {
+      expect(() => null.synchronized(5)).toThrow
+    }
+
+    it("x.synchronized should preserve side-effects of x") {
+      var c = 0
+      def x = { c += 1; this }
+      expect(x.synchronized(5)).toEqual(5)
+      expect(c).toEqual(1)
+    }
   }
 }

@@ -2282,7 +2282,19 @@ abstract class GenJSCode extends plugins.PluginComponent
       /* JavaScript is single-threaded, so we can drop the
        * synchronization altogether.
        */
-      genStatOrExpr(tree.args.head)
+      val Apply(Select(receiver, _), List(arg)) = tree
+      val newReceiver = genExpr(receiver)
+      val newArg = genStatOrExpr(arg)
+      newReceiver match {
+        case js.This() =>
+          // common case for which there is no side-effect nor NPE
+          newArg
+        case _ =>
+          js.Block(
+              js.CallHelper("checkNonNull", newReceiver)(
+                  newReceiver.tpe)(newReceiver.pos),
+              newArg)(newArg.pos)
+      }
     }
 
     /** Gen JS code for a coercion */
