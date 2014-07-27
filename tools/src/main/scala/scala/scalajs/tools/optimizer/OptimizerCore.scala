@@ -1945,7 +1945,9 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       }
     }
 
-    if (mutable) {
+    if (value.tpe.isNothingType) {
+      cont(value)
+    } else if (mutable) {
       withDedicatedVar(RefinedType(declaredType))
     } else {
       val refinedType = value.tpe
