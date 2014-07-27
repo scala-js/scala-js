@@ -914,57 +914,72 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     implicit val pos = tree.pos
 
     pretransformExpr(receiver) { treceiver =>
-      tryInlineAnonFunction(treceiver, methodName, args, isStat,
-          usePreTransform)(cont).getOrElse {
-        def treeNotInlined =
-          cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-              args.map(transformExpr))(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
+      def treeNotInlined =
+        cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
+            args.map(transformExpr))(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
 
-        if (isReflProxyName(methodName)) {
-          // Never inline reflective proxies
-          treeNotInlined
-        } else {
-          val ClassType(cls) = treceiver.tpe.base
-          val impls =
-            if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
-            else dynamicCall(cls, methodName)
-          if (impls.isEmpty || impls.exists(scope.implsBeingInlined)) {
-            // isEmpty could happen, have to leave it as is for the TypeError
-            treeNotInlined
-          } else if (impls.size == 1) {
-            val target = impls.head
-            if (!target.inlineable) {
+      treceiver.tpe.base match {
+        case NothingType =>
+          cont(treceiver)
+        case NullType =>
+          cont(PreTransTree(Block(
+              finishTransformStat(treceiver),
+              CallHelper("throwNullPointerException")(NothingType))))
+        case ClassType(cls) =>
+          tryInlineAnonFunction(treceiver, methodName, args, isStat,
+              usePreTransform)(cont).getOrElse {
+
+            if (isReflProxyName(methodName)) {
+              // Never inline reflective proxies
               treeNotInlined
             } else {
-              pretransformExprs(args) { targs =>
-                inline(Some(treceiver), targs, target, isStat,
-                    usePreTransform)(cont)
-              }
-            }
-          } else {
-            if (impls.forall(_.isTraitImplForwarder)) {
-              val reference = impls.head
-              val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
-                reference.originalDef.body
-              if (!impls.tail.forall(_.originalDef.body match {
-                case TraitImplApply(ClassType(`traitImpl`),
-                    Ident(`methodName`, _), _) => true
-                case _ => false
-              })) {
-                // Not all calling the same method in the same trait impl
+              val impls =
+                if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
+                else dynamicCall(cls, methodName)
+              if (impls.isEmpty || impls.exists(scope.implsBeingInlined)) {
+                // isEmpty could happen, have to leave it as is for the TypeError
                 treeNotInlined
+              } else if (impls.size == 1) {
+                val target = impls.head
+                if (!target.inlineable) {
+                  treeNotInlined
+                } else {
+                  pretransformExprs(args) { targs =>
+                    inline(Some(treceiver), targs, target, isStat,
+                        usePreTransform)(cont)
+                  }
+                }
               } else {
-                pretransformExprs(args) { targs =>
-                  inline(Some(treceiver), targs, reference, isStat,
-                      usePreTransform)(cont)
+                if (impls.forall(_.isTraitImplForwarder)) {
+                  val reference = impls.head
+                  val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
+                    reference.originalDef.body
+                  if (!impls.tail.forall(_.originalDef.body match {
+                    case TraitImplApply(ClassType(`traitImpl`),
+                        Ident(`methodName`, _), _) => true
+                    case _ => false
+                  })) {
+                    // Not all calling the same method in the same trait impl
+                    treeNotInlined
+                  } else {
+                    pretransformExprs(args) { targs =>
+                      inline(Some(treceiver), targs, reference, isStat,
+                          usePreTransform)(cont)
+                    }
+                  }
+                } else {
+                  // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
+                  treeNotInlined
                 }
               }
-            } else {
-              // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
-              treeNotInlined
             }
           }
-        }
+        case _ =>
+          /* Only AnyType should still happen here (if it is a reflective
+           * call), if the IR is well typed. But in any case we're not going
+           * to crash now, and instead just not inline the thing.
+           */
+          treeNotInlined
       }
     }
   }
