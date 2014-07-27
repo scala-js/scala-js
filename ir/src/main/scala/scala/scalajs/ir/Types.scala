@@ -111,4 +111,66 @@ object Types {
 
   /** No type. */
   case object NoType extends Type
+
+  /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
+   *  [[NoType]] is never a subtype or supertype of anything (including
+   *  itself). All other types are subtypes of themselves.
+   *  @param isSubclass A function testing whether a class/interface is a
+   *                    subclass of another class/interface.
+   */
+  def isSubtype(lhs: Type, rhs: Type)(
+      isSubclass: (String, String) => Boolean): Boolean = {
+    import Definitions._
+
+    (lhs != NoType && rhs != NoType) && {
+      (lhs == rhs) ||
+      ((lhs, rhs) match {
+        case (_, AnyType)     => true
+        case (NothingType, _) => true
+
+        case (ClassType(RuntimeLongClass), ClassType(cls)) =>
+          isSubclass(RuntimeLongClass, cls) || isSubclass(BoxedLongClass, cls)
+
+        case (ClassType(lhsClass), ClassType(rhsClass)) =>
+          isSubclass(lhsClass, rhsClass)
+
+        case (NullType, ClassType(_))    => true
+        case (NullType, ArrayType(_, _)) => true
+        case (NullType, DynType)         => true
+
+        case (UndefType, ClassType(cls)) =>
+          isSubclass(BoxedUnitClass, cls)
+        case (BooleanType, ClassType(cls)) =>
+          isSubclass(BoxedBooleanClass, cls)
+        case (IntType, ClassType(cls)) =>
+          isSubclass(BoxedIntegerClass, cls) ||
+          cls == BoxedByteClass ||
+          cls == BoxedShortClass
+        case (DoubleType, ClassType(cls)) =>
+          isSubclass(BoxedDoubleClass, cls) ||
+          cls == BoxedFloatClass
+        case (StringType, ClassType(cls)) =>
+          isSubclass(StringClass, cls)
+
+        case (IntType, DoubleType) => true
+
+        case (ArrayType(lhsBase, lhsDims), ArrayType(rhsBase, rhsDims)) =>
+          if (lhsDims < rhsDims) {
+            false // because Array[A] </: Array[Array[A]]
+          } else if (lhsDims > rhsDims) {
+            rhsBase == ObjectClass // because Array[Array[A]] <: Array[Object]
+          } else { // lhsDims == rhsDims
+            // lhsBase must be <: rhsBase
+            if (isPrimitiveClass(lhsBase) || isPrimitiveClass(rhsBase)) {
+              lhsBase == rhsBase
+            } else {
+              isSubclass(lhsBase, rhsBase)
+            }
+          }
+
+        case _ =>
+          false
+      })
+    }
+  }
 }

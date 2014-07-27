@@ -740,56 +740,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def isSubtype(lhs: Type, rhs: Type)(implicit ctx: ErrorContext): Boolean = {
-    (lhs != NoType && rhs != NoType) && {
-      (lhs == rhs) ||
-      ((lhs, rhs) match {
-        case (_, AnyType)     => true
-        case (NothingType, _) => true
-
-        case (ClassType(RuntimeLongClass), ClassType(cls)) =>
-          isSubclass(RuntimeLongClass, cls) || isSubclass(BoxedLongClass, cls)
-
-        case (ClassType(lhsClass), ClassType(rhsClass)) =>
-          isSubclass(lhsClass, rhsClass)
-
-        case (NullType, ClassType(_))    => true
-        case (NullType, ArrayType(_, _)) => true
-        case (NullType, DynType)         => true
-
-        case (UndefType, ClassType(cls)) =>
-          isSubclass(BoxedUnitClass, cls)
-        case (BooleanType, ClassType(cls)) =>
-          isSubclass(BoxedBooleanClass, cls)
-        case (IntType, ClassType(cls)) =>
-          isSubclass(BoxedIntegerClass, cls) ||
-          cls == BoxedByteClass ||
-          cls == BoxedShortClass
-        case (DoubleType, ClassType(cls)) =>
-          isSubclass(BoxedDoubleClass, cls) ||
-          cls == BoxedFloatClass
-        case (StringType, ClassType(cls)) =>
-          isSubclass(StringClass, cls)
-
-        case (IntType, DoubleType) => true
-
-        case (ArrayType(lhsBase, lhsDims), ArrayType(rhsBase, rhsDims)) =>
-          if (lhsDims < rhsDims) {
-            false // because Array[A] </: Array[Array[A]]
-          } else if (lhsDims > rhsDims) {
-            rhsBase == ObjectClass // because Array[Array[A]] <: Array[Object]
-          } else { // lhsDims == rhsDims
-            // lhsBase must be <: rhsBase
-            if (isPrimitiveClassName(lhsBase) || isPrimitiveClassName(rhsBase)) {
-              lhsBase == rhsBase
-            } else {
-              isSubclass(lhsBase, rhsBase)
-            }
-          }
-
-        case _ =>
-          false
-      })
-    }
+    Types.isSubtype(lhs, rhs)(isSubclass)
   }
 
   class Env(
@@ -886,10 +837,6 @@ object IRChecker {
     def apply(tree: Tree): ErrorContext =
       new ErrorContext(tree)
   }
-
-  private val isPrimitiveClassName = Set(
-    "V", "Z", "C", "B", "S", "I", "J", "F", "D"
-  )
 
   private def isConstructorName(name: String): Boolean =
     name.startsWith("init___")
