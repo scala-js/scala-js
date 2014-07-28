@@ -496,7 +496,9 @@ object ScalaJSBuild extends Build {
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
           scalaJSSourceMapSettings,
-          exportJars := true
+          exportJars := true,
+          jsDependencies +=
+            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip"
       ) ++ (
           scalaJSExternalCompileSettings
       )
