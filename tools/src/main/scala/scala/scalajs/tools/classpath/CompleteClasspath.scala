@@ -12,13 +12,23 @@ package scala.scalajs.tools.classpath
 import scala.collection.immutable.Seq
 
 import scala.scalajs.tools.io.VirtualJSFile
+import scala.scalajs.tools.jsdep.ResolutionInfo
 
 /** A classpath where nothing is missing. Therefore:
  *  - All JS libraries are resolved and ordered
  *  - The CoreJSLibs are present
  *  - Nothing can be added anymore
  */
-abstract class CompleteClasspath(val version: Option[String]) {
+abstract class CompleteClasspath(
+    /** Resolved JS libraries */
+    val jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    val version: Option[String]
+) {
+
+  /** Scala.js code (non-library code, includes core libs) */
+  def scalaJSCode: Seq[VirtualJSFile]
+
   /** All code in this complete classpath */
-  def allCode: Seq[VirtualJSFile]
+  final def allCode: Seq[VirtualJSFile] =
+    jsLibs.map(_._1) ++ scalaJSCode
 }

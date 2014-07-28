@@ -9,19 +9,20 @@
 
 package scala.scalajs.tools.classpath
 
-import scala.collection.immutable.Seq
-
-import scala.scalajs.tools.io.VirtualJSFile
 import scala.scalajs.tools.jsdep.ResolutionInfo
 
-/** A complete classpath with non-Closure intended code: Any code that may not
- *  go through the Google Closure Compiler (in advanced mode).
- *  The ScalaJSClosureOptimizer emits such a classpath.
- */
-class CompleteNCClasspath(
-    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
-    val ncjsCode: Seq[VirtualJSFile],
-    version: Option[String]
-) extends CompleteClasspath(jsLibs, version) {
-  override def scalaJSCode: Seq[VirtualJSFile] = ncjsCode
+class MissingJSLibException(val dependencies: List[ResolutionInfo])
+  extends Exception(MissingJSLibException.mkMsg(dependencies))
+
+object MissingJSLibException {
+  private def mkMsg(deps: List[ResolutionInfo]): String = {
+    val msg = new StringBuilder()
+    msg.append("Missing dependencies: \n")
+    for (d <- deps) {
+      msg.append(s"- ${d.resourceName}")
+      msg.append(s" originating from: ${d.origins.mkString(", ")}\n")
+    }
+    msg.toString()
+  }
 }
+
