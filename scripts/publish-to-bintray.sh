@@ -10,11 +10,11 @@ fi
 # Subshell to generate SBT commands
 (
     SET_BINTRAY="set PublishToBintray.publishToBintraySettings ++ Seq(publishMavenStyle := false)"
-    FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0 2.11.1"
-    BIN_VERSIONS="2.10.4 2.11.1"
+    FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0 2.11.1 2.11.2"
+    BIN_VERSIONS="2.10.4 2.11.2"
     SBT_VERSION="2.10.4"
 
-    LIBS="library jasmineTestFramework tools testBridge"
+    LIBS="library javalibEx jasmineTestFramework tools testBridge"
 
     # Publish compiler
     echo "project compiler"
