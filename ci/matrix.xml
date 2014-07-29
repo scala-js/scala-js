@@ -46,12 +46,12 @@
     sh ci/check-partest-coverage.sh $scala
   ]]></task>
 
-  <task id="tools"><![CDATA[
-    sbt ++$scala tools/package tools/test
+  <task id="tools-cli"><![CDATA[
+    sbt ++$scala tools/package tools/test cli/assembly
   ]]></task>
 
-  <task id="sbtplugin"><![CDATA[
-    sbt ++$scala tools/package tools/test sbtPlugin/package sbtPlugin/test
+  <task id="tools-cli-sbtplugin"><![CDATA[
+    sbt ++$scala tools/package tools/test cli/assembly sbtPlugin/package sbtPlugin/test
   ]]></task>
 
   <task id="partestc"><![CDATA[
@@ -97,16 +97,10 @@
     <run task="main">
       <v n="scala">2.11.2</v>
     </run>
-    <run task="sbtplugin">
+    <run task="tools-cli-sbtplugin">
       <v n="scala">2.10.4</v>
     </run>
-    <run task="tools">
-      <v n="scala">2.11.0</v>
-    </run>
-    <run task="tools">
-      <v n="scala">2.11.1</v>
-    </run>
-    <run task="tools">
+    <run task="tools-cli">
       <v n="scala">2.11.2</v>
     </run>
     <run task="partestc">
