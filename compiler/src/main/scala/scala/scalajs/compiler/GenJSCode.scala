@@ -1513,10 +1513,28 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
+      def patchedLinkedClassOfClass(sym: Symbol): Symbol = {
+        /* Work around a bug of scalac with linkedClassOfClass where package
+         * objects are involved (the companion class would somehow exist twice
+         * in the scope, making an assertion fail in Symbol.suchThat).
+         * Basically this inlines linkedClassOfClass up to companionClass,
+         * then replaces the `suchThat` by a `filter` and `head`.
+         */
+        val flatOwnerInfo = {
+          // inline Symbol.flatOwnerInfo because it is protected
+          if (sym.needsFlatClasses)
+            sym.info
+          sym.owner.rawInfo
+        }
+        val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
+        if (!result.isOverloaded) result
+        else result.alternatives.head
+      }
+
       def isRawJSCtorDefaultParam = {
         sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
         sym.owner.isModuleClass &&
-        isRawJSType(sym.owner.module.companionClass.tpe) &&
+        isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe) &&
         nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
       }
 
