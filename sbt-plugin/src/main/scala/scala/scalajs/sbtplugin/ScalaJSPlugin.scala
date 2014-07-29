@@ -21,9 +21,10 @@ import scala.scalajs.ir.ScalaJSVersions
 object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSVersion = ScalaJSVersions.current
   val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
+  val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
+
+  @deprecated("Meaningless. Use the sbt scalaVersion setting instead.", "0.5.3")
   val scalaJSScalaVersion = "2.11.0"
-  val scalaJSBinaryVersion =
-    ScalaJSCrossVersion.binaryScalaJSVersion(scalaJSVersion)
 
   object ScalaJSKeys {
     import KeyRanks._

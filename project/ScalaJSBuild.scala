@@ -78,7 +78,7 @@ object ScalaJSBuild extends Build {
   )
 
   val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := scalaJSScalaVersion,
+      scalaVersion := "2.11.0",
       scalacOptions ++= Seq(
           "-deprecation",
           "-unchecked",

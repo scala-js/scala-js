@@ -11,19 +11,25 @@ package scala.scalajs.sbtplugin
 
 import sbt._
 
-import ScalaJSPlugin.scalaJSBinaryVersion
+import scala.scalajs.ir.ScalaJSVersions
 
 object ScalaJSCrossVersion {
   private val scalaJSVersionUnmapped: String => String =
-    _ => s"sjs$scalaJSBinaryVersion"
+    _ => s"sjs$currentBinaryVersion"
 
   private val scalaJSVersionMap: String => String =
-    version => s"sjs${scalaJSBinaryVersion}_$version"
+    version => s"sjs${currentBinaryVersion}_$version"
 
-  private final val ReleaseVersion = raw"""(\d+)\.(\d+)\.(\d+)""".r
+  private final val ReleaseVersion =
+    raw"""(\d+)\.(\d+)\.(\d+)""".r
+  private final val MinorSnapshotVersion =
+    raw"""(\d+)\.(\d+)\.([1-9]\d*)-SNAPSHOT""".r
+
+  val currentBinaryVersion = binaryScalaJSVersion(ScalaJSVersions.current)
 
   def binaryScalaJSVersion(full: String): String = full match {
     case ReleaseVersion(major, minor, release) => s"$major.$minor"
+    case MinorSnapshotVersion(major, minor, _) => s"$major.$minor"
     case _                                     => full
   }
 
