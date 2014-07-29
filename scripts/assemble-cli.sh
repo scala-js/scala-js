@@ -51,7 +51,7 @@ if [ "$2" != "nobuild" ]; then
 fi
 
 # Copy stuff to right location
-BASE=$(dirname $0)
+BASE="$(dirname $0)/.."
 
 # Target directories
 TRG_BASE="$BASE/cli/pack"
