@@ -14,6 +14,19 @@ class StringBuffer(private var content: String) extends CharSequence
 
   def append(b: scala.Boolean): StringBuffer = append(b.toString())
   def append(c: scala.Char): StringBuffer = append(c.toString())
+
+  def append(str: Array[scala.Char]): StringBuffer =
+    append(str, 0, str.length)
+
+  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuffer = {
+    var i = 0
+    while (i < len) {
+      content += str(i + offset)
+      i += 1
+    }
+    this
+  }
+
   def append(b: scala.Byte): StringBuffer = append(b.toString())
   def append(s: scala.Short): StringBuffer = append(s.toString())
   def append(i: scala.Int): StringBuffer = append(i.toString())

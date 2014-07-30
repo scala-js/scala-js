@@ -14,6 +14,19 @@ class StringBuilder(private var content: String) extends CharSequence
 
   def append(b: scala.Boolean): StringBuilder = append(b.toString())
   def append(c: scala.Char): StringBuilder = append(c.toString())
+
+  def append(str: Array[scala.Char]): StringBuilder =
+    append(str, 0, str.length)
+
+  def append(str: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
+    var i = 0
+    while (i < len) {
+      content += str(i + offset)
+      i += 1
+    }
+    this
+  }
+
   def append(b: scala.Byte): StringBuilder = append(b.toString())
   def append(s: scala.Short): StringBuilder = append(s.toString())
   def append(i: scala.Int): StringBuilder = append(i.toString())
