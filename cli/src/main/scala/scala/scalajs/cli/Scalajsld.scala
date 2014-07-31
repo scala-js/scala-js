@@ -37,7 +37,8 @@ object Scalajsld {
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
     checkIR: Boolean = false,
-    stdLib: Option[File] = None)
+    stdLib: Option[File] = None,
+    logLevel: Level = Level.Info)
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[Options]("scalajsld") {
@@ -88,6 +89,16 @@ object Scalajsld {
         .text("Location of Scala.js standard libarary. This is set by the " +
             "runner script and automatically prepended to the classpath. " +
             "Use -n to not include it.")
+      opt[Unit]('d', "debug")
+        .action { (_, c) => c.copy(logLevel = Level.Debug) }
+        .text("Debug mode: Show full log")
+      opt[Unit]('q', "quiet")
+        .action { (_, c) => c.copy(logLevel = Level.Warn) }
+        .text("Only show warnings & errors")
+      opt[Unit]("really-quiet")
+        .abbr("qq")
+        .action { (_, c) => c.copy(logLevel = Level.Error) }
+        .text("Only show errors")
       version("version")
         .abbr("v")
         .text("Show scalajsld version")
@@ -108,7 +119,7 @@ object Scalajsld {
         import ScalaJSPackager._
         (new ScalaJSPackager).packageJS(cp.jsLibs.map(_._1),
             OutputConfig(WritableFileVirtualJSFile(jsout)),
-            new ScalaConsoleLogger)
+            newLogger(options))
       }
 
       // Link Scala.js code
@@ -134,7 +145,7 @@ object Scalajsld {
             output = output,
             wantSourceMap = options.sourceMap,
             relativizeSourceMapBase = options.relativizeSourceMap),
-        new ScalaConsoleLogger)
+        newLogger(options))
   }
 
   private def fullOpt(cp: CompleteCIClasspath,
@@ -148,7 +159,7 @@ object Scalajsld {
             wantSourceMap = options.sourceMap,
             prettyPrint = options.prettyPrint,
             relativizeSourceMapBase = options.relativizeSourceMap),
-        new ScalaConsoleLogger)
+        newLogger(options))
   }
 
   private def fastOpt(cp: CompleteIRClasspath,
@@ -162,7 +173,10 @@ object Scalajsld {
             wantSourceMap = options.sourceMap,
             checkIR = options.checkIR,
             relativizeSourceMapBase = options.relativizeSourceMap),
-        new ScalaConsoleLogger)
+        newLogger(options))
   }
+
+  private def newLogger(options: Options) =
+    new ScalaConsoleLogger(options.logLevel)
 
 }
