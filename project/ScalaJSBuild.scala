@@ -15,8 +15,10 @@ import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import ExternalCompile.scalaJSExternalCompileSettings
+import Implicits._
 
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.io.MemVirtualJSFile
 
 import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
 import AssemblyKeys.{assembly, assemblyOption}
@@ -240,7 +242,34 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ publishSettings ++ (
           useLibraryButDoNotDependOnIt ++
           commonToolsSettings
-      )
+      ) ++ inConfig(Test) {
+        // Redefine test to run Node.js and link HelloWorld
+        val stagedRunSetting = test := {
+          val cp = {
+            for (e <- (fullClasspath in helloworld in Compile).value)
+              yield JSUtils.toJSstr(e.data.getAbsolutePath)
+          }
+
+          val code = {
+            s"""
+            var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
+            var run = "helloworld.HelloWorld().main();";
+
+            eval("(function() { " + lib + "; " + run + "}).call(this);");
+            """
+          }
+
+          val launcher = new MemVirtualJSFile("Generated launcher file")
+            .withContent(code)
+
+          jsEnv.value.runJS(execClasspath.value, launcher,
+              streams.value.log, jsConsole.value)
+        }
+
+        Seq(test := error("Can't run toolsJS/test in preLink stage")) ++
+        inTask(fastOptStage)(stagedRunSetting) ++
+        inTask(fullOptStage)(stagedRunSetting)
+      }
   ).dependsOn(compiler % "plugin", javalibEx)
 
   lazy val plugin: Project = Project(
