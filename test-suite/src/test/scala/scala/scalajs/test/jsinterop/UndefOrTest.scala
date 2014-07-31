@@ -164,5 +164,27 @@ object UndefOrTest extends JasmineTest {
       expect(none[String].toRight("left").isInstanceOf[Left[_, _]]).toBeTruthy
     }
 
+    it("toOption") {
+      expect(some("foo").toOption == Some("foo")).toBeTruthy
+      expect(none.toOption == None).toBeTruthy
+    }
+
   }
+
+  describe("scala.scalajs.js.JSConverters.JSRichOption") {
+
+    import js.JSConverters._
+
+    it("should provide orUndefined") {
+      expect(Some("asdf").orUndefined).toEqual("asdf")
+      expect((None: Option[String]).orUndefined).toBeUndefined
+
+      // This doesn't work on 2.10, since it doesn't infer
+      // Nothing <:< js.Any to implicitly convert UndefOr[Nothing] to
+      // js.Any
+      // expect(None.orUndefined).toBeUndefined
+    }
+
+  }
+
 }
