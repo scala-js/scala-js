@@ -847,16 +847,21 @@ object Serializers {
         case _: Function =>
           sys.error(s"Found unrecognized function node at ${tree.pos}:\n$tree")
 
-        case _: MethodDef =>
-          /* We are here because useHacks050 is true. In that case, useHacks052
-           * is also true.
-           */
-          val m = super.transformDef(tree).asInstanceOf[MethodDef]
-          new FixMethodDefTransformer().fixMethodDef(m)
-
         case _ =>
           tree
       }
+    }
+
+    override def transformDef(tree: Tree): Tree = tree match {
+      case _: MethodDef =>
+        /* We are here because useHacks050 is true. In that case, useHacks052
+         * is also true.
+         */
+        val m = super.transformDef(tree).asInstanceOf[MethodDef]
+        new FixMethodDefTransformer().fixMethodDef(m)
+
+      case _ =>
+        super.transformDef(tree)
     }
   }
 
