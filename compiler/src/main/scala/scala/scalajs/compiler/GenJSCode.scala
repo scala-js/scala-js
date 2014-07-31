@@ -2464,16 +2464,19 @@ abstract class GenJSCode extends plugins.PluginComponent
         val callTrg = js.VarRef(callTrgIdent, mutable = false)(receiverType)
 
         val arguments = args zip sym.tpe.params map { case (arg, param) =>
-          if (isPrimitiveValueType(param.tpe)) {
-            arg match {
-              case Apply(_, List(result)) if currentRun.runDefinitions.isBox(arg.symbol) =>
-                genExpr(result)
-              case _ =>
-                makePrimitiveUnbox(genExpr(arg), param.tpe)
-            }
-          } else {
-            genExpr(arg)
-          }
+          /* No need for enteringPosterasure, because value classes are not
+           * supported as parameters of methods in structural types.
+           * We could do it for safety and future-proofing anyway, except that
+           * I am weary of calling enteringPosterasure for a reflective method
+           * symbol.
+           *
+           * Note also that this will typically unbox a primitive value that
+           * has just been boxed, or will .asInstanceOf[T] an expression which
+           * is already of type T. But the optimizer will get rid of that, and
+           * reflective calls are not numerous, so we don't complicate the
+           * compiler to eliminate them early.
+           */
+          fromAny(genExpr(arg), param.tpe)
         }
 
         val proxyIdent = encodeMethodSym(sym, reflProxy = true)
