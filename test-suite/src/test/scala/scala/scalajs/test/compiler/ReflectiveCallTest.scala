@@ -300,5 +300,32 @@ object ReflectiveCallTest extends JasmineTest {
       expect(pimpIt(2).foo(2,4)).toEqual(8)
     }
 
+    it("should unbox all types of arguments - #899") {
+      class Foo {
+        def makeInt: Int = 5
+        def testInt(x: Int): Unit = expect(x).toEqual(5)
+
+        def makeRef: Option[String] = Some("hi")
+        def testRef(x: Option[String]): Unit = expect(x == Some("hi")).toBeTruthy
+      }
+
+      /* Note: we should also test with value classes, except that Scala itself
+       * does not support value classes as parameters or result type of
+       * methods in structural types.
+       */
+
+      def test(foo: {
+        def makeInt: Int
+        def testInt(x: Int): Unit
+        def makeRef: Option[String]
+        def testRef(x: Option[String]): Unit
+      }): Unit = {
+        foo.testInt(foo.makeInt)
+        foo.testRef(foo.makeRef)
+      }
+
+      test(new Foo)
+    }
+
   }
 }
