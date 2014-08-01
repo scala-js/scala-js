@@ -229,6 +229,12 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
    */
   @inline final def toLeft[X](right: => X): Either[A, X] =
     if (isEmpty) Right(right) else Left(this.forceGet)
+
+  /** Returns a [[scala.Some]] containing this $options's value
+   *  if this $option is nonempty, [[scala.None]] otherwise.
+   */
+  @inline final def toOption: Option[A] =
+    if (isEmpty) None else Some(this.forceGet)
 }
 
 object UndefOrOps {
