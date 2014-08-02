@@ -4,6 +4,7 @@ import scala.scalajs.js
 
 trait JasmineEnv extends js.Object {
   def Clock: JasmineEnv.Clock
+  def getEnv(): JasmineContext = ???
 }
 
 object JasmineEnv {
