@@ -579,8 +579,6 @@ object JSDesugaring {
           allowSideEffects && test(receiver) && test(method) && (args forall test)
         case JSApply(fun, args) =>
           allowSideEffects && test(fun) && (args forall test)
-        case JSDelete(obj, prop) =>
-          allowSideEffects && test(obj) && test(prop)
 
         // Non-expressions
         case _ => false

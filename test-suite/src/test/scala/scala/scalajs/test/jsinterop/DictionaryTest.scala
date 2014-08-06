@@ -46,5 +46,10 @@ object DictionaryTest extends JasmineTest {
       expect(obj.get("world").isDefined).toBeFalsy
     }
 
+    it("should treat delete as a statement - #907") {
+      val obj = js.Dictionary("a" -> "A")
+      obj.delete("a")
+    }
+
   }
 }
