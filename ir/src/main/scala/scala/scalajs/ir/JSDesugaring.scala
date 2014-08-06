@@ -266,7 +266,7 @@ object JSDesugaring {
 
         case JSDelete(obj, prop) =>
           unnest(obj, prop) { (newObj, newProp) =>
-            JSDelete(newObj, newProp)
+            JSDelete(transformExpr(newObj), transformExpr(newProp))
           }
 
         // Treat 'return' as an LHS
