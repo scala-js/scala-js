@@ -29,7 +29,8 @@ object DictionaryTest extends JasmineTest {
     }
 
     // This doesn't work on Rhino due to lack of full strict mode support - #679
-    xit("should behave as specified when deleting a non-configurable property - #461 - #679") {
+    unless("rhino").
+    it("should behave as specified when deleting a non-configurable property - #461 - #679") {
       val obj = js.Dictionary.empty[js.Any]
       js.Object.defineProperty(obj.asInstanceOf[js.Object], "nonconfig",
           js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
