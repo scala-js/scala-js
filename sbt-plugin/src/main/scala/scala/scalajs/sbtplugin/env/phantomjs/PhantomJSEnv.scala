@@ -81,32 +81,44 @@ class PhantomJSEnv(
   override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
       new MemVirtualJSFile("bindPolyfill.js").withContent(
           """
-          |// Polyfill for Function.bind in Mozilla MDN by Mozilla Contributors
-          |// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind
-          |// Licensed under CC-BY-SA 2.5
-          |if (!Function.prototype.bind) {
-          |  Function.prototype.bind = function (oThis) {
-          |    if (typeof this !== "function") {
-          |      // closest thing possible to the ECMAScript 5 internal IsCallable function
-          |      throw new TypeError("Function.prototype.bind - what is trying to be bound is not callable");
-          |    }
+          |// Polyfill for Function.bind from Facebook react:
+          |// https://github.com/facebook/react/blob/3dc10749080a460e48bee46d769763ec7191ac76/src/test/phantomjs-shims.js
+          |// Originally licensed under Apache 2.0
+          |(function() {
           |
-          |    var aArgs = Array.prototype.slice.call(arguments, 1),
-          |        fToBind = this,
-          |        fNOP = function () {},
-          |        fBound = function () {
-          |          return fToBind.apply(this instanceof fNOP && oThis
-          |                                 ? this
-          |                                 : oThis,
-          |                               aArgs.concat(Array.prototype.slice.call(arguments)));
-          |        };
+          |  var Ap = Array.prototype;
+          |  var slice = Ap.slice;
+          |  var Fp = Function.prototype;
           |
-          |    fNOP.prototype = this.prototype;
-          |    fBound.prototype = new fNOP();
+          |  if (!Fp.bind) {
+          |    // PhantomJS doesn't support Function.prototype.bind natively, so
+          |    // polyfill it whenever this module is required.
+          |    Fp.bind = function(context) {
+          |      var func = this;
+          |      var args = slice.call(arguments, 1);
           |
-          |    return fBound;
-          |  };
-          |}
+          |      function bound() {
+          |        var invokedAsConstructor = func.prototype && (this instanceof func);
+          |        return func.apply(
+          |          // Ignore the context parameter when invoking the bound function
+          |          // as a constructor. Note that this includes not only constructor
+          |          // invocations using the new keyword but also calls to base class
+          |          // constructors such as BaseClass.call(this, ...) or super(...).
+          |          !invokedAsConstructor && context || this,
+          |          args.concat(slice.call(arguments))
+          |        );
+          |      }
+          |
+          |      // The bound function must share the .prototype of the unbound
+          |      // function so that any object created by one constructor will count
+          |      // as an instance of both constructors.
+          |      bound.prototype = func.prototype;
+          |
+          |      return bound;
+          |    };
+          |  }
+          |
+          |})();
           |""".stripMargin
       )
   )
