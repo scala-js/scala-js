@@ -19,11 +19,11 @@
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
     sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
-    sbt ++$scala testSuite/test \
+    sbt ++$scala "testSuite/testOnly -- -- -trhino" \
          "testSuite/packageStage::testOnly -- -- -ttypedarray" \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray" \
          "testSuite/fullOptStage::testOnly -- -- -ttypedarray" \
-         "noIrCheckTest/testOnly" \
+         "noIrCheckTest/testOnly -- -- -trhino" \
          "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray" \
          "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray" \
          "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray" &&
@@ -37,7 +37,7 @@
          "noIrCheckTest/fullOptStage::testOnly -- -- -tphantomjs" \
          testSuite/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
-         ++$scala testSuite/test \
+         ++$scala "testSuite/testOnly -- -- -trhino" \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray" \
          "testSuite/fullOptStage::testOnly -- -- -ttypedarray" &&
     sbt ++$scala javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray &&
