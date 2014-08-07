@@ -266,7 +266,7 @@ object JSDesugaring {
 
         case JSDelete(obj, prop) =>
           unnest(obj, prop) { (newObj, newProp) =>
-            JSDelete(newObj, newProp)
+            JSDelete(transformExpr(newObj), transformExpr(newProp))
           }
 
         // Treat 'return' as an LHS
@@ -579,8 +579,6 @@ object JSDesugaring {
           allowSideEffects && test(receiver) && test(method) && (args forall test)
         case JSApply(fun, args) =>
           allowSideEffects && test(fun) && (args forall test)
-        case JSDelete(obj, prop) =>
-          allowSideEffects && test(obj) && test(prop)
 
         // Non-expressions
         case _ => false

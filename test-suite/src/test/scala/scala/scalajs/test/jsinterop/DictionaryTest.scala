@@ -46,5 +46,21 @@ object DictionaryTest extends JasmineTest {
       expect(obj.get("world").isDefined).toBeFalsy
     }
 
+    it("should treat delete as a statement - #907") {
+      val obj = js.Dictionary("a" -> "A")
+      obj.delete("a")
+    }
+
+    it("should desugar arguments to delete statements - #908") {
+      val kh = js.Dynamic.literal( key = "a" ).asInstanceOf[KeyHolder]
+      val dict = js.Dictionary[String]("a" -> "A")
+      def a[T](foo: String) = dict.asInstanceOf[T]
+      a[js.Dictionary[String]]("foo").delete(kh.key)
+    }
+
+  }
+
+  trait KeyHolder extends js.Object {
+    def key: String = ???
   }
 }
