@@ -46,7 +46,8 @@ class ScalaJSClosureOptimizer {
       optimizeFiles(inputs.copy(input = cp.cijsCode), outCfg, logger)
     }
 
-    new CompleteNCClasspath(cp.jsLibs, outCfg.output :: Nil, cp.version)
+    new CompleteNCClasspath(cp.jsLibs, outCfg.output :: Nil,
+        cp.requiresDOM, cp.version)
   }
 
   def optimizeFiles(inputs: Inputs[Seq[VirtualJSFile]],

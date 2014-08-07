@@ -51,7 +51,8 @@ abstract class PartialClasspath(
    */
   def resolve(filter: DependencyFilter = identity): CompleteCIClasspath = {
     CompleteCIClasspath(resolveDependencies(filter),
-        CoreJSLibs.libs ++ scalaJSCode, version)
+        CoreJSLibs.libs ++ scalaJSCode, dependencies.exists(_.requiresDOM),
+        version)
   }
 
   /** Constructs an ordered list of JS libraries to include. Fails if:

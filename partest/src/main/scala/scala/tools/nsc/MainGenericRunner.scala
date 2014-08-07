@@ -147,7 +147,7 @@ class MainGenericRunner {
     // Pseudo-classpath to pass execution code to closure
     // Will be moved to tooling API as JSApplication
     val dummyCP = CompleteCIClasspath(classpath.jsLibs,
-        classpath.cijsCode :+ exportFile, version = None)
+        classpath.cijsCode :+ exportFile, requiresDOM = false, version = None)
 
     optimizer.optimizeCP(
       Inputs(dummyCP),

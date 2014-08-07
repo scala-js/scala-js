@@ -56,7 +56,8 @@ class ScalaJSOptimizer {
       optimizeIR(inputs.copy(input = inputs.input.scalaJSIR), outCfg, logger)
     }
 
-    CompleteCIClasspath(cp.jsLibs, outCfg.output :: Nil, cp.version)
+    CompleteCIClasspath(cp.jsLibs, outCfg.output :: Nil,
+        cp.requiresDOM, cp.version)
   }
 
   def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],

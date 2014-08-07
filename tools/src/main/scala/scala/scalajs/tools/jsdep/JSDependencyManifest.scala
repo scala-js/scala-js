@@ -12,7 +12,8 @@ import org.json.simple.JSONValue
 /** The information written to a "JS_DEPENDENCIES" manifest file. */
 final case class JSDependencyManifest(
     origin: Origin,
-    libDeps: List[JSDependency]) {
+    libDeps: List[JSDependency],
+    requiresDOM: Boolean) {
   def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
 }
 
@@ -89,6 +90,7 @@ object JSDependencyManifest {
       new JSONObjBuilder()
         .fld("origin",  x.origin)
         .fld("libDeps", x.libDeps)
+        .opt("requiresDOM", Some(x.requiresDOM))
         .toJSON
     }
   }
@@ -98,7 +100,8 @@ object JSDependencyManifest {
       val obj = new JSONObjExtractor(x)
       JSDependencyManifest(
           obj.fld[Origin]            ("origin"),
-          obj.fld[List[JSDependency]]("libDeps"))
+          obj.fld[List[JSDependency]]("libDeps"),
+          obj.opt[Boolean]           ("requiresDOM").getOrElse(false))
     }
   }
 

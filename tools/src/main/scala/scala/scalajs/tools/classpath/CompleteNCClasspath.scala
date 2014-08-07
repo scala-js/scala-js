@@ -21,7 +21,8 @@ import scala.scalajs.tools.jsdep.ResolutionInfo
 class CompleteNCClasspath(
     jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
     val ncjsCode: Seq[VirtualJSFile],
+    requiresDOM: Boolean,
     version: Option[String]
-) extends CompleteClasspath(jsLibs, version) {
+) extends CompleteClasspath(jsLibs, requiresDOM, version) {
   override def scalaJSCode: Seq[VirtualJSFile] = ncjsCode
 }

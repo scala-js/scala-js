@@ -22,8 +22,9 @@ class CompleteIRClasspath(
     jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
     /** The IR itself. Ancestor count is used for later ordering */
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
+    requiresDOM: Boolean,
     version: Option[String]
-) extends CompleteCIClasspath(jsLibs, version) {
+) extends CompleteCIClasspath(jsLibs, requiresDOM, version) {
 
   /** Orders and desugars the contained IR.
    *
