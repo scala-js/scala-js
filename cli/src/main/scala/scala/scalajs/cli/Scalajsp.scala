@@ -12,6 +12,7 @@ package scala.scalajs.cli
 import scala.scalajs.ir
 import ir.ScalaJSVersions
 import ir.Trees.Tree
+import ir.Transformers.Transformer
 import ir.JSDesugaring.desugarJavaScript
 import ir.Printers.{InfoPrinter, IRTreePrinter}
 
@@ -26,6 +27,7 @@ object Scalajsp {
   case class Options(
     infos: Boolean = false,
     desugar: Boolean = false,
+    showReflProxy: Boolean = false,
     jar: Option[File] = None,
     fileNames: Seq[String] = Seq.empty)
 
@@ -46,6 +48,9 @@ object Scalajsp {
       opt[Unit]('i', "infos")
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
+      opt[Unit]('p', "reflProxies")
+        .action { (_, c) => c.copy(showReflProxy = true) }
+        .text("Show reflective call proxies")
       opt[Unit]('s', "supported")
         .action { (_,_) => printSupported(); sys.exit() }
         .text("Show supported Scala.js IR versions")
@@ -83,11 +88,18 @@ object Scalajsp {
   def displayFileContent(vfile: VirtualScalaJSIRFile, opts: Options): Unit = {
     if (opts.infos)
       new InfoPrinter(stdout).printClassInfo(vfile.info)
-    else if (opts.desugar)
-      new IRTreePrinter(stdout, jsMode = true).printTopLevelTree(
-          desugarJavaScript(vfile.tree))
-    else
-      new IRTreePrinter(stdout, jsMode = false).printTopLevelTree(vfile.tree)
+    else {
+      val outTree = {
+        if (opts.showReflProxy) vfile.tree
+        else new ReflProxyFilter().transformStat(vfile.tree)
+      }
+
+      if (opts.desugar)
+        new IRTreePrinter(stdout, jsMode = true).printTopLevelTree(
+          desugarJavaScript(outTree))
+      else
+        new IRTreePrinter(stdout, jsMode = false).printTopLevelTree(outTree)
+    }
 
     stdout.flush()
   }
@@ -129,5 +141,21 @@ object Scalajsp {
 
   private val stdout =
     new BufferedWriter(new OutputStreamWriter(Console.out, "UTF-8"))
+
+  /** Filters out reflective call proxies from an undesugared tree */
+  private class ReflProxyFilter extends Transformer {
+    import ir.Trees._
+    import ir.Definitions.isReflProxyName
+
+    override def transformStat(tree: Tree): Tree = tree match {
+      case cdef: ClassDef =>
+        val newDefs = cdef.defs.filter {
+          case MethodDef(Ident(name, _), _, _, _) => !isReflProxyName(name)
+          case _ => true
+        }
+        cdef.copy(defs = newDefs)(cdef.pos)
+      case _ => super.transformStat(tree)
+    }
+  }
 
 }
