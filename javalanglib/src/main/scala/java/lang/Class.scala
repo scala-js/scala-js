@@ -65,6 +65,9 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
   def getName(): String =
     data.name
 
+  def getSimpleName(): String =
+    data.name.split('.').last.split('$').last
+
   def getSuperclass(): Class[_ >: A] =
     data.getSuperclass()
 
