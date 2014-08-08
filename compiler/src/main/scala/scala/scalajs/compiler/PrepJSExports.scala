@@ -112,7 +112,8 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Update flags
     expSym.setFlag(Flags.SYNTHETIC)
     expSym.resetFlag(
-        Flags.DEFERRED |  // We always have a body now
+        Flags.DEFERRED |  // We always have a body
+        Flags.ACCESSOR |  // We are never a "direct" accessor
         Flags.OVERRIDE    // Synthetic methods need not bother with this
     )
 
