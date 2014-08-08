@@ -92,6 +92,61 @@ object StreamsTest extends JasmineTest with CommonStreamsTests {
       new ByteArrayInputStream(seq.map(_.toByte).toArray))
   }
 
+  describe("java.io.ByteArrayOutputStream") {
+
+    it("should support simple write(x: Int)") {
+      val out = new ByteArrayOutputStream()
+
+      for (i <- 0 to 9)
+        out.write(i)
+
+      expect(out.toByteArray).toEqual(js.Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+    }
+
+    it("should support simple write(x: Array[Byte])") {
+      val out = new ByteArrayOutputStream()
+      val arr = Array[Byte](0, 1, 2, 3, 4, 5)
+
+      out.write(arr, 1, 4)
+      out.write(arr)
+
+      expect(out.toByteArray).toEqual(js.Array(1, 2, 3, 4, 0, 1, 2, 3, 4, 5))
+    }
+
+    it("should support write(x: Array[Byte]) with buffer resize") {
+      val out = new ByteArrayOutputStream(16)
+      val arr = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+      out.write(arr)
+      out.write(arr)
+
+      expect(out.toByteArray).toEqual(arr ++ arr)
+    }
+
+    it("should support toString (with UTF8)") {
+      val buf = Array[Byte](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100,
+          46, -29, -127, -109, -29, -126, -109, -29, -127, -85, -29, -127, -95,
+          -29, -127, -81, -26, -105, -91, -26, -100, -84, -24, -86, -98, -29,
+          -126, -110, -24, -86, -83, -29, -126, -127, -29, -127, -66, -29, -127,
+          -103, -29, -127, -117, -29, -128, -126)
+
+      val out = new ByteArrayOutputStream()
+      out.write(buf)
+
+      expect(out.toString).toEqual("Hello World.こんにちは日本語を読めますか。")
+    }
+
+    it("should support reset()") {
+      val out = new ByteArrayOutputStream()
+      for (i <- 0 to 9) out.write(i)
+      out.reset()
+      for (i <- 0 to 9) out.write(i)
+
+      expect(out.toByteArray).toEqual(js.Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9))
+    }
+
+  }
+
 }
 
 /** tests also used by typedarray.ArrayBufferInputStreamTests */
