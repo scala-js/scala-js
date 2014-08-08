@@ -70,11 +70,11 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val postLinkJSEnv = SettingKey[JSEnv]("postLinkJSEnv",
         "The jsEnv used to execute after linking (packaging / optimizing) Scala.js files", AMinusSetting)
 
-    val jsEnv = SettingKey[JSEnv]("jsEnv",
-        "A JVM-like environment where Scala.js files can be run and tested", DSetting)
+    val jsEnv = TaskKey[JSEnv]("jsEnv",
+        "A JVM-like environment where Scala.js files can be run and tested", DTask)
 
     val requiresDOM = SettingKey[Boolean]("requiresDOM",
-        "Whether this projects needs the DOM", APlusSetting)
+        "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
 
     val scalaJSTestFramework = SettingKey[String]("scalaJSTestFramework",
         "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine", ASetting)
@@ -88,8 +88,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
         "Whether package and optimize stages should emit source maps at all", BPlusSetting)
 
-    val jsDependencies = SettingKey[Seq[JSModuleID]]("jsDependencies",
-        "JavaScript libraries this project depends upon", AMinusSetting)
+    val jsDependencies = SettingKey[Seq[AbstractJSDep]]("jsDependencies",
+        "JavaScript libraries this project depends upon. Also used to depend on the DOM.", APlusSetting)
 
     val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)

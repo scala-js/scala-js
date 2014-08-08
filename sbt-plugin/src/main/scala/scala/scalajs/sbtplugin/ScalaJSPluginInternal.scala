@@ -42,6 +42,13 @@ object ScalaJSPluginInternal {
   /** Dummy setting to persist Scala.js optimizer */
   val scalaJSOptimizer = SettingKey.local[ScalaJSOptimizer]
 
+  /** Internal task to calculate whether a project requests the DOM
+   *  (through jsDependencies or requiresDOM) */
+  val requestsDOM = TaskKey.local[Boolean]
+
+  /** Default post link environment */
+  val defaultPostLinkJSEnv = TaskKey.local[JSEnv]
+
   private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
     item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
   }
@@ -284,13 +291,19 @@ object ScalaJSPluginInternal {
         val config = configuration.value.name
 
         // Collect all libraries
-        val jsDeps = for {
-          dep <- jsDependencies.value
-          if dep.configurations.forall(_ == config)
-        } yield dep.jsDep
+        val jsDeps = jsDependencies.value.collect {
+          case dep: JSModuleID if dep.configurations.forall(_ == config) =>
+            dep.jsDep
+        }
 
-        val manifest = JSDependencyManifest(
-            Origin(myModule, config), jsDeps.toList)
+        val requiresDOM = jsDependencies.value.exists {
+          case RuntimeDOM(configurations) =>
+            configurations.forall(_ == config)
+          case _ => false
+        }
+
+        val manifest = JSDependencyManifest(Origin(myModule, config),
+            jsDeps.toList, requiresDOM)
 
         // Write dependency file to class directory
         val targetDir = classDirectory.value
@@ -324,13 +337,23 @@ object ScalaJSPluginInternal {
           true
       },
 
+      requestsDOM :=
+        requiresDOM.?.value.getOrElse(execClasspath.value.requiresDOM),
+
       // Default jsEnv
-      jsEnv := preLinkJSEnv.value,
+      jsEnv := preLinkJSEnv.?.value.getOrElse {
+        new RhinoJSEnv(withDOM = requestsDOM.value)
+      },
 
       // Wire jsEnv and sources for other stages
-      jsEnv in packageStage := postLinkJSEnv.value,
-      jsEnv in fastOptStage := postLinkJSEnv.value,
-      jsEnv in fullOptStage := postLinkJSEnv.value,
+      defaultPostLinkJSEnv := postLinkJSEnv.?.value.getOrElse {
+        if (requestsDOM.value) new PhantomJSEnv
+        else new NodeJSEnv
+      },
+
+      jsEnv in packageStage <<= defaultPostLinkJSEnv,
+      jsEnv in fastOptStage <<= defaultPostLinkJSEnv,
+      jsEnv in fullOptStage <<= defaultPostLinkJSEnv,
 
       // Define execution classpaths
       execClasspath                 := preLinkClasspath.value,
@@ -572,18 +595,11 @@ object ScalaJSPluginInternal {
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps   := false,
       fullOptJSPrettyPrint := false,
-      requiresDOM          := false,
       persistLauncher      := false,
 
       skip in packageJSDependencies := true,
 
       scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
-
-      preLinkJSEnv  := new RhinoJSEnv(withDOM = requiresDOM.value),
-      postLinkJSEnv := {
-        if (requiresDOM.value) new PhantomJSEnv
-        else new NodeJSEnv
-      },
 
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,

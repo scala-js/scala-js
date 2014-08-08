@@ -71,7 +71,8 @@ class ScalaJSPackager {
       }
     }
 
-    CompleteCIClasspath(ccp.jsLibs, outCfg.output :: Nil, ccp.version)
+    CompleteCIClasspath(ccp.jsLibs, outCfg.output :: Nil,
+        ccp.requiresDOM, ccp.version)
   }
 
   /** Concatenates ncjsCode
@@ -88,7 +89,8 @@ class ScalaJSPackager {
       packageJS(ccp.ncjsCode, outCfg, logger)
     }
 
-    new CompleteNCClasspath(ccp.jsLibs, outCfg.output :: Nil, ccp.version)
+    new CompleteNCClasspath(ccp.jsLibs, outCfg.output :: Nil,
+        ccp.requiresDOM, ccp.version)
   }
 
   def packageJS(js: Seq[VirtualJSFile], outCfg: OutputConfig,

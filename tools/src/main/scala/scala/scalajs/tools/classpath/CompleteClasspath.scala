@@ -22,6 +22,7 @@ import scala.scalajs.tools.jsdep.ResolutionInfo
 abstract class CompleteClasspath(
     /** Resolved JS libraries */
     val jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    val requiresDOM: Boolean,
     val version: Option[String]
 ) {
 

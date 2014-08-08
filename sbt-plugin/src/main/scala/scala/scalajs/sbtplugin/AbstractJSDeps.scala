@@ -6,21 +6,28 @@ import StringUtilities.nonEmpty
 
 import scala.scalajs.tools.jsdep.JSDependency
 
-/** A JavaScript module/library a Scala.js project may depend on */
-sealed trait JSModuleID {
-  def jsDep: JSDependency
+/** Something JavaScript related a project may depend on. Either a JavaScript
+ *  module/library, or the DOM at runtime. */
+sealed trait AbstractJSDep {
   def configurations: Option[String]
 
-  protected def withConfigs(configs: Option[String]): JSModuleID
-  protected def withJSDep(jsDep: JSDependency): JSModuleID
+  protected def withConfigs(configs: Option[String]): AbstractJSDep
 
-  def %(configurations: Configuration): JSModuleID = %(configurations.name)
-  def %(configurations: String): JSModuleID = {
+  def %(configurations: Configuration): AbstractJSDep = %(configurations.name)
+  def %(configurations: String): AbstractJSDep = {
     require(this.configurations.isEmpty,
         "Configurations already specified for jsModule " + this)
     nonEmpty(configurations, "Configurations")
     withConfigs(Some(configurations))
   }
+
+}
+
+/** A JavaScript module/library a Scala.js project may depend on */
+sealed trait JSModuleID extends AbstractJSDep {
+  def jsDep: JSDependency
+
+  protected def withJSDep(jsDep: JSDependency): JSModuleID
 
   def commonJSName(name: String): JSModuleID =
     withJSDep(jsDep = jsDep.commonJSName(name))
@@ -63,3 +70,12 @@ object ProvidedJSModuleID {
   def apply(name: String, configurations: Option[String]): ProvidedJSModuleID =
     ProvidedJSModuleID(JSDependency(name, Nil), configurations)
 }
+
+sealed case class RuntimeDOM(
+    configurations: Option[String]) extends AbstractJSDep {
+
+  protected def withConfigs(configs: Option[String]): RuntimeDOM =
+    copy(configurations = configs)
+}
+
+object RuntimeDOM extends RuntimeDOM(None)

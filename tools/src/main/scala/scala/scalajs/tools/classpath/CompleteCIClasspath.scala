@@ -19,8 +19,9 @@ import scala.collection.immutable.Seq
  *  all Scala.js generated code (maybe even in IR form, see CompleteIRClasspath)
  */
 abstract class CompleteCIClasspath(
-    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)], version: Option[String]
-) extends CompleteClasspath(jsLibs, version) {
+    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)], requiresDOM: Boolean,
+    version: Option[String]
+) extends CompleteClasspath(jsLibs, requiresDOM, version) {
 
   final def scalaJSCode: Seq[VirtualJSFile] = cijsCode
   def cijsCode: Seq[VirtualJSFile]
@@ -31,13 +32,14 @@ object CompleteCIClasspath {
   private class SimpleCompleteCIClasspath(
       jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
       val cijsCode: Seq[VirtualJSFile],
+      requiresDOM: Boolean,
       version: Option[String]
-  ) extends CompleteCIClasspath(jsLibs, version)
+  ) extends CompleteCIClasspath(jsLibs, requiresDOM, version)
 
   /** Creates a CompleteCIClasspath with the specified contents. */
   def apply(jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
-      cijsCode: Seq[VirtualJSFile],
+      cijsCode: Seq[VirtualJSFile], requiresDOM: Boolean,
       version: Option[String]): CompleteCIClasspath =
-    new SimpleCompleteCIClasspath(jsLibs, cijsCode, version)
+    new SimpleCompleteCIClasspath(jsLibs, cijsCode, requiresDOM, version)
 
 }

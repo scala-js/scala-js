@@ -47,7 +47,8 @@ class PartialIRClasspath(
   }
 
   override def resolve(filter: DependencyFilter): CompleteIRClasspath =
-    new CompleteIRClasspath(resolveDependencies(filter), scalaJSIR, version)
+    new CompleteIRClasspath(resolveDependencies(filter), scalaJSIR,
+        dependencies.exists(_.requiresDOM), version)
 
   /** The same as append, but does not preserve order between the IR files
    *  of both PartialIRClasspaths. This is always safe (if append is safe),
