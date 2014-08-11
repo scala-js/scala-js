@@ -37,17 +37,22 @@ object ScalaJSPluginInternal {
   import ScalaJSPlugin.scalaJSVersion
 
   /** Dummy setting to ensure we do not fork in Scala.js run & test. */
-  val ensureUnforked = SettingKey.local[Boolean]
+  val ensureUnforked = SettingKey[Boolean]("ensureUnforked",
+      "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
 
   /** Dummy setting to persist Scala.js optimizer */
-  val scalaJSOptimizer = SettingKey.local[ScalaJSOptimizer]
+  val scalaJSOptimizer = SettingKey[ScalaJSOptimizer]("scalaJSOptimizer",
+      "Scala.js internal: Setting to persist the optimizer", KeyRanks.Invisible)
 
   /** Internal task to calculate whether a project requests the DOM
    *  (through jsDependencies or requiresDOM) */
-  val requestsDOM = TaskKey.local[Boolean]
+  val requestsDOM = TaskKey[Boolean]("requestsDOM",
+      "Scala.js internal: Whether a project really wants the DOM. " +
+      "Calculated using requiresDOM and jsDependencies", KeyRanks.Invisible)
 
   /** Default post link environment */
-  val defaultPostLinkJSEnv = TaskKey.local[JSEnv]
+  val defaultPostLinkJSEnv = TaskKey[JSEnv]("defaultPostLinkJSEnv",
+      "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
 
   private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
     item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
