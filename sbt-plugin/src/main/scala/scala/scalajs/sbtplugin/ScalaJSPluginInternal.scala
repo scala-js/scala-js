@@ -291,7 +291,7 @@ object ScalaJSPluginInternal {
         }
       },
 
-      compile <<= compile.dependsOn(Def.task {
+      jsDependencyManifest := {
         val myModule = thisProject.value.id
         val config = configuration.value.name
 
@@ -327,7 +327,11 @@ object ScalaJSPluginInternal {
 
         if (needWrite)
           JSDependencyManifest.write(manifest, file)
-      }),
+
+        file
+      },
+
+      products <<= products.dependsOn(jsDependencyManifest),
 
       console <<= console.dependsOn(Def.task(
           streams.value.log.warn("Scala REPL doesn't work with Scala.js. You " +

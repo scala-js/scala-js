@@ -1,6 +1,9 @@
 import sbt._
 import Keys._
 
+import scala.scalajs.sbtplugin.ScalaJSPlugin
+import ScalaJSPlugin.ScalaJSKeys.jsDependencyManifest
+
 object ExternalCompile {
 
   private val isWindows =
@@ -105,7 +108,11 @@ object ExternalCompile {
 
         // We do not have dependency analysis when compiling externally
         sbt.inc.Analysis.Empty
-      }
+      },
+
+      // Make sure jsDependencyManifest runs after compile, otherwise compile
+      // might remove the entire directory afterwards.
+      jsDependencyManifest <<= jsDependencyManifest.dependsOn(compile)
   )
 
   val scalaJSExternalCompileSettings = (
