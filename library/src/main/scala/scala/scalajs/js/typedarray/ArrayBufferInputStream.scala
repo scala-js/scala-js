@@ -3,14 +3,14 @@ package scala.scalajs.js.typedarray
 import java.io.InputStream
 
 /** A java.io.InputStream wrapping a JavaScript ArrayBuffer
- * 
+ *
  *  This class is extremely similar to a ByteArrayInputStream, but
  *  uses ArrayBuffers as the underlying representation. Stream
  *  implementations may special case on this stream for better
  *  performance and access the underlying buffer directly. (They still
  *  need to make sure the internal pointers are properly aligned
  *  though).
- * 
+ *
  *  @param buffer Underlying ArrayBuffer
  *  @param offset Offset in bytes in [[buffer]]
  *  @param length Length in bytes in [[buffer]]
@@ -20,21 +20,22 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
 
   /** Convenience constructor. Strictly equivalent to
    *  {{new ArrayBufferInputStream(buffer, 0, buffer.byteLength)}
-   */ 
+   */
   def this(buffer: ArrayBuffer) = this(buffer, 0, buffer.byteLength)
 
   private val uintView = new Uint8Array(buffer, offset, length)
   private val byteView = new Int8Array(buffer, offset, length)
 
-  protected val count: Int = offset + length
-  protected var mark: Int = offset
-  protected var pos: Int = offset
+  @deprecated("Use length instead", "0.5.4")
+  protected val count: Int = length
+  protected var mark: Int = 0
+  protected var pos: Int = 0
 
-  override def available(): Int = count - pos
+  override def available(): Int = length - pos
   override def mark(readlimit: Int): Unit = { mark = pos }
   override def markSupported(): Boolean = true
   def read(): Int = {
-    if (pos < count) {
+    if (pos < length) {
       val res = uintView(pos)
       pos += 1
       res
@@ -45,7 +46,7 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
     if (off < 0 || reqLen < 0 || reqLen > b.length - off)
       throw new IndexOutOfBoundsException
 
-    val len = Math.min(reqLen, count - pos)
+    val len = Math.min(reqLen, length - pos)
 
     if (reqLen == 0)
        0 // 0 requested, 0 returned
@@ -63,7 +64,7 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
   }
   override def reset(): Unit = { pos = mark }
   override def skip(n: Long): Long = {
-    val k = Math.max(0, Math.min(n.toInt, count - pos))
+    val k = Math.max(0, Math.min(n.toInt, length - pos))
     pos += k
     k.toLong
   }

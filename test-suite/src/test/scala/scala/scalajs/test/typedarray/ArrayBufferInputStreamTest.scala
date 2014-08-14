@@ -21,4 +21,15 @@ object ArrayBufferInputStreamTest extends JasmineTest with CommonStreamsTests {
         new Int8Array(seq).buffer))
   }
 
+  when("typedarray").
+  describe("scala.scalajs.js.typedarray.ArrayBufferInputStream - with offset") {
+    byteArrayInputStreamLikeTests { seq =>
+      val off = 100
+      val data = new Int8Array(seq.size + off)
+      data.set(seq, off)
+
+      new ArrayBufferInputStream(data.buffer, off, seq.size)
+    }
+  }
+
 }
