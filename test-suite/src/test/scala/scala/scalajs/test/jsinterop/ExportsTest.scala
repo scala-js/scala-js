@@ -293,6 +293,17 @@ object ExportsTest extends JasmineTest {
       expect(c2.x.isInstanceOf[B]).toBeTruthy
     }
 
+    it("should offer exports for methods with refined types as return type") {
+      class A {
+        @JSExport
+        def foo(x: String): js.Object with js.Dynamic =
+          js.Dynamic.literal(arg = x)
+      }
+
+      val a = (new A).asInstanceOf[js.Dynamic]
+      expect(a.foo("hello")).toEqual(js.Dynamic.literal(arg = "hello"))
+    }
+
     it("should offer exports for variable argument methods - #393") {
       class A {
         @JSExport

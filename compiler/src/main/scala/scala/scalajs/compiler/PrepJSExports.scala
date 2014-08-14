@@ -185,8 +185,7 @@ trait PrepJSExports { this: PrepJSInterop =>
     case MethodType(params, result) => MethodType(params, retToAny(result))
     case NullaryMethodType(result)  => NullaryMethodType(AnyClass.tpe)
     case PolyType(tparams, result)  => PolyType(tparams, retToAny(result))
-    case _: TypeRef                 => AnyClass.tpe
-    case _ => abort(s"Type of method is not method type, but ${tpe}")
+    case _                          => AnyClass.tpe
   }
 
   /** checks whether this type has a repeated parameter elsewhere than at the end
