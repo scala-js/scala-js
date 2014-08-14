@@ -1,6 +1,7 @@
 package scala.scalajs.tools.io
 
 import java.io._
+import java.net.URI
 
 import scala.scalajs.ir
 import scala.scalajs.tools.sourcemap._
@@ -27,6 +28,15 @@ trait VirtualFile {
 
   /** Whether this file exists. Reading a non-existent file may fail */
   def exists: Boolean
+
+  /** URI for this virtual file */
+  def toURI: URI = {
+    new URI(
+        "virtualfile", // Pseudo-Scheme
+        path,          // Scheme specific part
+        null           // Fragment
+    )
+  }
 }
 
 object VirtualFile {

@@ -3,6 +3,7 @@ package scala.scalajs.tools.io
 import scala.annotation.tailrec
 
 import java.io._
+import java.net.URI
 
 /** A [[VirtualFile]] implemented by an actual file on the file system. */
 class FileVirtualFile(val file: File) extends VirtualFile {
@@ -18,6 +19,8 @@ class FileVirtualFile(val file: File) extends VirtualFile {
   }
 
   override def exists: Boolean = file.exists
+
+  override def toURI: URI = file.toURI
 }
 
 object FileVirtualFile extends (File => FileVirtualFile) {

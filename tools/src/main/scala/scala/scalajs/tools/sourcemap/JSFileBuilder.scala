@@ -163,7 +163,7 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
            * written directly in JS.
            * We generate a fake line-by-line source map for these on the fly
            */
-          val sourceFile = getFileSourceFile(file)
+          val sourceFile = file.toURI
 
           for (lineNumber <- 0 until offsets.size) {
             val offset = offsets(lineNumber)
@@ -192,21 +192,6 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     sourceMapWriter.complete()
   }
 
-  private def getFileSourceFile(
-      file: VirtualJSFile): ir.Position.SourceFile = file match {
-    case file: FileVirtualJSFile =>
-      file.file.toURI
-    case _ =>
-      try new URI(file.path)
-      catch {
-        case e: URISyntaxException =>
-          new URI(
-               "virtualfile", // Pseudo-Scheme
-               file.path,     // Scheme specific part
-               null           // Fragment
-          )
-      }
-  }
 }
 
 class JSFileBuilderWithSourceMap(n: String, ow: Writer,
