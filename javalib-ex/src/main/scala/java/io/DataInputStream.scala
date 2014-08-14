@@ -12,21 +12,23 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   // These variables are used to special case on ArrayBufferInputStreams
   // They allow directly accessing the underlying ArrayBuffer rather than
   // creating byte arrays first
-  private val hasArrayBuffer = in.isInstanceOf[ArrayBufferInputStream]
+  private val inArrayBufferStream = in match {
+    case in: ArrayBufferInputStream => in
+    case _ => null
+  }
+  private val hasArrayBuffer = inArrayBufferStream != null
   private val bufDataView = {
     if (hasArrayBuffer) {
-      val in = this.in.asInstanceOf[ArrayBufferInputStream]
+      val in = inArrayBufferStream
       new DataView(in.buffer, in.offset, in.length)
     } else null
   }
-  private var viewPos: Int = 0
-  private var viewMarkPos: Int = 0
 
   private def consumePos(n: Int) = {
-    val resultPos = viewPos
-    val toSkip = if (pushedBack != -1) n - 1 else n
+    val off = if (pushedBack != -1) 1 else 0
+    val resultPos = inArrayBufferStream.pos - off
+    val toSkip = n - off
     if (in.skip(toSkip) != toSkip) eof()
-    viewPos += n
     resultPos
   }
 
@@ -52,10 +54,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
 
   // General Helpers
   private def eof() = throw new EOFException()
-  private def pushBack(v: Int) = {
-    if (hasArrayBuffer) viewPos -= 1
-    pushedBack = v
-  }
+  private def pushBack(v: Int) = { pushedBack = v }
 
   // Methods on DataInput
   def readBoolean(): Boolean = readByte() != 0
@@ -198,7 +197,7 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   def skipBytes(n: Int): Int = skip(n.toLong).toInt
 
   // Methods on FilterInputStream.
-  // Overridden to track viewPos / viewMarkPos / pushedBack / pushedBackMark
+  // Overridden to track pushedBack / pushedBackMark
   override def available(): Int = {
     if (pushedBack != -1) in.available + 1
     else in.available
@@ -207,8 +206,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   override def mark(readlimit: Int): Unit = {
     in.mark(readlimit + 1) // we need one more since we might read ahead
     pushedBackMark = pushedBack
-    if (hasArrayBuffer)
-      viewMarkPos = viewPos
   }
 
   override def markSupported(): Boolean = in.markSupported()
@@ -221,8 +218,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
         in.read()
     }
 
-    if (res != -1 && hasArrayBuffer)
-      viewPos += 1
     pushedBack = -1
 
     res
@@ -237,8 +232,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
       1
     } else {
       val count = in.read(b, off, len)
-      if (count != -1 && hasArrayBuffer)
-        viewPos += count
       count
     }
   }
@@ -246,7 +239,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   override def reset(): Unit = {
     in.reset()
     pushedBack = pushedBackMark
-    if (hasArrayBuffer) viewPos = viewMarkPos
   }
 
   override def skip(n: Long): Long = {
@@ -257,8 +249,6 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
       1L
     } else {
       val skipped = in.skip(n)
-      if (hasArrayBuffer)
-        viewPos += skipped.toInt
       skipped
     }
   }
