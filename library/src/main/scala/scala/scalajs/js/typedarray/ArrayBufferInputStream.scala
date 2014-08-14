@@ -11,6 +11,13 @@ import java.io.InputStream
  *  need to make sure the internal pointers are properly aligned
  *  though).
  *
+ *  This stream has several public members (n.b. [[buffer]], [[offset]],
+ *  [[length]] and [[pos]]) in order to allow JavaScript aware applications to
+ *  special case on this kind of stream and access the underlying
+ *  [[ArrayBuffer]] directly for efficiency. In this case it is the client's
+ *  responsibility to synchronize [[pos]], as if the stream were read normally
+ *  (if the context in which it is used requires this).
+ *
  *  @param buffer Underlying ArrayBuffer
  *  @param offset Offset in bytes in [[buffer]]
  *  @param length Length in bytes in [[buffer]]
@@ -28,8 +35,17 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
 
   @deprecated("Use length instead", "0.5.4")
   protected val count: Int = length
+
+  /** Used to persist [[pos]] when mark is called */
   protected var mark: Int = 0
-  protected var pos: Int = 0
+
+  /** Next byte to read in the buffer (after adding offset).
+   *
+   *  Use [[skip]] to update (protects from overrun and moving backwards).
+   */
+  @inline def pos: Int = _pos
+  @inline protected def pos_=(x: Int): Unit = _pos = x
+  private[this] var _pos: Int = 0
 
   override def available(): Int = length - pos
   override def mark(readlimit: Int): Unit = { mark = pos }
@@ -62,9 +78,12 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
       len
     }
   }
+
   override def reset(): Unit = { pos = mark }
+
+  /** Skips a given number of bytes. Always skips the maximum number possible */
   override def skip(n: Long): Long = {
-    val k = Math.max(0, Math.min(n.toInt, length - pos))
+    val k = Math.max(0, Math.min(n, length - pos)).toInt
     pos += k
     k.toLong
   }
