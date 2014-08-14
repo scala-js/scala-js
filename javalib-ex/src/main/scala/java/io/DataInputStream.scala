@@ -158,10 +158,14 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
     var res = ""
     var i = 0
 
-    def badFormat() = throw new UTFDataFormatException()
+    def badFormat(msg: String) = throw new UTFDataFormatException(msg)
 
     while (i < length) {
-      val a = readByte() // throws if EOF
+      val a = read()
+
+      if (a == -1)
+        badFormat(s"Unexpected EOF: ${length - i} bytes to go")
+
       i += 1
 
       val char = {
@@ -171,8 +175,10 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
           val b = read()
           i += 1
 
-          if (b == -1 || (b & 0xC0) != 0x80) // 10xxxxxx
-            badFormat()
+          if (b == -1)
+            badFormat(f"Expected 2 bytes, found: EOF (init: $a%#02x)")
+          if ((b & 0xC0) != 0x80) // 10xxxxxx
+            badFormat(f"Expected 2 bytes, found: $b%#02x (init: $a%#02x)")
 
           (((a & 0x1F) << 6) | (b & 0x3F)).toChar
         } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
@@ -180,12 +186,24 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
           val c = read()
           i += 2
 
-          if (b == -1 || (b & 0xC0) != 0x80 || // 10xxxxxx
-              c == -1 || (c & 0xC0) != 0x80)   // 10xxxxxx
-            badFormat()
+          if (b == -1)
+            badFormat(f"Expected 3 bytes, found: EOF (init: $a%#02x)")
+
+          if ((b & 0xC0) != 0x80)   // 10xxxxxx
+            badFormat(f"Expected 3 bytes, found: $b%#02x (init: $a%#02x)")
+
+          if (c == -1)
+            badFormat(f"Expected 3 bytes, found: $b%#02x, EOF (init: $a%#02x)")
+
+          if ((c & 0xC0) != 0x80)   // 10xxxxxx
+            badFormat(
+                f"Expected 3 bytes, found: $b%#02x, $c%#02x (init: $a%#02x)")
 
           (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
-        } else badFormat()
+        } else {
+          val rem = length - i
+          badFormat(f"Unexpected start of char: $a%#02x ($rem%d bytes to go)")
+        }
       }
 
       res += char
