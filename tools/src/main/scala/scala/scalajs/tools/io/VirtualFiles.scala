@@ -127,16 +127,28 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
   override def roughInfo: ir.Infos.RoughClassInfo = {
     // Overridden to read only the necessary parts
     val stream = inputStream
-    try ir.InfoSerializers.deserializeRoughInfo(stream)
-    finally stream.close()
+    try {
+      ir.InfoSerializers.deserializeRoughInfo(stream)
+    } catch {
+      case e: IOException =>
+        throw new IOException(s"Failed to deserialize rough info of $path", e)
+    } finally {
+      stream.close()
+    }
   }
 
   /** Class info of this file. */
   override def info: ir.Infos.ClassInfo = {
     // Overridden to read only the necessary parts
     val stream = inputStream
-    try ir.InfoSerializers.deserializeFullInfo(stream)
-    finally stream.close()
+    try {
+      ir.InfoSerializers.deserializeFullInfo(stream)
+    } catch {
+      case e: IOException =>
+        throw new IOException(s"Failed to deserialize info of $path", e)
+    } finally {
+      stream.close()
+    }
   }
 
   /** Class info and IR tree of this file. */
@@ -147,6 +159,9 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
       val tree = ir.Serializers.deserialize(
           stream, version).asInstanceOf[ir.Trees.ClassDef]
       (info, tree)
+    } catch {
+      case e: IOException =>
+        throw new IOException(s"Failed to deserialize $path", e)
     } finally {
       stream.close()
     }
