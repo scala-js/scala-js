@@ -1924,7 +1924,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def isCaseLabelDef(tree: Tree) =
         tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree)
 
-      if (isCaseLabelDef(expr)) {
+      def translateMatch(expr: LabelDef) = {
         /* Block that appeared as the result of a translated match
          * Such blocks are recognized by having at least one element that is
          * a so-called case-label-def.
@@ -1942,15 +1942,28 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val genPrologue = prologue map genStat
         val translatedMatch =
-          genTranslatedMatch(cases.map(_.asInstanceOf[LabelDef]),
-              expr.asInstanceOf[LabelDef])
+          genTranslatedMatch(cases.map(_.asInstanceOf[LabelDef]), expr)
 
         js.Block(genPrologue :+ translatedMatch)
-      } else {
-        /* Normal block */
-        val statements = stats map genStat
-        val expression = genStatOrExpr(expr)
-        js.Block(statements :+ expression)
+      }
+
+      expr match {
+        case expr: LabelDef if isCaseLabelDef(expr) =>
+          translateMatch(expr)
+
+        // Sometimes the pattern matcher casts its final result
+        case Apply(TypeApply(Select(expr: LabelDef, nme.asInstanceOf_Ob), _), _)
+            if isCaseLabelDef(expr) =>
+          translateMatch(expr)
+
+        case _ =>
+          assert(!stats.exists(isCaseLabelDef), "Found stats with case label " +
+              s"def in non-match block at ${tree.pos}: $tree")
+
+          /* Normal block */
+          val statements = stats map genStat
+          val expression = genStatOrExpr(expr)
+          js.Block(statements :+ expression)
       }
     }
 
