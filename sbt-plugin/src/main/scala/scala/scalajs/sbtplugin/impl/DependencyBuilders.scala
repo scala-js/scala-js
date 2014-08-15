@@ -22,6 +22,39 @@ trait DependencyBuilders {
     new ScalaJSGroupID(groupID)
   }
 
+  final implicit def toAutoGroupID(groupID: String): AutoGroupID = {
+    nonEmpty(groupID, "Group ID")
+    new AutoGroupID(groupID)
+  }
+
+  /** Lift the % operator on ModuleID in the [[Def.Initialize]] domain.
+   *  Allows for the `% "test"` in
+   *  {{{
+   *  "org.example" %?% "test-lib" % "0.1" % "test"
+   *  }}}
+   */
+  final implicit class InitModuleIDConfigurable(mod: Def.Initialize[ModuleID]) {
+    def %(configuration: Configuration): Def.Initialize[ModuleID] =
+      mod(_ % configuration)
+    def %(configurations: String): Def.Initialize[ModuleID] =
+      mod(_ % configurations)
+  }
+
+  /** Automatically joins a `Seq[Def.Initialize[ModuleID]] into a
+   *  `Def.Initialize[Seq[ModuleID]]`
+   *
+   *  Allows to write:
+   *  {{{
+   *  libraryDependencies <++= Seq(
+   *    "org.example" %?% "blah-lib" % "0.2",
+   *    "org.example" %?% "test-lib" % "0.1" % "test"
+   *  )
+   *  }}}
+   */
+  final implicit def joinModInitSeq(
+      mods: Seq[Def.Initialize[ModuleID]]): Def.Initialize[Seq[ModuleID]] =
+    Def.Initialize.join(mods)
+
   /** Builder to allow for stuff like:
    *
    *    ProvidedJS / "foo.js"
@@ -55,5 +88,30 @@ final class ScalaJSGroupArtifactID private[sbtplugin] (groupID: String,
   def %(revision: String): ModuleID = {
     nonEmpty(revision, "Revision")
     ModuleID(groupID, artifactID, revision).cross(crossVersion)
+  }
+}
+
+final class AutoGroupID private[sbtplugin] (groupID: String) {
+  def %?%(artifactID: String): AutoGroupArtifactID = {
+    nonEmpty(artifactID, "Artifact ID")
+    new AutoGroupArtifactID(groupID, artifactID)
+  }
+}
+
+final class AutoGroupArtifactID private[sbtplugin] (groupID: String,
+    artifactID: String) {
+  def %(revision: String): Def.Initialize[ModuleID] = {
+    nonEmpty(revision, "Revision")
+
+    val moduleId = ModuleID(groupID, artifactID, revision)
+
+    // If the jsDependencies key is set (to something), we are in a Scala.js
+    // project. Otherwise we are in a JVM project.
+    ScalaJSPlugin.ScalaJSKeys.jsDependencies.? { opt =>
+      if (opt.isDefined)
+        moduleId.cross(ScalaJSCrossVersion.binary)
+      else
+        moduleId.cross(CrossVersion.binary)
+    }
   }
 }
