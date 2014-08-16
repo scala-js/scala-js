@@ -36,7 +36,7 @@ trait ScalaJSRunner extends nest.Runner {
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
     val opts = super.extraJavaOptions :+
-      s"-Dscala.partest.noWarnFile=$noWarnFile"
+      s"-Dscalajs.partest.noWarnFile=$noWarnFile"
 
     if (options.fullOpt)
       opts :+ "-Dscalajs.partest.fullOpt=true"
