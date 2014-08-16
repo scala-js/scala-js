@@ -1,7 +1,8 @@
 import sbt._
 import Keys._
 
-import PublishToBintray.publishToBintraySettings
+import bintray.Plugin.bintrayPublishSettings
+import bintray.Keys.{repository, bintrayOrganization, bintray}
 
 import java.io.{BufferedOutputStream, FileOutputStream}
 
@@ -66,6 +67,13 @@ object ScalaJSBuild extends Build {
             None
         }
       }
+  )
+
+  private def publishToBintraySettings = (
+      bintrayPublishSettings
+  ) ++ Seq(
+      repository in bintray := "scala-js-releases",
+      bintrayOrganization in bintray := Some("scala-js")
   )
 
   val publishSettings = (
