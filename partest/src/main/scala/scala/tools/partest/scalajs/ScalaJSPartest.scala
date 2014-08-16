@@ -36,7 +36,7 @@ trait ScalaJSRunner extends nest.Runner {
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
     val opts = super.extraJavaOptions :+
-      s"-Dscala.partest.noWarnFile=$noWarnFile"
+      s"-Dscalajs.partest.noWarnFile=$noWarnFile"
 
     if (options.fullOpt)
       opts :+ "-Dscalajs.partest.fullOpt=true"
@@ -177,8 +177,12 @@ class ScalaJSSBTRunner(
     javaCmd, javacCmd, scalacArgs
 ) with ScalaJSSuiteRunner {
 
-  // The test root for partest is read out through the system properties, not
+  // The test root for partest is read out through the system properties,
   // not passed as an argument
   sys.props("partest.root") = testRoot.getAbsolutePath()
+
+  // Partests (on fullOpt) take between 3:30 - 4:00 hrs. Give some
+  // slack (default is 4 hours)
+  sys.props("partest.timeout") = "5 hours"
 
 }

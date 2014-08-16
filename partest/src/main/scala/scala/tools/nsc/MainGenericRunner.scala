@@ -43,7 +43,7 @@ class MainGenericRunner {
     import ScalaJSOptimizer._
 
     for {
-      fname <- sys.props.get("scala.partest.noWarnFile").toList
+      fname <- sys.props.get("scalajs.partest.noWarnFile").toList
       line  <- Source.fromFile(fname).getLines
       if !line.startsWith("#")
     } yield line.split('.') match {
