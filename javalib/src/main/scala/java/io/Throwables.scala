@@ -13,3 +13,7 @@ class EOFException(s: String) extends IOException(s) {
 class UTFDataFormatException(s: String) extends IOException(s) {
   def this() = this(null)
 }
+
+class UnsupportedEncodingException(s: String) extends IOException(s) {
+  def this() = this(null)
+}
