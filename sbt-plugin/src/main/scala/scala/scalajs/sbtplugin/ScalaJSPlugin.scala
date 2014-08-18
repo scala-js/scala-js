@@ -50,6 +50,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "Packages all dependencies of the preLink classpath in a single file. " +
         "Set skip in packageJSDependencies := false to run automatically", AMinusTask)
 
+    val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
+        "Writes the JS_DEPENDENCIES file.", DTask)
+
     val preLinkClasspath = TaskKey[CompleteIRClasspath]("preLinkClasspath",
         "Completely resolved classpath just after compilation", DTask)
 
