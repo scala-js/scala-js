@@ -206,14 +206,14 @@ object TypedArrayTest extends JasmineTest {
       }
 
       it("should provide `byteLength`") {
-        val x = arrCtor(js.Any.fromTraversableOnce(0 until bytesPerElement * 4))
+        val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
         val y = bufCtor3(x.buffer, bytesPerElement, 3)
 
         expect(y.byteLength).toBe(3 * bytesPerElement)
       }
 
       it("should provide `byteOffset`") {
-        val x = arrCtor(js.Any.fromTraversableOnce(0 until bytesPerElement * 4))
+        val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
         val y = bufCtor3(x.buffer, bytesPerElement, 3)
 
         expect(y.byteOffset).toBe(bytesPerElement)

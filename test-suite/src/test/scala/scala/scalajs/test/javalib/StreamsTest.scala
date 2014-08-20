@@ -20,7 +20,7 @@ object StreamsTest extends JasmineTest with CommonStreamsTests {
   // Need to define this again, otherwise conversion on function
   // triggers for Seqs
   override implicit def traversable2array[T](
-    a: TraversableOnce[T]): js.Array[T] = js.Any.fromTraversableOnce(a)
+    a: TraversableOnce[T]): js.Array[T] = super.traversable2array(a)
 
   describe("java.io.InputStream") {
 
@@ -152,8 +152,10 @@ object StreamsTest extends JasmineTest with CommonStreamsTests {
 /** tests also used by typedarray.ArrayBufferInputStreamTests */
 trait CommonStreamsTests extends JasmineTest {
 
-  implicit def traversable2array[T](a: TraversableOnce[T]): js.Array[T] =
-    js.Any.fromTraversableOnce(a)
+  implicit def traversable2array[T](a: TraversableOnce[T]): js.Array[T] = {
+    import js.JSConverters._
+    a.toJSArray
+  }
 
   def byteArrayInputStreamLikeTests(mkStream: Seq[Int] => InputStream): Unit = {
     val length = 50
