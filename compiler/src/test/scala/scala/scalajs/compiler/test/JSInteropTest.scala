@@ -209,9 +209,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A extends js.Any
     """ hasErrors
     """
-      |newSource1.scala:3: error: A class or object may not extend js.Any directly. Extend js.Object instead.
+      |newSource1.scala:3: error: illegal inheritance from sealed trait Any
       |    class A extends js.Any
-      |          ^
+      |                       ^
     """
 
   }
