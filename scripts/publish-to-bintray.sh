@@ -14,7 +14,7 @@ fi
     BIN_VERSIONS="2.10.4 2.11.2"
     SBT_VERSION="2.10.4"
 
-    LIBS="library javalibEx jasmineTestFramework tools testBridge"
+    LIBS="library javalibEx jasmineTestFramework tools toolsJS testBridge"
 
     # Publish compiler
     echo "project compiler"

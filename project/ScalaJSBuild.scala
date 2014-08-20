@@ -15,8 +15,10 @@ import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import ExternalCompile.scalaJSExternalCompileSettings
+import Implicits._
 
 import scala.scalajs.tools.sourcemap._
+import scala.scalajs.tools.io.MemVirtualJSFile
 
 import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
 import AssemblyKeys.{assembly, assemblyOption}
@@ -134,7 +136,7 @@ object ScalaJSBuild extends Build {
 
           clean := clean.dependsOn(
               // compiler, library and jasmineTestFramework are aggregated
-              clean in tools, clean in plugin,
+              clean in tools, clean in toolsJS, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in javalibEx,
               clean in examples, clean in helloworld,
@@ -204,18 +206,28 @@ object ScalaJSBuild extends Build {
       )
   )
 
+  val commonToolsSettings = Seq(
+      name := "Scala.js tools",
+
+      unmanagedSourceDirectories in Compile ++= Seq(
+        baseDirectory.value.getParentFile / "shared/src/main/scala",
+        (scalaSource in (irProject, Compile)).value),
+
+      sourceGenerators in Compile <+= Def.task {
+        ScalaJSEnvGenerator.generateEnvHolder(
+          baseDirectory.value.getParentFile,
+          (sourceManaged in Compile).value)
+      }
+  )
+
   lazy val tools: Project = Project(
       id = "tools",
-      base = file("tools"),
-      settings = defaultSettings ++ publishSettings ++ Seq(
-          name := "Scala.js tools",
+      base = file("tools/jvm"),
+      settings = defaultSettings ++ publishSettings ++ (
+          commonToolsSettings
+      ) ++ Seq(
           scalaVersion := "2.10.4",
-          unmanagedSourceDirectories in Compile +=
-            (scalaSource in (irProject, Compile)).value,
-          sourceGenerators in Compile <+= Def.task {
-            ScalaJSEnvGenerator.generateEnvHolder(
-                baseDirectory.value, (sourceManaged in Compile).value)
-          },
+
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1",
@@ -223,6 +235,42 @@ object ScalaJSBuild extends Build {
           )
       )
   )
+
+  lazy val toolsJS: Project = Project(
+      id = "toolsJS",
+      base = file("tools/js"),
+      settings = defaultSettings ++ myScalaJSSettings ++ publishSettings ++ (
+          useLibraryButDoNotDependOnIt ++
+          commonToolsSettings
+      ) ++ inConfig(Test) {
+        // Redefine test to run Node.js and link HelloWorld
+        val stagedRunSetting = test := {
+          val cp = {
+            for (e <- (fullClasspath in helloworld in Compile).value)
+              yield JSUtils.toJSstr(e.data.getAbsolutePath)
+          }
+
+          val code = {
+            s"""
+            var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
+            var run = "helloworld.HelloWorld().main();";
+
+            eval("(function() { " + lib + "; " + run + "}).call(this);");
+            """
+          }
+
+          val launcher = new MemVirtualJSFile("Generated launcher file")
+            .withContent(code)
+
+          jsEnv.value.runJS(execClasspath.value, launcher,
+              streams.value.log, jsConsole.value)
+        }
+
+        Seq(test := error("Can't run toolsJS/test in preLink stage")) ++
+        inTask(fastOptStage)(stagedRunSetting) ++
+        inTask(fullOptStage)(stagedRunSetting)
+      }
+  ).dependsOn(compiler % "plugin", javalibEx)
 
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
