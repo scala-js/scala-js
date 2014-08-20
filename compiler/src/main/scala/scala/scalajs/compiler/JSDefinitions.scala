@@ -85,8 +85,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSAny_fromDouble  = getMemberMethod(JSAnyModule, newTermName("fromDouble"))
       lazy val JSAny_fromString  = getMemberMethod(JSAnyModule, newTermName("fromString"))
 
-      lazy val JSAny_fromTraversableOnce = getMemberMethod(JSAnyModule, newTermName("fromTraversableOnce"))
-
       def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
@@ -128,6 +126,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
     lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
+
+    lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
+      lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
       lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
