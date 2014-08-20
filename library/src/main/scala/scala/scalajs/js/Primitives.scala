@@ -69,11 +69,9 @@ object Any extends LowPrioAnyImplicits {
     result
   }
 
-  def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] = {
-    val result = new Array[A]
-    col.foreach(x => result.push(x))
-    result
-  }
+  @deprecated("Use _.toJSArray through JSConverters instead", "0.5.4")
+  def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] =
+    scala.scalajs.runtime.genTraversableOnce2jsArray(col)
 
   @deprecated("Converts js.Array to scala.Array. " +
       "Use jsArrayOps instead for operations, toArray for conversion", "0.5.1")

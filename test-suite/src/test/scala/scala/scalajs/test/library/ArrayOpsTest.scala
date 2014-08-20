@@ -13,6 +13,8 @@ import scala.scalajs.test.JasmineTest
 
 import scala.reflect.ClassTag
 
+import js.JSConverters._
+
 object ArrayOpsTest extends JasmineTest {
 
   describe("scala.scalajs.js.ArrayOps") {
@@ -81,13 +83,13 @@ object ArrayOpsTest extends JasmineTest {
     it("should implement toList - #843") {
       val array = js.Array(1,2,1,3,1,10,9)
       val list = array.toList
-      expect(js.Any.fromTraversableOnce(list)).toEqual(array)
+      expect(list.toJSArray).toEqual(array)
     }
 
     it("should implement to[T] - #843") {
       val array = js.Array(1,2,1,3,1,10,9)
       val list = array.to[List]
-      expect(js.Any.fromTraversableOnce(list)).toEqual(array)
+      expect(list.toJSArray).toEqual(array)
     }
 
   }

@@ -64,4 +64,17 @@ object DictionaryTest extends JasmineTest {
   trait KeyHolder extends js.Object {
     def key: String = ???
   }
+
+  describe("scala.scalajs.js.JSConverters.JSRichGenMap") {
+
+    import js.JSConverters._
+
+    it("should provide toJSDictionary") {
+      expect(Map("a" -> 1, "b" -> 2).toJSDictionary).toEqual(
+          js.Dynamic.literal(a = 1, b = 2))
+      expect(Map("a" -> "foo", "b" -> "bar").toJSDictionary).toEqual(
+          js.Dynamic.literal(a = "foo", b = "bar"))
+    }
+
+  }
 }

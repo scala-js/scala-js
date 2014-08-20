@@ -5,7 +5,7 @@ import java.io._
 import scala.scalajs.test.JasmineTest
 
 import scala.scalajs.js.typedarray._
-import scala.scalajs.js.Any.fromTraversableOnce
+import scala.scalajs.js.JSConverters._
 
 object DataInputStreamTest extends JasmineTest {
 
@@ -216,12 +216,12 @@ object DataInputStreamTest extends JasmineTest {
         val buf = new Array[Byte](50)
 
         stream.readFully(buf)
-        expect(buf).toEqual(fromTraversableOnce(-100 to -51))
+        expect(buf).toEqual((-100 to -51).toJSArray)
 
         expect(() => stream.readFully(null)).toThrow
 
         stream.readFully(buf, 40, 10)
-        expect(buf).toEqual(fromTraversableOnce((-100 to -61) ++ (-50 to -41)))
+        expect(buf).toEqual(((-100 to -61) ++ (-50 to -41)).toJSArray)
 
         expect(() => stream.readFully(buf, 70, 1)).toThrow
         expect(() => stream.readFully(buf, 10, 100)).toThrow
@@ -229,10 +229,10 @@ object DataInputStreamTest extends JasmineTest {
         expect(() => stream.readFully(buf, 0, -1)).toThrow
 
         stream.readFully(buf, 0, 50)
-        expect(buf).toEqual(fromTraversableOnce(-40 to 9))
+        expect(buf).toEqual((-40 to 9).toJSArray)
 
         stream.readFully(buf, 0, 50)
-        expect(buf).toEqual(fromTraversableOnce(10 to 59))
+        expect(buf).toEqual((10 to 59).toJSArray)
 
         expect(() => stream.readFully(buf)).toThrow
       }
@@ -260,10 +260,10 @@ object DataInputStreamTest extends JasmineTest {
         val buf = new Array[Byte](50)
 
         stream.readFully(buf)
-        expect(buf).toEqual(fromTraversableOnce(1 to 50))
+        expect(buf).toEqual((1 to 50).toJSArray)
 
         stream.readFully(buf, 40, 10)
-        expect(buf).toEqual(fromTraversableOnce((1 to 40) ++ (51 to 60)))
+        expect(buf).toEqual(((1 to 40) ++ (51 to 60)).toJSArray)
 
         expect(() => stream.readFully(buf)).toThrow
       }
@@ -322,13 +322,13 @@ object DataInputStreamTest extends JasmineTest {
     new ByteArrayInputStream(bytes.toArray))
 
   tests("java.io.DataInputStream - ArrayBufferInputStream case")(bytes =>
-    new ArrayBufferInputStream(new Int8Array(fromTraversableOnce(bytes)).buffer))
+    new ArrayBufferInputStream(new Int8Array(bytes.toJSArray).buffer))
 
   tests("java.io.DataInputStream - partially consumed ArrayBufferInputStream case") { bytes =>
     val addBytes = Seq[Byte](0, 0, 0, 0)
     val allBytes = addBytes ++ bytes
     val in = new ArrayBufferInputStream(
-        new Int8Array(fromTraversableOnce(allBytes)).buffer)
+        new Int8Array(allBytes.toJSArray).buffer)
 
     for (_ <- addBytes) in.read()
 

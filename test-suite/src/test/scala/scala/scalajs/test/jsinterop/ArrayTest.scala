@@ -43,4 +43,15 @@ object ArrayTest extends JasmineTest {
 
   }
 
+  describe("scala.scalajs.js.JSConverters.JSRichGenTraversableOnce") {
+
+    import js.JSConverters._
+
+    it("should provide toJSArray") {
+      expect(List("foo", "bar").toJSArray).toEqual(js.Array("foo", "bar"))
+      expect(Iterator(1, 2, 3).toJSArray).toEqual(js.Array(1, 2, 3))
+    }
+
+  }
+
 }

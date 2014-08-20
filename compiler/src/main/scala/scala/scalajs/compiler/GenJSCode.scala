@@ -3311,13 +3311,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // foo(argSeq:_*)
         case _ =>
-          /* Here we fall back to calling js.Any.fromTraversableOnce(seqExpr)
+          /* Here we fall back to calling runtime.genTraversableOnce2jsArray
            * to perform the conversion.
            */
           genApplyMethod(
-              genLoadModule(JSAnyModule),
-              JSAnyModule.moduleClass,
-              JSAny_fromTraversableOnce,
+              genLoadModule(RuntimePackageModule),
+              RuntimePackageModule.moduleClass,
+              Runtime_genTraversableOnce2jsArray,
               List(genExpr(arg)))
       }
     }
