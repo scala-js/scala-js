@@ -104,6 +104,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val inliningMode = SettingKey[InliningMode]("inliningMode",
         "Mode of the inliner: Incremental (default), Batch, Off", CSetting)
 
+    val directFullOptJS = SettingKey[Boolean]("directFullOptJS",
+        "Whether fullOptJS should directly use IR produced by fastOptJS", DSetting)
+
     // Task keys to re-wire sources and run with other VM
     val packageStage = TaskKey[Unit]("packageStage",
         "Run/test stuff after packageJS. (type packageStage::run)", CTask)
