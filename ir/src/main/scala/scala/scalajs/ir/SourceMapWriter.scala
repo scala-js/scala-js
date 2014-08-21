@@ -73,11 +73,7 @@ class SourceMapWriter(
     val uri = source
     val relURI = relativizeBaseURI.fold(uri)(Utils.relativize(_, uri))
 
-    val uriStr = relURI.toASCIIString
-    if (uriStr.startsWith("file:/") && uriStr.charAt(6) != '/')
-      "file:///" + uriStr.substring(6)
-    else
-      uriStr
+    Utils.fixFileURI(relURI).toASCIIString
   }
 
   private def nameToIndex(name: String) =

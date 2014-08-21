@@ -240,9 +240,7 @@ object ScalaJSPluginInternal {
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
-                wantSourceMap = (emitSourceMaps in fullOptJS).value,
-                prettyPrint = fullOptJSPrettyPrint.value,
-                relSourceMapBase),
+                prettyPrint = fullOptJSPrettyPrint.value),
             s.log)
       },
 

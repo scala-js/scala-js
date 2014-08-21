@@ -44,6 +44,7 @@ object Trees {
   sealed trait PropertyName {
     def name: String
     def originalName: Option[String]
+    def pos: Position
   }
 
   case class Ident(name: String, originalName: Option[String])(

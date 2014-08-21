@@ -156,9 +156,7 @@ object Scalajsld {
         Inputs(cp),
         OutputConfig(
             output = output,
-            wantSourceMap = options.sourceMap,
-            prettyPrint = options.prettyPrint,
-            relativizeSourceMapBase = options.relativizeSourceMap),
+            prettyPrint = options.prettyPrint),
         newLogger(options))
   }
 
