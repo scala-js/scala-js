@@ -76,7 +76,7 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
     providers.get(encodedName) foreach { irFile =>
       // TODO? Convert the desugared IR tree directly to Rhino ASTs?
       val codeWriter = new java.io.StringWriter
-      val printer = new ir.Printers.IRTreePrinter(codeWriter)
+      val printer = new ir.Printers.IRTreePrinter(codeWriter, jsMode = true)
       val classDef = irFile.tree
       val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
       printer.printTopLevelTree(desugared)
