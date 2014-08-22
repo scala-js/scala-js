@@ -32,6 +32,9 @@ class ScalaJSClosureOptimizer {
   private def toClosureSource(file: VirtualJSFile) =
     ClosureSource.fromReader(file.path, file.reader)
 
+  private def toClosureInput(file: VirtualJSFile) =
+    new CompilerInput(toClosureSource(file))
+
   /**
    * runs closure on CIJS content
    * - Maintains order
@@ -87,13 +90,14 @@ class ScalaJSClosureOptimizer {
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    for (lib <- CoreJSLibs.libs) {
-      val coreSrc = toClosureSource(lib)
-      module.add(new CompilerInput(coreSrc))
-    }
+    for (lib <- CoreJSLibs.libs)
+      module.add(toClosureInput(lib))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))
+
+    for (export <- inputs.additionalExports)
+      module.add(toClosureInput(export))
 
     // Compile the module
     val closureExterns =
@@ -116,7 +120,8 @@ class ScalaJSClosureOptimizer {
       outputConfig: OutputConfig, logger: Logger): Unit = {
     val closureExterns =
       (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
-    val closureSources = inputs.input map toClosureSource
+    val closureSources =
+      (inputs.input ++ inputs.additionalExports).map(toClosureSource)
 
     val options = closureOptions(outputConfig, noSourceMap = true)
     val compiler = closureCompiler(logger)
@@ -185,7 +190,12 @@ object ScalaJSClosureOptimizer {
       /** Input to optimize (classpath or file-list) */
       input: T,
       /** Additional externs files to be given to Closure. */
-      additionalExterns: Seq[VirtualJSFile] = Nil
+      additionalExterns: Seq[VirtualJSFile] = Nil,
+      /** Additional exports to be given to Closure.
+       *  These files are just appended to the classpath, given to Closure,
+       *  but not used in the Scala.js optimizer pass when direct optimizing
+       */
+      additionalExports: Seq[VirtualJSFile] = Nil
   )
 
   /** Configuration the closure part of the optimizer needs.

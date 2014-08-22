@@ -16,6 +16,8 @@ import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 import scala.scalajs.sbtplugin.JSUtils._
 
+import scala.tools.partest.scalajs.ScalaJSPartestOptions._
+
 import java.io.File
 import scala.io.Source
 
@@ -36,8 +38,7 @@ class MainGenericRunner {
     false
   }
 
-  val fullOpt = sys.props.contains("scalajs.partest.fullOpt")
-  val fastOpt = sys.props.contains("scalajs.partest.fastOpt")
+  val optMode = OptMode.fromId(sys.props("scalajs.partest.optMode"))
 
   def noWarnMissing = {
     import ScalaJSOptimizer._
@@ -80,13 +81,21 @@ class MainGenericRunner {
 
     def fastOpted = fastOptimize(classpath, mainObjName, logger)
     def fullOpted = fullOptimize(fastOpted, mainObjName, logger, baseRunner)
+    def dfullOpted = directFullOptimize(classpath, mainObjName, logger, baseRunner)
 
-    val runner = if (fullOpt) fullOptRunner() else baseRunner
-    val env    = if (fullOpt || fastOpt) new NodeJSEnv else new RhinoJSEnv
-    val runClasspath = {
-      if (fullOpt)      fullOpted
-      else if (fastOpt) fastOpted
-      else classpath
+    val runner = {
+      if (optMode == FullOpt || optMode == DirectFullOpt)
+        fullOptRunner()
+      else
+        baseRunner
+    }
+
+    val env = if (optMode == NoOpt) new RhinoJSEnv else new NodeJSEnv
+    val runClasspath = optMode match {
+      case NoOpt         => classpath
+      case FastOpt       => fastOpted
+      case FullOpt       => fullOpted
+      case DirectFullOpt => dfullOpted
     }
 
     env.runJS(runClasspath, runner, logger, jsConsole)
@@ -119,10 +128,7 @@ class MainGenericRunner {
 
     optimizer.optimizeCP(
         Inputs(classpath,
-            manuallyReachable = List(
-              ReachObject(mainObjName),
-              ReachMethod(mainObjName + '$', "main__AT__V", static = false)
-            ),
+            manuallyReachable = fastOptReachable(mainObjName),
             noWarnMissing = noWarnMissing
         ),
         OutputConfig(
@@ -131,6 +137,14 @@ class MainGenericRunner {
             checkIR       = true
             ),
         logger)
+  }
+
+  private def fastOptReachable(mainObjName: String) = {
+    import ScalaJSOptimizer._
+    List(
+      ReachObject(mainObjName),
+      ReachMethod(mainObjName + '$', "main__AT__V", static = false)
+    )
   }
 
   private def fullOptimize(
@@ -144,15 +158,39 @@ class MainGenericRunner {
     val output = WritableMemVirtualJSFile("partest fullOpt file")
     val exportFile = fullOptExportFile(runner)
 
-    // Pseudo-classpath to pass execution code to closure
-    // Will be moved to tooling API as JSApplication
-    val dummyCP = CompleteCIClasspath(classpath.jsLibs,
-        classpath.cijsCode :+ exportFile, requiresDOM = false, version = None)
-
     optimizer.optimizeCP(
-      Inputs(dummyCP),
+      Inputs(
+        classpath,
+        additionalExports = exportFile :: Nil
+      ),
       OutputConfig(output),
       logger)
+  }
+
+  private def directFullOptimize(
+      classpath: CompleteIRClasspath,
+      mainObjName: String,
+      logger: Logger,
+      runner: VirtualJSFile) = {
+    import ScalaJSClosureOptimizer._
+
+    val fastOptimizer = new ScalaJSOptimizer
+    val fullOptimizer = new ScalaJSClosureOptimizer
+    val output = WritableMemVirtualJSFile("partest dfullOpt file")
+    val exportFile = fullOptExportFile(runner)
+
+    fullOptimizer.directOptimizeCP(fastOptimizer, Inputs(
+      input = ScalaJSOptimizer.Inputs(
+        classpath,
+        manuallyReachable = fastOptReachable(mainObjName),
+        noWarnMissing = noWarnMissing),
+      additionalExports = exportFile :: Nil),
+      DirectOutputConfig(
+        output,
+        checkIR = true,
+        wantSourceMap = false),
+    logger)
+
   }
 
   /** generates an exporter statement for the google closure compiler that runs

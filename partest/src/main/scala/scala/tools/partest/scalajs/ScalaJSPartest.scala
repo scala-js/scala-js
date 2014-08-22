@@ -38,12 +38,7 @@ trait ScalaJSRunner extends nest.Runner {
     val opts = super.extraJavaOptions :+
       s"-Dscalajs.partest.noWarnFile=$noWarnFile"
 
-    if (options.fullOpt)
-      opts :+ "-Dscalajs.partest.fullOpt=true"
-    else if (options.fastOpt)
-      opts :+ "-Dscalajs.partest.fastOpt=true"
-    else
-      opts
+    opts :+ "-Dscalajs.partest.optMode=" + options.optMode.id
   }
 }
 
@@ -61,15 +56,10 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   override def banner: String = {
     import scala.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
 
-    val optimizer = {
-      if (options.fullOpt) "Full"
-      else if (options.fastOpt) "Fast"
-      else "None"
-    }
     super.banner.trim + s"""
     |Scala.js version is: $currentVersion
     |Scala.js options are:
-    |optimizer:           $optimizer
+    |optimizer:           ${options.optMode.shortStr}
     |testFilter:          ${options.testFilter.descr}
     """.stripMargin
   }
