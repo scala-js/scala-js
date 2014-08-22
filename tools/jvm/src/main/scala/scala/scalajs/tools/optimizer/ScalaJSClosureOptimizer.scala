@@ -117,7 +117,7 @@ object ScalaJSClosureOptimizer {
     Function.prototype.call = function() {};
     Function.prototype.apply = function() {};
     var global = {};
-    var __ScalaJSExportsNamespace = {};
+    var __ScalaJSEnv = {};
     """
 
   val ScalaJSExternsFile = new MemVirtualJSFile("ScalaJSExterns.js").

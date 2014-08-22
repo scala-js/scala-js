@@ -129,6 +129,13 @@ class PhantomJSEnv(
           |
           |})();
           |""".stripMargin
+      ),
+      new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+          """
+          |__ScalaJSEnv = {
+          |  exitFunction: function(status) { window.callPhantom(status); }
+          |};
+          """.stripMargin
       )
   )
 
@@ -175,6 +182,9 @@ class PhantomJSEnv(
              |  }
              |
              |  phantom.exit(2);
+             |};
+             |page.onCallback = function(status) {
+             |  phantom.exit(status);
              |};
              |page.open(url, function (status) {
              |  phantom.exit(status != 'success');

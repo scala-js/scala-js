@@ -73,6 +73,8 @@ abstract class JSPrimitives {
 
   val ARRAYCOPY = 350 // System.arraycopy
 
+  val ENV_INFO = 351  // __ScalaJSEnv via helper
+
   val AB2TA = 370 // scala.Array[Byte] to TypedArray
   val AS2TA = 371 // scala.Array[Short] to TypedArray
   val AC2TA = 372 // scala.Array[Char] to TypedArray
@@ -142,6 +144,9 @@ abstract class JSPrimitives {
 
     addPrimitive(getMember(getRequiredModule("java.lang.System"),
         newTermName("arraycopy")), ARRAYCOPY)
+
+    addPrimitive(getMember(RuntimePackageModule,
+        newTermName("environmentInfo")), ENV_INFO)
 
     val typedArrayPO = getPackageObject("scala.scalajs.js.typedarray")
     addPrimitive(getMember(typedArrayPO, newTermName("byteArray2Int8Array")), AB2TA)
