@@ -35,6 +35,15 @@ object CharacterTest extends JasmineTest {
       expect(Character.digit('Z', 36)).toEqual(35)
       expect(Character.digit('\uFF22', 20)).toEqual(11)
     }
+    
+    it("should provide isDigit") {
+      expect(Character.isDigit('a')).toBeFalsy
+      expect(Character.isDigit('0')).toBeTruthy
+      expect(Character.isDigit('5')).toBeTruthy
+      expect(Character.isDigit('9')).toBeTruthy
+      expect(Character.isDigit('z')).toBeFalsy
+      expect(Character.isDigit(' ')).toBeFalsy
+    }
 
     it("should provide `compareTo`") {
       def compare(x: Char, y: Char): Int =

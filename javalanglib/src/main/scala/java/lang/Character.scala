@@ -208,7 +208,7 @@ object Character {
     (0x00 <= codePoint && codePoint <= 0x1F) || (0x7F <= codePoint && codePoint <= 0x9F)
   }
 
-  def isDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  def isDigit(c: scala.Char): scala.Boolean = c >= '0' && c <= '9'
   def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
   def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
