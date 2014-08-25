@@ -23,7 +23,8 @@ import scala.io.Source
 
 class PhantomJSEnv(
     phantomjsPath: Option[String],
-    addEnv: Map[String, String]) extends ExternalJSEnv(Seq.empty, addEnv) {
+    addArgs: Seq[String],
+    addEnv: Map[String, String]) extends ExternalJSEnv(addArgs, addEnv) {
 
   import ExternalJSEnv._
 
@@ -31,25 +32,33 @@ class PhantomJSEnv(
   protected def executable: String = phantomjsPath.getOrElse("phantomjs")
 
   // Helper constructors
-  def this(
-      phantomjsPath: String,
-      env: Map[String, String] = Map.empty) = this(Some(phantomjsPath), env)
 
-  def this() = this(None, Map.empty[String, String])
+  def this(phantomjsPath: Option[String], addArgs: Seq[String]) =
+    this(phantomjsPath, addArgs, Map.empty[String, String])
 
-  // Deprecated compat constructors
+  def this(phantomjsPath: Option[String], addEnv: Map[String, String]) =
+    this(phantomjsPath, Seq.empty, addEnv)
 
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(phantomJSpath: Option[String], env: Seq[String]) =
-    this(phantomJSpath, ExternalJSEnv.splitEnv(env))
+  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String]) =
+    this(Some(phantomjsPath), args, env)
 
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(phantomJSpath: String, env: Seq[String]) =
-    this(phantomJSpath, ExternalJSEnv.splitEnv(env))
+  def this(phantomjsPath: String, args: Seq[String]) =
+    this(Some(phantomjsPath), args, Map.empty[String, String])
+
+  def this(phantomjsPath: String, env: Map[String, String]) =
+    this(Some(phantomjsPath), Seq.empty, env)
+
+  def this(args: Seq[String], env: Map[String, String]) = this(None, args, env)
+
+  def this(args: Seq[String]) = this(None, args, Map.empty[String, String])
+
+  def this(env: Map[String, String]) = this(None, Seq.empty, env)
+
+  def this() = this(None, Seq.empty, Map.empty[String, String])
 
   override protected def getVMArgs(args: RunJSArgs) =
     // Add launcher file to arguments
-    Seq(createTmpLauncherFile(args).getAbsolutePath)
+    additionalArgs :+ createTmpLauncherFile(args).getAbsolutePath
 
   /** In phantom.js, we include JS using HTML */
   override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
