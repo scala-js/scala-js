@@ -24,7 +24,8 @@ import scala.io.Source
 class PhantomJSEnv(
     phantomjsPath: Option[String],
     addArgs: Seq[String],
-    addEnv: Map[String, String]) extends ExternalJSEnv(addArgs, addEnv) {
+    addEnv: Map[String, String],
+    val autoExit: Boolean) extends ExternalJSEnv(addArgs, addEnv) {
 
   import ExternalJSEnv._
 
@@ -33,28 +34,58 @@ class PhantomJSEnv(
 
   // Helper constructors
 
+  def this(phantomjsPath: Option[String], addArgs: Seq[String], autoExit: Boolean) =
+    this(phantomjsPath, addArgs, Map.empty[String, String], autoExit)
+
+  def this(phantomjsPath: Option[String], addEnv: Map[String, String], autoExit: Boolean) =
+    this(phantomjsPath, Seq.empty, addEnv, autoExit)
+
   def this(phantomjsPath: Option[String], addArgs: Seq[String]) =
-    this(phantomjsPath, addArgs, Map.empty[String, String])
+    this(phantomjsPath, addArgs, Map.empty[String, String], true)
 
   def this(phantomjsPath: Option[String], addEnv: Map[String, String]) =
-    this(phantomjsPath, Seq.empty, addEnv)
+    this(phantomjsPath, Seq.empty, addEnv, true)
+
+  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String], autoExit: Boolean) =
+    this(Some(phantomjsPath), args, env, autoExit)
+
+  def this(phantomjsPath: String, args: Seq[String], autoExit: Boolean) =
+    this(Some(phantomjsPath), args, Map.empty[String, String], autoExit)
+
+  def this(phantomjsPath: String, env: Map[String, String], autoExit: Boolean) =
+    this(Some(phantomjsPath), Seq.empty, env, autoExit)
 
   def this(phantomjsPath: String, args: Seq[String], env: Map[String, String]) =
-    this(Some(phantomjsPath), args, env)
+    this(Some(phantomjsPath), args, env, true)
 
   def this(phantomjsPath: String, args: Seq[String]) =
-    this(Some(phantomjsPath), args, Map.empty[String, String])
+    this(Some(phantomjsPath), args, Map.empty[String, String], true)
 
   def this(phantomjsPath: String, env: Map[String, String]) =
-    this(Some(phantomjsPath), Seq.empty, env)
+    this(Some(phantomjsPath), Seq.empty, env, true)
 
-  def this(args: Seq[String], env: Map[String, String]) = this(None, args, env)
+  def this(args: Seq[String], env: Map[String, String], autoExit: Boolean) =
+    this(None, args, env, autoExit)
 
-  def this(args: Seq[String]) = this(None, args, Map.empty[String, String])
+  def this(args: Seq[String], env: Map[String, String]) =
+    this(None, args, env, true)
 
-  def this(env: Map[String, String]) = this(None, Seq.empty, env)
+  def this(args: Seq[String], autoExit: Boolean) =
+    this(None, args, Map.empty[String, String], autoExit)
 
-  def this() = this(None, Seq.empty, Map.empty[String, String])
+  def this(env: Map[String, String], autoExit: Boolean) =
+    this(None, Seq.empty, env, autoExit)
+
+  def this(args: Seq[String]) =
+    this(None, args, Map.empty[String, String], true)
+
+  def this(env: Map[String, String]) =
+    this(None, Seq.empty, env, true)
+
+  def this(autoExit: Boolean) =
+    this(None, Seq.empty, Map.empty[String, String], autoExit)
+
+  def this() = this(None, Seq.empty, Map.empty[String, String], true)
 
   override protected def getVMArgs(args: RunJSArgs) =
     // Add launcher file to arguments
@@ -186,10 +217,18 @@ class PhantomJSEnv(
              |page.onCallback = function(status) {
              |  phantom.exit(status);
              |};
-             |page.open(url, function (status) {
-             |  phantom.exit(status != 'success');
-             |});
              |""".stripMargin)
+      if (autoExit) {
+        out.write("""
+            page.open(url, function (status) {
+              phantom.exit(status != 'success');
+            });""")
+      } else {
+        out.write("""
+            page.open(url, function (status) {
+              if (status != 'success') phantom.exit(1);
+            });""")
+      }
     } finally {
       out.close()
     }
