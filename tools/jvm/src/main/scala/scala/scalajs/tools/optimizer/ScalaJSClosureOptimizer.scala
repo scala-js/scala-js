@@ -41,7 +41,7 @@ class ScalaJSClosureOptimizer {
 
     val cp = inputs.input
 
-    CacheUtils.cached(cp.version, outCfg.cache) {
+    CacheUtils.cached(cp.version, outCfg.output, outCfg.cache) {
       logger.info(s"Optimizing ${outCfg.output.path}")
       optimizeFiles(inputs.copy(input = cp.cijsCode), outCfg, logger)
     }
