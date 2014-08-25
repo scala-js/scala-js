@@ -114,11 +114,6 @@ var ScalaJS = {
     return result;
   },
 
-  /** Protect the argument against `this` forgery (see genPrimitiveJSCall()) */
-  protect: function(x) {
-    return x;
-  },
-
   cloneObject: function(obj) {
     function Clone(from) {
       for (var field in from)
