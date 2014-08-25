@@ -36,7 +36,7 @@ class ScalaJSPackager {
   def packageCP(pcp: PartialClasspath,
       outCfg: OutputConfig, logger: Logger): PartialClasspath = {
 
-    CacheUtils.cached(pcp.version, outCfg.cache) {
+    CacheUtils.cached(pcp.version, outCfg.output, outCfg.cache) {
       logPackageMsg(outCfg, logger)
       pcp match {
         case pircp: PartialIRClasspath =>
@@ -59,7 +59,7 @@ class ScalaJSPackager {
   def packageCP(ccp: CompleteCIClasspath,
       outCfg: OutputConfig, logger: Logger): CompleteCIClasspath = {
 
-    CacheUtils.cached(ccp.version, outCfg.cache) {
+    CacheUtils.cached(ccp.version, outCfg.output, outCfg.cache) {
       logPackageMsg(outCfg, logger)
       ccp match {
         case circp: CompleteIRClasspath =>
@@ -84,7 +84,7 @@ class ScalaJSPackager {
   def packageCP(ccp: CompleteNCClasspath,
       outCfg: OutputConfig, logger: Logger): CompleteNCClasspath = {
 
-    CacheUtils.cached(ccp.version, outCfg.cache) {
+    CacheUtils.cached(ccp.version, outCfg.output, outCfg.cache) {
       logPackageMsg(outCfg, logger)
       packageJS(ccp.ncjsCode, outCfg, logger)
     }
