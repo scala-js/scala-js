@@ -481,7 +481,6 @@ object JSDesugaring {
     }
 
     private val isHelperThatPreservesPureness: Set[String] = Set(
-        "protect",
         "isByte", "isShort", "isInt",
         "asUnit", "asBoolean", "asByte", "asShort", "asInt",
         "asFloat", "asDouble",
@@ -1152,11 +1151,9 @@ object JSDesugaring {
           /* Protect the fun so that if it is, e.g.,
            * path.f
            * we emit
-           * ScalaJS.protect(path.f)(args...)
+           * (0, path.f)(args...)
            * instead of
            * path.f(args...)
-           * where
-           * ScalaJS.protect = function(x) { return x; }
            * If we emit the latter, then `this` will be bound to `path` in
            * `f`, which is sometimes extremely harmful (e.g., for builtin
            * methods of `window`).
@@ -1164,7 +1161,7 @@ object JSDesugaring {
           val transformedFun = transformExpr(fun)
           val protectedFun = transformedFun match {
             case _:JSDotSelect | _:JSBracketSelect =>
-              genCallHelper("protect", transformedFun)
+              Block(IntLiteral(0), transformedFun)
             case _ =>
               transformedFun
           }
