@@ -13,6 +13,8 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
+import scala.util.control.NonFatal
+
 import scala.scalajs.ir._
 import Definitions.{ObjectClass, isConstructorName, isReflProxyName}
 import Infos.OptimizerHints
@@ -64,22 +66,33 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   private var disableOptimisticOptimizations: Boolean = false
   private var rollbacksCount: Int = 0
 
+  private val attemptedInlining = mutable.ListBuffer.empty[MethodImpl]
+
   def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
-    val MethodDef(name, params, resultType, body) = originalDef
-    val thisType = myself.thisType
-    val (newParams, newBody) = try {
-      transformIsolatedBody(Some(myself), thisType, params, resultType, body)
-    } catch {
-      case _: TooManyRollbacksException =>
-        usedLocalNames.clear()
-        usedLabelNames.clear()
-        statesInUse = Nil
-        disableOptimisticOptimizations = true
+    try {
+      val MethodDef(name, params, resultType, body) = originalDef
+      val thisType = myself.thisType
+      val (newParams, newBody) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+      } catch {
+        case _: TooManyRollbacksException =>
+          usedLocalNames.clear()
+          usedLabelNames.clear()
+          statesInUse = Nil
+          disableOptimisticOptimizations = true
+          transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+      }
+      val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
+      val info = recreateInfo(m)
+      (m, info)
+    } catch {
+      case NonFatal(cause) =>
+        throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
+      case e: Throwable =>
+        // This is a fatal exception. Don't wrap, just output debug info error
+        Console.err.println(exceptionMsg(myself, attemptedInlining.distinct.toList))
+        throw e
     }
-    val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
-    val info = recreateInfo(m)
-    (m, info)
   }
 
   private def withState[A, B](state: State[A])(body: => B): B = {
@@ -1110,6 +1123,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       cont: PreTransform => Tree)(
       implicit scope: Scope, pos: Position): Tree = {
     assert(target.inlineable, s"Trying to inline non-inlineable method $target")
+
+    attemptedInlining += target
 
     val MethodDef(_, formals, resultType, body) = target.originalDef
 
@@ -2508,5 +2523,26 @@ object OptimizerCore {
           ObjectClass, StringClass, RuntimeLongClass)
     }
   }
+
+  private def exceptionMsg(myself: OptimizerCore.MethodImpl,
+      attemptedInlining: List[MethodImpl]) = {
+    val buf = new StringBuilder()
+
+    buf.append("The Scala.js optimizer crashed while optimizing " + myself)
+
+    buf.append("\nMethods attempted to inline:\n")
+
+    for (m <- attemptedInlining) {
+      buf.append("* ")
+      buf.append(m)
+      buf.append('\n')
+    }
+
+    buf.toString
+  }
+
+  class OptimizeException(val myself: OptimizerCore.MethodImpl,
+      val attemptedInlining: List[MethodImpl], cause: Throwable
+  ) extends Exception(exceptionMsg(myself, attemptedInlining), cause)
 
 }
