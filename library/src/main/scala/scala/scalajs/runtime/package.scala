@@ -11,4 +11,7 @@ package object runtime {
     result
   }
 
+  /** Information about the environment Scala.js runs in. */
+  def environmentInfo: js.Dynamic = sys.error("stub")
+
 }

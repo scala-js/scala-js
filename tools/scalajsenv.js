@@ -10,7 +10,9 @@
 var ScalaJS = {
   // Fields
   g: (typeof global === "object" && global && global["Object"] === Object) ? global : this, // Global scope
-  e: (typeof __ScalaJSExportsNamespace === "object" && __ScalaJSExportsNamespace) ? __ScalaJSExportsNamespace : // Where to send exports
+  e: (typeof __ScalaJSEnv === "object" && __ScalaJSEnv &&
+      typeof __ScalaJSEnv["exportsNamespace"] === "object" &&
+      __ScalaJSEnv["exportsNamespace"]) ? __ScalaJSEnv["exportsNamespace"] : // Where to send exports
       ((typeof global === "object" && global && global["Object"] === Object) ? global : this),
   d: {},         // Data for types
   c: {},         // Scala.js constructors
@@ -372,6 +374,13 @@ var ScalaJS = {
       for (var i = length-1; i >= 0; i--)
         destu[destPos+i] = srcu[srcPos+i];
     }
+  },
+
+  environmentInfo: function() {
+    if (typeof __ScalaJSEnv !== "undefined")
+      return __ScalaJSEnv;
+    else
+      return void 0;
   },
 
   // is/as for hijacked boxed classes (the non-trivial ones)

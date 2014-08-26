@@ -77,7 +77,7 @@ class NodeJSEnv(
 
   // We need to hack console.log (for duplicate %)
   override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
-     new MemVirtualJSFile("nodeConsoleHack.js").withContent(
+      new MemVirtualJSFile("nodeConsoleHack.js").withContent(
         """
         // Hack console log to duplicate double % signs
         (function() {
@@ -91,6 +91,12 @@ class NodeJSEnv(
           };
           console.log = newLog;
         })();
+        """),
+      new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+        """
+        __ScalaJSEnv = {
+          exitFunction: function(status) { process.exit(status); }
+        };
         """)
   )
 
