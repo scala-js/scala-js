@@ -12,6 +12,8 @@ import scala.scalajs.js
 import js.annotation._
 import scala.scalajs.test.JasmineTest
 
+import scala.annotation.meta
+
 object ExportsTest extends JasmineTest {
 
   describe("@JSExport") {
@@ -611,6 +613,18 @@ object ExportsTest extends JasmineTest {
 
       expect(funs.testChar(foo)).toEqual("char: S")
       expect(funs.testInt(foo)).toEqual("int: 68")
+    }
+
+    it("should support exporting constructor parameter fields - #970") {
+      class Foo(@(JSExport @meta.field) val x: Int)
+      val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
+    }
+
+    it("should support exporting case class fields - #970") {
+      case class Foo(@(JSExport @meta.field) x: Int)
+      val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
     }
 
     it("should support exporting under 'org' namespace - #364") {
