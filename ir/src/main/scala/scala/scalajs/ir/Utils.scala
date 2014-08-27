@@ -39,4 +39,11 @@ object Utils {
     }
   }
 
+  /** Adds an empty authority to URIs with the "file" scheme without authority.
+   *  Some browsers don't fetch URIs without authority correctly.
+   */
+  def fixFileURI(uri: URI): URI =
+    if (uri.getScheme() != "file" || uri.getAuthority() != null) uri
+    else new URI("file", "", uri.getPath(), uri.getQuery(), uri.getFragment())
+
 }

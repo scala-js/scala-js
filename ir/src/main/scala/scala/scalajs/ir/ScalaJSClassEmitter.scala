@@ -495,6 +495,17 @@ object ScalaJSClassEmitter {
         Function(NoType, args, resultType, body))
   }
 
+  /** Generate a dummy parent. Used by ScalaJSOptimizer */
+  def genDummyParent(name: String): Tree = {
+    implicit val pos = Position.NoPosition
+
+    Block(
+        DocComment("@constructor (dummy parent)"))
+        Assign(JSDotSelect(envField("h"), Ident(name)),
+            Function(DynType, Nil, NoType, Skip())
+    )
+  }
+
   // Helpers
 
   /** Gen JS code for assigning an rhs to a qualified name in the exports scope.

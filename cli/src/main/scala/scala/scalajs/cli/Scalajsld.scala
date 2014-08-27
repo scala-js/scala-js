@@ -33,6 +33,7 @@ object Scalajsld {
     jsoutput: Option[File] = None,
     noOpt: Boolean = false,
     fullOpt: Boolean = false,
+    directFullOpt: Boolean = true,
     prettyPrint: Boolean = false,
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
@@ -71,7 +72,7 @@ object Scalajsld {
         .text("Pretty print full opted code (meaningful with -u)")
       opt[Unit]('s', "sourceMap")
         .action { (_, c) => c.copy(sourceMap = true) }
-        .text("Produce a source map for the produced code (with fastOpt and noOpt)")
+        .text("Produce a source map for the produced code")
       opt[Unit]('c', "checkIR")
         .action { (_, c) => c.copy(checkIR = true) }
         .text("Check IR before optimizing")
@@ -79,6 +80,10 @@ object Scalajsld {
         .valueName("<path>")
         .action { (x, c) => c.copy(relativizeSourceMap = Some(x.toURI)) }
         .text("Relativize source map with respect to given path (meaningful with -s)")
+      opt[Unit]("noDirectFullOpt")
+        .action { (x, c) => c.copy(directFullOpt = false) }
+        .text("Don't pass IR trees directly to the Google Closure Compiler " +
+            "but write to an in-memory file first")
       opt[Unit]("noStdlib")
         .action { (_, c) => c.copy(stdLib = None) }
         .text("Don't automatcially include Scala.js standard library")
@@ -125,10 +130,14 @@ object Scalajsld {
       // Link Scala.js code
       val outFile = WritableFileVirtualJSFile(options.output)
       if (options.fullOpt) {
-        val fastOptCP =
-          fastOpt(cp, WritableMemVirtualJSFile("temporary file"),
-              options.copy(sourceMap = false))
-        fullOpt(fastOptCP, outFile, options)
+        if (options.directFullOpt) {
+          directFullOpt(cp, outFile, options)
+        } else {
+          val fastOptCP =
+            fastOpt(cp, WritableMemVirtualJSFile("temporary file"),
+                options.copy(sourceMap = false))
+          fullOpt(fastOptCP, outFile, options)
+        }
       } else if (options.noOpt)
         noOpt(cp, outFile, options)
       else
@@ -148,6 +157,22 @@ object Scalajsld {
         newLogger(options))
   }
 
+  private def directFullOpt(cp: CompleteIRClasspath,
+      output: WritableVirtualJSFile, options: Options) = {
+    import ScalaJSClosureOptimizer._
+
+    (new ScalaJSClosureOptimizer).directOptimizeCP(
+        new ScalaJSOptimizer,
+        Inputs(ScalaJSOptimizer.Inputs(cp)),
+        DirectOutputConfig(
+            output = output,
+            wantSourceMap = options.sourceMap,
+            relativizeSourceMapBase = options.relativizeSourceMap,
+            checkIR = options.checkIR,
+            prettyPrint = options.prettyPrint),
+        newLogger(options))
+  }
+
   private def fullOpt(cp: CompleteCIClasspath,
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSClosureOptimizer._
@@ -156,9 +181,7 @@ object Scalajsld {
         Inputs(cp),
         OutputConfig(
             output = output,
-            wantSourceMap = options.sourceMap,
-            prettyPrint = options.prettyPrint,
-            relativizeSourceMapBase = options.relativizeSourceMap),
+            prettyPrint = options.prettyPrint),
         newLogger(options))
   }
 

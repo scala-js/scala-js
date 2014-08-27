@@ -62,6 +62,29 @@ class ScalaJSOptimizer {
 
   def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
       outCfg: OutputConfig, logger: Logger): Unit = {
+
+    val builder = {
+      import outCfg._
+      if (wantSourceMap)
+        new JSFileBuilderWithSourceMap(output.name,
+            output.contentWriter,
+            output.sourceMapWriter,
+            relativizeSourceMapBase)
+      else
+        new JSFileBuilder(output.name, output.contentWriter)
+    }
+
+    builder.addLine("'use strict';")
+    CoreJSLibs.libs.foreach(builder.addFile _)
+
+    optimizeIR(inputs, outCfg, builder, logger)
+
+    builder.complete()
+    builder.closeWriters()
+  }
+
+  def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
+      outCfg: OptimizerConfig, builder: JSTreeBuilder, logger: Logger): Unit = {
     persistentState.startRun()
     try {
       import inputs._
@@ -115,7 +138,7 @@ class ScalaJSOptimizer {
         (useInliner, refinedAnalyzer)
       }
       IncOptimizer.logTime(logger, "Write DCE'ed output") {
-        writeDCEedOutput(outCfg, refinedAnalyzer, useInliner)
+        buildDCEedOutput(builder, refinedAnalyzer, useInliner)
       }
     } finally {
       persistentState.endRun(outCfg.unCache)
@@ -192,22 +215,8 @@ class ScalaJSOptimizer {
     }
   }
 
-  private def writeDCEedOutput(outputConfig: OutputConfig,
+  private def buildDCEedOutput(builder: JSTreeBuilder,
       analyzer: Analyzer, useInliner: Boolean): Unit = {
-
-    val builder = {
-      import outputConfig._
-      if (wantSourceMap)
-        new JSFileBuilderWithSourceMap(output.name,
-            output.contentWriter,
-            output.sourceMapWriter,
-            relativizeSourceMapBase)
-      else
-        new JSFileBuilder(output.name, output.contentWriter)
-    }
-
-    builder.addLine("'use strict';")
-    CoreJSLibs.libs.foreach(builder.addFile _)
 
     def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
@@ -323,15 +332,11 @@ class ScalaJSOptimizer {
         if (classInfo.isAnySubclassInstantiated) {
           // Subclass will emit constructor that references this dummy class.
           // Therefore, we need to emit a dummy parent.
-          val name = classInfo.encodedName
-          builder.addLine("/** @constructor (dummy parent) */")
-          builder.addLine(s"ScalaJS.h.$name = function() {};")
+          builder.addJSTree(
+              ir.ScalaJSClassEmitter.genDummyParent(classInfo.encodedName))
         }
       } { pf => addPersistentFile(classInfo, pf) }
     }
-
-    builder.complete()
-    builder.closeWriters()
   }
 }
 
@@ -357,6 +362,20 @@ object ScalaJSOptimizer {
   final case class NoWarnMethod(className: String, methodName: String)
     extends NoWarnMissing
 
+  /** Configurations relevant to the optimizer */
+  trait OptimizerConfig {
+    /** If true, performs expensive checks of the IR for the used parts. */
+    val checkIR: Boolean
+    /** If true, the optimizer removes trees that have not been used in the
+     *  last run from the cache. Otherwise, all trees that has been used once,
+     *  are kept in memory. */
+    val unCache: Boolean
+    /** If true, no inlining is performed */
+    val disableInliner: Boolean
+    /** If true, inlining is not performed incrementally */
+    val batchInline: Boolean
+  }
+
   /** Configuration for the output of the Scala.js optimizer. */
   final case class OutputConfig(
       /** Writer for the output. */
@@ -377,7 +396,7 @@ object ScalaJSOptimizer {
       disableInliner: Boolean = false,
       /** If true, inlining is not performed incrementally */
       batchInline: Boolean = false
-  )
+  ) extends OptimizerConfig
 
   // Private helpers -----------------------------------------------------------
 

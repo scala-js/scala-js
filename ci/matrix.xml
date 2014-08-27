@@ -43,7 +43,7 @@
     sbt ++$scala \
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray" &&
-    sbt ++$scala compiler/test reversi/packageJS reversi/fullOptJS &&
+    sbt ++$scala compiler/test reversi/packageJS reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
@@ -79,6 +79,10 @@
 
   <task id="partest-fullopt"><![CDATA[
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt"
+  ]]></task>
+
+  <task id="partest-dfullopt"><![CDATA[
+    sbt ++$scala package "partestSuite/testOnly -- --dfullOpt"
   ]]></task>
 
   <matrix id="pr">
@@ -129,6 +133,9 @@
     <run task="partest-fullopt">
       <v n="scala">2.11.0</v>
     </run>
+    <run task="partest-dfullopt">
+      <v n="scala">2.11.0</v>
+    </run>
     <run task="partest-noopt">
       <v n="scala">2.11.1</v>
     </run>
@@ -138,6 +145,9 @@
     <run task="partest-fullopt">
       <v n="scala">2.11.1</v>
     </run>
+    <run task="partest-dfullopt">
+      <v n="scala">2.11.1</v>
+    </run>
     <run task="partest-noopt">
       <v n="scala">2.11.2</v>
     </run>
@@ -145,6 +155,9 @@
       <v n="scala">2.11.2</v>
     </run>
     <run task="partest-fullopt">
+      <v n="scala">2.11.2</v>
+    </run>
+    <run task="partest-dfullopt">
       <v n="scala">2.11.2</v>
     </run>
   </matrix>

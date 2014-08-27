@@ -2,8 +2,7 @@ package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
   val testFilter: ScalaJSPartestOptions.TestFilter,
-  val fastOpt: Boolean,
-  val fullOpt: Boolean
+  val optMode: ScalaJSPartestOptions.OptMode
 )
 
 object ScalaJSPartestOptions {
@@ -29,14 +28,43 @@ object ScalaJSPartestOptions {
       names.map(x => s""""$x"""").mkString("[", ", ", "]")
   }
 
+  sealed abstract class OptMode {
+    def shortStr: String
+    def id: String
+  }
+  object OptMode {
+    def fromId(id: String): OptMode = id match {
+      case "none"  => NoOpt
+      case "fast"  => FastOpt
+      case "full"  => FullOpt
+      case "dfull" => DirectFullOpt
+      case _       => sys.error(s"Unknown optimization mode: $id")
+    }
+  }
+  case object NoOpt extends OptMode {
+    def shortStr: String = "None"
+    def id: String = "none"
+  }
+  case object FastOpt extends OptMode {
+    def shortStr: String = "Fast"
+    def id: String = "fast"
+  }
+  case object FullOpt extends OptMode {
+    def shortStr: String = "Full"
+    def id: String = "full"
+  }
+  case object DirectFullOpt extends OptMode {
+    def shortStr: String = "Full (direct)"
+    def id: String = "dfull"
+  }
+
   def apply(args: Array[String],
       errorReporter: String => Unit): Option[ScalaJSPartestOptions] = {
 
     var failed = false
 
     var filter: Option[TestFilter] = None
-    var fastOpt = false
-    var fullOpt = false
+    var optMode: OptMode = NoOpt
 
     def error(msg: String) = {
       failed = true
@@ -55,14 +83,13 @@ object ScalaJSPartestOptions {
 
     for (arg <- args) arg match {
       case "--fastOpt" =>
-        fastOpt = true
-        fullOpt = false
+        optMode = FastOpt
       case "--noOpt" =>
-        fastOpt = false
-        fullOpt = false
+        optMode = NoOpt
       case "--fullOpt" =>
-        fastOpt = false
-        fullOpt = true
+        optMode = FullOpt
+      case "--dfullOpt" =>
+        optMode = DirectFullOpt
       case "--blacklisted" =>
         setFilter(BlacklistedTests)
       case "--buglisted" =>
@@ -78,8 +105,7 @@ object ScalaJSPartestOptions {
     if (failed) None
     else Some {
       new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests),
-        fastOpt, fullOpt)
+        filter.getOrElse(WhitelistedTests), optMode)
     }
   }
 

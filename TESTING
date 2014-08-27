@@ -49,7 +49,7 @@ The following HTML-runners/testers must be manually tested:
 
 To test source maps, do the following on:
 
-    examples/reversi/reversi-{2.10|2.11}{-pack|-fastopt}.html
+    examples/reversi/reversi-{2.10|2.11}{|-pack|-fastopt}.html
 
 1. Open the respective file in Google Chrome
 2. Set a break-point in the HTML launcher on the `new Reversi` statement

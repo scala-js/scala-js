@@ -19,8 +19,10 @@ import java.net.{ URI, URISyntaxException }
 
 import scala.scalajs.ir
 import scala.scalajs.tools.io._
+import scala.scalajs.tools.optimizer.JSTreeBuilder
 
-class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
+class JSFileBuilder(val name: String,
+    protected val outputWriter: Writer) extends JSTreeBuilder {
   def addLine(line: String): Unit = {
     outputWriter.write(line)
     outputWriter.write('\n')
@@ -37,13 +39,6 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
       addLine(line)
   }
 
-  /** Add an IR tree representing a statement.
-   *  The IR is desugared with [[scala.scalajs.ir.JSDesugaring]] before being
-   *  emitted.
-   */
-  def addIRTree(tree: ir.Trees.Tree): Unit =
-    addJSTree(ir.JSDesugaring.desugarJavaScript(tree))
-
   /** Add a JavaScript tree representing a statement.
    *  The tree must be a valid JavaScript tree (typically obtained by
    *  desugaring a full-fledged IR tree).
@@ -52,13 +47,6 @@ class JSFileBuilder(val name: String, protected val outputWriter: Writer) {
     val printer = new ir.Printers.IRTreePrinter(outputWriter, jsMode = true)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
-  }
-
-  /** Completes the builder.
-   *  Does not close the underlying writer(s).
-   */
-  def complete(): Unit = {
-    // Can be overridden by subclasses
   }
 
   /** Closes the underlying writer(s).
