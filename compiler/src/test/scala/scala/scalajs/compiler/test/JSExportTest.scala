@@ -225,6 +225,20 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def infoExportLocal = {
+
+    """
+    class A(@JSExport val x: Int)
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export a local definition. To export a (case) class field, use the meta-annotation scala.annotation.meta.field like this: @(JSExport @field).
+      |    class A(@JSExport val x: Int)
+      |             ^
+    """
+
+  }
+
+  @Test
   def noMiddleVarArg = {
 
     """

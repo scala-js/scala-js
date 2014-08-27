@@ -255,9 +255,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       case memDef: MemberDef =>
         val sym = memDef.symbol
-        if (sym.isLocalToBlock) {
+        if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
+          // We exclude case class apply (and unapply) to work around SI-8826
           for ((_, pos) <- jsInterop.exportsOf(sym)) {
-            currentUnit.error(pos, "You may not export a local definition")
+            val msg = {
+              val base = "You may not export a local definition"
+              if (sym.owner.isPrimaryConstructor)
+                base + ". To export a (case) class field, use the " +
+                "meta-annotation scala.annotation.meta.field like this: " +
+                "@(JSExport @field)."
+              else
+                base
+            }
+            currentUnit.error(pos, msg)
           }
         }
         memDef
