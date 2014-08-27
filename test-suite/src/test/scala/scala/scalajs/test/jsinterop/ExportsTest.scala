@@ -627,6 +627,15 @@ object ExportsTest extends JasmineTest {
       expect(foo.x).toEqual(1)
     }
 
+    it("should support exporting lazy values - #977") {
+      class Foo {
+        @JSExport
+        lazy val x = 1
+      }
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
+    }
+
     it("should support exporting under 'org' namespace - #364") {
       val accessor = js.Dynamic.global.org.ExportedUnderOrgObject
       expect(js.typeOf(accessor)).toEqual("function")
