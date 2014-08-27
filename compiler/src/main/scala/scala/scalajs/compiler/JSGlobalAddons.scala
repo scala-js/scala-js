@@ -7,6 +7,8 @@ package scala.scalajs.compiler
 
 import scala.tools.nsc._
 
+import scala.collection.mutable
+
 /** Additions to Global meaningful for the JavaScript backend
  *
  *  @author Sébastien Doeraene
@@ -49,9 +51,20 @@ trait JSGlobalAddons extends JSDefinitions
         else sym
       }
 
+      // Annotations that are directly on the member
+      val directAnnots =
+        trgSym.annotations.filter(_.symbol == JSExportAnnotation)
+
+      // Annotations for this member on the whole unit
+      val unitAnnots = {
+        if (sym.isMethod && sym.isPublic && !sym.isConstructor)
+          sym.owner.annotations.filter(_.symbol == JSExportAllAnnotation)
+        else
+          Nil
+      }
+
       val directExports = for {
-        annot <- trgSym.annotations
-        if annot.symbol == JSExportAnnotation
+        annot <- directAnnots ++ unitAnnots
       } yield {
         // Symbol we use to get name from (constructors take name of class)
         val nmeSym = if (sym.isConstructor) sym.owner else sym
@@ -109,7 +122,19 @@ trait JSGlobalAddons extends JSDefinitions
         } getOrElse Nil
       } else Nil
 
-      directExports ::: inheritedExports
+      def distinct(exports: List[(String, Position)]) = {
+        val buf = new mutable.ListBuffer[(String, Position)]
+        val seen = new mutable.HashSet[String]
+        for (exp @ (name, _) <- exports) {
+          if (!seen.contains(name)) {
+            buf += exp
+            seen += name
+          }
+        }
+        buf.toList
+      }
+
+      distinct(directExports ++ inheritedExports)
     }
 
     /** creates a name for an export specification */

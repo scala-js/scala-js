@@ -636,6 +636,40 @@ object ExportsTest extends JasmineTest {
       expect(foo.x).toEqual(1)
     }
 
+    it("should support exporting all members of a class") {
+      @JSExportAll
+      class Foo {
+        val a = 1
+
+        @JSExport // double annotation allowed
+        def b = 2
+
+        lazy val c = 3
+
+        class Bar // not exported, but should not fail
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(foo.a).toEqual(1)
+      expect(foo.b).toEqual(2)
+      expect(foo.c).toEqual(3)
+    }
+
+    it("should allow mutliple equivalent JSExport annotations") {
+      class Foo {
+        @JSExport
+        @JSExport("a")
+        @JSExport
+        @JSExport("a")
+        def b = 1
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(foo.b).toEqual(1)
+    }
+
     it("should support exporting under 'org' namespace - #364") {
       val accessor = js.Dynamic.global.org.ExportedUnderOrgObject
       expect(js.typeOf(accessor)).toEqual("function")
