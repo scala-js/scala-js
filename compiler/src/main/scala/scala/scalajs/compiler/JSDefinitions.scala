@@ -62,6 +62,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")
     lazy val JSExportDescendentObjectsAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportDescendentObjects")
+    lazy val JSExportAllAnnotation     = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
 
     lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor
     lazy val JSDynamicTpe   = JSDynamicClass.toTypeConstructor
