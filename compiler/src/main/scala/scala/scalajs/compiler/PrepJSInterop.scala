@@ -206,8 +206,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = modDef.symbol
 
         def condErr(msg: String) = {
-          for ((_, pos) <- jsInterop.exportsOf(sym)) {
-            currentUnit.error(pos, msg)
+          for (exp <- jsInterop.exportsOf(sym)) {
+            currentUnit.error(exp.pos, msg)
           }
         }
 
@@ -257,7 +257,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = memDef.symbol
         if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
           // We exclude case class apply (and unapply) to work around SI-8826
-          for ((_, pos) <- jsInterop.exportsOf(sym)) {
+          for (exp <- jsInterop.exportsOf(sym)) {
             val msg = {
               val base = "You may not export a local definition"
               if (sym.owner.isPrimaryConstructor)
@@ -267,7 +267,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               else
                 base
             }
-            currentUnit.error(pos, msg)
+            currentUnit.error(exp.pos, msg)
           }
         }
         memDef

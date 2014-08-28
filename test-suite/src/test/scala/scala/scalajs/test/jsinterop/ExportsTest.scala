@@ -670,6 +670,39 @@ object ExportsTest extends JasmineTest {
       expect(foo.b).toEqual(1)
     }
 
+    it("should support named exports") {
+      import js.Dynamic.{literal => lit}
+
+      class FooNamed {
+        @JSExportNamed("bar1")
+        def bar(x: Int, y: Int) = x + y
+
+        @JSExportNamed("bar2")
+        @JSExport
+        def bar(x: Int = 1)(y: Int = x)(z: Int = y) = x + y + z
+      }
+
+      val foo = (new FooNamed).asInstanceOf[js.Dynamic]
+
+      expect(foo.bar1(lit(x = 1, y = 2))).toEqual(3)
+      expect(() => foo.bar1(lit(x = 1))).toThrow // missing arg
+      expect(foo.bar2(lit())).toEqual(3)
+      expect(foo.bar2(lit(x = 2))).toEqual(6)
+      expect(foo.bar2(lit(y = 2))).toEqual(5)
+      expect(foo.bar2(lit(y = 2, z = 1))).toEqual(4)
+      expect(foo.bar(2)).toEqual(6)
+      expect(foo.bar(2,3)).toEqual(8)
+    }
+
+    it("should support named constructor exports") {
+      import js.Dynamic.{literal => lit}
+
+      val constr = js.Dynamic.global.ExportedNamedArgClass
+      expect(js.Dynamic.newInstance(constr)(lit(x = 2)).result).toEqual("22true")
+      expect(js.Dynamic.newInstance(constr)(lit(y = "foo")).result).toEqual("1foofalse")
+      expect(js.Dynamic.newInstance(constr)(lit(z = true, y = "foo")).result).toEqual("1footrue")
+    }
+
     it("should support exporting under 'org' namespace - #364") {
       val accessor = js.Dynamic.global.org.ExportedUnderOrgObject
       expect(js.typeOf(accessor)).toEqual("function")
@@ -853,3 +886,9 @@ class AutoExportClass
 object AutoExportedClassObject extends AutoExportClass
 
 class SomeValueClass(val i: Int) extends AnyVal
+
+@JSExportNamed
+class ExportedNamedArgClass(x: Int = 1)(y: String = x.toString)(z: Boolean = y != "foo") {
+  @JSExport
+  val result = x + y + z
+}

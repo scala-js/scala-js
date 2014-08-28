@@ -37,12 +37,14 @@ trait JSGlobalAddons extends JSDefinitions
     private val methodExportPrefix = exportPrefix + "meth$"
     private val propExportPrefix = exportPrefix + "prop$"
 
+    case class ExportInfo(jsName: String, pos: Position, isNamed: Boolean)
+
     /** retrieves the names a sym should be exported to from its annotations
      *
      *  Note that for accessor symbols, the annotations of the accessed symbol
      *  are used, rather than the annotations of the accessor itself.
      */
-    def exportsOf(sym: Symbol): List[(String, Position)] = {
+    def exportsOf(sym: Symbol): List[ExportInfo] = {
       val trgSym = {
         // For accessors, look on the val/var def
         if (sym.isAccessor) sym.accessed
@@ -52,8 +54,11 @@ trait JSGlobalAddons extends JSDefinitions
       }
 
       // Annotations that are directly on the member
-      val directAnnots =
-        trgSym.annotations.filter(_.symbol == JSExportAnnotation)
+      val directAnnots = for {
+        annot <- trgSym.annotations
+        if annot.symbol == JSExportAnnotation ||
+           annot.symbol == JSExportNamedAnnotation
+      } yield annot
 
       // Annotations for this member on the whole unit
       val unitAnnots = {
@@ -66,6 +71,8 @@ trait JSGlobalAddons extends JSDefinitions
       val directExports = for {
         annot <- directAnnots ++ unitAnnots
       } yield {
+        // Is this a named export or a normal one?
+        val named = annot.symbol == JSExportNamedAnnotation
         // Symbol we use to get name from (constructors take name of class)
         val nmeSym = if (sym.isConstructor) sym.owner else sym
         // The actual name of the symbol
@@ -92,14 +99,19 @@ trait JSGlobalAddons extends JSDefinitions
         }
 
         // Make sure we do not override the default export of toString
-        if (!sym.isConstructor && name == "toString" &&
+        if (!sym.isConstructor && name == "toString" && !named &&
             sym.name != nme.toString_ && sym.tpe.params.isEmpty &&
             !isJSGetter(sym)) {
           currentUnit.error(annot.pos, "You may not export a zero-argument " +
               "method named other than 'toString' under the name 'toString'")
         }
 
-        (name, annot.pos)
+        if (named && isJSProperty(sym)) {
+          currentUnit.error(annot.pos,
+              "You may not export a getter or a setter as a named export")
+        }
+
+        ExportInfo(name, annot.pos, named)
       }
 
       val inheritedExports = if (sym.isModuleClass) {
@@ -117,18 +129,18 @@ trait JSGlobalAddons extends JSDefinitions
                    |name, since it is forced to be exported by a @JSExportDescendentObjects on ${fs}""".stripMargin)
           }
 
-          List((sym.fullName, sym.pos))
+          List(ExportInfo(sym.fullName, sym.pos, false))
 
         } getOrElse Nil
       } else Nil
 
-      def distinct(exports: List[(String, Position)]) = {
-        val buf = new mutable.ListBuffer[(String, Position)]
-        val seen = new mutable.HashSet[String]
-        for (exp @ (name, _) <- exports) {
-          if (!seen.contains(name)) {
+      def distinct(exports: List[ExportInfo]) = {
+        val buf = new mutable.ListBuffer[ExportInfo]
+        val seen = new mutable.HashSet[(String, Boolean)]
+        for (exp <- exports) {
+          if (!seen.contains((exp.jsName, exp.isNamed))) {
             buf += exp
-            seen += name
+            seen += ((exp.jsName, exp.isNamed))
           }
         }
         buf.toList
@@ -138,7 +150,7 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     /** creates a name for an export specification */
-    def scalaExportName(jsName: String, isProp: Boolean): Name = {
+    def scalaExportName(jsName: String, isProp: Boolean): TermName = {
       val pref = if (isProp) propExportPrefix else methodExportPrefix
       val encname = NameTransformer.encode(jsName)
       newTermName(pref + encname)

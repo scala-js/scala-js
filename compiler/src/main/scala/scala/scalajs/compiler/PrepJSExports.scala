@@ -27,13 +27,13 @@ trait PrepJSExports { this: PrepJSInterop =>
     val baseSym = ddef.symbol
     val clsSym = baseSym.owner
 
-    val exportNames = jsInterop.exportsOf(baseSym)
+    val exports = jsInterop.exportsOf(baseSym)
 
     // Helper function for errors
-    def err(msg: String) = { currentUnit.error(exportNames.head._2, msg); Nil }
+    def err(msg: String) = { currentUnit.error(exports.head.pos, msg); Nil }
     def memType = if (baseSym.isConstructor) "constructor" else "method"
 
-    if (exportNames.isEmpty)
+    if (exports.isEmpty)
       Nil
     else if (isJSAny(clsSym))
       err(s"You may not export a $memType of a subclass of js.Any")
@@ -77,10 +77,12 @@ trait PrepJSExports { this: PrepJSInterop =>
       clsSym.resetFlag(Flags.INTERFACE)
 
       // Actually generate exporter methods
-      for {
-        (jsName, pos) <- exportNames
-        tree          <- genExportDefs(baseSym, jsName, pos)
-      } yield tree
+      exports.flatMap { exp =>
+        if (exp.isNamed)
+          genNamedExport(baseSym, exp.jsName, exp.pos) :: Nil
+        else
+          genExportDefs(baseSym, exp.jsName, exp.pos)
+      }
     }
   }
 
@@ -118,8 +120,9 @@ trait PrepJSExports { this: PrepJSInterop =>
         Flags.OVERRIDE    // Synthetic methods need not bother with this
     )
 
-    // Remove JSExport annotations
+    // Remove export annotations
     expSym.removeAnnotation(JSExportAnnotation)
+    expSym.removeAnnotation(JSExportNamedAnnotation)
 
     // Add symbol to class
     clsSym.info.decls.enter(expSym)
@@ -134,6 +137,43 @@ trait PrepJSExports { this: PrepJSInterop =>
     } yield genExportDefaultGetter(clsSym, defSym, expSym, i + 1, pos)
 
     exporter :: defaultGetters
+  }
+
+  /** Generate a dummy DefDef tree for a named export. This tree is captured
+   *  by GenJSCode again to generate the required JavaScript logic.
+   */
+  private def genNamedExport(defSym: Symbol, jsName: String, pos: Position) = {
+    val clsSym = defSym.owner
+    val scalaName = jsInterop.scalaExportName(jsName, false)
+
+    // Create symbol for the new exporter method
+    val expSym = clsSym.newMethodSymbol(scalaName, pos,
+        Flags.SYNTHETIC | Flags.FINAL)
+
+    // Mark the symbol to be a named export
+    expSym.addAnnotation(JSExportNamedAnnotation)
+
+    // Create a single parameter of type js.Any
+    val param = expSym.newValueParameter(newTermName("namedArgs"), pos)
+    param.setInfo(JSAnyTpe)
+
+    // Set method type
+    expSym.setInfo(MethodType(param :: Nil, AnyClass.tpe))
+
+    // Register method to parent
+    clsSym.info.decls.enter(expSym)
+
+    // Placeholder tree
+    def ph = Ident(Predef_???)
+
+    // Create a call to the forwarded method with ??? as args
+    val sel: Tree = Select(This(clsSym), defSym)
+    val call = (sel /: defSym.paramss) {
+      (fun, params) => Apply(fun, List.fill(params.size)(ph))
+    }
+
+    // rhs is a block to prevent boxing of result
+    typer.typedDefDef(DefDef(expSym, Block(call, ph)))
   }
 
   private def genExportDefaultGetter(clsSym: Symbol, trgMethod: Symbol,

@@ -7,7 +7,7 @@ import org.junit.Ignore
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def preamble =
-    """import scala.scalajs.js.annotation.{JSExport, JSExportDescendentObjects, JSExportAll}
+    """import scala.scalajs.js.annotation._
     """
 
   @Test
@@ -562,6 +562,123 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
       |      @JSExport("a")
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noOverrideNamedExport = {
+
+    """
+    class A {
+      @JSExportNamed
+      def foo(x: Int, y: Int) = 1
+    }
+
+    class B extends A {
+      @JSExportNamed
+      override def foo(x: Int, y: Int) = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: overriding method $js$exported$meth$foo in class A of type (namedArgs: scala.scalajs.js.Any)Any;
+      | method $js$exported$meth$foo cannot override final member
+      |      @JSExportNamed
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noConflictNamedExport = {
+
+    // Normal method
+    """
+    class A {
+      @JSExportNamed
+      def foo(x: Int, y: Int) = 1
+
+      @JSExport
+      def foo(x: scala.scalajs.js.Any) = 2
+    }
+    """ fails() // No error test, Scala version dependent error messages
+
+    // Ctors
+    """
+    class A {
+      @JSExportNamed
+      def this(x: Int) = this()
+
+      @JSExport
+      def this(x: scala.scalajs.js.Any) = this
+
+      @JSExportNamed
+      def this(x: Long) = this()
+    }
+    """ fails() // No error test, Scala version dependent error messages
+
+  }
+
+  @Test
+  def noNamedExportObject = {
+
+    """
+    @JSExportNamed
+    object A
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not use @JSNamedExport on an object
+      |    @JSExportNamed
+      |     ^
+    """
+
+  }
+
+  @Test
+  def noNamedExportVarArg = {
+
+    """
+    class A {
+      @JSExportNamed
+      def foo(a: Int*) = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not name-export a method with a *-parameter
+      |      @JSExportNamed
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noNamedExportProperty = {
+
+    // Getter
+    """
+    class A {
+      @JSExportNamed
+      def a = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter as a named export
+      |      @JSExportNamed
+      |       ^
+    """
+
+
+    // Setter
+    """
+    class A {
+      @JSExportNamed
+      def a_=(x: Int) = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: You may not export a getter or a setter as a named export
+      |      @JSExportNamed
       |       ^
     """
 
