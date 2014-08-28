@@ -12,6 +12,7 @@ import scala.util.Properties
 import scala.scalajs.ir
 import scala.scalajs.sbtplugin._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
+import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 import ScalaJSPlugin._
 import ScalaJSKeys._
 import ExternalCompile.scalaJSExternalCompileSettings
@@ -694,6 +695,48 @@ object ScalaJSBuild extends Build {
             }
           }
       )
+  ).dependsOn(compiler % "plugin")
+
+  lazy val sourceMapTests: Project = Project(
+    id = "sourceMapTests",
+    base = file("sourceMapTests"),
+    settings = defaultSettings ++ myScalaJSSettings ++ (
+        useLibraryButDoNotDependOnIt ++
+        useJasmineTestFrameworkButDoNotDependOnIt
+      ) ++ Seq(
+      name := "Scala.js tests for source map correctness",
+      publishArtifact in Compile := false,
+      scalacOptions ~= (_.filter(_ != "-deprecation")),
+      sourceGenerators in Test <+= Def.task {
+        val dir = (sourceManaged in Test).value
+        val bases = (unmanagedResources in Test).value
+        val template = IO.read(bases(0) / "SourceMapTestTemplate.scala")
+        val snippet = "/**/"
+        def findReversed(last: Int, acc: List[Int]): Seq[Int] = {
+          template.indexOf(snippet, last) match{
+            case -1 => acc
+            case n => findReversed(n + 1, n :: acc)
+          }
+        }
+
+        val indices = findReversed(0, Nil)
+
+        for ((index, i) <- indices.zipWithIndex) yield {
+          val file = dir / s"Generated$index.scala"
+          val (first, second) = template.splitAt(index)
+          // +5 because the template below inserts +4 extra lines,
+          // and because line numbers are +1 indexed while the count
+          // of '\n's counts from 0
+          val line = first.count(_ == '\n') + 5
+          IO.write(file, s"""
+            package scala.scalajs.test
+            package gen$index\n
+            $first; throw new java.lang.Exception($line.toString); $second
+          """.replace("<number>", i.toString))
+          file
+        }
+      }
+    )
   ).dependsOn(compiler % "plugin")
 
   lazy val noIrCheckTest: Project = Project(
