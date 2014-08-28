@@ -85,6 +85,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val (jsName, isProp) = jsInterop.jsExportInfo(name)
 
+      // Check if we have a conflicting export of the other kind
+      val conflicting =
+        classSym.info.member(jsInterop.scalaExportName(jsName, !isProp))
+
+      if (conflicting != NoSymbol) {
+        val kind = if (isProp) "property" else "method"
+        val alts = conflicting.alternatives
+
+        currentUnit.error(alts.head.pos,
+            s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
+      }
+
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName)

@@ -523,6 +523,51 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noConflictingMethodAndProperty = {
+
+    // Basic case
+    """
+    class A {
+      @JSExport("a")
+      def bar() = 2
+
+      @JSExport("a")
+      val foo = 1
+    }
+    """ hasErrors
+    """
+    |newSource1.scala:7: error: Exported method a conflicts with A.$js$exported$prop$a
+    |      @JSExport("a")
+    |       ^
+    |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
+    |      @JSExport("a")
+    |       ^
+    """
+
+    // Inherited case
+    """
+    class A {
+      @JSExport("a")
+      def bar() = 2
+    }
+
+    class B extends A {
+      @JSExport("a")
+      def foo_=(x: Int): Unit = ()
+
+      @JSExport("a")
+      val foo = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
+      |      @JSExport("a")
+      |       ^
+    """
+
+  }
+
+  @Test
   def gracefulDoubleDefaultFail = {
     // This used to blow up (i.e. not just fail), because PrepJSExports asked
     // for the symbol of the default parameter getter of [[y]], and asserted its
