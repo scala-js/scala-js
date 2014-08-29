@@ -335,9 +335,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           case dd: DefDef =>
             val sym = dd.symbol
-            generatedMembers ++= genMethod(dd)
 
-            if (jsInterop.isExport(sym)) {
+            val isExport = jsInterop.isExport(sym)
+            val isNamedExport = isExport && sym.annotations.exists(
+                _.symbol == JSExportNamedAnnotation)
+
+            if (isNamedExport)
+              generatedMembers += genNamedExporterDef(dd)
+            else
+              generatedMembers ++= genMethod(dd)
+
+            if (isExport) {
               // We add symbols that we have to export here. This way we also
               // get inherited stuff that is implemented in this class.
               exportedSymbols += sym
@@ -390,8 +398,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = sym.pos
 
       // Check that RawJS type is not exported
-      for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
-        currentUnit.error(pos, "You may not export a class extending js.Any")
+      for (exp <- jsInterop.exportsOf(sym)) {
+        currentUnit.error(exp.pos,
+            "You may not export a class extending js.Any")
       }
 
       val classIdent = encodeClassFullNameIdent(sym)
@@ -434,8 +443,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       gen(cd.impl)
 
       // Check that interface/trait is not exported
-      for ( (_, pos) <- jsInterop.exportsOf(sym) ) {
-        currentUnit.error(pos, "You may not export a trait")
+      for (exp <- jsInterop.exportsOf(sym)) {
+        currentUnit.error(exp.pos, "You may not export a trait")
       }
 
       js.ClassDef(classIdent, ClassKind.Interface, None,
