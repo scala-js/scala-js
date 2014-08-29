@@ -3,10 +3,10 @@
  * reported in the source-mapped stacktraces match up with the line number
  * that the error originated from.
  *
- * /**/s in this file are replaced one-by-one with a code-snippet to throw
+ * /two-star/s in this file are replaced one-by-one with a code-snippet to throw
  * an exception, which is then caught and its stacktrace checked to see
  * that it reports the line number expected (stored in the error message).
- * `<number>` is the index of the /**/ for that particular test, starting
+ * `<number>` is the index of the /two-star/ for that particular test, starting
  * from 0
  */
 object Main extends JasmineTest{

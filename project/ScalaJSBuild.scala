@@ -732,7 +732,7 @@ object ScalaJSBuild extends Build {
             package scala.scalajs.test
             package gen$index\n
             $first; throw new java.lang.Exception($line.toString); $second
-          """.replace("<number>", i.toString))
+          """.replace("<number>", "index: " + i + " line: " + line))
           file
         }
       }
