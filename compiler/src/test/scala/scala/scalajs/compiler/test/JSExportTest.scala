@@ -7,7 +7,7 @@ import org.junit.Ignore
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def preamble =
-    """import scala.scalajs.js.annotation.{JSExport, JSExportDescendentObjects}
+    """import scala.scalajs.js.annotation.{JSExport, JSExportDescendentObjects, JSExportAll}
     """
 
   @Test
@@ -220,6 +220,20 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: You may not export a local definition
       |        @JSExport
       |         ^
+    """
+
+  }
+
+  @Test
+  def infoExportLocal = {
+
+    """
+    class A(@JSExport val x: Int)
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export a local definition. To export a (case) class field, use the meta-annotation scala.annotation.meta.field like this: @(JSExport @field).
+      |    class A(@JSExport val x: Int)
+      |             ^
     """
 
   }
@@ -482,6 +496,72 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:4: error: You may not export a zero-argument method named other than 'toString' under the name 'toString'
       |      @JSExport("toString")
+      |       ^
+    """
+
+  }
+
+  @Test
+  def noBadNameExportAll = {
+
+    """
+    @JSExportAll
+    class A {
+      val __f = 1
+      def a_= = 2
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: An exported name may not contain a double underscore (`__`)
+      |      val __f = 1
+      |          ^
+      |newSource1.scala:3: error: A method ending in _= will be exported as setter. But a_= does not have the right signature to do so (single argument, unit return type).
+      |    @JSExportAll
+      |     ^
+    """
+
+  }
+
+  @Test
+  def noConflictingMethodAndProperty = {
+
+    // Basic case
+    """
+    class A {
+      @JSExport("a")
+      def bar() = 2
+
+      @JSExport("a")
+      val foo = 1
+    }
+    """ hasErrors
+    """
+    |newSource1.scala:7: error: Exported method a conflicts with A.$js$exported$prop$a
+    |      @JSExport("a")
+    |       ^
+    |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
+    |      @JSExport("a")
+    |       ^
+    """
+
+    // Inherited case
+    """
+    class A {
+      @JSExport("a")
+      def bar() = 2
+    }
+
+    class B extends A {
+      @JSExport("a")
+      def foo_=(x: Int): Unit = ()
+
+      @JSExport("a")
+      val foo = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Exported property a conflicts with A.$js$exported$meth$a
+      |      @JSExport("a")
       |       ^
     """
 

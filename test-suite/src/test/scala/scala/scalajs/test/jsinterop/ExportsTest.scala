@@ -12,6 +12,8 @@ import scala.scalajs.js
 import js.annotation._
 import scala.scalajs.test.JasmineTest
 
+import scala.annotation.meta
+
 object ExportsTest extends JasmineTest {
 
   describe("@JSExport") {
@@ -611,6 +613,61 @@ object ExportsTest extends JasmineTest {
 
       expect(funs.testChar(foo)).toEqual("char: S")
       expect(funs.testInt(foo)).toEqual("int: 68")
+    }
+
+    it("should support exporting constructor parameter fields - #970") {
+      class Foo(@(JSExport @meta.field) val x: Int)
+      val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
+    }
+
+    it("should support exporting case class fields - #970") {
+      case class Foo(@(JSExport @meta.field) x: Int)
+      val foo = (new Foo(1)).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
+    }
+
+    it("should support exporting lazy values - #977") {
+      class Foo {
+        @JSExport
+        lazy val x = 1
+      }
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(1)
+    }
+
+    it("should support exporting all members of a class") {
+      @JSExportAll
+      class Foo {
+        val a = 1
+
+        @JSExport // double annotation allowed
+        def b = 2
+
+        lazy val c = 3
+
+        class Bar // not exported, but should not fail
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(foo.a).toEqual(1)
+      expect(foo.b).toEqual(2)
+      expect(foo.c).toEqual(3)
+    }
+
+    it("should allow mutliple equivalent JSExport annotations") {
+      class Foo {
+        @JSExport
+        @JSExport("a")
+        @JSExport
+        @JSExport("a")
+        def b = 1
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+
+      expect(foo.b).toEqual(1)
     }
 
     it("should support exporting under 'org' namespace - #364") {
