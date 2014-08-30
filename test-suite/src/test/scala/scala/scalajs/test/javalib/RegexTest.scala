@@ -44,6 +44,12 @@ object RegexTest extends JasmineTest {
       split("boo:and:foo", ":", Array("boo", "and", "foo"))
       split("boo:and:foo", "o", Array("b", "", ":and:f"))
 
+      // Splitting the empty string must return 1 element - #987
+      split("", "a", Array(""))
+      split("", "\\*", Array(""))
+      split("", "\n", Array(""))
+      split("", "", Array(""))
+
       def split(input: String, regex: String, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input)
         expect(result).toEqual(expected)
@@ -58,6 +64,12 @@ object RegexTest extends JasmineTest {
       splitWithLimit("boo:and:foo", "o", 5, Array("b", "", ":and:f", "", ""))
       splitWithLimit("boo:and:foo", "o", -2, Array("b", "", ":and:f", "", ""))
       splitWithLimit("boo:and:foo", "o", 0, Array("b", "", ":and:f"))
+
+      // Splitting the empty string must return 1 element - #987
+      splitWithLimit("", "a", 0, Array(""))
+      splitWithLimit("", "\\*", 5, Array(""))
+      splitWithLimit("", "\n", -2, Array(""))
+      splitWithLimit("", "", 1, Array(""))
 
       def splitWithLimit(input: String, regex: String, limit: Int, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input, limit)

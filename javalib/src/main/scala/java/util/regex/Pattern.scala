@@ -56,7 +56,7 @@ final class Pattern private (pattern0: String, flags0: Int) {
 
     var len = result.length.toInt
     if (limit == 0) {
-      while (len > 0 && result(len-1).isEmpty)
+      while (len > 1 && result(len-1).isEmpty)
         len -= 1
     }
 
