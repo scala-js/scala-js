@@ -242,6 +242,8 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ myScalaJSSettings ++ publishSettings ++ (
           useLibraryButDoNotDependOnIt ++
           commonToolsSettings
+      ) ++ Seq(
+          crossVersion := ScalaJSCrossVersion.binary
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         val stagedRunSetting = test := {
