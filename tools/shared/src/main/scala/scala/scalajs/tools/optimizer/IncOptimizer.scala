@@ -449,17 +449,17 @@ class IncOptimizer {
       }
 
       // Tag callers with static calls
-      val constructorNames =
-        for (method <- methods.values; if isConstructorName(method.encodedName))
-          yield method.encodedName
-      for (methodName <- inlineableMethodChanges ++ constructorNames)
+      for (methodName <- inlineableMethodChanges)
         myInterface.tagStaticCallersOf(methodName)
 
       // Module class specifics
       updateHasElidableModuleAccessor()
 
       // Inlineable class
-      updateIsInlineable(classInfo)
+      if (updateIsInlineable(classInfo)) {
+        for (method <- methods.values; if isConstructorName(method.encodedName))
+          myInterface.tagStaticCallersOf(method.encodedName)
+      }
 
       // Recurse in subclasses
       for (cls <- subclasses)
@@ -473,7 +473,8 @@ class IncOptimizer {
         (isModuleClass && lookupMethod("init___").exists(isElidableModuleConstructor))
     }
 
-    def updateIsInlineable(classInfo: Analyzer#ClassInfo): Unit = {
+    def updateIsInlineable(classInfo: Analyzer#ClassInfo): Boolean = {
+      val oldTryNewInlineable = tryNewInlineable
       isInlineable = classInfo.optimizerHints.hasInlineAnnot
       if (!isInlineable) {
         tryNewInlineable = None
@@ -487,6 +488,7 @@ class IncOptimizer {
         tryNewInlineable = Some(
             RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))
       }
+      tryNewInlineable != oldTryNewInlineable
     }
 
     private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
