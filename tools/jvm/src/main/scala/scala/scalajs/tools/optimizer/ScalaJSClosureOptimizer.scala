@@ -106,12 +106,12 @@ class ScalaJSClosureOptimizer {
     val options = closureOptions(outCfg)
     val compiler = closureCompiler(logger)
 
-    val result = IncOptimizer.logTime(logger, "Closure Compiler pass") {
+    val result = GenIncOptimizer.logTime(logger, "Closure Compiler pass") {
       compiler.compileModules(
           closureExterns.asJava, List(module).asJava, options)
     }
 
-    IncOptimizer.logTime(logger, "Write Closure result") {
+    GenIncOptimizer.logTime(logger, "Write Closure result") {
       writeResult(result, compiler, outCfg.output)
     }
   }
@@ -126,12 +126,12 @@ class ScalaJSClosureOptimizer {
     val options = closureOptions(outputConfig, noSourceMap = true)
     val compiler = closureCompiler(logger)
 
-    val result = IncOptimizer.logTime(logger, "Closure Compiler pass") {
+    val result = GenIncOptimizer.logTime(logger, "Closure Compiler pass") {
       compiler.compile(
           closureExterns.asJava, closureSources.asJava, options)
     }
 
-    IncOptimizer.logTime(logger, "Write Closure result") {
+    GenIncOptimizer.logTime(logger, "Write Closure result") {
       writeResult(result, compiler, outputConfig.output)
     }
   }

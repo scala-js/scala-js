@@ -12,7 +12,11 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
 import scala.scalajs.tools.packager._
 import scala.scalajs.tools.jsdep._
-import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
+import scala.scalajs.tools.optimizer.{
+  ScalaJSOptimizer,
+  ScalaJSClosureOptimizer,
+  ParIncOptimizer
+}
 import scala.scalajs.tools.corelib.CoreJSLibs
 
 import scala.scalajs.tools.env._
@@ -188,7 +192,7 @@ object ScalaJSPluginInternal {
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
       scalaJSOptimizer in fastOptJS :=
-        new ScalaJSOptimizer,
+        new ScalaJSOptimizer(() => new ParIncOptimizer),
 
       fastOptJS := {
         val s = streams.value

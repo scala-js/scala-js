@@ -10,6 +10,7 @@ import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.optimizer.ScalaJSOptimizer
 import scala.scalajs.tools.optimizer.ScalaJSClosureOptimizer
+import scala.scalajs.tools.optimizer.ParIncOptimizer
 import scala.scalajs.tools.env.JSConsole
 
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
@@ -123,7 +124,7 @@ class MainGenericRunner {
       logger: Logger) = {
     import ScalaJSOptimizer._
 
-    val optimizer = new ScalaJSOptimizer
+    val optimizer = newScalaJSOptimizer
     val output = WritableMemVirtualJSFile("partest fastOpt file")
 
     optimizer.optimizeCP(
@@ -174,7 +175,7 @@ class MainGenericRunner {
       runner: VirtualJSFile) = {
     import ScalaJSClosureOptimizer._
 
-    val fastOptimizer = new ScalaJSOptimizer
+    val fastOptimizer = newScalaJSOptimizer
     val fullOptimizer = new ScalaJSClosureOptimizer
     val output = WritableMemVirtualJSFile("partest dfullOpt file")
     val exportFile = fullOptExportFile(runner)
@@ -192,6 +193,9 @@ class MainGenericRunner {
     logger)
 
   }
+
+  private def newScalaJSOptimizer =
+    new ScalaJSOptimizer(() => new ParIncOptimizer)
 
   /** generates an exporter statement for the google closure compiler that runs
    *  what the normal test would
