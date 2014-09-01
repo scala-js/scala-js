@@ -141,7 +141,9 @@ object ScalaJSBuild extends Build {
               clean in libraryAux, clean in javalibEx,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
-              clean in test, clean in partest, clean in partestSuite).value,
+              clean in testSuite, clean in noIrCheckTest,
+              clean in javalibExTestSuite,
+              clean in partest, clean in partestSuite).value,
 
           publish := {},
           publishLocal := {}
