@@ -166,49 +166,32 @@ class IncOptimizer {
      * * Add new classes (including those that have moved from elsewhere).
      * In batch mode, we avoid doing notifications.
      */
-    for (classInfo <- neededClasses.values.toList.sortBy(_.ancestorCount)) {
-      val superClassInfo = classInfo.superClass
-      val cls = new Class(
-          Option(superClassInfo).map(info => classes(info.encodedName)),
-          classInfo.encodedName)
-      cls.updateWith(classInfo, getClassTreeIfChanged)
-      cls.interfaces =
-        classInfo.ancestors.map(info => getInterface(info.encodedName)).toSet
 
-      cls.isInstantiated = classInfo.isInstantiated
+    // Group children by (immediate) parent
+    val newChildrenByParent =
+      mutable.Map.empty[String, mutable.ListBuffer[Analyzer#ClassInfo]]
 
-      if (batchMode) {
-        if (cls.isInstantiated) {
-          /* Only add the class to all its ancestor interfaces */
-          for (intf <- cls.interfaces)
-            intf.instantiatedSubclasses += cls
-        }
+    for (classInfo <- neededClasses.values) {
+      val superInfo = classInfo.superClass
+      if (superInfo == null) {
+        assert(batchMode, "Trying to add java.lang.Object in incremental mode")
+        objectClass = new Class(None, classInfo.encodedName)
+        objectClass.setupAfterCreation(classInfo, getClassTreeIfChanged)
       } else {
-        val allMethodNames = cls.allMethods().keys
-
-        if (cls.isInstantiated) {
-          /* Add the class to all its ancestor interfaces + notify all callers
-           * of any of the methods.
-           * TODO: be more selective on methods that are notified: it is not
-           * necessary to modify callers of methods defined in a parent class
-           * that already existed in the previous run.
-           */
-          for (intf <- cls.interfaces) {
-            intf.instantiatedSubclasses += cls
-            for (methodName <- allMethodNames)
-              intf.tagDynamicCallersOf(methodName)
-          }
-        }
-
-        /* Tag static callers because the class could have been *moved*,
-         * not just added.
-         */
-        for (methodName <- allMethodNames)
-          cls.myInterface.tagStaticCallersOf(methodName)
+        newChildrenByParent.getOrElseUpdate(superInfo.encodedName,
+            mutable.ListBuffer.empty) += classInfo
       }
+    }
 
-      cls.updateHasElidableModuleAccessor()
-      cls.updateIsInlineable(classInfo)
+    def getNewChildren(name: String) = newChildrenByParent.getOrElse(name, Nil)
+
+    // Walk the tree to add children
+    if (batchMode) {
+      objectClass.walkForAdditions(getNewChildren, getClassTreeIfChanged)
+    } else {
+      val existingParents = newChildrenByParent.keys.flatMap(classes.get).toList
+      for (parent <- existingParents)
+        parent.walkForAdditions(getNewChildren, getClassTreeIfChanged)
     }
   }
 
@@ -306,10 +289,8 @@ class IncOptimizer {
     if (encodedName == Definitions.ObjectClass) {
       assert(superClass.isEmpty)
       assert(objectClass == null)
-      objectClass = this
     } else {
       assert(superClass.isDefined)
-      superClass.foreach(_.subclasses ::= this)
     }
 
     /** Parent chain from this to Object. */
@@ -467,6 +448,20 @@ class IncOptimizer {
             inlineableMethodChanges)
     }
 
+    def walkForAdditions(
+        getNewChildren: String => Iterable[Analyzer#ClassInfo],
+        getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
+
+      for (classInfo <- getNewChildren(encodedName)) {
+        val cls = new Class(Some(this), classInfo.encodedName)
+
+        subclasses ::= cls
+
+        cls.setupAfterCreation(classInfo, getClassTreeIfChanged)
+        cls.walkForAdditions(getNewChildren, getClassTreeIfChanged)
+      }
+    }
+
     def updateHasElidableModuleAccessor(): Unit = {
       hasElidableModuleAccessor =
         isAdHocElidableModuleAccessor(encodedName) ||
@@ -489,6 +484,49 @@ class IncOptimizer {
             RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))
       }
       tryNewInlineable != oldTryNewInlineable
+    }
+
+    def setupAfterCreation(classInfo: Analyzer#ClassInfo,
+        getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
+
+      updateWith(classInfo, getClassTreeIfChanged)
+      interfaces =
+        classInfo.ancestors.map(info => getInterface(info.encodedName)).toSet
+
+      isInstantiated = classInfo.isInstantiated
+
+      if (batchMode) {
+        if (isInstantiated) {
+          /* Only add the class to all its ancestor interfaces */
+          for (intf <- interfaces)
+            intf.instantiatedSubclasses += this
+        }
+      } else {
+        val allMethodNames = allMethods().keys
+
+        if (isInstantiated) {
+          /* Add the class to all its ancestor interfaces + notify all callers
+           * of any of the methods.
+           * TODO: be more selective on methods that are notified: it is not
+           * necessary to modify callers of methods defined in a parent class
+           * that already existed in the previous run.
+           */
+          for (intf <- interfaces) {
+            intf.instantiatedSubclasses += this
+            for (methodName <- allMethodNames)
+              intf.tagDynamicCallersOf(methodName)
+          }
+        }
+
+        /* Tag static callers because the class could have been *moved*,
+         * not just added.
+         */
+        for (methodName <- allMethodNames)
+          myInterface.tagStaticCallersOf(methodName)
+      }
+
+      updateHasElidableModuleAccessor()
+      updateIsInlineable(classInfo)
     }
 
     private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
