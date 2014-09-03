@@ -17,7 +17,11 @@ import scala.scalajs.tools.logging._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
 
-import scala.scalajs.tools.optimizer.{ScalaJSOptimizer, ScalaJSClosureOptimizer}
+import scala.scalajs.tools.optimizer.{
+  ScalaJSOptimizer,
+  ScalaJSClosureOptimizer,
+  ParIncOptimizer
+}
 import scala.scalajs.tools.packager.ScalaJSPackager
 
 import scala.collection.immutable.Seq
@@ -162,7 +166,7 @@ object Scalajsld {
     import ScalaJSClosureOptimizer._
 
     (new ScalaJSClosureOptimizer).directOptimizeCP(
-        new ScalaJSOptimizer,
+        newScalaJSOptimizer,
         Inputs(ScalaJSOptimizer.Inputs(cp)),
         DirectOutputConfig(
             output = output,
@@ -189,7 +193,7 @@ object Scalajsld {
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSOptimizer._
 
-    (new ScalaJSOptimizer).optimizeCP(
+    newScalaJSOptimizer.optimizeCP(
         Inputs(cp),
         OutputConfig(
             output = output,
@@ -201,5 +205,8 @@ object Scalajsld {
 
   private def newLogger(options: Options) =
     new ScalaConsoleLogger(options.logLevel)
+
+  private def newScalaJSOptimizer =
+    new ScalaJSOptimizer(() => new ParIncOptimizer)
 
 }

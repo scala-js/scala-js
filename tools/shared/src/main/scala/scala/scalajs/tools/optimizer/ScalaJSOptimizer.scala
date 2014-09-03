@@ -27,11 +27,13 @@ import scala.scalajs.tools.sourcemap._
 import scala.scalajs.tools.corelib._
 
 /** Scala.js optimizer: does type-aware global dce. */
-class ScalaJSOptimizer {
+class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
   import ScalaJSOptimizer._
 
   private[this] var persistentState: PersistentState = new PersistentState
-  private[this] var inliner: IncOptimizer = new IncOptimizer
+  private[this] var inliner: GenIncOptimizer = optimizerFactory()
+
+  def this() = this(() => new IncOptimizer)
 
   /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
    *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
@@ -89,19 +91,19 @@ class ScalaJSOptimizer {
     try {
       import inputs._
       val allData =
-        IncOptimizer.logTime(logger, "Read info") {
+        GenIncOptimizer.logTime(logger, "Read info") {
           readAllData(inputs.input, logger)
         }
-      val (useInliner, refinedAnalyzer) = IncOptimizer.logTime(
+      val (useInliner, refinedAnalyzer) = GenIncOptimizer.logTime(
           logger, "Optimizations part") {
         val analyzer =
-          IncOptimizer.logTime(logger, "Compute reachability") {
+          GenIncOptimizer.logTime(logger, "Compute reachability") {
             val analyzer = new Analyzer(logger, allData)
             analyzer.computeReachability(manuallyReachable, noWarnMissing)
             analyzer
           }
         if (outCfg.checkIR) {
-          IncOptimizer.logTime(logger, "Check IR") {
+          GenIncOptimizer.logTime(logger, "Check IR") {
             if (analyzer.allAvailable)
               checkIR(analyzer, logger)
             else if (inputs.noWarnMissing.isEmpty)
@@ -117,13 +119,13 @@ class ScalaJSOptimizer {
         val useInliner = analyzer.allAvailable && !outCfg.disableInliner
 
         if (outCfg.batchInline)
-          inliner = new IncOptimizer
+          inliner = optimizerFactory()
 
         val refinedAnalyzer = if (useInliner) {
-          IncOptimizer.logTime(logger, "Inliner") {
+          GenIncOptimizer.logTime(logger, "Inliner") {
             inliner.update(analyzer, getClassTreeIfChanged, logger)
           }
-          IncOptimizer.logTime(logger, "Refined reachability analysis") {
+          GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
             val refinedData = computeRefinedData(allData, inliner)
             val refinedAnalyzer = new Analyzer(logger, refinedData,
                 globalWarnEnabled = false)
@@ -137,7 +139,7 @@ class ScalaJSOptimizer {
         }
         (useInliner, refinedAnalyzer)
       }
-      IncOptimizer.logTime(logger, "Write DCE'ed output") {
+      GenIncOptimizer.logTime(logger, "Write DCE'ed output") {
         buildDCEedOutput(builder, refinedAnalyzer, useInliner)
       }
     } finally {
@@ -152,7 +154,7 @@ class ScalaJSOptimizer {
   /** Resets all persistent state of this optimizer */
   def clean(): Unit = {
     persistentState = new PersistentState
-    inliner = new IncOptimizer
+    inliner = optimizerFactory()
   }
 
   private def readAllData(ir: Traversable[VirtualScalaJSIRFile],
@@ -173,7 +175,7 @@ class ScalaJSOptimizer {
 
   private def computeRefinedData(
       allData: scala.collection.Seq[Infos.ClassInfo],
-      inliner: IncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
+      inliner: GenIncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
 
     def refineMethodInfo(container: inliner.MethodContainer,
         methodInfo: Infos.MethodInfo): Infos.MethodInfo = {
