@@ -826,8 +826,8 @@ object GenIncOptimizer {
     val startTime = System.nanoTime()
     val result = body
     val endTime = System.nanoTime()
-    val elapsedTime = (endTime - startTime) / 1000
-    logger.debug(s"$title: $elapsedTime us")
+    val elapsedTime = endTime - startTime
+    logger.time(title, elapsedTime)
     result
   }
 
