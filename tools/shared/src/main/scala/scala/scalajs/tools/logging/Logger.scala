@@ -19,4 +19,7 @@ trait Logger {
   def warn(message: => String): Unit = log(Level.Warn, message)
   def info(message: => String): Unit = log(Level.Info, message)
   def debug(message: => String): Unit = log(Level.Debug, message)
+
+  def time(title: String, nanos: Long): Unit =
+    debug(s"$title: ${nanos / 1000} us")
 }
