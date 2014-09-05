@@ -104,6 +104,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val inliningMode = SettingKey[InliningMode]("inliningMode",
         "Mode of the inliner: Incremental (default), Batch, Off", CSetting)
 
+    val parallelFastOptJS = SettingKey[Boolean]("parallelFastOptJS",
+        "Whether to use the parallelized Scala.js optimizer", CSetting)
+
     val directFullOptJS = SettingKey[Boolean]("directFullOptJS",
         "Whether fullOptJS should directly use IR produced by fastOptJS", DSetting)
 
