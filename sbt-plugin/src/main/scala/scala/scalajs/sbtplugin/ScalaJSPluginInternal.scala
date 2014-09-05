@@ -15,6 +15,7 @@ import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.optimizer.{
   ScalaJSOptimizer,
   ScalaJSClosureOptimizer,
+  IncOptimizer,
   ParIncOptimizer
 }
 import scala.scalajs.tools.corelib.CoreJSLibs
@@ -191,8 +192,12 @@ object ScalaJSPluginInternal {
         ((crossTarget in fastOptJS).value /
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
-      scalaJSOptimizer in fastOptJS :=
-        new ScalaJSOptimizer(() => new ParIncOptimizer),
+      scalaJSOptimizer in fastOptJS := {
+        if ((parallelFastOptJS in fastOptJS).value)
+          new ScalaJSOptimizer(() => new ParIncOptimizer)
+        else
+          new ScalaJSOptimizer(() => new IncOptimizer)
+      },
 
       fastOptJS := {
         val s = streams.value
@@ -636,6 +641,7 @@ object ScalaJSPluginInternal {
 
       checkScalaJSIR := false,
       inliningMode := InliningMode.Incremental,
+      parallelFastOptJS := true,
       directFullOptJS := true,
 
       jsDependencies := Seq(),
