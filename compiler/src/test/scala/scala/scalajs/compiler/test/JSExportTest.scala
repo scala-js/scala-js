@@ -143,6 +143,16 @@ class JSExportTest extends DirectTest with TestHelpers {
       |       ^
     """
 
+    """
+    class A {
+      @JSExport
+      def a(x: scala.scalajs.js.Any) = 1
+
+      @JSExport
+      def a(x: Any) = 2
+    }
+    """ fails() // Error message depends on Scala version
+
   }
 
   @Test
