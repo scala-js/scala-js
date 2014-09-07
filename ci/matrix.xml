@@ -43,6 +43,7 @@
     sbt ++$scala \
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray" &&
+    sbt ++$scala sourceMapTests/fastOptStage::testOnly
     sbt ++$scala compiler/test reversi/packageJS reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test &&
     sh ci/checksizes.sh $scala &&
