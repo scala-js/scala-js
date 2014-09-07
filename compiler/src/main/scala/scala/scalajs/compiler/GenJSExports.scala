@@ -703,6 +703,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
           case REFERENCE(cls) =>
             if (cls == StringClass) TypeOfTypeTest("string")
+            else if (cls == ObjectClass) NoTypeTest
             else if (isRawJSType(tpe)) {
               cls match {
                 case JSNumberClass => TypeOfTypeTest("number")
