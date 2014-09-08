@@ -112,6 +112,16 @@ object ScalaJSBuild extends Build {
     )
   }
 
+  /** Depend library as if (exportJars in library) was set to false */
+  val compileWithLibrarySetting = {
+    internalDependencyClasspath in Compile ++= {
+      val prods = (products in (library, Compile)).value
+      val analysis = (compile in (library, Compile)).value
+
+      prods.map(p => Classpaths.analyzed(p, analysis))
+    }
+  }
+
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
@@ -242,7 +252,6 @@ object ScalaJSBuild extends Build {
       id = "toolsJS",
       base = file("tools/js"),
       settings = defaultSettings ++ myScalaJSSettings ++ publishSettings ++ (
-          useLibraryButDoNotDependOnIt ++
           commonToolsSettings
       ) ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary
@@ -274,7 +283,7 @@ object ScalaJSBuild extends Build {
         inTask(fastOptStage)(stagedRunSetting) ++
         inTask(fullOptStage)(stagedRunSetting)
       }
-  ).dependsOn(compiler % "plugin", javalibEx)
+  ).dependsOn(compiler % "plugin", javalibEx, library)
 
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
@@ -303,13 +312,16 @@ object ScalaJSBuild extends Build {
     // We assume that there are no weird characters in the full name
     val fullName = infoAndTree._1.name
     val output = base / (fullName.replace('.', '/') + ".sjsir")
-    IO.createDirectory(output.getParentFile)
-    val stream = new BufferedOutputStream(new FileOutputStream(output))
-    try {
-      ir.InfoSerializers.serialize(stream, infoAndTree._1)
-      ir.Serializers.serialize(stream, infoAndTree._2)
-    } finally {
-      stream.close()
+
+    if (!output.exists()) {
+      IO.createDirectory(output.getParentFile)
+      val stream = new BufferedOutputStream(new FileOutputStream(output))
+      try {
+        ir.InfoSerializers.serialize(stream, infoAndTree._1)
+        ir.Serializers.serialize(stream, infoAndTree._2)
+      } finally {
+        stream.close()
+      }
     }
     output
   }
@@ -323,6 +335,7 @@ object ScalaJSBuild extends Build {
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
           scalaJSSourceMapSettings,
+          compileWithLibrarySetting,
 
           resourceGenerators in Compile <+= Def.task {
             val base = (resourceManaged in Compile).value
@@ -334,7 +347,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin", library)
+  ).dependsOn(compiler % "plugin")
 
   lazy val javalib: Project = Project(
       id = "javalib",
@@ -344,11 +357,12 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings
+          scalaJSSourceMapSettings,
+          compileWithLibrarySetting
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin", library)
+  ).dependsOn(compiler % "plugin")
 
   lazy val scalalib: Project = Project(
       id = "scalalib",
@@ -357,6 +371,7 @@ object ScalaJSBuild extends Build {
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
+          compileWithLibrarySetting,
 
           // The Scala lib is full of warnings we don't want to see
           scalacOptions ~= (_.filterNot(
@@ -495,7 +510,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin", library)
+  ).dependsOn(compiler % "plugin")
 
   lazy val libraryAux: Project = Project(
       id = "libraryAux",
@@ -505,11 +520,12 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings
+          scalaJSSourceMapSettings,
+          compileWithLibrarySetting
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin", library)
+  ).dependsOn(compiler % "plugin")
 
   lazy val library: Project = Project(
       id = "library",
@@ -518,11 +534,12 @@ object ScalaJSBuild extends Build {
           name := "Scala.js library",
           delambdafySetting,
           scalaJSSourceMapSettings,
-          scalacOptions in (Compile, doc) += "-implicits"
+          scalacOptions in (Compile, doc) += "-implicits",
+          exportJars := true
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
-          /* Add the .js, .js.map and .sjsinfo files from other lib projects
+          /* Add the .sjsir files from other lib projects
            * (but not .class files)
            */
           mappings in packageBin ++= {
@@ -532,7 +549,7 @@ object ScalaJSBuild extends Build {
                 (products in scalalib).value ++
                 (products in libraryAux).value)
             val filter = ("*.sjsir": NameFilter)
-            allProducts.flatMap(dir => (dir ** filter) x relativeTo(dir))
+            allProducts.flatMap(base => Path.selectSubpaths(base, filter))
           }
       ))
   ).dependsOn(compiler % "plugin")
@@ -540,10 +557,7 @@ object ScalaJSBuild extends Build {
   lazy val javalibEx: Project = Project(
       id = "javalibEx",
       base = file("javalib-ex"),
-      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ (
-          useLibraryButDoNotDependOnIt ++
-          useJasmineTestFrameworkButDoNotDependOnIt
-      ) ++ Seq(
+      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
@@ -554,7 +568,7 @@ object ScalaJSBuild extends Build {
       ) ++ (
           scalaJSExternalCompileSettings
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   // Scala.js command line interface
   lazy val cli: Project = Project(
@@ -601,32 +615,6 @@ object ScalaJSBuild extends Build {
       )
   ).dependsOn(compiler % "plugin", library, testBridge)
 
-  // Utils
-
-  /* Dirty trick to add our Scala.js library on the classpath without adding a
-   * dependency between projects. This avoids to recompile the library every
-   * time we make a change in the compiler, and we want to test it on an
-   * example or with the test suite.
-   */
-  def useProjectButDoNotDependOnIt(project: Project, config: Configuration) = (
-      unmanagedClasspath in config += {
-        val libraryJar = (artifactPath in (project, Compile, packageBin)).value
-        Attributed.blank(libraryJar)
-      })
-
-  def useLibraryButDoNotDependOnIt = Seq(
-      useProjectButDoNotDependOnIt(library, Compile),
-      useProjectButDoNotDependOnIt(library, Runtime),
-      useProjectButDoNotDependOnIt(library, Test)
-  )
-
-  def useJasmineTestFrameworkButDoNotDependOnIt = Seq(
-      useProjectButDoNotDependOnIt(testBridge, Test),
-      useProjectButDoNotDependOnIt(jasmineTestFramework, Test),
-      libraryDependencies ++=
-        (libraryDependencies in jasmineTestFramework).value map (_ % "test")
-  )
-
   // Examples
 
   lazy val examples: Project = Project(
@@ -637,10 +625,7 @@ object ScalaJSBuild extends Build {
       )
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings ++ (
-      useLibraryButDoNotDependOnIt ++
-      useJasmineTestFrameworkButDoNotDependOnIt
-  )
+  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings
 
   lazy val helloworld: Project = Project(
       id = "helloworld",
@@ -650,7 +635,7 @@ object ScalaJSBuild extends Build {
           moduleName := "helloworld",
           persistLauncher := true
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val reversi = Project(
       id = "reversi",
@@ -659,7 +644,7 @@ object ScalaJSBuild extends Build {
           name := "Reversi - Scala.js example",
           moduleName := "reversi"
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library)
 
   lazy val testingExample = Project(
       id = "testingExample",
@@ -673,17 +658,14 @@ object ScalaJSBuild extends Build {
             "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
           )
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")
 
   // Testing
 
   lazy val testSuite: Project = Project(
       id = "testSuite",
       base = file("test-suite"),
-      settings = defaultSettings ++ myScalaJSSettings ++ (
-          useLibraryButDoNotDependOnIt ++
-          useJasmineTestFrameworkButDoNotDependOnIt
-      ) ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js test suite",
           publishArtifact in Compile := false,
 
@@ -698,34 +680,28 @@ object ScalaJSBuild extends Build {
             }
           }
       )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")
 
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
       base = file("no-ir-check-test"),
-      settings = defaultSettings ++ myScalaJSSettings ++ (
-          useLibraryButDoNotDependOnIt ++
-          useJasmineTestFrameworkButDoNotDependOnIt
-      ) ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js not IR checked tests",
           checkScalaJSIR := false,
           publishArtifact in Compile := false
      )
-  ).dependsOn(compiler % "plugin")
+  ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")
 
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
       base = file("javalib-ex-test-suite"),
-      settings = defaultSettings ++ myScalaJSSettings ++ (
-          useLibraryButDoNotDependOnIt ++
-          useJasmineTestFrameworkButDoNotDependOnIt
-      ) ++ Seq(
+      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
 
           scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
       )
-  ).dependsOn(compiler % "plugin", javalibEx)
+  ).dependsOn(compiler % "plugin", javalibEx, jasmineTestFramework % "test")
 
   lazy val partest: Project = Project(
       id = "partest",
@@ -778,9 +754,7 @@ object ScalaJSBuild extends Build {
   lazy val partestSuite: Project = Project(
       id = "partestSuite",
       base = file("partest-suite"),
-      settings = defaultSettings ++ (
-          useLibraryButDoNotDependOnIt
-      ) ++ Seq(
+      settings = defaultSettings ++ Seq(
           name := "Scala.js partest suite",
 
           fork in Test := true,
@@ -808,5 +782,5 @@ object ScalaJSBuild extends Build {
             else Seq()
           }
       )
-  ).dependsOn(partest % "test")
+  ).dependsOn(partest % "test", library)
 }
