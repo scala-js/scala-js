@@ -30,7 +30,7 @@ class ScalaJSClosureOptimizer {
   import ScalaJSClosureOptimizer._
 
   private def toClosureSource(file: VirtualJSFile) =
-    ClosureSource.fromReader(file.path, file.reader)
+    ClosureSource.fromReader(file.toURI.toString(), file.reader)
 
   private def toClosureInput(file: VirtualJSFile) =
     new CompilerInput(toClosureSource(file))
