@@ -260,14 +260,32 @@ object ScalaJSBuild extends Build {
         // Redefine test to run Node.js and link HelloWorld
         val stagedRunSetting = test := {
           val cp = {
-            for (e <- (fullClasspath in helloworld in Compile).value)
+            for (e <- (fullClasspath in Test).value)
               yield JSUtils.toJSstr(e.data.getAbsolutePath)
           }
+
+          val runCode = """
+            var framework = scala.scalajs.test.JasmineTestFramework();
+            framework.setTags("typedarray", "no-neg-zero")
+
+            // Load tests (we know we only export test modules, so we can use all exports)
+            var testPackage = scala.scalajs.test;
+            for (var pName in testPackage)
+              for (var testName in testPackage[pName])
+                testPackage[pName][testName]();
+
+            var reporter = new scalajs.JasmineConsoleReporter(true);
+
+            // Setup and run Jasmine
+            var jasmineEnv = jasmine.getEnv();
+            jasmineEnv.addReporter(reporter);
+            jasmineEnv.execute();
+          """
 
           val code = {
             s"""
             var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
-            var run = "helloworld.HelloWorld().main();";
+            var run = ${JSUtils.toJSstr(runCode)};
 
             eval("(function() { " + lib + "; " + run + "}).call(this);");
             """
@@ -284,7 +302,7 @@ object ScalaJSBuild extends Build {
         inTask(fastOptStage)(stagedRunSetting) ++
         inTask(fullOptStage)(stagedRunSetting)
       }
-  ).dependsOn(compiler % "plugin", javalibEx, library)
+  ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test")
 
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
