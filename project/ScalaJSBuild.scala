@@ -50,7 +50,14 @@ object ScalaJSBuild extends Build {
             / "tools" / "partest" / "scalajs" / scalaVersion.value
         )
         testListDir.exists
-      }
+      },
+
+      scalacOptions ++= Seq(
+          "-deprecation",
+          "-unchecked",
+          "-feature",
+          "-encoding", "utf8"
+      )
   )
 
   private val snapshotsOrReleases =
@@ -88,13 +95,7 @@ object ScalaJSBuild extends Build {
   )
 
   val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := "2.11.0",
-      scalacOptions ++= Seq(
-          "-deprecation",
-          "-unchecked",
-          "-feature",
-          "-encoding", "utf8"
-      )
+      scalaVersion := "2.11.0"
   )
 
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
