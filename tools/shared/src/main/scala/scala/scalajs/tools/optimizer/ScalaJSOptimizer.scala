@@ -87,20 +87,6 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
 
   def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
       outCfg: OptimizerConfig, builder: JSTreeBuilder, logger: Logger): Unit = {
-
-    /* Handle tree equivalence: If we handled source maps so far, positions are
-       still up-to-date. Otherwise we need to flush the state if proper
-       positions are requested now.
-     */
-    if (outCfg.wantSourceMap && !persistentState.wasWithSourceMap)
-      clean()
-
-    val treeEquiv =
-      if (outCfg.wantSourceMap) ir.TreeEquiv.PosStructTreeEquiv
-      else ir.TreeEquiv.StructTreeEquiv
-
-    persistentState.wasWithSourceMap = outCfg.wantSourceMap
-
     persistentState.startRun()
     try {
       import inputs._
@@ -137,7 +123,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
 
         val refinedAnalyzer = if (useInliner) {
           GenIncOptimizer.logTime(logger, "Inliner") {
-            inliner.update(analyzer, getClassTreeIfChanged, logger)(treeEquiv)
+            inliner.update(analyzer, getClassTreeIfChanged, logger)
           }
           GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
             val refinedData = computeRefinedData(allData, inliner)
@@ -380,10 +366,6 @@ object ScalaJSOptimizer {
 
   /** Configurations relevant to the optimizer */
   trait OptimizerConfig {
-    /** Ask to produce source map for the output. Is used in the incremental
-     *  optimizer to decide whether a position change should trigger re-inlining
-     */
-    val wantSourceMap: Boolean
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean
     /** If true, the optimizer removes trees that have not been used in the
@@ -428,8 +410,6 @@ object ScalaJSOptimizer {
     var statsReused: Int = 0
     var statsInvalidated: Int = 0
     var statsTreesRead: Int = 0
-
-    var wasWithSourceMap: Boolean = true
 
     def startRun(): Unit = {
       statsReused = 0

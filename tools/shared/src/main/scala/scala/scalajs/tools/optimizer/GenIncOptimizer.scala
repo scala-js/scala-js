@@ -76,7 +76,7 @@ abstract class GenIncOptimizer {
   /** Update the incremental analyzer with a new run. */
   def update(analyzer: Analyzer,
       getClassTreeIfChanged: GetClassTreeIfChanged,
-      logger: Logger)(implicit teq: TreeEquiv): Unit = withLogger(logger) {
+      logger: Logger): Unit = withLogger(logger) {
 
     batchMode = objectClass == null
     logger.debug(s"Optimizer batch mode: $batchMode")
@@ -96,8 +96,7 @@ abstract class GenIncOptimizer {
    *  UPDATE PASS ONLY. (This IS the update pass).
    */
   private def updateAndTagEverything(analyzer: Analyzer,
-      getClassTreeIfChanged: GetClassTreeIfChanged)(
-      implicit teq: TreeEquiv): Unit = {
+      getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
     val neededClasses = CollOps.emptyParMap[String, analyzer.ClassInfo]
     val neededTraitImpls = CollOps.emptyParMap[String, analyzer.ClassInfo]
@@ -239,8 +238,7 @@ abstract class GenIncOptimizer {
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(info: Analyzer#ClassInfo,
-        getClassTreeIfChanged: GetClassTreeIfChanged)(
-        implicit teq: TreeEquiv): (Set[String], Set[String], Set[String]) = {
+        getClassTreeIfChanged: GetClassTreeIfChanged): (Set[String], Set[String], Set[String]) = {
       myInterface.ancestors = info.ancestors.map(_.encodedName).toList
 
       val addedMethods = Set.newBuilder[String]
@@ -395,8 +393,7 @@ abstract class GenIncOptimizer {
     def walkForChanges(
         getClassInfo: String => Analyzer#ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged,
-        parentInlineableMethodChanges: Set[String])(
-        implicit teq: TreeEquiv): Unit = {
+        parentInlineableMethodChanges: Set[String]): Unit = {
 
       val classInfo = getClassInfo(encodedName)
 
@@ -471,8 +468,7 @@ abstract class GenIncOptimizer {
     /** UPDATE PASS ONLY. */
     def walkForAdditions(
         getNewChildren: String => GenIterable[Analyzer#ClassInfo],
-        getClassTreeIfChanged: GetClassTreeIfChanged)(
-        implicit teq: TreeEquiv): Unit = {
+        getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
       val subclassAcc = CollOps.prepAdd(subclasses)
 
@@ -515,8 +511,7 @@ abstract class GenIncOptimizer {
 
     /** UPDATE PASS ONLY. */
     def setupAfterCreation(classInfo: Analyzer#ClassInfo,
-        getClassTreeIfChanged: GetClassTreeIfChanged)(
-        implicit teq: TreeEquiv): Unit = {
+        getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
       updateWith(classInfo, getClassTreeIfChanged)
       interfaces =
@@ -731,11 +726,10 @@ abstract class GenIncOptimizer {
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
     def updateWith(methodInfo: Analyzer#MethodInfo,
-        methodDef: MethodDef)(implicit teq: TreeEquiv): Boolean = {
+        methodDef: MethodDef): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
       val hints = methodInfo.optimizerHints
-      val changed = hints != optimizerHints || originalDef == null ||
-        !teq.equiv(methodDef, originalDef)
+      val changed = hints != optimizerHints || methodDef != originalDef
       if (changed) {
         optimizerHints = hints
         originalDef = methodDef
