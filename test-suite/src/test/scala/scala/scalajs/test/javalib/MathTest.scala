@@ -16,7 +16,6 @@ object MathTest extends JasmineTest {
 
   describe("java.lang.Math") {
 
-    unless("no-neg-zero"). // see #1011
     it("should respond to `cbrt`") {
       expect(1 / Math.cbrt(-0.0) < 0).toBeTruthy
       expect(Math.cbrt(27.0)).toEqual(3.0)
@@ -37,7 +36,6 @@ object MathTest extends JasmineTest {
       expect(Math.log10(js.Number.NaN.toDouble).isNaN).toBeTruthy
     }
 
-    unless("no-neg-zero"). // see #1011
     it("should respond to `signum` for Double") {
       expect(Math.signum(234394.2198273)).toEqual(1.0)
       expect(Math.signum(-124937498.58)).toEqual(-1.0)
@@ -51,7 +49,6 @@ object MathTest extends JasmineTest {
       expect(Math.signum(js.Number.NaN.toDouble).isNaN).toBeTruthy
     }
 
-    unless("no-neg-zero"). // see #1011
     it("should respond to `signum` for Float") {
       expect(Math.signum(234394.2198273f)).toEqual(1.0f)
       expect(Math.signum(-124937498.58f)).toEqual(-1.0f)
@@ -107,7 +104,6 @@ object MathTest extends JasmineTest {
       expect(Math.hypot(Double.NegativeInfinity, 4.0)).toEqual(Double.PositiveInfinity)
     }
 
-    unless("no-neg-zero"). // see #1011
     it("should respond to `expm1`") {
       expect(1 / Math.expm1(-0.0) < 0).toBeTruthy
       expect(Math.expm1(-0.0)).toBeCloseTo(0.0)

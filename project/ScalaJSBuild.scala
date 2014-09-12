@@ -266,7 +266,7 @@ object ScalaJSBuild extends Build {
 
           val runCode = """
             var framework = scala.scalajs.test.JasmineTestFramework();
-            framework.setTags("typedarray", "no-neg-zero")
+            framework.setTags("typedarray")
 
             // Load tests (we know we only export test modules, so we can use all exports)
             var testPackage = scala.scalajs.test;

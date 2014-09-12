@@ -497,7 +497,7 @@ object Printers {
           print(value)
 
         case DoubleLiteral(value) =>
-          print(value)
+          print(if (value == 0 && 1 / value < 0) "-0" else value)
 
         case StringLiteral(value, _) =>
           print("\"", escapeJS(value), "\"")
