@@ -4,7 +4,12 @@ import Keys._
 import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
-import java.io.{BufferedOutputStream, FileOutputStream}
+import java.io.{
+  BufferedOutputStream,
+  FileOutputStream,
+  BufferedWriter,
+  FileWriter
+}
 
 import scala.collection.mutable
 import scala.util.Properties
@@ -721,6 +726,46 @@ object ScalaJSBuild extends Build {
             } else {
               Nil
             }
+          },
+
+          /* Generate a scala source file that throws exceptions in
+             various places (while attaching the source line to the
+             exception). When we catch the exception, we can then
+             compare the attached source line and the source line 
+             calculated via the source maps.
+
+             see test-suite/src/test/resources/SourceMapTestTemplate.scala
+           */
+          sourceGenerators in Test <+= Def.task {
+            val dir = (sourceManaged in Test).value
+            IO.createDirectory(dir)
+
+            val template = IO.read((resourceDirectory in Test).value /
+              "SourceMapTestTemplate.scala")
+
+            def lineNo(cs: CharSequence) =
+              (0 until cs.length).count(i => cs.charAt(i) == '\n') + 1
+
+            var i = 0
+            val pat = "/\\*{2,3}/".r
+            val replaced = pat.replaceAllIn(template, { mat =>
+              val lNo = lineNo(mat.before)
+              val res =
+                if (mat.end - mat.start == 5)
+                  // matching a /***/
+                  s"if (TC.is($i)) { throw new TestException($lNo) } else "
+                else
+                  // matching a /**/
+                  s"; if (TC.is($i)) { throw new TestException($lNo) } ;"
+
+              i += 1
+
+              res
+            })
+
+            val outFile = dir / "SourceMapTest.scala"
+            IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
+            Seq(outFile)
           }
       )
   ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")

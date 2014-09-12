@@ -125,10 +125,15 @@ class NodeJSEnv(
   }
 
   // Node.js specific (system) environment
-  override protected def getVMEnv(args: RunJSArgs): Map[String, String] =
+  override protected def getVMEnv(args: RunJSArgs): Map[String, String] = {
+    val baseNodePath = sys.env.get("NODE_PATH").filter(_.nonEmpty)
+    val nodePath = libCache.cacheDir.getAbsolutePath +
+      baseNodePath.fold("")(p => File.pathSeparator + p)
+
     sys.env ++ Seq(
         "NODE_MODULE_CONTEXTS" -> "0",
-        "NODE_PATH" -> libCache.cacheDir.getAbsolutePath
+        "NODE_PATH" -> nodePath
     ) ++ additionalEnv
+  }
 
 }
