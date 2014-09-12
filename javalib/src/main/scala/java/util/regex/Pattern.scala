@@ -7,19 +7,15 @@ final class Pattern private (pattern0: String, flags0: Int) {
   import Pattern._
 
   def pattern(): String = pattern0
-  def flags(): Int = flags0
+  def flags(): Int = flags1
 
-  private[regex] val jspattern = {
-    if ((flags0 & LITERAL) != 0) quote(pattern0)
+  private[regex] val (jspattern, flags1) = {
+    if ((flags0 & LITERAL) != 0) (quote(pattern0), flags0)
     else {
-      // This is a hack to support StringLike.split
-      // it replaces occurrences of \Q<char>\E by
-      // quoted(<char>)
-      val m = splitHackPat.exec(pattern0)
-      if (m != null) quote(m(1).get)
-      else pattern0
+      trySplitHack(pattern0, flags0) orElse
+      tryFlagHack(pattern0, flags0) getOrElse
+      (pattern0, flags0)
     }
-
   }
 
   private[regex] val jsflags = {
@@ -105,6 +101,49 @@ object Pattern {
     result
   }
 
+  /** This is a hack to support StringLike.split().
+   *  It replaces occurrences of \Q<char>\E by quoted(<char>)
+   */
+  @inline
+  private def trySplitHack(pat: String, flags: Int) = {
+    val m = splitHackPat.exec(pat)
+    if (m != null)
+      Some((quote(m(1).get), flags))
+    else
+      None
+  }
+
+  @inline
+  private def tryFlagHack(pat: String, flags0: Int) = {
+    val m = flagHackPat.exec(pat)
+    if (m != null) {
+      val newPat = pat.substring(m(0).get.length) // cut off the flag specifiers
+      val flags1 = m(1).fold(flags0) { chars =>
+        chars.foldLeft(flags0) { (f, c) => f | charToFlag(c) }
+      }
+      val flags2 = m(2).fold(flags1) { chars =>
+        chars.foldLeft(flags1) { (f, c) => f & ~charToFlag(c) }
+      }
+      Some((newPat, flags2))
+    } else
+      None
+  }
+
+  private def charToFlag(c: Char) = (c: @switch) match {
+    case 'i' => CASE_INSENSITIVE
+    case 'd' => UNIX_LINES
+    case 'm' => MULTILINE
+    case 's' => DOTALL
+    case 'u' => UNICODE_CASE
+    case 'x' => COMMENTS
+    case 'U' => UNICODE_CHARACTER_CLASS
+    case _   => sys.error("bad in-pattern flag")
+  }
+
   /** matches \Q<char>\E to support StringLike.split */
   private val splitHackPat = new js.RegExp("^\\\\Q(.|\\n|\\r)\\\\E$")
+
+  /** regex to match flag specifiers in regex. E.g. (?u), (?-i), (?U-i) */
+  private val flagHackPat =
+    new js.RegExp("^\\(\\?([idmsuxU]*)(?:-([idmsuxU]*))?\\)")
 }

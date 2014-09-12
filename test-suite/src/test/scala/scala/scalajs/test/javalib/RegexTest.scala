@@ -344,5 +344,29 @@ object RegexTest extends JasmineTest {
       }
     }
 
+    it("should support in-pattern flags - #997") {
+      val p0 = Pattern.compile("(?i)abc")
+
+      expect(p0.flags() & Pattern.CASE_INSENSITIVE).not.toBe(0)
+
+      val m0 = p0.matcher("abcABC")
+
+      expect(m0.find()).toBeTruthy
+      expect(m0.group()).toEqual("abc")
+      expect(m0.find()).toBeTruthy
+      expect(m0.group()).toEqual("ABC")
+      expect(m0.find()).toBeFalsy
+
+      val p1 = Pattern.compile("(?-i)abc", Pattern.CASE_INSENSITIVE)
+
+      expect(p1.flags() & Pattern.CASE_INSENSITIVE).toBe(0)
+
+      val m1 = p1.matcher("abcABC")
+
+      expect(m1.find()).toBeTruthy
+      expect(m1.group()).toEqual("abc")
+      expect(m1.find()).toBeFalsy
+    }
+
   }
 }
