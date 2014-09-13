@@ -150,7 +150,7 @@ object ScalaJSBuild extends Build {
               clean in tools, clean in toolsJS, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in javalibEx,
-              clean in examples, clean in helloworld,
+              clean in examples, clean in helloworld,clean in weather,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in noIrCheckTest,
               clean in javalibExTestSuite,
@@ -666,7 +666,7 @@ object ScalaJSBuild extends Build {
       settings = defaultSettings ++ Seq(
           name := "Scala.js examples"
       )
-  ).aggregate(helloworld, reversi, testingExample)
+  ).aggregate(helloworld, reversi, testingExample, weather)
 
   lazy val exampleSettings = defaultSettings ++ myScalaJSSettings
 
@@ -688,6 +688,19 @@ object ScalaJSBuild extends Build {
           moduleName := "reversi"
       )
   ).dependsOn(compiler % "plugin", library)
+
+  lazy val weather = Project(
+      id = "weather",
+      base = file("examples") / "weather",
+      settings = exampleSettings ++ Seq(
+          name := "Weather Report - Scala.js example",
+          moduleName := "weather",
+          libraryDependencies ++= Seq(
+              "org.scala-lang.modules.scalajs" %%% "scalajs-dom" % "0.6"
+          )
+      )
+  ).dependsOn(compiler % "plugin", library)
+
 
   lazy val testingExample = Project(
       id = "testingExample",
