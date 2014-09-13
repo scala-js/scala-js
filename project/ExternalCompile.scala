@@ -9,13 +9,6 @@ object ExternalCompile {
   private val isWindows =
     System.getProperty("os.name").toLowerCase().indexOf("win") >= 0
 
-  private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
-    item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
-  }
-
-  private val isScalaLibraryJar = isJarWithPrefix(
-      "scala-library", "scala-reflect") _
-
   val scalaJSExternalCompileConfigSettings: Seq[Setting[_]] = inTask(compile)(
       Defaults.runnerTask
   ) ++ Seq(
