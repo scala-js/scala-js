@@ -23,10 +23,10 @@ final class Integer(value: scala.Int) extends Number with Comparable[Integer] {
 }
 
 object Integer {
-  val TYPE = classOf[scala.Int]
-  val MIN_VALUE: scala.Int = -2147483648
-  val MAX_VALUE: scala.Int = 2147483647
-  val SIZE: Int = 32
+  final val TYPE = classOf[scala.Int]
+  final val MIN_VALUE = -2147483648
+  final val MAX_VALUE = 2147483647
+  final val SIZE = 32
 
   def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
   def valueOf(s: String): Integer = valueOf(parseInt(s))

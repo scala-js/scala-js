@@ -154,9 +154,10 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
 }
 
 object Character {
-  val TYPE = classOf[scala.Char]
-  val MIN_VALUE: scala.Char = 0
-  val MAX_VALUE: scala.Char = 0xffff
+  final val TYPE = classOf[scala.Char]
+  final val MIN_VALUE = '\u0000'
+  final val MAX_VALUE = '\uffff'
+  final val SIZE = 16
 
   def valueOf(charValue: scala.Char) = new Character(charValue)
 
@@ -172,15 +173,15 @@ object Character {
   val DECIMAL_DIGIT_NUMBER: scala.Byte = 0
   val SURROGATE: scala.Byte = 0
 
-  val MIN_RADIX: scala.Int = 2
-  val MAX_RADIX: scala.Int = 36
+  final val MIN_RADIX = 2
+  final val MAX_RADIX = 36
 
-  val MIN_HIGH_SURROGATE: scala.Char = '\uD800'
-  val MAX_HIGH_SURROGATE: scala.Char = '\uDBFF'
-  val MIN_LOW_SURROGATE: scala.Char = '\uDC00'
-  val MAX_LOW_SURROGATE: scala.Char = '\uDFFF'
-  val MIN_SURROGATE: scala.Char = MIN_HIGH_SURROGATE
-  val MAX_SURROGATE: scala.Char = MAX_LOW_SURROGATE
+  final val MIN_HIGH_SURROGATE = '\uD800'
+  final val MAX_HIGH_SURROGATE = '\uDBFF'
+  final val MIN_LOW_SURROGATE = '\uDC00'
+  final val MAX_LOW_SURROGATE = '\uDFFF'
+  final val MIN_SURROGATE = MIN_HIGH_SURROGATE
+  final val MAX_SURROGATE = MAX_LOW_SURROGATE
 
   /* Tests */
   def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")

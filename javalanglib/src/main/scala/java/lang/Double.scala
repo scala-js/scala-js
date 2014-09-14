@@ -27,16 +27,15 @@ final class Double(private val value: scala.Double)
 }
 
 object Double {
-  val TYPE = classOf[scala.Double]
-  val POSITIVE_INFINITY = js.Number.POSITIVE_INFINITY.toDouble
-  val NEGATIVE_INFINITY = js.Number.NEGATIVE_INFINITY.toDouble
-  val NaN = js.Number.NaN.toDouble
-  val MAX_VALUE = js.Number.MAX_VALUE // 0x1.fffffffffffffP+1023
-  val MIN_NORMAL = 0.0d // 0x1.0p-1022
-  val MIN_VALUE = js.Number.MIN_VALUE // 0x0.0000000000001P-1022
-  val MAX_EXPONENT = 1023
-  val MIN_EXPONENT = -1022
-  val SIZE = 64
+  final val TYPE = classOf[scala.Double]
+  final val POSITIVE_INFINITY = 1.0 / 0.0
+  final val NEGATIVE_INFINITY = 1.0 / -0.0
+  final val NaN = 0.0 / 0.0
+  final val MAX_VALUE = scala.Double.MaxValue
+  final val MIN_VALUE = scala.Double.MinPositiveValue
+  final val MAX_EXPONENT = 1023
+  final val MIN_EXPONENT = -1022
+  final val SIZE = 64
 
   def valueOf(doubleValue: scala.Double): Double = new Double(doubleValue)
   def valueOf(s: String): Double = valueOf(parseDouble(s))

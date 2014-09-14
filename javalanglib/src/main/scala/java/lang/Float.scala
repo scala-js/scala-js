@@ -26,18 +26,17 @@ final class Float(value: scala.Float) extends Number with Comparable[Float] {
 }
 
 object Float {
-  val TYPE = classOf[scala.Float]
-  val POSITIVE_INFINITY = js.Number.POSITIVE_INFINITY.toFloat
-  val NEGATIVE_INFINITY = js.Number.NEGATIVE_INFINITY.toFloat
-  val NaN = js.Number.NaN.toFloat
-  val MAX_VALUE = js.Number.MAX_VALUE.toFloat // 0x1.fffffeP+127f
-  val MIN_NORMAL = 0.0f // 0x1.0p-126f
-  val MIN_VALUE = js.Number.MIN_VALUE.toFloat // 0x0.000002P-126f
-  val MAX_EXPONENT = 127
-  val MIN_EXPONENT = -126
-  val SIZE = 32
+  final val TYPE = classOf[scala.Float]
+  final val POSITIVE_INFINITY = 1.0f / 0.0f
+  final val NEGATIVE_INFINITY = 1.0f / -0.0f
+  final val NaN = 0.0f / 0.0f
+  final val MAX_VALUE = scala.Float.MaxValue
+  final val MIN_VALUE = scala.Float.MinPositiveValue
+  final val MAX_EXPONENT = 127
+  final val MIN_EXPONENT = -126
+  final val SIZE = 32
 
-  private[this] val floatStrPat = new js.RegExp("^" +
+  private[this] lazy val floatStrPat = new js.RegExp("^" +
       "[\\x00-\\x20]*"   + // optional whitespace
       "[+-]?"            + // optional sign
       "(NaN|Infinity|"   + // special cases

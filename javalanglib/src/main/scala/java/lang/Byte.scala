@@ -23,10 +23,19 @@ final class Byte(value: scala.Byte) extends Number with Comparable[Byte] {
 }
 
 object Byte {
-  val TYPE = classOf[scala.Byte]
-  val MIN_VALUE: scala.Byte = -128
-  val MAX_VALUE: scala.Byte = 127
-  val SIZE: scala.Int = 8
+  final val TYPE = classOf[scala.Byte]
+  final val SIZE = 8
+
+  /* MIN_VALUE and MAX_VALUE should be 'final val's. But it is impossible to
+   * write a proper Byte literal in Scala, that would both considered a Byte
+   * and a constant expression (optimized as final val).
+   * Since vals and defs are binary-compatible (although they're not strictly
+   * speaking source-compatible, because of stability), we implement them as
+   * defs. Source-compatibility is not an issue because user code is compiled
+   * against the JDK .class files anyway.
+   */
+  def MIN_VALUE: scala.Byte = -128
+  def MAX_VALUE: scala.Byte = 127
 
   def valueOf(byteValue: scala.Byte): Byte = new Byte(byteValue)
   def valueOf(s: String): Byte = valueOf(parseByte(s))

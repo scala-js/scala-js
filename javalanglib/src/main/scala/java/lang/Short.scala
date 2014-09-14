@@ -23,10 +23,19 @@ final class Short(value: scala.Short) extends Number with Comparable[Short] {
 }
 
 object Short {
-  val TYPE = classOf[scala.Short]
-  val MIN_VALUE: scala.Short = -32768
-  val MAX_VALUE: scala.Short = 32767
-  val SIZE: Int = 16
+  final val TYPE = classOf[scala.Short]
+  final val SIZE = 16
+
+  /* MIN_VALUE and MAX_VALUE should be 'final val's. But it is impossible to
+   * write a proper Short literal in Scala, that would both considered a Short
+   * and a constant expression (optimized as final val).
+   * Since vals and defs are binary-compatible (although they're not strictly
+   * speaking source-compatible, because of stability), we implement them as
+   * defs. Source-compatibility is not an issue because user code is compiled
+   * against the JDK .class files anyway.
+   */
+  def MIN_VALUE: scala.Short = -32768
+  def MAX_VALUE: scala.Short = 32767
 
   def valueOf(shortValue: scala.Short): Short = new Short(shortValue)
   def valueOf(s: String): Short = valueOf(parseShort(s))

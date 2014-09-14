@@ -18,9 +18,20 @@ final class Boolean(value: scala.Boolean) extends Comparable[Boolean] {
 }
 
 object Boolean {
-  val TYPE = classOf[scala.Boolean]
-  val TRUE = new Boolean(true)
-  val FALSE = new Boolean(false)
+  final val TYPE = classOf[scala.Boolean]
+
+  /* TRUE and FALSE are supposed to be vals. However, they are better
+   * optimized as defs, because they end up being just the constant true and
+   * false (since `new Boolean(x)` is a no-op).
+   * Since vals and defs are binary-compatible (although they're not strictly
+   * speaking source-compatible, because of stability), we implement them as
+   * defs. Source-compatibility is not an issue because user code is compiled
+   * against the JDK .class files anyway.
+   * Moreover, preserving the identity of TRUE and FALSE is not an issue
+   * either, since they are primitive booleans in the end.
+   */
+  def TRUE: Boolean = new Boolean(true)
+  def FALSE: Boolean = new Boolean(false)
 
   def valueOf(booleanValue: scala.Boolean): Boolean =
     if (booleanValue) TRUE else FALSE

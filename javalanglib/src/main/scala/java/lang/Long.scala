@@ -26,10 +26,10 @@ object Long {
   import scala.scalajs.runtime.RuntimeLong
   import RuntimeLong.{fromRuntimeLong, toRuntimeLong}
 
-  val TYPE = classOf[scala.Long]
-  val MIN_VALUE: scala.Long = -9223372036854775808L
-  val MAX_VALUE: scala.Long = 9223372036854775807L
-  val SIZE: scala.Int = 64
+  final val TYPE = classOf[scala.Long]
+  final val MIN_VALUE = -9223372036854775808L
+  final val MAX_VALUE = 9223372036854775807L
+  final val SIZE = 64
 
   def valueOf(longValue: scala.Long): Long = new Long(longValue)
   def valueOf(s: String): Long = valueOf(parseLong(s))
