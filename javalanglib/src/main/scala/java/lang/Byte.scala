@@ -37,11 +37,13 @@ object Byte {
   def MIN_VALUE: scala.Byte = -128
   def MAX_VALUE: scala.Byte = 127
 
-  def valueOf(byteValue: scala.Byte): Byte = new Byte(byteValue)
-  def valueOf(s: String): Byte = valueOf(parseByte(s))
-  def valueOf(s: String, radix: Int): Byte = valueOf(parseByte(s, radix))
+  @inline def valueOf(byteValue: scala.Byte): Byte = new Byte(byteValue)
+  @inline def valueOf(s: String): Byte = valueOf(parseByte(s))
 
-  def parseByte(s: String): scala.Byte = parseByte(s, 10)
+  @inline def valueOf(s: String, radix: Int): Byte =
+    valueOf(parseByte(s, radix))
+
+  @inline def parseByte(s: String): scala.Byte = parseByte(s, 10)
 
   def parseByte(s: String, radix: Int): scala.Byte = {
     val r = Integer.parseInt(s, radix)
@@ -51,5 +53,5 @@ object Byte {
       r.toByte
   }
 
-  def toString(b: scala.Byte): String = Integer.valueOf(b.toInt).toString
+  @inline def toString(b: scala.Byte): String = b.toString
 }

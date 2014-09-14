@@ -37,11 +37,13 @@ object Short {
   def MIN_VALUE: scala.Short = -32768
   def MAX_VALUE: scala.Short = 32767
 
-  def valueOf(shortValue: scala.Short): Short = new Short(shortValue)
-  def valueOf(s: String): Short = valueOf(parseShort(s))
-  def valueOf(s: String, radix: Int): Short = valueOf(parseShort(s, radix))
+  @inline def valueOf(shortValue: scala.Short): Short = new Short(shortValue)
+  @inline def valueOf(s: String): Short = valueOf(parseShort(s))
 
-  def parseShort(s: String): scala.Short = parseShort(s, 10)
+  @inline def valueOf(s: String, radix: Int): Short =
+    valueOf(parseShort(s, radix))
+
+  @inline def parseShort(s: String): scala.Short = parseShort(s, 10)
 
   def parseShort(s: String, radix: Int): scala.Short = {
     val r = Integer.parseInt(s, radix)
@@ -51,7 +53,7 @@ object Short {
       r.toShort
   }
 
-  def toString(s: scala.Short): String = Integer.valueOf(s.toInt).toString
+  @inline def toString(s: scala.Short): String = s.toString
 
   def reverseBytes(i: scala.Short): scala.Short =
     (((i >>> 8) & 0xff) + ((i & 0xff) << 8)).toShort

@@ -7,6 +7,7 @@ import java.io._
 import java.lang._
 
 final class Formatter(private val dest: Appendable) extends Closeable with Flushable {
+  import Formatter._
 
   var closed = false
 
@@ -30,18 +31,6 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   }
 
   // Begin implem of format()
-
-  private class RegExpExtractor(val regexp: js.RegExp) {
-    def unapply(str: String): Option[js.RegExp.ExecResult] = {
-      Option(regexp.exec(str))
-    }
-  }
-
-  private val RegularChunk = new RegExpExtractor(new js.RegExp("""^[^\x25]+"""))
-  private val DoublePercent = new RegExpExtractor(new js.RegExp("""^\x25{2}"""))
-  private val EOLChunk = new RegExpExtractor(new js.RegExp("""^\x25n"""))
-  private val FormattedChunk = new RegExpExtractor(new js.RegExp(
-      """^\x25(?:([1-9]\d*)\$)?([-#+ 0,\(<]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
 
   def format(format_in: String, args: Array[AnyRef]): Formatter = ifNotClosed {
     import js.Any.fromDouble // to have .toFixed and .toExponential on Doubles
@@ -258,12 +247,32 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   }
 
   def ioException(): IOException = null
-  def locale() = ifNotClosed { null }
+  def locale(): Locale = ifNotClosed { null }
   def out(): Appendable = ifNotClosed { dest }
+
   override def toString(): String = out().toString()
 
-  private def ifNotClosed[T](body: =>T): T =
-    if (closed) throw new FormatterClosedException
+  @inline private def ifNotClosed[T](body: => T): T =
+    if (closed) throwClosedException()
     else body
+
+  private def throwClosedException(): Nothing =
+    throw new FormatterClosedException()
+
+}
+
+object Formatter {
+
+  private class RegExpExtractor(val regexp: js.RegExp) {
+    def unapply(str: String): Option[js.RegExp.ExecResult] = {
+      Option(regexp.exec(str))
+    }
+  }
+
+  private val RegularChunk = new RegExpExtractor(new js.RegExp("""^[^\x25]+"""))
+  private val DoublePercent = new RegExpExtractor(new js.RegExp("""^\x25{2}"""))
+  private val EOLChunk = new RegExpExtractor(new js.RegExp("""^\x25n"""))
+  private val FormattedChunk = new RegExpExtractor(new js.RegExp(
+      """^\x25(?:([1-9]\d*)\$)?([-#+ 0,\(<]*)(\d*)(?:\.(\d+))?([A-Za-z])"""))
 
 }

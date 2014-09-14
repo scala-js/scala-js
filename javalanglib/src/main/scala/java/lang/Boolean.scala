@@ -33,12 +33,15 @@ object Boolean {
   def TRUE: Boolean = new Boolean(true)
   def FALSE: Boolean = new Boolean(false)
 
-  def valueOf(booleanValue: scala.Boolean): Boolean =
-    if (booleanValue) TRUE else FALSE
-  def valueOf(s: String): Boolean = valueOf(parseBoolean(s))
+  @inline def valueOf(booleanValue: scala.Boolean): Boolean = {
+    // We don't care about identity, since they end up as primitive booleans
+    new Boolean(booleanValue)
+  }
 
-  def parseBoolean(s: String): scala.Boolean =
+  @inline def valueOf(s: String): Boolean = valueOf(parseBoolean(s))
+
+  @inline def parseBoolean(s: String): scala.Boolean =
     (s != null) && s.equalsIgnoreCase("true")
 
-  def toString(b: scala.Boolean): String = if (b) "true" else "false"
+  @inline def toString(b: scala.Boolean): String = b.toString
 }

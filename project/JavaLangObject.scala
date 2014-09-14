@@ -45,8 +45,10 @@ object JavaLangObject {
       MethodInfo("toString__T",
         calledMethods = Map(
           "O" -> List("getClass__jl_Class", "hashCode__I"),
-          "jl_Class" -> List("getName__T")
-        )
+          "jl_Class" -> List("getName__T"),
+          "jl_Integer$" -> List("toHexString__I__T")
+        ),
+        accessedModules = List("jl_Integer")
       ),
       MethodInfo("finalize__V"),
       MethodInfo("clone__",
@@ -160,12 +162,11 @@ object JavaLangObject {
               // +
               StringLiteral("@")),
               // +
-              JSBracketMethodApply(
-                JSBinaryOp(">>>",
-                  Cast(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType), DynType),
-                  Cast(IntLiteral(0), DynType)),
-                StringLiteral("toString"),
-                List(IntLiteral(16))))
+              Apply(
+                LoadModule(ClassType("jl_Integer$")),
+                Ident("toHexString__I__T"),
+                List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
+                ClassType(StringClass)))
           }),
 
           /* Since wait() is not supported in any way, a correct implementation

@@ -31,17 +31,19 @@ object Long {
   final val MAX_VALUE = 9223372036854775807L
   final val SIZE = 64
 
-  def valueOf(longValue: scala.Long): Long = new Long(longValue)
-  def valueOf(s: String): Long = valueOf(parseLong(s))
-  def valueOf(s: String, radix: Int): Long = valueOf(parseLong(s, radix))
+  @inline def valueOf(longValue: scala.Long): Long = new Long(longValue)
+  @inline def valueOf(s: String): Long = valueOf(parseLong(s))
 
-  def parseLong(s: String): scala.Long =
+  @inline def valueOf(s: String, radix: Int): Long =
+    valueOf(parseLong(s, radix))
+
+  @inline def parseLong(s: String): scala.Long =
     fromRuntimeLong(RuntimeLong.fromString(s))
 
-  def parseLong(s: String, radix: Int): scala.Long =
+  @inline def parseLong(s: String, radix: Int): scala.Long =
     fromRuntimeLong(RuntimeLong.fromString(s, radix))
 
-  def toString(l: scala.Long): String = toRuntimeLong(l).toString
+  @inline def toString(l: scala.Long): String = toRuntimeLong(l).toString
 
   def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
 
@@ -50,7 +52,7 @@ object Long {
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
 
   def signum(i: scala.Long): scala.Long =
-    if (i == 0) 0 else if (i < 0) -1 else 1
+    toRuntimeLong(i).signum
 
   def numberOfLeadingZeros(l: scala.Long): Int =
     toRuntimeLong(l).numberOfLeadingZeros

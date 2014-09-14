@@ -28,13 +28,13 @@ object Integer {
   final val MAX_VALUE = 2147483647
   final val SIZE = 32
 
-  def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
-  def valueOf(s: String): Integer = valueOf(parseInt(s))
-  def valueOf(s: String, radix: Int): Integer = valueOf(parseInt(s, radix))
+  @inline def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
+  @inline def valueOf(s: String): Integer = valueOf(parseInt(s))
 
-  def parseInt(s: String): scala.Int =
-    // explicitly specify radix to avoid interpretation as octal (by JS)
-    parseInt(s, 10)
+  @inline def valueOf(s: String, radix: Int): Integer =
+    valueOf(parseInt(s, radix))
+
+  @inline def parseInt(s: String): scala.Int = parseInt(s, 10)
 
   def parseInt(s: String, radix: scala.Int): scala.Int = {
     def fail = throw new NumberFormatException(s"""For input string: "$s"""")
@@ -63,7 +63,7 @@ object Integer {
     }
   }
 
-  def toString(i: scala.Int): String = valueOf(i).toString
+  @inline def toString(i: scala.Int): String = i.toString
 
   def bitCount(i: scala.Int): scala.Int = {
     // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -89,7 +89,7 @@ object Integer {
     (i >>> distance) | (i << (32-distance))
   }
 
-  def signum(i: scala.Int): scala.Int =
+  @inline def signum(i: scala.Int): scala.Int =
     if (i == 0) 0 else if (i < 0) -1 else 1
 
   def numberOfLeadingZeros(i: scala.Int): scala.Int = {
@@ -111,6 +111,6 @@ object Integer {
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
 
-  private[this] def toStringBase(i: scala.Int, base: scala.Int): String =
+  @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String =
     ((i: js.prim.Number) >>> 0).toString(base)
 }

@@ -13,7 +13,7 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
     if (value == that.value) 0 else if (value < that.value) -1 else 1
 
   override def toString(): String =
-    js.String.fromCharCode(value.toInt)
+    Character.toString(value)
 
   override def hashCode(): Int = value.##
 
@@ -254,7 +254,7 @@ object Character {
   /* Misc */
   def reverseBytes(ch: scala.Char): scala.Char = sys.error("unimplemented")
 
-  def toString(c: scala.Char) = valueOf(c).toString
+  @inline def toString(c: scala.Char) = js.String.fromCharCode(c.toInt)
 
   // Based on Unicode 7.0.0
   private[this] lazy val reUnicodeIdentStart =

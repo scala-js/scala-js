@@ -47,8 +47,9 @@ object Float {
       "[\\x00-\\x20]*"   + // optional whitespace
       "$")
 
-  def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
-  def valueOf(s: String): Float = valueOf(parseFloat(s))
+  @inline def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
+
+  @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
   def parseFloat(s: String): scala.Float = {
     if (floatStrPat.test(s))
@@ -57,17 +58,19 @@ object Float {
       throw new NumberFormatException(s"""For input string: "$s"""")
   }
 
-  def toString(f: scala.Float): String = valueOf(f).toString
+  @inline def toString(f: scala.Float): String = f.toString
 
-  def compare(a: scala.Float, b: scala.Float): scala.Int = {
+  @inline def compare(a: scala.Float, b: scala.Float): scala.Int = {
     if (a == b) 0
     else if (a < b) -1
     else 1
   }
 
-  def isNaN(v: scala.Float): scala.Boolean = js.isNaN(v)
-  def isInfinite(v: scala.Float): scala.Boolean =
-    !js.isFinite(v) && !js.isNaN(v)
+  @inline def isNaN(v: scala.Float): scala.Boolean =
+    valueOf(v).isNaN()
+
+  @inline def isInfinite(v: scala.Float): scala.Boolean =
+    valueOf(v).isInfinite()
 
   def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
   def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
