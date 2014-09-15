@@ -47,6 +47,8 @@ object Any extends LowPrioAnyImplicits {
 
   implicit def fromString(s: java.lang.String): prim.String = sys.error("stub")
 
+  @deprecated("Implicit conversion from scala.Array to js.Array is deprecated. " +
+      "Use _.toJSArray through JSConverters instead", "0.5.5")
   implicit def fromArray[A](array: scala.Array[A]): Array[A] = {
     val length = array.length
     val result = new Array[A](length)
@@ -58,6 +60,8 @@ object Any extends LowPrioAnyImplicits {
     result
   }
 
+  @deprecated("Implicit conversion from js.Array to scala.Array is deprecated. " +
+      "Use _.toArray through js.ArrayOps instead", "0.5.5")
   implicit def toArray[A : ClassTag](array: Array[A]): scala.Array[A] = {
     val length = array.length.toInt
     val result = new scala.Array[A](length)

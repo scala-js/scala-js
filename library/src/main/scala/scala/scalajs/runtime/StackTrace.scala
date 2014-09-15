@@ -106,7 +106,7 @@ object StackTrace {
       }
       i += 1
     }
-    result
+    result.toArray
   }
 
   /** Tries and extract the class name and method from the JS function name.

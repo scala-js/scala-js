@@ -2,6 +2,8 @@ package java.lang.reflect
 
 import scala.scalajs.js
 
+import js.JSConverters._
+
 import java.lang.Class
 
 object Array {
@@ -9,7 +11,7 @@ object Array {
     componentType.newArrayOfThisClass(js.Array(length))
 
   def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef =
-    componentType.newArrayOfThisClass(dimensions)
+    componentType.newArrayOfThisClass(dimensions.toJSArray)
 
   def getLength(array: AnyRef): Int = array match {
     // yes, this is kind of stupid, but that's how it is
