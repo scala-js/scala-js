@@ -197,8 +197,8 @@ object ScalaJSPluginInternal {
                 wantSourceMap = (emitSourceMaps in fastOptJS).value,
                 relativizeSourceMapBase = relSourceMapBase,
                 checkIR = (checkScalaJSIR in fastOptJS).value,
-                disableInliner = (inliningMode in fastOptJS).value.disabled,
-                batchInline = (inliningMode in fastOptJS).value.batch),
+                disableInliner = (optimizerMode in fastOptJS).value.disabled,
+                batchInline = (optimizerMode in fastOptJS).value.batch),
             s.log)
       },
       fastOptJS <<=
@@ -233,8 +233,8 @@ object ScalaJSPluginInternal {
                   wantSourceMap = (emitSourceMaps in fullOptJS).value,
                   relativizeSourceMapBase = relSourceMapBase,
                   checkIR = (checkScalaJSIR in fullOptJS).value,
-                  disableInliner = (inliningMode in fullOptJS).value.disabled,
-                  batchInline = (inliningMode in fullOptJS).value.batch,
+                  disableInliner = (optimizerMode in fullOptJS).value.disabled,
+                  batchInline = (optimizerMode in fullOptJS).value.batch,
                   prettyPrint = fullOptJSPrettyPrint.value),
                s.log)
         } else Def.task {
@@ -616,7 +616,7 @@ object ScalaJSPluginInternal {
       emitSourceMaps in packageExternalDepsJS := false,
 
       checkScalaJSIR := false,
-      inliningMode := InliningMode.Incremental,
+      optimizerMode := OptimizerMode.Incremental,
       parallelFastOptJS := true,
       directFullOptJS := true,
 
