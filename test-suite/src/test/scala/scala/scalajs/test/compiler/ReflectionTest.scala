@@ -29,6 +29,15 @@ object ReflectionTest extends JasmineTest {
       expect(classOf[A].isInstance("hello")).toBeFalsy
     }
 
+    it("getClass() for normal types") {
+      class Foo {
+        def bar() = super.getClass()
+      }
+      val foo = new Foo
+      expect(foo.getClass() eq classOf[Foo]).toBeTruthy
+      expect(foo.bar() eq classOf[Foo]).toBeTruthy
+    }
+
     it("getClass() for anti-boxed primitive types") {
       implicit def classAsAny(c: java.lang.Class[_]): js.Any =
         c.asInstanceOf[js.Any]

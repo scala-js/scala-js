@@ -195,10 +195,12 @@ var ScalaJS = {
       case "undefined":
         return ScalaJS.d.sr_BoxedUnit.getClassOf();
       default:
-        if (ScalaJS.is.sjsr_RuntimeLong(instance))
+        if (instance === null)
+          ScalaJS.throwNullPointerException();
+        else if (ScalaJS.is.sjsr_RuntimeLong(instance))
           return ScalaJS.d.jl_Long.getClassOf();
-        else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-          return instance.getClass__jl_Class();
+        else if (ScalaJS.isScalaJSObject(instance))
+          return instance.$classData.getClassOf();
         else
           return null; // Exception?
     }

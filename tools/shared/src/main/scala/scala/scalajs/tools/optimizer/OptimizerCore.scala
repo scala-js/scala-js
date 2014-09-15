@@ -2549,7 +2549,6 @@ object OptimizerCore {
       import Definitions._
       Map[String, String](
         "objectToString"  -> "toString__T",
-        "objectGetClass"  -> s"getClass__$ClassClass",
         "objectClone"     -> "clone__O",
         "objectFinalize"  -> "finalize__V",
         "objectNotify"    -> "notify__V",
