@@ -50,6 +50,10 @@ object ArrayTest extends JasmineTest {
     it("should provide toJSArray") {
       expect(List("foo", "bar").toJSArray).toEqual(js.Array("foo", "bar"))
       expect(Iterator(1, 2, 3).toJSArray).toEqual(js.Array(1, 2, 3))
+      expect(Array(0.3, 7.3, 8.9).toJSArray).toEqual(js.Array(0.3, 7.3, 8.9))
+      expect(None.toJSArray).toEqual(js.Array())
+      // The following fails on 2.10.x
+      //expect(Some("Hello World").toJSArray).toEqual(js.Array("Hello World"))
     }
 
   }

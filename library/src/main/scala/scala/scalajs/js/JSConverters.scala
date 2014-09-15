@@ -9,6 +9,8 @@
 
 package scala.scalajs.js
 
+import scala.language.implicitConversions
+
 import scala.collection._
 
 import scala.scalajs.runtime.genTraversableOnce2jsArray
@@ -35,5 +37,18 @@ object JSConverters {
       result
     }
   }
+
+  @inline
+  implicit def genTravConvertible2JSRichGenTrav[T, C](coll: C)(
+      implicit ev: C => GenTraversableOnce[T]): JSRichGenTraversableOnce[T] =
+    new JSRichGenTraversableOnce(coll)
+
+  /** Special case for scala.Array of [[genTravConvertible2JSRichGenTrav]].
+   *  Needed for the 2.10.x series.
+   */
+  @inline
+  implicit def array2JSRichGenTrav[T](
+      arr: scala.Array[T]): JSRichGenTraversableOnce[T] =
+    new JSRichGenTraversableOnce(arr)
 
 }
