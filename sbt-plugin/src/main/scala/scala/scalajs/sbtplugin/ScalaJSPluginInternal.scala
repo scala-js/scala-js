@@ -59,31 +59,6 @@ object ScalaJSPluginInternal {
   val defaultPostLinkJSEnv = TaskKey[JSEnv]("defaultPostLinkJSEnv",
       "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
 
-  private def isJarWithPrefix(prefixes: String*)(item: File): Boolean = {
-    item.name.endsWith(".jar") && prefixes.exists(item.name.startsWith)
-  }
-
-  val isScalaJSCompilerJar = isJarWithPrefix(
-      "scala-library", "scala-compiler", "scala-reflect", "scalajs-compiler",
-      "scala-parser-combinators", "scala-xml") _
-
-  private def filterClasspath(cp: Seq[Attributed[File]]): Seq[File] = {
-    for {
-      entry <- cp
-      f = entry.data
-      if !isScalaJSCompilerJar(f)
-    } yield f
-  }
-
-  private def filesToWatchForChanges(classpath: Seq[File]): Set[File] = {
-    val seq = classpath flatMap { f =>
-      if (f.isFile) List(f)
-      else (f ** (("*.sjsir": NameFilter) | "*.js" |
-          JSDependencyManifest.ManifestFileName)).get
-    }
-    seq.toSet
-  }
-
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[PartialClasspath],
       outputSuffix: String): Seq[Setting[_]] = Seq(
@@ -94,12 +69,13 @@ object ScalaJSPluginInternal {
 
       packageJSKey := {
         val s = streams.value
-        val classpathDirs =
-          filterClasspath((classpathKey in packageJSKey).value).toList
         val output = (artifactPath in packageJSKey).value
         val taskCache = WritableFileVirtualTextFile(
             s.cacheDirectory / ("package-js" + outputSuffix))
-        val classpath = PartialClasspathBuilder.build(classpathDirs.toList)
+
+        val classpathDirs =
+          Attributed.data((classpathKey in packageJSKey).value).toList
+        val classpath = PartialClasspathBuilder.build(classpathDirs)
 
         IO.createDirectory(output.getParentFile)
 
@@ -128,7 +104,7 @@ object ScalaJSPluginInternal {
   def scalaJSPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val inheritedNewClassfileManager = incOptions.newClassfileManager
     val newClassfileManager = () => new ClassfileManager {
-      val inherited = inheritedNewClassfileManager()
+      private[this] val inherited = inheritedNewClassfileManager()
 
       def delete(classes: Iterable[File]): Unit = {
         inherited.delete(classes flatMap { classFile =>
