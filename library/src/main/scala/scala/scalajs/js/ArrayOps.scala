@@ -12,12 +12,13 @@ import scala.collection.mutable
 import mutable.Builder
 
 /** Equivalent of scm.ArrayOps for js.Array */
+@inline
 class ArrayOps[A](private[this] val array: Array[A])
     extends mutable.ArrayLike[A, Array[A]] {
 
-  def apply(index: Int): A = array(index)
-  def length: Int = array.length
-  def update(index: Int, element: A): Unit = array(index) = element
+  @inline def apply(index: Int): A = array(index)
+  @inline def length: Int = array.length
+  @inline def update(index: Int, element: A): Unit = array(index) = element
 
   def seq: IndexedSeq[A] = new WrappedArray(array)
 

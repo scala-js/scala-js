@@ -19,7 +19,17 @@ final class RuntimeLong private (
   val h: Int
 ) extends Number with Comparable[java.lang.Long] { x =>
 
-  import RuntimeLong._
+  import RuntimeLong.{MinValue => _, MaxValue => _, _}
+  import CachedConstants._
+
+  /** Construct from an Int.
+   *  This is the implementation of RuntimeLong.fromInt() in a way that does not
+   *  require to load to module RuntimeLong.
+   */
+  def this(value: Int) = this(
+      value & RuntimeLong.MASK,
+      (value >> RuntimeLong.BITS) & RuntimeLong.MASK,
+      if (value < 0) RuntimeLong.MASK_2 else 0)
 
   def toByte: Byte = toInt.toByte
   def toShort: Short = toInt.toShort
@@ -82,8 +92,6 @@ final class RuntimeLong private (
    * logical right shift
    */
   def >>>(n_in: Int): RuntimeLong = {
-    // Check that h is correctly masked, otherwise we'll shift values in
-    assert(x.h == (x.h & MASK_2))
     val n = n_in & 63
     if (n < BITS) {
       val remBits = BITS - n
@@ -97,9 +105,9 @@ final class RuntimeLong private (
              // FIXME is this really >> and not >>>??
       masked((x.m >> shfBits) | (x.h << remBits),
              x.h >>> shfBits, 0)
-    } else
+    } else {
       masked(x.h >>> (n - BITS01), 0, 0)
-
+    }
   }
 
   /**
@@ -143,15 +151,13 @@ final class RuntimeLong private (
   def < (y: RuntimeLong): Boolean = !(x >= y)
   def <=(y: RuntimeLong): Boolean = !(x >  y)
   def > (y: RuntimeLong): Boolean = {
-    val signx = x.sign
-    val signy = y.sign
-    if (signx == 0)
-      signy != 0 ||
+    if (!x.isNegative)
+      y.isNegative ||
       x.h >  y.h ||
       x.h == y.h && x.m >  y.m ||
       x.h == y.h && x.m == y.m && x.l >  y.l
     else !(
-      signy == 0 ||
+      !y.isNegative ||
       x.h <  y.h ||
       x.h == y.h && x.m <  y.m ||
       x.h == y.h && x.m == y.m && x.l <= y.l
@@ -162,7 +168,7 @@ final class RuntimeLong private (
    * greater or equal.
    * note: gwt implements this individually
    */
-  def >=(y: RuntimeLong) : Boolean = x == y || x > y
+  def >=(y: RuntimeLong): Boolean = x == y || x > y
 
   def |(y: RuntimeLong): RuntimeLong =
     RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
@@ -188,7 +194,7 @@ final class RuntimeLong private (
   def *(y: RuntimeLong): RuntimeLong = {
 
     /** divides v in 13bit chunks */
-    def chunk13(v: RuntimeLong) = (
+    @inline def chunk13(v: RuntimeLong) = (
       v.l & 0x1fff,
       (v.l >> 13) | ((v.m & 0xf) << 9),
       (v.m >> 4) & 0x1fff,
@@ -269,8 +275,8 @@ final class RuntimeLong private (
   //override def getClass(): Class[Long] = null
 
   def toBinaryString: String = {
-    def padBinary22(i: Int) = {
-      val zeros = "0000000000000000000000" // 22 zeros
+    val zeros = "0000000000000000000000" // 22 zeros
+    @inline def padBinary22(i: Int) = {
       val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
@@ -298,13 +304,14 @@ final class RuntimeLong private (
     else if (isMinValue) "-9223372036854775808"
     else if (isNegative) "-" + (-x).toString
     else {
-      val tenPowL = toRuntimeLong(1000000000L) // 9 zeros
+      val tenPow9 = TenPow9 // local copy to access CachedConstants only once
 
       @tailrec
+      @inline
       def toString0(v: RuntimeLong, acc: String): String =
         if (v.isZero) acc
         else {
-          val quotRem = v.divMod(tenPowL)
+          val quotRem = v.divMod(tenPow9)
           val quot = quotRem(0)
           val rem = quotRem(1)
 
@@ -325,28 +332,23 @@ final class RuntimeLong private (
 
   // helpers //
 
-  /** sign *bit* of long (0 for positive, 1 for negative) */
-  private def sign = h >> (BITS2 - 1)
+  @inline private def isZero = l == 0 && m == 0 && h == 0
+  @inline private def isMinValue = x.equals(MinValue)
+  @inline private def isNegative = (h & SIGN_BIT_VALUE) != 0
+  @inline private def abs = if (isNegative) -x else x
 
-  private def isZero = l == 0 && m == 0 && h == 0
-  private def isMinValue = x == MinValue
-  private def isNegative = sign != 0
-  private def abs = if (sign == 1) -x else x
+  def signum: Int =
+    if (isNegative) -1 else if (isZero) 0 else 1
+
   def numberOfLeadingZeros: Int =
-    if (h == 0 && m == 0)
-      Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
-    else if (h == 0)
-      Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
-    else
-      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
+    if (h != 0)      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
+    else if (m != 0) Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
+    else             Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
 
   def numberOfTrailingZeros: Int =
-    if (l == 0 && m == 0)
-      Integer.numberOfTrailingZeros(h) + BITS01
-    else if (l == 0)
-      Integer.numberOfTrailingZeros(m) + BITS
-    else
-      Integer.numberOfTrailingZeros(l)
+    if      (l != 0) Integer.numberOfTrailingZeros(l)
+    else if (m != 0) Integer.numberOfTrailingZeros(m) + BITS
+    else             Integer.numberOfTrailingZeros(h) + BITS01
 
   /** return log_2(x) if power of 2 or -1 otherwise */
   private def powerOfTwo =
@@ -568,22 +570,22 @@ object RuntimeLong {
   private final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  val zero: RuntimeLong = RuntimeLong(0, 0, 0)
-  val one:  RuntimeLong = RuntimeLong(1, 0, 0)
+  @inline def zero: RuntimeLong = CachedConstants.Zero
+  @inline def one:  RuntimeLong = CachedConstants.One
 
   def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
   def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
 
   def fromHexString(str: String): RuntimeLong = {
     import scalajs.js.parseInt
-    assert(str.size == 16)
+    assert(str.length == 16)
     val l = parseInt(str.substring(10), 16).toInt
     val m = parseInt(str.substring(6, 7), 16).toInt >> 2
     val h = parseInt(str.substring(0, 5), 16).toInt
     masked(l, m, h)
   }
 
-  def fromString(str: String): RuntimeLong = fromString(str, 10)
+  @inline def fromString(str: String): RuntimeLong = fromString(str, 10)
 
   def fromString(str: String, radix: Int): RuntimeLong = {
     if (str.isEmpty) {
@@ -612,21 +614,16 @@ object RuntimeLong {
     }
   }
 
-  def fromByte(value: Byte): RuntimeLong = fromInt(value.toInt)
-  def fromShort(value: Short): RuntimeLong = fromInt(value.toInt)
-  def fromChar(value: Char): RuntimeLong = fromInt(value.toInt)
-  def fromInt(value: Int): RuntimeLong = {
-    val a0 = value & MASK
-    val a1 = (value >> BITS) & MASK
-    val a2 = if (value < 0) MASK_2 else 0
-    RuntimeLong(a0, a1, a2)
-  }
+  @inline def fromByte(value: Byte): RuntimeLong = fromInt(value.toInt)
+  @inline def fromShort(value: Short): RuntimeLong = fromInt(value.toInt)
+  @inline def fromChar(value: Char): RuntimeLong = fromInt(value.toInt)
+  @inline def fromInt(value: Int): RuntimeLong = new RuntimeLong(value)
+  @inline def fromFloat(value: Float): RuntimeLong = fromDouble(value.toDouble)
 
-  def fromFloat(value: Float): RuntimeLong = fromDouble(value.toDouble)
   def fromDouble(value: Double): RuntimeLong =
     if (java.lang.Double.isNaN(value)) zero
-    else if (value < -TWO_PWR_63_DBL) MinValue
-    else if (value >= TWO_PWR_63_DBL) MaxValue
+    else if (value < -TWO_PWR_63_DBL) CachedConstants.MinValue
+    else if (value >= TWO_PWR_63_DBL) CachedConstants.MaxValue
     else if (value < 0) -fromDouble(-value)
     else {
       var acc = value
@@ -642,11 +639,11 @@ object RuntimeLong {
    * creates a new long but masks bits as follows:
    * l & MASK, m & MASK, h & MASK_2
    */
-  protected def masked(l: Int, m: Int, h: Int) =
+  @inline private def masked(l: Int, m: Int, h: Int) =
     RuntimeLong(l & MASK, m & MASK, h & MASK_2)
 
   /** Creates a new long from its three underlying components. */
-  def apply(l: Int, m: Int, h: Int): RuntimeLong =
+  @inline def apply(l: Int, m: Int, h: Int): RuntimeLong =
     new RuntimeLong(l, m, h)
 
   /**
@@ -662,10 +659,11 @@ object RuntimeLong {
       xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
     import scala.scalajs.js
 
+    @inline
     @tailrec
-    def divide0(shift: Int, yShift: RuntimeLong,
-                curX: RuntimeLong, quot: RuntimeLong): js.Array[RuntimeLong] =
-      if (shift < 0 || curX.isZero) js.Array(quot, curX) else {
+    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
+        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
+      if (shift < 0 || curX.isZero) (quot, curX) else {
         val newX = curX - yShift
         if (!newX.isNegative)
           divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
@@ -676,9 +674,7 @@ object RuntimeLong {
     val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
     val yShift = y << shift
 
-    val absQuotRem = divide0(shift, yShift, x, zero)
-    val absQuot = absQuotRem(0)
-    val absRem = absQuotRem(1)
+    val (absQuot, absRem) = divide0(shift, yShift, x, zero)
 
     val quot = if (xNegative ^ yNegative) -absQuot else absQuot
     val rem  =
@@ -692,9 +688,24 @@ object RuntimeLong {
   // Public Long API
 
   /** The smallest value representable as a Long. */
-  final val MinValue = RuntimeLong(0, 0, SIGN_BIT_VALUE)
+  @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
+  def MinValue: RuntimeLong = CachedConstants.MinValue
 
   /** The largest value representable as a Long. */
-  final val MaxValue = RuntimeLong(MASK, MASK, MASK_2 >> 1)
+  @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
+  def MaxValue: RuntimeLong = CachedConstants.MaxValue
+
+  /** Independent object holding cached constants.
+   *  These constants are extracted here so that the constructor of the
+   *  RuntimeLong module itself is elideable.
+   */
+  private object CachedConstants {
+    // Do not make these 'final' vals. The goal is to cache the instances.
+    val Zero     = toRuntimeLong(0L)
+    val One      = toRuntimeLong(1L)
+    val MinValue = toRuntimeLong(Long.MinValue)
+    val MaxValue = toRuntimeLong(Long.MaxValue)
+    val TenPow9  = toRuntimeLong(1000000000L) // 9 zeros
+  }
 
 }

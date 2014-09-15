@@ -26,18 +26,17 @@ final class Float(value: scala.Float) extends Number with Comparable[Float] {
 }
 
 object Float {
-  val TYPE = classOf[scala.Float]
-  val POSITIVE_INFINITY = js.Number.POSITIVE_INFINITY.toFloat
-  val NEGATIVE_INFINITY = js.Number.NEGATIVE_INFINITY.toFloat
-  val NaN = js.Number.NaN.toFloat
-  val MAX_VALUE = js.Number.MAX_VALUE.toFloat // 0x1.fffffeP+127f
-  val MIN_NORMAL = 0.0f // 0x1.0p-126f
-  val MIN_VALUE = js.Number.MIN_VALUE.toFloat // 0x0.000002P-126f
-  val MAX_EXPONENT = 127
-  val MIN_EXPONENT = -126
-  val SIZE = 32
+  final val TYPE = classOf[scala.Float]
+  final val POSITIVE_INFINITY = 1.0f / 0.0f
+  final val NEGATIVE_INFINITY = 1.0f / -0.0f
+  final val NaN = 0.0f / 0.0f
+  final val MAX_VALUE = scala.Float.MaxValue
+  final val MIN_VALUE = scala.Float.MinPositiveValue
+  final val MAX_EXPONENT = 127
+  final val MIN_EXPONENT = -126
+  final val SIZE = 32
 
-  private[this] val floatStrPat = new js.RegExp("^" +
+  private[this] lazy val floatStrPat = new js.RegExp("^" +
       "[\\x00-\\x20]*"   + // optional whitespace
       "[+-]?"            + // optional sign
       "(NaN|Infinity|"   + // special cases
@@ -48,8 +47,9 @@ object Float {
       "[\\x00-\\x20]*"   + // optional whitespace
       "$")
 
-  def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
-  def valueOf(s: String): Float = valueOf(parseFloat(s))
+  @inline def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
+
+  @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
   def parseFloat(s: String): scala.Float = {
     if (floatStrPat.test(s))
@@ -58,17 +58,19 @@ object Float {
       throw new NumberFormatException(s"""For input string: "$s"""")
   }
 
-  def toString(f: scala.Float): String = valueOf(f).toString
+  @inline def toString(f: scala.Float): String = f.toString
 
-  def compare(a: scala.Float, b: scala.Float): scala.Int = {
+  @inline def compare(a: scala.Float, b: scala.Float): scala.Int = {
     if (a == b) 0
     else if (a < b) -1
     else 1
   }
 
-  def isNaN(v: scala.Float): scala.Boolean = js.isNaN(v)
-  def isInfinite(v: scala.Float): scala.Boolean =
-    !js.isFinite(v) && !js.isNaN(v)
+  @inline def isNaN(v: scala.Float): scala.Boolean =
+    valueOf(v).isNaN()
+
+  @inline def isInfinite(v: scala.Float): scala.Boolean =
+    valueOf(v).isInfinite()
 
   def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
   def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
