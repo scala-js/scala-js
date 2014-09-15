@@ -36,8 +36,7 @@ object SourceMapTest extends JasmineTest {
     scalajs.js.Dynamic.global.require("source-map-support").install()
   }
 
-  when("nodejs").
-  unless("bad-source-map"). // see #1020
+  when("source-maps").
   describe("Source Maps") {
 
     for (i <- 0 until testCount) {

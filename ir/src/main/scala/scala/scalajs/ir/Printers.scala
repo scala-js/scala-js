@@ -11,6 +11,8 @@ package scala.scalajs.ir
 
 import scala.annotation.switch
 
+import scala.util.control.Breaks
+
 import java.io.Writer
 import java.net.URI
 
@@ -698,6 +700,58 @@ object Printers {
     override def complete(): Unit = {
       sourceMap.complete()
       super.complete()
+    }
+  }
+
+  /** Prints a tree to find original locations based on line numbers.
+   *  @param untilLine last 0-based line the positions should be recorded for
+   */
+  class ReverseSourceMapPrinter(untilLine: Int)
+      extends IRTreePrinter(ReverseSourceMapPrinter.NullWriter, jsMode = true) {
+
+    private val positions = Array.fill(untilLine+1)(NoPosition)
+    private var curLine = 0
+
+    private val doneBreak = new Breaks
+
+    def apply(x: Int): Position = positions(x)
+
+    def reverseSourceMap(tree: Tree): Unit = doneBreak.breakable {
+      printTopLevelTree(tree)
+    }
+
+    override def printTree(tree: Tree, isStat: Boolean): Unit = {
+      if (positions(curLine).isEmpty)
+        positions(curLine) = tree.pos
+
+      super.printTree(tree, isStat)
+    }
+
+    override def printIdent(ident: Ident): Unit = {
+      if (positions(curLine).isEmpty)
+        positions(curLine) = ident.pos
+
+      super.printIdent(ident)
+    }
+
+    override def println(): Unit = {
+      super.println()
+      curLine += 1
+      if (curLine > untilLine)
+        doneBreak.break()
+    }
+
+    override def printString(s: String): Unit = {
+      // assume no EOL char in s, and assume s only has ASCII characters
+      // therefore, we fully ignore the string
+    }
+  }
+
+  object ReverseSourceMapPrinter {
+    private object NullWriter extends Writer {
+      def close(): Unit = ()
+      def flush(): Unit = ()
+      def write(buf: Array[Char], off: Int, len: Int): Unit = ()
     }
   }
 

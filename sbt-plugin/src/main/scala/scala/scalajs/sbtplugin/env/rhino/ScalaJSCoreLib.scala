@@ -47,6 +47,79 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
       c.get(encodedName, c)
   }
 
+  /** Source maps the given stack trace (where possible) */
+  def mapStackTrace(stackTrace: Scriptable,
+      context: Context, scope: Scriptable): Scriptable = {
+    val count = Context.toNumber(stackTrace.get("length", stackTrace)).toInt
+
+    // Maps file -> max line (0-based)
+    val neededMaps = mutable.Map.empty[String, Int]
+
+    // Collect required line counts
+    for (i <- 0 until count) {
+      val elem = Context.toObject(stackTrace.get(i, stackTrace), scope)
+      val fileName = Context.toString(elem.get("fileName", elem))
+
+      if (fileName.endsWith(PseudoFileSuffix) &&
+          providers.contains(fileName.stripSuffix(PseudoFileSuffix))) {
+
+        val curMaxLine = neededMaps.getOrElse(fileName, -1)
+        val reqLine = Context.toNumber(elem.get("lineNumber", elem)).toInt - 1
+
+        if (reqLine > curMaxLine)
+          neededMaps.put(fileName, reqLine)
+      }
+    }
+
+    // Map required files
+    val maps =
+      for ((fileName, maxLine) <- neededMaps)
+        yield (fileName, getSourceMapper(fileName, maxLine))
+
+    // Create new stack trace to return
+    val res = context.newArray(scope, count)
+
+    for (i <- 0 until count) {
+      val elem = Context.toObject(stackTrace.get(i, stackTrace), scope)
+      val fileName = Context.toString(elem.get("fileName", elem))
+      val line = Context.toNumber(elem.get("lineNumber", elem)).toInt - 1
+
+      val pos = maps.get(fileName).fold(ir.Position.NoPosition)(_(line))
+
+      val newElem =
+        if (pos.isDefined) newPosElem(scope, context, elem, pos)
+        else elem
+
+      res.put(i, res, newElem)
+    }
+
+    res
+  }
+
+  private def getSourceMapper(fileName: String, untilLine: Int) = {
+    val irFile = providers(fileName.stripSuffix(PseudoFileSuffix))
+    val mapper = new ir.Printers.ReverseSourceMapPrinter(untilLine)
+    val classDef = irFile.tree
+    val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
+    mapper.reverseSourceMap(desugared)
+    mapper
+  }
+
+  private def newPosElem(scope: Scriptable, context: Context,
+      origElem: Scriptable, pos: ir.Position): Scriptable = {
+    assert(pos.isDefined)
+
+    val elem = context.newObject(scope)
+
+    elem.put("declaringClass", elem, origElem.get("declaringClass", origElem))
+    elem.put("methodName", elem, origElem.get("methodName", origElem))
+    elem.put("fileName", elem, pos.source.toString)
+    elem.put("lineNumber", elem, pos.line + 1)
+    elem.put("columnNumber", elem, pos.column + 1)
+
+    elem
+  }
+
   private val scalaJSLazyFields = Seq(
       Info("d"),
       Info("c"),
@@ -74,7 +147,6 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
 
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
     providers.get(encodedName) foreach { irFile =>
-      // TODO? Convert the desugared IR tree directly to Rhino ASTs?
       val codeWriter = new java.io.StringWriter
       val printer = new ir.Printers.IRTreePrinter(codeWriter, jsMode = true)
       val classDef = irFile.tree
@@ -82,7 +154,7 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
       printer.printTopLevelTree(desugared)
       printer.complete()
       val ctx = Context.getCurrentContext()
-      val fakeFileName = irFile.path.stripSuffix(".sjsir") + ".js"
+      val fakeFileName = encodedName + PseudoFileSuffix
       ctx.evaluateString(scope, codeWriter.toString(),
           fakeFileName, 1, null)
     }
@@ -94,4 +166,6 @@ object ScalaJSCoreLib {
       isModule: Boolean = false, isTraitImpl: Boolean = false)
 
   private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
+
+  private final val PseudoFileSuffix = ".sjsir"
 }

@@ -19,14 +19,14 @@
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
         ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
     sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
-    sbt ++$scala "testSuite/testOnly -- -- -trhino" \
-         "testSuite/packageStage::testOnly -- -- -ttypedarray -tnodejs -tbad-source-map" \
-         "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs" \
-         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tbad-source-map" \
-         "noIrCheckTest/testOnly -- -- -trhino" \
-         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray -tnodejs -tbad-source-map" \
-         "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray -tnodejs" \
-         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tbad-source-map" &&
+    sbt ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
+         "testSuite/packageStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "noIrCheckTest/testOnly -- -- -trhino -tsource-maps" \
+         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
          ++$scala \
          "testSuite/packageStage::testOnly -- -- -tphantomjs" \
@@ -37,12 +37,12 @@
          "noIrCheckTest/fullOptStage::testOnly -- -- -tphantomjs" \
          testSuite/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
-         ++$scala "testSuite/testOnly -- -- -trhino" \
-         "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs" \
-         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tbad-source-map" &&
+         ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
+         "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" &&
     sbt ++$scala \
-         "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs" \
-         "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" &&
+         "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt ++$scala compiler/test reversi/packageJS reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test &&
     sh ci/checksizes.sh $scala &&

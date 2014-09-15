@@ -68,14 +68,29 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         // simply inserting
         classpath match {
           case cp: CompleteIRClasspath =>
+            // Setup lazy loading classpath and source mapper
+            val optLoader = if (cp.scalaJSIR.nonEmpty) {
+              val loader = new ScalaJSCoreLib(cp)
+
+              // Setup sourceMapper
+              val scalaJSenv = context.newObject(scope)
+
+              scalaJSenv.addFunction("sourceMapper", args => {
+                val trace = Context.toObject(args(0), scope)
+                loader.mapStackTrace(trace, context, scope)
+              })
+
+              ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+
+              Some(loader)
+            } else {
+              None
+            }
+
             // Load JS libraries
             cp.jsLibs.foreach(lib => context.evaluateFile(scope, lib._1))
 
-            // Add lazy loading classpath
-            if (cp.scalaJSIR.nonEmpty) {
-              val loader = new ScalaJSCoreLib(cp)
-              loader.insertInto(context, scope)
-            }
+            optLoader.foreach(_.insertInto(context, scope))
           case cp =>
             cp.allCode.foreach(context.evaluateFile(scope, _))
         }

@@ -83,7 +83,7 @@ object StackTrace {
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
 
-    val result = new js.Array[StackTraceElement]
+    val trace = new js.Array[JSStackTraceElem]
     var i = 0
     while (i < lines.length) {
       val line = lines(i)
@@ -91,22 +91,54 @@ object StackTrace {
         val mtch1 = NormalizedFrameLineWithColumn.exec(line)
         if (mtch1 ne null) {
           val (className, methodName) = extractClassMethod(mtch1(1).get)
-          result.push(STE(className, methodName, mtch1(2).get,
+          trace.push(JSStackTraceElem(className, methodName, mtch1(2).get,
               mtch1(3).get.toInt, mtch1(4).get.toInt))
         } else {
           val mtch2 = NormalizedFrameLine.exec(line)
           if (mtch2 ne null) {
             val (className, methodName) = extractClassMethod(mtch2(1).get)
-            result.push(
-                STE(className, methodName, mtch2(2).get, mtch2(3).get.toInt))
+            trace.push(JSStackTraceElem(className,
+                methodName, mtch2(2).get, mtch2(3).get.toInt))
           } else {
-            result.push(STE("<jscode>", line, null, -1)) // just in case
+            // just in case
+            trace.push(JSStackTraceElem("<jscode>", line, null, -1))
           }
         }
       }
       i += 1
     }
-    result.toArray
+
+    // Map stack trace through environment (if supported)
+    val envInfo = environmentInfo
+    val hasMapper = envInfo != js.undefined && envInfo != null &&
+        js.typeOf(envInfo.sourceMapper) == "function"
+
+    val mappedTrace =
+      if (hasMapper)
+        envInfo.sourceMapper(trace).asInstanceOf[js.Array[JSStackTraceElem]]
+      else
+        trace
+
+    // Convert JS objects to java.lang.StackTraceElements
+    // While loop due to space concerns
+    val result = new Array[StackTraceElement](mappedTrace.length)
+
+    i = 0
+    while (i < mappedTrace.length) {
+      val jsSte = mappedTrace(i)
+      val ste = new StackTraceElement(jsSte.declaringClass, jsSte.methodName,
+          jsSte.fileName, jsSte.lineNumber)
+
+      jsSte.columnNumber foreach { cn =>
+        // Store column in magic field
+        ste.asInstanceOf[js.Dynamic].columnNumber = cn
+      }
+
+      result(i) = ste
+      i += 1
+    }
+
+    result
   }
 
   /** Tries and extract the class name and method from the JS function name.
@@ -229,21 +261,6 @@ object StackTrace {
       else encodedName.substring(0, methodNameLen)
     }
   }
-
-  private def STE(declaringClass: String, methodName: String,
-      fileName: String, lineNumber: Int): StackTraceElement =
-    new StackTraceElement(declaringClass, methodName, fileName, lineNumber)
-
-  private def STE(declaringClass: String, methodName: String,
-      fileName: String, lineNumber: Int, columnNumber: Int): StackTraceElement = {
-    val ste = STE(declaringClass, methodName, fileName, lineNumber)
-
-    // Store column in magic field
-    ste.asInstanceOf[js.Dynamic].columnNumber = columnNumber
-
-    ste
-  }
-
 
   private implicit class StringRE(val s: String) extends AnyVal {
     def re: js.RegExp = new js.RegExp(s)
@@ -450,6 +467,31 @@ object StackTrace {
   /* End copy-paste-translate from stacktrace.js
    * ---------------------------------------------------------------------------
    */
+
+  trait JSStackTraceElem extends js.Object {
+    var declaringClass: String
+    var methodName: String
+    var fileName: String
+    /** 1-based line number */
+    var lineNumber: Int
+    /** 1-based optional columnNumber */
+    var columnNumber: js.UndefOr[Int]
+  }
+
+  object JSStackTraceElem {
+    @inline
+    def apply(declaringClass: String, methodName: String,
+        fileName: String, lineNumber: Int,
+        columnNumber: js.UndefOr[Int] = js.undefined): JSStackTraceElem = {
+      js.Dynamic.literal(
+          declaringClass = declaringClass,
+          methodName = methodName,
+          fileName = fileName,
+          lineNumber = lineNumber,
+          columnNumber = columnNumber
+      ).asInstanceOf[JSStackTraceElem]
+    }
+  }
 
   /**
    *  Implicit class to access magic column element created in STE
