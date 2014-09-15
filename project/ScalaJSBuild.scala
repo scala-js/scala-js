@@ -37,7 +37,7 @@ object ScalaJSBuild extends Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val commonSettings = Defaults.defaultSettings ++ Seq(
+  val commonSettings = Seq(
       organization := "org.scala-lang.modules.scalajs",
       version := scalaJSVersion,
 
