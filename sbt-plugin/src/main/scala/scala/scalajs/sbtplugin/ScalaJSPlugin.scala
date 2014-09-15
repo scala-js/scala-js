@@ -29,6 +29,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   object ScalaJSKeys {
     import KeyRanks._
 
+    @deprecated("May be removed in the future. Use fastOptJS instead.", "0.5.5")
     val packageJS = TaskKey[CompleteCIClasspath]("packageJS",
         "Package all the compiled .js files", CTask)
     val fastOptJS = TaskKey[CompleteCIClasspath]("fastOptJS",
@@ -36,10 +37,13 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val fullOptJS = TaskKey[CompleteNCClasspath]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
 
+    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
     val packageExternalDepsJS = TaskKey[PartialClasspath]("packageExternalDepsJS",
         "Package the .js files of external dependencies", DTask)
+    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
     val packageInternalDepsJS = TaskKey[PartialClasspath]("packageInternalDepsJS",
         "Package the .js files of internal dependencies", DTask)
+    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
     val packageExportedProductsJS = TaskKey[PartialClasspath]("packageExportedProductsJS",
         "Package the .js files of the project", DTask)
 
