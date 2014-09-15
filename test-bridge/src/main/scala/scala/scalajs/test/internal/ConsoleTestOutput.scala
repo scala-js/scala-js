@@ -1,5 +1,6 @@
 package scala.scalajs.test.internal
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 
 import scala.scalajs.test._
@@ -7,10 +8,30 @@ import scala.scalajs.test._
 import scala.scalajs.runtime.StackTrace.ColumnStackTraceElement
 
 /** Implementation of TestOutput. DO NOT USE. This class is only public
- *  so it can be exported
+ *  so it can be exported.
+ *
+ *  Attention: This class monkey-patches console.log. Make sure it is loaded
+ *  before any output. It also should always be paired with a
+ *  [[scala.scalajs.sbtplugin.testing.TestOutputConsole]] on the JVM side.
  */
 @JSExport("scala.scalajs.test.internal.ConsoleTestOutput")
 object ConsoleTestOutput extends TestOutput {
+
+  /** monkey-patches console.log when class is loaded */
+  private val savedConsoleLog: js.Function1[String, Unit] = {
+    import js.Dynamic.{ global => g }
+
+    val console = g.console
+    val savedLog = console.log
+
+    val patch = (new MonkeyPatchConsole).asInstanceOf[js.Dynamic]
+
+    // Need to write updateDynamic explicitly here. Since 2.10.x
+    // chokes on this ("erroneous or inaccessible type")
+    console.updateDynamic("log")(patch.log.bind(patch))
+
+    savedLog.bind(console).asInstanceOf[js.Function1[String, Unit]]
+  }
 
   type Color = String
 
@@ -63,14 +84,12 @@ object ConsoleTestOutput extends TestOutput {
       def error(message: String): Unit = send("error-log", message)
     }
 
-  private val messagePrefix = "``|%^scala.js-test-comm&&"
-
   private def send(fct: String, msg: String) = {
     val escaped = msg
       .replace("\\", "\\\\")
       .replace("\n", "\\n")
       .replace("\r", "\\r")
-    println(messagePrefix + fct + "|" + escaped)
+    savedConsoleLog(fct + "|" + escaped)
   }
 
   private def sendTrace(stack: Array[StackTraceElement]) = for {
@@ -87,6 +106,14 @@ object ConsoleTestOutput extends TestOutput {
       e.getColumnNumber.toString)
 
     flds.mkString("|")
+  }
+
+  /** used to monkey-patch console (only log will be used)
+   *  we can't write a simple lambda, because we need varargs
+   */
+  private class MonkeyPatchConsole {
+    @JSExport
+    def log(msg: js.Any*): Unit = send("console-log", msg.mkString(" "))
   }
 
 }

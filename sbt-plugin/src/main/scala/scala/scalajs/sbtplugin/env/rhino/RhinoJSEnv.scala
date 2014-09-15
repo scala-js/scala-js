@@ -58,8 +58,10 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         // implement console.log, which we'll override in the next statement
       }
 
-      ScriptableObject.putProperty(scope, "console",
-          Context.javaToJS(console, scope))
+      // Setup console.log
+      val jsconsole = context.newObject(scope)
+      jsconsole.addFunction("log", _.foreach(console.log _))
+      ScriptableObject.putProperty(scope, "console", jsconsole)
 
       try {
         // Make the classpath available. Either through lazy loading or by
