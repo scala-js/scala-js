@@ -9,23 +9,23 @@
 
 package scala.scalajs.sbtplugin
 
-sealed trait InliningMode {
+sealed trait OptimizerMode {
   val disabled: Boolean
   val batch: Boolean
 }
 
-object InliningMode {
-  case object Incremental extends InliningMode {
+object OptimizerMode {
+  case object Incremental extends OptimizerMode {
     val disabled = false
     val batch = false
   }
 
-  case object Batch extends InliningMode {
+  case object Batch extends OptimizerMode {
     val disabled = false
     val batch = true
   }
 
-  case object Off extends InliningMode {
+  case object Off extends OptimizerMode {
     val disabled = true
     val batch = false
   }

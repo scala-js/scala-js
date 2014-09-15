@@ -41,3 +41,5 @@ unmanagedResourceDirectories in Compile += {
   val root = baseDirectory.value.getParentFile
   root / "tools/src/main/resources"
 }
+
+scalacOptions += "-deprecation"

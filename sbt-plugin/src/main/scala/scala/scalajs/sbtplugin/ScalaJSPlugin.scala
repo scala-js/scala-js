@@ -101,8 +101,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "Tell optimize/package tasks to write the laucher file to disk. " +
         "If this is set, your project may only have a single mainClass or you must explicitly set it", AMinusSetting)
 
-    val inliningMode = SettingKey[InliningMode]("inliningMode",
-        "Mode of the inliner: Incremental (default), Batch, Off", CSetting)
+
+    val optimizerMode = SettingKey[OptimizerMode]("optimizerMode",
+        "Mode of the optimizer: Incremental (default), Batch, Off", CSetting)
+
+    @deprecated("Use optimizerMode instead", "0.5.5")
+    val inliningMode = optimizerMode
 
     val parallelFastOptJS = SettingKey[Boolean]("parallelFastOptJS",
         "Whether to use the parallelized Scala.js optimizer", CSetting)
