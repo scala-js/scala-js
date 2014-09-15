@@ -141,11 +141,15 @@ final class RuntimeLong private (
 
   }
 
+  def equals(y: RuntimeLong): Boolean =
+    x.l == y.l && x.m == y.m && x.h == y.h
+
   override def equals(that: Any): Boolean = that match {
-    case y: RuntimeLong =>
-      x.l == y.l && x.m == y.m && x.h == y.h
+    case y: RuntimeLong => x.equals(y)
     case _ => false
   }
+
+  def notEquals(that: RuntimeLong) = !equals(that)
   def notEquals(that: Any): Boolean = !equals(that)
 
   def < (y: RuntimeLong): Boolean = !(x >= y)
