@@ -378,6 +378,11 @@ var ScalaJS = {
     }
   },
 
+  systemIdentityHashCode: function(obj) {
+    // TODO Do something smarter than this
+    return 42;
+  },
+
   environmentInfo: function() {
     if (typeof __ScalaJSEnv !== "undefined")
       return __ScalaJSEnv;

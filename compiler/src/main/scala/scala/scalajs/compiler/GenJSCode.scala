@@ -2837,6 +2837,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == ARRAYCOPY) {
         // System.arraycopy - not a helper because receiver is dropped
         js.CallHelper("systemArraycopy", genArgs)(toIRType(tree.tpe))
+      } else if (code == IDHASHCODE) {
+        // System.identityHashCode - not a helper because receiver is dropped
+        js.CallHelper("systemIdentityHashCode", genArgs)(toIRType(tree.tpe))
       } else (genArgs match {
         case Nil =>
           code match {

@@ -115,8 +115,7 @@ object JavaLangObject {
           Nil,
           IntType,
           {
-            // TODO Eventually we should do something better here
-            IntLiteral(42)
+            CallHelper("systemIdentityHashCode", This()(ThisType))(IntType)
           }),
 
         /* def equals(that: Object): Boolean = this eq that */

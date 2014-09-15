@@ -703,6 +703,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("applyMethodWithVarargs", List(DynType, StringClassType, DynType) -> DynType),
 
       ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
+      ("systemIdentityHashCode", List(AnyType) -> IntType),
 
       ("propertiesOf", List(DynType) -> DynType),
 
