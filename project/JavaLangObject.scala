@@ -44,7 +44,7 @@ object JavaLangObject {
       MethodInfo("notifyAll__V"),
       MethodInfo("toString__T",
         calledMethods = Map(
-          "O" -> List("getClass__jl_Class", "hashCode__I"),
+          "O" -> List("hashCode__I"),
           "jl_Class" -> List("getName__T"),
           "jl_Integer$" -> List("toHexString__I__T")
         ),
@@ -93,20 +93,20 @@ object JavaLangObject {
           AnyType,
           This()(ThisType)),
 
-        /* final def getClass(): java.lang.Class = this.$classData.getClassOf() */
+        /* final def getClass(): java.lang.Class = objectGetClass(this)
+         * The implementation of this method is kept in 0.5.x to guard against
+         * the following possible (though silly) call: super.getClass().
+         * Indeed, that would generate a StaticApply to O.getClass__jl_Class.
+         * TODO in 0.6.0: remove this, and reroute super.getClass() to the
+         * helper objectGetClass() at compile time. Don't forget to remove it
+         * from the Infos above as well.
+         */
         MethodDef(
           Ident("getClass__jl_Class", Some("getClass__jl_Class")),
           Nil,
           ClassType(ClassClass),
           {
-            Cast(
-              JSDotMethodApply(
-                JSDotSelect(
-                  Cast(This()(ThisType), DynType),
-                  Ident("$classData")),
-                Ident("getClassOf"),
-                Nil),
-              ClassType(ClassClass))
+            CallHelper("objectGetClass", This()(ThisType))(ClassType(ClassClass))
           }),
 
         /* def hashCode(): Int = 42 */
@@ -115,8 +115,7 @@ object JavaLangObject {
           Nil,
           IntType,
           {
-            // TODO Eventually we should do something better here
-            IntLiteral(42)
+            CallHelper("systemIdentityHashCode", This()(ThisType))(IntType)
           }),
 
         /* def equals(that: Object): Boolean = this eq that */
@@ -157,7 +156,7 @@ object JavaLangObject {
           {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
-                Apply(This()(ThisType), Ident("getClass__jl_Class"), Nil)(ClassType(ClassClass)),
+                CallHelper("objectGetClass", This()(ThisType))(ClassType(ClassClass)),
                 Ident("getName__T"), Nil)(ClassType(StringClass)),
               // +
               StringLiteral("@")),

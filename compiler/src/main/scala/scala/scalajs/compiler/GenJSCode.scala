@@ -1354,19 +1354,25 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genSuperCall(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
+      val sym = fun.symbol
 
-      val superCall = genStaticApplyMethod(
-          genThis()(sup.pos), fun.symbol, args map genExpr)
-
-      // Initialize the module instance just after the super constructor call.
-      if (isStaticModule(currentClassSym) && !isModuleInitialized &&
-          currentMethodSym.isClassConstructor) {
-        isModuleInitialized = true
-        val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
-        val initModule = js.StoreModule(thisType, js.This()(thisType))
-        js.Block(superCall, initModule, js.This()(thisType))
+      if (sym == Object_getClass) {
+        // The only helper that must also be used when doing a super call
+        js.CallHelper(MethodWithHelperInEnv(sym), genThis())(toIRType(tree.tpe))
       } else {
-        superCall
+        val superCall = genStaticApplyMethod(
+            genThis()(sup.pos), sym, args map genExpr)
+
+        // Initialize the module instance just after the super constructor call.
+        if (isStaticModule(currentClassSym) && !isModuleInitialized &&
+            currentMethodSym.isClassConstructor) {
+          isModuleInitialized = true
+          val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
+          val initModule = js.StoreModule(thisType, js.This()(thisType))
+          js.Block(superCall, initModule, js.This()(thisType))
+        } else {
+          superCall
+        }
       }
     }
 
@@ -1548,7 +1554,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       if (MethodWithHelperInEnv contains sym) {
-        if (!isRawJSType(receiver.tpe)) {
+        if (!isRawJSType(receiver.tpe) && (sym != Object_getClass)) {
           currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
               encodeMethodSym(sym))
         }
@@ -2831,6 +2837,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == ARRAYCOPY) {
         // System.arraycopy - not a helper because receiver is dropped
         js.CallHelper("systemArraycopy", genArgs)(toIRType(tree.tpe))
+      } else if (code == IDHASHCODE) {
+        // System.identityHashCode - not a helper because receiver is dropped
+        js.CallHelper("systemIdentityHashCode", genArgs)(toIRType(tree.tpe))
       } else (genArgs match {
         case Nil =>
           code match {

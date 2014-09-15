@@ -195,10 +195,12 @@ var ScalaJS = {
       case "undefined":
         return ScalaJS.d.sr_BoxedUnit.getClassOf();
       default:
-        if (ScalaJS.is.sjsr_RuntimeLong(instance))
+        if (instance === null)
+          ScalaJS.throwNullPointerException();
+        else if (ScalaJS.is.sjsr_RuntimeLong(instance))
           return ScalaJS.d.jl_Long.getClassOf();
-        else if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-          return instance.getClass__jl_Class();
+        else if (ScalaJS.isScalaJSObject(instance))
+          return instance.$classData.getClassOf();
         else
           return null; // Exception?
     }
@@ -374,6 +376,11 @@ var ScalaJS = {
       for (var i = length-1; i >= 0; i--)
         destu[destPos+i] = srcu[srcPos+i];
     }
+  },
+
+  systemIdentityHashCode: function(obj) {
+    // TODO Do something smarter than this
+    return 42;
   },
 
   environmentInfo: function() {

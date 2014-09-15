@@ -71,9 +71,10 @@ abstract class JSPrimitives {
   val UNITVAL = 348  // () value, which is undefined
   val UNITTYPE = 349 // BoxedUnit.TYPE (== classOf[Unit])
 
-  val ARRAYCOPY = 350 // System.arraycopy
+  val ARRAYCOPY = 350  // System.arraycopy
+  val IDHASHCODE = 351 // System.identityHashCode
 
-  val ENV_INFO = 351  // __ScalaJSEnv via helper
+  val ENV_INFO = 352  // __ScalaJSEnv via helper
 
   val AB2TA = 370 // scala.Array[Byte] to TypedArray
   val AS2TA = 371 // scala.Array[Short] to TypedArray
@@ -142,8 +143,11 @@ abstract class JSPrimitives {
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
     addPrimitive(BoxedUnit_TYPE, UNITTYPE)
 
-    addPrimitive(getMember(getRequiredModule("java.lang.System"),
-        newTermName("arraycopy")), ARRAYCOPY)
+    val SystemModule = getRequiredModule("java.lang.System")
+    addPrimitive(getMember(SystemModule, newTermName("arraycopy")), ARRAYCOPY)
+    val idHashCode = getMemberIfDefined(SystemModule, newTermName("identityHashCode0"))
+    if (idHashCode.exists)
+      addPrimitive(idHashCode, IDHASHCODE)
 
     addPrimitive(getMember(RuntimePackageModule,
         newTermName("environmentInfo")), ENV_INFO)

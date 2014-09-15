@@ -33,10 +33,9 @@ object System {
   def arraycopy(src: Object, srcPos: scala.Int, dest: Object,
       destPos: scala.Int, length: scala.Int): Unit = sys.error("stub")
 
-  def identityHashCode(x: Object): scala.Int = {
-    // TODO
-    42
-  }
+  // TODO 0.6.0: make identityHashCode itself the primitive
+  def identityHashCode(x: Object): scala.Int = identityHashCode0(x)
+  protected[this] def identityHashCode0(x: Object): scala.Int = sys.error("stub")
 
   def getProperties(): java.util.Properties = sys.error("System.getProperties() not implemented")
   def getProperty(key: String): String = sys.error("System.getProperty() not implemented")
