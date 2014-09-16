@@ -41,8 +41,8 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded
-    val ScalaJS = scope.get("ScalaJS", scope).asInstanceOf[Scriptable]
-    val c = ScalaJS.get("c", ScalaJS).asInstanceOf[Scriptable]
+    val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
+    val c = Context.toObject(ScalaJS.get("c", ScalaJS), scope)
     for (encodedName <- exportedSymbols)
       c.get(encodedName, c)
   }
@@ -133,7 +133,7 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
       Info("asArrayOf"))
 
   private def lazifyScalaJSFields(scope: Scriptable) = {
-    val ScalaJS = scope.get("ScalaJS", scope).asInstanceOf[Scriptable]
+    val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
 
     def makeLazyScalaJSScope(base: Scriptable, isModule: Boolean, isTraitImpl: Boolean) =
       new LazyScalaJSScope(this, scope, base, isModule, isTraitImpl)
