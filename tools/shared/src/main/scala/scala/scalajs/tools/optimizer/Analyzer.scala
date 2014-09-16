@@ -145,10 +145,10 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
-    val LongModule = lookupClass("sjsr_RuntimeLong$")
-    LongModule.accessModule()
-    LongModule.callMethod("zero__sjsr_RuntimeLong")
-    LongModule.callMethod("fromDouble__D__sjsr_RuntimeLong")
+    val LongImplModule = lookupClass("sjsr_RuntimeLongImpl$")
+    LongImplModule.accessModule()
+    LongImplModule.callMethod("Zero__sjsr_RuntimeLong")
+    LongImplModule.callMethod("fromDouble__D__sjsr_RuntimeLong")
 
     val BoxesRunTime = lookupClass("sr_BoxesRunTime$")
     BoxesRunTime.accessModule()
