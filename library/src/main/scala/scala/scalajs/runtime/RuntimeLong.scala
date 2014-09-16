@@ -636,15 +636,6 @@ object RuntimeLong {
   def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
   def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
 
-  def fromHexString(str: String): RuntimeLong = {
-    import scalajs.js.parseInt
-    assert(str.length == 16)
-    val l = parseInt(str.substring(10), 16).toInt
-    val m = parseInt(str.substring(6, 7), 16).toInt >> 2
-    val h = parseInt(str.substring(0, 5), 16).toInt
-    masked(l, m, h)
-  }
-
   @inline def fromString(str: String): RuntimeLong = fromString(str, 10)
 
   def fromString(str: String, radix: Int): RuntimeLong = {

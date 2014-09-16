@@ -20,7 +20,18 @@ import scala.util.Try
 object RuntimeLongTest extends JasmineTest {
 
   import RuntimeLong.{
-    fromByte, fromShort, fromInt, fromDouble, fromString, fromHexString
+    fromByte, fromShort, fromInt, fromDouble, fromString
+  }
+
+  def fromHexString(str: String): RuntimeLong = {
+    import scalajs.js.parseInt
+    assert(str.length == 16)
+    val mask = (1 << 22) - 1
+    val mask2 = (1 << (64 - 2*22)) - 1
+    val l = parseInt(str.substring(10), 16).toInt & mask
+    val m = (parseInt(str.substring(6, 7), 16).toInt >> 2) & mask
+    val h = parseInt(str.substring(0, 5), 16).toInt & mask2
+    RuntimeLong(l, m, h)
   }
 
   /** overload expect for long to add toString */
