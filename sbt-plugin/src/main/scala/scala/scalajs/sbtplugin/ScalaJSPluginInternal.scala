@@ -42,8 +42,9 @@ object ScalaJSPluginInternal {
   import ScalaJSPlugin.scalaJSVersion
 
   /** Dummy setting to ensure we do not fork in Scala.js run & test. */
-  val ensureUnforked = SettingKey[Boolean]("ensureUnforked",
+  val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",
       "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
+  val ensureUnforked = scalaJSEnsureUnforked // TODO Remove in 0.6.0
 
   /** Dummy setting to persist Scala.js optimizer */
   val scalaJSOptimizer = SettingKey[ScalaJSOptimizer]("scalaJSOptimizer",
@@ -51,13 +52,15 @@ object ScalaJSPluginInternal {
 
   /** Internal task to calculate whether a project requests the DOM
    *  (through jsDependencies or requiresDOM) */
-  val requestsDOM = TaskKey[Boolean]("requestsDOM",
+  val scalaJSRequestsDOM = TaskKey[Boolean]("scalaJSRequestsDOM",
       "Scala.js internal: Whether a project really wants the DOM. " +
       "Calculated using requiresDOM and jsDependencies", KeyRanks.Invisible)
+  val requestsDom = scalaJSRequestsDOM // TODO Remove in 0.6.0
 
   /** Default post link environment */
-  val defaultPostLinkJSEnv = TaskKey[JSEnv]("defaultPostLinkJSEnv",
+  val scalaJSDefaultPostLinkJSEnv = TaskKey[JSEnv]("scalaJSDefaultPostLinkJSEnv",
       "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
+  val defaultPostLinkJSEnv = scalaJSDefaultPostLinkJSEnv // TODO Remove in 0.6.0
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[PartialClasspath],
@@ -134,7 +137,7 @@ object ScalaJSPluginInternal {
           packageExportedProductsJS, "-pack-app")
   ) ++ Seq(
 
-      preLinkClasspath := {
+      scalaJSPreLinkClasspath := {
         val cp = fullClasspath.value
         val pcp = PartialClasspathBuilder.buildIR(Attributed.data(cp).toList)
         pcp.resolve(jsDependencyFilter.value)
@@ -165,7 +168,7 @@ object ScalaJSPluginInternal {
         cps.reduceLeft(_ append _).resolve(jsDependencyFilter.value)
       },
       packageJS <<=
-        packageJS.dependsOn(packageJSDependencies, packageLauncher),
+        packageJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
@@ -193,7 +196,7 @@ object ScalaJSPluginInternal {
 
         import ScalaJSOptimizer._
         (scalaJSOptimizer in fastOptJS).value.optimizeCP(
-            Inputs(input = (preLinkClasspath in fastOptJS).value),
+            Inputs(input = (scalaJSPreLinkClasspath in fastOptJS).value),
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
@@ -205,7 +208,7 @@ object ScalaJSPluginInternal {
             s.log)
       },
       fastOptJS <<=
-        fastOptJS.dependsOn(packageJSDependencies, packageLauncher),
+        fastOptJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
 
       artifactPath in fullOptJS :=
         ((crossTarget in fullOptJS).value /
@@ -229,7 +232,7 @@ object ScalaJSPluginInternal {
           (new ScalaJSClosureOptimizer).directOptimizeCP(
               (scalaJSOptimizer in fastOptJS).value,
               Inputs(ScalaJSOptimizer.Inputs(
-                  input = (preLinkClasspath in fullOptJS).value)),
+                  input = (scalaJSPreLinkClasspath in fullOptJS).value)),
               DirectOutputConfig(
                   output = WritableFileVirtualJSFile(output),
                   cache = Some(taskCache),
@@ -251,18 +254,18 @@ object ScalaJSPluginInternal {
         }
       },
 
-      artifactPath in packageLauncher :=
-        ((crossTarget in packageLauncher).value /
-            ((moduleName in packageLauncher).value + "-launcher.js")),
+      artifactPath in packageScalaJSLauncher :=
+        ((crossTarget in packageScalaJSLauncher).value /
+            ((moduleName in packageScalaJSLauncher).value + "-launcher.js")),
 
-      skip in packageLauncher := !persistLauncher.value,
+      skip in packageScalaJSLauncher := !persistLauncher.value,
 
-      packageLauncher <<= Def.taskDyn {
-        if ((skip in packageLauncher).value)
-          Def.task(Attributed.blank((artifactPath in packageLauncher).value))
+      packageScalaJSLauncher <<= Def.taskDyn {
+        if ((skip in packageScalaJSLauncher).value)
+          Def.task(Attributed.blank((artifactPath in packageScalaJSLauncher).value))
         else Def.task {
           mainClass.value map { mainCl =>
-            val file = (artifactPath in packageLauncher).value
+            val file = (artifactPath in packageScalaJSLauncher).value
             IO.write(file, launcherContent(mainCl), Charset.forName("UTF-8"))
 
             // Attach the name of the main class used, (ab?)using the name key
@@ -281,7 +284,7 @@ object ScalaJSPluginInternal {
         if ((skip in packageJSDependencies).value)
           Def.task((artifactPath in packageJSDependencies).value)
         else Def.task {
-          val cp = preLinkClasspath.value
+          val cp = scalaJSPreLinkClasspath.value
           val output = (artifactPath in packageJSDependencies).value
 
           IO.createDirectory(output.getParentFile)
@@ -344,36 +347,36 @@ object ScalaJSPluginInternal {
       )),
 
       // Give tasks ability to check we are not forking at build reading time
-      ensureUnforked := {
+      scalaJSEnsureUnforked := {
         if (fork.value)
           sys.error("Scala.js cannot be run in a forked JVM")
         else
           true
       },
 
-      requestsDOM :=
-        requiresDOM.?.value.getOrElse(execClasspath.value.requiresDOM),
+      scalaJSRequestsDOM :=
+        requiresDOM.?.value.getOrElse(scalaJSExecClasspath.value.requiresDOM),
 
       // Default jsEnv
       jsEnv := preLinkJSEnv.?.value.getOrElse {
-        new RhinoJSEnv(withDOM = requestsDOM.value)
+        new RhinoJSEnv(withDOM = scalaJSRequestsDOM.value)
       },
 
       // Wire jsEnv and sources for other stages
-      defaultPostLinkJSEnv := postLinkJSEnv.?.value.getOrElse {
-        if (requestsDOM.value) new PhantomJSEnv
+      scalaJSDefaultPostLinkJSEnv := postLinkJSEnv.?.value.getOrElse {
+        if (scalaJSRequestsDOM.value) new PhantomJSEnv
         else new NodeJSEnv
       },
 
-      jsEnv in packageStage <<= defaultPostLinkJSEnv,
-      jsEnv in fastOptStage <<= defaultPostLinkJSEnv,
-      jsEnv in fullOptStage <<= defaultPostLinkJSEnv,
+      jsEnv in packageStage <<= scalaJSDefaultPostLinkJSEnv,
+      jsEnv in fastOptStage <<= scalaJSDefaultPostLinkJSEnv,
+      jsEnv in fullOptStage <<= scalaJSDefaultPostLinkJSEnv,
 
       // Define execution classpaths
-      execClasspath                 := preLinkClasspath.value,
-      execClasspath in packageStage := packageJS.value,
-      execClasspath in fastOptStage := fastOptJS.value,
-      execClasspath in fullOptStage := fullOptJS.value,
+      scalaJSExecClasspath                 := scalaJSPreLinkClasspath.value,
+      scalaJSExecClasspath in packageStage := packageJS.value,
+      scalaJSExecClasspath in fastOptStage := fastOptJS.value,
+      scalaJSExecClasspath in fullOptStage := fullOptJS.value,
 
       // Dummy task need dummy tags (used for concurrency restrictions)
       tags in packageStage := Seq(),
@@ -408,12 +411,12 @@ object ScalaJSPluginInternal {
 
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
-      mainClass in launcher := (mainClass in run).value,
-      launcher <<= Def.taskDyn {
+      mainClass in scalaJSLauncher := (mainClass in run).value,
+      scalaJSLauncher <<= Def.taskDyn {
         if (persistLauncher.value)
-          Def.task(packageLauncher.value.map(FileVirtualJSFile))
+          Def.task(packageScalaJSLauncher.value.map(FileVirtualJSFile))
         else Def.task {
-          (mainClass in launcher).value map { mainClass =>
+          (mainClass in scalaJSLauncher).value map { mainClass =>
             val memLaunch = memLauncher(mainClass)
             Attributed[VirtualJSFile](memLaunch)(
                 AttributeMap.empty.put(name.key, mainClass))
@@ -450,12 +453,12 @@ object ScalaJSPluginInternal {
 
       run <<= Def.inputTask {
         // use assert to prevent warning about pure expr in stat pos
-        assert(ensureUnforked.value)
+        assert(scalaJSEnsureUnforked.value)
 
-        val launch = launcher.value
+        val launch = scalaJSLauncher.value
         val className = launch.get(name.key).getOrElse("<unknown class>")
-        jsRun(jsEnv.value, execClasspath.value, className,
-            launch.data, jsConsole.value, streams.value.log)
+        jsRun(jsEnv.value, scalaJSExecClasspath.value, className,
+            launch.data, scalaJSConsole.value, streams.value.log)
       },
 
       runMain <<= {
@@ -468,11 +471,11 @@ object ScalaJSPluginInternal {
 
         Def.inputTask {
           // use assert to prevent warning about pure expr in stat pos
-          assert(ensureUnforked.value)
+          assert(scalaJSEnsureUnforked.value)
 
           val mainCl = parser.parsed._1
-          jsRun(jsEnv.value, execClasspath.value, mainCl,
-              memLauncher(mainCl), jsConsole.value, streams.value.log)
+          jsRun(jsEnv.value, scalaJSExecClasspath.value, mainCl,
+              memLauncher(mainCl), scalaJSConsole.value, streams.value.log)
         }
       }
   )
@@ -499,7 +502,7 @@ object ScalaJSPluginInternal {
 
       loadedTestFrameworks := {
         // use assert to prevent warning about pure expr in stat pos
-        assert(ensureUnforked.value)
+        assert(scalaJSEnsureUnforked.value)
 
         val loader = (testLoader in loadedTestFrameworks).value
         val isTestFrameworkDefined = try {
@@ -513,7 +516,7 @@ object ScalaJSPluginInternal {
               sbt.TestFramework(classOf[TestFramework].getName),
               new TestFramework(
                   environment = jsEnv.value,
-                  jsConsole = jsConsole.value,
+                  jsConsole = scalaJSConsole.value,
                   testFramework = scalaJSTestFramework.value)
           )
         } else {
@@ -522,7 +525,7 @@ object ScalaJSPluginInternal {
       },
 
       // Pseudo loader to pass classpath to test framework
-      testLoader := JSClasspathLoader(execClasspath.value)
+      testLoader := JSClasspathLoader(scalaJSExecClasspath.value)
   )
 
   /** Transformer to force keys (which are not in exclude list) to be
@@ -571,7 +574,7 @@ object ScalaJSPluginInternal {
   ) ++ (
       Seq(packageExternalDepsJS, packageInternalDepsJS,
           packageExportedProductsJS,
-          fastOptJS, fullOptJS, packageLauncher,
+          fastOptJS, fullOptJS, packageScalaJSLauncher,
           packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
@@ -626,7 +629,7 @@ object ScalaJSPluginInternal {
       jsDependencies := Seq(),
       jsDependencyFilter := identity,
 
-      jsConsole := ConsoleJSConsole,
+      scalaJSConsole := ConsoleJSConsole,
 
       clean <<= clean.dependsOn(Def.task {
         // have clean reset incremental optimizer state

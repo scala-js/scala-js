@@ -47,8 +47,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val packageExportedProductsJS = TaskKey[PartialClasspath]("packageExportedProductsJS",
         "Package the .js files of the project", DTask)
 
-    val packageLauncher = TaskKey[Attributed[File]]("packageLauncher",
+    val packageScalaJSLauncher = TaskKey[Attributed[File]]("packageScalaJSLauncher",
         "Writes the persistent launcher file. Fails if the mainClass is ambigous", CTask)
+    val packageLauncher = packageScalaJSLauncher // TODO Remove in 0.6.0
 
     val packageJSDependencies = TaskKey[File]("packageJSDependencies",
         "Packages all dependencies of the preLink classpath in a single file. " +
@@ -57,20 +58,24 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
         "Writes the JS_DEPENDENCIES file.", DTask)
 
-    val preLinkClasspath = TaskKey[CompleteIRClasspath]("preLinkClasspath",
+    val scalaJSPreLinkClasspath = TaskKey[CompleteIRClasspath]("scalaJSPreLinkClasspath",
         "Completely resolved classpath just after compilation", DTask)
+    val preLinkClasspath = scalaJSPreLinkClasspath // TODO Remove in 0.6.0
 
-    val execClasspath = TaskKey[CompleteClasspath]("execClasspath",
+    val scalaJSExecClasspath = TaskKey[CompleteClasspath]("scalaJSExecClasspath",
         "The classpath used for running and testing", DTask)
+    val execClasspath = scalaJSExecClasspath // TODO Remove in 0.6.0
 
-    val launcher = TaskKey[Attributed[VirtualJSFile]]("launcher",
+    val scalaJSLauncher = TaskKey[Attributed[VirtualJSFile]]("scalaJSLauncher",
         "Code used to run. (Attributed with used class name)", DTask)
+    val launcher = scalaJSLauncher // TODO Remove in 0.6.0
 
     val fullOptJSPrettyPrint = SettingKey[Boolean]("fullOptJSPrettyPrint",
         "Pretty-print the output of fullOptJS", CSetting)
 
-    val jsConsole = TaskKey[JSConsole]("jsConsole",
+    val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
+    val jsConsole = scalaJSConsole // TODO Remove in 0.6.0
 
     val preLinkJSEnv = SettingKey[JSEnv]("preLinkJSEnv",
         "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files", BSetting)
