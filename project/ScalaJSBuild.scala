@@ -299,8 +299,8 @@ object ScalaJSBuild extends Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          jsEnv.value.runJS(execClasspath.value, launcher,
-              streams.value.log, jsConsole.value)
+          jsEnv.value.runJS(scalaJSExecClasspath.value, launcher,
+              streams.value.log, scalaJSConsole.value)
         }
 
         Seq(test := error("Can't run toolsJS/test in preLink stage")) ++
@@ -731,7 +731,7 @@ object ScalaJSBuild extends Build {
           /* Generate a scala source file that throws exceptions in
              various places (while attaching the source line to the
              exception). When we catch the exception, we can then
-             compare the attached source line and the source line 
+             compare the attached source line and the source line
              calculated via the source maps.
 
              see test-suite/src/test/resources/SourceMapTestTemplate.scala
