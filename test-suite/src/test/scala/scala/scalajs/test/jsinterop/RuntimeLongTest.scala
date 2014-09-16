@@ -40,7 +40,16 @@ object RuntimeLongTest extends JasmineTest {
     }
 
     it("should correctly implement comparison") {
-      expect(fromInt(7) < fromInt(15)).toBe(true)
+      expect(fromInt(7)  <  fromInt(15)).toBe(true)
+      expect(fromInt(15) <  fromInt(15)).toBe(false)
+      expect(fromInt(15) <= fromInt(15)).toBe(true)
+      expect(fromInt(14) <= fromInt(15)).toBe(true)
+      expect(fromInt(15) >  fromInt(15)).toBe(false)
+      expect(fromInt(14) >  fromInt(15)).toBe(false)
+      expect(fromInt(16) >  fromInt(15)).toBe(true)
+      expect(fromInt(15) >= fromInt(15)).toBe(true)
+      expect(fromInt(14) >= fromInt(15)).toBe(false)
+      expect(fromInt(16) >= fromInt(15)).toBe(true)
     }
 
     it("should correctly implement addition") {

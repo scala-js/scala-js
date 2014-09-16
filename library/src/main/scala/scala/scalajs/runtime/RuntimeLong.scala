@@ -152,9 +152,12 @@ final class RuntimeLong private (
   def notEquals(that: RuntimeLong) = !equals(that)
   def notEquals(that: Any): Boolean = !equals(that)
 
-  def < (y: RuntimeLong): Boolean = !(x >= y)
-  def <=(y: RuntimeLong): Boolean = !(x >  y)
-  def > (y: RuntimeLong): Boolean = {
+  @inline
+  def <(y: RuntimeLong): Boolean = y > x
+  @inline
+  def <=(y: RuntimeLong): Boolean = y >= x
+
+  def >(y: RuntimeLong): Boolean = {
     if (!x.isNegative)
       y.isNegative ||
       x.h >  y.h ||
@@ -168,11 +171,19 @@ final class RuntimeLong private (
     )
   }
 
-  /**
-   * greater or equal.
-   * note: gwt implements this individually
-   */
-  def >=(y: RuntimeLong): Boolean = x == y || x > y
+  def >=(y: RuntimeLong): Boolean = {
+    if (!x.isNegative)
+      y.isNegative ||
+      x.h >  y.h ||
+      x.h == y.h && x.m >  y.m ||
+      x.h == y.h && x.m == y.m && x.l >= y.l
+    else !(
+      !y.isNegative ||
+      x.h <  y.h ||
+      x.h == y.h && x.m <  y.m ||
+      x.h == y.h && x.m == y.m && x.l <  y.l
+    )
+  }
 
   def |(y: RuntimeLong): RuntimeLong =
     RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
@@ -388,16 +399,14 @@ final class RuntimeLong private (
 
       val xMinValue = x.isMinValue
 
-      val absX = x.abs  // this may be useless if x.isMinValue
-      val absY = y.abs
-
       val pow = y.powerOfTwo
       if (pow >= 0) {
         if (xMinValue) {
           val z = x >> pow
           js.Array(if (yNegative) -z else z, zero)
         } else {
-          // x is not min value, so we can use absX
+          // x is not min value, so we can calculate absX
+          val absX = x.abs
           val absZ = absX >> pow
           val z = if (xNegative ^ yNegative) -absZ else absZ
           val remAbs = absX.maskRight(pow)
@@ -405,18 +414,25 @@ final class RuntimeLong private (
           js.Array(z, rem)
         }
       } else {
-        if (xMinValue)
-          divModHelper(MaxValue, absY, xNegative, yNegative, xMinValue = true)
-        // here we know that x is not min value, so absX makes sense to use
-        else if (absX < absY)
-          js.Array(zero, x)
-        else
-          divModHelper(absX, absY, xNegative, yNegative, xMinValue = false)
-      }
+        val absY = y.abs
 
+        val newX = {
+          if (xMinValue)
+            MaxValue
+          else {
+            val absX = x.abs
+            if (absX < absY)
+              return js.Array(zero, x) // <-- ugly but fast
+            else
+              absX
+          }
+        }
+        divModHelper(newX, absY, xNegative, yNegative, xMinValue)
+      }
     }
   }
 
+  @inline
   private def maskRight(bits: Int) = {
     if (bits <= BITS)
       RuntimeLong(l & ((1 << bits) - 1), 0, 0)
@@ -424,6 +440,46 @@ final class RuntimeLong private (
       RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
     else
       RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
+  }
+
+  /**
+   * performs division in "normal cases"
+   * @param x absolute value of the numerator
+   * @param y absolute value of the denominator
+   * @param xNegative whether numerator was negative
+   * @param yNegative whether denominator was negative
+   * @param xMinValue whether numerator was Long.minValue
+   */
+  @inline
+  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
+      xNegative: Boolean, yNegative: Boolean,
+      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
+    import scala.scalajs.js
+
+    @inline
+    @tailrec
+    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
+        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
+      if (shift < 0 || curX.isZero) (quot, curX) else {
+        val newX = curX - yShift
+        if (!newX.isNegative)
+          divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
+        else
+          divide0(shift-1, yShift >> 1, curX, quot)
+      }
+
+    val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
+    val yShift = y << shift
+
+    val (absQuot, absRem) = divide0(shift, yShift, x, zero)
+
+    val quot = if (xNegative ^ yNegative) -absQuot else absQuot
+    val rem  =
+      if (xNegative && xMinValue) -absRem - one
+      else if (xNegative)         -absRem
+      else                         absRem
+
+    js.Array(quot, rem)
   }
 
   /*
@@ -649,45 +705,6 @@ object RuntimeLong {
   /** Creates a new long from its three underlying components. */
   @inline def apply(l: Int, m: Int, h: Int): RuntimeLong =
     new RuntimeLong(l, m, h)
-
-  /**
-   * performs division in "normal cases"
-   * @param x absolute value of the numerator
-   * @param y absolute value of the denominator
-   * @param xNegative whether numerator was negative
-   * @param yNegative whether denominator was negative
-   * @param xMinValue whether numerator was Long.minValue
-   */
-  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
-      xNegative: Boolean, yNegative: Boolean,
-      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
-    import scala.scalajs.js
-
-    @inline
-    @tailrec
-    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
-        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
-      if (shift < 0 || curX.isZero) (quot, curX) else {
-        val newX = curX - yShift
-        if (!newX.isNegative)
-          divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
-        else
-          divide0(shift-1, yShift >> 1, curX, quot)
-      }
-
-    val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
-    val yShift = y << shift
-
-    val (absQuot, absRem) = divide0(shift, yShift, x, zero)
-
-    val quot = if (xNegative ^ yNegative) -absQuot else absQuot
-    val rem  =
-      if (xNegative && xMinValue) -absRem - one
-      else if (xNegative)         -absRem
-      else                         absRem
-
-    js.Array(quot, rem)
-  }
 
   // Public Long API
 
