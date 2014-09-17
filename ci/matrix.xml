@@ -20,13 +20,13 @@
         ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
     sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
     sbt ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
-         "testSuite/packageStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "testSuite/packageStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "noIrCheckTest/testOnly -- -- -trhino -tsource-maps" \
-         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray -tnodejs" \
+         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" &&
+         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
          ++$scala \
          "testSuite/packageStage::testOnly -- -- -tphantomjs" \
@@ -39,7 +39,7 @@
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
          ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs" &&
+         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt ++$scala \
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
