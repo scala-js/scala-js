@@ -23,14 +23,16 @@ package object rhino {
   }
 
   implicit class ScriptableObjectOps(val self: Scriptable) {
-    def addFunction(name: String, function: Array[AnyRef] => Unit) = {
+    def addFunction(name: String, function: Array[AnyRef] => Any) = {
       val rhinoFunction =
         new BaseFunction {
           ScriptRuntime.setFunctionProtoAndParent(this, self)
           override def call(context: Context, scope: Scriptable,
               thisObj: Scriptable, args: Array[AnyRef]): AnyRef = {
-            function(args)
-            Undefined.instance
+            function(args) match {
+              case () => Undefined.instance
+              case r => r.asInstanceOf[AnyRef]
+            }
           }
         }
 
