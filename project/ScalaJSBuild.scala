@@ -277,7 +277,8 @@ object ScalaJSBuild extends Build {
             var testPackage = scala.scalajs.test;
             for (var pName in testPackage)
               for (var testName in testPackage[pName])
-                testPackage[pName][testName]();
+                if (!(pName == "internal" && testName == "ConsoleTestOutput"))
+                  testPackage[pName][testName]();
 
             var reporter = new scalajs.JasmineConsoleReporter(true);
 
