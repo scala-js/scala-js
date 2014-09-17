@@ -305,13 +305,13 @@ class JSExportTest extends DirectTest with TestHelpers {
     private class A
 
     @JSExport
-    protected class B
+    protected[this] class B
     """ hasErrors
     """
-      |newSource1.scala:3: error: You may not export a non-public class
+      |newSource1.scala:3: error: You may only export public and protected classes
       |    @JSExport
       |     ^
-      |newSource1.scala:6: error: You may not export a non-public class
+      |newSource1.scala:6: error: You may only export public and protected classes
       |    @JSExport
       |     ^
     """
@@ -321,13 +321,13 @@ class JSExportTest extends DirectTest with TestHelpers {
     private object A
 
     @JSExport
-    protected object B
+    protected[this] object B
     """ hasErrors
     """
-      |newSource1.scala:3: error: You may not export an non-public object
+      |newSource1.scala:3: error: You may only export public and protected objects
       |    @JSExport
       |     ^
-      |newSource1.scala:6: error: You may not export an non-public object
+      |newSource1.scala:6: error: You may only export public and protected objects
       |    @JSExport
       |     ^
     """
@@ -343,14 +343,14 @@ class JSExportTest extends DirectTest with TestHelpers {
       private def foo = 1
 
       @JSExport
-      protected def bar = 2
+      protected[this] def bar = 2
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: You may not export a non-public method
+      |newSource1.scala:4: error: You may only export public and protected methods
       |      @JSExport
       |       ^
-      |newSource1.scala:7: error: You may not export a non-public method
+      |newSource1.scala:7: error: You may only export public and protected methods
       |      @JSExport
       |       ^
     """
