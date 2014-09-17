@@ -6,7 +6,8 @@ window.onload = function() {
   var testPackage = scala.scalajs.test;
   for (var pName in testPackage)
     for (var testName in testPackage[pName])
-      testPackage[pName][testName]();
+      if (!(pName == "internal" && testName == "ConsoleTestOutput"))
+        testPackage[pName][testName]();
 
   // Setup and run Jasmine
   var jasmineEnv = jasmine.getEnv();
