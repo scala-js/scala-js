@@ -115,8 +115,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
 
-    val zero      = newTermName("zero")
-    val one       = newTermName("one")
+    val Zero      = newTermName("Zero")
+    val One       = newTermName("One")
     val notEquals = newTermName("notEquals")
 
     val fromByte   = newTermName("fromByte")
@@ -1675,12 +1675,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       (from, to) match {
         case (LONG,     BOOL) =>
-          genLongCall(value, jsnme.notEquals, genLongModuleCall(jsnme.zero))
+          genLongCall(value, jsnme.notEquals, genLongImplModuleCall(jsnme.Zero))
         case (INT(_),    BOOL) => js.BinaryOp(js.BinaryOp.!==, value, int0)
         case (DOUBLE(_), BOOL) => js.BinaryOp(js.BinaryOp.!==, value, float0)
 
         case (BOOL, LONG) =>
-          js.If(value, genLongModuleCall(jsnme.one), genLongModuleCall(jsnme.zero))(
+          js.If(value,
+              genLongImplModuleCall(jsnme.One),
+              genLongImplModuleCall(jsnme.Zero))(
               jstpe.ClassType(ir.Definitions.RuntimeLongClass))
         case (BOOL, INT(_))    => js.If(value, int1,   int0  )(jstpe.IntType)
         case (BOOL, DOUBLE(_)) => js.If(value, float1, float0)(jstpe.DoubleType)
@@ -2151,8 +2153,8 @@ abstract class GenJSCode extends plugins.PluginComponent
             case LE  => genOlLongCall(ltree, nme.LE,    rtree)(rtLongTpe)
             case GT  => genOlLongCall(ltree, nme.GT,    rtree)(rtLongTpe)
             case GE  => genOlLongCall(ltree, nme.GE,    rtree)(rtLongTpe)
-            case EQ  => genLongCall(ltree, nme.equals_, rtree)
-            case NE  => genLongCall(ltree, jsnme.notEquals, rtree)
+            case EQ  => genOlLongCall(ltree, nme.equals_, rtree)(rtLongTpe)
+            case NE  => genOlLongCall(ltree, jsnme.notEquals, rtree)(rtLongTpe)
             case LSL => genShift(nme.LSL)
             case LSR => genShift(nme.LSR)
             case ASR => genShift(nme.ASR)
@@ -3779,7 +3781,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
       case VOID      => abort("Cannot call genZeroOf(VOID)")
       case BOOL      => js.BooleanLiteral(false)
-      case LONG      => genLongModuleCall(jsnme.zero)
+      case LONG      => genLongImplModuleCall(jsnme.Zero)
       case INT(_)    => js.IntLiteral(0)
       case DOUBLE(_) => js.DoubleLiteral(0.0)
       case _         => js.Null()
@@ -3813,6 +3815,15 @@ abstract class GenJSCode extends plugins.PluginComponent
       val LongModule = genLoadModule(RuntimeLongModule)
       val method = getMemberMethod(RuntimeLongModule, methodName)
       genApplyMethod(LongModule, RuntimeLongModule.moduleClass,
+          method, args.toList)
+    }
+
+    /** Generate a call to the scala.scalajs.runtime.RuntimeLong.Impl module */
+    private def genLongImplModuleCall(methodName: TermName,
+        args: js.Tree*)(implicit pos: Position) = {
+      val LongImplModule = genLoadModule(RuntimeLongImplModule)
+      val method = getMemberMethod(RuntimeLongImplModule, methodName)
+      genApplyMethod(LongImplModule, RuntimeLongImplModule.moduleClass,
           method, args.toList)
     }
 

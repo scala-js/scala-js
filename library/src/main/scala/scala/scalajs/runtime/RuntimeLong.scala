@@ -20,7 +20,7 @@ final class RuntimeLong private (
 ) extends Number with Comparable[java.lang.Long] { x =>
 
   import RuntimeLong.{MinValue => _, MaxValue => _, _}
-  import CachedConstants._
+  import RuntimeLongImpl._
 
   /** Construct from an Int.
    *  This is the implementation of RuntimeLong.fromInt() in a way that does not
@@ -141,16 +141,23 @@ final class RuntimeLong private (
 
   }
 
+  def equals(y: RuntimeLong): Boolean =
+    x.l == y.l && x.m == y.m && x.h == y.h
+
   override def equals(that: Any): Boolean = that match {
-    case y: RuntimeLong =>
-      x.l == y.l && x.m == y.m && x.h == y.h
+    case y: RuntimeLong => x.equals(y)
     case _ => false
   }
+
+  def notEquals(that: RuntimeLong) = !equals(that)
   def notEquals(that: Any): Boolean = !equals(that)
 
-  def < (y: RuntimeLong): Boolean = !(x >= y)
-  def <=(y: RuntimeLong): Boolean = !(x >  y)
-  def > (y: RuntimeLong): Boolean = {
+  @inline
+  def <(y: RuntimeLong): Boolean = y > x
+  @inline
+  def <=(y: RuntimeLong): Boolean = y >= x
+
+  def >(y: RuntimeLong): Boolean = {
     if (!x.isNegative)
       y.isNegative ||
       x.h >  y.h ||
@@ -164,11 +171,19 @@ final class RuntimeLong private (
     )
   }
 
-  /**
-   * greater or equal.
-   * note: gwt implements this individually
-   */
-  def >=(y: RuntimeLong): Boolean = x == y || x > y
+  def >=(y: RuntimeLong): Boolean = {
+    if (!x.isNegative)
+      y.isNegative ||
+      x.h >  y.h ||
+      x.h == y.h && x.m >  y.m ||
+      x.h == y.h && x.m == y.m && x.l >= y.l
+    else !(
+      !y.isNegative ||
+      x.h <  y.h ||
+      x.h == y.h && x.m <  y.m ||
+      x.h == y.h && x.m == y.m && x.l <  y.l
+    )
+  }
 
   def |(y: RuntimeLong): RuntimeLong =
     RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
@@ -372,28 +387,26 @@ final class RuntimeLong private (
   private def divMod(y: RuntimeLong): scala.scalajs.js.Array[RuntimeLong] = {
     import scala.scalajs.js
     if (y.isZero) throw new ArithmeticException("/ by zero")
-    else if (x.isZero) js.Array(zero, zero)
+    else if (x.isZero) js.Array(Zero, Zero)
     else if (y.isMinValue) {
       // MinValue / MinValue == 1, rem = 0
       // otherwise == 0, rem x
-      if (x.isMinValue) js.Array(one, zero)
-      else js.Array(zero, x)
+      if (x.isMinValue) js.Array(One, Zero)
+      else js.Array(Zero, x)
     } else {
       val xNegative = x.isNegative
       val yNegative = y.isNegative
 
       val xMinValue = x.isMinValue
 
-      val absX = x.abs  // this may be useless if x.isMinValue
-      val absY = y.abs
-
       val pow = y.powerOfTwo
       if (pow >= 0) {
         if (xMinValue) {
           val z = x >> pow
-          js.Array(if (yNegative) -z else z, zero)
+          js.Array(if (yNegative) -z else z, Zero)
         } else {
-          // x is not min value, so we can use absX
+          // x is not min value, so we can calculate absX
+          val absX = x.abs
           val absZ = absX >> pow
           val z = if (xNegative ^ yNegative) -absZ else absZ
           val remAbs = absX.maskRight(pow)
@@ -401,18 +414,25 @@ final class RuntimeLong private (
           js.Array(z, rem)
         }
       } else {
-        if (xMinValue)
-          divModHelper(MaxValue, absY, xNegative, yNegative, xMinValue = true)
-        // here we know that x is not min value, so absX makes sense to use
-        else if (absX < absY)
-          js.Array(zero, x)
-        else
-          divModHelper(absX, absY, xNegative, yNegative, xMinValue = false)
-      }
+        val absY = y.abs
 
+        val newX = {
+          if (xMinValue)
+            MaxValue
+          else {
+            val absX = x.abs
+            if (absX < absY)
+              return js.Array(Zero, x) // <-- ugly but fast
+            else
+              absX
+          }
+        }
+        divModHelper(newX, absY, xNegative, yNegative, xMinValue)
+      }
     }
   }
 
+  @inline
   private def maskRight(bits: Int) = {
     if (bits <= BITS)
       RuntimeLong(l & ((1 << bits) - 1), 0, 0)
@@ -420,6 +440,46 @@ final class RuntimeLong private (
       RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
     else
       RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
+  }
+
+  /**
+   * performs division in "normal cases"
+   * @param x absolute value of the numerator
+   * @param y absolute value of the denominator
+   * @param xNegative whether numerator was negative
+   * @param yNegative whether denominator was negative
+   * @param xMinValue whether numerator was Long.minValue
+   */
+  @inline
+  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
+      xNegative: Boolean, yNegative: Boolean,
+      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
+    import scala.scalajs.js
+
+    @inline
+    @tailrec
+    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
+        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
+      if (shift < 0 || curX.isZero) (quot, curX) else {
+        val newX = curX - yShift
+        if (!newX.isNegative)
+          divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
+        else
+          divide0(shift-1, yShift >> 1, curX, quot)
+      }
+
+    val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
+    val yShift = y << shift
+
+    val (absQuot, absRem) = divide0(shift, yShift, x, Zero)
+
+    val quot = if (xNegative ^ yNegative) -absQuot else absQuot
+    val rem  =
+      if (xNegative && xMinValue) -absRem - One
+      else if (xNegative)         -absRem
+      else                         absRem
+
+    js.Array(quot, rem)
   }
 
   /*
@@ -560,59 +620,28 @@ object RuntimeLong {
   /** bitmask for Long.h */
   private final val MASK_2 = (1 << BITS2) - 1
 
-  private final val SIGN_BIT       = BITS2 - 1
-  private final val SIGN_BIT_VALUE = 1 << SIGN_BIT
-  private final val TWO_PWR_15_DBL = 0x8000   * 1.0
-  private final val TWO_PWR_16_DBL = 0x10000  * 1.0
-  private final val TWO_PWR_22_DBL = 0x400000 * 1.0
-  private final val TWO_PWR_31_DBL = TWO_PWR_16_DBL * TWO_PWR_15_DBL
-  private final val TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL
-  private final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
-  private final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
+  private[runtime] final val SIGN_BIT       = BITS2 - 1
+  private[runtime] final val SIGN_BIT_VALUE = 1 << SIGN_BIT
+  private[runtime] final val TWO_PWR_15_DBL = 0x8000   * 1.0
+  private[runtime] final val TWO_PWR_16_DBL = 0x10000  * 1.0
+  private[runtime] final val TWO_PWR_22_DBL = 0x400000 * 1.0
+  private[runtime] final val TWO_PWR_31_DBL = TWO_PWR_16_DBL * TWO_PWR_15_DBL
+  private[runtime] final val TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL
+  private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
+  private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  @inline def zero: RuntimeLong = CachedConstants.Zero
-  @inline def one:  RuntimeLong = CachedConstants.One
+  @deprecated("Use RuntimeLongImpl.Zero instead", "0.5.5")
+  @inline def zero: RuntimeLong = RuntimeLongImpl.Zero
+
+  @deprecated("Use RuntimeLongImpl.One instead", "0.5.5")
+  @inline def one: RuntimeLong = RuntimeLongImpl.One
 
   def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
   def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
 
-  def fromHexString(str: String): RuntimeLong = {
-    import scalajs.js.parseInt
-    assert(str.length == 16)
-    val l = parseInt(str.substring(10), 16).toInt
-    val m = parseInt(str.substring(6, 7), 16).toInt >> 2
-    val h = parseInt(str.substring(0, 5), 16).toInt
-    masked(l, m, h)
-  }
-
   @inline def fromString(str: String): RuntimeLong = fromString(str, 10)
-
-  def fromString(str: String, radix: Int): RuntimeLong = {
-    if (str.isEmpty) {
-      throw new java.lang.NumberFormatException(
-          s"""For input string: "$str"""")
-    } else if (str.charAt(0) == '-') {
-      -fromString(str.substring(1), radix)
-    } else {
-      import scalajs.js
-
-      val maxLen = 9
-      @tailrec
-      def fromString0(str0: String, acc: RuntimeLong): RuntimeLong = if (str0.length > 0) {
-        val cur = (str0: js.prim.String).substring(0, maxLen): String
-        val macc = acc * fromInt(math.pow(radix, cur.length).toInt)
-        val ival = js.parseInt(cur, radix)
-        if (js.isNaN(ival)) {
-          throw new java.lang.NumberFormatException(
-            s"""For input string: "$str"""")
-        }
-        val cval = fromInt(ival.toInt)
-        fromString0((str0: js.prim.String).substring(maxLen), macc + cval)
-      } else acc
-
-      fromString0(str, zero)
-    }
-  }
+  @inline def fromString(str: String, radix: Int): RuntimeLong =
+    RuntimeLongImpl.fromString(str, radix)
 
   @inline def fromByte(value: Byte): RuntimeLong = fromInt(value.toInt)
   @inline def fromShort(value: Short): RuntimeLong = fromInt(value.toInt)
@@ -620,20 +649,8 @@ object RuntimeLong {
   @inline def fromInt(value: Int): RuntimeLong = new RuntimeLong(value)
   @inline def fromFloat(value: Float): RuntimeLong = fromDouble(value.toDouble)
 
-  def fromDouble(value: Double): RuntimeLong =
-    if (java.lang.Double.isNaN(value)) zero
-    else if (value < -TWO_PWR_63_DBL) CachedConstants.MinValue
-    else if (value >= TWO_PWR_63_DBL) CachedConstants.MaxValue
-    else if (value < 0) -fromDouble(-value)
-    else {
-      var acc = value
-      val a2 = if (acc >= TWO_PWR_44_DBL) (acc / TWO_PWR_44_DBL).toInt else 0
-      acc -= a2 * TWO_PWR_44_DBL
-      val a1 = if (acc >= TWO_PWR_22_DBL) (acc / TWO_PWR_22_DBL).toInt else 0
-      acc -= a1 * TWO_PWR_22_DBL
-      val a0 = acc.toInt
-      RuntimeLong(a0, a1, a2)
-    }
+  @inline def fromDouble(value: Double): RuntimeLong =
+    RuntimeLongImpl.fromDouble(value)
 
   /**
    * creates a new long but masks bits as follows:
@@ -646,66 +663,14 @@ object RuntimeLong {
   @inline def apply(l: Int, m: Int, h: Int): RuntimeLong =
     new RuntimeLong(l, m, h)
 
-  /**
-   * performs division in "normal cases"
-   * @param x absolute value of the numerator
-   * @param y absolute value of the denominator
-   * @param xNegative whether numerator was negative
-   * @param yNegative whether denominator was negative
-   * @param xMinValue whether numerator was Long.minValue
-   */
-  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
-      xNegative: Boolean, yNegative: Boolean,
-      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
-    import scala.scalajs.js
-
-    @inline
-    @tailrec
-    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
-        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
-      if (shift < 0 || curX.isZero) (quot, curX) else {
-        val newX = curX - yShift
-        if (!newX.isNegative)
-          divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
-        else
-          divide0(shift-1, yShift >> 1, curX, quot)
-      }
-
-    val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
-    val yShift = y << shift
-
-    val (absQuot, absRem) = divide0(shift, yShift, x, zero)
-
-    val quot = if (xNegative ^ yNegative) -absQuot else absQuot
-    val rem  =
-      if (xNegative && xMinValue) -absRem - one
-      else if (xNegative)         -absRem
-      else                         absRem
-
-    js.Array(quot, rem)
-  }
-
   // Public Long API
 
   /** The smallest value representable as a Long. */
   @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
-  def MinValue: RuntimeLong = CachedConstants.MinValue
+  def MinValue: RuntimeLong = RuntimeLongImpl.MinValue
 
   /** The largest value representable as a Long. */
   @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
-  def MaxValue: RuntimeLong = CachedConstants.MaxValue
-
-  /** Independent object holding cached constants.
-   *  These constants are extracted here so that the constructor of the
-   *  RuntimeLong module itself is elideable.
-   */
-  private object CachedConstants {
-    // Do not make these 'final' vals. The goal is to cache the instances.
-    val Zero     = toRuntimeLong(0L)
-    val One      = toRuntimeLong(1L)
-    val MinValue = toRuntimeLong(Long.MinValue)
-    val MaxValue = toRuntimeLong(Long.MaxValue)
-    val TenPow9  = toRuntimeLong(1000000000L) // 9 zeros
-  }
+  def MaxValue: RuntimeLong = RuntimeLongImpl.MaxValue
 
 }
