@@ -48,12 +48,20 @@ object SourceMapTest extends JasmineTest {
           sys.error("No exception thrown")
         } catch {
           case e @ TestException(lineNo) =>
-            val trace = e.getStackTrace.toSeq
-            val hasTrace = trace.exists { ste =>
-              lineNo == ste.getLineNumber &&
-              ste.getFileName.endsWith("/SourceMapTest.scala")
-            }
-            expect(hasTrace).toBeTruthy
+            val trace0 = e.getStackTrace.toList
+            val trace1 = trace0.dropWhile(
+              _.getFileName.endsWith("/scala/scalajs/runtime/StackTrace.scala"))
+            val trace2 = trace1.dropWhile(
+              _.getFileName.endsWith("/java/lang/Throwables.scala"))
+
+            val exSte :: throwSte :: _ = trace2
+
+            expect(exSte.getFileName).toContain("/SourceMapTest.scala")
+            // line where `case class TestException is written` above
+            expect(exSte.getLineNumber).toBe(15)
+
+            expect(throwSte.getFileName).toContain("/SourceMapTest.scala")
+            expect(throwSte.getLineNumber).toBe(lineNo)
         }
       }
     }
