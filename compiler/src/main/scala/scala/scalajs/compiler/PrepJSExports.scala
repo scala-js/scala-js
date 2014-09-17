@@ -23,6 +23,10 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   import scala.reflect.internal.Flags
 
+  /** Whether the given symbol has a visibility that allows exporting */
+  def hasLegalExportVisibility(sym: Symbol): Boolean =
+    sym.isPublic || sym.isProtected && !sym.isProtectedLocal
+
   def genExportMember(ddef: DefDef): List[Tree] = {
     val baseSym = ddef.symbol
     val clsSym = baseSym.owner
@@ -37,8 +41,8 @@ trait PrepJSExports { this: PrepJSInterop =>
       Nil
     else if (isJSAny(clsSym))
       err(s"You may not export a $memType of a subclass of js.Any")
-    else if (!baseSym.isPublic)
-      err(s"You may not export a non-public $memType")
+    else if (!hasLegalExportVisibility(baseSym))
+      err(s"You may only export public and protected ${memType}s")
     else if (baseSym.isMacro)
       err("You may not export a macro")
     else if (scalaPrimitives.isPrimitive(baseSym))
@@ -61,8 +65,8 @@ trait PrepJSExports { this: PrepJSInterop =>
       // do not need inheritance and such. But we want to check their sanity
       // here by previous tests and the following ones.
 
-      if (!clsSym.isPublic)
-        err("You may not export a non-public class")
+      if (!hasLegalExportVisibility(clsSym))
+        err("You may only export public and protected classes")
       else if (clsSym.isLocalToBlock)
         err("You may not export a local class")
       else if (clsSym.isNestedClass)

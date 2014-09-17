@@ -211,8 +211,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           }
         }
 
-        if (!sym.isPublic)
-          condErr("You may not export an non-public object")
+        if (!hasLegalExportVisibility(sym))
+          condErr("You may only export public and protected objects")
         else if (sym.isLocalToBlock)
           condErr("You may not export a local object")
         else if (!sym.owner.hasPackageFlag)

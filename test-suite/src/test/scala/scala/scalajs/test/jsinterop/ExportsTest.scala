@@ -47,6 +47,22 @@ object ExportsTest extends JasmineTest {
       expect(foo.doubleTheParam(3)).toEqual(6)
     }
 
+    it("should offer exports for protected methods") {
+      class Foo {
+        @JSExport
+        protected def bar(): Int = 42
+
+        @JSExport
+        protected[test] def foo(): Int = 100
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(js.typeOf(foo.bar)).toBe("function")
+      expect(foo.bar()).toEqual(42)
+      expect(js.typeOf(foo.foo)).toBe("function")
+      expect(foo.foo()).toEqual(100)
+    }
+
     it("should offer exports for properties with implicit name") {
       class Foo {
         private[this] var myY: String = "hello"
@@ -102,6 +118,19 @@ object ExportsTest extends JasmineTest {
       expect(foo.y).toEqual("hello get")
       foo.y = "world"
       expect(foo.y).toEqual("world set get")
+    }
+
+    it("should offer exports for protected properties") {
+      class Foo {
+        @JSExport
+        protected val x: Int = 42
+        @JSExport
+        protected[test] val y: Int = 43
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(foo.x).toEqual(42)
+      expect(foo.y).toEqual(43)
     }
 
     it("should offer overloaded exports for methods") {
@@ -499,6 +528,16 @@ object ExportsTest extends JasmineTest {
       expect(obj.witness).toEqual("witness")
     }
 
+    it("should offer exports for protected objects") {
+      val accessor = js.Dynamic.global.ProtectedExportedObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(obj.witness).toEqual("witness")
+    }
+
     it("should offer exports for classes with implicit name") {
       val constr = js.Dynamic.global.ExportedClass
       expect(constr).toBeDefined
@@ -517,6 +556,14 @@ object ExportsTest extends JasmineTest {
 
     it("should offer exports for classes with qualified name") {
       val constr = js.Dynamic.global.qualified.testclass.ExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect(obj.x).toEqual(5)
+    }
+
+    it("should offer exports for protected classes") {
+      val constr = js.Dynamic.global.ProtectedExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -845,9 +892,21 @@ object ExportedObject {
 }
 
 @JSExport
+protected object ProtectedExportedObject {
+  @JSExport
+  def witness: String = "witness"
+}
+
+@JSExport
 @JSExport("TheExportedClass")
 @JSExport("qualified.testclass.ExportedClass") // purposefully halfway the same as ExportedObject
 class ExportedClass(_x: Int) {
+  @JSExport
+  val x = _x
+}
+
+@JSExport
+protected class ProtectedExportedClass(_x: Int) {
   @JSExport
   val x = _x
 }
