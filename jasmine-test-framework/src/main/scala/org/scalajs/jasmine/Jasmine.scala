@@ -11,4 +11,7 @@ object Jasmine extends js.GlobalScope {
   def beforeEach(block: js.Function0[_]): Unit = ???
   def afterEach(block: js.Function0[_]): Unit = ???
   def expect(exp: js.Any): JasmineExpectation = ???
+  def runs(block: js.Function0[_]): Unit = ???
+  def waits(timeout: Int): Unit = ???
+  def waitsFor(block: js.Function0[Boolean], errorMsg: String, timeout: Int): Unit = ???
 }
