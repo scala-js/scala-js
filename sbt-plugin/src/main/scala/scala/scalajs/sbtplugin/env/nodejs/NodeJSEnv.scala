@@ -75,8 +75,23 @@ class NodeJSEnv(
       logger: Logger, console: JSConsole): Unit =
     withLibCache(super.runJS(classpath, code, logger, console))
 
-  // We need to hack console.log (for duplicate %)
-  override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
+  /** File(s) to automatically install source-map-support.
+   *  Is used by [[initFiles]], override to change/disable.
+   */
+  protected def installSourceMap(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
+      new MemVirtualJSFile("sourceMapSupport.js").withContent(
+        """
+        try {
+          require('source-map-support').install();
+        } catch (e) {}
+        """
+      )
+  )
+
+  /** File(s) to hack console.log to prevent if from changing `%%` to `%`.
+   *  Is used by [[initFiles]], override to change/disable.
+   */
+  protected def fixPercentConsole(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
       new MemVirtualJSFile("nodeConsoleHack.js").withContent(
         """
         // Hack console log to duplicate double % signs
@@ -91,14 +106,28 @@ class NodeJSEnv(
           };
           console.log = newLog;
         })();
-        """),
+        """
+      )
+  )
+
+  /** File(s) to define `__ScalaJSEnv`. Defines `exitFunction`.
+   *  Is used by [[initFiles]], override to change/disable.
+   */
+  protected def runtimeEnv(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
       new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
         """
         __ScalaJSEnv = {
           exitFunction: function(status) { process.exit(status); }
         };
-        """)
+        """
+      )
   )
+
+  /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]] and
+   *  [[runtimeEnv]] (in this order).
+   */
+  override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] =
+    installSourceMap(args) ++ fixPercentConsole(args) ++ runtimeEnv(args)
 
   /** Libraries are loaded via require in Node.js */
   override protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] = {
