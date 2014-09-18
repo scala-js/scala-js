@@ -37,7 +37,7 @@ object ScalaJSBuild extends Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val commonSettings = Seq(
+  val commonSettings = Defaults.defaultSettings ++ Seq(
       organization := "org.scala-lang.modules.scalajs",
       version := scalaJSVersion,
 
@@ -55,14 +55,7 @@ object ScalaJSBuild extends Build {
             / "tools" / "partest" / "scalajs" / scalaVersion.value
         )
         testListDir.exists
-      },
-
-      scalacOptions ++= Seq(
-          "-deprecation",
-          "-unchecked",
-          "-feature",
-          "-encoding", "utf8"
-      )
+      }
   )
 
   private val snapshotsOrReleases =
@@ -100,7 +93,13 @@ object ScalaJSBuild extends Build {
   )
 
   val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := "2.11.0"
+      scalaVersion := "2.11.0",
+      scalacOptions ++= Seq(
+          "-deprecation",
+          "-unchecked",
+          "-feature",
+          "-encoding", "utf8"
+      )
   )
 
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
