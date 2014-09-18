@@ -16,6 +16,8 @@ import org.scalajs.jasmine.JasmineExpectation
 
 class JasmineTest extends Test with TestSuiteContext {
   def jasmine = Jasmine.jasmine
+  def currentSpec = jasmine.getEnv.currentSpec
+  def currentSuite = jasmine.getEnv.currentSuite
   def describe(name: String)(suite: => Unit): Unit = Jasmine.describe(name, suite _)
   def it(title: String)(test: => Unit): Unit = Jasmine.it(title, test _)
   def xdescribe(name: String)(suite: => Unit): Unit = Jasmine.xdescribe(name, suite _)

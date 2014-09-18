@@ -10,9 +10,10 @@
 package scala.scalajs.test
 
 import scala.scalajs.js
-import scala.scalajs.js.Dynamic.global
 import scala.scalajs.js.JavaScriptException
 import scala.scalajs.js.annotation.JSExport
+
+import org.scalajs.jasmine.Jasmine
 
 import scala.collection.mutable
 
@@ -48,7 +49,7 @@ object JasmineTestFramework extends TestFramework {
   def runTest(testOutput: TestOutput, args: js.Array[String])(
     test: js.Function0[Test]): Unit = {
 
-    val jasmine = global.jasmine
+    val jasmine = Jasmine.jasmine
     val reporter = new JasmineTestReporter(testOutput)
 
     handleArgs(args, testOutput)
