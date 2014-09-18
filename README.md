@@ -50,35 +50,33 @@ supported versions with, e.g.,
 
 Compile and run the Scala.js-specific test suite with
 
-    sbt> scalajs-test/test
+    sbt> testSuite/test
 
 (you must have run `package` before running the test suite)
 
 To run the Scala test suite (aka partest), you have to use a 2.11 version, e.g.,
 2.11.0 or 2.11.1, and run:
 
-    sbt> scalajs-partest-suite/test
+    sbt> partestSuite/test
 
 Beware, this takes a very long time. You may use the `--fastOpt` and
 `--fullOpt` switches to run Scala.js DCE or the full Google Closure
 Compiler:
 
-    sbt> scalajs-partest-suite/testOnly -- --fastOpt
+    sbt> partestSuite/testOnly -- --fastOpt
 
 A complete test session from scratch on 2.11.1 would then be
 
     sbt> ++2.11.1
     sbt> package
-    sbt> scalajs-test/test
-    sbt> scalajs-partest-suite/test
+    sbt> testSuite/test
+    sbt> partestSuite/test
 
 ### Test the examples
 
 After having compiled Scala.js, you can compile the example applications with:
 
     sbt> examples/fullOptJS
-
-(you must have run `package` before compiling the examples)
 
 Then, you can "execute" them by opening their respective HTML files in your
 favorite browser. Since fully optimizing the JavaScript takes time
@@ -101,7 +99,7 @@ Currently, two examples are provided:
     below.
 
 If both `fastOptJS` and `fullOptJS` break, you can try and use
-`packageJS` which doesn't perform any optimizations (use the `-dev`
+`packageJS` which doesn't perform any optimizations (use the `-pack`
 version of the HTML files).
 
 ### Use your fork with your own projects
@@ -109,8 +107,8 @@ version of the HTML files).
 Simply publish it locally with:
 
     sbt> publishLocal
-    sbt> scalajs-tools/publishLocal
-    sbt> scalajs-sbt-plugin/publishLocal
+    sbt> tools/publishLocal
+    sbt> sbtPlugin/publishLocal
 
 ## License
 
