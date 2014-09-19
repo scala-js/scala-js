@@ -150,7 +150,6 @@ final class RuntimeLong private (
   }
 
   def notEquals(that: RuntimeLong) = !equals(that)
-  def notEquals(that: Any): Boolean = !equals(that)
 
   @inline
   def <(y: RuntimeLong): Boolean = y > x

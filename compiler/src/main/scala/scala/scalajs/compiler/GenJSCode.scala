@@ -2154,7 +2154,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case GT  => genOlLongCall(ltree, nme.GT,    rtree)(rtLongTpe)
             case GE  => genOlLongCall(ltree, nme.GE,    rtree)(rtLongTpe)
             case EQ  => genOlLongCall(ltree, nme.equals_, rtree)(rtLongTpe)
-            case NE  => genOlLongCall(ltree, jsnme.notEquals, rtree)(rtLongTpe)
+            case NE  => genLongCall(ltree, jsnme.notEquals, rtree)
             case LSL => genShift(nme.LSL)
             case LSR => genShift(nme.LSR)
             case ASR => genShift(nme.ASR)
