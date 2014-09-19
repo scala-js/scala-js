@@ -598,23 +598,7 @@ object ScalaJSBuild extends Build {
       id = "stubs",
       base = file("stubs"),
       settings = defaultSettings ++ publishSettings ++ Seq(
-          name := "Scala.js Stubs",
-          sources in Compile ++= {
-            val annotFiles = Set(
-                "JSBracketAccess.scala",
-                "JSExport.scala",
-                "JSExportAll.scala",
-                "JSExportDescendentObjects.scala",
-                "JSExportNamed.scala"
-            )
-
-            val libSrcDir =
-              (scalaSource in library in Compile).value.getAbsoluteFile
-            val annotDir = libSrcDir / "scala/scalajs/js/annotation/"
-
-            val filter = new SimpleFilter(annotFiles)
-            (annotDir * filter).get
-          }
+          name := "Scala.js Stubs"
       )
   )
 
