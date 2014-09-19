@@ -2,9 +2,11 @@ package scala.scalajs.tools.js.test
 
 import org.scalajs.jasmine.Suite
 
+import org.scalajs.jasminetest._
+
 import scala.scalajs.js.annotation.JSExport
 
-import scala.scalajs.test._
+import scala.scalajs.testbridge._
 
 object JSConsoleTestOutput extends TestOutput {
 

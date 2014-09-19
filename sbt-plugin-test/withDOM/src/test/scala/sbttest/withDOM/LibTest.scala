@@ -1,7 +1,8 @@
 package sbttest.withDOM
 
 import scala.scalajs.js
-import scala.scalajs.test.JasmineTest
+
+import org.scalajs.jasminetest.JasmineTest
 
 object LibTest extends JasmineTest {
 

@@ -269,15 +269,14 @@ object ScalaJSBuild extends Build {
           }
 
           val runCode = """
-            var framework = scala.scalajs.test.JasmineTestFramework();
+            var framework = org.scalajs.jasminetest.JasmineTestFramework();
             framework.setTags("typedarray")
 
             // Load tests (we know we only export test modules, so we can use all exports)
-            var testPackage = scala.scalajs.test;
+            var testPackage = scala.scalajs.testsuite;
             for (var pName in testPackage)
               for (var testName in testPackage[pName])
-                if (!(pName == "internal" && testName == "ConsoleTestOutput"))
-                  testPackage[pName][testName]();
+                testPackage[pName][testName]();
 
             var reporter = new scalajs.JasmineConsoleReporter(true);
 

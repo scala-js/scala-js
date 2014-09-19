@@ -33,10 +33,6 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
     try {
       val scope = context.initStandardObjects()
 
-      // Make sure Rhino does not do its magic for JVM top-level packages (#364)
-      for (name <- Seq("java", "scala", "com", "org"))
-        ScriptableObject.putProperty(scope, name, Undefined.instance)
-
       if (withDOM) {
         // Fetch env.rhino.js from webjar
         val name = "env.rhino.js"
@@ -57,6 +53,10 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         // No need to actually define print here: It is captured by envjs to
         // implement console.log, which we'll override in the next statement
       }
+
+      // Make sure Rhino does not do its magic for JVM top-level packages (#364)
+      for (name <- Seq("java", "scala", "com", "org"))
+        ScriptableObject.putProperty(scope, name, Undefined.instance)
 
       // Setup console.log
       val jsconsole = context.newObject(scope)
