@@ -21,6 +21,7 @@ import scala.language.implicitConversions
  *  [[UndefOrOps]] implicit class, with the understanding that `undefined` is
  *  the None value.
  */
+@scala.scalajs.js.annotation.RawJSType // Don't do this at home!
 sealed trait UndefOr[+A]
 
 object UndefOr {
