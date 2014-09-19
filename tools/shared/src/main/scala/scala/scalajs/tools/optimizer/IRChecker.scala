@@ -231,7 +231,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Debugger() =>
         env
 
-      case JSDelete(obj, prop) =>
+      case JSDelete(JSDotSelect(obj, prop)) =>
+        typecheckExpect(obj, env, DynType)
+        env
+
+      case JSDelete(JSBracketSelect(obj, prop)) =>
         typecheckExpect(obj, env, DynType)
         typecheckExpr(prop, env)
         env

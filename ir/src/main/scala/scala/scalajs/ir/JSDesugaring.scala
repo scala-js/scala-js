@@ -264,9 +264,15 @@ object JSDesugaring {
         case Debugger() =>
           tree
 
-        case JSDelete(obj, prop) =>
+        case JSDelete(JSDotSelect(obj, prop)) =>
+          unnest(obj) { (newObj) =>
+            JSDelete(JSDotSelect(transformExpr(newObj), prop))
+          }
+
+        case JSDelete(JSBracketSelect(obj, prop)) =>
           unnest(obj, prop) { (newObj, newProp) =>
-            JSDelete(transformExpr(newObj), transformExpr(newProp))
+            JSDelete(JSBracketSelect(
+                transformExpr(newObj), transformExpr(newProp)))
           }
 
         // Treat 'return' as an LHS

@@ -464,8 +464,11 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case JSApply(fun, args) =>
         JSApply(transformExpr(fun), args map transformExpr)
 
-      case JSDelete(obj, prop) =>
-        JSDelete(transformExpr(obj), transformExpr(prop))
+      case JSDelete(JSDotSelect(obj, prop)) =>
+        JSDelete(JSDotSelect(transformExpr(obj), prop))
+
+      case JSDelete(JSBracketSelect(obj, prop)) =>
+        JSDelete(JSBracketSelect(transformExpr(obj), transformExpr(prop)))
 
       case JSUnaryOp(op, lhs) =>
         JSUnaryOp(op, transformExpr(lhs))

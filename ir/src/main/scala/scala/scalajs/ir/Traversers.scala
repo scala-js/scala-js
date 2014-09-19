@@ -150,8 +150,7 @@ object Traversers {
         traverse(fun)
         args foreach traverse
 
-      case JSDelete(obj, prop) =>
-        traverse(obj)
+      case JSDelete(prop) =>
         traverse(prop)
 
       case JSUnaryOp(op, lhs) =>
