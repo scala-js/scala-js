@@ -31,7 +31,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
   import ScalaJSOptimizer._
 
   private[this] var persistentState: PersistentState = new PersistentState
-  private[this] var inliner: GenIncOptimizer = optimizerFactory()
+  private[this] var optimizer: GenIncOptimizer = optimizerFactory()
 
   def this() = this(() => new IncOptimizer)
 
@@ -94,7 +94,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
         GenIncOptimizer.logTime(logger, "Read info") {
           readAllData(inputs.input, logger)
         }
-      val (useInliner, refinedAnalyzer) = GenIncOptimizer.logTime(
+      val (useOptimizer, refinedAnalyzer) = GenIncOptimizer.logTime(
           logger, "Optimizations part") {
         val analyzer =
           GenIncOptimizer.logTime(logger, "Compute reachability") {
@@ -116,31 +116,31 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
           persistentFile.treeIfChanged(lastVersion)
         }
 
-        val useInliner = analyzer.allAvailable && !outCfg.disableInliner
+        val useOptimizer = analyzer.allAvailable && !outCfg.disableOptimizer
 
-        if (outCfg.batchInline)
-          inliner = optimizerFactory()
+        if (outCfg.batchMode)
+          optimizer = optimizerFactory()
 
-        val refinedAnalyzer = if (useInliner) {
+        val refinedAnalyzer = if (useOptimizer) {
           GenIncOptimizer.logTime(logger, "Inliner") {
-            inliner.update(analyzer, getClassTreeIfChanged, logger)
+            optimizer.update(analyzer, getClassTreeIfChanged, logger)
           }
           GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
-            val refinedData = computeRefinedData(allData, inliner)
+            val refinedData = computeRefinedData(allData, optimizer)
             val refinedAnalyzer = new Analyzer(logger, refinedData,
                 globalWarnEnabled = false)
             refinedAnalyzer.computeReachability(manuallyReachable, noWarnMissing)
             refinedAnalyzer
           }
         } else {
-          if (inputs.noWarnMissing.isEmpty && !outCfg.disableInliner)
+          if (inputs.noWarnMissing.isEmpty && !outCfg.disableOptimizer)
             logger.warn("Not running the inliner because there where linking errors.")
           analyzer
         }
-        (useInliner, refinedAnalyzer)
+        (useOptimizer, refinedAnalyzer)
       }
       GenIncOptimizer.logTime(logger, "Write DCE'ed output") {
-        buildDCEedOutput(builder, refinedAnalyzer, useInliner)
+        buildDCEedOutput(builder, refinedAnalyzer, useOptimizer)
       }
     } finally {
       persistentState.endRun(outCfg.unCache)
@@ -154,7 +154,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
   /** Resets all persistent state of this optimizer */
   def clean(): Unit = {
     persistentState = new PersistentState
-    inliner = optimizerFactory()
+    optimizer = optimizerFactory()
   }
 
   private def readAllData(ir: Traversable[VirtualScalaJSIRFile],
@@ -175,21 +175,21 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
 
   private def computeRefinedData(
       allData: scala.collection.Seq[Infos.ClassInfo],
-      inliner: GenIncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
+      optimizer: GenIncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
 
-    def refineMethodInfo(container: inliner.MethodContainer,
+    def refineMethodInfo(container: optimizer.MethodContainer,
         methodInfo: Infos.MethodInfo): Infos.MethodInfo = {
       container.methods.get(methodInfo.encodedName).fold(methodInfo) {
         methodImpl => methodImpl.preciseInfo
       }
     }
 
-    def refineMethodInfos(container: inliner.MethodContainer,
+    def refineMethodInfos(container: optimizer.MethodContainer,
         methodInfos: List[Infos.MethodInfo]): List[Infos.MethodInfo] = {
       methodInfos.map(m => refineMethodInfo(container, m))
     }
 
-    def refineClassInfo(container: inliner.MethodContainer,
+    def refineClassInfo(container: optimizer.MethodContainer,
         info: Infos.ClassInfo): Infos.ClassInfo = {
       val refinedMethods = refineMethodInfos(container, info.methods)
       Infos.ClassInfo(info.name, info.encodedName, info.isExported,
@@ -202,12 +202,12 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
     } yield {
       info.kind match {
         case ClassKind.Class | ClassKind.ModuleClass =>
-          inliner.getClass(info.encodedName).fold(info) {
+          optimizer.getClass(info.encodedName).fold(info) {
             cls => refineClassInfo(cls, info)
           }
 
         case ClassKind.TraitImpl =>
-          inliner.getTraitImpl(info.encodedName).fold(info) {
+          optimizer.getTraitImpl(info.encodedName).fold(info) {
             impl => refineClassInfo(impl, info)
           }
 
@@ -268,7 +268,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
       if (classInfo.isImplClass) {
         if (useInliner) {
           for {
-            method <- inliner.findTraitImpl(classInfo.encodedName).methods.values
+            method <- optimizer.findTraitImpl(classInfo.encodedName).methods.values
             if (classInfo.methodInfos(method.encodedName).isReachable)
           } {
             addTree(method.desugaredDef)
@@ -286,7 +286,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
               desugar(Emitter.genConstructor(classDef))))
           if (useInliner) {
             for {
-              method <- inliner.findClass(classInfo.encodedName).methods.values
+              method <- optimizer.findClass(classInfo.encodedName).methods.values
               if (classInfo.methodInfos(method.encodedName).isReachable)
             } {
               addTree(method.desugaredDef)
@@ -372,10 +372,10 @@ object ScalaJSOptimizer {
      *  last run from the cache. Otherwise, all trees that has been used once,
      *  are kept in memory. */
     val unCache: Boolean
-    /** If true, no inlining is performed */
-    val disableInliner: Boolean
-    /** If true, inlining is not performed incrementally */
-    val batchInline: Boolean
+    /** If true, no optimizations are performed */
+    val disableOptimizer: Boolean
+    /** If true, nothing is performed incrementally */
+    val batchMode: Boolean
   }
 
   /** Configuration for the output of the Scala.js optimizer. */
@@ -394,10 +394,10 @@ object ScalaJSOptimizer {
        *  last run from the cache. Otherwise, all trees that has been used once,
        *  are kept in memory. */
       unCache: Boolean = true,
-      /** If true, no inlining is performed */
-      disableInliner: Boolean = false,
-      /** If true, inlining is not performed incrementally */
-      batchInline: Boolean = false
+      /** If true, no optimizations are performed */
+      disableOptimizer: Boolean = false,
+      /** If true, nothing is performed incrementally */
+      batchMode: Boolean = false
   ) extends OptimizerConfig
 
   // Private helpers -----------------------------------------------------------

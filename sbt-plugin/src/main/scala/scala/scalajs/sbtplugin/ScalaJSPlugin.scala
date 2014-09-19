@@ -46,7 +46,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val packageScalaJSLauncher = TaskKey[Attributed[File]]("packageScalaJSLauncher",
         "Writes the persistent launcher file. Fails if the mainClass is ambigous", CTask)
-    val packageLauncher = packageScalaJSLauncher // TODO Remove in 0.6.0
 
     val packageJSDependencies = TaskKey[File]("packageJSDependencies",
         "Packages all dependencies of the preLink classpath in a single file. " +
@@ -57,22 +56,15 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val scalaJSPreLinkClasspath = TaskKey[CompleteIRClasspath]("scalaJSPreLinkClasspath",
         "Completely resolved classpath just after compilation", DTask)
-    val preLinkClasspath = scalaJSPreLinkClasspath // TODO Remove in 0.6.0
 
     val scalaJSExecClasspath = TaskKey[CompleteClasspath]("scalaJSExecClasspath",
         "The classpath used for running and testing", DTask)
-    val execClasspath = scalaJSExecClasspath // TODO Remove in 0.6.0
 
     val scalaJSLauncher = TaskKey[Attributed[VirtualJSFile]]("scalaJSLauncher",
         "Code used to run. (Attributed with used class name)", DTask)
-    val launcher = scalaJSLauncher // TODO Remove in 0.6.0
-
-    val fullOptJSPrettyPrint = SettingKey[Boolean]("fullOptJSPrettyPrint",
-        "Pretty-print the output of fullOptJS", CSetting)
 
     val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
-    val jsConsole = scalaJSConsole // TODO Remove in 0.6.0
 
     val preLinkJSEnv = SettingKey[JSEnv]("preLinkJSEnv",
         "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files", BSetting)
@@ -91,9 +83,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
         "Make the referenced paths on source maps relative to target path", BPlusSetting)
 
-    val checkScalaJSIR = SettingKey[Boolean]("checkScalaJSIR",
-        "Perform expensive checks of the sanity of the Scala.js IR", DSetting)
-
     val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
         "Whether package and optimize stages should emit source maps at all", BPlusSetting)
 
@@ -107,14 +96,8 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "Tell optimize/package tasks to write the laucher file to disk. " +
         "If this is set, your project may only have a single mainClass or you must explicitly set it", AMinusSetting)
 
-    val inliningMode = SettingKey[InliningMode]("inliningMode",
-        "Mode of the inliner: Incremental (default), Batch, Off", CSetting)
-
-    val parallelFastOptJS = SettingKey[Boolean]("parallelFastOptJS",
-        "Whether to use the parallelized Scala.js optimizer", CSetting)
-
-    val directFullOptJS = SettingKey[Boolean]("directFullOptJS",
-        "Whether fullOptJS should directly use IR produced by fastOptJS", DSetting)
+    val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
+        "All kinds of options for the Scala.js optimizer stages", DSetting)
 
     // Task keys to re-wire sources and run with other VM
     val packageStage = TaskKey[Unit]("packageStage",
