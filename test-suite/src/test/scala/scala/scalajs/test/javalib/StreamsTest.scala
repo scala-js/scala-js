@@ -20,7 +20,7 @@ object StreamsTest extends JasmineTest with CommonStreamsTests {
   // Need to define this again, otherwise conversion on function
   // triggers for Seqs
   override implicit def traversable2array[T](
-    a: TraversableOnce[T]): js.Array[T] = super.traversable2array(a)
+      a: TraversableOnce[T]): js.Array[T] = super.traversable2array(a)
 
   describe("java.io.InputStream") {
 
@@ -153,6 +153,11 @@ object StreamsTest extends JasmineTest with CommonStreamsTests {
 trait CommonStreamsTests extends JasmineTest {
 
   implicit def traversable2array[T](a: TraversableOnce[T]): js.Array[T] = {
+    import js.JSConverters._
+    a.toJSArray
+  }
+
+  implicit def array2array[T](a: Array[T]): js.Array[T] = {
     import js.JSConverters._
     a.toJSArray
   }

@@ -9,6 +9,7 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 import scala.scalajs.test.JasmineTest
 import java.util.regex.Pattern
 
@@ -36,9 +37,9 @@ object RegexTest extends JasmineTest {
 
     it("should respond to `split`") {
       val result = Pattern.compile("[aj]").split("Scala.js")
-      val expected = Array("Sc", "l", ".", "s")
+      val expected = js.Array("Sc", "l", ".", "s")
       expect(result.length).toEqual(4)
-      expect(result).toEqual(expected)
+      expect(result.toJSArray).toEqual(expected)
 
       // Tests from JavaDoc
       split("boo:and:foo", ":", Array("boo", "and", "foo"))
@@ -52,7 +53,7 @@ object RegexTest extends JasmineTest {
 
       def split(input: String, regex: String, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input)
-        expect(result).toEqual(expected)
+        expect(result.toJSArray).toEqual(expected.toJSArray)
       }
     }
 
@@ -73,7 +74,7 @@ object RegexTest extends JasmineTest {
 
       def splitWithLimit(input: String, regex: String, limit: Int, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input, limit)
-        expect(result).toEqual(expected)
+        expect(result.toJSArray).toEqual(expected.toJSArray)
       }
     }
 

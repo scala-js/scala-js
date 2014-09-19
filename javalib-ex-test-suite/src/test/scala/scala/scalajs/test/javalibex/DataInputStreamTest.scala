@@ -216,12 +216,12 @@ object DataInputStreamTest extends JasmineTest {
         val buf = new Array[Byte](50)
 
         stream.readFully(buf)
-        expect(buf).toEqual((-100 to -51).toJSArray)
+        expect(buf.toJSArray).toEqual((-100 to -51).toJSArray)
 
         expect(() => stream.readFully(null)).toThrow
 
         stream.readFully(buf, 40, 10)
-        expect(buf).toEqual(((-100 to -61) ++ (-50 to -41)).toJSArray)
+        expect(buf.toJSArray).toEqual(((-100 to -61) ++ (-50 to -41)).toJSArray)
 
         expect(() => stream.readFully(buf, 70, 1)).toThrow
         expect(() => stream.readFully(buf, 10, 100)).toThrow
@@ -229,10 +229,10 @@ object DataInputStreamTest extends JasmineTest {
         expect(() => stream.readFully(buf, 0, -1)).toThrow
 
         stream.readFully(buf, 0, 50)
-        expect(buf).toEqual((-40 to 9).toJSArray)
+        expect(buf.toJSArray).toEqual((-40 to 9).toJSArray)
 
         stream.readFully(buf, 0, 50)
-        expect(buf).toEqual((10 to 59).toJSArray)
+        expect(buf.toJSArray).toEqual((10 to 59).toJSArray)
 
         expect(() => stream.readFully(buf)).toThrow
       }
@@ -260,10 +260,10 @@ object DataInputStreamTest extends JasmineTest {
         val buf = new Array[Byte](50)
 
         stream.readFully(buf)
-        expect(buf).toEqual((1 to 50).toJSArray)
+        expect(buf.toJSArray).toEqual((1 to 50).toJSArray)
 
         stream.readFully(buf, 40, 10)
-        expect(buf).toEqual(((1 to 40) ++ (51 to 60)).toJSArray)
+        expect(buf.toJSArray).toEqual(((1 to 40) ++ (51 to 60)).toJSArray)
 
         expect(() => stream.readFully(buf)).toThrow
       }

@@ -27,9 +27,6 @@ import scala.collection.generic.CanBuildFrom
  *  boxing of proxying of any kind.
  */
 sealed trait Any extends scala.AnyRef {
-  @deprecated("Considered abuse in typed JavaScript, will be removed in 0.6. "+
-      "Use js.Dynamic or js.prim.Boolean instead.", "0.5.0")
-  def unary_!(): Boolean = sys.error("stub")
 }
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
@@ -46,41 +43,6 @@ object Any extends LowPrioAnyImplicits {
   implicit def fromDouble(value: scala.Double): prim.Number = sys.error("stub")
 
   implicit def fromString(s: java.lang.String): prim.String = sys.error("stub")
-
-  @deprecated("Implicit conversion from scala.Array to js.Array is deprecated. " +
-      "Use _.toJSArray through JSConverters instead", "0.5.5")
-  implicit def fromArray[A](array: scala.Array[A]): Array[A] = {
-    val length = array.length
-    val result = new Array[A](length)
-    var i = 0
-    while (i < length) {
-      result(i) = array(i)
-      i += 1
-    }
-    result
-  }
-
-  @deprecated("Implicit conversion from js.Array to scala.Array is deprecated. " +
-      "Use _.toArray through js.ArrayOps instead", "0.5.5")
-  implicit def toArray[A : ClassTag](array: Array[A]): scala.Array[A] = {
-    val length = array.length.toInt
-    val result = new scala.Array[A](length)
-    var i = 0
-    while (i < length) {
-      result(i) = array(i)
-      i += 1
-    }
-    result
-  }
-
-  @deprecated("Use _.toJSArray through JSConverters instead", "0.5.4")
-  def fromTraversableOnce[A](col: TraversableOnce[A]): Array[A] =
-    scala.scalajs.runtime.genTraversableOnce2jsArray(col)
-
-  @deprecated("Converts js.Array to scala.Array. " +
-      "Use jsArrayOps instead for operations, toArray for conversion", "0.5.1")
-  def arrayOps[A : ClassTag](array: Array[A]): mutable.ArrayOps[A] =
-    genericArrayOps(toArray(array))
 
   implicit def jsArrayOps[A](array: Array[A]): ArrayOps[A] =
     new ArrayOps(array)
@@ -177,7 +139,7 @@ sealed trait Dynamic extends Any with scala.Dynamic {
 
   import prim.Number
 
-  override def unary_!(): Boolean = sys.error("stub")
+  def unary_!(): Boolean = sys.error("stub")
 
   def unary_+(): Number
   def unary_-(): Number
@@ -618,7 +580,7 @@ object Number extends Object {
  *  [[scala.Boolean]] instead.
  */
 sealed trait Boolean extends Any {
-  override def unary_!(): scala.Boolean = sys.error("stub")
+  def unary_!(): scala.Boolean = sys.error("stub")
 
   def &&(that: Boolean): Boolean
   def ||(that: Boolean): Boolean

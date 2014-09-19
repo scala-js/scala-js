@@ -11,6 +11,7 @@ package javalib
 import java.io._
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 
 /** Tests for our implementation of java.io._ reader classes */
 object ReadersTest extends JasmineTest {
@@ -34,7 +35,7 @@ object ReadersTest extends JasmineTest {
       val buf = new Array[Char](10)
 
       expect(r.read(buf, 2, 8)).toBe(4)
-      expect(js.Any.fromArray(buf.map(_.toInt))).toEqual(
+      expect(buf.map(_.toInt).toJSArray).toEqual(
         js.Array[Int](0,0,'a','s','d','f',0,0,0,0))
     }
 

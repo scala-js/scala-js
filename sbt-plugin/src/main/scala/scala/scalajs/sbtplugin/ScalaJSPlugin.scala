@@ -23,9 +23,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
   val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
 
-  @deprecated("Meaningless. Use the sbt scalaVersion setting instead.", "0.5.3")
-  val scalaJSScalaVersion = "2.11.0"
-
   object ScalaJSKeys {
     import KeyRanks._
 

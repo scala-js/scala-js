@@ -13,6 +13,7 @@ import scala.scalajs.test.JasmineTest
 import java.util.Random
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 
 object RandomTest extends JasmineTest {
 
@@ -179,7 +180,7 @@ object RandomTest extends JasmineTest {
         val exp = js.Array(exps.map(_.toByte): _*)
         val buf = new Array[Byte](exp.length)
         random.nextBytes(buf)
-        expect(buf).toEqual(exp)
+        expect(buf.toJSArray).toEqual(exp)
       }
 
       test(62, 89, 68, -91, 10, 0, 85)

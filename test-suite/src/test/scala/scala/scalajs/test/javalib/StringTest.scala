@@ -9,6 +9,7 @@ package scala.scalajs.test
 package javalib
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 import scala.scalajs.test.JasmineTest
 
 object StringTest extends JasmineTest {
@@ -139,16 +140,16 @@ object StringTest extends JasmineTest {
     }
 
     it("should respond to `split`") {
-      expect("Scala.js".split("a")).toEqual(js.Array("Sc", "l", ".js"))
-      expect("asdf".split("")).toEqual(js.Array("","a","s","d","f"))
-      expect("asdf".split("", -1)).toEqual(js.Array("","a","s","d","f", ""))
+      expect("Scala.js".split("a").toJSArray).toEqual(js.Array("Sc", "l", ".js"))
+      expect("asdf".split("").toJSArray).toEqual(js.Array("","a","s","d","f"))
+      expect("asdf".split("", -1).toJSArray).toEqual(js.Array("","a","s","d","f", ""))
     }
 
     it("should respond to `split` with char as argument") {
-      expect("Scala.js".split('.')).toEqual(js.Array("Scala","js"))
+      expect("Scala.js".split('.').toJSArray).toEqual(js.Array("Scala","js"))
       for (i <- 0 to 32) {
         val c = i.toChar
-        expect(s"blah${c}blah${c}blah${c}blah".split(c)).toEqual(
+        expect(s"blah${c}blah${c}blah${c}blah".split(c).toJSArray).toEqual(
           js.Array("blah", "blah", "blah", "blah"))
       }
     }
