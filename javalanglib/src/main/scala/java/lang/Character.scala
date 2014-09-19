@@ -184,8 +184,8 @@ object Character {
   final val MAX_SURROGATE = MAX_LOW_SURROGATE
 
   /* Tests */
-  def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
-  def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
+  //def getType(ch: scala.Char): scala.Int
+  //def getType(codePoint: scala.Int): scala.Int
   def digit(c: scala.Char, radix: scala.Int): scala.Int = {
     if (radix > MAX_RADIX || radix < MIN_RADIX)
       -1
@@ -210,10 +210,10 @@ object Character {
   }
 
   def isDigit(c: scala.Char): scala.Boolean = c >= '0' && c <= '9'
-  def isLetter(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isLetterOrDigit(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  //def isLetter(c: scala.Char): scala.Boolean
+  //def isLetterOrDigit(c: scala.Char): scala.Boolean
   def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
-  def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  //def isSpaceChar(c: scala.Char): scala.Boolean
 
   def isHighSurrogate(c: scala.Char): scala.Boolean =
     (c >= MIN_HIGH_SURROGATE) && (c <= MAX_HIGH_SURROGATE)
@@ -237,22 +237,22 @@ object Character {
   def isIdentifierIgnorable(c: scala.Char): scala.Boolean =
     reIdentIgnorable.test(c.toString)
 
-  def isMirrored(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  //def isMirrored(c: scala.Char): scala.Boolean
   def isLowerCase(c: scala.Char): scala.Boolean = toLowerCase(c) == c
   def isUpperCase(c: scala.Char): scala.Boolean = toUpperCase(c) == c
-  def isTitleCase(c: scala.Char): scala.Boolean = sys.error("unimplemented")
-  def isJavaIdentifierPart(c: scala.Char): scala.Boolean = sys.error("unimplemented")
+  //def isTitleCase(c: scala.Char): scala.Boolean
+  //def isJavaIdentifierPart(c: scala.Char): scala.Boolean
 
-  def getDirectionality(c: scala.Char): scala.Byte = sys.error("unimplemented")
+  //def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
   def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase()(0)
   def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase()(0)
-  def toTitleCase(c: scala.Char): scala.Char = sys.error("unimplemented")
-  def getNumericValue(c: scala.Char): scala.Int = sys.error("unimplemented")
+  //def toTitleCase(c: scala.Char): scala.Char
+  //def getNumericValue(c: scala.Char): scala.Int
 
   /* Misc */
-  def reverseBytes(ch: scala.Char): scala.Char = sys.error("unimplemented")
+  //def reverseBytes(ch: scala.Char): scala.Char
 
   @inline def toString(c: scala.Char) = js.String.fromCharCode(c.toInt)
 

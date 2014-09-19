@@ -8,8 +8,8 @@ class Runtime private {
     halt0(status)
   }
 
-  def addShutdownHook(hook: Thread) {}
-  def removeShutdownHook(hook: Thread) {}
+  //def addShutdownHook(hook: Thread): Unit
+  //def removeShutdownHook(hook: Thread): Unit
 
   def halt(status: Int) {
     halt0(status)
@@ -31,20 +31,20 @@ class Runtime private {
   }
 
   def availableProcessors() = 1
-  def freeMemory(): scala.Long = sys.error("Runtime.freeMemory() not implemented")
-  def totalMemory(): scala.Long = sys.error("Runtime.totalMemory() not implemented")
-  def maxMemory(): scala.Long = Long.MAX_VALUE
+  //def freeMemory(): scala.Long
+  //def totalMemory(): scala.Long
+  //def maxMemory(): scala.Long
 
   def gc(): Unit = {
     // Ignore
   }
 
-  def runFinalization() {}
-  def traceInstructions(on: scala.Boolean) {}
-  def traceMethodCalls(on: scala.Boolean) {}
+  //def runFinalization(): Unit
+  //def traceInstructions(on: scala.Boolean): Unit
+  //def traceMethodCalls(on: scala.Boolean): Unit
 
-  def load(filename: String): Unit = sys.error("Runtime.load() not implemented")
-  def loadLibrary(filename: String): Unit = sys.error("Runtime.loadLibrary() not implemented")
+  //def load(filename: String): Unit
+  //def loadLibrary(filename: String): Unit
 }
 
 object Runtime {
