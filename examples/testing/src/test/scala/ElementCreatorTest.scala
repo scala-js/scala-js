@@ -1,6 +1,7 @@
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global
-import scala.scalajs.test.JasmineTest
+
+import org.scalajs.jasminetest.JasmineTest
 
 object ElementCreatorTest extends JasmineTest {
 

@@ -29,7 +29,7 @@ class TestFramework(
 
   private val f1 = new SubclassFingerprint {
     val isModule = true
-    val superclassName = "scala.scalajs.test.Test"
+    val superclassName = "scala.scalajs.testbridge.Test"
     val requireNoArgConstructor = true
   }
 

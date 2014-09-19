@@ -616,7 +616,7 @@ object ScalaJSPluginInternal {
 
       skip in packageJSDependencies := true,
 
-      scalaJSTestFramework := "scala.scalajs.test.JasmineTestFramework",
+      scalaJSTestFramework := "org.scalajs.jasminetest.JasmineTestFramework",
 
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,

@@ -60,7 +60,7 @@ class TestTask(
     val jsArgArray = listToJS(args)
     new MemVirtualJSFile("Generated test launcher file").
       withContent(s"""this${dot2bracket(testFramework)}().safeRunTest(
-                     |  scala.scalajs.test.internal.ConsoleTestOutput(),
+                     |  scala.scalajs.testbridge.internal.ConsoleTestOutput(),
                      |  $jsArgArray,
                      |  this${dot2bracket(testKey)});""".stripMargin)
   }

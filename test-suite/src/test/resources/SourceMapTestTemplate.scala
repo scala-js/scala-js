@@ -1,9 +1,9 @@
-package scala.scalajs.test.compiler
+package scala.scalajs.testsuite.compiler
 
-import scala.scalajs.test._
+import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
 
 /** The test counter */
-private[test] object TC {
+private[testsuite] object TC {
   var testNum: Int = _
 
   def is(x: Int): Boolean = testNum == x
