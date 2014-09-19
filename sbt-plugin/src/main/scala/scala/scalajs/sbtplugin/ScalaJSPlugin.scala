@@ -29,9 +29,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     @deprecated("May be removed in the future. Use fastOptJS instead.", "0.5.5")
     val packageJS = TaskKey[CompleteCIClasspath]("packageJS",
         "Package all the compiled .js files", CTask)
-    val fastOptJS = TaskKey[CompleteCIClasspath]("fastOptJS",
+    val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
-    val fullOptJS = TaskKey[CompleteNCClasspath]("fullOptJS",
+    val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
 
     @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
