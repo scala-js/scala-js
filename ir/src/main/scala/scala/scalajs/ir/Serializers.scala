@@ -29,11 +29,6 @@ object Serializers {
     new Deserializer(stream, version).deserialize()
   }
 
-  @deprecated("Use deserialize(InputStream, String) instead", "0.5.2")
-  def deserialize(stream: InputStream): Tree = {
-    deserialize(stream, "0.5.0")
-  }
-
   // true for easier debugging (not for "production", it adds 8 bytes per node)
   private final val UseDebugMagic = false
   private final val DebugMagic = 0x3fa8ef84

@@ -153,8 +153,10 @@ object UndefOrTest extends JasmineTest {
     }
 
     it("toList") {
-      expect(some("hello").toList.toArray).toEqual(js.Array("hello"))
-      expect(none[String].toList.toArray).toEqual(js.Array())
+      import scala.scalajs.js.JSConverters._
+
+      expect(some("hello").toList.toJSArray).toEqual(js.Array("hello"))
+      expect(none[String].toList.toJSArray).toEqual(js.Array())
     }
 
     it("toLeft and toRight") {

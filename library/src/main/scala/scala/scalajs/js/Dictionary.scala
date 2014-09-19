@@ -89,9 +89,4 @@ object Dictionary {
       result(key) = value
     result
   }
-
-  /** Returns the names of all the enumerable properties of this object. */
-  @deprecated("Use js.Object.properties(obj) instead", "0.5.0")
-  def propertiesOf(obj: Any): Array[String] =
-    Object.properties(obj.asInstanceOf[Object])
 }

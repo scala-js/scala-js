@@ -33,9 +33,6 @@ class ArrayBufferInputStream(val buffer: ArrayBuffer, val offset: Int,
   private val uintView = new Uint8Array(buffer, offset, length)
   private val byteView = new Int8Array(buffer, offset, length)
 
-  @deprecated("Use length instead", "0.5.4")
-  protected val count: Int = length
-
   /** Used to persist [[pos]] when mark is called */
   protected var mark: Int = 0
 

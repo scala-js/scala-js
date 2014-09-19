@@ -80,9 +80,6 @@ object Printers {
   class IRTreePrinter(val out: Writer,
       val jsMode: Boolean) extends IndentationManager {
 
-    @deprecated("Use the constructor with jsMode", "0.5.3")
-    def this(out: Writer) = this(out, jsMode = true)
-
     def printBlock(tree: Tree, isStat: Boolean): Unit = {
       def printStatBlock(trees: List[Tree]): Unit = {
         print("{"); indent; println()
@@ -654,10 +651,6 @@ object Printers {
 
   class IRTreePrinterWithSourceMap(_out: Writer, jsMode: Boolean,
       sourceMap: SourceMapWriter) extends IRTreePrinter(_out, jsMode) {
-
-    @deprecated("Use the constructor with jsMode", "0.5.3")
-    def this(out: Writer, sourceMap: SourceMapWriter) =
-      this(out, jsMode = true, sourceMap)
 
     private var column = 0
 

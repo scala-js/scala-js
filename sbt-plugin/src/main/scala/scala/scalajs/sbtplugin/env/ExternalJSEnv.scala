@@ -14,10 +14,6 @@ abstract class ExternalJSEnv(
   final protected val additionalArgs: Seq[String],
   final protected val additionalEnv:  Map[String, String]) extends JSEnv {
 
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(additionalArgs: Seq[String], additionalEnv: Seq[String]) =
-    this(additionalArgs, ExternalJSEnv.splitEnv(additionalEnv))
-
   import ExternalJSEnv._
 
   /** Printable name of this VM */
@@ -116,10 +112,10 @@ abstract class ExternalJSEnv(
   protected def getVMArgs(args: RunJSArgs): Seq[String] = additionalArgs
 
   /** VM environment. Override to adapt.
-   * 
+   *
    *  Default is `sys.env` and [[additionalEnv]]
    */
-  protected def getVMEnv(args: RunJSArgs): Map[String, String] = 
+  protected def getVMEnv(args: RunJSArgs): Map[String, String] =
     sys.env ++ additionalEnv
 
   /** Get files that are a library (i.e. that do not run anything) */
@@ -133,17 +129,6 @@ abstract class ExternalJSEnv(
 }
 
 object ExternalJSEnv {
-
-  /** Helper for deprecated constructors */
-  @deprecated("This is only a helper for compat constructors", "0.5.3")
-  def splitEnv(env: Seq[String]): Map[String, String] = {
-    val tups = for (str <- env) yield {
-      val Array(name, value) = str.split("=", 2)
-      (name, value)
-    }
-    tups.toMap
-  }
-
   case class RunJSArgs(
       classpath: CompleteClasspath,
       code: VirtualJSFile,

@@ -8,7 +8,10 @@
 package scala.scalajs.test
 package javalib
 
+import language.implicitConversions
+
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 import scala.scalajs.test.JasmineTest
 import java.util.{ Arrays, Comparator }
 
@@ -20,6 +23,9 @@ object ArraysTest extends ArraysTest
  *  by TypedArrays
  */
 trait ArraysTest extends JasmineTest {
+
+  // Just in here, we allow ourselves to do this
+  implicit def array2jsArray[T](arr: Array[T]): js.Array[T] = arr.toJSArray
 
   /** Overridden by typedarray tests */
   def Array[T : ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)

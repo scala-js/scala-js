@@ -9,6 +9,7 @@ package scala.scalajs.test
 package jsinterop
 
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 import scala.scalajs.test.JasmineTest
 
 import scala.concurrent.{Future, ExecutionContext}
@@ -47,7 +48,7 @@ object AsyncTest extends JasmineTest {
   }
 
   def expect(abuf: ArrayBuffer[String]): JasmineExpectation =
-    expect(abuf.toArray)
+    expect(abuf.toJSArray)
 
   describe("scala.scalajs.concurrent.JSExecutionContext.queue") {
 
@@ -112,7 +113,7 @@ object AsyncTest extends JasmineTest {
     it("should support sequence") {
       implicit val ec = JSExecutionContext.runNow
       val f = Future.sequence(Seq(Future(3), Future(5)))
-      expect(f.value.get.get.toArray).toEqual(js.Array(3, 5))
+      expect(f.value.get.get.toJSArray).toEqual(js.Array(3, 5))
     }
 
   }

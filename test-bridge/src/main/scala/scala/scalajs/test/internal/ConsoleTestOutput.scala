@@ -7,15 +7,14 @@ import scala.scalajs.test._
 
 import scala.scalajs.runtime.StackTrace.ColumnStackTraceElement
 
-/** Implementation of TestOutput. DO NOT USE. This class is only public
- *  so it can be exported.
+/** Implementation of TestOutput.
  *
  *  Attention: This class monkey-patches console.log. Make sure it is loaded
  *  before any output. It also should always be paired with a
  *  [[scala.scalajs.sbtplugin.testing.TestOutputConsole]] on the JVM side.
  */
 @JSExport("scala.scalajs.test.internal.ConsoleTestOutput")
-object ConsoleTestOutput extends TestOutput {
+protected object ConsoleTestOutput extends TestOutput {
 
   /** monkey-patches console.log when class is loaded */
   private val savedConsoleLog: js.Function1[String, Unit] = {

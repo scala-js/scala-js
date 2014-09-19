@@ -19,7 +19,7 @@ final class RuntimeLong private (
   val h: Int
 ) extends Number with Comparable[java.lang.Long] { x =>
 
-  import RuntimeLong.{MinValue => _, MaxValue => _, _}
+  import RuntimeLong._
   import RuntimeLongImpl._
 
   /** Construct from an Int.
@@ -150,7 +150,6 @@ final class RuntimeLong private (
   }
 
   def notEquals(that: RuntimeLong) = !equals(that)
-  def notEquals(that: Any): Boolean = !equals(that)
 
   @inline
   def <(y: RuntimeLong): Boolean = y > x
@@ -630,12 +629,6 @@ object RuntimeLong {
   private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  @deprecated("Use RuntimeLongImpl.Zero instead", "0.5.5")
-  @inline def zero: RuntimeLong = RuntimeLongImpl.Zero
-
-  @deprecated("Use RuntimeLongImpl.One instead", "0.5.5")
-  @inline def one: RuntimeLong = RuntimeLongImpl.One
-
   def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
   def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
 
@@ -662,15 +655,5 @@ object RuntimeLong {
   /** Creates a new long from its three underlying components. */
   @inline def apply(l: Int, m: Int, h: Int): RuntimeLong =
     new RuntimeLong(l, m, h)
-
-  // Public Long API
-
-  /** The smallest value representable as a Long. */
-  @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
-  def MinValue: RuntimeLong = RuntimeLongImpl.MinValue
-
-  /** The largest value representable as a Long. */
-  @deprecated("Implementation detail. Will be removed in 0.6.0.", "0.5.5")
-  def MaxValue: RuntimeLong = RuntimeLongImpl.MaxValue
 
 }

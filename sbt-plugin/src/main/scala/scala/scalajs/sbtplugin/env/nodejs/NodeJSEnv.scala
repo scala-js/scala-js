@@ -55,21 +55,6 @@ class NodeJSEnv(
 
   def this() = this(None, Seq.empty, Map.empty[String, String])
 
-  // Deprecated compat constructors
-
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(nodejsPath: String, env: Seq[String]) =
-    this(nodejsPath, env = ExternalJSEnv.splitEnv(env))
-
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(nodejsPath: String, args: Seq[String], env: Seq[String]) =
-    this(nodejsPath, args, env = ExternalJSEnv.splitEnv(env))
-
-  @deprecated("Use Map as environment instead", "0.5.3")
-  def this(nodejsPath: Option[String], addArgs: Seq[String],
-      addEnv: Seq[String]) =
-    this(nodejsPath, addArgs, ExternalJSEnv.splitEnv(addEnv))
-
   // We need to initialize the libCache first
   override def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): Unit =

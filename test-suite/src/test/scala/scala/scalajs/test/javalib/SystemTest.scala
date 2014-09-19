@@ -8,10 +8,16 @@
 package scala.scalajs.test
 package javalib
 
+import language.implicitConversions
+
 import scala.scalajs.js
+import scala.scalajs.js.JSConverters._
 import scala.scalajs.test.JasmineTest
 
 object SystemTest extends JasmineTest {
+
+  // Just in here, we allow ourselves to do this
+  implicit def array2jsArray[T](arr: Array[T]): js.Array[T] = arr.toJSArray
 
   describe("java.lang.System") {
 
