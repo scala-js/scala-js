@@ -145,9 +145,7 @@ abstract class JSPrimitives {
 
     val SystemModule = getRequiredModule("java.lang.System")
     addPrimitive(getMember(SystemModule, newTermName("arraycopy")), ARRAYCOPY)
-    val idHashCode = getMemberIfDefined(SystemModule, newTermName("identityHashCode0"))
-    if (idHashCode.exists)
-      addPrimitive(idHashCode, IDHASHCODE)
+    addPrimitive(getMember(SystemModule, newTermName("identityHashCode")), IDHASHCODE)
 
     addPrimitive(getMember(RuntimePackageModule,
         newTermName("environmentInfo")), ENV_INFO)
