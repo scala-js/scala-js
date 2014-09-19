@@ -529,9 +529,6 @@ object Serializers {
   }
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
-    private[this] val useHacks050 = sourceVersion == "0.5.0"
-    private[this] val useHacks052 = useHacks050 || sourceVersion == "0.5.2"
-
     private[this] val input = new DataInputStream(stream)
 
     private[this] val files =
@@ -543,11 +540,7 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     def deserialize(): Tree = {
-      val result = readTree()
-      if (useHacks050)
-        new FixClosuresTransformer().transformStat(result)
-      else
-        result
+      readTree()
     }
 
     def readTree(): Tree = {
@@ -560,9 +553,6 @@ object Serializers {
         case TagDocComment => DocComment(readString())
         case TagVarDef     => VarDef(readIdent(), readType(), readBoolean(), readTree())
         case TagParamDef   => ParamDef(readIdent(), readType(), readBoolean())
-
-        case TagParamDefOld if useHacks052 =>
-          ParamDef(readIdent(), readType(), false)
 
         case TagSkip     => Skip()
         case TagBlock    => Block(readTrees())
@@ -612,27 +602,13 @@ object Serializers {
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
+        case TagJSApply              => JSApply(readTree(), readTrees())
         case TagJSDelete             => JSDelete(readTree(), readTree())
         case TagJSUnaryOp            => JSUnaryOp(readString(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readString(), readTree(), readTree())
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
-
-        // Deserialization-time fix for #804
-        case TagJSApply =>
-          val fun = readTree()
-          val args = readTrees()
-          if (useHacks050) {
-            fun match {
-              case CallHelper("protect", List(f)) => JSFunctionApply(f, args)
-              case JSDotSelect(r, m)              => JSDotMethodApply(r, m, args)
-              case JSBracketSelect(r, m)          => JSBracketMethodApply(r, m, args)
-              case _                              => JSFunctionApply(fun, args)
-            }
-          } else {
-            JSApply(fun, args)
-          }
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())
@@ -659,11 +635,7 @@ object Serializers {
           ClassDef(name, kind, parent, ancestors, defs)
 
         case TagMethodDef =>
-          val m = MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
-          if (useHacks052 && !useHacks050)
-            new FixMethodDefTransformer().fixMethodDef(m)
-          else
-            m
+          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())
@@ -798,180 +770,15 @@ object Serializers {
     }
   }
 
-  private class FixClosuresTransformer extends Transformers.Transformer {
-    import FixClosuresTransformer._
-
-    override def transformStat(tree: Tree): Tree =
-      super.transformStat(fixClosure(tree))
-
-    override def transformExpr(tree: Tree): Tree =
-      super.transformExpr(fixClosure(tree))
-
-    private def fixClosure(tree: Tree): Tree = {
-      implicit val pos = tree.pos
-      tree match {
-        case JSFunctionApply(
-            Function(NoType, formalCaptures, DynType,
-                Function(thisType, formalArgs, resultType, body)),
-            actualCaptures) =>
-          Closure(thisType, formalCaptures ++ formalArgs, resultType, body,
-              actualCaptures)
-
-        case JSBracketMethodApply(
-            Function(thisType, formalArgs, resultType,
-                body @ PatchedBody(patch,
-                    result @ Apply(receiver: This, method, args))),
-            StringLiteral("bind", _), List(thisActualCapture)) =>
-          // The compiler never emits a variable named "$_this"
-          val thisFormalCapture = ParamDef(Ident("$_this", None), thisType, false)
-          val thisCaptureArg = thisFormalCapture.ref
-          val (actualArgs, actualCaptures) = args.splitAt(formalArgs.size)
-          val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
-          Closure(thisType, thisFormalCapture :: formalCaptures ::: formalArgs, resultType,
-              patch(Apply(thisCaptureArg, method,
-                  actualArgs ::: captureArgs)(result.tpe)(result.pos)),
-              thisActualCapture :: actualCaptures)
-
-        case Function(NoType, formalArgs, resultType,
-            body @ PatchedBody(patch,
-                result @ TraitImplApply(traitImpl, method, args))) =>
-          val (thisActualCapture :: actualArgs, actualCaptures) =
-            args.splitAt(formalArgs.size+1)
-          val (formalCaptures, thisCaptureArg :: captureArgs) =
-            makeCaptures(thisActualCapture :: actualCaptures)
-          Closure(NoType, formalCaptures ::: formalArgs, resultType,
-              patch(TraitImplApply(traitImpl, method,
-                  thisCaptureArg :: actualArgs ::: captureArgs)(result.tpe)(result.pos)),
-              thisActualCapture :: actualCaptures)
-
-        case _: Function =>
-          sys.error(s"Found unrecognized function node at ${tree.pos}:\n$tree")
-
-        case _ =>
-          tree
-      }
-    }
-
-    override def transformDef(tree: Tree): Tree = tree match {
-      case _: MethodDef =>
-        /* We are here because useHacks050 is true. In that case, useHacks052
-         * is also true.
-         */
-        val m = super.transformDef(tree).asInstanceOf[MethodDef]
-        new FixMethodDefTransformer().fixMethodDef(m)
-
-      case _ =>
-        super.transformDef(tree)
-    }
-  }
-
-  private object FixClosuresTransformer {
-    private object PatchedBody {
-      def unapply(body: Tree): Option[(Tree => Tree, Tree)] = {
-        val stats = body match {
-          case Block(stats) => stats
-          case stat         => stat :: Nil
-        }
-        val (unboxedParams0, boxedResult) = stats.span(_.isInstanceOf[VarDef])
-        val unboxedParams = unboxedParams0.asInstanceOf[List[VarDef]]
-        boxedResult match {
-          case List(result, undef: Undefined) =>
-            Some((tree => Block(unboxedParams :+
-                tree :+ undef)(tree.pos), result))
-          case List(helper @ CallHelper("bC", List(result))) =>
-            Some((tree => Block(unboxedParams :+
-                CallHelper("bC", result)(helper.tpe)(helper.pos))(tree.pos), result))
-          case List(New(cls, ctor, List(result))) =>
-            Some((tree => Block(unboxedParams :+
-                New(cls, ctor, List(tree))(tree.pos))(tree.pos), result))
-          case List(result) =>
-            Some((tree => Block(unboxedParams :+
-                tree)(tree.pos), result))
-          case _ =>
-            None
-        }
-      }
-    }
-
-    private def makeCaptures(actualCaptures: List[Tree]) = {
-      (actualCaptures map { c => (c: @unchecked) match {
-        case VarRef(ident, _) =>
-          (ParamDef(ident, c.tpe, false)(c.pos), VarRef(ident, false)(c.tpe)(c.pos))
-      }}).unzip
-    }
-  }
-
-  private class FixMethodDefTransformer extends Transformers.Transformer {
-    private var patchedVarNames: Set[String] = Set.empty
-
-    def fixMethodDef(tree: MethodDef): MethodDef = tree.body match {
-      case body if isTailRecWhileLoop(body) =>
-        val MethodDef(name, params, resultType, _) = tree
-        patchedVarNames = params.map(_.name.name).toSet
-        val newParams = params.map(p => p.copy(mutable = true)(p.pos))
-        val newBody =
-          if (resultType == NoType) transformStat(body)
-          else transformExpr(body)
-        MethodDef(name, newParams, resultType, newBody)(tree.pos)
-
-      case Block(List(
-          thisDef @ VarDef(thisName, thisType, _, _: This),
-          body)) if isTailRecWhileLoop(body) =>
-        val MethodDef(name, params, resultType, wholeBody) = tree
-        patchedVarNames = (thisName.name :: params.map(_.name.name)).toSet
-        val newParams = params.map(p => p.copy(mutable = true)(p.pos))
-        val newThisDef = thisDef.copy(mutable = true)(thisDef.pos)
-        val newBody =
-          if (resultType == NoType) transformStat(body)
-          else transformExpr(body)
-        val newWholeBody =
-          Block(newThisDef, newBody)(wholeBody.pos)
-        MethodDef(name, newParams, resultType, newWholeBody)(tree.pos)
-
-      case _ =>
-        tree
-    }
-
-    private def isTailRecWhileLoop(tree: Tree): Boolean = tree match {
-      case While(BooleanLiteral(true), _, Some(Ident("tailCallLoop", _))) =>
-        true
-      case _ =>
-        false
-    }
-
-    override def transformStat(tree: Tree): Tree =
-      transform(tree, isStat = true)
-
-    override def transformExpr(tree: Tree): Tree =
-      transform(tree, isStat = false)
-
-    private def transform(tree: Tree, isStat: Boolean): Tree = tree match {
-      case VarRef(ident @ Ident(name, _), false) if patchedVarNames.contains(name) =>
-        VarRef(ident, true)(tree.tpe)(tree.pos)
-
-      case Closure(thisType, params, resultType, body, captures) =>
-        Closure(thisType, params, resultType, body,
-            captures.map(transformExpr))(tree.pos)
-
-      case _: Function =>
-        sys.error("Unexpected Function in FixMethodDefTransformer at "+
-            s"${tree.pos}:\n$tree")
-
-      case _ =>
-        if (isStat) super.transformStat(tree)
-        else super.transformExpr(tree)
-    }
-  }
-
   // Tags for Trees
 
   private final val TagEmptyTree = 1
 
   private final val TagDocComment = TagEmptyTree + 1
   private final val TagVarDef = TagDocComment + 1
-  private final val TagParamDefOld = TagVarDef + 1
+  private final val TagParamDef = TagVarDef + 1
 
-  private final val TagSkip = TagParamDefOld + 1
+  private final val TagSkip = TagParamDef + 1
   private final val TagBlock = TagSkip + 1
   private final val TagLabeled = TagBlock + 1
   private final val TagAssign = TagLabeled + 1
@@ -1000,7 +807,8 @@ object Serializers {
   private final val TagArrayValue = TagNewArray + 1
   private final val TagArrayLength = TagArrayValue + 1
   private final val TagArraySelect = TagArrayLength + 1
-  private final val TagIsInstanceOf = TagArraySelect + 1
+  private final val TagRecordValue = TagArraySelect + 1
+  private final val TagIsInstanceOf = TagRecordValue + 1
   private final val TagAsInstanceOf = TagIsInstanceOf + 1
   private final val TagClassOf = TagAsInstanceOf + 1
   private final val TagCallHelper = TagClassOf + 1
@@ -1025,7 +833,8 @@ object Serializers {
   private final val TagStringLiteral = TagDoubleLiteral + 1
   private final val TagVarRef = TagStringLiteral + 1
   private final val TagThis = TagVarRef + 1
-  private final val TagFunction = TagThis + 1
+  private final val TagClosure = TagThis + 1
+  private final val TagFunction = TagClosure + 1
   private final val TagCast = TagFunction + 1
 
   private final val TagClassDef = TagCast + 1
@@ -1037,12 +846,6 @@ object Serializers {
   private final val TagJSFunctionApply = TagModuleExportDef + 1
   private final val TagJSDotMethodApply = TagJSFunctionApply + 1
   private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
-
-  private final val TagClosure = TagJSBracketMethodApply + 1
-
-  private final val TagParamDef = TagClosure + 1
-
-  private final val TagRecordValue = TagParamDef + 1
 
   // Tags for Types
 
@@ -1057,6 +860,6 @@ object Serializers {
   private final val TagClassType = TagNullType + 1
   private final val TagArrayType = TagClassType + 1
   private final val TagDynType = TagArrayType + 1
-  private final val TagNoType = TagDynType + 1
-  private final val TagRecordType = TagNoType + 1
+  private final val TagRecordType = TagDynType + 1
+  private final val TagNoType = TagRecordType + 1
 }
