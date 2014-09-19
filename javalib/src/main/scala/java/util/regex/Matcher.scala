@@ -202,7 +202,7 @@ final class Matcher private[regex] (
   def hitEnd(): Boolean =
     lastMatchIsValid && (lastMatch == null || end() == inputstr.length)
 
-  def requireEnd(): Boolean = ??? // I don't understand the spec
+  //def requireEnd(): Boolean // I don't understand the spec
 
   // Stub methods for region management
 
@@ -212,10 +212,10 @@ final class Matcher private[regex] (
     new Matcher(pattern0, input0, start, end)
 
   def hasTransparentBounds(): Boolean = false
-  def useTransparentBounds(b: Boolean): Matcher = ???
+  //def useTransparentBounds(b: Boolean): Matcher
 
   def hasAnchoringBounds(): Boolean = true
-  def useAnchoringBounds(b: Boolean): Matcher = ???
+  //def useAnchoringBounds(b: Boolean): Matcher
 }
 
 object Matcher {

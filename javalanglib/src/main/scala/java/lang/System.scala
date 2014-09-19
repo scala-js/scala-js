@@ -37,14 +37,14 @@ object System {
   def identityHashCode(x: Object): scala.Int = identityHashCode0(x)
   protected[this] def identityHashCode0(x: Object): scala.Int = sys.error("stub")
 
-  def getProperties(): java.util.Properties = sys.error("System.getProperties() not implemented")
-  def getProperty(key: String): String = sys.error("System.getProperty() not implemented")
-  def getProperty(key: String, default: String): String = sys.error("System.getProperty() not implemented")
-  def clearProperty(key: String): String = sys.error("System.clearProperty() not implemented")
-  def setProperty(key: String, value: String): String = sys.error("System.setProperty() not implemented")
+  //def getProperties(): java.util.Properties
+  //def getProperty(key: String): String
+  //def getProperty(key: String, default: String): String
+  //def clearProperty(key: String): String
+  //def setProperty(key: String, value: String): String
 
-  def getenv(): java.util.Map[String,String] = sys.error("System.getenv() not implemented")
-  def getenv(name: String): String = sys.error("System.getenv() not implemented")
+  //def getenv(): java.util.Map[String,String]
+  //def getenv(name: String): String
 
   def exit(status: scala.Int) = Runtime.getRuntime().exit(status)
   def gc() = Runtime.getRuntime().gc()

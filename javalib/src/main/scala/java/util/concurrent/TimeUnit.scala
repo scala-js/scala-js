@@ -14,19 +14,15 @@ abstract class TimeUnit private (_index: Int,
   def toDays(a: Long): Long
 
   // not used
-  private[concurrent] def excessNanos(a: Long, b: Long): Int =
-    sys.error("TimeUnit.excessNanos() is not available on JavaScript")
+  //private[concurrent] def excessNanos(a: Long, b: Long): Int
 
   def name(): String = _name
   def ordinal(): Int = _index
 
   // methods that cannot be implemented
-  def timedWait(arg1: AnyRef, arg2: Long): Unit =
-    sys.error("TimeUnit.timedWait() is not available on JavaScript")
-  def timedJoin(arg1: Thread, arg2: Long): Unit =
-    sys.error("TimeUnit.timedJoin() is not available on JavaScript")
-  def sleep(arg1: Long): Unit =
-    sys.error("TimeUnit.sleep() is not available on JavaScript")
+  //def timedWait(arg1: AnyRef, arg2: Long): Unit
+  //def timedJoin(arg1: Thread, arg2: Long): Unit
+  //def sleep(arg1: Long): Unit
 
   override def toString() = name()
 }
