@@ -30,7 +30,6 @@ object JavaLangObject {
     methods = List(
       MethodInfo("__init__"),
       MethodInfo("init___"),
-      MethodInfo("getClass__jl_Class"),
       MethodInfo("hashCode__I"),
       MethodInfo("equals__O__Z"),
       MethodInfo("clone__O",
@@ -92,22 +91,6 @@ object JavaLangObject {
           Nil,
           AnyType,
           This()(ThisType)),
-
-        /* final def getClass(): java.lang.Class = objectGetClass(this)
-         * The implementation of this method is kept in 0.5.x to guard against
-         * the following possible (though silly) call: super.getClass().
-         * Indeed, that would generate a StaticApply to O.getClass__jl_Class.
-         * TODO in 0.6.0: remove this, and reroute super.getClass() to the
-         * helper objectGetClass() at compile time. Don't forget to remove it
-         * from the Infos above as well.
-         */
-        MethodDef(
-          Ident("getClass__jl_Class", Some("getClass__jl_Class")),
-          Nil,
-          ClassType(ClassClass),
-          {
-            CallHelper("objectGetClass", This()(ThisType))(ClassType(ClassClass))
-          }),
 
         /* def hashCode(): Int = 42 */
         MethodDef(
