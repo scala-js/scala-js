@@ -238,10 +238,10 @@ object ScalaJSClosureOptimizer {
        *  last run from the cache. Otherwise, all trees that has been used once,
        *  are kept in memory. */
       unCache: Boolean = true,
-      /** If true, no inlining is performed */
-      disableInliner: Boolean = false,
-      /** If true, inlining is not performed incrementally */
-      batchInline: Boolean = false,
+      /** If true, no optimizations are performed */
+      disableOptimizer: Boolean = false,
+      /** If true, nothing is performed incrementally */
+      batchMode: Boolean = false,
       /** Ask to produce source map for the output */
       wantSourceMap: Boolean = false,
       /** Pretty-print the output. */
