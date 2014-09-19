@@ -59,6 +59,12 @@ object ScalaJSPluginInternal {
   val scalaJSDefaultPostLinkJSEnv = TaskKey[JSEnv]("scalaJSDefaultPostLinkJSEnv",
       "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
 
+  // Lookup keys for classpath attribute maps
+  val scalaJSCompleteCIClasspath =
+    AttributeKey[CompleteCIClasspath]("scalaJSCompleteCIClasspath")
+  val scalaJSCompleteNCClasspath =
+    AttributeKey[CompleteNCClasspath]("scalaJSCompleteNCClasspath")
+
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[PartialClasspath],
       outputSuffix: String): Seq[Setting[_]] = Seq(
@@ -194,7 +200,7 @@ object ScalaJSPluginInternal {
         val opts = (scalaJSOptimizerOptions in fastOptJS).value
 
         import ScalaJSOptimizer._
-        (scalaJSOptimizer in fastOptJS).value.optimizeCP(
+        val outCP = (scalaJSOptimizer in fastOptJS).value.optimizeCP(
             Inputs(input = (scalaJSPreLinkClasspath in fastOptJS).value),
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
@@ -205,6 +211,8 @@ object ScalaJSPluginInternal {
                 disableOptimizer = opts.disableOptimizer,
                 batchMode = opts.batchMode),
             s.log)
+
+         Attributed.blank(output).put(scalaJSCompleteCIClasspath, outCP)
       },
       fastOptJS <<=
         fastOptJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
@@ -228,9 +236,12 @@ object ScalaJSPluginInternal {
 
         val opts = (scalaJSOptimizerOptions in fullOptJS).value
 
+        def attachToOutput(cp: CompleteNCClasspath) =
+          Attributed.blank(output).put(scalaJSCompleteNCClasspath, cp)
+
         import ScalaJSClosureOptimizer._
         if (opts.directFullOptJS) Def.task {
-          (new ScalaJSClosureOptimizer).directOptimizeCP(
+          val outCP = (new ScalaJSClosureOptimizer).directOptimizeCP(
               (scalaJSOptimizer in fastOptJS).value,
               Inputs(ScalaJSOptimizer.Inputs(
                   input = (scalaJSPreLinkClasspath in fullOptJS).value)),
@@ -244,14 +255,20 @@ object ScalaJSPluginInternal {
                   batchMode = opts.batchMode,
                   prettyPrint = opts.prettyPrintFullOptJS),
                s.log)
+          attachToOutput(outCP)
         } else Def.task {
-          (new ScalaJSClosureOptimizer).optimizeCP(
-            Inputs(input = (fastOptJS in fullOptJS).value),
+          val targetCP =
+            (fastOptJS in fullOptJS).value.get(scalaJSCompleteCIClasspath).get
+
+          val outCP = (new ScalaJSClosureOptimizer).optimizeCP(
+            Inputs(input = targetCP),
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
                 prettyPrint = opts.prettyPrintFullOptJS),
             s.log)
+
+          attachToOutput(outCP)
         }
       },
 
@@ -376,8 +393,8 @@ object ScalaJSPluginInternal {
       // Define execution classpaths
       scalaJSExecClasspath                 := scalaJSPreLinkClasspath.value,
       scalaJSExecClasspath in packageStage := packageJS.value,
-      scalaJSExecClasspath in fastOptStage := fastOptJS.value,
-      scalaJSExecClasspath in fullOptStage := fullOptJS.value,
+      scalaJSExecClasspath in fastOptStage := fastOptJS.value.get(scalaJSCompleteCIClasspath).get,
+      scalaJSExecClasspath in fullOptStage := fullOptJS.value.get(scalaJSCompleteNCClasspath).get,
 
       // Dummy task need dummy tags (used for concurrency restrictions)
       tags in packageStage := Seq(),
