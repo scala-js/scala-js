@@ -172,7 +172,7 @@ object ScalaJSPluginInternal {
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
       scalaJSOptimizer in fastOptJS := {
-        if ((parallelFastOptJS in fastOptJS).value)
+        if ((scalaJSOptimizerOptions in fastOptJS).value.parallel)
           new ScalaJSOptimizer(() => new ParIncOptimizer)
         else
           new ScalaJSOptimizer(() => new IncOptimizer)
@@ -191,6 +191,8 @@ object ScalaJSPluginInternal {
             Some(output.getParentFile.toURI())
           else None
 
+        val opts = (scalaJSOptimizerOptions in fastOptJS).value
+
         import ScalaJSOptimizer._
         (scalaJSOptimizer in fastOptJS).value.optimizeCP(
             Inputs(input = (scalaJSPreLinkClasspath in fastOptJS).value),
@@ -199,9 +201,9 @@ object ScalaJSPluginInternal {
                 cache = Some(taskCache),
                 wantSourceMap = (emitSourceMaps in fastOptJS).value,
                 relativizeSourceMapBase = relSourceMapBase,
-                checkIR = (checkScalaJSIR in fastOptJS).value,
-                disableInliner = (inliningMode in fastOptJS).value.disabled,
-                batchInline = (inliningMode in fastOptJS).value.batch),
+                checkIR = opts.checkScalaJSIR,
+                disableInliner = opts.disableOptimizer,
+                batchInline = opts.batchMode),
             s.log)
       },
       fastOptJS <<=
@@ -224,8 +226,10 @@ object ScalaJSPluginInternal {
             Some(output.getParentFile.toURI())
           else None
 
+        val opts = (scalaJSOptimizerOptions in fullOptJS).value
+
         import ScalaJSClosureOptimizer._
-        if (directFullOptJS.value) Def.task {
+        if (opts.directFullOptJS) Def.task {
           (new ScalaJSClosureOptimizer).directOptimizeCP(
               (scalaJSOptimizer in fastOptJS).value,
               Inputs(ScalaJSOptimizer.Inputs(
@@ -235,10 +239,10 @@ object ScalaJSPluginInternal {
                   cache = Some(taskCache),
                   wantSourceMap = (emitSourceMaps in fullOptJS).value,
                   relativizeSourceMapBase = relSourceMapBase,
-                  checkIR = (checkScalaJSIR in fullOptJS).value,
-                  disableInliner = (inliningMode in fullOptJS).value.disabled,
-                  batchInline = (inliningMode in fullOptJS).value.batch,
-                  prettyPrint = fullOptJSPrettyPrint.value),
+                  checkIR = opts.checkScalaJSIR,
+                  disableInliner = opts.disableOptimizer,
+                  batchInline = opts.batchMode,
+                  prettyPrint = opts.prettyPrintFullOptJS),
                s.log)
         } else Def.task {
           (new ScalaJSClosureOptimizer).optimizeCP(
@@ -246,7 +250,7 @@ object ScalaJSPluginInternal {
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
-                prettyPrint = fullOptJSPrettyPrint.value),
+                prettyPrint = opts.prettyPrintFullOptJS),
             s.log)
         }
       },
@@ -608,7 +612,6 @@ object ScalaJSPluginInternal {
 
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps   := false,
-      fullOptJSPrettyPrint := false,
       persistLauncher      := false,
 
       skip in packageJSDependencies := true,
@@ -618,10 +621,7 @@ object ScalaJSPluginInternal {
       emitSourceMaps := true,
       emitSourceMaps in packageExternalDepsJS := false,
 
-      checkScalaJSIR := false,
-      inliningMode := InliningMode.Incremental,
-      parallelFastOptJS := true,
-      directFullOptJS := true,
+      scalaJSOptimizerOptions := OptimizerOptions(),
 
       jsDependencies := Seq(),
       jsDependencyFilter := identity,

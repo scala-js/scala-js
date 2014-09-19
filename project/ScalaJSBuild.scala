@@ -104,7 +104,7 @@ object ScalaJSBuild extends Build {
 
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
       autoCompilerPlugins := true,
-      checkScalaJSIR := true
+      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true))
   )
 
   val scalaJSSourceMapSettings = scalacOptions ++= {
@@ -775,7 +775,7 @@ object ScalaJSBuild extends Build {
       base = file("no-ir-check-test"),
       settings = defaultSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js not IR checked tests",
-          checkScalaJSIR := false,
+          scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(false)),
           publishArtifact in Compile := false
      )
   ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")
