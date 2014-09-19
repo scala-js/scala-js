@@ -44,7 +44,6 @@ object ScalaJSPluginInternal {
   /** Dummy setting to ensure we do not fork in Scala.js run & test. */
   val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",
       "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
-  val ensureUnforked = scalaJSEnsureUnforked // TODO Remove in 0.6.0
 
   /** Dummy setting to persist Scala.js optimizer */
   val scalaJSOptimizer = SettingKey[ScalaJSOptimizer]("scalaJSOptimizer",
@@ -55,12 +54,10 @@ object ScalaJSPluginInternal {
   val scalaJSRequestsDOM = TaskKey[Boolean]("scalaJSRequestsDOM",
       "Scala.js internal: Whether a project really wants the DOM. " +
       "Calculated using requiresDOM and jsDependencies", KeyRanks.Invisible)
-  val requestsDom = scalaJSRequestsDOM // TODO Remove in 0.6.0
 
   /** Default post link environment */
   val scalaJSDefaultPostLinkJSEnv = TaskKey[JSEnv]("scalaJSDefaultPostLinkJSEnv",
       "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
-  val defaultPostLinkJSEnv = scalaJSDefaultPostLinkJSEnv // TODO Remove in 0.6.0
 
   def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
       packageJSKey: TaskKey[PartialClasspath],
