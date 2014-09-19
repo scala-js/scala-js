@@ -452,8 +452,8 @@ object Printers {
           print(fun)
           printArgs(args)
 
-        case JSDelete(obj, prop) =>
-          print("delete ", obj, "[", prop, "]")
+        case JSDelete(prop) =>
+          print("delete ", prop)
 
         case JSUnaryOp("typeof", lhs) =>
           print("typeof(", lhs, ")")

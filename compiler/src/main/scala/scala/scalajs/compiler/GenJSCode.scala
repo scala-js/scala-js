@@ -2938,7 +2938,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case DICT_DEL =>
               // js.Dictionary.delete(arg)
-              js.JSDelete(receiver, arg)
+              js.JSDelete(js.JSBracketSelect(receiver, arg))
 
             case ISUNDEF =>
               // js.isUndefined(arg)

@@ -159,10 +159,8 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
 
         node
 
-      case JSDelete(obj, prop) =>
-        val elemNode =
-          new Node(Token.GETELEM, transformExpr(obj), transformExpr(prop))
-        new Node(Token.DELPROP, setNodePosition(elemNode, pos))
+      case JSDelete(prop) =>
+        new Node(Token.DELPROP, transformExpr(prop))
       case JSUnaryOp(op, lhs) =>
         mkUnaryOp(op, transformExpr(lhs))
       case JSBinaryOp(op, lhs, rhs) =>
