@@ -559,6 +559,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         } else if (sym.isDeferred) {
           createInfoBuilder(isAbstract = true)
           None
+        } else if (isRawJSCtorDefaultParam(sym)) {
+          None
         } else if (isTrivialConstructor(sym, params, rhs)) {
           createInfoBuilder().callsMethod(sym.owner.superClass, methodIdent)
           None
@@ -1528,31 +1530,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
-      def patchedLinkedClassOfClass(sym: Symbol): Symbol = {
-        /* Work around a bug of scalac with linkedClassOfClass where package
-         * objects are involved (the companion class would somehow exist twice
-         * in the scope, making an assertion fail in Symbol.suchThat).
-         * Basically this inlines linkedClassOfClass up to companionClass,
-         * then replaces the `suchThat` by a `filter` and `head`.
-         */
-        val flatOwnerInfo = {
-          // inline Symbol.flatOwnerInfo because it is protected
-          if (sym.needsFlatClasses)
-            sym.info
-          sym.owner.rawInfo
-        }
-        val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
-        if (!result.isOverloaded) result
-        else result.alternatives.head
-      }
-
-      def isRawJSCtorDefaultParam = {
-        sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-        sym.owner.isModuleClass &&
-        isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe) &&
-        nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
-      }
-
       if (MethodWithHelperInEnv contains sym) {
         if (!isRawJSType(receiver.tpe) && (sym != Object_getClass)) {
           currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
@@ -1571,7 +1548,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         genPrimitiveJSCall(tree)
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
-      } else if (isRawJSCtorDefaultParam) {
+      } else if (isRawJSCtorDefaultParam(sym)) {
         js.UndefinedParam()(toIRType(sym.tpe.resultType))
       } else if (sym.isClassConstructor) {
         /* See #66: we have to emit a static call to avoid calling a
@@ -3897,6 +3874,31 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
     sym.isAnonymousClass && AllJSFunctionClasses.exists(sym isSubClass _)
+
+  private def isRawJSCtorDefaultParam(sym: Symbol) = {
+    sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
+    sym.owner.isModuleClass &&
+    isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe) &&
+    nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
+  }
+
+  private def patchedLinkedClassOfClass(sym: Symbol): Symbol = {
+    /* Work around a bug of scalac with linkedClassOfClass where package
+     * objects are involved (the companion class would somehow exist twice
+     * in the scope, making an assertion fail in Symbol.suchThat).
+     * Basically this inlines linkedClassOfClass up to companionClass,
+     * then replaces the `suchThat` by a `filter` and `head`.
+     */
+    val flatOwnerInfo = {
+      // inline Symbol.flatOwnerInfo because it is protected
+      if (sym.needsFlatClasses)
+        sym.info
+      sym.owner.rawInfo
+    }
+    val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
+    if (!result.isOverloaded) result
+    else result.alternatives.head
+  }
 
   private def isStringType(tpe: Type): Boolean =
     tpe.typeSymbol == StringClass
