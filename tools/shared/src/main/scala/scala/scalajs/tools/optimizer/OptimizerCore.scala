@@ -411,12 +411,20 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case IsInstanceOf(expr, tpe) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
-            if (!texpr.tpe.isNullable && isSubtype(texpr.tpe.base, tpe)) {
-              TailCalls.done(
-                  Block(finishTransformStat(texpr), BooleanLiteral(true)))
-            } else {
-              TailCalls.done(IsInstanceOf(finishTransformExpr(texpr), tpe))
+            val result = {
+              if (isSubtype(texpr.tpe.base, tpe)) {
+                if (texpr.tpe.isNullable)
+                  BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+                else
+                  Block(finishTransformStat(texpr), BooleanLiteral(true))
+              } else {
+                if (texpr.tpe.isExact)
+                  Block(finishTransformStat(texpr), BooleanLiteral(false))
+                else
+                  IsInstanceOf(finishTransformExpr(texpr), tpe)
+              }
             }
+            TailCalls.done(result)
           }
         }
 
