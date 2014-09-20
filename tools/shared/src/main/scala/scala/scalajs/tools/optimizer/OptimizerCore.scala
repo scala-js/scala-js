@@ -2414,6 +2414,9 @@ object OptimizerCore {
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
+      case AsInstanceOf(inner, _) => unapply(inner)
+      case Cast(inner, _)         => unapply(inner)
+
       case _ => isSimpleArg(body)
     }
 
@@ -2432,13 +2435,21 @@ object OptimizerCore {
 
       case CallHelper(helper, List(inner)) =>
         isBoxUnboxHelper(helper) && isSimpleArg(inner)
+
+      case AsInstanceOf(inner, _) => isSimpleArg(inner)
+      case Cast(inner, _)         => isSimpleArg(inner)
+
       case _ =>
         isTrivialArg(arg)
     }
 
     private def isTrivialArg(arg: Tree): Boolean = arg match {
-      case _:VarRef | _:This | _:Literal | _:LoadModule => true
-      case _                                            => false
+      case _:VarRef | _:This | _:Literal | _:LoadModule | _:ClassOf =>
+        true
+      case Cast(inner, _) =>
+        isTrivialArg(inner)
+      case _ =>
+        false
     }
 
     private val isBoxUnboxHelper =
