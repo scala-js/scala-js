@@ -855,6 +855,17 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doA((new B).asInstanceOf[js.Any])).toThrow
       expect(() => foo.doA("a")).toThrow
     }
+
+    it("should offer exports for classes ending in _= - #1090") {
+      val constr = js.Dynamic.global.ExportClassSetterNamed_=
+      val obj = js.Dynamic.newInstance(constr)()
+      expect(obj.x).toBe(1)
+    }
+
+    it("should offer exports for objects ending in _= - #1090") {
+      expect(js.Dynamic.global.ExportObjSetterNamed_=().x).toBe(1)
+    }
+
   } // describe
 
   describe("@JSExportDescendentObjects") {
@@ -950,4 +961,16 @@ class SomeValueClass(val i: Int) extends AnyVal
 class ExportedNamedArgClass(x: Int = 1)(y: String = x.toString)(z: Boolean = y != "foo") {
   @JSExport
   val result = x + y + z
+}
+
+@JSExport
+class ExportClassSetterNamed_= {
+  @JSExport
+  val x = 1
+}
+
+@JSExport
+object ExportObjSetterNamed_= {
+  @JSExport
+  val x = 1
 }
