@@ -15,6 +15,9 @@ import scala.annotation.meta
 
 object ExportsTest extends JasmineTest {
 
+  /** This package in the JS (export) namespace */
+  val jsPackage = js.Dynamic.global.scala.scalajs.testsuite.jsinterop
+
   describe("@JSExport") {
 
     it("should offer exports for methods with implicit name") {
@@ -498,7 +501,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for objects with implicit name") {
-      val accessor = js.Dynamic.global.ExportedObject
+      val accessor = jsPackage.ExportedObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -528,7 +531,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for protected objects") {
-      val accessor = js.Dynamic.global.ProtectedExportedObject
+      val accessor = jsPackage.ProtectedExportedObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -538,7 +541,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for classes with implicit name") {
-      val constr = js.Dynamic.global.ExportedClass
+      val constr = jsPackage.ExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -562,7 +565,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for protected classes") {
-      val constr = js.Dynamic.global.ProtectedExportedClass
+      val constr = jsPackage.ProtectedExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -570,7 +573,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer export for classes with repeated parameters in ctor") {
-      val constr = js.Dynamic.global.ExportedVarArgClass
+      val constr = jsPackage.ExportedVarArgClass
       expect(js.Dynamic.newInstance(constr)().result).toEqual("")
       expect(js.Dynamic.newInstance(constr)("a").result).toEqual("a")
       expect(js.Dynamic.newInstance(constr)("a", "b").result).toEqual("a|b")
@@ -579,7 +582,7 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer export for classes with default parameters in ctor") {
-      val constr = js.Dynamic.global.ExportedDefaultArgClass
+      val constr = jsPackage.ExportedDefaultArgClass
       expect(js.Dynamic.newInstance(constr)(1,2,3).result).toEqual(6)
       expect(js.Dynamic.newInstance(constr)(1).result).toEqual(106)
       expect(js.Dynamic.newInstance(constr)(1,2).result).toEqual(103)
@@ -743,7 +746,7 @@ object ExportsTest extends JasmineTest {
     it("should support named constructor exports") {
       import js.Dynamic.{literal => lit}
 
-      val constr = js.Dynamic.global.ExportedNamedArgClass
+      val constr = jsPackage.ExportedNamedArgClass
       expect(js.Dynamic.newInstance(constr)(lit(x = 2)).result).toEqual("22true")
       expect(js.Dynamic.newInstance(constr)(lit(y = "foo")).result).toEqual("1foofalse")
       expect(js.Dynamic.newInstance(constr)(lit(z = true, y = "foo")).result).toEqual("1footrue")
@@ -856,13 +859,13 @@ object ExportsTest extends JasmineTest {
     }
 
     it("should offer exports for classes ending in _= - #1090") {
-      val constr = js.Dynamic.global.ExportClassSetterNamed_=
+      val constr = jsPackage.ExportClassSetterNamed_=
       val obj = js.Dynamic.newInstance(constr)()
       expect(obj.x).toBe(1)
     }
 
     it("should offer exports for objects ending in _= - #1090") {
-      expect(js.Dynamic.global.ExportObjSetterNamed_=().x).toBe(1)
+      expect(jsPackage.ExportObjSetterNamed_=().x).toBe(1)
     }
 
   } // describe

@@ -272,11 +272,17 @@ object ScalaJSBuild extends Build {
             var framework = org.scalajs.jasminetest.JasmineTestFramework();
             framework.setTags("typedarray")
 
-            // Load tests (we know we only export test modules, so we can use all exports)
+            // Load tests
+            // We make sure to use only exported modules (not classes) by checking
+            // .prototype of the exporters.
             var testPackage = scala.scalajs.testsuite;
-            for (var pName in testPackage)
-              for (var testName in testPackage[pName])
-                testPackage[pName][testName]();
+            for (var pName in testPackage) {
+              for (var testName in testPackage[pName]) {
+                var test = testPackage[pName][testName];
+                if (Object.getPrototypeOf(test.prototype) === Object.prototype)
+                  test(); // this is an exported module, not a class.
+              }
+            }
 
             var reporter = new scalajs.JasmineConsoleReporter(true);
 

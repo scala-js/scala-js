@@ -76,8 +76,8 @@ trait JSGlobalAddons extends JSDefinitions
 
         // The default export name for the symbol
         def defaultName =
-          if (sym.isConstructor) sym.owner.unexpandedName.decoded
-          else if (sym.isModuleClass) sym.unexpandedName.decoded
+          if (sym.isConstructor) decodedFullName(sym.owner)
+          else if (sym.isModuleClass) decodedFullName(sym)
           else sym.unexpandedName.decoded.stripSuffix("_=")
 
         val name = annot.stringArg(0).getOrElse(defaultName)
@@ -150,6 +150,13 @@ trait JSGlobalAddons extends JSDefinitions
       }
 
       distinct(directExports ++ inheritedExports)
+    }
+
+    /** Just like sym.fullName, but does not encode components */
+    private def decodedFullName(sym: Symbol): String = {
+      if (sym.isRoot || sym.isRootPackage || sym == NoSymbol) sym.name.decoded
+      else if (sym.owner.isEffectiveRoot) sym.name.decoded
+      else decodedFullName(sym.effectiveOwner.enclClass) + '.' + sym.name.decoded
     }
 
     /** creates a name for an export specification */
