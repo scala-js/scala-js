@@ -73,19 +73,22 @@ trait JSGlobalAddons extends JSDefinitions
       } yield {
         // Is this a named export or a normal one?
         val named = annot.symbol == JSExportNamedAnnotation
-        // Symbol we use to get name from (constructors take name of class)
-        val nmeSym = if (sym.isConstructor) sym.owner else sym
-        // The actual name of the symbol
-        val symNme = nmeSym.unexpandedName.decoded
+
+        // The default export name for the symbol
+        def defaultName =
+          if (sym.isConstructor) sym.owner.unexpandedName.decoded
+          else if (sym.isModuleClass) sym.unexpandedName.decoded
+          else sym.unexpandedName.decoded.stripSuffix("_=")
+
+        val name = annot.stringArg(0).getOrElse(defaultName)
 
         // Enforce that methods ending with _= are exported as setters
-        if (symNme.endsWith("_=") && !isJSSetter(sym)) {
-          currentUnit.error(annot.pos, "A method ending in _= will be " +
-              s"exported as setter. But $symNme does not have the right " +
+        if (sym.isMethod && !sym.isConstructor &&
+          sym.name.decoded.endsWith("_=") && !isJSSetter(sym)) {
+          currentUnit.error(annot.pos, "A method ending in _= will be exported " +
+              s"as setter. But ${sym.name.decoded} does not have the right " +
               "signature to do so (single argument, unit return type).")
         }
-
-        val name = annot.stringArg(0).getOrElse(symNme.stripSuffix("_="))
 
         // Enforce no __ in name
         if (name.contains("__")) {
