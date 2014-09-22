@@ -393,7 +393,7 @@ abstract class GenIncOptimizer {
     def walkForChanges(
         getClassInfo: String => Analyzer#ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged,
-        parentInlineableMethodChanges: Set[String]): Unit = {
+        parentMethodAttributeChanges: Set[String]): Unit = {
 
       val classInfo = getClassInfo(encodedName)
 
@@ -405,9 +405,8 @@ abstract class GenIncOptimizer {
         classInfo.ancestors.map(info => getInterface(info.encodedName)).toSet
       interfaces = newInterfaces
 
-      // TODO? Be smarter about addedMethods and deletedMethods? Is it possible?
-      val inlineableMethodChanges =
-        (parentInlineableMethodChanges -- methods.keys ++
+      val methodAttributeChanges =
+        (parentMethodAttributeChanges -- methods.keys ++
             addedMethods ++ changedMethods ++ deletedMethods)
 
       // Tag callers with dynamic calls
@@ -422,7 +421,7 @@ abstract class GenIncOptimizer {
           val existingInterfaces = oldInterfaces.intersect(newInterfaces)
           for {
             intf <- existingInterfaces
-            methodName <- inlineableMethodChanges
+            methodName <- methodAttributeChanges
           } {
             intf.tagDynamicCallersOf(methodName)
           }
@@ -447,7 +446,7 @@ abstract class GenIncOptimizer {
       }
 
       // Tag callers with static calls
-      for (methodName <- inlineableMethodChanges)
+      for (methodName <- methodAttributeChanges)
         myInterface.tagStaticCallersOf(methodName)
 
       // Module class specifics
@@ -462,7 +461,7 @@ abstract class GenIncOptimizer {
       // Recurse in subclasses
       for (cls <- subclasses)
         cls.walkForChanges(getClassInfo, getClassTreeIfChanged,
-            inlineableMethodChanges)
+            methodAttributeChanges)
     }
 
     /** UPDATE PASS ONLY. */
@@ -614,13 +613,19 @@ abstract class GenIncOptimizer {
     def thisType: Type = NoType
   }
 
+  /** Thing from which a [[MethodImpl]] can unregister itself from. */
+  trait Unregisterable {
+    /** UPDATE PASS ONLY. */
+    def unregisterDependee(dependee: MethodImpl): Unit
+  }
+
   /** Type of a class or interface.
    *  Types are created on demand when a method is called on a given
    *  [[ClassType]].
    *
    *  Fully concurrency safe unless otherwise noted.
    */
-  abstract class InterfaceType(val encodedName: String) {
+  abstract class InterfaceType(val encodedName: String) extends Unregisterable {
 
     override def toString(): String =
       s"intf $encodedName"
@@ -656,9 +661,6 @@ abstract class GenIncOptimizer {
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit
 
     /** UPDATE PASS ONLY. */
-    def unregisterCaller(caller: MethodImpl): Unit
-
-    /** UPDATE PASS ONLY. */
     def tagDynamicCallersOf(methodName: String): Unit
 
     /** UPDATE PASS ONLY. */
@@ -673,7 +675,9 @@ abstract class GenIncOptimizer {
    *  concurrency safe.
    */
   abstract class MethodImpl(val owner: MethodContainer,
-      val encodedName: String) extends OptimizerCore.MethodImpl {
+      val encodedName: String) extends OptimizerCore.MethodImpl
+                                  with OptimizerCore.AbstractMethodID
+                                  with Unregisterable {
     private[this] var _deleted: Boolean = false
 
     var optimizerHints: OptimizerHints = OptimizerHints.empty
@@ -686,6 +690,12 @@ abstract class GenIncOptimizer {
 
     override def toString(): String =
       s"$owner.$encodedName"
+
+    /** PROCESS PASS ONLY. */
+    def registerBodyAsker(asker: MethodImpl): Unit
+
+    /** UPDATE PASS ONLY. */
+    def tagBodyAskers(): Unit
 
     /** PROCESS PASS ONLY. */
     private def registerAskAncestors(intf: InterfaceType): Unit = {
@@ -708,10 +718,16 @@ abstract class GenIncOptimizer {
     }
 
     /** PROCESS PASS ONLY. */
-    protected def registeredTo(intf: InterfaceType): Unit
+    def registerAskBody(target: MethodImpl): Unit = {
+      target.registerBodyAsker(this)
+      registeredTo(target)
+    }
+
+    /** PROCESS PASS ONLY. */
+    protected def registeredTo(intf: Unregisterable): Unit
 
     /** UPDATE PASS ONLY. */
-    protected def unregisterAllCalls(): Unit
+    protected def unregisterFromEverywhere(): Unit
 
     /** Return true iff this is the first time this method is called since the
      *  last reset (via [[resetTag]]).
@@ -722,23 +738,35 @@ abstract class GenIncOptimizer {
     /** PROCESS PASS ONLY. */
     protected def resetTag(): Unit
 
-    /** Returns true if the method changed and it was or is inlineable.
+    /** Returns true if the method's attributes changed.
+     *  Attributes are whether it is inlineable, and whether it is a trait
+     *  impl forwarder. Basically this is what is declared in
+     *  [[OptimizerCore.AbstractMethodID]].
+     *  In the process, tags all the body askers if the body changes.
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
     def updateWith(methodInfo: Analyzer#MethodInfo,
         methodDef: MethodDef): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
+
+      val bodyChanged = methodDef != originalDef
+      if (bodyChanged)
+        tagBodyAskers()
+
       val hints = methodInfo.optimizerHints
-      val changed = hints != optimizerHints || methodDef != originalDef
+      val changed = hints != optimizerHints || bodyChanged
       if (changed) {
+        val oldAttributes = (inlineable, isTraitImplForwarder)
+
         optimizerHints = hints
         originalDef = methodDef
         desugaredDef = null
         preciseInfo = null
-        val wasInlineable = inlineable
         updateInlineable()
         tag()
-        wasInlineable || inlineable
+
+        val newAttributes = (inlineable, isTraitImplForwarder)
+        newAttributes != oldAttributes
       } else {
         false
       }
@@ -749,7 +777,7 @@ abstract class GenIncOptimizer {
       assert(!_deleted, "delete() called twice")
       _deleted = true
       if (protectTag())
-        unregisterAllCalls()
+        unregisterFromEverywhere()
     }
 
     /** Concurrency safe with itself and [[delete]] on the same instance
@@ -761,12 +789,12 @@ abstract class GenIncOptimizer {
      */
     def tag(): Unit = if (protectTag()) {
       scheduleMethod(this)
-      unregisterAllCalls()
+      unregisterFromEverywhere()
     }
 
     /** PROCESS PASS ONLY. */
     def process(): Unit = if (!_deleted) {
-      val (optimizedDef, info) = new Optimizer().optimize(originalDef)
+      val (optimizedDef, info) = new Optimizer().optimize(thisType, originalDef)
       val emitted =
         if (owner.isInstanceOf[Class])
           ScalaJSClassEmitter.genMethod(owner.encodedName, optimizedDef)
@@ -778,23 +806,32 @@ abstract class GenIncOptimizer {
     }
 
     /** All methods are PROCESS PASS ONLY */
-    private class Optimizer extends OptimizerCore(MethodImpl.this) {
+    private class Optimizer extends OptimizerCore {
+      type MethodID = MethodImpl
+
+      val myself: MethodImpl.this.type = MethodImpl.this
+
+      protected def getMethodBody(method: MethodID): MethodDef = {
+        MethodImpl.this.registerAskBody(method)
+        method.originalDef
+      }
+
       protected def dynamicCall(intfName: String,
-          methodName: String): List[MethodImpl] = {
+          methodName: String): List[MethodID] = {
         val intf = getInterface(intfName)
         MethodImpl.this.registerDynamicCall(intf, methodName)
         intf.instantiatedSubclasses.flatMap(_.lookupMethod(methodName)).toList
       }
 
       protected def staticCall(className: String,
-          methodName: String): Option[MethodImpl] = {
+          methodName: String): Option[MethodID] = {
         val clazz = classes(className)
         MethodImpl.this.registerStaticCall(clazz.myInterface, methodName)
         clazz.lookupMethod(methodName)
       }
 
       protected def traitImplCall(traitImplName: String,
-          methodName: String): Option[MethodImpl] = {
+          methodName: String): Option[MethodID] = {
         val traitImpl = traitImpls(traitImplName)
         registerStaticCall(traitImpl.myInterface, methodName)
         traitImpl.methods.get(methodName)

@@ -30,20 +30,27 @@ import scala.scalajs.tools.logging._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
+abstract class OptimizerCore {
   import OptimizerCore._
+
+  type MethodID <: AbstractMethodID
+
+  val myself: MethodID
+
+  /** Returns the body of a method. */
+  protected def getMethodBody(method: MethodID): MethodDef
 
   /** Returns the list of possible targets for a dynamically linked call. */
   protected def dynamicCall(intfName: String,
-      methodName: String): List[MethodImpl]
+      methodName: String): List[MethodID]
 
   /** Returns the target of a static call. */
   protected def staticCall(className: String,
-      methodName: String): Option[MethodImpl]
+      methodName: String): Option[MethodID]
 
   /** Returns the target of a trait impl call. */
   protected def traitImplCall(traitImplName: String,
-      methodName: String): Option[MethodImpl]
+      methodName: String): Option[MethodID]
 
   /** Returns the list of ancestors of a class or interface. */
   protected def getAncestorsOf(encodedName: String): List[String]
@@ -67,14 +74,13 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   private var disableOptimisticOptimizations: Boolean = false
   private var rollbacksCount: Int = 0
 
-  private val attemptedInlining = mutable.ListBuffer.empty[MethodImpl]
+  private val attemptedInlining = mutable.ListBuffer.empty[MethodID]
 
   private var curTrampolineId = 0
 
-  def optimize(originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
+  def optimize(thisType: Type, originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     try {
       val MethodDef(name, params, resultType, body) = originalDef
-      val thisType = myself.thisType
       val (newParams, newBody) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
@@ -1001,8 +1007,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
                 if (impls.forall(_.isTraitImplForwarder)) {
                   val reference = impls.head
                   val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
-                    reference.originalDef.body
-                  if (!impls.tail.forall(_.originalDef.body match {
+                    getMethodBody(reference).body
+                  if (!impls.tail.forall(getMethodBody(_).body match {
                     case TraitImplApply(ClassType(`traitImpl`),
                         Ident(`methodName`, _), _) => true
                     case _ => false
@@ -1151,15 +1157,14 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
   }
 
   private def inline(optReceiver: Option[PreTransform],
-      args: List[PreTransform], target: MethodImpl, isStat: Boolean,
+      args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    assert(target.inlineable, s"Trying to inline non-inlineable method $target")
 
     attemptedInlining += target
 
-    val MethodDef(_, formals, resultType, body) = target.originalDef
+    val MethodDef(_, formals, resultType, body) = getMethodBody(target)
 
     body match {
       case Skip() =>
@@ -1285,7 +1290,8 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     if (scope.implsBeingInlined.contains(target))
       cancelFun()
 
-    val MethodDef(_, formals, _, BlockOrAlone(stats, This())) = target.originalDef
+    val MethodDef(_, formals, _, BlockOrAlone(stats, This())) =
+      getMethodBody(target)
 
     val argsBindings = for {
       (ParamDef(Ident(name, originalName), tpe, mutable), arg) <- formals zip args
@@ -1704,7 +1710,7 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
     }
   }
 
-  def transformIsolatedBody(optTarget: Option[MethodImpl],
+  def transformIsolatedBody(optTarget: Option[MethodID],
       thisType: Type, params: List[ParamDef], resultType: Type,
       body: Tree): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
@@ -2220,11 +2226,12 @@ object OptimizerCore {
     val Empty: OptEnv = new OptEnv(Map.empty, Map.empty)
   }
 
-  private class Scope(val env: OptEnv, val implsBeingInlined: Set[MethodImpl]) {
+  private class Scope(val env: OptEnv,
+      val implsBeingInlined: Set[AbstractMethodID]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: MethodImpl): Scope = {
+    def inlining(impl: AbstractMethodID): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }
@@ -2340,6 +2347,12 @@ object OptimizerCore {
     def restore(backup: A): Unit = value = backup
   }
 
+  trait AbstractMethodID {
+    def inlineable: Boolean
+    def isTraitImplForwarder: Boolean
+  }
+
+  /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
   abstract class MethodImpl {
     def encodedName: String
     def optimizerHints: OptimizerHints
@@ -2602,8 +2615,8 @@ object OptimizerCore {
     }
   }
 
-  private def exceptionMsg(myself: OptimizerCore.MethodImpl,
-      attemptedInlining: List[MethodImpl]) = {
+  private def exceptionMsg(myself: AbstractMethodID,
+      attemptedInlining: List[AbstractMethodID]) = {
     val buf = new StringBuilder()
 
     buf.append("The Scala.js optimizer crashed while optimizing " + myself)
@@ -2625,8 +2638,8 @@ object OptimizerCore {
       val savedStates: List[Any],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
-  class OptimizeException(val myself: OptimizerCore.MethodImpl,
-      val attemptedInlining: List[MethodImpl], cause: Throwable
+  class OptimizeException(val myself: AbstractMethodID,
+      val attemptedInlining: List[AbstractMethodID], cause: Throwable
   ) extends Exception(exceptionMsg(myself, attemptedInlining), cause)
 
 }
