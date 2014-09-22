@@ -411,12 +411,20 @@ abstract class OptimizerCore(myself: OptimizerCore.MethodImpl) {
       case IsInstanceOf(expr, tpe) =>
         trampoline {
           pretransformExpr(expr) { texpr =>
-            if (!texpr.tpe.isNullable && isSubtype(texpr.tpe.base, tpe)) {
-              TailCalls.done(
-                  Block(finishTransformStat(texpr), BooleanLiteral(true)))
-            } else {
-              TailCalls.done(IsInstanceOf(finishTransformExpr(texpr), tpe))
+            val result = {
+              if (isSubtype(texpr.tpe.base, tpe)) {
+                if (texpr.tpe.isNullable)
+                  BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+                else
+                  Block(finishTransformStat(texpr), BooleanLiteral(true))
+              } else {
+                if (texpr.tpe.isExact)
+                  Block(finishTransformStat(texpr), BooleanLiteral(false))
+                else
+                  IsInstanceOf(finishTransformExpr(texpr), tpe)
+              }
             }
+            TailCalls.done(result)
           }
         }
 
@@ -2417,6 +2425,9 @@ object OptimizerCore {
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
+      case AsInstanceOf(inner, _) => unapply(inner)
+      case Cast(inner, _)         => unapply(inner)
+
       case _ => isSimpleArg(body)
     }
 
@@ -2435,13 +2446,21 @@ object OptimizerCore {
 
       case CallHelper(helper, List(inner)) =>
         isBoxUnboxHelper(helper) && isSimpleArg(inner)
+
+      case AsInstanceOf(inner, _) => isSimpleArg(inner)
+      case Cast(inner, _)         => isSimpleArg(inner)
+
       case _ =>
         isTrivialArg(arg)
     }
 
     private def isTrivialArg(arg: Tree): Boolean = arg match {
-      case _:VarRef | _:This | _:Literal | _:LoadModule => true
-      case _                                            => false
+      case _:VarRef | _:This | _:Literal | _:LoadModule | _:ClassOf =>
+        true
+      case Cast(inner, _) =>
+        isTrivialArg(inner)
+      case _ =>
+        false
     }
 
     private val isBoxUnboxHelper =
