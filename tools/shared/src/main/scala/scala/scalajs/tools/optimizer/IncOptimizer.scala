@@ -104,10 +104,10 @@ class IncOptimizer extends GenIncOptimizer {
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit =
       staticCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
-    def unregisterCaller(caller: MethodImpl): Unit = {
-      ancestorsAskers -= caller
-      dynamicCallers.values.foreach(_ -= caller)
-      staticCallers.values.foreach(_ -= caller)
+    def unregisterDependee(dependee: MethodImpl): Unit = {
+      ancestorsAskers -= dependee
+      dynamicCallers.values.foreach(_ -= dependee)
+      staticCallers.values.foreach(_ -= dependee)
     }
 
     def tagDynamicCallersOf(methodName: String): Unit =
@@ -120,14 +120,27 @@ class IncOptimizer extends GenIncOptimizer {
   private class SeqMethodImpl(owner: MethodContainer,
       encodedName: String) extends MethodImpl(owner, encodedName) {
 
-    private var _registeredTo: List[InterfaceType] = Nil
+    private val bodyAskers = mutable.Set.empty[MethodImpl]
+
+    def registerBodyAsker(asker: MethodImpl): Unit =
+      bodyAskers += asker
+
+    def unregisterDependee(dependee: MethodImpl): Unit =
+      bodyAskers -= dependee
+
+    def tagBodyAskers(): Unit = {
+      bodyAskers.foreach(_.tag())
+      bodyAskers.clear()
+    }
+
+    private var _registeredTo: List[Unregisterable] = Nil
     private var tagged = false
 
-    protected def registeredTo(intf: InterfaceType): Unit =
+    protected def registeredTo(intf: Unregisterable): Unit =
       _registeredTo ::= intf
 
-    protected def unregisterAllCalls(): Unit = {
-      _registeredTo.foreach(_.unregisterCaller(this))
+    protected def unregisterFromEverywhere(): Unit = {
+      _registeredTo.foreach(_.unregisterDependee(this))
       _registeredTo = Nil
     }
 
