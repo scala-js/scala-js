@@ -3171,6 +3171,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       genPrimitiveJSArgs(ctor, args0) match {
         case js.JSArrayConstr(args) =>
           if (cls == JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
+          else if (cls == JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
           else js.JSNew(genPrimitiveJSClass(cls), args)
         case argArray =>
           js.CallHelper("newInstanceWithVarargs",

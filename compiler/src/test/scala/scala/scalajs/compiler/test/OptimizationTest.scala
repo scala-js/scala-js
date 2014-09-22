@@ -70,6 +70,19 @@ class OptimizationTest extends JSASTTest {
           if name.startsWith("wrap") && name.endsWith("__scm_WrappedArray") =>
     }
 
+    // Verify the optimized emitted code for 'new js.Object' and 'new js.Array'
+    """
+    import scala.scalajs.js
+
+    class A {
+      val o = new js.Object
+      val a = new js.Array
+    }
+    """.
+    hasNot("any reference to the global scope") {
+      case js.JSGlobal() =>
+    }
+
   }
 
 }
