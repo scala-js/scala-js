@@ -3300,9 +3300,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       arg match {
         // foo(arg1, arg2, ..., argN) where N > 0
         case MaybeAsInstanceOf(WrapArray(
-            MaybeAsInstanceOf(ArrayValue(tpt, elems))))
-            if elems.forall(e => !isPrimitiveValueType(e.tpe)) => // non-optimal fix to #39
-          js.JSArrayConstr(elems map genExpr)
+            MaybeAsInstanceOf(ArrayValue(tpt, elems)))) =>
+          /* Value classes in arrays are already boxed, so no need to use
+           * the type before erasure.
+           */
+          val elemTpe = tpt.tpe
+          js.JSArrayConstr(elems.map(e => ensureBoxed(genExpr(e), elemTpe)))
 
         // foo()
         case Select(_, _) if arg.symbol == NilModule =>
