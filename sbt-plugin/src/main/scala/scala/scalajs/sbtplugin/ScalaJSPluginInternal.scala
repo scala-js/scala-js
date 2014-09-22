@@ -289,7 +289,7 @@ object ScalaJSPluginInternal {
             // Attach the name of the main class used, (ab?)using the name key
             Attributed(file)(AttributeMap.empty.put(name.key, mainCl))
           } getOrElse {
-            error("Cannot write launcher file, since there is no or multiple mainClasses")
+            sys.error("Cannot write launcher file, since there is no or multiple mainClasses")
           }
         }
       },
@@ -367,7 +367,7 @@ object ScalaJSPluginInternal {
       // Give tasks ability to check we are not forking at build reading time
       scalaJSEnsureUnforked := {
         if (fork.value)
-          error("Scala.js cannot be run in a forked JVM")
+          sys.error("Scala.js cannot be run in a forked JVM")
         else
           true
       },
@@ -439,7 +439,7 @@ object ScalaJSPluginInternal {
             Attributed[VirtualJSFile](memLaunch)(
                 AttributeMap.empty.put(name.key, mainClass))
           } getOrElse {
-            error("No main class detected.")
+            sys.error("No main class detected.")
           }
         }
       },
