@@ -968,9 +968,11 @@ abstract class OptimizerCore {
     implicit val pos = tree.pos
 
     pretransformExpr(receiver) { treceiver =>
-      def treeNotInlined =
+      def treeNotInlined0(transformedArgs: List[Tree]) =
         cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-            args.map(transformExpr))(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
+            transformedArgs)(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
+
+      def treeNotInlined = treeNotInlined0(args.map(transformExpr))
 
       treceiver.tpe.base match {
         case NothingType =>
@@ -995,12 +997,12 @@ abstract class OptimizerCore {
                 treeNotInlined
               } else if (impls.size == 1) {
                 val target = impls.head
-                if (!target.inlineable) {
-                  treeNotInlined
-                } else {
-                  pretransformExprs(args) { targs =>
+                pretransformExprs(args) { targs =>
+                  if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
                     inline(Some(treceiver), targs, target, isStat,
                         usePreTransform)(cont)
+                  } else {
+                    treeNotInlined0(targs.map(finishTransformExpr))
                   }
                 }
               } else {
@@ -1103,9 +1105,12 @@ abstract class OptimizerCore {
         methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
+    def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) =
+      cont(PreTransTree(StaticApply(transformedReceiver, clsType,
+          methodIdent, transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
+
     def treeNotInlined =
-      cont(PreTransTree(StaticApply(transformExpr(receiver), clsType,
-          methodIdent, args.map(transformExpr))(tree.tpe), RefinedType(tree.tpe)))
+      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
 
     if (isReflProxyName(methodName)) {
       // Never inline reflective proxies
@@ -1117,11 +1122,16 @@ abstract class OptimizerCore {
         treeNotInlined
       } else {
         val target = optTarget.get
-        if (!target.inlineable || scope.implsBeingInlined(target)) {
+        if (scope.implsBeingInlined(target)) {
           treeNotInlined
         } else {
           pretransformExprs(receiver, args) { (treceiver, targs) =>
-            inline(Some(treceiver), targs, target, isStat, usePreTransform)(cont)
+            if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
+              inline(Some(treceiver), targs, target, isStat, usePreTransform)(cont)
+            } else {
+              treeNotInlined0(finishTransformExpr(treceiver),
+                  targs.map(finishTransformExpr))
+            }
           }
         }
       }
@@ -1136,9 +1146,11 @@ abstract class OptimizerCore {
         methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
-    def treeNotInlined =
+    def treeNotInlined0(transformedArgs: List[Tree]) =
       cont(PreTransTree(TraitImplApply(implType, methodIdent,
-          args.map(transformExpr))(tree.tpe), RefinedType(tree.tpe)))
+          transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
+
+    def treeNotInlined = treeNotInlined0(args.map(transformExpr))
 
     val optTarget = traitImplCall(impl, methodName)
     if (optTarget.isEmpty) {
@@ -1146,14 +1158,37 @@ abstract class OptimizerCore {
       treeNotInlined
     } else {
       val target = optTarget.get
-      if (!target.inlineable || scope.implsBeingInlined(target)) {
+      if (scope.implsBeingInlined(target)) {
         treeNotInlined
       } else {
         pretransformExprs(args) { targs =>
-          inline(None, targs, target, isStat, usePreTransform)(cont)
+          if (target.inlineable || shouldInlineBecauseOfArgs(targs)) {
+            inline(None, targs, target, isStat, usePreTransform)(cont)
+          } else {
+            treeNotInlined0(targs.map(finishTransformExpr))
+          }
         }
       }
     }
+  }
+
+  private def shouldInlineBecauseOfArgs(
+      receiverAndArgs: List[PreTransform]): Boolean = {
+    def isLikelyOptimizable(arg: PreTransform): Boolean = arg match {
+      case PreTransBlock(_, result) =>
+        isLikelyOptimizable(result)
+
+      case PreTransLocalDef(localDef) =>
+        localDef.replacement match {
+          case TentativeAnonFunReplacement(_, _, _)   => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _) => true
+          case _                                      => false
+        }
+
+      case _ =>
+        false
+    }
+    receiverAndArgs.exists(isLikelyOptimizable)
   }
 
   private def inline(optReceiver: Option[PreTransform],
@@ -2379,14 +2414,7 @@ object OptimizerCore {
         case _ => false
       }
 
-      val adHocInlineAnnot = {
-        (methodName.contains("sc_IndexedSeqOptimized$class") &&
-            (methodName.contains("__F1__") || methodName.contains("__F2__"))) ||
-        (methodName == "sc_TraversableLike$class__filterImpl__sc_TraversableLike__F1__Z__O")
-      }
-
-      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder ||
-          adHocInlineAnnot || {
+      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder || {
         val MethodDef(_, params, _, body) = originalDef
         body match {
           case _:Skip | _:This | _:Literal                          => true
