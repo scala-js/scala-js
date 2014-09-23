@@ -263,6 +263,20 @@ object InteroperabilityTest extends JasmineTest {
       expect(obj.stringOf(vc)).toEqual("SomeValueClass(7)")
     }
 
+    it("should not unbox values received from JS method in statement position") {
+      /* To test this, we verify that a purposefully ill-typed facade does not
+       * throw a ClassCastException when called in statement position.
+       */
+      val obj = js.eval("""
+        var obj = {
+          test: function() { return 4; } // typed as String in the trait
+        };
+        obj;
+      """).asInstanceOf[InteroperabilityTestNoUnboxResultInStatement]
+      obj.test() // in statement position, should not throw
+      expect(() => obj.test()).toThrow // in expression position, should throw
+    }
+
     it("should protect conversions from JS types to Scala types") {
       class Foo
       val foo: Any = new Foo
@@ -373,6 +387,10 @@ object InteroperabilityTest extends JasmineTest {
 
   trait InteroperabilityTestValueClassParam extends js.Object {
     def stringOf(vc: SomeValueClass): String = ???
+  }
+
+  trait InteroperabilityTestNoUnboxResultInStatement extends js.Object {
+    def test(): String = ???
   }
 
   trait InteroperabilityTestAsInstanceOfResult extends js.Object {
