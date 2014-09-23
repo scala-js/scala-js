@@ -13,7 +13,7 @@ import scala.scalajs.runtime.StackTrace.ColumnStackTraceElement
  *  before any output. It also should always be paired with a
  *  [[scala.scalajs.sbtplugin.testing.TestOutputConsole]] on the JVM side.
  */
-@JSExport("scala.scalajs.testbridge.internal.ConsoleTestOutput")
+@JSExport
 protected object ConsoleTestOutput extends TestOutput {
 
   /** monkey-patches console.log when class is loaded */

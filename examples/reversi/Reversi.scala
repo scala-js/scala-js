@@ -25,7 +25,7 @@ case object Black extends Player {
   val opponent = White
 }
 
-@JSExport
+@JSExport("Reversi")
 class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   // The Model -----------------------------------------------------------------
