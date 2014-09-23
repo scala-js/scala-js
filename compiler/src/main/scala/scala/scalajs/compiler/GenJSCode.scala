@@ -859,7 +859,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a tree in statement position (in the IR).
      */
     def genStat(tree: Tree): js.Tree = {
-      exprToStat(genStatOrExpr(tree))
+      exprToStat(genStatOrExpr(tree, isStat = true))
     }
 
     /** Turn a JavaScript expression of type Unit into a statement */
@@ -879,7 +879,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a tree in expression position (in the IR).
      */
     def genExpr(tree: Tree): js.Tree = {
-      val result = genStatOrExpr(tree)
+      val result = genStatOrExpr(tree, isStat = false)
       assert(result.tpe != jstpe.NoType,
           s"genExpr($tree) returned a tree with type NoType at pos ${tree.pos}")
       result
@@ -890,7 +890,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  This is the main transformation method. Each node of the Scala AST
      *  is transformed into an equivalent portion of the JS AST.
      */
-    def genStatOrExpr(tree: Tree): js.Tree = {
+    def genStatOrExpr(tree: Tree, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
 
       tree match {
@@ -925,8 +925,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case If(cond, thenp, elsep) =>
-          js.If(genExpr(cond), genStatOrExpr(thenp), genStatOrExpr(elsep))(
-              toIRType(tree.tpe))
+          js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
+              genStatOrExpr(elsep, isStat))(toIRType(tree.tpe))
 
         case Return(expr) =>
           js.Return(toIRType(expr.tpe) match {
@@ -935,7 +935,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           })
 
         case t: Try =>
-          genTry(t)
+          genTry(t, isStat)
 
         case Throw(expr) =>
           val ex = genExpr(expr)
@@ -945,7 +945,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.Throw(ex)
 
         case app: Apply =>
-          genApply(app)
+          genApply(app, isStat)
 
         case app: ApplyDynamic =>
           genApplyDynamic(app)
@@ -1020,7 +1020,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
         case tree: Block =>
-          genBlock(tree)
+          genBlock(tree, isStat)
 
         case Typed(Super(_, _), _) =>
           genThis()
@@ -1051,7 +1051,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         /** A Match reaching the backend is supposed to be optimized as a switch */
         case mtch: Match =>
-          genMatch(mtch)
+          genMatch(mtch, isStat)
 
         /** Anonymous function (only with -Ydelambdafy:method) */
         case fun: Function =>
@@ -1169,11 +1169,11 @@ abstract class GenJSCode extends plugins.PluginComponent
      *    }
      *  }
      */
-    def genTry(tree: Try): js.Tree = {
+    def genTry(tree: Try, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Try(block, catches, finalizer) = tree
 
-      val blockAST = genStatOrExpr(block)
+      val blockAST = genStatOrExpr(block, isStat)
       val exceptIdent = freshLocalIdent("ex")
       val exceptVar = js.VarRef(exceptIdent, mutable = true)(jstpe.AnyType)
       val resultType = toIRType(tree.tpe)
@@ -1216,12 +1216,12 @@ abstract class GenJSCode extends plugins.PluginComponent
             // Generate the body that must be executed if the exception matches
             val bodyWithBoundVar = (boundVar match {
               case None =>
-                genStatOrExpr(body)
+                genStatOrExpr(body, isStat)
               case Some(bv) =>
                 val bvTpe = toIRType(tpe)
                 js.Block(
                     js.VarDef(bv, bvTpe, mutable = false, js.Cast(exceptVar, bvTpe)),
-                    genStatOrExpr(body))
+                    genStatOrExpr(body, isStat))
             })
 
             // Generate the test
@@ -1260,7 +1260,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  calls, super calls, constructor calls, isInstanceOf/asInstanceOf,
      *  primitives, JS calls, etc. They are further dispatched in here.
      */
-    def genApply(tree: Apply): js.Tree = {
+    def genApply(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun, args) = tree
 
@@ -1280,7 +1280,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (sym.isLabel) {
             genLabelApply(tree)
           } else if (scalaPrimitives.isPrimitive(sym)) {
-            genPrimitiveOp(tree)
+            genPrimitiveOp(tree, isStat)
           } else if (currentRun.runDefinitions.isBox(sym)) {
             // Box a primitive value (cannot be Unit)
             val arg = args.head
@@ -1290,7 +1290,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             val arg = args.head
             makePrimitiveUnbox(genExpr(arg), tree.tpe)
           } else {
-            genNormalApply(tree)
+            genNormalApply(tree, isStat)
           }
       }
     }
@@ -1523,7 +1523,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  * Calls to methods in impl classes of traits.
      *  * Regular method call
      */
-    private def genNormalApply(tree: Apply): js.Tree = {
+    private def genNormalApply(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
@@ -1568,7 +1568,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isStringType(receiver.tpe)) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe)) {
-        genPrimitiveJSCall(tree)
+        genPrimitiveJSCall(tree, isStat)
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
       } else if (isRawJSCtorDefaultParam) {
@@ -1872,7 +1872,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  fulfilled. We cannot do that. Instead, currently we duplicate the body
      *  of the default case in the else branch of the guard test.
      */
-    def genMatch(tree: Tree): js.Tree = {
+    def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Match(selector, cases) = tree
 
@@ -1890,7 +1890,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           (defaultBody0, NoSymbol)
       }
 
-      val genDefaultBody = genStatOrExpr(defaultBody)
+      val genDefaultBody = genStatOrExpr(defaultBody, isStat)
 
       var clauses: List[(List[js.Tree], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
@@ -1900,13 +1900,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         def genBody() = body match {
           // Yes, this will duplicate the default body in the output
-          case If(cond, thenp, app @ Apply(_, Nil)) if app.symbol == defaultLabelSym =>
-            js.If(genExpr(cond), genStatOrExpr(thenp), genDefaultBody)(resultType)(body.pos)
-          case If(cond, thenp, Block(List(app @ Apply(_, Nil)), _)) if app.symbol == defaultLabelSym =>
-            js.If(genExpr(cond), genStatOrExpr(thenp), genDefaultBody)(resultType)(body.pos)
+          case If(cond, thenp, app @ Apply(_, Nil))
+              if app.symbol == defaultLabelSym =>
+            js.If(genExpr(cond), genStatOrExpr(thenp, isStat), genDefaultBody)(
+                resultType)(body.pos)
+          case If(cond, thenp, Block(List(app @ Apply(_, Nil)), _))
+              if app.symbol == defaultLabelSym =>
+            js.If(genExpr(cond), genStatOrExpr(thenp, isStat), genDefaultBody)(
+                resultType)(body.pos)
 
           case _ =>
-            genStatOrExpr(body)
+            genStatOrExpr(body, isStat)
         }
 
         pat match {
@@ -1933,7 +1937,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.Match(expr, clauses.reverse, elseClause)(resultType)
     }
 
-    private def genBlock(tree: Block): js.Tree = {
+    private def genBlock(tree: Block, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Block(stats, expr) = tree
 
@@ -1979,7 +1983,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           /* Normal block */
           val statements = stats map genStat
-          val expression = genStatOrExpr(expr)
+          val expression = genStatOrExpr(expr, isStat)
           js.Block(statements :+ expression)
       }
     }
@@ -2044,7 +2048,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for a primitive method call */
-    private def genPrimitiveOp(tree: Apply): js.Tree = {
+    private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
       import scalaPrimitives._
 
       implicit val pos = tree.pos
@@ -2063,7 +2067,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       else if (isArrayOp(code))
         genArrayOp(tree, code)
       else if (code == SYNCHRONIZED)
-        genSynchronized(tree)
+        genSynchronized(tree, isStat)
       else if (isCoercion(code))
         genCoercion(tree, receiver, code)
       else if (jsPrimitives.isJavaScriptPrimitive(code))
@@ -2326,13 +2330,13 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for a call to AnyRef.synchronized */
-    private def genSynchronized(tree: Apply): js.Tree = {
+    private def genSynchronized(tree: Apply, isStat: Boolean): js.Tree = {
       /* JavaScript is single-threaded, so we can drop the
        * synchronization altogether.
        */
       val Apply(Select(receiver, _), List(arg)) = tree
       val newReceiver = genExpr(receiver)
-      val newArg = genStatOrExpr(arg)
+      val newArg = genStatOrExpr(arg, isStat)
       newReceiver match {
         case js.This() =>
           // common case for which there is no side-effect nor NPE
@@ -3018,7 +3022,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  * Getters and parameterless methods are translated as Selects
      *  * Setters are translated to Assigns of Selects
      */
-    private def genPrimitiveJSCall(tree: Apply): js.Tree = {
+    private def genPrimitiveJSCall(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
 
       val sym = tree.symbol
@@ -3096,7 +3100,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       boxedResult match {
-        case js.UndefinedParam() | js.Assign(_, _) => boxedResult
+        case js.UndefinedParam() | js.Assign(_, _) =>
+          boxedResult
+        case _ if isStat =>
+          js.Cast(boxedResult, jstpe.NoType)
         case _ =>
           fromAny(boxedResult,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
