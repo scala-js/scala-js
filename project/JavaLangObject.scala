@@ -89,7 +89,7 @@ object JavaLangObject {
     // ClassType(Object) is normally invalid, but not in this class def
     val ThisType = ClassType(ObjectClass)
 
-    ClassDef(
+    val classDef = ClassDef(
       Ident("O", Some("java.lang.Object")),
       ClassKind.Class,
       None,
@@ -100,7 +100,7 @@ object JavaLangObject {
           Ident("init___", Some("<init>")),
           Nil,
           AnyType,
-          This()(ThisType)),
+          This()(ThisType))(None),
 
         /* def hashCode(): Int = 42 */
         MethodDef(
@@ -109,7 +109,7 @@ object JavaLangObject {
           IntType,
           {
             CallHelper("systemIdentityHashCode", This()(ThisType))(IntType)
-          }),
+          })(None),
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
@@ -120,7 +120,7 @@ object JavaLangObject {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")), mutable = false)(AnyType))
-          }),
+          })(None),
 
         /* protected def clone(): Object =
          *   if (this.isInstanceOf[Cloneable]) <clone>(this)
@@ -137,7 +137,7 @@ object JavaLangObject {
               Throw(New(ClassType("jl_CloneNotSupportedException"),
                 Ident("init___", Some("<init>")), Nil))
             })(AnyType)
-          }),
+          })(None),
 
         /* def toString(): String =
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
@@ -159,7 +159,7 @@ object JavaLangObject {
                 Ident("toHexString__I__T"),
                 List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
                 ClassType(StringClass)))
-          }),
+          })(None),
 
           /* Since wait() is not supported in any way, a correct implementation
            * of notify() and notifyAll() is to do nothing.
@@ -170,21 +170,21 @@ object JavaLangObject {
             Ident("notify__V", Some("notify__V")),
             Nil,
             NoType,
-            Skip()),
+            Skip())(None),
 
           /* def notifyAll(): Unit = () */
           MethodDef(
             Ident("notifyAll__V", Some("notifyAll__V")),
             Nil,
             NoType,
-            Skip()),
+            Skip())(None),
 
           /* def finalize(): Unit = () */
           MethodDef(
             Ident("finalize__V", Some("finalize__V")),
             Nil,
             NoType,
-            Skip()),
+            Skip())(None),
 
           /* Reflective proxies
            * Note that we do not need to proxy the following methods, since
@@ -197,19 +197,19 @@ object JavaLangObject {
            */
 
           MethodDef(Ident("clone__"), Nil, AnyType,
-            Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType)),
+            Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(None),
 
           MethodDef(Ident("notify__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
-            Undefined())),
+            Undefined()))(None),
 
           MethodDef(Ident("notifyAll__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
-            Undefined())),
+            Undefined()))(None),
 
           MethodDef(Ident("finalize__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
-            Undefined())),
+            Undefined()))(None),
 
           // Exports
 
@@ -222,8 +222,10 @@ object JavaLangObject {
               Apply(This()(ThisType),
                   Ident("toString__T", Some("toString__T")),
                   Nil)(ClassType(StringClass))
-            })
+            })(None)
       ))
+
+      Hashers.hashClassDef(classDef)
   }
 
 }

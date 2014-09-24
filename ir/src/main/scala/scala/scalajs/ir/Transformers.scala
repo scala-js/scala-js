@@ -326,7 +326,7 @@ object Transformers {
           VarDef(name, vtpe, mutable, transformExpr(rhs))
 
         case MethodDef(name, args, resultType, body) =>
-          MethodDef(name, args, resultType, transformStat(body))
+          MethodDef(name, args, resultType, transformStat(body))(None)
 
         case PropertyDef(name, getterBody, setterArg, setterBody) =>
           PropertyDef(

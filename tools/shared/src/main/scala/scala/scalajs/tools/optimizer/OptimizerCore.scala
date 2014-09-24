@@ -92,7 +92,7 @@ abstract class OptimizerCore {
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
-      val m = MethodDef(name, newParams, resultType, newBody)(originalDef.pos)
+      val m = MethodDef(name, newParams, resultType, newBody)(None)(originalDef.pos)
       val info = recreateInfo(m)
       (m, info)
     } catch {

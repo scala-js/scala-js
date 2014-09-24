@@ -49,6 +49,9 @@ abstract class GenIncOptimizer {
    */
   private var batchMode: Boolean = false
 
+  /** Should positions be considered when comparing tree hashes */
+  private var considerPositions: Boolean = _
+
   private var objectClass: Class = _
   private val classes = CollOps.emptyMap[String, Class]
   private val traitImpls = CollOps.emptyParMap[String, TraitImpl]
@@ -79,10 +82,11 @@ abstract class GenIncOptimizer {
 
   /** Update the incremental analyzer with a new run. */
   def update(analyzer: Analyzer,
-      getClassTreeIfChanged: GetClassTreeIfChanged,
+      getClassTreeIfChanged: GetClassTreeIfChanged, considerPositions: Boolean,
       logger: Logger): Unit = withLogger(logger) {
 
     batchMode = objectClass == null
+    this.considerPositions = considerPositions
     logger.debug(s"Optimizer batch mode: $batchMode")
 
     logTime(logger, "Incremental part of inc. optimizer") {
@@ -274,22 +278,25 @@ abstract class GenIncOptimizer {
             cls.fields = for (field @ VarDef(_, _, _, _) <- tree.defs) yield field
           case _          =>
         }
-        for {
-          (methodDef @ MethodDef(Ident(methodName, _), _, _, _)) <- tree.defs
-          if reachableMethods.contains(methodName)
-        } {
-          val methodInfo = info.methodInfos(methodName)
-          methods.get(methodName).fold {
-            addedMethods += methodName
-            val method = newMethodImpl(this, methodName)
-            method.updateWith(methodInfo, methodDef)
-            methods(methodName) = method
-            method
-          } { method =>
-            if (method.updateWith(methodInfo, methodDef))
-              changedMethods += methodName
-            method
-          }
+        tree.defs.foreach {
+          case methodDef: MethodDef if methodDef.name.isInstanceOf[Ident] &&
+              reachableMethods.contains(methodDef.name.name) =>
+            val methodName = methodDef.name.name
+
+            val methodInfo = info.methodInfos(methodName)
+            methods.get(methodName).fold {
+              addedMethods += methodName
+              val method = newMethodImpl(this, methodName)
+              method.updateWith(methodInfo, methodDef)
+              methods(methodName) = method
+              method
+            } { method =>
+              if (method.updateWith(methodInfo, methodDef))
+                changedMethods += methodName
+              method
+            }
+
+          case _ => // ignore
         }
       }
 
@@ -753,7 +760,13 @@ abstract class GenIncOptimizer {
         methodDef: MethodDef): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
 
-      val bodyChanged = methodDef != originalDef
+      val bodyChanged = {
+        originalDef == null ||
+        (methodDef.hash zip originalDef.hash).forall {
+          case (h1, h2) => !Hashers.hashesEqual(h1, h2, considerPositions)
+        }
+      }
+
       if (bodyChanged)
         tagBodyAskers()
 
