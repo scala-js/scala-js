@@ -325,40 +325,40 @@ object InteroperabilityTest extends JasmineTest {
   }
 
   trait InteroperabilityTestFieldEscape extends js.Object {
-    var `def`: Int
-    def `val`(): Int = ???
-    def `val`(n: Int): Int = ???
+    var `def`: Int = js.native
+    def `val`(): Int = js.native
+    def `val`(n: Int): Int = js.native
   }
 
   trait InteroperabilityTestJSName extends js.Object {
     @JSName("val")
-    def value(): Int = ???
+    def value(): Int = js.native
     @JSName("val")
-    def value(n: Int): Int = ???
+    def value(n: Int): Int = js.native
   }
 
   trait InteroperabilityTestProperty extends js.Object {
-    def a_=(x: Int): Unit = ???
-    def a: Int = ???
+    def a_=(x: Int): Unit = js.native
+    def a: Int = js.native
   }
 
   trait InteroperabilityTestPropertyNamed extends js.Object {
     @JSName("b")
-    def a_=(x: Int): Unit = ???
+    def a_=(x: Int): Unit = js.native
     @JSName("b")
-    def a: Int = ???
-    def b: Int = ???
+    def a: Int = js.native
+    def b: Int = js.native
   }
 
   trait InteroperabilityTestJSBracketAccess extends js.Object {
     @JSBracketAccess
-    def apply(index: Int): Int = ???
+    def apply(index: Int): Int = js.native
     @JSBracketAccess
-    def update(index: Int, v: Int): Unit = ???
+    def update(index: Int, v: Int): Unit = js.native
   }
 
   trait InteroperabilityTestRawReceiver extends js.Object {
-    val check: js.Function1[Int, Int] = ???
+    val check: js.Function1[Int, Int] = js.native
   }
 
   /** Trait with different method signatures, all forwarded to the same
@@ -366,42 +366,42 @@ object InteroperabilityTest extends JasmineTest {
    */
   trait InteroperabilityTestDefaultParam extends js.Object {
     @JSName("fun")
-    def simple(x: Int, y: Int = 5): js.Any = ???
+    def simple(x: Int, y: Int = 5): js.Any = js.native
     @JSName("fun")
-    def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Any = ???
+    def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Any = js.native
     @JSName("fun")
-    def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Any = ???
+    def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Any = js.native
   }
 
   trait InteroperabilityTestCharResult extends js.Object {
-    def get(): Char = ???
+    def get(): Char = js.native
   }
 
   trait InteroperabilityTestCharParam extends js.Object {
-    def twice(c: Char): String = ???
+    def twice(c: Char): String = js.native
   }
 
   trait InteroperabilityTestValueClassResult extends js.Object {
-    def test(vc: Any): SomeValueClass = ???
+    def test(vc: Any): SomeValueClass = js.native
   }
 
   trait InteroperabilityTestValueClassParam extends js.Object {
-    def stringOf(vc: SomeValueClass): String = ???
+    def stringOf(vc: SomeValueClass): String = js.native
   }
 
   trait InteroperabilityTestNoUnboxResultInStatement extends js.Object {
-    def test(): String = ???
+    def test(): String = js.native
   }
 
   trait InteroperabilityTestAsInstanceOfResult extends js.Object {
-    def testChar(): Char = ???
-    def testInt(): Int = ???
-    def testShort(): Short = ???
-    def testDouble(): Double = ???
-    def testString(): String = ???
-    def testValueClass(): SomeValueClass = ???
-    def testNormalClass(): List[Int] = ???
-    def testAny(): Any = ???
+    def testChar(): Char = js.native
+    def testInt(): Int = js.native
+    def testShort(): Short = js.native
+    def testDouble(): Double = js.native
+    def testString(): String = js.native
+    def testValueClass(): SomeValueClass = js.native
+    def testNormalClass(): List[Int] = js.native
+    def testAny(): Any = js.native
   }
 }
 
@@ -412,24 +412,24 @@ object InteroperabilityTest extends JasmineTest {
 @JSName("InteroperabilityTestInherit.Pattern")
 class InteroperabilityTestPattern protected () extends js.Object {
   def this(pattern: String) = this()
-  val field: Int = ???
-  def method(): String = ???
-  def getConstructorParam(): String = ???
+  val field: Int = js.native
+  def method(): String = js.native
+  def getConstructorParam(): String = js.native
 }
 
 trait InteroperabilityTestTopLevel extends js.Object {
-  val value: String = ???
-  def valueAsInt(): Int = ???
+  val value: String = js.native
+  def valueAsInt(): Int = js.native
 }
 
 @JSName("InteroperabilityTestTopLevelObject")
 object InteroperabilityTestTopLevel extends js.Object {
-  def apply(value: String): InteroperabilityTestTopLevel = ???
+  def apply(value: String): InteroperabilityTestTopLevel = js.native
 }
 
 object InteroperabilityTestGlobalScope extends js.GlobalScope {
-  var interoperabilityTestGlobalScopeValue: String = ???
-  def interoperabilityTestGlobalScopeValueAsInt(): Int = ???
+  var interoperabilityTestGlobalScopeValue: String = js.native
+  def interoperabilityTestGlobalScopeValueAsInt(): Int = js.native
 }
 
 class SomeValueClass(val i: Int) extends AnyVal {
@@ -437,5 +437,5 @@ class SomeValueClass(val i: Int) extends AnyVal {
 }
 
 class InteroperabilityTestCtor(x: Int = 5, y: Int = ???) extends js.Object {
-  def values: js.Array[Int] = ???
+  def values: js.Array[Int] = js.native
 }

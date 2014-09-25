@@ -45,6 +45,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   class JSInteropPhase(prev: nsc.Phase) extends Phase(prev) {
     override def name = phaseName
     override def description = "Prepare ASTs for JavaScript interop"
+    override def run(): Unit = {
+      jsPrimitives.initPrepJSPrimitives()
+      super.run()
+    }
   }
 
   override protected def newTransformer(unit: CompilationUnit) =
@@ -120,11 +124,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case cldef: ClassDef =>
         enterScalaCls { super.transform(cldef) }
 
-      // Catch DefDefs in JSAny to forbid setters with non-unit return type
-      case ddef: DefDef if inJSAny && isNonJSScalaSetter(ddef.symbol) =>
-        unit.error(tree.pos, "Setters that do not return Unit are " +
-            "not allowed in types extending js.Any")
-        super.transform(ddef)
+      // Catch ValorDefDef in js.Any
+      case vddef: ValOrDefDef if inJSAny =>
+        transformValOrDefDefInRawJSType(vddef)
 
       // Catch ValDefs in enumerations with simple calls to Value
       case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar)) if inScalaEnum =>
@@ -338,6 +340,76 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         enterJSAnyMod { super.transform(implDef) }
       else
         enterJSAnyCls { super.transform(implDef) }
+    }
+
+    /** Verify a ValOrDefDef inside a js.Any */
+    private def transformValOrDefDefInRawJSType(tree: ValOrDefDef) = {
+      val sym = tree.symbol
+
+      val exports = jsInterop.exportsOf(sym)
+
+      if (exports.nonEmpty) {
+        val memType = if (sym.isConstructor) "constructor" else "method"
+        unit.error(exports.head.pos, s"You may not export a $memType of a subclass of js.Any")
+      }
+
+      if (isNonJSScalaSetter(sym)) {
+        // Forbid setters with non-unit return type
+        unit.error(tree.pos, "Setters that do not return Unit are " +
+            "not allowed in types extending js.Any")
+      }
+
+      if (sym.hasAnnotation(NativeAttr)) {
+        // Native methods are not allowed
+        unit.error(tree.pos, "Methods in a js.Any may not be @native")
+      }
+
+      if (sym.isPrimaryConstructor || sym.isValueParameter ||
+          sym.isParamWithDefault || sym.isAccessor && !sym.isDeferred ||
+          sym.isParamAccessor || sym.isSynthetic ||
+          AllJSFunctionClasses.contains(sym.owner)) {
+        /* Ignore (i.e. allow) primary ctor, parameters, default parameter
+         * getters, accessors, param accessors, synthetic methods (to avoid
+         * double errors with case classes, e.g. generated copy method) and
+         * js.Functions and js.ThisFunctions (they need abstract methods for SAM
+         * treatment.
+         */
+      } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
+        // Force rhs of a primitive to be `sys.error("stub")` except for the
+        // js.native primitive which displays an elaborate error message
+        if (sym != JSPackage_native) {
+          tree.rhs match {
+            case Apply(trg, Literal(Constant("stub")) :: Nil)
+                if trg.symbol == definitions.Sys_error =>
+            case _ =>
+              unit.error(tree.pos,
+                  "The body of a primitive must be `sys.error(\"stub\")`.")
+          }
+        }
+      } else if (sym.isConstructor) {
+        // Force secondary ctor to have only a call to the primary ctor inside
+        tree.rhs match {
+          case Block(List(Apply(trg, _)), Literal(Constant(())))
+              if trg.symbol.isPrimaryConstructor &&
+                 trg.symbol.owner == sym.owner =>
+            // everything is fine here
+          case _ =>
+            unit.error(tree.pos, "A secondary constructor of a class " +
+                "extending js.Any may only call the primary constructor")
+        }
+      } else {
+        // Check that the tree's body is either empty or calls js.native
+        tree.rhs match {
+          case sel: Select if sel.symbol == JSPackage_native =>
+          case _ =>
+            val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
+            unit.warning(pos, "Members of traits, classes and objects " +
+              "extending js.Any may only contain members that call js.native. " +
+              "This will be enforced in 1.0.")
+        }
+      }
+
+      super.transform(tree)
     }
 
     private def enterJSAnyCls[T](body: =>T) = {

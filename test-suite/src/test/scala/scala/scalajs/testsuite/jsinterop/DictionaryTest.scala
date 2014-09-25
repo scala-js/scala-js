@@ -61,7 +61,7 @@ object DictionaryTest extends JasmineTest {
   }
 
   trait KeyHolder extends js.Object {
-    def key: String = ???
+    def key: String = js.native
   }
 
   describe("scala.scalajs.js.JSConverters.JSRichGenMap") {

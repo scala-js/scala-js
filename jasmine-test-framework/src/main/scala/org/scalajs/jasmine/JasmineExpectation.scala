@@ -4,19 +4,19 @@ import scala.scalajs.js
 import java.util.regex.Pattern
 
 trait JasmineExpectation extends js.Object {
-  def toBe(exp: js.Any): Unit
-  def toEqual(exp: js.Any): Unit
-  def toMatch(exp: Pattern): Unit
-  def toMatch(exp: String): Unit = toMatch(Pattern.compile(exp))
-  def toBeDefined(): Unit
-  def toBeUndefined(): Unit
-  def toBeNull(): Unit
-  def toBeTruthy(): Unit
-  def toBeFalsy(): Unit
-  def toContain(exp: js.Any): Unit
-  def toBeGreaterThan(exp: Double): Unit
-  def toBeLessThan(exp: Double): Unit
-  def toBeCloseTo(exp: Double, precision: Int = 2): Unit
-  def toThrow(): Unit
-  val not: JasmineExpectation
+  def toBe(exp: js.Any): Unit = js.native
+  def toEqual(exp: js.Any): Unit = js.native
+  def toMatch(exp: Pattern): Unit = js.native
+  def toMatch(exp: String): Unit = js.native
+  def toBeDefined(): Unit = js.native
+  def toBeUndefined(): Unit = js.native
+  def toBeNull(): Unit = js.native
+  def toBeTruthy(): Unit = js.native
+  def toBeFalsy(): Unit = js.native
+  def toContain(exp: js.Any): Unit = js.native
+  def toBeGreaterThan(exp: Double): Unit = js.native
+  def toBeLessThan(exp: Double): Unit = js.native
+  def toBeCloseTo(exp: Double, precision: Int = 2): Unit = js.native
+  def toThrow(): Unit = js.native
+  val not: JasmineExpectation = js.native
 }

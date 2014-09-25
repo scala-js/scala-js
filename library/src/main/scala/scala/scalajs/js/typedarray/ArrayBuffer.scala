@@ -5,10 +5,10 @@ import scala.scalajs.js
 class ArrayBuffer(length: Int) extends js.Object {
 
   /** Length of this buffer in bytes */
-  val byteLength: Int = ???
+  val byteLength: Int = js.native
 
   /** Returns a copy of the given slice of this array buffer */
-  def slice(begin: Int, end: Int = ???): ArrayBuffer = ???
+  def slice(begin: Int, end: Int = ???): ArrayBuffer = js.native
 
   // Note: Some specifications specify a static isView method on ArrayBuffer
   // that checks whether a given object is an ArrayBufferView. We omit it here
