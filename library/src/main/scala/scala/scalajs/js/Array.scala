@@ -64,15 +64,6 @@ class Array[A] extends Object {
    * MDN
    */
   def concat(items: Array[A]*): Array[A] = ???
-  /**
-   * concat creates a new array consisting of the elements in the this object
-   * on which it is called, followed in order by, for each argument, the
-   * elements of that argument (if the argument is an array) or the argument
-   * itself (if the argument is not an array).
-   *
-   * MDN
-   */
-  def concat(item: A, items: A*): Array[A] = ???
 
   /**
    * The join() method joins all elements of an array into a string.
