@@ -96,7 +96,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def reverse(): Array[A] = ???
+  @JSName("reverse")
+  def reverseInPlace(): Array[A] = ???
 
   /**
    * The shift() method removes the first element from an array and returns that
@@ -111,7 +112,8 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def slice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = ???
+  @JSName("slice")
+  def jsSlice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = ???
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
@@ -134,6 +136,7 @@ class Array[A] extends Object {
    * MDN
    */
   def splice(index: Int): Array[A] = ???
+
   /**
    * The splice() method changes the content of an array, adding new elements
    * while removing old elements.
@@ -149,199 +152,6 @@ class Array[A] extends Object {
    * MDN
    */
   def unshift(items: A*): Int = ???
-
-  /**
-   * The indexOf() method returns the first index at which a given element can
-   * be found in the array, or -1 if it is not present.
-   *
-   * MDN
-   */
-  def indexOf(searchElement: A, fromIndex: Int): Int = ???
-  def indexOf(searchElement: A): Int = ???
-
-  /**
-   * The lastIndexOf() method returns the last index at which a given element
-   * can be found in the array, or -1 if it is not present. The array is
-   * searched backwards, starting at fromIndex.
-   *
-   * MDN
-   */
-  def lastIndexOf(searchElement: A, fromIndex: Int): Int = ???
-  def lastIndexOf(searchElement: A): Int = ???
-
-  /**
-   * The every method executes the provided callback function once for each
-   * element present in the array until it finds one where callback returns
-   * a falsy value (a value that becomes false when converted to a Boolean).
-   * If such an element is found, the every method immediately returns false.
-   * Otherwise, if callback returned a true value for all elements, every
-   * will return true. callback is invoked only for indexes of the array
-   * which have assigned values; it is not invoked for indexes which have been
-   * deleted or which have never been assigned values.
-   *
-   * callback is invoked with three arguments:
-   *
-   * - the value of the element
-   * - the index of the element
-   * - and the Array object being traversed.
-   *
-   * If a thisObject parameter is provided to every, it will be used as the
-   * this for each invocation of the callback. If it is not provided, or is
-   * null, the global object associated with callback is used instead.
-   *
-   * every does not mutate the array on which it is called.
-   *
-   * every acts like the "for all" quantifier in mathematics. In particular, for
-   * an empty array, it returns true. (It is vacuously true that all elements of
-   * the empty set satisfy any given condition.)
-   *
-   * MDN
-   */
-  def every[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Boolean = ???
-  def every(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
-
-  /**
-   * some executes the callback function once for each element present in the
-   * array until it finds one where callback returns a true value. If such an
-   * element is found, some immediately returns true. Otherwise, some returns
-   * false. callback is invoked only for indexes of the array which have assigned
-   * values; it is not invoked for indexes which have been deleted or which
-   * have never been assigned values.
-   *
-   * callback is invoked with three arguments: the value of the element, the index
-   * of the element, and the Array object being traversed.
-   *
-   * If a thisObject parameter is provided to some, it will be used as the this
-   * for each invocation of the callback. If it is not provided, or is null,
-   * the global object associated with callback is used instead.
-   *
-   * some does not mutate the array on which it is called.
-   *
-   * MDN
-   */
-  def some[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Boolean = ???
-  def some(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
-  def some(callbackfn: Function2[A, Int, Boolean]): Boolean = ???
-  def some(callbackfn: Function1[A, Boolean]): Boolean = ???
-
-  /**
-   * forEach executes the provided callback once for each element of the array
-   * with an assigned value. It is not invoked for indexes which have been deleted
-   * or which have been initialized to undefined.
-   *
-   * callback is invoked with three arguments:
-   *
-   * - the element value
-   * - the element index
-   * - the array being traversed
-   *
-   * If a thisArg parameter is provided to forEach, it will be used as the
-   * this value for each callback invocation as if callback.call(thisArg,
-   * element, index, array) was called. If thisArg is undefined or null,
-   * the this value within the function depends on whether the function
-   * is in strict mode or not (passed value if in strict mode, global object
-   * if in non-strict mode).
-   *
-   * MDN
-   */
-  def forEach[T](callbackfn: ThisFunction3[T, A, Int, Array[A], _],
-      thisArg: T): Unit = ???
-  def forEach(callbackfn: Function3[A, Int, Array[A], _]): Unit = ???
-  def forEach(callbackfn: Function2[A, Int, _]): Unit = ???
-  def forEach(callbackfn: Function1[A, _]): Unit = ???
-
-  /**
-   * map calls a provided callback function once for each element in an array,
-   * in order, and constructs a new array from the results. callback is
-   * invoked only for indexes of the array which have assigned values; it is
-   * not invoked for indexes which have been deleted or which have never been
-   * assigned values.
-   *
-   * callback is invoked with three arguments: the value of the element, the
-   * index of the element, and the Array object being traversed.
-   *
-   * If a thisArg parameter is provided to map, it will be used as the this for
-   * each invocation of the callback. If it is not provided, or is null, the
-   * global object associated with callback is used instead.
-   *
-   * map does not mutate the array on which it is called.
-   *
-   * MDN
-   */
-  def map[B, T](callbackfn: ThisFunction3[T, A, Int, Array[A], B],
-      thisArg: T): Array[B] = ???
-  def map[B](callbackfn: Function3[A, Int, Array[A], B]): Array[B] = ???
-  def map[B](callbackfn: Function2[A, Int, B]): Array[B] = ???
-  def map[B](callbackfn: Function1[A, B]): Array[B] = ???
-
-  /**
-   * filter calls a provided callback function once for each element in an array,
-   * and constructs a new array of all the values for which callback returns a true
-   * value. callback is invoked only for indexes of the array which have assigned
-   * values; it is not invoked for indexes which have been deleted or which have
-   * never been assigned values. Array elements which do not pass the callback
-   * test are simply skipped, and are not included in the new array.
-   *
-   * callback is invoked with three arguments:
-   *
-   * - the value of the element
-   * - the index of the element
-   * - the Array object being traversed
-   *
-   * If a thisObject parameter is provided to filter, it will be used as the this
-   * for each invocation of the callback. If it is not provided, or is null, the
-   * global object associated with callback is used instead.
-   *
-   * filter does not mutate the array on which it is called.
-   *
-   * MDN
-   */
-  def filter[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Array[A] = ???
-  def filter(callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = ???
-  def filter(callbackfn: Function2[A, Int, Boolean]): Array[A] = ???
-  def filter(callbackfn: Function1[A, Boolean]): Array[A] = ???
-
-  /**
-   * reduce executes the callback function once for each element present in
-   * the array, excluding holes in the array, receiving four arguments: the
-   * initial value (or value from the previous callback call), the value of
-   * the current element, the current index, and the array over which
-   * iteration is occurring.
-   *
-   * The first time the callback is called, previousValue and currentValue can
-   * be one of two values. If initialValue is provided in the call to reduce,
-   * then previousValue will be equal to initialValue and currentValue will be
-   * equal to the first value in the array. If no initialValue was provided,
-   * then previousValue will be equal to the first value in the array and
-   * currentValue will be equal to the second.
-   *
-   * MDN
-   */
-  def reduce[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
-  def reduce[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
-  def reduce[B](callbackfn: Function3[B, A, Int, B]): B = ???
-  def reduce[B](callbackfn: Function2[B, A, B]): B = ???
-
-  /**
-   * reduceRight executes the callback function once for each element present
-   * in the array, excluding holes in the array, receiving four arguments:
-   * the initial value (or value from the previous callback call), the value
-   * of the current element, the current index, and the array over which
-   * iteration is occurring.
-   *
-   * MDN
-   */
-  def reduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
-  def reduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
-  def reduceRight[B](callbackfn: Function3[B, A, Int, B]): B = ???
-  def reduceRight[B](callbackfn: Function2[B, A, B]): B = ???
 }
 
 /** Factory for [[js.Array]] objects. */

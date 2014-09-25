@@ -340,7 +340,7 @@ object StackTrace {
       .replace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
       .replace("""^([^\(]+|\{anonymous\}\(\)) \((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
-      .slice(0, -1)
+      .jsSlice(0, -1)
 
     /* Note: there was a $ next to the \n here in the original code, but it
      * chokes with method names with $'s, which are generated often by Scala.js.
@@ -360,7 +360,7 @@ object StackTrace {
       .replace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
       .replace("""^([^\(]+|\{anonymous\}\(\))\s+\((.+)\)$""".re("gm"), "$1@$2")
       .split("\n")
-      .slice(1)
+      .jsSlice(1)
   }
 
   private def extractSafari(e: js.Dynamic): js.Array[jsString] = {

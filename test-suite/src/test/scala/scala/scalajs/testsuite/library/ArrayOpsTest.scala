@@ -60,6 +60,28 @@ object ArrayOpsTest extends JasmineTest {
       expect(seq.toList == List(3,4,5,6,3,4)).toBeTruthy
     }
 
+    it("should implement reduceLeft") {
+      val array = js.Array(100, 6, 2, 56, -1)
+      expect(array.reduceLeft(_ - _)).toEqual(37)
+      expect(() => js.Array[Int]().reduceLeft(_ + _)).toThrow
+    }
+
+    it("should implement reduceRight") {
+      val array = js.Array("hello", "world")
+      expect(array.reduceRight(_ + ", " + _)).toEqual("hello, world")
+      expect(() => js.Array[Int]().reduceRight(_ + _)).toThrow
+    }
+
+    it("should implement ++") {
+      val left = js.Array("hello", "world")
+      val right = js.Array("and", "everyone", "else")
+      expect(left ++ right).toEqual(
+          js.Array("hello", "world", "and", "everyone", "else"))
+
+      val ints = js.Array(4, 3)
+      expect(left ++ ints).toEqual(js.Array("hello", "world", 4, 3))
+    }
+
     // Some arbitrary methods to test the builders
 
     it("should implement collect") {
