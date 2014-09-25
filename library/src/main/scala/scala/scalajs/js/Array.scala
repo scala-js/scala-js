@@ -63,7 +63,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def concat(items: Array[A]*): Array[A] = ???
+  def concat[B >: A](items: Array[_ <: B]*): Array[B] = ???
 
   /**
    * The join() method joins all elements of an array into a string.
@@ -111,8 +111,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def slice(start: Int, end: Int): Array[A] = ???
-  def slice(start: Int): Array[A] = ???
+  def slice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = ???
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
