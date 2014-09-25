@@ -90,4 +90,48 @@ class StringBuffer(private var content: String) extends CharSequence
     }
   }
 
+  def insert(index: Int, b: scala.Boolean): StringBuffer        = insert(index, b.toString)
+  def insert(index: Int, b: scala.Byte): StringBuffer           = insert(index, b.toString)
+  def insert(index: Int, s: scala.Short): StringBuffer          = insert(index, s.toString)
+  def insert(index: Int, i: scala.Int): StringBuffer            = insert(index, i.toString)
+  def insert(index: Int, l: scala.Long): StringBuffer           = insert(index, l.toString)
+  def insert(index: Int, f: scala.Float): StringBuffer          = insert(index, f.toString)
+  def insert(index: Int, d: scala.Double): StringBuffer         = insert(index, d.toString)
+  def insert(index: Int, c: scala.Char): StringBuffer           = insert(index, c.toString)
+  def insert(index: Int, csq: CharSequence): StringBuffer       = insert(index: Int, csq: AnyRef)
+  def insert(index: Int, arr: Array[scala.Char]): StringBuffer  = insert(index, arr, 0, arr.length)
+
+  def insert(index: Int, ref: AnyRef): StringBuffer =
+    if (ref == null)
+      insert(index, null: String)
+    else
+      insert(index, ref.toString)
+
+  def insert(index: Int, csq: CharSequence, start: Int, end: Int): StringBuffer =
+    if (csq == null)
+      insert(index, "null", start, end)
+    else
+      insert(index, csq.subSequence(start, end).toString)
+
+
+  def insert(index: Int, arr: Array[scala.Char], offset: Int, len: Int): StringBuffer = {
+    var str = ""
+    var i = 0
+    while (i < len) {
+      str += arr(i + offset)
+      i += 1
+    }
+    insert(index, str)
+  }
+
+  def insert(index: Int, str: String): StringBuffer = {
+    val thisLength = length()
+    if (index < 0 || index > thisLength)
+      throw new StringIndexOutOfBoundsException(index)
+    else if (index == thisLength)
+      append(str)
+    else
+      content = content.substring(0, index) + Option(str).getOrElse("null") + content.substring(index)
+    this
+  }
 }
