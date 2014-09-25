@@ -54,12 +54,14 @@ object Any extends LowPrioAnyImplicits {
     new scala.runtime.RichBoolean(b: scala.Boolean)
 
   implicit def canBuildFromArray[A]: CanBuildFrom[Array[_], A, Array[A]] = {
-    new CanBuildFrom[Array[_], A, Array[A]] {
+    @inline
+    class CanBuildFromArray extends CanBuildFrom[Array[_], A, Array[A]] {
       def apply(from: Array[_]): mutable.Builder[A, Array[A]] =
         new ArrayOps.ArrayBuilder[A]
       def apply(): mutable.Builder[A, Array[A]] =
         new ArrayOps.ArrayBuilder[A]
     }
+    new CanBuildFromArray
   }
 
   implicit def fromFunction0[R](f: scala.Function0[R]): Function0[R] = sys.error("stub")

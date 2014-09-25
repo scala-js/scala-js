@@ -13,15 +13,17 @@ import org.scalajs.jasminetest.JasmineTest
 
 object ArraySAMTest extends JasmineTest {
 
+  import js.JSArrayOps._
+
   describe("scala.scalajs.js.Array with SAM support") {
 
-    it("should provide map") {
-      expect(js.Array("Sc", "ala", ".", "js").map(_.length)).toEqual(
+    it("should provide jsMap") {
+      expect(js.Array("Sc", "ala", ".", "js").jsMap(_.length)).toEqual(
           js.Array(2, 3, 1, 2))
     }
 
-    it("should provide filter") {
-      expect(js.Array(56, 30, -20, 33, 54, 86).filter(_ % 3 != 0)).toEqual(
+    it("should provide jsFilter") {
+      expect(js.Array(56, 30, -20, 33, 54, 86).jsFilter(_ % 3 != 0)).toEqual(
           js.Array(56, -20, 86))
     }
 

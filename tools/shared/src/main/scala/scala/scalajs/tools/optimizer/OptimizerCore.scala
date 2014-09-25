@@ -765,6 +765,14 @@ abstract class OptimizerCore {
           }
         }
 
+      case Cast(expr, tpe) =>
+        pretransformExpr(expr) { texpr =>
+          if (texpr.tpe.base == tpe)
+            cont(texpr)
+          else
+            cont(PreTransTree(Cast(finishTransformExpr(texpr), tpe)))
+        }
+
       case _ =>
         val result = transformExpr(tree)
         cont(PreTransTree(result, RefinedType(result.tpe)))
