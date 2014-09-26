@@ -1,13 +1,12 @@
 package org.scalajs.jasmine
 
 import scala.scalajs.js
-import java.util.regex.Pattern
 
 trait JasmineExpectation extends js.Object {
   def toBe(exp: js.Any): Unit
   def toEqual(exp: js.Any): Unit
-  def toMatch(exp: Pattern): Unit
-  def toMatch(exp: String): Unit = toMatch(Pattern.compile(exp))
+  def toMatch(exp: js.RegExp): Unit
+  def toMatch(exp: String): Unit
   def toBeDefined(): Unit
   def toBeUndefined(): Unit
   def toBeNull(): Unit
