@@ -808,7 +808,7 @@ object JSDesugaring {
             }
             val newDefault =
               if (default == EmptyTree) default else redo(default)
-            Switch(newSelector, newCases, newDefault)
+            Switch(transformExpr(newSelector), newCases, newDefault)
           }
 
         // Scala expressions (if we reach here their arguments are not expressions)
