@@ -15,10 +15,14 @@ import mutable.Builder
 
 /** Equivalent of scm.ArrayOps for js.Array */
 @inline
-class ArrayOps[A](private[this] val array: Array[A])
-    extends mutable.ArrayLike[A, Array[A]] {
+final class ArrayOps[A](private[this] val array: Array[A])
+    extends mutable.ArrayLike[A, Array[A]]
+       with Builder[A, Array[A]] {
 
   import ArrayOps._
+
+  /** Creates a new empty [[ArrayOps]]. */
+  def this() = this(Array())
 
   // Implementation of ArrayLike
 
@@ -36,7 +40,19 @@ class ArrayOps[A](private[this] val array: Array[A])
       repr: Array[A]): mutable.IndexedSeq[A] = new WrappedArray(repr)
 
   protected[this] def newBuilder: Builder[A, Array[A]] =
-    new ArrayOps.ArrayBuilder
+    new ArrayOps[A]
+
+  // Implementation of Builder
+
+  @inline def +=(elem: A): this.type = {
+    array.push(elem)
+    this
+  }
+
+  @inline def clear(): Unit =
+    array.length = 0
+
+  @inline def result(): Array[A] = array
 
   // Scala notation for a fast concat()
 
@@ -98,25 +114,6 @@ object ArrayOps {
     loop(left, 0, leftLength, 0)
     loop(right, 0, rightLength, leftLength)
     result
-  }
-
-  @inline
-  class ArrayBuilder[A] extends Builder[A, Array[A]] {
-    private[this] var array: Array[A] = new Array
-
-    @inline
-    def +=(elem: A): this.type = {
-      array.push(elem)
-      this
-    }
-
-    @inline
-    def clear(): Unit =
-      array = new Array
-
-    @inline
-    def result(): Array[A] =
-      array
   }
 
 }

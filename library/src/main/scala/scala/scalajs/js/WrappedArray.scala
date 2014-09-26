@@ -14,43 +14,49 @@ import mutable.Builder
 import scala.collection.generic.CanBuildFrom
 
 /** Equivalent of scm.WrappedArray for js.Array */
-class WrappedArray[A](val array: Array[A])
+final class WrappedArray[A](val array: Array[A])
     extends mutable.AbstractSeq[A]
        with mutable.IndexedSeq[A]
-       with mutable.ArrayLike[A, WrappedArray[A]] {
+       with mutable.ArrayLike[A, WrappedArray[A]]
+       with Builder[A, WrappedArray[A]] {
+
+  /** Creates a new empty [[WrappedArray]]. */
+  def this() = this(Array())
+
+  // IndexedSeq interface
 
   def update(index: Int, elem: A): Unit = array(index) = elem
   def apply(index: Int): A = array(index)
   def length: Int = array.length
 
   override protected[this] def newBuilder: Builder[A, WrappedArray[A]] =
-    new WrappedArray.WrappedArrayBuilder[A]
+    new WrappedArray[A]
+
+  // Builder interface
+
+  @inline def +=(elem: A): this.type = {
+    array.push(elem)
+    this
+  }
+
+  @inline def clear(): Unit =
+    array.length = 0
+
+  @inline def result(): WrappedArray[A] = this
 
 }
 
 object WrappedArray {
 
-  def empty[A]: WrappedArray[A] = new WrappedArray[A](Array())
+  def empty[A]: WrappedArray[A] = new WrappedArray[A]
 
   implicit def canBuildFrom[A]: CanBuildFrom[WrappedArray[_], A, WrappedArray[A]] = {
     new CanBuildFrom[WrappedArray[_], A, WrappedArray[A]] {
       def apply(from: WrappedArray[_]): Builder[A, WrappedArray[A]] =
-        new WrappedArrayBuilder[A]
+        new WrappedArray[A]
       def apply: Builder[A, WrappedArray[A]] =
-        new WrappedArrayBuilder[A]
+        new WrappedArray[A]
     }
-  }
-
-  class WrappedArrayBuilder[A] extends Builder[A, WrappedArray[A]] {
-    private[this] var array: Array[A] = new Array
-    def +=(elem: A): this.type = {
-      array.push(elem)
-      this
-    }
-    def clear(): Unit =
-      array = new Array
-    def result(): WrappedArray[A] =
-      new WrappedArray(array)
   }
 
 }
