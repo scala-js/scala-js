@@ -709,4 +709,28 @@ class JSExportTest extends DirectTest with TestHelpers {
     """ fails()
   }
 
+  @Test
+  def noNonLiteralExportNames = {
+
+    """
+    object A {
+      val a = "Hello"
+      final val b = "World"
+    }
+
+    class B {
+      @JSExport(A.a)
+      def foo = 1
+      @JSExport(A.b)
+      def bar = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: The argument to JSExport must be a literal string
+      |      @JSExport(A.a)
+      |       ^
+    """
+
+  }
+
 }
