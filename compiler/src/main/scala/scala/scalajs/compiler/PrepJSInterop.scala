@@ -364,6 +364,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         unit.error(tree.pos, "Methods in a js.Any may not be @native")
       }
 
+      for {
+        annot <- sym.getAnnotation(JSNameAnnotation)
+        if annot.stringArg(0).isEmpty
+      } {
+        currentUnit.error(annot.pos,
+          "The argument to JSName must be a literal string")
+      }
+
       if (sym.isPrimaryConstructor || sym.isValueParameter ||
           sym.isParamWithDefault || sym.isAccessor && !sym.isDeferred ||
           sym.isParamAccessor || sym.isSynthetic ||
