@@ -48,6 +48,13 @@ class Array[A] extends Object {
   /** Length of the array. */
   def length: Int = native
 
+  /** Sets the length of the array.
+   *  If the new length is bigger than the old length, created slots are
+   *  filled with `undefined` (irrespective of the type argument `A`!).
+   *  If the new length is smaller than the old length, the array is shrunk.
+   */
+  def length_=(v: Int): Unit = native
+
   /** Access the element at the given index. */
   @JSBracketAccess
   def apply(index: Int): A = native
@@ -129,19 +136,18 @@ class Array[A] extends Object {
    */
   def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = native
 
-  /**
-   * The splice() method changes the content of an array, adding new elements
-   * while removing old elements.
+  /** Removes and adds new elements at a given index in the array.
    *
-   * MDN
-   */
-  def splice(index: Int): Array[A] = native
-
-  /**
-   * The splice() method changes the content of an array, adding new elements
-   * while removing old elements.
+   *  This method first removes `deleteCount` elements starting from the index
+   *  `index`, then inserts the new elements `items` at that index.
    *
-   * MDN
+   *  If `index` is negative, it is treated as that number of elements starting
+   *  from the end of the array.
+   *
+   *  @param index       Index where to start changes
+   *  @param deleteCount Number of elements to delete from index
+   *  @param items       Elements to insert at index
+   *  @return An array of the elements that were deleted
    */
   def splice(index: Int, deleteCount: Int, items: A*): Array[A] = native
 

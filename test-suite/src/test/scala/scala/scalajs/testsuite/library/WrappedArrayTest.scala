@@ -50,6 +50,37 @@ object WrappedArrayTest extends JasmineTest {
       expect(seq.length).toEqual(7)
     }
 
+    it("should implement +=:") {
+      val array = js.Array(5, 8, 9)
+      3 +=: array
+      expect(array).toEqual(js.Array(3, 5, 8, 9))
+    }
+
+    it("should implement ++=:") {
+      val array = js.Array(5, 8, 9)
+      js.Array(2, 0) ++=: array
+      expect(array).toEqual(js.Array(2, 0, 5, 8, 9))
+      Seq(-3, -45, 1) ++=: array
+      expect(array).toEqual(js.Array(-3, -45, 1, 2, 0, 5, 8, 9))
+    }
+
+    it("should implement insertAll") {
+      val array = js.Array(5, 8, 9)
+      array.insertAll(2, js.Array(2, 0))
+      expect(array).toEqual(js.Array(5, 8, 2, 0, 9))
+      array.insertAll(1, Seq(-3, -45, 1))
+      expect(array).toEqual(js.Array(5, -3, -45, 1, 8, 2, 0, 9))
+    }
+
+    it("should implement remove") {
+      val array = js.Array(5, 8, 2, 0, 9)
+      expect(array.remove(1)).toEqual(8)
+      expect(array).toEqual(js.Array(5, 2, 0, 9))
+
+      array.remove(0, 3)
+      expect(array).toEqual(js.Array(9))
+    }
+
     // Some arbitrary methods to test the builders
 
     it("should implement collect") {

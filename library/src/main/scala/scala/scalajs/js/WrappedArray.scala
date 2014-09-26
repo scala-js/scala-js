@@ -8,49 +8,86 @@
 
 package scala.scalajs.js
 
+import scala.language.implicitConversions
+
 import scala.collection.mutable
 import mutable.Builder
 
-import scala.collection.generic.CanBuildFrom
+import scala.collection.generic.{CanBuildFrom, GenericCompanion, SeqFactory}
 
 /** Equivalent of scm.WrappedArray for js.Array */
-class WrappedArray[A](val array: Array[A])
+@inline
+final class WrappedArray[A](val array: Array[A])
     extends mutable.AbstractSeq[A]
+       with scala.collection.generic.GenericTraversableTemplate[A, WrappedArray]
        with mutable.IndexedSeq[A]
-       with mutable.ArrayLike[A, WrappedArray[A]] {
+       with mutable.Buffer[A]
+       with mutable.BufferLike[A, WrappedArray[A]]
+       with mutable.ArrayLike[A, WrappedArray[A]]
+       with Builder[A, WrappedArray[A]] {
 
-  def update(index: Int, elem: A): Unit = array(index) = elem
-  def apply(index: Int): A = array(index)
-  def length: Int = array.length
+  /** Creates a new empty [[WrappedArray]]. */
+  def this() = this(Array())
 
-  override protected[this] def newBuilder: Builder[A, WrappedArray[A]] =
-    new WrappedArray.WrappedArrayBuilder[A]
+  override def companion: GenericCompanion[WrappedArray] = WrappedArray
+
+  // IndexedSeq interface
+
+  @inline def update(index: Int, elem: A): Unit = array(index) = elem
+  @inline def apply(index: Int): A = array(index)
+  @inline def length: Int = array.length
+
+  // Builder interface
+
+  @inline def +=(elem: A): this.type = {
+    array.push(elem)
+    this
+  }
+
+  @inline def clear(): Unit =
+    array.length = 0
+
+  @inline def result(): WrappedArray[A] = this
+
+  // Rest of BufferLike interface
+
+  @inline def +=:(elem: A): this.type = {
+    array.unshift(elem)
+    this
+  }
+
+  @inline override def ++=:(xs: TraversableOnce[A]): this.type = {
+    array.unshift(xs.toSeq: _*)
+    this
+  }
+
+  @inline def insertAll(n: Int,
+      elems: scala.collection.Traversable[A]): Unit = {
+    array.splice(n, 0, elems.toSeq: _*)
+  }
+
+  @inline def remove(n: Int): A =
+    array.splice(n, 1)(0)
+
+  @inline override def remove(n: Int, count: Int): Unit =
+    array.splice(n, count)
+
+  @inline override def stringPrefix: String = "WrappedArray"
 
 }
 
-object WrappedArray {
+/** $factoryInfo
+ *  @define coll wrapped array
+ *  @define Coll `WrappedArray`
+ */
+object WrappedArray extends SeqFactory[WrappedArray] {
+  /** $genericCanBuildFromInfo */
+  implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, WrappedArray[A]] =
+    ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]
 
-  def empty[A]: WrappedArray[A] = new WrappedArray[A](Array())
+  def newBuilder[A]: Builder[A, WrappedArray[A]] = new WrappedArray[A]
 
-  implicit def canBuildFrom[A]: CanBuildFrom[WrappedArray[_], A, WrappedArray[A]] = {
-    new CanBuildFrom[WrappedArray[_], A, WrappedArray[A]] {
-      def apply(from: WrappedArray[_]): Builder[A, WrappedArray[A]] =
-        new WrappedArrayBuilder[A]
-      def apply: Builder[A, WrappedArray[A]] =
-        new WrappedArrayBuilder[A]
-    }
-  }
-
-  class WrappedArrayBuilder[A] extends Builder[A, WrappedArray[A]] {
-    private[this] var array: Array[A] = new Array
-    def +=(elem: A): this.type = {
-      array.push(elem)
-      this
-    }
-    def clear(): Unit =
-      array = new Array
-    def result(): WrappedArray[A] =
-      new WrappedArray(array)
-  }
+  implicit def toJSArray[A](wrappedArray: WrappedArray[A]): Array[A] =
+    wrappedArray.array
 
 }
