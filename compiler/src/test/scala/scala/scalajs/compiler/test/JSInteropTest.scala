@@ -301,4 +301,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def warnNothingRaw = {
+
+    """
+    class A extends js.Object {
+      def foo = js.native
+      val bar = js.native
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: The type of foo got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
+      |      def foo = js.native
+      |          ^
+      |newSource1.scala:5: warning: The type of bar got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
+      |      val bar = js.native
+      |          ^
+    """
+
+  }
+
 }

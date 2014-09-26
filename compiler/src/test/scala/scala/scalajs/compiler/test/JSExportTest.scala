@@ -452,7 +452,7 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     class A extends js.Object {
       @JSExport
-      def foo = js.native
+      def foo: Int = js.native
     }
     """ hasErrors
     """

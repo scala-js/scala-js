@@ -407,6 +407,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "extending js.Any may only contain members that call js.native. " +
               "This will be enforced in 1.0.")
         }
+
+        if (sym.tpe.resultType.typeSymbol == NothingClass &&
+            tree.tpt.asInstanceOf[TypeTree].original == null) {
+          // Warn if resultType is Nothing and not ascribed
+          val name = sym.name.decoded.trim
+          unit.warning(tree.pos, s"The type of $name got inferred " +
+              "as Nothing. To suppress this warning, explicitly ascribe " +
+              "the type.")
+        }
       }
 
       super.transform(tree)
