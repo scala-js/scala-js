@@ -54,9 +54,9 @@ object HelloWorld extends js.JSApp {
 }
 
 object window extends js.GlobalScope {
-  val document: DOMDocument = ???
+  val document: DOMDocument = js.native
 
-  def alert(msg: String): Unit = ???
+  def alert(msg: String): Unit = js.native
 }
 
 trait DOMDocument extends js.Object {
@@ -72,7 +72,7 @@ trait DOMElement extends js.Object {
 
 @JSName("jQuery")
 object JQuery extends js.Object {
-  def apply(selector: String): JQuery = ???
+  def apply(selector: String): JQuery = js.native
 }
 
 trait JQuery extends js.Object {

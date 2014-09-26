@@ -49,7 +49,7 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  val length: Int = ???
+  val length: Int = native
 
   /**
    * The call() method calls a function with a given this value and arguments
@@ -81,11 +81,11 @@ class Function(args: String*) extends Object {
    * }}}
    *
    */
-  def call(thisArg: Any, argArray: Any*): Dynamic = ???
+  def call(thisArg: Any, argArray: Any*): Dynamic = native
 
   // Do not expose apply: use call(thisArg, argArray: _*) instead.
-  // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = ???
-  // def apply(thisArg: Any): Dynamic = ???
+  // def apply[A](thisArg: Any, argArray: Array[A]): Dynamic = native
+  // def apply(thisArg: Any): Dynamic = native
 
   /**
    * The bind() method creates a new function that, when called, has its this
@@ -94,11 +94,11 @@ class Function(args: String*) extends Object {
    *
    * MDN
    */
-  def bind(thisArg: Any, argArray: Any*): Dynamic = ???
+  def bind(thisArg: Any, argArray: Any*): Dynamic = native
 }
 
 object Function extends Object {
-  def apply(args: String*): Function = ???
+  def apply(args: String*): Function = native
 }
 
 trait Function0[+R] extends Function {

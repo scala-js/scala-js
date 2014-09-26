@@ -3,18 +3,18 @@ package java.lang
 import scala.scalajs.js
 
 private trait ScalaJSClassData[A] extends js.Object {
-  val name: String
-  val isPrimitive: scala.Boolean
-  val isInterface: scala.Boolean
-  val isArrayClass: scala.Boolean
+  val name: String = js.native
+  val isPrimitive: scala.Boolean = js.native
+  val isInterface: scala.Boolean = js.native
+  val isArrayClass: scala.Boolean = js.native
 
-  def isInstance(obj: Object): scala.Boolean
-  def getFakeInstance(): Object
+  def isInstance(obj: Object): scala.Boolean = js.native
+  def getFakeInstance(): Object = js.native
 
-  def getSuperclass(): Class[_ >: A]
-  def getComponentType(): Class[_]
+  def getSuperclass(): Class[_ >: A] = js.native
+  def getComponentType(): Class[_] = js.native
 
-  def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef
+  def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef = js.native
 }
 
 final class Class[A] private (data: ScalaJSClassData[A]) extends Object {

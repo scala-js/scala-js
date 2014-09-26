@@ -79,16 +79,16 @@ package object js extends js.GlobalScope {
   type Undefined = scala.Unit
 
   /** The top-level `Number` JavaScript object. */
-  val Number: js.prim.Number.type = ???
+  val Number: js.prim.Number.type = native
   /** The top-level `Boolean` JavaScript object. */
-  val Boolean: js.prim.Boolean.type = ???
+  val Boolean: js.prim.Boolean.type = native
   /** The top-level `String` JavaScript object. */
-  val String: js.prim.String.type = ???
+  val String: js.prim.String.type = native
 
   /** The constant Not-a-Number. */
-  val NaN: Double = ???
+  val NaN: Double = native
   /** The constant Positive Infinity. */
-  val Infinity: Double = ???
+  val Infinity: Double = native
 
   /** The undefined value. */
   def undefined: js.prim.Undefined = sys.error("stub")
@@ -112,37 +112,50 @@ package object js extends js.GlobalScope {
   def debugger(): Unit = sys.error("stub")
 
   /** Evaluates JavaScript code and returns the result. */
-  def eval(x: String): Any = ???
+  def eval(x: String): Any = native
 
   /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Int): js.Number = ???
+  def parseInt(s: String, radix: Int): js.Number = native
   /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): js.Number = ???
+  def parseInt(s: String): js.Number = native
   /** Parses a string as a floating point number. */
-  def parseFloat(string: String): Double = ???
+  def parseFloat(string: String): Double = native
 
   /** Tests whether the given value is Not-a-Number. */
-  def isNaN(number: Double): Boolean = ???
+  def isNaN(number: Double): Boolean = native
   /** Tests whether the given value is a finite number. */
-  def isFinite(number: Double): Boolean = ???
+  def isFinite(number: Double): Boolean = native
 
   /** Decodes a Uniform Resource Identifier (URI).
    *  @see [[encodeURI]]
    */
-  def decodeURI(encodedURI: String): String = ???
+  def decodeURI(encodedURI: String): String = native
 
   /** Decodes a Uniform Resource Identifier (URI) component.
    *  @see [[encodeURIComponent]]
    */
-  def decodeURIComponent(encodedURIComponent: String): String = ???
+  def decodeURIComponent(encodedURIComponent: String): String = native
 
   /** Encodes a Uniform Resource Identifier (URI).
    *  @see [[decodeURI]]
    */
-  def encodeURI(uri: String): String = ???
+  def encodeURI(uri: String): String = native
 
   /** Encodes a Uniform Resource Identifier (URI) component.
    *  @see [[decodeURIComponent]]
    */
-  def encodeURIComponent(uriComponent: String): String = ???
+  def encodeURIComponent(uriComponent: String): String = native
+
+  /** Denotes a method body as native JavaScript. For use in facade types:
+   *
+   *  {{{
+   *  class MyJSClass extends js.Object {
+   *    def myMethod(x: String): Int = js.native
+   *  }
+   *  }}}
+   */
+  def native: Nothing = sys.error("A method defined in a JavaScript raw " +
+      "type of a Scala.js library has been called. This is most likely " +
+      "because you tried to run Scala.js binaries on the JVM. Make sure you " +
+      "are using the JVM version of the libraries.")
 }

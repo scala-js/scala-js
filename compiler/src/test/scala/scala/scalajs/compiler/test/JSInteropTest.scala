@@ -39,12 +39,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     """
     class A extends js.Object {
-      def foo_=(x: Int) = x
+      def foo_=(x: Int): Int = js.native
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: Setters that do not return Unit are not allowed in types extending js.Any
-      |      def foo_=(x: Int) = x
+      |      def foo_=(x: Int): Int = js.native
       |          ^
     """
 
@@ -81,7 +81,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     class A {
       val x = new js.Object {
-        def a: Int = ???
+        def a: Int = js.native
       }
     }
     """ hasErrors
@@ -212,6 +212,91 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:3: error: illegal inheritance from sealed trait Any
       |    class A extends js.Any
       |                       ^
+    """
+
+  }
+
+  @Test
+  def noNativeInJSAny = {
+
+    """
+    class A extends js.Object {
+      @native
+      def value: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Methods in a js.Any may not be @native
+      |      def value: Int = js.native
+      |          ^
+    """
+
+  }
+
+  @Test
+  def warnJSAnyBody = {
+
+    """
+    class A extends js.Object {
+      def value: Int = ???
+      val x: Int = ???
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |      def value: Int = ???
+      |                       ^
+      |newSource1.scala:5: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |      val x: Int = ???
+      |                   ^
+    """
+
+    """
+    trait A extends js.Object {
+      def value: Int
+      val x: Int
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |      def value: Int
+      |          ^
+      |newSource1.scala:5: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |      val x: Int
+      |          ^
+    """
+
+  }
+
+  @Test
+  def noCallSecondaryCtor = {
+
+    """
+    class A(x: Int, y: Int) extends js.Object {
+      def this(x: Int) = this(x, 5)
+      def this() = this(7)
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: A secondary constructor of a class extending js.Any may only call the primary constructor
+      |      def this() = this(7)
+      |          ^
+    """
+
+  }
+
+  @Test
+  def noUseJsNative = {
+
+    """
+    class A {
+      def foo = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: js.native may only be used as stub implementation in facade types
+      |      def foo = js.native
+      |                   ^
     """
 
   }

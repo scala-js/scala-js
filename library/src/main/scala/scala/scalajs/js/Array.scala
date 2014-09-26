@@ -46,14 +46,14 @@ class Array[A] extends Object {
   // def this(items: A*) = this()
 
   /** Length of the array. */
-  def length: Int = ???
+  def length: Int = native
 
   /** Access the element at the given index. */
   @JSBracketAccess
-  def apply(index: Int): A = ???
+  def apply(index: Int): A = native
   /** Set the element at the given index. */
   @JSBracketAccess
-  def update(index: Int, value: A): Unit = ???
+  def update(index: Int, value: A): Unit = native
 
   /**
    * concat creates a new array consisting of the elements in the this object
@@ -63,7 +63,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def concat[B >: A](items: Array[_ <: B]*): Array[B] = ???
+  def concat[B >: A](items: Array[_ <: B]*): Array[B] = native
 
   /**
    * The join() method joins all elements of an array into a string.
@@ -72,7 +72,7 @@ class Array[A] extends Object {
    * The separator is converted to a string if necessary. If omitted, the
    * array elements are separated with a comma.
    */
-  def join(seperator: String = ","): String = ???
+  def join(seperator: String = ","): String = native
 
   /**
    * The pop() method removes the last element from an array and returns that
@@ -80,7 +80,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def pop(): A = ???
+  def pop(): A = native
 
   /**
    * The push() method mutates an array by appending the given elements and
@@ -88,7 +88,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def push(items: A*): Int = ???
+  def push(items: A*): Int = native
 
   /**
    * The reverse() method reverses an array in place. The first array element
@@ -97,7 +97,7 @@ class Array[A] extends Object {
    * MDN
    */
   @JSName("reverse")
-  def reverseInPlace(): Array[A] = ???
+  def reverseInPlace(): Array[A] = native
 
   /**
    * The shift() method removes the first element from an array and returns that
@@ -105,7 +105,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def shift(): A = ???
+  def shift(): A = native
 
   /**
    * The slice() method returns a shallow copy of a portion of an array.
@@ -113,7 +113,7 @@ class Array[A] extends Object {
    * MDN
    */
   @JSName("slice")
-  def jsSlice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = ???
+  def jsSlice(start: Int = 0, end: Int = Int.MaxValue): Array[A] = native
 
   /**
    * The sort() method sorts the elements of an array in place and returns the
@@ -127,7 +127,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = ???
+  def sort(compareFn: Function2[A, A, Int] = ???): Array[A] = native
 
   /**
    * The splice() method changes the content of an array, adding new elements
@@ -135,7 +135,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def splice(index: Int): Array[A] = ???
+  def splice(index: Int): Array[A] = native
 
   /**
    * The splice() method changes the content of an array, adding new elements
@@ -143,7 +143,7 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def splice(index: Int, deleteCount: Int, items: A*): Array[A] = ???
+  def splice(index: Int, deleteCount: Int, items: A*): Array[A] = native
 
   /**
    * The unshift() method adds one or more elements to the beginning of an array
@@ -151,17 +151,17 @@ class Array[A] extends Object {
    *
    * MDN
    */
-  def unshift(items: A*): Int = ???
+  def unshift(items: A*): Int = native
 }
 
 /** Factory for [[js.Array]] objects. */
 object Array extends Object {
   // Do not expose this one - use new Array(len) instead
-  // def apply[A](arrayLength: Int): Array[A] = ???
+  // def apply[A](arrayLength: Int): Array[A] = native
 
   /** Creates a new array with the given items. */
   def apply[A](items: A*): Array[A] = sys.error("stub")
 
   /** Returns true if the given value is an array. */
-  def isArray(arg: Any): Boolean = ???
+  def isArray(arg: Any): Boolean = native
 }

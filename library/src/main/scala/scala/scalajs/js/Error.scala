@@ -15,17 +15,17 @@
 package scala.scalajs.js
 
 class Error(message0: String = "") extends Object {
-  val name: String = ???
+  val name: String = native
   /**
    * Human-readable description of the error
    *
    * MDN
    */
-  val message: String = ???
+  val message: String = native
 }
 
 object Error extends Object {
-  def apply(message: String = ""): Error = ???
+  def apply(message: String = ""): Error = native
 }
 
 /**
@@ -37,7 +37,7 @@ object Error extends Object {
 class EvalError(message: String = "") extends Error
 
 object EvalError extends Object {
-  def apply(message: String = ""): EvalError = ???
+  def apply(message: String = ""): EvalError = native
 }
 
 /**
@@ -55,7 +55,7 @@ object EvalError extends Object {
 class RangeError(message: String = "") extends Error
 
 object RangeError extends Object {
-  def apply(message: String = ""): RangeError = ???
+  def apply(message: String = ""): RangeError = native
 }
 
 /**
@@ -69,7 +69,7 @@ object RangeError extends Object {
 class ReferenceError(message: String = "") extends Error
 
 object ReferenceError extends Object {
-  def apply(message: String = ""): ReferenceError = ???
+  def apply(message: String = ""): ReferenceError = native
 }
 
 /**
@@ -83,7 +83,7 @@ object ReferenceError extends Object {
 class SyntaxError(message: String = "") extends Error
 
 object SyntaxError extends Object {
-  def apply(message: String = ""): SyntaxError = ???
+  def apply(message: String = ""): SyntaxError = native
 }
 
 /**
@@ -97,7 +97,7 @@ object SyntaxError extends Object {
 class TypeError(message: String = "") extends Error
 
 object TypeError extends Object {
-  def apply(message: String = ""): TypeError = ???
+  def apply(message: String = ""): TypeError = native
 }
 
 /**
@@ -110,5 +110,5 @@ object TypeError extends Object {
 class URIError(message: String = "") extends Error
 
 object URIError extends Object {
-  def apply(message: String = ""): URIError = ???
+  def apply(message: String = ""): URIError = native
 }

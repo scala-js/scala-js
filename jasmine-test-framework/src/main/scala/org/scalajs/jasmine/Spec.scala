@@ -3,7 +3,7 @@ package org.scalajs.jasmine
 import scala.scalajs.js
 
 trait Spec extends js.Object {
-  def results(): SpecResults = ???
-  val description: String = ???
-  val suite: Suite = ???
+  def results(): SpecResults = js.native
+  val description: String = js.native
+  val suite: Suite = js.native
 }

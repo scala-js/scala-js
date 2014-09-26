@@ -29,165 +29,165 @@ class Date extends Object {
   def this(year: Int, month: Int, date: Int = 1, hours: Int = 0,
       minutes: Int = 0, seconds: Int = 0, ms: Int = 0) = this()
 
-  def toDateString(): String = ???
-  def toTimeString(): String = ???
-  def toLocaleDateString(): String = ???
-  def toLocaleTimeString(): String = ???
+  def toDateString(): String = native
+  def toTimeString(): String = native
+  def toLocaleDateString(): String = native
+  def toLocaleTimeString(): String = native
 
-  override def valueOf(): Double = ???
+  override def valueOf(): Double = native
 
-  def getTime(): Double = ???
+  def getTime(): Double = native
 
   /**
    * Returns the year (4 digits for 4-digit years) of the specified date according to local time.
    *
    * MDN
    */
-  def getFullYear(): Int = ???
+  def getFullYear(): Int = native
 
   /**
    * Returns the year (4 digits for 4-digit years) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCFullYear(): Int = ???
+  def getUTCFullYear(): Int = native
 
   /**
    * Returns the month (0-11) in the specified date according to local time.
    *
    * MDN
    */
-  def getMonth(): Int = ???
+  def getMonth(): Int = native
 
   /**
    * Returns the month (0-11) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMonth(): Int = ???
+  def getUTCMonth(): Int = native
 
   /**
    * Returns the day of the month (1-31) for the specified date according to local time.
    *
    * MDN
    */
-  def getDate(): Int = ???
+  def getDate(): Int = native
 
   /**
    * Returns the day (date) of the month (1-31) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCDate(): Int = ???
+  def getUTCDate(): Int = native
 
   /**
    * Returns the day of the week (0-6) for the specified date according to local time.
    *
    * MDN
    */
-  def getDay(): Int = ???
+  def getDay(): Int = native
 
   /**
    * Returns the day of the week (0-6) in the specified date according to universal time.
    * MDN
    */
-  def getUTCDay(): Int = ???
+  def getUTCDay(): Int = native
 
   /**
    * Returns the hour (0-23) in the specified date according to local time.
    *
    * MDN
    */
-  def getHours(): Int = ???
+  def getHours(): Int = native
 
   /**
    * Returns the hours (0-23) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCHours(): Int = ???
+  def getUTCHours(): Int = native
 
   /**
    * Returns the minutes (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getMinutes(): Int = ???
+  def getMinutes(): Int = native
 
   /**
    * Returns the minutes (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMinutes(): Int = ???
+  def getUTCMinutes(): Int = native
 
   /**
    * Returns the seconds (0-59) in the specified date according to local time.
    *
    * MDN
    */
-  def getSeconds(): Int = ???
+  def getSeconds(): Int = native
 
   /**
    * Returns the seconds (0-59) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCSeconds(): Int = ???
+  def getUTCSeconds(): Int = native
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to local time.
    *
    * MDN
    */
-  def getMilliseconds(): Int = ???
+  def getMilliseconds(): Int = native
 
   /**
    * Returns the milliseconds (0-999) in the specified date according to universal time.
    *
    * MDN
    */
-  def getUTCMilliseconds(): Int = ???
+  def getUTCMilliseconds(): Int = native
 
   /**
    * Returns the time-zone offset in minutes for the current locale.
    *
    * MDN
    */
-  def getTimezoneOffset(): Int = ???
+  def getTimezoneOffset(): Int = native
 
-  def setTime(time: Double): Unit = ???
-  def setMilliseconds(ms: Int): Unit = ???
-  def setUTCMilliseconds(ms: Int): Unit = ???
-  def setSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = ???
-  def setUTCSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = ???
+  def setTime(time: Double): Unit = native
+  def setMilliseconds(ms: Int): Unit = native
+  def setUTCMilliseconds(ms: Int): Unit = native
+  def setSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = native
+  def setUTCSeconds(sec: Int, ms: Int = getMilliseconds()): Unit = native
   def setMinutes(min: Int, sec: Int = getSeconds(),
-      ms: Int = getMilliseconds()): Unit = ???
+      ms: Int = getMilliseconds()): Unit = native
   def setUTCMinutes(min: Int, sec: Int = getSeconds(),
-      ms: Int = getMilliseconds()): Unit = ???
+      ms: Int = getMilliseconds()): Unit = native
   def setHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = ???
+      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = native
   def setUTCHours(hours: Int, min: Int = getMinutes(),
-      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = ???
+      sec: Int = getSeconds(), ms: Int = getMilliseconds()): Unit = native
 
-  def setDate(date: Int): Unit = ???
-  def setUTCDate(date: Int): Unit = ???
-  def setMonth(month: Int, date: Int = getDate()): Unit = ???
-  def setUTCMonth(month: Int, date: Int = getDate()): Unit = ???
+  def setDate(date: Int): Unit = native
+  def setUTCDate(date: Int): Unit = native
+  def setMonth(month: Int, date: Int = getDate()): Unit = native
+  def setUTCMonth(month: Int, date: Int = getDate()): Unit = native
   def setFullYear(year: Int, month: Int = getMonth(),
-      date: Int = getDate()): Unit = ???
+      date: Int = getDate()): Unit = native
   def setUTCFullYear(year: Int, month: Int = getMonth(),
-      date: Int = getDate()): Unit = ???
+      date: Int = getDate()): Unit = native
 
-  def toUTCString(): String = ???
-  def toISOString(): String = ???
-  def toJSON(key: Any): String = ???
-  def toJSON(): String = ???
+  def toUTCString(): String = native
+  def toISOString(): String = native
+  def toJSON(key: Any): String = native
+  def toJSON(): String = native
 }
 
 /** Factory for [[js.Date]] objects. */
 object Date extends Object {
-  def apply(): String = ???
+  def apply(): String = native
 
   /**
    * Parses a string representation of a date and returns the number of
@@ -210,10 +210,10 @@ object Date extends Object {
    *
    * MDN
    */
-  def parse(s: String): Int = ???
+  def parse(s: String): Int = native
 
   def UTC(year: Int, month: Int, date: Int = 1, hours: Int = 0,
-      minutes: Int = 0, seconds: Int = 0, ms: Int = 0): Double = ???
+      minutes: Int = 0, seconds: Int = 0, ms: Int = 0): Double = native
 
   /**
    * Returns the numeric value corresponding to the current time - the number
@@ -221,5 +221,5 @@ object Date extends Object {
    *
    * MDN
    */
-  def now(): Double = ???
+  def now(): Double = native
 }

@@ -29,7 +29,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val source: String = ???
+  val source: String = native
   /**
    * The value of global is a Boolean and true if the "g" flag was used;
    * otherwise, false. The "g" flag indicates that the regular expression
@@ -37,7 +37,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val global: Boolean = ???
+  val global: Boolean = native
   /**
    * The value of ignoreCase is a Boolean and true if the "i" flag was used;
    * otherwise, false. The "i" flag indicates that case should be ignored while
@@ -45,7 +45,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  val ignoreCase: Boolean = ???
+  val ignoreCase: Boolean = native
   /**
    * The value of multiline is a Boolean and is true if the "m" flag was used;
    * otherwise, false. The "m" flag indicates that a multiline input string
@@ -55,7 +55,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
 
    * MDN
    */
-  val multiline: Boolean = ???
+  val multiline: Boolean = native
 
   /**
    * The lastIndex is a read/write integer property of regular expressions that
@@ -63,7 +63,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  var lastIndex: Int = ???
+  var lastIndex: Int = native
 
   /**
    * The exec() method executes a search for a match in a specified string.
@@ -81,7 +81,7 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  def exec(string: String): RegExp.ExecResult = ???
+  def exec(string: String): RegExp.ExecResult = native
 
   /**
    * The test() method executes a search for a match between a regular expression
@@ -95,14 +95,14 @@ class RegExp(pattern: String, flags: String = "") extends Object {
    *
    * MDN
    */
-  def test(string: String): Boolean = ???
+  def test(string: String): Boolean = native
 }
 
 object RegExp extends Object {
-  def apply(pattern: String, flags: String = ""): RegExp = ???
+  def apply(pattern: String, flags: String = ""): RegExp = native
 
   trait ExecResult extends Array[UndefOr[String]] {
-    var index: Int = _
-    var input: String = _
+    var index: Int = native
+    var input: String = native
   }
 }

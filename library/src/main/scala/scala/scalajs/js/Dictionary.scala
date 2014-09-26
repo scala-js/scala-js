@@ -53,7 +53,7 @@ sealed trait Dictionary[A] extends Object {
    *  js.undefined.
    */
   @JSBracketAccess
-  def apply(key: String): A
+  def apply(key: String): A = native
 
   /** Reads a field of this object by its name.
    *
@@ -62,11 +62,11 @@ sealed trait Dictionary[A] extends Object {
    *  check for the existence of a property, use [[js.Object.hasOwnProperty]].
    */
   @JSBracketAccess
-  def get(key: String): UndefOr[A]
+  def get(key: String): UndefOr[A] = native
 
   /** Writes a field of this object by its name. */
   @JSBracketAccess
-  def update(key: String, value: A): Unit
+  def update(key: String, value: A): Unit = native
 
   /** Deletes a property of this object by its name.
    *  The property must be configurable.

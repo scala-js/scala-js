@@ -469,13 +469,13 @@ object StackTrace {
    */
 
   trait JSStackTraceElem extends js.Object {
-    var declaringClass: String
-    var methodName: String
-    var fileName: String
+    var declaringClass: String = js.native
+    var methodName: String = js.native
+    var fileName: String = js.native
     /** 1-based line number */
-    var lineNumber: Int
+    var lineNumber: Int = js.native
     /** 1-based optional columnNumber */
-    var columnNumber: js.UndefOr[Int]
+    var columnNumber: js.UndefOr[Int] = js.native
   }
 
   object JSStackTraceElem {

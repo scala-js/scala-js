@@ -36,9 +36,9 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("indexOf")
-  def jsIndexOf(searchElement: A, fromIndex: Int): Int = ???
+  def jsIndexOf(searchElement: A, fromIndex: Int): Int = native
   @JSName("indexOf")
-  def jsIndexOf(searchElement: A): Int = ???
+  def jsIndexOf(searchElement: A): Int = native
 
   /**
    * The lastIndexOf() method returns the last index at which a given element
@@ -48,9 +48,9 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("lastIndexOf")
-  def jsLastIndexOf(searchElement: A, fromIndex: Int): Int = ???
+  def jsLastIndexOf(searchElement: A, fromIndex: Int): Int = native
   @JSName("lastIndexOf")
-  def jsLastIndexOf(searchElement: A): Int = ???
+  def jsLastIndexOf(searchElement: A): Int = native
 
   /**
    * The every method executes the provided callback function once for each
@@ -82,9 +82,9 @@ trait JSArrayOps[A] extends Object {
    */
   @JSName("every")
   def jsEvery[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Boolean = ???
+      thisArg: T): Boolean = native
   @JSName("every")
-  def jsEvery(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
+  def jsEvery(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = native
 
   /**
    * some executes the callback function once for each element present in the
@@ -107,13 +107,13 @@ trait JSArrayOps[A] extends Object {
    */
   @JSName("some")
   def jsSome[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Boolean = ???
+      thisArg: T): Boolean = native
   @JSName("some")
-  def jsSome(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = ???
+  def jsSome(callbackfn: Function3[A, Int, Array[A], Boolean]): Boolean = native
   @JSName("some")
-  def jsSome(callbackfn: Function2[A, Int, Boolean]): Boolean = ???
+  def jsSome(callbackfn: Function2[A, Int, Boolean]): Boolean = native
   @JSName("some")
-  def jsSome(callbackfn: Function1[A, Boolean]): Boolean = ???
+  def jsSome(callbackfn: Function1[A, Boolean]): Boolean = native
 
   /**
    * forEach executes the provided callback once for each element of the array
@@ -137,13 +137,13 @@ trait JSArrayOps[A] extends Object {
    */
   @JSName("forEach")
   def jsForEach[T](callbackfn: ThisFunction3[T, A, Int, Array[A], _],
-      thisArg: T): Unit = ???
+      thisArg: T): Unit = native
   @JSName("forEach")
-  def jsForEach(callbackfn: Function3[A, Int, Array[A], _]): Unit = ???
+  def jsForEach(callbackfn: Function3[A, Int, Array[A], _]): Unit = native
   @JSName("forEach")
-  def jsForEach(callbackfn: Function2[A, Int, _]): Unit = ???
+  def jsForEach(callbackfn: Function2[A, Int, _]): Unit = native
   @JSName("forEach")
-  def jsForEach(callbackfn: Function1[A, _]): Unit = ???
+  def jsForEach(callbackfn: Function1[A, _]): Unit = native
 
   /**
    * map calls a provided callback function once for each element in an array,
@@ -165,13 +165,13 @@ trait JSArrayOps[A] extends Object {
    */
   @JSName("map")
   def jsMap[B, T](callbackfn: ThisFunction3[T, A, Int, Array[A], B],
-      thisArg: T): Array[B] = ???
+      thisArg: T): Array[B] = native
   @JSName("map")
-  def jsMap[B](callbackfn: Function3[A, Int, Array[A], B]): Array[B] = ???
+  def jsMap[B](callbackfn: Function3[A, Int, Array[A], B]): Array[B] = native
   @JSName("map")
-  def jsMap[B](callbackfn: Function2[A, Int, B]): Array[B] = ???
+  def jsMap[B](callbackfn: Function2[A, Int, B]): Array[B] = native
   @JSName("map")
-  def jsMap[B](callbackfn: Function1[A, B]): Array[B] = ???
+  def jsMap[B](callbackfn: Function1[A, B]): Array[B] = native
 
   /**
    * filter calls a provided callback function once for each element in an array,
@@ -197,13 +197,13 @@ trait JSArrayOps[A] extends Object {
    */
   @JSName("filter")
   def jsFilter[T](callbackfn: ThisFunction3[T, A, Int, Array[A], Boolean],
-      thisArg: T): Array[A] = ???
+      thisArg: T): Array[A] = native
   @JSName("filter")
-  def jsFilter(callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = ???
+  def jsFilter(callbackfn: Function3[A, Int, Array[A], Boolean]): Array[A] = native
   @JSName("filter")
-  def jsFilter(callbackfn: Function2[A, Int, Boolean]): Array[A] = ???
+  def jsFilter(callbackfn: Function2[A, Int, Boolean]): Array[A] = native
   @JSName("filter")
-  def jsFilter(callbackfn: Function1[A, Boolean]): Array[A] = ???
+  def jsFilter(callbackfn: Function1[A, Boolean]): Array[A] = native
 
   /**
    * reduce executes the callback function once for each element present in
@@ -222,17 +222,17 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
+  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
+  def jsReduce[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
+  def jsReduce[B](callbackfn: Function2[B, A, B], initialValue: B): B = native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
+  def jsReduce[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function3[B, A, Int, B]): B = ???
+  def jsReduce[B](callbackfn: Function3[B, A, Int, B]): B = native
   @JSName("reduce")
-  def jsReduce[B](callbackfn: Function2[B, A, B]): B = ???
+  def jsReduce[B](callbackfn: Function2[B, A, B]): B = native
 
   /**
    * reduceRight executes the callback function once for each element present
@@ -244,17 +244,17 @@ trait JSArrayOps[A] extends Object {
    * MDN
    */
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = ???
+  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B], initialValue: B): B = native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = ???
+  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B], initialValue: B): B = native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = ???
+  def jsReduceRight[B](callbackfn: Function2[B, A, B], initialValue: B): B = native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = ???
+  def jsReduceRight[B](callbackfn: Function4[B, A, Int, Array[A], B]): B = native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B]): B = ???
+  def jsReduceRight[B](callbackfn: Function3[B, A, Int, B]): B = native
   @JSName("reduceRight")
-  def jsReduceRight[B](callbackfn: Function2[B, A, B]): B = ???
+  def jsReduceRight[B](callbackfn: Function2[B, A, B]): B = native
 
 }
 

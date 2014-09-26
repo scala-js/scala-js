@@ -128,63 +128,63 @@ trait LowPrioAnyImplicits {
  */
 sealed trait Dynamic extends Any with scala.Dynamic {
   /** Calls a method of this object. */
-  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic
+  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = sys.error("stub")
 
   /** Reads a field of this object. */
-  def selectDynamic(name: java.lang.String): Dynamic
+  def selectDynamic(name: java.lang.String): Dynamic = sys.error("stub")
 
   /** Writes a field of this object. */
-  def updateDynamic(name: java.lang.String)(value: Any): Unit
+  def updateDynamic(name: java.lang.String)(value: Any): Unit = sys.error("stub")
 
   /** Calls this object as a callable. */
-  def apply(args: Any*): Dynamic
+  def apply(args: Any*): Dynamic = native
 
   import prim.Number
 
-  def unary_!(): Boolean = sys.error("stub")
+  def unary_!(): Boolean = native
 
-  def unary_+(): Number
-  def unary_-(): Number
-  def unary_~(): Number
+  def unary_+(): Number = native
+  def unary_-(): Number = native
+  def unary_~(): Number = native
 
-  def +(that: Number): Dynamic // could be a String if this is a String
-  def -(that: Number): Number
-  def *(that: Number): Number
-  def /(that: Number): Number
-  def %(that: Number): Number
-  def <<(that: Number): Number
-  def >>(that: Number): Number
-  def >>>(that: Number): Number
-  def &(that: Number): Number
-  def |(that: Number): Number
-  def ^(that: Number): Number
+  def +(that: Number): Dynamic = native // could be a String if this is a String
+  def -(that: Number): Number = native
+  def *(that: Number): Number = native
+  def /(that: Number): Number = native
+  def %(that: Number): Number = native
+  def <<(that: Number): Number = native
+  def >>(that: Number): Number = native
+  def >>>(that: Number): Number = native
+  def &(that: Number): Number = native
+  def |(that: Number): Number = native
+  def ^(that: Number): Number = native
 
-  def +(that: Dynamic): Dynamic // could be String if this or that is a String
-  def -(that: Dynamic): Number
-  def *(that: Dynamic): Number
-  def /(that: Dynamic): Number
-  def %(that: Dynamic): Number
-  def <<(that: Dynamic): Number
-  def >>(that: Dynamic): Number
-  def >>>(that: Dynamic): Number
-  def &(that: Dynamic): Number
-  def |(that: Dynamic): Number
-  def ^(that: Dynamic): Number
+  def +(that: Dynamic): Dynamic = native // could be String if this or that is a String
+  def -(that: Dynamic): Number = native
+  def *(that: Dynamic): Number = native
+  def /(that: Dynamic): Number = native
+  def %(that: Dynamic): Number = native
+  def <<(that: Dynamic): Number = native
+  def >>(that: Dynamic): Number = native
+  def >>>(that: Dynamic): Number = native
+  def &(that: Dynamic): Number = native
+  def |(that: Dynamic): Number = native
+  def ^(that: Dynamic): Number = native
 
-  def <(that: Number): Boolean
-  def >(that: Number): Boolean
-  def <=(that: Number): Boolean
-  def >=(that: Number): Boolean
+  def <(that: Number): Boolean = native
+  def >(that: Number): Boolean = native
+  def <=(that: Number): Boolean = native
+  def >=(that: Number): Boolean = native
 
-  def <(that: String): Boolean
-  def >(that: String): Boolean
-  def <=(that: String): Boolean
-  def >=(that: String): Boolean
+  def <(that: String): Boolean = native
+  def >(that: String): Boolean = native
+  def <=(that: String): Boolean = native
+  def >=(that: String): Boolean = native
 
-  def <(that: Dynamic): Boolean
-  def >(that: Dynamic): Boolean
-  def <=(that: Dynamic): Boolean
-  def >=(that: Dynamic): Boolean
+  def <(that: Dynamic): Boolean = native
+  def >(that: Dynamic): Boolean = native
+  def <=(that: Dynamic): Boolean = native
+  def >=(that: Dynamic): Boolean = native
 
   /* The result of (dyn && bool) and (dyn || bool) has, in theory, type
    * (Dynamic v Boolean). This type cannot be expressed in Scala, but if it
@@ -194,15 +194,15 @@ sealed trait Dynamic extends Any with scala.Dynamic {
    * intersection is equal to the set of operations supported by Boolean.
    * Hence the result type is restricted to Boolean.
    */
-  def &&(that: Boolean): Boolean
-  def ||(that: Boolean): Boolean
+  def &&(that: Boolean): Boolean = native
+  def ||(that: Boolean): Boolean = native
 
-  def &&(that: Dynamic): Dynamic
-  def ||(that: Dynamic): Dynamic
+  def &&(that: Dynamic): Dynamic = native
+  def ||(that: Dynamic): Dynamic = native
 
   // Work around the annoying implicits in Predef in Scala 2.10.
-  def x: Dynamic
-  def x_=(value: Any): Unit
+  def x: Dynamic = native
+  def x_=(value: Any): Unit = native
 }
 
 /** Factory for dynamically typed JavaScript values. */
@@ -244,8 +244,8 @@ object Dynamic {
 class Object extends Any {
   def this(value: Any) = this()
 
-  def toLocaleString(): String = ???
-  def valueOf(): scala.Any = ???
+  def toLocaleString(): String = native
+  def valueOf(): scala.Any = native
 
   /** Tests whether this object has the specified property as a direct property.
    *
@@ -254,10 +254,10 @@ class Object extends Any {
    *
    * MDN
    */
-  def hasOwnProperty(v: String): Boolean = ???
+  def hasOwnProperty(v: String): Boolean = native
 
   /** Tests whether this object is in the prototype chain of another object. */
-  def isPrototypeOf(v: Object): Boolean = ???
+  def isPrototypeOf(v: Object): Boolean = native
 
   /** Tests whether the specified property in an object can be enumerated by a
    *  call to [[js.Object.properties]], with the exception of properties
@@ -266,13 +266,13 @@ class Object extends Any {
    *
    *  MDN
    */
-  def propertyIsEnumerable(v: String): Boolean = ???
+  def propertyIsEnumerable(v: String): Boolean = native
 }
 
 /** The top-level `Object` JavaScript object. */
 object Object extends Object {
-  def apply(): Object = ???
-  def apply(value: Any): Object = ???
+  def apply(): Object = native
+  def apply(value: Any): Object = native
 
   /** Tests whether the object has a property on itself or in its prototype
    *  chain. This method is the equivalent of `p in o` in JavaScript.
@@ -285,7 +285,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getPrototypeOf(o: Object): Any = ???
+  def getPrototypeOf(o: Object): Any = native
 
   /**
    * The Object.getOwnPropertyDescriptor() method returns a property descriptor
@@ -294,7 +294,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = ???
+  def getOwnPropertyDescriptor(o: Object, p: String): PropertyDescriptor = native
 
   /**
    * Object.getOwnPropertyNames returns an array whose elements are strings
@@ -306,7 +306,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getOwnPropertyNames(o: Object): Array[String] = ???
+  def getOwnPropertyNames(o: Object): Array[String] = native
 
   /**
    * The Object.create() method creates a new object with the specified
@@ -314,8 +314,8 @@ object Object extends Object {
    *
    * MDN
    */
-  def create(o: Object, properties: Any): Object = ???
-  def create(o: Object): Object = ???
+  def create(o: Object, properties: Any): Object = native
+  def create(o: Object): Object = native
 
   /**
    * The Object.defineProperty() method defines a new property directly on an
@@ -336,7 +336,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = ???
+  def defineProperty(o: Object, p: String, attributes: PropertyDescriptor): o.type = native
 
   /**
    * The Object.defineProperties() method defines new or modifies existing
@@ -344,7 +344,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def defineProperties(o: Object, properties: Any): o.type = ???
+  def defineProperties(o: Object, properties: Any): o.type = native
 
   /**
    * The Object.seal() method seals an object, preventing new properties from
@@ -354,7 +354,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def seal(o: Object): o.type = ???
+  def seal(o: Object): o.type = native
 
   /**
    * The Object.freeze() method freezes an object: that is, prevents new properties
@@ -365,7 +365,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def freeze(o: Object): o.type = ???
+  def freeze(o: Object): o.type = native
 
   /**
    * The Object.preventExtensions() method prevents new properties from ever
@@ -385,7 +385,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def preventExtensions(o: Object): o.type = ???
+  def preventExtensions(o: Object): o.type = native
 
   /**
    * Returns true if the object is sealed, otherwise false. An object is sealed
@@ -394,7 +394,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isSealed(o: Object): Boolean = ???
+  def isSealed(o: Object): Boolean = native
 
   /**
    * The Object.isFrozen() determines if an object is frozen.
@@ -405,7 +405,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isFrozen(o: Object): Boolean = ???
+  def isFrozen(o: Object): Boolean = native
 
   /**
    * Determines if extending of an object is allowed
@@ -417,7 +417,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def isExtensible(o: Object): Boolean = ???
+  def isExtensible(o: Object): Boolean = native
 
   /**
    * The Object.keys() method returns an array of a given object's own enumerable
@@ -427,7 +427,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def keys(o: Object): Array[String] = ???
+  def keys(o: Object): Array[String] = native
 
   /** Returns the names of all the enumerable properties of this object.
    *  This is the equivalent of a for...in loop in JavaScript.
@@ -443,45 +443,45 @@ package prim {
  *  [[scala.Double]] instead (or [[scala.Int]] where appropriate).
  */
 sealed trait Number extends Any {
-  def unary_+(): Number
-  def unary_-(): Number
-  def unary_~(): Number
+  def unary_+(): Number = native
+  def unary_-(): Number = native
+  def unary_~(): Number = native
 
-  def +(that: Number): Number
-  def -(that: Number): Number
-  def *(that: Number): Number
-  def /(that: Number): Number
-  def %(that: Number): Number
-  def <<(that: Number): Number
-  def >>(that: Number): Number
-  def >>>(that: Number): Number
-  def &(that: Number): Number
-  def |(that: Number): Number
-  def ^(that: Number): Number
+  def +(that: Number): Number = native
+  def -(that: Number): Number = native
+  def *(that: Number): Number = native
+  def /(that: Number): Number = native
+  def %(that: Number): Number = native
+  def <<(that: Number): Number = native
+  def >>(that: Number): Number = native
+  def >>>(that: Number): Number = native
+  def &(that: Number): Number = native
+  def |(that: Number): Number = native
+  def ^(that: Number): Number = native
 
-  def +(that: Dynamic): Dynamic // could be a String if that is a String
-  def -(that: Dynamic): Number
-  def *(that: Dynamic): Number
-  def /(that: Dynamic): Number
-  def %(that: Dynamic): Number
-  def <<(that: Dynamic): Number
-  def >>(that: Dynamic): Number
-  def >>>(that: Dynamic): Number
-  def &(that: Dynamic): Number
-  def |(that: Dynamic): Number
-  def ^(that: Dynamic): Number
+  def +(that: Dynamic): Dynamic = native // could be a String if that is a String
+  def -(that: Dynamic): Number = native
+  def *(that: Dynamic): Number = native
+  def /(that: Dynamic): Number = native
+  def %(that: Dynamic): Number = native
+  def <<(that: Dynamic): Number = native
+  def >>(that: Dynamic): Number = native
+  def >>>(that: Dynamic): Number = native
+  def &(that: Dynamic): Number = native
+  def |(that: Dynamic): Number = native
+  def ^(that: Dynamic): Number = native
 
-  def <(that: Number): Boolean
-  def >(that: Number): Boolean
-  def <=(that: Number): Boolean
-  def >=(that: Number): Boolean
+  def <(that: Number): Boolean = native
+  def >(that: Number): Boolean = native
+  def <=(that: Number): Boolean = native
+  def >=(that: Number): Boolean = native
 
-  def <(that: Dynamic): Boolean
-  def >(that: Dynamic): Boolean
-  def <=(that: Dynamic): Boolean
-  def >=(that: Dynamic): Boolean
+  def <(that: Dynamic): Boolean = native
+  def >(that: Dynamic): Boolean = native
+  def <=(that: Dynamic): Boolean = native
+  def >=(that: Dynamic): Boolean = native
 
-  def toString(radix: Number): String = ???
+  def toString(radix: Number): String = native
 
   /**
    * Returns a string representation of number that does not use exponential
@@ -493,8 +493,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toFixed(fractionDigits: Number): String = ???
-  def toFixed(): String = ???
+  def toFixed(fractionDigits: Number): String = native
+  def toFixed(): String = native
 
   /**
    * Returns a string representing a Number object in exponential notation with one
@@ -510,8 +510,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toExponential(fractionDigits: Number): String = ???
-  def toExponential(): String = ???
+  def toExponential(fractionDigits: Number): String = native
+  def toExponential(): String = native
 
   /**
    * Returns a string representing a Number object in fixed-point or exponential
@@ -524,8 +524,8 @@ sealed trait Number extends Any {
    *
    * MDN
    */
-  def toPrecision(precision: Number): String = ???
-  def toPrecision(): String = ???
+  def toPrecision(precision: Number): String = native
+  def toPrecision(): String = native
 }
 
 /** The top-level `Number` JavaScript object */
@@ -541,7 +541,7 @@ object Number extends Object {
    *
    * MDN
    */
-  val MAX_VALUE: Double = ???
+  val MAX_VALUE: Double = native
   /**
    * The Number.MIN_VALUE property represents the smallest positive numeric
    * value representable in JavaScript.
@@ -554,26 +554,26 @@ object Number extends Object {
    *
    * MDN
    */
-  val MIN_VALUE: Double = ???
+  val MIN_VALUE: Double = native
   /**
    * The Number.NaN property represents Not-A-Number. Equivalent of NaN.
    *
    * MDN
    */
-  val NaN: Double = ???
+  val NaN: Double = native
 
   /**
    * The Number.NEGATIVE_INFINITY property represents the negative Infinity value.
    *
    * MDN
    */
-  val NEGATIVE_INFINITY: Double = ???
+  val NEGATIVE_INFINITY: Double = native
   /**
    * The Number.POSITIVE_INFINITY property represents the positive Infinity value.
    *
    * MDN
    */
-  val POSITIVE_INFINITY: Double = ???
+  val POSITIVE_INFINITY: Double = native
 }
 
 /** Primitive JavaScript boolean.
@@ -582,14 +582,14 @@ object Number extends Object {
  *  [[scala.Boolean]] instead.
  */
 sealed trait Boolean extends Any {
-  def unary_!(): scala.Boolean = sys.error("stub")
+  def unary_!(): scala.Boolean = native
 
-  def &&(that: Boolean): Boolean
-  def ||(that: Boolean): Boolean
+  def &&(that: Boolean): Boolean = native
+  def ||(that: Boolean): Boolean = native
 
   // See the comment in `Dynamic` for the rationale of returning Boolean here.
-  def &&(that: Dynamic): Boolean
-  def ||(that: Dynamic): Boolean
+  def &&(that: Dynamic): Boolean = native
+  def ||(that: Dynamic): Boolean = native
 }
 
 /** The top-level `Boolean` JavaScript object. */
@@ -603,21 +603,21 @@ object Boolean extends Object {
  *  [[java.lang.String]] instead.
  */
 sealed trait String extends Any {
-  def +(that: String): String
-  def +(that: Any): String
-  def +(that: Dynamic): String
+  def +(that: String): String = native
+  def +(that: Any): String = native
+  def +(that: Dynamic): String = native
 
-  def < (that: String): Boolean
-  def < (that: Dynamic): Boolean
+  def < (that: String): Boolean = native
+  def < (that: Dynamic): Boolean = native
 
-  def > (that: String): Boolean
-  def > (that: Dynamic): Boolean
+  def > (that: String): Boolean = native
+  def > (that: Dynamic): Boolean = native
 
-  def <=(that: String): Boolean
-  def <=(that: Dynamic): Boolean
+  def <=(that: String): Boolean = native
+  def <=(that: Dynamic): Boolean = native
 
-  def >=(that: String): Boolean
-  def >=(that: Dynamic): Boolean
+  def >=(that: String): Boolean = native
+  def >=(that: Dynamic): Boolean = native
 
   /**
    * This property returns the number of code units in the string. UTF-16,
@@ -630,7 +630,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  val length: Number = ???
+  val length: Number = native
 
   /**
    * The chartAt() method returns the specified character from a string.
@@ -642,7 +642,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def charAt(pos: Number): String = ???
+  def charAt(pos: Number): String = native
 
   /**
    * The charCodeAt() method returns the numeric Unicode value of the character
@@ -650,14 +650,14 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def charCodeAt(index: Number): Number = ???
+  def charCodeAt(index: Number): Number = native
 
   /**
    * concat combines the text from one or more strings and returns a new string.
    * Changes to the text in one string do not affect the other string.
    * MDN
    */
-  def concat(strings: String*): String = ???
+  def concat(strings: String*): String = native
 
   /**
    * Returns the index within the calling String object of the first occurrence
@@ -667,8 +667,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def indexOf(searchString: String, position: Number): Number = ???
-  def indexOf(searchString: String): Number = ???
+  def indexOf(searchString: String, position: Number): Number = native
+  def indexOf(searchString: String): Number = native
 
   /**
    * Returns the index within the calling String object of the last occurrence
@@ -677,8 +677,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def lastIndexOf(searchString: String, position: Number): Number = ???
-  def lastIndexOf(searchString: String): Number = ???
+  def lastIndexOf(searchString: String, position: Number): Number = native
+  def lastIndexOf(searchString: String): Number = native
 
   /**
    * Returns a number indicating whether a reference string comes before or
@@ -690,7 +690,7 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def localeCompare(that: String): Number = ???
+  def localeCompare(that: String): Number = native
 
   /**
    * Used to retrieve the matches when matching a string against a regular
@@ -707,8 +707,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def `match`(regexp: String): Array[String] = ???
-  def `match`(regexp: RegExp): Array[String] = ???
+  def `match`(regexp: String): Array[String] = native
+  def `match`(regexp: RegExp): Array[String] = native
 
   /**
    * Returns a new string with some or all matches of a pattern replaced by a
@@ -724,10 +724,10 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def replace(searchValue: String, replaceValue: String): String = ???
-  def replace(searchValue: String, replaceValue: Any): String = ???
-  def replace(searchValue: RegExp, replaceValue: String): String = ???
-  def replace(searchValue: RegExp, replaceValue: Any): String = ???
+  def replace(searchValue: String, replaceValue: String): String = native
+  def replace(searchValue: String, replaceValue: Any): String = native
+  def replace(searchValue: RegExp, replaceValue: String): String = native
+  def replace(searchValue: RegExp, replaceValue: Any): String = native
 
   /**
    * If successful, search returns the index of the regular expression inside
@@ -740,8 +740,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def search(regexp: String): Number = ???
-  def search(regexp: RegExp): Number = ???
+  def search(regexp: String): Number = native
+  def search(regexp: RegExp): Number = native
 
   /**
    * slice extracts the text from one string and returns a new string. Changes
@@ -756,8 +756,8 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def slice(start: Number, end: Number): String = ???
-  def slice(start: Number): String = ???
+  def slice(start: Number, end: Number): String = native
+  def slice(start: Number): String = native
 
   /**
    * Splits a String object into an array of strings by separating the string
@@ -778,10 +778,10 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def split(separator: String, limit: Number): Array[String] = ???
-  def split(separator: String): Array[String] = ???
-  def split(separator: RegExp, limit: Number): Array[String] = ???
-  def split(separator: RegExp): Array[String] = ???
+  def split(separator: String, limit: Number): Array[String] = native
+  def split(separator: String): Array[String] = native
+  def split(separator: RegExp, limit: Number): Array[String] = native
+  def split(separator: RegExp): Array[String] = native
 
   /**
    * Returns a subset of a string between one index and another, or through
@@ -789,15 +789,15 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def substring(start: Number, end: Number): String = ???
-  def substring(start: Number): String = ???
+  def substring(start: Number, end: Number): String = native
+  def substring(start: Number): String = native
 
   /**
    * Returns the calling string value converted to lowercase.
    *
    * MDN
    */
-  def toLowerCase(): String = ???
+  def toLowerCase(): String = native
 
   /**
    * The toLocaleLowerCase method returns the value of the string converted to
@@ -809,14 +809,14 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def toLocaleLowerCase(): String = ???
+  def toLocaleLowerCase(): String = native
 
   /**
    * Returns the calling string value converted to uppercase.
    *
    * MDN
    */
-  def toUpperCase(): String = ???
+  def toUpperCase(): String = native
 
   /**
    * The toLocaleUpperCase method returns the value of the string converted to
@@ -828,21 +828,21 @@ sealed trait String extends Any {
    *
    * MDN
    */
-  def toLocaleUpperCase(): String = ???
+  def toLocaleUpperCase(): String = native
 
   /**
    * Removes whitespace from both ends of the string.
    *
    * MDN
    */
-  def trim(): String = ???
+  def trim(): String = native
 }
 
 /** The top-level `String` JavaScript object. */
 object String extends Object {
   implicit def toScalaString(value: prim.String): java.lang.String = sys.error("stub")
 
-  def fromCharCode(codes: Int*): java.lang.String = ???
+  def fromCharCode(codes: Int*): java.lang.String = native
 }
 
 /** Primitive JavaScript undefined value.

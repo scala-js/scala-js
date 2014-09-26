@@ -39,8 +39,6 @@ trait PrepJSExports { this: PrepJSInterop =>
 
     if (exports.isEmpty)
       Nil
-    else if (isJSAny(clsSym))
-      err(s"You may not export a $memType of a subclass of js.Any")
     else if (!hasLegalExportVisibility(baseSym))
       err(s"You may only export public and protected ${memType}s")
     else if (baseSym.isMacro)

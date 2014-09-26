@@ -4,11 +4,11 @@ import scala.scalajs.js
 
 trait ArrayBufferView extends js.Object {
   /** The underlying buffer of this ArrayBufferView */
-  val buffer: ArrayBuffer = ???
+  val buffer: ArrayBuffer = js.native
 
   /** The number of bytes of this ArrayBufferView */
-  val byteLength: Int = ???
+  val byteLength: Int = js.native
 
   /** The offset of this ArrayBufferView in the underlying buffer */
-  val byteOffset: Int = ???
+  val byteOffset: Int = js.native
 }
