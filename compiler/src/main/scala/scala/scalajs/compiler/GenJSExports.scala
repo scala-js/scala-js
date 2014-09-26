@@ -11,7 +11,8 @@ import scala.tools.nsc._
 import scala.math.PartialOrdering
 import scala.reflect.internal.Flags
 
-import scala.scalajs.ir.{Trees => js, Types => jstpe}
+import scala.scalajs.ir
+import ir.{Trees => js, Types => jstpe}
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -106,7 +107,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val trgSym = fun.symbol
 
       val inArg =
-        js.ParamDef(js.Ident("namedParams"), jstpe.DynType, mutable = false)
+        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType, mutable = false)
       val inArgRef = inArg.ref
 
       val methodIdent = encodeMethodSym(sym)
@@ -131,7 +132,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val jsArgs = for {
         (pSym, index) <- trgSym.info.params.zipWithIndex
       } yield {
-        val rhs = js.JSBracketSelect(inArg, js.StringLiteral(pSym.name.decoded))
+        val rhs = js.JSBracketSelect(js.Cast(inArg, jstpe.DynType),
+            js.Cast(js.StringLiteral(pSym.name.decoded), jstpe.DynType))
         js.VarDef(js.Ident("namedArg$" + index), jstpe.AnyType,
             mutable = true, rhs = rhs)
       }
@@ -301,8 +303,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else if (cases.size == 1 && !hasVarArg)
           cases.head._2
         else {
-          js.Match(js.JSDotSelect(
-              js.VarRef(js.Ident("arguments"), false)(jstpe.DynType), js.Ident("length")),
+          js.Match(
+              js.Cast(js.JSBracketSelect(
+                  js.VarRef(js.Ident("arguments"), false)(jstpe.DynType),
+                  js.Cast(js.StringLiteral("length"), jstpe.DynType)), jstpe.IntType),
               cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
@@ -384,27 +388,25 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               case _: ExportedBody => false
             }
 
-            def orUndef(cond: js.Tree) = if (!hasDefaultParam) cond else {
-              js.JSBinaryOp("||", cond, js.JSBinaryOp("===", param.ref, js.Undefined()))
-            }
-
-            typeTest match {
-              case HelperTypeTest(helperName, _) =>
-                js.If(orUndef(js.CallHelper(helperName, param.ref)(jstpe.BooleanType)),
-                    genSubAlts, elsep)(jstpe.AnyType)
-
-              case TypeOfTypeTest(typeString) =>
-                js.If(orUndef {
-                  js.JSBinaryOp("===", js.JSUnaryOp("typeof", param.ref),
-                      js.StringLiteral(typeString))
-                }, genSubAlts, elsep)(jstpe.AnyType)
+            val optCond = typeTest match {
+              case HijackedTypeTest(boxedClassName, _) =>
+                Some(js.IsInstanceOf(param.ref, jstpe.ClassType(boxedClassName)))
 
               case InstanceOfTypeTest(tpe) =>
-                js.If(orUndef(genIsInstanceOf(param.ref, tpe)),
-                    genSubAlts, elsep)(jstpe.AnyType)
+                Some(genIsInstanceOf(param.ref, tpe))
 
               case NoTypeTest =>
-                genSubAlts // note: elsep is discarded, obviously
+                None
+            }
+
+            optCond.fold[js.Tree] {
+              genSubAlts // note: elsep is discarded, obviously
+            } { cond =>
+              val condOrUndef = if (!hasDefaultParam) cond else {
+                js.BinaryOp(js.BinaryOp.Boolean_||, cond,
+                    js.BinaryOp(js.BinaryOp.===, param.ref, js.Undefined()))
+              }
+              js.If(condOrUndef, genSubAlts, elsep)(jstpe.AnyType)
             }
           }
         }
@@ -435,22 +437,25 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // Copy arguments that go to vararg into an array, put it in a wrapper
 
         val countIdent = freshLocalIdent("count")
-        val count = js.VarRef(countIdent, true)(jstpe.IntType)
+        val count = js.VarRef(countIdent, mutable = false)(jstpe.IntType)
 
         val counterIdent = freshLocalIdent("i")
-        val counter = js.VarRef(counterIdent, false)(jstpe.IntType)
+        val counter = js.VarRef(counterIdent, mutable = true)(jstpe.IntType)
 
         val arrayIdent = freshLocalIdent("varargs")
-        val array = js.VarRef(arrayIdent, true)(jstpe.DynType)
+        val array = js.VarRef(arrayIdent, mutable = false)(jstpe.DynType)
 
-        val arguments = js.VarRef(js.Ident("arguments"), false)(jstpe.DynType)
+        val arguments = js.VarRef(js.Ident("arguments"),
+            mutable = false)(jstpe.DynType)
         val argLen = js.Cast(
-            js.JSBracketSelect(arguments, js.StringLiteral("length")),
+            js.JSBracketSelect(arguments,
+                js.Cast(js.StringLiteral("length"), jstpe.DynType)),
             jstpe.IntType)
         val argOffset = js.IntLiteral(normalArgc)
 
         val jsArrayCtor =
-          js.JSBracketSelect(js.JSGlobal(), js.StringLiteral("Array"))
+          js.JSBracketSelect(js.JSGlobal(),
+              js.Cast(js.StringLiteral("Array"), jstpe.DynType))
 
         js.Block(
             // var i = 0
@@ -459,21 +464,22 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             // val count = arguments.length - <normalArgc>
             js.VarDef(countIdent, jstpe.IntType, mutable = false,
                 rhs = js.BinaryOp(js.BinaryOp.Int_-, argLen, argOffset)),
-            // var varargs = new Array(count)
-            js.VarDef(arrayIdent, jstpe.DynType, mutable = true,
+            // val varargs = new Array(count)
+            js.VarDef(arrayIdent, jstpe.DynType, mutable = false,
                 rhs = js.JSNew(jsArrayCtor, List(count))),
             // while (i < count)
             js.While(js.BinaryOp(js.BinaryOp.<, counter, count), js.Block(
-                // vararg[i] = arguments[<normalArgc> + i];
+                // varargs[i] = arguments[<normalArgc> + i];
                 js.Assign(
-                    js.JSBracketSelect(array, counter),
-                    js.JSBracketSelect(arguments,
-                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter))),
+                    js.JSBracketSelect(array, js.Cast(counter, jstpe.DynType)),
+                    js.JSBracketSelect(arguments, js.Cast(
+                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter),
+                        jstpe.DynType))),
                 // i = i + 1 (++i won't work, desugar eliminates it)
                 js.Assign(counter, js.BinaryOp(js.BinaryOp.Int_+,
                     counter, js.IntLiteral(1)))
             )),
-            // new WrappedArray(vararg)
+            // new WrappedArray(varargs)
             genNew(WrappedArrayClass, WrappedArray_ctor, List(array))
         )
       }
@@ -563,8 +569,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      */
     private def genResult(sym: Symbol,
         args: List[js.Tree])(implicit pos: Position) = {
-      val call = genCastMethodApply(js.This()(encodeClassType(sym.owner)),
-          sym.owner, sym, args)
+      val thisType =
+        if (sym.owner == ObjectClass) jstpe.ClassType(ir.Definitions.ObjectClass)
+        else encodeClassType(sym.owner)
+      val call = genCastMethodApply(js.This()(thisType), sym.owner, sym, args)
       ensureBoxed(call,
         enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
     }
@@ -611,10 +619,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
   private sealed abstract class RTTypeTest
 
-  private final case class HelperTypeTest(helperName: String,
-      rank: Int) extends RTTypeTest
-
-  private final case class TypeOfTypeTest(typeString: String) extends RTTypeTest
+  private final case class HijackedTypeTest(
+      boxedClassName: String, rank: Int) extends RTTypeTest
 
   private final case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
     override def equals(that: Any): Boolean = {
@@ -640,23 +646,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           case (_, NoTypeTest) => true
           case (NoTypeTest, _) => false
 
-          // undefined test is always first
-          case (TypeOfTypeTest("undefined"), _) => true
-          case (_, TypeOfTypeTest("undefined")) => false
-
-          case (HelperTypeTest(_, rank1), HelperTypeTest(_, rank2)) =>
+          case (HijackedTypeTest(_, rank1), HijackedTypeTest(_, rank2)) =>
             rank1 <= rank2
-          case (_:HelperTypeTest, _) => true
-          case (_, _:HelperTypeTest) => false
-
-          case (TypeOfTypeTest(s1), TypeOfTypeTest(s2)) =>
-            s1 <= s2
 
           case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
             t1 <:< t2
 
-          case (_:TypeOfTypeTest, _:InstanceOfTypeTest) => true
-          case (_:InstanceOfTypeTest, _:TypeOfTypeTest) => false
+          case (_:HijackedTypeTest, _:InstanceOfTypeTest) => true
+          case (_:InstanceOfTypeTest, _:HijackedTypeTest) => false
         }
       }
 
@@ -691,26 +688,28 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         InstanceOfTypeTest(tpe.valueClazz.typeConstructor)
 
       case _ =>
+        import ir.{Definitions => Defs}
         (toTypeKind(tpe): @unchecked) match {
-          case VoidKind    => TypeOfTypeTest("undefined")
-          case BooleanKind => TypeOfTypeTest("boolean")
-          case CharKind    => InstanceOfTypeTest(boxedClass(CharClass).tpe)
-          case ByteKind    => HelperTypeTest("isByte", 0)
-          case ShortKind   => HelperTypeTest("isShort", 1)
-          case IntKind     => HelperTypeTest("isInt", 2)
-          case LongKind    => InstanceOfTypeTest(RuntimeLongClass.tpe)
-          case _:DOUBLE    => TypeOfTypeTest("number")
+          case VoidKind    => HijackedTypeTest(Defs.BoxedUnitClass,    0)
+          case BooleanKind => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
+          case ByteKind    => HijackedTypeTest(Defs.BoxedByteClass,    2)
+          case ShortKind   => HijackedTypeTest(Defs.BoxedShortClass,   3)
+          case IntKind     => HijackedTypeTest(Defs.BoxedIntegerClass, 4)
+          case _:DOUBLE    => HijackedTypeTest(Defs.BoxedDoubleClass,  5)
+
+          case CharKind => InstanceOfTypeTest(boxedClass(CharClass).tpe)
+          case LongKind => InstanceOfTypeTest(RuntimeLongClass.tpe)
 
           case REFERENCE(cls) =>
-            if (cls == StringClass) TypeOfTypeTest("string")
+            if (cls == StringClass) HijackedTypeTest(Defs.StringClass, 6)
             else if (cls == ObjectClass) NoTypeTest
             else if (isRawJSType(tpe)) {
               cls match {
-                case JSNumberClass => TypeOfTypeTest("number")
-                case JSBooleanClass => TypeOfTypeTest("boolean")
-                case JSStringClass => TypeOfTypeTest("string")
-                case JSUndefinedClass => TypeOfTypeTest("undefined")
-                case _ => NoTypeTest
+                case JSUndefinedClass => HijackedTypeTest(Defs.BoxedUnitClass,    0)
+                case JSBooleanClass   => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
+                case JSNumberClass    => HijackedTypeTest(Defs.BoxedDoubleClass,  5)
+                case JSStringClass    => HijackedTypeTest(Defs.StringClass,       6)
+                case _                => NoTypeTest
               }
             } else InstanceOfTypeTest(tpe)
 
@@ -746,7 +745,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     (1 to count map genFormalArg).toList
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = false)
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = true)
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {

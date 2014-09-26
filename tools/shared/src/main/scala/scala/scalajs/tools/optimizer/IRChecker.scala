@@ -61,11 +61,15 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         case m @ MethodDef(_: Ident, _, _, _) =>
           checkMethodDef(m, classDef)
 
-        // Exports (ignored, maybe someday we could check them as well)
-        case MethodDef(_: StringLiteral, _, _, _) =>
-        case PropertyDef(_: StringLiteral, _, _, _) =>
-        case ConstructorExportDef(_, _, _) =>
-        case ModuleExportDef(_) =>
+        // Exports
+        case member @ MethodDef(_: StringLiteral, _, _, _) =>
+          checkExportedMethodDef(member, classDef)
+        case member @ PropertyDef(_: StringLiteral, _, _, _) =>
+          checkExportedPropertyDef(member, classDef)
+        case member @ ConstructorExportDef(_, _, _) =>
+          checkConstructorExportDef(member, classDef)
+        case member @ ModuleExportDef(_) =>
+          checkModuleExportDef(member, classDef)
 
         // Anything else is illegal
         case _ =>
@@ -128,6 +132,92 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       typecheckStat(body, bodyEnv)
     else
       typecheckExpect(body, bodyEnv, resultType)
+  }
+
+  def checkExportedMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
+    val MethodDef(_, params, resultType, body) = methodDef
+    implicit val ctx = ErrorContext(methodDef)
+
+    if (!classDef.kind.isClass) {
+      reportError(s"Exported method def can only appear in a class")
+      return
+    }
+
+    for (ParamDef(name, tpe, _) <- params) {
+      if (tpe == NoType)
+        reportError(s"Parameter $name has type NoType")
+      else if (tpe != AnyType)
+        reportError(s"Parameter $name of exported method def has type $tpe, "+
+            "but must be Any")
+    }
+
+    if (resultType != AnyType) {
+      reportError(s"Result type of exported method def is $resultType, "+
+          "but must be Any")
+    }
+
+    val thisType = ClassType(classDef.name.name)
+    val bodyEnv = Env.fromSignature(thisType, params, resultType)
+      .withArgumentsVar(methodDef.pos)
+    typecheckExpect(body, bodyEnv, resultType)
+  }
+
+  def checkExportedPropertyDef(propDef: PropertyDef, classDef: ClassDef): Unit = {
+    val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
+    implicit val ctx = ErrorContext(propDef)
+
+    if (!classDef.kind.isClass) {
+      reportError(s"Exported property def can only appear in a class")
+      return
+    }
+
+    val thisType = ClassType(classDef.name.name)
+
+    if (getterBody != EmptyTree) {
+      val getterBodyEnv = Env.fromSignature(thisType, Nil, AnyType)
+      typecheckExpect(getterBody, getterBodyEnv, AnyType)
+    }
+
+    if (setterBody != EmptyTree) {
+      if (setterArg.ptpe != AnyType)
+        reportError("Setter argument of exported property def has type "+
+            s"${setterArg.ptpe}, but must be Any")
+
+      val setterBodyEnv = Env.fromSignature(thisType, List(setterArg), NoType)
+      typecheckStat(setterBody, setterBodyEnv)
+    }
+  }
+
+  def checkConstructorExportDef(ctorDef: ConstructorExportDef,
+      classDef: ClassDef): Unit = {
+    val ConstructorExportDef(_, params, body) = ctorDef
+    implicit val ctx = ErrorContext(ctorDef)
+
+    if (!classDef.kind.isClass) {
+      reportError(s"Exported constructor def can only appear in a class")
+      return
+    }
+
+    for (ParamDef(name, tpe, _) <- params) {
+      if (tpe == NoType)
+        reportError(s"Parameter $name has type NoType")
+      else if (tpe != AnyType)
+        reportError(s"Parameter $name of exported constructor def has type "+
+            s"$tpe, but must be Any")
+    }
+
+    val thisType = ClassType(classDef.name.name)
+    val bodyEnv = Env.fromSignature(thisType, params, NoType)
+      .withArgumentsVar(ctorDef.pos)
+    typecheckStat(body, bodyEnv)
+  }
+
+  def checkModuleExportDef(moduleDef: ModuleExportDef,
+      classDef: ClassDef): Unit = {
+    implicit val ctx = ErrorContext(moduleDef)
+
+    if (classDef.kind != ClassKind.ModuleClass)
+      reportError(s"Exported module def can only appear in a module class")
   }
 
   def typecheckStat(tree: Tree, env: Env): Env = {
@@ -782,6 +872,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
     def withLabeledReturnType(label: String, returnType: Type): Env =
       new Env(this.thisTpe, this.locals, returnTypes + (Some(label) -> returnType))
+
+    def withArgumentsVar(pos: Position): Env =
+      withLocal(LocalDef("arguments", DynType, mutable = false)(pos))
   }
 
   object Env {

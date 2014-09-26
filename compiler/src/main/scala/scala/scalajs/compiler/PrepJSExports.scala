@@ -155,9 +155,9 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Mark the symbol to be a named export
     expSym.addAnnotation(JSExportNamedAnnotation)
 
-    // Create a single parameter of type js.Any
+    // Create a single parameter of type Any
     val param = expSym.newValueParameter(newTermName("namedArgs"), pos)
-    param.setInfo(JSAnyTpe)
+    param.setInfo(AnyTpe)
 
     // Set method type
     expSym.setInfo(MethodType(param :: Nil, AnyClass.tpe))
