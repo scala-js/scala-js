@@ -74,13 +74,17 @@ trait JSGlobalAddons extends JSDefinitions
         // Is this a named export or a normal one?
         val named = annot.symbol == JSExportNamedAnnotation
 
-        // The default export name for the symbol
-        def defaultName =
-          if (sym.isConstructor) sym.owner.unexpandedName.decoded
+        def explicitName = annot.stringArg(0).getOrElse {
+          currentUnit.error(annot.pos,
+            s"The argument to ${annot.symbol.name} must be a literal string")
+          "dummy"
+        }
+
+        val name =
+          if (annot.args.nonEmpty) explicitName
+          else if (sym.isConstructor) sym.owner.unexpandedName.decoded
           else if (sym.isModuleClass) sym.unexpandedName.decoded
           else sym.unexpandedName.decoded.stripSuffix("_=")
-
-        val name = annot.stringArg(0).getOrElse(defaultName)
 
         // Enforce that methods ending with _= are exported as setters
         if (sym.isMethod && !sym.isConstructor &&
