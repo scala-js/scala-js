@@ -191,7 +191,7 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
         Node.newNumber(value)
       case DoubleLiteral(value) =>
         Node.newNumber(value)
-      case StringLiteral(value, _) =>
+      case StringLiteral(value) =>
         Node.newString(value)
       case VarRef(ident, _) =>
         transformName(ident)

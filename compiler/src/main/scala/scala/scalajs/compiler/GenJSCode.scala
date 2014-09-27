@@ -2744,10 +2744,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Translate to:
         //   {"name1": ..., "name2": ... }
         extractFirstArg() match {
-          case (js.StringLiteral("apply", _),
+          case (js.StringLiteral("apply"),
                 js.JSArrayConstr(jse.LitNamed(pairs))) =>
             js.JSObjectConstr(pairs)
-          case (js.StringLiteral(name, _), _) if name != "apply" =>
+          case (js.StringLiteral(name), _) if name != "apply" =>
             currentUnit.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             js.Undefined()
@@ -2767,13 +2767,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Extract first arg to future proof against varargs
         extractFirstArg() match {
           // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
-          case (js.StringLiteral("apply", _),
+          case (js.StringLiteral("apply"),
                 js.JSArrayConstr(jse.LitNamed(pairs))) =>
             js.JSObjectConstr(pairs)
-          // case js.Dynamic.literal(x, y)
-          case (js.StringLiteral("apply", _),
-                js.JSArrayConstr(tups)) =>
 
+          // case js.Dynamic.literal(x, y)
+          case (js.StringLiteral("apply"), js.JSArrayConstr(tups)) =>
             // Create tmp variable
             val resIdent = freshLocalIdent("obj")
             val resVarDef = js.VarDef(resIdent, jstpe.DynType, mutable = false,
@@ -2804,7 +2803,7 @@ abstract class GenJSCode extends plugins.PluginComponent
            */
 
           // case where another method is called
-          case (js.StringLiteral(name, _), _) if name != "apply" =>
+          case (js.StringLiteral(name), _) if name != "apply" =>
             currentUnit.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             js.Undefined()
@@ -3205,7 +3204,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     private def genGlobalJSObject(sym: Symbol)(
         implicit pos: Position): js.Tree = {
       jsNameOf(sym).split('.').foldLeft[js.Tree](js.JSGlobal()) { (memo, chunk) =>
-        js.JSBracketSelect(memo, js.StringLiteral(chunk, Some(chunk)))
+        js.JSBracketSelect(memo, js.StringLiteral(chunk))
       }
     }
 

@@ -1541,13 +1541,13 @@ abstract class OptimizerCore {
       case === | !== =>
         def lit(v: Boolean) = BooleanLiteral(if (op == ===) v else !v)
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))             => lit(l == r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r))     => lit(l == r)
-          case (BooleanLiteral(l), BooleanLiteral(r))     => lit(l == r)
-          case (StringLiteral(l, _), StringLiteral(r, _)) => lit(l == r)
-          case (Undefined(), Undefined())                 => lit(true)
-          case (Null(), Null())                           => lit(true)
-          case (_: Literal, _: Literal)                   => lit(false)
+          case (IntLiteral(l), IntLiteral(r))         => lit(l == r)
+          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => lit(l == r)
+          case (BooleanLiteral(l), BooleanLiteral(r)) => lit(l == r)
+          case (StringLiteral(l), StringLiteral(r))   => lit(l == r)
+          case (Undefined(), Undefined())             => lit(true)
+          case (Null(), Null())                       => lit(true)
+          case (_: Literal, _: Literal)               => lit(false)
 
           case (BooleanLiteral(l), _) =>
             if (l == (op == ===)) rhs

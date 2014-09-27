@@ -27,7 +27,7 @@ class JSExportASTTest extends JSASTTest {
       override def foo = 2
     }
     """.traverse {
-      case js.PropertyDef(js.StringLiteral("foo", _), _, _, _) =>
+      case js.PropertyDef(js.StringLiteral("foo"), _, _, _) =>
         props += 1
     }
 

@@ -350,9 +350,9 @@ object Serializers {
           writeByte(TagDoubleLiteral)
           writeDouble(value)
 
-        case StringLiteral(value, originalName) =>
+        case StringLiteral(value) =>
           writeByte(TagStringLiteral)
-          writeString(value); writeString(originalName.getOrElse(""))
+          writeString(value)
 
         case VarRef(ident, mutable) =>
           writeByte(TagVarRef)
@@ -611,9 +611,7 @@ object Serializers {
         case TagBooleanLiteral => BooleanLiteral(readBoolean())
         case TagIntLiteral     => IntLiteral(readInt())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
-        case TagStringLiteral  =>
-          val value, originalName = readString()
-          StringLiteral(value, if (originalName.isEmpty) None else Some(originalName))
+        case TagStringLiteral  => StringLiteral(readString())
         case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
         case TagThis           => This()(readType())
         case TagClosure        =>

@@ -498,7 +498,7 @@ object Printers {
         case DoubleLiteral(value) =>
           print(if (value == 0 && 1 / value < 0) "-0" else value)
 
-        case StringLiteral(value, _) =>
+        case StringLiteral(value) =>
           print("\"", escapeJS(value), "\"")
 
         // Atomic expressions
@@ -656,13 +656,8 @@ object Printers {
 
     override def printTree(tree: Tree, isStat: Boolean): Unit = {
       val pos = tree.pos
-      if (pos.isDefined) {
-        val originalName = tree match {
-          case StringLiteral(_, origName) => origName
-          case _ => None
-        }
-        sourceMap.startNode(column, pos, originalName)
-      }
+      if (pos.isDefined)
+        sourceMap.startNode(column, pos)
 
       super.printTree(tree, isStat)
 

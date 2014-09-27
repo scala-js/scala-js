@@ -43,7 +43,6 @@ object Trees {
 
   sealed trait PropertyName {
     def name: String
-    def originalName: Option[String]
     def pos: Position
   }
 
@@ -448,15 +447,10 @@ object Trees {
     val tpe = DoubleType
   }
 
-  case class StringLiteral(value: String, originalName: Option[String])(
+  case class StringLiteral(value: String)(
       implicit val pos: Position) extends Literal with PropertyName {
     val tpe = StringType
     override def name = value
-  }
-
-  object StringLiteral {
-    def apply(value: String)(implicit pos: Position): StringLiteral =
-      new StringLiteral(value, None)
   }
 
   // Atomic expressions
