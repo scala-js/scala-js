@@ -592,7 +592,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: overriding method $js$exported$meth$foo in class A of type (namedArgs: scala.scalajs.js.Any)Any;
+      |newSource1.scala:9: error: overriding method $js$exported$meth$foo in class A of type (namedArgs: Any)Any;
       | method $js$exported$meth$foo cannot override final member
       |      @JSExportNamed
       |       ^
