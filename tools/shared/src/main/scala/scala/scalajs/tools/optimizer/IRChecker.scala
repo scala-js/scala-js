@@ -299,16 +299,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         }
         env
 
-      case Switch(selector, cases, default) =>
-        typecheckExpr(selector, env)
-        for ((value, body) <- cases) {
-          typecheckExpr(value, env)
-          typecheckStat(body, env)
-        }
-        if (default != EmptyTree)
-          typecheckStat(default, env)
-        env
-
       case Match(selector, cases, default) =>
         typecheckExpr(selector, env)
         for ((alts, body) <- cases) {

@@ -15,6 +15,7 @@ import org.mozilla.javascript.{Context, Scriptable}
 
 import scala.scalajs.ir
 
+import scala.scalajs.tools.javascript
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.corelib._
@@ -98,9 +99,9 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
 
   private def getSourceMapper(fileName: String, untilLine: Int) = {
     val irFile = providers(fileName.stripSuffix(PseudoFileSuffix))
-    val mapper = new ir.Printers.ReverseSourceMapPrinter(untilLine)
+    val mapper = new javascript.Printers.ReverseSourceMapPrinter(untilLine)
     val classDef = irFile.tree
-    val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
+    val desugared = javascript.JSDesugaring.desugarJavaScript(classDef)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -148,9 +149,9 @@ class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
     providers.get(encodedName) foreach { irFile =>
       val codeWriter = new java.io.StringWriter
-      val printer = new ir.Printers.IRTreePrinter(codeWriter, jsMode = true)
+      val printer = new javascript.Printers.JSTreePrinter(codeWriter)
       val classDef = irFile.tree
-      val desugared = ir.JSDesugaring.desugarJavaScript(classDef)
+      val desugared = javascript.JSDesugaring.desugarJavaScript(classDef)
       printer.printTopLevelTree(desugared)
       printer.complete()
       val ctx = Context.getCurrentContext()

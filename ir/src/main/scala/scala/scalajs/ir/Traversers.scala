@@ -56,11 +56,6 @@ object Traversers {
       case Throw(expr) =>
         traverse(expr)
 
-      case Switch(selector, cases, default) =>
-        traverse(selector)
-        cases foreach (c => (traverse(c._1), traverse(c._2)))
-        traverse(default)
-
       case Match(selector, cases, default) =>
         traverse(selector)
         cases foreach (c => (c._1 map traverse, traverse(c._2)))
@@ -146,10 +141,6 @@ object Traversers {
         traverse(method)
         args foreach traverse
 
-      case JSApply(fun, args) =>
-        traverse(fun)
-        args foreach traverse
-
       case JSDelete(prop) =>
         traverse(prop)
 
@@ -171,9 +162,6 @@ object Traversers {
       case Closure(thisType, args, resultType, body, captures) =>
         traverse(body)
         captures foreach traverse
-
-      case Function(thisType, args, resultType, body) =>
-        traverse(body)
 
       // Type-related
 
@@ -197,9 +185,8 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Break | _:Continue | _:LoadModule | _:ClassOf |
-          _:JSGlobal | _:Literal | _:VarRef | _:This | _:ModuleExportDef |
-          EmptyTree =>
+      case _:Skip | _:Continue | _:LoadModule | _:ClassOf | _:JSGlobal |
+          _:Literal | _:VarRef | _:This | _:ModuleExportDef | EmptyTree =>
 
       case _ =>
         sys.error(s"Invalid tree in traverse() of class ${tree.getClass}")

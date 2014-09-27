@@ -20,22 +20,16 @@ object Trees {
     val pos: Position
     val tpe: Type
 
-    def show(jsMode: Boolean): String = {
+    def show: String = {
       val writer = new java.io.StringWriter
-      val printer = new Printers.IRTreePrinter(writer, jsMode)
-      printer.printTree(this, isStat = true)
+      val printer = new Printers.IRTreePrinter(writer)
+      printer.printTree(this)
       writer.toString()
     }
   }
 
   case object EmptyTree extends Tree {
     val pos = NoPosition
-    val tpe = NoType
-  }
-
-  // Comments
-
-  case class DocComment(text: String)(implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
@@ -172,22 +166,14 @@ object Trees {
     val tpe = NothingType
   }
 
-  case class Break(label: Option[Ident] = None)(implicit val pos: Position) extends Tree {
-    val tpe = NothingType
-  }
-
   case class Continue(label: Option[Ident] = None)(implicit val pos: Position) extends Tree {
     val tpe = NothingType
   }
 
-  case class Switch(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
-  }
-
   /** A break-free switch (without fallthrough behavior).
-   *  Unlike [[Switch]], it can be used in expression position.
+   *  Unlike a JavaScript switch, it can be used in expression position.
    *  It supports alternatives explicitly (hence the List[Tree] in cases),
-   *  whereas in a [[Switch]] one would use the fallthrough behavior to
+   *  whereas in a switch one would use the fallthrough behavior to
    *  implement alternatives.
    *  (This is not a pattern matching construct like in Scala.)
    */
@@ -342,7 +328,7 @@ object Trees {
 
   object CallHelper {
     def apply(helper: String, args: Tree*)(tpe: Type)(
-      implicit pos: Position): CallHelper = {
+        implicit pos: Position): CallHelper = {
       CallHelper(helper, args.toList)(tpe)
     }
   }
@@ -374,14 +360,6 @@ object Trees {
   }
 
   case class JSBracketMethodApply(receiver: Tree, method: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
-  }
-
-  /** Syntactic apply.
-   *  It is a method call if fun is a dot-select or bracket-select. It is a
-   *  function call otherwise. Just like in JavaScript.
-   */
-  case class JSApply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }
 
@@ -465,10 +443,6 @@ object Trees {
   case class Closure(
       thisType: Type, args: List[ParamDef], resultType: Type, body: Tree,
       captures: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
-  }
-
-  case class Function(thisType: Type, args: List[ParamDef], resultType: Type, body: Tree)(implicit val pos: Position) extends Tree {
     val tpe = DynType
   }
 

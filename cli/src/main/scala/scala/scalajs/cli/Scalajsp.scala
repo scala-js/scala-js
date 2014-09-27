@@ -13,8 +13,11 @@ import scala.scalajs.ir
 import ir.ScalaJSVersions
 import ir.Trees.Tree
 import ir.Transformers.Transformer
-import ir.JSDesugaring.desugarJavaScript
 import ir.Printers.{InfoPrinter, IRTreePrinter}
+
+import scala.scalajs.tools.javascript
+import javascript.JSDesugaring.desugarJavaScript
+import javascript.Printers.JSTreePrinter
 
 import scala.scalajs.tools.io._
 import scala.collection.immutable.Seq
@@ -95,10 +98,9 @@ object Scalajsp {
       }
 
       if (opts.desugar)
-        new IRTreePrinter(stdout, jsMode = true).printTopLevelTree(
-          desugarJavaScript(outTree))
+        new JSTreePrinter(stdout).printTopLevelTree(desugarJavaScript(outTree))
       else
-        new IRTreePrinter(stdout, jsMode = false).printTopLevelTree(outTree)
+        new IRTreePrinter(stdout).printTopLevelTree(outTree)
     }
 
     stdout.flush()

@@ -3,6 +3,8 @@ package scala.scalajs.tools.optimizer
 import scala.scalajs.ir
 import ir.Position.NoPosition
 
+import scala.scalajs.tools.javascript.Trees.Tree
+
 import com.google.javascript.rhino._
 import com.google.javascript.rhino.jstype.{StaticSourceFile, SimpleSourceFile}
 import com.google.javascript.jscomp._
@@ -17,7 +19,7 @@ class ClosureAstBuilder(
   private val transformer = new ClosureAstTransformer(relativizeBaseURI)
   private val treeBuf = mutable.ListBuffer.empty[Node]
 
-  def addJSTree(tree: ir.Trees.Tree): Unit =
+  def addJSTree(tree: Tree): Unit =
     treeBuf += transformer.transformStat(tree)(NoPosition)
 
   lazy val closureAST: SourceAst = {

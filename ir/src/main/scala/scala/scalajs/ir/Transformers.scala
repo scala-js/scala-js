@@ -52,11 +52,6 @@ object Transformers {
         case Throw(expr) =>
           Throw(transformExpr(expr))
 
-        case Switch(selector, cases, default) =>
-          Switch(transformExpr(selector),
-              cases map (c => (transformExpr(c._1), transformStat(c._2))),
-              transformStat(default))
-
         case Match(selector, cases, default) =>
           Match(transformExpr(selector),
               cases map (c => (c._1 map transformExpr, transformStat(c._2))),
@@ -136,9 +131,6 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
-        case JSApply(fun, args) =>
-          JSApply(transformExpr(fun), args map transformExpr)
-
         case JSDelete(prop) =>
           JSDelete(transformExpr(prop))
 
@@ -164,9 +156,6 @@ object Transformers {
               else transformExpr(body),
               captures map transformExpr)
 
-        case Function(thisType, args, resultType, body) =>
-          Function(thisType, args, resultType, transformStat(body))
-
         // Type-related
 
         case Cast(expr, tpe) =>
@@ -179,7 +168,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Break | _:Continue | _:LoadModule | _:ClassOf |
+        case _:Skip | _:Continue | _:LoadModule | _:ClassOf |
             _:JSGlobal | _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 
@@ -214,9 +203,6 @@ object Transformers {
 
         case Throw(expr) =>
           Throw(transformExpr(expr))
-
-        case Break(label) =>
-          Break(label)
 
         case Match(selector, cases, default) =>
           Match(transformExpr(selector),
@@ -294,9 +280,6 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
-        case JSApply(fun, args) =>
-          JSApply(transformExpr(fun), args map transformExpr)
-
         case JSUnaryOp(op, lhs) =>
           JSUnaryOp(op, transformExpr(lhs))
 
@@ -319,9 +302,6 @@ object Transformers {
               else transformExpr(body),
               captures map transformExpr)
 
-        case Function(thisType, args, resultType, body) =>
-          Function(thisType, args, resultType, transformStat(body))
-
         // Type-related
 
         case Cast(expr, tpe) =>
@@ -329,7 +309,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Break | _:Continue | _:LoadModule | _:ClassOf | _:JSGlobal |
+        case _:Continue | _:LoadModule | _:ClassOf | _:JSGlobal |
             _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 

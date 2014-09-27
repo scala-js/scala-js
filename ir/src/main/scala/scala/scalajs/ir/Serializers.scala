@@ -111,10 +111,6 @@ object Serializers {
         case EmptyTree =>
           writeByte(TagEmptyTree)
 
-        case DocComment(text) =>
-          writeByte(TagDocComment)
-          writeString(text)
-
         case VarDef(ident, vtpe, mutable, rhs) =>
           writeByte(TagVarDef)
           writeIdent(ident); writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
@@ -164,22 +160,9 @@ object Serializers {
           writeByte(TagThrow)
           writeTree(expr)
 
-        case Break(label) =>
-          writeByte(TagBreak)
-          writeOptIdent(label)
-
         case Continue(label) =>
           writeByte(TagContinue)
           writeOptIdent(label)
-
-        case Switch(selector, cases, default) =>
-          writeByte(TagSwitch)
-          writeTree(selector)
-          writeInt(cases.size)
-          cases foreach { caze =>
-            writeTree(caze._1); writeTree(caze._2)
-          }
-          writeTree(default)
 
         case Match(selector, cases, default) =>
           writeByte(TagMatch)
@@ -299,10 +282,6 @@ object Serializers {
           writeByte(TagJSBracketMethodApply)
           writeTree(receiver); writeTree(method); writeTrees(args)
 
-        case JSApply(fun, args) =>
-          writeByte(TagJSApply)
-          writeTree(fun); writeTrees(args)
-
         case JSDelete(prop) =>
           writeByte(TagJSDelete)
           writeTree(prop)
@@ -367,10 +346,6 @@ object Serializers {
           writeByte(TagClosure)
           writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
           writeTrees(captures)
-
-        case Function(thisType, args, resultType, body) =>
-          writeByte(TagFunction)
-          writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
 
         case Cast(expr, tpe) =>
           writeByte(TagCast)
@@ -545,7 +520,6 @@ object Serializers {
       val result = (tag: @switch) match {
         case TagEmptyTree => EmptyTree
 
-        case TagDocComment => DocComment(readString())
         case TagVarDef     => VarDef(readIdent(), readType(), readBoolean(), readTree())
         case TagParamDef   => ParamDef(readIdent(), readType(), readBoolean())
 
@@ -559,12 +533,7 @@ object Serializers {
         case TagDoWhile  => DoWhile(readTree(), readTree(), readOptIdent())
         case TagTry      => Try(readTree(), readIdent(), readTree(), readTree())(readType())
         case TagThrow    => Throw(readTree())
-        case TagBreak    => Break(readOptIdent())
         case TagContinue => Continue(readOptIdent())
-        case TagSwitch   =>
-          Switch(readTree(), List.fill(readInt()) {
-            (readTree(), readTree())
-          }, readTree())
         case TagMatch    =>
           Match(readTree(), List.fill(readInt()) {
             (readTrees(), readTree())
@@ -597,7 +566,6 @@ object Serializers {
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
-        case TagJSApply              => JSApply(readTree(), readTrees())
         case TagJSDelete             => JSDelete(readTree())
         case TagJSUnaryOp            => JSUnaryOp(readString(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readString(), readTree(), readTree())
@@ -616,7 +584,6 @@ object Serializers {
         case TagThis           => This()(readType())
         case TagClosure        =>
           Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
-        case TagFunction       => Function(readType(), readParamDefs(), readType(), readTree())
         case TagCast           => Cast(readTree(), readType())
 
         case TagClassDef =>
@@ -767,8 +734,7 @@ object Serializers {
 
   private final val TagEmptyTree = 1
 
-  private final val TagDocComment = TagEmptyTree + 1
-  private final val TagVarDef = TagDocComment + 1
+  private final val TagVarDef = TagEmptyTree + 1
   private final val TagParamDef = TagVarDef + 1
 
   private final val TagSkip = TagParamDef + 1
@@ -781,10 +747,8 @@ object Serializers {
   private final val TagDoWhile = TagWhile + 1
   private final val TagTry = TagDoWhile + 1
   private final val TagThrow = TagTry + 1
-  private final val TagBreak = TagThrow + 1
-  private final val TagContinue = TagBreak + 1
-  private final val TagSwitch = TagContinue + 1
-  private final val TagMatch = TagSwitch + 1
+  private final val TagContinue = TagThrow + 1
+  private final val TagMatch = TagContinue + 1
   private final val TagDebugger = TagMatch + 1
 
   private final val TagNew = TagDebugger + 1
@@ -810,8 +774,10 @@ object Serializers {
   private final val TagJSNew = TagJSGlobal + 1
   private final val TagJSDotSelect = TagJSNew + 1
   private final val TagJSBracketSelect = TagJSDotSelect + 1
-  private final val TagJSApply = TagJSBracketSelect + 1
-  private final val TagJSDelete = TagJSApply + 1
+  private final val TagJSFunctionApply = TagJSBracketSelect + 1
+  private final val TagJSDotMethodApply = TagJSFunctionApply + 1
+  private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
+  private final val TagJSDelete = TagJSBracketMethodApply + 1
   private final val TagJSUnaryOp = TagJSDelete + 1
   private final val TagJSBinaryOp = TagJSUnaryOp + 1
   private final val TagJSArrayConstr = TagJSBinaryOp + 1
@@ -827,18 +793,13 @@ object Serializers {
   private final val TagVarRef = TagStringLiteral + 1
   private final val TagThis = TagVarRef + 1
   private final val TagClosure = TagThis + 1
-  private final val TagFunction = TagClosure + 1
-  private final val TagCast = TagFunction + 1
+  private final val TagCast = TagClosure + 1
 
   private final val TagClassDef = TagCast + 1
   private final val TagMethodDef = TagClassDef + 1
   private final val TagPropertyDef = TagMethodDef + 1
   private final val TagConstructorExportDef = TagPropertyDef + 1
   private final val TagModuleExportDef = TagConstructorExportDef + 1
-
-  private final val TagJSFunctionApply = TagModuleExportDef + 1
-  private final val TagJSDotMethodApply = TagJSFunctionApply + 1
-  private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
 
   // Tags for Types
 

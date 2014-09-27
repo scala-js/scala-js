@@ -1,5 +1,5 @@
 /*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js IR                **
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
 **    / __/ __// _ | / /  / _ | __ / // __/  (c) 2014, LAMP/EPFL        **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
@@ -7,14 +7,17 @@
 \*                                                                      */
 
 
-package scala.scalajs.ir
+package scala.scalajs.tools.sourcemap
 
 import java.io.Writer
 import java.net.URI
 
 import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
-import Position._
+import scala.scalajs.ir
+import ir.Position
+import ir.Position._
+import ir.Utils
 
 object SourceMapWriter {
   private val Base64Map =
@@ -30,7 +33,7 @@ object SourceMapWriter {
   private final val VLQContinuationBit = VLQBase
 
   private def jsonString(s: String) =
-    "\"" + Printers.escapeJS(s) + "\""
+    "\"" + Utils.escapeJS(s) + "\""
 }
 
 class SourceMapWriter(

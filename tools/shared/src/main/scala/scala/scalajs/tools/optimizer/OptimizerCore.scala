@@ -475,9 +475,6 @@ abstract class OptimizerCore {
         JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
             args map transformExpr)
 
-      case JSApply(fun, args) =>
-        JSApply(transformExpr(fun), args map transformExpr)
-
       case JSDelete(JSDotSelect(obj, prop)) =>
         JSDelete(JSDotSelect(transformExpr(obj), prop))
 
