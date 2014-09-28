@@ -2465,6 +2465,7 @@ object OptimizerCore {
       case StaticApply(receiver, _, _, args) => areSimpleArgs(receiver :: args)
       case TraitImplApply(_, _, args)        => areSimpleArgs(args)
       case Select(qual, _, _)                => isSimpleArg(qual)
+      case IsInstanceOf(inner, _)            => isSimpleArg(inner)
 
       case CallHelper(helper, List(inner)) =>
         isBoxUnboxHelper(helper) && unapply(inner)
