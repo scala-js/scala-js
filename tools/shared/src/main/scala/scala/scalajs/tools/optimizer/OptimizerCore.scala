@@ -2603,8 +2603,9 @@ object OptimizerCore {
             receiver.tpe match {
               case AnyType =>
                 addCalledMethod(ObjectClass, method)
-              case ClassType(cls) if (!HijackedClasses.contains(cls)) =>
-                addCalledMethod(cls, method)
+              case ClassType(cls) =>
+                if (!HijackedClasses.contains(cls) || cls == BoxedLongClass)
+                  addCalledMethod(cls, method)
               case _ =>
             }
           }
