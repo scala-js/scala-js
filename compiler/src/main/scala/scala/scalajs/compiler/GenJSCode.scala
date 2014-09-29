@@ -2156,12 +2156,11 @@ abstract class GenJSCode extends plugins.PluginComponent
           def genEquality(eqeq: Boolean, not: Boolean) = {
             if (eqeq &&
                 toTypeKind(args(0).tpe).isReferenceType &&
-                !isRawJSType(args(0).tpe) &&
-                !isRawJSType(args(1).tpe) &&
-                // don't call equals if we have a literal null at rhs
+                // don't call equals if we have a literal null at either side
+                !lsrc.isInstanceOf[js.Null] &&
                 !rsrc.isInstanceOf[js.Null]
                 ) {
-              val body = genEqEqPrimitive(args(0), args(1), lsrc, rsrc)
+              val body = genEqEqPrimitive(args(0).tpe, args(1).tpe, lsrc, rsrc)
               if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
             } else
               js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
@@ -2219,20 +2218,55 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code for a call to Any.== */
-    def genEqEqPrimitive(l: Tree, r: Tree, lsrc: js.Tree, rsrc: js.Tree)(
+    def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
         implicit pos: Position): js.Tree = {
-      /** True if the equality comparison is between values that require the use of the rich equality
-        * comparator (scala.runtime.Comparator.equals). This is the case when either side of the
-        * comparison might have a run-time type subtype of java.lang.Number or java.lang.Character.
-        * When it is statically known that both sides are equal and subtypes of Number of Character,
-        * not using the rich equality is possible (their own equals method will do ok.)*/
-      def mustUseAnyComparator: Boolean = {
-        def areSameFinals = l.tpe.isFinalType && r.tpe.isFinalType && (l.tpe =:= r.tpe)
-        !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
+      /* True if the equality comparison is between values that require the
+       * use of the rich equality comparator
+       * (scala.runtime.BoxesRunTime.equals).
+       * This is the case when either side of the comparison might have a
+       * run-time type subtype of java.lang.Number or java.lang.Character,
+       * **which includes when either is a raw JS type**.
+       * When it is statically known that both sides are equal and subtypes of
+       * Number or Character, not using the rich equality is possible (their
+       * own equals method will do ok.)
+       */
+      val mustUseAnyComparator: Boolean = isRawJSType(ltpe) || isRawJSType(rtpe) || {
+        val areSameFinals = ltpe.isFinalType && rtpe.isFinalType && (ltpe =:= rtpe)
+        !areSameFinals && isMaybeBoxed(ltpe.typeSymbol) && isMaybeBoxed(rtpe.typeSymbol)
       }
 
-      val function = if (mustUseAnyComparator) "anyEqEq" else "anyRefEqEq"
-      js.CallHelper(function, lsrc, rsrc)(jstpe.BooleanType)
+      if (mustUseAnyComparator) {
+        val equalsMethod: Symbol = {
+          val ptfm = platform.asInstanceOf[backend.JavaPlatform with ThisPlatform] // 2.10 compat
+          if (ltpe <:< BoxedNumberClass.tpe) {
+            if (rtpe <:< BoxedNumberClass.tpe) ptfm.externalEqualsNumNum
+            else if (rtpe <:< BoxedCharacterClass.tpe) ptfm.externalEqualsNumChar
+            else ptfm.externalEqualsNumObject
+          } else ptfm.externalEquals
+        }
+        val moduleClass = equalsMethod.owner
+        val instance = genLoadModule(moduleClass)
+        genApplyMethod(instance, moduleClass, equalsMethod, List(lsrc, rsrc))
+      } else {
+        // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
+        if (isStringType(ltpe)) {
+          // String.equals(that) === (this eq that)
+          js.BinaryOp(js.BinaryOp.===, lsrc, rsrc)
+        } else {
+          /* This requires to evaluate both operands in local values first.
+           * The optimizer will eliminate them if possible.
+           */
+          val ltemp = js.VarDef(freshLocalIdent(), lsrc.tpe, mutable = false, lsrc)
+          val rtemp = js.VarDef(freshLocalIdent(), rsrc.tpe, mutable = false, rsrc)
+          js.Block(
+              ltemp,
+              rtemp,
+              js.If(js.BinaryOp(js.BinaryOp.===, ltemp.ref, js.Null()),
+                  js.BinaryOp(js.BinaryOp.===, rtemp.ref, js.Null()),
+                  js.CallHelper("objectEquals", ltemp.ref, rtemp.ref)(
+                  jstpe.BooleanType))(jstpe.BooleanType))
+        }
+      }
     }
 
     /** Gen JS code for string concatenation.

@@ -43,14 +43,14 @@ private[runtime] trait RuntimeString { this: jsString =>
   def compareTo(anotherString: String): Int = {
     val thatjs: jsString = anotherString
     val thisjs: jsString = this
-    if (thisjs == thatjs) 0
+    if (thisjs eq thatjs) 0
     else if (thisjs < thatjs) -1
     else 1
   }
   def compareToIgnoreCase(str: String): Int = {
     val thatljs = (str: jsString).toLowerCase
     val thisljs = (this: jsString).toLowerCase
-    if (thisljs == thatljs) 0
+    if (thisljs eq thatljs) 0
     else if (thisljs < thatljs) -1
     else 1
   }
@@ -61,7 +61,7 @@ private[runtime] trait RuntimeString { this: jsString =>
       val thatljs = (that: jsString).toLowerCase
       val thisljs = (this: jsString).toLowerCase
 
-      thisljs == thatljs
+      thisljs eq thatljs
     }
   }
 
@@ -72,7 +72,7 @@ private[runtime] trait RuntimeString { this: jsString =>
 
   def endsWith(suffix: String): Boolean = {
     val thisjs: jsString = this
-    suffix == thisjs.substring(thisjs.length - suffix.length)
+    (suffix: jsString) eq thisjs.substring(thisjs.length - suffix.length)
   }
 
   /** Unimplemented, unused, but referenced */
@@ -168,7 +168,7 @@ private[runtime] trait RuntimeString { this: jsString =>
   def startsWith(prefix: String): Boolean =
     (this: String).startsWith(prefix, 0)
   def startsWith(prefix: String, toffset: Int): Boolean =
-    prefix == (this: jsString).substring(toffset, prefix.length)
+    (prefix: jsString) eq (this: jsString).substring(toffset, prefix.length)
 
   def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
     (this: jsString).substring(beginIndex, endIndex)

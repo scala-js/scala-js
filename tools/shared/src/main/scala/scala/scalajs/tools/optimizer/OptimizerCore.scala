@@ -378,18 +378,7 @@ abstract class OptimizerCore {
       case BinaryOp(op @ (BinaryOp.=== | BinaryOp.!==), lhs, rhs) =>
         trampoline {
           pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-            TailCalls.done {
-              val isEqEq = (op == BinaryOp.===)
-              (tlhs, trhs) match {
-                case (_, PreTransTree(Null(), _)) if !tlhs.tpe.isNullable =>
-                  Block(
-                      finishTransformStat(tlhs),
-                      BooleanLiteral(!isEqEq))
-                case _ =>
-                  foldBinaryOp(op, finishTransformExpr(tlhs),
-                      finishTransformExpr(trhs))
-              }
-            }
+            TailCalls.done(foldReferenceEquality(tlhs, trhs, op == BinaryOp.===))
           }
         }
 
@@ -447,6 +436,13 @@ abstract class OptimizerCore {
         trampoline {
           pretransformExpr(arg) { targ =>
             foldUnbox(helperName(1), targ)(finishTransform(isStat = false))
+          }
+        }
+
+      case CallHelper("objectEquals", List(lhs, rhs)) =>
+        trampoline {
+          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
+            TailCalls.done(foldObjectEquals(tlhs, trhs))
           }
         }
 
@@ -670,8 +666,7 @@ abstract class OptimizerCore {
                       val refinedType =
                         constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
                       cont(PreTransTree(
-                          If(newCond, newThenp, newElsep)(refinedType),
-                          RefinedType(refinedType)))
+                          foldIf(newCond, newThenp, newElsep)(refinedType)))
                   }
                 }
               }
@@ -681,8 +676,7 @@ abstract class OptimizerCore {
               val refinedType =
                 constrainedLub(newThenp.tpe, newElsep.tpe, tree.tpe)
               cont(PreTransTree(
-                  If(newCond, newThenp, newElsep)(refinedType),
-                  RefinedType(refinedType)))
+                  foldIf(newCond, newThenp, newElsep)(refinedType)))
             }
         }
 
@@ -1479,6 +1473,23 @@ abstract class OptimizerCore {
             case (_, BooleanLiteral(true)) =>
               foldBinaryOp(BinaryOp.Boolean_||, negCond, thenp)
 
+            case (BinaryOp(BinaryOp.===, VarRef(rhsIdent, _), Null()),
+                BinaryOp(BinaryOp.===, VarRef(lhsIdent2, _), VarRef(rhsIdent2, _)))
+                if rhsIdent2 == rhsIdent =>
+              cond match {
+                case BinaryOp(BinaryOp.===, VarRef(lhsIdent, _), Null())
+                    if lhsIdent2 == lhsIdent =>
+                  /* if (lhs === null) rhs === null else lhs === rhs
+                   * -> lhs === rhs
+                   * This is the typical shape of a lhs == rhs test where
+                   * the equals() method has been inlined as a reference
+                   * equality test.
+                   */
+                  elsep
+                case _ =>
+                  default
+              }
+
             case _ => default
           }
         } else {
@@ -1753,6 +1764,111 @@ abstract class OptimizerCore {
         cont(PreTransTree(
             CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos),
             RefinedType(resultType, isExact = true, isNullable = false)))
+    }
+  }
+
+  private def foldReferenceEquality(tlhs: PreTransform, trhs: PreTransform,
+      positive: Boolean = true)(implicit pos: Position): Tree = {
+    (tlhs, trhs) match {
+      case (_, PreTransTree(Null(), _)) if !tlhs.tpe.isNullable =>
+        Block(
+            finishTransformStat(tlhs),
+            BooleanLiteral(!positive))
+      case (PreTransTree(Null(), _), _) if !trhs.tpe.isNullable =>
+        Block(
+            finishTransformStat(trhs),
+            BooleanLiteral(!positive))
+      case _ =>
+        foldBinaryOp(if (positive) BinaryOp.=== else BinaryOp.!==,
+            finishTransformExpr(tlhs), finishTransformExpr(trhs))
+    }
+  }
+
+  private def foldObjectEquals(tlhs: PreTransform, trhs: PreTransform)(
+      implicit scope: Scope, pos: Position): Tree = {
+    import Definitions._
+
+    val EqualsMethod = "equals__O__Z"
+
+    tlhs.tpe.base match {
+      case NothingType =>
+        finishTransformExpr(tlhs)
+
+      case NullType =>
+        Block(
+            finishTransformStat(tlhs),
+            CallHelper("throwNullPointerException")(NothingType))
+
+      case ClassType(lhsClassName0) =>
+        val lhsClassName =
+          if (lhsClassName0 == BoxedLongClass) RuntimeLongClass
+          else lhsClassName0
+        lhsClassName match {
+          case BoxedFloatClass | BoxedDoubleClass =>
+            CallHelper("numberEquals",
+                finishTransformCheckNull(tlhs),
+                finishTransformExpr(trhs))(BooleanType)
+
+          case _ if HijackedClasses.contains(lhsClassName) =>
+            foldReferenceEquality(
+                PreTransTree(finishTransformCheckNull(tlhs)),
+                trhs)
+
+          case _ if AncestorsOfHijackedClasses.contains(lhsClassName) =>
+            CallHelper("objectEquals",
+                finishTransformExpr(tlhs),
+                finishTransformExpr(trhs))(BooleanType)
+
+          case _ =>
+            def treeNotInlined =
+              Apply(finishTransformExpr(tlhs), Ident(EqualsMethod),
+                  List(finishTransformExpr(trhs)))(BooleanType)
+
+            val impls =
+              if (tlhs.tpe.isExact) staticCall(lhsClassName, EqualsMethod).toList
+              else dynamicCall(lhsClassName, EqualsMethod)
+            if (impls.size != 1 || impls.exists(scope.implsBeingInlined)) {
+              // isEmpty could happen, have to leave it as is for the TypeError
+              treeNotInlined
+            } else if (impls.size == 1) {
+              val target = impls.head
+              if (target.inlineable || shouldInlineBecauseOfArgs(List(tlhs, trhs))) {
+                trampoline {
+                  inline(Some(tlhs), trhs :: Nil, target, isStat = false,
+                      usePreTransform = false)(finishTransform(isStat = false))
+                }
+              } else {
+                treeNotInlined
+              }
+            } else {
+              treeNotInlined
+            }
+        }
+
+      case IntType | BooleanType | UndefType | StringType | ArrayType(_, _) =>
+        foldReferenceEquality(
+            PreTransTree(finishTransformCheckNull(tlhs)),
+            trhs)
+
+      case DoubleType =>
+        CallHelper("numberEquals",
+            finishTransformExpr(tlhs),
+            finishTransformExpr(trhs))(BooleanType)
+
+      case _ =>
+        CallHelper("objectEquals",
+            finishTransformExpr(tlhs),
+            finishTransformExpr(trhs))(BooleanType)
+    }
+  }
+
+  private def finishTransformCheckNull(preTrans: PreTransform)(
+      implicit pos: Position): Tree = {
+    if (preTrans.tpe.isNullable) {
+      val transformed = finishTransformExpr(preTrans)
+      CallHelper("checkNonNull", transformed)(transformed.tpe)
+    } else {
+      finishTransformExpr(preTrans)
     }
   }
 

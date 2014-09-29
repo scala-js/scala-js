@@ -159,21 +159,6 @@ var ScalaJS = {
     throw new ScalaJS.c.jl_NullPointerException().init___();
   },
 
-  anyEqEq: function(lhs, rhs) {
-    if (ScalaJS.isScalaJSObject(lhs) || typeof lhs === "number") {
-      return ScalaJS.m.sr_BoxesRunTime().equals__O__O__Z(lhs, rhs);
-    } else {
-      return lhs === rhs;
-    }
-  },
-
-  anyRefEqEq: function(lhs, rhs) {
-    if (lhs === null)
-      return rhs === null;
-    else
-      return ScalaJS.objectEquals(lhs, rhs);
-  },
-
   objectToString: function(instance) {
     if (instance === void 0)
       return "undefined";
