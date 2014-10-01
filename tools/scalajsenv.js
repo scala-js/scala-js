@@ -24,6 +24,7 @@ var ScalaJS = {
   as: {},        // asInstanceOf methods
   isArrayOf: {}, // isInstanceOfArrayOf methods
   asArrayOf: {}, // asInstanceOfArrayOf methods
+  lastIDHash: 0, // last value attributed to an id hash code
 
   // Core mechanism
 
@@ -364,8 +365,21 @@ var ScalaJS = {
   },
 
   systemIdentityHashCode: function(obj) {
-    // TODO Do something smarter than this
-    return 42;
+    if (ScalaJS.isScalaJSObject(obj)) {
+      var hash = obj.$idHashCode$0;
+      if (hash !== void 0) {
+        return hash;
+      } else {
+        hash = (ScalaJS.lastIDHash + 1) | 0;
+        ScalaJS.lastIDHash = hash;
+        obj.$idHashCode$0 = hash;
+        return hash;
+      }
+    } else if (obj === null) {
+      return 0;
+    } else {
+      return ScalaJS.objectHashCode(obj);
+    }
   },
 
   environmentInfo: function() {

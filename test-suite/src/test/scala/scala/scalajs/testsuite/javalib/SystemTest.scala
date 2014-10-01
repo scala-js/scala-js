@@ -74,5 +74,45 @@ object SystemTest extends JasmineTest {
       expect(array).toEqual(Array(0, 1, 2, 0, 1, 1, 0, 2, 1, 0))
     }
 
+    it("should provide identityHashCode") {
+      /* This test is more restrictive than the spec, but we know our
+       * implementation will always pass the test.
+       */
+      class HasIDHashCode
+
+      val x1 = new HasIDHashCode
+      val x2 = new HasIDHashCode
+      val x1FirstHash = x1.hashCode()
+      expect(x1.hashCode()).toEqual(x1FirstHash)
+      expect(x1.hashCode()).not.toEqual(x2.hashCode())
+      expect(x1.hashCode()).toEqual(x1FirstHash)
+
+      expect(System.identityHashCode(x1)).toEqual(x1FirstHash)
+      expect(System.identityHashCode(x2)).toEqual(x2.hashCode())
+    }
+
+    it("identityHashCode should by-pass .hashCode()") {
+      val list1 = List(1, 3, 5)
+      val list2 = List(1, 3, 5)
+      expect(list1 == list2).toBeTruthy
+      expect(list1.hashCode()).toEqual(list2.hashCode())
+      expect(System.identityHashCode(list1)).not.toEqual(System.identityHashCode(list2))
+    }
+
+    it("identityHashCode(null)") {
+      expect(System.identityHashCode(null)).toEqual(0)
+    }
+
+    it("identityHashCode of values implemented as JS primitives") {
+      expect(System.identityHashCode("foo")).toEqual("foo".hashCode())
+      expect(System.identityHashCode("")).toEqual("".hashCode())
+
+      expect(System.identityHashCode(false)).toEqual(false.hashCode())
+      expect(System.identityHashCode(true)).toEqual(true.hashCode())
+
+      expect(System.identityHashCode(5)).toEqual(5.hashCode())
+      expect(System.identityHashCode(789456)).toEqual(789456.hashCode())
+    }
+
   }
 }
