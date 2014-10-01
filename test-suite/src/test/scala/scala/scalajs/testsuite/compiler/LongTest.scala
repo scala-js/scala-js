@@ -80,12 +80,32 @@ object LongTest extends JasmineTest {
       expect(100000.6.toLong == 100000L).toBeTruthy
     }
 
-    it("should generate a hash") {
-      val x = 5L
-      val y = 5L
-      val z = 6L
-      expect(x.##).toEqual(y.##)
-      expect(z.##).not.toEqual(y.##)
+    it("should support hashCode()") {
+      expect(0L         .hashCode()).toEqual(0)
+      expect(55L        .hashCode()).toEqual(55)
+      expect((-12L)     .hashCode()).toEqual(11)
+      expect(10006548L  .hashCode()).toEqual(10006548)
+      expect((-1098748L).hashCode()).toEqual(1098747)
+
+      expect(613354684553L       .hashCode()).toEqual(-825638905)
+      expect(9863155567412L      .hashCode()).toEqual(1910653900)
+      expect(3632147899696541255L.hashCode()).toEqual(1735398658)
+      expect(7632147899696541255L.hashCode()).toEqual(-1689438124)
+    }
+
+    it("should support ##") {
+      expect(0L         .##).toEqual(0)
+      expect(55L        .##).toEqual(55)
+      expect((-12L)     .##).toEqual(-12)
+      expect(10006548L  .##).toEqual(10006548)
+      expect((-1098748L).##).toEqual(-1098748)
+
+      expect(9863155567412L      .##).toEqual(1910653900)
+      expect(3632147899696541255L.##).toEqual(1735398658)
+
+      // These two (correctly) give different results on 2.10 and 2.11
+      //expect(613354684553L       .##).toEqual(-825638905)  // xx06 on 2.10
+      //expect(7632147899696541255L.##).toEqual(-1689438124) // xx25 on 2.10
     }
 
     it("should correctly concat to string") {

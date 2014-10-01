@@ -151,6 +151,10 @@ final class RuntimeLong private (
 
   def notEquals(that: RuntimeLong) = !equals(that)
 
+  override def hashCode(): Int = {
+    (this ^ (this >>> 32)).toInt
+  }
+
   @inline
   def <(y: RuntimeLong): Boolean = y > x
   @inline
