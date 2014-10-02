@@ -274,19 +274,33 @@ abstract class OptimizerCore {
             foldIf(newCond, newThenp, newElsep)(refinedType)
         }
 
-      case While(cond, body, None) =>
-        While(transformExpr(cond), transformStat(body), None)
+      case While(cond, body, optLabel) =>
+        val newCond = transformExpr(cond)
+        newCond match {
+          case BooleanLiteral(false) => Skip()
+          case _ =>
+            optLabel match {
+              case None =>
+                While(newCond, transformStat(body), None)
 
-      case While(cond, body, Some(labelIdent @ Ident(label, _))) =>
-        val newLabel = freshLabelName(label)
-        val info = new LabelInfo(newLabel, acceptRecords = false)
-        While(transformExpr(cond), {
-          val bodyScope = scope.withEnv(scope.env.withLabelInfo(label, info))
-          transformStat(body)(bodyScope)
-        }, Some(Ident(newLabel, None)(labelIdent.pos)))
+              case Some(labelIdent @ Ident(label, _)) =>
+                val newLabel = freshLabelName(label)
+                val info = new LabelInfo(newLabel, acceptRecords = false)
+                While(newCond, {
+                  val bodyScope = scope.withEnv(
+                      scope.env.withLabelInfo(label, info))
+                  transformStat(body)(bodyScope)
+                }, Some(Ident(newLabel, None)(labelIdent.pos)))
+            }
+        }
 
       case DoWhile(body, cond, None) =>
-        DoWhile(transformStat(body), transformExpr(cond), None)
+        val newBody = transformStat(body)
+        val newCond = transformExpr(cond)
+        newCond match {
+          case BooleanLiteral(false) => newBody
+          case _                     => DoWhile(newBody, newCond, None)
+        }
 
       case Try(block, errVar, EmptyTree, finalizer) =>
         val newBlock = transform(block, isStat)
@@ -1494,7 +1508,7 @@ abstract class OptimizerCore {
           }
         } else {
           (thenp, elsep) match {
-            case (Skip(), Skip()) => cond
+            case (Skip(), Skip()) => keepOnlySideEffects(cond)
             case (Skip(), _)      => foldIf(negCond, elsep, thenp)(tpe)
 
             case _ => default
@@ -1529,9 +1543,15 @@ abstract class OptimizerCore {
         }
       case Boolean_! =>
         arg match {
-          case BooleanLiteral(v)     => BooleanLiteral(!v)
-          case UnaryOp(Boolean_!, x) => x
-          case _                     => default
+          case BooleanLiteral(v)            => BooleanLiteral(!v)
+          case UnaryOp(Boolean_!, x)        => x
+          case BinaryOp(BinaryOp.===, l, r) => BinaryOp(BinaryOp.!==, l, r)
+          case BinaryOp(BinaryOp.!==, l, r) => BinaryOp(BinaryOp.===, l, r)
+          case BinaryOp(BinaryOp.<,   l, r) => BinaryOp(BinaryOp.>=,  l, r)
+          case BinaryOp(BinaryOp.<=,  l, r) => BinaryOp(BinaryOp.>,   l, r)
+          case BinaryOp(BinaryOp.>,   l, r) => BinaryOp(BinaryOp.<=,  l, r)
+          case BinaryOp(BinaryOp.>=,  l, r) => BinaryOp(BinaryOp.<,   l, r)
+          case _                            => default
         }
       case DoubleToInt =>
         arg match {
@@ -1741,6 +1761,34 @@ abstract class OptimizerCore {
           case (BooleanLiteral(true), _)  => rhs
           case (_, BooleanLiteral(true))  => lhs
           case _                          => default
+        }
+
+      case < =>
+        (lhs, rhs) match {
+          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l < r)
+          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l < r)
+          case _                                      => default
+        }
+
+      case <= =>
+        (lhs, rhs) match {
+          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l <= r)
+          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l <= r)
+          case _                                      => default
+        }
+
+      case > =>
+        (lhs, rhs) match {
+          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l > r)
+          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l > r)
+          case _                                      => default
+        }
+
+      case >= =>
+        (lhs, rhs) match {
+          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l >= r)
+          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l >= r)
+          case _                                      => default
         }
 
       case _ =>
