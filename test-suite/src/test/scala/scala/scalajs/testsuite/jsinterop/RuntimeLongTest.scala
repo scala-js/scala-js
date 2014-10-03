@@ -38,7 +38,7 @@ object RuntimeLongTest extends JasmineTest {
   /** overload expect for long to add toString */
   def expect(l: RuntimeLong): JasmineExpectation = expect(l.toHexString)
 
-  describe("scala.scalajs.runtime.Long") {
+  describe("scala.scalajs.runtime.RuntimeLong") {
 
     val maxInt  = fromInt(Int.MaxValue)
     val minInt  = fromInt(Int.MinValue)
@@ -133,6 +133,19 @@ object RuntimeLongTest extends JasmineTest {
       expect(fromInt( 1).numberOfLeadingZeros).toEqual(63)
       expect(fromInt(-1).numberOfLeadingZeros).toEqual(0)
       expect(fromInt( 2).numberOfLeadingZeros).toEqual(62)
+    }
+
+    it("should implement hashCode() according to spec in j.l.Long") {
+      expect(fromInt(0       ).hashCode()).toEqual(0)
+      expect(fromInt(55      ).hashCode()).toEqual(55)
+      expect(fromInt(-12     ).hashCode()).toEqual(11)
+      expect(fromInt(10006548).hashCode()).toEqual(10006548)
+      expect(fromInt(-1098748).hashCode()).toEqual(1098747)
+
+      expect(fromString("613354684553"       ).hashCode()).toEqual(-825638905)
+      expect(fromString("9863155567412"      ).hashCode()).toEqual(1910653900)
+      expect(fromString("3632147899696541255").hashCode()).toEqual(1735398658)
+      expect(fromString("7632147899696541255").hashCode()).toEqual(-1689438124)
     }
 
   }

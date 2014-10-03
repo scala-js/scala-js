@@ -7,6 +7,10 @@
 \*                                                                      */
 package scala.scalajs.testsuite.javalib
 
+import scala.language.implicitConversions
+
+import scala.scalajs.js
+
 import org.scalajs.jasminetest.JasmineTest
 
 object AtomicTest extends JasmineTest {
@@ -84,18 +88,32 @@ object AtomicTest extends JasmineTest {
   }
   describe("java.util.concurrent.AtomicReference") {
     it("Should have all the normal operations") {
-      val thing1 = "string1"
-      val thing2 = "string2"
+      val thing1 = Foo(5)
+      val thing1bis = Foo(5) // equals(), but not the same reference
+      val thing2 = Foo(10)
+
+      implicit def foo2js(foo: Foo): js.Any = foo.asInstanceOf[js.Any]
+
+      // sanity
+      expect(thing1 == thing1bis).toBeTruthy
+      expect(thing1 == thing2).toBeFalsy
+      expect(thing1).toBe(thing1)
+      expect(thing1).not.toBe(thing1bis)
+
+      // actual test
       val atomic = new java.util.concurrent.atomic.AtomicReference(thing1)
-      expect(atomic.get()).toEqual(thing1)
+      expect(atomic.get()).toBe(thing1)
       atomic.set(thing2)
-      expect(atomic.get()).toEqual(thing2)
+      expect(atomic.get()).toBe(thing2)
       expect(atomic.compareAndSet(thing1, thing1)).toEqual(false)
-      expect(atomic.get()).toEqual(thing2)
+      expect(atomic.get()).toBe(thing2)
       expect(atomic.compareAndSet(thing2, thing1)).toEqual(true)
-      expect(atomic.get()).toEqual(thing1)
-      expect(atomic.getAndSet(thing2)).toEqual(thing1)
-      expect(atomic.get()).toEqual(thing2)
+      expect(atomic.get()).toBe(thing1)
+      expect(atomic.compareAndSet(thing1bis, thing2)).toEqual(false)
+      expect(atomic.getAndSet(thing2)).toBe(thing1)
+      expect(atomic.get()).toBe(thing2)
     }
   }
+
+  case class Foo(i: Int)
 }
