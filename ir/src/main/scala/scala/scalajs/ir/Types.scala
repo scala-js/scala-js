@@ -17,7 +17,7 @@ object Types {
   abstract sealed class Type {
     def show(): String = {
       val writer = new java.io.StringWriter
-      val printer = new Printers.IRTreePrinter(writer, jsMode = false)
+      val printer = new Printers.IRTreePrinter(writer)
       printer.printType(this)
       writer.toString()
     }

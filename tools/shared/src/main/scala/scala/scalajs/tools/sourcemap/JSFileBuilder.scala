@@ -17,7 +17,8 @@ import java.io._
 import java.util.regex.Pattern
 import java.net.{ URI, URISyntaxException }
 
-import scala.scalajs.ir
+import scala.scalajs.ir.Position
+import scala.scalajs.tools.{javascript => js}
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.optimizer.JSTreeBuilder
 
@@ -43,8 +44,8 @@ class JSFileBuilder(val name: String,
    *  The tree must be a valid JavaScript tree (typically obtained by
    *  desugaring a full-fledged IR tree).
    */
-  def addJSTree(tree: ir.Trees.Tree): Unit = {
-    val printer = new ir.Printers.IRTreePrinter(outputWriter, jsMode = true)
+  def addJSTree(tree: js.Trees.Tree): Unit = {
+    val printer = new js.Printers.JSTreePrinter(outputWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
@@ -57,7 +58,7 @@ class JSFileBuilder(val name: String,
 }
 
 class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
-    protected val sourceMapWriter: ir.SourceMapWriter)
+    protected val sourceMapWriter: SourceMapWriter)
     extends JSFileBuilder(n, ow) {
 
   override def addLine(line: String): Unit = {
@@ -98,7 +99,7 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
       for (lineNumber <- 0 until offsets.size) {
         val offset = offsets(lineNumber)
         if (offset != NotSelected) {
-          val originalPos = ir.Position(sourceFile, lineNumber, 0)
+          val originalPos = Position(sourceFile, lineNumber, 0)
           sourceMapWriter.startNode(0, originalPos, None)
           sourceMapWriter.endNode(selectedLineLengths(offset))
           sourceMapWriter.nextLine()
@@ -109,9 +110,9 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     }
   }
 
-  override def addJSTree(tree: ir.Trees.Tree): Unit = {
-    val printer = new ir.Printers.IRTreePrinterWithSourceMap(
-        outputWriter, jsMode = true, sourceMapWriter)
+  override def addJSTree(tree: js.Trees.Tree): Unit = {
+    val printer = new js.Printers.JSTreePrinterWithSourceMap(
+        outputWriter, sourceMapWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
@@ -128,7 +129,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     relativizeSourceMapBasePath: Option[URI] = None)
     extends JSFileBuilderWithSourceMapWriter(
         n, ow,
-        new ir.SourceMapWriter(sourceMapOutputWriter, n,
+        new SourceMapWriter(sourceMapOutputWriter, n,
             relativizeSourceMapBasePath)) {
 
   override def complete(): Unit = {

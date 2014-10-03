@@ -1,5 +1,5 @@
 /*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js IR                **
+**     ________ ___   / /  ___      __ ____  Scala.js tools             **
 **    / __/ __// _ | / /  / _ | __ / // __/  (c) 2014, LAMP/EPFL        **
 **  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
@@ -7,36 +7,37 @@
 \*                                                                      */
 
 
-package scala.scalajs.ir
+package scala.scalajs.tools.javascript
 
 import scala.language.implicitConversions
 
-import Trees._
-import Types._
+import scala.scalajs.ir.Position
 
-private[ir] object TreeDSL {
+import Trees._
+
+private[javascript] object TreeDSL {
   implicit class TreeOps(val self: Tree) extends AnyVal {
     /** Select a member */
-    def DOT(field: Ident)(implicit pos: Position): JSDotSelect =
-      JSDotSelect(self, field)
+    def DOT(field: Ident)(implicit pos: Position): DotSelect =
+      DotSelect(self, field)
 
     /** Select a member */
-    def DOT(field: String)(implicit pos: Position): JSDotSelect =
-      JSDotSelect(self, Ident(field))
+    def DOT(field: String)(implicit pos: Position): DotSelect =
+      DotSelect(self, Ident(field))
 
     // Some operators that we use
 
     def ===(that: Tree)(implicit pos: Position): Tree =
-      JSBinaryOp("===", self, that)
+      BinaryOp("===", self, that)
     def ===(that: String)(implicit pos: Position): Tree =
-      JSBinaryOp("===", self, StringLiteral(that))
+      BinaryOp("===", self, StringLiteral(that))
 
     def unary_!()(implicit pos: Position): Tree =
-      JSUnaryOp("!", self)
+      UnaryOp("!", self)
     def &&(that: Tree)(implicit pos: Position): Tree =
-      JSBinaryOp("&&", self, that)
+      BinaryOp("&&", self, that)
     def ||(that: Tree)(implicit pos: Position): Tree =
-      JSBinaryOp("||", self, that)
+      BinaryOp("||", self, that)
 
     // Other constructs
 
@@ -45,5 +46,5 @@ private[ir] object TreeDSL {
   }
 
   def typeof(expr: Tree)(implicit pos: Position): Tree =
-    JSUnaryOp("typeof", expr)
+    UnaryOp("typeof", expr)
 }

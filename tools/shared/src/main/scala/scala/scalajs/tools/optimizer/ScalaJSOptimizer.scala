@@ -26,6 +26,9 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.sourcemap._
 import scala.scalajs.tools.corelib._
 
+import scala.scalajs.tools.javascript
+import javascript.{Trees => js}
+
 /** Scala.js optimizer: does type-aware global dce. */
 class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
   import ScalaJSOptimizer._
@@ -228,8 +231,8 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
     def addPersistentFile(classInfo: analyzer.ClassInfo,
         persistentFile: PersistentIRFile) = {
       import ir.Trees._
-      import ir.{ScalaJSClassEmitter => Emitter}
-      import ir.JSDesugaring.{desugarJavaScript => desugar}
+      import javascript.{ScalaJSClassEmitter => Emitter}
+      import javascript.JSDesugaring.{desugarJavaScript => desugar}
 
       val d = persistentFile.desugared
       lazy val classDef = {
@@ -237,10 +240,10 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
         persistentFile.tree
       }
 
-      def addTree(tree: Tree): Unit =
+      def addTree(tree: js.Tree): Unit =
         builder.addJSTree(tree)
 
-      def addReachableMethods(emitFun: (String, MethodDef) => Tree): Unit = {
+      def addReachableMethods(emitFun: (String, MethodDef) => js.Tree): Unit = {
         /* This is a bit convoluted because we have to:
          * * avoid to use classDef at all if we already know all the needed methods
          * * if any new method is needed, better to go through the defs once
@@ -259,7 +262,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
           for (m @ MethodDef(Ident(encodedName, _), _, _, _) <- classDef.defs) {
             if (classInfo.methodInfos(encodedName).isReachable) {
               addTree(d.methods.getOrElseUpdate(encodedName,
-                  desugar(emitFun(classInfo.encodedName, m))))
+                  emitFun(classInfo.encodedName, m)))
             }
           }
         }
@@ -283,7 +286,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
       } else {
         if (classInfo.isAnySubclassInstantiated) {
           addTree(d.constructor.getOrElseUpdate(
-              desugar(Emitter.genConstructor(classDef))))
+              Emitter.genConstructor(classDef)))
           if (useInliner) {
             for {
               method <- optimizer.findClass(classInfo.encodedName).methods.values
@@ -294,30 +297,30 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
           } else {
             addReachableMethods(Emitter.genMethod)
           }
-          addTree(d.exportedMembers.getOrElseUpdate(desugar(Block {
+          addTree(d.exportedMembers.getOrElseUpdate(js.Block {
             classDef.defs collect {
               case m @ MethodDef(_: StringLiteral, _, _, _) =>
                 Emitter.genMethod(classInfo.encodedName, m)
               case p: PropertyDef =>
                 Emitter.genProperty(classInfo.encodedName, p)
             }
-          }(classDef.pos))))
+          }(classDef.pos)))
         }
         if (classInfo.isDataAccessed) {
-          addTree(d.typeData.getOrElseUpdate(desugar(Block(
+          addTree(d.typeData.getOrElseUpdate(js.Block(
             Emitter.genInstanceTests(classDef),
             Emitter.genArrayInstanceTests(classDef),
             Emitter.genTypeData(classDef)
-          )(classDef.pos))))
+          )(classDef.pos)))
         }
         if (classInfo.isAnySubclassInstantiated)
           addTree(d.setTypeData.getOrElseUpdate(
-              desugar(Emitter.genSetTypeData(classDef))))
+              Emitter.genSetTypeData(classDef)))
         if (classInfo.isModuleAccessed)
           addTree(d.moduleAccessor.getOrElseUpdate(
-              desugar(Emitter.genModuleAccessor(classDef))))
+              Emitter.genModuleAccessor(classDef)))
         addTree(d.classExports.getOrElseUpdate(
-            desugar(Emitter.genClassExports(classDef))))
+            Emitter.genClassExports(classDef)))
       }
     }
 
@@ -335,7 +338,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
           // Subclass will emit constructor that references this dummy class.
           // Therefore, we need to emit a dummy parent.
           builder.addJSTree(
-              ir.ScalaJSClassEmitter.genDummyParent(classInfo.encodedName))
+              javascript.ScalaJSClassEmitter.genDummyParent(classInfo.encodedName))
         }
       } { pf => addPersistentFile(classInfo, pf) }
     }
@@ -499,19 +502,17 @@ object ScalaJSOptimizer {
   }
 
   private final class Desugared {
-    import ir.Trees._
-
     // for class kinds that are not decomposed
-    val wholeClass = new OneTimeCache[Tree]
+    val wholeClass = new OneTimeCache[js.Tree]
 
-    val constructor = new OneTimeCache[Tree]
+    val constructor = new OneTimeCache[js.Tree]
     val methodNames = new OneTimeCache[List[String]]
-    val methods = mutable.Map.empty[String, Tree]
-    val exportedMembers = new OneTimeCache[Tree]
-    val typeData = new OneTimeCache[Tree]
-    val setTypeData = new OneTimeCache[Tree]
-    val moduleAccessor = new OneTimeCache[Tree]
-    val classExports = new OneTimeCache[Tree]
+    val methods = mutable.Map.empty[String, js.Tree]
+    val exportedMembers = new OneTimeCache[js.Tree]
+    val typeData = new OneTimeCache[js.Tree]
+    val setTypeData = new OneTimeCache[js.Tree]
+    val moduleAccessor = new OneTimeCache[js.Tree]
+    val classExports = new OneTimeCache[js.Tree]
   }
 
   private final class OneTimeCache[A >: Null] {

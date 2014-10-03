@@ -12,7 +12,6 @@ import scala.reflect.internal.pickling.PickleBuffer
 import java.io._
 
 import scala.scalajs.ir
-import ir.{Trees => js, Printers, SourceMapWriter}
 import ir.Infos._
 
 /** Send JS ASTs to files
@@ -23,7 +22,7 @@ trait GenJSFiles extends SubComponent { self: GenJSCode =>
   import global._
   import jsAddons._
 
-  def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: js.ClassDef,
+  def genIRFile(cunit: CompilationUnit, sym: Symbol, tree: ir.Trees.ClassDef,
       classInfo: ClassInfo): Unit = {
     val outfile = getFileFor(cunit, sym, ".sjsir")
     val output = outfile.bufferedOutput

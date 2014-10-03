@@ -1,9 +1,10 @@
 package scala.scalajs.tools.optimizer
 
 import scala.scalajs.ir
-import ir.Trees._
 import ir.Position
 import ir.Position.NoPosition
+
+import scala.scalajs.tools.javascript.Trees._
 
 import com.google.javascript.rhino._
 import com.google.javascript.jscomp._
@@ -26,9 +27,9 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
     implicit val pos = pos_in
 
     wrapTransform(tree) {
-      case VarDef(ident, _, _, EmptyTree) =>
+      case VarDef(ident, _, EmptyTree) =>
         new Node(Token.VAR, transformName(ident))
-      case VarDef(ident, _, _, rhs) =>
+      case VarDef(ident, _, rhs) =>
         val node = transformName(ident)
         node.addChildToFront(transformExpr(rhs))
         new Node(Token.VAR, node)
@@ -36,11 +37,11 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
         new Node(Token.EMPTY)
       case Block(stats) =>
         transformBlock(stats, pos)
-      case Labeled(label, _, body) =>
+      case Labeled(label, body) =>
         new Node(Token.LABEL, transformLabel(label), transformBlock(body))
-      case Return(EmptyTree, None) =>
+      case Return(EmptyTree) =>
         new Node(Token.RETURN)
-      case Return(expr, None) =>
+      case Return(expr) =>
         new Node(Token.RETURN, transformExpr(expr))
       case If(cond, thenp, Skip()) =>
         new Node(Token.IF, transformExpr(cond), transformBlock(thenp))
@@ -137,40 +138,40 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
             transformExpr(thenp), transformExpr(elsep))
       case Assign(lhs, rhs) =>
         new Node(Token.ASSIGN, transformExpr(lhs), transformExpr(rhs))
-      case JSNew(ctor, args) =>
+      case New(ctor, args) =>
         val node = new Node(Token.NEW, transformExpr(ctor))
         args.foreach(arg => node.addChildToBack(transformExpr(arg)))
         node
-      case JSDotSelect(qualifier, item) =>
+      case DotSelect(qualifier, item) =>
         new Node(Token.GETPROP, transformExpr(qualifier), transformString(item))
-      case JSBracketSelect(qualifier, item) =>
+      case BracketSelect(qualifier, item) =>
         new Node(Token.GETELEM, transformExpr(qualifier), transformExpr(item))
 
-      case JSApply(fun, args) =>
+      case Apply(fun, args) =>
         val node = new Node(Token.CALL, transformExpr(fun))
         args.foreach(arg => node.addChildToBack(transformExpr(arg)))
 
         // Closure needs to know (from the parser), if the call has a bound
         // `this` or not. Since JSDesugar inserts protects calls if necessary,
         // it is sufficient to check if we have a select as target
-        if (!fun.isInstanceOf[JSDotSelect] &&
-            !fun.isInstanceOf[JSBracketSelect])
+        if (!fun.isInstanceOf[DotSelect] &&
+            !fun.isInstanceOf[BracketSelect])
           node.putBooleanProp(Node.FREE_CALL, true)
 
         node
 
-      case JSDelete(prop) =>
+      case Delete(prop) =>
         new Node(Token.DELPROP, transformExpr(prop))
-      case JSUnaryOp(op, lhs) =>
+      case UnaryOp(op, lhs) =>
         mkUnaryOp(op, transformExpr(lhs))
-      case JSBinaryOp(op, lhs, rhs) =>
+      case BinaryOp(op, lhs, rhs) =>
         mkBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
-      case JSArrayConstr(items) =>
+      case ArrayConstr(items) =>
         val node = new Node(Token.ARRAYLIT)
         items.foreach(i => node.addChildToBack(transformExpr(i)))
         node
 
-      case JSObjectConstr(fields) =>
+      case ObjectConstr(fields) =>
         val node = new Node(Token.OBJECTLIT)
 
         for ((name, expr) <- fields) {
@@ -191,14 +192,14 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
         Node.newNumber(value)
       case DoubleLiteral(value) =>
         Node.newNumber(value)
-      case StringLiteral(value, _) =>
+      case StringLiteral(value) =>
         Node.newString(value)
       case VarRef(ident, _) =>
         transformName(ident)
       case This() =>
         new Node(Token.THIS)
 
-      case Function(_, args, _, body) =>
+      case Function(args, body) =>
         // Note that a Function may also be a statement (when it is named),
         // but Scala.js does not have such an IR node
         val paramList = new Node(Token.PARAM_LIST)
@@ -388,13 +389,8 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
     import java.io._
 
     private def mkMsg(tree: Tree): String = {
-      val out = new StringWriter
-      val printer = new IRTreePrinter(out, jsMode = false)
-
-      out.write("Exception while translating Scala.js IR to GCC IR at tree:\n")
-      printer.printTree(tree, isStat = true)
-
-      out.toString()
+      "Exception while translating Scala.js JS tree to GCC IR at tree:\n" +
+        tree.show
     }
   }
 

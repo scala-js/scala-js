@@ -22,6 +22,10 @@ import Infos.OptimizerHints
 import Trees._
 import Types._
 
+import scala.scalajs.tools.javascript
+import javascript.Trees.{Tree => JSTree}
+import javascript.ScalaJSClassEmitter
+
 import scala.scalajs.tools.logging._
 
 /** Incremental optimizer.
@@ -682,7 +686,7 @@ abstract class GenIncOptimizer {
 
     var optimizerHints: OptimizerHints = OptimizerHints.empty
     var originalDef: MethodDef = _
-    var desugaredDef: Tree = _
+    var desugaredDef: JSTree = _
     var preciseInfo: Infos.MethodInfo = _
 
     def thisType: Type = owner.thisType
@@ -795,12 +799,11 @@ abstract class GenIncOptimizer {
     /** PROCESS PASS ONLY. */
     def process(): Unit = if (!_deleted) {
       val (optimizedDef, info) = new Optimizer().optimize(thisType, originalDef)
-      val emitted =
+      desugaredDef =
         if (owner.isInstanceOf[Class])
           ScalaJSClassEmitter.genMethod(owner.encodedName, optimizedDef)
         else
           ScalaJSClassEmitter.genTraitImplMethod(owner.encodedName, optimizedDef)
-      desugaredDef = JSDesugaring.desugarJavaScript(emitted)
       preciseInfo = info
       resetTag()
     }
