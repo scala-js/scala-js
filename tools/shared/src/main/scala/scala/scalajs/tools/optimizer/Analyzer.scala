@@ -136,6 +136,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
     val ObjectClass = instantiateClassWith("O", "init___")
     ObjectClass.callMethod("toString__T")
+    ObjectClass.callMethod("equals__O__Z")
 
     instantiateClassWith(s"jl_Character", s"init___C")
 
@@ -149,10 +150,6 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
     LongImplModule.accessModule()
     LongImplModule.callMethod("Zero__sjsr_RuntimeLong")
     LongImplModule.callMethod("fromDouble__D__sjsr_RuntimeLong")
-
-    val BoxesRunTime = lookupClass("sr_BoxesRunTime$")
-    BoxesRunTime.accessModule()
-    BoxesRunTime.callMethod("equals__O__O__Z")
 
     for (hijacked <- HijackedClassNames)
       lookupClass(hijacked).accessData()

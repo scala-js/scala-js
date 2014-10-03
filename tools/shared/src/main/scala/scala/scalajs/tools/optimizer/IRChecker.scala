@@ -773,9 +773,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("isNaN"     , List(NumberType) -> BooleanType),
       ("isInfinite", List(NumberType) -> BooleanType),
 
-      ("anyEqEq",    List(AnyType, AnyType) -> BooleanType),
-      ("anyRefEqEq", List(AnyType, AnyType) -> BooleanType),
-
       ("bC", List(IntType) -> ClassType(BoxedCharacterClass)),
 
       ("uZ", List(AnyType) -> BooleanType),
