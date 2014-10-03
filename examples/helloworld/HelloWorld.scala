@@ -60,14 +60,14 @@ object window extends js.GlobalScope {
 }
 
 trait DOMDocument extends js.Object {
-  def getElementById(id: String): DOMElement
-  def createElement(tag: String): DOMElement
+  def getElementById(id: String): DOMElement = js.native
+  def createElement(tag: String): DOMElement = js.native
 }
 
 trait DOMElement extends js.Object {
-  var innerHTML: String
+  var innerHTML: String = js.native
 
-  def appendChild(child: DOMElement): Unit
+  def appendChild(child: DOMElement): Unit = js.native
 }
 
 @JSName("jQuery")
@@ -76,11 +76,11 @@ object JQuery extends js.Object {
 }
 
 trait JQuery extends js.Object {
-  def text(value: String): JQuery
-  def text(): String
+  def text(value: String): JQuery = js.native
+  def text(): String = js.native
 
-  def html(value: String): JQuery
-  def html(): String
+  def html(value: String): JQuery = js.native
+  def html(): String = js.native
 
-  def appendTo(parent: JQuery): JQuery
+  def appendTo(parent: JQuery): JQuery = js.native
 }
