@@ -461,6 +461,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
                       s"mutable=${fieldDef.mutable} marked as mutable=$mutable")
               }
             }
+          case NullType | NothingType =>
+            // always ok
           case _ =>
             reportError(s"Cannot select $item of non-class type $qualType")
         }
@@ -478,6 +480,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
                 reportError(s"Cannot call Scala method $method on "+
                     "ancestor of hijacked class $cls")
               }
+            case NullType | NothingType =>
+              // always ok
             case _ =>
               reportError(s"Cannot call Scala method $method on "+
                   s"non-class type $receiverType")
