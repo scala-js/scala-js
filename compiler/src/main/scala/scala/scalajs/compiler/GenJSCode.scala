@@ -1870,7 +1870,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val genDefaultBody = genStatOrExpr(defaultBody, isStat)
 
-      var clauses: List[(List[js.Tree], js.Tree)] = Nil
+      var clauses: List[(List[js.Literal], js.Tree)] = Nil
       var elseClause: js.Tree = js.EmptyTree
 
       for (caze @ CaseDef(pat, guard, body) <- cases) {
@@ -1891,15 +1891,18 @@ abstract class GenJSCode extends plugins.PluginComponent
             genStatOrExpr(body, isStat)
         }
 
+        def genLiteral(lit: Literal): js.Literal =
+          genExpr(lit).asInstanceOf[js.Literal]
+
         pat match {
           case lit: Literal =>
-            clauses = (List(genExpr(lit)), genBody()) :: clauses
+            clauses = (List(genLiteral(lit)), genBody()) :: clauses
           case Ident(nme.WILDCARD) =>
             elseClause = genDefaultBody
           case Alternative(alts) =>
             val genAlts = {
               alts map {
-                case lit: Literal => genExpr(lit)
+                case lit: Literal => genLiteral(lit)
                 case _ =>
                   abort("Invalid case in alternative in switch-like pattern match: " +
                       tree + " at: " + tree.pos)
