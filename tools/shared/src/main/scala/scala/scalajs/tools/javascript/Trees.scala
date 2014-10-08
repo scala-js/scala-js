@@ -71,7 +71,10 @@ object Trees {
 
   case class Skip()(implicit val pos: Position) extends Tree
 
-  class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree
+  class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree {
+    override def toString(): String =
+      stats.mkString("Block(", ",", ")")
+  }
 
   object Block {
     def apply(stats: List[Tree])(implicit pos: Position): Tree = {
