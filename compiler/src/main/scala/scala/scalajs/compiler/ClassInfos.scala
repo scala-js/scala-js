@@ -26,7 +26,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
   private val AlwaysPresentClassData = {
     import ir.Definitions._
     Set("V", "Z", "C", "B", "S", "I", "J", "F", "D",
-        ObjectClass, StringClass, RuntimeLongClass)
+        ObjectClass, StringClass)
   }
 
   class ClassInfoBuilder(val symbol: ClassSymbol) {

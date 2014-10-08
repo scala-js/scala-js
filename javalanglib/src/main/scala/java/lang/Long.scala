@@ -1,5 +1,7 @@
 package java.lang
 
+import scala.annotation.tailrec
+
 import scala.scalajs.js
 
 // This class is not emitted, but we need to define its members correctly
@@ -24,7 +26,6 @@ final class Long(value: scala.Long) extends Number with Comparable[Long] {
 
 object Long {
   import scala.scalajs.runtime.RuntimeLong
-  import RuntimeLong.{fromRuntimeLong, toRuntimeLong}
 
   final val TYPE = classOf[scala.Long]
   final val MIN_VALUE = -9223372036854775808L
@@ -38,26 +39,55 @@ object Long {
     valueOf(parseLong(s, radix))
 
   @inline def parseLong(s: String): scala.Long =
-    fromRuntimeLong(RuntimeLong.fromString(s))
+    parseLong(s, 10)
 
-  @inline def parseLong(s: String, radix: Int): scala.Long =
-    fromRuntimeLong(RuntimeLong.fromString(s, radix))
+  def parseLong(s: String, radix: Int): scala.Long = {
+    def fail() = throw new NumberFormatException(s"""For input string: "$s"""")
 
-  @inline def toString(l: scala.Long): String = toRuntimeLong(l).toString
+    if (s.isEmpty) {
+      fail()
+    } else if (s.charAt(0) == '-') {
+      -parseLong(s.substring(1), radix)
+    } else {
+      @inline
+      @tailrec
+      def fastPow(base: Int, exp: Int, acc: Int = 1): Int =
+        if (exp == 0) acc
+        else if (exp % 2 == 0) fastPow(base*base, exp/2, acc)
+        else fastPow(base, exp-1, acc*base)
 
-  def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
+      @inline
+      @tailrec
+      def loop(str0: String, acc: scala.Long): scala.Long = if (str0.length > 0) {
+        val MaxLen = 9
+        val cur = (str0: js.prim.String).substring(0, MaxLen): String
+        val macc = acc * fastPow(radix, cur.length)
+        val ival = js.parseInt(cur, radix): scala.Double
+        if (ival.isNaN)
+          fail()
+        val cval = ival.toInt.toLong // faster than ival.toLong
+        loop((str0: js.prim.String).substring(MaxLen), macc + cval)
+      } else acc
+
+      loop(s, 0L)
+    }
+  }
+
+  @inline def toString(l: scala.Long): String = l.toString
+
+  @inline def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
 
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
 
-  def signum(i: scala.Long): scala.Long =
+  @inline def signum(i: scala.Long): scala.Long =
     toRuntimeLong(i).signum
 
-  def numberOfLeadingZeros(l: scala.Long): Int =
+  @inline def numberOfLeadingZeros(l: scala.Long): Int =
     toRuntimeLong(l).numberOfLeadingZeros
 
-  def numberOfTrailingZeros(l: scala.Long): Int =
+  @inline def numberOfTrailingZeros(l: scala.Long): Int =
     toRuntimeLong(l).numberOfTrailingZeros
 
   def toBinaryString(l: scala.Long): String =
@@ -66,6 +96,11 @@ object Long {
     dropLZ(toRuntimeLong(l).toHexString)
   def toOctalString(l: scala.Long): String =
     dropLZ(toRuntimeLong(l).toOctalString)
+
+  /* TODO This is a hack.
+   * Ideally the javalib should not even know about RuntimeLong. */
+  @inline private def toRuntimeLong(x: Long): RuntimeLong =
+    x.asInstanceOf[RuntimeLong]
 
   /** Drop leading zeros
    *

@@ -16,6 +16,7 @@ import scala.collection.mutable
 import scala.scalajs.ir
 import ir.{ClassKind, Infos}
 
+import scala.scalajs.tools.javascript.LongImpl
 import scala.scalajs.tools.logging._
 
 import ScalaJSOptimizer._
@@ -146,10 +147,15 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
-    val LongImplModule = lookupClass("sjsr_RuntimeLongImpl$")
-    LongImplModule.accessModule()
-    LongImplModule.callMethod("Zero__sjsr_RuntimeLong")
-    LongImplModule.callMethod("fromDouble__D__sjsr_RuntimeLong")
+    val RTLongClass = lookupClass(LongImpl.RuntimeLongClass)
+    RTLongClass.instantiated()
+    for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
+      RTLongClass.callMethod(method)
+
+    val RTLongModuleClass = lookupClass(LongImpl.RuntimeLongModuleClass)
+    RTLongModuleClass.accessModule()
+    for (method <- LongImpl.AllModuleMethods)
+      RTLongModuleClass.callMethod(method)
 
     for (hijacked <- HijackedClassNames)
       lookupClass(hijacked).accessData()
@@ -200,7 +206,7 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
       if (data.superClass != "")
         superClass = lookupClass(data.superClass)
       ancestors ++= data.ancestors.map(lookupClass)
-      if (encodedName == ir.Definitions.RuntimeLongClass)
+      if (encodedName == LongImpl.RuntimeLongClass)
         ancestors += lookupClass(ir.Definitions.BoxedLongClass)
       for (ancestor <- ancestors)
         ancestor.descendants += this

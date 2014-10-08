@@ -260,11 +260,13 @@ object Printers {
         case UnaryOp(op, lhs) =>
           import UnaryOp._
           print("(", (op: @switch) match {
-            case `typeof`         => "typeof"
-            case Int_- | Double_- => "-"
-            case Int_~            => "~"
-            case Boolean_!        => "!"
-            case DoubleToInt      => "(int)"
+            case `typeof`                  => "typeof"
+            case Int_- | Long_- | Double_- => "-"
+            case Int_~ | Long_~            => "~"
+            case Boolean_!                 => "!"
+            case IntToLong | DoubleToLong  => "(long)"
+            case DoubleToInt | LongToInt   => "(int)"
+            case LongToDouble              => "(double)"
           }, lhs, ")")
 
         case BinaryOp(op, lhs, rhs) =>
@@ -295,6 +297,26 @@ object Printers {
             case Int_<<  => "<<"
             case Int_>>> => ">>>"
             case Int_>>  => ">>"
+
+            case Long_+ => "+[long]"
+            case Long_- => "-[long]"
+            case Long_* => "*[long]"
+            case Long_/ => "/[long]"
+            case Long_% => "%[long]"
+
+            case Long_|   => "|[long]"
+            case Long_&   => "&[long]"
+            case Long_^   => "^[long]"
+            case Long_<<  => "<<[long]"
+            case Long_>>> => ">>>[long]"
+            case Long_>>  => ">>[long]"
+
+            case Long_== => "==[long]"
+            case Long_!= => "!=[long]"
+            case Long_<  => "<[long]"
+            case Long_<= => "<=[long]"
+            case Long_>  => ">[long]"
+            case Long_>= => ">=[long]"
 
             case Double_+ => "+"
             case Double_- => "-"
@@ -519,6 +541,7 @@ object Printers {
       case UndefType            => print("void")
       case BooleanType          => print("boolean")
       case IntType              => print("int")
+      case LongType             => print("long")
       case DoubleType           => print("number")
       case StringType           => print("string")
       case NullType             => print("null")

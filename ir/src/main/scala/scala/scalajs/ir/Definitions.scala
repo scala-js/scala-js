@@ -52,8 +52,6 @@ object Definitions {
     AncestorsOfStringClass ++ AncestorsOfHijackedNumberClasses ++
     AncestorsOfBoxedBooleanClass
 
-  val RuntimeLongClass = "sjsr_RuntimeLong"
-
   val RuntimeNullClass = "sr_Null$"
   val RuntimeNothingClass = "sr_Nothing$"
 

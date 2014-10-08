@@ -209,10 +209,11 @@ object Trees {
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     import UnaryOp._
     val tpe = (op: @switch) match {
-      case `typeof`                    => StringType
-      case Int_- | Int_~ | DoubleToInt => IntType
-      case Double_-                    => DoubleType
-      case Boolean_!                   => BooleanType
+      case `typeof`                                   => StringType
+      case Int_- | Int_~ | LongToInt | DoubleToInt    => IntType
+      case Long_- | Long_~ | IntToLong | DoubleToLong => LongType
+      case Double_- | LongToDouble                    => DoubleType
+      case Boolean_!                                  => BooleanType
     }
   }
 
@@ -225,11 +226,18 @@ object Trees {
     final val Int_- = 2
     final val Int_~ = 3
 
-    final val Double_- = 4
+    final val Long_- = 4
+    final val Long_~ = 5
 
-    final val Boolean_! = 5
+    final val Double_- = 6
 
-    final val DoubleToInt = 6
+    final val Boolean_! = 7
+
+    final val IntToLong    = 8
+    final val LongToInt    = 9
+    final val LongToDouble = 10
+    final val DoubleToInt  = 11
+    final val DoubleToLong = 12
   }
 
   /** Binary operation (always preserves pureness). */
@@ -237,6 +245,7 @@ object Trees {
     import BinaryOp._
     val tpe = (op: @switch) match {
       case === | !== | < | <= | > | >= | `in` | `instanceof` |
+          Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
           Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
         BooleanType
       case String_+ =>
@@ -244,6 +253,9 @@ object Trees {
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
           Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
         IntType
+      case Long_+ | Long_- | Long_* | Long_/ | Long_% |
+          Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
+        LongType
       case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
         DoubleType
     }
@@ -279,17 +291,37 @@ object Trees {
     final val Int_>>> = 19
     final val Int_>>  = 20
 
-    final val Double_+ = 21
-    final val Double_- = 22
-    final val Double_* = 23
-    final val Double_/ = 24
-    final val Double_% = 25
+    final val Long_+ = 21
+    final val Long_- = 22
+    final val Long_* = 23
+    final val Long_/ = 24
+    final val Long_% = 25
 
-    final val Boolean_|  = 26
-    final val Boolean_&  = 27
-    final val Boolean_^  = 28
-    final val Boolean_|| = 29
-    final val Boolean_&& = 30
+    final val Long_|   = 26
+    final val Long_&   = 27
+    final val Long_^   = 28
+    final val Long_<<  = 29
+    final val Long_>>> = 30
+    final val Long_>>  = 31
+
+    final val Long_== = 32 // really, this is not the same thing as ===
+    final val Long_!= = 33 // same here wrt to !==
+    final val Long_<  = 34
+    final val Long_<= = 35
+    final val Long_>  = 36
+    final val Long_>= = 37
+
+    final val Double_+ = 38
+    final val Double_- = 39
+    final val Double_* = 40
+    final val Double_/ = 41
+    final val Double_% = 42
+
+    final val Boolean_|  = 43
+    final val Boolean_&  = 44
+    final val Boolean_^  = 45
+    final val Boolean_|| = 46
+    final val Boolean_&& = 47
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {
@@ -417,6 +449,10 @@ object Trees {
 
   case class IntLiteral(value: Int)(implicit val pos: Position) extends Literal {
     val tpe = IntType
+  }
+
+  case class LongLiteral(value: Long)(implicit val pos: Position) extends Literal {
+    val tpe = LongType
   }
 
   case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal {

@@ -57,9 +57,6 @@ abstract class JSPrimitives {
 
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
-  val RTJ2J = 338 // Runtime Long to Long
-  val J2RTJ = 339 // Long to Runtime Long
-
   val NTR_MOD_SUFF  = 340 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
   val NTR_NAME_JOIN = 341 // scala.relfect.NameTransformer.NAME_JOIN_STRING
 
@@ -141,9 +138,6 @@ abstract class JSPrimitives {
     addPrimitive(JSDictionary_delete, DICT_DEL)
 
     addPrimitive(JSArray_create, ARR_CREATE)
-
-    addPrimitive(RuntimeLong_from, RTJ2J)
-    addPrimitive(RuntimeLong_to, J2RTJ)
 
     val ntModule = getRequiredModule("scala.reflect.NameTransformer")
 

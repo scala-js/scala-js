@@ -495,9 +495,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         (op: @switch) match {
           case `typeof` =>
             typecheckExpr(lhs, env)
-          case Int_- | Int_~ =>
+          case Int_- | Int_~ | IntToLong =>
             typecheckExpect(lhs, env, IntType)
-          case Double_- | DoubleToInt =>
+          case Long_- | Long_~ | LongToInt | LongToDouble =>
+            typecheckExpect(lhs, env, LongType)
+          case Double_- | DoubleToInt | DoubleToLong =>
             typecheckExpect(lhs, env, DoubleType)
           case Boolean_! =>
             typecheckExpect(lhs, env, BooleanType)
@@ -518,6 +520,14 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |
               Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
             typecheckExpect(lhs, env, IntType)
+            typecheckExpect(rhs, env, IntType)
+          case Long_+ | Long_- | Long_* | Long_/ | Long_% |
+              Long_| | Long_& | Long_^ |
+              Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
+            typecheckExpect(lhs, env, LongType)
+            typecheckExpect(rhs, env, LongType)
+          case Long_<< | Long_>>> | Long_>> =>
+            typecheckExpect(lhs, env, LongType)
             typecheckExpect(rhs, env, IntType)
           case Double_+ | Double_- | Double_* | Double_/ | Double_% |
               < | <= | > | >= =>
@@ -720,7 +730,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         case 'V'                   => NoType
         case 'Z'                   => BooleanType
         case 'C' | 'B' | 'S' | 'I' => IntType
-        case 'J'                   => ClassType(RuntimeLongClass)
+        case 'J'                   => LongType
         case 'F' | 'D'             => DoubleType
         case 'O'                   => AnyType
         case 'T'                   => ClassType(StringClass) // NOT StringType
@@ -740,7 +750,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val StringClassType = ClassType(StringClass)
     val ThrowableType = ClassType(ThrowableClass)
     val CharSeqType = ClassType(CharSequenceClass)
-    val RuntimeLongType = ClassType(RuntimeLongClass)
     val NumberType = ClassType(NumberClass)
     Map(
       ("wrapJavaScriptException"  , List(AnyType) -> ThrowableType),
@@ -766,7 +775,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("numberByteValue"  , List(NumberType) -> IntType),
       ("numberShortValue" , List(NumberType) -> IntType),
       ("numberIntValue"   , List(NumberType) -> IntType),
-      ("numberLongValue"  , List(NumberType) -> RuntimeLongType),
+      ("numberLongValue"  , List(NumberType) -> LongType),
       ("numberFloatValue" , List(NumberType) -> DoubleType),
       ("numberDoubleValue", List(NumberType) -> DoubleType),
 
@@ -780,7 +789,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("uB", List(AnyType) -> IntType),
       ("uS", List(AnyType) -> IntType),
       ("uI", List(AnyType) -> IntType),
-      ("uJ", List(AnyType) -> RuntimeLongType),
+      ("uJ", List(AnyType) -> LongType),
       ("uF", List(AnyType) -> DoubleType),
       ("uD", List(AnyType) -> DoubleType),
 

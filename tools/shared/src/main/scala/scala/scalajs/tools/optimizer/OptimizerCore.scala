@@ -22,6 +22,7 @@ import Infos.OptimizerHints
 import Trees._
 import Types._
 
+import scala.scalajs.tools.javascript.LongImpl
 import scala.scalajs.tools.logging._
 
 /** Optimizer core.
@@ -1568,22 +1569,67 @@ abstract class OptimizerCore {
           case IntOrDoubleLit(v) => DoubleLiteral(-v)
           case _                 => default
         }
+      case Long_- =>
+        arg match {
+          case LongLiteral(v)     => LongLiteral(-v)
+          case UnaryOp(Long_-, x) => x
+          case _                  => default
+        }
+      case Long_~ =>
+        arg match {
+          case LongLiteral(v)     => LongLiteral(~v)
+          case UnaryOp(Long_~, x) => x
+          case _                  => default
+        }
+
       case Boolean_! =>
         arg match {
-          case BooleanLiteral(v)            => BooleanLiteral(!v)
-          case UnaryOp(Boolean_!, x)        => x
+          case BooleanLiteral(v)     => BooleanLiteral(!v)
+          case UnaryOp(Boolean_!, x) => x
+
           case BinaryOp(BinaryOp.===, l, r) => BinaryOp(BinaryOp.!==, l, r)
           case BinaryOp(BinaryOp.!==, l, r) => BinaryOp(BinaryOp.===, l, r)
           case BinaryOp(BinaryOp.<,   l, r) => BinaryOp(BinaryOp.>=,  l, r)
           case BinaryOp(BinaryOp.<=,  l, r) => BinaryOp(BinaryOp.>,   l, r)
           case BinaryOp(BinaryOp.>,   l, r) => BinaryOp(BinaryOp.<=,  l, r)
           case BinaryOp(BinaryOp.>=,  l, r) => BinaryOp(BinaryOp.<,   l, r)
-          case _                            => default
+
+          case BinaryOp(BinaryOp.Long_==, l, r) => BinaryOp(BinaryOp.Long_!=, l, r)
+          case BinaryOp(BinaryOp.Long_!=, l, r) => BinaryOp(BinaryOp.Long_==, l, r)
+          case BinaryOp(BinaryOp.Long_<,  l, r) => BinaryOp(BinaryOp.Long_>=, l, r)
+          case BinaryOp(BinaryOp.Long_<=, l, r) => BinaryOp(BinaryOp.Long_>,  l, r)
+          case BinaryOp(BinaryOp.Long_>,  l, r) => BinaryOp(BinaryOp.Long_<=, l, r)
+          case BinaryOp(BinaryOp.Long_>=, l, r) => BinaryOp(BinaryOp.Long_<,  l, r)
+
+          case _ => default
+        }
+
+      case IntToLong =>
+        arg match {
+          case IntLiteral(v) => LongLiteral(v.toLong)
+          case _             => default
+        }
+      case LongToInt =>
+        arg match {
+          case LongLiteral(v)        => IntLiteral(v.toInt)
+          case UnaryOp(IntToLong, x) => x
+          case _                     => default
+        }
+      case LongToDouble =>
+        arg match {
+          case LongLiteral(v) => DoubleLiteral(v.toDouble)
+          case _              => default
         }
       case DoubleToInt =>
         arg match {
           case DoubleLiteral(v)        => IntLiteral(v.toInt)
           case _ if arg.tpe == IntType => arg
+          case _                       => default
+        }
+      case DoubleToLong =>
+        arg match {
+          case DoubleLiteral(v)        => LongLiteral(v.toLong)
+          case _ if arg.tpe == IntType => foldUnaryOp(IntToLong, arg)
           case _                       => default
         }
       case _ =>
@@ -1601,6 +1647,7 @@ abstract class OptimizerCore {
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r))         => lit(l == r)
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => lit(l == r)
+          case (LongLiteral(l), LongLiteral(r))       => lit(l == r)
           case (BooleanLiteral(l), BooleanLiteral(r)) => lit(l == r)
           case (StringLiteral(l), StringLiteral(r))   => lit(l == r)
           case (Undefined(), Undefined())             => lit(true)
@@ -1704,6 +1751,131 @@ abstract class OptimizerCore {
           case (IntLiteral(l), IntLiteral(r))    => IntLiteral(l >> r)
           case (_, IntLiteral(x)) if x % 32 == 0 => lhs
           case _                                 => default
+        }
+
+      case Long_+ =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l + r)
+          case (_, LongLiteral(0))              => lhs
+          case (LongLiteral(0), _)              => rhs
+          case (_, UnaryOp(UnaryOp.Long_-, x))  => foldBinaryOp(Long_-, lhs, x)
+          case _                                => default
+        }
+
+      case Long_- =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l - r)
+          case (_, LongLiteral(0))              => lhs
+          case (LongLiteral(0), _)              => foldUnaryOp(UnaryOp.Long_-, rhs)
+          case (_, UnaryOp(UnaryOp.Long_-, x))  => foldBinaryOp(Long_+, lhs, x)
+          case _                                => default
+        }
+
+      case Long_* =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l * r)
+          case (_, LongLiteral(1))              => lhs
+          case (LongLiteral(1), _)              => rhs
+          case (_, LongLiteral(-1))             => foldUnaryOp(UnaryOp.Long_-, lhs)
+          case (LongLiteral(-1), _)             => foldUnaryOp(UnaryOp.Long_-, rhs)
+          case _                                => default
+        }
+
+      case Long_/ =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) if r != 0 => LongLiteral(l / r)
+          case (_, LongLiteral(1))                        => lhs
+          case (_, LongLiteral(-1))                       => foldUnaryOp(UnaryOp.Long_-, lhs)
+          case _                                          => default
+        }
+
+      case Long_% =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) if r != 0 => LongLiteral(l % r)
+          case _                                          => default
+        }
+
+      case Long_| =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l | r)
+          case (_, LongLiteral(0))              => lhs
+          case (LongLiteral(0), _)              => rhs
+          case _                                => default
+        }
+
+      case Long_& =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l & r)
+          case (_, LongLiteral(-1))             => lhs
+          case (LongLiteral(-1), _)             => rhs
+          case _                                => default
+        }
+
+      case Long_^ =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l ^ r)
+          case (_, LongLiteral(0))              => lhs
+          case (LongLiteral(0), _)              => rhs
+          case (_, LongLiteral(-1))             => foldUnaryOp(UnaryOp.Long_~, lhs)
+          case (LongLiteral(-1), _)             => foldUnaryOp(UnaryOp.Long_~, rhs)
+          case _                                => default
+        }
+
+      case Long_<< =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l << r)
+          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
+          case _                                 => default
+        }
+
+      case Long_>>> =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l >>> r)
+          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
+          case _                                 => default
+        }
+
+      case Long_>> =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), IntLiteral(r))   => LongLiteral(l >> r)
+          case (_, IntLiteral(x)) if x % 64 == 0 => lhs
+          case _                                 => default
+        }
+
+      case Long_== =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l == r)
+          case _                                => default
+        }
+
+      case Long_!= =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l != r)
+          case _                                => default
+        }
+
+      case Long_< =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l < r)
+          case _                                => default
+        }
+
+      case Long_<= =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l <= r)
+          case _                                => default
+        }
+
+      case Long_> =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l > r)
+          case _                                => default
+        }
+
+      case Long_>= =>
+        (lhs, rhs) match {
+          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l >= r)
+          case _                                => default
         }
 
       case Double_+ =>
@@ -1828,12 +2000,13 @@ abstract class OptimizerCore {
     (charCode: @switch) match {
       case 'Z' if arg.tpe.base == BooleanType => cont(arg)
       case 'I' if arg.tpe.base == IntType     => cont(arg)
+      case 'J' if arg.tpe.base == LongType    => cont(arg)
       case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
       case _ =>
         val resultType = (charCode: @switch) match {
           case 'Z'                   => BooleanType
           case 'C' | 'B' | 'S' | 'I' => IntType
-          case 'J'                   => ClassType(Definitions.RuntimeLongClass)
+          case 'J'                   => LongType
           case 'F' | 'D'             => DoubleType
         }
         cont(PreTransTree(
@@ -1876,7 +2049,7 @@ abstract class OptimizerCore {
 
       case ClassType(lhsClassName0) =>
         val lhsClassName =
-          if (lhsClassName0 == BoxedLongClass) RuntimeLongClass
+          if (lhsClassName0 == BoxedLongClass) LongImpl.RuntimeLongClass
           else lhsClassName0
         lhsClassName match {
           case BoxedFloatClass | BoxedDoubleClass =>
@@ -2834,7 +3007,7 @@ object OptimizerCore {
     private val AlwaysPresentClassData = {
       import Definitions._
       Set("V", "Z", "C", "B", "S", "I", "J", "F", "D",
-          ObjectClass, StringClass, RuntimeLongClass)
+          ObjectClass, StringClass)
     }
   }
 

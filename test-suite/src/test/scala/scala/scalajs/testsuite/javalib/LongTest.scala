@@ -57,6 +57,10 @@ object LongTest extends JasmineTest {
       test("-100", -100L)
       test("30000", 30000L)
       test("-90000", -90000L)
+      test("4", 4L)
+      test("-4", -4L)
+      test("4000000000", 4000000000L)
+      test("-18014398509482040", -18014398509482040L)
     }
 
     it("should reject invalid strings when parsing") {
@@ -64,6 +68,7 @@ object LongTest extends JasmineTest {
         expect(() => JLong.parseLong(s)).toThrow
 
       test("abc")
+      test("asdf")
       test("")
     }
 

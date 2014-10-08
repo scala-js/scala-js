@@ -52,6 +52,11 @@ object Types {
    */
   case object IntType extends Type
 
+  /** 64-bit signed integer type.
+   *  It does not accept `null` nor `undefined`.
+   */
+  case object LongType extends Type
+
   /** Double type.
    *  It does not accept `null` nor `undefined`.
    */
@@ -128,9 +133,6 @@ object Types {
         case (_, AnyType)     => true
         case (NothingType, _) => true
 
-        case (ClassType(RuntimeLongClass), ClassType(cls)) =>
-          isSubclass(RuntimeLongClass, cls) || isSubclass(BoxedLongClass, cls)
-
         case (ClassType(lhsClass), ClassType(rhsClass)) =>
           isSubclass(lhsClass, rhsClass)
 
@@ -146,6 +148,8 @@ object Types {
           isSubclass(BoxedIntegerClass, cls) ||
           cls == BoxedByteClass ||
           cls == BoxedShortClass
+        case (LongType, ClassType(cls)) =>
+          isSubclass(BoxedLongClass, cls)
         case (DoubleType, ClassType(cls)) =>
           isSubclass(BoxedDoubleClass, cls) ||
           cls == BoxedFloatClass
