@@ -335,9 +335,18 @@ abstract class OptimizerCore {
         Continue(newOptLabel)
 
       case Match(selector, cases, default) =>
-        Match(transformExpr(selector),
-            cases map (c => (c._1 map transformExpr, transform(c._2, isStat))),
-            transform(default, isStat))(tree.tpe)
+        val newSelector = transformExpr(selector)
+        newSelector match {
+          case newSelector: Literal =>
+            val body = cases collectFirst {
+              case (alts, body) if alts.exists(literal_===(_, newSelector)) => body
+            } getOrElse default
+            transform(body, isStat)
+          case _ =>
+            Match(newSelector,
+                cases map (c => (c._1, transform(c._2, isStat))),
+                transform(default, isStat))(tree.tpe)
+        }
 
       // Scala expressions
 
@@ -695,6 +704,20 @@ abstract class OptimizerCore {
                   If(newCond, newThenp, newElsep)(refinedType),
                   RefinedType(refinedType)))
             }
+        }
+
+      case Match(selector, cases, default) =>
+        val newSelector = transformExpr(selector)
+        newSelector match {
+          case newSelector: Literal =>
+            val body = cases collectFirst {
+              case (alts, body) if alts.exists(literal_===(_, newSelector)) => body
+            } getOrElse default
+            pretransformExpr(body)(cont)
+          case _ =>
+            cont(PreTransTree(Match(newSelector,
+                cases map (c => (c._1, transformExpr(c._2))),
+                transformExpr(default))(tree.tpe)))
         }
 
       case Labeled(ident @ Ident(label, _), tpe, body) =>
@@ -1582,21 +1605,31 @@ abstract class OptimizerCore {
     }
   }
 
+  /** Performs === for two literals.
+   *  The result is always known statically.
+   */
+  private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
+    (lhs, rhs) match {
+      case (IntLiteral(l), IntLiteral(r))         => l == r
+      case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => l == r
+      case (BooleanLiteral(l), BooleanLiteral(r)) => l == r
+      case (StringLiteral(l, _), StringLiteral(r, _)) => l == r
+      case (Undefined(), Undefined())             => true
+      case (Null(), Null())                       => true
+      case _                                      => false
+    }
+  }
+
   private def foldBinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit pos: Position): Tree = {
     import BinaryOp._
     @inline def default = BinaryOp(op, lhs, rhs)
     (op: @switch) match {
       case === | !== =>
-        def lit(v: Boolean) = BooleanLiteral(if (op == ===) v else !v)
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))             => lit(l == r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r))     => lit(l == r)
-          case (BooleanLiteral(l), BooleanLiteral(r))     => lit(l == r)
-          case (StringLiteral(l, _), StringLiteral(r, _)) => lit(l == r)
-          case (Undefined(), Undefined())                 => lit(true)
-          case (Null(), Null())                           => lit(true)
-          case (_: Literal, _: Literal)                   => lit(false)
+          case (lhs: Literal, rhs: Literal) =>
+            val equal = literal_===(lhs, rhs)
+            BooleanLiteral(if (op == ===) equal else !equal)
 
           case (BooleanLiteral(l), _) =>
             if (l == (op == ===)) rhs
