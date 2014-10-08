@@ -115,6 +115,9 @@ object Trees {
 
   class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = stats.last.tpe
+
+    override def toString(): String =
+      stats.mkString("Block(", ",", ")")
   }
 
   object Block {
