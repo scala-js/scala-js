@@ -859,6 +859,22 @@ abstract class OptimizerCore {
            */
           cancelFun()
         }
+      case PreTransLocalDef(LocalDef(_, _,
+          InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
+        val fieldLocalDef = fieldLocalDefs(item.name)
+        if (!isLhsOfAssign || fieldLocalDef.mutable) {
+          cont(PreTransLocalDef(fieldLocalDef))
+        } else {
+          /* In an ideal world, this should not happen (assigning to an
+           * immutable field of an already constructed object). However, since
+           * we cannot IR-check that this does not happen (see #1021), this is
+           * effectively allowed by the IR spec. We are therefore not allowed
+           * to crash. We cancel instead. This will become an actual field
+           * (rather than an optimized local val) which is not considered pure
+           * (for that same reason).
+           */
+          cancelFun()
+        }
       case _ =>
         resolveLocalDef(preTransQual) match {
           case PreTransRecordTree(newQual, origType, cancelFun) =>
@@ -898,6 +914,14 @@ abstract class OptimizerCore {
             used.value = true
             PreTransRecordTree(
                 VarRef(Ident(name, originalName), mutable)(recordType),
+                tpe, cancelFun)
+
+          case InlineClassInstanceReplacement(recordType, fieldLocalDefs, cancelFun) =>
+            if (!isImmutableType(recordType))
+              cancelFun()
+            PreTransRecordTree(
+                RecordValue(recordType, recordType.fields.map(
+                    f => fieldLocalDefs(f.name).newReplacement)),
                 tpe, cancelFun)
 
           case _ =>
@@ -1202,9 +1226,10 @@ abstract class OptimizerCore {
 
       case PreTransLocalDef(localDef) =>
         localDef.replacement match {
-          case TentativeAnonFunReplacement(_, _, _)   => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _) => true
-          case _                                      => false
+          case TentativeAnonFunReplacement(_, _, _)    => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _)  => true
+          case InlineClassInstanceReplacement(_, _, _) => true
+          case _                                       => false
         }
 
       case PreTransRecordTree(_, _, _) =>
@@ -1326,13 +1351,10 @@ abstract class OptimizerCore {
 
         inlineClassConstructorBody(initialFieldLocalDefs, cls, cls, ctor, args,
             cancelFun) { (finalFieldLocalDefs, cont2) =>
-          val elems =
-            for (RecordType.Field(name, _, _, _) <- recordType.fields)
-              yield finalFieldLocalDefs(name).newReplacement
-
-          cont2(PreTransRecordTree(
-              RecordValue(recordType, elems),
-              RefinedType(cls, isExact = true, isNullable = false), cancelFun))
+          cont2(PreTransLocalDef(LocalDef(
+              RefinedType(cls, isExact = true, isNullable = false),
+              mutable = false,
+              InlineClassInstanceReplacement(recordType, finalFieldLocalDefs, cancelFun))))
         } (cont1)
       } (cont)
     }
@@ -2006,6 +2028,13 @@ abstract class OptimizerCore {
     }
   }
 
+  private def isImmutableType(tpe: Type): Boolean = tpe match {
+    case RecordType(fields) =>
+      fields.forall(f => !f.mutable && isImmutableType(f.tpe))
+    case _ =>
+      true
+  }
+
   private def withNewLocalDef(binding: Binding)(
       buildInner: (LocalDef, PreTransCont) => TailRec[Tree])(
       cont: PreTransCont): TailRec[Tree] = tailcall {
@@ -2015,13 +2044,6 @@ abstract class OptimizerCore {
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(name))
-
-      def isImmutableType(tpe: Type): Boolean = tpe match {
-        case RecordType(fields) =>
-          fields.forall(f => !f.mutable && isImmutableType(f.tpe))
-        case _ =>
-          true
-      }
 
       val used = new SimpleState(false)
       withState(used) {
@@ -2051,31 +2073,11 @@ abstract class OptimizerCore {
           })
         }
 
-        value match {
-          case PreTransLocalDef(LocalDef(valueTpe, valueMutable,
-              ReplaceWithRecordVarRef(valueName, valueOrigName, recordType,
-                  valueUsed, cancelFun))) =>
-            if (!isImmutableType(recordType))
-              cancelFun()
-            val localDef = LocalDef(valueTpe, mutable,
-                ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-                    used, cancelFun))
-            doBuildInner(localDef) {
-              valueUsed.value = true
-              VarDef(Ident(newName, newOriginalName), recordType, mutable,
-                  VarRef(Ident(valueName, valueOrigName), valueMutable)(recordType))
-            }
-
+        resolveLocalDef(value) match {
           case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
             val recordType = valueTree.tpe.asInstanceOf[RecordType]
-            if (!isImmutableType(recordType)) {
-              valueTree match {
-                case BlockOrAlone(_, RecordValue(_, _)) =>
-                  // it's alright, it's a newly created record
-                case _ =>
-                  cancelFun()
-              }
-            }
+            if (!isImmutableType(recordType))
+              cancelFun()
             val localDef = LocalDef(valueTpe, mutable,
                 ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
                     used, cancelFun))
@@ -2084,12 +2086,12 @@ abstract class OptimizerCore {
                   valueTree)
             }
 
-          case _ =>
+          case PreTransTree(valueTree, valueTpe) =>
             val localDef = LocalDef(tpe, mutable,
                 ReplaceWithVarRef(newName, newOriginalName, used))
             doBuildInner(localDef) {
               VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
-                  finishTransformExpr(value))
+                  valueTree)
             }
         }
       }
@@ -2255,6 +2257,21 @@ object OptimizerCore {
 
       case InlineClassBeingConstructedReplacement(_, cancelFun) =>
         cancelFun()
+
+      case InlineClassInstanceReplacement(_, _, cancelFun) =>
+        cancelFun()
+    }
+
+    def contains(that: LocalDef): Boolean = {
+      (this eq that) || (replacement match {
+        case TentativeAnonFunReplacement(
+            TentativeClosureReplacement(_, _, _, _, captureLocalDefs), _, _) =>
+          captureLocalDefs.exists(_.contains(that))
+        case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
+          fieldLocalDefs.valuesIterator.exists(_.contains(that))
+        case _ =>
+          false
+      })
     }
   }
 
@@ -2285,6 +2302,11 @@ object OptimizerCore {
       captures: List[LocalDef])
 
   private final case class InlineClassBeingConstructedReplacement(
+      fieldLocalDefs: Map[String, LocalDef],
+      cancelFun: CancelFun) extends LocalDefReplacement
+
+  private final case class InlineClassInstanceReplacement(
+      recordType: RecordType,
       fieldLocalDefs: Map[String, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
@@ -2348,11 +2370,8 @@ object OptimizerCore {
     def contains(localDef: LocalDef): Boolean = this match {
       case PreTransBlock(_, result) =>
         result.contains(localDef)
-      case PreTransLocalDef(`localDef`) =>
-        true
-      case PreTransLocalDef(LocalDef(_, _, TentativeAnonFunReplacement(
-          TentativeClosureReplacement(_, _, _, _, captureLocalDefs), _, _))) =>
-        captureLocalDefs.contains(localDef)
+      case PreTransLocalDef(thisLocalDef) =>
+        thisLocalDef.contains(localDef)
       case _ =>
         false
     }
