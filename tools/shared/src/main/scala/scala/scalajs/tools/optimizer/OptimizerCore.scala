@@ -1388,7 +1388,7 @@ abstract class OptimizerCore {
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
             inlineClassConstructorBodyList(newFieldsLocalDefs, cls,
-                rest, cancelFun)(buildInner)(cont1)
+                rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
 
