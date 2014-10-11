@@ -41,6 +41,7 @@ import scala.collection.parallel.immutable.ParRange
  *         and its complexity is O(1).
  */
 @SerialVersionUID(7618862778670199309L)
+@inline
 class Range(val start: Int, val end: Int, val step: Int)
 extends scala.collection.AbstractSeq[Int]
    with IndexedSeq[Int]
@@ -104,8 +105,7 @@ extends scala.collection.AbstractSeq[Int]
   override def size = length
   override def length = if (numRangeElements < 0) fail() else numRangeElements
 
-  private def description = "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
-  private def fail() = throw new IllegalArgumentException(description + ": seqs cannot contain more than Int.MaxValue elements.")
+  private def fail() = Range.fail(start, end, step, isInclusive)
   private def validateMaxLength() {
     if (numRangeElements < 0)
       fail()
@@ -301,6 +301,13 @@ extends scala.collection.AbstractSeq[Int]
 object Range {
   private[immutable] val MAX_PRINT = 512  // some arbitrary value
 
+  private def description(start: Int, end: Int, step: Int, isInclusive: Boolean) =
+    "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
+
+  private def fail(start: Int, end: Int, step: Int, isInclusive: Boolean) =
+    throw new IllegalArgumentException(description(start, end, step, isInclusive) +
+        ": seqs cannot contain more than Int.MaxValue elements.")
+
   /** Counts the number of range elements.
    *  @pre  step != 0
    *  If the size of the range exceeds Int.MaxValue, the
@@ -332,6 +339,7 @@ object Range {
   def count(start: Int, end: Int, step: Int): Int =
     count(start, end, step, false)
 
+  @inline
   class Inclusive(start: Int, end: Int, step: Int) extends Range(start, end, step) {
 //    override def par = new ParRange(this)
     override def isInclusive = true
