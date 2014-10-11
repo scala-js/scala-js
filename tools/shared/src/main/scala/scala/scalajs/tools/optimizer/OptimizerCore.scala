@@ -1220,10 +1220,11 @@ abstract class OptimizerCore {
 
       case PreTransLocalDef(localDef) =>
         localDef.replacement match {
-          case TentativeAnonFunReplacement(_, _, _)    => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _)  => true
-          case InlineClassInstanceReplacement(_, _, _) => true
-          case _                                       => false
+          case TentativeAnonFunReplacement(_, _, _)         => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _)       => true
+          case InlineClassBeingConstructedReplacement(_, _) => true
+          case InlineClassInstanceReplacement(_, _, _)      => true
+          case _                                            => false
         }
 
       case PreTransRecordTree(_, _, _) =>
@@ -1381,20 +1382,20 @@ abstract class OptimizerCore {
           InlineClassBeingConstructedReplacement(inputFieldsLocalDefs, cancelFun))
       val statsScope = bodyScope.inlining(target).withEnv(bodyScope.env.withLocalDef(
           "this", thisLocalDef))
-      inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
+      inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs, cls,
           stats, cancelFun)(buildInner)(cont1)(statsScope)
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
   private def inlineClassConstructorBodyList(
-      inputFieldsLocalDefs: Map[String, LocalDef],
+      thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[String, LocalDef],
       cls: ClassType, stats: List[Tree], cancelFun: CancelFun)(
       buildInner: (Map[String, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     stats match {
       case This() :: rest =>
-        inlineClassConstructorBodyList(inputFieldsLocalDefs,
+        inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
             cls, rest, cancelFun)(buildInner)(cont)
 
       case Assign(s @ Select(ths: This,
@@ -1402,6 +1403,12 @@ abstract class OptimizerCore {
         pretransformExpr(value) { tvalue =>
           withNewLocalDef(Binding(fieldName, fieldOrigName, s.tpe, false,
               tvalue)) { (localDef, cont1) =>
+            if (localDef.contains(thisLocalDef)) {
+              /* Uh oh, there is a `val x = ...this...`. We can't keep it,
+               * because this field will not be updated with `newThisLocalDef`.
+               */
+              cancelFun()
+            }
             val newFieldsLocalDefs =
               inputFieldsLocalDefs.updated(fieldName, localDef)
             val newThisLocalDef = LocalDef(
@@ -1409,8 +1416,8 @@ abstract class OptimizerCore {
                 InlineClassBeingConstructedReplacement(newFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(newFieldsLocalDefs, cls,
-                rest, cancelFun)(buildInner)(cont1)(restScope)
+            inlineClassConstructorBodyList(newThisLocalDef, newFieldsLocalDefs,
+                cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
 
@@ -1433,7 +1440,7 @@ abstract class OptimizerCore {
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
         val lhs = ass.lhs
-        inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
+        inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs, cls,
             Assign(lhs, If(cond, th, value)(lhs.tpe)(stat.pos))(ass.pos) :: rest,
             cancelFun)(buildInner)(cont)
 
@@ -1447,16 +1454,16 @@ abstract class OptimizerCore {
                 InlineClassBeingConstructedReplacement(outputFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(outputFieldsLocalDefs, cls,
-                rest, cancelFun)(buildInner)(cont1)(restScope)
+            inlineClassConstructorBodyList(newThisLocalDef, outputFieldsLocalDefs,
+                cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
 
       case VarDef(Ident(name, originalName), tpe, mutable, rhs) :: rest =>
         pretransformExpr(rhs) { trhs =>
           withBinding(Binding(name, originalName, tpe, mutable, trhs)) { (restScope, cont1) =>
-            inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
-                rest, cancelFun)(buildInner)(cont1)(restScope)
+            inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+                cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
 
@@ -1464,14 +1471,14 @@ abstract class OptimizerCore {
         val transformedStat = transformStat(stat)
         transformedStat match {
           case Skip() =>
-            inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
-                rest, cancelFun)(buildInner)(cont)
+            inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+                cls, rest, cancelFun)(buildInner)(cont)
           case _ =>
             if (transformedStat.tpe == NothingType)
               cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
-              inlineClassConstructorBodyList(inputFieldsLocalDefs, cls,
-                  rest, cancelFun) { (outputFieldsLocalDefs, cont1) =>
+              inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+                  cls, rest, cancelFun) { (outputFieldsLocalDefs, cont1) =>
                 buildInner(outputFieldsLocalDefs, { tinner =>
                   cont1(PreTransBlock(transformedStat :: Nil, tinner))
                 })
@@ -2226,13 +2233,7 @@ abstract class OptimizerCore {
           }
 
         case PreTransLocalDef(localDef) if !localDef.mutable =>
-          localDef.replacement match {
-            case _: InlineClassBeingConstructedReplacement =>
-              // Cannot alias an inlineable class being constructed
-              withDedicatedVar(refinedType)
-            case _ =>
-              buildInner(localDef, cont)
-          }
+          buildInner(localDef, cont)
 
         case PreTransTree(literal: Literal, _) =>
           buildInner(LocalDef(refinedType, false,
