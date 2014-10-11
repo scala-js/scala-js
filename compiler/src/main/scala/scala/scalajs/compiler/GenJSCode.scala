@@ -147,8 +147,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     val currentMethodSym         = new ScopedVar[Symbol]
     val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
     val methodTailJumpThisSym    = new ScopedVar[Symbol](NoSymbol)
-    val methodTailJumpLabelSym   = new ScopedVar[Symbol]
-    val methodTailJumpFormalArgs = new ScopedVar[List[Symbol]]
+    val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
+    val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
     val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
     val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
@@ -531,10 +531,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       isModuleInitialized = false
 
       val result = withScopedVars(
-          currentMethodSym         := sym,
-          methodTailJumpThisSym    := NoSymbol,
-          methodTailJumpLabelSym   := NoSymbol,
-          methodTailJumpFormalArgs := Nil
+          currentMethodSym        := sym,
+          methodTailJumpThisSym   := NoSymbol,
+          fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
+          enclosingLabelDefParams := Map.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
@@ -803,16 +803,8 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  emitted as an expression.
      *
      *  The additional complexity of this method handles the transformation of
-     *  recursive tail calls. The `tailcalls` phase transforms them as one big
-     *  LabelDef surrounding the body of the method, and label-Apply's for
-     *  recursive tail calls.
-     *  Here, we transform the outer LabelDef into a labeled `while (true)`
-     *  loop. Label-Apply's to the LabelDef are turned into a `continue` of
-     *  that loop. The body of the loop is a `js.Return()` of the body of the
-     *  LabelDef (even if the return type is Unit), which will break out of
-     *  the loop as necessary.
-     *  In that case, the ParamDefs are marked as mutable, as well as the
-     *  variable that replaces `this` (if there is one).
+     *  a peculiarity of recursive tail calls: the local ValDef that replaces
+     *  `this`.
      */
     def genMethodDef(methodIdent: js.Ident, paramsSyms: List[Symbol],
         resultIRType: jstpe.Type, tree: Tree): js.MethodDef = {
@@ -827,31 +819,25 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val body = tree match {
         case Block(
-            List(thisDef @ ValDef(_, nme.THIS, _, initialThis)),
-            ld @ LabelDef(labelName, labelParams, rhs)) =>
+            (thisDef @ ValDef(_, nme.THIS, _, initialThis)) :: otherStats,
+            rhs) =>
           // This method has tail jumps
-          val tailJumpThisSym = initialThis match {
-            case This(_)  => thisDef.symbol
-            case Ident(_) => NoSymbol
-          }
-          val labelParamSyms0 = labelParams.map(_.symbol)
-          val labelParamSyms =
-            if (tailJumpThisSym != NoSymbol) labelParamSyms0
-            else paramsSyms.head :: labelParamSyms0.tail
-
           withScopedVars(
-            methodTailJumpLabelSym   := ld.symbol,
-            methodTailJumpThisSym    := tailJumpThisSym,
-            methodTailJumpFormalArgs := labelParamSyms
+            (initialThis match {
+              case This(_)  =>
+                Seq(methodTailJumpThisSym := thisDef.symbol,
+                    fakeTailJumpParamRepl := (NoSymbol, NoSymbol))
+              case Ident(_) =>
+                Seq(methodTailJumpThisSym := NoSymbol,
+                    fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol))
+            }): _*
           ) {
-            val theLoop =
-              js.While(js.BooleanLiteral(true),
-                  if (bodyIsStat) js.Block(genStat(rhs), js.Return(js.Undefined()))
-                  else            js.Return(genExpr(rhs)),
-                  Some(js.Ident("tailCallLoop")))
+            val innerBody = js.Block(otherStats.map(genStat) :+ (
+                if (bodyIsStat) genStat(rhs)
+                else            genExpr(rhs)))
 
             if (methodTailJumpThisSym.get == NoSymbol) {
-              theLoop
+              innerBody
             } else {
               if (methodTailJumpThisSym.isMutable)
                 mutableLocalVars += methodTailJumpThisSym
@@ -859,7 +845,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                   js.VarDef(encodeLocalSym(methodTailJumpThisSym),
                       currentClassType, methodTailJumpThisSym.isMutable,
                       js.This()(currentClassType)),
-                  theLoop)
+                  innerBody)
             }
           }
 
@@ -1156,8 +1142,33 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.DoWhile(js.Block(bodyStats map genStat), genExpr(cond)),
               genExpr(result))
 
-        case _ =>
-          abort("Found unknown label def at "+tree.pos+": "+tree)
+        /* Arbitrary other label - we can jump to it from inside it.
+         * This is typically for the label-defs implementing tail-calls.
+         * It can also handle other weird LabelDefs generated by some compiler
+         * plugins (see for example #1148).
+         */
+        case LabelDef(labelName, labelParams, rhs) =>
+          val labelParamSyms = labelParams.map(_.symbol) map {
+            s => if (s == fakeTailJumpParamRepl._1) fakeTailJumpParamRepl._2 else s
+          }
+
+          withScopedVars(
+            enclosingLabelDefParams :=
+              enclosingLabelDefParams.get + (tree.symbol -> labelParamSyms)
+          ) {
+            val bodyType = toIRType(tree.tpe)
+            val labelIdent = encodeLabelSym(tree.symbol)
+            val blockLabelIdent = freshLocalIdent()
+
+            js.Labeled(blockLabelIdent, bodyType, {
+              js.While(js.BooleanLiteral(true), {
+                if (bodyType == jstpe.NoType)
+                  js.Block(genStat(rhs), js.Return(js.Undefined(), Some(blockLabelIdent)))
+                else
+                  js.Return(genExpr(rhs), Some(blockLabelIdent))
+              }, Some(labelIdent))
+            })
+          }
       }
     }
 
@@ -1427,9 +1438,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen jump to a label.
-     *  Most label-applys are catched upstream (while and do..while loops,
+     *  Most label-applys are caught upstream (while and do..while loops,
      *  jumps to next case of a pattern match), but some are still handled here:
-     *  * Recursive tail call
+     *  * Jumps to enclosing label-defs, including tail-recursive calls
      *  * Jump to the end of a pattern match
      */
     private def genLabelApply(tree: Apply): js.Tree = {
@@ -1437,8 +1448,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun, args) = tree
       val sym = fun.symbol
 
-      if (sym == methodTailJumpLabelSym.get) {
-        genTailRecLabelApply(tree)
+      if (enclosingLabelDefParams.contains(sym)) {
+        genEnclosingLabelApply(tree)
       } else if (sym.name.toString() startsWith "matchEnd") {
         /* Jump the to the end-label of a pattern match
          * Such labels have exactly one argument, which is the result of
@@ -1456,10 +1467,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen a tail-recursive call.
+    /** Gen a label-apply to an enclosing label def.
+     *
+     *  This is typically used for tail-recursive calls.
      *
      *  Basically this is compiled into
-     *  continue tailCallLoop;
+     *  continue labelDefIdent;
      *  but arguments need to be updated beforehand.
      *
      *  Since the rhs for the new value of an argument can depend on the value
@@ -1472,14 +1485,14 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  If, after elimination of trivial assignments, only one assignment
      *  remains, then we do not use a temporary variable for this one.
      */
-    private def genTailRecLabelApply(tree: Apply): js.Tree = {
+    private def genEnclosingLabelApply(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun, args) = tree
       val sym = fun.symbol
 
       // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
       // Do not include trivial assignments (when actualArg == formalArg)
-      val formalArgs = methodTailJumpFormalArgs.get
+      val formalArgs = enclosingLabelDefParams(sym)
       val actualArgs = args map genExpr
       val quadruplets = {
         for {
@@ -1498,16 +1511,16 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
 
-      // The actual jump (continue tailCallLoop;)
-      val tailJump = js.Continue(Some(js.Ident("tailCallLoop")))
+      // The actual jump (continue labelDefIdent;)
+      val jump = js.Continue(Some(encodeLabelSym(sym)))
 
       quadruplets match {
-        case Nil => tailJump
+        case Nil => jump
 
         case (formalArg, argType, _, actualArg) :: Nil =>
           js.Block(
               js.Assign(formalArg, actualArg),
-              tailJump)
+              jump)
 
         case _ =>
           val tempAssignments =
@@ -1518,7 +1531,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               yield js.Assign(
                   formalArg,
                   js.VarRef(tempArg, mutable = false)(argType))
-          js.Block(tempAssignments ++ trueAssignments :+ tailJump)
+          js.Block(tempAssignments ++ trueAssignments :+ jump)
       }
     }
 
