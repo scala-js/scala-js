@@ -1201,6 +1201,9 @@ abstract class OptimizerCore {
           case _                                      => false
         }
 
+      case PreTransRecordTree(_, _, _) =>
+        true
+
       case _ =>
         false
     }
