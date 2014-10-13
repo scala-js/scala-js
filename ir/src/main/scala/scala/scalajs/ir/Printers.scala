@@ -496,10 +496,18 @@ object Printers {
           print(if (value) "true" else "false")
 
         case IntLiteral(value) =>
-          print(value)
+          if (value >= 0)
+            print(value)
+          else
+            print("(", value, ")")
 
         case DoubleLiteral(value) =>
-          print(if (value == 0 && 1 / value < 0) "-0" else value)
+          if (value == 0 && 1 / value < 0)
+            print("(-0)")
+          else if (value >= 0)
+            print(value)
+          else
+            print("(", value, ")")
 
         case StringLiteral(value, _) =>
           print("\"", escapeJS(value), "\"")
