@@ -314,7 +314,7 @@ abstract class OptimizerCore {
         val newName = freshLocalName(name)
         val newOriginalName = originalName.orElse(Some(name))
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
+            ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
@@ -381,33 +381,13 @@ abstract class OptimizerCore {
               finishTransform(isStat))
         }
 
-      case UnaryOp(op, arg) =>
-        foldUnaryOp(op, transformExpr(arg))(tree.pos)
+      case tree @ UnaryOp(_, arg) =>
+        if (isStat) transformStat(arg)
+        else transformUnaryOp(tree)
 
-      /* Typical comparison happening in code like:
-       *   val (x, y) = { ... }
-       * whose translation will include:
-       *   val temp = { ... }
-       *   l: {
-       *     if (temp != null) {
-       *       val x = temp._1
-       *       val y = temp._2
-       *       return(l) doSomething
-       *     }
-       *     return(l) throw new MatchError(temp)
-       *   }
-       * in which temp ends up being a record type, which of course cannot be
-       * null.
-       */
-      case BinaryOp(op @ (BinaryOp.=== | BinaryOp.!==), lhs, rhs) =>
-        trampoline {
-          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-            TailCalls.done(foldReferenceEquality(tlhs, trhs, op == BinaryOp.===))
-          }
-        }
-
-      case BinaryOp(op, lhs, rhs) =>
-        foldBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+      case tree @ BinaryOp(op, lhs, rhs) =>
+        if (isStat) Block(transformStat(lhs), transformStat(rhs))
+        else transformBinaryOp(tree)
 
       case NewArray(tpe, lengths) =>
         NewArray(tpe, lengths map transformExpr)
@@ -1579,6 +1559,85 @@ abstract class OptimizerCore {
     }
   }
 
+  private def transformUnaryOp(tree: UnaryOp)(implicit scope: Scope): Tree = {
+    import UnaryOp._
+
+    implicit val pos = tree.pos
+    val UnaryOp(op, arg) = tree
+
+    (op: @switch) match {
+      case LongToInt =>
+        trampoline {
+          pretransformExpr(arg) { (targ) =>
+            TailCalls.done {
+              foldUnaryOp(op, finishTransformOptLongExpr(targ))
+            }
+          }
+        }
+
+      case _ =>
+        foldUnaryOp(op, transformExpr(arg))
+    }
+  }
+
+  private def transformBinaryOp(tree: BinaryOp)(implicit scope: Scope): Tree = {
+    import BinaryOp._
+
+    implicit val pos = tree.pos
+    val BinaryOp(op, lhs, rhs) = tree
+
+    (op: @switch) match {
+      case === | !== =>
+        trampoline {
+          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
+            TailCalls.done(foldReferenceEquality(tlhs, trhs, op == ===))
+          }
+        }
+
+      case Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
+        trampoline {
+          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
+            TailCalls.done {
+              if (isLiteralOrOptimizableLong(tlhs) &&
+                  isLiteralOrOptimizableLong(trhs)) {
+                foldBinaryOp(op, finishTransformOptLongExpr(tlhs),
+                    finishTransformOptLongExpr(trhs))
+              } else {
+                foldBinaryOp(op, finishTransformExpr(tlhs),
+                    finishTransformExpr(trhs))
+              }
+            }
+          }
+        }
+
+      case _ =>
+        foldBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
+    }
+  }
+
+  private def isLiteralOrOptimizableLong(texpr: PreTransform): Boolean = {
+    texpr match {
+      case PreTransTree(LongLiteral(_), _) =>
+        true
+      case PreTransLocalDef(LocalDef(_, _, replacement)) =>
+        replacement match {
+          case ReplaceWithVarRef(_, _, _, Some(_)) => true
+          case ReplaceWithConstant(LongLiteral(_)) => true
+          case _                                   => false
+        }
+      case _ =>
+        false
+    }
+  }
+
+  private def finishTransformOptLongExpr(targ: PreTransform): Tree = targ match {
+    case PreTransLocalDef(LocalDef(tpe, false,
+        ReplaceWithVarRef(_, _, _, Some(argValue)))) =>
+      argValue()
+    case _ =>
+      finishTransformExpr(targ)
+  }
+
   private def foldUnaryOp(op: UnaryOp.Code, arg: Tree)(
       implicit pos: Position): Tree = {
     import UnaryOp._
@@ -1601,12 +1660,20 @@ abstract class OptimizerCore {
           case IntOrDoubleLit(v) => DoubleLiteral(-v)
           case _                 => default
         }
+
       case Long_- =>
         arg match {
           case LongLiteral(v)     => LongLiteral(-v)
           case UnaryOp(Long_-, x) => x
-          case _                  => default
+
+          case BinaryOp(BinaryOp.Long_+, LongLiteral(x), y) =>
+            foldBinaryOp(BinaryOp.Long_-, LongLiteral(-x), y)
+          case BinaryOp(BinaryOp.Long_-, LongLiteral(x), y) =>
+            foldBinaryOp(BinaryOp.Long_+, LongLiteral(-x), y)
+
+          case _ => default
         }
+
       case Long_~ =>
         arg match {
           case LongLiteral(v)     => LongLiteral(~v)
@@ -1641,12 +1708,27 @@ abstract class OptimizerCore {
           case IntLiteral(v) => LongLiteral(v.toLong)
           case _             => default
         }
+
       case LongToInt =>
         arg match {
           case LongLiteral(v)        => IntLiteral(v.toInt)
           case UnaryOp(IntToLong, x) => x
-          case _                     => default
+
+          case UnaryOp(Long_-, x) =>
+            foldUnaryOp(Int_-, foldUnaryOp(LongToInt, x))
+
+          case BinaryOp(BinaryOp.Long_+, x, y) =>
+            foldBinaryOp(BinaryOp.Int_+,
+                foldUnaryOp(LongToInt, x),
+                foldUnaryOp(LongToInt, y))
+          case BinaryOp(BinaryOp.Long_-, x, y) =>
+            foldBinaryOp(BinaryOp.Int_-,
+                foldUnaryOp(LongToInt, x),
+                foldUnaryOp(LongToInt, y))
+
+          case _ => default
         }
+
       case LongToDouble =>
         arg match {
           case LongLiteral(v) => DoubleLiteral(v.toDouble)
@@ -1691,37 +1773,50 @@ abstract class OptimizerCore {
     @inline def default = BinaryOp(op, lhs, rhs)
     (op: @switch) match {
       case === | !== =>
+        val positive = (op == ===)
         (lhs, rhs) match {
           case (lhs: Literal, rhs: Literal) =>
-            val equal = literal_===(lhs, rhs)
-            BooleanLiteral(if (op == ===) equal else !equal)
+            BooleanLiteral(literal_===(lhs, rhs) == positive)
 
-          case (BooleanLiteral(l), _) =>
-            if (l == (op == ===)) rhs
-            else foldUnaryOp(UnaryOp.Boolean_!, rhs)
           case (_, BooleanLiteral(r)) =>
             if (r == (op == ===)) lhs
             else foldUnaryOp(UnaryOp.Boolean_!, lhs)
 
-          case _ => default
+          case (BinaryOp(Int_+, IntLiteral(x), y), IntLiteral(z)) =>
+            foldBinaryOp(op, y, IntLiteral(z-x))
+          case (BinaryOp(Int_-, IntLiteral(x), y), IntLiteral(z)) =>
+            foldBinaryOp(op, y, IntLiteral(x-z))
+
+          case (_: Literal, _) => foldBinaryOp(op, rhs, lhs)
+          case _               => default
         }
 
       case Int_+ =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l + r)
-          case (_, IntLiteral(0))             => lhs
           case (IntLiteral(0), _)             => rhs
           case (_, UnaryOp(UnaryOp.Int_-, x)) => foldBinaryOp(Int_-, lhs, x)
+          case (_, IntLiteral(_))             => foldBinaryOp(Int_+, rhs, lhs)
+
+          case (IntLiteral(x),
+              BinaryOp(innerOp @ (Int_+ | Int_-), IntLiteral(y), z)) =>
+            foldBinaryOp(innerOp, IntLiteral(x+y), z)
+
           case _                              => default
         }
 
       case Int_- =>
         (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l - r)
-          case (_, IntLiteral(0))             => lhs
+          case (_, IntLiteral(r))             => foldBinaryOp(Int_+, lhs, IntLiteral(-r))
           case (IntLiteral(0), _)             => foldUnaryOp(UnaryOp.Int_-, rhs)
           case (_, UnaryOp(UnaryOp.Int_-, x)) => foldBinaryOp(Int_+, lhs, x)
-          case _                              => default
+
+          case (IntLiteral(x), BinaryOp(Int_+, IntLiteral(y), z)) =>
+            foldBinaryOp(Int_-, IntLiteral(x-y), z)
+          case (IntLiteral(x), BinaryOp(Int_-, IntLiteral(y), z)) =>
+            foldBinaryOp(Int_+, IntLiteral(x-y), z)
+
+          case _ => default
         }
 
       case Int_* =>
@@ -1803,16 +1898,27 @@ abstract class OptimizerCore {
           case (_, LongLiteral(0))              => lhs
           case (LongLiteral(0), _)              => rhs
           case (_, UnaryOp(UnaryOp.Long_-, x))  => foldBinaryOp(Long_-, lhs, x)
-          case _                                => default
+
+          case (LongLiteral(x),
+              BinaryOp(innerOp @ (Long_+ | Long_-), LongLiteral(y), z)) =>
+            foldBinaryOp(innerOp, LongLiteral(x+y), z)
+
+          case (_, LongLiteral(_)) => foldBinaryOp(Long_+, rhs, lhs)
+          case _                   => default
         }
 
       case Long_- =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l - r)
-          case (_, LongLiteral(0))              => lhs
-          case (LongLiteral(0), _)              => foldUnaryOp(UnaryOp.Long_-, rhs)
-          case (_, UnaryOp(UnaryOp.Long_-, x))  => foldBinaryOp(Long_+, lhs, x)
-          case _                                => default
+          case (_, LongLiteral(r))             => foldBinaryOp(Long_+, LongLiteral(-r), lhs)
+          case (LongLiteral(0), _)             => foldUnaryOp(UnaryOp.Long_-, rhs)
+          case (_, UnaryOp(UnaryOp.Long_-, x)) => foldBinaryOp(Long_+, lhs, x)
+
+          case (LongLiteral(x), BinaryOp(Long_+, LongLiteral(y), z)) =>
+            foldBinaryOp(Long_-, LongLiteral(x-y), z)
+          case (LongLiteral(x), BinaryOp(Long_-, LongLiteral(y), z)) =>
+            foldBinaryOp(Long_+, LongLiteral(x-y), z)
+
+          case _ => default
         }
 
       case Long_* =>
@@ -1827,18 +1933,30 @@ abstract class OptimizerCore {
 
       case Long_/ =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) if r != 0 => LongLiteral(l / r)
-          case (_, LongLiteral(1))                        => lhs
-          case (_, LongLiteral(-1))                       => foldUnaryOp(UnaryOp.Long_-, lhs)
-          case _                                          => default
+          case (_, LongLiteral(0))              => default
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l / r)
+
+          case (_, LongLiteral(1))  => lhs
+          case (_, LongLiteral(-1)) => foldUnaryOp(UnaryOp.Long_-, lhs)
+
+          case (LongFromInt(x), LongFromInt(y: IntLiteral)) if y.value != -1 =>
+            LongFromInt(foldBinaryOp(Int_/, x, y))
+
+          case _ => default
         }
 
       case Long_% =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) if r != 0 => LongLiteral(l % r)
-          case (_, LongLiteral(1L | -1L))                 =>
+          case (_, LongLiteral(0))              => default
+          case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l % r)
+
+          case (_, LongLiteral(1L | -1L)) =>
             Block(keepOnlySideEffects(lhs), LongLiteral(0L))
-          case _                                          => default
+
+          case (LongFromInt(x), LongFromInt(y)) =>
+            LongFromInt(foldBinaryOp(Int_%, x, y))
+
+          case _ => default
         }
 
       case Long_| =>
@@ -1888,40 +2006,138 @@ abstract class OptimizerCore {
           case _                                 => default
         }
 
-      case Long_== =>
+      case Long_== | Long_!= =>
+        val positive = (op == Long_==)
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l == r)
-          case _                                => default
+          case (LongLiteral(l), LongLiteral(r)) =>
+            BooleanLiteral((l == r) == positive)
+
+          case (LongFromInt(x), LongFromInt(y)) =>
+            foldBinaryOp(if (positive) === else !==, x, y)
+          case (LongFromInt(x), LongLiteral(y)) =>
+            assert(y > Int.MaxValue || y < Int.MinValue)
+            Block(keepOnlySideEffects(x), BooleanLiteral(!positive))
+
+          case (BinaryOp(Long_+, LongLiteral(x), y), LongLiteral(z)) =>
+            foldBinaryOp(op, y, LongLiteral(z-x))
+          case (BinaryOp(Long_-, LongLiteral(x), y), LongLiteral(z)) =>
+            foldBinaryOp(op, y, LongLiteral(x-z))
+
+          case (LongLiteral(_), _) => foldBinaryOp(op, rhs, lhs)
+          case _                   => default
         }
 
-      case Long_!= =>
-        (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l != r)
-          case _                                => default
+      case Long_< | Long_<= | Long_> | Long_>= =>
+        def flippedOp = (op: @switch) match {
+          case Long_<  => Long_>
+          case Long_<= => Long_>=
+          case Long_>  => Long_<
+          case Long_>= => Long_<=
         }
 
-      case Long_< =>
-        (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l < r)
-          case _                                => default
+        def intOp = (op: @switch) match {
+          case Long_<  => <
+          case Long_<= => <=
+          case Long_>  => >
+          case Long_>= => >=
         }
 
-      case Long_<= =>
         (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l <= r)
-          case _                                => default
-        }
+          case (LongLiteral(l), LongLiteral(r)) =>
+            val result = (op: @switch) match {
+              case Long_<  => l < r
+              case Long_<= => l <= r
+              case Long_>  => l > r
+              case Long_>= => l >= r
+            }
+            BooleanLiteral(result)
 
-      case Long_> =>
-        (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l > r)
-          case _                                => default
-        }
+          case (_, LongLiteral(Long.MinValue)) =>
+            if (op == Long_< || op == Long_>=)
+              Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Long_>=))
+            else
+              foldBinaryOp(if (op == Long_<=) Long_== else Long_!=, lhs, rhs)
 
-      case Long_>= =>
-        (lhs, rhs) match {
-          case (LongLiteral(l), LongLiteral(r)) => BooleanLiteral(l >= r)
-          case _                                => default
+          case (_, LongLiteral(Long.MaxValue)) =>
+            if (op == Long_> || op == Long_<=)
+              Block(keepOnlySideEffects(lhs), BooleanLiteral(op == Long_<=))
+            else
+              foldBinaryOp(if (op == Long_>=) Long_== else Long_!=, lhs, rhs)
+
+          case (LongFromInt(x), LongFromInt(y)) =>
+            foldBinaryOp(intOp, x, y)
+          case (LongFromInt(x), LongLiteral(y)) =>
+            assert(y > Int.MaxValue || y < Int.MinValue)
+            val result =
+              if (y > Int.MaxValue) op == Long_< || op == Long_<=
+              else                  op == Long_> || op == Long_>=
+            Block(keepOnlySideEffects(x), BooleanLiteral(result))
+
+          /* x + y.toLong > z
+           *      -x on both sides
+           *      requires x + y.toLong not to overflow, and z - x likewise
+           * y.toLong > z - x
+           */
+          case (BinaryOp(Long_+, LongLiteral(x), y @ LongFromInt(_)), LongLiteral(z))
+              if canAddLongs(x, Int.MinValue) &&
+                 canAddLongs(x, Int.MaxValue) &&
+                 canSubtractLongs(z, x) =>
+            foldBinaryOp(op, y, LongLiteral(z-x))
+
+          /* x - y.toLong > z
+           *      -x on both sides
+           *      requires x - y.toLong not to overflow, and z - x likewise
+           * -(y.toLong) > z - x
+           */
+          case (BinaryOp(Long_-, LongLiteral(x), y @ LongFromInt(_)), LongLiteral(z))
+              if canSubtractLongs(x, Int.MinValue) &&
+                 canSubtractLongs(x, Int.MaxValue) &&
+                 canSubtractLongs(z, x) =>
+            if (canNegateLong(z-x)) // fuse next case about -(y.toLong) > z-x
+              foldBinaryOp(flippedOp, y, LongLiteral(-(z-x)))
+            else
+              foldBinaryOp(op, foldUnaryOp(UnaryOp.Long_-, y), LongLiteral(z-x))
+
+          /* -(x.toLong) > y
+           *      *(-1) on both sides, flip the arrow
+           *      requires -y not to overflow (-(x.toLong) never overflows)
+           * x.toLong > -y
+           */
+          case (UnaryOp(UnaryOp.Long_-, x @ LongFromInt(_)), LongLiteral(y))
+              if canNegateLong(y) =>
+            foldBinaryOp(flippedOp, x, LongLiteral(-y))
+
+          /* x.toLong + y.toLong > Int.MaxValue.toLong
+           *
+           * This is basically testing whether x+y overflows in positive.
+           * If x <= 0 or y <= 0, this cannot happen -> false.
+           * If x > 0 and y > 0, this can be detected with x+y < 0.
+           * Therefore, we rewrite as:
+           *
+           * x > 0 && y > 0 && x+y < 0.
+           *
+           * This requires to evaluate x and y once.
+           */
+          case (BinaryOp(Long_+, LongFromInt(x), LongFromInt(y)),
+              LongLiteral(Int.MaxValue)) =>
+            trampoline {
+              withNewLocalDefs(List(
+                  Binding("x", None, IntType, false, PreTransTree(x)),
+                  Binding("y", None, IntType, false, PreTransTree(y)))) {
+                (tempsLocalDefs, cont) =>
+                  val List(tempXDef, tempYDef) = tempsLocalDefs
+                  val tempX = tempXDef.newReplacement
+                  val tempY = tempYDef.newReplacement
+                  cont(PreTransTree(
+                      BinaryOp(Boolean_&&, BinaryOp(Boolean_&&,
+                          BinaryOp(>, tempX, IntLiteral(0)),
+                          BinaryOp(>, tempY, IntLiteral(0))),
+                          BinaryOp(<, BinaryOp(Int_+, tempX, tempY), IntLiteral(0)))))
+              } (finishTransform(isStat = false))
+            }
+
+          case (LongLiteral(_), _) => foldBinaryOp(flippedOp, rhs, lhs)
+          case _                   => default
         }
 
       case Double_+ =>
@@ -1999,7 +2215,25 @@ abstract class OptimizerCore {
           case (_, BooleanLiteral(false)) => lhs
           case (_, BooleanLiteral(true))  =>
             Block(keepOnlySideEffects(lhs), rhs)
-          case _                          => default
+
+          case (BinaryOp(op1 @ (=== | !== | < | <= | > | >=), l1, r1),
+                BinaryOp(op2 @ (=== | !== | < | <= | > | >=), l2, r2))
+              if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
+                  (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
+                  (l1 == l2 && r1 == r2)) =>
+            val canBeEqual =
+              ((op1 == ===) || (op1 == <=) || (op1 == >=)) ||
+              ((op2 == ===) || (op2 == <=) || (op2 == >=))
+            val canBeLessThan =
+              ((op1 == !==) || (op1 == <) || (op1 == <=)) ||
+              ((op2 == !==) || (op2 == <) || (op2 == <=))
+            val canBeGreaterThan =
+              ((op1 == !==) || (op1 == >) || (op1 == >=)) ||
+              ((op2 == !==) || (op2 == >) || (op2 == >=))
+
+            fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
+
+          case _ => default
         }
 
       case Boolean_&& =>
@@ -2009,39 +2243,109 @@ abstract class OptimizerCore {
           case (_, BooleanLiteral(true))  => lhs
           case (_, BooleanLiteral(false)) =>
             Block(keepOnlySideEffects(lhs), rhs)
-          case _                          => default
+
+          case (BinaryOp(op1 @ (=== | !== | < | <= | > | >=), l1, r1),
+                BinaryOp(op2 @ (=== | !== | < | <= | > | >=), l2, r2))
+              if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
+                  (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
+                  (l1 == l2 && r1 == r2)) =>
+            val canBeEqual =
+              ((op1 == ===) || (op1 == <=) || (op1 == >=)) &&
+              ((op2 == ===) || (op2 == <=) || (op2 == >=))
+            val canBeLessThan =
+              ((op1 == !==) || (op1 == <) || (op1 == <=)) &&
+              ((op2 == !==) || (op2 == <) || (op2 == <=))
+            val canBeGreaterThan =
+              ((op1 == !==) || (op1 == >) || (op1 == >=)) &&
+              ((op2 == !==) || (op2 == >) || (op2 == >=))
+
+            fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
+
+          case _ => default
         }
 
-      case < =>
-        (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l < r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l < r)
-          case _                                      => default
+      case < | <= | > | >= =>
+        def flippedOp = (op: @switch) match {
+          case <  => >
+          case <= => >=
+          case >  => <
+          case >= => <=
         }
 
-      case <= =>
-        (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l <= r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l <= r)
-          case _                                      => default
-        }
+        if (lhs.tpe == IntType && rhs.tpe == IntType) {
+          (lhs, rhs) match {
+            case (IntLiteral(l), IntLiteral(r)) =>
+              val result = (op: @switch) match {
+                case <  => l < r
+                case <= => l <= r
+                case >  => l > r
+                case >= => l >= r
+              }
+              BooleanLiteral(result)
 
-      case > =>
-        (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l > r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l > r)
-          case _                                      => default
-        }
+            case (_, IntLiteral(Int.MinValue)) =>
+              if (op == < || op == >=)
+                Block(keepOnlySideEffects(lhs), BooleanLiteral(op == >=))
+              else
+                foldBinaryOp(if (op == <=) === else !==, lhs, rhs)
 
-      case >= =>
-        (lhs, rhs) match {
-          case (IntLiteral(l), IntLiteral(r))         => BooleanLiteral(l >= r)
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => BooleanLiteral(l >= r)
-          case _                                      => default
+            case (_, IntLiteral(Int.MaxValue)) =>
+              if (op == > || op == <=)
+                Block(keepOnlySideEffects(lhs), BooleanLiteral(op == <=))
+              else
+                foldBinaryOp(if (op == >=) === else !==, lhs, rhs)
+
+            case (IntLiteral(_), _) => foldBinaryOp(flippedOp, rhs, lhs)
+            case _                  => default
+          }
+        } else {
+          (lhs, rhs) match {
+            case (IntOrDoubleLit(l), IntOrDoubleLit(r)) =>
+              val result = (op: @switch) match {
+                case <  => l < r
+                case <= => l <= r
+                case >  => l > r
+                case >= => l >= r
+              }
+              BooleanLiteral(result)
+
+            case _ => default
+          }
         }
 
       case _ =>
         default
+    }
+  }
+
+  private def fold3WayComparison(canBeEqual: Boolean, canBeLessThan: Boolean,
+      canBeGreaterThan: Boolean, lhs: Tree, rhs: Tree)(
+      implicit pos: Position): Tree = {
+    import BinaryOp._
+    if (canBeEqual) {
+      if (canBeLessThan) {
+        if (canBeGreaterThan)
+          Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs), BooleanLiteral(true))
+        else
+          foldBinaryOp(<=, lhs, rhs)
+      } else {
+        if (canBeGreaterThan)
+          foldBinaryOp(>=, lhs, rhs)
+        else
+          foldBinaryOp(===, lhs, rhs)
+      }
+    } else {
+      if (canBeLessThan) {
+        if (canBeGreaterThan)
+          foldBinaryOp(!==, lhs, rhs)
+        else
+          foldBinaryOp(<, lhs, rhs)
+      } else {
+        if (canBeGreaterThan)
+          foldBinaryOp(>, lhs, rhs)
+        else
+          Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs), BooleanLiteral(false))
+      }
     }
   }
 
@@ -2179,7 +2483,7 @@ abstract class OptimizerCore {
       val newName = freshLocalName(name)
       val newOriginalName = originalName.orElse(Some(newName))
       val localDef = LocalDef(RefinedType(ptpe), mutable,
-          ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true)))
+          ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
       val newParamDef = ParamDef(
           Ident(newName, newOriginalName)(ident.pos), ptpe, mutable)(p.pos)
       ((name -> localDef), newParamDef)
@@ -2391,7 +2695,8 @@ abstract class OptimizerCore {
 
       val used = new SimpleState(false)
       withState(used) {
-        def doBuildInner(localDef: LocalDef)(varDef: => VarDef): TailRec[Tree] = {
+        def doBuildInner(localDef: LocalDef)(varDef: => VarDef)(
+            cont: PreTransCont): TailRec[Tree] = {
           buildInner(localDef, { tinner =>
             if (used.value) {
               cont(PreTransBlock(varDef :: Nil, tinner))
@@ -2428,15 +2733,56 @@ abstract class OptimizerCore {
             doBuildInner(localDef) {
               VarDef(Ident(newName, newOriginalName), recordType, mutable,
                   valueTree)
-            }
+            } (cont)
 
           case PreTransTree(valueTree, valueTpe) =>
-            val localDef = LocalDef(tpe, mutable,
-                ReplaceWithVarRef(newName, newOriginalName, used))
-            doBuildInner(localDef) {
-              VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
-                  valueTree)
+            def doDoBuildInner(optValueTree: Option[() => Tree])(
+                cont1: PreTransCont) = {
+              val localDef = LocalDef(tpe, mutable, ReplaceWithVarRef(
+                  newName, newOriginalName, used, optValueTree))
+              doBuildInner(localDef) {
+                VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
+                    optValueTree.fold(valueTree)(_()))
+              } (cont1)
             }
+            if (mutable) {
+              doDoBuildInner(None)(cont)
+            } else (valueTree match {
+              case LongFromInt(arg) =>
+                withNewLocalDef(
+                    Binding("x", None, IntType, false, PreTransTree(arg))) {
+                  (intLocalDef, cont1) =>
+                    doDoBuildInner(Some(
+                        () => LongFromInt(intLocalDef.newReplacement)))(
+                        cont1)
+                } (cont)
+
+              case UnaryOp(UnaryOp.Long_-, LongFromInt(arg)) =>
+                withNewLocalDef(
+                    Binding("x", None, IntType, false, PreTransTree(arg))) {
+                  (intLocalDef, cont1) =>
+                    doDoBuildInner(Some(
+                        () => UnaryOp(UnaryOp.Long_-, LongFromInt(intLocalDef.newReplacement))))(
+                        cont1)
+                } (cont)
+
+              case BinaryOp(op @ (BinaryOp.Long_+ | BinaryOp.Long_-),
+                  LongFromInt(intLhs), LongFromInt(intRhs)) =>
+                withNewLocalDefs(List(
+                    Binding("x", None, IntType, false, PreTransTree(intLhs)),
+                    Binding("y", None, IntType, false, PreTransTree(intRhs)))) {
+                  (intLocalDefs, cont1) =>
+                    val List(lhsLocalDef, rhsLocalDef) = intLocalDefs
+                    doDoBuildInner(Some(
+                        () => BinaryOp(op,
+                            LongFromInt(lhsLocalDef.newReplacement),
+                            LongFromInt(rhsLocalDef.newReplacement))))(
+                        cont1)
+                } (cont)
+
+              case _ =>
+                doDoBuildInner(None)(cont)
+            })
         }
       }
     }
@@ -2463,7 +2809,7 @@ abstract class OptimizerCore {
         case PreTransTree(VarRef(Ident(refName, refOriginalName), false), _) =>
           buildInner(LocalDef(refinedType, false,
               ReplaceWithVarRef(refName, refOriginalName,
-                  new SimpleState(true))), cont)
+                  new SimpleState(true), None)), cont)
 
         case _ =>
           withDedicatedVar(refinedType)
@@ -2577,7 +2923,7 @@ object OptimizerCore {
       replacement: LocalDefReplacement) {
 
     def newReplacement(implicit pos: Position): Tree = replacement match {
-      case ReplaceWithVarRef(name, originalName, used) =>
+      case ReplaceWithVarRef(name, originalName, used, _) =>
         used.value = true
         VarRef(Ident(name, originalName), mutable)(tpe.base)
 
@@ -2617,7 +2963,8 @@ object OptimizerCore {
 
   private final case class ReplaceWithVarRef(name: String,
       originalName: Option[String],
-      used: SimpleState[Boolean]) extends LocalDefReplacement
+      used: SimpleState[Boolean],
+      longOpTree: Option[() => Tree]) extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: String,
       originalName: Option[String],
@@ -2787,6 +3134,33 @@ object OptimizerCore {
       case _                => None
     }
   }
+
+  private object LongFromInt {
+    def apply(x: Tree)(implicit pos: Position): Tree = x match {
+      case IntLiteral(v) => LongLiteral(v)
+      case _             => UnaryOp(UnaryOp.IntToLong, x)
+    }
+
+    def unapply(tree: Tree): Option[Tree] = tree match {
+      case LongLiteral(v) if v.toInt == v => Some(IntLiteral(v.toInt)(tree.pos))
+      case UnaryOp(UnaryOp.IntToLong, x)  => Some(x)
+      case _                              => None
+    }
+  }
+
+  /** Tests whether `x + y` is valid without falling out of range. */
+  private def canAddLongs(x: Long, y: Long): Boolean =
+    if (y >= 0) x+y >= x
+    else        x+y <  x
+
+  /** Tests whether `x - y` is valid without falling out of range. */
+  private def canSubtractLongs(x: Long, y: Long): Boolean =
+    if (y >= 0) x-y <= x
+    else        x-y >  x
+
+  /** Tests whether `-x` is valid without falling out of range. */
+  private def canNegateLong(x: Long): Boolean =
+    x != Long.MinValue
 
   private trait State[A] {
     def makeBackup(): A
