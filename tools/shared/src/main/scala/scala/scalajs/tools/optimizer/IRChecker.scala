@@ -495,9 +495,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         (op: @switch) match {
           case `typeof` =>
             typecheckExpr(lhs, env)
-          case Int_+ | Int_- | Int_~ =>
+          case Int_- | Int_~ =>
             typecheckExpect(lhs, env, IntType)
-          case Double_+ | Double_- | DoubleToInt =>
+          case Double_- | DoubleToInt =>
             typecheckExpect(lhs, env, DoubleType)
           case Boolean_! =>
             typecheckExpect(lhs, env, BooleanType)

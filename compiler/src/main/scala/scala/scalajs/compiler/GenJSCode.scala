@@ -2107,10 +2107,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case List(source) =>
           (code match {
             case POS =>
-              js.UnaryOp((resultType: @unchecked) match {
-                case jstpe.IntType    => js.UnaryOp.Int_+
-                case jstpe.DoubleType => js.UnaryOp.Double_+
-              }, source)
+              source
             case NEG =>
               js.UnaryOp((resultType: @unchecked) match {
                 case jstpe.IntType    => js.UnaryOp.Int_-
