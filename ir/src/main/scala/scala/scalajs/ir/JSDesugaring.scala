@@ -1012,6 +1012,8 @@ object JSDesugaring {
 
       implicit val pos = tree.pos
 
+      def or0(tree: Tree): Tree = JSBinaryOp("|", tree, IntLiteral(0))
+
       tree match {
         case New(cls, ctor, args) =>
           JSApply(JSNew(encodeClassVar(cls.className), Nil) DOT ctor,
@@ -1045,7 +1047,8 @@ object JSDesugaring {
           (op: @switch) match {
             case `typeof`         => JSUnaryOp("typeof", newLhs)
             case Int_+ | Double_+ => JSUnaryOp("+", newLhs)
-            case Int_- | Double_- => JSUnaryOp("-", newLhs)
+            case Int_-            => or0(UnaryOp("-", newLhs))
+            case Double_-         => UnaryOp("-", newLhs)
             case Int_~            => JSUnaryOp("~", newLhs)
             case Boolean_!        => JSUnaryOp("!", newLhs)
             case DoubleToInt      => JSBinaryOp("|", newLhs, IntLiteral(0))
@@ -1069,8 +1072,6 @@ object JSDesugaring {
 
           val newLhs = transformExpr(lhs1)
           val newRhs = transformExpr(rhs)
-
-          def or0(tree: Tree): Tree = JSBinaryOp("|", tree, IntLiteral(0))
 
           (op: @switch) match {
             case === => JSBinaryOp("===", newLhs, newRhs)
