@@ -28,6 +28,21 @@ object IntTest extends JasmineTest {
 
   describe("Int primitives") {
 
+    it("should support unary -") {
+      def test(a: Int, expected: Int): Unit =
+        expect(-a).toEqual(expected)
+
+      test(56, -56)
+      test(0, 0)
+      test(-36, 36)
+
+      test(MaxVal, -MaxVal)
+      test(MinVal, -MinVal)
+      test(-MaxVal, MaxVal)
+      test(AlmostMinVal, -AlmostMinVal)
+      test(AlmostMaxVal, -AlmostMaxVal)
+    }
+
     it("should support +") {
       def test(a: Int, b: Int, expected: Int): Unit =
         expect(a + b).toEqual(expected)
