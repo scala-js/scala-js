@@ -1023,6 +1023,15 @@ abstract class OptimizerCore {
       else stat
     case Closure(_, _, _, _, captures) =>
       Block(captures.map(keepOnlySideEffects))(stat.pos)
+    case UnaryOp(_, arg) =>
+      keepOnlySideEffects(arg)
+    case BinaryOp(op @ (BinaryOp.Boolean_|| | BinaryOp.Boolean_&&), lhs, rhs) =>
+      keepOnlySideEffects(rhs) match {
+        case Skip() => keepOnlySideEffects(lhs)
+        case newRhs => BinaryOp(op, lhs, newRhs)(stat.pos)
+      }
+    case BinaryOp(_, lhs, rhs) =>
+      Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs))(stat.pos)
     case RecordValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case _ =>
@@ -1680,6 +1689,8 @@ abstract class OptimizerCore {
       case Int_% =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) if r != 0 => IntLiteral(l % r)
+          case (_, IntLiteral(1 | -1))                  =>
+            Block(keepOnlySideEffects(lhs), IntLiteral(0))
           case _                                        => default
         }
 
@@ -1803,6 +1814,8 @@ abstract class OptimizerCore {
           case (BooleanLiteral(true), _)  => lhs
           case (BooleanLiteral(false), _) => rhs
           case (_, BooleanLiteral(false)) => lhs
+          case (_, BooleanLiteral(true))  =>
+            Block(keepOnlySideEffects(lhs), rhs)
           case _                          => default
         }
 
@@ -1811,6 +1824,8 @@ abstract class OptimizerCore {
           case (BooleanLiteral(false), _) => lhs
           case (BooleanLiteral(true), _)  => rhs
           case (_, BooleanLiteral(true))  => lhs
+          case (_, BooleanLiteral(false)) =>
+            Block(keepOnlySideEffects(lhs), rhs)
           case _                          => default
         }
 
