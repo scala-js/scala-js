@@ -1022,6 +1022,9 @@ object JSDesugaring {
 
       implicit val pos = tree.pos
 
+      def or0(tree: js.Tree): js.Tree =
+        js.BinaryOp("|", tree, js.IntLiteral(0))
+
       tree match {
         // Control flow constructs
 
@@ -1065,7 +1068,8 @@ object JSDesugaring {
           (op: @switch) match {
             case `typeof`         => js.UnaryOp("typeof", newLhs)
             case Int_+ | Double_+ => js.UnaryOp("+", newLhs)
-            case Int_- | Double_- => js.UnaryOp("-", newLhs)
+            case Int_-            => or0(js.UnaryOp("-", newLhs))
+            case Double_-         => js.UnaryOp("-", newLhs)
             case Int_~            => js.UnaryOp("~", newLhs)
             case Boolean_!        => js.UnaryOp("!", newLhs)
             case DoubleToInt      => js.BinaryOp("|", newLhs, js.IntLiteral(0))
@@ -1089,9 +1093,6 @@ object JSDesugaring {
 
           val newLhs = transformExpr(lhs1)
           val newRhs = transformExpr(rhs)
-
-          def or0(tree: js.Tree): js.Tree =
-            js.BinaryOp("|", tree, js.IntLiteral(0))
 
           (op: @switch) match {
             case === => js.BinaryOp("===", newLhs, newRhs)
