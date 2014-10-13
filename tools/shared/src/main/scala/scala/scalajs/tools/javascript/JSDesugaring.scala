@@ -1067,7 +1067,6 @@ object JSDesugaring {
           val newLhs = transformExpr(lhs)
           (op: @switch) match {
             case `typeof`         => js.UnaryOp("typeof", newLhs)
-            case Int_+ | Double_+ => js.UnaryOp("+", newLhs)
             case Int_-            => or0(js.UnaryOp("-", newLhs))
             case Double_-         => js.UnaryOp("-", newLhs)
             case Int_~            => js.UnaryOp("~", newLhs)

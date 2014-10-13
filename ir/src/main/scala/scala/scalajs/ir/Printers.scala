@@ -261,7 +261,6 @@ object Printers {
           import UnaryOp._
           print("(", (op: @switch) match {
             case `typeof`         => "typeof"
-            case Int_+ | Double_+ => "+"
             case Int_- | Double_- => "-"
             case Int_~            => "~"
             case Boolean_!        => "!"

@@ -209,10 +209,10 @@ object Trees {
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     import UnaryOp._
     val tpe = (op: @switch) match {
-      case `typeof`                            => StringType
-      case Int_+ | Int_- | Int_~ | DoubleToInt => IntType
-      case Double_+ | Double_-                 => DoubleType
-      case Boolean_!                           => BooleanType
+      case `typeof`                    => StringType
+      case Int_- | Int_~ | DoubleToInt => IntType
+      case Double_-                    => DoubleType
+      case Boolean_!                   => BooleanType
     }
   }
 
@@ -222,16 +222,14 @@ object Trees {
 
     final val typeof = 1
 
-    final val Int_+ = 2
-    final val Int_- = 3
-    final val Int_~ = 4
+    final val Int_- = 2
+    final val Int_~ = 3
 
-    final val Double_+ = 5
-    final val Double_- = 6
+    final val Double_- = 4
 
-    final val Boolean_! = 7
+    final val Boolean_! = 5
 
-    final val DoubleToInt = 8
+    final val DoubleToInt = 6
   }
 
   /** Binary operation (always preserves pureness). */

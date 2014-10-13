@@ -1551,8 +1551,6 @@ abstract class OptimizerCore {
     import UnaryOp._
     @inline def default = UnaryOp(op, arg)
     (op: @switch) match {
-      case Int_+ | Double_+ =>
-        arg
       case Int_- =>
         arg match {
           case IntLiteral(v)     => IntLiteral(-v)
