@@ -2,6 +2,8 @@ package scala.scalajs.tools.io
 
 import scala.annotation.tailrec
 
+import scala.reflect.ClassTag
+
 import java.io._
 
 object IO {
@@ -41,7 +43,7 @@ object IO {
 
   /** Reads the entire content of a reader as a string. */
   def readReaderToString(reader: Reader): String = {
-    val buffer = new Array[Char](4096)
+    val buffer = newBuffer[Char]
     val builder = new StringBuilder
     @tailrec
     def loop(): Unit = {
@@ -64,7 +66,7 @@ object IO {
   /** Reads the entire content of an input stream as a byte array. */
   def readInputStreamToByteArray(stream: InputStream): Array[Byte] = {
     val builder = new ByteArrayOutputStream()
-    val buffer = new Array[Byte](4096)
+    val buffer = newBuffer[Byte]
     @tailrec
     def loop(): Unit = {
       val size = stream.read(buffer)
@@ -76,4 +78,39 @@ object IO {
     loop()
     builder.toByteArray()
   }
+
+  /** Concatenates a bunch of VirtualTextFiles to a WritableVirtualTextFile.
+   *  Adds a '\n' after each file.
+   */
+  def concatFiles(output: WritableVirtualTextFile,
+      files: Seq[VirtualTextFile]): Unit = {
+    val buffer = newBuffer[Char]
+    val out = output.contentWriter
+
+    try {
+      for (file <- files) {
+        val reader = file.reader
+
+        @tailrec
+        def loop(): Unit = {
+          val size = reader.read(buffer)
+          if (size > 0) {
+            out.write(buffer, 0, size)
+            loop()
+          }
+        }
+
+        try loop()
+        finally reader.close()
+
+        // New line after each file
+        out.write('\n')
+      }
+    } finally {
+      out.close()
+    }
+  }
+
+  @inline
+  private def newBuffer[T : ClassTag] = new Array[T](4096)
 }

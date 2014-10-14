@@ -26,9 +26,9 @@ trait AbstractJarLibClasspathBuilder extends JarTraverser {
   private val jsFiles = mutable.Map.empty[String, VirtualJSFile]
   private var dependency: Option[JSDependencyManifest] = None
 
-  def build(jar: File): PartialIRClasspath = {
+  def build(jar: File): PartialClasspath = {
     val v = traverseJar(jar)
-    new PartialIRClasspath(dependency.toList,
+    new PartialClasspath(dependency.toList,
         jsFiles.toMap, irFiles.toList, Some(v))
   }
 
@@ -43,9 +43,6 @@ trait AbstractJarLibClasspathBuilder extends JarTraverser {
     if (!jsFiles.contains(file.name))
       jsFiles += file.name -> file
   }
-
-  override protected def handleTopLvlJS(js: => VirtualJSFile): Unit =
-    sys.error("A JAR cannot contain top-level JS")
 
   override protected def handleDepManifest(m: => JSDependencyManifest): Unit = {
     if (dependency.isDefined)

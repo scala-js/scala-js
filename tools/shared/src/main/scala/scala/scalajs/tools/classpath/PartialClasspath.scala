@@ -15,44 +15,44 @@ import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.corelib.CoreJSLibs
 
-/** A classpath to which other elements still may be added. */
-abstract class PartialClasspath(
+/** A partial Scala.js classpath is a collection of:
+ *  - Scala.js binary files *.sjsir
+ *  - Native JavaScript libraries
+ *  - Description of dependencies on other JavaScript libraries
+ *
+ *  PartialClasspaths can be combined (using [[merge]]) and eventually resolved
+ *  to a [[CompleteIRClasspath]]
+ */
+final class PartialClasspath(
     /** Description of JS libraries the content of this classpath depends on */
     val dependencies: Traversable[JSDependencyManifest],
     /** JS libraries this partial classpath provides */
     val availableLibs: Map[String, VirtualJSFile],
+    /** Scala.js IR contained in this PartialClasspath (unordered) */
+    val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     val version: Option[String]
 ) {
   import PartialClasspath.DependencyFilter
 
-  /** Ordered Scala.js code in this PartialClasspath (packaged or IR) */
-  def scalaJSCode: Seq[VirtualJSFile]
-
-  /** Appends another PartialClasspath to this one. This means:
+  /** Merges another [[PartialClasspath]] with this one. This means:
    *  - Concatenate/merge dependencies
    *  - Merge availableLibs (libs in that shadow libs in this)
-   *  - Concatenate scalaJSCode (maintaining order)
-   *
-   *  Also have a look at [[PartialIRClasspath#merge]]
+   *  - Merge Scala.js IR
    */
-  def append(that: PartialClasspath): PartialClasspath = {
-    PartialClasspath(
+  def merge(that: PartialClasspath): PartialClasspath = {
+    new PartialClasspath(
         this.dependencies  ++ that.dependencies,
         this.availableLibs ++ that.availableLibs,
-        this.scalaJSCode   ++ that.scalaJSCode,
+        this.scalaJSIR     ++ that.scalaJSIR,
         CacheUtils.joinVersions(this.version, that.version))
   }
 
-  /** Construct a CompleteClasspath out of this PartialClasspath by:
-   *  - Resolving library dependencies (and failing if they are not met)
-   *  - Adding the CoreJSLib
-   *
-   *  PartialIRClasspath overrides this to return a CompleteIRClasspath
+  /** Construct a [[IRClasspath]] out of this [[PartialClasspath]] by
+   *  resolving library dependencies (and failing if they are not met)
    */
-  def resolve(filter: DependencyFilter = identity): CompleteCIClasspath = {
-    CompleteCIClasspath(resolveDependencies(filter),
-        CoreJSLibs.libs ++ scalaJSCode, dependencies.exists(_.requiresDOM),
-        version)
+  def resolve(filter: DependencyFilter = identity): IRClasspath = {
+    new IRClasspath(resolveDependencies(filter), scalaJSIR,
+        dependencies.exists(_.requiresDOM), version)
   }
 
   /** Constructs an ordered list of JS libraries to include. Fails if:
@@ -82,21 +82,7 @@ object PartialClasspath {
   type DependencyFilter =
     Traversable[FlatJSDependency] => Traversable[FlatJSDependency]
 
-  private class SimplePartialClasspath(
-      dependencies: Traversable[JSDependencyManifest],
-      availableLibs: Map[String, VirtualJSFile],
-      val scalaJSCode: Seq[VirtualJSFile],
-      version: Option[String]
-  ) extends PartialClasspath(dependencies, availableLibs, version)
-
-  /** Creates a PartialClasspath with the specified contents. */
-  def apply(deps: Traversable[JSDependencyManifest],
-      availableLibs: Map[String, VirtualJSFile],
-      scalaJSCode: Seq[VirtualJSFile],
-      version: Option[String]): PartialClasspath =
-    new SimplePartialClasspath(deps, availableLibs, scalaJSCode, version)
-
   /** Creates an empty PartialClasspath */
   def empty: PartialClasspath =
-    new SimplePartialClasspath(Nil, Map.empty, Nil, Some(""))
+    new PartialClasspath(Nil, Map.empty, Nil, Some(""))
 }

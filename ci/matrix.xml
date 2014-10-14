@@ -15,26 +15,34 @@
 
   <task id="main"><![CDATA[
     sbt ++$scala package packageDoc &&
-    sbt ++$scala helloworld/run helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
+    sbt ++$scala helloworld/run \
+        helloworld/fastOptStage::run \
+        helloworld/fullOptStage::run \
+        helloworld/clean &&
+    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.helloworld ~= (_.withDisableOptimizer(true))' \
+        ++$scala helloworld/fastOptStage::run helloworld/clean &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
-        ++$scala helloworld/packageStage::run helloworld/fastOptStage::run helloworld/fullOptStage::run &&
-    sbt ++$scala testingExample/test testingExample/packageStage::test testingExample/fastOptStage::test testingExample/fullOptStage::test &&
+        ++$scala helloworld/fastOptStage::run helloworld/fullOptStage::run &&
+    sbt ++$scala testingExample/test \
+        testingExample/fastOptStage::test \
+        testingExample/fullOptStage::test \
+        testingExample/clean &&
+    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testingExample ~= (_.withDisableOptimizer(true))' \
+        ++$scala testingExample/fastOptStage::test &&
     sbt ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
-         "testSuite/packageStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "noIrCheckTest/testOnly -- -- -trhino -tsource-maps" \
-         "noIrCheckTest/packageStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "noIrCheckTest/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
+         "noIrCheckTest/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         testSuite/clean &&
+    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+         ++$scala "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
+         testSuite/clean &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
          ++$scala \
-         "testSuite/packageStage::testOnly -- -- -tphantomjs" \
          "testSuite/fastOptStage::testOnly -- -- -tphantomjs" \
          "testSuite/fullOptStage::testOnly -- -- -tphantomjs" \
-         "noIrCheckTest/packageStage::testOnly -- -- -tphantomjs" \
-         "noIrCheckTest/fastOptStage::testOnly -- -- -tphantomjs" \
-         "noIrCheckTest/fullOptStage::testOnly -- -- -tphantomjs" \
          testSuite/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
          ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
@@ -43,7 +51,7 @@
     sbt ++$scala \
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
-    sbt ++$scala compiler/test reversi/packageJS reversi/fastOptJS reversi/fullOptJS &&
+    sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
@@ -80,10 +88,6 @@
 
   <task id="partest-fullopt"><![CDATA[
     sbt ++$scala package "partestSuite/testOnly -- --fullOpt"
-  ]]></task>
-
-  <task id="partest-dfullopt"><![CDATA[
-    sbt ++$scala package "partestSuite/testOnly -- --dfullOpt"
   ]]></task>
 
   <matrix id="pr">
@@ -134,9 +138,6 @@
     <run task="partest-fullopt">
       <v n="scala">2.11.0</v>
     </run>
-    <run task="partest-dfullopt">
-      <v n="scala">2.11.0</v>
-    </run>
     <run task="partest-noopt">
       <v n="scala">2.11.1</v>
     </run>
@@ -146,9 +147,6 @@
     <run task="partest-fullopt">
       <v n="scala">2.11.1</v>
     </run>
-    <run task="partest-dfullopt">
-      <v n="scala">2.11.1</v>
-    </run>
     <run task="partest-noopt">
       <v n="scala">2.11.2</v>
     </run>
@@ -156,9 +154,6 @@
       <v n="scala">2.11.2</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
-    </run>
-    <run task="partest-dfullopt">
       <v n="scala">2.11.2</v>
     </run>
   </matrix>

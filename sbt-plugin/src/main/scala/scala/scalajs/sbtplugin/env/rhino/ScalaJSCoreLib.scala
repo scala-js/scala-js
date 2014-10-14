@@ -20,7 +20,7 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.corelib._
 
-class ScalaJSCoreLib(classpath: CompleteIRClasspath) {
+class ScalaJSCoreLib(classpath: IRClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {

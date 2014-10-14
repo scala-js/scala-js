@@ -27,14 +27,10 @@ trait ClasspathElementsTraverser extends JarTraverser
   private def readEntriesInClasspathElement(element: File): String = {
     if (isDirectory(element))
       traverseDir(element)
-    else if (isJSFile(element)) {
-      handleTopLvlJS(toJSFile(element))
-      getGlobalVersion(element)
-    } else if (isJARFile(element)) {
-      // We assume it is a jar
+    else if (isJARFile(element)) {
       traverseJar(element)
     } else
-      sys.error(s"$element (in classpath) is neither JS, JAR or directory")
+      sys.error(s"$element (in classpath) is neither JAR or directory")
   }
 
 }

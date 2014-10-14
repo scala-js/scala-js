@@ -37,7 +37,6 @@ object ScalaJSPartestOptions {
       case "none"  => NoOpt
       case "fast"  => FastOpt
       case "full"  => FullOpt
-      case "dfull" => DirectFullOpt
       case _       => sys.error(s"Unknown optimization mode: $id")
     }
   }
@@ -52,10 +51,6 @@ object ScalaJSPartestOptions {
   case object FullOpt extends OptMode {
     def shortStr: String = "Full"
     def id: String = "full"
-  }
-  case object DirectFullOpt extends OptMode {
-    def shortStr: String = "Full (direct)"
-    def id: String = "dfull"
   }
 
   def apply(args: Array[String],
@@ -88,8 +83,6 @@ object ScalaJSPartestOptions {
         optMode = NoOpt
       case "--fullOpt" =>
         optMode = FullOpt
-      case "--dfullOpt" =>
-        optMode = DirectFullOpt
       case "--blacklisted" =>
         setFilter(BlacklistedTests)
       case "--buglisted" =>

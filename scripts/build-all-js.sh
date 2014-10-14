@@ -1,6 +1,6 @@
 #! /bin/sh
 
-tasks="packageJS fastOptJS fullOptJS"
+tasks="fastOptJS fullOptJS"
 projects="helloworld/ reversi/ testingExample/test: testSuite/test:"
 
 for v in 2.11.2 2.10.4; do

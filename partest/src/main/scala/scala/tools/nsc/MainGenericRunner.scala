@@ -72,7 +72,7 @@ class MainGenericRunner {
       if (f.isDirectory || f.getName.startsWith("scalajs-library"))
     } yield f
     val classpath =
-      PartialClasspathBuilder.buildIR(usefulClasspathEntries).resolve()
+      PartialClasspathBuilder.build(usefulClasspathEntries).resolve()
 
     val logger    = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
@@ -81,11 +81,10 @@ class MainGenericRunner {
     val baseRunner  = runnerJSFile(mainObjName, command.arguments)
 
     def fastOpted = fastOptimize(classpath, mainObjName, logger)
-    def fullOpted = fullOptimize(fastOpted, mainObjName, logger, baseRunner)
-    def dfullOpted = directFullOptimize(classpath, mainObjName, logger, baseRunner)
+    def fullOpted = fullOptimize(classpath, mainObjName, logger, baseRunner)
 
     val runner = {
-      if (optMode == FullOpt || optMode == DirectFullOpt)
+      if (optMode == FullOpt)
         fullOptRunner()
       else
         baseRunner
@@ -96,7 +95,6 @@ class MainGenericRunner {
       case NoOpt         => classpath
       case FastOpt       => fastOpted
       case FullOpt       => fullOpted
-      case DirectFullOpt => dfullOpted
     }
 
     env.runJS(runClasspath, runner, logger, jsConsole)
@@ -119,7 +117,7 @@ class MainGenericRunner {
   }
 
   private def fastOptimize(
-      classpath: CompleteIRClasspath,
+      classpath: IRClasspath,
       mainObjName: String,
       logger: Logger) = {
     import ScalaJSOptimizer._
@@ -149,27 +147,7 @@ class MainGenericRunner {
   }
 
   private def fullOptimize(
-      classpath: CompleteCIClasspath,
-      mainObjName: String,
-      logger: Logger,
-      runner: VirtualJSFile) = {
-    import ScalaJSClosureOptimizer._
-
-    val optimizer = new ScalaJSClosureOptimizer
-    val output = WritableMemVirtualJSFile("partest fullOpt file")
-    val exportFile = fullOptExportFile(runner)
-
-    optimizer.optimizeCP(
-      Inputs(
-        classpath,
-        additionalExports = exportFile :: Nil
-      ),
-      OutputConfig(output),
-      logger)
-  }
-
-  private def directFullOptimize(
-      classpath: CompleteIRClasspath,
+      classpath: IRClasspath,
       mainObjName: String,
       logger: Logger,
       runner: VirtualJSFile) = {
@@ -177,16 +155,16 @@ class MainGenericRunner {
 
     val fastOptimizer = newScalaJSOptimizer
     val fullOptimizer = new ScalaJSClosureOptimizer
-    val output = WritableMemVirtualJSFile("partest dfullOpt file")
+    val output = WritableMemVirtualJSFile("partest fullOpt file")
     val exportFile = fullOptExportFile(runner)
 
-    fullOptimizer.directOptimizeCP(fastOptimizer, Inputs(
+    fullOptimizer.optimizeCP(fastOptimizer, Inputs(
       input = ScalaJSOptimizer.Inputs(
         classpath,
         manuallyReachable = fastOptReachable(mainObjName),
         noWarnMissing = noWarnMissing),
       additionalExports = exportFile :: Nil),
-      DirectOutputConfig(
+      OutputConfig(
         output,
         checkIR = true,
         wantSourceMap = false),

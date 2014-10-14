@@ -9,20 +9,18 @@
 
 package scala.scalajs.tools.classpath
 
-import scala.collection.immutable.Seq
-
 import scala.scalajs.tools.io.VirtualJSFile
 import scala.scalajs.tools.jsdep.ResolutionInfo
 
-/** A complete classpath with non-Closure intended code: Any code that may not
- *  go through the Google Closure Compiler (in advanced mode).
- *  The ScalaJSClosureOptimizer emits such a classpath.
+import scala.collection.immutable.Seq
+
+/** A [[CompleteClasspath]] that is fully linked (either with the
+ *  [[ScalaJSOptimizer]] or the Closure Optimizer. It contains only a single
+ *  file that is scalaJSCode.
  */
-class CompleteNCClasspath(
+final class LinkedClasspath(
     jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
-    val ncjsCode: Seq[VirtualJSFile],
+    val scalaJSCode: VirtualJSFile,
     requiresDOM: Boolean,
     version: Option[String]
-) extends CompleteClasspath(jsLibs, requiresDOM, version) {
-  override def scalaJSCode: Seq[VirtualJSFile] = ncjsCode
-}
+) extends CompleteClasspath(jsLibs, requiresDOM, version)

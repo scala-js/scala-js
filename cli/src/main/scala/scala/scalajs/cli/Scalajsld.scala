@@ -22,7 +22,6 @@ import scala.scalajs.tools.optimizer.{
   ScalaJSClosureOptimizer,
   ParIncOptimizer
 }
-import scala.scalajs.tools.packager.ScalaJSPackager
 
 import scala.collection.immutable.Seq
 
@@ -37,7 +36,6 @@ object Scalajsld {
     jsoutput: Option[File] = None,
     noOpt: Boolean = false,
     fullOpt: Boolean = false,
-    directFullOpt: Boolean = true,
     prettyPrint: Boolean = false,
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
@@ -67,7 +65,7 @@ object Scalajsld {
         .text("Optimize code (this is the default)")
       opt[Unit]('n', "noOpt")
         .action { (_, c) => c.copy(noOpt = true, fullOpt = false) }
-        .text("Don't optimize code, just concatenate")
+        .text("Don't optimize code")
       opt[Unit]('u', "fullOpt")
         .action { (_, c) => c.copy(noOpt = false, fullOpt = true) }
         .text("Fully optimize code (uses Google Closure Compiler)")
@@ -84,10 +82,6 @@ object Scalajsld {
         .valueName("<path>")
         .action { (x, c) => c.copy(relativizeSourceMap = Some(x.toURI)) }
         .text("Relativize source map with respect to given path (meaningful with -s)")
-      opt[Unit]("noDirectFullOpt")
-        .action { (x, c) => c.copy(directFullOpt = false) }
-        .text("Don't pass IR trees directly to the Google Closure Compiler " +
-            "but write to an in-memory file first")
       opt[Unit]("noStdlib")
         .action { (_, c) => c.copy(stdLib = None) }
         .text("Don't automatcially include Scala.js standard library")
@@ -121,54 +115,29 @@ object Scalajsld {
     for (options <- parser.parse(args, Options())) {
       val cpFiles = options.stdLib.toList ++ options.cp
       // Load and resolve classpath
-      val cp = PartialClasspathBuilder.buildIR(cpFiles).resolve()
+      val cp = PartialClasspathBuilder.build(cpFiles).resolve()
 
       // Write JS dependencies if requested
-      for (jsout <- options.jsoutput) {
-        import ScalaJSPackager._
-        (new ScalaJSPackager).packageJS(cp.jsLibs.map(_._1),
-            OutputConfig(WritableFileVirtualJSFile(jsout)),
-            newLogger(options))
-      }
+      for (jsout <- options.jsoutput)
+        IO.concatFiles(WritableFileVirtualJSFile(jsout), cp.jsLibs.map(_._1))
 
       // Link Scala.js code
       val outFile = WritableFileVirtualJSFile(options.output)
-      if (options.fullOpt) {
-        if (options.directFullOpt) {
-          directFullOpt(cp, outFile, options)
-        } else {
-          val fastOptCP =
-            fastOpt(cp, WritableMemVirtualJSFile("temporary file"),
-                options.copy(sourceMap = false))
-          fullOpt(fastOptCP, outFile, options)
-        }
-      } else if (options.noOpt)
-        noOpt(cp, outFile, options)
+      if (options.fullOpt)
+        fullOpt(cp, outFile, options)
       else
         fastOpt(cp, outFile, options)
     }
   }
 
-  private def noOpt(cp: CompleteIRClasspath,
-      output: WritableVirtualJSFile, options: Options) = {
-    import ScalaJSPackager.OutputConfig
-
-    (new ScalaJSPackager).packageCP(cp,
-        OutputConfig(
-            output = output,
-            wantSourceMap = options.sourceMap,
-            relativizeSourceMapBase = options.relativizeSourceMap),
-        newLogger(options))
-  }
-
-  private def directFullOpt(cp: CompleteIRClasspath,
+  private def fullOpt(cp: IRClasspath,
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSClosureOptimizer._
 
-    (new ScalaJSClosureOptimizer).directOptimizeCP(
+    (new ScalaJSClosureOptimizer).optimizeCP(
         newScalaJSOptimizer,
         Inputs(ScalaJSOptimizer.Inputs(cp)),
-        DirectOutputConfig(
+        OutputConfig(
             output = output,
             wantSourceMap = options.sourceMap,
             relativizeSourceMapBase = options.relativizeSourceMap,
@@ -177,19 +146,7 @@ object Scalajsld {
         newLogger(options))
   }
 
-  private def fullOpt(cp: CompleteCIClasspath,
-      output: WritableVirtualJSFile, options: Options) = {
-    import ScalaJSClosureOptimizer._
-
-    (new ScalaJSClosureOptimizer).optimizeCP(
-        Inputs(cp),
-        OutputConfig(
-            output = output,
-            prettyPrint = options.prettyPrint),
-        newLogger(options))
-  }
-
-  private def fastOpt(cp: CompleteIRClasspath,
+  private def fastOpt(cp: IRClasspath,
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSOptimizer._
 
@@ -199,6 +156,7 @@ object Scalajsld {
             output = output,
             wantSourceMap = options.sourceMap,
             checkIR = options.checkIR,
+            disableOptimizer = options.noOpt,
             relativizeSourceMapBase = options.relativizeSourceMap),
         newLogger(options))
   }

@@ -7,10 +7,9 @@ import Keys._
 import Implicits._
 import JSUtils._
 
-import scala.scalajs.tools.io.{IO => _, _}
+import scala.scalajs.tools.io.{IO => toolsIO, _}
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
-import scala.scalajs.tools.packager._
 import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.optimizer.{
   ScalaJSOptimizer,
@@ -59,46 +58,9 @@ object ScalaJSPluginInternal {
   val scalaJSDefaultPostLinkJSEnv = TaskKey[JSEnv]("scalaJSDefaultPostLinkJSEnv",
       "Scala.js internal: Default for postLinkJSEnv", KeyRanks.Invisible)
 
-  // Lookup keys for classpath attribute maps
-  val scalaJSCompleteCIClasspath =
-    AttributeKey[CompleteCIClasspath]("scalaJSCompleteCIClasspath")
-  val scalaJSCompleteNCClasspath =
-    AttributeKey[CompleteNCClasspath]("scalaJSCompleteNCClasspath")
-
-  def packageClasspathJSTasks(classpathKey: TaskKey[Classpath],
-      packageJSKey: TaskKey[PartialClasspath],
-      outputSuffix: String): Seq[Setting[_]] = Seq(
-
-      artifactPath in packageJSKey :=
-        ((crossTarget in packageJSKey).value /
-            ((moduleName in packageJSKey).value + outputSuffix + ".js")),
-
-      packageJSKey := {
-        val s = streams.value
-        val output = (artifactPath in packageJSKey).value
-        val taskCache = WritableFileVirtualTextFile(
-            s.cacheDirectory / ("package-js" + outputSuffix))
-
-        val classpathDirs =
-          Attributed.data((classpathKey in packageJSKey).value).toList
-        val classpath = PartialClasspathBuilder.build(classpathDirs)
-
-        IO.createDirectory(output.getParentFile)
-
-        val relSourceMapBase =
-          if (relativeSourceMaps.value) Some(output.getParentFile.toURI())
-          else None
-
-        import ScalaJSPackager._
-        (new ScalaJSPackager).packageCP(classpath,
-            OutputConfig(
-                output = WritableFileVirtualJSFile(output),
-                cache = Some(taskCache),
-                wantSourceMap = (emitSourceMaps in packageJSKey).value,
-                relativizeSourceMapBase = relSourceMapBase),
-            s.log)
-      }
-  )
+  /** Lookup key for CompleteClasspath in attribute maps */
+  val scalaJSCompleteClasspath =
+    AttributeKey[CompleteClasspath]("scalaJSCompleteClasspath")
 
   /** Patches the IncOptions so that .sjsir files are pruned as needed.
    *
@@ -131,47 +93,13 @@ object ScalaJSPluginInternal {
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
-  ) ++ (
-      packageClasspathJSTasks(externalDependencyClasspath,
-          packageExternalDepsJS, "-pack-extdeps") ++
-      packageClasspathJSTasks(internalDependencyClasspath,
-          packageInternalDepsJS, "-pack-intdeps") ++
-      packageClasspathJSTasks(exportedProducts,
-          packageExportedProductsJS, "-pack-app")
   ) ++ Seq(
 
       scalaJSPreLinkClasspath := {
         val cp = fullClasspath.value
-        val pcp = PartialClasspathBuilder.buildIR(Attributed.data(cp).toList)
+        val pcp = PartialClasspathBuilder.build(Attributed.data(cp).toList)
         pcp.resolve(jsDependencyFilter.value)
       },
-
-      // The artifactPath of packageJS is the location of the corejslibs.js
-      artifactPath in packageJS :=
-        ((crossTarget in packageJS).value / "corejslibs.js"),
-
-      packageJS := {
-        streams.value.log.warn("packageJS is deprecated and may be removed " +
-            "in the future. Use fastOptJS instead.")
-
-        // If it doesn't exist, we need to write the corejslibs so they are
-        // available to HTML files
-        val envFile = (artifactPath in packageJS).value
-        if (!envFile.exists) {
-          IO.createDirectory(envFile.getParentFile)
-          for (lib <- CoreJSLibs.libs)
-            IO.append(envFile, lib.content, Charset.forName("UTF-8"))
-        }
-
-        val cps = List(
-            packageExternalDepsJS.value,
-            packageInternalDepsJS.value,
-            packageExportedProductsJS.value)
-
-        cps.reduceLeft(_ append _).resolve(jsDependencyFilter.value)
-      },
-      packageJS <<=
-        packageJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
@@ -212,7 +140,7 @@ object ScalaJSPluginInternal {
                 batchMode = opts.batchMode),
             s.log)
 
-         Attributed.blank(output).put(scalaJSCompleteCIClasspath, outCP)
+         Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
       },
       fastOptJS <<=
         fastOptJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
@@ -221,7 +149,7 @@ object ScalaJSPluginInternal {
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
 
-      fullOptJS <<= Def.taskDyn {
+      fullOptJS := {
         val s = streams.value
         val output = (artifactPath in fullOptJS).value
         val taskCache =
@@ -236,40 +164,23 @@ object ScalaJSPluginInternal {
 
         val opts = (scalaJSOptimizerOptions in fullOptJS).value
 
-        def attachToOutput(cp: CompleteNCClasspath) =
-          Attributed.blank(output).put(scalaJSCompleteNCClasspath, cp)
-
         import ScalaJSClosureOptimizer._
-        if (opts.directFullOptJS) Def.task {
-          val outCP = (new ScalaJSClosureOptimizer).directOptimizeCP(
-              (scalaJSOptimizer in fastOptJS).value,
-              Inputs(ScalaJSOptimizer.Inputs(
-                  input = (scalaJSPreLinkClasspath in fullOptJS).value)),
-              DirectOutputConfig(
-                  output = WritableFileVirtualJSFile(output),
-                  cache = Some(taskCache),
-                  wantSourceMap = (emitSourceMaps in fullOptJS).value,
-                  relativizeSourceMapBase = relSourceMapBase,
-                  checkIR = opts.checkScalaJSIR,
-                  disableOptimizer = opts.disableOptimizer,
-                  batchMode = opts.batchMode,
-                  prettyPrint = opts.prettyPrintFullOptJS),
-               s.log)
-          attachToOutput(outCP)
-        } else Def.task {
-          val targetCP =
-            (fastOptJS in fullOptJS).value.get(scalaJSCompleteCIClasspath).get
-
-          val outCP = (new ScalaJSClosureOptimizer).optimizeCP(
-            Inputs(input = targetCP),
+        val outCP = (new ScalaJSClosureOptimizer).optimizeCP(
+            (scalaJSOptimizer in fastOptJS).value,
+            Inputs(ScalaJSOptimizer.Inputs(
+                input = (scalaJSPreLinkClasspath in fullOptJS).value)),
             OutputConfig(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
+                wantSourceMap = (emitSourceMaps in fullOptJS).value,
+                relativizeSourceMapBase = relSourceMapBase,
+                checkIR = opts.checkScalaJSIR,
+                disableOptimizer = opts.disableOptimizer,
+                batchMode = opts.batchMode,
                 prettyPrint = opts.prettyPrintFullOptJS),
             s.log)
 
-          attachToOutput(outCP)
-        }
+        Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
       },
 
       artifactPath in packageScalaJSLauncher :=
@@ -304,14 +215,15 @@ object ScalaJSPluginInternal {
         else Def.task {
           val cp = scalaJSPreLinkClasspath.value
           val output = (artifactPath in packageJSDependencies).value
+          val taskCache = WritableFileVirtualJSFile(
+              streams.value.cacheDirectory / "package-js-deps")
 
           IO.createDirectory(output.getParentFile)
 
-          import ScalaJSPackager._
-          (new ScalaJSPackager).packageJS(cp.jsLibs.map(_._1),
-               OutputConfig(WritableFileVirtualJSFile(output)),
-               streams.value.log,
-               strictMode = false)
+          val outFile = WritableFileVirtualTextFile(output)
+          CacheUtils.cached(cp.version, outFile, Some(taskCache)) {
+            toolsIO.concatFiles(outFile, cp.jsLibs.map(_._1))
+          }
 
           output
         }
@@ -386,18 +298,15 @@ object ScalaJSPluginInternal {
         else new NodeJSEnv
       },
 
-      jsEnv in packageStage <<= scalaJSDefaultPostLinkJSEnv,
       jsEnv in fastOptStage <<= scalaJSDefaultPostLinkJSEnv,
       jsEnv in fullOptStage <<= scalaJSDefaultPostLinkJSEnv,
 
       // Define execution classpaths
       scalaJSExecClasspath                 := scalaJSPreLinkClasspath.value,
-      scalaJSExecClasspath in packageStage := packageJS.value,
-      scalaJSExecClasspath in fastOptStage := fastOptJS.value.get(scalaJSCompleteCIClasspath).get,
-      scalaJSExecClasspath in fullOptStage := fullOptJS.value.get(scalaJSCompleteNCClasspath).get,
+      scalaJSExecClasspath in fastOptStage := fastOptJS.value.get(scalaJSCompleteClasspath).get,
+      scalaJSExecClasspath in fullOptStage := fullOptJS.value.get(scalaJSCompleteClasspath).get,
 
       // Dummy task need dummy tags (used for concurrency restrictions)
-      tags in packageStage := Seq(),
       tags in fastOptStage := Seq(),
       tags in fullOptStage := Seq()
   )
@@ -503,7 +412,6 @@ object ScalaJSPluginInternal {
       scalaJSRunSettings ++
 
       // Staged runners
-      inTask(packageStage)(scalaJSRunSettings) ++
       inTask(fastOptStage)(scalaJSRunSettings) ++
       inTask(fullOptStage)(scalaJSRunSettings)
   )
@@ -590,9 +498,7 @@ object ScalaJSPluginInternal {
   val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
-      Seq(packageExternalDepsJS, packageInternalDepsJS,
-          packageExportedProductsJS,
-          fastOptJS, fullOptJS, packageScalaJSLauncher,
+      Seq(fastOptJS, fullOptJS, packageScalaJSLauncher,
           packageJSDependencies) map { packageJSTask =>
         moduleName in packageJSTask := moduleName.value + "-test"
       }
@@ -603,7 +509,6 @@ object ScalaJSPluginInternal {
       scalaJSTestFrameworkSettings ++
 
       // Add staged tests
-      stagedTestSettings(packageStage) ++
       stagedTestSettings(fastOptStage) ++
       stagedTestSettings(fullOptStage)
   )
@@ -636,7 +541,6 @@ object ScalaJSPluginInternal {
       scalaJSTestFramework := "org.scalajs.jasminetest.JasmineTestFramework",
 
       emitSourceMaps := true,
-      emitSourceMaps in packageExternalDepsJS := false,
 
       scalaJSOptimizerOptions := OptimizerOptions(),
 

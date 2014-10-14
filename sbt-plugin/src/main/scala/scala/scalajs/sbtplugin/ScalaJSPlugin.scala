@@ -26,23 +26,10 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
   object ScalaJSKeys {
     import KeyRanks._
 
-    @deprecated("May be removed in the future. Use fastOptJS instead.", "0.5.5")
-    val packageJS = TaskKey[CompleteCIClasspath]("packageJS",
-        "Package all the compiled .js files", CTask)
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
-
-    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
-    val packageExternalDepsJS = TaskKey[PartialClasspath]("packageExternalDepsJS",
-        "Package the .js files of external dependencies", DTask)
-    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
-    val packageInternalDepsJS = TaskKey[PartialClasspath]("packageInternalDepsJS",
-        "Package the .js files of internal dependencies", DTask)
-    @deprecated("May be removed in the future. Use the tools library directly instead.", "0.5.5")
-    val packageExportedProductsJS = TaskKey[PartialClasspath]("packageExportedProductsJS",
-        "Package the .js files of the project", DTask)
 
     val packageScalaJSLauncher = TaskKey[Attributed[File]]("packageScalaJSLauncher",
         "Writes the persistent launcher file. Fails if the mainClass is ambigous", CTask)
@@ -54,7 +41,7 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
         "Writes the JS_DEPENDENCIES file.", DTask)
 
-    val scalaJSPreLinkClasspath = TaskKey[CompleteIRClasspath]("scalaJSPreLinkClasspath",
+    val scalaJSPreLinkClasspath = TaskKey[IRClasspath]("scalaJSPreLinkClasspath",
         "Completely resolved classpath just after compilation", DTask)
 
     val scalaJSExecClasspath = TaskKey[CompleteClasspath]("scalaJSExecClasspath",
@@ -100,8 +87,6 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "All kinds of options for the Scala.js optimizer stages", DSetting)
 
     // Task keys to re-wire sources and run with other VM
-    val packageStage = TaskKey[Unit]("packageStage",
-        "Run/test stuff after packageJS. (type packageStage::run)", CTask)
     val fastOptStage = TaskKey[Unit]("fastOptStage",
         "Run/test stuff after fastOptJS. (type fastOptStage::run)", AMinusTask)
     val fullOptStage = TaskKey[Unit]("fullOptStage",
