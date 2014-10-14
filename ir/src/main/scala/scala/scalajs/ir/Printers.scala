@@ -372,9 +372,6 @@ object Printers {
         case AsInstanceOf(expr, cls) =>
           print(expr, ".asInstanceOf[", cls, "]")
 
-        case ClassOf(cls) =>
-          print("classOf[", cls, "]")
-
         case CallHelper(helper, args) =>
           print(helper)
           printArgs(args)
@@ -479,6 +476,9 @@ object Printers {
 
         case StringLiteral(value) =>
           print("\"", escapeJS(value), "\"")
+
+        case ClassOf(cls) =>
+          print("classOf[", cls, "]")
 
         // Atomic expressions
 

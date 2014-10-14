@@ -515,7 +515,7 @@ abstract class OptimizerCore {
 
       // Trees that need not be transformed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:ClassOf |
+      case _:Skip | _:Debugger | _:LoadModule |
           _:JSGlobal | _:Literal | EmptyTree =>
         tree
     }
@@ -3258,7 +3258,7 @@ object OptimizerCore {
     }
 
     private def isTrivialArg(arg: Tree): Boolean = arg match {
-      case _:VarRef | _:This | _:Literal | _:LoadModule | _:ClassOf =>
+      case _:VarRef | _:This | _:Literal | _:LoadModule =>
         true
       case Cast(inner, _) =>
         isTrivialArg(inner)

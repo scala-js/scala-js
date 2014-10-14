@@ -185,7 +185,7 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Continue | _:LoadModule | _:ClassOf | _:JSGlobal |
+      case _:Skip | _:Continue | _:LoadModule | _:JSGlobal |
           _:Literal | _:VarRef | _:This | _:ModuleExportDef | EmptyTree =>
 
       case _ =>

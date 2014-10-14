@@ -344,10 +344,6 @@ object Trees {
     }
   }
 
-  case class ClassOf(cls: ReferenceType)(implicit val pos: Position) extends Tree {
-    val tpe = ClassType(Definitions.ClassClass)
-  }
-
   case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   object CallHelper {
@@ -457,6 +453,10 @@ object Trees {
       implicit val pos: Position) extends Literal with PropertyName {
     val tpe = StringType
     override def name = value
+  }
+
+  case class ClassOf(cls: ReferenceType)(implicit val pos: Position) extends Literal {
+    val tpe = ClassType(Definitions.ClassClass)
   }
 
   // Atomic expressions

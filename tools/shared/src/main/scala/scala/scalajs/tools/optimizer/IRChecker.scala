@@ -568,8 +568,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case AsInstanceOf(expr, cls) =>
         typecheckExpr(expr, env)
 
-      case ClassOf(cls) =>
-
       case CallHelper("checkNonNull", args) =>
         // our only polymorphic helper
         if (args.size != 1)

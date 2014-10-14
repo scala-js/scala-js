@@ -519,7 +519,6 @@ object JSDesugaring {
         // Atomic expressions
         case _: Literal  => true
         case _: This     => true
-        case _: ClassOf  => true
         case _: JSGlobal => true
 
         // Vars and fields (side-effect free, pure if immutable)
@@ -1200,9 +1199,6 @@ object JSDesugaring {
         case AsInstanceOf(expr, cls) =>
           genAsInstanceOf(transformExpr(expr), cls)
 
-        case ClassOf(cls) =>
-          js.Apply(js.DotSelect(genClassDataOf(cls), Ident("getClassOf")), Nil)
-
         case CallHelper(helper, args) =>
           genCallHelper(helper, args map transformExpr: _*)
 
@@ -1280,6 +1276,9 @@ object JSDesugaring {
           val (l, m, h) = LongImpl.extractParts(value)
           genNewLong(LongImpl.initFromParts,
               js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
+
+        case ClassOf(cls) =>
+          js.Apply(js.DotSelect(genClassDataOf(cls), Ident("getClassOf")), Nil)
 
         // Atomic expressions
 

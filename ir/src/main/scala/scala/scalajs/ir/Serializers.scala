@@ -248,10 +248,6 @@ object Serializers {
           writeByte(TagAsInstanceOf)
           writeTree(expr); writeReferenceType(cls)
 
-        case ClassOf(cls) =>
-          writeByte(TagClassOf)
-          writeReferenceType(cls)
-
         case CallHelper(helper, args) =>
           writeByte(TagCallHelper)
           writeString(helper); writeTrees(args)
@@ -338,6 +334,10 @@ object Serializers {
         case StringLiteral(value) =>
           writeByte(TagStringLiteral)
           writeString(value)
+
+        case ClassOf(cls) =>
+          writeByte(TagClassOf)
+          writeReferenceType(cls)
 
         case VarRef(ident, mutable) =>
           writeByte(TagVarRef)
@@ -585,7 +585,6 @@ object Serializers {
         case TagRecordValue    => RecordValue(readType().asInstanceOf[RecordType], readTrees())
         case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
         case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
-        case TagClassOf        => ClassOf(readReferenceType())
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
         case TagJSGlobal             => JSGlobal()
@@ -610,11 +609,13 @@ object Serializers {
         case TagLongLiteral    => LongLiteral(readLong())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
-        case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
-        case TagThis           => This()(readType())
-        case TagClosure        =>
+        case TagClassOf        => ClassOf(readReferenceType())
+
+        case TagVarRef  => VarRef(readIdent(), readBoolean())(readType())
+        case TagThis    => This()(readType())
+        case TagClosure =>
           Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
-        case TagCast           => Cast(readTree(), readType())
+        case TagCast    => Cast(readTree(), readType())
 
         case TagClassDef =>
           val name = readIdent()

@@ -242,10 +242,6 @@ object Hashers {
           mixTree(expr)
           mixType(cls)
 
-        case ClassOf(cls) =>
-          mixTag(TagClassOf)
-          mixType(cls)
-
         case CallHelper(helper, args) =>
           mixTag(TagCallHelper)
           mixString(helper)
@@ -313,8 +309,6 @@ object Hashers {
             mixTree(value)
           }
 
-        // Literals
-
         case Undefined() =>
           mixTag(TagUndefined)
 
@@ -344,6 +338,10 @@ object Hashers {
         case StringLiteral(value) =>
           mixTag(TagStringLiteral)
           mixString(value)
+
+        case ClassOf(cls) =>
+          mixTag(TagClassOf)
+          mixType(cls)
 
         case VarRef(ident, mutable) =>
           mixTag(TagVarRef)
