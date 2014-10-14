@@ -261,13 +261,22 @@ object Printers {
           import UnaryOp._
           print("(", (op: @switch) match {
             case `typeof`                  => "typeof"
-            case Int_- | Long_- | Double_- => "-"
-            case Int_~ | Long_~            => "~"
             case Boolean_!                 => "!"
             case IntToLong | DoubleToLong  => "(long)"
             case DoubleToInt | LongToInt   => "(int)"
             case LongToDouble              => "(double)"
           }, lhs, ")")
+
+        case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
+          print("(-", rhs, ")")
+        case BinaryOp(BinaryOp.Int_^, IntLiteral(-1), rhs) =>
+          print("(~", rhs, ")")
+        case BinaryOp(BinaryOp.Long_-, LongLiteral(0L), rhs) =>
+          print("(-", rhs, ")")
+        case BinaryOp(BinaryOp.Long_^, LongLiteral(-1L), rhs) =>
+          print("(~", rhs, ")")
+        case BinaryOp(BinaryOp.Double_-, IntLiteral(0) | DoubleLiteral(0.0), rhs) =>
+          print("(-", rhs, ")")
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
@@ -326,7 +335,6 @@ object Printers {
 
             case Boolean_|  => "|[bool]"
             case Boolean_&  => "&[bool]"
-            case Boolean_^  => "^[bool]"
             case Boolean_|| => "||"
             case Boolean_&& => "&&"
           }, " ", rhs, ")")

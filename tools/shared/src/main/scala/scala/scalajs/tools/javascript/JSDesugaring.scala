@@ -1063,15 +1063,9 @@ object JSDesugaring {
           import UnaryOp._
           val newLhs = transformExpr(lhs)
           (op: @switch) match {
-            case `typeof`         => js.UnaryOp("typeof", newLhs)
-            case Int_-            => or0(js.UnaryOp("-", newLhs))
-            case Double_-         => js.UnaryOp("-", newLhs)
-            case Int_~            => js.UnaryOp("~", newLhs)
-            case Boolean_!        => js.UnaryOp("!", newLhs)
-            case DoubleToInt      => js.BinaryOp("|", newLhs, js.IntLiteral(0))
-
-            case Long_- => genLongMethodApply(newLhs, LongImpl.UNARY_-)
-            case Long_~ => genLongMethodApply(newLhs, LongImpl.UNARY_~)
+            case `typeof`    => js.UnaryOp("typeof", newLhs)
+            case Boolean_!   => js.UnaryOp("!", newLhs)
+            case DoubleToInt => js.BinaryOp("|", newLhs, js.IntLiteral(0))
 
             case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
             case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
@@ -1120,27 +1114,43 @@ object JSDesugaring {
             case `instanceof` => js.BinaryOp("instanceof", newLhs, newRhs)
 
             case Int_+ => or0(js.BinaryOp("+", newLhs, newRhs))
-            case Int_- => or0(js.BinaryOp("-", newLhs, newRhs))
+            case Int_- =>
+              lhs match {
+                case IntLiteral(0) => or0(js.UnaryOp("-", newRhs))
+                case _             => or0(js.BinaryOp("-", newLhs, newRhs))
+              }
             case Int_* => genCallHelper("imul", newLhs, newRhs)
             case Int_/ => or0(js.BinaryOp("/", newLhs, newRhs))
             case Int_% => js.BinaryOp("%", newLhs, newRhs)
 
             case Int_|   => js.BinaryOp("|", newLhs, newRhs)
             case Int_&   => js.BinaryOp("&", newLhs, newRhs)
-            case Int_^   => js.BinaryOp("^", newLhs, newRhs)
+            case Int_^   =>
+              lhs match {
+                case IntLiteral(-1) => js.UnaryOp("~", newRhs)
+                case _              => js.BinaryOp("^", newLhs, newRhs)
+              }
             case Int_<<  => js.BinaryOp("<<", newLhs, newRhs)
             case Int_>>> => or0(js.BinaryOp(">>>", newLhs, newRhs))
             case Int_>>  => js.BinaryOp(">>", newLhs, newRhs)
 
             case Long_+ => genLongMethodApply(newLhs, LongImpl.+, newRhs)
-            case Long_- => genLongMethodApply(newLhs, LongImpl.-, newRhs)
+            case Long_- =>
+              lhs match {
+                case LongLiteral(0L) => genLongMethodApply(newRhs, LongImpl.UNARY_-)
+                case _               => genLongMethodApply(newLhs, LongImpl.-, newRhs)
+              }
             case Long_* => genLongMethodApply(newLhs, LongImpl.*, newRhs)
             case Long_/ => genLongMethodApply(newLhs, LongImpl./, newRhs)
             case Long_% => genLongMethodApply(newLhs, LongImpl.%, newRhs)
 
             case Long_|   => genLongMethodApply(newLhs, LongImpl.|,   newRhs)
             case Long_&   => genLongMethodApply(newLhs, LongImpl.&,   newRhs)
-            case Long_^   => genLongMethodApply(newLhs, LongImpl.^,   newRhs)
+            case Long_^   =>
+              lhs match {
+                case LongLiteral(-1L) => genLongMethodApply(newRhs, LongImpl.UNARY_~)
+                case _                => genLongMethodApply(newLhs, LongImpl.^, newRhs)
+              }
             case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<,  newRhs)
             case Long_>>> => genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
             case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>,  newRhs)
@@ -1153,14 +1163,17 @@ object JSDesugaring {
             case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
 
             case Double_+ => js.BinaryOp("+", newLhs, newRhs)
-            case Double_- => js.BinaryOp("-", newLhs, newRhs)
+            case Double_- =>
+              lhs match {
+                case DoubleLiteral(0.0) => js.UnaryOp("-", newRhs)
+                case _                  => js.BinaryOp("-", newLhs, newRhs)
+              }
             case Double_* => js.BinaryOp("*", newLhs, newRhs)
             case Double_/ => js.BinaryOp("/", newLhs, newRhs)
             case Double_% => js.BinaryOp("%", newLhs, newRhs)
 
             case Boolean_|  => !(!js.BinaryOp("|", newLhs, newRhs))
             case Boolean_&  => !(!js.BinaryOp("&", newLhs, newRhs))
-            case Boolean_^  => !(!js.BinaryOp("^", newLhs, newRhs))
             case Boolean_|| => js.BinaryOp("||", newLhs, newRhs)
             case Boolean_&& => js.BinaryOp("&&", newLhs, newRhs)
           }

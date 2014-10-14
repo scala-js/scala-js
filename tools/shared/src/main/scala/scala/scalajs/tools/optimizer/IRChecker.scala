@@ -495,11 +495,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         (op: @switch) match {
           case `typeof` =>
             typecheckExpr(lhs, env)
-          case Int_- | Int_~ | IntToLong =>
+          case IntToLong =>
             typecheckExpect(lhs, env, IntType)
-          case Long_- | Long_~ | LongToInt | LongToDouble =>
+          case LongToInt | LongToDouble =>
             typecheckExpect(lhs, env, LongType)
-          case Double_- | DoubleToInt | DoubleToLong =>
+          case DoubleToInt | DoubleToLong =>
             typecheckExpect(lhs, env, DoubleType)
           case Boolean_! =>
             typecheckExpect(lhs, env, BooleanType)
@@ -533,7 +533,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
               < | <= | > | >= =>
             typecheckExpect(lhs, env, DoubleType)
             typecheckExpect(lhs, env, DoubleType)
-          case Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
+          case Boolean_| | Boolean_& | Boolean_|| | Boolean_&& =>
             typecheckExpect(lhs, env, BooleanType)
             typecheckExpect(rhs, env, BooleanType)
         }

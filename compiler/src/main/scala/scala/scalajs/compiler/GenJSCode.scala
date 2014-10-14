@@ -2085,16 +2085,21 @@ abstract class GenJSCode extends plugins.PluginComponent
             case POS =>
               source
             case NEG =>
-              js.UnaryOp((resultType: @unchecked) match {
-                case jstpe.IntType    => js.UnaryOp.Int_-
-                case jstpe.LongType   => js.UnaryOp.Long_-
-                case jstpe.DoubleType => js.UnaryOp.Double_-
-              }, source)
+              (resultType: @unchecked) match {
+                case jstpe.IntType =>
+                  js.BinaryOp(js.BinaryOp.Int_-, js.IntLiteral(0), source)
+                case jstpe.LongType =>
+                  js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), source)
+                case jstpe.DoubleType =>
+                  js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), source)
+              }
             case NOT =>
-              js.UnaryOp((resultType: @unchecked) match {
-                case jstpe.IntType    => js.UnaryOp.Int_~
-                case jstpe.LongType   => js.UnaryOp.Long_~
-              }, source)
+              (resultType: @unchecked) match {
+                case jstpe.IntType =>
+                  js.BinaryOp(js.BinaryOp.Int_^, js.IntLiteral(-1), source)
+                case jstpe.LongType =>
+                  js.BinaryOp(js.BinaryOp.Long_^, js.LongLiteral(-1), source)
+              }
             case ZNOT =>
               js.UnaryOp(js.UnaryOp.Boolean_!, source)
             case _ =>
@@ -2200,7 +2205,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     case GE   => >=
                     case OR   => Boolean_|
                     case AND  => Boolean_&
-                    case XOR  => Boolean_^
+                    case XOR  => !==
                     case ZOR  => Boolean_||
                     case ZAND => Boolean_&&
                   }

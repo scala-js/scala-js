@@ -1643,44 +1643,6 @@ abstract class OptimizerCore {
     import UnaryOp._
     @inline def default = UnaryOp(op, arg)
     (op: @switch) match {
-      case Int_- =>
-        arg match {
-          case IntLiteral(v)     => IntLiteral(-v)
-          case UnaryOp(Int_-, x) => x
-          case _                 => default
-        }
-      case Int_~ =>
-        arg match {
-          case IntLiteral(v)     => IntLiteral(~v)
-          case UnaryOp(Int_~, x) => x
-          case _                 => default
-        }
-      case Double_- =>
-        arg match {
-          case IntOrDoubleLit(v) => DoubleLiteral(-v)
-          case _                 => default
-        }
-
-      case Long_- =>
-        arg match {
-          case LongLiteral(v)     => LongLiteral(-v)
-          case UnaryOp(Long_-, x) => x
-
-          case BinaryOp(BinaryOp.Long_+, LongLiteral(x), y) =>
-            foldBinaryOp(BinaryOp.Long_-, LongLiteral(-x), y)
-          case BinaryOp(BinaryOp.Long_-, LongLiteral(x), y) =>
-            foldBinaryOp(BinaryOp.Long_+, LongLiteral(-x), y)
-
-          case _ => default
-        }
-
-      case Long_~ =>
-        arg match {
-          case LongLiteral(v)     => LongLiteral(~v)
-          case UnaryOp(Long_~, x) => x
-          case _                  => default
-        }
-
       case Boolean_! =>
         arg match {
           case BooleanLiteral(v)     => BooleanLiteral(!v)
@@ -1713,9 +1675,6 @@ abstract class OptimizerCore {
         arg match {
           case LongLiteral(v)        => IntLiteral(v.toInt)
           case UnaryOp(IntToLong, x) => x
-
-          case UnaryOp(Long_-, x) =>
-            foldUnaryOp(Int_-, foldUnaryOp(LongToInt, x))
 
           case BinaryOp(BinaryOp.Long_+, x, y) =>
             foldBinaryOp(BinaryOp.Int_+,
@@ -1794,9 +1753,8 @@ abstract class OptimizerCore {
       case Int_+ =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l + r)
-          case (IntLiteral(0), _)             => rhs
-          case (_, UnaryOp(UnaryOp.Int_-, x)) => foldBinaryOp(Int_-, lhs, x)
           case (_, IntLiteral(_))             => foldBinaryOp(Int_+, rhs, lhs)
+          case (IntLiteral(0), _)             => rhs
 
           case (IntLiteral(x),
               BinaryOp(innerOp @ (Int_+ | Int_-), IntLiteral(y), z)) =>
@@ -1807,14 +1765,15 @@ abstract class OptimizerCore {
 
       case Int_- =>
         (lhs, rhs) match {
-          case (_, IntLiteral(r))             => foldBinaryOp(Int_+, lhs, IntLiteral(-r))
-          case (IntLiteral(0), _)             => foldUnaryOp(UnaryOp.Int_-, rhs)
-          case (_, UnaryOp(UnaryOp.Int_-, x)) => foldBinaryOp(Int_+, lhs, x)
+          case (_, IntLiteral(r)) => foldBinaryOp(Int_+, lhs, IntLiteral(-r))
 
           case (IntLiteral(x), BinaryOp(Int_+, IntLiteral(y), z)) =>
             foldBinaryOp(Int_-, IntLiteral(x-y), z)
           case (IntLiteral(x), BinaryOp(Int_-, IntLiteral(y), z)) =>
             foldBinaryOp(Int_+, IntLiteral(x-y), z)
+
+          case (_, BinaryOp(Int_-, IntLiteral(0), x)) =>
+            foldBinaryOp(Int_+, lhs, x)
 
           case _ => default
         }
@@ -1822,19 +1781,22 @@ abstract class OptimizerCore {
       case Int_* =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l * r)
-          case (_, IntLiteral(1))             => lhs
-          case (IntLiteral(1), _)             => rhs
-          case (_, IntLiteral(-1))            => foldUnaryOp(UnaryOp.Int_-, lhs)
-          case (IntLiteral(-1), _)            => foldUnaryOp(UnaryOp.Int_-, rhs)
-          case _                              => default
+          case (_, IntLiteral(_))             => foldBinaryOp(Int_*, rhs, lhs)
+
+          case (IntLiteral(1), _)  => rhs
+          case (IntLiteral(-1), _) => foldBinaryOp(Int_-, IntLiteral(0), lhs)
+
+          case _ => default
         }
 
       case Int_/ =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) if r != 0 => IntLiteral(l / r)
-          case (_, IntLiteral(1))                       => lhs
-          case (_, IntLiteral(-1))                      => foldUnaryOp(UnaryOp.Int_-, lhs)
-          case _                                        => default
+
+          case (_, IntLiteral(1))  => lhs
+          case (_, IntLiteral(-1)) => foldBinaryOp(Int_-, IntLiteral(0), lhs)
+
+          case _ => default
         }
 
       case Int_% =>
@@ -1848,27 +1810,37 @@ abstract class OptimizerCore {
       case Int_| =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l | r)
-          case (_, IntLiteral(0))             => lhs
+          case (_, IntLiteral(_))             => foldBinaryOp(Int_|, rhs, lhs)
           case (IntLiteral(0), _)             => rhs
-          case _                              => default
+
+          case (IntLiteral(x), BinaryOp(Int_|, IntLiteral(y), z)) =>
+            foldBinaryOp(Int_|, IntLiteral(x | y), z)
+
+          case _ => default
         }
 
       case Int_& =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l & r)
-          case (_, IntLiteral(-1))            => lhs
+          case (_, IntLiteral(_))             => foldBinaryOp(Int_&, rhs, lhs)
           case (IntLiteral(-1), _)            => rhs
-          case _                              => default
+
+          case (IntLiteral(x), BinaryOp(Int_&, IntLiteral(y), z)) =>
+            foldBinaryOp(Int_&, IntLiteral(x & y), z)
+
+          case _ => default
         }
 
       case Int_^ =>
         (lhs, rhs) match {
           case (IntLiteral(l), IntLiteral(r)) => IntLiteral(l ^ r)
-          case (_, IntLiteral(0))             => lhs
+          case (_, IntLiteral(_))             => foldBinaryOp(Int_^, rhs, lhs)
           case (IntLiteral(0), _)             => rhs
-          case (_, IntLiteral(-1))            => foldUnaryOp(UnaryOp.Int_~, lhs)
-          case (IntLiteral(-1), _)            => foldUnaryOp(UnaryOp.Int_~, rhs)
-          case _                              => default
+
+          case (IntLiteral(x), BinaryOp(Int_^, IntLiteral(y), z)) =>
+            foldBinaryOp(Int_^, IntLiteral(x ^ y), z)
+
+          case _ => default
         }
 
       case Int_<< =>
@@ -1895,28 +1867,27 @@ abstract class OptimizerCore {
       case Long_+ =>
         (lhs, rhs) match {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l + r)
-          case (_, LongLiteral(0))              => lhs
+          case (_, LongLiteral(_))              => foldBinaryOp(Long_+, rhs, lhs)
           case (LongLiteral(0), _)              => rhs
-          case (_, UnaryOp(UnaryOp.Long_-, x))  => foldBinaryOp(Long_-, lhs, x)
 
           case (LongLiteral(x),
               BinaryOp(innerOp @ (Long_+ | Long_-), LongLiteral(y), z)) =>
             foldBinaryOp(innerOp, LongLiteral(x+y), z)
 
-          case (_, LongLiteral(_)) => foldBinaryOp(Long_+, rhs, lhs)
-          case _                   => default
+          case _ => default
         }
 
       case Long_- =>
         (lhs, rhs) match {
-          case (_, LongLiteral(r))             => foldBinaryOp(Long_+, LongLiteral(-r), lhs)
-          case (LongLiteral(0), _)             => foldUnaryOp(UnaryOp.Long_-, rhs)
-          case (_, UnaryOp(UnaryOp.Long_-, x)) => foldBinaryOp(Long_+, lhs, x)
+          case (_, LongLiteral(r)) => foldBinaryOp(Long_+, LongLiteral(-r), lhs)
 
           case (LongLiteral(x), BinaryOp(Long_+, LongLiteral(y), z)) =>
             foldBinaryOp(Long_-, LongLiteral(x-y), z)
           case (LongLiteral(x), BinaryOp(Long_-, LongLiteral(y), z)) =>
             foldBinaryOp(Long_+, LongLiteral(x-y), z)
+
+          case (_, BinaryOp(BinaryOp.Long_-, LongLiteral(0L), x)) =>
+            foldBinaryOp(Long_+, lhs, x)
 
           case _ => default
         }
@@ -1924,11 +1895,12 @@ abstract class OptimizerCore {
       case Long_* =>
         (lhs, rhs) match {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l * r)
-          case (_, LongLiteral(1))              => lhs
-          case (LongLiteral(1), _)              => rhs
-          case (_, LongLiteral(-1))             => foldUnaryOp(UnaryOp.Long_-, lhs)
-          case (LongLiteral(-1), _)             => foldUnaryOp(UnaryOp.Long_-, rhs)
-          case _                                => default
+          case (_, LongLiteral(_))              => foldBinaryOp(Long_*, rhs, lhs)
+
+          case (LongLiteral(1), _)  => rhs
+          case (LongLiteral(-1), _) => foldBinaryOp(Long_-, LongLiteral(0), lhs)
+
+          case _ => default
         }
 
       case Long_/ =>
@@ -1937,7 +1909,7 @@ abstract class OptimizerCore {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l / r)
 
           case (_, LongLiteral(1))  => lhs
-          case (_, LongLiteral(-1)) => foldUnaryOp(UnaryOp.Long_-, lhs)
+          case (_, LongLiteral(-1)) => foldBinaryOp(Long_-, LongLiteral(0), lhs)
 
           case (LongFromInt(x), LongFromInt(y: IntLiteral)) if y.value != -1 =>
             LongFromInt(foldBinaryOp(Int_/, x, y))
@@ -1962,27 +1934,37 @@ abstract class OptimizerCore {
       case Long_| =>
         (lhs, rhs) match {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l | r)
-          case (_, LongLiteral(0))              => lhs
+          case (_, LongLiteral(_))              => foldBinaryOp(Long_|, rhs, lhs)
           case (LongLiteral(0), _)              => rhs
-          case _                                => default
+
+          case (LongLiteral(x), BinaryOp(Long_|, LongLiteral(y), z)) =>
+            foldBinaryOp(Long_|, LongLiteral(x | y), z)
+
+          case _ => default
         }
 
       case Long_& =>
         (lhs, rhs) match {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l & r)
-          case (_, LongLiteral(-1))             => lhs
+          case (_, LongLiteral(_))              => foldBinaryOp(Long_&, rhs, lhs)
           case (LongLiteral(-1), _)             => rhs
-          case _                                => default
+
+          case (LongLiteral(x), BinaryOp(Long_&, LongLiteral(y), z)) =>
+            foldBinaryOp(Long_&, LongLiteral(x & y), z)
+
+          case _ => default
         }
 
       case Long_^ =>
         (lhs, rhs) match {
           case (LongLiteral(l), LongLiteral(r)) => LongLiteral(l ^ r)
-          case (_, LongLiteral(0))              => lhs
+          case (_, LongLiteral(_))              => foldBinaryOp(Long_^, rhs, lhs)
           case (LongLiteral(0), _)              => rhs
-          case (_, LongLiteral(-1))             => foldUnaryOp(UnaryOp.Long_~, lhs)
-          case (LongLiteral(-1), _)             => foldUnaryOp(UnaryOp.Long_~, rhs)
-          case _                                => default
+
+          case (LongLiteral(x), BinaryOp(Long_^, LongLiteral(y), z)) =>
+            foldBinaryOp(Long_^, LongLiteral(x ^ y), z)
+
+          case _ => default
         }
 
       case Long_<< =>
@@ -2093,19 +2075,17 @@ abstract class OptimizerCore {
               if canSubtractLongs(x, Int.MinValue) &&
                  canSubtractLongs(x, Int.MaxValue) &&
                  canSubtractLongs(z, x) =>
-            if (canNegateLong(z-x)) // fuse next case about -(y.toLong) > z-x
+            if (z-x != Long.MinValue) {
+              // Since -(y.toLong) does not overflow, we can negate both sides
               foldBinaryOp(flippedOp, y, LongLiteral(-(z-x)))
-            else
-              foldBinaryOp(op, foldUnaryOp(UnaryOp.Long_-, y), LongLiteral(z-x))
-
-          /* -(x.toLong) > y
-           *      *(-1) on both sides, flip the arrow
-           *      requires -y not to overflow (-(x.toLong) never overflows)
-           * x.toLong > -y
-           */
-          case (UnaryOp(UnaryOp.Long_-, x @ LongFromInt(_)), LongLiteral(y))
-              if canNegateLong(y) =>
-            foldBinaryOp(flippedOp, x, LongLiteral(-y))
+            } else {
+              /* -(y.toLong) > Long.MinValue
+               * Depending on the operator, this is either always true or
+               * always false.
+               */
+              val result = (op == Long_>) || (op == Long_>=)
+              Block(keepOnlySideEffects(y), BooleanLiteral(result))
+            }
 
           /* x.toLong + y.toLong > Int.MaxValue.toLong
            *
@@ -2143,37 +2123,50 @@ abstract class OptimizerCore {
       case Double_+ =>
         (lhs, rhs) match {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l + r)
-          case (_, IntOrDoubleLit(0))                 => lhs
           case (IntOrDoubleLit(0), _)                 => rhs
-          case (_, UnaryOp(UnaryOp.Double_-, x))      => foldBinaryOp(Double_-, lhs, x)
+          case (_, IntOrDoubleLit(_))                 => foldBinaryOp(Double_+, rhs, lhs)
+
+          case (IntOrDoubleLit(x),
+              BinaryOp(innerOp @ (Double_+ | Double_-), IntOrDoubleLit(y), z)) =>
+            foldBinaryOp(innerOp, DoubleLiteral(x+y), z)
+
           case _                                      => default
         }
 
       case Double_- =>
         (lhs, rhs) match {
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l - r)
-          case (_, IntOrDoubleLit(0))                 => lhs
-          case (IntOrDoubleLit(0), _)                 => foldUnaryOp(UnaryOp.Double_-, rhs)
-          case (_, UnaryOp(UnaryOp.Double_-, x))      => foldBinaryOp(Double_+, lhs, x)
-          case _                                      => default
+          case (_, IntOrDoubleLit(r)) => foldBinaryOp(Double_+, lhs, DoubleLiteral(-r))
+
+          case (IntOrDoubleLit(x), BinaryOp(Double_+, IntOrDoubleLit(y), z)) =>
+            foldBinaryOp(Double_-, DoubleLiteral(x-y), z)
+          case (IntOrDoubleLit(x), BinaryOp(Double_-, IntOrDoubleLit(y), z)) =>
+            foldBinaryOp(Double_+, DoubleLiteral(x-y), z)
+
+          case (_, BinaryOp(BinaryOp.Double_-, IntOrDoubleLit(0), x)) =>
+            foldBinaryOp(Double_+, lhs, x)
+
+          case _ => default
         }
 
       case Double_* =>
         (lhs, rhs) match {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l * r)
-          case (_, IntOrDoubleLit(1))                 => lhs
-          case (IntOrDoubleLit(1), _)                 => rhs
-          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(UnaryOp.Double_-, lhs)
-          case (IntOrDoubleLit(-1), _)                => foldUnaryOp(UnaryOp.Double_-, rhs)
-          case _                                      => default
+          case (_, IntOrDoubleLit(_))                 => foldBinaryOp(Double_*, rhs, lhs)
+
+          case (IntOrDoubleLit(1), _)  => rhs
+          case (IntOrDoubleLit(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+
+          case _ => default
         }
 
       case Double_/ =>
         (lhs, rhs) match {
           case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l / r)
-          case (_, IntOrDoubleLit(1))                 => lhs
-          case (_, IntOrDoubleLit(-1))                => foldUnaryOp(UnaryOp.Double_-, lhs)
-          case _                                      => default
+
+          case (_, IntOrDoubleLit(1))  => lhs
+          case (_, IntOrDoubleLit(-1)) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+
+          case _ => default
         }
 
       case Double_% =>
@@ -2195,16 +2188,6 @@ abstract class OptimizerCore {
           case (BooleanLiteral(l), BooleanLiteral(r)) => BooleanLiteral(l & r)
           case (_, BooleanLiteral(true))              => lhs
           case (BooleanLiteral(true), _)              => rhs
-          case _                                      => default
-        }
-
-      case Boolean_^ =>
-        (lhs, rhs) match {
-          case (BooleanLiteral(l), BooleanLiteral(r)) => BooleanLiteral(l ^ r)
-          case (_, BooleanLiteral(false))             => lhs
-          case (BooleanLiteral(false), _)             => rhs
-          case (_, BooleanLiteral(true))              => foldUnaryOp(UnaryOp.Boolean_!, lhs)
-          case (BooleanLiteral(true), _)              => foldUnaryOp(UnaryOp.Boolean_!, rhs)
           case _                                      => default
         }
 
@@ -2754,15 +2737,6 @@ abstract class OptimizerCore {
                   (intLocalDef, cont1) =>
                     doDoBuildInner(Some(
                         () => LongFromInt(intLocalDef.newReplacement)))(
-                        cont1)
-                } (cont)
-
-              case UnaryOp(UnaryOp.Long_-, LongFromInt(arg)) =>
-                withNewLocalDef(
-                    Binding("x", None, IntType, false, PreTransTree(arg))) {
-                  (intLocalDef, cont1) =>
-                    doDoBuildInner(Some(
-                        () => UnaryOp(UnaryOp.Long_-, LongFromInt(intLocalDef.newReplacement))))(
                         cont1)
                 } (cont)
 

@@ -212,11 +212,11 @@ object Trees {
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     import UnaryOp._
     val tpe = (op: @switch) match {
-      case `typeof`                                   => StringType
-      case Int_- | Int_~ | LongToInt | DoubleToInt    => IntType
-      case Long_- | Long_~ | IntToLong | DoubleToLong => LongType
-      case Double_- | LongToDouble                    => DoubleType
-      case Boolean_!                                  => BooleanType
+      case `typeof`                 => StringType
+      case LongToInt | DoubleToInt  => IntType
+      case IntToLong | DoubleToLong => LongType
+      case LongToDouble             => DoubleType
+      case Boolean_!                => BooleanType
     }
   }
 
@@ -226,21 +226,13 @@ object Trees {
 
     final val typeof = 1
 
-    final val Int_- = 2
-    final val Int_~ = 3
+    final val Boolean_! = 2
 
-    final val Long_- = 4
-    final val Long_~ = 5
-
-    final val Double_- = 6
-
-    final val Boolean_! = 7
-
-    final val IntToLong    = 8
-    final val LongToInt    = 9
-    final val LongToDouble = 10
-    final val DoubleToInt  = 11
-    final val DoubleToLong = 12
+    final val IntToLong    = 3
+    final val LongToInt    = 4
+    final val LongToDouble = 5
+    final val DoubleToInt  = 6
+    final val DoubleToLong = 7
   }
 
   /** Binary operation (always preserves pureness). */
@@ -249,7 +241,7 @@ object Trees {
     val tpe = (op: @switch) match {
       case === | !== | < | <= | > | >= | `in` | `instanceof` |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
+          Boolean_| | Boolean_& | Boolean_|| | Boolean_&& =>
         BooleanType
       case String_+ =>
         StringType
@@ -322,9 +314,8 @@ object Trees {
 
     final val Boolean_|  = 43
     final val Boolean_&  = 44
-    final val Boolean_^  = 45
-    final val Boolean_|| = 46
-    final val Boolean_&& = 47
+    final val Boolean_|| = 45
+    final val Boolean_&& = 46
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {
