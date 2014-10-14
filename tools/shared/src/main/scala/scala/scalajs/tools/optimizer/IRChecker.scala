@@ -58,12 +58,12 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         // Scala declarations
         case v @ VarDef(_, _, _, _) =>
           checkFieldDef(v, classDef)
-        case m @ MethodDef(_: Ident, _, _, _) =>
+        case m: MethodDef if m.name.isInstanceOf[Ident] =>
           checkMethodDef(m, classDef)
 
         // Exports
-        case member @ MethodDef(_: StringLiteral, _, _, _) =>
-          checkExportedMethodDef(member, classDef)
+        case m: MethodDef if m.name.isInstanceOf[StringLiteral] =>
+          checkExportedMethodDef(m, classDef)
         case member @ PropertyDef(_: StringLiteral, _, _, _) =>
           checkExportedPropertyDef(member, classDef)
         case member @ ConstructorExportDef(_, _, _) =>
@@ -82,7 +82,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     for (member <- classDef.defs) {
       implicit val ctx = ErrorContext(member)
       member match {
-        case m @ MethodDef(_, _, _, _) =>
+        case m: MethodDef =>
           checkMethodDef(m, classDef)
         case _ =>
           reportError(s"Invalid member for a TraitImpl")

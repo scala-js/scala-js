@@ -19,6 +19,9 @@ import scala.collection.mutable
 import Position._
 import Trees._
 import Types._
+import Tags._
+
+import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
   def serialize(stream: OutputStream, tree: Tree): Unit = {
@@ -68,7 +71,7 @@ object Serializers {
   }
 
   private final class Serializer {
-    private[this] val bufferUnderlying = new ByteArrayOutputStream
+    private[this] val bufferUnderlying = new JumpBackByteArrayOutputStream
     private[this] val buffer = new DataOutputStream(bufferUnderlying)
 
     private[this] val files = mutable.ListBuffer.empty[URI]
@@ -86,7 +89,6 @@ object Serializers {
     def serialize(stream: OutputStream, tree: Tree): Unit = {
       // Write tree to buffer and record files and strings
       writeTree(tree)
-      buffer.flush()
 
       val s = new DataOutputStream(stream)
 
@@ -363,9 +365,23 @@ object Serializers {
           writeIdents(ancestors)
           writeTrees(defs)
 
-        case MethodDef(name, args, resultType, body) =>
+        case methodDef: MethodDef =>
+          val MethodDef(name, args, resultType, body) = methodDef
+
           writeByte(TagMethodDef)
+          writeOptHash(methodDef.hash)
+
+          // Prepare for back-jump and write dummy length
+          bufferUnderlying.markJump()
+          writeInt(-1)
+
+          // Write out method def
           writePropertyName(name); writeTrees(args); writeType(resultType); writeTree(body)
+
+          // Jump back and write true length
+          val length = bufferUnderlying.jumpBack()
+          writeInt(length)
+          bufferUnderlying.continue()
 
         case PropertyDef(name, getter, arg, setter) =>
           writeByte(TagPropertyDef)
@@ -499,6 +515,14 @@ object Serializers {
         writeInt(PosDebugMagic)
     }
 
+    def writeOptHash(optHash: Option[TreeHash]): Unit = {
+      buffer.writeBoolean(optHash.isDefined)
+      for (hash <- optHash) {
+        buffer.write(hash.treeHash)
+        buffer.write(hash.posHash)
+      }
+    }
+
     def writeString(s: String): Unit =
       buffer.writeInt(stringToIndex(s))
   }
@@ -601,7 +625,11 @@ object Serializers {
           ClassDef(name, kind, parent, ancestors, defs)
 
         case TagMethodDef =>
-          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())
+          val optHash = readOptHash()
+          // read and discard the length
+          val len = readInt()
+          assert(len >= 0)
+          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())(optHash)
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())
@@ -732,97 +760,18 @@ object Serializers {
       result
     }
 
+    def readOptHash(): Option[TreeHash] = {
+      if (input.readBoolean()) {
+        val treeHash = new Array[Byte](20)
+        val posHash = new Array[Byte](20)
+        input.readFully(treeHash)
+        input.readFully(posHash)
+        Some(new TreeHash(treeHash, posHash))
+      } else None
+    }
+
     def readString(): String = {
       strings(input.readInt())
     }
   }
-
-  // Tags for Trees
-
-  private final val TagEmptyTree = 1
-
-  private final val TagVarDef = TagEmptyTree + 1
-  private final val TagParamDef = TagVarDef + 1
-
-  private final val TagSkip = TagParamDef + 1
-  private final val TagBlock = TagSkip + 1
-  private final val TagLabeled = TagBlock + 1
-  private final val TagAssign = TagLabeled + 1
-  private final val TagReturn = TagAssign + 1
-  private final val TagIf = TagReturn + 1
-  private final val TagWhile = TagIf + 1
-  private final val TagDoWhile = TagWhile + 1
-  private final val TagTry = TagDoWhile + 1
-  private final val TagThrow = TagTry + 1
-  private final val TagContinue = TagThrow + 1
-  private final val TagMatch = TagContinue + 1
-  private final val TagDebugger = TagMatch + 1
-
-  private final val TagNew = TagDebugger + 1
-  private final val TagLoadModule = TagNew + 1
-  private final val TagStoreModule = TagLoadModule + 1
-  private final val TagSelect = TagStoreModule + 1
-  private final val TagApply = TagSelect + 1
-  private final val TagStaticApply = TagApply + 1
-  private final val TagTraitImplApply = TagStaticApply + 1
-  private final val TagUnaryOp = TagTraitImplApply + 1
-  private final val TagBinaryOp = TagUnaryOp + 1
-  private final val TagNewArray = TagBinaryOp + 1
-  private final val TagArrayValue = TagNewArray + 1
-  private final val TagArrayLength = TagArrayValue + 1
-  private final val TagArraySelect = TagArrayLength + 1
-  private final val TagRecordValue = TagArraySelect + 1
-  private final val TagIsInstanceOf = TagRecordValue + 1
-  private final val TagAsInstanceOf = TagIsInstanceOf + 1
-  private final val TagClassOf = TagAsInstanceOf + 1
-  private final val TagCallHelper = TagClassOf + 1
-
-  private final val TagJSGlobal = TagCallHelper + 1
-  private final val TagJSNew = TagJSGlobal + 1
-  private final val TagJSDotSelect = TagJSNew + 1
-  private final val TagJSBracketSelect = TagJSDotSelect + 1
-  private final val TagJSFunctionApply = TagJSBracketSelect + 1
-  private final val TagJSDotMethodApply = TagJSFunctionApply + 1
-  private final val TagJSBracketMethodApply = TagJSDotMethodApply + 1
-  private final val TagJSDelete = TagJSBracketMethodApply + 1
-  private final val TagJSUnaryOp = TagJSDelete + 1
-  private final val TagJSBinaryOp = TagJSUnaryOp + 1
-  private final val TagJSArrayConstr = TagJSBinaryOp + 1
-  private final val TagJSObjectConstr = TagJSArrayConstr + 1
-
-  private final val TagUndefined = TagJSObjectConstr + 1
-  private final val TagUndefinedParam = TagUndefined + 1
-  private final val TagNull = TagUndefinedParam + 1
-  private final val TagBooleanLiteral = TagNull + 1
-  private final val TagIntLiteral = TagBooleanLiteral + 1
-  private final val TagLongLiteral = TagIntLiteral + 1
-  private final val TagDoubleLiteral = TagLongLiteral + 1
-  private final val TagStringLiteral = TagDoubleLiteral + 1
-  private final val TagVarRef = TagStringLiteral + 1
-  private final val TagThis = TagVarRef + 1
-  private final val TagClosure = TagThis + 1
-  private final val TagCast = TagClosure + 1
-
-  private final val TagClassDef = TagCast + 1
-  private final val TagMethodDef = TagClassDef + 1
-  private final val TagPropertyDef = TagMethodDef + 1
-  private final val TagConstructorExportDef = TagPropertyDef + 1
-  private final val TagModuleExportDef = TagConstructorExportDef + 1
-
-  // Tags for Types
-
-  private final val TagAnyType = 1
-  private final val TagNothingType = TagAnyType + 1
-  private final val TagUndefType = TagNothingType + 1
-  private final val TagBooleanType = TagUndefType + 1
-  private final val TagIntType = TagBooleanType + 1
-  private final val TagLongType = TagIntType + 1
-  private final val TagDoubleType = TagLongType + 1
-  private final val TagStringType = TagDoubleType + 1
-  private final val TagNullType = TagStringType + 1
-  private final val TagClassType = TagNullType + 1
-  private final val TagArrayType = TagClassType + 1
-  private final val TagDynType = TagArrayType + 1
-  private final val TagRecordType = TagDynType + 1
-  private final val TagNoType = TagRecordType + 1
 }

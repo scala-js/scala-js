@@ -496,7 +496,8 @@ object Trees {
     val tpe = NoType
   }
 
-  case class MethodDef(name: PropertyName, args: List[ParamDef], resultType: Type, body: Tree)(implicit val pos: Position) extends Tree {
+  case class MethodDef(name: PropertyName, args: List[ParamDef], resultType: Type, body: Tree)(
+      val hash: Option[TreeHash])(implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
@@ -510,5 +511,11 @@ object Trees {
 
   case class ModuleExportDef(fullName: String)(implicit val pos: Position) extends Tree {
     val tpe = NoType
+  }
+
+  /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */
+  final class TreeHash(val treeHash: Array[Byte], val posHash: Array[Byte]) {
+    assert(treeHash.length == 20)
+    assert(posHash.length == 20)
   }
 }

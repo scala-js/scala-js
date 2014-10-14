@@ -117,7 +117,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             currentClassInfoBuilder.addMethod(methodIdent.name)
       ) {
         js.MethodDef(methodIdent, List(inArg), toIRType(sym.tpe.resultType),
-            genNamedExporterBody(trgSym, inArg.ref))
+            genNamedExporterBody(trgSym, inArg.ref))(None)
       }
     }
 
@@ -311,7 +311,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         }
       }
 
-      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.AnyType, body)
+      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.AnyType, body)(None)
     }
 
     /**

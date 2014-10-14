@@ -17,7 +17,7 @@ import scala.tools.nsc._
 import scala.annotation.tailrec
 
 import scala.scalajs.ir
-import ir.{Trees => js, Types => jstpe, ClassKind}
+import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -359,13 +359,17 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Generate the reflective call proxies (where required)
       val reflProxies = genReflCallProxies(sym)
 
+      // Hashed definitions of the class
+      val hashedDefs =
+        Hashers.hashDefs(generatedMembers.toList ++ exports ++ reflProxies)
+
       // The complete class definition
       val classDefinition = js.ClassDef(
           classIdent,
           if (sym.isModuleClass) ClassKind.ModuleClass else ClassKind.Class,
           Some(encodeClassFullNameIdent(sym.superClass)),
           sym.ancestors.map(encodeClassFullNameIdent),
-          generatedMembers.toList ++ exports ++ reflProxies)
+          hashedDefs)
 
       classDefinition
     }
@@ -567,7 +571,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                       mutable = false)
                 }
                 js.MethodDef(methodIdent, jsParams, currentClassType,
-                    js.Block(genStat(rhs), genThis()))
+                    js.Block(genStat(rhs), genThis()))(None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 genMethodDef(methodIdent, params, resultIRType, rhs)
@@ -668,7 +672,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val newBody =
         if (resultType == jstpe.NoType) transformer.transformStat(body)
         else transformer.transformExpr(body)
-      js.MethodDef(methodName, newParams, resultType, newBody)(methodDef.pos)
+      js.MethodDef(methodName, newParams, resultType, newBody)(None)(methodDef.pos)
     }
 
     /**
@@ -775,7 +779,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val body = ensureBoxed(call,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
 
-          js.MethodDef(proxyIdent, jsParams, jstpe.AnyType, body)
+          js.MethodDef(proxyIdent, jsParams, jstpe.AnyType, body)(None)
         }
       }
     }
@@ -838,7 +842,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      js.MethodDef(methodIdent, jsParams, resultIRType, body)
+      js.MethodDef(methodIdent, jsParams, resultIRType, body)(None)
     }
 
     /** Gen JS code for a tree in statement position (in the IR).
