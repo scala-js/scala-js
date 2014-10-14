@@ -1041,10 +1041,7 @@ object JSDesugaring {
               args map transformExpr)
 
         case LoadModule(cls) =>
-          assert(cls.className.endsWith("$"),
-              s"Trying to load module for non-module class $cls")
-          val moduleName = cls.className.dropRight(1)
-          js.Apply(envField("m") DOT moduleName, Nil)
+          genLoadModule(cls.className)
 
         case RecordFieldVarRef(VarRef(name, mutable)) =>
           js.VarRef(name, mutable)
@@ -1072,6 +1069,17 @@ object JSDesugaring {
             case Int_~            => js.UnaryOp("~", newLhs)
             case Boolean_!        => js.UnaryOp("!", newLhs)
             case DoubleToInt      => js.BinaryOp("|", newLhs, js.IntLiteral(0))
+
+            case Long_- => genLongMethodApply(newLhs, LongImpl.UNARY_-)
+            case Long_~ => genLongMethodApply(newLhs, LongImpl.UNARY_~)
+
+            case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
+            case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
+
+            case IntToLong =>
+              genNewLong(LongImpl.initFromInt, newLhs)
+            case DoubleToLong =>
+              genLongModuleApply(LongImpl.fromDouble, newLhs)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -1123,6 +1131,26 @@ object JSDesugaring {
             case Int_<<  => js.BinaryOp("<<", newLhs, newRhs)
             case Int_>>> => or0(js.BinaryOp(">>>", newLhs, newRhs))
             case Int_>>  => js.BinaryOp(">>", newLhs, newRhs)
+
+            case Long_+ => genLongMethodApply(newLhs, LongImpl.+, newRhs)
+            case Long_- => genLongMethodApply(newLhs, LongImpl.-, newRhs)
+            case Long_* => genLongMethodApply(newLhs, LongImpl.*, newRhs)
+            case Long_/ => genLongMethodApply(newLhs, LongImpl./, newRhs)
+            case Long_% => genLongMethodApply(newLhs, LongImpl.%, newRhs)
+
+            case Long_|   => genLongMethodApply(newLhs, LongImpl.|,   newRhs)
+            case Long_&   => genLongMethodApply(newLhs, LongImpl.&,   newRhs)
+            case Long_^   => genLongMethodApply(newLhs, LongImpl.^,   newRhs)
+            case Long_<<  => genLongMethodApply(newLhs, LongImpl.<<,  newRhs)
+            case Long_>>> => genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
+            case Long_>>  => genLongMethodApply(newLhs, LongImpl.>>,  newRhs)
+
+            case Long_== => genLongMethodApply(newLhs, LongImpl.===, newRhs)
+            case Long_!= => genLongMethodApply(newLhs, LongImpl.!==, newRhs)
+            case Long_<  => genLongMethodApply(newLhs, LongImpl.<,   newRhs)
+            case Long_<= => genLongMethodApply(newLhs, LongImpl.<=,  newRhs)
+            case Long_>  => genLongMethodApply(newLhs, LongImpl.>,   newRhs)
+            case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
 
             case Double_+ => js.BinaryOp("+", newLhs, newRhs)
             case Double_- => js.BinaryOp("-", newLhs, newRhs)
@@ -1233,6 +1261,13 @@ object JSDesugaring {
         case DoubleLiteral(value)   => js.DoubleLiteral(value)
         case StringLiteral(value)   => js.StringLiteral(value)
 
+        case LongLiteral(0L) =>
+          genLongModuleApply(LongImpl.Zero)
+        case LongLiteral(value) =>
+          val (l, m, h) = LongImpl.extractParts(value)
+          genNewLong(LongImpl.initFromParts,
+              js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
+
         // Atomic expressions
 
         case VarRef(name, mutable) =>
@@ -1290,6 +1325,37 @@ object JSDesugaring {
       }
     }
 
+    private def genNewLong(ctor: String, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      import TreeDSL._
+      js.Apply(
+          js.New(encodeClassVar(LongImpl.RuntimeLongClass), Nil) DOT ctor,
+          args.toList)
+    }
+
+    private def genLongMethodApply(receiver: js.Tree, methodName: String,
+        args: js.Tree*)(implicit pos: Position): js.Tree = {
+      import TreeDSL._
+      js.Apply(receiver DOT methodName, args.toList)
+    }
+
+    private def genLongModuleApply(methodName: String, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      import TreeDSL._
+      js.Apply(
+          genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
+          args.toList)
+    }
+
+    private def genLoadModule(moduleClass: String)(
+        implicit pos: Position): js.Tree = {
+      import TreeDSL._
+      assert(moduleClass.endsWith("$"),
+          s"Trying to load module for non-module class $moduleClass")
+      val moduleName = moduleClass.dropRight(1)
+      js.Apply(envField("m") DOT moduleName, Nil)
+    }
+
   }
 
   // Helpers
@@ -1310,7 +1376,7 @@ object JSDesugaring {
     cls match {
       case ClassType(className0) =>
         val className =
-          if (className0 == BoxedLongClass) RuntimeLongClass
+          if (className0 == BoxedLongClass) LongImpl.RuntimeLongClass
           else className0
 
         if (HijackedBoxedClasses.contains(className)) {

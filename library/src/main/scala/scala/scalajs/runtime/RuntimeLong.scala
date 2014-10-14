@@ -13,14 +13,13 @@ import scala.annotation.tailrec
  * s.t. (x.l + ((long) x.m << 22) + ((long) x.h << 44)) is equal to
  * the original value
  */
-final class RuntimeLong private (
+final class RuntimeLong(
   val l: Int,
   val m: Int,
   val h: Int
 ) extends Number with Comparable[java.lang.Long] { x =>
 
   import RuntimeLong._
-  import RuntimeLongImpl._
 
   /** Construct from an Int.
    *  This is the implementation of RuntimeLong.fromInt() in a way that does not
@@ -31,11 +30,17 @@ final class RuntimeLong private (
       (value >> RuntimeLong.BITS) & RuntimeLong.MASK,
       if (value < 0) RuntimeLong.MASK_2 else 0)
 
+  /** Creates a new RuntimeLong but masks bits as follows:
+   *  l & MASK, m & MASK, h & MASK_2
+   */
+  @inline private def masked(l: Int, m: Int, h: Int) =
+    new RuntimeLong(l & MASK, m & MASK, h & MASK_2)
+
   def toByte: Byte = toInt.toByte
   def toShort: Short = toInt.toShort
   def toChar: Char = toInt.toChar
   def toInt: Int = l | (m << BITS)
-  def toLong: Long = fromRuntimeLong(x)
+  def toLong: Long = x.asInstanceOf[Long]
   def toFloat: Float = toDouble.toFloat
   def toDouble: Double =
     if (isMinValue) -9223372036854775808.0
@@ -46,7 +51,7 @@ final class RuntimeLong private (
   override def byteValue(): Byte = toByte
   override def shortValue(): Short = toShort
   def intValue(): Int = toInt
-  def longValue(): Long = fromRuntimeLong(x)
+  def longValue(): Long = toLong
   def floatValue(): Float = toFloat
   def doubleValue(): Double = toDouble
 
@@ -54,7 +59,7 @@ final class RuntimeLong private (
   def compareTo(that: RuntimeLong): Int =
     if (this equals that) 0 else if (this > that) 1 else -1
   def compareTo(that: java.lang.Long): Int =
-    compareTo(toRuntimeLong(that.longValue()))
+    compareTo(that.asInstanceOf[RuntimeLong])
 
   def unary_~ : RuntimeLong = masked(~x.l, ~x.m, ~x.h)
   def unary_+ : RuntimeLong = x
@@ -62,7 +67,7 @@ final class RuntimeLong private (
     val neg0 = (~x.l + 1) & MASK
     val neg1 = (~x.m + (if (neg0 == 0) 1 else 0)) & MASK
     val neg2 = (~x.h + (if (neg0 == 0 && neg1 == 0) 1 else 0)) & MASK_2
-    RuntimeLong(neg0, neg1, neg2)
+    new RuntimeLong(neg0, neg1, neg2)
   }
 
   def +(y: String): String = x.toString + y
@@ -189,11 +194,11 @@ final class RuntimeLong private (
   }
 
   def |(y: RuntimeLong): RuntimeLong =
-    RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
+    new RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
   def &(y: RuntimeLong): RuntimeLong =
-    RuntimeLong(x.l & y.l, x.m & y.m, x.h & y.h)
+    new RuntimeLong(x.l & y.l, x.m & y.m, x.h & y.h)
   def ^(y: RuntimeLong): RuntimeLong =
-    RuntimeLong(x.l ^ y.l, x.m ^ y.m, x.h ^ y.h)
+    new RuntimeLong(x.l ^ y.l, x.m ^ y.m, x.h ^ y.h)
 
   def +(y: RuntimeLong): RuntimeLong = {
     val sum0 = x.l + y.l
@@ -381,11 +386,11 @@ final class RuntimeLong private (
 
   private def setBit(bit: Int) =
     if (bit < BITS)
-      RuntimeLong(l | (1 << bit), m, h)
+      new RuntimeLong(l | (1 << bit), m, h)
     else if (bit < BITS01)
-      RuntimeLong(l, m | (1 << (bit - BITS)), h)
+      new RuntimeLong(l, m | (1 << (bit - BITS)), h)
     else
-      RuntimeLong(l, m, h | (1 << (bit - BITS01)))
+      new RuntimeLong(l, m, h | (1 << (bit - BITS01)))
 
   private def divMod(y: RuntimeLong): scala.scalajs.js.Array[RuntimeLong] = {
     import scala.scalajs.js
@@ -438,11 +443,11 @@ final class RuntimeLong private (
   @inline
   private def maskRight(bits: Int) = {
     if (bits <= BITS)
-      RuntimeLong(l & ((1 << bits) - 1), 0, 0)
+      new RuntimeLong(l & ((1 << bits) - 1), 0, 0)
     else if (bits <= BITS01)
-      RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
+      new RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
     else
-      RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
+      new RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
   }
 
   /**
@@ -633,31 +638,27 @@ object RuntimeLong {
   private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  def toRuntimeLong(x: scala.Long): RuntimeLong = sys.error("stub")
-  def fromRuntimeLong(x: RuntimeLong): scala.Long = sys.error("stub")
+  // Do not make these 'final' vals. The goal is to cache the instances.
+  val Zero     = new RuntimeLong(      0,       0,      0) // 0L
+  val One      = new RuntimeLong(      1,       0,      0) // 1L
+  val MinValue = new RuntimeLong(      0,       0, 524288) // Long.MinValue
+  val MaxValue = new RuntimeLong(4194303, 4194303, 524287) // Long.MaxValue
+  val TenPow9  = new RuntimeLong(1755648,     238,      0) // 1000000000L with 9 zeros
 
-  @inline def fromString(str: String): RuntimeLong = fromString(str, 10)
-  @inline def fromString(str: String, radix: Int): RuntimeLong =
-    RuntimeLongImpl.fromString(str, radix)
-
-  @inline def fromByte(value: Byte): RuntimeLong = fromInt(value.toInt)
-  @inline def fromShort(value: Short): RuntimeLong = fromInt(value.toInt)
-  @inline def fromChar(value: Char): RuntimeLong = fromInt(value.toInt)
-  @inline def fromInt(value: Int): RuntimeLong = new RuntimeLong(value)
-  @inline def fromFloat(value: Float): RuntimeLong = fromDouble(value.toDouble)
-
-  @inline def fromDouble(value: Double): RuntimeLong =
-    RuntimeLongImpl.fromDouble(value)
-
-  /**
-   * creates a new long but masks bits as follows:
-   * l & MASK, m & MASK, h & MASK_2
-   */
-  @inline private def masked(l: Int, m: Int, h: Int) =
-    RuntimeLong(l & MASK, m & MASK, h & MASK_2)
-
-  /** Creates a new long from its three underlying components. */
-  @inline def apply(l: Int, m: Int, h: Int): RuntimeLong =
-    new RuntimeLong(l, m, h)
+  def fromDouble(value: Double): RuntimeLong = {
+    if (java.lang.Double.isNaN(value)) Zero
+    else if (value < -TWO_PWR_63_DBL) MinValue
+    else if (value >= TWO_PWR_63_DBL) MaxValue
+    else if (value < 0) -fromDouble(-value)
+    else {
+      var acc = value
+      val a2 = if (acc >= TWO_PWR_44_DBL) (acc / TWO_PWR_44_DBL).toInt else 0
+      acc -= a2 * TWO_PWR_44_DBL
+      val a1 = if (acc >= TWO_PWR_22_DBL) (acc / TWO_PWR_22_DBL).toInt else 0
+      acc -= a1 * TWO_PWR_22_DBL
+      val a0 = acc.toInt
+      new RuntimeLong(a0, a1, a2)
+    }
+  }
 
 }

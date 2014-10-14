@@ -698,7 +698,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           case _:DOUBLE    => HijackedTypeTest(Defs.BoxedDoubleClass,  5)
 
           case CharKind => InstanceOfTypeTest(boxedClass(CharClass).tpe)
-          case LongKind => InstanceOfTypeTest(RuntimeLongClass.tpe)
+          case LongKind => InstanceOfTypeTest(boxedClass(LongClass).tpe)
 
           case REFERENCE(cls) =>
             if (cls == StringClass) HijackedTypeTest(Defs.StringClass, 6)

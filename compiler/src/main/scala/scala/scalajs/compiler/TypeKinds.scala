@@ -97,8 +97,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   /** Long */
   case object LONG extends ValueTypeKind {
     protected def typeSymbol = definitions.LongClass
-    val toIRType: Types.ClassType =
-      Types.ClassType(ir.Definitions.RuntimeLongClass)
+    def toIRType: Types.LongType.type = Types.LongType
   }
 
   /** Double */

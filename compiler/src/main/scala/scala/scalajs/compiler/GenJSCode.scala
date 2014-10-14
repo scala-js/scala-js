@@ -114,24 +114,6 @@ abstract class GenJSCode extends plugins.PluginComponent
   private object jsnme {
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
-
-    val Zero      = newTermName("Zero")
-    val One       = newTermName("One")
-    val notEquals = newTermName("notEquals")
-
-    val fromByte   = newTermName("fromByte")
-    val fromShort  = newTermName("fromShort")
-    val fromChar   = newTermName("fromChar")
-    val fromInt    = newTermName("fromInt")
-    val fromFloat  = newTermName("fromFloat")
-    val fromDouble = newTermName("fromDouble")
-
-    val toByte   = newTermName("toByte")
-    val toShort  = newTermName("toShort")
-    val toChar   = newTermName("toChar")
-    val toInt    = newTermName("toInt")
-    val toFloat  = newTermName("toFloat")
-    val toDouble = newTermName("toDouble")
   }
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
@@ -1005,9 +987,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case ByteTag | ShortTag | CharTag | IntTag =>
               js.IntLiteral(value.intValue)
             case LongTag =>
-              // Convert literal to triplet (at compile time!)
-              val (l, m, h) = JSConversions.scalaLongToTriplet(value.longValue)
-              genLongModuleCall(nme.apply, js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
+              js.LongLiteral(value.longValue)
             case FloatTag | DoubleTag =>
               js.DoubleLiteral(value.doubleValue)
             case StringTag =>
@@ -1671,22 +1651,19 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       def int0 = js.IntLiteral(0)
       def int1 = js.IntLiteral(1)
-      def float0 = js.DoubleLiteral(0.0)
-      def float1 = js.DoubleLiteral(1.0)
+      def long0 = js.LongLiteral(0L)
+      def long1 = js.LongLiteral(1L)
+      def double0 = js.DoubleLiteral(0.0)
+      def double1 = js.DoubleLiteral(1.0)
 
       (from, to) match {
-        case (LONG,     BOOL) =>
-          genLongCall(value, jsnme.notEquals, genLongImplModuleCall(jsnme.Zero))
         case (INT(_),    BOOL) => js.BinaryOp(js.BinaryOp.!==, value, int0)
-        case (DOUBLE(_), BOOL) => js.BinaryOp(js.BinaryOp.!==, value, float0)
+        case (LONG,      BOOL) => js.BinaryOp(js.BinaryOp.!==, value, long0)
+        case (DOUBLE(_), BOOL) => js.BinaryOp(js.BinaryOp.!==, value, double0)
 
-        case (BOOL, LONG) =>
-          js.If(value,
-              genLongImplModuleCall(jsnme.One),
-              genLongImplModuleCall(jsnme.Zero))(
-              jstpe.ClassType(ir.Definitions.RuntimeLongClass))
-        case (BOOL, INT(_))    => js.If(value, int1,   int0  )(jstpe.IntType)
-        case (BOOL, DOUBLE(_)) => js.If(value, float1, float0)(jstpe.DoubleType)
+        case (BOOL, INT(_))    => js.If(value, int1,    int0   )(jstpe.IntType)
+        case (BOOL, LONG)      => js.If(value, long1,   long0  )(jstpe.LongType)
+        case (BOOL, DOUBLE(_)) => js.If(value, double1, double0)(jstpe.DoubleType)
 
         case _ => value
       }
@@ -2084,7 +2061,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       implicit val pos = tree.pos
 
-      def needLongConv(ltpe: Type, rtpe: Type) =
+      def isLongOp(ltpe: Type, rtpe: Type) =
         (isLongType(ltpe) || isLongType(rtpe)) &&
         !(toTypeKind(ltpe).isInstanceOf[DOUBLE] ||
           toTypeKind(rtpe).isInstanceOf[DOUBLE] ||
@@ -2095,14 +2072,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       def resultType = toIRType(tree.tpe)
 
       sources match {
-        // Unary op on long
-        case List(source) if isLongType(args.head.tpe) => code match {
-            case POS => genLongCall(source, nme.UNARY_+)
-            case NEG => genLongCall(source, nme.UNARY_-)
-            case NOT => genLongCall(source, nme.UNARY_~)
-            case _   => abort("Unknown or invalid op code on Long: " + code)
-          }
-
         // Unary operation
         case List(source) =>
           (code match {
@@ -2111,65 +2080,63 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NEG =>
               js.UnaryOp((resultType: @unchecked) match {
                 case jstpe.IntType    => js.UnaryOp.Int_-
+                case jstpe.LongType   => js.UnaryOp.Long_-
                 case jstpe.DoubleType => js.UnaryOp.Double_-
               }, source)
             case NOT =>
-              js.UnaryOp(js.UnaryOp.Int_~, source)
+              js.UnaryOp((resultType: @unchecked) match {
+                case jstpe.IntType    => js.UnaryOp.Int_~
+                case jstpe.LongType   => js.UnaryOp.Long_~
+              }, source)
             case ZNOT =>
               js.UnaryOp(js.UnaryOp.Boolean_!, source)
             case _ =>
               abort("Unknown unary operation code: " + code)
           })
 
-        // Binary operation requiring conversion to Long of both sides
-        case List(lsrc, rsrc) if needLongConv(args(0).tpe, args(1).tpe) =>
-          def toLong(tree: js.Tree, tpe: Type) = tpe.typeSymbol match {
-              case ByteClass  => genLongModuleCall(jsnme.fromByte,  tree)
-              case ShortClass => genLongModuleCall(jsnme.fromShort, tree)
-              case CharClass  => genLongModuleCall(jsnme.fromChar,  tree)
-              case IntClass   => genLongModuleCall(jsnme.fromInt,   tree)
-              case LongClass  => tree
-            }
+        // Binary operation on Longs
+        case List(lsrc, rsrc) if isLongOp(args(0).tpe, args(1).tpe) =>
+          def toLong(tree: js.Tree, tpe: Type) =
+            if (isLongType(tpe)) tree
+            else js.UnaryOp(js.UnaryOp.IntToLong, tree)
+
+          def toInt(tree: js.Tree, tpe: Type) =
+            if (isLongType(tpe)) js.UnaryOp(js.UnaryOp.LongToInt, rsrc)
+            else tree
 
           val ltree = toLong(lsrc, args(0).tpe)
-          val rtree = toLong(rsrc, args(1).tpe)
-          val rtLongTpe = RuntimeLongClass.tpe
+          def rtree = toLong(rsrc, args(1).tpe)
+          def rtreeInt = toInt(rsrc, args(1).tpe)
 
-          def genShift(methodName: TermName): js.Tree = {
-            val rtree =
-              if (isLongType(args(1).tpe)) genLongCall(rsrc, jsnme.toInt)
-              else rsrc
-            genOlLongCall(ltree, methodName, rtree)(IntTpe)
-          }
-
-          code match {
-            case ADD => genOlLongCall(ltree, nme.PLUS,  rtree)(rtLongTpe)
-            case SUB => genOlLongCall(ltree, nme.MINUS, rtree)(rtLongTpe)
-            case MUL => genOlLongCall(ltree, nme.MUL,   rtree)(rtLongTpe)
-            case DIV => genOlLongCall(ltree, nme.DIV,   rtree)(rtLongTpe)
-            case MOD => genOlLongCall(ltree, nme.MOD,   rtree)(rtLongTpe)
-            case OR  => genOlLongCall(ltree, nme.OR,    rtree)(rtLongTpe)
-            case XOR => genOlLongCall(ltree, nme.XOR,   rtree)(rtLongTpe)
-            case AND => genOlLongCall(ltree, nme.AND,   rtree)(rtLongTpe)
-            case LT  => genOlLongCall(ltree, nme.LT,    rtree)(rtLongTpe)
-            case LE  => genOlLongCall(ltree, nme.LE,    rtree)(rtLongTpe)
-            case GT  => genOlLongCall(ltree, nme.GT,    rtree)(rtLongTpe)
-            case GE  => genOlLongCall(ltree, nme.GE,    rtree)(rtLongTpe)
-            case EQ  => genOlLongCall(ltree, nme.equals_, rtree)(rtLongTpe)
-            case NE  => genLongCall(ltree, jsnme.notEquals, rtree)
-            case LSL => genShift(nme.LSL)
-            case LSR => genShift(nme.LSR)
-            case ASR => genShift(nme.ASR)
+          import js.BinaryOp._
+          (code: @switch) match {
+            case ADD => js.BinaryOp(Long_+,   ltree, rtree)
+            case SUB => js.BinaryOp(Long_-,   ltree, rtree)
+            case MUL => js.BinaryOp(Long_*,   ltree, rtree)
+            case DIV => js.BinaryOp(Long_/,   ltree, rtree)
+            case MOD => js.BinaryOp(Long_%,   ltree, rtree)
+            case OR  => js.BinaryOp(Long_|,   ltree, rtree)
+            case XOR => js.BinaryOp(Long_^,   ltree, rtree)
+            case AND => js.BinaryOp(Long_&,   ltree, rtree)
+            case LSL => js.BinaryOp(Long_<<,  ltree, rtreeInt)
+            case LSR => js.BinaryOp(Long_>>>, ltree, rtreeInt)
+            case ASR => js.BinaryOp(Long_>>,  ltree, rtreeInt)
+            case EQ  => js.BinaryOp(Long_==,  ltree, rtree)
+            case NE  => js.BinaryOp(Long_!=,  ltree, rtree)
+            case LT  => js.BinaryOp(Long_<,   ltree, rtree)
+            case LE  => js.BinaryOp(Long_<=,  ltree, rtree)
+            case GT  => js.BinaryOp(Long_>,   ltree, rtree)
+            case GE  => js.BinaryOp(Long_>=,  ltree, rtree)
             case _ =>
               abort("Unknown binary operation code: " + code)
           }
 
         // Binary operation
         case List(lsrc_in, rsrc_in) =>
-          def fromLong(tree: js.Tree, tpe: Type) = tpe.typeSymbol match {
-            // If we end up with a long, target must be float
-            case LongClass => genLongCall(tree, jsnme.toDouble)
-            case _         => tree
+          def fromLong(tree: js.Tree, tpe: Type) = {
+            // If we end up with a long, target must be double
+            if (isLongType(tpe)) js.UnaryOp(js.UnaryOp.LongToDouble, tree)
+            else tree
           }
 
           val lsrc = fromLong(lsrc_in, args(0).tpe)
@@ -2391,63 +2358,51 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def source2int = (code: @switch) match {
         case F2C | D2C | F2B | D2B | F2S | D2S | F2I | D2I =>
-          js.UnaryOp(js.UnaryOp.DoubleToInt , source)
+          js.UnaryOp(js.UnaryOp.DoubleToInt, source)
+        case L2C | L2B | L2S | L2I =>
+          js.UnaryOp(js.UnaryOp.LongToInt, source)
         case _ =>
           source
       }
 
-      (code: @scala.annotation.switch) match {
-        // From Long to something
-        case L2B =>
-          genLongCall(source, jsnme.toByte)
-        case L2S =>
-          genLongCall(source, jsnme.toShort)
-        case L2C =>
-          genLongCall(source, jsnme.toChar)
-        case L2I =>
-          genLongCall(source, jsnme.toInt)
-        case L2F =>
-          genLongCall(source, jsnme.toFloat)
-        case L2D =>
-          genLongCall(source, jsnme.toDouble)
-
-        // From something to long
-        case B2L =>
-          genLongModuleCall(jsnme.fromByte, source)
-        case S2L =>
-          genLongModuleCall(jsnme.fromShort, source)
-        case C2L =>
-          genLongModuleCall(jsnme.fromChar, source)
-        case I2L =>
-          genLongModuleCall(jsnme.fromInt, source)
-        case F2L =>
-          genLongModuleCall(jsnme.fromFloat, source)
-        case D2L =>
-          genLongModuleCall(jsnme.fromDouble, source)
-
-        // Conversions to chars (except for Long)
-        case B2C | S2C | I2C | F2C | D2C =>
+      (code: @switch) match {
+        // To Char, need to crop at unsigned 16-bit
+        case B2C | S2C | I2C | L2C | F2C | D2C =>
           js.BinaryOp(js.BinaryOp.Int_&, source2int, js.IntLiteral(0xffff))
 
         // To Byte, need to crop at signed 8-bit
-        case C2B | S2B | I2B | F2B | D2B =>
+        case C2B | S2B | I2B | L2B | F2B | D2B =>
           // note: & 0xff would not work because of negative values
           js.BinaryOp(js.BinaryOp.Int_>>,
               js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(24)),
               js.IntLiteral(24))
 
         // To Short, need to crop at signed 16-bit
-        case C2S | I2S | F2S | D2S =>
+        case C2S | I2S | L2S | F2S | D2S =>
           // note: & 0xffff would not work because of negative values
           js.BinaryOp(js.BinaryOp.Int_>>,
               js.BinaryOp(js.BinaryOp.Int_<<, source2int, js.IntLiteral(16)),
               js.IntLiteral(16))
 
         // To Int, need to crop at signed 32-bit
-        case F2I | D2I =>
+        case L2I | F2I | D2I =>
           source2int
 
-        case _ => source
+        // Any int to Long
+        case C2L | B2L | S2L | I2L =>
+          js.UnaryOp(js.UnaryOp.IntToLong, source)
+
+        // Any double to Long
+        case F2L | D2L =>
+          js.UnaryOp(js.UnaryOp.DoubleToLong, source)
+
+        // Long to any double
+        case L2F | L2D =>
+          js.UnaryOp(js.UnaryOp.LongToDouble, source)
+
+        // Identities and IR upcasts
+        case _ =>
+          source
       }
     }
 
@@ -2966,9 +2921,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case JS2S =>
               genAsInstanceOf(arg, tree.tpe)
-
-            case RTJ2J | J2RTJ =>
-              arg // TODO? What if (arg === null) for RTJ2J?
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
@@ -3874,7 +3826,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
       case VOID      => abort("Cannot call genZeroOf(VOID)")
       case BOOL      => js.BooleanLiteral(false)
-      case LONG      => genLongImplModuleCall(jsnme.Zero)
+      case LONG      => js.LongLiteral(0L)
       case INT(_)    => js.IntLiteral(0)
       case DOUBLE(_) => js.DoubleLiteral(0.0)
       case _         => js.Null()
@@ -3901,51 +3853,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.LoadModule(jstpe.ClassType(encodeClassFullName(sym)))
       }
     }
-
-    /** Generate a call to scala.scalajs.runtime.RuntimeLong companion */
-    private def genLongModuleCall(methodName: TermName,
-        args: js.Tree*)(implicit pos: Position) = {
-      val LongModule = genLoadModule(RuntimeLongModule)
-      val method = getMemberMethod(RuntimeLongModule, methodName)
-      genApplyMethod(LongModule, RuntimeLongModule.moduleClass,
-          method, args.toList)
-    }
-
-    /** Generate a call to the scala.scalajs.runtime.RuntimeLong.Impl module */
-    private def genLongImplModuleCall(methodName: TermName,
-        args: js.Tree*)(implicit pos: Position) = {
-      val LongImplModule = genLoadModule(RuntimeLongImplModule)
-      val method = getMemberMethod(RuntimeLongImplModule, methodName)
-      genApplyMethod(LongImplModule, RuntimeLongImplModule.moduleClass,
-          method, args.toList)
-    }
-
-    private def genOlLongCall(receiver: js.Tree, methodName: TermName,
-        args: js.Tree*)(argTypes: Type*)(implicit pos: Position): js.Tree = {
-
-      val method = getMemberMethod(RuntimeLongClass, methodName)
-      assert(method.isOverloaded)
-
-      def checkParams(types: List[Type]) =
-        types.size == argTypes.size &&
-        ((argTypes zip types) forall { case (t1,t2) => t1 =:= t2 })
-
-      val opt = method.alternatives find { m =>
-        checkParams(m.paramss.head.map(_.typeSignature))
-      }
-
-      genLongCall(receiver, opt.get, args: _*)
-    }
-
-    private def genLongCall(receiver: js.Tree, methodName: TermName,
-        args: js.Tree*)(implicit pos: Position): js.Tree = {
-      val method = getMemberMethod(RuntimeLongClass, methodName)
-      genLongCall(receiver, method, args: _*)
-    }
-
-    private def genLongCall(receiver: js.Tree, method: Symbol, args: js.Tree*)(
-        implicit pos: Position): js.Tree =
-      genApplyMethod(receiver, RuntimeLongClass, method, args.toList)
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {

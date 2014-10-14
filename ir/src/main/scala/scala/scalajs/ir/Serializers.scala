@@ -325,6 +325,10 @@ object Serializers {
           writeByte(TagIntLiteral)
           writeInt(value)
 
+        case LongLiteral(value) =>
+          writeByte(TagLongLiteral)
+          writeLong(value)
+
         case DoubleLiteral(value) =>
           writeByte(TagDoubleLiteral)
           writeDouble(value)
@@ -406,6 +410,7 @@ object Serializers {
         case UndefType   => buffer.write(TagUndefType)
         case BooleanType => buffer.write(TagBooleanType)
         case IntType     => buffer.write(TagIntType)
+        case LongType    => buffer.write(TagLongType)
         case DoubleType  => buffer.write(TagDoubleType)
         case StringType  => buffer.write(TagStringType)
         case NullType    => buffer.write(TagNullType)
@@ -578,6 +583,7 @@ object Serializers {
         case TagNull           => Null()
         case TagBooleanLiteral => BooleanLiteral(readBoolean())
         case TagIntLiteral     => IntLiteral(readInt())
+        case TagLongLiteral    => LongLiteral(readLong())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
         case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
@@ -641,6 +647,7 @@ object Serializers {
         case TagUndefType   => UndefType
         case TagBooleanType => BooleanType
         case TagIntType     => IntType
+        case TagLongType    => LongType
         case TagDoubleType  => DoubleType
         case TagStringType  => StringType
         case TagNullType    => NullType
@@ -788,7 +795,8 @@ object Serializers {
   private final val TagNull = TagUndefinedParam + 1
   private final val TagBooleanLiteral = TagNull + 1
   private final val TagIntLiteral = TagBooleanLiteral + 1
-  private final val TagDoubleLiteral = TagIntLiteral + 1
+  private final val TagLongLiteral = TagIntLiteral + 1
+  private final val TagDoubleLiteral = TagLongLiteral + 1
   private final val TagStringLiteral = TagDoubleLiteral + 1
   private final val TagVarRef = TagStringLiteral + 1
   private final val TagThis = TagVarRef + 1
@@ -808,7 +816,8 @@ object Serializers {
   private final val TagUndefType = TagNothingType + 1
   private final val TagBooleanType = TagUndefType + 1
   private final val TagIntType = TagBooleanType + 1
-  private final val TagDoubleType = TagIntType + 1
+  private final val TagLongType = TagIntType + 1
+  private final val TagDoubleType = TagLongType + 1
   private final val TagStringType = TagDoubleType + 1
   private final val TagNullType = TagStringType + 1
   private final val TagClassType = TagNullType + 1

@@ -324,7 +324,7 @@ var ScalaJS = {
   },
   numberLongValue: function(instance) {
     if (typeof instance === "number")
-      return ScalaJS.m.sjsr_RuntimeLongImpl().fromDouble__D__sjsr_RuntimeLong(instance);
+      return ScalaJS.m.sjsr_RuntimeLong().fromDouble__D__sjsr_RuntimeLong(instance);
     else
       return instance.longValue__J();
   },
@@ -476,7 +476,7 @@ var ScalaJS = {
     return ScalaJS.asInt(value) | 0;
   },
   uJ: function(value) {
-    return null === value ? ScalaJS.m.sjsr_RuntimeLongImpl().Zero$1
+    return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1
                           : ScalaJS.as.sjsr_RuntimeLong(value);
   },
   uF: function(value) {
@@ -593,7 +593,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
   // is a special case here, since the class has not
   // been defined yet, when this file is read
   if (componentZero == "longZero")
-    componentZero = ScalaJS.m.sjsr_RuntimeLongImpl().Zero$1;
+    componentZero = ScalaJS.m.sjsr_RuntimeLong().Zero$1;
 
   /** @constructor */
   var ArrayClass = function(arg) {
@@ -680,7 +680,7 @@ ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
            this === ScalaJS.d.jl_Double)
     return 0;
   else if (this === ScalaJS.d.jl_Long)
-    return ScalaJS.m.sjsr_RuntimeLongImpl().Zero$1;
+    return ScalaJS.m.sjsr_RuntimeLong().Zero$1;
   else if (this === ScalaJS.d.sr_BoxedUnit)
     return void 0;
   else
