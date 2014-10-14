@@ -54,7 +54,7 @@ object Transformers {
 
         case Match(selector, cases, default) =>
           Match(transformExpr(selector),
-              cases map (c => (c._1 map transformExpr, transformStat(c._2))),
+              cases map (c => (c._1, transformStat(c._2))),
               transformStat(default))(tree.tpe)
 
         // Scala expressions
@@ -206,7 +206,7 @@ object Transformers {
 
         case Match(selector, cases, default) =>
           Match(transformExpr(selector),
-              cases map (c => (c._1 map transformExpr, transformExpr(c._2))),
+              cases map (c => (c._1, transformExpr(c._2))),
               transformExpr(default))(tree.tpe)
 
         // Scala expressions
