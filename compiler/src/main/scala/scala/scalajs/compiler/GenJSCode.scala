@@ -2177,6 +2177,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NE => genEquality(eqeq = true, not = true)
             case ID => genEquality(eqeq = false, not = false)
             case NI => genEquality(eqeq = false, not = true)
+
+            case ZOR  => js.If(lsrc, js.BooleanLiteral(true), rsrc)(jstpe.BooleanType)
+            case ZAND => js.If(lsrc, rsrc, js.BooleanLiteral(false))(jstpe.BooleanType)
+
             case _ =>
               import js.BinaryOp._
               val op = (resultType: @unchecked) match {
@@ -2211,8 +2215,6 @@ abstract class GenJSCode extends plugins.PluginComponent
                     case OR   => Boolean_|
                     case AND  => Boolean_&
                     case XOR  => Boolean_!=
-                    case ZOR  => Boolean_||
-                    case ZAND => Boolean_&&
                   }
               }
               js.BinaryOp(op, lsrc, rsrc)

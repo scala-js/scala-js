@@ -987,10 +987,10 @@ abstract class OptimizerCore {
       Block(captures.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
       keepOnlySideEffects(arg)
-    case BinaryOp(op @ (BinaryOp.Boolean_|| | BinaryOp.Boolean_&&), lhs, rhs) =>
-      keepOnlySideEffects(rhs) match {
-        case Skip() => keepOnlySideEffects(lhs)
-        case newRhs => BinaryOp(op, lhs, newRhs)(stat.pos)
+    case If(cond, thenp, elsep) =>
+      (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
+        case (Skip(), Skip())     => keepOnlySideEffects(cond)
+        case (newThenp, newElsep) => If(cond, newThenp, newElsep)(NoType)(stat.pos)
       }
     case BinaryOp(_, lhs, rhs) =>
       Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs))(stat.pos)
@@ -1493,6 +1493,8 @@ abstract class OptimizerCore {
 
   private def foldIf(cond: Tree, thenp: Tree, elsep: Tree)(tpe: Type)(
       implicit pos: Position): Tree = {
+    import BinaryOp._
+
     @inline def default = If(cond, thenp, elsep)(tpe)
     cond match {
       case BooleanLiteral(v) =>
@@ -1502,36 +1504,66 @@ abstract class OptimizerCore {
       case _ =>
         @inline def negCond = foldUnaryOp(UnaryOp.Boolean_!, cond)
         if (thenp.tpe == BooleanType && elsep.tpe == BooleanType) {
-          (thenp, elsep) match {
-            case (BooleanLiteral(true), BooleanLiteral(false)) => cond
-            case (BooleanLiteral(false), BooleanLiteral(true)) => negCond
+          (cond, thenp, elsep) match {
+            case (_, BooleanLiteral(t), BooleanLiteral(e)) =>
+              if (t == e) Block(keepOnlySideEffects(cond), thenp)
+              else if (t) cond
+              else        negCond
 
-            case (BooleanLiteral(true), _) =>
-              foldBinaryOp(BinaryOp.Boolean_||, cond, elsep)
-            case (_, BooleanLiteral(false)) =>
-              foldBinaryOp(BinaryOp.Boolean_&&, cond, thenp)
+            case (_, BooleanLiteral(false), _) =>
+              foldIf(negCond, elsep, BooleanLiteral(false))(tpe) // canonical && form
+            case (_, _, BooleanLiteral(true)) =>
+              foldIf(negCond, BooleanLiteral(true), thenp)(tpe) // canonical || form
 
-            case (BooleanLiteral(false), _) =>
-              foldBinaryOp(BinaryOp.Boolean_&&, negCond, elsep)
-            case (_, BooleanLiteral(true)) =>
-              foldBinaryOp(BinaryOp.Boolean_||, negCond, thenp)
-
-            case (BinaryOp(BinaryOp.===, VarRef(rhsIdent, _), Null()),
+            /* if (lhs === null) rhs === null else lhs === rhs
+             * -> lhs === rhs
+             * This is the typical shape of a lhs == rhs test where
+             * the equals() method has been inlined as a reference
+             * equality test.
+             */
+            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent, _), Null()),
+                BinaryOp(BinaryOp.===, VarRef(rhsIdent, _), Null()),
                 BinaryOp(BinaryOp.===, VarRef(lhsIdent2, _), VarRef(rhsIdent2, _)))
-                if rhsIdent2 == rhsIdent =>
-              cond match {
-                case BinaryOp(BinaryOp.===, VarRef(lhsIdent, _), Null())
-                    if lhsIdent2 == lhsIdent =>
-                  /* if (lhs === null) rhs === null else lhs === rhs
-                   * -> lhs === rhs
-                   * This is the typical shape of a lhs == rhs test where
-                   * the equals() method has been inlined as a reference
-                   * equality test.
-                   */
-                  elsep
-                case _ =>
-                  default
-              }
+                if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
+              elsep
+
+            // Example: (x > y) || (x == y)  ->  (x >= y)
+            case (BinaryOp(op1 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l1, r1),
+                  BooleanLiteral(true),
+                  BinaryOp(op2 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l2, r2))
+                if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
+                    (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
+                    (l1 == l2 && r1 == r2)) =>
+              val canBeEqual =
+                ((op1 == Num_==) || (op1 == Num_<=) || (op1 == Num_>=)) ||
+                ((op2 == Num_==) || (op2 == Num_<=) || (op2 == Num_>=))
+              val canBeLessThan =
+                ((op1 == Num_!=) || (op1 == Num_<) || (op1 == Num_<=)) ||
+                ((op2 == Num_!=) || (op2 == Num_<) || (op2 == Num_<=))
+              val canBeGreaterThan =
+                ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) ||
+                ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
+
+              fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
+
+            // Example: (x >= y) && (x <= y)  ->  (x == y)
+            case (BinaryOp(op1 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l1, r1),
+                  BinaryOp(op2 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l2, r2),
+                  BooleanLiteral(false))
+                if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
+                    (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
+                    (l1 == l2 && r1 == r2)) =>
+              val canBeEqual =
+                ((op1 == Num_==) || (op1 == Num_<=) || (op1 == Num_>=)) &&
+                ((op2 == Num_==) || (op2 == Num_<=) || (op2 == Num_>=))
+              val canBeLessThan =
+                ((op1 == Num_!=) || (op1 == Num_<) || (op1 == Num_<=)) &&
+                ((op2 == Num_!=) || (op2 == Num_<) || (op2 == Num_<=))
+              val canBeGreaterThan =
+                ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) &&
+                ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
+
+              fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
 
             case _ => default
           }
@@ -2100,7 +2132,7 @@ abstract class OptimizerCore {
                   val tempX = tempXDef.newReplacement
                   val tempY = tempYDef.newReplacement
                   cont(PreTransTree(
-                      BinaryOp(Boolean_&&, BinaryOp(Boolean_&&,
+                      AndThen(AndThen(
                           BinaryOp(Num_>, tempX, IntLiteral(0)),
                           BinaryOp(Num_>, tempY, IntLiteral(0))),
                           BinaryOp(Num_<, BinaryOp(Int_+, tempX, tempY), IntLiteral(0)))))
@@ -2191,62 +2223,6 @@ abstract class OptimizerCore {
           case (_, BooleanLiteral(true))              => lhs
           case (BooleanLiteral(true), _)              => rhs
           case _                                      => default
-        }
-
-      case Boolean_|| =>
-        (lhs, rhs) match {
-          case (BooleanLiteral(true), _)  => lhs
-          case (BooleanLiteral(false), _) => rhs
-          case (_, BooleanLiteral(false)) => lhs
-          case (_, BooleanLiteral(true))  =>
-            Block(keepOnlySideEffects(lhs), rhs)
-
-          case (BinaryOp(op1 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l1, r1),
-                BinaryOp(op2 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l2, r2))
-              if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
-                  (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
-                  (l1 == l2 && r1 == r2)) =>
-            val canBeEqual =
-              ((op1 == Num_==) || (op1 == Num_<=) || (op1 == Num_>=)) ||
-              ((op2 == Num_==) || (op2 == Num_<=) || (op2 == Num_>=))
-            val canBeLessThan =
-              ((op1 == Num_!=) || (op1 == Num_<) || (op1 == Num_<=)) ||
-              ((op2 == Num_!=) || (op2 == Num_<) || (op2 == Num_<=))
-            val canBeGreaterThan =
-              ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) ||
-              ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
-
-            fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
-
-          case _ => default
-        }
-
-      case Boolean_&& =>
-        (lhs, rhs) match {
-          case (BooleanLiteral(false), _) => lhs
-          case (BooleanLiteral(true), _)  => rhs
-          case (_, BooleanLiteral(true))  => lhs
-          case (_, BooleanLiteral(false)) =>
-            Block(keepOnlySideEffects(lhs), rhs)
-
-          case (BinaryOp(op1 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l1, r1),
-                BinaryOp(op2 @ (Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>=), l2, r2))
-              if ((l1.isInstanceOf[Literal] || l1.isInstanceOf[VarRef]) &&
-                  (r1.isInstanceOf[Literal] || r1.isInstanceOf[VarRef]) &&
-                  (l1 == l2 && r1 == r2)) =>
-            val canBeEqual =
-              ((op1 == Num_==) || (op1 == Num_<=) || (op1 == Num_>=)) &&
-              ((op2 == Num_==) || (op2 == Num_<=) || (op2 == Num_>=))
-            val canBeLessThan =
-              ((op1 == Num_!=) || (op1 == Num_<) || (op1 == Num_<=)) &&
-              ((op2 == Num_!=) || (op2 == Num_<) || (op2 == Num_<=))
-            val canBeGreaterThan =
-              ((op1 == Num_!=) || (op1 == Num_>) || (op1 == Num_>=)) &&
-              ((op2 == Num_!=) || (op2 == Num_>) || (op2 == Num_>=))
-
-            fold3WayComparison(canBeEqual, canBeLessThan, canBeGreaterThan, l1, r1)
-
-          case _ => default
         }
 
       case Num_== | Num_!= =>
@@ -3137,6 +3113,11 @@ object OptimizerCore {
       case UnaryOp(UnaryOp.IntToLong, x)  => Some(x)
       case _                              => None
     }
+  }
+
+  private object AndThen {
+    def apply(lhs: Tree, rhs: Tree)(implicit pos: Position): Tree =
+      If(lhs, rhs, BooleanLiteral(false))(BooleanType)
   }
 
   /** Tests whether `x + y` is valid without falling out of range. */

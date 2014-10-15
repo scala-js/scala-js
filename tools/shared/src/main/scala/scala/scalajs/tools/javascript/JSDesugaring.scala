@@ -380,17 +380,11 @@ object JSDesugaring {
                 js.Block(stats.map(transformStat)) +=: extractedStatements
                 result
 
-              case BinaryOp(op, lhs, rhs)
-                  if (op != BinaryOp.Boolean_&& && op != BinaryOp.Boolean_||) =>
-                val newRhs = rec(rhs)
-                BinaryOp(op, rec(lhs), newRhs)
-
-              case BinaryOp(op, lhs, rhs) if noExtractYet && isExpression(rhs) =>
-                assert(op == BinaryOp.Boolean_&& || op == BinaryOp.Boolean_||)
-                BinaryOp(op, rec(lhs), rhs)
-
               case UnaryOp(op, lhs) =>
                 UnaryOp(op, rec(lhs))
+              case BinaryOp(op, lhs, rhs) =>
+                val newRhs = rec(rhs)
+                BinaryOp(op, rec(lhs), newRhs)
               case JSBinaryOp(op, lhs, rhs) =>
                 val newRhs = rec(rhs)
                 JSBinaryOp(op, rec(lhs), newRhs)
@@ -850,12 +844,6 @@ object JSDesugaring {
             redo(UnaryOp(op, newLhs))
           }
 
-        case BinaryOp(BinaryOp.Boolean_&&, lhs, rhs) =>
-          redo(If(lhs, rhs, BooleanLiteral(false))(BooleanType))
-
-        case BinaryOp(BinaryOp.Boolean_||, lhs, rhs) =>
-          redo(If(lhs, BooleanLiteral(true), rhs)(BooleanType))
-
         case BinaryOp(op, lhs, rhs) =>
           unnest(lhs, rhs) { (newLhs, newRhs) =>
             redo(BinaryOp(op, newLhs, newRhs))
@@ -1020,6 +1008,12 @@ object JSDesugaring {
         case Block(stats :+ expr) =>
           js.Block((stats map transformStat) :+ transformExpr(expr))
 
+        // Note that these work even if thenp/elsep is not a BooleanType
+        case If(cond, BooleanLiteral(true), elsep) =>
+          js.BinaryOp("||", transformExpr(cond), transformExpr(elsep))
+        case If(cond, thenp, BooleanLiteral(false)) =>
+          js.BinaryOp("&&", transformExpr(cond), transformExpr(thenp))
+
         case If(cond, thenp, elsep) =>
           js.If(transformExpr(cond), transformExpr(thenp), transformExpr(elsep))
 
@@ -1161,11 +1155,8 @@ object JSDesugaring {
             case Long_>  => genLongMethodApply(newLhs, LongImpl.>,   newRhs)
             case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
 
-            case Boolean_|  => !(!js.BinaryOp("|", newLhs, newRhs))
-            case Boolean_&  => !(!js.BinaryOp("&", newLhs, newRhs))
-
-            case Boolean_|| => js.BinaryOp("||", newLhs, newRhs)
-            case Boolean_&& => js.BinaryOp("&&", newLhs, newRhs)
+            case Boolean_| => !(!js.BinaryOp("|", newLhs, newRhs))
+            case Boolean_& => !(!js.BinaryOp("&", newLhs, newRhs))
           }
 
         case NewArray(tpe, lengths) =>

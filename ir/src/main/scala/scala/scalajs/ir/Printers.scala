@@ -163,6 +163,11 @@ object Printers {
           if (label.isEmpty) print("return ", expr)
           else print("return(", label.get, ") ", expr)
 
+        case If(cond, BooleanLiteral(true), elsep) =>
+          print(cond, " || ", elsep)
+        case If(cond, thenp, BooleanLiteral(false)) =>
+          print(cond, " && ", thenp)
+
         case If(cond, thenp, elsep) =>
           print("if (", cond, ") ")
           printBlock(thenp)
@@ -339,9 +344,6 @@ object Printers {
             case Boolean_!= => "!=[bool]"
             case Boolean_|  => "|[bool]"
             case Boolean_&  => "&[bool]"
-
-            case Boolean_|| => "||"
-            case Boolean_&& => "&&"
           }, " ", rhs, ")")
 
         case NewArray(tpe, lengths) =>

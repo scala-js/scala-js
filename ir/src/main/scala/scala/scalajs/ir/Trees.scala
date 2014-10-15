@@ -243,8 +243,7 @@ object Trees {
           `in` | `instanceof` |
           Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
-          Boolean_|| | Boolean_&& =>
+          Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
         BooleanType
       case String_+ =>
         StringType
@@ -321,9 +320,6 @@ object Trees {
     final val Boolean_!= = 46
     final val Boolean_|  = 47
     final val Boolean_&  = 48
-
-    final val Boolean_|| = 49
-    final val Boolean_&& = 50
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {

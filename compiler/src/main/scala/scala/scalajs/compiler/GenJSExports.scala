@@ -403,8 +403,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               genSubAlts // note: elsep is discarded, obviously
             } { cond =>
               val condOrUndef = if (!hasDefaultParam) cond else {
-                js.BinaryOp(js.BinaryOp.Boolean_||, cond,
-                    js.BinaryOp(js.BinaryOp.===, param.ref, js.Undefined()))
+                js.If(cond, js.BooleanLiteral(true),
+                    js.BinaryOp(js.BinaryOp.===, param.ref, js.Undefined()))(
+                    jstpe.BooleanType)
               }
               js.If(condOrUndef, genSubAlts, elsep)(jstpe.AnyType)
             }

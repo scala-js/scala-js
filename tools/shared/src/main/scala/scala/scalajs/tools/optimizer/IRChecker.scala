@@ -533,8 +533,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
               Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= =>
             typecheckExpect(lhs, env, DoubleType)
             typecheckExpect(lhs, env, DoubleType)
-          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
-              Boolean_|| | Boolean_&& =>
+          case Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
             typecheckExpect(lhs, env, BooleanType)
             typecheckExpect(rhs, env, BooleanType)
         }
