@@ -21,6 +21,5 @@ import scala.collection.immutable.Seq
 trait ClasspathContentHandler {
   protected def handleIR(relPath: String, ir: => VirtualScalaJSIRFile): Unit
   protected def handleJS(js: => VirtualJSFile): Unit
-  protected def handleTopLvlJS(js: => VirtualJSFile): Unit
   protected def handleDepManifest(m: => JSDependencyManifest): Unit
 }

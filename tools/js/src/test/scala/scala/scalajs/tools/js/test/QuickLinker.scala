@@ -15,7 +15,7 @@ object QuickLinker {
   @JSExport
   def linkNode(cpEntries: String*): String = {
     val builder = new AbstractPartialClasspathBuilder with NodeFileSystem
-    val cp = builder.buildIR(cpEntries.toList)
+    val cp = builder.build(cpEntries.toList)
 
     val complete = cp.resolve()
 

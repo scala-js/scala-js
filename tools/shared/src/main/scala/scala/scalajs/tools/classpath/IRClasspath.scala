@@ -13,31 +13,41 @@ import scala.collection.immutable.{Seq, Traversable}
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging._
-import scala.scalajs.tools.packager.ScalaJSPackager
+import scala.scalajs.tools.optimizer.ScalaJSOptimizer
 import scala.scalajs.tools.jsdep.ResolutionInfo
 
-/** A CompleteCIClasspath that contains only IR as cijsCode */
-class CompleteIRClasspath(
+/** A [[CompleteClasspath]] that contains only IR as scalaJSCode */
+final class IRClasspath(
     /** The JS libraries the IR code depends on */
     jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
     /** The IR itself. Ancestor count is used for later ordering */
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     requiresDOM: Boolean,
     version: Option[String]
-) extends CompleteCIClasspath(jsLibs, requiresDOM, version) {
+) extends CompleteClasspath(jsLibs, requiresDOM, version) {
 
-  /** Orders and desugars the contained IR.
+  /** Orders and optimizes the contained IR.
    *
-   *  Consider using ScalaJSPackager for a canonical way to do so. It allows to
+   *  Consider using ScalaJSOptimizer for a canonical way to do so. It allows to
    *  persist the resulting file and create a source map.
    */
-  override lazy val cijsCode: Seq[VirtualJSFile] = {
-    import ScalaJSPackager._
+  override lazy val scalaJSCode: VirtualJSFile = {
+    import ScalaJSOptimizer._
 
-    val output = WritableMemVirtualJSFile("temporary-package.js")
-    (new ScalaJSPackager).packageIR(scalaJSIR, OutputConfig(output),
-        NullLogger, addCoreJSLib = true)
+    val outName = "temporary-fastOpt.js"
 
-    output :: Nil
+    if (scalaJSIR.nonEmpty) {
+      val output = WritableMemVirtualJSFile(outName)
+      (new ScalaJSOptimizer).optimizeCP(
+          Inputs(this),
+          OutputConfig(output),
+          NullLogger)
+      output
+    } else {
+      // We cannot run the optimizer without IR, because it will complain about
+      // java.lang.Object missing. However, an empty JS file is perfectly valid
+      // for no IR at all.
+      VirtualJSFile.empty(outName)
+    }
   }
 }

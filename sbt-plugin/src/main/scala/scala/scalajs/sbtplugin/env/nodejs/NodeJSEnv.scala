@@ -117,7 +117,7 @@ class NodeJSEnv(
   /** Libraries are loaded via require in Node.js */
   override protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] = {
     initFiles(args) ++
-    args.classpath.jsLibs.map((requireLibrary _).tupled) ++
+    args.classpath.jsLibs.map((requireLibrary _).tupled) :+
     args.classpath.scalaJSCode
   }
 

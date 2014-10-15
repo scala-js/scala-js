@@ -20,8 +20,6 @@ import OptimizerOptions._
  *  instance.
  */
 final class OptimizerOptions private (
-    /** Whether fullOptJS should directly use IR produced by fastOptJS */
-    val directFullOptJS: Boolean = true,
     /** Whether to parallelize the optimizer (currently fastOptJS only) **/
     val parallel: Boolean = true,
     /** Whether to run the optimizer in batch (i.e. non-incremental) mode */
@@ -34,33 +32,28 @@ final class OptimizerOptions private (
     val checkScalaJSIR: Boolean = false
 ) {
 
-  def withDirectFullOptJS(directFullOptJS: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
-  }
-
   def withParallel(parallel: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
+    new OptimizerOptions(parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
   def withBatchMode(batchMode: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
+    new OptimizerOptions(parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
   def withDisableOptimizer(disableOptimizer: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
+    new OptimizerOptions(parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
   def withPrettyPrintFullOptJS(prettyPrintFullOptJS: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
+    new OptimizerOptions(parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
   def withCheckScalaJSIR(checkScalaJSIR: Boolean): OptimizerOptions = {
-    new OptimizerOptions(directFullOptJS, parallel, batchMode,
+    new OptimizerOptions(parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 

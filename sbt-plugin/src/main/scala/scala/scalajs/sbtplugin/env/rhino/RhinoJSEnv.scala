@@ -67,7 +67,7 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
         // Make the classpath available. Either through lazy loading or by
         // simply inserting
         classpath match {
-          case cp: CompleteIRClasspath =>
+          case cp: IRClasspath =>
             // Setup lazy loading classpath and source mapper
             val optLoader = if (cp.scalaJSIR.nonEmpty) {
               val loader = new ScalaJSCoreLib(cp)

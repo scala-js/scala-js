@@ -26,10 +26,10 @@ abstract class CompleteClasspath(
     val version: Option[String]
 ) {
 
-  /** Scala.js code (non-library code, includes core libs) */
-  def scalaJSCode: Seq[VirtualJSFile]
+  /** Fully linked Scala.js code */
+  def scalaJSCode: VirtualJSFile
 
   /** All code in this complete classpath */
   final def allCode: Seq[VirtualJSFile] =
-    jsLibs.map(_._1) ++ scalaJSCode
+    jsLibs.map(_._1) :+ scalaJSCode
 }

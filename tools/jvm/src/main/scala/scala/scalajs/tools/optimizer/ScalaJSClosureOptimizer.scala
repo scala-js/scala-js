@@ -35,52 +35,31 @@ class ScalaJSClosureOptimizer {
   private def toClosureInput(file: VirtualJSFile) =
     new CompilerInput(toClosureSource(file))
 
-  /**
-   * runs closure on CIJS content
-   * - Maintains order
-   * - Only NCJS in result
+  /** Fully optimizes an [[IRClasspath]] by asking the ScalaJSOptimizer to
+   *  emit a closure AST and then compiling this AST directly
    */
-  def optimizeCP(inputs: Inputs[CompleteCIClasspath],
-      outCfg: OutputConfig, logger: Logger): CompleteNCClasspath = {
-
-    val cp = inputs.input
-
-    CacheUtils.cached(cp.version, outCfg.output, outCfg.cache) {
-      logger.info(s"Optimizing ${outCfg.output.path}")
-      optimizeFiles(inputs.copy(input = cp.cijsCode), outCfg, logger)
-    }
-
-    new CompleteNCClasspath(cp.jsLibs, outCfg.output :: Nil,
-        cp.requiresDOM, cp.version)
-  }
-
-
-  /** Directly optimizes an IRClasspath by asking the ScalaJSOptimizer to
-   *  emit a closure AST rather than a file and then compiling this AST directly
-   */
-  def directOptimizeCP(optimizer: ScalaJSOptimizer,
-      inputs: Inputs[ScalaJSOptimizer.Inputs[CompleteIRClasspath]],
-      outCfg: DirectOutputConfig, logger: Logger): CompleteNCClasspath = {
+  def optimizeCP(optimizer: ScalaJSOptimizer,
+      inputs: Inputs[ScalaJSOptimizer.Inputs[IRClasspath]],
+      outCfg: OutputConfig, logger: Logger): LinkedClasspath = {
 
     val cp = inputs.input.input
 
     CacheUtils.cached(cp.version, outCfg.output, outCfg.cache) {
-      logger.info(s"Direct Optimizing ${outCfg.output.path}")
+      logger.info(s"Full Optimizing ${outCfg.output.path}")
 
       val irFastOptInput =
         inputs.input.copy(input = inputs.input.input.scalaJSIR)
       val irFullOptInput = inputs.copy(input = irFastOptInput)
 
-      directOptimizeIR(optimizer, irFullOptInput, outCfg, logger)
+      optimizeIR(optimizer, irFullOptInput, outCfg, logger)
     }
 
-    new CompleteNCClasspath(cp.jsLibs, outCfg.output :: Nil,
-        cp.requiresDOM, cp.version)
+    new LinkedClasspath(cp.jsLibs, outCfg.output, cp.requiresDOM, cp.version)
   }
 
-  def directOptimizeIR(optimizer: ScalaJSOptimizer,
+  def optimizeIR(optimizer: ScalaJSOptimizer,
       inputs: Inputs[ScalaJSOptimizer.Inputs[Traversable[VirtualScalaJSIRFile]]],
-      outCfg: DirectOutputConfig, logger: Logger): Unit = {
+      outCfg: OutputConfig, logger: Logger): Unit = {
 
     // Build Closure IR via ScalaJSOptimizer
     val builder = new ClosureAstBuilder(outCfg.relativizeSourceMapBase)
@@ -116,26 +95,6 @@ class ScalaJSClosureOptimizer {
     }
   }
 
-  def optimizeFiles(inputs: Inputs[Seq[VirtualJSFile]],
-      outputConfig: OutputConfig, logger: Logger): Unit = {
-    val closureExterns =
-      (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
-    val closureSources =
-      (inputs.input ++ inputs.additionalExports).map(toClosureSource)
-
-    val options = closureOptions(outputConfig, noSourceMap = true)
-    val compiler = closureCompiler(logger)
-
-    val result = GenIncOptimizer.logTime(logger, "Closure Compiler pass") {
-      compiler.compile(
-          closureExterns.asJava, closureSources.asJava, options)
-    }
-
-    GenIncOptimizer.logTime(logger, "Write Closure result") {
-      writeResult(result, compiler, outputConfig.output)
-    }
-  }
-
   private def writeResult(result: Result, compiler: ClosureCompiler,
       output: WritableVirtualJSFile): Unit = {
 
@@ -160,17 +119,17 @@ class ScalaJSClosureOptimizer {
     }
   }
 
-  private def closureOptions(outputConfig: AbstractOutputConfig,
+  private def closureOptions(optConfig: OptimizerConfig,
       noSourceMap: Boolean = false) = {
 
     val options = new ClosureOptions
-    options.prettyPrint = outputConfig.prettyPrint
+    options.prettyPrint = optConfig.prettyPrint
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
     options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT5)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
 
-    if (!noSourceMap && outputConfig.wantSourceMap) {
-      options.setSourceMapOutputPath(outputConfig.output.name + ".map")
+    if (!noSourceMap && optConfig.wantSourceMap) {
+      options.setSourceMapOutputPath(optConfig.output.name + ".map")
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
     }
 
@@ -201,7 +160,7 @@ object ScalaJSClosureOptimizer {
   /** Configuration the closure part of the optimizer needs.
    *  See [[OutputConfig]] for a description of the fields.
    */
-  trait AbstractOutputConfig {
+  trait OptimizerConfig {
     val output: WritableVirtualJSFile
     val cache: Option[WritableVirtualTextFile]
     val wantSourceMap: Boolean
@@ -209,25 +168,8 @@ object ScalaJSClosureOptimizer {
     val relativizeSourceMapBase: Option[URI]
   }
 
-  /** Configuration for the output of the Scala.js Closure optimizer when
-   *  optimizing from a JavaScript file
-   */
+  /** Configuration for the output of the Scala.js Closure optimizer */
   final case class OutputConfig(
-      /** Writer for the output */
-      output: WritableVirtualJSFile,
-      /** Cache file */
-      cache: Option[WritableVirtualTextFile] = None,
-      /** Pretty-print the output. */
-      prettyPrint: Boolean = false
-  ) extends AbstractOutputConfig {
-    val wantSourceMap: Boolean = false
-    val relativizeSourceMapBase: Option[URI] = None
-  }
-
-  /** Configuration for the output of the Scala.js Closure optimizer when
-   *  optimizing directly from Scala.js IR emitted by a [[ScalaJSOptimizer]]
-   */
-  final case class DirectOutputConfig(
       /** Writer for the output */
       output: WritableVirtualJSFile,
       /** Cache file */
@@ -248,7 +190,7 @@ object ScalaJSClosureOptimizer {
       prettyPrint: Boolean = false,
       /** Base path to relativize paths in the source map */
       relativizeSourceMapBase: Option[URI] = None
-  ) extends AbstractOutputConfig with ScalaJSOptimizer.OptimizerConfig
+  ) extends OptimizerConfig with ScalaJSOptimizer.OptimizerConfig
 
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
   val ScalaJSExterns = """

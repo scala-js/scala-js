@@ -51,8 +51,8 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
    *  - No IR in result
    *  - CoreJSLibs in result (since they are implicitly in the CompleteIRCP)
    */
-  def optimizeCP(inputs: Inputs[CompleteIRClasspath], outCfg: OutputConfig,
-      logger: Logger): CompleteCIClasspath = {
+  def optimizeCP(inputs: Inputs[IRClasspath], outCfg: OutputConfig,
+      logger: Logger): LinkedClasspath = {
 
     val cp = inputs.input
 
@@ -61,8 +61,7 @@ class ScalaJSOptimizer(optimizerFactory: () => GenIncOptimizer) {
       optimizeIR(inputs.copy(input = inputs.input.scalaJSIR), outCfg, logger)
     }
 
-    CompleteCIClasspath(cp.jsLibs, outCfg.output :: Nil,
-        cp.requiresDOM, cp.version)
+    new LinkedClasspath(cp.jsLibs, outCfg.output, cp.requiresDOM, cp.version)
   }
 
   def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],

@@ -21,14 +21,11 @@ trait AbstractPartialClasspathBuilder extends ClasspathContentHandler
 
   private val jsDepManifests = mutable.ListBuffer.empty[JSDependencyManifest]
   private val irFiles = mutable.Map.empty[String, VirtualScalaJSIRFile]
-  private val topLvlFiles = mutable.ListBuffer.empty[VirtualJSFile]
   private val otherJSFiles = mutable.Map.empty[String, VirtualJSFile]
-
-  private def useIR: Boolean = topLvlFiles.isEmpty
 
   override protected def handleIR(relPath: String,
       ir: => VirtualScalaJSIRFile): Unit = {
-    if (useIR && !irFiles.contains(relPath))
+    if (!irFiles.contains(relPath))
       irFiles += relPath -> ir
   }
 
@@ -38,37 +35,13 @@ trait AbstractPartialClasspathBuilder extends ClasspathContentHandler
       otherJSFiles += file.name -> file
   }
 
-  override protected def handleTopLvlJS(js: => VirtualJSFile): Unit = {
-    topLvlFiles += js
-  }
-
   override protected def handleDepManifest(m: => JSDependencyManifest): Unit = {
     jsDepManifests += m
   }
 
   def build(cp: Seq[File]): PartialClasspath = {
     val version = traverseClasspathElements(cp)
-    if (useIR)
-      mkIRCP(version)
-    else
-      mkCP(version)
-  }
-
-  def buildIR(cp: Seq[File]): PartialIRClasspath = {
-    val version = traverseClasspathElements(cp)
-    if (!useIR) sys.error("This is not a PartialIRClasspath")
-    mkIRCP(version)
-  }
-
-  private def mkIRCP(version: String) = {
-    new PartialIRClasspath(
-        jsDepManifests.toList, otherJSFiles.toMap,
+    new PartialClasspath(jsDepManifests.toList, otherJSFiles.toMap,
         irFiles.values.toList, Some(version))
-  }
-
-  private def mkCP(version: String) = {
-    PartialClasspath(
-        jsDepManifests.toList, otherJSFiles.toMap,
-        topLvlFiles.toList, Some(version))
   }
 }
