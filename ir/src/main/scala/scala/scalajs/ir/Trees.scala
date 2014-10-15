@@ -239,20 +239,23 @@ object Trees {
   case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     import BinaryOp._
     val tpe = (op: @switch) match {
-      case === | !== | < | <= | > | >= | `in` | `instanceof` |
+      case === | !== |
+          `in` | `instanceof` |
+          Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_| | Boolean_& | Boolean_|| | Boolean_&& =>
+          Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
+          Boolean_|| | Boolean_&& =>
         BooleanType
       case String_+ =>
         StringType
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
           Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
         IntType
+      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
+        DoubleType
       case Long_+ | Long_- | Long_* | Long_/ | Long_% |
           Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
         LongType
-      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
-        DoubleType
     }
   }
 
@@ -263,59 +266,64 @@ object Trees {
     final val === = 1
     final val !== = 2
 
-    final val <  = 3
-    final val <= = 4
-    final val >  = 5
-    final val >= = 6
+    final val String_+ = 3
 
-    final val String_+ = 7
+    final val in         = 4
+    final val instanceof = 5
 
-    final val in         = 8
-    final val instanceof = 9
+    final val Int_+ = 6
+    final val Int_- = 7
+    final val Int_* = 8
+    final val Int_/ = 9
+    final val Int_% = 10
 
-    final val Int_+ = 10
-    final val Int_- = 11
-    final val Int_* = 12
-    final val Int_/ = 13
-    final val Int_% = 14
+    final val Int_|   = 11
+    final val Int_&   = 12
+    final val Int_^   = 13
+    final val Int_<<  = 14
+    final val Int_>>> = 15
+    final val Int_>>  = 16
 
-    final val Int_|   = 15
-    final val Int_&   = 16
-    final val Int_^   = 17
-    final val Int_<<  = 18
-    final val Int_>>> = 19
-    final val Int_>>  = 20
+    final val Double_+ = 17
+    final val Double_- = 18
+    final val Double_* = 19
+    final val Double_/ = 20
+    final val Double_% = 21
 
-    final val Long_+ = 21
-    final val Long_- = 22
-    final val Long_* = 23
-    final val Long_/ = 24
-    final val Long_% = 25
+    final val Num_== = 22
+    final val Num_!= = 23
+    final val Num_<  = 24
+    final val Num_<= = 25
+    final val Num_>  = 26
+    final val Num_>= = 27
 
-    final val Long_|   = 26
-    final val Long_&   = 27
-    final val Long_^   = 28
-    final val Long_<<  = 29
-    final val Long_>>> = 30
-    final val Long_>>  = 31
+    final val Long_+ = 28
+    final val Long_- = 29
+    final val Long_* = 30
+    final val Long_/ = 31
+    final val Long_% = 32
 
-    final val Long_== = 32 // really, this is not the same thing as ===
-    final val Long_!= = 33 // same here wrt to !==
-    final val Long_<  = 34
-    final val Long_<= = 35
-    final val Long_>  = 36
-    final val Long_>= = 37
+    final val Long_|   = 33
+    final val Long_&   = 34
+    final val Long_^   = 35
+    final val Long_<<  = 36
+    final val Long_>>> = 37
+    final val Long_>>  = 38
 
-    final val Double_+ = 38
-    final val Double_- = 39
-    final val Double_* = 40
-    final val Double_/ = 41
-    final val Double_% = 42
+    final val Long_== = 39
+    final val Long_!= = 40
+    final val Long_<  = 41
+    final val Long_<= = 42
+    final val Long_>  = 43
+    final val Long_>= = 44
 
-    final val Boolean_|  = 43
-    final val Boolean_&  = 44
-    final val Boolean_|| = 45
-    final val Boolean_&& = 46
+    final val Boolean_== = 45
+    final val Boolean_!= = 46
+    final val Boolean_|  = 47
+    final val Boolean_&  = 48
+
+    final val Boolean_|| = 49
+    final val Boolean_&& = 50
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {

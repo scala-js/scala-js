@@ -284,11 +284,6 @@ object Printers {
             case === => "==="
             case !== => "!=="
 
-            case <  => "<"
-            case <= => "<="
-            case >  => ">"
-            case >= => ">="
-
             case String_+ => "+[string]"
 
             case `in`         => "in"
@@ -306,6 +301,19 @@ object Printers {
             case Int_<<  => "<<"
             case Int_>>> => ">>>"
             case Int_>>  => ">>"
+
+            case Double_+ => "+"
+            case Double_- => "-"
+            case Double_* => "*"
+            case Double_/ => "/"
+            case Double_% => "%"
+
+            case Num_== => "=="
+            case Num_!= => "!="
+            case Num_<  => "<"
+            case Num_<= => "<="
+            case Num_>  => ">"
+            case Num_>= => ">="
 
             case Long_+ => "+[long]"
             case Long_- => "-[long]"
@@ -327,14 +335,11 @@ object Printers {
             case Long_>  => ">[long]"
             case Long_>= => ">=[long]"
 
-            case Double_+ => "+"
-            case Double_- => "-"
-            case Double_* => "*"
-            case Double_/ => "/"
-            case Double_% => "%"
-
+            case Boolean_== => "==[bool]"
+            case Boolean_!= => "!=[bool]"
             case Boolean_|  => "|[bool]"
             case Boolean_&  => "&[bool]"
+
             case Boolean_|| => "||"
             case Boolean_&& => "&&"
           }, " ", rhs, ")")

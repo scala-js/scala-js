@@ -2148,16 +2148,28 @@ abstract class GenJSCode extends plugins.PluginComponent
           val rsrc = fromLong(rsrc_in, args(1).tpe)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
-            if (eqeq &&
-                toTypeKind(args(0).tpe).isReferenceType &&
-                // don't call equals if we have a literal null at either side
-                !lsrc.isInstanceOf[js.Null] &&
-                !rsrc.isInstanceOf[js.Null]
-                ) {
-              val body = genEqEqPrimitive(args(0).tpe, args(1).tpe, lsrc, rsrc)
-              if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
-            } else
-              js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
+            val typeKind = toTypeKind(args(0).tpe)
+            typeKind match {
+              case INT(_) | LONG | DOUBLE(_) =>
+                /* Note that LONG happens when a fromLong() had to do something,
+                 * which means we're effectively in the DOUBLE case. */
+                js.BinaryOp(if (not) js.BinaryOp.Num_!= else js.BinaryOp.Num_==, lsrc, rsrc)
+              case BOOL =>
+                js.BinaryOp(if (not) js.BinaryOp.Boolean_!= else js.BinaryOp.Boolean_==, lsrc, rsrc)
+              case REFERENCE(_) =>
+                if (eqeq &&
+                    // don't call equals if we have a literal null at either side
+                    !lsrc.isInstanceOf[js.Null] &&
+                    !rsrc.isInstanceOf[js.Null]) {
+                  val body = genEqEqPrimitive(args(0).tpe, args(1).tpe, lsrc, rsrc)
+                  if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
+                } else {
+                  js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
+                }
+              case _ =>
+                // Arrays, Null, Nothing do not have an equals() method.
+                js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
+            }
           }
 
           (code: @switch) match {
@@ -2192,13 +2204,13 @@ abstract class GenJSCode extends plugins.PluginComponent
                   }
                 case jstpe.BooleanType =>
                   (code: @switch) match {
-                    case LT   => <
-                    case LE   => <=
-                    case GT   => >
-                    case GE   => >=
+                    case LT   => Num_<
+                    case LE   => Num_<=
+                    case GT   => Num_>
+                    case GE   => Num_>=
                     case OR   => Boolean_|
                     case AND  => Boolean_&
-                    case XOR  => !==
+                    case XOR  => Boolean_!=
                     case ZOR  => Boolean_||
                     case ZAND => Boolean_&&
                   }

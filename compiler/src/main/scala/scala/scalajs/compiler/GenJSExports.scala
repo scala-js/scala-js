@@ -466,7 +466,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             js.VarDef(arrayIdent, jstpe.AnyType, mutable = false,
                 rhs = js.JSNew(jsArrayCtor, List(count))),
             // while (i < count)
-            js.While(js.BinaryOp(js.BinaryOp.<, counter, count), js.Block(
+            js.While(js.BinaryOp(js.BinaryOp.Num_<, counter, count), js.Block(
                 // varargs[i] = arguments[<normalArgc> + i];
                 js.Assign(
                     js.JSBracketSelect(array, counter),
