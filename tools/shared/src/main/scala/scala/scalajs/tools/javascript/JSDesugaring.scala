@@ -942,19 +942,19 @@ object JSDesugaring {
 
         case JSBinaryOp("&&", lhs, rhs) =>
           if (lhs.tpe == BooleanType) {
-            redo(If(lhs, rhs, BooleanLiteral(false))(DynType))
+            redo(If(lhs, rhs, BooleanLiteral(false))(AnyType))
           } else {
             unnest(lhs) { newLhs =>
-              redo(If(newLhs, rhs, newLhs)(DynType))
+              redo(If(newLhs, rhs, newLhs)(AnyType))
             }
           }
 
         case JSBinaryOp("||", lhs, rhs) =>
           if (lhs.tpe == BooleanType) {
-            redo(If(lhs, BooleanLiteral(true), rhs)(DynType))
+            redo(If(lhs, BooleanLiteral(true), rhs)(AnyType))
           } else {
             unnest(lhs) { newLhs =>
-              redo(If(newLhs, newLhs, rhs)(DynType))
+              redo(If(newLhs, newLhs, rhs)(AnyType))
             }
           }
 

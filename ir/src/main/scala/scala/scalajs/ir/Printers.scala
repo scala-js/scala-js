@@ -554,7 +554,6 @@ object Printers {
       case StringType           => print("string")
       case NullType             => print("null")
       case ClassType(className) => print(className)
-      case DynType              => print("dyn")
       case NoType               => print("<notype>")
 
       case ArrayType(base, dims) =>

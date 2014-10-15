@@ -98,8 +98,7 @@ private[ir] object Tags {
   final val TagNullType = TagStringType + 1
   final val TagClassType = TagNullType + 1
   final val TagArrayType = TagClassType + 1
-  final val TagDynType = TagArrayType + 1
-  final val TagRecordType = TagDynType + 1
+  final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
 
 }

@@ -26,8 +26,10 @@ object Types {
   /** Any type (the top type of this type system).
    *  A variable of this type can contain any value, including `undefined`
    *  and `null` and any raw JS value. This type supports a very limited set
-   *  of operations, the ones common to all values. Basically only toString(),
-   *  equality tests and instance tests.
+   *  of Scala operations, the ones common to all values. Basically only
+   *  reference equality tests and instance tests. It also supports all
+   *  JavaScript operations, since all Scala objects are also genuine
+   *  JavaScript objects.
    *  The type java.lang.Object in the back-end maps to [[AnyType]] because it
    *  can hold raw JS values (not only instances of Scala.js classes).
    */
@@ -89,14 +91,6 @@ object Types {
     }
   }
 
-  /** Dynamic type.
-   *  Used for raw JavaScript values, among others.
-   *  A variable of this type can contain any value (just like [[AnyType]]).
-   *  Unlike [[AnyType]], all JavaScript operations are permitted on an
-   *  expression of this type.
-   */
-  case object DynType extends Type
-
   /** Record type.
    *  Used by the optimizer to inline classes as records with multiple fields.
    *  They are desugared as several local variables by JSDesugaring.
@@ -138,7 +132,6 @@ object Types {
 
         case (NullType, ClassType(_))    => true
         case (NullType, ArrayType(_, _)) => true
-        case (NullType, DynType)         => true
 
         case (UndefType, ClassType(cls)) =>
           isSubclass(BoxedUnitClass, cls)

@@ -356,31 +356,31 @@ object Trees {
   // JavaScript expressions
 
   case class JSGlobal()(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSNew(ctor: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDotSelect(qualifier: Tree, item: Ident)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSBracketSelect(qualifier: Tree, item: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSFunctionApply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDotMethodApply(receiver: Tree, method: Ident, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSBracketMethodApply(receiver: Tree, method: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDelete(prop: Tree)(implicit val pos: Position) extends Tree {
@@ -398,7 +398,7 @@ object Trees {
    *  These are notably ++ and --
    */
   case class JSUnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   /** Binary operation (always preserves pureness).
@@ -407,15 +407,15 @@ object Trees {
    *  These are notably +=, -=, *=, /= and %=
    */
   case class JSBinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSObjectConstr(fields: List[(PropertyName, Tree)])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   // Literals
@@ -471,7 +471,7 @@ object Trees {
   case class Closure(
       thisType: Type, args: List[ParamDef], resultType: Type, body: Tree,
       captures: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   // Type-related

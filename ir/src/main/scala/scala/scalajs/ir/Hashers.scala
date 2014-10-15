@@ -385,7 +385,6 @@ object Hashers {
       case DoubleType  => mixTag(TagDoubleType)
       case StringType  => mixTag(TagStringType)
       case NullType    => mixTag(TagNullType)
-      case DynType     => mixTag(TagDynType)
       case NoType      => mixTag(TagNoType)
 
       case tpe: ClassType =>

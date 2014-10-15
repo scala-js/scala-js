@@ -430,7 +430,6 @@ object Serializers {
         case DoubleType  => buffer.write(TagDoubleType)
         case StringType  => buffer.write(TagStringType)
         case NullType    => buffer.write(TagNullType)
-        case DynType     => buffer.write(TagDynType)
         case NoType      => buffer.write(TagNoType)
 
         case tpe: ClassType =>
@@ -680,7 +679,6 @@ object Serializers {
         case TagDoubleType  => DoubleType
         case TagStringType  => StringType
         case TagNullType    => NullType
-        case TagDynType     => DynType
         case TagNoType      => NoType
 
         case TagClassType => readClassType()

@@ -312,11 +312,11 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         env
 
       case JSDelete(JSDotSelect(obj, prop)) =>
-        typecheckExpect(obj, env, DynType)
+        typecheckExpr(obj, env)
         env
 
       case JSDelete(JSBracketSelect(obj, prop)) =>
-        typecheckExpect(obj, env, DynType)
+        typecheckExpr(obj, env)
         typecheckExpr(prop, env)
         env
 
@@ -513,10 +513,10 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
             typecheckExpr(rhs, env)
           case `in` =>
             typecheckExpect(lhs, env, ClassType(StringClass))
-            typecheckExpect(rhs, env, DynType)
+            typecheckExpr(rhs, env)
           case `instanceof` =>
             typecheckExpr(lhs, env)
-            typecheckExpect(rhs, env, DynType)
+            typecheckExpr(rhs, env)
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |
               Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
             typecheckExpect(lhs, env, IntType)
@@ -597,39 +597,39 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case JSGlobal() =>
 
       case JSNew(ctor, args) =>
-        typecheckExpect(ctor, env, DynType)
+        typecheckExpr(ctor, env)
         for (arg <- args)
           typecheckExpr(arg, env)
 
       case JSDotSelect(qualifier, item) =>
-        typecheckExpect(qualifier, env, DynType)
+        typecheckExpr(qualifier, env)
 
       case JSBracketSelect(qualifier, item) =>
-        typecheckExpect(qualifier, env, DynType)
+        typecheckExpr(qualifier, env)
         typecheckExpr(item, env)
 
       case JSFunctionApply(fun, args) =>
-        typecheckExpect(fun, env, DynType)
+        typecheckExpr(fun, env)
         for (arg <- args)
           typecheckExpr(arg, env)
 
       case JSDotMethodApply(receiver, method, args) =>
-        typecheckExpect(receiver, env, DynType)
+        typecheckExpr(receiver, env)
         for (arg <- args)
           typecheckExpr(arg, env)
 
       case JSBracketMethodApply(receiver, method, args) =>
-        typecheckExpect(receiver, env, DynType)
+        typecheckExpr(receiver, env)
         typecheckExpr(method, env)
         for (arg <- args)
           typecheckExpr(arg, env)
 
       case JSUnaryOp(op, lhs) =>
-        typecheckExpect(lhs, env, DynType)
+        typecheckExpr(lhs, env)
 
       case JSBinaryOp(op, lhs, rhs) =>
-        typecheckExpect(lhs, env, DynType)
-        typecheckExpect(rhs, env, DynType)
+        typecheckExpr(lhs, env)
+        typecheckExpr(rhs, env)
 
       case JSArrayConstr(items) =>
         for (item <- items)
@@ -739,7 +739,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       NullType
     } else {
       val clazz = lookupClass(encodedName)
-      if (clazz.kind == ClassKind.RawJSType) DynType
+      if (clazz.kind == ClassKind.RawJSType) AnyType
       else ClassType(encodedName)
     }
   }
@@ -791,31 +791,31 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("uF", List(AnyType) -> DoubleType),
       ("uD", List(AnyType) -> DoubleType),
 
-      ("newInstanceWithVarargs", List(DynType, DynType) -> DynType),
-      ("applyMethodWithVarargs", List(DynType, StringClassType, DynType) -> DynType),
+      ("newInstanceWithVarargs", List(AnyType, AnyType) -> AnyType),
+      ("applyMethodWithVarargs", List(AnyType, StringClassType, AnyType) -> AnyType),
 
       ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
       ("systemIdentityHashCode", List(AnyType) -> IntType),
 
-      ("propertiesOf", List(DynType) -> DynType),
+      ("propertiesOf", List(AnyType) -> AnyType),
 
       ("cloneObject", List(AnyType) -> AnyType),
 
-      ("environmentInfo", List() -> DynType),
+      ("environmentInfo", List() -> AnyType),
 
-      ("byteArray2TypedArray", List(ArrayType("B", 1)) -> DynType),
-      ("shortArray2TypedArray", List(ArrayType("S", 1)) -> DynType),
-      ("charArray2TypedArray", List(ArrayType("C", 1)) -> DynType),
-      ("intArray2TypedArray", List(ArrayType("I", 1)) -> DynType),
-      ("floatArray2TypedArray", List(ArrayType("F", 1)) -> DynType),
-      ("doubleArray2TypedArray", List(ArrayType("D", 1)) -> DynType),
+      ("byteArray2TypedArray", List(ArrayType("B", 1)) -> AnyType),
+      ("shortArray2TypedArray", List(ArrayType("S", 1)) -> AnyType),
+      ("charArray2TypedArray", List(ArrayType("C", 1)) -> AnyType),
+      ("intArray2TypedArray", List(ArrayType("I", 1)) -> AnyType),
+      ("floatArray2TypedArray", List(ArrayType("F", 1)) -> AnyType),
+      ("doubleArray2TypedArray", List(ArrayType("D", 1)) -> AnyType),
 
-      ("typedArray2ByteArray", List(DynType) -> ArrayType("B", 1)),
-      ("typedArray2ShortArray", List(DynType) -> ArrayType("S", 1)),
-      ("typedArray2CharArray", List(DynType) -> ArrayType("C", 1)),
-      ("typedArray2IntArray", List(DynType) -> ArrayType("I", 1)),
-      ("typedArray2FloatArray", List(DynType) -> ArrayType("F", 1)),
-      ("typedArray2DoubleArray", List(DynType) -> ArrayType("D", 1))
+      ("typedArray2ByteArray", List(AnyType) -> ArrayType("B", 1)),
+      ("typedArray2ShortArray", List(AnyType) -> ArrayType("S", 1)),
+      ("typedArray2CharArray", List(AnyType) -> ArrayType("C", 1)),
+      ("typedArray2IntArray", List(AnyType) -> ArrayType("I", 1)),
+      ("typedArray2FloatArray", List(AnyType) -> ArrayType("F", 1)),
+      ("typedArray2DoubleArray", List(AnyType) -> ArrayType("D", 1))
     )
   }
 
@@ -872,7 +872,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       new Env(this.thisTpe, this.locals, returnTypes + (Some(label) -> returnType))
 
     def withArgumentsVar(pos: Position): Env =
-      withLocal(LocalDef("arguments", DynType, mutable = false)(pos))
+      withLocal(LocalDef("arguments", AnyType, mutable = false)(pos))
   }
 
   object Env {

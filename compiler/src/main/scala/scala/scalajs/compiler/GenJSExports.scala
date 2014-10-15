@@ -132,8 +132,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val jsArgs = for {
         (pSym, index) <- trgSym.info.params.zipWithIndex
       } yield {
-        val rhs = js.JSBracketSelect(js.Cast(inArg, jstpe.DynType),
-            js.Cast(js.StringLiteral(pSym.name.decoded), jstpe.DynType))
+        val rhs = js.JSBracketSelect(inArg,
+            js.StringLiteral(pSym.name.decoded))
         js.VarDef(js.Ident("namedArg$" + index), jstpe.AnyType,
             mutable = true, rhs = rhs)
       }
@@ -305,8 +305,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else {
           js.Match(
               js.Cast(js.JSBracketSelect(
-                  js.VarRef(js.Ident("arguments"), false)(jstpe.DynType),
-                  js.Cast(js.StringLiteral("length"), jstpe.DynType)), jstpe.IntType),
+                  js.VarRef(js.Ident("arguments"), false)(jstpe.AnyType),
+                  js.StringLiteral("length")), jstpe.IntType),
               cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
@@ -443,19 +443,17 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val counter = js.VarRef(counterIdent, mutable = true)(jstpe.IntType)
 
         val arrayIdent = freshLocalIdent("varargs")
-        val array = js.VarRef(arrayIdent, mutable = false)(jstpe.DynType)
+        val array = js.VarRef(arrayIdent, mutable = false)(jstpe.AnyType)
 
         val arguments = js.VarRef(js.Ident("arguments"),
-            mutable = false)(jstpe.DynType)
+            mutable = false)(jstpe.AnyType)
         val argLen = js.Cast(
-            js.JSBracketSelect(arguments,
-                js.Cast(js.StringLiteral("length"), jstpe.DynType)),
+            js.JSBracketSelect(arguments, js.StringLiteral("length")),
             jstpe.IntType)
         val argOffset = js.IntLiteral(normalArgc)
 
         val jsArrayCtor =
-          js.JSBracketSelect(js.JSGlobal(),
-              js.Cast(js.StringLiteral("Array"), jstpe.DynType))
+          js.JSBracketSelect(js.JSGlobal(), js.StringLiteral("Array"))
 
         js.Block(
             // var i = 0
@@ -465,16 +463,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             js.VarDef(countIdent, jstpe.IntType, mutable = false,
                 rhs = js.BinaryOp(js.BinaryOp.Int_-, argLen, argOffset)),
             // val varargs = new Array(count)
-            js.VarDef(arrayIdent, jstpe.DynType, mutable = false,
+            js.VarDef(arrayIdent, jstpe.AnyType, mutable = false,
                 rhs = js.JSNew(jsArrayCtor, List(count))),
             // while (i < count)
             js.While(js.BinaryOp(js.BinaryOp.<, counter, count), js.Block(
                 // varargs[i] = arguments[<normalArgc> + i];
                 js.Assign(
-                    js.JSBracketSelect(array, js.Cast(counter, jstpe.DynType)),
-                    js.JSBracketSelect(arguments, js.Cast(
-                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter),
-                        jstpe.DynType))),
+                    js.JSBracketSelect(array, counter),
+                    js.JSBracketSelect(arguments,
+                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter))),
                 // i = i + 1 (++i won't work, desugar eliminates it)
                 js.Assign(counter, js.BinaryOp(js.BinaryOp.Int_+,
                     counter, js.IntLiteral(1)))

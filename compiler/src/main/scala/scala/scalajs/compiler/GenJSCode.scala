@@ -1548,7 +1548,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.CallHelper(helper, arguments: _*)(toIRType(tree.tpe))
       } else if (ToStringMaybeOnHijackedClass contains sym) {
         js.Cast(js.JSDotMethodApply(
-            js.Cast(genExpr(receiver), jstpe.DynType),
+            genExpr(receiver),
             js.Ident("toString"), Nil), toIRType(tree.tpe))
       } else if (isStringType(receiver.tpe)) {
         genStringCall(tree)
@@ -1715,8 +1715,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (isRawJSType(to)) {
         // asInstanceOf on JavaScript is completely erased
-        if (value.tpe == jstpe.DynType) value
-        else js.Cast(value, jstpe.DynType)
+        value
       } else if (FunctionClass.seq contains to.typeSymbol) {
         /* Don't hide a JSFunctionToScala inside a useless cast, otherwise
          * the optimization avoiding double-wrapping in genApply() will not
@@ -2749,7 +2748,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.JSNew(jsClass, actualArgs)
           case _ =>
             js.CallHelper("newInstanceWithVarargs",
-                jsClass, actualArgArray)(jstpe.DynType)
+                jsClass, actualArgArray)(jstpe.AnyType)
         }
       } else if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
@@ -2759,7 +2758,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.JSBracketMethodApply(receiver, methodName, actualArgs)
           case _ =>
             js.CallHelper("applyMethodWithVarargs",
-                receiver, methodName, actualArgArray)(jstpe.DynType)
+                receiver, methodName, actualArgArray)(jstpe.AnyType)
         }
       } else if (code == DYNLITN) {
         // We have a call of the form:
@@ -2798,9 +2797,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           case (js.StringLiteral("apply"), js.JSArrayConstr(tups)) =>
             // Create tmp variable
             val resIdent = freshLocalIdent("obj")
-            val resVarDef = js.VarDef(resIdent, jstpe.DynType, mutable = false,
+            val resVarDef = js.VarDef(resIdent, jstpe.AnyType, mutable = false,
                 js.JSObjectConstr(Nil))
-            val res = js.VarRef(resIdent, mutable = false)(jstpe.DynType)
+            val res = resVarDef.ref
 
             // Assign fields
             val tuple2Type = encodeClassType(TupleClass(2))
@@ -2849,7 +2848,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           code match {
             case GETGLOBAL => js.JSGlobal()
             case DEBUGGER  => js.Debugger()
-            case UNDEFVAL  => js.Cast(js.Undefined(), jstpe.DynType)
+            case UNDEFVAL  => js.Undefined()
             case UNITVAL   => js.Undefined()
             case UNITTYPE  => genClassConstant(UnitTpe)
             case NTR_MOD_SUFF =>
@@ -2857,7 +2856,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NTR_NAME_JOIN =>
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case ENV_INFO =>
-              js.CallHelper("environmentInfo")(jstpe.DynType)
+              js.CallHelper("environmentInfo")(jstpe.AnyType)
             case JS_NATIVE =>
               currentUnit.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()
@@ -2905,10 +2904,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           code match {
             case V2JS =>
-              js.Block(exprToStat(arg), js.Cast(js.Undefined(), jstpe.DynType))
+              js.Block(exprToStat(arg), js.Undefined())
 
             case Z2JS | N2JS | S2JS =>
-              js.Cast(arg, jstpe.DynType)
+              arg
 
             /** Convert a scala.FunctionN f to a js.FunctionN. */
             case F2JS =>
@@ -2951,21 +2950,21 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case OBJPROPS =>
               // js.Object.properties(arg)
-              js.CallHelper("propertiesOf", arg)(jstpe.DynType)
+              js.CallHelper("propertiesOf", arg)(jstpe.AnyType)
 
             // TypedArray converters
             case AB2TA =>
-              js.CallHelper("byteArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("byteArray2TypedArray", arg)(jstpe.AnyType)
             case AS2TA =>
-              js.CallHelper("shortArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("shortArray2TypedArray", arg)(jstpe.AnyType)
             case AC2TA =>
-              js.CallHelper("charArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("charArray2TypedArray", arg)(jstpe.AnyType)
             case AI2TA =>
-              js.CallHelper("intArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("intArray2TypedArray", arg)(jstpe.AnyType)
             case AF2TA =>
-              js.CallHelper("floatArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("floatArray2TypedArray", arg)(jstpe.AnyType)
             case AD2TA =>
-              js.CallHelper("doubleArray2TypedArray", arg)(jstpe.DynType)
+              js.CallHelper("doubleArray2TypedArray", arg)(jstpe.AnyType)
 
             case TA2AB =>
               js.CallHelper("typedArray2ByteArray", arg)(
@@ -3003,9 +3002,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                */
               val temp = freshLocalIdent()
               js.Block(
-                  js.VarDef(temp, jstpe.DynType, mutable = false, arg1),
+                  js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
                   js.BinaryOp(js.BinaryOp.in, arg2,
-                      js.VarRef(temp, mutable = false)(jstpe.DynType)))
+                      js.VarRef(temp, mutable = false)(jstpe.AnyType)))
           }
       })
     }
@@ -3092,7 +3091,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     receiver, js.StringLiteral(jsFunName), args)
               case _ =>
                 js.CallHelper("applyMethodWithVarargs", receiver,
-                    js.StringLiteral(jsFunName), argArray)(jstpe.DynType)
+                    js.StringLiteral(jsFunName), argArray)(jstpe.AnyType)
             }
           }
       }
@@ -3157,7 +3156,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Deconstruct tree and create receiver and argument JS expressions
       val Apply(Select(receiver0, _), args0) = tree
-      val receiver = js.Cast(genExpr(receiver0), jstpe.DynType)
+      val receiver = genExpr(receiver0)
       val args = args0 map genExpr
 
       // Get implementation from RuntimeString trait
@@ -3203,7 +3202,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else js.JSNew(genPrimitiveJSClass(cls), args)
         case argArray =>
           js.CallHelper("newInstanceWithVarargs",
-              genPrimitiveJSClass(cls), argArray)(jstpe.DynType)
+              genPrimitiveJSClass(cls), argArray)(jstpe.AnyType)
       }
     }
 
