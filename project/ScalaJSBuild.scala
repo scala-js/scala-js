@@ -275,10 +275,15 @@ object ScalaJSBuild extends Build {
 
             // Load tests (we know we only export test modules, so we can use all exports)
             var testPackage = scala.scalajs.test;
-            for (var pName in testPackage)
-              for (var testName in testPackage[pName])
-                if (!(pName == "internal" && testName == "ConsoleTestOutput"))
-                  testPackage[pName][testName]();
+            for (var pName in testPackage) {
+              for (var testName in testPackage[pName]) {
+                if (!(pName == "internal" && testName == "ConsoleTestOutput")) {
+                  var test = testPackage[pName][testName];
+                  if (Object.getPrototypeOf(test.prototype) === Object.prototype)
+                    test();
+                }
+              }
+            }
 
             var reporter = new scalajs.JasmineConsoleReporter(true);
 
@@ -606,7 +611,8 @@ object ScalaJSBuild extends Build {
                 "JSExport.scala",
                 "JSExportAll.scala",
                 "JSExportDescendentObjects.scala",
-                "JSExportNamed.scala"
+                "JSExportNamed.scala",
+                "JSExportDescendentClasses.scala"
             )
 
             val libSrcDir =
