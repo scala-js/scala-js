@@ -921,6 +921,40 @@ object ExportsTest extends JasmineTest {
 
   }
 
+  describe("@JSExportDescendentClasses") {
+
+    it("should offer auto exports for classes extending a trait") {
+      val ctor =
+        js.Dynamic.global.scala.scalajs.testsuite.jsinterop.AutoExportedTraitClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj1 = js.Dynamic.newInstance(ctor)()
+      expect(obj1).toBeDefined
+      expect(obj1.x).toBe(5)
+
+      val obj2 = js.Dynamic.newInstance(ctor)(100)
+      expect(obj2).toBeDefined
+      expect(obj2.x).toBe(100)
+    }
+
+    it("should offer auto exports for classes extending a class") {
+      val ctor =
+        js.Dynamic.global.scala.scalajs.testsuite.jsinterop.AutoExportedClassClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj1 = js.Dynamic.newInstance(ctor)()
+      expect(obj1).toBeDefined
+      expect(obj1.x).toBe(5)
+
+      val obj2 = js.Dynamic.newInstance(ctor)(100)
+      expect(obj2).toBeDefined
+      expect(obj2.x).toBe(100)
+    }
+
+  }
+
 }
 
 object ExportNameHolder {
@@ -982,15 +1016,27 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
 @JSExport("org.ExportedUnderOrgObject")
 object ExportedUnderOrgObject
 
+@JSExportDescendentClasses
 @JSExportDescendentObjects
 trait AutoExportTrait
 
 object AutoExportedTraitObject extends AutoExportTrait
+class AutoExportedTraitClass(_x: Int) extends AutoExportTrait {
+  def this() = this(5)
+  @JSExport
+  def x: Int = _x
+}
 
+@JSExportDescendentClasses
 @JSExportDescendentObjects
 class AutoExportClass
 
 object AutoExportedClassObject extends AutoExportClass
+class AutoExportedClassClass(_x: Int) extends AutoExportTrait {
+  def this() = this(5)
+  @JSExport
+  def x: Int = _x
+}
 
 class SomeValueClass(val i: Int) extends AnyVal
 

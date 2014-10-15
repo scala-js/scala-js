@@ -606,7 +606,8 @@ object ScalaJSBuild extends Build {
                 "JSExport.scala",
                 "JSExportAll.scala",
                 "JSExportDescendentObjects.scala",
-                "JSExportNamed.scala"
+                "JSExportNamed.scala",
+                "JSExportDescendentClasses.scala"
             )
 
             val libSrcDir =
