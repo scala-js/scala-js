@@ -156,11 +156,6 @@ object Transformers {
               else transformExpr(body),
               captures map transformExpr)
 
-        // Type-related
-
-        case Cast(expr, tpe) =>
-          Cast(transformExpr(expr), tpe)
-
         // Classes
 
         case ClassDef(name, kind, parent, ancestors, defs) =>
@@ -301,11 +296,6 @@ object Transformers {
               if (resultType == Types.NoType) transformStat(body)
               else transformExpr(body),
               captures map transformExpr)
-
-        // Type-related
-
-        case Cast(expr, tpe) =>
-          Cast(transformExpr(expr), tpe)
 
         // Trees that need not be transformed
 

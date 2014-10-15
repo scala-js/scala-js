@@ -474,13 +474,6 @@ object Trees {
     val tpe = AnyType
   }
 
-  // Type-related
-
-  /** Hard-cast (unchecked at compile-time, erased at runtime).
-   *  Used for low-level stuff.
-   */
-  case class Cast(expr: Tree, tpe: Type)(implicit val pos: Position) extends Tree
-
   // Classes
 
   case class ClassDef(name: Ident, kind: ClassKind, parent: Option[Ident], ancestors: List[Ident], defs: List[Tree])(implicit val pos: Position) extends Tree {

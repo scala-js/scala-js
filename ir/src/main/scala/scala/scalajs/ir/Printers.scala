@@ -497,11 +497,6 @@ object Printers {
           printBlock(body)
           print(")")
 
-        // Type-related
-
-        case Cast(expr, tpe) =>
-          print(expr, ".cast[", tpe, "]")
-
         // Classes
 
         case ClassDef(name, kind, parent, ancestors, defs) =>

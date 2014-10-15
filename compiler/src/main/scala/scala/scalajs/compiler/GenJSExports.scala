@@ -304,9 +304,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           cases.head._2
         else {
           js.Match(
-              js.Cast(js.JSBracketSelect(
+              js.CallHelper("uI", js.JSBracketSelect(
                   js.VarRef(js.Ident("arguments"), false)(jstpe.AnyType),
-                  js.StringLiteral("length")), jstpe.IntType),
+                  js.StringLiteral("length")))(jstpe.IntType),
               cases.toList, defaultCase)(jstpe.AnyType)
         }
       }
@@ -447,8 +447,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         val arguments = js.VarRef(js.Ident("arguments"),
             mutable = false)(jstpe.AnyType)
-        val argLen = js.Cast(
-            js.JSBracketSelect(arguments, js.StringLiteral("length")),
+        val argLen = js.CallHelper("uI",
+            js.JSBracketSelect(arguments, js.StringLiteral("length")))(
             jstpe.IntType)
         val argOffset = js.IntLiteral(normalArgc)
 

@@ -400,8 +400,6 @@ object JSDesugaring {
                 IsInstanceOf(rec(expr), tpe)
               case AsInstanceOf(expr, tpe) =>
                 AsInstanceOf(rec(expr), tpe)
-              case Cast(expr, tpe) =>
-                Cast(rec(expr), tpe)
 
               case NewArray(tpe, lengths) =>
                 NewArray(tpe, recs(lengths))
@@ -536,7 +534,6 @@ object JSDesugaring {
         case JSUnaryOp(_, lhs)       => test(lhs)
         case ArrayLength(array)      => test(array)
         case IsInstanceOf(expr, _)   => test(expr)
-        case Cast(expr, _)           => test(expr)
 
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
@@ -982,13 +979,6 @@ object JSDesugaring {
             redo(Closure(thisType, args, resultType, body, newCaptures))
           }
 
-        // Type-related
-
-        case Cast(expr, _) =>
-          redo(expr)
-
-        // Classes
-
         case _ =>
           if (lhs == EmptyTree) {
             /* Go "back" to transformStat() after having dived into
@@ -1312,11 +1302,6 @@ object JSDesugaring {
                 }),
                 captures.map(transformExpr))
           }
-
-        // Type-related
-
-        case Cast(expr, _) =>
-          transformExpr(expr)
 
         // Invalid trees
 

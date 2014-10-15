@@ -353,10 +353,6 @@ object Serializers {
           writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
           writeTrees(captures)
 
-        case Cast(expr, tpe) =>
-          writeByte(TagCast)
-          writeTree(expr); writeType(tpe)
-
         case ClassDef(name, kind, parent, ancestors, defs) =>
           writeByte(TagClassDef)
           writeIdent(name)
@@ -614,7 +610,6 @@ object Serializers {
         case TagThis    => This()(readType())
         case TagClosure =>
           Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
-        case TagCast    => Cast(readTree(), readType())
 
         case TagClassDef =>
           val name = readIdent()

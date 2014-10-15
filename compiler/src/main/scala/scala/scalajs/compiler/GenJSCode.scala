@@ -860,7 +860,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       tree match {
         case js.Block(stats :+ expr)  => js.Block(stats :+ exprToStat(expr))
         case _:js.Literal | js.This() => js.Skip()
-        case js.Cast(expr, _)         => exprToStat(expr)
         case _                        => tree
       }
     }
@@ -1225,9 +1224,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               case None =>
                 genStatOrExpr(body, isStat)
               case Some(bv) =>
-                val bvTpe = toIRType(tpe)
+                val castException = genAsInstanceOf(exceptVar, tpe)
                 js.Block(
-                    js.VarDef(bv, bvTpe, mutable = false, js.Cast(exceptVar, bvTpe)),
+                    js.VarDef(bv, toIRType(tpe), mutable = false, castException),
                     genStatOrExpr(body, isStat))
             })
 
@@ -1546,10 +1545,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         val helper = MethodWithHelperInEnv(sym)
         val arguments = (receiver :: args) map genExpr
         js.CallHelper(helper, arguments: _*)(toIRType(tree.tpe))
-      } else if (ToStringMaybeOnHijackedClass contains sym) {
-        js.Cast(js.JSDotMethodApply(
-            genExpr(receiver),
-            js.Ident("toString"), Nil), toIRType(tree.tpe))
       } else if (isStringType(receiver.tpe)) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe)) {
@@ -1592,10 +1587,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           arguments)(resultType)
     }
 
-    private lazy val ToStringMaybeOnHijackedClass: Set[Symbol] =
-      (Set(CharSequenceClass, StringClass, NumberClass) ++ HijackedBoxedClasses)
-        .map(cls => getMemberMethod(cls, nme.toString_))
-
     private lazy val MethodWithHelperInEnv: Map[Symbol, String] = {
       val m = mutable.Map[Symbol, String](
         Object_toString  -> "objectToString",
@@ -1615,6 +1606,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
       def addS(clazz: Symbol, meth: String, helperName: String): Unit =
         addN(clazz, newTermName(meth), helperName)
+
+      for (cls <- Seq(CharSequenceClass, StringClass, NumberClass) ++ HijackedBoxedClasses)
+        addN(cls, nme.toString_, "objectToString")
 
       addS(CharSequenceClass, "length", "charSequenceLength")
       addS(CharSequenceClass, "charAt", "charSequenceCharAt")
@@ -2576,8 +2570,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 val (implClass, methodIdent) =
                   encodeImplClassMethodSym(implMethodSym)
                 val retTpe = implMethodSym.tpe.resultType
-                val castCallTrg = js.Cast(callTrg,
-                    toIRType(RuntimeStringClass.toTypeConstructor))
+                val castCallTrg = fromAny(callTrg, StringClass.toTypeConstructor)
                 val rawApply = genTraitImplApply(
                     encodeClassFullNameIdent(implClass),
                     methodIdent,
@@ -2606,8 +2599,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                   }
                 }
                 val castCallTrg =
-                  js.Cast(callTrg1, toIRType(
-                      reflBoxClassPatched.primaryConstructor.tpe.params.head.tpe))
+                  fromAny(callTrg1,
+                      reflBoxClassPatched.primaryConstructor.tpe.params.head.tpe)
                 val reflBox = genNew(reflBoxClassPatched,
                     reflBoxClassPatched.primaryConstructor, List(castCallTrg))
                 genApplyMethod(
@@ -2698,9 +2691,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       toTypeKind(tpe) match {
         case VOID => // must be handled at least for JS interop
-          /* Cast to have early typechecking errors if we use that in
-           * expression position. */
-          js.Cast(expr, jstpe.NoType)
+          expr
         case kind: ValueTypeKind =>
           js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
         case _ =>
@@ -3100,7 +3091,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         case js.UndefinedParam() | js.Assign(_, _) =>
           boxedResult
         case _ if isStat =>
-          js.Cast(boxedResult, jstpe.NoType)
+          boxedResult
         case _ =>
           fromAny(boxedResult,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
@@ -3176,13 +3167,11 @@ abstract class GenJSCode extends plugins.PluginComponent
                |found multiple implementation class members.""".stripMargin)
 
         // Emit call to implementation class
-        val castReceiver = js.Cast(receiver,
-            toIRType(RuntimeStringClass.toTypeConstructor))
         val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
         genTraitImplApply(
             encodeClassFullNameIdent(implClass),
             methodIdent,
-            castReceiver :: args,
+            receiver :: args,
             toIRType(tree.tpe))
       }
     }

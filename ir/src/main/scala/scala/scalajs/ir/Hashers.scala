@@ -361,11 +361,6 @@ object Hashers {
           mixTree(body)
           mixTrees(captures)
 
-        case Cast(expr, tpe) =>
-          mixTag(TagCast)
-          mixTree(expr)
-          mixType(tpe)
-
         case _ =>
           sys.error(s"Unable to hash tree of class ${tree.getClass}")
 

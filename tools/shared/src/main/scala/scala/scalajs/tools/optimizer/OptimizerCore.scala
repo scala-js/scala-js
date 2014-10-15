@@ -508,11 +508,6 @@ abstract class OptimizerCore {
         Closure(thisType, newParams, resultType, newBody,
             captures.map(transformExpr))
 
-      // Type-related
-
-      case Cast(expr, tpe) =>
-        Cast(transformExpr(expr), tpe)
-
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule |
@@ -772,14 +767,6 @@ abstract class OptimizerCore {
                     AsInstanceOf(finishTransformExpr(texpr), tpe)))
               }
           }
-        }
-
-      case Cast(expr, tpe) =>
-        pretransformExpr(expr) { texpr =>
-          if (texpr.tpe.base == tpe)
-            cont(texpr)
-          else
-            cont(PreTransTree(Cast(finishTransformExpr(texpr), tpe)))
         }
 
       case _ =>
@@ -3229,7 +3216,6 @@ object OptimizerCore {
         unapply(inner)
 
       case AsInstanceOf(inner, _) => unapply(inner)
-      case Cast(inner, _)         => unapply(inner)
 
       case _ => isSimpleArg(body)
     }
@@ -3251,7 +3237,6 @@ object OptimizerCore {
         isBoxUnboxHelper(helper) && isSimpleArg(inner)
 
       case AsInstanceOf(inner, _) => isSimpleArg(inner)
-      case Cast(inner, _)         => isSimpleArg(inner)
 
       case _ =>
         isTrivialArg(arg)
@@ -3260,8 +3245,6 @@ object OptimizerCore {
     private def isTrivialArg(arg: Tree): Boolean = arg match {
       case _:VarRef | _:This | _:Literal | _:LoadModule =>
         true
-      case Cast(inner, _) =>
-        isTrivialArg(inner)
       case _ =>
         false
     }

@@ -676,11 +676,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         else
           typecheckExpect(body, bodyEnv, resultType)
 
-      // Type-related
-
-      case Cast(expr, tpe) =>
-        typecheckExpr(expr, env)
-
       case _ =>
         reportError(s"Invalid expression tree")
     }

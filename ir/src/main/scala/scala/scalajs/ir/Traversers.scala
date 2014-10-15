@@ -163,11 +163,6 @@ object Traversers {
         traverse(body)
         captures foreach traverse
 
-      // Type-related
-
-      case Cast(expr, tpe) =>
-        traverse(expr)
-
       // Classes
 
       case ClassDef(name, kind, parent, ancestors, defs) =>
