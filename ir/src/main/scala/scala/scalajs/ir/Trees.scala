@@ -89,14 +89,14 @@ object Trees {
   case class VarDef(name: Ident, vtpe: Type, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
 
-    def ref(implicit pos: Position): Tree =
+    def ref(implicit pos: Position): VarRef =
       VarRef(name, mutable = mutable)(vtpe)
   }
 
   case class ParamDef(name: Ident, ptpe: Type, mutable: Boolean)(implicit val pos: Position) extends Tree {
     val tpe = NoType
 
-    def ref(implicit pos: Position): Tree =
+    def ref(implicit pos: Position): VarRef =
       VarRef(name, mutable = mutable)(ptpe)
   }
 

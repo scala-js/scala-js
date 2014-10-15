@@ -135,14 +135,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val rhs = js.JSBracketSelect(inArg,
             js.StringLiteral(pSym.name.decoded))
         js.VarDef(js.Ident("namedArg$" + index), jstpe.AnyType,
-            mutable = true, rhs = rhs)
+            mutable = false, rhs = rhs)
       }
 
       val jsArgRefs = jsArgs.map(_.ref)
 
       // Generate JS code to prepare arguments (default getters and unboxes)
       val jsArgPrep = genPrepareArgs(jsArgRefs, trgSym)
-      val jsResult = genResult(trgSym, jsArgRefs)
+      val jsResult = genResult(trgSym, jsArgPrep.map(_.ref))
 
       js.Block(jsArgs ++ jsArgPrep :+ jsResult)
     }
@@ -487,7 +487,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // Generate JS code to prepare arguments (default getters and unboxes)
       val jsArgPrep = genPrepareArgs(jsArgRefs, sym)
-      val jsResult = genResult(sym, jsArgRefs ++ jsVarArg)
+      val jsResult = genResult(sym, jsArgPrep.map(_.ref) ++ jsVarArg)
 
       js.Block(jsArgPrep :+ jsResult)
     }
@@ -495,19 +495,20 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     /** Generate the necessary JavaScript code to prepare the arguments of an
      *  exported method (unboxing and default parameter handling)
      */
-    private def genPrepareArgs(jsArgs: List[js.Tree], sym: Symbol)(
-      implicit pos: Position) = {
+    private def genPrepareArgs(jsArgs: List[js.VarRef], sym: Symbol)(
+        implicit pos: Position): List[js.VarDef] = {
+
+      val result = new mutable.ListBuffer[js.VarDef]
 
       val funTpe = enteringPhase(currentRun.posterasurePhase)(sym.tpe)
       for {
         (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
       } yield {
-
         // Code to verify the type of the argument (if it is defined)
-        val jsVerifyArg = {
+        val verifiedArg = {
           val tpePosterasure =
             enteringPhase(currentRun.posterasurePhase)(param.tpe)
-          val verifiedArg = tpePosterasure match {
+          tpePosterasure match {
             case tpe if isPrimitiveValueType(tpe) =>
               val unboxed = makePrimitiveUnbox(jsArg, tpe)
               // Ensure we don't convert null to a primitive value type
@@ -523,12 +524,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             case tpe =>
               genAsInstanceOf(jsArg, tpe)
           }
-
-          js.Assign(jsArg, verifiedArg)
         }
 
         // If argument is undefined and there is a default getter, call it
-        if (param.hasFlag(Flags.DEFAULTPARAM)) {
+        val verifiedOrDefault = if (param.hasFlag(Flags.DEFAULTPARAM)) {
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
             val trgSym = {
               if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
@@ -547,17 +546,23 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             }
 
             // Pass previous arguments to defaultGetter
-            js.Assign(jsArg, genCastMethodApply(trgTree, trgSym, defaultGetter,
-                jsArgs.take(defaultGetter.tpe.params.size)))
+            genApplyMethod(trgTree, trgSym, defaultGetter,
+                result.take(defaultGetter.tpe.params.size).toList.map(_.ref))
           }, {
             // Otherwise, unbox the argument
-            jsVerifyArg
-          })(jstpe.AnyType)
+            verifiedArg
+          })(verifiedArg.tpe)
         } else {
           // Otherwise, it is always the unboxed argument
-          jsVerifyArg
+          verifiedArg
         }
+
+        result +=
+          js.VarDef(js.Ident("prep"+jsArg.ident.name, jsArg.ident.originalName),
+              verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
       }
+
+      result.toList
     }
 
     /** Generate the final forwarding call to the exported method.
@@ -569,19 +574,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val thisType =
         if (sym.owner == ObjectClass) jstpe.ClassType(ir.Definitions.ObjectClass)
         else encodeClassType(sym.owner)
-      val call = genCastMethodApply(js.This()(thisType), sym.owner, sym, args)
+      val call = genApplyMethod(js.This()(thisType), sym.owner, sym, args)
       ensureBoxed(call,
         enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
-    }
-
-    private def genCastMethodApply(recTree: js.Tree, recSym: Symbol,
-        methSym: Symbol, args0: List[js.Tree])(implicit pos: Position) = {
-      // Cast arguments to right type for IR-checker
-      val args1 = for {
-       (arg, tpe) <- args0 zip methSym.tpe.paramTypes
-      } yield js.Cast(arg, toIRType(tpe))(arg.pos)
-
-      genApplyMethod(recTree, recSym, methSym, args1)
     }
 
     private sealed abstract class Exported {
@@ -742,7 +737,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     (1 to count map genFormalArg).toList
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = true)
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = false)
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {
