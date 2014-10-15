@@ -45,6 +45,23 @@ trait JSGlobalAddons extends JSDefinitions
      *  are used, rather than the annotations of the accessor itself.
      */
     def exportsOf(sym: Symbol): List[ExportInfo] = {
+      val exports = directExportsOf(sym) ++ inheritedExportsOf(sym)
+
+      // Calculate the distinct exports for this symbol (eliminate double
+      // occurrences of (name, isNamed) pairs).
+      val buf = new mutable.ListBuffer[ExportInfo]
+      val seen = new mutable.HashSet[(String, Boolean)]
+      for (exp <- exports) {
+        if (!seen.contains((exp.jsName, exp.isNamed))) {
+          buf += exp
+          seen += ((exp.jsName, exp.isNamed))
+        }
+      }
+
+      buf.toList
+    }
+
+    private def directExportsOf(sym: Symbol): List[ExportInfo] = {
       val trgSym = {
         // For accessors, look on the val/var def
         if (sym.isAccessor) sym.accessed
@@ -68,7 +85,7 @@ trait JSGlobalAddons extends JSDefinitions
           Nil
       }
 
-      val directExports = for {
+      for {
         annot <- directAnnots ++ unitAnnots
       } yield {
         // Is this a named export or a normal one?
@@ -120,40 +137,44 @@ trait JSGlobalAddons extends JSDefinitions
 
         ExportInfo(name, annot.pos, named)
       }
+    }
 
-      val inheritedExports = if (sym.isModuleClass) {
-        val forcingSym = sym.ancestors.find(_.annotations.exists(
-            _.symbol == JSExportDescendentObjectsAnnotation))
+    private def inheritedExportsOf(sym: Symbol): List[ExportInfo] = {
+      // The symbol from which we (potentially) inherit exports. It also
+      // gives the exports their name
+      val trgSym = {
+        if (sym.isModuleClass)
+          sym
+        else if (sym.isConstructor && sym.isPublic &&
+            sym.owner.isConcreteClass && !sym.owner.isModuleClass)
+          sym.owner
+        else NoSymbol
+      }
 
-        forcingSym map { fs =>
-          val name = sym.fullName
+      if (trgSym == NoSymbol) {
+        Nil
+      } else {
+        val trgAnnot =
+          if (sym.isModuleClass) JSExportDescendentObjectsAnnotation
+          else JSExportDescendentClassesAnnotation
 
+        val forcingSym =
+          trgSym.ancestors.find(_.annotations.exists(_.symbol == trgAnnot))
+
+        val name = decodedFullName(trgSym)
+
+        forcingSym.map { fs =>
           // Enfore no __ in name
           if (name.contains("__")) {
             // Get all annotation positions for error message
             currentUnit.error(sym.pos,
-                s"""${sym.name} may not have a double underscore (`__`) in its fully qualified
-                   |name, since it is forced to be exported by a @JSExportDescendentObjects on ${fs}""".stripMargin)
+                s"""${trgSym.name} may not have a double underscore (`__`) in its fully qualified
+                   |name, since it is forced to be exported by a @${trgAnnot.name} on ${fs}""".stripMargin)
           }
 
-          List(ExportInfo(sym.fullName, sym.pos, false))
-
-        } getOrElse Nil
-      } else Nil
-
-      def distinct(exports: List[ExportInfo]) = {
-        val buf = new mutable.ListBuffer[ExportInfo]
-        val seen = new mutable.HashSet[(String, Boolean)]
-        for (exp <- exports) {
-          if (!seen.contains((exp.jsName, exp.isNamed))) {
-            buf += exp
-            seen += ((exp.jsName, exp.isNamed))
-          }
-        }
-        buf.toList
+          ExportInfo(name, sym.pos, false)
+        }.toList
       }
-
-      distinct(directExports ++ inheritedExports)
     }
 
     /** Just like sym.fullName, but does not encode components */
