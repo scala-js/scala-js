@@ -25,7 +25,7 @@ object StackTrace {
   }
 
   /** Creates a JS Error with the current stack trace state. */
-  private def createException(): js.Any = {
+  private def createException(): Any = {
     try {
       this.asInstanceOf[js.Dynamic].undef() // it does not exist, that's the point
     } catch {
@@ -37,8 +37,8 @@ object StackTrace {
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
    */
-  def captureState(throwable: Throwable, e: js.Any): Unit = {
-    throwable.asInstanceOf[js.Dynamic].stackdata = e
+  def captureState(throwable: Throwable, e: Any): Unit = {
+    throwable.asInstanceOf[js.Dynamic].stackdata = e.asInstanceOf[js.Any]
   }
 
   /** Tests whether we're running under Rhino. */

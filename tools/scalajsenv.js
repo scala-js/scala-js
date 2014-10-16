@@ -78,21 +78,6 @@ var ScalaJS = {
     ScalaJS.throwClassCastException(instance, classArrayEncodedName);
   },
 
-  wrapJavaScriptException: function(exception) {
-    if (ScalaJS.isScalaJSObject(exception))
-      return exception;
-    else
-      return new ScalaJS.c.sjs_js_JavaScriptException()
-        .init___sjs_js_Any(exception);
-  },
-
-  unwrapJavaScriptException: function(exception) {
-    if (ScalaJS.is.sjs_js_JavaScriptException(exception))
-      return exception.exception__sjs_js_Any();
-    else
-      return exception;
-  },
-
   makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
     return new arrayClassData.constr(nativeArray);
   },

@@ -927,10 +927,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case Throw(expr) =>
           val ex = genExpr(expr)
-          if (isMaybeJavaScriptException(expr.tpe))
-            js.Throw(js.CallHelper("unwrapJavaScriptException", ex)(jstpe.AnyType))
-          else
-            js.Throw(ex)
+          js.Throw {
+            if (isMaybeJavaScriptException(expr.tpe)) {
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_unwrapJavaScriptException,
+                  List(ex))
+            } else {
+              ex
+            }
+          }
 
         case app: Apply =>
           genApply(app, isStat)
@@ -1180,8 +1187,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genStatOrExpr(block, isStat)
-      val exceptIdent = freshLocalIdent("ex")
-      val exceptVar = js.VarRef(exceptIdent, mutable = true)(jstpe.AnyType)
+
+      val exceptIdent = freshLocalIdent("e")
+      val origExceptVar = js.VarRef(exceptIdent, mutable = false)(jstpe.AnyType)
+
       val resultType = toIRType(tree.tpe)
 
       val handlerAST = {
@@ -1199,11 +1208,21 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          val elseHandler: js.Tree =
-            if (mightCatchJavaScriptException)
-              js.Throw(js.CallHelper("unwrapJavaScriptException", exceptVar)(jstpe.AnyType))
-            else
-              js.Throw(exceptVar)
+          val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
+            val valDef = js.VarDef(freshLocalIdent("e"),
+                encodeClassType(ThrowableClass), mutable = false, {
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_wrapJavaScriptException,
+                  List(origExceptVar))
+            })
+            (valDef, valDef.ref)
+          } else {
+            (js.Skip(), origExceptVar)
+          }
+
+          val elseHandler: js.Tree = js.Throw(origExceptVar)
 
           val handler0 = catches.foldRight(elseHandler) { (caseDef, elsep) =>
             implicit val pos = caseDef.pos
@@ -1239,15 +1258,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          if (mightCatchJavaScriptException) {
-            js.Block(
-                js.Assign(exceptVar,
-                    js.CallHelper("wrapJavaScriptException", exceptVar)(
-                        encodeClassType(ThrowableClass))),
-                handler0)
-          } else {
-            handler0
-          }
+          js.Block(
+              exceptValDef,
+              handler0)
         }
       }
 

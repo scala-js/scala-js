@@ -4,6 +4,16 @@ import scala.collection.GenTraversableOnce
 
 package object runtime {
 
+  def wrapJavaScriptException(e: Any): Throwable = e match {
+    case e: Throwable => e
+    case _            => js.JavaScriptException(e)
+  }
+
+  def unwrapJavaScriptException(th: Throwable): Any = th match {
+    case js.JavaScriptException(e) => e
+    case _                         => th
+  }
+
   @inline final def genTraversableOnce2jsArray[A](
       col: GenTraversableOnce[A]): js.Array[A] = {
     col match {
