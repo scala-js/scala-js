@@ -127,31 +127,6 @@ var ScalaJS = {
     return new Clone(obj);
   },
 
-  applyMethodWithVarargs: function(instance, methodName, argArray) {
-    // Note: cannot be inlined because `instance` would be evaluated twice
-    return instance[methodName].apply(instance, argArray);
-  },
-
-  newInstanceWithVarargs: function(constructor, argArray) {
-    // Not really "possible" in JavaScript, so we emulate what it would be
-    function c() {};
-    c.prototype = constructor.prototype;
-    var instance = new c;
-    var result = constructor.apply(instance, argArray);
-    switch (typeof result) {
-      case "undefined":
-      case "number":
-      case "boolean":
-      case "string":
-        return instance;
-      default:
-        if (result === null)
-          return instance;
-        else
-          return result;
-    }
-  },
-
   checkNonNull: function(obj) {
     return obj !== null ? obj : ScalaJS.throwNullPointerException();
   },

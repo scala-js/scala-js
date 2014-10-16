@@ -16,6 +16,22 @@ package object runtime {
     }
   }
 
+  /** Instantiates a JS object with variadic arguments to the constructor. */
+  def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any = {
+    // Not really "possible" in JavaScript, so we emulate what it would be.
+    val c = ((() => ()): js.Function).asInstanceOf[js.Dynamic]
+    c.prototype = ctor.prototype
+    val instance = js.Dynamic.newInstance(c)()
+    val result = ctor.applyDynamic("apply")(instance, args)
+    (result: js.Any) match {
+      case _:js.prim.Undefined | _:js.prim.Number | _:js.prim.Boolean |
+          _:js.prim.String | null =>
+        instance
+      case _ =>
+        result
+    }
+  }
+
   /** Information about the environment Scala.js runs in. */
   def environmentInfo: js.Dynamic = sys.error("stub")
 

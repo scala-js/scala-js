@@ -786,9 +786,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("uF", List(AnyType) -> DoubleType),
       ("uD", List(AnyType) -> DoubleType),
 
-      ("newInstanceWithVarargs", List(AnyType, AnyType) -> AnyType),
-      ("applyMethodWithVarargs", List(AnyType, StringClassType, AnyType) -> AnyType),
-
       ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
       ("systemIdentityHashCode", List(AnyType) -> IntType),
 

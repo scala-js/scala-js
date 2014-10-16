@@ -122,6 +122,61 @@ object InteroperabilityTest extends JasmineTest {
       expect(obj.valueAsInt).toEqual(7357)
     }
 
+    it("should allow to call JS methods with variadic parameters") {
+      val obj = js.eval("""
+        var obj = {
+          foo: function() {
+            var args = new Array(arguments.length);
+            for (var i = 0; i < arguments.length; i++)
+              args[i] = arguments[i];
+            return args;
+          }
+        };
+        obj;
+      """)
+
+      val elems = Seq[js.Any]("plop", 42, 51)
+
+      val dyn = obj.asInstanceOf[js.Dynamic]
+      expect(dyn.foo()).toEqual(js.Array())
+      expect(dyn.foo(3, 6)).toEqual(js.Array(3, 6))
+      expect(dyn.foo("hello", false)).toEqual(js.Array("hello", false))
+      expect(dyn.applyDynamic("foo")(elems: _*)).toEqual(js.Array("plop", 42, 51))
+
+      val stat = obj.asInstanceOf[InteroperabilityTestVariadicMethod]
+      expect(stat.foo()).toEqual(js.Array())
+      expect(stat.foo(3, 6)).toEqual(js.Array(3, 6))
+      expect(stat.foo("hello", false)).toEqual(js.Array("hello", false))
+      expect(stat.foo(elems: _*)).toEqual(js.Array("plop", 42, 51))
+    }
+
+    it("should allow to call JS constructors with variadic parameters") {
+      import js.Dynamic.{newInstance => jsnew}
+
+      js.eval("""
+        var InteroperabilityTestVariadicCtor = function() {
+          var args = new Array(arguments.length);
+          for (var i = 0; i < arguments.length; i++)
+            args[i] = arguments[i];
+          this.args = args;
+        };
+      """)
+
+      val elems = Seq[js.Any]("plop", 42, 51)
+
+      val ctor = js.Dynamic.global.InteroperabilityTestVariadicCtor
+      expect(jsnew(ctor)().args).toEqual(js.Array())
+      expect(jsnew(ctor)(3, 6).args).toEqual(js.Array(3, 6))
+      expect(jsnew(ctor)("hello", false).args).toEqual(js.Array("hello", false))
+      expect(jsnew(ctor)(elems: _*).args).toEqual(js.Array("plop", 42, 51))
+
+      import scala.scalajs.testsuite.compiler.{InteroperabilityTestVariadicCtor => C}
+      expect(new C().args).toEqual(js.Array())
+      expect(new C(3, 6).args).toEqual(js.Array(3, 6))
+      expect(new C("hello", false).args).toEqual(js.Array("hello", false))
+      expect(new C(elems: _*).args).toEqual(js.Array("plop", 42, 51))
+    }
+
     it("should acces top-level JS objects via Scala object inheriting from js.GlobalScope") {
       js.eval("""
         var interoperabilityTestGlobalScopeValue = "7357";
@@ -425,6 +480,14 @@ trait InteroperabilityTestTopLevel extends js.Object {
 @JSName("InteroperabilityTestTopLevelObject")
 object InteroperabilityTestTopLevel extends js.Object {
   def apply(value: String): InteroperabilityTestTopLevel = js.native
+}
+
+trait InteroperabilityTestVariadicMethod extends js.Object {
+  def foo(args: Any*): js.Array[Any] = js.native
+}
+
+class InteroperabilityTestVariadicCtor(inargs: Any*) extends js.Object {
+  val args: js.Array[Any] = js.native
 }
 
 object InteroperabilityTestGlobalScope extends js.GlobalScope {

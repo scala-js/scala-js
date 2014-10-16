@@ -128,6 +128,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
+      lazy val Runtime_newJSObjectWithVarargs     = getMemberMethod(RuntimePackageModule, newTermName("newJSObjectWithVarargs"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
       lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
