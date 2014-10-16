@@ -49,8 +49,7 @@ private[ir] object Tags {
   final val TagRecordValue = TagArraySelect + 1
   final val TagIsInstanceOf = TagRecordValue + 1
   final val TagAsInstanceOf = TagIsInstanceOf + 1
-  final val TagClassOf = TagAsInstanceOf + 1
-  final val TagCallHelper = TagClassOf + 1
+  final val TagCallHelper = TagAsInstanceOf + 1
 
   final val TagJSGlobal = TagCallHelper + 1
   final val TagJSNew = TagJSGlobal + 1
@@ -73,12 +72,13 @@ private[ir] object Tags {
   final val TagLongLiteral = TagIntLiteral + 1
   final val TagDoubleLiteral = TagLongLiteral + 1
   final val TagStringLiteral = TagDoubleLiteral + 1
-  final val TagVarRef = TagStringLiteral + 1
+  final val TagClassOf = TagStringLiteral + 1
+
+  final val TagVarRef = TagClassOf + 1
   final val TagThis = TagVarRef + 1
   final val TagClosure = TagThis + 1
-  final val TagCast = TagClosure + 1
 
-  final val TagClassDef = TagCast + 1
+  final val TagClassDef = TagClosure + 1
   final val TagMethodDef = TagClassDef + 1
   final val TagPropertyDef = TagMethodDef + 1
   final val TagConstructorExportDef = TagPropertyDef + 1
@@ -97,8 +97,7 @@ private[ir] object Tags {
   final val TagNullType = TagStringType + 1
   final val TagClassType = TagNullType + 1
   final val TagArrayType = TagClassType + 1
-  final val TagDynType = TagArrayType + 1
-  final val TagRecordType = TagDynType + 1
+  final val TagRecordType = TagArrayType + 1
   final val TagNoType = TagRecordType + 1
 
 }

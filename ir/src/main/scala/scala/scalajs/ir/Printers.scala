@@ -163,6 +163,11 @@ object Printers {
           if (label.isEmpty) print("return ", expr)
           else print("return(", label.get, ") ", expr)
 
+        case If(cond, BooleanLiteral(true), elsep) =>
+          print(cond, " || ", elsep)
+        case If(cond, thenp, BooleanLiteral(false)) =>
+          print(cond, " && ", thenp)
+
         case If(cond, thenp, elsep) =>
           print("if (", cond, ") ")
           printBlock(thenp)
@@ -261,24 +266,28 @@ object Printers {
           import UnaryOp._
           print("(", (op: @switch) match {
             case `typeof`                  => "typeof"
-            case Int_- | Long_- | Double_- => "-"
-            case Int_~ | Long_~            => "~"
             case Boolean_!                 => "!"
             case IntToLong | DoubleToLong  => "(long)"
             case DoubleToInt | LongToInt   => "(int)"
             case LongToDouble              => "(double)"
           }, lhs, ")")
 
+        case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
+          print("(-", rhs, ")")
+        case BinaryOp(BinaryOp.Int_^, IntLiteral(-1), rhs) =>
+          print("(~", rhs, ")")
+        case BinaryOp(BinaryOp.Long_-, LongLiteral(0L), rhs) =>
+          print("(-", rhs, ")")
+        case BinaryOp(BinaryOp.Long_^, LongLiteral(-1L), rhs) =>
+          print("(~", rhs, ")")
+        case BinaryOp(BinaryOp.Double_-, IntLiteral(0) | DoubleLiteral(0.0), rhs) =>
+          print("(-", rhs, ")")
+
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
           print("(", lhs, " ", (op: @switch) match {
             case === => "==="
             case !== => "!=="
-
-            case <  => "<"
-            case <= => "<="
-            case >  => ">"
-            case >= => ">="
 
             case String_+ => "+[string]"
 
@@ -297,6 +306,19 @@ object Printers {
             case Int_<<  => "<<"
             case Int_>>> => ">>>"
             case Int_>>  => ">>"
+
+            case Double_+ => "+"
+            case Double_- => "-"
+            case Double_* => "*"
+            case Double_/ => "/"
+            case Double_% => "%"
+
+            case Num_== => "=="
+            case Num_!= => "!="
+            case Num_<  => "<"
+            case Num_<= => "<="
+            case Num_>  => ">"
+            case Num_>= => ">="
 
             case Long_+ => "+[long]"
             case Long_- => "-[long]"
@@ -318,17 +340,10 @@ object Printers {
             case Long_>  => ">[long]"
             case Long_>= => ">=[long]"
 
-            case Double_+ => "+"
-            case Double_- => "-"
-            case Double_* => "*"
-            case Double_/ => "/"
-            case Double_% => "%"
-
+            case Boolean_== => "==[bool]"
+            case Boolean_!= => "!=[bool]"
             case Boolean_|  => "|[bool]"
             case Boolean_&  => "&[bool]"
-            case Boolean_^  => "^[bool]"
-            case Boolean_|| => "||"
-            case Boolean_&& => "&&"
           }, " ", rhs, ")")
 
         case NewArray(tpe, lengths) =>
@@ -363,9 +378,6 @@ object Printers {
 
         case AsInstanceOf(expr, cls) =>
           print(expr, ".asInstanceOf[", cls, "]")
-
-        case ClassOf(cls) =>
-          print("classOf[", cls, "]")
 
         case CallHelper(helper, args) =>
           print(helper)
@@ -472,6 +484,9 @@ object Printers {
         case StringLiteral(value) =>
           print("\"", escapeJS(value), "\"")
 
+        case ClassOf(cls) =>
+          print("classOf[", cls, "]")
+
         // Atomic expressions
 
         case VarRef(ident, _) =>
@@ -488,11 +503,6 @@ object Printers {
           printSig(args, resultType)
           printBlock(body)
           print(")")
-
-        // Type-related
-
-        case Cast(expr, tpe) =>
-          print(expr, ".cast[", tpe, "]")
 
         // Classes
 
@@ -546,7 +556,6 @@ object Printers {
       case StringType           => print("string")
       case NullType             => print("null")
       case ClassType(className) => print(className)
-      case DynType              => print("dyn")
       case NoType               => print("<notype>")
 
       case ArrayType(base, dims) =>

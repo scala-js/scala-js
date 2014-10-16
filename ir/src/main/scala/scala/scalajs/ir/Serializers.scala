@@ -248,10 +248,6 @@ object Serializers {
           writeByte(TagAsInstanceOf)
           writeTree(expr); writeReferenceType(cls)
 
-        case ClassOf(cls) =>
-          writeByte(TagClassOf)
-          writeReferenceType(cls)
-
         case CallHelper(helper, args) =>
           writeByte(TagCallHelper)
           writeString(helper); writeTrees(args)
@@ -339,6 +335,10 @@ object Serializers {
           writeByte(TagStringLiteral)
           writeString(value)
 
+        case ClassOf(cls) =>
+          writeByte(TagClassOf)
+          writeReferenceType(cls)
+
         case VarRef(ident, mutable) =>
           writeByte(TagVarRef)
           writeIdent(ident); writeBoolean(mutable)
@@ -352,10 +352,6 @@ object Serializers {
           writeByte(TagClosure)
           writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
           writeTrees(captures)
-
-        case Cast(expr, tpe) =>
-          writeByte(TagCast)
-          writeTree(expr); writeType(tpe)
 
         case ClassDef(name, kind, parent, ancestors, defs) =>
           writeByte(TagClassDef)
@@ -430,7 +426,6 @@ object Serializers {
         case DoubleType  => buffer.write(TagDoubleType)
         case StringType  => buffer.write(TagStringType)
         case NullType    => buffer.write(TagNullType)
-        case DynType     => buffer.write(TagDynType)
         case NoType      => buffer.write(TagNoType)
 
         case tpe: ClassType =>
@@ -585,7 +580,6 @@ object Serializers {
         case TagRecordValue    => RecordValue(readType().asInstanceOf[RecordType], readTrees())
         case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
         case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
-        case TagClassOf        => ClassOf(readReferenceType())
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
         case TagJSGlobal             => JSGlobal()
@@ -610,11 +604,12 @@ object Serializers {
         case TagLongLiteral    => LongLiteral(readLong())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
-        case TagVarRef         => VarRef(readIdent(), readBoolean())(readType())
-        case TagThis           => This()(readType())
-        case TagClosure        =>
+        case TagClassOf        => ClassOf(readReferenceType())
+
+        case TagVarRef  => VarRef(readIdent(), readBoolean())(readType())
+        case TagThis    => This()(readType())
+        case TagClosure =>
           Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
-        case TagCast           => Cast(readTree(), readType())
 
         case TagClassDef =>
           val name = readIdent()
@@ -679,7 +674,6 @@ object Serializers {
         case TagDoubleType  => DoubleType
         case TagStringType  => StringType
         case TagNullType    => NullType
-        case TagDynType     => DynType
         case TagNoType      => NoType
 
         case TagClassType => readClassType()

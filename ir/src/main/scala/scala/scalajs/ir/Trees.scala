@@ -89,14 +89,14 @@ object Trees {
   case class VarDef(name: Ident, vtpe: Type, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
 
-    def ref(implicit pos: Position): Tree =
+    def ref(implicit pos: Position): VarRef =
       VarRef(name, mutable = mutable)(vtpe)
   }
 
   case class ParamDef(name: Ident, ptpe: Type, mutable: Boolean)(implicit val pos: Position) extends Tree {
     val tpe = NoType
 
-    def ref(implicit pos: Position): Tree =
+    def ref(implicit pos: Position): VarRef =
       VarRef(name, mutable = mutable)(ptpe)
   }
 
@@ -212,11 +212,11 @@ object Trees {
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     import UnaryOp._
     val tpe = (op: @switch) match {
-      case `typeof`                                   => StringType
-      case Int_- | Int_~ | LongToInt | DoubleToInt    => IntType
-      case Long_- | Long_~ | IntToLong | DoubleToLong => LongType
-      case Double_- | LongToDouble                    => DoubleType
-      case Boolean_!                                  => BooleanType
+      case `typeof`                 => StringType
+      case LongToInt | DoubleToInt  => IntType
+      case IntToLong | DoubleToLong => LongType
+      case LongToDouble             => DoubleType
+      case Boolean_!                => BooleanType
     }
   }
 
@@ -226,41 +226,35 @@ object Trees {
 
     final val typeof = 1
 
-    final val Int_- = 2
-    final val Int_~ = 3
+    final val Boolean_! = 2
 
-    final val Long_- = 4
-    final val Long_~ = 5
-
-    final val Double_- = 6
-
-    final val Boolean_! = 7
-
-    final val IntToLong    = 8
-    final val LongToInt    = 9
-    final val LongToDouble = 10
-    final val DoubleToInt  = 11
-    final val DoubleToLong = 12
+    final val IntToLong    = 3
+    final val LongToInt    = 4
+    final val LongToDouble = 5
+    final val DoubleToInt  = 6
+    final val DoubleToLong = 7
   }
 
   /** Binary operation (always preserves pureness). */
   case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     import BinaryOp._
     val tpe = (op: @switch) match {
-      case === | !== | < | <= | > | >= | `in` | `instanceof` |
+      case === | !== |
+          `in` | `instanceof` |
+          Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Boolean_| | Boolean_& | Boolean_^ | Boolean_|| | Boolean_&& =>
+          Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
         BooleanType
       case String_+ =>
         StringType
       case Int_+ | Int_- | Int_* | Int_/ | Int_% |
           Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
         IntType
+      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
+        DoubleType
       case Long_+ | Long_- | Long_* | Long_/ | Long_% |
           Long_| | Long_& | Long_^ | Long_<< | Long_>>> | Long_>> =>
         LongType
-      case Double_+ | Double_- | Double_* | Double_/ | Double_% =>
-        DoubleType
     }
   }
 
@@ -271,60 +265,61 @@ object Trees {
     final val === = 1
     final val !== = 2
 
-    final val <  = 3
-    final val <= = 4
-    final val >  = 5
-    final val >= = 6
+    final val String_+ = 3
 
-    final val String_+ = 7
+    final val in         = 4
+    final val instanceof = 5
 
-    final val in         = 8
-    final val instanceof = 9
+    final val Int_+ = 6
+    final val Int_- = 7
+    final val Int_* = 8
+    final val Int_/ = 9
+    final val Int_% = 10
 
-    final val Int_+ = 10
-    final val Int_- = 11
-    final val Int_* = 12
-    final val Int_/ = 13
-    final val Int_% = 14
+    final val Int_|   = 11
+    final val Int_&   = 12
+    final val Int_^   = 13
+    final val Int_<<  = 14
+    final val Int_>>> = 15
+    final val Int_>>  = 16
 
-    final val Int_|   = 15
-    final val Int_&   = 16
-    final val Int_^   = 17
-    final val Int_<<  = 18
-    final val Int_>>> = 19
-    final val Int_>>  = 20
+    final val Double_+ = 17
+    final val Double_- = 18
+    final val Double_* = 19
+    final val Double_/ = 20
+    final val Double_% = 21
 
-    final val Long_+ = 21
-    final val Long_- = 22
-    final val Long_* = 23
-    final val Long_/ = 24
-    final val Long_% = 25
+    final val Num_== = 22
+    final val Num_!= = 23
+    final val Num_<  = 24
+    final val Num_<= = 25
+    final val Num_>  = 26
+    final val Num_>= = 27
 
-    final val Long_|   = 26
-    final val Long_&   = 27
-    final val Long_^   = 28
-    final val Long_<<  = 29
-    final val Long_>>> = 30
-    final val Long_>>  = 31
+    final val Long_+ = 28
+    final val Long_- = 29
+    final val Long_* = 30
+    final val Long_/ = 31
+    final val Long_% = 32
 
-    final val Long_== = 32 // really, this is not the same thing as ===
-    final val Long_!= = 33 // same here wrt to !==
-    final val Long_<  = 34
-    final val Long_<= = 35
-    final val Long_>  = 36
-    final val Long_>= = 37
+    final val Long_|   = 33
+    final val Long_&   = 34
+    final val Long_^   = 35
+    final val Long_<<  = 36
+    final val Long_>>> = 37
+    final val Long_>>  = 38
 
-    final val Double_+ = 38
-    final val Double_- = 39
-    final val Double_* = 40
-    final val Double_/ = 41
-    final val Double_% = 42
+    final val Long_== = 39
+    final val Long_!= = 40
+    final val Long_<  = 41
+    final val Long_<= = 42
+    final val Long_>  = 43
+    final val Long_>= = 44
 
-    final val Boolean_|  = 43
-    final val Boolean_&  = 44
-    final val Boolean_^  = 45
-    final val Boolean_|| = 46
-    final val Boolean_&& = 47
+    final val Boolean_== = 45
+    final val Boolean_!= = 46
+    final val Boolean_|  = 47
+    final val Boolean_&  = 48
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {
@@ -353,10 +348,6 @@ object Trees {
     }
   }
 
-  case class ClassOf(cls: ReferenceType)(implicit val pos: Position) extends Tree {
-    val tpe = ClassType(Definitions.ClassClass)
-  }
-
   case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   object CallHelper {
@@ -369,31 +360,31 @@ object Trees {
   // JavaScript expressions
 
   case class JSGlobal()(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSNew(ctor: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDotSelect(qualifier: Tree, item: Ident)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSBracketSelect(qualifier: Tree, item: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSFunctionApply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDotMethodApply(receiver: Tree, method: Ident, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSBracketMethodApply(receiver: Tree, method: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSDelete(prop: Tree)(implicit val pos: Position) extends Tree {
@@ -411,7 +402,7 @@ object Trees {
    *  These are notably ++ and --
    */
   case class JSUnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   /** Binary operation (always preserves pureness).
@@ -420,15 +411,15 @@ object Trees {
    *  These are notably +=, -=, *=, /= and %=
    */
   case class JSBinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   case class JSObjectConstr(fields: List[(PropertyName, Tree)])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
 
   // Literals
@@ -468,6 +459,10 @@ object Trees {
     override def name = value
   }
 
+  case class ClassOf(cls: ReferenceType)(implicit val pos: Position) extends Literal {
+    val tpe = ClassType(Definitions.ClassClass)
+  }
+
   // Atomic expressions
 
   case class VarRef(ident: Ident, mutable: Boolean)(val tpe: Type)(implicit val pos: Position) extends Tree
@@ -480,15 +475,8 @@ object Trees {
   case class Closure(
       thisType: Type, args: List[ParamDef], resultType: Type, body: Tree,
       captures: List[Tree])(implicit val pos: Position) extends Tree {
-    val tpe = DynType
+    val tpe = AnyType
   }
-
-  // Type-related
-
-  /** Hard-cast (unchecked at compile-time, erased at runtime).
-   *  Used for low-level stuff.
-   */
-  case class Cast(expr: Tree, tpe: Type)(implicit val pos: Position) extends Tree
 
   // Classes
 

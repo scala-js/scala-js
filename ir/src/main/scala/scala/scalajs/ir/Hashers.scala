@@ -242,10 +242,6 @@ object Hashers {
           mixTree(expr)
           mixType(cls)
 
-        case ClassOf(cls) =>
-          mixTag(TagClassOf)
-          mixType(cls)
-
         case CallHelper(helper, args) =>
           mixTag(TagCallHelper)
           mixString(helper)
@@ -313,8 +309,6 @@ object Hashers {
             mixTree(value)
           }
 
-        // Literals
-
         case Undefined() =>
           mixTag(TagUndefined)
 
@@ -345,6 +339,10 @@ object Hashers {
           mixTag(TagStringLiteral)
           mixString(value)
 
+        case ClassOf(cls) =>
+          mixTag(TagClassOf)
+          mixType(cls)
+
         case VarRef(ident, mutable) =>
           mixTag(TagVarRef)
           mixIdent(ident)
@@ -362,11 +360,6 @@ object Hashers {
           mixType(resultType)
           mixTree(body)
           mixTrees(captures)
-
-        case Cast(expr, tpe) =>
-          mixTag(TagCast)
-          mixTree(expr)
-          mixType(tpe)
 
         case _ =>
           sys.error(s"Unable to hash tree of class ${tree.getClass}")
@@ -387,7 +380,6 @@ object Hashers {
       case DoubleType  => mixTag(TagDoubleType)
       case StringType  => mixTag(TagStringType)
       case NullType    => mixTag(TagNullType)
-      case DynType     => mixTag(TagDynType)
       case NoType      => mixTag(TagNoType)
 
       case tpe: ClassType =>
