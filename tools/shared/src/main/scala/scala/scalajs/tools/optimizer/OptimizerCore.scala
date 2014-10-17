@@ -727,6 +727,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             pretransformExprs(args) { targs =>
               tryOrRollback { cancelFun =>
                 inlineClassConstructor(
+                    new AllocationSite(tree),
                     cls, initialValue, ctor, targs, cancelFun)(cont)
               } { () =>
                 cont(PreTransTree(
@@ -1033,15 +1034,17 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               val impls =
                 if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
                 else dynamicCall(cls, methodName)
-              if (impls.isEmpty || impls.exists(scope.implsBeingInlined)) {
+              val allocationSite = treceiver.tpe.allocationSite
+              if (impls.isEmpty || impls.exists(impl =>
+                  scope.implsBeingInlined((allocationSite, impl)))) {
                 // isEmpty could happen, have to leave it as is for the TypeError
                 treeNotInlined
               } else if (impls.size == 1) {
                 val target = impls.head
                 pretransformExprs(args) { targs =>
                   if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
-                    inline(Some(treceiver), targs, target, isStat,
-                        usePreTransform)(cont)
+                    inline(allocationSite, Some(treceiver), targs, target,
+                        isStat, usePreTransform)(cont)
                   } else {
                     treeNotInlined0(targs.map(finishTransformExpr))
                   }
@@ -1060,8 +1063,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                     treeNotInlined
                   } else {
                     pretransformExprs(args) { targs =>
-                      inline(Some(treceiver), targs, reference, isStat,
-                          usePreTransform)(cont)
+                      inline(allocationSite, Some(treceiver), targs, reference,
+                          isStat, usePreTransform)(cont)
                     }
                   }
                 } else {
@@ -1163,16 +1166,19 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         treeNotInlined
       } else {
         val target = optTarget.get
-        if (scope.implsBeingInlined(target)) {
-          treeNotInlined
-        } else {
-          pretransformExprs(receiver, args) { (treceiver, targs) =>
-            if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
-              inline(Some(treceiver), targs, target, isStat, usePreTransform)(cont)
-            } else {
-              treeNotInlined0(finishTransformExpr(treceiver),
-                  targs.map(finishTransformExpr))
-            }
+        pretransformExprs(receiver, args) { (treceiver, targs) =>
+          val shouldInline =
+            target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
+          val allocationSite = treceiver.tpe.allocationSite
+          val beingInlined =
+            scope.implsBeingInlined((allocationSite, target))
+
+          if (shouldInline && !beingInlined) {
+            inline(allocationSite, Some(treceiver), targs, target,
+                isStat, usePreTransform)(cont)
+          } else {
+            treeNotInlined0(finishTransformExpr(treceiver),
+                targs.map(finishTransformExpr))
           }
         }
       }
@@ -1199,15 +1205,18 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       treeNotInlined
     } else {
       val target = optTarget.get
-      if (scope.implsBeingInlined(target)) {
-        treeNotInlined
-      } else {
-        pretransformExprs(args) { targs =>
-          if (target.inlineable || shouldInlineBecauseOfArgs(targs)) {
-            inline(None, targs, target, isStat, usePreTransform)(cont)
-          } else {
-            treeNotInlined0(targs.map(finishTransformExpr))
-          }
+      pretransformExprs(args) { targs =>
+        val shouldInline =
+          target.inlineable || shouldInlineBecauseOfArgs(targs)
+        val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
+        val beingInlined =
+          scope.implsBeingInlined((allocationSite, target))
+
+        if (shouldInline && !beingInlined) {
+          inline(allocationSite, None, targs, target,
+              isStat, usePreTransform)(cont)
+        } else {
+          treeNotInlined0(targs.map(finishTransformExpr))
         }
       }
     }
@@ -1237,7 +1246,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     receiverAndArgs.exists(isLikelyOptimizable)
   }
 
-  private def inline(optReceiver: Option[PreTransform],
+  private def inline(allocationSite: Option[AllocationSite],
+      optReceiver: Option[PreTransform],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
@@ -1285,8 +1295,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         }
 
       case _ =>
+        val targetID = (allocationSite, target)
         inlineBody(optReceiver, formals, resultType, body, args, isStat,
-            usePreTransform)(cont)(scope.inlining(target), pos)
+            usePreTransform)(cont)(scope.inlining(targetID), pos)
     }
   }
 
@@ -1325,7 +1336,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
-  private def inlineClassConstructor(cls: ClassType, initialValue: RecordValue,
+  private def inlineClassConstructor(allocationSite: AllocationSite,
+      cls: ClassType, initialValue: RecordValue,
       ctor: Ident, args: List[PreTransform], cancelFun: CancelFun)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
@@ -1345,10 +1357,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         val initialFieldLocalDefs =
           Map(fieldNames zip initialFieldLocalDefList: _*)
 
-        inlineClassConstructorBody(initialFieldLocalDefs, cls, cls, ctor, args,
-            cancelFun) { (finalFieldLocalDefs, cont2) =>
+        inlineClassConstructorBody(allocationSite, initialFieldLocalDefs,
+            cls, cls, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
           cont2(PreTransLocalDef(LocalDef(
-              RefinedType(cls, isExact = true, isNullable = false),
+              RefinedType(cls, isExact = true, isNullable = false,
+                  allocationSite = Some(allocationSite)),
               mutable = false,
               InlineClassInstanceReplacement(recordType, finalFieldLocalDefs, cancelFun))))
         } (cont1)
@@ -1357,6 +1370,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   }
 
   private def inlineClassConstructorBody(
+      allocationSite: AllocationSite,
       inputFieldsLocalDefs: Map[String, LocalDef], cls: ClassType,
       ctorClass: ClassType, ctor: Ident, args: List[PreTransform],
       cancelFun: CancelFun)(
@@ -1365,7 +1379,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
     val target = staticCall(ctorClass.className, ctor.name).getOrElse(cancelFun())
-    if (scope.implsBeingInlined.contains(target))
+    val targetID = (Some(allocationSite), target)
+    if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
     val MethodDef(_, formals, _, BlockOrAlone(stats, This())) =
@@ -1381,14 +1396,16 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       val thisLocalDef = LocalDef(
           RefinedType(cls, isExact = true, isNullable = false), false,
           InlineClassBeingConstructedReplacement(inputFieldsLocalDefs, cancelFun))
-      val statsScope = bodyScope.inlining(target).withEnv(bodyScope.env.withLocalDef(
-          "this", thisLocalDef))
-      inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs, cls,
-          stats, cancelFun)(buildInner)(cont1)(statsScope)
+      val statsScope = bodyScope.inlining(targetID).withEnv(
+          bodyScope.env.withLocalDef("this", thisLocalDef))
+      inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+          inputFieldsLocalDefs, cls, stats, cancelFun)(
+          buildInner)(cont1)(statsScope)
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
   private def inlineClassConstructorBodyList(
+      allocationSite: AllocationSite,
       thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[String, LocalDef],
       cls: ClassType, stats: List[Tree], cancelFun: CancelFun)(
       buildInner: (Map[String, LocalDef], PreTransCont) => TailRec[Tree])(
@@ -1396,8 +1413,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       implicit scope: Scope): TailRec[Tree] = {
     stats match {
       case This() :: rest =>
-        inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
-            cls, rest, cancelFun)(buildInner)(cont)
+        inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+            inputFieldsLocalDefs, cls, rest, cancelFun)(buildInner)(cont)
 
       case Assign(s @ Select(ths: This,
           Ident(fieldName, fieldOrigName), false), value) :: rest =>
@@ -1417,8 +1434,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 InlineClassBeingConstructedReplacement(newFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(newThisLocalDef, newFieldsLocalDefs,
-                cls, rest, cancelFun)(buildInner)(cont1)(restScope)
+            inlineClassConstructorBodyList(allocationSite,
+                newThisLocalDef, newFieldsLocalDefs, cls, rest, cancelFun)(
+                buildInner)(cont1)(restScope)
           } (cont)
         }
 
@@ -1441,21 +1459,24 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
         val lhs = ass.lhs
-        inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs, cls,
+        inlineClassConstructorBodyList(allocationSite, thisLocalDef,
+            inputFieldsLocalDefs, cls,
             Assign(lhs, If(cond, th, value)(lhs.tpe)(stat.pos))(ass.pos) :: rest,
             cancelFun)(buildInner)(cont)
 
       case StaticApply(ths: This, superClass, superCtor, args) :: rest
           if isConstructorName(superCtor.name) =>
         pretransformExprs(args) { targs =>
-          inlineClassConstructorBody(inputFieldsLocalDefs, cls, superClass,
-              superCtor, targs, cancelFun) { (outputFieldsLocalDefs, cont1) =>
+          inlineClassConstructorBody(allocationSite, inputFieldsLocalDefs,
+              cls, superClass, superCtor, targs,
+              cancelFun) { (outputFieldsLocalDefs, cont1) =>
             val newThisLocalDef = LocalDef(
                 RefinedType(cls, isExact = true, isNullable = false), false,
                 InlineClassBeingConstructedReplacement(outputFieldsLocalDefs, cancelFun))
             val restScope = scope.withEnv(scope.env.withLocalDef(
                 "this", newThisLocalDef))
-            inlineClassConstructorBodyList(newThisLocalDef, outputFieldsLocalDefs,
+            inlineClassConstructorBodyList(allocationSite,
+                newThisLocalDef, outputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
@@ -1463,7 +1484,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case VarDef(Ident(name, originalName), tpe, mutable, rhs) :: rest =>
         pretransformExpr(rhs) { trhs =>
           withBinding(Binding(name, originalName, tpe, mutable, trhs)) { (restScope, cont1) =>
-            inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+            inlineClassConstructorBodyList(allocationSite,
+                thisLocalDef, inputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont1)(restScope)
           } (cont)
         }
@@ -1472,13 +1494,15 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         val transformedStat = transformStat(stat)
         transformedStat match {
           case Skip() =>
-            inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+            inlineClassConstructorBodyList(allocationSite,
+                thisLocalDef, inputFieldsLocalDefs,
                 cls, rest, cancelFun)(buildInner)(cont)
           case _ =>
             if (transformedStat.tpe == NothingType)
               cont(PreTransTree(transformedStat, RefinedType.Nothing))
             else {
-              inlineClassConstructorBodyList(thisLocalDef, inputFieldsLocalDefs,
+              inlineClassConstructorBodyList(allocationSite,
+                  thisLocalDef, inputFieldsLocalDefs,
                   cls, rest, cancelFun) { (outputFieldsLocalDefs, cont1) =>
                 buildInner(outputFieldsLocalDefs, { tinner =>
                   cont1(PreTransBlock(transformedStat :: Nil, tinner))
@@ -2406,15 +2430,18 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             val impls =
               if (tlhs.tpe.isExact) staticCall(lhsClassName, EqualsMethod).toList
               else dynamicCall(lhsClassName, EqualsMethod)
-            if (impls.size != 1 || impls.exists(scope.implsBeingInlined)) {
+            val allocationSite = tlhs.tpe.allocationSite
+            if (impls.size != 1 || impls.exists(impl =>
+                scope.implsBeingInlined((allocationSite, impl)))) {
               // isEmpty could happen, have to leave it as is for the TypeError
               treeNotInlined
             } else if (impls.size == 1) {
               val target = impls.head
               if (target.inlineable || shouldInlineBecauseOfArgs(List(tlhs, trhs))) {
                 trampoline {
-                  inline(Some(tlhs), trhs :: Nil, target, isStat = false,
-                      usePreTransform = false)(finishTransform(isStat = false))
+                  inline(allocationSite, Some(tlhs), trhs :: Nil, target,
+                      isStat = false, usePreTransform = false)(
+                      finishTransform(isStat = false))
                 }
               } else {
                 treeNotInlined
@@ -2476,7 +2503,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
-    val scope0 = optTarget.fold(Scope.Empty)(Scope.Empty.inlining(_))
+    val scope0 = optTarget.fold(Scope.Empty)(
+        target => Scope.Empty.inlining((None, target)))
     val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
     val newBody =
       transform(body, resultType == NoType)(scope)
@@ -2866,7 +2894,7 @@ private[optimizer] object OptimizerCore {
   private type PreTransCont = PreTransform => TailRec[Tree]
 
   private case class RefinedType(base: Type, isExact: Boolean,
-      isNullable: Boolean) {
+      isNullable: Boolean, allocationSite: Option[AllocationSite] = None) {
     def isNothingType: Boolean = base == NothingType
   }
 
@@ -2883,6 +2911,19 @@ private[optimizer] object OptimizerCore {
 
     val NoRefinedType = RefinedType(NoType)
     val Nothing = RefinedType(NothingType)
+  }
+
+  private class AllocationSite(private val node: Tree) {
+    override def equals(that: Any): Boolean = that match {
+      case that: AllocationSite => this.node eq that.node
+      case _                    => false
+    }
+
+    override def hashCode(): Int =
+      System.identityHashCode(node)
+
+    override def toString(): String =
+      s"AllocationSite($node)"
   }
 
   private case class LocalDef(
@@ -2996,11 +3037,11 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[AbstractMethodID]) {
+      val implsBeingInlined: Set[(Option[AllocationSite], AbstractMethodID)]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: AbstractMethodID): Scope = {
+    def inlining(impl: (Option[AllocationSite], AbstractMethodID)): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }
