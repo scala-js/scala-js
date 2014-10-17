@@ -43,9 +43,11 @@ object JavaLangObject {
       ),
       MethodInfo("clone__O",
         calledMethods = Map(
+          "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
           "jl_CloneNotSupportedException" -> List("init___")
         ),
         instantiatedClasses = List("jl_CloneNotSupportedException"),
+        accessedModules = List("sjsr_package"),
         accessedClassData = List("jl_Cloneable"),
         optimizerHints = inlineOptimizerHints
       ),
@@ -132,7 +134,9 @@ object JavaLangObject {
           AnyType,
           {
             If(IsInstanceOf(This()(ThisType), ClassType("jl_Cloneable")), {
-              CallHelper("cloneObject", This()(ThisType))(AnyType)
+              Apply(LoadModule(ClassType("sjsr_package$")),
+                  Ident("cloneObject__sjs_js_Object__sjs_js_Object", Some("cloneObject")),
+                  List(This()(ThisType)))(AnyType)
             }, {
               Throw(New(ClassType("jl_CloneNotSupportedException"),
                 Ident("init___", Some("<init>")), Nil))

@@ -788,8 +788,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("propertiesOf", List(AnyType) -> AnyType),
 
-      ("cloneObject", List(AnyType) -> AnyType),
-
       ("environmentInfo", List() -> AnyType),
 
       ("byteArray2TypedArray", List(ArrayType("B", 1)) -> AnyType),

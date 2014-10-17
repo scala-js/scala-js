@@ -102,16 +102,6 @@ var ScalaJS = {
     return result;
   },
 
-  cloneObject: function(obj) {
-    function Clone(from) {
-      for (var field in from)
-        if (from["hasOwnProperty"](field))
-          this[field] = from[field];
-    }
-    Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](obj);
-    return new Clone(obj);
-  },
-
   checkNonNull: function(obj) {
     return obj !== null ? obj : ScalaJS.throwNullPointerException();
   },
