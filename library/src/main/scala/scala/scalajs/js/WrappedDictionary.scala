@@ -14,6 +14,7 @@ import mutable.Builder
 import scala.collection.generic.CanBuildFrom
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
+@inline
 class WrappedDictionary[A](val dict: Dictionary[A])
     extends mutable.AbstractMap[String, A]
        with mutable.Map[String, A]
@@ -46,6 +47,9 @@ class WrappedDictionary[A](val dict: Dictionary[A])
       (key, dict(key))
     }
   }
+
+  override def keys: Iterable[String] =
+    Object.keys(dict)
 
   override def empty: WrappedDictionary[A] =
     new WrappedDictionary(Dictionary.empty)
