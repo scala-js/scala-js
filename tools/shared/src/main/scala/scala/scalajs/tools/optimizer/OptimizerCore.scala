@@ -465,8 +465,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case JSBracketSelect(qualifier, item) =>
         JSBracketSelect(transformExpr(qualifier), transformExpr(item))
 
-      case JSFunctionApply(fun, args) =>
-        JSFunctionApply(transformExpr(fun), args map transformExpr)
+      case tree: JSFunctionApply =>
+        trampoline {
+          pretransformJSFunctionApply(tree, isStat, usePreTransform = false)(
+              finishTransform(isStat))
+        }
 
       case JSDotMethodApply(receiver, method, args) =>
         JSDotMethodApply(transformExpr(receiver), method,
@@ -694,33 +697,6 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Labeled(ident @ Ident(label, _), tpe, body) =>
         returnable(label, tpe, body, isStat = false, usePreTransform = true)(cont)
 
-      case New(cls @ ClassType(wrapperName), ctor, List(closure: Closure))
-          if wrapperName.startsWith(AnonFunctionClassPrefix) =>
-        tryOrRollback { cancelFun =>
-          val Closure(thisType, params, resultType, body, captures) = closure
-          pretransformExprs(captures) { tcaptures =>
-            val captureBindings = for {
-              (ParamDef(Ident(name, origName), tpe, mutable), value) <-
-                params zip tcaptures
-            } yield {
-              Binding(name, origName, tpe, mutable, value)
-            }
-            withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
-              val alreadyUsedState = new SimpleState[Boolean](false)
-              val tclosure = TentativeClosureReplacement(
-                  thisType, params, resultType, body, captureLocalDefs)
-              val localDef = LocalDef(
-                  RefinedType(cls, isExact = true, isNullable = false), false,
-                  TentativeAnonFunReplacement(tclosure, alreadyUsedState, cancelFun))
-              cont1(PreTransLocalDef(localDef))
-            } (cont)
-          }
-        } { () =>
-          cont(PreTransTree(
-              New(cls, ctor, List(transformExpr(closure))),
-              RefinedType(cls, isExact = true, isNullable = false)))
-        }
-
       case New(cls @ ClassType(className), ctor, args) =>
         tryNewInlineableClass(className) match {
           case Some(initialValue) =>
@@ -756,6 +732,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         pretransformTraitImplApply(tree, isStat = false,
             usePreTransform = true)(cont)
 
+      case tree: JSFunctionApply =>
+        pretransformJSFunctionApply(tree, isStat = false,
+            usePreTransform = true)(cont)
+
       case AsInstanceOf(expr, tpe) =>
         pretransformExpr(expr) { texpr =>
           tpe match {
@@ -768,6 +748,45 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 cont(PreTransTree(
                     AsInstanceOf(finishTransformExpr(texpr), tpe)))
               }
+          }
+        }
+
+      case Closure(thisType, params, resultType, body, captures)
+          if resultType == AnyType &&
+            params.drop(captures.size).forall(_.ptpe == AnyType) =>
+        /* This optimization works only if all params are AnyType, and the
+         * result is AnyType as well.
+         * That said, actually all our Closure nodes satisfy these
+         * conditions (see #1175).
+         */
+        pretransformExprs(captures) { tcaptures =>
+          tryOrRollback { cancelFun =>
+            val captureBindings = for {
+              (ParamDef(Ident(name, origName), tpe, mutable), value) <-
+                params zip tcaptures
+            } yield {
+              Binding(name, origName, tpe, mutable, value)
+            }
+            withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
+              val alreadyUsedState = new SimpleState[Boolean](false)
+              withState(alreadyUsedState) {
+                val replacement = TentativeClosureReplacement(
+                    thisType, params, resultType, body, captureLocalDefs,
+                    alreadyUsedState, cancelFun)
+                val localDef = LocalDef(
+                    RefinedType(AnyType, isExact = false, isNullable = false),
+                    mutable = false,
+                    replacement)
+                cont1(PreTransLocalDef(localDef))
+              }
+            } (cont)
+          } { () =>
+            val (newParams, newBody) =
+              transformIsolatedBody(None, thisType, params, resultType, body)
+            val newCaptures = tcaptures.map(finishTransformExpr)
+            cont(PreTransTree(
+                Closure(thisType, newParams, resultType, newBody, newCaptures),
+                RefinedType(AnyType, isExact = false, isNullable = false)))
           }
         }
 
@@ -1024,53 +1043,49 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               finishTransformStat(treceiver),
               CallHelper("throwNullPointerException")(NothingType))))
         case ClassType(cls) =>
-          tryInlineAnonFunction(treceiver, methodName, args, isStat,
-              usePreTransform)(cont).getOrElse {
-
-            if (isReflProxyName(methodName)) {
-              // Never inline reflective proxies
+          if (isReflProxyName(methodName)) {
+            // Never inline reflective proxies
+            treeNotInlined
+          } else {
+            val impls =
+              if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
+              else dynamicCall(cls, methodName)
+            val allocationSite = treceiver.tpe.allocationSite
+            if (impls.isEmpty || impls.exists(impl =>
+                scope.implsBeingInlined((allocationSite, impl)))) {
+              // isEmpty could happen, have to leave it as is for the TypeError
               treeNotInlined
+            } else if (impls.size == 1) {
+              val target = impls.head
+              pretransformExprs(args) { targs =>
+                if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
+                  inline(allocationSite, Some(treceiver), targs, target,
+                      isStat, usePreTransform)(cont)
+                } else {
+                  treeNotInlined0(targs.map(finishTransformExpr))
+                }
+              }
             } else {
-              val impls =
-                if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
-                else dynamicCall(cls, methodName)
-              val allocationSite = treceiver.tpe.allocationSite
-              if (impls.isEmpty || impls.exists(impl =>
-                  scope.implsBeingInlined((allocationSite, impl)))) {
-                // isEmpty could happen, have to leave it as is for the TypeError
-                treeNotInlined
-              } else if (impls.size == 1) {
-                val target = impls.head
-                pretransformExprs(args) { targs =>
-                  if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
-                    inline(allocationSite, Some(treceiver), targs, target,
+              if (impls.forall(_.isTraitImplForwarder)) {
+                val reference = impls.head
+                val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
+                  getMethodBody(reference).body
+                if (!impls.tail.forall(getMethodBody(_).body match {
+                  case TraitImplApply(ClassType(`traitImpl`),
+                      Ident(`methodName`, _), _) => true
+                  case _ => false
+                })) {
+                  // Not all calling the same method in the same trait impl
+                  treeNotInlined
+                } else {
+                  pretransformExprs(args) { targs =>
+                    inline(allocationSite, Some(treceiver), targs, reference,
                         isStat, usePreTransform)(cont)
-                  } else {
-                    treeNotInlined0(targs.map(finishTransformExpr))
                   }
                 }
               } else {
-                if (impls.forall(_.isTraitImplForwarder)) {
-                  val reference = impls.head
-                  val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
-                    getMethodBody(reference).body
-                  if (!impls.tail.forall(getMethodBody(_).body match {
-                    case TraitImplApply(ClassType(`traitImpl`),
-                        Ident(`methodName`, _), _) => true
-                    case _ => false
-                  })) {
-                    // Not all calling the same method in the same trait impl
-                    treeNotInlined
-                  } else {
-                    pretransformExprs(args) { targs =>
-                      inline(allocationSite, Some(treceiver), targs, reference,
-                          isStat, usePreTransform)(cont)
-                    }
-                  }
-                } else {
-                  // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
-                  treeNotInlined
-                }
+                // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
+                treeNotInlined
               }
             }
           }
@@ -1081,63 +1096,6 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
            */
           treeNotInlined
       }
-    }
-  }
-
-  private def tryInlineAnonFunction(treceiver: PreTransform,
-      methodName: String, args: List[Tree], isStat: Boolean,
-      usePreTransform: Boolean)(
-      cont: PreTransCont)(
-      implicit scope: Scope, pos: Position): Option[TailRec[Tree]] = {
-    treceiver match {
-      case PreTransLocalDef(localDef) if !localDef.mutable =>
-        localDef.replacement match {
-          case TentativeAnonFunReplacement(closure, alreadyUsed, cancelFun) =>
-            if (alreadyUsed.value)
-              cancelFun() // no matter the method name
-            if (methodName.matches("""^apply(__O)+$""")) {
-              // Generic one, the one we can inline easily
-              alreadyUsed.value = true
-              Some(pretransformExprs(args) { targs =>
-                inlineClosure(closure, targs, isStat, usePreTransform)(cont)
-              })
-            } else if (methodName.startsWith("apply$mc") &&
-                !isReflProxyName(methodName)) {
-              // A specialized one, we have to introduce the box/unbox
-              alreadyUsed.value = true
-              val shortName = methodName.split("__")(0)
-              assert(shortName.endsWith("$sp"))
-              val resultCharCode :: paramCharCodes =
-                shortName.stripPrefix("apply$mc").stripSuffix("$sp").toList
-              assert(isPrimitiveCharCode(resultCharCode))
-              assert(paramCharCodes.length == args.size)
-              assert(paramCharCodes.forall(isPrimitiveCharCode))
-              Some(pretransformExprs(args) { targs =>
-                val boxedTArgs = for {
-                  (charCode, targ) <- paramCharCodes zip targs
-                } yield {
-                  if (charCode == 'C') {
-                    val bcClassType = ClassType(Definitions.BoxedCharacterClass)
-                    PreTransTree(CallHelper("bC", finishTransformExpr(targ))(
-                        bcClassType)(targ.pos),
-                        RefinedType(bcClassType, isExact = true, isNullable = false))
-                  } else
-                    targ
-                }
-                val isVoid = resultCharCode == 'V'
-                inlineClosure(closure, boxedTArgs, isVoid, usePreTransform) { tinlined =>
-                  if (isVoid) cont(tinlined)
-                  else foldUnbox(resultCharCode, tinlined)(cont)
-                }
-              })
-            } else {
-              None
-            }
-          case _ =>
-            None
-        }
-      case _ =>
-        None
     }
   }
 
@@ -1222,6 +1180,33 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
+  private def pretransformJSFunctionApply(tree: JSFunctionApply,
+      isStat: Boolean, usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    val JSFunctionApply(fun, args) = tree
+    implicit val pos = tree.pos
+
+    pretransformExpr(fun) { tfun =>
+      tfun match {
+        case PreTransLocalDef(LocalDef(_, false,
+            closure @ TentativeClosureReplacement(
+                thisType, params, resultType, body, captureLocalDefs,
+                alreadyUsed, cancelFun))) if !alreadyUsed.value =>
+          alreadyUsed.value = true
+          pretransformExprs(args) { targs =>
+            inlineBody(None, params, resultType, body,
+                captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
+                usePreTransform)(cont)
+          }
+
+        case _ =>
+          cont(PreTransTree(
+              JSFunctionApply(finishTransformExpr(tfun), args.map(transformExpr))))
+      }
+    }
+  }
+
   private def shouldInlineBecauseOfArgs(
       receiverAndArgs: List[PreTransform]): Boolean = {
     def isLikelyOptimizable(arg: PreTransform): Boolean = arg match {
@@ -1230,11 +1215,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
       case PreTransLocalDef(localDef) =>
         localDef.replacement match {
-          case TentativeAnonFunReplacement(_, _, _)         => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _)       => true
-          case InlineClassBeingConstructedReplacement(_, _) => true
-          case InlineClassInstanceReplacement(_, _, _)      => true
-          case _                                            => false
+          case TentativeClosureReplacement(_, _, _, _, _, _, _) => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _)           => true
+          case InlineClassBeingConstructedReplacement(_, _)     => true
+          case InlineClassInstanceReplacement(_, _, _)          => true
+          case _                                                => false
         }
 
       case PreTransRecordTree(_, _, _) =>
@@ -1299,18 +1284,6 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         inlineBody(optReceiver, formals, resultType, body, args, isStat,
             usePreTransform)(cont)(scope.inlining(targetID), pos)
     }
-  }
-
-  private def inlineClosure(closure: TentativeClosureReplacement,
-      targs: List[PreTransform], isStat: Boolean,
-      usePreTransform: Boolean)(
-      cont: PreTransCont)(
-      implicit scope: Scope, pos: Position): TailRec[Tree] = {
-    val TentativeClosureReplacement(thisType, formals, resultType, body,
-        captureLocalDefs) = closure
-    inlineBody(None, formals, resultType, body,
-        captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
-        usePreTransform)(cont)
   }
 
   private def inlineBody(optReceiver: Option[PreTransform],
@@ -2945,7 +2918,7 @@ private[optimizer] object OptimizerCore {
       case ReplaceWithConstant(value) =>
         value
 
-      case TentativeAnonFunReplacement(closure, alreadyUsed, cancelFun) =>
+      case TentativeClosureReplacement(_, _, _, _, _, _, cancelFun) =>
         cancelFun()
 
       case InlineClassBeingConstructedReplacement(_, cancelFun) =>
@@ -2957,8 +2930,7 @@ private[optimizer] object OptimizerCore {
 
     def contains(that: LocalDef): Boolean = {
       (this eq that) || (replacement match {
-        case TentativeAnonFunReplacement(
-            TentativeClosureReplacement(_, _, _, _, captureLocalDefs), _, _) =>
+        case TentativeClosureReplacement(_, _, _, _, captureLocalDefs, _, _) =>
           captureLocalDefs.exists(_.contains(that))
         case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
@@ -2986,14 +2958,11 @@ private[optimizer] object OptimizerCore {
   private final case class ReplaceWithConstant(
       value: Tree) extends LocalDefReplacement
 
-  private final case class TentativeAnonFunReplacement(
-      closure: TentativeClosureReplacement,
-      alreadyUsed: SimpleState[Boolean],
-      cancelFun: CancelFun) extends LocalDefReplacement
-
   private final case class TentativeClosureReplacement(
       thisType: Type, params: List[ParamDef], resultType: Type, body: Tree,
-      captures: List[LocalDef])
+      captures: List[LocalDef],
+      alreadyUsed: SimpleState[Boolean],
+      cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineClassBeingConstructedReplacement(
       fieldLocalDefs: Map[String, LocalDef],
