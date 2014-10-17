@@ -9,6 +9,7 @@
 
 package scala.scalajs.sbtplugin.env.rhino
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.env._
@@ -18,7 +19,8 @@ import scala.io.Source
 
 import org.mozilla.javascript._
 
-class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
+class RhinoJSEnv(semantics: Semantics,
+    withDOM: Boolean = false) extends JSEnv {
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -70,7 +72,7 @@ class RhinoJSEnv(withDOM: Boolean = false) extends JSEnv {
           case cp: IRClasspath =>
             // Setup lazy loading classpath and source mapper
             val optLoader = if (cp.scalaJSIR.nonEmpty) {
-              val loader = new ScalaJSCoreLib(cp)
+              val loader = new ScalaJSCoreLib(semantics, cp)
 
               // Setup sourceMapper
               val scalaJSenv = context.newObject(scope)

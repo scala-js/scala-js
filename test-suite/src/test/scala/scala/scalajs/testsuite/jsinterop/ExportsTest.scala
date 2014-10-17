@@ -9,7 +9,7 @@ package scala.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
 import js.annotation._
-import org.scalajs.jasminetest.JasmineTest
+import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
 
 import scala.annotation.meta
 
@@ -763,7 +763,8 @@ object ExportsTest extends JasmineTest {
       val foo = (new FooNamed).asInstanceOf[js.Dynamic]
 
       expect(foo.bar1(lit(x = 1, y = 2))).toEqual(3)
-      expect(() => foo.bar1(lit(x = 1))).toThrow // missing arg
+      if (JasmineTestFramework.hasTag("compliant-asinstanceof"))
+        expect(() => foo.bar1(lit(x = 1))).toThrow // missing arg
       expect(foo.bar2(lit())).toEqual(3)
       expect(foo.bar2(lit(x = 2))).toEqual(6)
       expect(foo.bar2(lit(y = 2))).toEqual(5)
@@ -788,6 +789,7 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(ExportedUnderOrgObject.asInstanceOf[js.Any])
     }
 
+    when("compliant-asinstanceof").
     it("should reject bad values for arguments of primitive value type") {
       class Foo {
         @JSExport
@@ -857,6 +859,7 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doFloat("a")).toThrow
     }
 
+    when("compliant-asinstanceof").
     it("should reject bad values for arguments of value class type - #613") {
       class Foo {
         @JSExport
@@ -871,6 +874,7 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doVC("a")).toThrow
     }
 
+    when("compliant-asinstanceof").
     it("should reject bad values for arguments of class type") {
       class A
       class B

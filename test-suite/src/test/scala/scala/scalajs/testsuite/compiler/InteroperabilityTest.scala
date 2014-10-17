@@ -8,7 +8,7 @@
 package scala.scalajs.testsuite.compiler
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
 import scala.scalajs.js.annotation._
 
 /*
@@ -329,9 +329,11 @@ object InteroperabilityTest extends JasmineTest {
         obj;
       """).asInstanceOf[InteroperabilityTestNoUnboxResultInStatement]
       obj.test() // in statement position, should not throw
-      expect(() => obj.test()).toThrow // in expression position, should throw
+      if (JasmineTestFramework.hasTag("compliant-asinstanceof"))
+        expect(() => obj.test()).toThrow // in expression position, should throw
     }
 
+    when("compliant-asinstanceof").
     it("should protect conversions from JS types to Scala types") {
       class Foo
       val foo: Any = new Foo
@@ -352,6 +354,7 @@ object InteroperabilityTest extends JasmineTest {
       expect(nullString: String).toBeNull
     }
 
+    when("compliant-asinstanceof").
     it("should asInstanceOf values received from calling a JS interop method") {
       val obj = js.eval("""
         var obj = {

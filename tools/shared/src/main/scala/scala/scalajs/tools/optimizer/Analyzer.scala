@@ -16,13 +16,14 @@ import scala.collection.mutable
 import scala.scalajs.ir
 import ir.{ClassKind, Infos}
 
+import scala.scalajs.tools.sem._
 import scala.scalajs.tools.javascript.LongImpl
 import scala.scalajs.tools.logging._
 
 import ScalaJSOptimizer._
 
-class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
-    globalWarnEnabled: Boolean = true) {
+class Analyzer(logger0: Logger, semantics: Semantics,
+    allData: Seq[Infos.ClassInfo], globalWarnEnabled: Boolean = true) {
   /* Set this to true to debug the DCE analyzer.
    * We don't rely on config to disable 'debug' messages because we want
    * to use 'debug' for displaying more stack trace info that the user can
@@ -126,6 +127,9 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
   /** Reach symbols used directly by scalajsenv.js. */
   def reachCoreSymbols(): Unit = {
+    import semantics.checkedBehaviors._
+    import CheckedBehaviors._
+
     implicit val from = FromCore
 
     def instantiateClassWith(className: String, constructor: String): ClassInfo = {
@@ -141,8 +145,13 @@ class Analyzer(logger0: Logger, allData: Seq[Infos.ClassInfo],
 
     instantiateClassWith(s"jl_Character", s"init___C")
 
-    instantiateClassWith("jl_ClassCastException", "init___T")
     instantiateClassWith("jl_NullPointerException", "init___")
+
+    if (asInstanceOfs != Unchecked)
+      instantiateClassWith("jl_ClassCastException", "init___T")
+
+    if (asInstanceOfs == Fatal)
+      instantiateClassWith("sjsr_UndefinedBehaviorError", "init___jl_Throwable")
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 

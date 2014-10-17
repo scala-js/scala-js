@@ -7,6 +7,7 @@ import Keys._
 import Implicits._
 import JSUtils._
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.io.{IO => toolsIO, _}
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
@@ -91,11 +92,22 @@ object ScalaJSPluginInternal {
     incOptions.copy(newClassfileManager = newClassfileManager)
   }
 
+  private def scalaJSOptimizerSetting(key: TaskKey[_]): Setting[_] = (
+      scalaJSOptimizer in key := {
+        val semantics = (scalaJSSemantics in key).value
+        if ((scalaJSOptimizerOptions in key).value.parallel)
+          new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
+        else
+          new ScalaJSOptimizer(semantics, new IncOptimizer(_))
+      }
+  )
+
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ Seq(
 
       scalaJSPreLinkClasspath := {
+        val semantics = scalaJSSemantics.value
         val cp = fullClasspath.value
         val pcp = PartialClasspathBuilder.build(Attributed.data(cp).toList)
         pcp.resolve(jsDependencyFilter.value)
@@ -105,12 +117,7 @@ object ScalaJSPluginInternal {
         ((crossTarget in fastOptJS).value /
             ((moduleName in fastOptJS).value + "-fastopt.js")),
 
-      scalaJSOptimizer in fastOptJS := {
-        if ((scalaJSOptimizerOptions in fastOptJS).value.parallel)
-          new ScalaJSOptimizer(() => new ParIncOptimizer)
-        else
-          new ScalaJSOptimizer(() => new IncOptimizer)
-      },
+      scalaJSOptimizerSetting(fastOptJS),
 
       fastOptJS := {
         val s = streams.value
@@ -149,6 +156,11 @@ object ScalaJSPluginInternal {
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
 
+      scalaJSSemantics in fullOptJS :=
+        (scalaJSSemantics in fastOptJS).value.optimized,
+
+      scalaJSOptimizerSetting(fullOptJS),
+
       fullOptJS := {
         val s = streams.value
         val output = (artifactPath in fullOptJS).value
@@ -164,9 +176,11 @@ object ScalaJSPluginInternal {
 
         val opts = (scalaJSOptimizerOptions in fullOptJS).value
 
+        val semantics = (scalaJSSemantics in fullOptJS).value
+
         import ScalaJSClosureOptimizer._
-        val outCP = (new ScalaJSClosureOptimizer).optimizeCP(
-            (scalaJSOptimizer in fastOptJS).value,
+        val outCP = new ScalaJSClosureOptimizer(semantics).optimizeCP(
+            (scalaJSOptimizer in fullOptJS).value,
             Inputs(ScalaJSOptimizer.Inputs(
                 input = (scalaJSPreLinkClasspath in fullOptJS).value)),
             OutputConfig(
@@ -289,7 +303,8 @@ object ScalaJSPluginInternal {
 
       // Default jsEnv
       jsEnv := preLinkJSEnv.?.value.getOrElse {
-        new RhinoJSEnv(withDOM = scalaJSRequestsDOM.value)
+        new RhinoJSEnv(scalaJSSemantics.value,
+            withDOM = scalaJSRequestsDOM.value)
       },
 
       // Wire jsEnv and sources for other stages
@@ -546,6 +561,8 @@ object ScalaJSPluginInternal {
 
       jsDependencies := Seq(),
       jsDependencyFilter := identity,
+
+      scalaJSSemantics := Semantics.Defaults,
 
       scalaJSConsole := ConsoleJSConsole,
 

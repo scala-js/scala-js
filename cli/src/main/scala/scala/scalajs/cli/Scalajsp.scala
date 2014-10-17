@@ -11,12 +11,13 @@ package scala.scalajs.cli
 
 import scala.scalajs.ir
 import ir.ScalaJSVersions
-import ir.Trees.Tree
+import ir.Trees.{Tree, ClassDef}
 import ir.Transformers.Transformer
 import ir.Printers.{InfoPrinter, IRTreePrinter}
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.javascript
-import javascript.JSDesugaring.desugarJavaScript
+import javascript.ScalaJSClassEmitter
 import javascript.Printers.JSTreePrinter
 
 import scala.scalajs.tools.io._
@@ -94,11 +95,12 @@ object Scalajsp {
     else {
       val outTree = {
         if (opts.showReflProxy) vfile.tree
-        else new ReflProxyFilter().transformStat(vfile.tree)
+        else new ReflProxyFilter().transformStat(vfile.tree).asInstanceOf[ClassDef]
       }
 
       if (opts.desugar)
-        new JSTreePrinter(stdout).printTopLevelTree(desugarJavaScript(outTree))
+        new JSTreePrinter(stdout).printTopLevelTree(
+            new ScalaJSClassEmitter(Semantics.Defaults).genClassDef(outTree))
       else
         new IRTreePrinter(stdout).printTopLevelTree(outTree)
     }

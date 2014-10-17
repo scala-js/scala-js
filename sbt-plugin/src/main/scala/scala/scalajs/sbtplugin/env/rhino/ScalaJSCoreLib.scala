@@ -15,12 +15,13 @@ import org.mozilla.javascript.{Context, Scriptable}
 
 import scala.scalajs.ir
 
-import scala.scalajs.tools.javascript
+import scala.scalajs.tools.sem.Semantics
+import scala.scalajs.tools.javascript.{Printers, ScalaJSClassEmitter}
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.corelib._
 
-class ScalaJSCoreLib(classpath: IRClasspath) {
+class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   import ScalaJSCoreLib._
 
   private val (providers, exportedSymbols) = {
@@ -38,7 +39,7 @@ class ScalaJSCoreLib(classpath: IRClasspath) {
   }
 
   def insertInto(context: Context, scope: Scriptable) = {
-    CoreJSLibs.libs.foreach(context.evaluateFile(scope, _))
+    CoreJSLibs.libs(semantics).foreach(context.evaluateFile(scope, _))
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded
@@ -99,9 +100,9 @@ class ScalaJSCoreLib(classpath: IRClasspath) {
 
   private def getSourceMapper(fileName: String, untilLine: Int) = {
     val irFile = providers(fileName.stripSuffix(PseudoFileSuffix))
-    val mapper = new javascript.Printers.ReverseSourceMapPrinter(untilLine)
+    val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
     val classDef = irFile.tree
-    val desugared = javascript.JSDesugaring.desugarJavaScript(classDef)
+    val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -149,9 +150,9 @@ class ScalaJSCoreLib(classpath: IRClasspath) {
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
     providers.get(encodedName) foreach { irFile =>
       val codeWriter = new java.io.StringWriter
-      val printer = new javascript.Printers.JSTreePrinter(codeWriter)
+      val printer = new Printers.JSTreePrinter(codeWriter)
       val classDef = irFile.tree
-      val desugared = javascript.JSDesugaring.desugarJavaScript(classDef)
+      val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
       printer.printTopLevelTree(desugared)
       printer.complete()
       val ctx = Context.getCurrentContext()

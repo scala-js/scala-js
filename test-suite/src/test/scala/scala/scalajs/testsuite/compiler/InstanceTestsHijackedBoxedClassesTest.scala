@@ -51,6 +51,7 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       swallow((3.14       : Any).asInstanceOf[Double] )
     }
 
+    when("compliant-asinstanceof").
     it("should support asInstanceOf (negative)") {
       expect(() => (12345: Any).asInstanceOf[Unit]   ).toThrow
       expect(() => (12345: Any).asInstanceOf[Boolean]).toThrow

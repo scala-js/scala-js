@@ -22,6 +22,8 @@ import Infos.OptimizerHints
 import Trees._
 import Types._
 
+import scala.scalajs.tools.sem._
+
 import scala.scalajs.tools.javascript
 import javascript.Trees.{Tree => JSTree}
 import javascript.ScalaJSClassEmitter
@@ -36,10 +38,12 @@ import scala.scalajs.tools.logging._
  *  run, based on detecting what parts of the program must be re-optimized,
  *  and keeping optimized results from previous runs for the rest.
  */
-abstract class GenIncOptimizer {
+abstract class GenIncOptimizer(semantics: Semantics) {
   import GenIncOptimizer._
 
   protected val CollOps: AbsCollOps
+
+  private val classEmitter = new ScalaJSClassEmitter(semantics)
 
   private var logger: Logger = _
 
@@ -814,15 +818,15 @@ abstract class GenIncOptimizer {
       val (optimizedDef, info) = new Optimizer().optimize(thisType, originalDef)
       desugaredDef =
         if (owner.isInstanceOf[Class])
-          ScalaJSClassEmitter.genMethod(owner.encodedName, optimizedDef)
+          classEmitter.genMethod(owner.encodedName, optimizedDef)
         else
-          ScalaJSClassEmitter.genTraitImplMethod(owner.encodedName, optimizedDef)
+          classEmitter.genTraitImplMethod(owner.encodedName, optimizedDef)
       preciseInfo = info
       resetTag()
     }
 
     /** All methods are PROCESS PASS ONLY */
-    private class Optimizer extends OptimizerCore {
+    private class Optimizer extends OptimizerCore(semantics) {
       type MethodID = MethodImpl
 
       val myself: MethodImpl.this.type = MethodImpl.this

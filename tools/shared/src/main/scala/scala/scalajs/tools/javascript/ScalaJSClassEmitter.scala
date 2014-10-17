@@ -15,14 +15,19 @@ import Transformers._
 import scala.scalajs.ir.Trees._
 import Types._
 
+import scala.scalajs.tools.sem._
+import CheckedBehaviors.Unchecked
+
 import scala.scalajs.tools.javascript.{Trees => js}
 
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
  */
-object ScalaJSClassEmitter {
+final class ScalaJSClassEmitter(semantics: Semantics) {
 
   import JSDesugaring._
+
+  private val behaviors = semantics.checkedBehaviors
 
   /** Desugar a Scala.js class into ECMAScript 5 constructs */
   def genClassDef(tree: ClassDef): js.Tree = {
@@ -89,9 +94,9 @@ object ScalaJSClassEmitter {
         field @ VarDef(name, vtpe, mutable, rhs) <- tree.defs
       } yield {
         implicit val pos = field.pos
-        desugarJavaScript {
-          Assign(Select(This()(tpe), name, mutable)(vtpe), rhs)
-        }
+        desugarJavaScript(
+            Assign(Select(This()(tpe), name, mutable)(vtpe), rhs),
+            semantics)
       }
       js.Function(Nil,
           js.Block(superCtorCall :: fieldDefs)(tree.pos))(tree.pos)
@@ -249,7 +254,9 @@ object ScalaJSClassEmitter {
         }))
     }
 
-    val createAsStat = {
+    val createAsStat = if (behaviors.asInstanceOfs == Unchecked) {
+      js.Skip()
+    } else {
       envField("as") DOT classIdent :=
         js.Function(List(objParam), js.Return(className match {
           case Definitions.ObjectClass =>
@@ -322,7 +329,9 @@ object ScalaJSClassEmitter {
         })
     }
 
-    val createAsArrayOfStat = {
+    val createAsArrayOfStat = if (behaviors.asInstanceOfs == Unchecked) {
+      js.Skip()
+    } else {
       envField("asArrayOf") DOT classIdent :=
         js.Function(List(objParam, depthParam), js.Return {
           js.If(js.Apply(envField("isArrayOf") DOT classIdent, List(obj, depth)) ||
@@ -531,7 +540,7 @@ object ScalaJSClassEmitter {
     val withReturn =
       if (isStat) tree
       else Return(tree)
-    desugarJavaScript(withReturn) match {
+    desugarJavaScript(withReturn, semantics) match {
       case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
       case other                                        => other
     }

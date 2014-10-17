@@ -11,6 +11,7 @@ package scala.scalajs.sbtplugin
 
 import sbt._
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.io.VirtualJSFile
 import scala.scalajs.tools.env.{JSEnv, JSConsole}
@@ -75,6 +76,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val jsDependencies = SettingKey[Seq[AbstractJSDep]]("jsDependencies",
         "JavaScript libraries this project depends upon. Also used to depend on the DOM.", APlusSetting)
+
+    val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
+        "Configurable semantics of Scala.js.", BPlusSetting)
 
     val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)

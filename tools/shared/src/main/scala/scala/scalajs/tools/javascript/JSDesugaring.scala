@@ -19,6 +19,9 @@ import Transformers._
 import scala.scalajs.ir.Trees._
 import scala.scalajs.ir.Types._
 
+import scala.scalajs.tools.sem._
+import CheckedBehaviors._
+
 import scala.scalajs.tools.javascript.{Trees => js}
 
 /** Desugaring of the IR to regular ES5 JavaScript.
@@ -98,8 +101,8 @@ object JSDesugaring {
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** Desugars a statement of the IR into ES5 JavaScript. */
-  def desugarJavaScript(tree: Tree): js.Tree = {
-    new JSDesugar().transformStat(tree)
+  def desugarJavaScript(tree: Tree, semantics: Semantics): js.Tree = {
+    new JSDesugar(semantics).transformStat(tree)
   }
 
   private[javascript] implicit def transformIdent(ident: Ident): js.Ident =
@@ -108,7 +111,9 @@ object JSDesugaring {
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.mutable)(paramDef.pos)
 
-  class JSDesugar {
+  private class JSDesugar(semantics: Semantics) {
+    private val behaviors = semantics.checkedBehaviors
+
     // Synthetic variables
 
     var syntheticVarCounter: Int = 0
@@ -285,11 +290,6 @@ object JSDesugaring {
 
         case Return(expr, label) =>
           pushLhsInto(tree, expr)
-
-        // Classes - that's another story
-
-        case classDef: ClassDef =>
-          ScalaJSClassEmitter.genClassDef(classDef)
 
         /* Anything else is an expression => pushLhsInto(EmptyTree, _)
          * In order not to duplicate all the code of pushLhsInto() here, we
@@ -875,8 +875,12 @@ object JSDesugaring {
           }
 
         case AsInstanceOf(expr, cls) =>
-          unnest(expr) { newExpr =>
-            redo(AsInstanceOf(newExpr, cls))
+          if (behaviors.asInstanceOfs == Unchecked) {
+            redo(expr)
+          } else {
+            unnest(expr) { newExpr =>
+              redo(AsInstanceOf(newExpr, cls))
+            }
           }
 
         case CallHelper(helper, args) =>
@@ -1179,10 +1183,28 @@ object JSDesugaring {
           genIsInstanceOf(transformExpr(expr), cls)
 
         case AsInstanceOf(expr, cls) =>
-          genAsInstanceOf(transformExpr(expr), cls)
+          val newExpr = transformExpr(expr)
+          if (behaviors.asInstanceOfs == Unchecked) newExpr
+          else genAsInstanceOf(newExpr, cls)
 
         case CallHelper(helper, args) =>
-          genCallHelper(helper, args map transformExpr: _*)
+          val newArgs = args map transformExpr
+          @inline def default = genCallHelper(helper, newArgs: _*)
+
+          if (behaviors.asInstanceOfs == Unchecked) {
+            helper match {
+              case "uZ" =>
+                !(!newArgs.head)
+              case "uB" | "uS" | "uI" =>
+                js.BinaryOp("|", newArgs.head, js.IntLiteral(0))
+              case "uF" | "uD" =>
+                js.UnaryOp("+", newArgs.head)
+              case _ =>
+                default
+            }
+          } else {
+            default
+          }
 
         // JavaScript expressions
 
@@ -1353,7 +1375,7 @@ object JSDesugaring {
       implicit pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = true)
 
-  private[javascript] def genAsInstanceOf(expr: js.Tree, cls: ReferenceType)(
+  private def genAsInstanceOf(expr: js.Tree, cls: ReferenceType)(
       implicit pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = false)
 

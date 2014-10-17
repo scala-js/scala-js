@@ -22,6 +22,7 @@ import Infos.OptimizerHints
 import Trees._
 import Types._
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.javascript.LongImpl
 import scala.scalajs.tools.logging._
 
@@ -31,7 +32,7 @@ import scala.scalajs.tools.logging._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-abstract class OptimizerCore {
+private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   import OptimizerCore._
 
   type MethodID <: AbstractMethodID
@@ -2849,7 +2850,7 @@ abstract class OptimizerCore {
   }
 }
 
-object OptimizerCore {
+private[optimizer] object OptimizerCore {
 
   private final val MaxRollbacksPerMethod = 256
 

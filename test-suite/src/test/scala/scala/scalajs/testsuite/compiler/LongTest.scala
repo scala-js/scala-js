@@ -136,10 +136,16 @@ object LongTest extends JasmineTest {
       expect(stat.isInstanceOf[Int]).toBeFalsy
 
       expect(dyn.asInstanceOf[Long]).toEqual(5L)
-      expect(() => dyn.asInstanceOf[Int]).toThrow
 
       expect(dyn.isInstanceOf[Long]).toBeTruthy
       expect(dyn.isInstanceOf[Int]).toBeFalsy
+    }
+
+    when("compliant-asinstanceof").
+    it("should correctly implement asInstanceOf Longs (negative)") {
+      val dyn: Any = 5L
+
+      expect(() => dyn.asInstanceOf[Int]).toThrow
     }
 
     it("should correctly compare to other numeric types") {
