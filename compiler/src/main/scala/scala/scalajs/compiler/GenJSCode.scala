@@ -927,10 +927,17 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case Throw(expr) =>
           val ex = genExpr(expr)
-          if (isMaybeJavaScriptException(expr.tpe))
-            js.Throw(js.CallHelper("unwrapJavaScriptException", ex)(jstpe.AnyType))
-          else
-            js.Throw(ex)
+          js.Throw {
+            if (isMaybeJavaScriptException(expr.tpe)) {
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_unwrapJavaScriptException,
+                  List(ex))
+            } else {
+              ex
+            }
+          }
 
         case app: Apply =>
           genApply(app, isStat)
@@ -1180,8 +1187,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genStatOrExpr(block, isStat)
-      val exceptIdent = freshLocalIdent("ex")
-      val exceptVar = js.VarRef(exceptIdent, mutable = true)(jstpe.AnyType)
+
+      val exceptIdent = freshLocalIdent("e")
+      val origExceptVar = js.VarRef(exceptIdent, mutable = false)(jstpe.AnyType)
+
       val resultType = toIRType(tree.tpe)
 
       val handlerAST = {
@@ -1199,11 +1208,21 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          val elseHandler: js.Tree =
-            if (mightCatchJavaScriptException)
-              js.Throw(js.CallHelper("unwrapJavaScriptException", exceptVar)(jstpe.AnyType))
-            else
-              js.Throw(exceptVar)
+          val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
+            val valDef = js.VarDef(freshLocalIdent("e"),
+                encodeClassType(ThrowableClass), mutable = false, {
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_wrapJavaScriptException,
+                  List(origExceptVar))
+            })
+            (valDef, valDef.ref)
+          } else {
+            (js.Skip(), origExceptVar)
+          }
+
+          val elseHandler: js.Tree = js.Throw(origExceptVar)
 
           val handler0 = catches.foldRight(elseHandler) { (caseDef, elsep) =>
             implicit val pos = caseDef.pos
@@ -1239,15 +1258,9 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
           }
 
-          if (mightCatchJavaScriptException) {
-            js.Block(
-                js.Assign(exceptVar,
-                    js.CallHelper("wrapJavaScriptException", exceptVar)(
-                        encodeClassType(ThrowableClass))),
-                handler0)
-          } else {
-            handler0
-          }
+          js.Block(
+              exceptValDef,
+              handler0)
         }
       }
 
@@ -2752,8 +2765,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case js.JSArrayConstr(actualArgs) =>
             js.JSNew(jsClass, actualArgs)
           case _ =>
-            js.CallHelper("newInstanceWithVarargs",
-                jsClass, actualArgArray)(jstpe.AnyType)
+            genNewJSWithVarargs(jsClass, actualArgArray)
         }
       } else if (code == DYNAPPLY) {
         // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
@@ -2762,8 +2774,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case js.JSArrayConstr(actualArgs) =>
             js.JSBracketMethodApply(receiver, methodName, actualArgs)
           case _ =>
-            js.CallHelper("applyMethodWithVarargs",
-                receiver, methodName, actualArgArray)(jstpe.AnyType)
+            genApplyJSMethodWithVarargs(receiver, methodName, actualArgArray)
         }
       } else if (code == DYNLITN) {
         // We have a call of the form:
@@ -3095,8 +3106,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.JSBracketMethodApply(
                     receiver, js.StringLiteral(jsFunName), args)
               case _ =>
-                js.CallHelper("applyMethodWithVarargs", receiver,
-                    js.StringLiteral(jsFunName), argArray)(jstpe.AnyType)
+                genApplyJSMethodWithVarargs(receiver,
+                    js.StringLiteral(jsFunName), argArray)
             }
           }
       }
@@ -3110,6 +3121,31 @@ abstract class GenJSCode extends plugins.PluginComponent
           fromAny(boxedResult,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
+    }
+
+    /** Gen JS code to call a primitive JS method with variadic parameters. */
+    private def genApplyJSMethodWithVarargs(receiver: js.Tree,
+        methodName: js.Tree, argArray: js.Tree)(
+        implicit pos: Position): js.Tree = {
+      // We need to evaluate `receiver` only once
+      val receiverValDef =
+        js.VarDef(freshLocalIdent(), receiver.tpe, mutable = false, receiver)
+      js.Block(
+          receiverValDef,
+          js.JSBracketMethodApply(
+              js.JSBracketSelect(receiverValDef.ref, methodName),
+              js.StringLiteral("apply"),
+              List(receiverValDef.ref, argArray)))
+    }
+
+    /** Gen JS code to instantiate a JS class with variadic parameters. */
+    private def genNewJSWithVarargs(jsClass: js.Tree, argArray: js.Tree)(
+        implicit pos: Position): js.Tree = {
+      genApplyMethod(
+          genLoadModule(RuntimePackageModule),
+          RuntimePackageModule.moduleClass,
+          Runtime_newJSObjectWithVarargs,
+          List(jsClass, argArray))
     }
 
     /** Gen JS code for new java.lang.String(...)
@@ -3204,8 +3240,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else if (cls == JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
           else js.JSNew(genPrimitiveJSClass(cls), args)
         case argArray =>
-          js.CallHelper("newInstanceWithVarargs",
-              genPrimitiveJSClass(cls), argArray)(jstpe.AnyType)
+          genNewJSWithVarargs(genPrimitiveJSClass(cls), argArray)
       }
     }
 

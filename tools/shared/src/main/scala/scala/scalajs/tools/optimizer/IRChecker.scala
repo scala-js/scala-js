@@ -291,7 +291,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckStat(block, env)
         if (handler != EmptyTree) {
           val handlerEnv =
-            env.withLocal(LocalDef(errVar.name, AnyType, true)(errVar.pos))
+            env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
           typecheckStat(handler, handlerEnv)
         }
         if (finalizer != EmptyTree) {
@@ -393,7 +393,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         typecheckExpect(block, env, tpe)
         if (handler != EmptyTree) {
           val handlerEnv =
-            env.withLocal(LocalDef(errVar.name, AnyType, true)(errVar.pos))
+            env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
           typecheckExpect(handler, handlerEnv, tpe)
         }
         if (finalizer != EmptyTree) {
@@ -745,9 +745,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val CharSeqType = ClassType(CharSequenceClass)
     val NumberType = ClassType(NumberClass)
     Map(
-      ("wrapJavaScriptException"  , List(AnyType) -> ThrowableType),
-      ("unwrapJavaScriptException", List(AnyType) -> AnyType),
-
       ("objectToString" , List(AnyType) -> StringClassType),
       ("objectGetClass" , List(AnyType) -> ClassType(ClassClass)),
       ("objectClone"    , List(AnyType) -> AnyType),
@@ -786,15 +783,10 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("uF", List(AnyType) -> DoubleType),
       ("uD", List(AnyType) -> DoubleType),
 
-      ("newInstanceWithVarargs", List(AnyType, AnyType) -> AnyType),
-      ("applyMethodWithVarargs", List(AnyType, StringClassType, AnyType) -> AnyType),
-
       ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
       ("systemIdentityHashCode", List(AnyType) -> IntType),
 
       ("propertiesOf", List(AnyType) -> AnyType),
-
-      ("cloneObject", List(AnyType) -> AnyType),
 
       ("environmentInfo", List() -> AnyType),
 

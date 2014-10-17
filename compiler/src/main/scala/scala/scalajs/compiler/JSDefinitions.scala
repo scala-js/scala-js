@@ -127,7 +127,10 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
+      lazy val Runtime_wrapJavaScriptException    = getMemberMethod(RuntimePackageModule, newTermName("wrapJavaScriptException"))
+      lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
+      lazy val Runtime_newJSObjectWithVarargs     = getMemberMethod(RuntimePackageModule, newTermName("newJSObjectWithVarargs"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
       lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor

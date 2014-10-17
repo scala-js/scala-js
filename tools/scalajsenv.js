@@ -78,21 +78,6 @@ var ScalaJS = {
     ScalaJS.throwClassCastException(instance, classArrayEncodedName);
   },
 
-  wrapJavaScriptException: function(exception) {
-    if (ScalaJS.isScalaJSObject(exception))
-      return exception;
-    else
-      return new ScalaJS.c.sjs_js_JavaScriptException()
-        .init___sjs_js_Any(exception);
-  },
-
-  unwrapJavaScriptException: function(exception) {
-    if (ScalaJS.is.sjs_js_JavaScriptException(exception))
-      return exception.exception__sjs_js_Any();
-    else
-      return exception;
-  },
-
   makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
     return new arrayClassData.constr(nativeArray);
   },
@@ -115,41 +100,6 @@ var ScalaJS = {
     }
 
     return result;
-  },
-
-  cloneObject: function(obj) {
-    function Clone(from) {
-      for (var field in from)
-        if (from["hasOwnProperty"](field))
-          this[field] = from[field];
-    }
-    Clone.prototype = ScalaJS.g["Object"]["getPrototypeOf"](obj);
-    return new Clone(obj);
-  },
-
-  applyMethodWithVarargs: function(instance, methodName, argArray) {
-    // Note: cannot be inlined because `instance` would be evaluated twice
-    return instance[methodName].apply(instance, argArray);
-  },
-
-  newInstanceWithVarargs: function(constructor, argArray) {
-    // Not really "possible" in JavaScript, so we emulate what it would be
-    function c() {};
-    c.prototype = constructor.prototype;
-    var instance = new c;
-    var result = constructor.apply(instance, argArray);
-    switch (typeof result) {
-      case "undefined":
-      case "number":
-      case "boolean":
-      case "string":
-        return instance;
-      default:
-        if (result === null)
-          return instance;
-        else
-          return result;
-    }
   },
 
   checkNonNull: function(obj) {
