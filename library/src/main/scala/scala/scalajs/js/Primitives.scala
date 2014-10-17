@@ -211,7 +211,7 @@ object Dynamic {
   def global: Dynamic = sys.error("stub")
 
   /** Instantiates a new object of a JavaScript class. */
-  def newInstance(clazz: Dynamic)(args: Any*): Dynamic = sys.error("stub")
+  def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic = sys.error("stub")
 
   /** Creates a new object with a literal syntax.
    *
