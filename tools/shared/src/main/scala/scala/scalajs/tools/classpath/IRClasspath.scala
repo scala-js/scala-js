@@ -11,6 +11,7 @@ package scala.scalajs.tools.classpath
 
 import scala.collection.immutable.{Seq, Traversable}
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.optimizer.ScalaJSOptimizer
@@ -28,8 +29,9 @@ final class IRClasspath(
 
   /** Orders and optimizes the contained IR.
    *
-   *  Consider using ScalaJSOptimizer for a canonical way to do so. It allows to
-   *  persist the resulting file and create a source map.
+   *  Consider using [[ScalaJSOptimizer]] for a canonical way to do so. It
+   *  allows to persist the resulting file and create a source map, as well as
+   *  using non-default [[Semantics]].
    */
   override lazy val scalaJSCode: VirtualJSFile = {
     import ScalaJSOptimizer._
@@ -38,7 +40,7 @@ final class IRClasspath(
 
     if (scalaJSIR.nonEmpty) {
       val output = WritableMemVirtualJSFile(outName)
-      (new ScalaJSOptimizer).optimizeCP(
+      new ScalaJSOptimizer(Semantics.Defaults).optimizeCP(
           Inputs(this),
           OutputConfig(output),
           NullLogger)

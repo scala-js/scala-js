@@ -15,9 +15,11 @@ import scala.collection.parallel.mutable.{ParTrieMap, ParArray}
 
 import java.util.concurrent.atomic._
 
+import scala.scalajs.tools.sem.Semantics
+
 import ConcurrencyUtils._
 
-class ParIncOptimizer extends GenIncOptimizer {
+class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]

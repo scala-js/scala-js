@@ -1092,7 +1092,6 @@ run/t3508.scala
 run/t4300.scala
 run/virtpatmat_typed.scala
 run/macro-term-declared-in-class-object
-run/t7763.scala
 run/map_test.scala
 run/t5040.scala
 run/t4827b.scala
@@ -1610,7 +1609,6 @@ run/macro-expand-implicit-argument
 run/try.scala
 run/t1987b
 run/t6089.scala
-run/t4148.scala
 run/macro-range
 run/t2524.scala
 run/t4770.scala
@@ -2865,7 +2863,6 @@ run/t3452.scala
 run/t261.scala
 run/t3235-minimal.scala
 run/t1503_future.scala
-run/t1503.scala
 run/t5565.scala
 pos/t8411
 pos/t8460.scala
@@ -2874,7 +2871,6 @@ run/t8437
 run/issue192.scala
 run/absoverride.scala
 run/arrays.scala
-run/bugs.scala
 run/duration-coarsest.scala
 run/iterator-from.scala
 run/SymbolsTest.scala

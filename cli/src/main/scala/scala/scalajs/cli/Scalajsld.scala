@@ -9,13 +9,15 @@
 
 package scala.scalajs.cli
 
-import scala.scalajs.ir
-import ir.ScalaJSVersions
+import scala.scalajs.ir.ScalaJSVersions
 
+import scala.scalajs.tools.sem._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
+
+import CheckedBehaviors.Compliant
 
 import scala.scalajs.tools.optimizer.{
   ScalaJSOptimizer,
@@ -34,6 +36,7 @@ object Scalajsld {
     cp: Seq[File] = Seq.empty,
     output: File = null,
     jsoutput: Option[File] = None,
+    semantics: Semantics = Semantics.Defaults,
     noOpt: Boolean = false,
     fullOpt: Boolean = false,
     prettyPrint: Boolean = false,
@@ -75,6 +78,11 @@ object Scalajsld {
       opt[Unit]('s', "sourceMap")
         .action { (_, c) => c.copy(sourceMap = true) }
         .text("Produce a source map for the produced code")
+      opt[Unit]("compliantAsInstanceOfs")
+        .action { (_, c) => c.copy(semantics =
+          c.semantics.transformCheckedBehaviors(_.withAsInstanceOfs(Compliant)))
+        }
+        .text("Use compliant asInstanceOfs")
       opt[Unit]('c', "checkIR")
         .action { (_, c) => c.copy(checkIR = true) }
         .text("Check IR before optimizing")
@@ -134,8 +142,10 @@ object Scalajsld {
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSClosureOptimizer._
 
-    (new ScalaJSClosureOptimizer).optimizeCP(
-        newScalaJSOptimizer,
+    val semantics = options.semantics.optimized
+
+    new ScalaJSClosureOptimizer(semantics).optimizeCP(
+        newScalaJSOptimizer(semantics),
         Inputs(ScalaJSOptimizer.Inputs(cp)),
         OutputConfig(
             output = output,
@@ -150,7 +160,7 @@ object Scalajsld {
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSOptimizer._
 
-    newScalaJSOptimizer.optimizeCP(
+    newScalaJSOptimizer(options.semantics).optimizeCP(
         Inputs(cp),
         OutputConfig(
             output = output,
@@ -164,7 +174,7 @@ object Scalajsld {
   private def newLogger(options: Options) =
     new ScalaConsoleLogger(options.logLevel)
 
-  private def newScalaJSOptimizer =
-    new ScalaJSOptimizer(() => new ParIncOptimizer)
+  private def newScalaJSOptimizer(semantics: Semantics) =
+    new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
 
 }

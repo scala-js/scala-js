@@ -4,6 +4,7 @@ package scala.tools.nsc
 
 import scala.scalajs.ir
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
 import scala.scalajs.tools.logging._
@@ -90,7 +91,10 @@ class MainGenericRunner {
         baseRunner
     }
 
-    val env = if (optMode == NoOpt) new RhinoJSEnv else new NodeJSEnv
+    val env =
+      if (optMode == NoOpt) new RhinoJSEnv(Semantics.Defaults)
+      else new NodeJSEnv
+
     val runClasspath = optMode match {
       case NoOpt         => classpath
       case FastOpt       => fastOpted
@@ -122,7 +126,7 @@ class MainGenericRunner {
       logger: Logger) = {
     import ScalaJSOptimizer._
 
-    val optimizer = newScalaJSOptimizer
+    val optimizer = newScalaJSOptimizer(Semantics.Defaults)
     val output = WritableMemVirtualJSFile("partest fastOpt file")
 
     optimizer.optimizeCP(
@@ -153,8 +157,10 @@ class MainGenericRunner {
       runner: VirtualJSFile) = {
     import ScalaJSClosureOptimizer._
 
-    val fastOptimizer = newScalaJSOptimizer
-    val fullOptimizer = new ScalaJSClosureOptimizer
+    val semantics = Semantics.Defaults.optimized
+
+    val fastOptimizer = newScalaJSOptimizer(semantics)
+    val fullOptimizer = new ScalaJSClosureOptimizer(semantics)
     val output = WritableMemVirtualJSFile("partest fullOpt file")
     val exportFile = fullOptExportFile(runner)
 
@@ -172,8 +178,8 @@ class MainGenericRunner {
 
   }
 
-  private def newScalaJSOptimizer =
-    new ScalaJSOptimizer(() => new ParIncOptimizer)
+  private def newScalaJSOptimizer(semantics: Semantics) =
+    new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
 
   /** generates an exporter statement for the google closure compiler that runs
    *  what the normal test would

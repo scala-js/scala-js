@@ -21,9 +21,11 @@ var ScalaJS = {
   n: {},         // Module instances
   m: {},         // Module accessors
   is: {},        // isInstanceOf methods
-  as: {},        // asInstanceOf methods
   isArrayOf: {}, // isInstanceOfArrayOf methods
+//!if asInstanceOfs != Unchecked
+  as: {},        // asInstanceOf methods
   asArrayOf: {}, // asInstanceOfArrayOf methods
+//!endif
   lastIDHash: 0, // last value attributed to an id hash code
 
   // Core mechanism
@@ -36,6 +38,7 @@ var ScalaJS = {
     }
   },
 
+//!if asInstanceOfs != Unchecked
   makeAsArrayOfPrimitive: function(isInstanceOfFunction, arrayEncodedName) {
     return function(obj, depth) {
       if (isInstanceOfFunction(obj, depth) || (obj === null))
@@ -44,6 +47,7 @@ var ScalaJS = {
         ScalaJS.throwArrayCastException(obj, arrayEncodedName, depth);
     }
   },
+//!endif
 
   /** Encode a property name for runtime manipulation
    *  Usage:
@@ -67,9 +71,16 @@ var ScalaJS = {
     return !!(obj && obj.$classData);
   },
 
+//!if asInstanceOfs != Unchecked
   throwClassCastException: function(instance, classFullName) {
+//!if asInstanceOfs == Compliant
     throw new ScalaJS.c.jl_ClassCastException().init___T(
       instance + " is not an instance of " + classFullName);
+//!else
+    throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
+      new ScalaJS.c.jl_ClassCastException().init___T(
+        instance + " is not an instance of " + classFullName));
+//!endif
   },
 
   throwArrayCastException: function(instance, classArrayEncodedName, depth) {
@@ -77,6 +88,7 @@ var ScalaJS = {
       classArrayEncodedName = "[" + classArrayEncodedName;
     ScalaJS.throwClassCastException(instance, classArrayEncodedName);
   },
+//!endif
 
   makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
     return new arrayClassData.constr(nativeArray);
@@ -221,13 +233,19 @@ var ScalaJS = {
   comparableCompareTo: function(instance, rhs) {
     switch (typeof instance) {
       case "string":
+//!if asInstanceOfs != Unchecked
         ScalaJS.as.T(rhs);
+//!endif
         return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
       case "number":
+//!if asInstanceOfs != Unchecked
         ScalaJS.as.jl_Number(rhs);
+//!endif
         return ScalaJS.numberEquals(instance, rhs) ? 0 : (instance < rhs ? -1 : 1);
       case "boolean":
+//!if asInstanceOfs != Unchecked
         ScalaJS.asBoolean(rhs);
+//!endif
         return instance - rhs; // yes, this gives the right result
       default:
         return instance.compareTo__O__I(rhs);
@@ -353,6 +371,7 @@ var ScalaJS = {
     return (v | 0) === v;
   },
 
+//!if asInstanceOfs != Unchecked
   asUnit: function(v) {
     if (v === void 0)
       return v;
@@ -401,6 +420,7 @@ var ScalaJS = {
     else
       ScalaJS.throwClassCastException(v, "java.lang.Double");
   },
+//!endif
 
   // Boxes
 
@@ -410,6 +430,7 @@ var ScalaJS = {
 
   // Unboxes
 
+//!if asInstanceOfs != Unchecked
   uZ: function(value) {
     return !!ScalaJS.asBoolean(value);
   },
@@ -435,6 +456,14 @@ var ScalaJS = {
   uD: function(value) {
     return +ScalaJS.asDouble(value);
   },
+//!else
+  uC: function(value) {
+    return null === value ? 0 : value.value$1;
+  },
+  uJ: function(value) {
+    return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1 : value;
+  },
+//!endif
 
   // TypeArray conversions
 
@@ -670,36 +699,40 @@ ScalaJS.d.D = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
 // Instance tests for array of primitives
 
 ScalaJS.isArrayOf.Z = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.Z);
-ScalaJS.asArrayOf.Z = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.Z, "Z");
 ScalaJS.d.Z.isArrayOf = ScalaJS.isArrayOf.Z;
 
 ScalaJS.isArrayOf.C = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.C);
-ScalaJS.asArrayOf.C = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.C, "C");
 ScalaJS.d.C.isArrayOf = ScalaJS.isArrayOf.C;
 
 ScalaJS.isArrayOf.B = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.B);
-ScalaJS.asArrayOf.B = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.B, "B");
 ScalaJS.d.B.isArrayOf = ScalaJS.isArrayOf.B;
 
 ScalaJS.isArrayOf.S = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.S);
-ScalaJS.asArrayOf.S = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.S, "S");
 ScalaJS.d.S.isArrayOf = ScalaJS.isArrayOf.S;
 
 ScalaJS.isArrayOf.I = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.I);
-ScalaJS.asArrayOf.I = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.I, "I");
 ScalaJS.d.I.isArrayOf = ScalaJS.isArrayOf.I;
 
 ScalaJS.isArrayOf.J = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.J);
-ScalaJS.asArrayOf.J = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.J, "J");
 ScalaJS.d.J.isArrayOf = ScalaJS.isArrayOf.J;
 
 ScalaJS.isArrayOf.F = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.F);
-ScalaJS.asArrayOf.F = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.F, "F");
 ScalaJS.d.F.isArrayOf = ScalaJS.isArrayOf.F;
 
 ScalaJS.isArrayOf.D = ScalaJS.makeIsArrayOfPrimitive(ScalaJS.d.D);
-ScalaJS.asArrayOf.D = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.D, "D");
 ScalaJS.d.D.isArrayOf = ScalaJS.isArrayOf.D;
+
+//!if asInstanceOfs != Unchecked
+// asInstanceOfs for array of primitives
+ScalaJS.asArrayOf.Z = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.Z, "Z");
+ScalaJS.asArrayOf.C = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.C, "C");
+ScalaJS.asArrayOf.B = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.B, "B");
+ScalaJS.asArrayOf.S = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.S, "S");
+ScalaJS.asArrayOf.I = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.I, "I");
+ScalaJS.asArrayOf.J = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.J, "J");
+ScalaJS.asArrayOf.F = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.F, "F");
+ScalaJS.asArrayOf.D = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.D, "D");
+//!endif
 
 // Polyfills
 

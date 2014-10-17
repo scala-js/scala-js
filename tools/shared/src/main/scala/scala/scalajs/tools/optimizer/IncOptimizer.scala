@@ -12,7 +12,9 @@ package scala.scalajs.tools.optimizer
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
-class IncOptimizer extends GenIncOptimizer {
+import scala.scalajs.tools.sem.Semantics
+
+class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]

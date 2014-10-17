@@ -1,5 +1,6 @@
 package scala.scalajs.tools.js.test
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.classpath._
@@ -19,7 +20,7 @@ object QuickLinker {
 
     val complete = cp.resolve()
 
-    val optimizer = new ScalaJSOptimizer
+    val optimizer = new ScalaJSOptimizer(Semantics.Defaults.optimized)
 
     val out = WritableMemVirtualJSFile("out.js")
 

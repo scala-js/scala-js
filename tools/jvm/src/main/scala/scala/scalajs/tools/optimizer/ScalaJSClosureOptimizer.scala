@@ -9,6 +9,7 @@
 
 package scala.scalajs.tools.optimizer
 
+import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 import scala.scalajs.tools.io._
@@ -26,7 +27,7 @@ import scala.collection.immutable.{Seq, Traversable}
 import java.net.URI
 
 /** Scala.js Closure optimizer: does advanced optimizations with Closure. */
-class ScalaJSClosureOptimizer {
+class ScalaJSClosureOptimizer(semantics: Semantics) {
   import ScalaJSClosureOptimizer._
 
   private def toClosureSource(file: VirtualJSFile) =
@@ -69,7 +70,7 @@ class ScalaJSClosureOptimizer {
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    for (lib <- CoreJSLibs.libs)
+    for (lib <- CoreJSLibs.libs(semantics))
       module.add(toClosureInput(lib))
 
     val ast = builder.closureAST

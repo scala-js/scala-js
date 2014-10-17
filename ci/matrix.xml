@@ -39,6 +39,16 @@
     sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
          ++$scala "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          testSuite/clean &&
+    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.transformCheckedBehaviors(_.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehaviors.Compliant)) }' \
+        ++$scala \
+        "testSuite/testOnly -- -- -trhino -tsource-maps -tcompliant-asinstanceofs" \
+        "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs" \
+        "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs" \
+        testSuite/clean &&
+    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.transformCheckedBehaviors(_.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehaviors.Compliant)) }' \
+        'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+        ++$scala "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs" \
+        testSuite/clean &&
     sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
          ++$scala \
          "testSuite/fastOptStage::testOnly -- -- -tphantomjs" \

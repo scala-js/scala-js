@@ -72,6 +72,12 @@ run/t5680.scala
 run/t6662
 run/t7657
 
+# Relies on compliant asInstanceOfs
+run/bugs.scala
+run/t1503.scala
+run/t4148.scala
+run/t7763.scala
+
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 
