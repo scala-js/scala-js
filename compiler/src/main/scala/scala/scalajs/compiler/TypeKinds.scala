@@ -76,15 +76,15 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   sealed abstract class ValueTypeKind extends TypeKindButArray {
     override def isValueType = true
 
-    val primitiveCharCode = typeSymbol match {
-      case BooleanClass  => "Z"
-      case CharClass     => "C"
-      case ByteClass     => "B"
-      case ShortClass    => "S"
-      case IntClass      => "I"
-      case LongClass     => "J"
-      case FloatClass    => "F"
-      case DoubleClass   => "D"
+    val primitiveCharCode: Char = typeSymbol match {
+      case BooleanClass  => 'Z'
+      case CharClass     => 'C'
+      case ByteClass     => 'B'
+      case ShortClass    => 'S'
+      case IntClass      => 'I'
+      case LongClass     => 'J'
+      case FloatClass    => 'F'
+      case DoubleClass   => 'D'
       case x => abort("Unknown primitive type: " + x.fullName)
     }
   }

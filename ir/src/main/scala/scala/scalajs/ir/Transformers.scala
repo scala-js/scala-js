@@ -106,6 +106,9 @@ object Transformers {
         case AsInstanceOf(expr, cls) =>
           AsInstanceOf(transformExpr(expr), cls)
 
+        case Unbox(expr, charCode) =>
+          Unbox(transformExpr(expr), charCode)
+
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)
 
@@ -249,6 +252,9 @@ object Transformers {
 
         case AsInstanceOf(expr, cls) =>
           AsInstanceOf(transformExpr(expr), cls)
+
+        case Unbox(expr, charCode) =>
+          Unbox(transformExpr(expr), charCode)
 
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)

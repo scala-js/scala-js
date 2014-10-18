@@ -2732,7 +2732,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 BoxesRunTime_unboxToChar,
                 List(expr))
           } else {
-            js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
+            js.Unbox(expr, kind.primitiveCharCode)
           }
         case _ =>
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
