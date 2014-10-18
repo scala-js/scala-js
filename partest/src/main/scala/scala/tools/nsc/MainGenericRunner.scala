@@ -101,7 +101,7 @@ class MainGenericRunner {
       case FullOpt       => fullOpted
     }
 
-    env.runJS(runClasspath, runner, logger, jsConsole)
+    env.jsRunner(runClasspath, runner, logger, jsConsole).run()
 
     true
   }

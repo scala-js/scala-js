@@ -12,9 +12,7 @@ import scala.io.Source
 
 abstract class ExternalJSEnv(
   final protected val additionalArgs: Seq[String],
-  final protected val additionalEnv:  Map[String, String]) extends JSEnv {
-
-  import ExternalJSEnv._
+  final protected val additionalEnv:  Map[String, String]) extends AsyncJSEnv {
 
   /** Printable name of this VM */
   protected def vmName: String
@@ -22,117 +20,157 @@ abstract class ExternalJSEnv(
   /** Command to execute (on shell) for this VM */
   protected def executable: String
 
-  /** JS files used to setup VM */
-  protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Nil
+  protected class AbstractExtRunner(protected val classpath: CompleteClasspath,
+      protected val code: VirtualJSFile, protected val logger: Logger,
+      protected val console: JSConsole) {
 
-  /** Sends required data to VM Stdin (can throw) */
-  protected def sendVMStdin(args: RunJSArgs, out: OutputStream): Unit = {}
+    /** JS files used to setup VM */
+    protected def initFiles(): Seq[VirtualJSFile] = Nil
 
-  /** Fire up an instance of the VM and send js input to it.
-    * Don't care about exceptions. Calling code will catch and display
-    * an error message.
-    */
-  def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-    logger: Logger, console: JSConsole): Unit = {
+    /** Sends required data to VM Stdin (can throw) */
+    protected def sendVMStdin(out: OutputStream): Unit = {}
 
-    val runJSArgs = RunJSArgs(classpath, code, logger, console)
+    /** VM arguments excluding executable. Override to adapt.
+     *  Overrider is responsible to add additionalArgs.
+     */
+    protected def getVMArgs(): Seq[String] = additionalArgs
 
-    val vmInst = startVM(runJSArgs)
+    /** VM environment. Override to adapt.
+     *
+     *  Default is `sys.env` and [[additionalEnv]]
+     */
+    protected def getVMEnv(): Map[String, String] =
+      sys.env ++ additionalEnv
 
-    // Prepare and send input to VM
-    val out = vmInst.getOutputStream()
-    try { sendVMStdin(runJSArgs, out) }
-    finally { out.close() }
+    /** Get files that are a library (i.e. that do not run anything) */
+    protected def getLibJSFiles(): Seq[VirtualJSFile] =
+      initFiles() ++ classpath.allCode
 
-    // We are now executing. Pipe stdout to console
-    pipeToConsole(vmInst.getInputStream(), console)
+    /** Get all files that are passed to VM (libraries and code) */
+    protected def getJSFiles(): Seq[VirtualJSFile] =
+      getLibJSFiles() :+ code
 
-    // We are probably done (stdin is closed). Report any errors
-    val errSrc = Source.fromInputStream(vmInst.getErrorStream(), "UTF-8")
-    try { errSrc.getLines.foreach(err => logger.error(err)) }
-    finally { errSrc.close }
+    /** write a single JS file to a writer using an include fct if appropriate */
+    protected def writeJSFile(file: VirtualJSFile, writer: Writer): Unit = {
+      file match {
+        // TODO remove this case. It is VM specific
+        case file: FileVirtualJSFile =>
+          val fname = toJSstr(file.file.getAbsolutePath)
+          writer.write(s"require($fname);\n")
+        case _ =>
+          writer.write(file.content)
+          writer.write('\n')
+      }
+    }
 
-    // Make sure we are done.
-    vmInst.waitFor()
+    /** Pipe stdin and stdout from/to VM */
+    final protected def pipeVMData(vmInst: Process): Unit = {
+      // Send stdin to VM.
+      val out = vmInst.getOutputStream()
+      try { sendVMStdin(out) }
+      finally { out.close() }
 
-    // Get return value and return
-    val retVal = vmInst.exitValue
-    if (retVal != 0)
-      sys.error(s"$vmName exited with code $retVal")
+      // Pipe stdout to console
+      pipeToConsole(vmInst.getInputStream(), console)
+
+      // We are probably done (stdin is closed). Report any errors
+      val errSrc = Source.fromInputStream(vmInst.getErrorStream(), "UTF-8")
+      try { errSrc.getLines.foreach(err => logger.error(err)) }
+      finally { errSrc.close }
+    }
+
+    /** Wait for the VM to terminate, verify exit code */
+    final protected def waitForVM(vmInst: Process): Unit = {
+      // Make sure we are done.
+      vmInst.waitFor()
+
+      // Get return value and return
+      val retVal = vmInst.exitValue
+      if (retVal != 0)
+        sys.error(s"$vmName exited with code $retVal")
+    }
+
+    protected def startVM(): Process = {
+      val vmArgs = getVMArgs()
+      val vmEnv  = getVMEnv()
+
+      val allArgs = executable +: vmArgs
+      val pBuilder = new ProcessBuilder(allArgs: _*)
+
+      pBuilder.environment().clear()
+      for ((name, value) <- vmEnv)
+        pBuilder.environment().put(name, value)
+
+      pBuilder.start()
+    }
+
+    /** send a bunch of JS files to an output stream */
+    final protected def sendJS(files: Seq[VirtualJSFile],
+        out: OutputStream): Unit = {
+      val writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"))
+      try sendJS(files, writer)
+      finally writer.close()
+    }
+
+    /** send a bunch of JS files to a writer */
+    final protected def sendJS(files: Seq[VirtualJSFile], out: Writer): Unit =
+      files.foreach { writeJSFile(_, out) }
+
+    /** pipe lines from input stream to JSConsole */
+    final protected def pipeToConsole(in: InputStream, console: JSConsole) = {
+      val source = Source.fromInputStream(in, "UTF-8")
+      try { source.getLines.foreach(console.log _) }
+      finally { source.close() }
+    }
+
   }
 
-  /** send a bunch of JS files to an output stream */
-  final protected def sendJS(files: Seq[VirtualJSFile],
-      out: OutputStream): Unit = {
-    val writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"))
-    try sendJS(files, writer)
-    finally writer.close()
-  }
+  protected class ExtRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole
+  ) extends AbstractExtRunner(classpath, code, logger, console)
+       with JSRunner {
 
-  /** send a bunch of JS files to a writer */
-  final protected def sendJS(files: Seq[VirtualJSFile], out: Writer): Unit =
-    files.foreach { writeJSFile(_, out) }
+    def run(): Unit = {
+      val vmInst = startVM()
 
-  /** write a single JS file to a writer using an include fct if appropriate */
-  protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
-    file match {
-      case file: FileVirtualJSFile =>
-        val fname = toJSstr(file.file.getAbsolutePath)
-        writer.write(s"require($fname);\n")
-      case _ =>
-        writer.write(file.content)
-        writer.write('\n')
+      pipeVMData(vmInst)
+      waitForVM(vmInst)
     }
   }
 
-  /** pipe lines from input stream to JSConsole */
-  final protected def pipeToConsole(in: InputStream, console: JSConsole) = {
-    val source = Source.fromInputStream(in, "UTF-8")
-    try { source.getLines.foreach(console.log _) }
-    finally { source.close() }
+  protected class AsyncExtRunner(classpath: CompleteClasspath,
+      code: VirtualJSFile, logger: Logger, console: JSConsole
+  ) extends AbstractExtRunner(classpath, code, logger, console)
+       with AsyncJSRunner {
+
+    private[this] var vmInst: Process = null
+    private[this] val thread = new Thread {
+      override def run(): Unit = pipeVMData(vmInst)
+    }
+
+    def start(): Unit = {
+      require(vmInst == null, "start() may only be called once")
+      vmInst = startVM()
+      thread.start()
+    }
+
+    def isRunning(): Boolean = {
+      require(vmInst != null, "start() must have been called")
+      // Emulate JDK 8 Process.isAlive
+      try {
+        vmInst.exitValue()
+        false
+      } catch {
+        case e: IllegalThreadStateException =>
+          true
+      }
+    }
+
+    def await(): Unit = {
+      require(vmInst != null, "start() must have been called")
+      thread.join()
+      waitForVM(vmInst)
+    }
   }
-
-  protected def startVM(args: RunJSArgs): Process = {
-    val vmArgs = getVMArgs(args)
-    val vmEnv  = getVMEnv(args)
-
-    val allArgs = executable +: vmArgs
-    val pBuilder = new ProcessBuilder(allArgs: _*)
-
-    pBuilder.environment().clear()
-    for ((name, value) <- vmEnv)
-      pBuilder.environment().put(name, value)
-
-    pBuilder.start()
-  }
-
-  /** VM arguments excluding executable. Override to adapt.
-   *  Overrider is responsible to add additionalArgs.
-   */
-  protected def getVMArgs(args: RunJSArgs): Seq[String] = additionalArgs
-
-  /** VM environment. Override to adapt.
-   *
-   *  Default is `sys.env` and [[additionalEnv]]
-   */
-  protected def getVMEnv(args: RunJSArgs): Map[String, String] =
-    sys.env ++ additionalEnv
-
-  /** Get files that are a library (i.e. that do not run anything) */
-  protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    initFiles(args) ++ args.classpath.allCode
-
-  /** Get all files that are passed to VM (libraries and code) */
-  protected def getJSFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    getLibJSFiles(args) :+ args.code
-
-}
-
-object ExternalJSEnv {
-  case class RunJSArgs(
-      classpath: CompleteClasspath,
-      code: VirtualJSFile,
-      logger: Logger,
-      console: JSConsole)
 
 }

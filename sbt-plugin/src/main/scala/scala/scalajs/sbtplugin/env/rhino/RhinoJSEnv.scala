@@ -20,7 +20,7 @@ import scala.io.Source
 import org.mozilla.javascript._
 
 class RhinoJSEnv(semantics: Semantics,
-    withDOM: Boolean = false) extends JSEnv {
+    withDOM: Boolean = false) extends AsyncJSEnv {
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -28,7 +28,48 @@ class RhinoJSEnv(semantics: Semantics,
    *  Other .js scripts in the inputs are executed eagerly before the provided
    *  `code` is called.
    */
-  def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
+  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): JSRunner = {
+    new Runner(classpath, code, logger, console)
+  }
+
+  private class Runner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole) extends JSRunner {
+    def run(): Unit = internalRunJS(classpath, code, logger, console)
+  }
+
+  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): AsyncJSRunner = {
+    new AsyncRunner(classpath, code, logger, console)
+  }
+
+  private class AsyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole) extends AsyncJSRunner {
+
+    private[this] var resultThrowable: Throwable = null
+
+    private[this] val thread = new Thread {
+      override def run(): Unit = {
+        try {
+          internalRunJS(classpath, code, logger, console)
+        } catch {
+          case t: Throwable => resultThrowable = t
+        }
+      }
+    }
+
+    def start(): Unit = thread.start()
+
+    def isRunning(): Boolean = thread.isAlive()
+
+    def await(): Unit = {
+      thread.join()
+      if (resultThrowable != null)
+        throw resultThrowable
+    }
+  }
+
+  private def internalRunJS(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): Unit = {
 
     val context = Context.enter()
