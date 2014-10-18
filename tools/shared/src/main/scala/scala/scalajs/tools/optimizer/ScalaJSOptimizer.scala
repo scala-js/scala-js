@@ -116,7 +116,9 @@ class ScalaJSOptimizer(
           logger, "Optimizations part") {
         val analyzer =
           GenIncOptimizer.logTime(logger, "Compute reachability") {
-            val analyzer = new Analyzer(logger, semantics, allData)
+            val analyzer = new Analyzer(logger, semantics, allData,
+                globalWarnEnabled = true,
+                isBeforeOptimizer = !outCfg.disableOptimizer)
             analyzer.computeReachability(manuallyReachable, noWarnMissing)
             analyzer
           }
@@ -147,7 +149,8 @@ class ScalaJSOptimizer(
           GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
             val refinedData = computeRefinedData(allData, optimizer)
             val refinedAnalyzer = new Analyzer(logger, semantics, refinedData,
-                globalWarnEnabled = false)
+                globalWarnEnabled = false,
+                isBeforeOptimizer = false)
             refinedAnalyzer.computeReachability(manuallyReachable, noWarnMissing)
             refinedAnalyzer
           }

@@ -23,7 +23,8 @@ import scala.scalajs.tools.logging._
 import ScalaJSOptimizer._
 
 class Analyzer(logger0: Logger, semantics: Semantics,
-    allData: Seq[Infos.ClassInfo], globalWarnEnabled: Boolean = true) {
+    allData: Seq[Infos.ClassInfo], globalWarnEnabled: Boolean,
+    isBeforeOptimizer: Boolean) {
   /* Set this to true to debug the DCE analyzer.
    * We don't rely on config to disable 'debug' messages because we want
    * to use 'debug' for displaying more stack trace info that the user can
@@ -157,6 +158,11 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     RTLongClass.instantiated()
     for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
       RTLongClass.callMethod(method)
+
+    if (isBeforeOptimizer) {
+      for (method <- LongImpl.AllIntrinsicMethods)
+        RTLongClass.callMethod(method)
+    }
 
     val RTLongModuleClass = lookupClass(LongImpl.RuntimeLongModuleClass)
     RTLongModuleClass.accessModule()

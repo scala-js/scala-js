@@ -9,6 +9,8 @@
 
 package scala.scalajs.tools.optimizer
 
+import scala.language.implicitConversions
+
 import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
@@ -1331,11 +1333,37 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     import Intrinsics._
 
+    implicit def string2ident(s: String): Ident = Ident(s, None)
+
+    lazy val newArgs = targs.map(finishTransformExpr)
+
+    @inline def contTree(result: Tree) = cont(PreTransTree(result))
+
+    @inline def StringClassType = ClassType(Definitions.StringClass)
+
     (code: @switch) match {
-      case ARRAYCOPY =>
+      // java.lang.System
+
+      case ArrayCopy =>
         assert(isStat, "System.arraycopy must be used in statement position")
-        cont(PreTransTree(
-            CallHelper("systemArraycopy", targs.map(finishTransformExpr))(NoType)))
+        contTree(CallHelper("systemArraycopy", newArgs)(NoType))
+
+      // java.lang.Long
+
+      case LongBitCount =>
+        contTree(Apply(newArgs.head, LongImpl.bitCount, Nil)(IntType))
+      case LongSignum =>
+        contTree(Apply(newArgs.head, LongImpl.signum, Nil)(LongType))
+      case LongLeading0s =>
+        contTree(Apply(newArgs.head, LongImpl.numberOfLeadingZeros, Nil)(IntType))
+      case LongTrailing0s =>
+        contTree(Apply(newArgs.head, LongImpl.numberOfTrailingZeros, Nil)(IntType))
+      case LongToBinStr =>
+        contTree(Apply(newArgs.head, LongImpl.toBinaryString, Nil)(StringClassType))
+      case LongToHexStr =>
+        contTree(Apply(newArgs.head, LongImpl.toHexString, Nil)(StringClassType))
+      case LongToOctalStr =>
+        contTree(Apply(newArgs.head, LongImpl.toOctalString, Nil)(StringClassType))
     }
   }
 
@@ -3165,10 +3193,26 @@ private[optimizer] object OptimizerCore {
     x != Long.MinValue
 
   private object Intrinsics {
-    final val ARRAYCOPY = 1
+    final val ArrayCopy = 1
+
+    final val LongBitCount   = ArrayCopy      + 1
+    final val LongSignum     = LongBitCount   + 1
+    final val LongLeading0s  = LongSignum     + 1
+    final val LongTrailing0s = LongLeading0s  + 1
+    final val LongToBinStr   = LongTrailing0s + 1
+    final val LongToHexStr   = LongToBinStr   + 1
+    final val LongToOctalStr = LongToHexStr   + 1
 
     val intrinsics: Map[String, Int] = Map(
-      "jl_System$.arraycopy__O__I__O__I__I__V" -> ARRAYCOPY
+      "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
+
+      "jl_Long$.bitCount__J__I"              -> LongBitCount,
+      "jl_Long$.signum__J__J"                -> LongSignum,
+      "jl_Long$.numberOfLeadingZeros__J__I"  -> LongLeading0s,
+      "jl_Long$.numberOfTrailingZeros__J__I" -> LongTrailing0s,
+      "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
+      "jl_Long$.toHexString__J__T"           -> LongToHexStr,
+      "jl_Long$.toOctalString__J__T"         -> LongToOctalStr
     ).withDefaultValue(-1)
   }
 

@@ -75,30 +75,75 @@ object Long {
 
   @inline def toString(l: scala.Long): String = l.toString
 
-  @inline def bitCount(i: scala.Long): scala.Int = toRuntimeLong(i).bitCount
+  def bitCount(i: scala.Long): scala.Int = {
+    val lo = i.toInt
+    val hi = (i >>> 32).toInt
+    Integer.bitCount(lo) + Integer.bitCount(hi)
+  }
 
   def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
   def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
 
-  @inline def signum(i: scala.Long): scala.Long =
-    toRuntimeLong(i).signum
+  def signum(i: scala.Long): scala.Long =
+    if (i < 0L) -1L else if (i == 0L) 0L else 1L
 
-  @inline def numberOfLeadingZeros(l: scala.Long): Int =
-    toRuntimeLong(l).numberOfLeadingZeros
+  def numberOfLeadingZeros(l: scala.Long): Int = {
+    val hi = (l >>> 32).toInt
+    if (hi != 0) Integer.numberOfLeadingZeros(hi)
+    else         Integer.numberOfLeadingZeros(l.toInt) + 32
+  }
 
-  @inline def numberOfTrailingZeros(l: scala.Long): Int =
-    toRuntimeLong(l).numberOfTrailingZeros
+  def numberOfTrailingZeros(l: scala.Long): Int = {
+    val lo = l.toInt
+    if (lo != 0) Integer.numberOfTrailingZeros(lo)
+    else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
+  }
 
-  def toBinaryString(l: scala.Long): String =
-    toRuntimeLong(l).toBinaryString
-  def toHexString(l: scala.Long): String =
-    toRuntimeLong(l).toHexString
-  def toOctalString(l: scala.Long): String =
-    toRuntimeLong(l).toOctalString
+  def toBinaryString(l: scala.Long): String = {
+    val zeros = "00000000000000000000000000000000" // 32 zeros
+    @inline def padBinary32(i: Int) = {
+      val s = Integer.toBinaryString(i)
+      zeros.substring(s.length) + s
+    }
 
-  /* TODO This is a hack.
-   * Ideally the javalib should not even know about RuntimeLong. */
-  @inline private def toRuntimeLong(x: Long): RuntimeLong =
-    x.asInstanceOf[RuntimeLong]
+    val lo = l.toInt
+    val hi = (l >>> 32).toInt
+
+    if (hi != 0) Integer.toBinaryString(hi) + padBinary32(lo)
+    else Integer.toBinaryString(lo)
+  }
+
+  def toHexString(l: scala.Long): String = {
+    val zeros = "00000000" // 8 zeros
+    @inline def padBinary8(i: Int) = {
+      val s = Integer.toHexString(i)
+      zeros.substring(s.length) + s
+    }
+
+    val lo = l.toInt
+    val hi = (l >>> 32).toInt
+
+    if (hi != 0) Integer.toHexString(hi) + padBinary8(lo)
+    else Integer.toHexString(lo)
+  }
+
+  def toOctalString(l: scala.Long): String = {
+    val zeros = "0000000000" // 10 zeros
+    @inline def padOctal10(i: Int) = {
+      val s = Integer.toOctalString(i)
+      zeros.substring(s.length) + s
+    }
+
+    val lo = l.toInt
+    val hi = (l >>> 32).toInt
+
+    val lp = lo & 0x3fffffff
+    val mp = ((lo >>> 30) + (hi << 2)) & 0x3fffffff
+    val hp = hi >>> 28
+
+    if (hp != 0) Integer.toOctalString(hp) + padOctal10(mp) + padOctal10(lp)
+    else if (mp != 0) Integer.toOctalString(mp) + padOctal10(lp)
+    else Integer.toOctalString(lp)
+  }
 }
