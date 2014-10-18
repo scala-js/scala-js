@@ -71,7 +71,6 @@ abstract class JSPrimitives {
   val UNITVAL = 349  // () value, which is undefined
   val UNITTYPE = 350 // BoxedUnit.TYPE (== classOf[Unit])
 
-  val ARRAYCOPY = 351  // System.arraycopy
   val IDHASHCODE = 352 // System.identityHashCode
 
   val ENV_INFO = 353  // __ScalaJSEnv via helper
@@ -157,7 +156,6 @@ abstract class JSPrimitives {
     addPrimitive(BoxedUnit_TYPE, UNITTYPE)
 
     val SystemModule = getRequiredModule("java.lang.System")
-    addPrimitive(getMember(SystemModule, newTermName("arraycopy")), ARRAYCOPY)
     addPrimitive(getMember(SystemModule, newTermName("identityHashCode")), IDHASHCODE)
 
     addPrimitive(getMember(RuntimePackageModule,

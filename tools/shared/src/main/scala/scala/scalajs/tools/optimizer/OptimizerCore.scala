@@ -1057,7 +1057,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             } else if (impls.size == 1) {
               val target = impls.head
               pretransformExprs(args) { targs =>
-                if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
+                val intrinsicCode = getIntrinsicCode(target)
+                if (intrinsicCode >= 0) {
+                  callIntrinsic(intrinsicCode, Some(treceiver), targs,
+                      isStat, usePreTransform)(cont)
+                } else if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
                   inline(allocationSite, Some(treceiver), targs, target,
                       isStat, usePreTransform)(cont)
                 } else {
@@ -1124,18 +1128,24 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       } else {
         val target = optTarget.get
         pretransformExprs(receiver, args) { (treceiver, targs) =>
-          val shouldInline =
-            target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
-          val allocationSite = treceiver.tpe.allocationSite
-          val beingInlined =
-            scope.implsBeingInlined((allocationSite, target))
-
-          if (shouldInline && !beingInlined) {
-            inline(allocationSite, Some(treceiver), targs, target,
+          val intrinsicCode = getIntrinsicCode(target)
+          if (intrinsicCode >= 0) {
+            callIntrinsic(intrinsicCode, Some(treceiver), targs,
                 isStat, usePreTransform)(cont)
           } else {
-            treeNotInlined0(finishTransformExpr(treceiver),
-                targs.map(finishTransformExpr))
+            val shouldInline =
+              target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
+            val allocationSite = treceiver.tpe.allocationSite
+            val beingInlined =
+              scope.implsBeingInlined((allocationSite, target))
+
+            if (shouldInline && !beingInlined) {
+              inline(allocationSite, Some(treceiver), targs, target,
+                  isStat, usePreTransform)(cont)
+            } else {
+              treeNotInlined0(finishTransformExpr(treceiver),
+                  targs.map(finishTransformExpr))
+            }
           }
         }
       }
@@ -1163,17 +1173,23 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     } else {
       val target = optTarget.get
       pretransformExprs(args) { targs =>
-        val shouldInline =
-          target.inlineable || shouldInlineBecauseOfArgs(targs)
-        val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
-        val beingInlined =
-          scope.implsBeingInlined((allocationSite, target))
-
-        if (shouldInline && !beingInlined) {
-          inline(allocationSite, None, targs, target,
+        val intrinsicCode = getIntrinsicCode(target)
+        if (intrinsicCode >= 0) {
+          callIntrinsic(intrinsicCode, None, targs,
               isStat, usePreTransform)(cont)
         } else {
-          treeNotInlined0(targs.map(finishTransformExpr))
+          val shouldInline =
+            target.inlineable || shouldInlineBecauseOfArgs(targs)
+          val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
+          val beingInlined =
+            scope.implsBeingInlined((allocationSite, target))
+
+          if (shouldInline && !beingInlined) {
+            inline(allocationSite, None, targs, target,
+                isStat, usePreTransform)(cont)
+          } else {
+            treeNotInlined0(targs.map(finishTransformExpr))
+          }
         }
       }
     }
@@ -1306,6 +1322,21 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       returnable("", resultType, body, isStat, usePreTransform)(
           cont1)(bodyScope, pos)
     } (cont) (scope.withEnv(OptEnv.Empty))
+  }
+
+  private def callIntrinsic(code: Int, optTReceiver: Option[PreTransform],
+      targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit pos: Position): TailRec[Tree] = {
+
+    import Intrinsics._
+
+    (code: @switch) match {
+      case ARRAYCOPY =>
+        assert(isStat, "System.arraycopy must be used in statement position")
+        cont(PreTransTree(
+            CallHelper("systemArraycopy", targs.map(finishTransformExpr))(NoType)))
+    }
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
@@ -3132,6 +3163,17 @@ private[optimizer] object OptimizerCore {
   /** Tests whether `-x` is valid without falling out of range. */
   private def canNegateLong(x: Long): Boolean =
     x != Long.MinValue
+
+  private object Intrinsics {
+    final val ARRAYCOPY = 1
+
+    val intrinsics: Map[String, Int] = Map(
+      "jl_System$.arraycopy__O__I__O__I__I__V" -> ARRAYCOPY
+    ).withDefaultValue(-1)
+  }
+
+  private def getIntrinsicCode(target: AbstractMethodID): Int =
+    Intrinsics.intrinsics(target.toString)
 
   private trait State[A] {
     def makeBackup(): A
