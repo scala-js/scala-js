@@ -334,13 +334,13 @@ var ScalaJS = {
 
   systemIdentityHashCode: function(obj) {
     if (ScalaJS.isScalaJSObject(obj)) {
-      var hash = obj.$idHashCode$0;
+      var hash = obj["$idHashCode$0"];
       if (hash !== void 0) {
         return hash;
       } else {
         hash = (ScalaJS.lastIDHash + 1) | 0;
         ScalaJS.lastIDHash = hash;
-        obj.$idHashCode$0 = hash;
+        obj["$idHashCode$0"] = hash;
         return hash;
       }
     } else if (obj === null) {

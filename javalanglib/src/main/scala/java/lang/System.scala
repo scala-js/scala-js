@@ -133,7 +133,38 @@ object System {
     })
   }
 
-  def identityHashCode(x: Object): scala.Int = sys.error("stub")
+  def identityHashCode(x: Object): scala.Int = {
+    import js.prim
+    x match {
+      case null => 0
+      case _:prim.Boolean | _:prim.Number | _:prim.String | _:prim.Undefined =>
+        x.hashCode()
+      case _ =>
+        if (x.getClass == null) {
+          // This is not a Scala.js object
+          42
+        } else {
+          val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
+          if (!js.isUndefined(hash)) {
+            hash.asInstanceOf[Int]
+          } else {
+            val newHash = IDHashCode.nextIDHashCode()
+            x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash)
+            newHash
+          }
+        }
+    }
+  }
+
+  private object IDHashCode {
+    private var lastIDHashCode: Int = 0
+
+    def nextIDHashCode(): Int = {
+      val r = lastIDHashCode + 1
+      lastIDHashCode = r
+      r
+    }
+  }
 
   //def getProperties(): java.util.Properties
   //def getProperty(key: String): String

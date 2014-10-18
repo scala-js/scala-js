@@ -71,8 +71,6 @@ abstract class JSPrimitives {
   val UNITVAL = 349  // () value, which is undefined
   val UNITTYPE = 350 // BoxedUnit.TYPE (== classOf[Unit])
 
-  val IDHASHCODE = 352 // System.identityHashCode
-
   val ENV_INFO = 353  // __ScalaJSEnv via helper
 
   /** Initialize the map of primitive methods (for GenJSCode) */
@@ -140,9 +138,6 @@ abstract class JSPrimitives {
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
     addPrimitive(BoxedUnit_TYPE, UNITTYPE)
-
-    val SystemModule = getRequiredModule("java.lang.System")
-    addPrimitive(getMember(SystemModule, newTermName("identityHashCode")), IDHASHCODE)
 
     addPrimitive(getMember(RuntimePackageModule,
         newTermName("environmentInfo")), ENV_INFO)
