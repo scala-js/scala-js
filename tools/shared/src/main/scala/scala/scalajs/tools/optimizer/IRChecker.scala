@@ -779,21 +779,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("propertiesOf", List(AnyType) -> AnyType),
 
-      ("environmentInfo", List() -> AnyType),
-
-      ("byteArray2TypedArray", List(ArrayType("B", 1)) -> AnyType),
-      ("shortArray2TypedArray", List(ArrayType("S", 1)) -> AnyType),
-      ("charArray2TypedArray", List(ArrayType("C", 1)) -> AnyType),
-      ("intArray2TypedArray", List(ArrayType("I", 1)) -> AnyType),
-      ("floatArray2TypedArray", List(ArrayType("F", 1)) -> AnyType),
-      ("doubleArray2TypedArray", List(ArrayType("D", 1)) -> AnyType),
-
-      ("typedArray2ByteArray", List(AnyType) -> ArrayType("B", 1)),
-      ("typedArray2ShortArray", List(AnyType) -> ArrayType("S", 1)),
-      ("typedArray2CharArray", List(AnyType) -> ArrayType("C", 1)),
-      ("typedArray2IntArray", List(AnyType) -> ArrayType("I", 1)),
-      ("typedArray2FloatArray", List(AnyType) -> ArrayType("F", 1)),
-      ("typedArray2DoubleArray", List(AnyType) -> ArrayType("D", 1))
+      ("environmentInfo", List() -> AnyType)
     )
   }
 

@@ -2977,39 +2977,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case OBJPROPS =>
               // js.Object.properties(arg)
               js.CallHelper("propertiesOf", arg)(jstpe.AnyType)
-
-            // TypedArray converters
-            case AB2TA =>
-              js.CallHelper("byteArray2TypedArray", arg)(jstpe.AnyType)
-            case AS2TA =>
-              js.CallHelper("shortArray2TypedArray", arg)(jstpe.AnyType)
-            case AC2TA =>
-              js.CallHelper("charArray2TypedArray", arg)(jstpe.AnyType)
-            case AI2TA =>
-              js.CallHelper("intArray2TypedArray", arg)(jstpe.AnyType)
-            case AF2TA =>
-              js.CallHelper("floatArray2TypedArray", arg)(jstpe.AnyType)
-            case AD2TA =>
-              js.CallHelper("doubleArray2TypedArray", arg)(jstpe.AnyType)
-
-            case TA2AB =>
-              js.CallHelper("typedArray2ByteArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(ByteClass), 1))
-            case TA2AS =>
-              js.CallHelper("typedArray2ShortArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(ShortClass), 1))
-            case TA2AC =>
-              js.CallHelper("typedArray2CharArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(CharClass), 1))
-            case TA2AI =>
-              js.CallHelper("typedArray2IntArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(IntClass), 1))
-            case TA2AF =>
-              js.CallHelper("typedArray2FloatArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(FloatClass), 1))
-            case TA2AD =>
-              js.CallHelper("typedArray2DoubleArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(DoubleClass), 1))
           }
 
         case List(arg1, arg2) =>
