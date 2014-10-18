@@ -9,12 +9,7 @@
 
 package scala.scalajs.tools.env
 
-import scala.scalajs.tools.io._
-import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.logging._
-
-trait JSEnv {
-  /** Prepare a runner for the code in the virtual file. */
-  def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner
+trait JSRunner {
+  /** Run the associated JS code. Throw if an error occurs. */
+  def run(): Unit
 }
