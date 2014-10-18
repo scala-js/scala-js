@@ -488,7 +488,7 @@ object JSDesugaring {
         "isByte", "isShort", "isInt",
         "asUnit", "asBoolean", "asByte", "asShort", "asInt",
         "asFloat", "asDouble",
-        "bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD",
+        "uZ", "uB", "uS", "uI", "uJ", "uF", "uD",
         "imul"
     )
 

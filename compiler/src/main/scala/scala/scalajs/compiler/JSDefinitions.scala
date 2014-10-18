@@ -139,5 +139,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
     def ScalaRunTime_isArray = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
 
+    lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
+    lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
+
   }
 }

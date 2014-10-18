@@ -2332,10 +2332,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
       case _ =>
         val resultType = (charCode: @switch) match {
-          case 'Z'                   => BooleanType
-          case 'C' | 'B' | 'S' | 'I' => IntType
-          case 'J'                   => LongType
-          case 'F' | 'D'             => DoubleType
+          case 'Z'             => BooleanType
+          case 'B' | 'S' | 'I' => IntType
+          case 'J'             => LongType
+          case 'F' | 'D'       => DoubleType
         }
         cont(PreTransTree(
             CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos),
@@ -2860,9 +2860,6 @@ private[optimizer] object OptimizerCore {
 
   private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
 
-  private val isPrimitiveCharCode =
-    Set('V', 'Z', 'C', 'B', 'S', 'I', 'J', 'F', 'D')
-
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
@@ -3272,7 +3269,7 @@ private[optimizer] object OptimizerCore {
     }
 
     private val isBoxUnboxHelper =
-      Set("bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD")
+      Set("uZ", "uB", "uS", "uI", "uJ", "uF", "uD")
   }
 
   private object BlockOrAlone {

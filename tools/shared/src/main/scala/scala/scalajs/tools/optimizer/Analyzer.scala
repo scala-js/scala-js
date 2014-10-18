@@ -143,8 +143,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     ObjectClass.callMethod("toString__T")
     ObjectClass.callMethod("equals__O__Z")
 
-    instantiateClassWith(s"jl_Character", s"init___C")
-
     instantiateClassWith("jl_NullPointerException", "init___")
 
     if (asInstanceOfs != Unchecked)

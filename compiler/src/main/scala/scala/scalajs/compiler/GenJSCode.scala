@@ -2704,10 +2704,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           js.Block(expr, js.Undefined())
         case kind: ValueTypeKind =>
-          if (kind == CharKind)
-            js.CallHelper("bC", expr)(encodeClassType(BoxedCharacterClass))
-          else
+          if (kind == CharKind) {
+            genApplyMethod(
+                genLoadModule(BoxesRunTimeClass),
+                BoxesRunTimeClass,
+                BoxesRunTime_boxToCharacter,
+                List(expr))
+          } else {
             expr // box is identity for all non-Char types
+          }
         case _ =>
           abort(s"makePrimitiveBox requires a primitive type, found $tpe at $pos")
       }
@@ -2720,7 +2725,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           expr
         case kind: ValueTypeKind =>
-          js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
+          if (kind == CharKind) {
+            genApplyMethod(
+                genLoadModule(BoxesRunTimeClass),
+                BoxesRunTimeClass,
+                BoxesRunTime_unboxToChar,
+                List(expr))
+          } else {
+            js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
+          }
         case _ =>
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
       }
