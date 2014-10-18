@@ -91,29 +91,14 @@ object Long {
     toRuntimeLong(l).numberOfTrailingZeros
 
   def toBinaryString(l: scala.Long): String =
-    dropLZ(toRuntimeLong(l).toBinaryString)
+    toRuntimeLong(l).toBinaryString
   def toHexString(l: scala.Long): String =
-    dropLZ(toRuntimeLong(l).toHexString)
+    toRuntimeLong(l).toHexString
   def toOctalString(l: scala.Long): String =
-    dropLZ(toRuntimeLong(l).toOctalString)
+    toRuntimeLong(l).toOctalString
 
   /* TODO This is a hack.
    * Ideally the javalib should not even know about RuntimeLong. */
   @inline private def toRuntimeLong(x: Long): RuntimeLong =
     x.asInstanceOf[RuntimeLong]
-
-  /** Drop leading zeros
-   *
-   * This method was:
-   *
-   *     s.dropWhile(_ == '0').padTo(1, '0')
-   *
-   * but generated too much JS code
-   */
-  private def dropLZ(s: String) = {
-    var i = 0
-    while (i < s.length-1 && s.charAt(i) == '0')
-      i += 1
-    s.substring(i)
-  }
 }
