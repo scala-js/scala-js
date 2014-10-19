@@ -2930,12 +2930,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           code match {
-            case V2JS =>
-              js.Block(exprToStat(arg), js.Undefined())
-
-            case Z2JS | N2JS | S2JS =>
-              arg
-
             /** Convert a scala.FunctionN f to a js.FunctionN. */
             case F2JS =>
               arg match {
@@ -2953,12 +2947,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             /** Convert a scala.FunctionN f to a js.ThisFunction{N-1}. */
             case F2JSTHIS =>
               genFunctionToJSFunction(isThisFunction = true)
-
-            case JS2Z | JS2N =>
-              makePrimitiveUnbox(arg, tree.tpe)
-
-            case JS2S =>
-              genAsInstanceOf(arg, tree.tpe)
 
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)

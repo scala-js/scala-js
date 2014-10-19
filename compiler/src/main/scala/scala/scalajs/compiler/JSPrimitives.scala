@@ -30,19 +30,8 @@ abstract class JSPrimitives {
   import scalaPrimitives._
 
   // Conversions from Scala types to JS types
-  val V2JS = 300 // Unit
-  val Z2JS = 301 // Boolean
-  //val C2JS = 302 // Char
-  val N2JS = 303 // Number (any numeric type except for Long)
-  val S2JS = 304 // String
   val F2JS = 305 // FunctionN
   val F2JSTHIS = 306 // ThisFunctionN
-
-  // Conversions from JS types to Scala types
-  val JS2Z = 311 // Boolean
-  //val JS2C = 312 // Char
-  val JS2N = 313 // Number (any numeric type)
-  val JS2S = 314 // String
 
   val GETGLOBAL = 320 // Get the top-level object (`window` in browsers)
   val DYNNEW = 321    // Instantiate a new JavaScript object
@@ -91,23 +80,10 @@ abstract class JSPrimitives {
   private val scalaJSPrimitives = mutable.Map.empty[Symbol, Int]
 
   private def initWithPrimitives(addPrimitive: (Symbol, Int) => Unit): Unit = {
-    addPrimitive(JSAny_fromUnit, V2JS)
-    addPrimitive(JSAny_fromBoolean, Z2JS)
-    addPrimitive(JSAny_fromByte, N2JS)
-    addPrimitive(JSAny_fromShort, N2JS)
-    addPrimitive(JSAny_fromInt, N2JS)
-    addPrimitive(JSAny_fromFloat, N2JS)
-    addPrimitive(JSAny_fromDouble, N2JS)
-    addPrimitive(JSAny_fromString, S2JS)
-
     for (i <- 0 to 22)
       addPrimitive(JSAny_fromFunction(i), F2JS)
     for (i <- 1 to 22)
       addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
-
-    addPrimitive(JSBoolean_toBoolean, JS2Z)
-    addPrimitive(JSNumber_toDouble, JS2N)
-    addPrimitive(JSString_toScalaString, JS2S)
 
     addPrimitive(JSDynamic_global, GETGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)

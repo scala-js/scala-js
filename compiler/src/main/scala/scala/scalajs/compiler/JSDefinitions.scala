@@ -80,15 +80,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
     lazy val JSAnyModule = JSAnyClass.companionModule
-      lazy val JSAny_fromUnit    = getMemberMethod(JSAnyModule, newTermName("fromUnit"))
-      lazy val JSAny_fromBoolean = getMemberMethod(JSAnyModule, newTermName("fromBoolean"))
-      lazy val JSAny_fromByte    = getMemberMethod(JSAnyModule, newTermName("fromByte"))
-      lazy val JSAny_fromShort   = getMemberMethod(JSAnyModule, newTermName("fromShort"))
-      lazy val JSAny_fromInt     = getMemberMethod(JSAnyModule, newTermName("fromInt"))
-      lazy val JSAny_fromFloat   = getMemberMethod(JSAnyModule, newTermName("fromFloat"))
-      lazy val JSAny_fromDouble  = getMemberMethod(JSAnyModule, newTermName("fromDouble"))
-      lazy val JSAny_fromString  = getMemberMethod(JSAnyModule, newTermName("fromString"))
-
       def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
@@ -97,15 +88,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
       lazy val JSDynamicLiteral_applyDynamicNamed = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamicNamed"))
       lazy val JSDynamicLiteral_applyDynamic = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamic"))
-
-    lazy val JSNumberModule = JSNumberClass.companionModule
-      lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))
-
-    lazy val JSBooleanModule = JSBooleanClass.companionModule
-      lazy val JSBoolean_toBoolean = getMemberMethod(JSBooleanModule, newTermName("toBoolean"))
-
-    lazy val JSStringModule = JSStringClass.companionModule
-      lazy val JSString_toScalaString = getMemberMethod(JSStringModule, newTermName("toScalaString"))
 
     lazy val JSObjectModule = JSObjectClass.companionModule
       lazy val JSObject_hasProperty = getMemberMethod(JSObjectModule, newTermName("hasProperty"))
