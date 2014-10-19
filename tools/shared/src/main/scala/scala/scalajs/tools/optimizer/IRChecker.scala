@@ -571,16 +571,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Unbox(expr, _) =>
         typecheckExpr(expr, env)
 
-      case CallHelper("checkNonNull", args) =>
-        // our only polymorphic helper
-        if (args.size != 1)
-          reportError(s"Arity mismatch: 1 expected but ${args.size} found")
-        if (args.nonEmpty) {
-          val argType = typecheckExpr(args.head, env)
-          if (tree.tpe != argType)
-            reportError(s"Helper checkNonNull of type $argType typed as ${tree.tpe}")
-        }
-
       case CallHelper(helper, args) =>
         if (!HelperSignature.contains(helper)) {
           reportError(s"Invalid helper $helper")

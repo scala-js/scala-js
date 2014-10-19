@@ -2373,10 +2373,14 @@ abstract class GenJSCode extends plugins.PluginComponent
           // common case for which there is no side-effect nor NPE
           newArg
         case _ =>
+          implicit val pos = tree.pos
+          val NPECtor = getMemberMethod(NullPointerExceptionClass,
+              nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
           js.Block(
-              js.CallHelper("checkNonNull", newReceiver)(
-                  newReceiver.tpe)(newReceiver.pos),
-              newArg)(newArg.pos)
+              js.If(js.BinaryOp(js.BinaryOp.===, newReceiver, js.Null()),
+                  js.Throw(genNew(NullPointerExceptionClass, NPECtor, Nil)),
+                  js.Skip())(jstpe.NoType),
+              newArg)
       }
     }
 
