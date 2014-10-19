@@ -2964,7 +2964,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case OBJPROPS =>
               // js.Object.properties(arg)
-              js.CallHelper("propertiesOf", arg)(jstpe.AnyType)
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_propertiesOf,
+                  List(arg))
           }
 
         case List(arg1, arg2) =>

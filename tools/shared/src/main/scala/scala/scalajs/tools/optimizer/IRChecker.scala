@@ -765,9 +765,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("numberDoubleValue", List(NumberType) -> DoubleType),
 
       ("isNaN"     , List(NumberType) -> BooleanType),
-      ("isInfinite", List(NumberType) -> BooleanType),
-
-      ("propertiesOf", List(AnyType) -> AnyType)
+      ("isInfinite", List(NumberType) -> BooleanType)
     )
   }
 

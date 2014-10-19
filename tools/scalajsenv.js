@@ -314,9 +314,9 @@ var ScalaJS = {
   },
 
   propertiesOf: function(obj) {
-    var result = new Array();
+    var result = [];
     for (var prop in obj)
-      result["push"](prop.toString());
+      result["push"](prop);
     return result;
   },
 

@@ -1350,6 +1350,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case IdentityHashCode =>
         contTree(CallHelper("systemIdentityHashCode", newArgs)(IntType))
 
+      // scala.scalajs.runtime package object
+
+      case PropertiesOf =>
+        contTree(CallHelper("propertiesOf", newArgs)(AnyType))
+
       // java.lang.Long
 
       case LongBitCount =>
@@ -3226,13 +3231,15 @@ private[optimizer] object OptimizerCore {
     final val ArrayCopy        = 1
     final val IdentityHashCode = ArrayCopy + 1
 
-    final val LongBitCount   = IdentityHashCode + 1
-    final val LongSignum     = LongBitCount     + 1
-    final val LongLeading0s  = LongSignum       + 1
-    final val LongTrailing0s = LongLeading0s    + 1
-    final val LongToBinStr   = LongTrailing0s   + 1
-    final val LongToHexStr   = LongToBinStr     + 1
-    final val LongToOctalStr = LongToHexStr     + 1
+    final val PropertiesOf = IdentityHashCode + 1
+
+    final val LongBitCount   = PropertiesOf   + 1
+    final val LongSignum     = LongBitCount   + 1
+    final val LongLeading0s  = LongSignum     + 1
+    final val LongTrailing0s = LongLeading0s  + 1
+    final val LongToBinStr   = LongTrailing0s + 1
+    final val LongToHexStr   = LongToBinStr   + 1
+    final val LongToOctalStr = LongToHexStr   + 1
 
     final val ByteArrayToInt8Array      = LongToOctalStr           + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
@@ -3251,6 +3258,8 @@ private[optimizer] object OptimizerCore {
     val intrinsics: Map[String, Int] = Map(
       "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
       "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+
+      "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 
       "jl_Long$.bitCount__J__I"              -> LongBitCount,
       "jl_Long$.signum__J__J"                -> LongSignum,

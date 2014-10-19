@@ -300,7 +300,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getPrototypeOf(o: Object): Any = native
+  def getPrototypeOf(o: Object): Object = native
 
   /**
    * The Object.getOwnPropertyDescriptor() method returns a property descriptor
@@ -444,10 +444,18 @@ object Object extends Object {
    */
   def keys(o: Object): Array[String] = native
 
-  /** Returns the names of all the enumerable properties of this object.
-   *  This is the equivalent of a for...in loop in JavaScript.
+  /** Returns the names of all the enumerable properties of this object,
+   *  including properties in its prototype chain.
+   *
+   *  This method returns the same set of names that would be enumerated by
+   *  a for-in loop in JavaScript, but not necessarily in the same order.
+   *
+   *  If the underlying implementation guarantees an order for for-in loops,
+   *  then this is guaranteed to be consistent with [[keys]], in the sense
+   *  that the list returned by [[keys]] is a sublist of the list returned by
+   *  this method (not just a subset).
    */
-  def properties(o: Object): Array[String] = sys.error("stub")
+  def properties(o: Any): Array[String] = sys.error("stub")
 }
 
 package prim {
