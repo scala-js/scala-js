@@ -127,11 +127,6 @@ object Types {
         case (_, AnyType)     => true
         case (NothingType, _) => true
 
-        // FIXME This is a hack
-        case (ClassType(StringClass) | StringType,
-            ClassType("sjsr_RuntimeString")) =>
-          true
-
         case (ClassType(lhsClass), ClassType(rhsClass)) =>
           isSubclass(lhsClass, rhsClass)
 

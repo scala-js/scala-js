@@ -5,32 +5,23 @@ import scala.scalajs.js.prim.{String => jsString}
 
 import java.util.regex._
 
-/**
- * Implementation trait for methods on java.lang.String. The compiler forwards
- * methods on java.lang.String to the implementation proxy of this trait.
+/** Implementation for methods on java.lang.String.
  *
- * Attention: You cannot use `this` to use one function of this trait in another
- * one, since the `this` pointer is not properly identified as a
- * java.lang.String and compiler patching is not performed. Use
- * (this: String).foo() instead.
- *
- * Further, you have to take extreme care of not using the methods of
- * RuntimeString inadvertedly instead of the ones on js.String.
- * For example: this.substring(0) will call String.substring, because
- * 0 is of type Int, but should be of type js.Number.
- *
- * Therefore: ALWAYS ascribe the this pointer!
+ *  Strings are represented at runtime by JavaScript strings, but they have
+ *  a lot of methods. The compiler forwards methods on java.lang.String to the
+ *  methods in the object, passing `this` as the first argument, that we
+ *  consistently call `thiz` in this object.
  */
-private[runtime] trait RuntimeString { this: jsString =>
+private[runtime] object RuntimeString {
 
-  def charAt(index: Int): Char =
-    (this: jsString).charCodeAt(index).toChar
+  @inline
+  def charAt(thiz: String, index: Int): Char =
+    (thiz: jsString).charCodeAt(index).asInstanceOf[Int].toChar
 
-  def codePointAt(index: Int): Int = {
-    val thisjs: jsString = this
-    val high = thisjs.charCodeAt(index).toChar
-    if (index+1 < thisjs.length.asInstanceOf[Int]) {
-      val low = thisjs.charCodeAt(index+1).toChar
+  def codePointAt(thiz: String, index: Int): Int = {
+    val high = thiz.charAt(index)
+    if (index+1 < thiz.length) {
+      val low = thiz.charAt(index+1)
       if (Character.isSurrogatePair(high, low))
         Character.toCodePoint(high, low)
       else
@@ -40,53 +31,41 @@ private[runtime] trait RuntimeString { this: jsString =>
     }
   }
 
-  def compareTo(anotherString: String): Int = {
-    val thatjs: jsString = anotherString
-    val thisjs: jsString = this
-    if (thisjs eq thatjs) 0
-    else if (thisjs < thatjs) -1
-    else 1
-  }
-  def compareToIgnoreCase(str: String): Int = {
-    val thatljs = (str: jsString).toLowerCase
-    val thisljs = (this: jsString).toLowerCase
-    if (thisljs eq thatljs) 0
-    else if (thisljs < thatljs) -1
+  @inline
+  def compareTo(thiz: String, anotherString: String): Int = {
+    if (thiz.equals(anotherString)) 0
+    else if ((thiz: jsString) < (anotherString: jsString)) -1
     else 1
   }
 
-  def equalsIgnoreCase(that: String) = {
-    if (that eq null) false
-    else {
-      val thatljs = (that: jsString).toLowerCase
-      val thisljs = (this: jsString).toLowerCase
+  def compareToIgnoreCase(thiz: String, str: String): Int =
+    thiz.toLowerCase().compareTo(str.toLowerCase())
 
-      thisljs eq thatljs
-    }
-  }
+  @inline
+  def equalsIgnoreCase(thiz: String, that: String): Boolean =
+    thiz.toLowerCase() == (if (that == null) null else that.toLowerCase())
 
-  def concat(s: String): String = (this: jsString) + s
+  @inline
+  def concat(thiz: String, s: String): String =
+    checkNull(thiz) + s
 
-  def contains(s: CharSequence): Boolean =
-    (this: jsString).indexOf(s.toString).toInt != -1
+  @inline
+  def contains(thiz: String, s: CharSequence): Boolean =
+    thiz.indexOf(s.toString) != -1
 
-  def endsWith(suffix: String): Boolean = {
-    val thisjs: jsString = this
-    (suffix: jsString) eq thisjs.substring(thisjs.length - suffix.length)
-  }
+  def endsWith(thiz: String, suffix: String): Boolean =
+    ((thiz: jsString).substring(thiz.length - suffix.length): String) == suffix
 
   /** Unimplemented, unused, but referenced */
-  def getBytes(): Array[Byte] = ???
+  def getBytes(thiz: String): Array[Byte] = ???
+
   /** Unimplemented, unused, but referenced */
-  def getBytes(charsetName: String): Array[Byte] = ???
+  def getBytes(thiz: String, charsetName: String): Array[Byte] = ???
 
-  def getChars(srcBegin: Int, srcEnd: Int,
-    dst: Array[Char], dstBegin: Int): Unit = {
-
-    val thisjs: jsString = this
-
-    if (srcBegin < 0 ||
-        srcEnd   > thisjs.length ||
+  def getChars(thiz: String, srcBegin: Int, srcEnd: Int,
+      dst: Array[Char], dstBegin: Int): Unit = {
+    if (srcEnd   > thiz.length || // first test uses thiz
+        srcBegin < 0 ||
         srcEnd   < 0 ||
         srcBegin > srcEnd) {
       throw new StringIndexOutOfBoundsException("Index out of Bound")
@@ -94,147 +73,178 @@ private[runtime] trait RuntimeString { this: jsString =>
 
     val offset = dstBegin - srcBegin
     var i = srcBegin
-
     while (i < srcEnd) {
-      dst(i+offset) = thisjs.charCodeAt(i).toChar
+      dst(i+offset) = thiz.charAt(i)
       i += 1
     }
-
   }
 
-  def indexOf(ch: Int): Int = {
-    val search: jsString = js.String.fromCharCode(ch)
-    (this: jsString).indexOf(search).toInt
-  }
-  def indexOf(ch: Int, fromIndex: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).indexOf(search, fromIndex).toInt
-  }
+  def indexOf(thiz: String, ch: Int): Int =
+    thiz.indexOf(js.String.fromCharCode(ch)) // FIXME Supplementary chars
 
-  def indexOf(str: String): Int =
-    (this: jsString).indexOf(str).toInt
-  def indexOf(str: String, fromIndex: Int): Int =
-    (this: jsString).indexOf(str, fromIndex).toInt
+  def indexOf(thiz: String, ch: Int, fromIndex: Int): Int =
+    thiz.indexOf(js.String.fromCharCode(ch), fromIndex) // FIXME Supplementary chars
 
-  /**
-   * Just returning this string is a valid implementation for `intern` in
+  @inline
+  def indexOf(thiz: String, str: String): Int =
+    (thiz: jsString).indexOf(str).asInstanceOf[Int]
+
+  @inline
+  def indexOf(thiz: String, str: String, fromIndex: Int): Int =
+    (thiz: jsString).indexOf(str, fromIndex).asInstanceOf[Int]
+
+  /* Just returning this string is a valid implementation for `intern` in
    * JavaScript, since strings are primitive values. Therefore, value equality
    * and reference equality is the same.
    */
-  def intern(): String = this
+  @inline
+  def intern(thiz: String): String =
+    checkNull(thiz)
 
-  def isEmpty(): Boolean = (this: jsString).length.toInt == 0
+  @inline
+  def isEmpty(thiz: String): Boolean =
+    checkNull(thiz) == ""
 
-  def lastIndexOf(ch: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).lastIndexOf(search).toInt
-  }
-  def lastIndexOf(ch: Int, fromIndex: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).lastIndexOf(search, fromIndex).toInt
-  }
-  def lastIndexOf(str: String): Int =
-    (this: jsString).lastIndexOf(str).toInt
-  def lastIndexOf(str: String, fromIndex: Int): Int =
-    (this: jsString).lastIndexOf(str, fromIndex).toInt
+  def lastIndexOf(thiz: String, ch: Int): Int =
+    thiz.lastIndexOf(js.String.fromCharCode(ch)) // FIXME Supplementary chars
 
-  def length(): Int = (this: jsString).length.toInt
+  def lastIndexOf(thiz: String, ch: Int, fromIndex: Int): Int =
+    thiz.lastIndexOf(js.String.fromCharCode(ch), fromIndex) // FIXME Supplementary chars
 
-  def matches(regex: String): Boolean =
-    Pattern.matches(regex, this: String)
+  @inline
+  def lastIndexOf(thiz: String, str: String): Int =
+    (thiz: jsString).lastIndexOf(str).asInstanceOf[Int]
 
-  def replace(oldChar: Char, newChar: Char): String =
-    (this: String).replace(oldChar.toString, newChar.toString)
-  def replace(target: CharSequence, replacement: CharSequence): String =
-    (this: jsString).split(target.toString).join(replacement.toString)
-  def replaceAll(regex: String, replacement: String): String = {
-    val pat = Pattern.compile(regex)
-    val mat = pat.matcher(this: String)
-    mat.replaceAll(replacement)
-  }
-  def replaceFirst(regex: String, replacement: String): String = {
-    val pat = Pattern.compile(regex)
-    val mat = pat.matcher(this: String)
-    mat.replaceFirst(replacement)
+  @inline
+  def lastIndexOf(thiz: String, str: String, fromIndex: Int): Int =
+    (thiz: jsString).lastIndexOf(str, fromIndex).asInstanceOf[Int]
+
+  @inline
+  def length(thiz: String): Int =
+    (thiz: jsString).length.asInstanceOf[Int]
+
+  @inline
+  def matches(thiz: String, regex: String): Boolean = {
+    checkNull(thiz)
+    Pattern.matches(regex, thiz)
   }
 
-  def split(regex: String): Array[String] =
-    (this: String).split(regex, 0)
-  def split(regex: String, limit: Int): Array[String] = {
-    val pat = Pattern.compile(regex)
-    pat.split(this: String, limit)
+  @inline
+  def replace(thiz: String, oldChar: Char, newChar: Char): String =
+    (thiz: String).replace(oldChar.toString, newChar.toString)
+
+  @inline
+  def replace(thiz: String, target: CharSequence, replacement: CharSequence): String =
+    (thiz: jsString).split(target.toString).join(replacement.toString)
+
+  def replaceAll(thiz: String, regex: String, replacement: String): String = {
+    checkNull(thiz)
+    Pattern.compile(regex).matcher(thiz).replaceAll(replacement)
   }
 
-  def startsWith(prefix: String): Boolean =
-    (this: String).startsWith(prefix, 0)
-  def startsWith(prefix: String, toffset: Int): Boolean =
-    (prefix: jsString) eq (this: jsString).substring(toffset, prefix.length)
+  def replaceFirst(thiz: String, regex: String, replacement: String): String = {
+    checkNull(thiz)
+    Pattern.compile(regex).matcher(thiz).replaceFirst(replacement)
+  }
 
-  def subSequence(beginIndex: Int, endIndex: Int): CharSequence =
-    (this: jsString).substring(beginIndex, endIndex)
+  @inline
+  def split(thiz: String, regex: String): Array[String] =
+    thiz.split(regex, 0)
 
-  def substring(beginIndex: Int): String =
-    (this: jsString).substring(beginIndex)
-  def substring(beginIndex: Int, endIndex: Int): String =
-    (this: jsString).substring(beginIndex, endIndex)
+  def split(thiz: String, regex: String, limit: Int): Array[String] = {
+    checkNull(thiz)
+    Pattern.compile(regex).split(thiz, limit)
+  }
 
-  def toCharArray(): Array[Char] = {
-    val length = (this: jsString).length.toInt
+  @inline
+  def startsWith(thiz: String, prefix: String): Boolean =
+    thiz.startsWith(prefix, 0)
+
+  @inline
+  def startsWith(thiz: String, prefix: String, toffset: Int): Boolean =
+    ((thiz: jsString).substring(toffset, prefix.length): String) == prefix
+
+  @inline
+  def subSequence(thiz: String, beginIndex: Int, endIndex: Int): CharSequence =
+    thiz.substring(beginIndex, endIndex)
+
+  @inline
+  def substring(thiz: String, beginIndex: Int): String =
+    (thiz: jsString).substring(beginIndex)
+
+  @inline
+  def substring(thiz: String, beginIndex: Int, endIndex: Int): String =
+    (thiz: jsString).substring(beginIndex, endIndex)
+
+  def toCharArray(thiz: String): Array[Char] = {
+    val length = thiz.length
     val result = new Array[Char](length)
     var i = 0
     while (i < length) {
-      result(i) = (this: String).charAt(i)
+      result(i) = thiz.charAt(i)
       i += 1
     }
     result
   }
-  def toLowerCase(): String = (this: jsString).toLowerCase
-  def toUpperCase(): String = (this: jsString).toUpperCase
 
-  def trim(): String = (this: jsString).trim()
+  @inline
+  def toLowerCase(thiz: String): String =
+    (thiz: jsString).toLowerCase()
 
-}
+  @inline
+  def toUpperCase(thiz: String): String =
+    (thiz: jsString).toUpperCase()
 
-/**
- * Implementations for constructors of java.lang.String. Do not use directly,
- * call new String(...) instead
- */
-private[runtime] object RuntimeString {
+  @inline
+  def trim(thiz: String): String =
+    (thiz: jsString).trim()
 
   // Constructors
 
   def newString(): String = ""
+
   def newString(value: Array[Char]): String =
     newString(value, 0, value.length)
+
   def newString(value: Array[Char], offset: Int, count: Int): String = {
     var res: String = ""
     for (c <- value.view(offset, offset + count))
       res += c.toString
     res
   }
+
   /** Unimplemented, unused, but referenced */
   def newString(bytes: Array[Byte], charsetName: String): String = ???
+
   /** Unimplemented, unused, but referenced */
   def newString(bytes: Array[Byte], offset: Int, length: Int,
       charsetName: String): String = ???
+
   def newString(codePoints: Array[Int], offset: Int, count: Int): String =
     js.String.fromCharCode(
-        codePoints.view(offset, offset + count) :_*)
-  def newString(original: String): String = original
-  def newString(buffer: StringBuffer): String = buffer.toString
-  def newString(builder: java.lang.StringBuilder): String = builder.toString
+        codePoints.view(offset, offset + count): _*) // FIXME Supplementary chars
+
+  def newString(original: String): String =
+    checkNull(original)
+
+  def newString(buffer: java.lang.StringBuffer): String =
+    buffer.toString
+
+  def newString(builder: java.lang.StringBuilder): String =
+    builder.toString
 
   // Static methods (aka methods on the companion object)
 
-  def valueOf(value: scala.Boolean) = new java.lang.Boolean(value).toString()
-  def valueOf(value: scala.Char) = new java.lang.Character(value).toString()
-  def valueOf(value: scala.Byte) = new java.lang.Byte(value).toString()
-  def valueOf(value: scala.Short) = new java.lang.Short(value).toString()
-  def valueOf(value: scala.Int) = new java.lang.Integer(value).toString()
-  def valueOf(value: scala.Long) = new java.lang.Long(value).toString()
-  def valueOf(value: scala.Float) = new java.lang.Float(value).toString()
-  def valueOf(value: scala.Double) = new java.lang.Double(value).toString()
-  def valueOf(value: java.lang.Object) =
+  def valueOf(value: Boolean): String = value.toString()
+  def valueOf(value: Char): String    = value.toString()
+  def valueOf(value: Byte): String    = value.toString()
+  def valueOf(value: Short): String   = value.toString()
+  def valueOf(value: Int): String     = value.toString()
+  def valueOf(value: Long): String    = value.toString()
+  def valueOf(value: Float): String   = value.toString()
+  def valueOf(value: Double): String  = value.toString()
+
+  def valueOf(value: Object): String =
     if (value eq null) "null" else value.toString()
 
   def format(format: String, args: Array[AnyRef]): String = {
@@ -243,5 +253,12 @@ private[runtime] object RuntimeString {
     frm.close()
     res
   }
+
+  // Helpers
+
+  @inline
+  private def checkNull(s: String): s.type =
+    if (s == null) throw new NullPointerException()
+    else s
 
 }
