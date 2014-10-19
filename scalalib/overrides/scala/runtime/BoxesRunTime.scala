@@ -3,23 +3,12 @@ package scala.runtime
 import scala.math.ScalaNumber
 
 object BoxesRunTime {
-  def boxToBoolean(b: Boolean): java.lang.Boolean = java.lang.Boolean.valueOf(b)
-  def boxToCharacter(c: Char): java.lang.Character = java.lang.Character.valueOf(c)
-  def boxToByte(b: Byte): java.lang.Byte = java.lang.Byte.valueOf(b)
-  def boxToShort(s: Short): java.lang.Short = java.lang.Short.valueOf(s)
-  def boxToInteger(i: Int): java.lang.Integer = java.lang.Integer.valueOf(i)
-  def boxToLong(l: Long): java.lang.Long = java.lang.Long.valueOf(l)
-  def boxToFloat(f: Float): java.lang.Float = java.lang.Float.valueOf(f)
-  def boxToDouble(d: Double): java.lang.Double = java.lang.Double.valueOf(d)
+  def boxToCharacter(c: Char): java.lang.Character =
+    java.lang.Character.valueOf(c)
 
-  def unboxToBoolean(b: Object): Boolean = if (b eq null) false else b.asInstanceOf[java.lang.Boolean].booleanValue()
-  def unboxToChar(c: Object): Char = if (c eq null) 0 else c.asInstanceOf[java.lang.Character].charValue()
-  def unboxToByte(b: Object): Byte = if (b eq null) 0 else b.asInstanceOf[java.lang.Byte].byteValue()
-  def unboxToShort(s: Object): Short = if (s eq null) 0 else s.asInstanceOf[java.lang.Short].shortValue()
-  def unboxToInt(i: Object): Int = if (i eq null) 0 else i.asInstanceOf[java.lang.Integer].intValue()
-  def unboxToLong(l: Object): Long = if (l eq null) 0 else l.asInstanceOf[java.lang.Long].longValue()
-  def unboxToFloat(f: Object): Float = if (f eq null) 0 else f.asInstanceOf[java.lang.Float].floatValue()
-  def unboxToDouble(d: Object): Double = if (d eq null) 0 else d.asInstanceOf[java.lang.Double].doubleValue()
+  def unboxToChar(c: Object): Char =
+    if (c eq null) 0
+    else c.asInstanceOf[java.lang.Character].charValue()
 
   def equals(x: Object, y: Object): Boolean =
     if (x eq y) true

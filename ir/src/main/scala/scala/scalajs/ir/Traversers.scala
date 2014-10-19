@@ -112,6 +112,9 @@ object Traversers {
       case AsInstanceOf(expr, cls) =>
         traverse(expr)
 
+      case Unbox(expr, charCode) =>
+        traverse(expr)
+
       case CallHelper(helper, args) =>
         args foreach traverse
 

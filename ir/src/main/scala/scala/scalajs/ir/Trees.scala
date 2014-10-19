@@ -348,6 +348,15 @@ object Trees {
     }
   }
 
+  case class Unbox(expr: Tree, charCode: Char)(implicit val pos: Position) extends Tree {
+    val tpe = (charCode: @switch) match {
+      case 'Z'             => BooleanType
+      case 'B' | 'S' | 'I' => IntType
+      case 'J'             => LongType
+      case 'F' | 'D'       => DoubleType
+    }
+  }
+
   case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   object CallHelper {

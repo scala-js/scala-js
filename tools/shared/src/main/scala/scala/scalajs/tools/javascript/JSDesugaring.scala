@@ -392,8 +392,13 @@ object JSDesugaring {
                 JSUnaryOp(op, rec(lhs))
               case IsInstanceOf(expr, tpe) =>
                 IsInstanceOf(rec(expr), tpe)
-              case AsInstanceOf(expr, tpe) =>
+
+              case AsInstanceOf(expr, tpe)
+                  if noExtractYet || behaviors.asInstanceOfs == Unchecked =>
                 AsInstanceOf(rec(expr), tpe)
+              case Unbox(expr, tpe)
+                  if noExtractYet || behaviors.asInstanceOfs == Unchecked =>
+                Unbox(rec(expr), tpe)
 
               case NewArray(tpe, lengths) =>
                 NewArray(tpe, recs(lengths))
@@ -406,10 +411,6 @@ object JSDesugaring {
                 JSObjectConstr(items.map(_._1) zip newValues)
               case Closure(thisType, args, resultType, body, captures) =>
                 Closure(thisType, args, resultType, body, recs(captures))
-
-              case CallHelper(helper, args)
-                  if noExtractYet || isHelperThatPreservesSideEffectFreedom(helper) =>
-                CallHelper(helper, recs(args))(arg.tpe)
 
               case New(cls, constr, args) if noExtractYet =>
                 New(cls, constr, recs(args))
@@ -428,6 +429,8 @@ object JSDesugaring {
               case ArraySelect(array, index) if noExtractYet =>
                 val newIndex = rec(index)
                 ArraySelect(rec(array), newIndex)(arg.tpe)
+              case CallHelper(helper, args) if noExtractYet =>
+                CallHelper(helper, recs(args))(arg.tpe)
 
               case If(cond, thenp, elsep)
                   if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
@@ -484,19 +487,6 @@ object JSDesugaring {
       }
     }
 
-    private val isHelperThatPreservesPureness: Set[String] = Set(
-        "isByte", "isShort", "isInt",
-        "asUnit", "asBoolean", "asByte", "asShort", "asInt",
-        "asFloat", "asDouble",
-        "bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD",
-        "imul"
-    )
-
-    private val isHelperThatPreservesSideEffectFreedom: Set[String] = Set(
-        "wrapJavaScriptException", "unwrapJavaScriptException",
-        "makeNativeArrayWrapper", "newArrayObject"
-    ) ++ isHelperThatPreservesPureness
-
     /** Common implementation for the functions below.
      *  A pure expression can be moved around or executed twice, because it
      *  will always produce the same result and never have side-effects.
@@ -543,14 +533,6 @@ object JSDesugaring {
         case Closure(thisType, args, resultType, body, captures) =>
           allowUnpure && (captures forall test)
 
-        // Call helper
-        case CallHelper(helper, args) =>
-          val shallowTest =
-            if (allowSideEffects) true
-            else if (allowUnpure) isHelperThatPreservesSideEffectFreedom(helper)
-            else isHelperThatPreservesPureness(helper)
-          shallowTest && (args forall test)
-
         // Scala expressions that can always have side-effects
         case New(cls, constr, args) =>
           allowSideEffects && (args forall test)
@@ -562,8 +544,14 @@ object JSDesugaring {
           allowSideEffects && test(receiver) && (args forall test)
         case TraitImplApply(impl, method, args) =>
           allowSideEffects && (args forall test)
+        case CallHelper(helper, args) =>
+          allowSideEffects && (args forall test)
+
+        // Casts
         case AsInstanceOf(expr, _) =>
-          allowSideEffects && test(expr)
+          (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
+        case Unbox(expr, _) =>
+          (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
 
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
@@ -883,6 +871,11 @@ object JSDesugaring {
             }
           }
 
+        case Unbox(expr, charCode) =>
+          unnest(expr) { newExpr =>
+            redo(Unbox(newExpr, charCode))
+          }
+
         case CallHelper(helper, args) =>
           unnest(args) { newArgs =>
             redo(CallHelper(helper, newArgs)(rhs.tpe))
@@ -1187,24 +1180,22 @@ object JSDesugaring {
           if (behaviors.asInstanceOfs == Unchecked) newExpr
           else genAsInstanceOf(newExpr, cls)
 
-        case CallHelper(helper, args) =>
-          val newArgs = args map transformExpr
-          @inline def default = genCallHelper(helper, newArgs: _*)
+        case Unbox(expr, charCode) =>
+          val newExpr = transformExpr(expr)
 
           if (behaviors.asInstanceOfs == Unchecked) {
-            helper match {
-              case "uZ" =>
-                !(!newArgs.head)
-              case "uB" | "uS" | "uI" =>
-                js.BinaryOp("|", newArgs.head, js.IntLiteral(0))
-              case "uF" | "uD" =>
-                js.UnaryOp("+", newArgs.head)
-              case _ =>
-                default
+            (charCode: @switch) match {
+              case 'Z'             => !(!newExpr)
+              case 'B' | 'S' | 'I' => js.BinaryOp("|", newExpr, js.IntLiteral(0))
+              case 'J'             => genCallHelper("uJ", newExpr)
+              case 'F' | 'D'       => js.UnaryOp("+", newExpr)
             }
           } else {
-            default
+            genCallHelper("u"+charCode, newExpr)
           }
+
+        case CallHelper(helper, args) =>
+          genCallHelper(helper, args map transformExpr: _*)
 
         // JavaScript expressions
 

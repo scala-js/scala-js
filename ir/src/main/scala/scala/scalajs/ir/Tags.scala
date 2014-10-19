@@ -49,7 +49,8 @@ private[ir] object Tags {
   final val TagRecordValue = TagArraySelect + 1
   final val TagIsInstanceOf = TagRecordValue + 1
   final val TagAsInstanceOf = TagIsInstanceOf + 1
-  final val TagCallHelper = TagAsInstanceOf + 1
+  final val TagUnbox = TagAsInstanceOf + 1
+  final val TagCallHelper = TagUnbox + 1
 
   final val TagJSGlobal = TagCallHelper + 1
   final val TagJSNew = TagJSGlobal + 1

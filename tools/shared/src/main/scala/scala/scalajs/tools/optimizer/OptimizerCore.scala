@@ -436,11 +436,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case CallHelper(helperName, List(arg))
-          if helperName.length == 2 && helperName(0) == 'u' =>
+      case Unbox(arg, charCode) =>
         trampoline {
           pretransformExpr(arg) { targ =>
-            foldUnbox(helperName(1), targ)(finishTransform(isStat = false))
+            foldUnbox(targ, charCode)(finishTransform(isStat))
           }
         }
 
@@ -2323,7 +2322,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
-  private def foldUnbox(charCode: Char, arg: PreTransform)(
+  private def foldUnbox(arg: PreTransform, charCode: Char)(
       cont: PreTransCont): TailRec[Tree] = {
     (charCode: @switch) match {
       case 'Z' if arg.tpe.base == BooleanType => cont(arg)
@@ -2331,15 +2330,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case 'J' if arg.tpe.base == LongType    => cont(arg)
       case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
       case _ =>
-        val resultType = (charCode: @switch) match {
-          case 'Z'                   => BooleanType
-          case 'C' | 'B' | 'S' | 'I' => IntType
-          case 'J'                   => LongType
-          case 'F' | 'D'             => DoubleType
-        }
-        cont(PreTransTree(
-            CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos),
-            RefinedType(resultType, isExact = true, isNullable = false)))
+        cont(PreTransTree(Unbox(finishTransformExpr(arg), charCode)(arg.pos)))
     }
   }
 
@@ -2860,9 +2851,6 @@ private[optimizer] object OptimizerCore {
 
   private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
 
-  private val isPrimitiveCharCode =
-    Set('V', 'Z', 'C', 'B', 'S', 'I', 'J', 'F', 'D')
-
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
@@ -3232,11 +3220,10 @@ private[optimizer] object OptimizerCore {
       case Select(qual, _, _)                => isSimpleArg(qual)
       case IsInstanceOf(inner, _)            => isSimpleArg(inner)
 
-      case CallHelper(helper, List(inner)) =>
-        isBoxUnboxHelper(helper) && unapply(inner)
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
+      case Unbox(inner, _)        => unapply(inner)
       case AsInstanceOf(inner, _) => unapply(inner)
 
       case _ => isSimpleArg(body)
@@ -3255,9 +3242,7 @@ private[optimizer] object OptimizerCore {
       case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
 
-      case CallHelper(helper, List(inner)) =>
-        isBoxUnboxHelper(helper) && isSimpleArg(inner)
-
+      case Unbox(inner, _)        => isSimpleArg(inner)
       case AsInstanceOf(inner, _) => isSimpleArg(inner)
 
       case _ =>
@@ -3270,9 +3255,6 @@ private[optimizer] object OptimizerCore {
       case _ =>
         false
     }
-
-    private val isBoxUnboxHelper =
-      Set("bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD")
   }
 
   private object BlockOrAlone {

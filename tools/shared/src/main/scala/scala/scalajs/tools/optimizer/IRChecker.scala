@@ -568,6 +568,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case AsInstanceOf(expr, cls) =>
         typecheckExpr(expr, env)
 
+      case Unbox(expr, _) =>
+        typecheckExpr(expr, env)
+
       case CallHelper("checkNonNull", args) =>
         // our only polymorphic helper
         if (args.size != 1)
@@ -771,17 +774,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       ("isNaN"     , List(NumberType) -> BooleanType),
       ("isInfinite", List(NumberType) -> BooleanType),
-
-      ("bC", List(IntType) -> ClassType(BoxedCharacterClass)),
-
-      ("uZ", List(AnyType) -> BooleanType),
-      ("uC", List(AnyType) -> IntType),
-      ("uB", List(AnyType) -> IntType),
-      ("uS", List(AnyType) -> IntType),
-      ("uI", List(AnyType) -> IntType),
-      ("uJ", List(AnyType) -> LongType),
-      ("uF", List(AnyType) -> DoubleType),
-      ("uD", List(AnyType) -> DoubleType),
 
       ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
       ("systemIdentityHashCode", List(AnyType) -> IntType),
