@@ -456,6 +456,9 @@ object Printers {
           }
           undent; println(); print("}")
 
+        case JSEnvInfo() =>
+          print("<envinfo>")
+
         // Literals
 
         case Undefined() =>

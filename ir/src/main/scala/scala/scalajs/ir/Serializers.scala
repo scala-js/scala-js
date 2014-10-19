@@ -307,6 +307,9 @@ object Serializers {
             writePropertyName(field._1); writeTree(field._2)
           }
 
+        case JSEnvInfo() =>
+          writeByte(TagJSEnvInfo)
+
         // Literals
 
         case Undefined() =>
@@ -600,6 +603,7 @@ object Serializers {
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+        case TagJSEnvInfo            => JSEnvInfo()
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())

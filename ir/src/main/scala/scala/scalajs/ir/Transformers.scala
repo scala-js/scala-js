@@ -166,8 +166,8 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:LoadModule |
-            _:JSGlobal | _:Literal | _:VarRef | _:This | EmptyTree =>
+        case _:Skip | _:Continue | _:LoadModule | _:JSGlobal | _:JSEnvInfo |
+            _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 
         case _ =>
@@ -305,7 +305,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Continue | _:LoadModule | _:JSGlobal |
+        case _:Continue | _:LoadModule | _:JSGlobal | _:JSEnvInfo |
             _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 

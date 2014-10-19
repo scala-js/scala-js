@@ -516,7 +516,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule |
-          _:JSGlobal | _:Literal | EmptyTree =>
+          _:JSGlobal | _:JSEnvInfo | _:Literal | EmptyTree =>
         tree
     }
 

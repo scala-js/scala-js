@@ -632,6 +632,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         for ((_, value) <- fields)
           typecheckExpr(value, env)
 
+      case JSEnvInfo() =>
+
       // Literals
 
       case _: Literal =>
@@ -765,9 +767,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("isNaN"     , List(NumberType) -> BooleanType),
       ("isInfinite", List(NumberType) -> BooleanType),
 
-      ("propertiesOf", List(AnyType) -> AnyType),
-
-      ("environmentInfo", List() -> AnyType)
+      ("propertiesOf", List(AnyType) -> AnyType)
     )
   }
 
