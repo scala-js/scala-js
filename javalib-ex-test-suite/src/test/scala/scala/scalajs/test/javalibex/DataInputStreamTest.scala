@@ -142,14 +142,14 @@ object DataInputStreamTest extends JasmineTest {
             0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x79, 0x24,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2f)
 
-        expect(stream.readLong()).toBe(546372873646234L)
-        expect(stream.readLong()).toBe(-32451234L)
-        expect(stream.readLong()).toBe(Long.MaxValue)
-        expect(stream.readLong()).toBe(0L)
-        expect(stream.readLong()).toBe(-1L)
-        expect(stream.readLong()).toBe(Long.MinValue)
-        expect(stream.readLong()).toBe(-34524L)
-        expect(stream.readLong()).toBe(47L)
+        expect(stream.readLong() == 546372873646234L).toBeTruthy
+        expect(stream.readLong() == -32451234L).toBeTruthy
+        expect(stream.readLong() == Long.MaxValue).toBeTruthy
+        expect(stream.readLong() == 0L).toBeTruthy
+        expect(stream.readLong() == -1L).toBeTruthy
+        expect(stream.readLong() == Long.MinValue).toBeTruthy
+        expect(stream.readLong() == -34524L).toBeTruthy
+        expect(stream.readLong() == 47L).toBeTruthy
         expect(() => stream.readDouble()).toThrow
       }
 
