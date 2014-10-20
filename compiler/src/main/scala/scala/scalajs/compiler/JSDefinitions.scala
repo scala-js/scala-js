@@ -83,7 +83,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
-      lazy val JSDynamic_global      = getMemberMethod(JSDynamicModule, newTermName("global"))
       lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
     lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
       lazy val JSDynamicLiteral_applyDynamicNamed = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamicNamed"))

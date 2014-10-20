@@ -257,9 +257,6 @@ object Serializers {
           writeString(helper); writeTrees(args)
           writeType(tree.tpe)
 
-        case JSGlobal() =>
-          writeByte(TagJSGlobal)
-
         case JSNew(ctor, args) =>
           writeByte(TagJSNew)
           writeTree(ctor); writeTrees(args)
@@ -590,7 +587,6 @@ object Serializers {
         case TagUnbox          => Unbox(readTree(), readByte().toChar)
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
-        case TagJSGlobal             => JSGlobal()
         case TagJSNew                => JSNew(readTree(), readTrees())
         case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
         case TagJSBracketSelect      => JSBracketSelect(readTree(), readTree())

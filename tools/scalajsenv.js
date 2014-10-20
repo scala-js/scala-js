@@ -13,7 +13,11 @@ var ScalaJS = {};
 ScalaJS.env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
 
 // Global scope
-ScalaJS.g = (typeof global === "object" && global && global["Object"] === Object) ? global : this;
+ScalaJS.g =
+  (typeof ScalaJS.env["global"] === "object" && ScalaJS.env["global"])
+    ? ScalaJS.env["global"]
+    : ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
+ScalaJS.env["global"] = ScalaJS.g;
 
 // Where to send exports
 ScalaJS.e =
