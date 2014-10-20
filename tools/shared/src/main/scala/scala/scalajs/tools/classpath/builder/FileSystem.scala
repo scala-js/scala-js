@@ -13,11 +13,18 @@ trait FileSystem {
 
   type File
 
+  /** Dummy version constant to identify files for which a version can not be
+   *  found.
+   *  This constant should never collide with the result of getVersion.
+   */
+  val DummyVersion: String
+
   def isDirectory(f: File): Boolean
   def isFile(f: File): Boolean
   def isJSFile(f: File): Boolean
   def isIRFile(f: File): Boolean
   def isJARFile(f: File): Boolean
+  def exists(f: File): Boolean
 
   def getName(f: File): String
   /** A string that uniquely identifies this file's location */
@@ -32,6 +39,12 @@ trait FileSystem {
    */
   def getGlobalVersion(f: File): String =
     CacheUtils.joinVersions(getAbsolutePath(f), getVersion(f))
+
+  /** A string that globally identifies a file for which a version can not be
+   *  found. Example: a file that does not exists.
+   */
+  def getDummyVersion(f: File): String =
+    CacheUtils.joinVersions(getAbsolutePath(f), DummyVersion)
 
   /** List files in a directory */
   def listFiles(d: File): Traversable[File]
