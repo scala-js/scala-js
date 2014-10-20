@@ -9,12 +9,22 @@
 
 var ScalaJS = {};
 
-// Fields
-ScalaJS.g = (typeof global === "object" && global && global["Object"] === Object) ? global : this; // Global scope
-ScalaJS.e = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv &&
-    typeof __ScalaJSEnv["exportsNamespace"] === "object" &&
-    __ScalaJSEnv["exportsNamespace"]) ? __ScalaJSEnv["exportsNamespace"] : // Where to send exports
-    ScalaJS.g;
+// Get the environment info
+ScalaJS.env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
+
+// Global scope
+ScalaJS.g = (typeof global === "object" && global && global["Object"] === Object) ? global : this;
+
+// Where to send exports
+ScalaJS.e =
+  (typeof ScalaJS.env["exportsNamespace"] === "object" && ScalaJS.env["exportsNamespace"])
+    ? ScalaJS.env["exportsNamespace"] : ScalaJS.g;
+ScalaJS.env["exportsNamespace"] = ScalaJS.e;
+
+// Freeze the environment info
+ScalaJS.g["Object"]["freeze"](ScalaJS.env);
+
+// Other fields
 ScalaJS.d = {};         // Data for types
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
@@ -349,13 +359,6 @@ ScalaJS.systemIdentityHashCode = function(obj) {
   } else {
     return ScalaJS.objectHashCode(obj);
   }
-};
-
-ScalaJS.environmentInfo = function() {
-  if (typeof __ScalaJSEnv !== "undefined")
-    return __ScalaJSEnv;
-  else
-    return void 0;
 };
 
 // is/as for hijacked boxed classes (the non-trivial ones)

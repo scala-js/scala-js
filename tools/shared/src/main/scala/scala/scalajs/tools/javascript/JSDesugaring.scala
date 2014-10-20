@@ -1258,7 +1258,7 @@ object JSDesugaring {
           })
 
         case JSEnvInfo() =>
-          genCallHelper("environmentInfo")
+          envField("env")
 
         // Literals
 
