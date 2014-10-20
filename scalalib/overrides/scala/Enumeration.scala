@@ -63,10 +63,7 @@ abstract class Enumeration (initial: Int) extends Serializable {
   /** The name of this enumeration.
    */
   override def toString =
-    ((getClass.getName stripSuffix MODULE_SUFFIX_STRING split '.').last split
-       // Use java.util.regex.Pattern here for cross compile with 2.10
-       // instead of scala.util.matching.Regex
-       Pattern.quote(NAME_JOIN_STRING)).last
+    (getClass.getName.stripSuffix("$").split('.')).last.split('$').last
 
   /** The mapping from the integer used to identify values to the actual
     * values. */
