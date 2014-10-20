@@ -2880,10 +2880,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case UNDEFVAL  => js.Undefined()
             case UNITVAL   => js.Undefined()
             case UNITTYPE  => genClassConstant(UnitTpe)
-            case NTR_MOD_SUFF =>
-              js.StringLiteral(scala.reflect.NameTransformer.MODULE_SUFFIX_STRING)
-            case NTR_NAME_JOIN =>
-              js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
             case JS_NATIVE =>
               currentUnit.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()

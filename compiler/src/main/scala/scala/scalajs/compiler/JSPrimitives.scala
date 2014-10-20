@@ -46,9 +46,6 @@ abstract class JSPrimitives {
 
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
-  val NTR_MOD_SUFF  = 340 // scala.reflect.NameTransformer.MODULE_SUFFIX_STRING
-  val NTR_NAME_JOIN = 341 // scala.relfect.NameTransformer.NAME_JOIN_STRING
-
   val UNDEFVAL = 342  // js.undefined
   val ISUNDEF = 343   // js.isUndefined
   val TYPEOF = 344    // typeof x
@@ -99,9 +96,6 @@ abstract class JSPrimitives {
     addPrimitive(JSArray_create, ARR_CREATE)
 
     val ntModule = getRequiredModule("scala.reflect.NameTransformer")
-
-    addPrimitive(getMember(ntModule, newTermName("MODULE_SUFFIX_STRING")), NTR_MOD_SUFF)
-    addPrimitive(getMember(ntModule, newTermName("NAME_JOIN_STRING")), NTR_NAME_JOIN)
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
