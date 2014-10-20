@@ -242,6 +242,11 @@ object Hashers {
           mixTree(expr)
           mixType(cls)
 
+        case Unbox(expr, charCode) =>
+          mixTag(TagUnbox)
+          mixTree(expr)
+          mixInt(charCode)
+
         case CallHelper(helper, args) =>
           mixTag(TagCallHelper)
           mixString(helper)
@@ -308,6 +313,9 @@ object Hashers {
             mixPropertyName(pn)
             mixTree(value)
           }
+
+        case JSEnvInfo() =>
+          mixTag(TagJSEnvInfo)
 
         case Undefined() =>
           mixTag(TagUndefined)

@@ -9,6 +9,8 @@
 
 package scala.scalajs.tools.optimizer
 
+import scala.language.implicitConversions
+
 import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
@@ -436,11 +438,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case CallHelper(helperName, List(arg))
-          if helperName.length == 2 && helperName(0) == 'u' =>
+      case Unbox(arg, charCode) =>
         trampoline {
           pretransformExpr(arg) { targ =>
-            foldUnbox(helperName(1), targ)(finishTransform(isStat = false))
+            foldUnbox(targ, charCode)(finishTransform(isStat))
           }
         }
 
@@ -515,7 +516,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule |
-          _:JSGlobal | _:Literal | EmptyTree =>
+          _:JSGlobal | _:JSEnvInfo | _:Literal | EmptyTree =>
         tree
     }
 
@@ -1058,7 +1059,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             } else if (impls.size == 1) {
               val target = impls.head
               pretransformExprs(args) { targs =>
-                if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
+                val intrinsicCode = getIntrinsicCode(target)
+                if (intrinsicCode >= 0) {
+                  callIntrinsic(intrinsicCode, Some(treceiver), targs,
+                      isStat, usePreTransform)(cont)
+                } else if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
                   inline(allocationSite, Some(treceiver), targs, target,
                       isStat, usePreTransform)(cont)
                 } else {
@@ -1125,18 +1130,24 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       } else {
         val target = optTarget.get
         pretransformExprs(receiver, args) { (treceiver, targs) =>
-          val shouldInline =
-            target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
-          val allocationSite = treceiver.tpe.allocationSite
-          val beingInlined =
-            scope.implsBeingInlined((allocationSite, target))
-
-          if (shouldInline && !beingInlined) {
-            inline(allocationSite, Some(treceiver), targs, target,
+          val intrinsicCode = getIntrinsicCode(target)
+          if (intrinsicCode >= 0) {
+            callIntrinsic(intrinsicCode, Some(treceiver), targs,
                 isStat, usePreTransform)(cont)
           } else {
-            treeNotInlined0(finishTransformExpr(treceiver),
-                targs.map(finishTransformExpr))
+            val shouldInline =
+              target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
+            val allocationSite = treceiver.tpe.allocationSite
+            val beingInlined =
+              scope.implsBeingInlined((allocationSite, target))
+
+            if (shouldInline && !beingInlined) {
+              inline(allocationSite, Some(treceiver), targs, target,
+                  isStat, usePreTransform)(cont)
+            } else {
+              treeNotInlined0(finishTransformExpr(treceiver),
+                  targs.map(finishTransformExpr))
+            }
           }
         }
       }
@@ -1164,17 +1175,23 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     } else {
       val target = optTarget.get
       pretransformExprs(args) { targs =>
-        val shouldInline =
-          target.inlineable || shouldInlineBecauseOfArgs(targs)
-        val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
-        val beingInlined =
-          scope.implsBeingInlined((allocationSite, target))
-
-        if (shouldInline && !beingInlined) {
-          inline(allocationSite, None, targs, target,
+        val intrinsicCode = getIntrinsicCode(target)
+        if (intrinsicCode >= 0) {
+          callIntrinsic(intrinsicCode, None, targs,
               isStat, usePreTransform)(cont)
         } else {
-          treeNotInlined0(targs.map(finishTransformExpr))
+          val shouldInline =
+            target.inlineable || shouldInlineBecauseOfArgs(targs)
+          val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
+          val beingInlined =
+            scope.implsBeingInlined((allocationSite, target))
+
+          if (shouldInline && !beingInlined) {
+            inline(allocationSite, None, targs, target,
+                isStat, usePreTransform)(cont)
+          } else {
+            treeNotInlined0(targs.map(finishTransformExpr))
+          }
         }
       }
     }
@@ -1307,6 +1324,82 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       returnable("", resultType, body, isStat, usePreTransform)(
           cont1)(bodyScope, pos)
     } (cont) (scope.withEnv(OptEnv.Empty))
+  }
+
+  private def callIntrinsic(code: Int, optTReceiver: Option[PreTransform],
+      targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
+      cont: PreTransCont)(
+      implicit pos: Position): TailRec[Tree] = {
+
+    import Intrinsics._
+
+    implicit def string2ident(s: String): Ident = Ident(s, None)
+
+    lazy val newArgs = targs.map(finishTransformExpr)
+
+    @inline def contTree(result: Tree) = cont(PreTransTree(result))
+
+    @inline def StringClassType = ClassType(Definitions.StringClass)
+
+    (code: @switch) match {
+      // java.lang.System
+
+      case ArrayCopy =>
+        assert(isStat, "System.arraycopy must be used in statement position")
+        contTree(CallHelper("systemArraycopy", newArgs)(NoType))
+      case IdentityHashCode =>
+        contTree(CallHelper("systemIdentityHashCode", newArgs)(IntType))
+
+      // scala.scalajs.runtime package object
+
+      case PropertiesOf =>
+        contTree(CallHelper("propertiesOf", newArgs)(AnyType))
+
+      // java.lang.Long
+
+      case LongBitCount =>
+        contTree(Apply(newArgs.head, LongImpl.bitCount, Nil)(IntType))
+      case LongSignum =>
+        contTree(Apply(newArgs.head, LongImpl.signum, Nil)(LongType))
+      case LongLeading0s =>
+        contTree(Apply(newArgs.head, LongImpl.numberOfLeadingZeros, Nil)(IntType))
+      case LongTrailing0s =>
+        contTree(Apply(newArgs.head, LongImpl.numberOfTrailingZeros, Nil)(IntType))
+      case LongToBinStr =>
+        contTree(Apply(newArgs.head, LongImpl.toBinaryString, Nil)(StringClassType))
+      case LongToHexStr =>
+        contTree(Apply(newArgs.head, LongImpl.toHexString, Nil)(StringClassType))
+      case LongToOctalStr =>
+        contTree(Apply(newArgs.head, LongImpl.toOctalString, Nil)(StringClassType))
+
+      // TypedArray conversions
+
+      case ByteArrayToInt8Array =>
+        contTree(CallHelper("byteArray2TypedArray", newArgs)(AnyType))
+      case ShortArrayToInt16Array =>
+        contTree(CallHelper("shortArray2TypedArray", newArgs)(AnyType))
+      case CharArrayToUint16Array =>
+        contTree(CallHelper("charArray2TypedArray", newArgs)(AnyType))
+      case IntArrayToInt32Array =>
+        contTree(CallHelper("intArray2TypedArray", newArgs)(AnyType))
+      case FloatArrayToFloat32Array =>
+        contTree(CallHelper("floatArray2TypedArray", newArgs)(AnyType))
+      case DoubleArrayToFloat64Array =>
+        contTree(CallHelper("doubleArray2TypedArray", newArgs)(AnyType))
+
+      case Int8ArrayToByteArray =>
+        contTree(CallHelper("typedArray2ByteArray", newArgs)(AnyType))
+      case Int16ArrayToShortArray =>
+        contTree(CallHelper("typedArray2ShortArray", newArgs)(AnyType))
+      case Uint16ArrayToCharArray =>
+        contTree(CallHelper("typedArray2CharArray", newArgs)(AnyType))
+      case Int32ArrayToIntArray =>
+        contTree(CallHelper("typedArray2IntArray", newArgs)(AnyType))
+      case Float32ArrayToFloatArray =>
+        contTree(CallHelper("typedArray2FloatArray", newArgs)(AnyType))
+      case Float64ArrayToDoubleArray =>
+        contTree(CallHelper("typedArray2DoubleArray", newArgs)(AnyType))
+    }
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
@@ -2323,7 +2416,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
-  private def foldUnbox(charCode: Char, arg: PreTransform)(
+  private def foldUnbox(arg: PreTransform, charCode: Char)(
       cont: PreTransCont): TailRec[Tree] = {
     (charCode: @switch) match {
       case 'Z' if arg.tpe.base == BooleanType => cont(arg)
@@ -2331,15 +2424,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case 'J' if arg.tpe.base == LongType    => cont(arg)
       case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
       case _ =>
-        val resultType = (charCode: @switch) match {
-          case 'Z'                   => BooleanType
-          case 'C' | 'B' | 'S' | 'I' => IntType
-          case 'J'                   => LongType
-          case 'F' | 'D'             => DoubleType
-        }
-        cont(PreTransTree(
-            CallHelper("u"+charCode, finishTransformExpr(arg))(resultType)(arg.pos),
-            RefinedType(resultType, isExact = true, isNullable = false)))
+        cont(PreTransTree(Unbox(finishTransformExpr(arg), charCode)(arg.pos)))
     }
   }
 
@@ -2860,9 +2945,6 @@ private[optimizer] object OptimizerCore {
 
   private val AnonFunctionClassPrefix = "sjsr_AnonFunction"
 
-  private val isPrimitiveCharCode =
-    Set('V', 'Z', 'C', 'B', 'S', 'I', 'J', 'F', 'D')
-
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
@@ -3145,6 +3227,67 @@ private[optimizer] object OptimizerCore {
   private def canNegateLong(x: Long): Boolean =
     x != Long.MinValue
 
+  private object Intrinsics {
+    final val ArrayCopy        = 1
+    final val IdentityHashCode = ArrayCopy + 1
+
+    final val PropertiesOf = IdentityHashCode + 1
+
+    final val LongBitCount   = PropertiesOf   + 1
+    final val LongSignum     = LongBitCount   + 1
+    final val LongLeading0s  = LongSignum     + 1
+    final val LongTrailing0s = LongLeading0s  + 1
+    final val LongToBinStr   = LongTrailing0s + 1
+    final val LongToHexStr   = LongToBinStr   + 1
+    final val LongToOctalStr = LongToHexStr   + 1
+
+    final val ByteArrayToInt8Array      = LongToOctalStr           + 1
+    final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
+    final val CharArrayToUint16Array    = ShortArrayToInt16Array   + 1
+    final val IntArrayToInt32Array      = CharArrayToUint16Array   + 1
+    final val FloatArrayToFloat32Array  = IntArrayToInt32Array     + 1
+    final val DoubleArrayToFloat64Array = FloatArrayToFloat32Array + 1
+
+    final val Int8ArrayToByteArray      = DoubleArrayToFloat64Array + 1
+    final val Int16ArrayToShortArray    = Int8ArrayToByteArray      + 1
+    final val Uint16ArrayToCharArray    = Int16ArrayToShortArray    + 1
+    final val Int32ArrayToIntArray      = Uint16ArrayToCharArray    + 1
+    final val Float32ArrayToFloatArray  = Int32ArrayToIntArray      + 1
+    final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
+
+    val intrinsics: Map[String, Int] = Map(
+      "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
+      "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+
+      "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
+
+      "jl_Long$.bitCount__J__I"              -> LongBitCount,
+      "jl_Long$.signum__J__J"                -> LongSignum,
+      "jl_Long$.numberOfLeadingZeros__J__I"  -> LongLeading0s,
+      "jl_Long$.numberOfTrailingZeros__J__I" -> LongTrailing0s,
+      "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
+      "jl_Long$.toHexString__J__T"           -> LongToHexStr,
+      "jl_Long$.toOctalString__J__T"         -> LongToOctalStr,
+
+      "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
+      "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,
+      "sjs_js_typedarray_package$.charArray2Uint16Array__AC__sjs_js_typedarray_Uint16Array"     -> CharArrayToUint16Array,
+      "sjs_js_typedarray_package$.intArray2Int32Array__AI__sjs_js_typedarray_Int32Array"        -> IntArrayToInt32Array,
+      "sjs_js_typedarray_package$.floatArray2Float32Array__AF__sjs_js_typedarray_Float32Array"  -> FloatArrayToFloat32Array,
+      "sjs_js_typedarray_package$.doubleArray2Float64Array__AD__sjs_js_typedarray_Float64Array" -> DoubleArrayToFloat64Array,
+
+      "sjs_js_typedarray_package$.int8Array2ByteArray__sjs_js_typedarray_Int8Array__AB"         -> Int8ArrayToByteArray,
+      "sjs_js_typedarray_package$.int16Array2ShortArray__sjs_js_typedarray_Int16Array__AS"      -> Int16ArrayToShortArray,
+      "sjs_js_typedarray_package$.uint16Array2CharArray__sjs_js_typedarray_Uint16Array__AC"     -> Uint16ArrayToCharArray,
+      "sjs_js_typedarray_package$.int32Array2IntArray__sjs_js_typedarray_Int32Array__AI"        -> Int32ArrayToIntArray,
+      "sjs_js_typedarray_package$.float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF"  -> Float32ArrayToFloatArray,
+      "sjs_js_typedarray_package$.float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD" -> Float64ArrayToDoubleArray
+    ).withDefaultValue(-1)
+  }
+
+  private def getIntrinsicCode(target: AbstractMethodID): Int =
+    Intrinsics.intrinsics(target.toString)
+
   private trait State[A] {
     def makeBackup(): A
     def restore(backup: A): Unit
@@ -3232,11 +3375,10 @@ private[optimizer] object OptimizerCore {
       case Select(qual, _, _)                => isSimpleArg(qual)
       case IsInstanceOf(inner, _)            => isSimpleArg(inner)
 
-      case CallHelper(helper, List(inner)) =>
-        isBoxUnboxHelper(helper) && unapply(inner)
       case Block(List(inner, Undefined())) =>
         unapply(inner)
 
+      case Unbox(inner, _)        => unapply(inner)
       case AsInstanceOf(inner, _) => unapply(inner)
 
       case _ => isSimpleArg(body)
@@ -3255,9 +3397,7 @@ private[optimizer] object OptimizerCore {
       case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
 
-      case CallHelper(helper, List(inner)) =>
-        isBoxUnboxHelper(helper) && isSimpleArg(inner)
-
+      case Unbox(inner, _)        => isSimpleArg(inner)
       case AsInstanceOf(inner, _) => isSimpleArg(inner)
 
       case _ =>
@@ -3270,9 +3410,6 @@ private[optimizer] object OptimizerCore {
       case _ =>
         false
     }
-
-    private val isBoxUnboxHelper =
-      Set("bC", "uZ", "uC", "uB", "uS", "uI", "uJ", "uF", "uD")
   }
 
   private object BlockOrAlone {

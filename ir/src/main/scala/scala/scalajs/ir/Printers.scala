@@ -379,6 +379,9 @@ object Printers {
         case AsInstanceOf(expr, cls) =>
           print(expr, ".asInstanceOf[", cls, "]")
 
+        case Unbox(expr, charCode) =>
+          print(expr, ".asInstanceOf[", charCode, "]")
+
         case CallHelper(helper, args) =>
           print(helper)
           printArgs(args)
@@ -452,6 +455,9 @@ object Printers {
             println()
           }
           undent; println(); print("}")
+
+        case JSEnvInfo() =>
+          print("<envinfo>")
 
         // Literals
 

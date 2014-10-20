@@ -49,6 +49,20 @@ object LongImpl {
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
       ===, !==, <, <=, >, >=, toInt, toDouble)
 
+  // Methods used for intrinsics
+
+  final val bitCount              = "bitCount__I"
+  final val signum                = "signum__sjsr_RuntimeLong"
+  final val numberOfLeadingZeros  = "numberOfLeadingZeros__I"
+  final val numberOfTrailingZeros = "numberOfTrailingZeros__I"
+  final val toBinaryString        = "toBinaryString__T"
+  final val toHexString           = "toHexString__T"
+  final val toOctalString         = "toOctalString__T"
+
+  def AllIntrinsicMethods = Set(
+      bitCount, signum, numberOfLeadingZeros, numberOfTrailingZeros,
+      toBinaryString, toHexString, toOctalString)
+
   // Constructors
 
   final val initFromParts = "init___I__I__I"

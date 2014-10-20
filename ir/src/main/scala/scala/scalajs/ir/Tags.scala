@@ -49,7 +49,8 @@ private[ir] object Tags {
   final val TagRecordValue = TagArraySelect + 1
   final val TagIsInstanceOf = TagRecordValue + 1
   final val TagAsInstanceOf = TagIsInstanceOf + 1
-  final val TagCallHelper = TagAsInstanceOf + 1
+  final val TagUnbox = TagAsInstanceOf + 1
+  final val TagCallHelper = TagUnbox + 1
 
   final val TagJSGlobal = TagCallHelper + 1
   final val TagJSNew = TagJSGlobal + 1
@@ -63,8 +64,9 @@ private[ir] object Tags {
   final val TagJSBinaryOp = TagJSUnaryOp + 1
   final val TagJSArrayConstr = TagJSBinaryOp + 1
   final val TagJSObjectConstr = TagJSArrayConstr + 1
+  final val TagJSEnvInfo = TagJSObjectConstr + 1
 
-  final val TagUndefined = TagJSObjectConstr + 1
+  final val TagUndefined = TagJSEnvInfo + 1
   final val TagUndefinedParam = TagUndefined + 1
   final val TagNull = TagUndefinedParam + 1
   final val TagBooleanLiteral = TagNull + 1

@@ -37,7 +37,12 @@ object JavaLangObject {
     methods = List(
       MethodInfo("__init__"),
       MethodInfo("init___"),
-      MethodInfo("hashCode__I"),
+      MethodInfo("hashCode__I",
+        calledMethods = Map(
+          "jl_System$" -> List("identityHashCode__O__I")
+        ),
+        accessedModules = List("jl_System")
+      ),
       MethodInfo("equals__O__Z",
         optimizerHints = inlineOptimizerHints
       ),
@@ -104,13 +109,16 @@ object JavaLangObject {
           AnyType,
           This()(ThisType))(None),
 
-        /* def hashCode(): Int = 42 */
+        /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
           {
-            CallHelper("systemIdentityHashCode", This()(ThisType))(IntType)
+            Apply(
+              LoadModule(ClassType("jl_System$")),
+              Ident("identityHashCode__O__I", Some("identityHashCode")),
+              List(This()(ThisType)))(IntType)
           })(None),
 
         /* def equals(that: Object): Boolean = this eq that */

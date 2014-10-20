@@ -568,15 +568,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case AsInstanceOf(expr, cls) =>
         typecheckExpr(expr, env)
 
-      case CallHelper("checkNonNull", args) =>
-        // our only polymorphic helper
-        if (args.size != 1)
-          reportError(s"Arity mismatch: 1 expected but ${args.size} found")
-        if (args.nonEmpty) {
-          val argType = typecheckExpr(args.head, env)
-          if (tree.tpe != argType)
-            reportError(s"Helper checkNonNull of type $argType typed as ${tree.tpe}")
-        }
+      case Unbox(expr, _) =>
+        typecheckExpr(expr, env)
 
       case CallHelper(helper, args) =>
         if (!HelperSignature.contains(helper)) {
@@ -638,6 +631,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case JSObjectConstr(fields) =>
         for ((_, value) <- fields)
           typecheckExpr(value, env)
+
+      case JSEnvInfo() =>
 
       // Literals
 
@@ -770,39 +765,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       ("numberDoubleValue", List(NumberType) -> DoubleType),
 
       ("isNaN"     , List(NumberType) -> BooleanType),
-      ("isInfinite", List(NumberType) -> BooleanType),
-
-      ("bC", List(IntType) -> ClassType(BoxedCharacterClass)),
-
-      ("uZ", List(AnyType) -> BooleanType),
-      ("uC", List(AnyType) -> IntType),
-      ("uB", List(AnyType) -> IntType),
-      ("uS", List(AnyType) -> IntType),
-      ("uI", List(AnyType) -> IntType),
-      ("uJ", List(AnyType) -> LongType),
-      ("uF", List(AnyType) -> DoubleType),
-      ("uD", List(AnyType) -> DoubleType),
-
-      ("systemArraycopy", List(AnyType, IntType, AnyType, IntType, IntType) -> NoType),
-      ("systemIdentityHashCode", List(AnyType) -> IntType),
-
-      ("propertiesOf", List(AnyType) -> AnyType),
-
-      ("environmentInfo", List() -> AnyType),
-
-      ("byteArray2TypedArray", List(ArrayType("B", 1)) -> AnyType),
-      ("shortArray2TypedArray", List(ArrayType("S", 1)) -> AnyType),
-      ("charArray2TypedArray", List(ArrayType("C", 1)) -> AnyType),
-      ("intArray2TypedArray", List(ArrayType("I", 1)) -> AnyType),
-      ("floatArray2TypedArray", List(ArrayType("F", 1)) -> AnyType),
-      ("doubleArray2TypedArray", List(ArrayType("D", 1)) -> AnyType),
-
-      ("typedArray2ByteArray", List(AnyType) -> ArrayType("B", 1)),
-      ("typedArray2ShortArray", List(AnyType) -> ArrayType("S", 1)),
-      ("typedArray2CharArray", List(AnyType) -> ArrayType("C", 1)),
-      ("typedArray2IntArray", List(AnyType) -> ArrayType("I", 1)),
-      ("typedArray2FloatArray", List(AnyType) -> ArrayType("F", 1)),
-      ("typedArray2DoubleArray", List(AnyType) -> ArrayType("D", 1))
+      ("isInfinite", List(NumberType) -> BooleanType)
     )
   }
 

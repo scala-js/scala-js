@@ -2373,10 +2373,14 @@ abstract class GenJSCode extends plugins.PluginComponent
           // common case for which there is no side-effect nor NPE
           newArg
         case _ =>
+          implicit val pos = tree.pos
+          val NPECtor = getMemberMethod(NullPointerExceptionClass,
+              nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
           js.Block(
-              js.CallHelper("checkNonNull", newReceiver)(
-                  newReceiver.tpe)(newReceiver.pos),
-              newArg)(newArg.pos)
+              js.If(js.BinaryOp(js.BinaryOp.===, newReceiver, js.Null()),
+                  js.Throw(genNew(NullPointerExceptionClass, NPECtor, Nil)),
+                  js.Skip())(jstpe.NoType),
+              newArg)
       }
     }
 
@@ -2704,10 +2708,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           js.Block(expr, js.Undefined())
         case kind: ValueTypeKind =>
-          if (kind == CharKind)
-            js.CallHelper("bC", expr)(encodeClassType(BoxedCharacterClass))
-          else
+          if (kind == CharKind) {
+            genApplyMethod(
+                genLoadModule(BoxesRunTimeClass),
+                BoxesRunTimeClass,
+                BoxesRunTime_boxToCharacter,
+                List(expr))
+          } else {
             expr // box is identity for all non-Char types
+          }
         case _ =>
           abort(s"makePrimitiveBox requires a primitive type, found $tpe at $pos")
       }
@@ -2720,7 +2729,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         case VOID => // must be handled at least for JS interop
           expr
         case kind: ValueTypeKind =>
-          js.CallHelper("u" + kind.primitiveCharCode, expr)(toIRType(tpe))
+          if (kind == CharKind) {
+            genApplyMethod(
+                genLoadModule(BoxesRunTimeClass),
+                BoxesRunTimeClass,
+                BoxesRunTime_unboxToChar,
+                List(expr))
+          } else {
+            js.Unbox(expr, kind.primitiveCharCode)
+          }
         case _ =>
           abort(s"makePrimitiveUnbox requires a primitive type, found $tpe at $pos")
       }
@@ -2853,16 +2870,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements: _*)
         genArgArray
-      } else if (code == ARRAYCOPY) {
-        // System.arraycopy - not a helper because receiver is dropped
-        js.CallHelper("systemArraycopy", genArgs)(toIRType(tree.tpe))
-      } else if (code == IDHASHCODE) {
-        // System.identityHashCode - not a helper because receiver is dropped
-        js.CallHelper("systemIdentityHashCode", genArgs)(toIRType(tree.tpe))
       } else (genArgs match {
         case Nil =>
           code match {
             case GETGLOBAL => js.JSGlobal()
+            case ENV_INFO  => js.JSEnvInfo()
             case DEBUGGER  => js.Debugger()
             case UNDEFVAL  => js.Undefined()
             case UNITVAL   => js.Undefined()
@@ -2871,8 +2883,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.StringLiteral(scala.reflect.NameTransformer.MODULE_SUFFIX_STRING)
             case NTR_NAME_JOIN =>
               js.StringLiteral(scala.reflect.NameTransformer.NAME_JOIN_STRING)
-            case ENV_INFO =>
-              js.CallHelper("environmentInfo")(jstpe.AnyType)
             case JS_NATIVE =>
               currentUnit.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()
@@ -2919,12 +2929,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           code match {
-            case V2JS =>
-              js.Block(exprToStat(arg), js.Undefined())
-
-            case Z2JS | N2JS | S2JS =>
-              arg
-
             /** Convert a scala.FunctionN f to a js.FunctionN. */
             case F2JS =>
               arg match {
@@ -2943,12 +2947,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case F2JSTHIS =>
               genFunctionToJSFunction(isThisFunction = true)
 
-            case JS2Z | JS2N =>
-              makePrimitiveUnbox(arg, tree.tpe)
-
-            case JS2S =>
-              genAsInstanceOf(arg, tree.tpe)
-
             case DYNSELECT =>
               // js.Dynamic.selectDynamic(arg)
               js.JSBracketSelect(receiver, arg)
@@ -2966,40 +2964,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             case OBJPROPS =>
               // js.Object.properties(arg)
-              js.CallHelper("propertiesOf", arg)(jstpe.AnyType)
-
-            // TypedArray converters
-            case AB2TA =>
-              js.CallHelper("byteArray2TypedArray", arg)(jstpe.AnyType)
-            case AS2TA =>
-              js.CallHelper("shortArray2TypedArray", arg)(jstpe.AnyType)
-            case AC2TA =>
-              js.CallHelper("charArray2TypedArray", arg)(jstpe.AnyType)
-            case AI2TA =>
-              js.CallHelper("intArray2TypedArray", arg)(jstpe.AnyType)
-            case AF2TA =>
-              js.CallHelper("floatArray2TypedArray", arg)(jstpe.AnyType)
-            case AD2TA =>
-              js.CallHelper("doubleArray2TypedArray", arg)(jstpe.AnyType)
-
-            case TA2AB =>
-              js.CallHelper("typedArray2ByteArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(ByteClass), 1))
-            case TA2AS =>
-              js.CallHelper("typedArray2ShortArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(ShortClass), 1))
-            case TA2AC =>
-              js.CallHelper("typedArray2CharArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(CharClass), 1))
-            case TA2AI =>
-              js.CallHelper("typedArray2IntArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(IntClass), 1))
-            case TA2AF =>
-              js.CallHelper("typedArray2FloatArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(FloatClass), 1))
-            case TA2AD =>
-              js.CallHelper("typedArray2DoubleArray", arg)(
-                jstpe.ArrayType(encodeClassFullName(DoubleClass), 1))
+              genApplyMethod(
+                  genLoadModule(RuntimePackageModule),
+                  RuntimePackageModule.moduleClass,
+                  Runtime_propertiesOf,
+                  List(arg))
           }
 
         case List(arg1, arg2) =>

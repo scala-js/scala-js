@@ -242,7 +242,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   private def internalName(kind: TypeKind): String = kind match {
     case VOID                => "V"
-    case kind: ValueTypeKind => kind.primitiveCharCode
+    case kind: ValueTypeKind => kind.primitiveCharCode.toString()
     case NOTHING             => ir.Definitions.RuntimeNothingClass
     case NULL                => ir.Definitions.RuntimeNullClass
     case REFERENCE(cls)      => encodeClassFullName(cls)

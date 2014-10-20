@@ -314,9 +314,9 @@ var ScalaJS = {
   },
 
   propertiesOf: function(obj) {
-    var result = new Array();
+    var result = [];
     for (var prop in obj)
-      result["push"](prop.toString());
+      result["push"](prop);
     return result;
   },
 
@@ -334,13 +334,13 @@ var ScalaJS = {
 
   systemIdentityHashCode: function(obj) {
     if (ScalaJS.isScalaJSObject(obj)) {
-      var hash = obj.$idHashCode$0;
+      var hash = obj["$idHashCode$0"];
       if (hash !== void 0) {
         return hash;
       } else {
         hash = (ScalaJS.lastIDHash + 1) | 0;
         ScalaJS.lastIDHash = hash;
-        obj.$idHashCode$0 = hash;
+        obj["$idHashCode$0"] = hash;
         return hash;
       }
     } else if (obj === null) {
@@ -422,20 +422,11 @@ var ScalaJS = {
   },
 //!endif
 
-  // Boxes
-
-  bC: function(value) {
-    return new ScalaJS.c.jl_Character().init___C(value);
-  },
-
   // Unboxes
 
 //!if asInstanceOfs != Unchecked
   uZ: function(value) {
     return !!ScalaJS.asBoolean(value);
-  },
-  uC: function(value) {
-    return null === value ? 0 : ScalaJS.as.jl_Character(value).value$1;
   },
   uB: function(value) {
     return ScalaJS.asByte(value) | 0;
@@ -457,9 +448,6 @@ var ScalaJS = {
     return +ScalaJS.asDouble(value);
   },
 //!else
-  uC: function(value) {
-    return null === value ? 0 : value.value$1;
-  },
   uJ: function(value) {
     return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1 : value;
   },

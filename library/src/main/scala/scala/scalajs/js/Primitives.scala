@@ -31,27 +31,34 @@ sealed trait Any extends scala.AnyRef {
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
 object Any extends LowPrioAnyImplicits {
-  implicit def fromUnit(value: Unit): prim.Undefined = sys.error("stub")
+  @inline implicit def fromUnit(value: Unit): prim.Undefined =
+    value.asInstanceOf[prim.Undefined]
+  @inline implicit def fromBoolean(value: scala.Boolean): prim.Boolean =
+    value.asInstanceOf[prim.Boolean]
+  @inline implicit def fromByte(value: scala.Byte): prim.Number =
+    value.asInstanceOf[prim.Number]
+  @inline implicit def fromShort(value: scala.Short): prim.Number =
+    value.asInstanceOf[prim.Number]
+  @inline implicit def fromInt(value: scala.Int): prim.Number =
+    value.asInstanceOf[prim.Number]
+  @inline implicit def fromLong(value: scala.Long): prim.Number =
+    value.toDouble.asInstanceOf[prim.Number]
+  @inline implicit def fromFloat(value: scala.Float): prim.Number =
+    value.asInstanceOf[prim.Number]
+  @inline implicit def fromDouble(value: scala.Double): prim.Number =
+    value.asInstanceOf[prim.Number]
+  @inline implicit def fromString(s: java.lang.String): prim.String =
+    s.asInstanceOf[prim.String]
 
-  implicit def fromBoolean(value: scala.Boolean): prim.Boolean = sys.error("stub")
-
-  implicit def fromByte(value: scala.Byte): prim.Number = sys.error("stub")
-  implicit def fromShort(value: scala.Short): prim.Number = sys.error("stub")
-  implicit def fromInt(value: scala.Int): prim.Number = sys.error("stub")
-  implicit def fromLong(value: scala.Long): prim.Number = value.toDouble
-  implicit def fromFloat(value: scala.Float): prim.Number = sys.error("stub")
-  implicit def fromDouble(value: scala.Double): prim.Number = sys.error("stub")
-
-  implicit def fromString(s: java.lang.String): prim.String = sys.error("stub")
+  @inline implicit def toDouble(value: prim.Number): scala.Double =
+    value.asInstanceOf[scala.Double]
+  @inline implicit def toBoolean(value: prim.Boolean): scala.Boolean =
+    value.asInstanceOf[scala.Boolean]
+  @inline implicit def toScalaString(value: prim.String): java.lang.String =
+    value.asInstanceOf[java.lang.String]
 
   implicit def jsArrayOps[A](array: Array[A]): ArrayOps[A] =
     new ArrayOps(array)
-  implicit def stringOps(string: prim.String): immutable.StringOps =
-    new immutable.StringOps(string: java.lang.String)
-  implicit def richDouble(num: prim.Number): scala.runtime.RichDouble =
-    new scala.runtime.RichDouble(num: scala.Double)
-  implicit def richBoolean(b: prim.Boolean): scala.runtime.RichBoolean =
-    new scala.runtime.RichBoolean(b: scala.Boolean)
 
   implicit def canBuildFromArray[A]: CanBuildFrom[Array[_], A, Array[A]] = {
     @inline
@@ -114,6 +121,14 @@ object Any extends LowPrioAnyImplicits {
 }
 
 trait LowPrioAnyImplicits {
+  @inline implicit def richDouble(num: prim.Number): scala.runtime.RichDouble =
+    new scala.runtime.RichDouble(Any.toDouble(num))
+  @inline implicit def richBoolean(b: prim.Boolean): scala.runtime.RichBoolean =
+    new scala.runtime.RichBoolean(Any.toBoolean(b))
+
+  @inline implicit def stringOps(string: prim.String): immutable.StringOps =
+    new immutable.StringOps(Any.toScalaString(string))
+
   implicit def wrapArray[A](array: Array[A]): WrappedArray[A] =
     new WrappedArray(array)
   implicit def wrapDictionary[A](dict: Dictionary[A]): WrappedDictionary[A] =
@@ -285,7 +300,7 @@ object Object extends Object {
    *
    * MDN
    */
-  def getPrototypeOf(o: Object): Any = native
+  def getPrototypeOf(o: Object): Object = native
 
   /**
    * The Object.getOwnPropertyDescriptor() method returns a property descriptor
@@ -429,10 +444,18 @@ object Object extends Object {
    */
   def keys(o: Object): Array[String] = native
 
-  /** Returns the names of all the enumerable properties of this object.
-   *  This is the equivalent of a for...in loop in JavaScript.
+  /** Returns the names of all the enumerable properties of this object,
+   *  including properties in its prototype chain.
+   *
+   *  This method returns the same set of names that would be enumerated by
+   *  a for-in loop in JavaScript, but not necessarily in the same order.
+   *
+   *  If the underlying implementation guarantees an order for for-in loops,
+   *  then this is guaranteed to be consistent with [[keys]], in the sense
+   *  that the list returned by [[keys]] is a sublist of the list returned by
+   *  this method (not just a subset).
    */
-  def properties(o: Object): Array[String] = sys.error("stub")
+  def properties(o: Any): Array[String] = sys.error("stub")
 }
 
 package prim {
@@ -530,8 +553,6 @@ sealed trait Number extends Any {
 
 /** The top-level `Number` JavaScript object */
 object Number extends Object {
-  implicit def toDouble(value: prim.Number): scala.Double = sys.error("stub")
-
   /**
    * The Number.MAX_VALUE property represents the maximum numeric value
    * representable in JavaScript.
@@ -593,9 +614,7 @@ sealed trait Boolean extends Any {
 }
 
 /** The top-level `Boolean` JavaScript object. */
-object Boolean extends Object {
-  implicit def toBoolean(value: prim.Boolean): scala.Boolean = sys.error("stub")
-}
+object Boolean extends Object
 
 /** Primitive JavaScript string.
  *
@@ -840,8 +859,6 @@ sealed trait String extends Any {
 
 /** The top-level `String` JavaScript object. */
 object String extends Object {
-  implicit def toScalaString(value: prim.String): java.lang.String = sys.error("stub")
-
   def fromCharCode(codes: Int*): java.lang.String = native
 }
 

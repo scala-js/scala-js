@@ -248,6 +248,10 @@ object Serializers {
           writeByte(TagAsInstanceOf)
           writeTree(expr); writeReferenceType(cls)
 
+        case Unbox(expr, charCode) =>
+          writeByte(TagUnbox)
+          writeTree(expr); writeByte(charCode.toByte)
+
         case CallHelper(helper, args) =>
           writeByte(TagCallHelper)
           writeString(helper); writeTrees(args)
@@ -302,6 +306,9 @@ object Serializers {
           fields foreach { field =>
             writePropertyName(field._1); writeTree(field._2)
           }
+
+        case JSEnvInfo() =>
+          writeByte(TagJSEnvInfo)
 
         // Literals
 
@@ -580,6 +587,7 @@ object Serializers {
         case TagRecordValue    => RecordValue(readType().asInstanceOf[RecordType], readTrees())
         case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
         case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
+        case TagUnbox          => Unbox(readTree(), readByte().toChar)
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
         case TagJSGlobal             => JSGlobal()
@@ -595,6 +603,7 @@ object Serializers {
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
+        case TagJSEnvInfo            => JSEnvInfo()
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())

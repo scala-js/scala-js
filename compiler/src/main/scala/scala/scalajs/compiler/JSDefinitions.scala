@@ -80,15 +80,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
     lazy val JSAnyModule = JSAnyClass.companionModule
-      lazy val JSAny_fromUnit    = getMemberMethod(JSAnyModule, newTermName("fromUnit"))
-      lazy val JSAny_fromBoolean = getMemberMethod(JSAnyModule, newTermName("fromBoolean"))
-      lazy val JSAny_fromByte    = getMemberMethod(JSAnyModule, newTermName("fromByte"))
-      lazy val JSAny_fromShort   = getMemberMethod(JSAnyModule, newTermName("fromShort"))
-      lazy val JSAny_fromInt     = getMemberMethod(JSAnyModule, newTermName("fromInt"))
-      lazy val JSAny_fromFloat   = getMemberMethod(JSAnyModule, newTermName("fromFloat"))
-      lazy val JSAny_fromDouble  = getMemberMethod(JSAnyModule, newTermName("fromDouble"))
-      lazy val JSAny_fromString  = getMemberMethod(JSAnyModule, newTermName("fromString"))
-
       def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
@@ -97,15 +88,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSDynamicLiteral = getMemberModule(JSDynamicModule, newTermName("literal"))
       lazy val JSDynamicLiteral_applyDynamicNamed = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamicNamed"))
       lazy val JSDynamicLiteral_applyDynamic = getMemberMethod(JSDynamicLiteral, newTermName("applyDynamic"))
-
-    lazy val JSNumberModule = JSNumberClass.companionModule
-      lazy val JSNumber_toDouble = getMemberMethod(JSNumberModule, newTermName("toDouble"))
-
-    lazy val JSBooleanModule = JSBooleanClass.companionModule
-      lazy val JSBoolean_toBoolean = getMemberMethod(JSBooleanModule, newTermName("toBoolean"))
-
-    lazy val JSStringModule = JSStringClass.companionModule
-      lazy val JSString_toScalaString = getMemberMethod(JSStringModule, newTermName("toScalaString"))
 
     lazy val JSObjectModule = JSObjectClass.companionModule
       lazy val JSObject_hasProperty = getMemberMethod(JSObjectModule, newTermName("hasProperty"))
@@ -131,6 +113,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
       lazy val Runtime_newJSObjectWithVarargs     = getMemberMethod(RuntimePackageModule, newTermName("newJSObjectWithVarargs"))
+      lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
       lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor
@@ -138,6 +121,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
     def ScalaRunTime_isArray = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
+
+    lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
+    lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
   }
 }

@@ -106,6 +106,9 @@ object Transformers {
         case AsInstanceOf(expr, cls) =>
           AsInstanceOf(transformExpr(expr), cls)
 
+        case Unbox(expr, charCode) =>
+          Unbox(transformExpr(expr), charCode)
+
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)
 
@@ -163,8 +166,8 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:LoadModule |
-            _:JSGlobal | _:Literal | _:VarRef | _:This | EmptyTree =>
+        case _:Skip | _:Continue | _:LoadModule | _:JSGlobal | _:JSEnvInfo |
+            _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 
         case _ =>
@@ -250,6 +253,9 @@ object Transformers {
         case AsInstanceOf(expr, cls) =>
           AsInstanceOf(transformExpr(expr), cls)
 
+        case Unbox(expr, charCode) =>
+          Unbox(transformExpr(expr), charCode)
+
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)
 
@@ -299,7 +305,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Continue | _:LoadModule | _:JSGlobal |
+        case _:Continue | _:LoadModule | _:JSGlobal | _:JSEnvInfo |
             _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 

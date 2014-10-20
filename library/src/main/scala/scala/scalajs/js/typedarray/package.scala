@@ -1,5 +1,7 @@
 package scala.scalajs.js
 
+import JSConverters._
+
 /** The typdearray package provides facade types for JavaScript
  *  ArrayBuffer, TypeArrays and DataView. Further, it provides
  *  conversions between primitive Scala arrays and TypedArrays
@@ -57,19 +59,87 @@ package object typedarray {
   }
 
   // scala.Array -> TypedArray
-  def byteArray2Int8Array(array: scala.Array[Byte]): Int8Array = sys.error("stub")
-  def shortArray2Int16Array(array: scala.Array[Short]): Int16Array = sys.error("stub")
-  def charArray2Uint16Array(array: scala.Array[Char]): Uint16Array = sys.error("stub")
-  def intArray2Int32Array(array: scala.Array[Int]): Int32Array = sys.error("stub")
-  def floatArray2Float32Array(array: scala.Array[Float]): Float32Array = sys.error("stub")
-  def doubleArray2Float64Array(array: scala.Array[Double]): Float64Array = sys.error("stub")
+
+  def byteArray2Int8Array(array: scala.Array[Byte]): Int8Array =
+    array2typedArrayImpl(array, new Int8Array(array.length))
+
+  def shortArray2Int16Array(array: scala.Array[Short]): Int16Array =
+    array2typedArrayImpl(array, new Int16Array(array.length))
+
+  def charArray2Uint16Array(array: scala.Array[Char]): Uint16Array = {
+    // Can't use array2typedArrayImpl because Uint16Array contains Ints
+    val len = array.length
+    val dest = new Uint16Array(len)
+    var i = 0
+    while (i < len) {
+      dest(i) = array(i).toInt
+      i += 1
+    }
+    dest
+  }
+
+  def intArray2Int32Array(array: scala.Array[Int]): Int32Array =
+    array2typedArrayImpl(array, new Int32Array(array.length))
+
+  def floatArray2Float32Array(array: scala.Array[Float]): Float32Array =
+    array2typedArrayImpl(array, new Float32Array(array.length))
+
+  def doubleArray2Float64Array(array: scala.Array[Double]): Float64Array =
+    array2typedArrayImpl(array, new Float64Array(array.length))
+
+  @inline private def array2typedArrayImpl[
+      @specialized(Byte, Short, Int, Float, Double) T,
+      Repr <: TypedArray[T, Repr]](
+      array: scala.Array[T], dest: Repr): Repr = {
+    val len = array.length
+    var i = 0
+    while (i < len) {
+      dest(i) = array(i)
+      i += 1
+    }
+    dest
+  }
 
   // TypedArray -> scala.Array
-  def int8Array2ByteArray(array: Int8Array): scala.Array[Byte] = sys.error("stub")
-  def int16Array2ShortArray(array: Int16Array): scala.Array[Short] = sys.error("stub")
-  def uint16Array2CharArray(array: Uint16Array): scala.Array[Char] = sys.error("stub")
-  def int32Array2IntArray(array: Int32Array): scala.Array[Int] = sys.error("stub")
-  def float32Array2FloatArray(array: Float32Array): scala.Array[Float] = sys.error("stub")
-  def float64Array2DoubleArray(array: Float64Array): scala.Array[Double] = sys.error("stub")
+
+  def int8Array2ByteArray(array: Int8Array): scala.Array[Byte] =
+    typedArray2arrayImpl(array, new scala.Array(array.length))
+
+  def int16Array2ShortArray(array: Int16Array): scala.Array[Short] =
+    typedArray2arrayImpl(array, new scala.Array(array.length))
+
+  def uint16Array2CharArray(array: Uint16Array): scala.Array[Char] = {
+    // Can't use typedArray2arrayImpl because Uint16Array contains Ints
+    val len = array.length
+    val dest = new scala.Array[Char](len)
+    var i = 0
+    while (i < len) {
+      dest(i) = array(i).toChar
+      i += 1
+    }
+    dest
+  }
+
+  def int32Array2IntArray(array: Int32Array): scala.Array[Int] =
+    typedArray2arrayImpl(array, new scala.Array(array.length))
+
+  def float32Array2FloatArray(array: Float32Array): scala.Array[Float] =
+    typedArray2arrayImpl(array, new scala.Array(array.length))
+
+  def float64Array2DoubleArray(array: Float64Array): scala.Array[Double] =
+    typedArray2arrayImpl(array, new scala.Array(array.length))
+
+  @inline private def typedArray2arrayImpl[
+      @specialized(Byte, Short, Int, Float, Double) T,
+      Repr <: TypedArray[T, Repr]](
+      array: Repr, dest: scala.Array[T]): scala.Array[T] = {
+    val len = dest.length
+    var i = 0
+    while (i < len) {
+      dest(i) = array(i)
+      i += 1
+    }
+    dest
+  }
 
 }

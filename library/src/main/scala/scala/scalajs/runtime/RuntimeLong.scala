@@ -303,20 +303,41 @@ final class RuntimeLong(
       val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
-    (padBinary22(h) + padBinary22(m) + padBinary22(l)).substring(2)
+
+    if (h != 0) Integer.toBinaryString(h) + padBinary22(m) + padBinary22(l)
+    else if (m != 0) Integer.toBinaryString(m) + padBinary22(l)
+    else Integer.toBinaryString(l)
   }
 
   def toHexString: String = {
+    val zeros = "000000" // 6 zeros
+    @inline def padHex(i: Int, len: Int) = {
+      val s = Integer.toHexString(i)
+      zeros.substring(s.length + (6-len)) + s
+    }
+
     val mp = m >> 2
     val lp = l | ((m & 0x3) << BITS)
-    f"$h%05x$mp%05x$lp%06x"
+
+    if (h != 0) Integer.toHexString(h) + padHex(mp, 5) + padHex(lp, 6)
+    else if (mp != 0) Integer.toHexString(mp) + padHex(lp, 6)
+    else Integer.toHexString(lp)
   }
 
   def toOctalString: String = {
+    val zeros = "0000000" // 7 zeros
+    @inline def padOctal7(i: Int) = {
+      val s = Integer.toOctalString(i)
+      zeros.substring(s.length) + s
+    }
+
     val lp = l & (MASK >> 1)
     val mp = ((m & (MASK >> 2)) << 1) | (l >> (BITS - 1))
     val hp = (h << 2) | (m >> (BITS - 2))
-    f"$hp%08o$mp%07o$lp%07o"
+
+    if (hp != 0) Integer.toOctalString(hp) + padOctal7(mp) + padOctal7(lp)
+    else if (mp != 0) Integer.toOctalString(mp) + padOctal7(lp)
+    else Integer.toOctalString(lp)
   }
 
   // Any API //
@@ -360,8 +381,8 @@ final class RuntimeLong(
   @inline private def isNegative = (h & SIGN_BIT_VALUE) != 0
   @inline private def abs = if (isNegative) -x else x
 
-  def signum: Int =
-    if (isNegative) -1 else if (isZero) 0 else 1
+  def signum: RuntimeLong =
+    if (isNegative) MinusOne else if (isZero) Zero else One
 
   def numberOfLeadingZeros: Int =
     if (h != 0)      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
@@ -638,9 +659,10 @@ object RuntimeLong {
   private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
-  // Do not make these 'final' vals. The goal is to cache the instances.
+  // Cache the instances for some "literals" used in this implementation
   val Zero     = new RuntimeLong(      0,       0,      0) // 0L
   val One      = new RuntimeLong(      1,       0,      0) // 1L
+  val MinusOne = new RuntimeLong(   MASK,    MASK, MASK_2) // -1L
   val MinValue = new RuntimeLong(      0,       0, 524288) // Long.MinValue
   val MaxValue = new RuntimeLong(4194303, 4194303, 524287) // Long.MaxValue
   val TenPow9  = new RuntimeLong(1755648,     238,      0) // 1000000000L with 9 zeros
