@@ -122,8 +122,28 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     encodedName + paramsString
   }
 
+  /** Encodes a method symbol of java.lang.String for use in RuntimeString.
+   *
+   *  This basically means adding an initial parameter of type
+   *  java.lang.String, which is the `this` parameter.
+   */
+  def encodeRTStringMethodSym(sym: Symbol)(
+      implicit pos: Position): (Symbol, js.Ident) = {
+    require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
+    require(sym.owner == definitions.StringClass)
+    require(!sym.isClassConstructor && !sym.isPrivate)
+
+    val (encodedName, paramsString) =
+      encodeMethodNameInternal(sym, inRTClass = true)
+    val methodIdent = js.Ident(encodedName + paramsString,
+        Some(sym.unexpandedName.decoded + paramsString))
+
+    (jsDefinitions.RuntimeStringModuleClass, methodIdent)
+  }
+
   private def encodeMethodNameInternal(sym: Symbol,
-      reflProxy: Boolean = false): (String, String) = {
+      reflProxy: Boolean = false,
+      inRTClass: Boolean = false): (String, String) = {
     require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
 
     def name = encodeMemberNameInternal(sym)
@@ -140,34 +160,9 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
         mangleJSName(name)
     }
 
-    val paramsString = makeParamsString(sym, reflProxy)
+    val paramsString = makeParamsString(sym, reflProxy, inRTClass)
 
     (encodedName, paramsString)
-  }
-
-  /** encode a method symbol on a trait so it refers to its corresponding
-   *  symbol in the implementation class. This works around a limitation in
-   *  Scalac 2.11 that doesn't return members for the implementation class.
-   */
-  def encodeImplClassMethodSym(sym: Symbol)(
-      implicit pos: Position): (Symbol, js.Ident) = {
-    require(sym.owner.isInterface)
-    // Unfortunately we cannot verify here, whether this symbol is actually
-    // implemented in the trait.
-
-    // Prepare special parameter string
-    val tpe = sym.tpe
-    val paramTpes = sym.owner.tpe +: tpe.params.map(_.tpe) :+ tpe.resultType
-    val paramsString = makeParamsString(paramTpes.map(internalName _))
-
-    // Encode prefix
-    val implClass = sym.owner.implClass orElse erasure.implClass(sym.owner)
-    val encodedName =
-      encodeClassFullName(implClass) + OuterSep + encodeMemberNameInternal(sym)
-
-    // Create ident
-    (implClass, js.Ident(encodedName + paramsString,
-        Some(sym.unexpandedName.decoded + paramsString)))
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.Ident = {
@@ -222,16 +217,23 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   // Encoding of method signatures
 
-  private def makeParamsString(sym: Symbol, reflProxy: Boolean): String = {
+  private def makeParamsString(sym: Symbol, reflProxy: Boolean,
+      inRTClass: Boolean): String = {
     val tpe = sym.tpe
     val paramTypeNames = tpe.params map (p => internalName(p.tpe))
-    makeParamsString(
-        if (sym.isClassConstructor)
-          paramTypeNames
-        else if (reflProxy)
-          paramTypeNames :+ ""
-        else
-          paramTypeNames :+ internalName(tpe.resultType))
+    val paramAndResultTypeNames = {
+      if (sym.isClassConstructor)
+        paramTypeNames
+      else if (reflProxy)
+        paramTypeNames :+ ""
+      else {
+        val paramAndResultTypeNames0 =
+          paramTypeNames :+ internalName(tpe.resultType)
+        if (!inRTClass) paramAndResultTypeNames0
+        else internalName(sym.owner.toTypeConstructor) +: paramAndResultTypeNames0
+      }
+    }
+    makeParamsString(paramAndResultTypeNames)
   }
 
   private def makeParamsString(paramAndResultTypeNames: List[String]) =

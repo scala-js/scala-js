@@ -101,8 +101,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
 
-    lazy val RuntimeStringClass = getRequiredClass("scala.scalajs.runtime.RuntimeString")
-    lazy val RuntimeStringModule = RuntimeStringClass.companionModule
+    lazy val RuntimeStringModule = getRequiredModule("scala.scalajs.runtime.RuntimeString")
+    lazy val RuntimeStringModuleClass = RuntimeStringModule.moduleClass
 
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")

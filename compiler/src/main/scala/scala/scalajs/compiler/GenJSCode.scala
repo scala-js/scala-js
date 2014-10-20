@@ -2569,7 +2569,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         for {
           (primTypeOf, reflBoxClass) <- Seq(
-              ("string", RuntimeStringClass),
+              ("string", StringClass),
               ("number", NumberReflectiveCallClass),
               ("boolean", BooleanReflectiveCallClass)
           )
@@ -2598,12 +2598,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.Undefined()
             } else {
               if (primTypeOf == "string") {
-                val (implClass, methodIdent) =
-                  encodeImplClassMethodSym(implMethodSym)
+                val (rtModuleClass, methodIdent) =
+                  encodeRTStringMethodSym(implMethodSym)
                 val retTpe = implMethodSym.tpe.resultType
                 val castCallTrg = fromAny(callTrg, StringClass.toTypeConstructor)
-                val rawApply = genTraitImplApply(
-                    encodeClassFullNameIdent(implClass),
+                val rawApply = genApplyMethod(
+                    genLoadModule(rtModuleClass),
+                    rtModuleClass,
                     methodIdent,
                     castCallTrg :: arguments,
                     toIRType(retTpe))
@@ -3155,9 +3156,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /**
-     * Forwards call on java.lang.String to the implementation class of
-     * scala.scalajs.runtime.RuntimeString
+    /** Gen JS code for calling a method on java.lang.String.
+     *
+     *  Forwards call on java.lang.String to the module
+     *  scala.scalajs.runtime.RuntimeString.
      */
     private def genStringCall(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
@@ -3169,30 +3171,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       val receiver = genExpr(receiver0)
       val args = args0 map genExpr
 
-      // Get implementation from RuntimeString trait
-      val rtStrSym = sym.overridingSymbol(RuntimeStringClass)
-
-      // Check that we found a member
-      if (rtStrSym == NoSymbol) {
-        currentUnit.error(pos,
-            s"""Could not find implementation for method ${sym.name}
-               |on java.lang.String with type ${sym.tpe}
-               |Methods on java.lang.String are forwarded to the implementation class
-               |of scala.scalajs.runtime.RuntimeString""".stripMargin)
-        js.Undefined()
-      } else {
-        assert(!rtStrSym.isOverloaded,
-            s"""For method ${sym.name} on java.lang.String with type ${sym.tpe},
-               |found multiple implementation class members.""".stripMargin)
-
-        // Emit call to implementation class
-        val (implClass, methodIdent) = encodeImplClassMethodSym(rtStrSym)
-        genTraitImplApply(
-            encodeClassFullNameIdent(implClass),
-            methodIdent,
-            receiver :: args,
-            toIRType(tree.tpe))
-      }
+      // Emit call to the RuntimeString module
+      val (rtModuleClass, methodIdent) = encodeRTStringMethodSym(sym)
+      genApplyMethod(
+          genLoadModule(rtModuleClass),
+          rtModuleClass,
+          methodIdent,
+          receiver :: args,
+          toIRType(tree.tpe))
     }
 
     /** Gen JS code for a new of a raw JS class (subclass of js.Any) */
