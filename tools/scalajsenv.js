@@ -7,486 +7,486 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
-var ScalaJS = {
-  // Fields
-  g: (typeof global === "object" && global && global["Object"] === Object) ? global : this, // Global scope
-  e: (typeof __ScalaJSEnv === "object" && __ScalaJSEnv &&
-      typeof __ScalaJSEnv["exportsNamespace"] === "object" &&
-      __ScalaJSEnv["exportsNamespace"]) ? __ScalaJSEnv["exportsNamespace"] : // Where to send exports
-      ((typeof global === "object" && global && global["Object"] === Object) ? global : this),
-  d: {},         // Data for types
-  c: {},         // Scala.js constructors
-  h: {},         // Inheritable constructors (without initialization code)
-  i: {},         // Implementation class modules
-  n: {},         // Module instances
-  m: {},         // Module accessors
-  is: {},        // isInstanceOf methods
-  isArrayOf: {}, // isInstanceOfArrayOf methods
+var ScalaJS = {};
+
+// Fields
+ScalaJS.g = (typeof global === "object" && global && global["Object"] === Object) ? global : this; // Global scope
+ScalaJS.e = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv &&
+    typeof __ScalaJSEnv["exportsNamespace"] === "object" &&
+    __ScalaJSEnv["exportsNamespace"]) ? __ScalaJSEnv["exportsNamespace"] : // Where to send exports
+    ScalaJS.g;
+ScalaJS.d = {};         // Data for types
+ScalaJS.c = {};         // Scala.js constructors
+ScalaJS.h = {};         // Inheritable constructors (without initialization code)
+ScalaJS.i = {};         // Implementation class modules
+ScalaJS.n = {};         // Module instances
+ScalaJS.m = {};         // Module accessors
+ScalaJS.is = {};        // isInstanceOf methods
+ScalaJS.isArrayOf = {}; // isInstanceOfArrayOf methods
 //!if asInstanceOfs != Unchecked
-  as: {},        // asInstanceOf methods
-  asArrayOf: {}, // asInstanceOfArrayOf methods
+ScalaJS.as = {};        // asInstanceOf methods
+ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
 //!endif
-  lastIDHash: 0, // last value attributed to an id hash code
+ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
 
-  // Core mechanism
+// Core mechanism
 
-  makeIsArrayOfPrimitive: function(primitiveData) {
-    return function(obj, depth) {
-      return !!(obj && obj.$classData &&
-        (obj.$classData.arrayDepth === depth) &&
-        (obj.$classData.arrayBase === primitiveData));
-    }
-  },
-
-//!if asInstanceOfs != Unchecked
-  makeAsArrayOfPrimitive: function(isInstanceOfFunction, arrayEncodedName) {
-    return function(obj, depth) {
-      if (isInstanceOfFunction(obj, depth) || (obj === null))
-        return obj;
-      else
-        ScalaJS.throwArrayCastException(obj, arrayEncodedName, depth);
-    }
-  },
-//!endif
-
-  /** Encode a property name for runtime manipulation
-   *  Usage:
-   *    env.propertyName({someProp:0})
-   *  Returns:
-   *    "someProp"
-   *  Useful when the property is renamed by a global optimizer (like Closure)
-   *  but we must still get hold of a string of that name for runtime
-   * reflection.
-   */
-  propertyName: function(obj) {
-    var result;
-    for (var prop in obj)
-      result = prop;
-    return result;
-  },
-
-  // Runtime functions
-
-  isScalaJSObject: function(obj) {
-    return !!(obj && obj.$classData);
-  },
-
-//!if asInstanceOfs != Unchecked
-  throwClassCastException: function(instance, classFullName) {
-//!if asInstanceOfs == Compliant
-    throw new ScalaJS.c.jl_ClassCastException().init___T(
-      instance + " is not an instance of " + classFullName);
-//!else
-    throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
-      new ScalaJS.c.jl_ClassCastException().init___T(
-        instance + " is not an instance of " + classFullName));
-//!endif
-  },
-
-  throwArrayCastException: function(instance, classArrayEncodedName, depth) {
-    for (; depth; --depth)
-      classArrayEncodedName = "[" + classArrayEncodedName;
-    ScalaJS.throwClassCastException(instance, classArrayEncodedName);
-  },
-//!endif
-
-  makeNativeArrayWrapper: function(arrayClassData, nativeArray) {
-    return new arrayClassData.constr(nativeArray);
-  },
-
-  newArrayObject: function(arrayClassData, lengths) {
-    return ScalaJS.newArrayObjectInternal(arrayClassData, lengths, 0);
-  },
-
-  newArrayObjectInternal: function(arrayClassData, lengths, lengthIndex) {
-    var result = new arrayClassData.constr(lengths[lengthIndex]);
-
-    if (lengthIndex < lengths.length-1) {
-      var subArrayClassData = arrayClassData.componentData;
-      var subLengthIndex = lengthIndex+1;
-      var underlying = result.u;
-      for (var i = 0; i < underlying.length; i++) {
-        underlying[i] = ScalaJS.newArrayObjectInternal(
-          subArrayClassData, lengths, subLengthIndex);
-      }
-    }
-
-    return result;
-  },
-
-  checkNonNull: function(obj) {
-    return obj !== null ? obj : ScalaJS.throwNullPointerException();
-  },
-
-  throwNullPointerException: function() {
-    throw new ScalaJS.c.jl_NullPointerException().init___();
-  },
-
-  objectToString: function(instance) {
-    if (instance === void 0)
-      return "undefined";
-    else
-      return instance.toString();
-  },
-
-  objectGetClass: function(instance) {
-    switch (typeof instance) {
-      case "string":
-        return ScalaJS.d.T.getClassOf();
-      case "number":
-        if (ScalaJS.isInt(instance))
-          return ScalaJS.d.jl_Integer.getClassOf();
-        else
-          return ScalaJS.d.jl_Double.getClassOf();
-      case "boolean":
-        return ScalaJS.d.jl_Boolean.getClassOf();
-      case "undefined":
-        return ScalaJS.d.sr_BoxedUnit.getClassOf();
-      default:
-        if (instance === null)
-          ScalaJS.throwNullPointerException();
-        else if (ScalaJS.is.sjsr_RuntimeLong(instance))
-          return ScalaJS.d.jl_Long.getClassOf();
-        else if (ScalaJS.isScalaJSObject(instance))
-          return instance.$classData.getClassOf();
-        else
-          return null; // Exception?
-    }
-  },
-
-  objectClone: function(instance) {
-    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.clone__O();
-    else
-      throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
-  },
-
-  objectNotify: function(instance) {
-    // final and no-op in java.lang.Object
-    if (instance === null)
-      instance.notify__V();
-  },
-
-  objectNotifyAll: function(instance) {
-    // final and no-op in java.lang.Object
-    if (instance === null)
-      instance.notifyAll__V();
-  },
-
-  objectFinalize: function(instance) {
-    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      instance.finalize__V();
-    // else no-op
-  },
-
-  objectEquals: function(instance, rhs) {
-    if (ScalaJS.isScalaJSObject(instance) || (instance === null))
-      return instance.equals__O__Z(rhs);
-    else if (typeof instance === "number")
-      return typeof rhs === "number" && ScalaJS.numberEquals(instance, rhs);
-    else
-      return instance === rhs;
-  },
-
-  numberEquals: function(lhs, rhs) {
-    return (
-      lhs === rhs // 0.0 === -0.0 to prioritize the Int case over the Double case
-    ) || (
-      // are they both NaN?
-      (lhs !== lhs) && (rhs !== rhs)
-    );
-  },
-
-  objectHashCode: function(instance) {
-    switch (typeof instance) {
-      case "string":
-        // calculate hash of String as specified by JavaDoc
-        var n = instance["length"];
-        var res = 0;
-        var mul = 1; // holds pow(31, n-i-1)
-        // multiplications with `mul` do never overflow the 52 bits of precision:
-        // - we truncate `mul` to 32 bits on each operation
-        // - 31 has 5 significant bits only
-        // - s[i] has 16 significant bits max
-        // 32 + max(5, 16) = 48 < 52 => no overflow
-        for (var i = n-1; i >= 0; --i) {
-          // calculate s[i] * pow(31, n-i-1)
-          res = res + (instance["charCodeAt"](i) * mul | 0) | 0
-          // update mul for next iteration
-          mul = mul * 31 | 0
-        }
-        return res;
-      case "number":
-        return instance | 0;
-      case "boolean":
-        return instance ? 1231 : 1237;
-      case "undefined":
-        return 0;
-      default:
-        if (ScalaJS.isScalaJSObject(instance) || instance === null)
-          return instance.hashCode__I();
-        else
-          return 42; // TODO?
-    }
-  },
-
-  comparableCompareTo: function(instance, rhs) {
-    switch (typeof instance) {
-      case "string":
-//!if asInstanceOfs != Unchecked
-        ScalaJS.as.T(rhs);
-//!endif
-        return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
-      case "number":
-//!if asInstanceOfs != Unchecked
-        ScalaJS.as.jl_Number(rhs);
-//!endif
-        return ScalaJS.numberEquals(instance, rhs) ? 0 : (instance < rhs ? -1 : 1);
-      case "boolean":
-//!if asInstanceOfs != Unchecked
-        ScalaJS.asBoolean(rhs);
-//!endif
-        return instance - rhs; // yes, this gives the right result
-      default:
-        return instance.compareTo__O__I(rhs);
-    }
-  },
-
-  charSequenceLength: function(instance) {
-    if (typeof(instance) === "string")
-      return instance["length"];
-    else
-      return instance.length__I();
-  },
-
-  charSequenceCharAt: function(instance, index) {
-    if (typeof(instance) === "string")
-      return instance["charCodeAt"](index);
-    else
-      return instance.charAt__I__C(index);
-  },
-
-  charSequenceSubSequence: function(instance, start, end) {
-    if (typeof(instance) === "string")
-      return instance["substring"](start, end);
-    else
-      return instance.subSequence__I__I__jl_CharSequence(start, end);
-  },
-
-  booleanBooleanValue: function(instance) {
-    if (typeof instance === "boolean") return instance;
-    else                               return instance.booleanValue__Z();
-  },
-
-  numberByteValue: function(instance) {
-    if (typeof instance === "number") return (instance << 24) >> 24;
-    else                              return instance.byteValue__B();
-  },
-  numberShortValue: function(instance) {
-    if (typeof instance === "number") return (instance << 16) >> 16;
-    else                              return instance.shortValue__S();
-  },
-  numberIntValue: function(instance) {
-    if (typeof instance === "number") return instance | 0;
-    else                              return instance.intValue__I();
-  },
-  numberLongValue: function(instance) {
-    if (typeof instance === "number")
-      return ScalaJS.m.sjsr_RuntimeLong().fromDouble__D__sjsr_RuntimeLong(instance);
-    else
-      return instance.longValue__J();
-  },
-  numberFloatValue: function(instance) {
-    if (typeof instance === "number") return instance;
-    else                              return instance.floatValue__F();
-  },
-  numberDoubleValue: function(instance) {
-    if (typeof instance === "number") return instance;
-    else                              return instance.doubleValue__D();
-  },
-
-  isNaN: function(instance) {
-    return instance !== instance;
-  },
-
-  isInfinite: function(instance) {
-    return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
-  },
-
-  propertiesOf: function(obj) {
-    var result = [];
-    for (var prop in obj)
-      result["push"](prop);
-    return result;
-  },
-
-  systemArraycopy: function(src, srcPos, dest, destPos, length) {
-    var srcu = src.u;
-    var destu = dest.u;
-    if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
-      for (var i = 0; i < length; i++)
-        destu[destPos+i] = srcu[srcPos+i];
-    } else {
-      for (var i = length-1; i >= 0; i--)
-        destu[destPos+i] = srcu[srcPos+i];
-    }
-  },
-
-  systemIdentityHashCode: function(obj) {
-    if (ScalaJS.isScalaJSObject(obj)) {
-      var hash = obj["$idHashCode$0"];
-      if (hash !== void 0) {
-        return hash;
-      } else {
-        hash = (ScalaJS.lastIDHash + 1) | 0;
-        ScalaJS.lastIDHash = hash;
-        obj["$idHashCode$0"] = hash;
-        return hash;
-      }
-    } else if (obj === null) {
-      return 0;
-    } else {
-      return ScalaJS.objectHashCode(obj);
-    }
-  },
-
-  environmentInfo: function() {
-    if (typeof __ScalaJSEnv !== "undefined")
-      return __ScalaJSEnv;
-    else
-      return void 0;
-  },
-
-  // is/as for hijacked boxed classes (the non-trivial ones)
-
-  isByte: function(v) {
-    return (v << 24 >> 24) === v;
-  },
-
-  isShort: function(v) {
-    return (v << 16 >> 16) === v;
-  },
-
-  isInt: function(v) {
-    return (v | 0) === v;
-  },
-
-//!if asInstanceOfs != Unchecked
-  asUnit: function(v) {
-    if (v === void 0)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "scala.runtime.BoxedUnit");
-  },
-
-  asBoolean: function(v) {
-    if (typeof v === "boolean" || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Boolean");
-  },
-
-  asByte: function(v) {
-    if (ScalaJS.isByte(v) || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Byte");
-  },
-
-  asShort: function(v) {
-    if (ScalaJS.isShort(v) || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Short");
-  },
-
-  asInt: function(v) {
-    if (ScalaJS.isInt(v) || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Integer");
-  },
-
-  asFloat: function(v) {
-    if (typeof v === "number" || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Float");
-  },
-
-  asDouble: function(v) {
-    if (typeof v === "number" || v === null)
-      return v;
-    else
-      ScalaJS.throwClassCastException(v, "java.lang.Double");
-  },
-//!endif
-
-  // Unboxes
-
-//!if asInstanceOfs != Unchecked
-  uZ: function(value) {
-    return !!ScalaJS.asBoolean(value);
-  },
-  uB: function(value) {
-    return ScalaJS.asByte(value) | 0;
-  },
-  uS: function(value) {
-    return ScalaJS.asShort(value) | 0;
-  },
-  uI: function(value) {
-    return ScalaJS.asInt(value) | 0;
-  },
-  uJ: function(value) {
-    return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1
-                          : ScalaJS.as.sjsr_RuntimeLong(value);
-  },
-  uF: function(value) {
-    return +ScalaJS.asFloat(value);
-  },
-  uD: function(value) {
-    return +ScalaJS.asDouble(value);
-  },
-//!else
-  uJ: function(value) {
-    return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1 : value;
-  },
-//!endif
-
-  // TypeArray conversions
-
-  byteArray2TypedArray: function(value) { return new Int8Array(value.u); },
-  shortArray2TypedArray: function(value) { return new Int16Array(value.u); },
-  charArray2TypedArray: function(value) { return new Uint16Array(value.u); },
-  intArray2TypedArray: function(value) { return new Int32Array(value.u); },
-  floatArray2TypedArray: function(value) { return new Float32Array(value.u); },
-  doubleArray2TypedArray: function(value) { return new Float64Array(value.u); },
-
-  typedArray2ByteArray: function(value) {
-    var arrayClassData = ScalaJS.d.B.getArrayOf();
-    return new arrayClassData.constr(new Int8Array(value));
-  },
-  typedArray2ShortArray: function(value) {
-    var arrayClassData = ScalaJS.d.S.getArrayOf();
-    return new arrayClassData.constr(new Int16Array(value));
-  },
-  typedArray2CharArray: function(value) {
-    var arrayClassData = ScalaJS.d.C.getArrayOf();
-    return new arrayClassData.constr(new Uint16Array(value));
-  },
-  typedArray2IntArray: function(value) {
-    var arrayClassData = ScalaJS.d.I.getArrayOf();
-    return new arrayClassData.constr(new Int32Array(value));
-  },
-  typedArray2FloatArray: function(value) {
-    var arrayClassData = ScalaJS.d.F.getArrayOf();
-    return new arrayClassData.constr(new Float32Array(value));
-  },
-  typedArray2DoubleArray: function(value) {
-    var arrayClassData = ScalaJS.d.D.getArrayOf();
-    return new arrayClassData.constr(new Float64Array(value));
+ScalaJS.makeIsArrayOfPrimitive = function(primitiveData) {
+  return function(obj, depth) {
+    return !!(obj && obj.$classData &&
+      (obj.$classData.arrayDepth === depth) &&
+      (obj.$classData.arrayBase === primitiveData));
   }
-}
+};
+
+//!if asInstanceOfs != Unchecked
+ScalaJS.makeAsArrayOfPrimitive = function(isInstanceOfFunction, arrayEncodedName) {
+  return function(obj, depth) {
+    if (isInstanceOfFunction(obj, depth) || (obj === null))
+      return obj;
+    else
+      ScalaJS.throwArrayCastException(obj, arrayEncodedName, depth);
+  }
+};
+//!endif
+
+/** Encode a property name for runtime manipulation
+  *  Usage:
+  *    env.propertyName({someProp:0})
+  *  Returns:
+  *    "someProp"
+  *  Useful when the property is renamed by a global optimizer (like Closure)
+  *  but we must still get hold of a string of that name for runtime
+  * reflection.
+  */
+ScalaJS.propertyName = function(obj) {
+  var result;
+  for (var prop in obj)
+    result = prop;
+  return result;
+};
+
+// Runtime functions
+
+ScalaJS.isScalaJSObject = function(obj) {
+  return !!(obj && obj.$classData);
+};
+
+//!if asInstanceOfs != Unchecked
+ScalaJS.throwClassCastException = function(instance, classFullName) {
+//!if asInstanceOfs == Compliant
+  throw new ScalaJS.c.jl_ClassCastException().init___T(
+    instance + " is not an instance of " + classFullName);
+//!else
+  throw new ScalaJS.c.sjsr_UndefinedBehaviorError().init___jl_Throwable(
+    new ScalaJS.c.jl_ClassCastException().init___T(
+      instance + " is not an instance of " + classFullName));
+//!endif
+};
+
+ScalaJS.throwArrayCastException = function(instance, classArrayEncodedName, depth) {
+  for (; depth; --depth)
+    classArrayEncodedName = "[" + classArrayEncodedName;
+  ScalaJS.throwClassCastException(instance, classArrayEncodedName);
+};
+//!endif
+
+ScalaJS.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
+  return new arrayClassData.constr(nativeArray);
+};
+
+ScalaJS.newArrayObject = function(arrayClassData, lengths) {
+  return ScalaJS.newArrayObjectInternal(arrayClassData, lengths, 0);
+};
+
+ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
+  var result = new arrayClassData.constr(lengths[lengthIndex]);
+
+  if (lengthIndex < lengths.length-1) {
+    var subArrayClassData = arrayClassData.componentData;
+    var subLengthIndex = lengthIndex+1;
+    var underlying = result.u;
+    for (var i = 0; i < underlying.length; i++) {
+      underlying[i] = ScalaJS.newArrayObjectInternal(
+        subArrayClassData, lengths, subLengthIndex);
+    }
+  }
+
+  return result;
+};
+
+ScalaJS.checkNonNull = function(obj) {
+  return obj !== null ? obj : ScalaJS.throwNullPointerException();
+};
+
+ScalaJS.throwNullPointerException = function() {
+  throw new ScalaJS.c.jl_NullPointerException().init___();
+};
+
+ScalaJS.objectToString = function(instance) {
+  if (instance === void 0)
+    return "undefined";
+  else
+    return instance.toString();
+};
+
+ScalaJS.objectGetClass = function(instance) {
+  switch (typeof instance) {
+    case "string":
+      return ScalaJS.d.T.getClassOf();
+    case "number":
+      if (ScalaJS.isInt(instance))
+        return ScalaJS.d.jl_Integer.getClassOf();
+      else
+        return ScalaJS.d.jl_Double.getClassOf();
+    case "boolean":
+      return ScalaJS.d.jl_Boolean.getClassOf();
+    case "undefined":
+      return ScalaJS.d.sr_BoxedUnit.getClassOf();
+    default:
+      if (instance === null)
+        ScalaJS.throwNullPointerException();
+      else if (ScalaJS.is.sjsr_RuntimeLong(instance))
+        return ScalaJS.d.jl_Long.getClassOf();
+      else if (ScalaJS.isScalaJSObject(instance))
+        return instance.$classData.getClassOf();
+      else
+        return null; // Exception?
+  }
+};
+
+ScalaJS.objectClone = function(instance) {
+  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+    return instance.clone__O();
+  else
+    throw new ScalaJS.c.jl_CloneNotSupportedException().init___();
+};
+
+ScalaJS.objectNotify = function(instance) {
+  // final and no-op in java.lang.Object
+  if (instance === null)
+    instance.notify__V();
+};
+
+ScalaJS.objectNotifyAll = function(instance) {
+  // final and no-op in java.lang.Object
+  if (instance === null)
+    instance.notifyAll__V();
+};
+
+ScalaJS.objectFinalize = function(instance) {
+  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+    instance.finalize__V();
+  // else no-op
+};
+
+ScalaJS.objectEquals = function(instance, rhs) {
+  if (ScalaJS.isScalaJSObject(instance) || (instance === null))
+    return instance.equals__O__Z(rhs);
+  else if (typeof instance === "number")
+    return typeof rhs === "number" && ScalaJS.numberEquals(instance, rhs);
+  else
+    return instance === rhs;
+};
+
+ScalaJS.numberEquals = function(lhs, rhs) {
+  return (
+    lhs === rhs // 0.0 === -0.0 to prioritize the Int case over the Double case
+  ) || (
+    // are they both NaN?
+    (lhs !== lhs) && (rhs !== rhs)
+  );
+};
+
+ScalaJS.objectHashCode = function(instance) {
+  switch (typeof instance) {
+    case "string":
+      // calculate hash of String as specified by JavaDoc
+      var n = instance["length"];
+      var res = 0;
+      var mul = 1; // holds pow(31, n-i-1)
+      // multiplications with `mul` do never overflow the 52 bits of precision:
+      // - we truncate `mul` to 32 bits on each operation
+      // - 31 has 5 significant bits only
+      // - s[i] has 16 significant bits max
+      // 32 + max(5, 16) = 48 < 52 => no overflow
+      for (var i = n-1; i >= 0; --i) {
+        // calculate s[i] * pow(31, n-i-1)
+        res = res + (instance["charCodeAt"](i) * mul | 0) | 0
+        // update mul for next iteration
+        mul = mul * 31 | 0
+      }
+      return res;
+    case "number":
+      return instance | 0;
+    case "boolean":
+      return instance ? 1231 : 1237;
+    case "undefined":
+      return 0;
+    default:
+      if (ScalaJS.isScalaJSObject(instance) || instance === null)
+        return instance.hashCode__I();
+      else
+        return 42; // TODO?
+  }
+};
+
+ScalaJS.comparableCompareTo = function(instance, rhs) {
+  switch (typeof instance) {
+    case "string":
+//!if asInstanceOfs != Unchecked
+      ScalaJS.as.T(rhs);
+//!endif
+      return instance === rhs ? 0 : (instance < rhs ? -1 : 1);
+    case "number":
+//!if asInstanceOfs != Unchecked
+      ScalaJS.as.jl_Number(rhs);
+//!endif
+      return ScalaJS.numberEquals(instance, rhs) ? 0 : (instance < rhs ? -1 : 1);
+    case "boolean":
+//!if asInstanceOfs != Unchecked
+      ScalaJS.asBoolean(rhs);
+//!endif
+      return instance - rhs; // yes, this gives the right result
+    default:
+      return instance.compareTo__O__I(rhs);
+  }
+};
+
+ScalaJS.charSequenceLength = function(instance) {
+  if (typeof(instance) === "string")
+    return instance["length"];
+  else
+    return instance.length__I();
+};
+
+ScalaJS.charSequenceCharAt = function(instance, index) {
+  if (typeof(instance) === "string")
+    return instance["charCodeAt"](index);
+  else
+    return instance.charAt__I__C(index);
+};
+
+ScalaJS.charSequenceSubSequence = function(instance, start, end) {
+  if (typeof(instance) === "string")
+    return instance["substring"](start, end);
+  else
+    return instance.subSequence__I__I__jl_CharSequence(start, end);
+};
+
+ScalaJS.booleanBooleanValue = function(instance) {
+  if (typeof instance === "boolean") return instance;
+  else                               return instance.booleanValue__Z();
+};
+
+ScalaJS.numberByteValue = function(instance) {
+  if (typeof instance === "number") return (instance << 24) >> 24;
+  else                              return instance.byteValue__B();
+};
+ScalaJS.numberShortValue = function(instance) {
+  if (typeof instance === "number") return (instance << 16) >> 16;
+  else                              return instance.shortValue__S();
+};
+ScalaJS.numberIntValue = function(instance) {
+  if (typeof instance === "number") return instance | 0;
+  else                              return instance.intValue__I();
+};
+ScalaJS.numberLongValue = function(instance) {
+  if (typeof instance === "number")
+    return ScalaJS.m.sjsr_RuntimeLong().fromDouble__D__sjsr_RuntimeLong(instance);
+  else
+    return instance.longValue__J();
+};
+ScalaJS.numberFloatValue = function(instance) {
+  if (typeof instance === "number") return instance;
+  else                              return instance.floatValue__F();
+};
+ScalaJS.numberDoubleValue = function(instance) {
+  if (typeof instance === "number") return instance;
+  else                              return instance.doubleValue__D();
+};
+
+ScalaJS.isNaN = function(instance) {
+  return instance !== instance;
+};
+
+ScalaJS.isInfinite = function(instance) {
+  return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
+};
+
+ScalaJS.propertiesOf = function(obj) {
+  var result = [];
+  for (var prop in obj)
+    result["push"](prop);
+  return result;
+};
+
+ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
+  var srcu = src.u;
+  var destu = dest.u;
+  if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
+    for (var i = 0; i < length; i++)
+      destu[destPos+i] = srcu[srcPos+i];
+  } else {
+    for (var i = length-1; i >= 0; i--)
+      destu[destPos+i] = srcu[srcPos+i];
+  }
+};
+
+ScalaJS.systemIdentityHashCode = function(obj) {
+  if (ScalaJS.isScalaJSObject(obj)) {
+    var hash = obj["$idHashCode$0"];
+    if (hash !== void 0) {
+      return hash;
+    } else {
+      hash = (ScalaJS.lastIDHash + 1) | 0;
+      ScalaJS.lastIDHash = hash;
+      obj["$idHashCode$0"] = hash;
+      return hash;
+    }
+  } else if (obj === null) {
+    return 0;
+  } else {
+    return ScalaJS.objectHashCode(obj);
+  }
+};
+
+ScalaJS.environmentInfo = function() {
+  if (typeof __ScalaJSEnv !== "undefined")
+    return __ScalaJSEnv;
+  else
+    return void 0;
+};
+
+// is/as for hijacked boxed classes (the non-trivial ones)
+
+ScalaJS.isByte = function(v) {
+  return (v << 24 >> 24) === v;
+};
+
+ScalaJS.isShort = function(v) {
+  return (v << 16 >> 16) === v;
+};
+
+ScalaJS.isInt = function(v) {
+  return (v | 0) === v;
+};
+
+//!if asInstanceOfs != Unchecked
+ScalaJS.asUnit = function(v) {
+  if (v === void 0)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "scala.runtime.BoxedUnit");
+};
+
+ScalaJS.asBoolean = function(v) {
+  if (typeof v === "boolean" || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Boolean");
+};
+
+ScalaJS.asByte = function(v) {
+  if (ScalaJS.isByte(v) || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Byte");
+};
+
+ScalaJS.asShort = function(v) {
+  if (ScalaJS.isShort(v) || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Short");
+};
+
+ScalaJS.asInt = function(v) {
+  if (ScalaJS.isInt(v) || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Integer");
+};
+
+ScalaJS.asFloat = function(v) {
+  if (typeof v === "number" || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Float");
+};
+
+ScalaJS.asDouble = function(v) {
+  if (typeof v === "number" || v === null)
+    return v;
+  else
+    ScalaJS.throwClassCastException(v, "java.lang.Double");
+};
+//!endif
+
+// Unboxes
+
+//!if asInstanceOfs != Unchecked
+ScalaJS.uZ = function(value) {
+  return !!ScalaJS.asBoolean(value);
+};
+ScalaJS.uB = function(value) {
+  return ScalaJS.asByte(value) | 0;
+};
+ScalaJS.uS = function(value) {
+  return ScalaJS.asShort(value) | 0;
+};
+ScalaJS.uI = function(value) {
+  return ScalaJS.asInt(value) | 0;
+};
+ScalaJS.uJ = function(value) {
+  return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1
+                        : ScalaJS.as.sjsr_RuntimeLong(value);
+};
+ScalaJS.uF = function(value) {
+  return +ScalaJS.asFloat(value);
+};
+ScalaJS.uD = function(value) {
+  return +ScalaJS.asDouble(value);
+};
+//!else
+ScalaJS.uJ = function(value) {
+  return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1 : value;
+};
+//!endif
+
+// TypeArray conversions
+
+ScalaJS.byteArray2TypedArray = function(value) { return new Int8Array(value.u); };
+ScalaJS.shortArray2TypedArray = function(value) { return new Int16Array(value.u); };
+ScalaJS.charArray2TypedArray = function(value) { return new Uint16Array(value.u); };
+ScalaJS.intArray2TypedArray = function(value) { return new Int32Array(value.u); };
+ScalaJS.floatArray2TypedArray = function(value) { return new Float32Array(value.u); };
+ScalaJS.doubleArray2TypedArray = function(value) { return new Float64Array(value.u); };
+
+ScalaJS.typedArray2ByteArray = function(value) {
+  var arrayClassData = ScalaJS.d.B.getArrayOf();
+  return new arrayClassData.constr(new Int8Array(value));
+};
+ScalaJS.typedArray2ShortArray = function(value) {
+  var arrayClassData = ScalaJS.d.S.getArrayOf();
+  return new arrayClassData.constr(new Int16Array(value));
+};
+ScalaJS.typedArray2CharArray = function(value) {
+  var arrayClassData = ScalaJS.d.C.getArrayOf();
+  return new arrayClassData.constr(new Uint16Array(value));
+};
+ScalaJS.typedArray2IntArray = function(value) {
+  var arrayClassData = ScalaJS.d.I.getArrayOf();
+  return new arrayClassData.constr(new Int32Array(value));
+};
+ScalaJS.typedArray2FloatArray = function(value) {
+  var arrayClassData = ScalaJS.d.F.getArrayOf();
+  return new arrayClassData.constr(new Float32Array(value));
+};
+ScalaJS.typedArray2DoubleArray = function(value) {
+  var arrayClassData = ScalaJS.d.D.getArrayOf();
+  return new arrayClassData.constr(new Float64Array(value));
+};
 
 /* We have to force a non-elidable *read* of ScalaJS.e, otherwise Closure will
  * eliminate it altogether, along with all the exports, which is ... er ...
