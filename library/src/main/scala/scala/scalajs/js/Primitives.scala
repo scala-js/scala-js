@@ -223,7 +223,7 @@ sealed trait Dynamic extends Any with scala.Dynamic {
 /** Factory for dynamically typed JavaScript values. */
 object Dynamic {
   /** Dynamic view of the global scope. */
-  def global: Dynamic = sys.error("stub")
+  @inline def global: Dynamic = scala.scalajs.runtime.environmentInfo.global
 
   /** Instantiates a new object of a JavaScript class. */
   def newInstance(clazz: Dynamic)(args: Any*): Object with Dynamic = sys.error("stub")

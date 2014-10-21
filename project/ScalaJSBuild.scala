@@ -298,7 +298,9 @@ object ScalaJSBuild extends Build {
             var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
             var run = ${JSUtils.toJSstr(runCode)};
 
-            eval("(function() { " + lib + "; " + run + "}).call(this);");
+            eval("(function() { 'use strict'; "+
+              "var __ScalaJSEnv = null; " +
+              lib + "; " + run + "}).call(this);");
             """
           }
 

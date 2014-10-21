@@ -253,9 +253,6 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
-        case JSGlobal() =>
-          mixTag(TagJSGlobal)
-
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)
           mixTree(ctor)

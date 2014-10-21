@@ -2874,7 +2874,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case GETGLOBAL => js.JSGlobal()
             case ENV_INFO  => js.JSEnvInfo()
             case DEBUGGER  => js.Debugger()
             case UNDEFVAL  => js.Undefined()
@@ -3211,7 +3210,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genGlobalJSObject(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      jsNameOf(sym).split('.').foldLeft[js.Tree](js.JSGlobal()) { (memo, chunk) =>
+      jsNameOf(sym).split('.').foldLeft(genLoadGlobal()) { (memo, chunk) =>
         js.JSBracketSelect(memo, js.StringLiteral(chunk))
       }
     }
@@ -3845,7 +3844,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
 
-      if (isGlobalScope) js.JSGlobal()
+      if (isGlobalScope) genLoadGlobal()
       else if (isRawJSType(sym.tpe)) genPrimitiveJSModule(sym)
       else {
         if (!foreignIsImplClass(sym))
@@ -3853,6 +3852,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.LoadModule(jstpe.ClassType(encodeClassFullName(sym)))
       }
     }
+
+    /** Gen JS code to load the global scope. */
+    private def genLoadGlobal()(implicit pos: Position): js.Tree =
+      js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global"))
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {

@@ -368,10 +368,6 @@ object Trees {
 
   // JavaScript expressions
 
-  case class JSGlobal()(implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
-
   case class JSNew(ctor: Tree, args: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

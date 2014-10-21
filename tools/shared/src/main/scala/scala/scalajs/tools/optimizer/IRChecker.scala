@@ -587,8 +587,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       // JavaScript expressions
 
-      case JSGlobal() =>
-
       case JSNew(ctor, args) =>
         typecheckExpr(ctor, env)
         for (arg <- args)

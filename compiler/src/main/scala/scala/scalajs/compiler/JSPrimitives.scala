@@ -30,11 +30,10 @@ abstract class JSPrimitives {
   import scalaPrimitives._
 
   // Conversions from Scala types to JS types
-  val F2JS = 305 // FunctionN
+  val F2JS = 305     // FunctionN
   val F2JSTHIS = 306 // ThisFunctionN
 
-  val GETGLOBAL = 320 // Get the top-level object (`window` in browsers)
-  val DYNNEW = 321    // Instantiate a new JavaScript object
+  val DYNNEW = 321 // Instantiate a new JavaScript object
 
   val DYNSELECT = 330 // js.Dynamic.selectDynamic
   val DYNUPDATE = 331 // js.Dynamic.updateDynamic
@@ -82,7 +81,6 @@ abstract class JSPrimitives {
     for (i <- 1 to 22)
       addPrimitive(JSThisFunction_fromFunction(i), F2JSTHIS)
 
-    addPrimitive(JSDynamic_global, GETGLOBAL)
     addPrimitive(JSDynamic_newInstance, DYNNEW)
 
     addPrimitive(JSDynamic_selectDynamic, DYNSELECT)

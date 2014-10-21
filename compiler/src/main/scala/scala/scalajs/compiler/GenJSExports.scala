@@ -454,7 +454,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val argOffset = js.IntLiteral(normalArgc)
 
         val jsArrayCtor =
-          js.JSBracketSelect(js.JSGlobal(), js.StringLiteral("Array"))
+          js.JSBracketSelect(
+              js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global")),
+              js.StringLiteral("Array"))
 
         js.Block(
             // var i = 0

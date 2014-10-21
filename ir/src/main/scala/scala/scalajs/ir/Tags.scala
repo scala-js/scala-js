@@ -52,8 +52,7 @@ private[ir] object Tags {
   final val TagUnbox = TagAsInstanceOf + 1
   final val TagCallHelper = TagUnbox + 1
 
-  final val TagJSGlobal = TagCallHelper + 1
-  final val TagJSNew = TagJSGlobal + 1
+  final val TagJSNew = TagCallHelper + 1
   final val TagJSDotSelect = TagJSNew + 1
   final val TagJSBracketSelect = TagJSDotSelect + 1
   final val TagJSFunctionApply = TagJSBracketSelect + 1

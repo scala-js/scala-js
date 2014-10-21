@@ -388,9 +388,6 @@ object Printers {
 
         // JavaScript expressions
 
-        case JSGlobal() =>
-          print("<global>")
-
         case JSNew(ctor, args) =>
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
             case JSDotSelect(qual, _)     => containsOnlySelectsFromAtom(qual)

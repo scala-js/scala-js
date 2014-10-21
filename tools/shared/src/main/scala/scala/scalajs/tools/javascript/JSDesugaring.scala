@@ -501,7 +501,6 @@ object JSDesugaring {
         // Atomic expressions
         case _: Literal   => true
         case _: This      => true
-        case _: JSGlobal  => true
         case _: JSEnvInfo => true
 
         // Vars and fields (side-effect free, pure if immutable)
@@ -553,6 +552,9 @@ object JSDesugaring {
           (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
         case Unbox(expr, _) =>
           (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
+
+        // Because the env is a frozen object, env["global"] is pure
+        case JSBracketSelect(JSEnvInfo(), StringLiteral("global")) => true
 
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
@@ -1200,7 +1202,8 @@ object JSDesugaring {
 
         // JavaScript expressions
 
-        case JSGlobal() =>
+        case JSBracketSelect(JSEnvInfo(), StringLiteral("global")) =>
+          // Shortcut for this field which is heavily used
           envField("g")
 
         case JSNew(constr, args) =>
@@ -1258,7 +1261,7 @@ object JSDesugaring {
           })
 
         case JSEnvInfo() =>
-          genCallHelper("environmentInfo")
+          envField("env")
 
         // Literals
 
