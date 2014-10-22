@@ -216,9 +216,9 @@ object Printers {
         case Match(selector, cases, default) =>
           print("match (", selector, ") ")
           print("{"); indent
-          for ((value, body) <- cases) {
+          for ((values, body) <- cases) {
             println()
-            print("case ", value, ":"); indent; println()
+            printRow(values, "case ", " | ", ":"); indent; println()
             printTree(body)
             print(";")
             undent
