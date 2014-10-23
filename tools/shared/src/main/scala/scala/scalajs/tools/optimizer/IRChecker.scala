@@ -571,6 +571,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Unbox(expr, _) =>
         typecheckExpr(expr, env)
 
+      case GetClass(expr) =>
+        typecheckExpr(expr, env)
+
       case CallHelper(helper, args) =>
         if (!HelperSignature.contains(helper)) {
           reportError(s"Invalid helper $helper")
@@ -739,7 +742,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val NumberType = ClassType(NumberClass)
     Map(
       ("objectToString" , List(AnyType) -> StringClassType),
-      ("objectGetClass" , List(AnyType) -> ClassType(ClassClass)),
       ("objectClone"    , List(AnyType) -> AnyType),
       ("objectFinalize" , List(AnyType) -> NoType),
       ("objectNotify"   , List(AnyType) -> NoType),

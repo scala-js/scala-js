@@ -109,6 +109,9 @@ object Transformers {
         case Unbox(expr, charCode) =>
           Unbox(transformExpr(expr), charCode)
 
+        case GetClass(expr) =>
+          GetClass(transformExpr(expr))
+
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)
 
@@ -255,6 +258,9 @@ object Transformers {
 
         case Unbox(expr, charCode) =>
           Unbox(transformExpr(expr), charCode)
+
+        case GetClass(expr) =>
+          GetClass(transformExpr(expr))
 
         case CallHelper(helper, args) =>
           CallHelper(helper, args map transformExpr)(tree.tpe)

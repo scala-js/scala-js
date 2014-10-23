@@ -1376,8 +1376,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = fun.symbol
 
       if (sym == Object_getClass) {
-        // The only helper that must also be used when doing a super call
-        js.CallHelper(MethodWithHelperInEnv(sym), genThis())(toIRType(tree.tpe))
+        // The only primitive that is also callable as super call
+        js.GetClass(genThis())
       } else {
         val superCall = genStaticApplyMethod(
             genThis()(sup.pos), sym, genActualArgs(sym, args))
@@ -2874,6 +2874,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
+            case GETCLASS  => js.GetClass(receiver)
             case ENV_INFO  => js.JSEnvInfo()
             case DEBUGGER  => js.Debugger()
             case UNDEFVAL  => js.Undefined()

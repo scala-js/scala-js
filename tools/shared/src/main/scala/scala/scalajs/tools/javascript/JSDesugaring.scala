@@ -544,6 +544,8 @@ object JSDesugaring {
           allowSideEffects && test(receiver) && (args forall test)
         case TraitImplApply(impl, method, args) =>
           allowSideEffects && (args forall test)
+        case GetClass(arg) =>
+          allowSideEffects && test(arg)
         case CallHelper(helper, args) =>
           allowSideEffects && (args forall test)
 
@@ -879,6 +881,11 @@ object JSDesugaring {
             redo(Unbox(newExpr, charCode))
           }
 
+        case GetClass(expr) =>
+          unnest(expr) { newExpr =>
+            redo(GetClass(newExpr))
+          }
+
         case CallHelper(helper, args) =>
           unnest(args) { newArgs =>
             redo(CallHelper(helper, newArgs)(rhs.tpe))
@@ -1196,6 +1203,9 @@ object JSDesugaring {
           } else {
             genCallHelper("u"+charCode, newExpr)
           }
+
+        case GetClass(expr) =>
+          genCallHelper("objectGetClass", transformExpr(expr))
 
         case CallHelper(helper, args) =>
           genCallHelper(helper, args map transformExpr: _*)

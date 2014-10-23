@@ -445,6 +445,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           }
         }
 
+      case GetClass(expr) =>
+        GetClass(transformExpr(expr))
+
       case CallHelper("objectEquals", List(lhs, rhs)) =>
         trampoline {
           pretransformExprs(lhs, rhs) { (tlhs, trhs) =>

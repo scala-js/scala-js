@@ -247,6 +247,10 @@ object Hashers {
           mixTree(expr)
           mixInt(charCode)
 
+        case GetClass(expr) =>
+          mixTag(TagGetClass)
+          mixTree(expr)
+
         case CallHelper(helper, args) =>
           mixTag(TagCallHelper)
           mixString(helper)
