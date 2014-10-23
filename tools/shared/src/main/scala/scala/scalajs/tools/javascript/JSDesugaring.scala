@@ -1040,7 +1040,15 @@ object JSDesugaring {
           transformExpr(qualifier) DOT item
 
         case Apply(receiver, method, args) =>
-          js.Apply(transformExpr(receiver) DOT method, args map transformExpr)
+          val newReceiver = transformExpr(receiver)
+          val newArgs = args map transformExpr
+          if (isMaybeHijackedClass(receiver.tpe) &&
+              !Definitions.isReflProxyName(method.name)) {
+            val helperName = hijackedClassMethodToHelperName(method.name)
+            genCallHelper(helperName, newReceiver :: newArgs: _*)
+          } else {
+            js.Apply(newReceiver DOT method, newArgs)
+          }
 
         case StaticApply(receiver, cls, method, args) =>
           val fun = encodeClassVar(cls.className).prototype DOT method
@@ -1332,6 +1340,53 @@ object JSDesugaring {
               s"of class ${tree.getClass}")
       }
     }
+
+    def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
+      case ClassType(cls) =>
+        Definitions.HijackedClasses.contains(cls) ||
+        Definitions.AncestorsOfHijackedClasses.contains(cls)
+      case AnyType | UndefType | BooleanType | IntType | LongType |
+          DoubleType | StringType =>
+        true
+      case _ =>
+        false
+    }
+
+    val hijackedClassMethodToHelperName: Map[String, String] = Map(
+        "toString__T"        -> "objectToString",
+        "clone__O"           -> "objectClone",
+        "finalize__V"        -> "objectFinalize",
+        "notify__V"          -> "objectNotify",
+        "notifyAll__V"       -> "objectNotifyAll",
+        "equals__O__Z"       -> "objectEquals",
+        "hashCode__I"        -> "objectHashCode",
+
+        "length__I"                          -> "charSequenceLength",
+        "charAt__I__C"                       -> "charSequenceCharAt",
+        "subSequence__I__I__jl_CharSequence" -> "charSequenceSubSequence",
+
+        "compareTo__O__I"          -> "comparableCompareTo",
+        "compareTo__jl_Boolean__I" -> "comparableCompareTo",
+        "compareTo__jl_Byte__I"    -> "comparableCompareTo",
+        "compareTo__jl_Short__I"   -> "comparableCompareTo",
+        "compareTo__jl_Integer__I" -> "comparableCompareTo",
+        "compareTo__jl_Long__I"    -> "comparableCompareTo",
+        "compareTo__jl_Float__I"   -> "comparableCompareTo",
+        "compareTo__jl_Double__I"  -> "comparableCompareTo",
+        "compareTo__jl_String__I"  -> "comparableCompareTo",
+
+        "booleanValue__Z" -> "booleanBooleanValue",
+
+        "byteValue__B"   -> "numberByteValue",
+        "shortValue__S"  -> "numberShortValue",
+        "intValue__I"    -> "numberIntValue",
+        "longValue__J"   -> "numberLongValue",
+        "floatValue__F"  -> "numberFloatValue",
+        "doubleValue__D" -> "numberDoubleValue",
+
+        "isNaN__Z"      -> "isNaN",
+        "isInfinite__Z" -> "isInfinite"
+    )
 
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
       cls match {

@@ -1536,9 +1536,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen a "normal" apply (to a true method).
      *
      *  But even these are further refined into:
-     *  * Methods implemented by a helper in the environment (typically
-     *    because they are defined in an ancestor of a hijacked class, which
-     *    means that a value of that type can be a JS value at runtime).
      *  * Methods of java.lang.String, which are redirected to the
      *    RuntimeString trait implementation.
      *  * Calls to methods of raw JS types (Scala.js -> JS bridge)
@@ -1550,17 +1547,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
-      if (MethodWithHelperInEnv contains sym) {
-        if (!isRawJSType(receiver.tpe) && (sym != Object_getClass)) {
-          currentMethodInfoBuilder.callsMethod(receiver.tpe.typeSymbol,
-              encodeMethodSym(sym))
-        }
-        val helper = MethodWithHelperInEnv(sym)
-        val arguments = (receiver :: args) map genExpr
-        js.CallHelper(helper, arguments: _*)(toIRType(tree.tpe))
-      } else if (isStringType(receiver.tpe)) {
+      def isStringMethodFromObject: Boolean = sym.name match {
+        case nme.toString_ | nme.equals_ | nme.hashCode_ => true
+        case _                                           => false
+      }
+
+      if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
-      } else if (isRawJSType(receiver.tpe)) {
+      } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
         genPrimitiveJSCall(tree, isStat)
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
@@ -1599,63 +1593,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       js.TraitImplApply(jstpe.ClassType(implIdent.name), methodIdent,
           arguments)(resultType)
     }
-
-    private lazy val MethodWithHelperInEnv: Map[Symbol, String] = {
-      val m = mutable.Map[Symbol, String](
-        Object_toString  -> "objectToString",
-        Object_getClass  -> "objectGetClass",
-        Object_clone     -> "objectClone",
-        Object_finalize  -> "objectFinalize",
-        Object_notify    -> "objectNotify",
-        Object_notifyAll -> "objectNotifyAll",
-        Object_equals    -> "objectEquals",
-        Object_hashCode  -> "objectHashCode",
-        Array_clone      -> "objectClone"
-      )
-
-      def addN(clazz: Symbol, meth: TermName, helperName: String): Unit = {
-        for (sym <- getMemberMethod(clazz, meth).alternatives)
-          m += sym -> helperName
-      }
-      def addS(clazz: Symbol, meth: String, helperName: String): Unit =
-        addN(clazz, newTermName(meth), helperName)
-
-      for (cls <- Seq(CharSequenceClass, StringClass, NumberClass) ++ HijackedBoxedClasses)
-        addN(cls, nme.toString_, "objectToString")
-
-      addS(CharSequenceClass, "length", "charSequenceLength")
-      addS(CharSequenceClass, "charAt", "charSequenceCharAt")
-      addS(CharSequenceClass, "subSequence", "charSequenceSubSequence")
-
-      addS(ComparableClass, "compareTo", "comparableCompareTo")
-
-      for (clazz <- StringClass +: HijackedBoxedClasses) {
-        addN(clazz, nme.equals_, "objectEquals")
-        addN(clazz, nme.hashCode_, "objectHashCode")
-        if (clazz != BoxedUnitClass)
-          addS(clazz, "compareTo", "comparableCompareTo")
-      }
-
-      addS(BoxedBooleanClass, "booleanValue", "booleanBooleanValue")
-
-      for (clazz <- NumberClass +: HijackedNumberClasses) {
-        for (pref <- Seq("byte", "short", "int", "long", "float", "double")) {
-          val meth = pref+"Value"
-          addS(clazz, meth, "number"+meth.capitalize)
-          // example: "intValue" -> "numberIntValue"
-        }
-      }
-
-      addS(BoxedFloatClass, "isNaN", "isNaN")
-      addS(BoxedDoubleClass, "isNaN", "isNaN")
-
-      addS(BoxedFloatClass, "isInfinite", "isInfinite")
-      addS(BoxedDoubleClass, "isInfinite", "isInfinite")
-
-      m.toMap
-    }
-
-    private lazy val CharSequenceClass = requiredClass[java.lang.CharSequence]
 
     /** Gen JS code for a conversion between primitive value types */
     def genConversion(from: TypeKind, to: TypeKind, value: js.Tree)(
@@ -2284,8 +2221,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               rtemp,
               js.If(js.BinaryOp(js.BinaryOp.===, ltemp.ref, js.Null()),
                   js.BinaryOp(js.BinaryOp.===, rtemp.ref, js.Null()),
-                  js.CallHelper("objectEquals", ltemp.ref, rtemp.ref)(
-                  jstpe.BooleanType))(jstpe.BooleanType))
+                  genApplyMethod(ltemp.ref, ltpe, Object_equals, List(rtemp.ref)))(
+                  jstpe.BooleanType))
         }
       }
     }
@@ -2560,7 +2497,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               case nme.length =>
                 genRTCall(currentRun.runDefinitions.arrayLengthMethod, callTrg)
               case nme.clone_ =>
-                js.CallHelper("objectClone", callTrg)(jstpe.AnyType)
+                genApplyMethod(callTrg, receiver.tpe, Object_clone, arguments)
             }
           }, {
             callStatement
@@ -2580,22 +2517,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.BinaryOp(js.BinaryOp.===,
                 js.UnaryOp(js.UnaryOp.typeof, callTrg),
                 js.StringLiteral(primTypeOf)), {
-            val helper = MethodWithHelperInEnv.get(implMethodSym)
-            if (helper.isDefined) {
-              // This method has a helper, call it
-              js.CallHelper(helper.get, callTrg :: arguments:_*)(
-                  toIRType(implMethodSym.tpe.resultType))
-            } else if (implMethodSym.owner == ObjectClass) {
-              /* If we end up here, we have a call to a method in
-               * java.lang.Object we cannot support (such as wait).
-               * Calls like this only fail reflectively at compile time because
-               * some of them exist in the Scala stdlib. DCE will issue a
-               * warning in any case.
-               */
-              currentUnit.error(pos,
-                  s"""You tried to call ${implMethodSym.name} on AnyRef reflectively, but this
-                     |method does not make sense in Scala.js. You may not call it""".stripMargin)
-              js.Undefined()
+            if (implMethodSym.owner == ObjectClass) {
+              // If the method is defined on Object, we can call it normally.
+              genApplyMethod(callTrg, receiver.tpe, implMethodSym, arguments)
             } else {
               if (primTypeOf == "string") {
                 val (rtModuleClass, methodIdent) =

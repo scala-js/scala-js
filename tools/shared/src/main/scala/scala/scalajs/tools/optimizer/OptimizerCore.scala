@@ -448,16 +448,6 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case GetClass(expr) =>
         GetClass(transformExpr(expr))
 
-      case CallHelper("objectEquals", List(lhs, rhs)) =>
-        trampoline {
-          pretransformExprs(lhs, rhs) { (tlhs, trhs) =>
-            TailCalls.done(foldObjectEquals(tlhs, trhs))
-          }
-        }
-
-      case CallHelper(helperName, args) =>
-        CallHelper(helperName, args.map(transformExpr))(tree.tpe)
-
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -1046,7 +1036,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           cont(PreTransTree(Block(
               finishTransformStat(treceiver),
               CallHelper("throwNullPointerException")(NothingType))))
-        case ClassType(cls) =>
+        case ClassType(cls)
+            if !Definitions.HijackedClasses.contains(cls) &&
+               !Definitions.AncestorsOfHijackedClasses.contains(cls) =>
           if (isReflProxyName(methodName)) {
             // Never inline reflective proxies
             treeNotInlined
@@ -1098,11 +1090,16 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             }
           }
         case _ =>
-          /* Only AnyType should still happen here (if it is a reflective
-           * call), if the IR is well typed. But in any case we're not going
-           * to crash now, and instead just not inline the thing.
-           */
-          treeNotInlined
+          methodName match {
+            case "equals__O__Z" =>
+              val List(arg) = args
+              pretransformExpr(arg) { targ =>
+                cont(PreTransTree(foldObjectEquals(treceiver, targ)))
+              }
+
+            case _ =>
+              treeNotInlined
+          }
       }
     }
   }
@@ -1344,6 +1341,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
 
+    def firstArgAsRTLong =
+      AsInstanceOf(newArgs.head, ClassType(LongImpl.RuntimeLongClass))
+
     (code: @switch) match {
       // java.lang.System
 
@@ -1361,19 +1361,19 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       // java.lang.Long
 
       case LongBitCount =>
-        contTree(Apply(newArgs.head, LongImpl.bitCount, Nil)(IntType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.bitCount, Nil)(IntType))
       case LongSignum =>
-        contTree(Apply(newArgs.head, LongImpl.signum, Nil)(LongType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.signum, Nil)(LongType))
       case LongLeading0s =>
-        contTree(Apply(newArgs.head, LongImpl.numberOfLeadingZeros, Nil)(IntType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.numberOfLeadingZeros, Nil)(IntType))
       case LongTrailing0s =>
-        contTree(Apply(newArgs.head, LongImpl.numberOfTrailingZeros, Nil)(IntType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.numberOfTrailingZeros, Nil)(IntType))
       case LongToBinStr =>
-        contTree(Apply(newArgs.head, LongImpl.toBinaryString, Nil)(StringClassType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.toBinaryString, Nil)(StringClassType))
       case LongToHexStr =>
-        contTree(Apply(newArgs.head, LongImpl.toHexString, Nil)(StringClassType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.toHexString, Nil)(StringClassType))
       case LongToOctalStr =>
-        contTree(Apply(newArgs.head, LongImpl.toOctalString, Nil)(StringClassType))
+        contTree(Apply(firstArgAsRTLong, LongImpl.toOctalString, Nil)(StringClassType))
 
       // TypedArray conversions
 
@@ -2454,6 +2454,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     val EqualsMethod = "equals__O__Z"
 
+    def treeNotInlined =
+      Apply(finishTransformExpr(tlhs), Ident(EqualsMethod),
+          List(finishTransformExpr(trhs)))(BooleanType)
+
     tlhs.tpe.base match {
       case NothingType =>
         finishTransformExpr(tlhs)
@@ -2479,15 +2483,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 trhs)
 
           case _ if AncestorsOfHijackedClasses.contains(lhsClassName) =>
-            CallHelper("objectEquals",
-                finishTransformExpr(tlhs),
-                finishTransformExpr(trhs))(BooleanType)
+            treeNotInlined
 
           case _ =>
-            def treeNotInlined =
-              Apply(finishTransformExpr(tlhs), Ident(EqualsMethod),
-                  List(finishTransformExpr(trhs)))(BooleanType)
-
             val impls =
               if (tlhs.tpe.isExact) staticCall(lhsClassName, EqualsMethod).toList
               else dynamicCall(lhsClassName, EqualsMethod)
@@ -2523,9 +2521,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             finishTransformExpr(trhs))(BooleanType)
 
       case _ =>
-        CallHelper("objectEquals",
-            finishTransformExpr(tlhs),
-            finishTransformExpr(trhs))(BooleanType)
+        treeNotInlined
     }
   }
 
@@ -3498,48 +3494,9 @@ private[optimizer] object OptimizerCore {
         case ClassOf(cls) =>
           addAccessedClassData(cls)
 
-        case CallHelper(helper, receiver :: _) =>
-          import Definitions._
-          HelperTargets.get(helper) foreach { method =>
-            receiver.tpe match {
-              case AnyType =>
-                addCalledMethod(ObjectClass, method)
-              case ClassType(cls) =>
-                if (!HijackedClasses.contains(cls) || cls == BoxedLongClass)
-                  addCalledMethod(cls, method)
-              case _ =>
-            }
-          }
-
         case _ =>
       }
       super.traverse(tree)
-    }
-
-    private val HelperTargets = {
-      import Definitions._
-      Map[String, String](
-        "objectToString"  -> "toString__T",
-        "objectClone"     -> "clone__O",
-        "objectFinalize"  -> "finalize__V",
-        "objectNotify"    -> "notify__V",
-        "objectNotifyAll" -> "notifyAll__V",
-        "objectEquals"    -> "equals__O__Z",
-        "objectHashCode"  -> "hashCode__I",
-
-        "charSequenceLength"      -> "length__I",
-        "charSequenceCharAt"      -> "charAt__I__C",
-        "charSequenceSubSequence" -> s"subSequence__I__I__$CharSequenceClass",
-
-        "comparableCompareTo" -> "compareTo__O__I",
-
-        "numberByteValue"   -> "byteValue__B",
-        "numberShortValue"  -> "shortValue__S",
-        "numberIntValue"    -> "intValue__I",
-        "numberLongValue"   -> "longValue__J",
-        "numberFloatValue"  -> "floatValue__F",
-        "numberDoubleValue" -> "doubleValue__D"
-      )
     }
   }
 
