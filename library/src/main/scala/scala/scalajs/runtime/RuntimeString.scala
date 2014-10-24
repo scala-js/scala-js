@@ -31,6 +31,18 @@ private[runtime] object RuntimeString {
     }
   }
 
+  def hashCode(thiz: String): Int = {
+    var res = 0
+    var mul = 1 // holds pow(31, length-i-1)
+    var i = thiz.length-1
+    while (i >= 0) {
+      res += thiz.charAt(i) * mul
+      mul *= 31
+      i -= 1
+    }
+    res
+  }
+
   @inline
   def compareTo(thiz: String, anotherString: String): Int = {
     if (thiz.equals(anotherString)) 0

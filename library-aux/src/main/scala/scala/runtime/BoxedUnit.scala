@@ -1,11 +1,15 @@
 package scala.runtime
 
+/* This is a hijacked class. Its only instance is the value 'undefined'.
+ * Constructors are not emitted.
+ */
 class BoxedUnit private {
-  override def equals(that: Any): Boolean = sys.error("stub")
+  @inline override def equals(that: Any): Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
-  override def hashCode(): Int = sys.error("stub")
+  @inline override def hashCode(): Int = 0
 
-  override def toString(): String = sys.error("stub")
+  @inline override def toString(): String = "undefined"
 }
 
 object BoxedUnit {

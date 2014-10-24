@@ -10,7 +10,7 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
   override def compareTo(that: Character): Int =
-    if (value == that.value) 0 else if (value < that.value) -1 else 1
+    Character.compare(charValue, that.charValue)
 
   override def toString(): String =
     Character.toString(value)
@@ -255,6 +255,9 @@ object Character {
   //def reverseBytes(ch: scala.Char): scala.Char
 
   @inline def toString(c: scala.Char) = js.String.fromCharCode(c.toInt)
+
+  @inline def compare(x: scala.Char, y: scala.Char): scala.Int =
+    x - y
 
   // Based on Unicode 7.0.0
   private[this] lazy val reUnicodeIdentStart =

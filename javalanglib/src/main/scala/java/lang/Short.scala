@@ -1,24 +1,33 @@
 package java.lang
 
-import scala.scalajs.js
+/* This is a hijacked class. Its instances are primitive numbers.
+ * Constructors are not emitted.
+ */
+final class Short private () extends Number with Comparable[Short] {
 
-// This class is not emitted, but we need to define its members correctly
-final class Short(value: scala.Short) extends Number with Comparable[Short] {
+  def this(value: scala.Short) = this()
+  def this(s: String) = this()
 
-  def this(s: String) = this(Short.parseShort(s))
+  @inline override def shortValue(): scala.Short =
+    this.asInstanceOf[scala.Short]
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline override def byteValue(): scala.Byte = shortValue.toByte
+  @inline def intValue(): scala.Int = shortValue.toInt
+  @inline def longValue(): scala.Long = shortValue.toLong
+  @inline def floatValue(): scala.Float = shortValue.toFloat
+  @inline def doubleValue(): scala.Double = shortValue.toDouble
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline override def equals(that: Any): scala.Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
-  override def compareTo(that: Short): Int = sys.error("stub")
+  @inline override def hashCode(): Int =
+    shortValue
 
-  override def toString(): String = sys.error("stub")
+  @inline override def compareTo(that: Short): Int =
+    Short.compare(shortValue, that.shortValue)
+
+  @inline override def toString(): String =
+    Short.toString(shortValue)
 
 }
 
@@ -53,7 +62,11 @@ object Short {
       r.toShort
   }
 
-  @inline def toString(s: scala.Short): String = s.toString
+  @inline def toString(s: scala.Short): String =
+    "" + s
+
+  @inline def compare(x: scala.Short, y: scala.Short): scala.Int =
+    x - y
 
   def reverseBytes(i: scala.Short): scala.Short =
     (((i >>> 8) & 0xff) + ((i & 0xff) << 8)).toShort

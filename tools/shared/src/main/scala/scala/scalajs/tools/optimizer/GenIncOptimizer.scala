@@ -116,7 +116,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
       classInfo <- analyzer.classInfos.values
       if classInfo.isNeededAtAll
     } {
-      if (classInfo.hasInstantiation && classInfo.isAnySubclassInstantiated)
+      if (classInfo.isClass && classInfo.isAnySubclassInstantiated)
         CollOps.put(neededClasses, classInfo.encodedName, classInfo)
       else if (classInfo.isImplClass)
         CollOps.put(neededTraitImpls, classInfo.encodedName, classInfo)

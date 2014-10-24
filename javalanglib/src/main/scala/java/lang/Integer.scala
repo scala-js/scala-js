@@ -2,23 +2,34 @@ package java.lang
 
 import scala.scalajs.js
 
-// This class is not emitted, but we need to define its members correctly
-final class Integer(value: scala.Int) extends Number with Comparable[Integer] {
+/* This is a hijacked class. Its instances are primitive numbers.
+ * Constructors are not emitted.
+ */
+final class Integer private () extends Number with Comparable[Integer] {
 
-  def this(s: String) = this(Integer.parseInt(s))
+  def this(value: scala.Int) = this()
+  def this(s: String) = this()
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline def intValue(): scala.Int =
+    this.asInstanceOf[scala.Int]
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline override def byteValue(): scala.Byte = intValue.toByte
+  @inline override def shortValue(): scala.Short = intValue.toShort
+  @inline def longValue(): scala.Long = intValue.toLong
+  @inline def floatValue(): scala.Float = intValue.toFloat
+  @inline def doubleValue(): scala.Double = intValue.toDouble
 
-  override def compareTo(that: Integer): Int = sys.error("stub")
+  @inline override def equals(that: Any): scala.Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
-  override def toString(): String = sys.error("stub")
+  @inline override def hashCode(): Int =
+    intValue
+
+  @inline override def compareTo(that: Integer): Int =
+    Integer.compare(intValue, that.intValue)
+
+  @inline override def toString(): String =
+    Integer.toString(intValue)
 
 }
 
@@ -63,7 +74,11 @@ object Integer {
     }
   }
 
-  @inline def toString(i: scala.Int): String = i.toString
+  @inline def toString(i: scala.Int): String =
+    "" + i
+
+  @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
+    if (x == y) 0 else if (x < y) -1 else 1
 
   def bitCount(i: scala.Int): scala.Int = {
     // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel

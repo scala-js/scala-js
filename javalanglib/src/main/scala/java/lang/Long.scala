@@ -4,23 +4,35 @@ import scala.annotation.tailrec
 
 import scala.scalajs.js
 
-// This class is not emitted, but we need to define its members correctly
-final class Long(value: scala.Long) extends Number with Comparable[Long] {
+/* This is a hijacked class. Its instances are the representation of scala.Longs.
+ * Constructors are not emitted.
+ */
+final class Long private () extends Number with Comparable[Long] {
+  def this(value: scala.Long) = this()
+  def this(s: String) = this()
 
-  def this(s: String) = this(Long.parseLong(s))
+  @inline def longValue(): scala.Long =
+    this.asInstanceOf[scala.Long]
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline override def byteValue(): scala.Byte = longValue.toByte
+  @inline override def shortValue(): scala.Short = longValue.toShort
+  @inline def intValue(): scala.Int = longValue.toInt
+  @inline def floatValue(): scala.Float = longValue.toFloat
+  @inline def doubleValue(): scala.Double = longValue.toDouble
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline override def equals(that: Any): scala.Boolean = that match {
+    case that: Long => longValue == that.longValue
+    case _          => false
+  }
 
-  override def compareTo(that: Long): Int = sys.error("stub")
+  @inline override def hashCode(): Int =
+    (longValue ^ (longValue >>> 32)).toInt
 
-  override def toString(): String = sys.error("stub")
+  @inline override def compareTo(that: Long): Int =
+    Long.compare(longValue, that.longValue)
+
+  @inline override def toString(): String =
+    Long.toString(longValue)
 
 }
 
@@ -73,7 +85,34 @@ object Long {
     }
   }
 
-  @inline def toString(l: scala.Long): String = l.toString
+  def toString(l: scala.Long): String = {
+    if (l == 0L) "0"
+    // Check for MinValue, because it is not negatable
+    else if (l == MIN_VALUE) "-9223372036854775808"
+    else if (l < 0L) "-" + toString(-l)
+    else {
+      @tailrec
+      @inline
+      def toString0(v: scala.Long, acc: String): String = {
+        val quot = v / 1000000000L // 9 zeros
+        val rem  = v % 1000000000L
+
+        val digits = rem.toInt.toString
+
+        if (quot == 0L) {
+          digits + acc
+        } else {
+          val padding = "000000000".substring(digits.length) // (9 - digits.length) zeros
+          toString0(quot, padding + digits + acc)
+        }
+      }
+
+      toString0(l, "")
+    }
+  }
+
+  @inline def compare(x: scala.Long, y: scala.Long): scala.Int =
+    if (x == y) 0 else if (x < y) -1 else 1
 
   def bitCount(i: scala.Long): scala.Int = {
     val lo = i.toInt

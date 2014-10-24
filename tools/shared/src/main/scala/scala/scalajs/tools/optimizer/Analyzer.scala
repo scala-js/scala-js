@@ -14,7 +14,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 import scala.scalajs.ir
-import ir.{ClassKind, Infos}
+import ir.{ClassKind, Definitions, Infos}
 
 import scala.scalajs.tools.sem._
 import scala.scalajs.tools.javascript.LongImpl
@@ -73,11 +73,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   case object FromCore extends From
   case object FromExports extends From
   case object FromManual extends From
-
-  private val HijackedClassNames = Set(
-      "sr_BoxedUnit", "jl_Boolean", "jl_Byte", "jl_Short", "jl_Integer",
-      "jl_Long", "jl_Float", "jl_Double", "T"
-  )
 
   var allAvailable: Boolean = true
 
@@ -169,8 +164,13 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     for (method <- LongImpl.AllModuleMethods)
       RTLongModuleClass.callMethod(method)
 
-    for (hijacked <- HijackedClassNames)
-      lookupClass(hijacked).accessData()
+    if (isBeforeOptimizer) {
+      for (hijacked <- Definitions.HijackedClasses)
+        lookupClass(hijacked).instantiated()
+    } else {
+      for (hijacked <- Definitions.HijackedClasses)
+        lookupClass(hijacked).accessData()
+    }
   }
 
   def reachManually(info: ManualReachability) = {
@@ -200,12 +200,12 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val isInterface = data.kind == ClassKind.Interface
     val isImplClass = data.kind == ClassKind.TraitImpl
     val isRawJSType = data.kind == ClassKind.RawJSType
-    val isHijackedClass = HijackedClassNames.contains(encodedName)
+    val isHijackedClass = data.kind == ClassKind.HijackedClass
     val isClass = !isInterface && !isImplClass && !isRawJSType
     val isExported = data.isExported
 
-    val hasInstantiation = isClass && !isHijackedClass
     val hasData = !isImplClass
+    val hasMoreThanData = isClass && !isHijackedClass
 
     var superClass: ClassInfo = _
     val ancestors = mutable.ListBuffer.empty[ClassInfo]
@@ -218,8 +218,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       if (data.superClass != "")
         superClass = lookupClass(data.superClass)
       ancestors ++= data.ancestors.map(lookupClass)
-      if (encodedName == LongImpl.RuntimeLongClass)
-        ancestors += lookupClass(ir.Definitions.BoxedLongClass)
       for (ancestor <- ancestors)
         ancestor.descendants += this
     }
@@ -307,7 +305,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def instantiated()(implicit from: From): Unit = {
-      if (!isInstantiated && hasInstantiation) {
+      if (!isInstantiated && isClass) {
         logger.debugIndent(s"$this.isInstantiated = true") {
           isInstantiated = true
           instantiatedFrom = Some(from)
@@ -320,7 +318,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     private def subclassInstantiated()(implicit from: From): Unit = {
-      if (!isAnySubclassInstantiated && hasInstantiation) {
+      if (!isAnySubclassInstantiated && isClass) {
         logger.debugIndent(s"$this.isAnySubclassInstantiated = true") {
           isAnySubclassInstantiated = true
           if (instantiatedFrom.isEmpty)

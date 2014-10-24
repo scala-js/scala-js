@@ -179,7 +179,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  * Raw JS type (<: js.Any) -> `genRawJSClassData()`
      *  * Interface               -> `genInterface()`
      *  * Implementation class    -> `genImplClass()`
-     *  * Hijacked boxed class    -> `genHijackedBoxedClassData()`
      *  * Normal class            -> `genClass()`
      */
     override def apply(cunit: CompilationUnit) {
@@ -246,8 +245,6 @@ abstract class GenJSCode extends plugins.PluginComponent
                 genInterface(cd)
               } else if (sym.isImplClass) {
                 genImplClass(cd)
-              } else if (isHijackedBoxedClass(sym)) {
-                genHijackedBoxedClassData(cd)
               } else {
                 genClass(cd)
               }
@@ -284,6 +281,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       assert(sym.superClass != NoSymbol, sym)
 
       val classIdent = encodeClassFullNameIdent(sym)
+      val isHijacked = isHijackedBoxedClass(sym)
 
       // Optimizer hints
 
@@ -304,7 +302,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val generatedMembers = new ListBuffer[js.Tree]
       val exportedSymbols = new ListBuffer[Symbol]
 
-      generatedMembers ++= genClassFields(cd)
+      if (!isHijacked)
+        generatedMembers ++= genClassFields(cd)
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -357,16 +356,23 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       // Generate the reflective call proxies (where required)
-      val reflProxies = genReflCallProxies(sym)
+      val reflProxies =
+        if (isHijacked) Nil
+        else genReflCallProxies(sym)
 
       // Hashed definitions of the class
       val hashedDefs =
         Hashers.hashDefs(generatedMembers.toList ++ exports ++ reflProxies)
 
       // The complete class definition
+      val kind =
+        if (sym.isModuleClass) ClassKind.ModuleClass
+        else if (isHijacked) ClassKind.HijackedClass
+        else ClassKind.Class
+
       val classDefinition = js.ClassDef(
           classIdent,
-          if (sym.isModuleClass) ClassKind.ModuleClass else ClassKind.Class,
+          kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
           sym.ancestors.map(encodeClassFullNameIdent),
           hashedDefs)
@@ -390,18 +396,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val classIdent = encodeClassFullNameIdent(sym)
       js.ClassDef(classIdent, ClassKind.RawJSType, None, Nil, Nil)
-    }
-
-    // Generate the class data of a hijacked boxed class -----------------------
-
-    /** Gen the IR ClassDef for a hijacked boxed class.
-     */
-    def genHijackedBoxedClassData(cd: ClassDef): js.ClassDef = {
-      val sym = cd.symbol
-      implicit val pos = sym.pos
-      val classIdent = encodeClassFullNameIdent(sym)
-      js.ClassDef(classIdent, ClassKind.HijackedClass, None,
-          sym.ancestors.map(encodeClassFullNameIdent), Nil)
     }
 
     // Generate an interface ---------------------------------------------------
@@ -497,6 +491,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Some methods are not emitted at all:
      *  * Primitives, since they are never actually called
      *  * Abstract methods
+     *  * Constructors of hijacked classes
      *  * Trivial constructors, which only call their super constructor, with
      *    the same signature, and the same arguments. The JVM needs these
      *    constructors, but not JavaScript. Since there are lots of them, we
@@ -547,6 +542,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else if (isTrivialConstructor(sym, params, rhs)) {
           createInfoBuilder().callsMethod(sym.owner.superClass, methodIdent)
+          None
+        } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
         } else {
           withScopedVars(

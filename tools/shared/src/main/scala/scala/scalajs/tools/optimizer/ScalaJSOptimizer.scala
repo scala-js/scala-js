@@ -299,7 +299,7 @@ class ScalaJSOptimizer(
         } else {
           addReachableMethods(classEmitter.genTraitImplMethod)
         }
-      } else if (!classInfo.hasInstantiation) {
+      } else if (!classInfo.hasMoreThanData) {
         // there is only the data anyway
         addTree(d.wholeClass.getOrElseUpdate(
             classEmitter.genClassDef(classDef)))
