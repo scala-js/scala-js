@@ -11,11 +11,14 @@ trait PhysicalFileSystem extends FileSystem {
 
   type File = java.io.File
 
+  val DummyVersion: String = "DUMMY_FILE"
+
   def isDirectory(f: File): Boolean = f.isDirectory
   def isFile(f: File): Boolean = f.isFile
   def isJSFile(f: File): Boolean = f.isFile && f.getName.endsWith(".js")
   def isIRFile(f: File): Boolean = f.isFile && f.getName.endsWith(".sjsir")
   def isJARFile(f: File): Boolean = f.isFile && f.getName.endsWith(".jar")
+  def exists(f: File): Boolean = f.exists
 
   def getName(f: File): String = f.getName
   def getAbsolutePath(f: File): String = f.getAbsolutePath

@@ -25,12 +25,14 @@ trait ClasspathElementsTraverser extends JarTraverser
    *  Returns the accumulated version
    */
   private def readEntriesInClasspathElement(element: File): String = {
-    if (isDirectory(element))
+    if (!exists(element))
+      getDummyVersion(element)
+    else if (isDirectory(element))
       traverseDir(element)
-    else if (isJARFile(element)) {
+    else if (isJARFile(element))
       traverseJar(element)
-    } else
-      sys.error(s"$element (in classpath) is neither JAR or directory")
+    else
+      sys.error(s"$element (in classpath) exists and is neither JAR or directory")
   }
 
 }
