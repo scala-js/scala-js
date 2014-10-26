@@ -382,6 +382,9 @@ object Printers {
         case Unbox(expr, charCode) =>
           print(expr, ".asInstanceOf[", charCode, "]")
 
+        case GetClass(expr) =>
+          print(expr, ".getClass()")
+
         case CallHelper(helper, args) =>
           print(helper)
           printArgs(args)

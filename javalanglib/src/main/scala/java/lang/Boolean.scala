@@ -1,19 +1,29 @@
 package java.lang
 
-// This class is not emitted, but we need to define its members correctly
-final class Boolean(value: scala.Boolean) extends Comparable[Boolean] {
+import scala.scalajs.js
 
-  def this(v: String) = this(Boolean.parseBoolean(v))
+/* This is a hijacked class. Its instances are primitive booleans.
+ * Constructors are not emitted.
+ */
+final class Boolean private () extends Comparable[Boolean] {
 
-  def booleanValue(): scala.Boolean = sys.error("stub")
+  def this(value: scala.Boolean) = this()
+  def this(v: String) = this()
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline def booleanValue(): scala.Boolean =
+    this.asInstanceOf[scala.Boolean]
 
-  override def compareTo(that: Boolean): Int = sys.error("stub")
+  @inline override def equals(that: Any): scala.Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
-  override def toString(): String = sys.error("stub")
+  @inline override def hashCode(): Int =
+    if (booleanValue) 1231 else 1237
 
-  override def hashCode(): Int = sys.error("stub")
+  @inline override def compareTo(that: Boolean): Int =
+    Boolean.compare(booleanValue, that.booleanValue)
+
+  @inline override def toString(): String =
+    Boolean.toString(booleanValue)
 
 }
 
@@ -43,5 +53,9 @@ object Boolean {
   @inline def parseBoolean(s: String): scala.Boolean =
     (s != null) && s.equalsIgnoreCase("true")
 
-  @inline def toString(b: scala.Boolean): String = b.toString
+  @inline def toString(b: scala.Boolean): String =
+    "" + b
+
+  @inline def compare(x: scala.Boolean, y: scala.Boolean): scala.Int =
+    if (x == y) 0 else if (x) 1 else -1
 }

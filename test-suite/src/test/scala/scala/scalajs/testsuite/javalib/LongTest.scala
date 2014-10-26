@@ -86,6 +86,14 @@ object LongTest extends JasmineTest {
       test("-90000", -0x90000L)
     }
 
+    it("should implement toString") {
+      expect(Int.MaxValue.toLong.toString).toEqual("2147483647")
+      expect((-50L).toString).toEqual("-50")
+      expect((-1000000000L).toString).toEqual("-1000000000")
+      expect((Int.MaxValue.toLong+1L).toString).toEqual("2147483648")
+      expect(Int.MinValue.toLong.toString).toEqual("-2147483648")
+    }
+
     it("should implement toBinaryString") {
       expect(JLong.toBinaryString(              0L)).toEqual("0")
       expect(JLong.toBinaryString(             -1L)).toEqual("1111111111111111111111111111111111111111111111111111111111111111")

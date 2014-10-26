@@ -115,6 +115,9 @@ object Traversers {
       case Unbox(expr, charCode) =>
         traverse(expr)
 
+      case GetClass(expr) =>
+        traverse(expr)
+
       case CallHelper(helper, args) =>
         args foreach traverse
 

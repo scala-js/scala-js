@@ -161,7 +161,7 @@ object JavaLangObject {
           {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
-                CallHelper("objectGetClass", This()(ThisType))(ClassType(ClassClass)),
+                GetClass(This()(ThisType)),
                 Ident("getName__T"), Nil)(ClassType(StringClass)),
               // +
               StringLiteral("@")),

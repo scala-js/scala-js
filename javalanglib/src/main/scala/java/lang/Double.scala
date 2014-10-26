@@ -1,28 +1,45 @@
 package java.lang
 
-import scala.scalajs.js
+/* This is a hijacked class. Its instances are primitive numbers.
+ * Constructors are not emitted.
+ */
+final class Double private () extends Number with Comparable[Double] {
 
-// This class is not emitted, but we need to define its members correctly
-final class Double(private val value: scala.Double)
-    extends Number with Comparable[Double] {
+  def this(value: scala.Double) = this()
+  def this(s: String) = this()
 
-  def this(s: String) = this(Double.parseDouble(s))
+  @inline def doubleValue(): scala.Double =
+    this.asInstanceOf[scala.Double]
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline override def byteValue(): scala.Byte = doubleValue.toByte
+  @inline override def shortValue(): scala.Short = doubleValue.toShort
+  @inline def intValue(): scala.Int = doubleValue.toInt
+  @inline def longValue(): scala.Long = doubleValue.toLong
+  @inline def floatValue(): scala.Float = doubleValue.toFloat
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  override def equals(that: Any): scala.Boolean = that match {
+    case that: Double =>
+      val a = doubleValue
+      val b = that.doubleValue
+      (a == b) || (Double.isNaN(a) && Double.isNaN(b))
+    case _ =>
+      false
+  }
 
-  override def compareTo(that: Double): Int = sys.error("stub")
+  @inline override def hashCode(): Int =
+    intValue
 
-  override def toString(): String = sys.error("stub")
+  @inline override def compareTo(that: Double): Int =
+    Double.compare(doubleValue, that.doubleValue)
 
-  def isNaN(): scala.Boolean = sys.error("stub")
-  def isInfinite(): scala.Boolean = sys.error("stub")
+  @inline override def toString(): String =
+    Double.toString(doubleValue)
+
+  @inline def isNaN(): scala.Boolean =
+    Double.isNaN(doubleValue)
+
+  @inline def isInfinite(): scala.Boolean =
+    Double.isInfinite(doubleValue)
 
 }
 
@@ -45,19 +62,28 @@ object Double {
   @inline def parseDouble(s: String): scala.Double =
     Float.parseFloat(s).toDouble
 
-  @inline def toString(d: scala.Double): String = d.toString
+  @inline def toString(d: scala.Double): String =
+    "" + d
 
-  @inline def compare(a: scala.Double, b: scala.Double): scala.Int = {
-    if (a == b) 0
-    else if (a < b) -1
-    else 1
+  def compare(a: scala.Double, b: scala.Double): scala.Int = {
+    // NaN must equal itself, and be greater than anything else
+    if (isNaN(a)) {
+      if (isNaN(b)) 0
+      else 1
+    } else if (isNaN(b)) {
+      -1
+    } else {
+      if (a == b) 0
+      else if (a < b) -1
+      else 1
+    }
   }
 
   @inline def isNaN(v: scala.Double): scala.Boolean =
-    valueOf(v).isNaN()
+    v != v
 
   @inline def isInfinite(v: scala.Double): scala.Boolean =
-    valueOf(v).isInfinite()
+    v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
   def longBitsToDouble(bits: scala.Long): scala.Double = sys.error("unimplemented")
   def doubleToLongBits(value: scala.Double): scala.Long = sys.error("unimplemented")

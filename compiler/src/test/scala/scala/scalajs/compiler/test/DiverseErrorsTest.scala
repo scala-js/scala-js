@@ -28,22 +28,4 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
 
   }
 
-  @Test
-  def noReflCallOnUndefinedObjectFun = {
-
-    """
-    class A {
-      type Waitable = Any { def wait(): Unit }
-      def foo(obj: Waitable) = obj.wait()
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:5: error: You tried to call wait on AnyRef reflectively, but this
-      |method does not make sense in Scala.js. You may not call it
-      |      def foo(obj: Waitable) = obj.wait()
-      |                                       ^
-    """
-
-  }
-
 }

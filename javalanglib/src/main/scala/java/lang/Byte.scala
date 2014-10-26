@@ -2,24 +2,34 @@ package java.lang
 
 import scala.scalajs.js
 
-// This class is not emitted, but we need to define its members correctly
-final class Byte(value: scala.Byte) extends Number with Comparable[Byte] {
+/* This is a hijacked class. Its instances are primitive numbers.
+ * Constructors are not emitted.
+ */
+final class Byte private () extends Number with Comparable[Byte] {
 
-  def this(s: String) = this(Byte.parseByte(s))
+  def this(value: scala.Byte) = this()
+  def this(s: String) = this()
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline override def byteValue(): scala.Byte =
+    this.asInstanceOf[scala.Byte]
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline override def shortValue(): scala.Short = byteValue.toShort
+  @inline def intValue(): scala.Int = byteValue.toInt
+  @inline def longValue(): scala.Long = byteValue.toLong
+  @inline def floatValue(): scala.Float = byteValue.toFloat
+  @inline def doubleValue(): scala.Double = byteValue.toDouble
 
-  override def compareTo(that: Byte): Int = sys.error("stub")
+  @inline override def equals(that: Any): scala.Boolean =
+    this eq that.asInstanceOf[AnyRef]
 
-  override def toString(): String = sys.error("stub")
+  @inline override def hashCode(): Int =
+    byteValue
 
+  @inline override def compareTo(that: Byte): Int =
+    Byte.compare(byteValue, that.byteValue)
+
+  @inline override def toString(): String =
+    Byte.toString(byteValue)
 }
 
 object Byte {
@@ -53,5 +63,9 @@ object Byte {
       r.toByte
   }
 
-  @inline def toString(b: scala.Byte): String = b.toString
+  @inline def toString(b: scala.Byte): String =
+    "" + b
+
+  @inline def compare(x: scala.Byte, y: scala.Byte): scala.Int =
+    x - y
 }

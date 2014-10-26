@@ -357,6 +357,10 @@ object Trees {
     }
   }
 
+  case class GetClass(expr: Tree)(implicit val pos: Position) extends Tree {
+    val tpe = ClassType(Definitions.ClassClass)
+  }
+
   case class CallHelper(helper: String, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   object CallHelper {

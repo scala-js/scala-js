@@ -2,26 +2,46 @@ package java.lang
 
 import scala.scalajs.js
 
-// This class is not emitted, but we need to define its members correctly
-final class Float(value: scala.Float) extends Number with Comparable[Float] {
+/* This is a hijacked class. Its instances are primitive numbers.
+ * Constructors are not emitted.
+ */
+final class Float private () extends Number with Comparable[Float] {
 
-  def this(s: String) = this(Float.parseFloat(s))
+  def this(value: scala.Float) = this()
+  def this(s: String) = this()
 
-  override def byteValue(): scala.Byte = sys.error("stub")
-  override def shortValue(): scala.Short = sys.error("stub")
-  def intValue(): scala.Int = sys.error("stub")
-  def longValue(): scala.Long = sys.error("stub")
-  def floatValue(): scala.Float = sys.error("stub")
-  def doubleValue(): scala.Double = sys.error("stub")
+  @inline def floatValue(): scala.Float =
+    this.asInstanceOf[scala.Float]
 
-  override def equals(that: Any): scala.Boolean = sys.error("stub")
+  @inline override def byteValue(): scala.Byte = floatValue.toByte
+  @inline override def shortValue(): scala.Short = floatValue.toShort
+  @inline def intValue(): scala.Int = floatValue.toInt
+  @inline def longValue(): scala.Long = floatValue.toLong
+  @inline def doubleValue(): scala.Double = floatValue.toDouble
 
-  override def compareTo(that: Float): Int = sys.error("stub")
+  override def equals(that: Any): scala.Boolean = that match {
+    case that: Double => // yes, Double
+      val a = doubleValue
+      val b = that.doubleValue
+      (a == b) || (Double.isNaN(a) && Double.isNaN(b))
+    case _ =>
+      false
+  }
 
-  override def toString(): String = sys.error("stub")
+  @inline override def hashCode(): Int =
+    intValue
 
-  def isNaN(): scala.Boolean = sys.error("stub")
-  def isInfinite(): scala.Boolean = sys.error("stub")
+  @inline override def compareTo(that: Float): Int =
+    Float.compare(floatValue, that.floatValue)
+
+  @inline override def toString(): String =
+    Float.toString(floatValue)
+
+  @inline def isNaN(): scala.Boolean =
+    Float.isNaN(floatValue)
+
+  @inline def isInfinite(): scala.Boolean =
+    Float.isInfinite(floatValue)
 
 }
 
@@ -58,19 +78,31 @@ object Float {
       throw new NumberFormatException(s"""For input string: "$s"""")
   }
 
-  @inline def toString(f: scala.Float): String = f.toString
+  @inline def toString(f: scala.Float): String =
+    "" + f
 
-  @inline def compare(a: scala.Float, b: scala.Float): scala.Int = {
-    if (a == b) 0
-    else if (a < b) -1
-    else 1
+  def compare(a: scala.Float, b: scala.Float): scala.Int = {
+    // NaN must equal itself, and be greater than anything else
+    if (isNaN(a)) {
+      if (isNaN(b)) 0
+      else 1
+    } else if (isNaN(b)) {
+      -1
+    } else {
+      if (a == b) 0
+      else if (a < b) -1
+      else 1
+    }
   }
 
+  @inline protected def equals(a: scala.Float, b: scala.Float): scala.Boolean =
+    a == b || (isNaN(a) && isNaN(b))
+
   @inline def isNaN(v: scala.Float): scala.Boolean =
-    valueOf(v).isNaN()
+    v != v
 
   @inline def isInfinite(v: scala.Float): scala.Boolean =
-    valueOf(v).isInfinite()
+    v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
   def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
   def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")

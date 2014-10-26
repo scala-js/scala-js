@@ -29,9 +29,10 @@ abstract class JSPrimitives {
   import jsDefinitions._
   import scalaPrimitives._
 
-  // Conversions from Scala types to JS types
-  val F2JS = 305     // FunctionN
-  val F2JSTHIS = 306 // ThisFunctionN
+  val GETCLASS = 301 // Object.getClass()
+
+  val F2JS = 305     // FunctionN to js.FunctionN
+  val F2JSTHIS = 306 // FunctionN to js.ThisFunction{N-1}
 
   val DYNNEW = 321 // Instantiate a new JavaScript object
 
@@ -76,6 +77,8 @@ abstract class JSPrimitives {
   private val scalaJSPrimitives = mutable.Map.empty[Symbol, Int]
 
   private def initWithPrimitives(addPrimitive: (Symbol, Int) => Unit): Unit = {
+    addPrimitive(Object_getClass, GETCLASS)
+
     for (i <- 0 to 22)
       addPrimitive(JSAny_fromFunction(i), F2JS)
     for (i <- 1 to 22)

@@ -45,9 +45,27 @@ object LongImpl {
   final val toInt    = "toInt"    + "__I"
   final val toDouble = "toDouble" + "__D"
 
-  def AllMethods = Set(
+  final val byteValue   = "byteValue__B"
+  final val shortValue  = "shortValue__S"
+  final val intValue    = "intValue__I"
+  final val longValue   = "longValue__J"
+  final val floatValue  = "floatValue__F"
+  final val doubleValue = "doubleValue__D"
+
+  final val equals_    = "equals__O__Z"
+  final val hashCode_  = "hashCode__I"
+  final val compareTo  = "compareTo__jl_Long__I"
+  final val compareToO = "compareTo__O__I"
+
+  private val OperatorMethods = Set(
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
       ===, !==, <, <=, >, >=, toInt, toDouble)
+
+  private val BoxedLongMethods = Set(
+      byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
+      equals_, hashCode_, compareTo, compareToO)
+
+  val AllMethods = OperatorMethods ++ BoxedLongMethods
 
   // Methods used for intrinsics
 
@@ -59,7 +77,7 @@ object LongImpl {
   final val toHexString           = "toHexString__T"
   final val toOctalString         = "toOctalString__T"
 
-  def AllIntrinsicMethods = Set(
+  val AllIntrinsicMethods = Set(
       bitCount, signum, numberOfLeadingZeros, numberOfTrailingZeros,
       toBinaryString, toHexString, toOctalString)
 
@@ -68,7 +86,7 @@ object LongImpl {
   final val initFromParts = "init___I__I__I"
   final val initFromInt   = "init___I"
 
-  def AllConstructors = Set(
+  val AllConstructors = Set(
       initFromParts, initFromInt)
 
   // Methods on the companion
@@ -77,7 +95,7 @@ object LongImpl {
 
   final val Zero = "Zero__sjsr_RuntimeLong"
 
-  def AllModuleMethods = Set(
+  val AllModuleMethods = Set(
       fromDouble, Zero)
 
   // Boldly copied from library/scala.scalajs.runtime.RuntimeLong

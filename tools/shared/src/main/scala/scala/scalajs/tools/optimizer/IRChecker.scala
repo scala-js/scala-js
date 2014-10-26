@@ -459,24 +459,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       case Apply(receiver, Ident(method, _), args) =>
         val receiverType = typecheckExpr(receiver, env)
-        if (!isReflProxyName(method)) {
-          receiverType match {
-            case ClassType(cls) =>
-              val clazz = lookupClass(cls)
-              if (!clazz.kind.isClass && clazz.kind != ClassKind.Interface) {
-                reportError(s"Cannot call Scala method $method of "+
-                    s"non-class $cls")
-              } else if (clazz.isAncestorOfHijackedClass) {
-                reportError(s"Cannot call Scala method $method on "+
-                    "ancestor of hijacked class $cls")
-              }
-            case NullType | NothingType =>
-              // always ok
-            case _ =>
-              reportError(s"Cannot call Scala method $method on "+
-                  s"non-class type $receiverType")
-          }
-        }
         checkApplyGeneric(method, s"$receiverType.$method", args,
             inTraitImpl = false)
 
@@ -571,19 +553,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Unbox(expr, _) =>
         typecheckExpr(expr, env)
 
-      case CallHelper(helper, args) =>
-        if (!HelperSignature.contains(helper)) {
-          reportError(s"Invalid helper $helper")
-          args.foreach(typecheckExpr(_, env))
-        } else {
-          val (params, resultType) = HelperSignature(helper)
-          if (args.size != params.size)
-            reportError(s"Arity mismatch: ${params.size} expected but ${args.size} found")
-          for ((actual, formal) <- args.zip(params))
-            typecheckExpect(actual, env, formal)
-          if (tree.tpe != resultType)
-            reportError(s"Helper $helper of type $resultType typed as ${tree.tpe}")
-        }
+      case GetClass(expr) =>
+        typecheckExpr(expr, env)
 
       // JavaScript expressions
 
@@ -730,41 +701,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       if (clazz.kind == ClassKind.RawJSType) AnyType
       else ClassType(encodedName)
     }
-  }
-
-  val HelperSignature: Map[String, (List[Type], Type)] = {
-    val StringClassType = ClassType(StringClass)
-    val ThrowableType = ClassType(ThrowableClass)
-    val CharSeqType = ClassType(CharSequenceClass)
-    val NumberType = ClassType(NumberClass)
-    Map(
-      ("objectToString" , List(AnyType) -> StringClassType),
-      ("objectGetClass" , List(AnyType) -> ClassType(ClassClass)),
-      ("objectClone"    , List(AnyType) -> AnyType),
-      ("objectFinalize" , List(AnyType) -> NoType),
-      ("objectNotify"   , List(AnyType) -> NoType),
-      ("objectNotifyAll", List(AnyType) -> NoType),
-      ("objectEquals"   , List(AnyType, AnyType) -> BooleanType),
-      ("objectHashCode" , List(AnyType) -> IntType),
-
-      ("charSequenceLength"     , List(CharSeqType) -> IntType),
-      ("charSequenceCharAt"     , List(CharSeqType, IntType) -> IntType),
-      ("charSequenceSubSequence", List(CharSeqType, IntType, IntType) -> CharSeqType),
-
-      ("comparableCompareTo", List(ClassType(ComparableClass), AnyType) -> IntType),
-
-      ("booleanBooleanValue", List(ClassType(BoxedBooleanClass)) -> BooleanType),
-
-      ("numberByteValue"  , List(NumberType) -> IntType),
-      ("numberShortValue" , List(NumberType) -> IntType),
-      ("numberIntValue"   , List(NumberType) -> IntType),
-      ("numberLongValue"  , List(NumberType) -> LongType),
-      ("numberFloatValue" , List(NumberType) -> DoubleType),
-      ("numberDoubleValue", List(NumberType) -> DoubleType),
-
-      ("isNaN"     , List(NumberType) -> BooleanType),
-      ("isInfinite", List(NumberType) -> BooleanType)
-    )
   }
 
   def arrayElemType(arrayType: ArrayType)(implicit ctx: ErrorContext): Type = {

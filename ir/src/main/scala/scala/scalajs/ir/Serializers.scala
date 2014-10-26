@@ -252,6 +252,10 @@ object Serializers {
           writeByte(TagUnbox)
           writeTree(expr); writeByte(charCode.toByte)
 
+        case GetClass(expr) =>
+          writeByte(TagGetClass)
+          writeTree(expr)
+
         case CallHelper(helper, args) =>
           writeByte(TagCallHelper)
           writeString(helper); writeTrees(args)
@@ -585,6 +589,7 @@ object Serializers {
         case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
         case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
         case TagUnbox          => Unbox(readTree(), readByte().toChar)
+        case TagGetClass       => GetClass(readTree())
         case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
 
         case TagJSNew                => JSNew(readTree(), readTrees())
