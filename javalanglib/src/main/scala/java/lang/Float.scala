@@ -1,7 +1,5 @@
 package java.lang
 
-import scala.scalajs.js
-
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
@@ -56,27 +54,12 @@ object Float {
   final val MIN_EXPONENT = -126
   final val SIZE = 32
 
-  private[this] lazy val floatStrPat = new js.RegExp("^" +
-      "[\\x00-\\x20]*"   + // optional whitespace
-      "[+-]?"            + // optional sign
-      "(NaN|Infinity|"   + // special cases
-       "(\\d+\\.?\\d*|"  + // literal w/  leading digit
-        "\\.\\d+)"       + // literal w/o leading digit
-       "([eE][+-]?\\d+)?"+ // optional exponent
-      ")[fFdD]?"         + // optional float / double specifier (ignored)
-      "[\\x00-\\x20]*"   + // optional whitespace
-      "$")
-
   @inline def valueOf(floatValue: scala.Float): Float = new Float(floatValue)
 
   @inline def valueOf(s: String): Float = valueOf(parseFloat(s))
 
-  def parseFloat(s: String): scala.Float = {
-    if (floatStrPat.test(s))
-      js.parseFloat(s).toFloat
-    else
-      throw new NumberFormatException(s"""For input string: "$s"""")
-  }
+  @inline def parseFloat(s: String): scala.Float =
+    Double.parseDouble(s).toFloat
 
   @inline def toString(f: scala.Float): String =
     "" + f
