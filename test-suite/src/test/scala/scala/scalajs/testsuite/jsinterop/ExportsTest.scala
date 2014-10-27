@@ -734,6 +734,16 @@ object ExportsTest extends JasmineTest {
       expect(foo.c).toEqual(3)
     }
 
+    it("should not export synthetic members with @JSExportAll - #1195") {
+      @JSExportAll
+      case class Foo(x: Int)
+
+      val foo = Foo(1).asInstanceOf[js.Dynamic]
+
+      expect(foo.x).toEqual(1)
+      expect(foo.copy).toBeUndefined
+    }
+
     it("should allow mutliple equivalent JSExport annotations") {
       class Foo {
         @JSExport

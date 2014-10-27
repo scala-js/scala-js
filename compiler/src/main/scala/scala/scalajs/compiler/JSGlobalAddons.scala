@@ -79,7 +79,8 @@ trait JSGlobalAddons extends JSDefinitions
 
       // Annotations for this member on the whole unit
       val unitAnnots = {
-        if (sym.isMethod && sym.isPublic && !sym.isConstructor)
+        if (sym.isMethod && sym.isPublic &&
+            !sym.isConstructor && !sym.isSynthetic)
           sym.owner.annotations.filter(_.symbol == JSExportAllAnnotation)
         else
           Nil
