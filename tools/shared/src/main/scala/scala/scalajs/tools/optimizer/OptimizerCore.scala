@@ -1099,6 +1099,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     case BooleanType     => Definitions.BoxedBooleanClass
     case IntType         => Definitions.BoxedIntegerClass
     case LongType        => Definitions.BoxedLongClass
+    case FloatType       => Definitions.BoxedFloatClass
     case DoubleType      => Definitions.BoxedDoubleClass
     case StringType      => Definitions.StringClass
     case ArrayType(_, _) => Definitions.ObjectClass
@@ -1828,14 +1829,20 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         }
       case DoubleToInt =>
         arg match {
-          case DoubleLiteral(v)        => IntLiteral(v.toInt)
           case _ if arg.tpe == IntType => arg
+          case NumberLiteral(v)        => IntLiteral(v.toInt)
           case _                       => default
+        }
+      case DoubleToFloat =>
+        arg match {
+          case _ if arg.tpe == FloatType => arg
+          case NumberLiteral(v)          => FloatLiteral(v.toFloat)
+          case _                         => default
         }
       case DoubleToLong =>
         arg match {
-          case DoubleLiteral(v)        => LongLiteral(v.toLong)
           case _ if arg.tpe == IntType => foldUnaryOp(IntToLong, arg)
+          case NumberLiteral(v)        => LongLiteral(v.toLong)
           case _                       => default
         }
       case _ =>
@@ -1849,7 +1856,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   private def literal_===(lhs: Literal, rhs: Literal): Boolean = {
     (lhs, rhs) match {
       case (IntLiteral(l), IntLiteral(r))         => l == r
-      case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => l == r
+      case (FloatLiteral(l), FloatLiteral(r))     => l == r
+      case (NumberLiteral(l), NumberLiteral(r))   => l == r
       case (LongLiteral(l), LongLiteral(r))       => l == r
       case (BooleanLiteral(l), BooleanLiteral(r)) => l == r
       case (StringLiteral(l), StringLiteral(r))   => l == r
@@ -2244,29 +2252,84 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           case _                   => default
         }
 
+      case Float_+ =>
+        (lhs, rhs) match {
+          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l + r)
+          case (FloatLiteral(0), _)               => rhs
+          case (_, FloatLiteral(_))               => foldBinaryOp(Float_+, rhs, lhs)
+
+          case (FloatLiteral(x),
+              BinaryOp(innerOp @ (Float_+ | Float_-), FloatLiteral(y), z)) =>
+            foldBinaryOp(innerOp, FloatLiteral(x+y), z)
+
+          case _ => default
+        }
+
+      case Float_- =>
+        (lhs, rhs) match {
+          case (_, FloatLiteral(r)) => foldBinaryOp(Float_+, lhs, FloatLiteral(-r))
+
+          case (FloatLiteral(x), BinaryOp(Float_+, FloatLiteral(y), z)) =>
+            foldBinaryOp(Float_-, FloatLiteral(x-y), z)
+          case (FloatLiteral(x), BinaryOp(Float_-, FloatLiteral(y), z)) =>
+            foldBinaryOp(Float_+, FloatLiteral(x-y), z)
+
+          case (_, BinaryOp(BinaryOp.Float_-, FloatLiteral(0), x)) =>
+            foldBinaryOp(Float_+, lhs, x)
+
+          case _ => default
+        }
+
+      case Float_* =>
+        (lhs, rhs) match {
+          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l * r)
+          case (_, FloatLiteral(_))               => foldBinaryOp(Float_*, rhs, lhs)
+
+          case (FloatLiteral(1), _)  => rhs
+          case (FloatLiteral(-1), _) => foldBinaryOp(Float_-, FloatLiteral(0), lhs)
+
+          case _ => default
+        }
+
+      case Float_/ =>
+        (lhs, rhs) match {
+          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l / r)
+
+          case (_, FloatLiteral(1))  => lhs
+          case (_, FloatLiteral(-1)) => foldBinaryOp(Float_-, FloatLiteral(0), lhs)
+
+          case _ => default
+        }
+
+      case Float_% =>
+        (lhs, rhs) match {
+          case (FloatLiteral(l), FloatLiteral(r)) => FloatLiteral(l % r)
+          case _                                  => default
+        }
+
       case Double_+ =>
         (lhs, rhs) match {
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l + r)
-          case (IntOrDoubleLit(0), _)                 => rhs
-          case (_, IntOrDoubleLit(_))                 => foldBinaryOp(Double_+, rhs, lhs)
+          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l + r)
+          case (NumberLiteral(0), _)                => rhs
+          case (_, NumberLiteral(_))                => foldBinaryOp(Double_+, rhs, lhs)
 
-          case (IntOrDoubleLit(x),
-              BinaryOp(innerOp @ (Double_+ | Double_-), IntOrDoubleLit(y), z)) =>
+          case (NumberLiteral(x),
+              BinaryOp(innerOp @ (Double_+ | Double_-), NumberLiteral(y), z)) =>
             foldBinaryOp(innerOp, DoubleLiteral(x+y), z)
 
-          case _                                      => default
+          case _ => default
         }
 
       case Double_- =>
         (lhs, rhs) match {
-          case (_, IntOrDoubleLit(r)) => foldBinaryOp(Double_+, lhs, DoubleLiteral(-r))
+          case (_, NumberLiteral(r)) => foldBinaryOp(Double_+, lhs, DoubleLiteral(-r))
 
-          case (IntOrDoubleLit(x), BinaryOp(Double_+, IntOrDoubleLit(y), z)) =>
+          case (NumberLiteral(x), BinaryOp(Double_+, NumberLiteral(y), z)) =>
             foldBinaryOp(Double_-, DoubleLiteral(x-y), z)
-          case (IntOrDoubleLit(x), BinaryOp(Double_-, IntOrDoubleLit(y), z)) =>
+          case (NumberLiteral(x), BinaryOp(Double_-, NumberLiteral(y), z)) =>
             foldBinaryOp(Double_+, DoubleLiteral(x-y), z)
 
-          case (_, BinaryOp(BinaryOp.Double_-, IntOrDoubleLit(0), x)) =>
+          case (_, BinaryOp(BinaryOp.Double_-, NumberLiteral(0), x)) =>
             foldBinaryOp(Double_+, lhs, x)
 
           case _ => default
@@ -2274,29 +2337,29 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
       case Double_* =>
         (lhs, rhs) match {
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l * r)
-          case (_, IntOrDoubleLit(_))                 => foldBinaryOp(Double_*, rhs, lhs)
+          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l * r)
+          case (_, NumberLiteral(_))                => foldBinaryOp(Double_*, rhs, lhs)
 
-          case (IntOrDoubleLit(1), _)  => rhs
-          case (IntOrDoubleLit(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+          case (NumberLiteral(1), _)  => rhs
+          case (NumberLiteral(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
 
           case _ => default
         }
 
       case Double_/ =>
         (lhs, rhs) match {
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l / r)
+          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l / r)
 
-          case (_, IntOrDoubleLit(1))  => lhs
-          case (_, IntOrDoubleLit(-1)) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+          case (_, NumberLiteral(1))  => lhs
+          case (_, NumberLiteral(-1)) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
 
           case _ => default
         }
 
       case Double_% =>
         (lhs, rhs) match {
-          case (IntOrDoubleLit(l), IntOrDoubleLit(r)) => DoubleLiteral(l % r)
-          case _                                      => default
+          case (NumberLiteral(l), NumberLiteral(r)) => DoubleLiteral(l % r)
+          case _                                    => default
         }
 
       case Boolean_== | Boolean_!= =>
@@ -2377,7 +2440,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           }
         } else {
           (lhs, rhs) match {
-            case (IntOrDoubleLit(l), IntOrDoubleLit(r)) =>
+            case (NumberLiteral(l), NumberLiteral(r)) =>
               val result = (op: @switch) match {
                 case Num_<  => l < r
                 case Num_<= => l <= r
@@ -2431,8 +2494,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     (charCode: @switch) match {
       case 'Z' if arg.tpe.base == BooleanType => cont(arg)
       case 'I' if arg.tpe.base == IntType     => cont(arg)
+      case 'F' if arg.tpe.base == FloatType   => cont(arg)
       case 'J' if arg.tpe.base == LongType    => cont(arg)
-      case 'F' | 'D' if arg.tpe.base == DoubleType || arg.tpe.base == IntType => cont(arg)
+      case 'D' if arg.tpe.base == DoubleType ||
+          arg.tpe.base == IntType || arg.tpe.base == FloatType => cont(arg)
       case _ =>
         cont(PreTransTree(Unbox(finishTransformExpr(arg), charCode)(arg.pos)))
     }
@@ -2884,8 +2949,8 @@ private[optimizer] object OptimizerCore {
 
   private object RefinedType {
     def apply(tpe: Type): RefinedType = tpe match {
-      case BooleanType | IntType | DoubleType | StringType | UndefType |
-          NothingType | _:RecordType | NoType =>
+      case BooleanType | IntType | FloatType | DoubleType | StringType |
+          UndefType | NothingType | _:RecordType | NoType =>
         RefinedType(tpe, isExact = true, isNullable = false)
       case NullType =>
         RefinedType(tpe, isExact = true, isNullable = true)
@@ -3116,10 +3181,11 @@ private[optimizer] object OptimizerCore {
   private final case class Binding(name: String, originalName: Option[String],
       declaredType: Type, mutable: Boolean, value: PreTransform)
 
-  private object IntOrDoubleLit {
+  private object NumberLiteral {
     def unapply(tree: Literal): Option[Double] = tree match {
       case DoubleLiteral(v) => Some(v)
       case IntLiteral(v)    => Some(v.toDouble)
+      case FloatLiteral(v)  => Some(v.toDouble)
       case _                => None
     }
   }

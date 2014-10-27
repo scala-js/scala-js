@@ -269,6 +269,7 @@ object Printers {
             case Boolean_!                 => "!"
             case IntToLong | DoubleToLong  => "(long)"
             case DoubleToInt | LongToInt   => "(int)"
+            case DoubleToFloat             => "(float)"
             case LongToDouble              => "(double)"
           }, lhs, ")")
 
@@ -280,7 +281,10 @@ object Printers {
           print("(-", rhs, ")")
         case BinaryOp(BinaryOp.Long_^, LongLiteral(-1L), rhs) =>
           print("(~", rhs, ")")
-        case BinaryOp(BinaryOp.Double_-, IntLiteral(0) | DoubleLiteral(0.0), rhs) =>
+        case BinaryOp(BinaryOp.Float_-, FloatLiteral(0.0f), rhs) =>
+          print("(-", rhs, ")")
+        case BinaryOp(BinaryOp.Double_-,
+            IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
           print("(-", rhs, ")")
 
         case BinaryOp(op, lhs, rhs) =>
@@ -306,6 +310,12 @@ object Printers {
             case Int_<<  => "<<"
             case Int_>>> => ">>>"
             case Int_>>  => ">>"
+
+            case Float_+ => "+[float]"
+            case Float_- => "-[float]"
+            case Float_* => "*[float]"
+            case Float_/ => "/[float]"
+            case Float_% => "%[float]"
 
             case Double_+ => "+"
             case Double_- => "-"
@@ -479,10 +489,18 @@ object Printers {
           else
             print("(", value, ")")
 
-        case DoubleLiteral(value) =>
-          if (value == 0 && 1 / value < 0)
+        case FloatLiteral(value) =>
+          if (value == 0.0f && 1.0f / value < 0.0f)
             print("(-0)")
-          else if (value >= 0)
+          else if (value >= 0.0f)
+            print(value)
+          else
+            print("(", value, ")")
+
+        case DoubleLiteral(value) =>
+          if (value == 0.0 && 1.0 / value < 0.0)
+            print("(-0)")
+          else if (value >= 0.0)
             print(value)
           else
             print("(", value, ")")
@@ -558,6 +576,7 @@ object Printers {
       case BooleanType          => print("boolean")
       case IntType              => print("int")
       case LongType             => print("long")
+      case FloatType            => print("float")
       case DoubleType           => print("number")
       case StringType           => print("string")
       case NullType             => print("null")

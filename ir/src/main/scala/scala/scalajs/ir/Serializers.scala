@@ -335,6 +335,10 @@ object Serializers {
           writeByte(TagLongLiteral)
           writeLong(value)
 
+        case FloatLiteral(value) =>
+          writeByte(TagFloatLiteral)
+          writeFloat(value)
+
         case DoubleLiteral(value) =>
           writeByte(TagDoubleLiteral)
           writeDouble(value)
@@ -431,6 +435,7 @@ object Serializers {
         case BooleanType => buffer.write(TagBooleanType)
         case IntType     => buffer.write(TagIntType)
         case LongType    => buffer.write(TagLongType)
+        case FloatType   => buffer.write(TagFloatType)
         case DoubleType  => buffer.write(TagDoubleType)
         case StringType  => buffer.write(TagStringType)
         case NullType    => buffer.write(TagNullType)
@@ -612,6 +617,7 @@ object Serializers {
         case TagBooleanLiteral => BooleanLiteral(readBoolean())
         case TagIntLiteral     => IntLiteral(readInt())
         case TagLongLiteral    => LongLiteral(readLong())
+        case TagFloatLiteral   => FloatLiteral(readFloat())
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readReferenceType())
@@ -681,6 +687,7 @@ object Serializers {
         case TagBooleanType => BooleanType
         case TagIntType     => IntType
         case TagLongType    => LongType
+        case TagFloatType   => FloatType
         case TagDoubleType  => DoubleType
         case TagStringType  => StringType
         case TagNullType    => NullType

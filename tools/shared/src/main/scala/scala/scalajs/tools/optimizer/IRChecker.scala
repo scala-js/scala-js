@@ -481,7 +481,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
             typecheckExpect(lhs, env, IntType)
           case LongToInt | LongToDouble =>
             typecheckExpect(lhs, env, LongType)
-          case DoubleToInt | DoubleToLong =>
+          case DoubleToInt | DoubleToFloat | DoubleToLong =>
             typecheckExpect(lhs, env, DoubleType)
           case Boolean_! =>
             typecheckExpect(lhs, env, BooleanType)
@@ -503,6 +503,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
               Int_| | Int_& | Int_^ | Int_<< | Int_>>> | Int_>> =>
             typecheckExpect(lhs, env, IntType)
             typecheckExpect(rhs, env, IntType)
+          case Float_+ | Float_- | Float_* | Float_/ | Float_% =>
+            typecheckExpect(lhs, env, FloatType)
+            typecheckExpect(lhs, env, FloatType)
           case Long_+ | Long_- | Long_* | Long_/ | Long_% |
               Long_| | Long_& | Long_^ |
               Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= =>
@@ -688,7 +691,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         case 'Z'                   => BooleanType
         case 'C' | 'B' | 'S' | 'I' => IntType
         case 'J'                   => LongType
-        case 'F' | 'D'             => DoubleType
+        case 'F'                   => FloatType
+        case 'D'                   => DoubleType
         case 'O'                   => AnyType
         case 'T'                   => ClassType(StringClass) // NOT StringType
       }

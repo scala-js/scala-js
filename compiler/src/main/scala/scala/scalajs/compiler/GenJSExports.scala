@@ -690,20 +690,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           case ByteKind    => HijackedTypeTest(Defs.BoxedByteClass,    2)
           case ShortKind   => HijackedTypeTest(Defs.BoxedShortClass,   3)
           case IntKind     => HijackedTypeTest(Defs.BoxedIntegerClass, 4)
-          case _:DOUBLE    => HijackedTypeTest(Defs.BoxedDoubleClass,  5)
+          case FloatKind   => HijackedTypeTest(Defs.BoxedFloatClass,   5)
+          case DoubleKind  => HijackedTypeTest(Defs.BoxedDoubleClass,  6)
 
           case CharKind => InstanceOfTypeTest(boxedClass(CharClass).tpe)
           case LongKind => InstanceOfTypeTest(boxedClass(LongClass).tpe)
 
           case REFERENCE(cls) =>
-            if (cls == StringClass) HijackedTypeTest(Defs.StringClass, 6)
+            if (cls == StringClass) HijackedTypeTest(Defs.StringClass, 7)
             else if (cls == ObjectClass) NoTypeTest
             else if (isRawJSType(tpe)) {
               cls match {
                 case JSUndefinedClass => HijackedTypeTest(Defs.BoxedUnitClass,    0)
                 case JSBooleanClass   => HijackedTypeTest(Defs.BoxedBooleanClass, 1)
-                case JSNumberClass    => HijackedTypeTest(Defs.BoxedDoubleClass,  5)
-                case JSStringClass    => HijackedTypeTest(Defs.StringClass,       6)
+                case JSNumberClass    => HijackedTypeTest(Defs.BoxedDoubleClass,  6)
+                case JSStringClass    => HijackedTypeTest(Defs.StringClass,       7)
                 case _                => NoTypeTest
               }
             } else InstanceOfTypeTest(tpe)

@@ -1068,6 +1068,8 @@ object JSDesugaring {
             case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
             case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
 
+            case DoubleToFloat => newLhs
+
             case IntToLong =>
               genNewLong(LongImpl.initFromInt, newLhs)
             case DoubleToLong =>
@@ -1126,6 +1128,16 @@ object JSDesugaring {
             case Int_<<  => js.BinaryOp("<<", newLhs, newRhs)
             case Int_>>> => or0(js.BinaryOp(">>>", newLhs, newRhs))
             case Int_>>  => js.BinaryOp(">>", newLhs, newRhs)
+
+            case Float_+ => js.BinaryOp("+", newLhs, newRhs)
+            case Float_- =>
+              lhs match {
+                case DoubleLiteral(0.0) => js.UnaryOp("-", newRhs)
+                case _                  => js.BinaryOp("-", newLhs, newRhs)
+              }
+            case Float_* => js.BinaryOp("*", newLhs, newRhs)
+            case Float_/ => js.BinaryOp("/", newLhs, newRhs)
+            case Float_% => js.BinaryOp("%", newLhs, newRhs)
 
             case Double_+ => js.BinaryOp("+", newLhs, newRhs)
             case Double_- =>
@@ -1287,6 +1299,7 @@ object JSDesugaring {
         case Null()                 => js.Null()
         case BooleanLiteral(value)  => js.BooleanLiteral(value)
         case IntLiteral(value)      => js.IntLiteral(value)
+        case FloatLiteral(value)    => js.DoubleLiteral(value.toDouble)
         case DoubleLiteral(value)   => js.DoubleLiteral(value)
         case StringLiteral(value)   => js.StringLiteral(value)
 
@@ -1346,7 +1359,7 @@ object JSDesugaring {
         Definitions.HijackedClasses.contains(cls) ||
         Definitions.AncestorsOfHijackedClasses.contains(cls)
       case AnyType | UndefType | BooleanType | IntType | LongType |
-          DoubleType | StringType =>
+          FloatType | DoubleType | StringType =>
         true
       case _ =>
         false
