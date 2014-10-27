@@ -116,10 +116,11 @@ trait PrepJSExports { this: PrepJSInterop =>
     // Update flags
     expSym.setFlag(Flags.SYNTHETIC)
     expSym.resetFlag(
-        Flags.DEFERRED |  // We always have a body
-        Flags.ACCESSOR |  // We are never a "direct" accessor
-        Flags.LAZY     |  // We are not a lazy val (even if we export one)
-        Flags.OVERRIDE    // Synthetic methods need not bother with this
+        Flags.DEFERRED     | // We always have a body
+        Flags.ACCESSOR     | // We are never a "direct" accessor
+        Flags.CASEACCESSOR | // And a fortiori not a case accessor
+        Flags.LAZY         | // We are not a lazy val (even if we export one)
+        Flags.OVERRIDE       // Synthetic methods need not bother with this
     )
 
     // Remove export annotations
