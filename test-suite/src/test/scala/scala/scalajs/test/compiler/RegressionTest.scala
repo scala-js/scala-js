@@ -272,5 +272,17 @@ object RegressionTest extends JasmineTest {
       expect(() => (giveMeANothing(): StringBuilder).append(5)).toThrow
       expect(() => (giveMeANothing(): scala.runtime.IntRef).elem).toThrow
     }
+
+    it("should not put bad flags on caseaccessor export forwarders - #1191") {
+      // This test used to choke patmat
+
+      @scala.scalajs.js.annotation.JSExportAll
+      case class T(one: Int, two: Int)
+
+      val T(a, b) = T(1, 2)
+
+      expect(a).toEqual(1)
+      expect(b).toEqual(2)
+    }
   }
 }
