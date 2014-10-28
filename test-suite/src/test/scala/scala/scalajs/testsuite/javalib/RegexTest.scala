@@ -52,6 +52,24 @@ object RegexTest extends JasmineTest {
       split("", "\n", Array(""))
       split("", "", Array(""))
 
+      // Should remove leading empty match under some conditions - #1171
+      // These tests are "measured" on the JVM since the spec is unclear
+      split("abc", "(?=a)", Array("abc"))
+      split("abc", "(?=b)", Array("a", "bc"))
+      split("abc", "(?=a)|b", Array("", "a", "c"))
+      split("abc", "", Array("", "a", "b", "c"))
+      split("abc", "(?=a)|(?=b)", Array("", "a", "bc"))
+      split("abc", "(?=a)|(?=a)", Array("abc"))
+      split("abc", "(?=a|b)", Array("", "a", "bc"))
+      split("abc", "(?=a|d)", Array("abc"))
+      split("abc", "^d*", Array("abc"))
+      split("abc", "d*", Array("", "a", "b", "c"))
+      split("a", "", Array("", "a"))
+      split("a", "^d*", Array("a"))
+      split("a", "d*", Array("", "a"))
+      split("a", "(?=a)", Array("a"))
+      split("ab", "a", Array("", "b"))
+
       def split(input: String, regex: String, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input)
         expect(result.toJSArray).toEqual(expected.toJSArray)
@@ -72,6 +90,11 @@ object RegexTest extends JasmineTest {
       splitWithLimit("", "\\*", 5, Array(""))
       splitWithLimit("", "\n", -2, Array(""))
       splitWithLimit("", "", 1, Array(""))
+
+      // Should remove leading empty match under some conditions - #1171
+      splitWithLimit("abc", "", 2, Array("", "abc"))
+      splitWithLimit("abc", "(?=a)", 2, Array("abc"))
+      splitWithLimit("ab", "a", 1, Array("ab"))
 
       def splitWithLimit(input: String, regex: String, limit: Int, expected: Array[String]): Unit = {
         val result = Pattern.compile(regex).split(input, limit)

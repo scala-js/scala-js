@@ -36,33 +36,35 @@ final class Pattern private (pattern0: String, flags0: Int) {
     split(input, 0)
 
   def split(input: CharSequence, limit: Int): Array[String] = {
-    val hasLimit = limit > 0
-    val lim = if (hasLimit) limit else Int.MaxValue
+    val lim = if (limit > 0) limit else Int.MaxValue
 
-    val result = new js.Array[String](0)
+    val result = js.Array[String]()
     val inputStr = input.toString
     val matcher = this.matcher(inputStr)
     var prevEnd = 0
 
+    // Actually split original string
     while ((result.length < lim-1) && matcher.find()) {
       result.push(inputStr.substring(prevEnd, matcher.start))
       prevEnd = matcher.end
     }
     result.push(inputStr.substring(prevEnd))
 
-    var len = result.length.toInt
-    if (limit == 0) {
-      while (len > 1 && result(len-1).isEmpty)
-        len -= 1
-    }
+    // Remove a leading empty element iff the first match was zero-length 
+    // and there is no other place the regex matches
+    if (prevEnd == 0 && result.length == 2 && (lim > 2 || !matcher.find())) {
+      Array(inputStr)
+    } else {
+      var len = result.length
+      if (limit == 0) {
+        while (len > 1 && result(len-1).isEmpty)
+          len -= 1
+      }
 
-    val actualResult = new Array[String](len)
-    var i = 0
-    while (i < len) {
-      actualResult(i) = result(i)
-      i += 1
+      val actualResult = new Array[String](len)
+      result.copyToArray(actualResult)
+      actualResult
     }
-    actualResult
   }
 }
 
