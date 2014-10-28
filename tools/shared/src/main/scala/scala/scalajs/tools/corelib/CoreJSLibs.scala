@@ -41,14 +41,12 @@ object CoreJSLibs {
   private def makeContent(semantics: Semantics): String = {
     // This is a basic sort-of-C-style preprocessor
 
-    def getOption(name: String): CheckedBehaviors.Behavior = name match {
-      case "asInstanceOfs" => semantics.checkedBehaviors.asInstanceOfs
-    }
-
-    def parseBehavior(name: String): CheckedBehaviors.Behavior = name match {
-      case "Compliant" => CheckedBehaviors.Compliant
-      case "Fatal"     => CheckedBehaviors.Fatal
-      case "Unchecked" => CheckedBehaviors.Unchecked
+    def getOption(name: String): String = name match {
+      case "asInstanceOfs" =>
+        semantics.checkedBehaviors.asInstanceOfs.toString()
+      case "floats" =>
+        if (semantics.strictFloats) "Strict"
+        else "Loose"
     }
 
     var skipping = false
@@ -69,12 +67,11 @@ object CoreJSLibs {
       } else {
         if (line.startsWith("//!")) {
           if (line.startsWith("//!if ")) {
-            val Array(_, sOpt, sOp, sValue) = line.split(" ")
-            val opt = getOption(sOpt)
-            val value = parseBehavior(sValue)
-            val success = sOp match {
-              case "==" => opt == value
-              case "!=" => opt != value
+            val Array(_, option, op, value) = line.split(" ")
+            val optionValue = getOption(option)
+            val success = op match {
+              case "==" => optionValue == value
+              case "!=" => optionValue != value
             }
             if (!success) {
               skipping = true

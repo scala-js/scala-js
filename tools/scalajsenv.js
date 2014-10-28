@@ -312,7 +312,7 @@ ScalaJS.numberLongValue = function(instance) {
     return instance.longValue__J();
 };
 ScalaJS.numberFloatValue = function(instance) {
-  if (typeof instance === "number") return instance;
+  if (typeof instance === "number") return ScalaJS.fround(instance);
   else                              return instance.floatValue__F();
 };
 ScalaJS.numberDoubleValue = function(instance) {
@@ -379,6 +379,10 @@ ScalaJS.isInt = function(v) {
   return (v | 0) === v;
 };
 
+ScalaJS.isFloat = function(v) {
+  return v !== v || ScalaJS.fround(v) === v;
+};
+
 //!if asInstanceOfs != Unchecked
 ScalaJS.asUnit = function(v) {
   if (v === void 0)
@@ -416,7 +420,7 @@ ScalaJS.asInt = function(v) {
 };
 
 ScalaJS.asFloat = function(v) {
-  if (typeof v === "number" || v === null)
+  if (ScalaJS.isFloat(v) || v === null)
     return v;
   else
     ScalaJS.throwClassCastException(v, "java.lang.Float");
@@ -450,6 +454,9 @@ ScalaJS.uJ = function(value) {
                         : ScalaJS.as.sjsr_RuntimeLong(value);
 };
 ScalaJS.uF = function(value) {
+  /* Here, it is fine to use + instead of fround, because asFloat already
+   * ensures that the result is either null or a float. 
+   */
   return +ScalaJS.asFloat(value);
 };
 ScalaJS.uD = function(value) {
@@ -741,3 +748,18 @@ ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
   // the final |0 converts the unsigned value into a signed value
   return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
 });
+
+ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
+//!if floats == Strict
+  (ScalaJS.g["Float32Array"] ? (function(v) {
+    var array = new ScalaJS.g["Float32Array"](1);
+    array[0] = v;
+    return array[0];
+  }) : (function(v) {
+    return ScalaJS.m.sjsr_package().froundPolyfill__D__D(+v);
+  }));
+//!else
+  (function(v) {
+    return +v;
+  });
+//!endif

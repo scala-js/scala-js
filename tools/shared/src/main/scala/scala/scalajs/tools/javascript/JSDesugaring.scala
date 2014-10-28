@@ -1068,7 +1068,7 @@ object JSDesugaring {
             case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
             case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
 
-            case DoubleToFloat => newLhs
+            case DoubleToFloat => genFround(newLhs)
 
             case IntToLong =>
               genNewLong(LongImpl.initFromInt, newLhs)
@@ -1129,15 +1129,15 @@ object JSDesugaring {
             case Int_>>> => or0(js.BinaryOp(">>>", newLhs, newRhs))
             case Int_>>  => js.BinaryOp(">>", newLhs, newRhs)
 
-            case Float_+ => js.BinaryOp("+", newLhs, newRhs)
+            case Float_+ => genFround(js.BinaryOp("+", newLhs, newRhs))
             case Float_- =>
-              lhs match {
+              genFround(lhs match {
                 case DoubleLiteral(0.0) => js.UnaryOp("-", newRhs)
                 case _                  => js.BinaryOp("-", newLhs, newRhs)
-              }
-            case Float_* => js.BinaryOp("*", newLhs, newRhs)
-            case Float_/ => js.BinaryOp("/", newLhs, newRhs)
-            case Float_% => js.BinaryOp("%", newLhs, newRhs)
+              })
+            case Float_* => genFround(js.BinaryOp("*", newLhs, newRhs))
+            case Float_/ => genFround(js.BinaryOp("/", newLhs, newRhs))
+            case Float_% => genFround(js.BinaryOp("%", newLhs, newRhs))
 
             case Double_+ => js.BinaryOp("+", newLhs, newRhs)
             case Double_- =>
@@ -1218,7 +1218,8 @@ object JSDesugaring {
               case 'Z'             => !(!newExpr)
               case 'B' | 'S' | 'I' => js.BinaryOp("|", newExpr, js.IntLiteral(0))
               case 'J'             => genCallHelper("uJ", newExpr)
-              case 'F' | 'D'       => js.UnaryOp("+", newExpr)
+              case 'F'             => genFround(newExpr)
+              case 'D'             => js.UnaryOp("+", newExpr)
             }
           } else {
             genCallHelper("u"+charCode, newExpr)
@@ -1412,6 +1413,10 @@ object JSDesugaring {
       }
     }
 
+    private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
+      genCallHelper("fround", arg)
+    }
+
     private def genNewLong(ctor: String, args: js.Tree*)(
         implicit pos: Position): js.Tree = {
       import TreeDSL._
@@ -1474,7 +1479,7 @@ object JSDesugaring {
               case BoxedByteClass    => genCallHelper("isByte", expr)
               case BoxedShortClass   => genCallHelper("isShort", expr)
               case BoxedIntegerClass => genCallHelper("isInt", expr)
-              case BoxedFloatClass   => typeof(expr) === "number"
+              case BoxedFloatClass   => genCallHelper("isFloat", expr)
               case BoxedDoubleClass  => typeof(expr) === "number"
             }
           } else {
