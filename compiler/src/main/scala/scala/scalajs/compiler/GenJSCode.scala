@@ -658,9 +658,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos))
           case js.VarRef(name, mutable) =>
             js.VarRef(name, newMutable(name.name, mutable))(tree.tpe)(tree.pos)
-          case js.Closure(thisType, params, resultType, body, captures) =>
-            js.Closure(thisType, params, resultType, body,
-                captures.map(transformExpr))(tree.pos)
+          case js.Closure(captureParams, params, body, captureValues) =>
+            js.Closure(captureParams, params, body,
+                captureValues.map(transformExpr))(tree.pos)
           case _ =>
             if (isStat) super.transformStat(tree)
             else super.transformExpr(tree)
@@ -2856,7 +2856,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               ps.head.size == arity &&
               ps.head.forall(_.tpe.typeSymbol == ObjectClass)
             }
-            val fParam = js.ParamDef(js.Ident("f"), inputIRType,
+            val fCaptureParam = js.ParamDef(js.Ident("f"), inputIRType,
                 mutable = false)
             val jsArity =
               if (isThisFunction) arity - 1
@@ -2866,11 +2866,10 @@ abstract class GenJSCode extends plugins.PluginComponent
                   mutable = false)
             }
             js.Closure(
-                if (isThisFunction) jstpe.AnyType else jstpe.NoType,
-                fParam :: jsParams,
-                jstpe.AnyType,
+                List(fCaptureParam),
+                jsParams,
                 genApplyMethod(
-                    fParam.ref,
+                    fCaptureParam.ref,
                     inputClass, applyMeth,
                     if (isThisFunction)
                       js.This()(jstpe.AnyType) :: jsParams.map(_.ref)
@@ -3644,16 +3643,16 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             if (isThisFunction) {
               val thisParam :: actualParams = patchedParams
-              js.Closure(thisParam.ptpe, ctorParamDefs ::: actualParams,
-                  jstpe.AnyType,
+              js.Closure(
+                  ctorParamDefs,
+                  actualParams,
                   js.Block(
                       js.VarDef(thisParam.name, thisParam.ptpe, mutable = false,
                           js.This()(thisParam.ptpe)(thisParam.pos))(thisParam.pos),
                       patchedBody),
                   capturedArgs)
             } else {
-              js.Closure(jstpe.NoType, ctorParamDefs ::: patchedParams,
-                  jstpe.AnyType, patchedBody, capturedArgs)
+              js.Closure(ctorParamDefs, patchedParams, patchedBody, capturedArgs)
             }
           }
 
@@ -3739,9 +3738,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       val (patchedFormalArgs, patchedBody) =
         patchFunBodyWithBoxes(target, formalArgs, body)
       val closure = js.Closure(
-          jstpe.NoType,
-          allFormalCaptures ::: patchedFormalArgs,
-          jstpe.AnyType,
+          allFormalCaptures,
+          patchedFormalArgs,
           patchedBody,
           allActualCaptures)
 
@@ -3753,7 +3751,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): (List[js.ParamDef], js.Tree) = {
       val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
 
-      val (paramsAny, paramsLocal) = (for {
+      val (patchedParams, paramsLocal) = (for {
         (param, paramSym) <- params zip methodType.params
       } yield {
         val paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
@@ -3761,17 +3759,17 @@ abstract class GenJSCode extends plugins.PluginComponent
         val js.Ident(name, origName) = paramName
         val newOrigName = origName.getOrElse(name)
         val newNameIdent = freshLocalIdent(newOrigName)(paramName.pos)
-        val paramAny = js.ParamDef(newNameIdent, jstpe.AnyType,
+        val patchedParam = js.ParamDef(newNameIdent, jstpe.AnyType,
             mutable = false)(param.pos)
         val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
-            fromAny(paramAny.ref, paramTpe))
-        (paramAny, paramLocal)
+            fromAny(patchedParam.ref, paramTpe))
+        (patchedParam, paramLocal)
       }).unzip
 
       val patchedBody = js.Block(
           paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
-      (paramsAny, patchedBody)
+      (patchedParams, patchedBody)
     }
 
     // Utilities ---------------------------------------------------------------

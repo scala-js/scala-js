@@ -500,9 +500,8 @@ object Trees {
   /** Closure with explicit captures.
    *  The n captures map to the n first formal arguments.
    */
-  case class Closure(
-      thisType: Type, args: List[ParamDef], resultType: Type, body: Tree,
-      captures: List[Tree])(implicit val pos: Position) extends Tree {
+  case class Closure(captureParams: List[ParamDef], params: List[ParamDef],
+      body: Tree, captureValues: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 

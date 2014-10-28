@@ -628,20 +628,30 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
-      case Closure(thisType, params, resultType, body, captures) =>
-        for (ParamDef(name, tpe, _) <- params)
-          if (tpe == NoType)
-            reportError(s"Parameter $name has type NoType")
-        for ((ParamDef(name, tpe, mutable), capture) <- params zip captures) {
+      case Closure(captureParams, params, body, captureValues) =>
+        if (captureParams.size != captureValues.size)
+          reportError("Mismatched size for captures: "+
+              s"${captureParams.size} params vs ${captureValues.size} values")
+
+        for ((ParamDef(name, ctpe, mutable), value) <- captureParams zip captureValues) {
           if (mutable)
             reportError(s"Capture parameter $name cannot be mutable")
-          typecheckExpect(capture, env, tpe)
+          if (ctpe == NoType)
+            reportError(s"Parameter $name has type NoType")
+          else
+            typecheckExpect(value, env, ctpe)
         }
-        val bodyEnv = Env.fromSignature(thisType, params, resultType)
-        if (resultType == NoType)
-          typecheckStat(body, bodyEnv)
-        else
-          typecheckExpect(body, bodyEnv, resultType)
+
+        for (ParamDef(name, ptpe, mutable) <- params) {
+          if (ptpe == NoType)
+            reportError(s"Parameter $name has type NoType")
+          else if (ptpe != AnyType)
+            reportError(s"Closure parameter $name has type $ptpe instead of any")
+        }
+
+        val bodyEnv = Env.fromSignature(
+            AnyType, captureParams ++ params, AnyType)
+        typecheckExpect(body, bodyEnv, AnyType)
 
       case _ =>
         reportError(s"Invalid expression tree")
