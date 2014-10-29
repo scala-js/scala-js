@@ -995,7 +995,9 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.IntLiteral(value.intValue)
             case LongTag =>
               js.LongLiteral(value.longValue)
-            case FloatTag | DoubleTag =>
+            case FloatTag =>
+              js.FloatLiteral(value.floatValue)
+            case DoubleTag =>
               js.DoubleLiteral(value.doubleValue)
             case StringTag =>
               js.StringLiteral(value.stringValue)
@@ -1598,17 +1600,17 @@ abstract class GenJSCode extends plugins.PluginComponent
       def int1 = js.IntLiteral(1)
       def long0 = js.LongLiteral(0L)
       def long1 = js.LongLiteral(1L)
-      def double0 = js.DoubleLiteral(0.0)
-      def double1 = js.DoubleLiteral(1.0)
+      def float0 = js.FloatLiteral(0.0f)
+      def float1 = js.FloatLiteral(1.0f)
 
       (from, to) match {
-        case (INT(_),    BOOL) => js.BinaryOp(js.BinaryOp.!==, value, int0)
-        case (LONG,      BOOL) => js.BinaryOp(js.BinaryOp.!==, value, long0)
-        case (DOUBLE(_), BOOL) => js.BinaryOp(js.BinaryOp.!==, value, double0)
+        case (INT(_),   BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, int0)
+        case (LONG,     BOOL) => js.BinaryOp(js.BinaryOp.Long_!=, value, long0)
+        case (FLOAT(_), BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, float0)
 
-        case (BOOL, INT(_))    => js.If(value, int1,    int0   )(jstpe.IntType)
-        case (BOOL, LONG)      => js.If(value, long1,   long0  )(jstpe.LongType)
-        case (BOOL, DOUBLE(_)) => js.If(value, double1, double0)(jstpe.DoubleType)
+        case (BOOL, INT(_))   => js.If(value, int1,   int0  )(jstpe.IntType)
+        case (BOOL, LONG)     => js.If(value, long1,  long0 )(jstpe.LongType)
+        case (BOOL, FLOAT(_)) => js.If(value, float1, float0)(jstpe.FloatType)
 
         case _ => value
       }
@@ -2010,13 +2012,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def isLongOp(ltpe: Type, rtpe: Type) =
         (isLongType(ltpe) || isLongType(rtpe)) &&
-        !(toTypeKind(ltpe).isInstanceOf[DOUBLE] ||
-          toTypeKind(rtpe).isInstanceOf[DOUBLE] ||
+        !(toTypeKind(ltpe).isInstanceOf[FLOAT] ||
+          toTypeKind(rtpe).isInstanceOf[FLOAT] ||
           isStringType(ltpe) || isStringType(rtpe))
 
       val sources = args map genExpr
 
-      def resultType = toIRType(tree.tpe)
+      val resultType = toIRType(tree.tpe)
 
       sources match {
         // Unary operation
@@ -2030,6 +2032,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                   js.BinaryOp(js.BinaryOp.Int_-, js.IntLiteral(0), source)
                 case jstpe.LongType =>
                   js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), source)
+                case jstpe.FloatType =>
+                  js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), source)
                 case jstpe.DoubleType =>
                   js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), source)
               }
@@ -2085,21 +2089,28 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Binary operation
         case List(lsrc_in, rsrc_in) =>
-          def fromLong(tree: js.Tree, tpe: Type) = {
-            // If we end up with a long, target must be double
-            if (isLongType(tpe)) js.UnaryOp(js.UnaryOp.LongToDouble, tree)
-            else tree
+          def convertArg(tree: js.Tree, tpe: Type) = {
+            val kind = toTypeKind(tpe)
+
+            // If we end up with a long, target must be float or double
+            val fromLong =
+              if (kind == LongKind) js.UnaryOp(js.UnaryOp.LongToDouble, tree)
+              else tree
+
+            if (resultType != jstpe.FloatType) fromLong
+            else if (kind == FloatKind) fromLong
+            else js.UnaryOp(js.UnaryOp.DoubleToFloat, fromLong)
           }
 
-          val lsrc = fromLong(lsrc_in, args(0).tpe)
-          val rsrc = fromLong(rsrc_in, args(1).tpe)
+          val lsrc = convertArg(lsrc_in, args(0).tpe)
+          val rsrc = convertArg(rsrc_in, args(1).tpe)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
             val typeKind = toTypeKind(args(0).tpe)
             typeKind match {
-              case INT(_) | LONG | DOUBLE(_) =>
+              case INT(_) | LONG | FLOAT(_) =>
                 /* Note that LONG happens when a fromLong() had to do something,
-                 * which means we're effectively in the DOUBLE case. */
+                 * which means we're effectively in the FLOAT case. */
                 js.BinaryOp(if (not) js.BinaryOp.Num_!= else js.BinaryOp.Num_==, lsrc, rsrc)
               case BOOL =>
                 js.BinaryOp(if (not) js.BinaryOp.Boolean_!= else js.BinaryOp.Boolean_==, lsrc, rsrc)
@@ -2144,6 +2155,14 @@ abstract class GenJSCode extends plugins.PluginComponent
                     case LSL => Int_<<
                     case LSR => Int_>>>
                     case ASR => Int_>>
+                  }
+                case jstpe.FloatType =>
+                  (code: @switch) match {
+                    case ADD => Float_+
+                    case SUB => Float_-
+                    case MUL => Float_*
+                    case DIV => Float_/
+                    case MOD => Float_%
                   }
                 case jstpe.DoubleType =>
                   (code: @switch) match {
@@ -2366,12 +2385,26 @@ abstract class GenJSCode extends plugins.PluginComponent
         case F2L | D2L =>
           js.UnaryOp(js.UnaryOp.DoubleToLong, source)
 
-        // Long to any double
-        case L2F | L2D =>
+        // Long to Double
+        case L2D =>
           js.UnaryOp(js.UnaryOp.LongToDouble, source)
 
+        // Any int, or Double, to Float
+        case C2F | B2F | S2F | I2F | D2F =>
+          js.UnaryOp(js.UnaryOp.DoubleToFloat, source)
+
+        // Long to Float === Long to Double to Float
+        case L2F =>
+          js.UnaryOp(js.UnaryOp.DoubleToFloat,
+              js.UnaryOp(js.UnaryOp.LongToDouble, source))
+
         // Identities and IR upcasts
-        case _ =>
+        case C2C | B2B | S2S | I2I | L2L | F2F | D2D |
+             C2I | C2D |
+             B2S | B2I | B2D |
+             S2I | S2D |
+             I2D |
+             F2D =>
           source
       }
     }
@@ -3745,12 +3778,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Generate a literal "zero" for the requested type */
     def genZeroOf(tpe: Type)(implicit pos: Position): js.Tree = toTypeKind(tpe) match {
-      case VOID      => abort("Cannot call genZeroOf(VOID)")
-      case BOOL      => js.BooleanLiteral(false)
-      case LONG      => js.LongLiteral(0L)
-      case INT(_)    => js.IntLiteral(0)
-      case DOUBLE(_) => js.DoubleLiteral(0.0)
-      case _         => js.Null()
+      case VOID       => abort("Cannot call genZeroOf(VOID)")
+      case BOOL       => js.BooleanLiteral(false)
+      case LONG       => js.LongLiteral(0L)
+      case INT(_)     => js.IntLiteral(0)
+      case FloatKind  => js.FloatLiteral(0.0f)
+      case DoubleKind => js.DoubleLiteral(0.0)
+      case _          => js.Null()
     }
 
     /** Generate loading of a module value

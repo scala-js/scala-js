@@ -332,13 +332,17 @@ object Hashers {
           mixTag(TagBooleanLiteral)
           mixBoolean(value)
 
+        case IntLiteral(value) =>
+          mixTag(TagIntLiteral)
+          mixInt(value)
+
         case LongLiteral(value) =>
           mixTag(TagLongLiteral)
           mixLong(value)
 
-        case IntLiteral(value) =>
-          mixTag(TagIntLiteral)
-          mixInt(value)
+        case FloatLiteral(value) =>
+          mixTag(TagFloatLiteral)
+          mixFloat(value)
 
         case DoubleLiteral(value) =>
           mixTag(TagDoubleLiteral)
@@ -386,6 +390,7 @@ object Hashers {
       case BooleanType => mixTag(TagBooleanType)
       case IntType     => mixTag(TagIntType)
       case LongType    => mixTag(TagLongType)
+      case FloatType   => mixTag(TagFloatType)
       case DoubleType  => mixTag(TagDoubleType)
       case StringType  => mixTag(TagStringType)
       case NullType    => mixTag(TagNullType)
@@ -443,6 +448,9 @@ object Hashers {
 
     @inline
     private final def mixBoolean(b: Boolean): Unit = treeStream.writeBoolean(b)
+
+    @inline
+    private final def mixFloat(f: Float): Unit = treeStream.writeFloat(f)
 
     @inline
     private final def mixDouble(d: Double): Unit = treeStream.writeDouble(d)

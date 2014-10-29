@@ -29,8 +29,8 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   lazy val ShortKind   = INT(ShortClass)
   lazy val IntKind     = INT(IntClass)
   lazy val LongKind    = LONG
-  lazy val FloatKind   = DOUBLE(FloatClass)
-  lazy val DoubleKind  = DOUBLE(DoubleClass)
+  lazy val FloatKind   = FLOAT(FloatClass)
+  lazy val DoubleKind  = FLOAT(DoubleClass)
 
   /** TypeKinds for Scala primitive types. */
   lazy val primitiveTypeMap: Map[Symbol, TypeKind] = {
@@ -89,7 +89,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     }
   }
 
-  /** Int */
+  /** Integer number (Byte, Short, Char or Int). */
   case class INT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
     def toIRType: Types.IntType.type = Types.IntType
   }
@@ -100,9 +100,11 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
     def toIRType: Types.LongType.type = Types.LongType
   }
 
-  /** Double */
-  case class DOUBLE private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
-    def toIRType: Types.DoubleType.type = Types.DoubleType
+  /** Floating-point number (Float or Double). */
+  case class FLOAT private[TypeKinds] (typeSymbol: Symbol) extends ValueTypeKind {
+    def toIRType: Types.Type =
+      if (typeSymbol == FloatClass) Types.FloatType
+      else Types.DoubleType
   }
 
   /** Boolean */

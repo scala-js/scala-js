@@ -104,4 +104,82 @@ package object runtime {
   /** Information about the environment Scala.js runs in. */
   def environmentInfo: js.Dynamic = sys.error("stub")
 
+  /** Polyfill for fround in case we use strict Floats and even Typed Arrays
+   *  are not available.
+   *  Note: this method returns a Double, even though the value is meant
+   *  to be a Float. It cannot return a Float because that would require to
+   *  do `x.toFloat` somewhere in here, which would itself, in turn, call this
+   *  method.
+   */
+  def froundPolyfill(v: Double): Double = {
+    /* Originally inspired by the Typed Array polyfills written by Joshua Bell:
+     * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
+     * Then simplified quite a lot because
+     * 1) we do not need to produce the actual bit string that serves as
+     *    storage of the floats, and
+     * 2) we are only interested in the float32 case.
+     */
+    import Math._
+
+    // Special cases
+    if (v.isNaN || v == 0.0 || v.isInfinite) {
+      v
+    } else {
+      val LN2 = 0.6931471805599453
+      val ebits = 8
+      val fbits = 23
+      val bias = (1 << (ebits-1)) - 1
+      val twoPowFbits = (1 << fbits).toDouble
+      val SubnormalThreshold = 1.1754943508222875E-38 // pow(2, 1-bias)
+
+      val isNegative = v < 0
+      val av = if (isNegative) -v else v
+
+      val absResult = if (av >= SubnormalThreshold) {
+        val e0 = floor(log(av) / LN2)
+        // 1-bias <= e0 <= 1024
+        if (e0 > bias) {
+          // Overflow
+          Double.PositiveInfinity
+        } else {
+          val twoPowE0 = pow(2, e0)
+          val f0 = roundToEven(av / twoPowE0 * twoPowFbits)
+          if (f0 / twoPowFbits >= 2) {
+            //val e = e0 + 1.0 // not used
+            val f = 1.0
+            if (e0 > bias-1) { // === (e > bias) because e0 is whole
+              // Overflow
+              Double.PositiveInfinity
+            } else {
+              // Normalized case 1
+              val twoPowE = 2*twoPowE0
+              twoPowE * (1.0 + (f - twoPowFbits) / twoPowFbits)
+            }
+          } else {
+            // Normalized case 2
+            // val e = e0 // not used
+            val f = f0
+            val twoPowE = twoPowE0
+            twoPowE * (1.0 + (f - twoPowFbits) / twoPowFbits)
+          }
+        }
+      } else {
+        // Subnormal
+        val rounder = Float.MinPositiveValue.toDouble
+        roundToEven(av / rounder) * rounder
+      }
+
+      if (isNegative) -absResult else absResult
+    }
+  }
+
+  @inline private def roundToEven(n: Double): Double = {
+    val w = Math.floor(n)
+    val f = n - w
+    if (f < 0.5) w
+    else if (f > 0.5) w + 1
+    else if (w % 2 != 0) w + 1
+    else w
+  }
+
 }

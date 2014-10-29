@@ -10,7 +10,8 @@
 package scala.scalajs.tools.sem
 
 final class Semantics private (
-    val checkedBehaviors: CheckedBehaviors) {
+    val checkedBehaviors: CheckedBehaviors,
+    val strictFloats: Boolean) {
 
   import Semantics._
 
@@ -20,12 +21,16 @@ final class Semantics private (
   def transformCheckedBehaviors(f: CheckedBehaviors => CheckedBehaviors): Semantics =
     withCheckedBehaviors(f(checkedBehaviors))
 
+  def withStrictFloats(strictFloats: Boolean): Semantics =
+    copy(strictFloats = strictFloats)
+
   def optimized: Semantics =
     transformCheckedBehaviors(_.optimized)
 
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
-      this.checkedBehaviors == that.checkedBehaviors
+      this.checkedBehaviors == that.checkedBehaviors &&
+      this.strictFloats == that.strictFloats
     case _ =>
       false
   }
@@ -33,14 +38,17 @@ final class Semantics private (
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
-    acc = mixLast(acc, checkedBehaviors.hashCode)
+    acc = mix(acc, checkedBehaviors.hashCode)
+    acc = mixLast(acc, strictFloats.##)
     finalizeHash(acc, 1)
   }
 
   private def copy(
-      checkedBehaviors: CheckedBehaviors = this.checkedBehaviors): Semantics = {
+      checkedBehaviors: CheckedBehaviors = this.checkedBehaviors,
+      strictFloats: Boolean = this.strictFloats): Semantics = {
     new Semantics(
-        checkedBehaviors = checkedBehaviors)
+        checkedBehaviors = checkedBehaviors,
+        strictFloats = strictFloats)
   }
 }
 
@@ -49,5 +57,6 @@ object Semantics {
     scala.util.hashing.MurmurHash3.stringHash(classOf[Semantics].getName)
 
   val Defaults = new Semantics(
-      checkedBehaviors = CheckedBehaviors.Defaults)
+      checkedBehaviors = CheckedBehaviors.Defaults,
+      strictFloats = false)
 }

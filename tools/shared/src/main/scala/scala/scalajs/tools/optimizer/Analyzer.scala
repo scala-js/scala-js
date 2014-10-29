@@ -171,6 +171,12 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       for (hijacked <- Definitions.HijackedClasses)
         lookupClass(hijacked).accessData()
     }
+
+    if (semantics.strictFloats) {
+      val RuntimePackage = lookupClass("sjsr_package$")
+      RuntimePackage.accessModule()
+      RuntimePackage.callMethod("froundPolyfill__D__D")
+    }
   }
 
   def reachManually(info: ManualReachability) = {

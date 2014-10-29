@@ -59,7 +59,12 @@ object Types {
    */
   case object LongType extends Type
 
-  /** Double type.
+  /** Float type (32-bit).
+   *  It does not accept `null` nor `undefined`.
+   */
+  case object FloatType extends Type
+
+  /** Double type (64-bit).
    *  It does not accept `null` nor `undefined`.
    */
   case object DoubleType extends Type
@@ -140,16 +145,20 @@ object Types {
         case (IntType, ClassType(cls)) =>
           isSubclass(BoxedIntegerClass, cls) ||
           cls == BoxedByteClass ||
-          cls == BoxedShortClass
+          cls == BoxedShortClass ||
+          cls == BoxedDoubleClass
         case (LongType, ClassType(cls)) =>
           isSubclass(BoxedLongClass, cls)
+        case (FloatType, ClassType(cls)) =>
+          isSubclass(BoxedFloatClass, cls) ||
+          cls == BoxedDoubleClass
         case (DoubleType, ClassType(cls)) =>
-          isSubclass(BoxedDoubleClass, cls) ||
-          cls == BoxedFloatClass
+          isSubclass(BoxedDoubleClass, cls)
         case (StringType, ClassType(cls)) =>
           isSubclass(StringClass, cls)
 
-        case (IntType, DoubleType) => true
+        case (IntType, DoubleType)   => true
+        case (FloatType, DoubleType) => true
 
         case (ArrayType(lhsBase, lhsDims), ArrayType(rhsBase, rhsDims)) =>
           if (lhsDims < rhsDims) {
