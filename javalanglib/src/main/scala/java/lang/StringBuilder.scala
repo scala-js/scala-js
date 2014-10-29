@@ -86,6 +86,28 @@ class StringBuilder(private var content: String) extends CharSequence
     this
   }
 
+  def deleteCharAt(index: Int): StringBuilder = {
+    if (index < 0 || index >= content.length)
+      throw new StringIndexOutOfBoundsException("String index out of range: " + index)
+    content = content.substring(0, index) + content.substring(index+1)
+    this
+  }
+
+  /**
+   * @param start The beginning index, inclusive.
+   * @param end The ending index, exclusive.
+   * @param str String that will replace previous contents.
+   * @return This StringBuilder.
+   */
+  def replace(start: Int, end: Int, str: String): StringBuilder = {
+    val length = content.length
+    if (start < 0 || start > end || start >= length)
+      throw new StringIndexOutOfBoundsException(s"Illegal to replace substring at [$start - $end] in string of length $length")
+    val realEnd = if (end > length) length else end // java api convention
+    content = content.substring(0, start) + str + content.substring(realEnd)
+    this
+  }
+
   def setCharAt(index: Int, ch: scala.Char): Unit = {
     if (index < 0 || index >= content.length)
       throw new IndexOutOfBoundsException("String index out of range: " + index)
