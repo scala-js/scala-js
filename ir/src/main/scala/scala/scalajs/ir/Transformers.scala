@@ -156,11 +156,9 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(thisType, args, resultType, body, captures) =>
-          Closure(thisType, args, resultType,
-              if (resultType == Types.NoType) transformStat(body)
-              else transformExpr(body),
-              captures map transformExpr)
+        case Closure(captureParams, params, body, captureValues) =>
+          Closure(captureParams, params, transformExpr(body),
+              captureValues.map(transformExpr))
 
         // Classes
 
@@ -303,11 +301,9 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(thisType, args, resultType, body, captures) =>
-          Closure(thisType, args, resultType,
-              if (resultType == Types.NoType) transformStat(body)
-              else transformExpr(body),
-              captures map transformExpr)
+        case Closure(captureParams, params, body, captureValues) =>
+          Closure(captureParams, params, transformExpr(body),
+              captureValues.map(transformExpr))
 
         // Trees that need not be transformed
 

@@ -360,10 +360,12 @@ object Serializers {
           writeByte(TagThis)
           writeType(tree.tpe)
 
-        case Closure(thisType, args, resultType, body, captures) =>
+        case Closure(captureParams, params, body, captureValues) =>
           writeByte(TagClosure)
-          writeType(thisType); writeTrees(args); writeType(resultType); writeTree(body)
-          writeTrees(captures)
+          writeTrees(captureParams)
+          writeTrees(params)
+          writeTree(body)
+          writeTrees(captureValues)
 
         case ClassDef(name, kind, parent, ancestors, defs) =>
           writeByte(TagClassDef)
@@ -625,7 +627,7 @@ object Serializers {
         case TagVarRef  => VarRef(readIdent(), readBoolean())(readType())
         case TagThis    => This()(readType())
         case TagClosure =>
-          Closure(readType(), readParamDefs(), readType(), readTree(), readTrees())
+          Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
 
         case TagClassDef =>
           val name = readIdent()

@@ -519,12 +519,10 @@ object Printers {
         case This() =>
           print("this")
 
-        case Closure(thisType, args, resultType, body, captures) =>
+        case Closure(captureParams, params, body, captureValues) =>
           print("(lambda")
-          printRow(captures, "<", ", ", ">")
-          if (thisType != NoType)
-            print("[this: ", thisType, "]")
-          printSig(args, resultType)
+          printRow(captureValues, "<", ", ", ">")
+          printRow(captureParams ++ params, "(", ", ", ") = ")
           printBlock(body)
           print(")")
 

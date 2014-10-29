@@ -500,11 +500,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case Closure(thisType, params, resultType, body, captures) =>
-        val (newParams, newBody) =
-          transformIsolatedBody(None, thisType, params, resultType, body)
-        Closure(thisType, newParams, resultType, newBody,
-            captures.map(transformExpr))
+      case Closure(captureParams, params, body, captureValues) =>
+        transformClosureCommon(captureParams, params, body,
+            captureValues.map(transformExpr))
 
       // Trees that need not be transformed
 
@@ -515,6 +513,18 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     if (isStat) keepOnlySideEffects(result)
     else result
+  }
+
+  private def transformClosureCommon(captureParams: List[ParamDef],
+      params: List[ParamDef], body: Tree, newCaptureValues: List[Tree])(
+      implicit pos: Position): Closure = {
+
+    val (allNewParams, newBody) =
+      transformIsolatedBody(None, AnyType, captureParams ++ params, AnyType, body)
+    val (newCaptureParams, newParams) =
+      allNewParams.splitAt(captureParams.size)
+
+    Closure(newCaptureParams, newParams, newBody, newCaptureValues)
   }
 
   private def transformBlock(tree: Block, isStat: Boolean)(
@@ -745,19 +755,12 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           }
         }
 
-      case Closure(thisType, params, resultType, body, captures)
-          if resultType == AnyType &&
-            params.drop(captures.size).forall(_.ptpe == AnyType) =>
-        /* This optimization works only if all params are AnyType, and the
-         * result is AnyType as well.
-         * That said, actually all our Closure nodes satisfy these
-         * conditions (see #1175).
-         */
-        pretransformExprs(captures) { tcaptures =>
+      case Closure(captureParams, params, body, captureValues) =>
+        pretransformExprs(captureValues) { tcaptureValues =>
           tryOrRollback { cancelFun =>
             val captureBindings = for {
               (ParamDef(Ident(name, origName), tpe, mutable), value) <-
-                params zip tcaptures
+                captureParams zip tcaptureValues
             } yield {
               Binding(name, origName, tpe, mutable, value)
             }
@@ -765,7 +768,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               val alreadyUsedState = new SimpleState[Boolean](false)
               withState(alreadyUsedState) {
                 val replacement = TentativeClosureReplacement(
-                    thisType, params, resultType, body, captureLocalDefs,
+                    captureParams, params, body, captureLocalDefs,
                     alreadyUsedState, cancelFun)
                 val localDef = LocalDef(
                     RefinedType(AnyType, isExact = false, isNullable = false),
@@ -775,11 +778,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               }
             } (cont)
           } { () =>
-            val (newParams, newBody) =
-              transformIsolatedBody(None, thisType, params, resultType, body)
-            val newCaptures = tcaptures.map(finishTransformExpr)
+            val newClosure = transformClosureCommon(captureParams, params, body,
+                tcaptureValues.map(finishTransformExpr))
             cont(PreTransTree(
-                Closure(thisType, newParams, resultType, newBody, newCaptures),
+                newClosure,
                 RefinedType(AnyType, isExact = false, isNullable = false)))
           }
         }
@@ -998,8 +1000,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
-    case Closure(_, _, _, _, captures) =>
-      Block(captures.map(keepOnlySideEffects))(stat.pos)
+    case Closure(_, _, _, captureValues) =>
+      Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
       keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
@@ -1209,11 +1211,13 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       tfun match {
         case PreTransLocalDef(LocalDef(_, false,
             closure @ TentativeClosureReplacement(
-                thisType, params, resultType, body, captureLocalDefs,
+                captureParams, params, body, captureLocalDefs,
                 alreadyUsed, cancelFun))) if !alreadyUsed.value =>
           alreadyUsed.value = true
           pretransformExprs(args) { targs =>
-            inlineBody(None, params, resultType, body,
+            inlineBody(
+                Some(PreTransTree(Undefined())), // `this` is `undefined`
+                captureParams ++ params, AnyType, body,
                 captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
                 usePreTransform)(cont)
           }
@@ -1233,11 +1237,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
       case PreTransLocalDef(localDef) =>
         localDef.replacement match {
-          case TentativeClosureReplacement(_, _, _, _, _, _, _) => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _)           => true
-          case InlineClassBeingConstructedReplacement(_, _)     => true
-          case InlineClassInstanceReplacement(_, _, _)          => true
-          case _                                                => false
+          case TentativeClosureReplacement(_, _, _, _, _, _) => true
+          case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
+          case InlineClassBeingConstructedReplacement(_, _)  => true
+          case InlineClassInstanceReplacement(_, _, _)       => true
+          case _                                             => false
         }
 
       case PreTransRecordTree(_, _, _) =>
@@ -2994,7 +2998,7 @@ private[optimizer] object OptimizerCore {
       case ReplaceWithConstant(value) =>
         value
 
-      case TentativeClosureReplacement(_, _, _, _, _, _, cancelFun) =>
+      case TentativeClosureReplacement(_, _, _, _, _, cancelFun) =>
         cancelFun()
 
       case InlineClassBeingConstructedReplacement(_, cancelFun) =>
@@ -3006,7 +3010,7 @@ private[optimizer] object OptimizerCore {
 
     def contains(that: LocalDef): Boolean = {
       (this eq that) || (replacement match {
-        case TentativeClosureReplacement(_, _, _, _, captureLocalDefs, _, _) =>
+        case TentativeClosureReplacement(_, _, _, captureLocalDefs, _, _) =>
           captureLocalDefs.exists(_.contains(that))
         case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
@@ -3035,8 +3039,8 @@ private[optimizer] object OptimizerCore {
       value: Tree) extends LocalDefReplacement
 
   private final case class TentativeClosureReplacement(
-      thisType: Type, params: List[ParamDef], resultType: Type, body: Tree,
-      captures: List[LocalDef],
+      captureParams: List[ParamDef], params: List[ParamDef], body: Tree,
+      captureValues: List[LocalDef],
       alreadyUsed: SimpleState[Boolean],
       cancelFun: CancelFun) extends LocalDefReplacement
 

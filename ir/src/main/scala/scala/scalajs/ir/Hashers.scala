@@ -366,13 +366,12 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
-        case Closure(thisType, args, resultType, body, captures) =>
+        case Closure(captureParams, params, body, captureValues) =>
           mixTag(TagClosure)
-          mixType(thisType)
-          mixTrees(args)
-          mixType(resultType)
+          mixTrees(captureParams)
+          mixTrees(params)
           mixTree(body)
-          mixTrees(captures)
+          mixTrees(captureValues)
 
         case _ =>
           sys.error(s"Unable to hash tree of class ${tree.getClass}")

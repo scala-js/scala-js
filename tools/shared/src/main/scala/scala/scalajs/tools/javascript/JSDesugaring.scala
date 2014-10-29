@@ -409,8 +409,8 @@ object JSDesugaring {
               case JSObjectConstr(items) =>
                 val newValues = recs(items.map(_._2))
                 JSObjectConstr(items.map(_._1) zip newValues)
-              case Closure(thisType, args, resultType, body, captures) =>
-                Closure(thisType, args, resultType, body, recs(captures))
+              case Closure(captureParams, params, body, captureValues) =>
+                Closure(captureParams, params, body, recs(captureValues))
 
               case New(cls, constr, args) if noExtractYet =>
                 New(cls, constr, recs(args))
@@ -530,8 +530,8 @@ object JSDesugaring {
           allowUnpure && (items forall test)
         case JSObjectConstr(items) =>
           allowUnpure && (items forall (item => test(item._2)))
-        case Closure(thisType, args, resultType, body, captures) =>
-          allowUnpure && (captures forall test)
+        case Closure(captureParams, params, body, captureValues) =>
+          allowUnpure && (captureValues forall test)
 
         // Scala expressions that can always have side-effects
         case New(cls, constr, args) =>
@@ -969,9 +969,9 @@ object JSDesugaring {
 
         // Closures
 
-        case Closure(thisType, args, resultType, body, captures) =>
-          unnest(captures) { newCaptures =>
-            redo(Closure(thisType, args, resultType, body, newCaptures))
+        case Closure(captureParams, params, body, captureValues) =>
+          unnest(captureValues) { newCaptureValues =>
+            redo(Closure(captureParams, params, body, newCaptureValues))
           }
 
         case _ =>
@@ -1322,29 +1322,26 @@ object JSDesugaring {
         case This() =>
           js.This()
 
-        case Closure(thisType, args, resultType, body, captures) =>
-          val transformedArgs = args.map(transformParamDef)
-
+        case Closure(captureParams, params, body, captureValues) =>
           val transformedBody = {
-            val withReturn =
-              if (resultType == NoType) body
-              else Return(body, None)
+            val withReturn = Return(body, None)
             transformStat(withReturn) match {
               case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
               case other                                        => other
             }
           }
 
-          if (captures.isEmpty) {
-            js.Function(transformedArgs, transformedBody)
+          val innerFunction =
+            js.Function(params.map(transformParamDef), transformedBody)
+
+          if (captureParams.isEmpty) {
+            innerFunction
           } else {
-            val (formalCaptures, formalArgs) =
-              transformedArgs.splitAt(captures.size)
             js.Apply(
-                js.Function(formalCaptures, {
-                  js.Return(js.Function(formalArgs, transformedBody))
+                js.Function(captureParams.map(transformParamDef), {
+                  js.Return(innerFunction)
                 }),
-                captures.map(transformExpr))
+                captureValues.map(transformExpr))
           }
 
         // Invalid trees
