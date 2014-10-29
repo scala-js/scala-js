@@ -1215,7 +1215,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 alreadyUsed, cancelFun))) if !alreadyUsed.value =>
           alreadyUsed.value = true
           pretransformExprs(args) { targs =>
-            inlineBody(None,
+            inlineBody(
+                Some(PreTransTree(Undefined())), // `this` is `undefined`
                 captureParams ++ params, AnyType, body,
                 captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
                 usePreTransform)(cont)
