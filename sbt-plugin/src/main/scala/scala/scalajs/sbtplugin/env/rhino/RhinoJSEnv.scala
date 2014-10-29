@@ -57,8 +57,14 @@ class RhinoJSEnv(semantics: Semantics,
       }
 
       // Make sure Rhino does not do its magic for JVM top-level packages (#364)
-      for (name <- Seq("java", "scala", "com", "org"))
-        ScriptableObject.putProperty(scope, name, Undefined.instance)
+      val PackagesObject =
+        ScriptableObject.getProperty(scope, "Packages").asInstanceOf[Scriptable]
+      val topLevelPackageIds = ScriptableObject.getPropertyIds(PackagesObject)
+      for (id <- topLevelPackageIds) (id: Any) match {
+        case name: String => ScriptableObject.deleteProperty(scope, name)
+        case index: Int   => ScriptableObject.deleteProperty(scope, index)
+        case _            => // should not happen, I think, but with Rhino you never know
+      }
 
       // Setup console.log
       val jsconsole = context.newObject(scope)
