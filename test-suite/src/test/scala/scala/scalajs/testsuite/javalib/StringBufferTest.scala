@@ -71,6 +71,26 @@ object StringBufferTest extends JasmineTest {
       shouldThrow[StringIndexOutOfBoundsException](initBuf("abcd").insert(-1, "whatever"))
     }
 
+    it("should respond to `deleteCharAt`") {
+      expect(initBuf("0123").deleteCharAt(1).toString).toEqual("023")
+      expect(initBuf("0123").deleteCharAt(0).toString).toEqual("123")
+      expect(initBuf("0123").deleteCharAt(3).toString).toEqual("012")
+      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(-1))
+      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(4))
+    }
+
+    it("should respond to `replace`") {
+      expect(initBuf("0123").replace(1,3,"bc").toString).toEqual("0bc3")
+      expect(initBuf("0123").replace(0,4,"abcd").toString).toEqual("abcd")
+      expect(initBuf("0123").replace(0,10,"abcd").toString).toEqual("abcd")
+      expect(initBuf("0123").replace(3,10,"defg").toString).toEqual("012defg")
+      expect(initBuf("0123").replace(0,1,"xxxx").toString).toEqual("xxxx123")
+      expect(initBuf("0123").replace(1,1,"xxxx").toString).toEqual("0xxxx123")
+
+      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").replace(-1,3,"x"))
+      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").replace(4,5,"x"))
+    }
+
     it("should respond to `setCharAt`") {
       val buf = newBuf
       buf.append("foobar")
@@ -149,6 +169,26 @@ object StringBufferTest extends JasmineTest {
     it("should allow string interpolation to survive `null` and `undefined`") {
       expect(s"${null}").toEqual("null")
       expect(s"${js.undefined}").toEqual("undefined")
+    }
+
+    it("should respond to `deleteCharAt`") {
+      expect(initBuilder("0123").deleteCharAt(1).toString).toEqual("023")
+      expect(initBuilder("0123").deleteCharAt(0).toString).toEqual("123")
+      expect(initBuilder("0123").deleteCharAt(3).toString).toEqual("012")
+      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(-1))
+      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(4))
+    }
+
+    it("should respond to `replace`") {
+      expect(initBuilder("0123").replace(1,3,"bc").toString).toEqual("0bc3")
+      expect(initBuilder("0123").replace(0,4,"abcd").toString).toEqual("abcd")
+      expect(initBuilder("0123").replace(0,10,"abcd").toString).toEqual("abcd")
+      expect(initBuilder("0123").replace(3,10,"defg").toString).toEqual("012defg")
+      expect(initBuilder("0123").replace(0,1,"xxxx").toString).toEqual("xxxx123")
+      expect(initBuilder("0123").replace(1,1,"xxxx").toString).toEqual("0xxxx123")
+
+      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").replace(-1,3,"x"))
+      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").replace(4,5,"x"))
     }
 
     it("should respond to `setCharAt`") {
