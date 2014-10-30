@@ -21,7 +21,7 @@ abstract class JSASTTest extends DirectTest {
   class JSAST(val clDefs: List[js.Tree]) {
     type Pat = PartialFunction[js.Tree, Unit]
 
-    class PFTraverser(pf: Pat) extends ir.Transformers.Transformer {
+    class PFTraverser(pf: Pat) extends ir.Traversers.Traverser {
       private case object Found extends ControlThrowable
 
       private[this] var finding = false
@@ -29,38 +29,26 @@ abstract class JSASTTest extends DirectTest {
       def find: Boolean = {
         finding = true
         try {
-          clDefs map transformStat _
+          clDefs.map(traverse)
           false
         } catch {
           case Found => true
         }
       }
 
-      def traverse: Unit = {
+      def traverse(): Unit = {
         finding = false
-        clDefs map transformStat _
+        clDefs.map(traverse)
       }
 
-      private def visit(tr: js.Tree)(after: => js.Tree) = {
-        if (finding && pf.isDefinedAt(tr))
+      override def traverse(tree: js.Tree): Unit = {
+        if (finding && pf.isDefinedAt(tree))
           throw Found
 
         if (!finding)
-          pf.lift(tr)
+          pf.lift(tree)
 
-        after
-      }
-
-      override def transformStat(tr: js.Tree) = visit(tr) {
-        super.transformStat(tr)
-      }
-
-      override def transformExpr(tr: js.Tree) = visit(tr) {
-        super.transformExpr(tr)
-      }
-
-      override def transformDef(tr: js.Tree) = visit(tr) {
-        super.transformDef(tr)
+        super.traverse(tree)
       }
     }
 
@@ -78,7 +66,7 @@ abstract class JSASTTest extends DirectTest {
 
     def traverse(pf: Pat): this.type = {
       val tr = new PFTraverser(pf)
-      tr.traverse
+      tr.traverse()
       this
     }
 

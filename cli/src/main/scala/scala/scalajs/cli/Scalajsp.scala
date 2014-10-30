@@ -12,7 +12,6 @@ package scala.scalajs.cli
 import scala.scalajs.ir
 import ir.ScalaJSVersions
 import ir.Trees.{Tree, ClassDef}
-import ir.Transformers.Transformer
 import ir.Printers.{InfoPrinter, IRTreePrinter}
 
 import scala.scalajs.tools.sem.Semantics
@@ -95,7 +94,7 @@ object Scalajsp {
     else {
       val outTree = {
         if (opts.showReflProxy) vfile.tree
-        else new ReflProxyFilter().transformStat(vfile.tree).asInstanceOf[ClassDef]
+        else filterOutReflProxies(vfile.tree)
       }
 
       if (opts.desugar)
@@ -146,20 +145,14 @@ object Scalajsp {
   private val stdout =
     new BufferedWriter(new OutputStreamWriter(Console.out, "UTF-8"))
 
-  /** Filters out reflective call proxies from an undesugared tree */
-  private class ReflProxyFilter extends Transformer {
+  private def filterOutReflProxies(tree: ClassDef): ClassDef = {
     import ir.Trees._
     import ir.Definitions.isReflProxyName
-
-    override def transformStat(tree: Tree): Tree = tree match {
-      case cdef: ClassDef =>
-        val newDefs = cdef.defs.filter {
-          case MethodDef(Ident(name, _), _, _, _) => !isReflProxyName(name)
-          case _ => true
-        }
-        cdef.copy(defs = newDefs)(cdef.pos)
-      case _ => super.transformStat(tree)
+    val newDefs = tree.defs.filter {
+      case MethodDef(Ident(name, _), _, _, _) => !isReflProxyName(name)
+      case _ => true
     }
+    tree.copy(defs = newDefs)(tree.pos)
   }
 
 }

@@ -646,29 +646,22 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.ParamDef(name, ptpe, newMutable(name.name, mutable))(p.pos)
       }
       val transformer = new ir.Transformers.Transformer {
-        override def transformStat(tree: js.Tree): js.Tree =
-          transform(tree, isStat = true)
-        override def transformExpr(tree: js.Tree): js.Tree =
-          transform(tree, isStat = false)
-
-        private def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
           case js.VarDef(name, vtpe, mutable, rhs) =>
             assert(isStat)
-            super.transformStat(js.VarDef(
-                name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos))
+            super.transform(js.VarDef(
+                name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
           case js.VarRef(name, mutable) =>
             js.VarRef(name, newMutable(name.name, mutable))(tree.tpe)(tree.pos)
           case js.Closure(captureParams, params, body, captureValues) =>
             js.Closure(captureParams, params, body,
                 captureValues.map(transformExpr))(tree.pos)
           case _ =>
-            if (isStat) super.transformStat(tree)
-            else super.transformExpr(tree)
+            super.transform(tree, isStat)
         }
       }
       val newBody =
-        if (resultType == jstpe.NoType) transformer.transformStat(body)
-        else transformer.transformExpr(body)
+        transformer.transform(body, isStat = resultType == jstpe.NoType)
       js.MethodDef(methodName, newParams, resultType, newBody)(None)(methodDef.pos)
     }
 
