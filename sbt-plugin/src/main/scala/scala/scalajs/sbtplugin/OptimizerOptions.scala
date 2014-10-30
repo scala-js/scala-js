@@ -57,6 +57,16 @@ final class OptimizerOptions private (
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
+  override def toString: String = {
+    s"""OptimizerOptions(
+       |  parallel             = $parallel
+       |  batchMode            = $batchMode
+       |  disableOptimizer     = $disableOptimizer
+       |  prettyPrintFullOptJS = $prettyPrintFullOptJS
+       |  checkScalaJSIR       = $checkScalaJSIR
+       |)""".stripMargin
+  }
+
 }
 
 object OptimizerOptions {
