@@ -79,6 +79,9 @@ run/t1503.scala
 run/t4148.scala
 run/t7763.scala
 
+# Relies on strict Floats
+run/issue192.scala
+
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 
