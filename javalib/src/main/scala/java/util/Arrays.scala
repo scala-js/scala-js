@@ -485,4 +485,40 @@ object Arrays {
     throw new IllegalArgumentException()
   }
 
+  def equals(a: Array[Boolean], b: Array[Boolean]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Byte], b: Array[Byte]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Char], b: Array[Char]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Double], b: Array[Double]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Float], b: Array[Float]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Int], b: Array[Int]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Long], b: Array[Long]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[AnyRef], b: Array[AnyRef]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
+  def equals(a: Array[Short], b: Array[Short]): Boolean =
+    (a eq b) || (a != null && b != null && a.length == b.length &&
+        (0 until a.size).forall(i => a(i) == b(i)))
+
 }

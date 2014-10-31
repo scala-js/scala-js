@@ -134,10 +134,10 @@ class ParIncOptimizer extends GenIncOptimizer {
       staticCallers.getOrPut(methodName, TrieSet.empty) += caller
 
     /** UPDATE PASS ONLY. */
-    def unregisterCaller(caller: MethodImpl): Unit = {
-      ancestorsAskers -= caller
-      dynamicCallers.valuesIterator.foreach(_ -= caller)
-      staticCallers.valuesIterator.foreach(_ -= caller)
+    def unregisterDependee(dependee: MethodImpl): Unit = {
+      ancestorsAskers -= dependee
+      dynamicCallers.valuesIterator.foreach(_ -= dependee)
+      staticCallers.valuesIterator.foreach(_ -= dependee)
     }
 
     /** UPDATE PASS ONLY. */
@@ -152,14 +152,30 @@ class ParIncOptimizer extends GenIncOptimizer {
   private class ParMethodImpl(owner: MethodContainer,
       encodedName: String) extends MethodImpl(owner, encodedName) {
 
-    private val _registeredTo = AtomicAcc.empty[InterfaceType]
+    private val bodyAskers = TrieSet.empty[MethodImpl]
+
+    /** PROCESS PASS ONLY. */
+    def registerBodyAsker(asker: MethodImpl): Unit =
+      bodyAskers += asker
+
+    /** UPDATE PASS ONLY. */
+    def unregisterDependee(dependee: MethodImpl): Unit =
+      bodyAskers -= dependee
+
+    /** UPDATE PASS ONLY. */
+    def tagBodyAskers(): Unit = {
+      bodyAskers.keysIterator.foreach(_.tag())
+      bodyAskers.clear()
+    }
+
+    private val _registeredTo = AtomicAcc.empty[Unregisterable]
     private val tagged = new AtomicBoolean(false)
 
-    protected def registeredTo(intf: InterfaceType): Unit =
+    protected def registeredTo(intf: Unregisterable): Unit =
       _registeredTo += intf
 
-    protected def unregisterAllCalls(): Unit = {
-      _registeredTo.removeAll().foreach(_.unregisterCaller(this))
+    protected def unregisterFromEverywhere(): Unit = {
+      _registeredTo.removeAll().foreach(_.unregisterDependee(this))
     }
 
     protected def protectTag(): Boolean = !tagged.getAndSet(true)

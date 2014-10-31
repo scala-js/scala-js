@@ -262,5 +262,27 @@ object RegressionTest extends JasmineTest {
       expect(x.synchronized(5)).toEqual(5)
       expect(c).toEqual(1)
     }
+
+    it("IR checker should allow Apply/Select on NullType and NothingType - #1123") {
+      def giveMeANull(): Null = null
+      expect(() => (giveMeANull(): StringBuilder).append(5)).toThrow
+      expect(() => (giveMeANull(): scala.runtime.IntRef).elem).toThrow
+
+      def giveMeANothing(): Nothing = sys.error("boom")
+      expect(() => (giveMeANothing(): StringBuilder).append(5)).toThrow
+      expect(() => (giveMeANothing(): scala.runtime.IntRef).elem).toThrow
+    }
+
+    it("should not put bad flags on caseaccessor export forwarders - #1191") {
+      // This test used to choke patmat
+
+      @scala.scalajs.js.annotation.JSExportAll
+      case class T(one: Int, two: Int)
+
+      val T(a, b) = T(1, 2)
+
+      expect(a).toEqual(1)
+      expect(b).toEqual(2)
+    }
   }
 }
