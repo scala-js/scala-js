@@ -43,6 +43,15 @@ final class Semantics private (
     finalizeHash(acc, 1)
   }
 
+  override def toString(): String = {
+    val indentedBehaviors =
+      checkedBehaviors.toString.linesWithSeparators.map("|  " + _).mkString
+    s"""Semantics(
+       $indentedBehaviors,
+       |  strictFloats = $strictFloats
+       |)""".stripMargin
+  }
+
   private def copy(
       checkedBehaviors: CheckedBehaviors = this.checkedBehaviors,
       strictFloats: Boolean = this.strictFloats): Semantics = {

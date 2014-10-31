@@ -36,6 +36,12 @@ final class CheckedBehaviors private (
     finalizeHash(acc, 1)
   }
 
+  override def toString(): String = {
+    s"""CheckedBehaviors(
+       |  asInstanceOfs = $asInstanceOfs
+       |)""".stripMargin
+  }
+
   private def copy(
       asInstanceOfs: Behavior = this.asInstanceOfs): CheckedBehaviors = {
     new CheckedBehaviors(
