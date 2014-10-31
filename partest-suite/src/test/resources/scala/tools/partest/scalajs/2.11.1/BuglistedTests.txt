@@ -4,6 +4,4 @@
 # BlacklistedTests.txt
 
 # Issue 1222
-run/arrayclone-new.scala
-run/arrayclone-old.scala
 run/issue192.scala

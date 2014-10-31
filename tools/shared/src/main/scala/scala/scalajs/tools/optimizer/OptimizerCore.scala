@@ -3453,11 +3453,6 @@ private[optimizer] object OptimizerCore {
     private def addCalledMethodStatic(container: String, methodName: String): Unit =
       calledMethodsStatic.getOrElseUpdate(container, mutable.Set.empty) += methodName
 
-    private def typeToContainer(tpe: Type): String = tpe match {
-      case ClassType(cls) => cls
-      case _              => Definitions.ObjectClass
-    }
-
     private def refTypeToClassData(tpe: ReferenceType): String = tpe match {
       case ClassType(cls)     => cls
       case ArrayType(base, _) => base
@@ -3478,7 +3473,22 @@ private[optimizer] object OptimizerCore {
           addCalledMethodStatic(cls, ctor.name)
 
         case Apply(receiver, method, _) =>
-          addCalledMethod(typeToContainer(receiver.tpe), method.name)
+          receiver.tpe match {
+            case ClassType(cls) if !Definitions.HijackedClasses.contains(cls) =>
+              addCalledMethod(cls, method.name)
+            case AnyType =>
+              addCalledMethod(Definitions.ObjectClass, method.name)
+            case ArrayType(_, _) if method.name != "clone__O" =>
+              /* clone__O is overridden in the pseudo Array classes and is
+               * always kept anyway, because it is in scalajsenv.js.
+               * Other methods delegate to Object, which we can model with
+               * a static call to Object.method.
+               */
+              addCalledMethodStatic(Definitions.ObjectClass, method.name)
+            case _ =>
+              // Nothing to do
+          }
+
         case StaticApply(_, ClassType(cls), method, _) =>
           addCalledMethodStatic(cls, method.name)
         case TraitImplApply(ClassType(impl), method, _) =>

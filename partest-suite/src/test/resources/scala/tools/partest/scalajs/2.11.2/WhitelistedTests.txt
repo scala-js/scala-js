@@ -2480,6 +2480,8 @@ run/t7223.scala
 run/t7859
 run/t7868.scala
 run/t7871
+run/arrayclone-new.scala
+run/arrayclone-old.scala
 run/bitsets.scala
 run/comparable-comparator.scala
 run/colltest1.scala
