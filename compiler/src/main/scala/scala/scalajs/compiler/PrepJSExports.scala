@@ -34,7 +34,7 @@ trait PrepJSExports { this: PrepJSInterop =>
     val exports = jsInterop.exportsOf(baseSym)
 
     // Helper function for errors
-    def err(msg: String) = { currentUnit.error(exports.head.pos, msg); Nil }
+    def err(msg: String) = { reporter.error(exports.head.pos, msg); Nil }
     def memType = if (baseSym.isConstructor) "constructor" else "method"
 
     if (exports.isEmpty)
