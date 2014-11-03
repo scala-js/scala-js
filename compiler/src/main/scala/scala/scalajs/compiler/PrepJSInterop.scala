@@ -98,8 +98,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Catch forbidden implDefs
       case idef: ImplDef if !allowImplDef =>
-        unit.error(idef.pos, "Traits, classes and objects extending js.Any " +
-            "may not have inner traits, classes or objects")
+        reporter.error(idef.pos, "Traits, classes and objects extending " +
+            "js.Any may not have inner traits, classes or objects")
         super.transform(tree)
 
       // Handle js.Anys
@@ -136,28 +136,28 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       // Catch Select on Enumeration.Value we couldn't transform but need to
       // we ignore the implementation of scala.Enumeration itself
       case ScalaEnumValue.NoName(_) if !inEnumImpl =>
-        unit.warning(tree.pos,
+        reporter.warning(tree.pos,
                      """Couldn't transform call to Enumeration.Value.
                        |The resulting program is unlikely to function properly as this
                        |operation requires reflection.""".stripMargin)
         super.transform(tree)
 
       case ScalaEnumValue.NullName() if !inEnumImpl =>
-        unit.warning(tree.pos,
+        reporter.warning(tree.pos,
                      """Passing null as name to Enumeration.Value
                        |requires reflection at runtime. The resulting
                        |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
       case ScalaEnumVal.NoName(_) if !inEnumImpl =>
-        unit.warning(tree.pos,
+        reporter.warning(tree.pos,
                      """Calls to the non-string constructors of Enumeration.Val
                        |require reflection at runtime. The resulting
                        |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
       case ScalaEnumVal.NullName() if !inEnumImpl =>
-        unit.warning(tree.pos,
+        reporter.warning(tree.pos,
                      """Passing null as name to a constructor of Enumeration.Val
                        |requires reflection at runtime. The resulting
                        |program is unlikely to function properly.""".stripMargin)
@@ -183,11 +183,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           if (typer.checkClassType(tpeArg)) {
             typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
           } else {
-            unit.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
+            reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
             EmptyTree
           }
         } else {
-          unit.error(classOfTree.pos,
+          reporter.error(classOfTree.pos,
               """This classOf resulted in an unresolved classOf in the jscode
                 |phase. This is most likely a bug in the Scala compiler. ScalaJS
                 |is probably able to work around this bug. Enable the workaround
@@ -209,7 +209,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         def condErr(msg: String) = {
           for (exp <- jsInterop.exportsOf(sym)) {
-            currentUnit.error(exp.pos, msg)
+            reporter.error(exp.pos, msg)
           }
         }
 
@@ -269,7 +269,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               else
                 base
             }
-            currentUnit.error(exp.pos, msg)
+            reporter.error(exp.pos, msg)
           }
         }
         memDef
@@ -292,40 +292,40 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       implDef match {
         // Check that we do not have a case modifier
         case _ if implDef.mods.hasFlag(Flag.CASE) =>
-          unit.error(implDef.pos, "Classes and objects extending " +
+          reporter.error(implDef.pos, "Classes and objects extending " +
               "js.Any may not have a case modifier")
 
         // Check that we do not extends a trait that does not extends js.Any
         case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
           !isJSLambda(sym) =>
           val badName = badParent.get.typeSymbol.fullName
-          unit.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
+          reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
               "which does not extend js.Any.")
 
         // Check that we are not an anonymous class
         case cldef: ClassDef
           if cldef.symbol.isAnonymousClass && !isJSLambda(sym) =>
-          unit.error(implDef.pos, "Anonymous classes may not " +
+          reporter.error(implDef.pos, "Anonymous classes may not " +
               "extend js.Any")
 
         // Check if we may have a js.Any here
         case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
           !isJSLambda(sym) =>
-          unit.error(implDef.pos, "Classes extending js.Any may not be " +
+          reporter.error(implDef.pos, "Classes extending js.Any may not be " +
               "defined inside a class or trait")
 
         case _: ModuleDef if !allowJSAny =>
-          unit.error(implDef.pos, "Objects extending js.Any may not be " +
+          reporter.error(implDef.pos, "Objects extending js.Any may not be " +
               "defined inside a class or trait")
 
         case _ if sym.isLocalToBlock && !isJSLambda(sym) =>
-          unit.error(implDef.pos, "Local classes and objects may not " +
+          reporter.error(implDef.pos, "Local classes and objects may not " +
               "extend js.Any")
 
         // Check that this is not a class extending js.GlobalScope
         case _: ClassDef if isJSGlobalScope(implDef) &&
           implDef.symbol != JSGlobalScopeClass =>
-          unit.error(implDef.pos, "Only objects may extend js.GlobalScope")
+          reporter.error(implDef.pos, "Only objects may extend js.GlobalScope")
 
         case _ =>
           // We cannot use sym directly, since the symbol
@@ -350,25 +350,26 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       if (exports.nonEmpty) {
         val memType = if (sym.isConstructor) "constructor" else "method"
-        unit.error(exports.head.pos, s"You may not export a $memType of a subclass of js.Any")
+        reporter.error(exports.head.pos,
+            s"You may not export a $memType of a subclass of js.Any")
       }
 
       if (isNonJSScalaSetter(sym)) {
         // Forbid setters with non-unit return type
-        unit.error(tree.pos, "Setters that do not return Unit are " +
+        reporter.error(tree.pos, "Setters that do not return Unit are " +
             "not allowed in types extending js.Any")
       }
 
       if (sym.hasAnnotation(NativeAttr)) {
         // Native methods are not allowed
-        unit.error(tree.pos, "Methods in a js.Any may not be @native")
+        reporter.error(tree.pos, "Methods in a js.Any may not be @native")
       }
 
       for {
         annot <- sym.getAnnotation(JSNameAnnotation)
         if annot.stringArg(0).isEmpty
       } {
-        currentUnit.error(annot.pos,
+        reporter.error(annot.pos,
           "The argument to JSName must be a literal string")
       }
 
@@ -390,7 +391,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             case Apply(trg, Literal(Constant("stub")) :: Nil)
                 if trg.symbol == definitions.Sys_error =>
             case _ =>
-              unit.error(tree.pos,
+              reporter.error(tree.pos,
                   "The body of a primitive must be `sys.error(\"stub\")`.")
           }
         }
@@ -402,7 +403,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                  trg.symbol.owner == sym.owner =>
             // everything is fine here
           case _ =>
-            unit.error(tree.pos, "A secondary constructor of a class " +
+            reporter.error(tree.pos, "A secondary constructor of a class " +
                 "extending js.Any may only call the primary constructor")
         }
       } else {
@@ -411,7 +412,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           case sel: Select if sel.symbol == JSPackage_native =>
           case _ =>
             val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
-            unit.warning(pos, "Members of traits, classes and objects " +
+            reporter.warning(pos, "Members of traits, classes and objects " +
               "extending js.Any may only contain members that call js.native. " +
               "This will be enforced in 1.0.")
         }
@@ -420,7 +421,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             tree.tpt.asInstanceOf[TypeTree].original == null) {
           // Warn if resultType is Nothing and not ascribed
           val name = sym.name.decoded.trim
-          unit.warning(tree.pos, s"The type of $name got inferred " +
+          reporter.warning(tree.pos, s"The type of $name got inferred " +
               "as Nothing. To suppress this warning, explicitly ascribe " +
               "the type.")
         }

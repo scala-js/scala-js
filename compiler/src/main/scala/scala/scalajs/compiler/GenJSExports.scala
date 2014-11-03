@@ -91,7 +91,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         implicit val pos = exp.pos
 
         if (exp.isNamed)
-          currentUnit.error(pos, "You may not use @JSNamedExport on an object")
+          reporter.error(pos, "You may not use @JSNamedExport on an object")
 
         js.ModuleExportDef(exp.jsName)
       }
@@ -125,7 +125,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         implicit pos: Position) = {
 
       if (hasRepeatedParam(trgSym)) {
-        currentUnit.error(pos,
+        reporter.error(pos,
             "You may not name-export a method with a *-parameter")
       }
 
@@ -164,7 +164,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val kind = if (isProp) "property" else "method"
         val alts = conflicting.alternatives
 
-        currentUnit.error(alts.head.pos,
+        reporter.error(alts.head.pos,
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
@@ -336,7 +336,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // 2. The optional argument count restriction has triggered
         // 3. We only have (more than once) repeated parameters left
         // Therefore, we should fail
-        currentUnit.error(pos,
+        reporter.error(pos,
             s"""Cannot disambiguate overloads for exported method ${alts.head.name} with types
                |  ${alts.map(_.typeInfo).mkString("\n  ")}""".stripMargin)
         js.Undefined()
