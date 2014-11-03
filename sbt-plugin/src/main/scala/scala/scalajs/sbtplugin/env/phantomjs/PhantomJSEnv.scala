@@ -22,68 +22,14 @@ import java.io.{ Console => _, _ }
 import scala.io.Source
 
 class PhantomJSEnv(
-    phantomjsPath: Option[String],
-    addArgs: Seq[String],
-    addEnv: Map[String, String],
-    val autoExit: Boolean) extends ExternalJSEnv(addArgs, addEnv) {
+    phantomjsPath: String = "phantomjs",
+    addArgs: Seq[String] = Seq.empty,
+    addEnv: Map[String, String] = Map.empty,
+    val autoExit: Boolean = true
+) extends ExternalJSEnv(addArgs, addEnv) {
 
   protected def vmName: String = "PhantomJS"
-  protected def executable: String = phantomjsPath.getOrElse("phantomjs")
-
-  // Helper constructors
-
-  def this(phantomjsPath: Option[String], addArgs: Seq[String], autoExit: Boolean) =
-    this(phantomjsPath, addArgs, Map.empty[String, String], autoExit)
-
-  def this(phantomjsPath: Option[String], addEnv: Map[String, String], autoExit: Boolean) =
-    this(phantomjsPath, Seq.empty, addEnv, autoExit)
-
-  def this(phantomjsPath: Option[String], addArgs: Seq[String]) =
-    this(phantomjsPath, addArgs, Map.empty[String, String], true)
-
-  def this(phantomjsPath: Option[String], addEnv: Map[String, String]) =
-    this(phantomjsPath, Seq.empty, addEnv, true)
-
-  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String], autoExit: Boolean) =
-    this(Some(phantomjsPath), args, env, autoExit)
-
-  def this(phantomjsPath: String, args: Seq[String], autoExit: Boolean) =
-    this(Some(phantomjsPath), args, Map.empty[String, String], autoExit)
-
-  def this(phantomjsPath: String, env: Map[String, String], autoExit: Boolean) =
-    this(Some(phantomjsPath), Seq.empty, env, autoExit)
-
-  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String]) =
-    this(Some(phantomjsPath), args, env, true)
-
-  def this(phantomjsPath: String, args: Seq[String]) =
-    this(Some(phantomjsPath), args, Map.empty[String, String], true)
-
-  def this(phantomjsPath: String, env: Map[String, String]) =
-    this(Some(phantomjsPath), Seq.empty, env, true)
-
-  def this(args: Seq[String], env: Map[String, String], autoExit: Boolean) =
-    this(None, args, env, autoExit)
-
-  def this(args: Seq[String], env: Map[String, String]) =
-    this(None, args, env, true)
-
-  def this(args: Seq[String], autoExit: Boolean) =
-    this(None, args, Map.empty[String, String], autoExit)
-
-  def this(env: Map[String, String], autoExit: Boolean) =
-    this(None, Seq.empty, env, autoExit)
-
-  def this(args: Seq[String]) =
-    this(None, args, Map.empty[String, String], true)
-
-  def this(env: Map[String, String]) =
-    this(None, Seq.empty, env, true)
-
-  def this(autoExit: Boolean) =
-    this(None, Seq.empty, Map.empty[String, String], autoExit)
-
-  def this() = this(None, Seq.empty, Map.empty[String, String], true)
+  protected def executable: String = phantomjsPath
 
   override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): JSRunner = {
