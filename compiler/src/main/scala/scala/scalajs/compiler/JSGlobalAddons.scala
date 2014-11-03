@@ -92,7 +92,7 @@ trait JSGlobalAddons extends JSDefinitions
         val named = annot.symbol == JSExportNamedAnnotation
 
         def explicitName = annot.stringArg(0).getOrElse {
-          currentUnit.error(annot.pos,
+          reporter.error(annot.pos,
             s"The argument to ${annot.symbol.name} must be a literal string")
           "dummy"
         }
@@ -106,7 +106,7 @@ trait JSGlobalAddons extends JSDefinitions
         // Enforce that methods ending with _= are exported as setters
         if (sym.isMethod && !sym.isConstructor &&
           sym.name.decoded.endsWith("_=") && !isJSSetter(sym)) {
-          currentUnit.error(annot.pos, "A method ending in _= will be exported " +
+          reporter.error(annot.pos, "A method ending in _= will be exported " +
               s"as setter. But ${sym.name.decoded} does not have the right " +
               "signature to do so (single argument, unit return type).")
         }
@@ -118,7 +118,7 @@ trait JSGlobalAddons extends JSDefinitions
             annot.args.head.pos
           else trgSym.pos
 
-          currentUnit.error(pos,
+          reporter.error(pos,
               "An exported name may not contain a double underscore (`__`)")
         }
 
@@ -126,12 +126,12 @@ trait JSGlobalAddons extends JSDefinitions
         if (!sym.isConstructor && name == "toString" && !named &&
             sym.name != nme.toString_ && sym.tpe.params.isEmpty &&
             !isJSGetter(sym)) {
-          currentUnit.error(annot.pos, "You may not export a zero-argument " +
+          reporter.error(annot.pos, "You may not export a zero-argument " +
               "method named other than 'toString' under the name 'toString'")
         }
 
         if (named && isJSProperty(sym)) {
-          currentUnit.error(annot.pos,
+          reporter.error(annot.pos,
               "You may not export a getter or a setter as a named export")
         }
 
@@ -167,7 +167,7 @@ trait JSGlobalAddons extends JSDefinitions
           // Enfore no __ in name
           if (name.contains("__")) {
             // Get all annotation positions for error message
-            currentUnit.error(sym.pos,
+            reporter.error(sym.pos,
                 s"""${trgSym.name} may not have a double underscore (`__`) in its fully qualified
                    |name, since it is forced to be exported by a @${trgAnnot.name} on ${fs}""".stripMargin)
           }

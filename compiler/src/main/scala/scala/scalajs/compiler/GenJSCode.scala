@@ -397,10 +397,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = sym.pos
 
       // Check that RawJS type is not exported
-      for (exp <- jsInterop.exportsOf(sym)) {
-        currentUnit.error(exp.pos,
-            "You may not export a class extending js.Any")
-      }
+      for (exp <- jsInterop.exportsOf(sym))
+        reporter.error(exp.pos, "You may not export a class extending js.Any")
 
       val classIdent = encodeClassFullNameIdent(sym)
       js.ClassDef(classIdent, ClassKind.RawJSType, None, Nil, Nil)
@@ -442,9 +440,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       gen(cd.impl)
 
       // Check that interface/trait is not exported
-      for (exp <- jsInterop.exportsOf(sym)) {
-        currentUnit.error(exp.pos, "You may not export a trait")
-      }
+      for (exp <- jsInterop.exportsOf(sym))
+        reporter.error(exp.pos, "You may not export a trait")
 
       js.ClassDef(classIdent, ClassKind.Interface, None,
           sym.ancestors.map(encodeClassFullNameIdent), Nil)
@@ -1732,7 +1729,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           case JSBooleanClass   => genTypeOfTest("boolean")
           case JSUndefinedClass => genTypeOfTest("undefined")
           case sym if sym.isTrait =>
-            currentUnit.error(pos,
+            reporter.error(pos,
                 s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
             js.BooleanLiteral(true)
           case sym =>
@@ -2799,11 +2796,11 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.JSArrayConstr(jse.LitNamed(pairs))) =>
             js.JSObjectConstr(pairs)
           case (js.StringLiteral(name, _), _) if name != "apply" =>
-            currentUnit.error(pos,
+            reporter.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             js.Undefined()
           case _ =>
-            currentUnit.error(pos,
+            reporter.error(pos,
                 "js.Dynamic.literal.applyDynamicNamed may not be called directly")
             js.Undefined()
         }
@@ -2856,11 +2853,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           // case where another method is called
           case (js.StringLiteral(name, _), _) if name != "apply" =>
-            currentUnit.error(pos,
+            reporter.error(pos,
                 s"js.Dynamic.literal does not have a method named $name")
             js.Undefined()
           case _ =>
-            currentUnit.error(pos,
+            reporter.error(pos,
                 "js.Dynamic.literal.applyDynamic may not be called directly")
             js.Undefined()
         }
@@ -3155,7 +3152,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } yield mem
 
       if (compMembers.isEmpty) {
-        currentUnit.error(pos,
+        reporter.error(pos,
             s"""Could not find implementation for constructor of java.lang.String
                |with type ${ctor.tpe}. Constructors on java.lang.String
                |are forwarded to the companion object of
