@@ -171,8 +171,7 @@ class ScalaJSSBTRunner(
   // not passed as an argument
   sys.props("partest.root") = testRoot.getAbsolutePath()
 
-  // Partests (on fullOpt) take between 3:30 - 4:00 hrs. Give some
-  // slack (default is 4 hours)
-  sys.props("partest.timeout") = "5 hours"
+  // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
+  sys.props("partest.timeout") = "10 hours"
 
 }
