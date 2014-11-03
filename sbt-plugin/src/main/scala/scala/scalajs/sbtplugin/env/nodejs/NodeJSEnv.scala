@@ -24,22 +24,13 @@ import java.io.{ Console => _, _ }
 import scala.io.Source
 
 class NodeJSEnv(
-  nodejsPath: Option[String],
-  addArgs:    Seq[String],
-  addEnv:     Map[String, String]) extends ExternalJSEnv(addArgs, addEnv) {
+  nodejsPath: String = "node",
+  addArgs:    Seq[String] = Seq.empty,
+  addEnv:     Map[String, String] = Map.empty
+) extends ExternalJSEnv(addArgs, addEnv) {
 
   protected def vmName: String = "node.js"
-  protected def executable: String = nodejsPath.getOrElse("node")
-
-  // Helper constructors
-
-  def this(
-      nodejsPath: String,
-      args: Seq[String] = Seq.empty,
-      env: Map[String, String] = Map.empty) =
-    this(Some(nodejsPath), args, env)
-
-  def this() = this(None, Seq.empty, Map.empty[String, String])
+  protected def executable: String = nodejsPath
 
   override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): JSRunner = {
