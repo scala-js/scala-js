@@ -2259,7 +2259,6 @@ neg/t5564.scala
 neg/unchecked3.scala
 neg/virtpatmat_reach_sealed_unsealed.scala
 neg/checksensible.scala
-neg/t6289
 neg/t7721.scala
 run/t3798.scala
 run/macro-expand-varargs-explicit-over-varargs
