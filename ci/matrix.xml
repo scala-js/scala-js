@@ -63,9 +63,13 @@
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
+  ]]></task>
+
+  <task id="bootstrap"><![CDATA[
+    export JAVA_HOME=$HOME/apps/java-$java
+    sbt ++$scala toolsJS/fastOptStage::test toolsJS/fullOptStage::test
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[
@@ -86,7 +90,7 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
-    sbt ++2.11.0 publishLocal ++2.10.4 tools/publishLocal sbtPlugin/publishLocal
+    sbt ++2.11.2 publishLocal ++2.10.4 tools/publishLocal sbtPlugin/publishLocal
     # Go into standalone project and test
     cd sbt-plugin-test
     sbt noDOM/run withDOM/run test
@@ -108,6 +112,7 @@
   ]]></task>
 
   <matrix id="pr">
+    <!-- Main test tasks -->
     <run task="main">
       <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
@@ -148,6 +153,63 @@
       <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
     </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Bootstrap test tasks -->
+    <run task="bootstrap">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
+
+    <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
     <run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.4</v>
       <v n="java">1.6</v>
@@ -160,10 +222,7 @@
       <v n="scala">2.10.4</v>
       <v n="java">1.8</v>
     </run>
-    <run task="tools-cli-stubs">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.6</v>
-    </run>
+    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
@@ -172,6 +231,9 @@
       <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
     </run>
+    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
+
+    <!-- Partest compilation test tasks -->
     <run task="partestc">
       <v n="scala">2.11.0</v>
       <v n="java">1.7</v>
@@ -184,6 +246,8 @@
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
     </run>
+    <!-- Partest does not compile on Scala 2.11.4 (see #1215). -->
+
     <run task="sbtplugin-test" />
   </matrix>
 
@@ -240,6 +304,8 @@
     <!--
         Partest does sometimes not compile on JDK6 (see #1227) we
         therefore do not run any JDK6 partests.
+
+        Partest does not compile on Scala 2.11.4 (see #1215).
       -->
   </matrix>
 

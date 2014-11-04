@@ -4,7 +4,7 @@ version := scalaJSVersion
 
 val baseSettings = scalaJSSettings ++ Seq(
   version := scalaJSVersion,
-  scalaVersion := "2.11.0",
+  scalaVersion := "2.11.2",
   libraryDependencies +=
     "org.scala-lang.modules.scalajs" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test"
 )

@@ -100,7 +100,7 @@ object ScalaJSBuild extends Build {
   )
 
   val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := "2.11.0"
+      scalaVersion := "2.11.2"
   )
 
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
@@ -139,7 +139,8 @@ object ScalaJSBuild extends Build {
       "2.10.4",
       "2.11.0",
       "2.11.1",
-      "2.11.2"
+      "2.11.2",
+      "2.11.4"
     )
   }
 
@@ -796,7 +797,7 @@ object ScalaJSBuild extends Build {
             if (shouldPartest.value)
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.0",
+                "org.scala-lang.modules" %% "scala-partest" % "1.0.1",
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "org.mozilla" % "rhino" % "1.7R4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1"
