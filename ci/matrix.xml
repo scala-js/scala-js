@@ -213,46 +213,34 @@
       <v n="scala">2.11.1</v>
       <v n="java">1.7</v>
     </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
     <!--
-        Partest does sometimes not compile on JDK6 with Scala 2.11.2
-        (see #1227). Therefore we run JDK6 tests with Scala 2.11.1
+        Partest does sometimes not compile on JDK6 (see #1227) we
+        therefore do not run any JDK6 partests.
       -->
-    <run task="partest-noopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.8</v>
-    </run>
   </matrix>
 
 </ci>
