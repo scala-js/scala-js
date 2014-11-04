@@ -4,7 +4,7 @@ import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 
 import org.junit.Test
 
-class NodeJSTest extends JSEnvTest {
+class NodeJSTest extends JSEnvTest with ComTests {
 
   protected def newJSEnv = new NodeJSEnv
 
