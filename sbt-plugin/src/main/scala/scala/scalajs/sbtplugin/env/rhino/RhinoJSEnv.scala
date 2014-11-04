@@ -17,10 +17,14 @@ import scala.scalajs.tools.logging._
 
 import scala.io.Source
 
+import scala.collection.mutable
+
 import org.mozilla.javascript._
 
 class RhinoJSEnv(semantics: Semantics,
-    withDOM: Boolean = false) extends AsyncJSEnv {
+    withDOM: Boolean = false) extends ComJSEnv {
+
+  import RhinoJSEnv._
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -35,7 +39,7 @@ class RhinoJSEnv(semantics: Semantics,
 
   private class Runner(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole) extends JSRunner {
-    def run(): Unit = internalRunJS(classpath, code, logger, console)
+    def run(): Unit = internalRunJS(classpath, code, logger, console, None)
   }
 
   override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
@@ -51,7 +55,7 @@ class RhinoJSEnv(semantics: Semantics,
     private[this] val thread = new Thread {
       override def run(): Unit = {
         try {
-          internalRunJS(classpath, code, logger, console)
+          internalRunJS(classpath, code, logger, console, optChannel)
         } catch {
           case t: Throwable => resultThrowable = t
         }
@@ -67,10 +71,47 @@ class RhinoJSEnv(semantics: Semantics,
       if (resultThrowable != null)
         throw resultThrowable
     }
+
+    protected def optChannel(): Option[Channel] = None
+  }
+
+  override def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): ComJSRunner = {
+    new ComRunner(classpath, code, logger, console)
+  }
+
+  private class ComRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole)
+      extends AsyncRunner(classpath, code, logger, console) with ComJSRunner {
+
+    private[this] val channel = new Channel
+
+    override protected def optChannel(): Option[Channel] = Some(channel)
+
+    def send(msg: String): Unit = {
+      try {
+        channel.sendToJS(msg)
+      } catch {
+        case _: ChannelClosedException =>
+          throw new ComJSEnv.ComClosedException
+      }
+    }
+
+    def receive(): String = {
+      try {
+        channel.recvJVM()
+      } catch {
+        case _: ChannelClosedException =>
+          throw new ComJSEnv.ComClosedException
+      }
+    }
+
+    def close(): Unit = channel.close()
+
   }
 
   private def internalRunJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): Unit = {
+      logger: Logger, console: JSConsole, optChannel: Option[Channel]): Unit = {
 
     val context = Context.enter()
     try {
@@ -112,6 +153,33 @@ class RhinoJSEnv(semantics: Semantics,
       jsconsole.addFunction("log", _.foreach(console.log _))
       ScriptableObject.putProperty(scope, "console", jsconsole)
 
+      // Optionally setup scalaJSCom
+      var recvCallback: Option[String => Unit] = None
+      for (channel <- optChannel) {
+        val comObj = context.newObject(scope)
+
+        comObj.addFunction("send", s =>
+          channel.sendToJVM(Context.toString(s(0))))
+
+        comObj.addFunction("init", s => s(0) match {
+          case f: Function =>
+            val cb: String => Unit =
+              msg => f.call(context, scope, scope, Array(msg))
+            recvCallback = Some(cb)
+          case _ =>
+            sys.error("First argument to init must be a function")
+        })
+
+        comObj.addFunction("close", _ => {
+          // Tell JVM side we won't send anything
+          channel.close()
+          // Internally register that we're done
+          recvCallback = None
+        })
+
+        ScriptableObject.putProperty(scope, "scalajsCom", comObj)
+      }
+
       try {
         // Make the classpath available. Either through lazy loading or by
         // simply inserting
@@ -145,6 +213,22 @@ class RhinoJSEnv(semantics: Semantics,
         }
 
         context.evaluateFile(scope, code)
+
+        // Callback the com channel if necessary (if comCallback = None, channel
+        // wasn't initialized on the client)
+        for ((channel, callback) <- optChannel zip recvCallback) {
+          try {
+            while (recvCallback.isDefined)
+              callback(channel.recvJS())
+          } catch {
+            case _: ChannelClosedException =>
+              // the JVM side closed the connection
+          }
+        }
+
+        // Enusre the channel is closed to release JVM side
+        optChannel.foreach(_.close)
+
       } catch {
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
@@ -155,5 +239,54 @@ class RhinoJSEnv(semantics: Semantics,
       Context.exit()
     }
   }
+
+}
+
+object RhinoJSEnv {
+
+  /** Communication channel between the Rhino thread and the rest of the JVM */
+  private class Channel {
+    private[this] var _closed = false
+    private[this] val js2jvm = mutable.Queue.empty[String]
+    private[this] val jvm2js = mutable.Queue.empty[String]
+
+    def sendToJS(msg: String): Unit = synchronized {
+      jvm2js.enqueue(msg)
+      notify()
+    }
+
+    def sendToJVM(msg: String): Unit = synchronized {
+      js2jvm.enqueue(msg)
+      notify()
+    }
+
+    def recvJVM(): String = synchronized {
+      while (js2jvm.isEmpty && ensureOpen())
+        wait()
+
+      js2jvm.dequeue()
+    }
+
+    def recvJS(): String = synchronized {
+      while (jvm2js.isEmpty && ensureOpen())
+        wait()
+
+      jvm2js.dequeue()
+    }
+
+    def close(): Unit = synchronized {
+      _closed = true
+      notify()
+    }
+
+    /** Throws if the channel is closed and returns true */
+    private def ensureOpen(): Boolean = {
+      if (_closed)
+        throw new ChannelClosedException
+      true
+    }
+  }
+
+  private class ChannelClosedException extends Exception
 
 }
