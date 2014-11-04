@@ -160,10 +160,7 @@
       <v n="scala">2.10.4</v>
       <v n="java">1.8</v>
     </run>
-    <run task="tools-cli-stubs">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.6</v>
-    </run>
+    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
