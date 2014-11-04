@@ -86,7 +86,7 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
-    sbt ++2.11.0 publishLocal ++2.10.4 tools/publishLocal sbtPlugin/publishLocal
+    sbt ++2.11.2 publishLocal ++2.10.4 tools/publishLocal sbtPlugin/publishLocal
     # Go into standalone project and test
     cd sbt-plugin-test
     sbt noDOM/run withDOM/run test

@@ -41,7 +41,7 @@ To compile your fork, simply run:
 
     sbt> package
 
-By default the sbt environment uses Scala 2.11.0. You can switch to any of the
+By default the sbt environment uses Scala 2.11.2. You can switch to any of the
 supported versions with, e.g.,
 
     sbt> ++2.10.4
