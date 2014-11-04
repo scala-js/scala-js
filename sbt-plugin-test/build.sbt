@@ -2,6 +2,8 @@ import ScalaJSKeys._
 
 import scala.scalajs.sbtplugin.RuntimeDOM
 
+import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
+
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
@@ -25,4 +27,16 @@ lazy val withDOM = project.settings(baseSettings: _*).settings(
       RuntimeDOM,
       "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
   )
+)
+
+lazy val jetty9 = project.settings(baseSettings: _*).settings(
+  name := "Scala.js sbt test with jetty9 on classpath",
+  jsDependencies ++= Seq(
+      RuntimeDOM,
+      "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
+  ),
+  postLinkJSEnv := new PhantomJSEnv(
+    addArgs = List("--web-security=no"), // allow cross domain requests
+    jettyClassLoader = scalaJSPhantomJSClassLoader.value),
+  Jetty9Test.runSetting
 )

@@ -332,7 +332,7 @@ object ScalaJSBuild extends Build {
               "org.mozilla" % "rhino" % "1.7R4",
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
-          )
+          ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
       )
   ).dependsOn(tools)
 

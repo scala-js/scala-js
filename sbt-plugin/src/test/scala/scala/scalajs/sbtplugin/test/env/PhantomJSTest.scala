@@ -4,7 +4,7 @@ import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
 
 import org.junit.Test
 
-class PhantomJSTest extends JSEnvTest {
+class PhantomJSTest extends JSEnvTest with ComTests {
 
   protected def newJSEnv = new PhantomJSEnv
 

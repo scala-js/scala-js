@@ -23,7 +23,7 @@ import scala.scalajs.tools.corelib.CoreJSLibs
 import scala.scalajs.tools.env._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
-import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
+import scala.scalajs.sbtplugin.env.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 
 import scala.scalajs.ir.ScalaJSVersions
 
@@ -32,6 +32,7 @@ import scala.scalajs.sbtplugin.testing.{TestFramework, JSClasspathLoader}
 import scala.util.Try
 
 import java.nio.charset.Charset
+import java.net.URLClassLoader
 
 /** Contains settings used by ScalaJSPlugin that should not be automatically
  *  be in the *.sbt file's scope.
@@ -61,7 +62,7 @@ object ScalaJSPluginInternal {
 
   /** Lookup key for CompleteClasspath in attribute maps */
   val scalaJSCompleteClasspath =
-    AttributeKey[CompleteClasspath]("scalaJSCompleteClasspath")
+      AttributeKey[CompleteClasspath]("scalaJSCompleteClasspath")
 
   /** Patches the IncOptions so that .sjsir files are pruned as needed.
    *
@@ -309,8 +310,10 @@ object ScalaJSPluginInternal {
 
       // Wire jsEnv and sources for other stages
       scalaJSDefaultPostLinkJSEnv := postLinkJSEnv.?.value.getOrElse {
-        if (scalaJSRequestsDOM.value) new PhantomJSEnv
-        else new NodeJSEnv
+        if (scalaJSRequestsDOM.value)
+          new PhantomJSEnv(jettyClassLoader = scalaJSPhantomJSClassLoader.value)
+        else
+          new NodeJSEnv
       },
 
       jsEnv in fastOptStage <<= scalaJSDefaultPostLinkJSEnv,
@@ -547,6 +550,11 @@ object ScalaJSPluginInternal {
       scalaJSDependenciesSettings
   )
 
+  val phantomJSJettyModules = Seq(
+      "org.eclipse.jetty" % "jetty-websocket" % "8.1.16.v20140903",
+      "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
+  )
+
   val scalaJSProjectBaseSettings = Seq(
       relativeSourceMaps   := false,
       persistLauncher      := false,
@@ -570,7 +578,23 @@ object ScalaJSPluginInternal {
         // have clean reset incremental optimizer state
         (scalaJSOptimizer in (Compile, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Test, fastOptJS)).value.clean()
-      })
+      }),
+
+      /* Depend on jetty artifacts in dummy configuration to be able to inject
+       * them into the PhantomJS runner if necessary.
+       * See scalaJSPhantomJSClassLoader
+       */
+     ivyConfigurations += config("phantom-js-jetty").hide,
+     libraryDependencies ++= phantomJSJettyModules.map(_ % "phantom-js-jetty"),
+     scalaJSPhantomJSClassLoader := {
+        val report = update.value
+        val jars = report.select(configurationFilter("phantom-js-jetty"))
+
+        val jettyLoader =
+          new URLClassLoader(jars.map(_.toURI.toURL).toArray, null)
+
+        new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
+      }
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (
