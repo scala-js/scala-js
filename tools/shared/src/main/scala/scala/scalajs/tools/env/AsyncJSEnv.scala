@@ -13,8 +13,7 @@ import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.logging._
 
-trait JSEnv {
-  /** Prepare a runner for the code in the virtual file. */
-  def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner
+trait AsyncJSEnv extends JSEnv {
+  def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): AsyncJSRunner
 }

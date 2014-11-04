@@ -23,131 +23,128 @@ import scala.scalajs.sbtplugin.JSUtils._
 import java.io.{ Console => _, _ }
 import scala.io.Source
 
-import scala.util.DynamicVariable
-
 class NodeJSEnv(
-  nodejsPath: Option[String],
-  addArgs:    Seq[String],
-  addEnv:     Map[String, String]) extends ExternalJSEnv(addArgs, addEnv) {
-
-  import ExternalJSEnv._
+  nodejsPath: String = "node",
+  addArgs:    Seq[String] = Seq.empty,
+  addEnv:     Map[String, String] = Map.empty
+) extends ExternalJSEnv(addArgs, addEnv) {
 
   protected def vmName: String = "node.js"
-  protected def executable: String = nodejsPath.getOrElse("node")
+  protected def executable: String = nodejsPath
 
-  private val _libCache = new DynamicVariable[VirtualFileMaterializer](null)
-  protected def libCache: VirtualFileMaterializer = _libCache.value
-
-  final protected def withLibCache[T](body: => T): T = {
-    _libCache.withValue(new VirtualFileMaterializer(true)) {
-      try body
-      finally libCache.close()
-    }
+  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): JSRunner = {
+    new NodeRunner(classpath, code, logger, console)
   }
 
-  // Helper constructors
+  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): AsyncJSRunner = {
+    new AsyncNodeRunner(classpath, code, logger, console)
+  }
 
-  def this(
-      nodejsPath: String,
-      args: Seq[String] = Seq.empty,
-      env: Map[String, String] = Map.empty) =
-    this(Some(nodejsPath), args, env)
+  protected class NodeRunner(classpath: CompleteClasspath,
+      code: VirtualJSFile, logger: Logger, console: JSConsole
+  ) extends ExtRunner(classpath, code, logger, console)
+       with AbstractNodeRunner
 
-  def this() = this(None, Seq.empty, Map.empty[String, String])
+  protected class AsyncNodeRunner(classpath: CompleteClasspath,
+      code: VirtualJSFile, logger: Logger, console: JSConsole
+  ) extends AsyncExtRunner(classpath, code, logger, console)
+       with AbstractNodeRunner
 
-  // We need to initialize the libCache first
-  override def runJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): Unit =
-    withLibCache(super.runJS(classpath, code, logger, console))
+  protected trait AbstractNodeRunner extends AbstractExtRunner {
 
-  /** File(s) to automatically install source-map-support.
-   *  Is used by [[initFiles]], override to change/disable.
-   */
-  protected def installSourceMap(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
-      new MemVirtualJSFile("sourceMapSupport.js").withContent(
-        """
-        try {
-          require('source-map-support').install();
-        } catch (e) {}
-        """
-      )
-  )
+    protected[this] val libCache = new VirtualFileMaterializer(true)
 
-  /** File(s) to hack console.log to prevent if from changing `%%` to `%`.
-   *  Is used by [[initFiles]], override to change/disable.
-   */
-  protected def fixPercentConsole(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
-      new MemVirtualJSFile("nodeConsoleHack.js").withContent(
-        """
-        // Hack console log to duplicate double % signs
-        (function() {
-          var oldLog = console.log;
-          var newLog = function() {
-            var args = arguments;
-            if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
-              args[0] = args[0].toString().replace(/%/g, "%%");
-            }
-            oldLog.apply(console, args);
+    /** File(s) to automatically install source-map-support.
+     *  Is used by [[initFiles]], override to change/disable.
+     */
+    protected def installSourceMap(): Seq[VirtualJSFile] = Seq(
+        new MemVirtualJSFile("sourceMapSupport.js").withContent(
+          """
+          try {
+            require('source-map-support').install();
+          } catch (e) {}
+          """
+        )
+    )
+
+    /** File(s) to hack console.log to prevent if from changing `%%` to `%`.
+     *  Is used by [[initFiles]], override to change/disable.
+     */
+    protected def fixPercentConsole(): Seq[VirtualJSFile] = Seq(
+        new MemVirtualJSFile("nodeConsoleHack.js").withContent(
+          """
+          // Hack console log to duplicate double % signs
+          (function() {
+            var oldLog = console.log;
+            var newLog = function() {
+              var args = arguments;
+              if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
+                args[0] = args[0].toString().replace(/%/g, "%%");
+              }
+              oldLog.apply(console, args);
+            };
+            console.log = newLog;
+          })();
+          """
+        )
+    )
+
+    /** File(s) to define `__ScalaJSEnv`. Defines `exitFunction`.
+     *  Is used by [[initFiles]], override to change/disable.
+     */
+    protected def runtimeEnv(): Seq[VirtualJSFile] = Seq(
+        new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+          """
+          __ScalaJSEnv = {
+            exitFunction: function(status) { process.exit(status); }
           };
-          console.log = newLog;
-        })();
-        """
-      )
-  )
+          """
+        )
+    )
 
-  /** File(s) to define `__ScalaJSEnv`. Defines `exitFunction`.
-   *  Is used by [[initFiles]], override to change/disable.
-   */
-  protected def runtimeEnv(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
-      new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
-        """
-        __ScalaJSEnv = {
-          exitFunction: function(status) { process.exit(status); }
-        };
-        """
-      )
-  )
+    /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]] and
+     *  [[runtimeEnv]] (in this order).
+     */
+    override protected def initFiles(): Seq[VirtualJSFile] =
+      installSourceMap() ++ fixPercentConsole() ++ runtimeEnv()
 
-  /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]] and
-   *  [[runtimeEnv]] (in this order).
-   */
-  override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] =
-    installSourceMap(args) ++ fixPercentConsole(args) ++ runtimeEnv(args)
-
-  /** Libraries are loaded via require in Node.js */
-  override protected def getLibJSFiles(args: RunJSArgs): Seq[VirtualJSFile] = {
-    initFiles(args) ++
-    args.classpath.jsLibs.map((requireLibrary _).tupled) :+
-    args.classpath.scalaJSCode
-  }
-
-  /** Rewrites a library virtual file to a require statement if possible */
-  protected def requireLibrary(vf: VirtualJSFile,
-      info: ResolutionInfo): VirtualJSFile = {
-    info.commonJSName.fold(vf) { varname =>
-      val fname = vf.name
-      libCache.materialize(vf)
-      new MemVirtualJSFile(s"require-$fname").withContent(
-        s"""$varname = require(${toJSstr(fname)});"""
-      )
+    /** Libraries are loaded via require in Node.js */
+    override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
+      initFiles() ++
+      classpath.jsLibs.map((requireLibrary _).tupled) :+
+      classpath.scalaJSCode
     }
-  }
 
-  // Send code to Stdin
-  override protected def sendVMStdin(args: RunJSArgs, out: OutputStream): Unit = {
-    sendJS(getJSFiles(args), out)
-  }
+    /** Rewrites a library virtual file to a require statement if possible */
+    protected def requireLibrary(vf: VirtualJSFile,
+        info: ResolutionInfo): VirtualJSFile = {
+      info.commonJSName.fold(vf) { varname =>
+        val fname = vf.name
+        libCache.materialize(vf)
+        new MemVirtualJSFile(s"require-$fname").withContent(
+          s"""$varname = require(${toJSstr(fname)});"""
+        )
+      }
+    }
 
-  // Node.js specific (system) environment
-  override protected def getVMEnv(args: RunJSArgs): Map[String, String] = {
-    val baseNodePath = sys.env.get("NODE_PATH").filter(_.nonEmpty)
-    val nodePath = libCache.cacheDir.getAbsolutePath +
-      baseNodePath.fold("")(p => File.pathSeparator + p)
+    // Send code to Stdin
+    override protected def sendVMStdin(out: OutputStream): Unit = {
+      sendJS(getJSFiles(), out)
+    }
 
-    sys.env ++ Seq(
-        "NODE_MODULE_CONTEXTS" -> "0",
-        "NODE_PATH" -> nodePath
-    ) ++ additionalEnv
+    // Node.js specific (system) environment
+    override protected def getVMEnv(): Map[String, String] = {
+      val baseNodePath = sys.env.get("NODE_PATH").filter(_.nonEmpty)
+      val nodePath = libCache.cacheDir.getAbsolutePath +
+        baseNodePath.fold("")(p => File.pathSeparator + p)
+
+      sys.env ++ Seq(
+          "NODE_MODULE_CONTEXTS" -> "0",
+          "NODE_PATH" -> nodePath
+      ) ++ additionalEnv
+    }
   }
 
 }

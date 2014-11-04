@@ -335,7 +335,7 @@ object ScalaJSPluginInternal {
     log.debug(s"with classpath of type ${cp.getClass}")
 
     // Actually run code
-    env.runJS(cp, launcher, log, jsConsole)
+    env.jsRunner(cp, launcher, log, jsConsole).run()
   }
 
   private def launcherContent(mainCl: String) = {

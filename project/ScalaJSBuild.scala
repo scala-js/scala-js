@@ -308,8 +308,10 @@ object ScalaJSBuild extends Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          jsEnv.value.runJS(scalaJSExecClasspath.value, launcher,
-              streams.value.log, scalaJSConsole.value)
+          val runner = jsEnv.value.jsRunner(scalaJSExecClasspath.value,
+              launcher, streams.value.log, scalaJSConsole.value)
+
+          runner.run()
         }
 
         Seq(test := error("Can't run toolsJS/test in preLink stage")) ++

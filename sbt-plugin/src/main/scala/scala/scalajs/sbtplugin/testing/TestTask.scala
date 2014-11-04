@@ -42,7 +42,7 @@ class TestTask(
     val logger = new SbtTestLoggerAccWrapper(loggers)
 
     // Actually execute test
-    env.runJS(classpath, runnerFile, logger, testConsole)
+    env.jsRunner(classpath, runnerFile, logger, testConsole).run()
 
     testConsole.pipeLogsTo(loggers)
 

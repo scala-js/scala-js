@@ -22,235 +22,204 @@ import java.io.{ Console => _, _ }
 import scala.io.Source
 
 class PhantomJSEnv(
-    phantomjsPath: Option[String],
-    addArgs: Seq[String],
-    addEnv: Map[String, String],
-    val autoExit: Boolean) extends ExternalJSEnv(addArgs, addEnv) {
-
-  import ExternalJSEnv._
+    phantomjsPath: String = "phantomjs",
+    addArgs: Seq[String] = Seq.empty,
+    addEnv: Map[String, String] = Map.empty,
+    val autoExit: Boolean = true
+) extends ExternalJSEnv(addArgs, addEnv) {
 
   protected def vmName: String = "PhantomJS"
-  protected def executable: String = phantomjsPath.getOrElse("phantomjs")
+  protected def executable: String = phantomjsPath
 
-  // Helper constructors
+  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): JSRunner = {
+    new PhantomRunner(classpath, code, logger, console)
+  }
 
-  def this(phantomjsPath: Option[String], addArgs: Seq[String], autoExit: Boolean) =
-    this(phantomjsPath, addArgs, Map.empty[String, String], autoExit)
+  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
+      logger: Logger, console: JSConsole): AsyncJSRunner = {
+    new AsyncPhantomRunner(classpath, code, logger, console)
+  }
 
-  def this(phantomjsPath: Option[String], addEnv: Map[String, String], autoExit: Boolean) =
-    this(phantomjsPath, Seq.empty, addEnv, autoExit)
 
-  def this(phantomjsPath: Option[String], addArgs: Seq[String]) =
-    this(phantomjsPath, addArgs, Map.empty[String, String], true)
+  protected class PhantomRunner(classpath: CompleteClasspath,
+    code: VirtualJSFile, logger: Logger, console: JSConsole
+  ) extends ExtRunner(classpath, code, logger, console)
+       with AbstractPhantomRunner
 
-  def this(phantomjsPath: Option[String], addEnv: Map[String, String]) =
-    this(phantomjsPath, Seq.empty, addEnv, true)
+  protected class AsyncPhantomRunner(classpath: CompleteClasspath,
+    code: VirtualJSFile, logger: Logger, console: JSConsole
+  ) extends AsyncExtRunner(classpath, code, logger, console)
+       with AbstractPhantomRunner
 
-  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String], autoExit: Boolean) =
-    this(Some(phantomjsPath), args, env, autoExit)
+  protected trait AbstractPhantomRunner extends AbstractExtRunner {
 
-  def this(phantomjsPath: String, args: Seq[String], autoExit: Boolean) =
-    this(Some(phantomjsPath), args, Map.empty[String, String], autoExit)
+    override protected def getVMArgs() =
+      // Add launcher file to arguments
+      additionalArgs :+ createTmpLauncherFile().getAbsolutePath
 
-  def this(phantomjsPath: String, env: Map[String, String], autoExit: Boolean) =
-    this(Some(phantomjsPath), Seq.empty, env, autoExit)
+    /** In phantom.js, we include JS using HTML */
+    override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
+      file match {
+        case file: FileVirtualJSFile =>
+          val fname = htmlEscape(file.file.getAbsolutePath)
+          writer.write(
+              s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
+        case _ =>
+          writer.write("""<script type="text/javascript">""" + "\n")
+          writer.write(s"// Virtual File: ${file.path}\n")
+          writer.write(file.content)
+          writer.write("</script>\n")
+      }
+    }
 
-  def this(phantomjsPath: String, args: Seq[String], env: Map[String, String]) =
-    this(Some(phantomjsPath), args, env, true)
 
-  def this(phantomjsPath: String, args: Seq[String]) =
-    this(Some(phantomjsPath), args, Map.empty[String, String], true)
+    /**
+     * PhantomJS doesn't support Function.prototype.bind. We polyfill it.
+     * https://github.com/ariya/phantomjs/issues/10522
+     */
+    override protected def initFiles(): Seq[VirtualJSFile] = Seq(
+        new MemVirtualJSFile("bindPolyfill.js").withContent(
+            """
+            |// Polyfill for Function.bind from Facebook react:
+            |// https://github.com/facebook/react/blob/3dc10749080a460e48bee46d769763ec7191ac76/src/test/phantomjs-shims.js
+            |// Originally licensed under Apache 2.0
+            |(function() {
+            |
+            |  var Ap = Array.prototype;
+            |  var slice = Ap.slice;
+            |  var Fp = Function.prototype;
+            |
+            |  if (!Fp.bind) {
+            |    // PhantomJS doesn't support Function.prototype.bind natively, so
+            |    // polyfill it whenever this module is required.
+            |    Fp.bind = function(context) {
+            |      var func = this;
+            |      var args = slice.call(arguments, 1);
+            |
+            |      function bound() {
+            |        var invokedAsConstructor = func.prototype && (this instanceof func);
+            |        return func.apply(
+            |          // Ignore the context parameter when invoking the bound function
+            |          // as a constructor. Note that this includes not only constructor
+            |          // invocations using the new keyword but also calls to base class
+            |          // constructors such as BaseClass.call(this, ...) or super(...).
+            |          !invokedAsConstructor && context || this,
+            |          args.concat(slice.call(arguments))
+            |        );
+            |      }
+            |
+            |      // The bound function must share the .prototype of the unbound
+            |      // function so that any object created by one constructor will count
+            |      // as an instance of both constructors.
+            |      bound.prototype = func.prototype;
+            |
+            |      return bound;
+            |    };
+            |  }
+            |
+            |})();
+            |""".stripMargin
+        ),
+        new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
+            """
+            |__ScalaJSEnv = {
+            |  exitFunction: function(status) { window.callPhantom(status); }
+            |};
+            """.stripMargin
+        )
+    )
 
-  def this(phantomjsPath: String, env: Map[String, String]) =
-    this(Some(phantomjsPath), Seq.empty, env, true)
+    protected def writeWebpageLauncher(out: Writer): Unit = {
+      out.write("<html>\n<head>\n<title>Phantom.js Launcher</title>\n")
+      sendJS(getLibJSFiles(), out)
+      writeCodeLauncher(code, out)
+      out.write("</head>\n<body></body>\n</html>\n")
+    }
 
-  def this(args: Seq[String], env: Map[String, String], autoExit: Boolean) =
-    this(None, args, env, autoExit)
+    protected def createTmpLauncherFile(): File = {
+      val webF = createTmpWebpage()
 
-  def this(args: Seq[String], env: Map[String, String]) =
-    this(None, args, env, true)
+      val launcherTmpF = File.createTempFile("phantomjs-launcher", ".js")
+      launcherTmpF.deleteOnExit()
 
-  def this(args: Seq[String], autoExit: Boolean) =
-    this(None, args, Map.empty[String, String], autoExit)
+      val out = new FileWriter(launcherTmpF)
 
-  def this(env: Map[String, String], autoExit: Boolean) =
-    this(None, Seq.empty, env, autoExit)
+      try {
+        out.write(
+            s"""// Scala.js Phantom.js launcher
+               |var page = require('webpage').create();
+               |var url = ${toJSstr(webF.getAbsolutePath)};
+               |page.onConsoleMessage = function(msg) {
+               |  console.log(msg);
+               |};
+               |page.onError = function(msg, trace) {
+               |  console.error(msg);
+               |  if (trace && trace.length) {
+               |    console.error('');
+               |    trace.forEach(function(t) {
+               |      console.error('  ' + t.file + ':' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
+               |    });
+               |  }
+               |
+               |  phantom.exit(2);
+               |};
+               |page.onCallback = function(status) {
+               |  phantom.exit(status);
+               |};
+               |""".stripMargin)
+        if (autoExit) {
+          out.write("""
+              page.open(url, function (status) {
+                phantom.exit(status != 'success');
+              });""")
+        } else {
+          out.write("""
+              page.open(url, function (status) {
+                if (status != 'success') phantom.exit(1);
+              });""")
+        }
+      } finally {
+        out.close()
+      }
 
-  def this(args: Seq[String]) =
-    this(None, args, Map.empty[String, String], true)
+      launcherTmpF
+    }
 
-  def this(env: Map[String, String]) =
-    this(None, Seq.empty, env, true)
+    protected def createTmpWebpage(): File = {
+      val webTmpF = File.createTempFile("phantomjs-launcher-webpage", ".html")
+      webTmpF.deleteOnExit()
 
-  def this(autoExit: Boolean) =
-    this(None, Seq.empty, Map.empty[String, String], autoExit)
+      val out = new BufferedWriter(new FileWriter(webTmpF))
+      try {
+        writeWebpageLauncher(out)
+      } finally {
+        out.close()
+      }
 
-  def this() = this(None, Seq.empty, Map.empty[String, String], true)
+      logger.debug(
+          "PhantomJS using webpage launcher at: " + webTmpF.getAbsolutePath())
 
-  override protected def getVMArgs(args: RunJSArgs) =
-    // Add launcher file to arguments
-    additionalArgs :+ createTmpLauncherFile(args).getAbsolutePath
+      webTmpF
+    }
 
-  /** In phantom.js, we include JS using HTML */
-  override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
-    file match {
-      case file: FileVirtualJSFile =>
-        val fname = htmlEscape(file.file.getAbsolutePath)
-        writer.write(
-            s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
-      case _ =>
-        writer.write("""<script type="text/javascript">""" + "\n")
-        writer.write(s"// Virtual File: ${file.path}\n")
-        writer.write(file.content)
-        writer.write("</script>\n")
+    protected def writeCodeLauncher(code: VirtualJSFile, out: Writer): Unit = {
+      out.write("""<script type="text/javascript">""" + "\n")
+      out.write("// Phantom.js code launcher\n")
+      out.write(s"// Origin: ${code.path}\n")
+      out.write("window.addEventListener('load', function() {\n")
+      out.write(code.content)
+      out.write("}, false);\n")
+      out.write("</script>\n")
     }
   }
 
-  def htmlEscape(str: String): String = str.flatMap {
+  protected def htmlEscape(str: String): String = str.flatMap {
     case '<' => "&lt;"
     case '>' => "&gt;"
     case '"' => "&quot;"
     case '&' => "&amp;"
     case c   => c :: Nil
-  }
-
-  /**
-   * PhantomJS doesn't support Function.prototype.bind. We polyfill it.
-   * https://github.com/ariya/phantomjs/issues/10522
-   */
-  override protected def initFiles(args: RunJSArgs): Seq[VirtualJSFile] = Seq(
-      new MemVirtualJSFile("bindPolyfill.js").withContent(
-          """
-          |// Polyfill for Function.bind from Facebook react:
-          |// https://github.com/facebook/react/blob/3dc10749080a460e48bee46d769763ec7191ac76/src/test/phantomjs-shims.js
-          |// Originally licensed under Apache 2.0
-          |(function() {
-          |
-          |  var Ap = Array.prototype;
-          |  var slice = Ap.slice;
-          |  var Fp = Function.prototype;
-          |
-          |  if (!Fp.bind) {
-          |    // PhantomJS doesn't support Function.prototype.bind natively, so
-          |    // polyfill it whenever this module is required.
-          |    Fp.bind = function(context) {
-          |      var func = this;
-          |      var args = slice.call(arguments, 1);
-          |
-          |      function bound() {
-          |        var invokedAsConstructor = func.prototype && (this instanceof func);
-          |        return func.apply(
-          |          // Ignore the context parameter when invoking the bound function
-          |          // as a constructor. Note that this includes not only constructor
-          |          // invocations using the new keyword but also calls to base class
-          |          // constructors such as BaseClass.call(this, ...) or super(...).
-          |          !invokedAsConstructor && context || this,
-          |          args.concat(slice.call(arguments))
-          |        );
-          |      }
-          |
-          |      // The bound function must share the .prototype of the unbound
-          |      // function so that any object created by one constructor will count
-          |      // as an instance of both constructors.
-          |      bound.prototype = func.prototype;
-          |
-          |      return bound;
-          |    };
-          |  }
-          |
-          |})();
-          |""".stripMargin
-      ),
-      new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
-          """
-          |__ScalaJSEnv = {
-          |  exitFunction: function(status) { window.callPhantom(status); }
-          |};
-          """.stripMargin
-      )
-  )
-
-  protected def writeWebpageLauncher(args: RunJSArgs, out: Writer): Unit = {
-    out.write("<html>\n<head>\n<title>Phantom.js Launcher</title>\n")
-    sendJS(getLibJSFiles(args), out)
-    writeCodeLauncher(args.code, out)
-    out.write("</head>\n<body></body>\n</html>\n")
-  }
-
-  private def writeCodeLauncher(code: VirtualJSFile, out: Writer): Unit = {
-    out.write("""<script type="text/javascript">""" + "\n")
-    out.write("// Phantom.js code launcher\n")
-    out.write(s"// Origin: ${code.path}\n")
-    out.write("window.addEventListener('load', function() {\n")
-    out.write(code.content)
-    out.write("}, false);\n")
-    out.write("</script>\n")
-  }
-
-  private def createTmpLauncherFile(args: RunJSArgs): File = {
-    val webF = createTmpWebpage(args)
-
-    val launcherTmpF = File.createTempFile("phantomjs-launcher", ".js")
-    launcherTmpF.deleteOnExit()
-
-    val out = new FileWriter(launcherTmpF)
-
-    try {
-      out.write(
-          s"""// Scala.js Phantom.js launcher
-             |var page = require('webpage').create();
-             |var url = ${toJSstr(webF.getAbsolutePath)};
-             |page.onConsoleMessage = function(msg) {
-             |  console.log(msg);
-             |};
-             |page.onError = function(msg, trace) {
-             |  console.error(msg);
-             |  if (trace && trace.length) {
-             |    console.error('');
-             |    trace.forEach(function(t) {
-             |      console.error('  ' + t.file + ':' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
-             |    });
-             |  }
-             |
-             |  phantom.exit(2);
-             |};
-             |page.onCallback = function(status) {
-             |  phantom.exit(status);
-             |};
-             |""".stripMargin)
-      if (autoExit) {
-        out.write("""
-            page.open(url, function (status) {
-              phantom.exit(status != 'success');
-            });""")
-      } else {
-        out.write("""
-            page.open(url, function (status) {
-              if (status != 'success') phantom.exit(1);
-            });""")
-      }
-    } finally {
-      out.close()
-    }
-
-    launcherTmpF
-  }
-
-  private def createTmpWebpage(args: RunJSArgs): File = {
-    val webTmpF = File.createTempFile("phantomjs-launcher-webpage", ".html")
-    webTmpF.deleteOnExit()
-
-    val out = new BufferedWriter(new FileWriter(webTmpF))
-    try {
-      writeWebpageLauncher(args, out)
-    } finally {
-      out.close()
-    }
-
-    args.logger.debug(
-        "PhantomJS using webpage launcher at: " + webTmpF.getAbsolutePath())
-
-    webTmpF
   }
 
 }
