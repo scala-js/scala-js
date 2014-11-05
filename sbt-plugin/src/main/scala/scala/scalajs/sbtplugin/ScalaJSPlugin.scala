@@ -54,9 +54,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
 
-    val preLinkJSEnv = SettingKey[JSEnv]("preLinkJSEnv",
+    val preLinkJSEnv = TaskKey[JSEnv]("preLinkJSEnv",
         "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files", BSetting)
-    val postLinkJSEnv = SettingKey[JSEnv]("postLinkJSEnv",
+    val postLinkJSEnv = TaskKey[JSEnv]("postLinkJSEnv",
         "The jsEnv used to execute after linking (packaging / optimizing) Scala.js files", AMinusSetting)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
