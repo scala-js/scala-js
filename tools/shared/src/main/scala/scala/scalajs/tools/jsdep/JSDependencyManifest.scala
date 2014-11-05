@@ -8,10 +8,10 @@ import scala.collection.immutable.{Seq, Traversable}
 import java.io.{Reader, Writer}
 
 /** The information written to a "JS_DEPENDENCIES" manifest file. */
-final case class JSDependencyManifest(
-    origin: Origin,
-    libDeps: List[JSDependency],
-    requiresDOM: Boolean) {
+final class JSDependencyManifest(
+    val origin: Origin,
+    val libDeps: List[JSDependency],
+    val requiresDOM: Boolean) {
   def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
 }
 
@@ -74,7 +74,7 @@ object JSDependencyManifest {
       throw new ConflictingNameException(conflicts.toList)
 
     flatDeps.groupBy(_.resourceName).mapValues { sameName =>
-      ResolutionInfo(
+      new ResolutionInfo(
         resourceName = sameName.head.resourceName,
         dependencies = sameName.flatMap(_.dependencies).toSet,
         origins = sameName.map(_.origin).toList,
@@ -87,8 +87,8 @@ object JSDependencyManifest {
     def serialize(x: JSDependencyManifest): JSON = {
       new JSONObjBuilder()
         .fld("origin",  x.origin)
-        .fld("libDeps", x.libDeps)
-        .opt("requiresDOM", Some(x.requiresDOM))
+        .opt("libDeps", if (x.libDeps.nonEmpty) Some(x.libDeps) else None)
+        .opt("requiresDOM", if (x.requiresDOM) Some(true) else None)
         .toJSON
     }
   }
@@ -96,9 +96,9 @@ object JSDependencyManifest {
   implicit object JSDepManJSONDeserializer extends JSONDeserializer[JSDependencyManifest] {
     def deserialize(x: JSON): JSDependencyManifest = {
       val obj = new JSONObjExtractor(x)
-      JSDependencyManifest(
+      new JSDependencyManifest(
           obj.fld[Origin]            ("origin"),
-          obj.fld[List[JSDependency]]("libDeps"),
+          obj.opt[List[JSDependency]]("libDeps").getOrElse(Nil),
           obj.opt[Boolean]           ("requiresDOM").getOrElse(false))
     }
   }

@@ -18,10 +18,10 @@ import scala.scalajs.ir.Trees.isValidIdentifier
  *      required in a commonJS environment (n.b. Node.js). Should only be set if
  *      the JavaScript library will register its exports.
  */
-final case class JSDependency(
-    resourceName: String,
-    dependencies: List[String] = Nil,
-    commonJSName: Option[String] = None) {
+final class JSDependency(
+    val resourceName: String,
+    val dependencies: List[String] = Nil,
+    val commonJSName: Option[String] = None) {
 
   require(commonJSName.forall(isValidIdentifier),
     "commonJSName must be a valid JavaScript identifier")
@@ -31,7 +31,14 @@ final case class JSDependency(
   def commonJSName(name: String): JSDependency =
     copy(commonJSName = Some(name))
   def withOrigin(origin: Origin): FlatJSDependency =
-    FlatJSDependency(origin, resourceName, dependencies, commonJSName)
+    new FlatJSDependency(origin, resourceName, dependencies, commonJSName)
+
+  private def copy(
+      resourceName: String = this.resourceName,
+      dependencies: List[String] = this.dependencies,
+      commonJSName: Option[String] = this.commonJSName) = {
+    new JSDependency(resourceName, dependencies, commonJSName)
+  }
 }
 
 object JSDependency {
@@ -40,7 +47,8 @@ object JSDependency {
     def serialize(x: JSDependency): JSON = {
       new JSONObjBuilder()
         .fld("resourceName", x.resourceName)
-        .fld("dependencies", x.dependencies)
+        .opt("dependencies",
+            if (x.dependencies.nonEmpty) Some(x.dependencies) else None)
         .opt("commonJSName", x.commonJSName)
         .toJSON
     }
@@ -49,9 +57,9 @@ object JSDependency {
   implicit object JSDepJSONDeserializer extends JSONDeserializer[JSDependency] {
     def deserialize(x: JSON): JSDependency = {
       val obj = new JSONObjExtractor(x)
-      JSDependency(
+      new JSDependency(
           obj.fld[String]      ("resourceName"),
-          obj.fld[List[String]]("dependencies"),
+          obj.opt[List[String]]("dependencies").getOrElse(Nil),
           obj.opt[String]      ("commonJSName"))
     }
   }

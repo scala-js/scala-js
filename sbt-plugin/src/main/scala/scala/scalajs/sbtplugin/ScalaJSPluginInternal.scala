@@ -260,7 +260,7 @@ object ScalaJSPluginInternal {
           case _ => false
         }
 
-        val manifest = JSDependencyManifest(Origin(myModule, config),
+        val manifest = new JSDependencyManifest(new Origin(myModule, config),
             jsDeps.toList, requiresDOM)
 
         // Write dependency file to class directory
