@@ -20,7 +20,7 @@ import scala.scalajs.ir.Trees._
 import scala.scalajs.ir.Types._
 
 import scala.scalajs.tools.sem._
-import CheckedBehaviors._
+import CheckedBehavior._
 
 import scala.scalajs.tools.javascript.{Trees => js}
 
@@ -112,7 +112,6 @@ object JSDesugaring {
     js.ParamDef(paramDef.name, paramDef.mutable)(paramDef.pos)
 
   private class JSDesugar(semantics: Semantics) {
-    private val behaviors = semantics.checkedBehaviors
 
     // Synthetic variables
 
@@ -394,10 +393,10 @@ object JSDesugaring {
                 IsInstanceOf(rec(expr), tpe)
 
               case AsInstanceOf(expr, tpe)
-                  if noExtractYet || behaviors.asInstanceOfs == Unchecked =>
+                  if noExtractYet || semantics.asInstanceOfs == Unchecked =>
                 AsInstanceOf(rec(expr), tpe)
               case Unbox(expr, tpe)
-                  if noExtractYet || behaviors.asInstanceOfs == Unchecked =>
+                  if noExtractYet || semantics.asInstanceOfs == Unchecked =>
                 Unbox(rec(expr), tpe)
 
               case NewArray(tpe, lengths) =>
@@ -551,9 +550,9 @@ object JSDesugaring {
 
         // Casts
         case AsInstanceOf(expr, _) =>
-          (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
+          (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
         case Unbox(expr, _) =>
-          (allowSideEffects || behaviors.asInstanceOfs == Unchecked) && test(expr)
+          (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
 
         // Because the env is a frozen object, env["global"] is pure
         case JSBracketSelect(JSEnvInfo(), StringLiteral("global")) => true
@@ -868,7 +867,7 @@ object JSDesugaring {
           }
 
         case AsInstanceOf(expr, cls) =>
-          if (behaviors.asInstanceOfs == Unchecked) {
+          if (semantics.asInstanceOfs == Unchecked) {
             redo(expr)
           } else {
             unnest(expr) { newExpr =>
@@ -1207,13 +1206,13 @@ object JSDesugaring {
 
         case AsInstanceOf(expr, cls) =>
           val newExpr = transformExpr(expr)
-          if (behaviors.asInstanceOfs == Unchecked) newExpr
+          if (semantics.asInstanceOfs == Unchecked) newExpr
           else genAsInstanceOf(newExpr, cls)
 
         case Unbox(expr, charCode) =>
           val newExpr = transformExpr(expr)
 
-          if (behaviors.asInstanceOfs == Unchecked) {
+          if (semantics.asInstanceOfs == Unchecked) {
             (charCode: @switch) match {
               case 'Z'             => !(!newExpr)
               case 'B' | 'S' | 'I' => js.BinaryOp("|", newExpr, js.IntLiteral(0))

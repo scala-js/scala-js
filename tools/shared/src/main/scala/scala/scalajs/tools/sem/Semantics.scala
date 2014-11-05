@@ -10,27 +10,24 @@
 package scala.scalajs.tools.sem
 
 final class Semantics private (
-    val checkedBehaviors: CheckedBehaviors,
+    val asInstanceOfs: CheckedBehavior,
     val strictFloats: Boolean) {
 
   import Semantics._
 
-  def withCheckedBehaviors(behaviors: CheckedBehaviors): Semantics =
-    copy(checkedBehaviors = behaviors)
-
-  def transformCheckedBehaviors(f: CheckedBehaviors => CheckedBehaviors): Semantics =
-    withCheckedBehaviors(f(checkedBehaviors))
+  def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
+    copy(asInstanceOfs = behavior)
 
   def withStrictFloats(strictFloats: Boolean): Semantics =
     copy(strictFloats = strictFloats)
 
   def optimized: Semantics =
-    transformCheckedBehaviors(_.optimized)
+    copy(asInstanceOfs = this.asInstanceOfs.optimized)
 
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
-      this.checkedBehaviors == that.checkedBehaviors &&
-      this.strictFloats == that.strictFloats
+      this.asInstanceOfs == that.asInstanceOfs &&
+      this.strictFloats  == that.strictFloats
     case _ =>
       false
   }
@@ -38,26 +35,24 @@ final class Semantics private (
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
-    acc = mix(acc, checkedBehaviors.hashCode)
+    acc = mix(acc, asInstanceOfs.hashCode)
     acc = mixLast(acc, strictFloats.##)
     finalizeHash(acc, 1)
   }
 
   override def toString(): String = {
-    val indentedBehaviors =
-      checkedBehaviors.toString.linesWithSeparators.map("|  " + _).mkString
     s"""Semantics(
-       $indentedBehaviors,
-       |  strictFloats = $strictFloats
+       |  asInstanceOfs = $asInstanceOfs,
+       |  strictFloats  = $strictFloats
        |)""".stripMargin
   }
 
   private def copy(
-      checkedBehaviors: CheckedBehaviors = this.checkedBehaviors,
+      asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       strictFloats: Boolean = this.strictFloats): Semantics = {
     new Semantics(
-        checkedBehaviors = checkedBehaviors,
-        strictFloats = strictFloats)
+        asInstanceOfs = asInstanceOfs,
+        strictFloats  = strictFloats)
   }
 }
 
@@ -66,6 +61,6 @@ object Semantics {
     scala.util.hashing.MurmurHash3.stringHash(classOf[Semantics].getName)
 
   val Defaults = new Semantics(
-      checkedBehaviors = CheckedBehaviors.Defaults,
-      strictFloats = false)
+      asInstanceOfs = CheckedBehavior.Fatal,
+      strictFloats  = false)
 }

@@ -123,8 +123,8 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
   /** Reach symbols used directly by scalajsenv.js. */
   def reachCoreSymbols(): Unit = {
-    import semantics.checkedBehaviors._
-    import CheckedBehaviors._
+    import semantics._
+    import CheckedBehavior._
 
     implicit val from = FromCore
 

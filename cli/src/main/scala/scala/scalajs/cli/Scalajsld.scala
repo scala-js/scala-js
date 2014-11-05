@@ -17,7 +17,7 @@ import scala.scalajs.tools.logging._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.classpath.builder._
 
-import CheckedBehaviors.Compliant
+import CheckedBehavior.Compliant
 
 import scala.scalajs.tools.optimizer.{
   ScalaJSOptimizer,
@@ -80,7 +80,7 @@ object Scalajsld {
         .text("Produce a source map for the produced code")
       opt[Unit]("compliantAsInstanceOfs")
         .action { (_, c) => c.copy(semantics =
-          c.semantics.transformCheckedBehaviors(_.withAsInstanceOfs(Compliant)))
+          c.semantics.withAsInstanceOfs(Compliant))
         }
         .text("Use compliant asInstanceOfs")
       opt[Unit]('c', "checkIR")
