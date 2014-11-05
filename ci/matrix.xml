@@ -115,31 +115,15 @@
     <!-- Main test tasks -->
     <run task="main">
       <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.3</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.4</v>
       <v n="java">1.6</v>
     </run>
     <run task="main">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.7</v>
     </run>
     <run task="main">
       <v n="scala">2.11.2</v>
@@ -155,45 +139,21 @@
     </run>
     <run task="main">
       <v n="scala">2.11.4</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.4</v>
       <v n="java">1.7</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.4</v>
-      <v n="java">1.8</v>
     </run>
 
     <!-- Bootstrap test tasks -->
     <run task="bootstrap">
       <v n="scala">2.10.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.10.3</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.10.4</v>
       <v n="java">1.6</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.11.0</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.11.1</v>
-      <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
       <v n="scala">2.11.2</v>
@@ -253,6 +213,84 @@
 
   <matrix id="nightly">
     <run matrix="pr" />
+
+    <!-- Main test tasks (all remaining Scala versions) -->
+    <run task="main">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Bootstrap test tasks (all remaining Scala versions) -->
+    <run task="bootstrap">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+
+    <run task="partest-noopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+  </matrix>
+
+  <matrix id="weekly">
+    <!-- weekly does not have to run nightly, since they will run at the same time -->
+
     <run task="partest-noopt">
       <v n="scala">2.11.0</v>
       <v n="java">1.7</v>
@@ -275,18 +313,6 @@
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.1</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-noopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fastopt">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-noopt">
