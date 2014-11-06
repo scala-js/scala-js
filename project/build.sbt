@@ -17,6 +17,11 @@ libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.2013
 
 libraryDependencies += "com.googlecode.json-simple" % "json-simple" % "1.1.1"
 
+libraryDependencies += "org.eclipse.jetty" % "jetty-websocket" % "8.1.16.v20140903"
+
+libraryDependencies += "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
+
+
 unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile
   Seq(

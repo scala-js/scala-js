@@ -93,7 +93,7 @@
     sbt ++2.11.2 publishLocal ++2.10.4 tools/publishLocal sbtPlugin/publishLocal
     # Go into standalone project and test
     cd sbt-plugin-test
-    sbt noDOM/run withDOM/run test
+    sbt noDOM/run withDOM/run jetty9/fastOptStage::run test
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[

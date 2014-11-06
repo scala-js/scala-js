@@ -22,7 +22,7 @@ abstract class JSEnvTest {
       val console = new StoreJSConsole()
       val logger  = new StoreLogger()
 
-      newJSEnv.runJS(emptyCP, code, logger, console)
+      newJSEnv.jsRunner(emptyCP, code, logger, console).run()
 
       val log = logger.getLog
 
@@ -33,7 +33,7 @@ abstract class JSEnvTest {
 
     def fails(): Unit = {
       try {
-        newJSEnv.runJS(emptyCP, code, NullLogger, NullJSConsole)
+        newJSEnv.jsRunner(emptyCP, code, NullLogger, NullJSConsole).run()
         assertTrue("Code snipped should fail", false)
       } catch {
         case e: Exception =>

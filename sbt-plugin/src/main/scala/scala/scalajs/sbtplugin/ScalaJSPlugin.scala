@@ -54,9 +54,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
 
-    val preLinkJSEnv = SettingKey[JSEnv]("preLinkJSEnv",
+    val preLinkJSEnv = TaskKey[JSEnv]("preLinkJSEnv",
         "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files", BSetting)
-    val postLinkJSEnv = SettingKey[JSEnv]("postLinkJSEnv",
+    val postLinkJSEnv = TaskKey[JSEnv]("postLinkJSEnv",
         "The jsEnv used to execute after linking (packaging / optimizing) Scala.js files", AMinusSetting)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
@@ -89,6 +89,12 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
 
     val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
         "All kinds of options for the Scala.js optimizer stages", DSetting)
+
+    /** Class loader for PhantomJSEnv. Used to load jetty8. */
+    val scalaJSPhantomJSClassLoader = TaskKey[ClassLoader]("scalaJSPhantomJSClassLoader",
+        "Private class loader to load jetty8 without polluting classpath. Only use this " +
+        "as the `jettyClassLoader` argument of the PhantomJSEnv",
+        KeyRanks.Invisible)
 
     // Task keys to re-wire sources and run with other VM
     val fastOptStage = TaskKey[Unit]("fastOptStage",

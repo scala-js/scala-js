@@ -308,8 +308,10 @@ object ScalaJSBuild extends Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          jsEnv.value.runJS(scalaJSExecClasspath.value, launcher,
-              streams.value.log, scalaJSConsole.value)
+          val runner = jsEnv.value.jsRunner(scalaJSExecClasspath.value,
+              launcher, streams.value.log, scalaJSConsole.value)
+
+          runner.run()
         }
 
         Seq(test := error("Can't run toolsJS/test in preLink stage")) ++
@@ -330,7 +332,7 @@ object ScalaJSBuild extends Build {
               "org.mozilla" % "rhino" % "1.7R4",
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
-          )
+          ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
       )
   ).dependsOn(tools)
 
@@ -805,15 +807,6 @@ object ScalaJSBuild extends Build {
             else Seq()
           },
 
-          unmanagedSourceDirectories in Compile ++= {
-            val pluginBase = ((scalaSource in (plugin, Compile)).value /
-                "scala/scalajs/sbtplugin")
-            Seq(
-              pluginBase / "env",
-              pluginBase / "sourcemap"
-            )
-          },
-
           sources in Compile := {
             if (shouldPartest.value) {
               // Partest sources and some sources of sbtplugin (see above)
@@ -822,8 +815,17 @@ object ScalaJSBuild extends Build {
               val toolSrcs = (sources in (tools, Compile)).value
               // Individual sources from the sbtplugin
               val pluginSrcs = {
-                val d = (scalaSource in (plugin, Compile)).value
-                Seq(d / "scala/scalajs/sbtplugin/JSUtils.scala")
+                val pluginBase = ((scalaSource in (plugin, Compile)).value /
+                  "scala/scalajs/sbtplugin")
+
+                val scalaFilter: FileFilter = "*.scala"
+                val files = (
+                    (pluginBase * "JSUtils.scala") +++
+                    (pluginBase / "env" * scalaFilter) +++
+                    (pluginBase / "env" / "nodejs" ** scalaFilter) +++
+                    (pluginBase / "env" / "rhino" ** scalaFilter))
+
+                files.get
               }
               toolSrcs ++ baseSrcs ++ pluginSrcs
             } else Seq()
