@@ -20,7 +20,7 @@ import scala.scalajs.tools.jsdep.ResolutionInfo
 /** A [[CompleteClasspath]] that contains only IR as scalaJSCode */
 final class IRClasspath(
     /** The JS libraries the IR code depends on */
-    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    jsLibs: Seq[ResolvedJSDependency],
     /** The IR itself. Ancestor count is used for later ordering */
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     requiresDOM: Boolean,

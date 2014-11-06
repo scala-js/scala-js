@@ -21,7 +21,7 @@ import scala.scalajs.tools.jsdep.ResolutionInfo
  */
 abstract class CompleteClasspath(
     /** Resolved JS libraries */
-    val jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    val jsLibs: Seq[ResolvedJSDependency],
     val requiresDOM: Boolean,
     val version: Option[String]
 ) {
@@ -30,6 +30,6 @@ abstract class CompleteClasspath(
   def scalaJSCode: VirtualJSFile
 
   /** All code in this complete classpath */
-  final def allCode: Seq[VirtualJSFile] =
-    jsLibs.map(_._1) :+ scalaJSCode
+  final def allCode: Seq[VirtualJSFile] = jsLibs.map(_.lib) :+ scalaJSCode
+
 }

@@ -19,7 +19,7 @@ import scala.collection.immutable.Seq
  *  file that is scalaJSCode.
  */
 final class LinkedClasspath(
-    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    jsLibs: Seq[ResolvedJSDependency],
     val scalaJSCode: VirtualJSFile,
     requiresDOM: Boolean,
     version: Option[String]

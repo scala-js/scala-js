@@ -237,7 +237,7 @@ object ScalaJSPluginInternal {
 
           val outFile = WritableFileVirtualTextFile(output)
           CacheUtils.cached(cp.version, outFile, Some(taskCache)) {
-            toolsIO.concatFiles(outFile, cp.jsLibs.map(_._1))
+            toolsIO.concatFiles(outFile, cp.jsLibs.map(_.lib))
           }
 
           output

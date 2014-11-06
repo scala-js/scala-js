@@ -60,7 +60,7 @@ final class PartialClasspath(
    *  - Not all dependencies are available
    */
   protected def resolveDependencies(
-      filter: DependencyFilter): List[(VirtualJSFile, ResolutionInfo)] = {
+      filter: DependencyFilter): List[ResolvedJSDependency] = {
     val flatDeps = filter(dependencies.flatMap(_.flatten))
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
@@ -72,7 +72,7 @@ final class PartialClasspath(
       throw new MissingJSLibException(missingDeps)
 
     for (info <- includeList)
-      yield (availableLibs(info.resourceName), info)
+      yield new ResolvedJSDependency(availableLibs(info.resourceName), info)
   }
 
 }

@@ -127,7 +127,7 @@ object Scalajsld {
 
       // Write JS dependencies if requested
       for (jsout <- options.jsoutput)
-        IO.concatFiles(WritableFileVirtualJSFile(jsout), cp.jsLibs.map(_._1))
+        IO.concatFiles(WritableFileVirtualJSFile(jsout), cp.jsLibs.map(_.lib))
 
       // Link Scala.js code
       val outFile = WritableFileVirtualJSFile(options.output)
