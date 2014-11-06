@@ -807,15 +807,6 @@ object ScalaJSBuild extends Build {
             else Seq()
           },
 
-          unmanagedSourceDirectories in Compile ++= {
-            val pluginBase = ((scalaSource in (plugin, Compile)).value /
-                "scala/scalajs/sbtplugin")
-            Seq(
-              pluginBase / "env",
-              pluginBase / "sourcemap"
-            )
-          },
-
           sources in Compile := {
             if (shouldPartest.value) {
               // Partest sources and some sources of sbtplugin (see above)
@@ -824,8 +815,17 @@ object ScalaJSBuild extends Build {
               val toolSrcs = (sources in (tools, Compile)).value
               // Individual sources from the sbtplugin
               val pluginSrcs = {
-                val d = (scalaSource in (plugin, Compile)).value
-                Seq(d / "scala/scalajs/sbtplugin/JSUtils.scala")
+                val pluginBase = ((scalaSource in (plugin, Compile)).value /
+                  "scala/scalajs/sbtplugin")
+
+                val scalaFilter: FileFilter = "*.scala"
+                val files = (
+                    (pluginBase * "JSUtils.scala") +++
+                    (pluginBase / "env" * scalaFilter) +++
+                    (pluginBase / "env" / "nodejs" ** scalaFilter) +++
+                    (pluginBase / "env" / "rhino" ** scalaFilter))
+
+                files.get
               }
               toolSrcs ++ baseSrcs ++ pluginSrcs
             } else Seq()
