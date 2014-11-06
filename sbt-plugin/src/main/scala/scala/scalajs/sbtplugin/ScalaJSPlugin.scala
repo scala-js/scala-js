@@ -83,6 +83,10 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)
 
+    val checkScalaJSSemantics = SettingKey[Boolean]("checkScalaJSSemantics",
+        "Whether to check that the current semantics meet compliance " +
+        "requirements of dependencies.", CSetting)
+
     val persistLauncher = SettingKey[Boolean]("persistLauncher",
         "Tell optimize/package tasks to write the laucher file to disk. " +
         "If this is set, your project may only have a single mainClass or you must explicitly set it", AMinusSetting)

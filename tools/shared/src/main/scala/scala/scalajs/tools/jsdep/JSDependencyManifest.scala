@@ -11,7 +11,8 @@ import java.io.{Reader, Writer}
 final class JSDependencyManifest(
     val origin: Origin,
     val libDeps: List[JSDependency],
-    val requiresDOM: Boolean) {
+    val requiresDOM: Boolean,
+    val compliantSemantics: List[String]) {
   def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
 }
 
@@ -84,11 +85,15 @@ object JSDependencyManifest {
   }
 
   implicit object JSDepManJSONSerializer extends JSONSerializer[JSDependencyManifest] {
+    @inline def optList[T](x: List[T]): Option[List[T]] =
+      if (x.nonEmpty) Some(x) else None
+
     def serialize(x: JSDependencyManifest): JSON = {
       new JSONObjBuilder()
         .fld("origin",  x.origin)
-        .opt("libDeps", if (x.libDeps.nonEmpty) Some(x.libDeps) else None)
+        .opt("libDeps", optList(x.libDeps))
         .opt("requiresDOM", if (x.requiresDOM) Some(true) else None)
+        .opt("compliantSemantics", optList(x.compliantSemantics))
         .toJSON
     }
   }
@@ -99,7 +104,8 @@ object JSDependencyManifest {
       new JSDependencyManifest(
           obj.fld[Origin]            ("origin"),
           obj.opt[List[JSDependency]]("libDeps").getOrElse(Nil),
-          obj.opt[Boolean]           ("requiresDOM").getOrElse(false))
+          obj.opt[Boolean]           ("requiresDOM").getOrElse(false),
+          obj.opt[List[String]]      ("compliantSemantics").getOrElse(Nil))
     }
   }
 

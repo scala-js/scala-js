@@ -9,6 +9,8 @@
 
 package scala.scalajs.tools.sem
 
+import scala.collection.immutable.Traversable
+
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
     val strictFloats: Boolean) {
@@ -47,6 +49,21 @@ final class Semantics private (
        |)""".stripMargin
   }
 
+  /** Checks whether the given semantics setting is Java compliant */
+  def isCompliant(name: String): Boolean = name match {
+    case "asInstanceOfs" => asInstanceOfs == CheckedBehavior.Compliant
+    case "strictFloats"  => strictFloats
+    case _               => false
+  }
+
+  /** Retrieve a list of semantics which are set to compliant */
+  def compliants: List[String] = {
+    def cl(name: String, cond: Boolean) = if (cond) List(name) else Nil
+
+    cl("asInstanceOfs", asInstanceOfs == CheckedBehavior.Compliant) ++
+    cl("strictFloats",  strictFloats)
+  }
+
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       strictFloats: Boolean = this.strictFloats): Semantics = {
@@ -60,7 +77,21 @@ object Semantics {
   private val HashSeed =
     scala.util.hashing.MurmurHash3.stringHash(classOf[Semantics].getName)
 
-  val Defaults = new Semantics(
+  val Defaults: Semantics = new Semantics(
       asInstanceOfs = CheckedBehavior.Fatal,
       strictFloats  = false)
+
+  def compliantTo(semantics: Traversable[String]): Semantics = {
+    import Defaults._
+    import CheckedBehavior._
+
+    val semsSet = semantics.toSet
+
+    def sw[T](name: String, compliant: T, default: T): T =
+      if (semsSet.contains(name)) compliant else default
+
+    new Semantics(
+        asInstanceOfs = sw("asInstanceOfs", Compliant, asInstanceOfs),
+        strictFloats  = sw("strictFloats",  true,      strictFloats))
+  }
 }

@@ -108,10 +108,14 @@ object ScalaJSPluginInternal {
   ) ++ Seq(
 
       scalaJSPreLinkClasspath := {
-        val semantics = scalaJSSemantics.value
         val cp = fullClasspath.value
         val pcp = PartialClasspathBuilder.build(Attributed.data(cp).toList)
-        pcp.resolve(jsDependencyFilter.value)
+        val ccp = pcp.resolve(jsDependencyFilter.value)
+
+        if (checkScalaJSSemantics.value)
+          ccp.checkCompliance(scalaJSSemantics.value)
+
+        ccp
       },
 
       artifactPath in fastOptJS :=
@@ -260,8 +264,10 @@ object ScalaJSPluginInternal {
           case _ => false
         }
 
+        val compliantSemantics = scalaJSSemantics.value.compliants
+
         val manifest = new JSDependencyManifest(new Origin(myModule, config),
-            jsDeps.toList, requiresDOM)
+            jsDeps.toList, requiresDOM, compliantSemantics)
 
         // Write dependency file to class directory
         val targetDir = classDirectory.value
@@ -571,6 +577,7 @@ object ScalaJSPluginInternal {
       jsDependencyFilter := identity,
 
       scalaJSSemantics := Semantics.Defaults,
+      checkScalaJSSemantics := true,
 
       scalaJSConsole := ConsoleJSConsole,
 
