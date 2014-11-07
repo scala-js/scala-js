@@ -2,3 +2,6 @@
 # use scala.tools.partest.scalajs.testunknownonly to only run tests
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
+
+# Filed as #1247
+run/t6318_primitives.scala

@@ -30,13 +30,25 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
   }
 }
 
-trait ScalaJSRunner extends nest.Runner {
-  val options: ScalaJSPartestOptions
-  val noWarnFile: String
+class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
+    scalaJSOverridePath: String, options: ScalaJSPartestOptions,
+    noWarnFile: File) extends nest.Runner(testFile, suiteRunner) {
+
+  override val checkFile: File = {
+    val overrideFile = s"$scalaJSOverridePath/$kind/$fileBase.check"
+    val url = getClass.getResource(overrideFile)
+    if (url == null) {
+      // this is super.checkFile, but apparently we can't do that
+      new FileOps(testFile).changeExtension("check")
+    } else {
+      new File(url.toURI)
+    }
+  }
+
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
     val opts = super.extraJavaOptions :+
-      s"-Dscalajs.partest.noWarnFile=$noWarnFile"
+      s"-Dscalajs.partest.noWarnFile=${noWarnFile.getAbsolutePath}"
 
     opts :+ "-Dscalajs.partest.optMode=" + options.optMode.id
   }
@@ -66,14 +78,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   override def runTest(testFile: File): TestState = {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
-    val runner = new nest.Runner(testFile, this) with ScalaJSRunner {
-      val options = ScalaJSSuiteRunner.this.options
-      val noWarnFile = {
-        val uri = getClass.getResource(s"$listDir/NoDCEWarn.txt").toURI
-        assert(uri != null, "Need NoDCEWarn.txt file")
-        new File(uri).getAbsolutePath()
-      }
-    }
+    val runner = new ScalaJSRunner(testFile, this, listDir, options, noWarnFile)
 
     // when option "--failed" is provided execute test only if log
     // is present (which means it failed before)
@@ -109,6 +114,12 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   private lazy val whitelistedTestFileNames =
     readTestList(s"$listDir/WhitelistedTests.txt")
+
+  private lazy val noWarnFile: File = {
+    val url = getClass.getResource(s"$listDir/NoDCEWarn.txt")
+    assert(url != null, "Need NoDCEWarn.txt file")
+    new File(url.toURI).getAbsolutePath()
+  }
 
   private def readTestList(resourceName: String): Set[String] = {
     val source = scala.io.Source.fromURL(getClass.getResource(resourceName))
