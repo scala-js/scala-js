@@ -51,7 +51,7 @@ final class PartialClasspath(
    *  resolving library dependencies (and failing if they are not met)
    */
   def resolve(filter: DependencyFilter = identity): IRClasspath = {
-    new IRClasspath(resolveDependencies(filter), scalaJSIR,
+    new IRClasspath(resolveDependencies(filter), mergeCompliance(), scalaJSIR,
         dependencies.exists(_.requiresDOM), version)
   }
 
@@ -60,7 +60,7 @@ final class PartialClasspath(
    *  - Not all dependencies are available
    */
   protected def resolveDependencies(
-      filter: DependencyFilter): List[(VirtualJSFile, ResolutionInfo)] = {
+      filter: DependencyFilter): List[ResolvedJSDependency] = {
     val flatDeps = filter(dependencies.flatMap(_.flatten))
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
@@ -72,7 +72,18 @@ final class PartialClasspath(
       throw new MissingJSLibException(missingDeps)
 
     for (info <- includeList)
-      yield (availableLibs(info.resourceName), info)
+      yield new ResolvedJSDependency(availableLibs(info.resourceName), info)
+  }
+
+  protected def mergeCompliance(): Traversable[ComplianceRequirement] = {
+    val flatTups = for {
+      dependency <- dependencies
+      semantics  <- dependency.compliantSemantics
+    } yield (semantics, dependency.origin)
+
+    for {
+      (semantics, tups) <- flatTups.groupBy(_._1)
+    } yield new ComplianceRequirement(semantics, tups.map(_._2).toList)
   }
 
 }

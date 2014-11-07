@@ -20,7 +20,8 @@ import scala.scalajs.tools.jsdep.ResolutionInfo
 /** A [[CompleteClasspath]] that contains only IR as scalaJSCode */
 final class IRClasspath(
     /** The JS libraries the IR code depends on */
-    jsLibs: Seq[(VirtualJSFile, ResolutionInfo)],
+    jsLibs: Seq[ResolvedJSDependency],
+    val requiredCompliance: Traversable[ComplianceRequirement],
     /** The IR itself. Ancestor count is used for later ordering */
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     requiresDOM: Boolean,
@@ -39,8 +40,9 @@ final class IRClasspath(
     val outName = "temporary-fastOpt.js"
 
     if (scalaJSIR.nonEmpty) {
+      val semantics = Semantics.compliantTo(requiredCompliance.map(_.semantics))
       val output = WritableMemVirtualJSFile(outName)
-      new ScalaJSOptimizer(Semantics.Defaults).optimizeCP(
+      new ScalaJSOptimizer(semantics).optimizeCP(
           Inputs(this),
           OutputConfig(output),
           NullLogger)
@@ -51,5 +53,17 @@ final class IRClasspath(
       // for no IR at all.
       VirtualJSFile.empty(outName)
     }
+  }
+
+  /** Checks whether the given semantics are compliant with the requirements of
+   *  this CompleteClasspath. Throws an exception otherwise.
+   */
+  final def checkCompliance(semantics: Semantics): Unit = {
+    val unmet = requiredCompliance filterNot { compliance =>
+      semantics.isCompliant(compliance.semantics)
+    }
+
+    if (unmet.nonEmpty)
+      throw new BadComplianceException(unmet.toList)
   }
 }

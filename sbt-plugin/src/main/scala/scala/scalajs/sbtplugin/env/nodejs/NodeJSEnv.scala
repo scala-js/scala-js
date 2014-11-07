@@ -252,16 +252,15 @@ class NodeJSEnv(
     /** Libraries are loaded via require in Node.js */
     override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
       initFiles() ++
-      classpath.jsLibs.map((requireLibrary _).tupled) :+
+      classpath.jsLibs.map(requireLibrary) :+
       classpath.scalaJSCode
     }
 
     /** Rewrites a library virtual file to a require statement if possible */
-    protected def requireLibrary(vf: VirtualJSFile,
-        info: ResolutionInfo): VirtualJSFile = {
-      info.commonJSName.fold(vf) { varname =>
-        val fname = vf.name
-        libCache.materialize(vf)
+    protected def requireLibrary(dep: ResolvedJSDependency): VirtualJSFile = {
+      dep.info.commonJSName.fold(dep.lib) { varname =>
+        val fname = dep.lib.name
+        libCache.materialize(dep.lib)
         new MemVirtualJSFile(s"require-$fname").withContent(
           s"""$varname = require(${toJSstr(fname)});"""
         )

@@ -205,7 +205,7 @@ class RhinoJSEnv(semantics: Semantics,
             }
 
             // Load JS libraries
-            cp.jsLibs.foreach(lib => context.evaluateFile(scope, lib._1))
+            cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
 
             optLoader.foreach(_.insertInto(context, scope))
           case cp =>

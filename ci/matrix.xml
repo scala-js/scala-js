@@ -40,13 +40,13 @@
     sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
          ++$scala "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          testSuite/clean &&
-    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.transformCheckedBehaviors(_.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehaviors.Compliant)).withStrictFloats(true) }' \
+    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
         ++$scala \
         "testSuite/testOnly -- -- -trhino -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         "testSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&
-    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.transformCheckedBehaviors(_.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehaviors.Compliant)).withStrictFloats(true) }' \
+    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
         'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala "testSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&

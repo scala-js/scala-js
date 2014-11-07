@@ -51,7 +51,7 @@ final case class JarJSModuleID(
 
 object JarJSModuleID {
   def apply(module: ModuleID, name: String): JarJSModuleID =
-    JarJSModuleID(module, JSDependency(name, Nil))
+    JarJSModuleID(module, new JSDependency(name, Nil))
 }
 
 /** A JavaScript module that we depend on, but is provided externally or
@@ -68,7 +68,7 @@ final case class ProvidedJSModuleID(
 
 object ProvidedJSModuleID {
   def apply(name: String, configurations: Option[String]): ProvidedJSModuleID =
-    ProvidedJSModuleID(JSDependency(name, Nil), configurations)
+    ProvidedJSModuleID(new JSDependency(name, Nil), configurations)
 }
 
 sealed case class RuntimeDOM(

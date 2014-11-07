@@ -16,7 +16,7 @@ import scala.scalajs.ir.Trees._
 import Types._
 
 import scala.scalajs.tools.sem._
-import CheckedBehaviors.Unchecked
+import CheckedBehavior.Unchecked
 
 import scala.scalajs.tools.javascript.{Trees => js}
 
@@ -26,8 +26,6 @@ import scala.scalajs.tools.javascript.{Trees => js}
 final class ScalaJSClassEmitter(semantics: Semantics) {
 
   import JSDesugaring._
-
-  private val behaviors = semantics.checkedBehaviors
 
   /** Desugar a Scala.js class into ECMAScript 5 constructs */
   def genClassDef(tree: ClassDef): js.Tree = {
@@ -254,7 +252,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
         }))
     }
 
-    val createAsStat = if (behaviors.asInstanceOfs == Unchecked) {
+    val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
       js.Skip()
     } else {
       envField("as") DOT classIdent :=
@@ -329,7 +327,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
         })
     }
 
-    val createAsArrayOfStat = if (behaviors.asInstanceOfs == Unchecked) {
+    val createAsArrayOfStat = if (semantics.asInstanceOfs == Unchecked) {
       js.Skip()
     } else {
       envField("asArrayOf") DOT classIdent :=

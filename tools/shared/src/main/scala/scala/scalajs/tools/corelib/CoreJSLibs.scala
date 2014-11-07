@@ -43,7 +43,7 @@ object CoreJSLibs {
 
     def getOption(name: String): String = name match {
       case "asInstanceOfs" =>
-        semantics.checkedBehaviors.asInstanceOfs.toString()
+        semantics.asInstanceOfs.toString()
       case "floats" =>
         if (semantics.strictFloats) "Strict"
         else "Loose"
