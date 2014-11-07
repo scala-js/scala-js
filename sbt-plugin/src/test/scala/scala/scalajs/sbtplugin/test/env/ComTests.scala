@@ -104,4 +104,26 @@ trait ComTests {
     com.await()
   }
 
+  @Test
+  def stopTest = {
+    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
+
+    com.start()
+
+    // Make sure the VM doesn't terminate.
+    Thread.sleep(1000)
+
+    assertTrue("VM should still be running", com.isRunning)
+
+    // Stop VM instead of closing channel
+    com.stop()
+
+    try {
+      com.await()
+      fail("Stopped VM should be in failure state")
+    } catch {
+      case _: Throwable =>
+    }
+  }
+
 }

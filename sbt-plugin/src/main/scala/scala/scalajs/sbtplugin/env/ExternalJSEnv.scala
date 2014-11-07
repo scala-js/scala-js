@@ -144,14 +144,27 @@ abstract class ExternalJSEnv(
        with AsyncJSRunner {
 
     private[this] var vmInst: Process = null
+    private[this] var ioThreadEx: Throwable = null
+
     private[this] val thread = new Thread {
-      override def run(): Unit = pipeVMData(vmInst)
+      override def run(): Unit = {
+        try {
+          pipeVMData(vmInst)
+        } catch {
+          case e: Throwable => ioThreadEx = e
+        }
+      }
     }
 
     def start(): Unit = {
       require(vmInst == null, "start() may only be called once")
       vmInst = startVM()
       thread.start()
+    }
+
+    def stop(): Unit = {
+      require(vmInst != null, "start() must have been called")
+      vmInst.destroy()
     }
 
     def isRunning(): Boolean = {
@@ -170,6 +183,12 @@ abstract class ExternalJSEnv(
       require(vmInst != null, "start() must have been called")
       thread.join()
       waitForVM(vmInst)
+
+      // At this point, the VM itself didn't fail. We need to check if
+      // anything bad happened while piping the data from the VM
+
+      if (ioThreadEx != null)
+        throw ioThreadEx
     }
   }
 

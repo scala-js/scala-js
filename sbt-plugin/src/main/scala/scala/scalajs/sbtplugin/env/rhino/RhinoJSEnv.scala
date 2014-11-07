@@ -64,6 +64,8 @@ class RhinoJSEnv(semantics: Semantics,
 
     def start(): Unit = thread.start()
 
+    def stop(): Unit = thread.interrupt()
+
     def isRunning(): Boolean = thread.isAlive()
 
     def await(): Unit = {
