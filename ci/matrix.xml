@@ -98,7 +98,7 @@
 
   <task id="partest-noopt"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala package partestSuite/testOnly -- --showDiff
+    sbt ++$scala package "partestSuite/testOnly -- --showDiff"
   ]]></task>
 
   <task id="partest-fastopt"><![CDATA[
