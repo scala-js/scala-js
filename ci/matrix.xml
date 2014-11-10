@@ -98,17 +98,17 @@
 
   <task id="partest-noopt"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala package partestSuite/test
+    sbt ++$scala package partestSuite/testOnly -- --showDiff
   ]]></task>
 
   <task id="partest-fastopt"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala package "partestSuite/testOnly -- --fastOpt"
+    sbt ++$scala package "partestSuite/testOnly -- --fastOpt --showDiff"
   ]]></task>
 
   <task id="partest-fullopt"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala package "partestSuite/testOnly -- --fullOpt"
+    sbt ++$scala package "partestSuite/testOnly -- --fullOpt --showDiff"
   ]]></task>
 
   <matrix id="pr">

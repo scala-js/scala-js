@@ -196,4 +196,8 @@ class ScalaJSSBTRunner(
   // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
   sys.props("partest.timeout") = "10 hours"
 
+  // Set showDiff on global UI module
+  if (options.showDiff)
+    NestUI.setDiffOnFail()
+
 }
