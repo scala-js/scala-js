@@ -272,6 +272,20 @@ class NodeJSEnv(
       sendJS(getJSFiles(), out)
     }
 
+    /** write a single JS file to a writer using an include fct if appropriate
+     *  uses `require` if the file exists on the filesystem
+     */
+    override protected def writeJSFile(file: VirtualJSFile,
+        writer: Writer): Unit = {
+      file match {
+        case file: FileVirtualJSFile =>
+          val fname = toJSstr(file.file.getAbsolutePath)
+          writer.write(s"require($fname);\n")
+        case _ =>
+          super.writeJSFile(file, writer)
+      }
+    }
+
     // Node.js specific (system) environment
     override protected def getVMEnv(): Map[String, String] = {
       val baseNodePath = sys.env.get("NODE_PATH").filter(_.nonEmpty)
