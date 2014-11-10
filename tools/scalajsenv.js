@@ -215,22 +215,7 @@ ScalaJS.numberEquals = function(lhs, rhs) {
 ScalaJS.objectHashCode = function(instance) {
   switch (typeof instance) {
     case "string":
-      // calculate hash of String as specified by JavaDoc
-      var n = instance["length"];
-      var res = 0;
-      var mul = 1; // holds pow(31, n-i-1)
-      // multiplications with `mul` do never overflow the 52 bits of precision:
-      // - we truncate `mul` to 32 bits on each operation
-      // - 31 has 5 significant bits only
-      // - s[i] has 16 significant bits max
-      // 32 + max(5, 16) = 48 < 52 => no overflow
-      for (var i = n-1; i >= 0; --i) {
-        // calculate s[i] * pow(31, n-i-1)
-        res = res + (instance["charCodeAt"](i) * mul | 0) | 0
-        // update mul for next iteration
-        mul = mul * 31 | 0
-      }
-      return res;
+      return ScalaJS.m.sjsr_RuntimeString().hashCode__T__I(instance);
     case "number":
       return instance | 0;
     case "boolean":
@@ -269,21 +254,33 @@ ScalaJS.comparableCompareTo = function(instance, rhs) {
 
 ScalaJS.charSequenceLength = function(instance) {
   if (typeof(instance) === "string")
-    return instance["length"];
+//!if asInstanceOfs != Unchecked
+    return ScalaJS.uI(instance["length"]);
+//!else
+    return instance["length"] | 0;
+//!endif
   else
     return instance.length__I();
 };
 
 ScalaJS.charSequenceCharAt = function(instance, index) {
   if (typeof(instance) === "string")
-    return instance["charCodeAt"](index);
+//!if asInstanceOfs != Unchecked
+    return ScalaJS.uI(instance["charCodeAt"](index)) & 0xffff;
+//!else
+    return instance["charCodeAt"](index) & 0xffff;
+//!endif
   else
     return instance.charAt__I__C(index);
 };
 
 ScalaJS.charSequenceSubSequence = function(instance, start, end) {
   if (typeof(instance) === "string")
+//!if asInstanceOfs != Unchecked
+    return ScalaJS.as.T(instance["substring"](start, end));
+//!else
     return instance["substring"](start, end);
+//!endif
   else
     return instance.subSequence__I__I__jl_CharSequence(start, end);
 };
