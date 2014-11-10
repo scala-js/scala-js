@@ -44,12 +44,12 @@ object ReflectionTest extends JasmineTest {
         c.asInstanceOf[js.Any]
       expect((false: Any).getClass).toBe(classOf[java.lang.Boolean])
       expect(('a': Any).getClass).toBe(classOf[java.lang.Character])
-      expect((1.toByte: Any).getClass).toBe(classOf[java.lang.Integer])
-      expect((1.toShort: Any).getClass).toBe(classOf[java.lang.Integer])
-      expect((1: Any).getClass).toBe(classOf[java.lang.Integer])
+      expect((1.toByte: Any).getClass).toBe(classOf[java.lang.Byte])
+      expect((1.toShort: Any).getClass).toBe(classOf[java.lang.Byte])
+      expect((1: Any).getClass).toBe(classOf[java.lang.Byte])
       expect((1L: Any).getClass).toBe(classOf[java.lang.Long])
-      expect((1.5f: Any).getClass).toBe(classOf[java.lang.Double])
-      expect((1.5: Any).getClass).toBe(classOf[java.lang.Double])
+      expect((1.5f: Any).getClass).toBe(classOf[java.lang.Float])
+      expect((1.5: Any).getClass).toBe(classOf[java.lang.Float])
       expect(((): Any).getClass).toBe(classOf[scala.runtime.BoxedUnit])
     }
 

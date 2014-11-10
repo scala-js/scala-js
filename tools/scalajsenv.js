@@ -149,10 +149,20 @@ ScalaJS.objectGetClass = function(instance) {
     case "string":
       return ScalaJS.d.T.getClassOf();
     case "number":
-      if (ScalaJS.isInt(instance))
-        return ScalaJS.d.jl_Integer.getClassOf();
-      else
-        return ScalaJS.d.jl_Double.getClassOf();
+      var v = instance | 0;
+      if (v === instance) { // is the value integral?
+        if (ScalaJS.isByte(v))
+          return ScalaJS.d.jl_Byte.getClassOf();
+        else if (ScalaJS.isShort(v))
+          return ScalaJS.d.jl_Short.getClassOf();
+        else
+          return ScalaJS.d.jl_Integer.getClassOf();
+      } else {
+        if (ScalaJS.isFloat(instance))
+          return ScalaJS.d.jl_Float.getClassOf();
+        else
+          return ScalaJS.d.jl_Double.getClassOf();
+      }
     case "boolean":
       return ScalaJS.d.jl_Boolean.getClassOf();
     case "undefined":
