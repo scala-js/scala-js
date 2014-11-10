@@ -2,7 +2,8 @@ package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
   val testFilter: ScalaJSPartestOptions.TestFilter,
-  val optMode: ScalaJSPartestOptions.OptMode
+  val optMode: ScalaJSPartestOptions.OptMode,
+  val showDiff: Boolean
 )
 
 object ScalaJSPartestOptions {
@@ -60,6 +61,7 @@ object ScalaJSPartestOptions {
 
     var filter: Option[TestFilter] = None
     var optMode: OptMode = NoOpt
+    var showDiff: Boolean = false
 
     def error(msg: String) = {
       failed = true
@@ -91,6 +93,8 @@ object ScalaJSPartestOptions {
         setFilter(WhitelistedTests)
       case "--unknown" =>
         setFilter(UnknownTests)
+      case "--showDiff" =>
+        showDiff = true
       case _ =>
         setFilter(SomeTests(arg :: Nil))
     }
@@ -98,7 +102,7 @@ object ScalaJSPartestOptions {
     if (failed) None
     else Some {
       new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests), optMode)
+        filter.getOrElse(WhitelistedTests), optMode, showDiff)
     }
   }
 

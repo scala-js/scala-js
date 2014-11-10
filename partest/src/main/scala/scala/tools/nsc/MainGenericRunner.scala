@@ -55,6 +55,14 @@ class MainGenericRunner {
     }
   }
 
+  def readSemantics() = {
+    val opt = sys.props.get("scalajs.partest.compliantSems")
+    opt.fold(Semantics.Defaults) { str =>
+      val sems = str.split(',')
+      Semantics.compliantTo(sems.toList)
+    }
+  }
+
   def process(args: Array[String]): Boolean = {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
     import command.{ settings, howToRun, thingToRun }
@@ -80,9 +88,11 @@ class MainGenericRunner {
 
     val mainObjName = ir.Definitions.encodeClassName(thingToRun)
     val baseRunner  = runnerJSFile(mainObjName, command.arguments)
+    val semantics   = readSemantics()
 
-    def fastOpted = fastOptimize(classpath, mainObjName, logger)
-    def fullOpted = fullOptimize(classpath, mainObjName, logger, baseRunner)
+    def fastOpted = fastOptimize(classpath, mainObjName, logger, semantics)
+    def fullOpted = fullOptimize(classpath, mainObjName, logger,
+      baseRunner, semantics.optimized)
 
     val runner = {
       if (optMode == FullOpt)
@@ -92,7 +102,7 @@ class MainGenericRunner {
     }
 
     val env =
-      if (optMode == NoOpt) new RhinoJSEnv(Semantics.Defaults)
+      if (optMode == NoOpt) new RhinoJSEnv(semantics)
       else new NodeJSEnv
 
     val runClasspath = optMode match {
@@ -123,10 +133,11 @@ class MainGenericRunner {
   private def fastOptimize(
       classpath: IRClasspath,
       mainObjName: String,
-      logger: Logger) = {
+      logger: Logger,
+      semantics: Semantics) = {
     import ScalaJSOptimizer._
 
-    val optimizer = newScalaJSOptimizer(Semantics.Defaults)
+    val optimizer = newScalaJSOptimizer(semantics)
     val output = WritableMemVirtualJSFile("partest fastOpt file")
 
     optimizer.optimizeCP(
@@ -154,10 +165,9 @@ class MainGenericRunner {
       classpath: IRClasspath,
       mainObjName: String,
       logger: Logger,
-      runner: VirtualJSFile) = {
+      runner: VirtualJSFile,
+      semantics: Semantics) = {
     import ScalaJSClosureOptimizer._
-
-    val semantics = Semantics.Defaults.optimized
 
     val fastOptimizer = newScalaJSOptimizer(semantics)
     val fullOptimizer = new ScalaJSClosureOptimizer(semantics)

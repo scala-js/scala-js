@@ -21,9 +21,6 @@ neg/t6446-list
 neg/t6446-missing
 neg/t6446-show-phases.scala
 
-# Prints phase list
-neg/t7494-no-options
-
 # Screws up, but not really our problem (error: None.get instead of
 # phase ordering error)
 neg/t7494-multi-right-after
@@ -42,48 +39,10 @@ neg/t6289
 #
 
 # Relies on the exact toString() representation of Floats/Doubles
-run/Course-2002-01.scala
-run/Course-2002-02.scala
-run/Course-2002-04.scala
-run/Course-2002-08.scala
-run/Course-2002-09.scala
-run/Course-2002-10.scala
-run/impconvtimes.scala
-run/promotion.scala
-run/runtime.scala
-run/spec-self.scala
-run/t0421-new.scala
-run/t0421-old.scala
 run/t2378.scala
-run/t4617.scala
-run/t5552.scala
-run/t5866.scala
-run/t6318_primitives.scala
-run/try-catch-unify.scala
 
 # Relies on !box(+0.0).equals(box(-0.0))
 run/number-parsing.scala
-
-# Relies on ().toString() == "()"
-run/dynamic-anyval.scala
-run/macro-bundle-static
-run/macro-bundle-toplevel
-run/macro-bundle-whitebox-decl
-run/structural.scala
-run/t3702.scala
-run/t5680.scala
-run/t6662
-run/t7657
-run/t8570a.scala
-
-# Relies on compliant asInstanceOfs
-run/bugs.scala
-run/t1503.scala
-run/t4148.scala
-run/t7763.scala
-
-# Relies on strict Floats
-run/issue192.scala
 
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
@@ -150,10 +109,6 @@ run/interpolationMultiline1.scala
 
 # Documented semantic difference on String.split(x: Array[Char])
 run/t0325.scala
-
-# Uses print & flush (which we cannot 100% emulate)
-run/imports.scala
-run/misc.scala
 
 # Using Threads
 run/t6969.scala
@@ -950,9 +905,6 @@ run/t8601e
 
 # Using scala-script
 run/t7791-script-linenums.scala
-
-# Prints phase list
-run/t6102.scala
 
 # Suffers from bug in Node.js (https://github.com/joyent/node/issues/7528)
 run/range-unit.scala
