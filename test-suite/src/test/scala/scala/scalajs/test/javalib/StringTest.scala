@@ -102,6 +102,15 @@ object StringTest extends JasmineTest {
       expect("Scala.js".charAt(6)).not.toBe('.')
     }
 
+    it("charAt() should throw with out-of-bound indices") {
+      // Type Strings both as CharSequence and String. One will invoke the
+      // helper, the other directly the method on RuntimeString.
+      expect(() => ("Scala.js": CharSequence).charAt(-3)).toThrow
+      expect(() => ("Scala.js": CharSequence).charAt(20)).toThrow
+      expect(() => "Scala.js".charAt(-3)).toThrow
+      expect(() => "Scala.js".charAt(20)).toThrow
+    }
+
     it("should respond to `codePointAt`") {
       // String that starts with a BMP symbol
       expect("abc\uD834\uDF06def".codePointAt(0)).toEqual(0x61)
