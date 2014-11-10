@@ -52,15 +52,9 @@ abstract class ExternalJSEnv(
 
     /** write a single JS file to a writer using an include fct if appropriate */
     protected def writeJSFile(file: VirtualJSFile, writer: Writer): Unit = {
-      file match {
-        // TODO remove this case. It is VM specific
-        case file: FileVirtualJSFile =>
-          val fname = toJSstr(file.file.getAbsolutePath)
-          writer.write(s"require($fname);\n")
-        case _ =>
-          writer.write(file.content)
-          writer.write('\n')
-      }
+      // The only platform-independent way to do this in JS is to dump the file.
+      writer.write(file.content)
+      writer.write('\n')
     }
 
     /** Pipe stdin and stdout from/to VM */
