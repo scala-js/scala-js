@@ -149,6 +149,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
+    val RTStringModuleClass = lookupClass("sjsr_RuntimeString$")
+    RTStringModuleClass.accessModule()
+    RTStringModuleClass.callMethod("hashCode__T__I")
+
     val RTLongClass = lookupClass(LongImpl.RuntimeLongClass)
     RTLongClass.instantiated()
     for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
