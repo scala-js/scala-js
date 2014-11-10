@@ -2928,6 +2928,11 @@ run/t8611c.scala
 run/macroPlugins-isBlackbox
 run/t8601d.scala
 run/t8607.scala
+run/bugs.scala
+run/t1503.scala
+run/t4148.scala
+run/t7763.scala
+run/issue192.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

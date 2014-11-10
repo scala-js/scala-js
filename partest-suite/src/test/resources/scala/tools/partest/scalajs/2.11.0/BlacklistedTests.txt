@@ -44,15 +44,6 @@ run/t2378.scala
 # Relies on !box(+0.0).equals(box(-0.0))
 run/number-parsing.scala
 
-# Relies on compliant asInstanceOfs
-run/bugs.scala
-run/t1503.scala
-run/t4148.scala
-run/t7763.scala
-
-# Relies on strict Floats
-run/issue192.scala
-
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 

@@ -2900,6 +2900,11 @@ neg/t8463.scala
 neg/t8450.scala
 neg/t8430.scala
 run/finally.scala
+run/bugs.scala
+run/t1503.scala
+run/t4148.scala
+run/t7763.scala
+run/issue192.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala

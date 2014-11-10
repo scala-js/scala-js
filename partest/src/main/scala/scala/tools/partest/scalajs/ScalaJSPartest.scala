@@ -15,6 +15,8 @@ import scala.tools.nsc.plugins.Plugin
 
 import scala.scalajs.compiler.ScalaJSPlugin
 
+import scala.io.Source
+
 import sbt.testing.{ EventHandler, Logger, Fingerprint }
 import java.io.File
 import java.net.URLClassLoader
@@ -34,23 +36,32 @@ class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
     scalaJSOverridePath: String, options: ScalaJSPartestOptions,
     noWarnFile: File) extends nest.Runner(testFile, suiteRunner) {
 
+  private val compliantSems: List[String] = {
+    scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
+      Source.fromFile(file).getLines.toList
+    }
+  }
+
   override val checkFile: File = {
-    val overrideFile = s"$scalaJSOverridePath/$kind/$fileBase.check"
-    val url = getClass.getResource(overrideFile)
-    if (url == null) {
+    scalaJSConfigFile("check") getOrElse {
       // this is super.checkFile, but apparently we can't do that
       new FileOps(testFile).changeExtension("check")
-    } else {
-      new File(url.toURI)
     }
+  }
+
+  private def scalaJSConfigFile(ext: String): Option[File] = {
+    val overrideFile = s"$scalaJSOverridePath/$kind/$fileBase.$ext"
+    val url = getClass.getResource(overrideFile)
+    Option(url).map(url => new File(url.toURI))
   }
 
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
-    val opts = super.extraJavaOptions :+
-      s"-Dscalajs.partest.noWarnFile=${noWarnFile.getAbsolutePath}"
-
-    opts :+ "-Dscalajs.partest.optMode=" + options.optMode.id
+    super.extraJavaOptions ++ Seq(
+        s"-Dscalajs.partest.noWarnFile=${noWarnFile.getAbsolutePath}",
+        s"-Dscalajs.partest.optMode=${options.optMode.id}",
+        s"-Dscalajs.partest.compliantSems=${compliantSems.mkString(",")}"
+    )
   }
 }
 
