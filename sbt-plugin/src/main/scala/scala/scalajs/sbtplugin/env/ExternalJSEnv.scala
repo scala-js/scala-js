@@ -10,6 +10,9 @@ import scala.scalajs.sbtplugin.JSUtils._
 import java.io.{ Console => _, _ }
 import scala.io.Source
 
+import scala.concurrent.{Future, Promise}
+import scala.util.Try
+
 abstract class ExternalJSEnv(
   final protected val additionalArgs: Seq[String],
   final protected val additionalEnv:  Map[String, String]) extends AsyncJSEnv {
@@ -139,21 +142,29 @@ abstract class ExternalJSEnv(
 
     private[this] var vmInst: Process = null
     private[this] var ioThreadEx: Throwable = null
+    private[this] val promise = Promise[Unit]
 
     private[this] val thread = new Thread {
       override def run(): Unit = {
-        try {
-          pipeVMData(vmInst)
-        } catch {
-          case e: Throwable => ioThreadEx = e
+        // This thread should not be interrupted, so it is safe to use Trys
+        val pipeResult = Try(pipeVMData(vmInst))
+        val vmComplete = Try(waitForVM(vmInst))
+
+        // Store IO exception
+        pipeResult recover {
+          case e => ioThreadEx = e
         }
+
+        // Chain Try's the other way: We want VM failure first, then IO failure
+        promise.complete(pipeResult orElse vmComplete)
       }
     }
 
-    def start(): Unit = {
+    def start(): Future[Unit] = {
       require(vmInst == null, "start() may only be called once")
       vmInst = startVM()
       thread.start()
+      promise.future
     }
 
     def stop(): Unit = {
