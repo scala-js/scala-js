@@ -19,6 +19,9 @@ import scala.io.Source
 
 import scala.collection.mutable
 
+import scala.concurrent.{Future, Promise, Await}
+import scala.concurrent.duration.Duration
+
 import org.mozilla.javascript._
 
 class RhinoJSEnv(semantics: Semantics,
@@ -50,29 +53,30 @@ class RhinoJSEnv(semantics: Semantics,
   private class AsyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole) extends AsyncJSRunner {
 
-    private[this] var resultThrowable: Throwable = null
+    private[this] val promise = Promise[Unit]
 
     private[this] val thread = new Thread {
       override def run(): Unit = {
         try {
           internalRunJS(classpath, code, logger, console, optChannel)
+          promise.success(())
         } catch {
-          case t: Throwable => resultThrowable = t
+          case t: Throwable =>
+            promise.failure(t)
         }
       }
     }
 
-    def start(): Unit = thread.start()
+    def start(): Future[Unit] = {
+      thread.start()
+      promise.future
+    }
 
     def stop(): Unit = thread.interrupt()
 
-    def isRunning(): Boolean = thread.isAlive()
+    def isRunning(): Boolean = !promise.isCompleted
 
-    def await(): Unit = {
-      thread.join()
-      if (resultThrowable != null)
-        throw resultThrowable
-    }
+    def await(): Unit = Await.result(promise.future, Duration.Inf)
 
     protected def optChannel(): Option[Channel] = None
   }

@@ -1,8 +1,12 @@
 package scala.scalajs.tools.env
 
+import scala.concurrent.Future
+
 trait AsyncJSRunner {
-  /** Start the associated run and return. */
-  def start(): Unit
+  /** Start the associated run and returns a Future that completes when the run
+   *  terminates.
+   */
+  def start(): Future[Unit]
 
   /** Abort the associated run */
   def stop(): Unit

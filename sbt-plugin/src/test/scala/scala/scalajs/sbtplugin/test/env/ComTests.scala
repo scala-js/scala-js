@@ -8,6 +8,9 @@ import scala.scalajs.tools.logging._
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 /** A couple of tests that test communication for mix-in into a test suite */
 trait ComTests {
 
@@ -124,6 +127,16 @@ trait ComTests {
     } catch {
       case _: Throwable =>
     }
+  }
+
+  @Test
+  def futureTest = {
+    val runner = comRunner("")
+    val fut = runner.start()
+
+    Await.result(fut, Duration.Inf)
+
+    assertFalse("VM should be terminated", runner.isRunning)
   }
 
 }
