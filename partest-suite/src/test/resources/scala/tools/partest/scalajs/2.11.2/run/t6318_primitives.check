@@ -1,14 +1,14 @@
 Checking if byte matches byte
 Some(1)
 Checking if byte matches short
-None
-Checking if class java.lang.Integer matches byte
+Some(1)
+Checking if class java.lang.Byte matches byte
 Some(1)
 Checking if short matches short
 Some(1)
 Checking if short matches char
 None
-Checking if class java.lang.Short matches short
+Checking if class java.lang.Byte matches short
 Some(1)
 Checking if char matches char
 Some()
@@ -20,7 +20,7 @@ Checking if int matches int
 Some(1)
 Checking if int matches long
 None
-Checking if class java.lang.Integer matches int
+Checking if class java.lang.Byte matches int
 Some(1)
 Checking if long matches long
 Some(1)
@@ -31,14 +31,14 @@ Some(1)
 Checking if float matches float
 Some(1)
 Checking if float matches double
-None
-Checking if class java.lang.Float matches float
+Some(1)
+Checking if class java.lang.Byte matches float
 Some(1)
 Checking if double matches double
 Some(1)
 Checking if double matches boolean
 None
-Checking if class java.lang.Double matches double
+Checking if class java.lang.Byte matches double
 Some(1)
 Checking if boolean matches boolean
 Some(true)

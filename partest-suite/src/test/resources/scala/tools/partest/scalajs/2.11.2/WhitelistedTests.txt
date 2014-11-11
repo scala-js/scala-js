@@ -1049,7 +1049,6 @@ run/t4537
 run/t3699.scala
 run/valueclasses-manifest-basic.scala
 run/t1192.scala
-run/t5629b.scala
 run/macro-expand-tparams-bounds
 run/macro-expand-nullary-generic
 run/t1434.scala
@@ -1382,7 +1381,6 @@ run/t2127.scala
 run/t7325.scala
 run/groupby.scala
 run/t3932.scala
-run/virtpatmat_switch.scala
 run/t4871.scala
 run/longmap.scala
 run/t1524.scala
@@ -1569,7 +1567,6 @@ neg/gadts1.scala
 neg/cyclics.scala
 neg/t5060.scala
 neg/scopes.scala
-run/virtpatmat_typetag.scala
 run/t4013.scala
 run/value-class-extractor-seq.scala
 run/macro-expand-tparams-explicit
@@ -2505,7 +2502,6 @@ run/t3158.scala
 run/t3346e.scala
 run/t4398.scala
 run/t4930.scala
-run/t5568.scala
 run/t6534.scala
 pos/sammy_scope.scala
 pos/delambdafy-patterns.scala
@@ -2971,3 +2967,10 @@ run/misc.scala
 # Adapt checkfiles for compiler phase list
 run/t6102.scala
 neg/t7494-no-options
+
+# Adapt checkfiles for different behavior with boxed types
+run/t5568.scala
+run/virtpatmat_typetag.scala
+run/virtpatmat_switch.scala
+run/t5629b.scala
+run/t6318_primitives.scala
