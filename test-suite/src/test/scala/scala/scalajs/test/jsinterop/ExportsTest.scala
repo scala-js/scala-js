@@ -47,6 +47,17 @@ object ExportsTest extends JasmineTest {
       expect(foo.doubleTheParam(3)).toEqual(6)
     }
 
+    it("should offer exports for methods with constant folded name") {
+      class Foo {
+        @JSExport(ExportNameHolder.methodName)
+        def bar(): Int = 42
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      expect(foo.bar).toBeUndefined
+      expect(foo.myMethod()).toEqual(42)
+    }
+
     it("should offer exports for protected methods") {
       class Foo {
         @JSExport
@@ -528,6 +539,16 @@ object ExportsTest extends JasmineTest {
       expect(obj.witness).toEqual("witness")
     }
 
+    it("should offer exports for objects with constant folded name") {
+      val accessor = js.Dynamic.global.ConstantFoldedObjectExport
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(obj.witness).toEqual("witness")
+    }
+
     it("should offer exports for protected objects") {
       val accessor = js.Dynamic.global.ProtectedExportedObject
       expect(accessor).toBeDefined
@@ -556,6 +577,14 @@ object ExportsTest extends JasmineTest {
 
     it("should offer exports for classes with qualified name") {
       val constr = js.Dynamic.global.qualified.testclass.ExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect(obj.x).toEqual(5)
+    }
+
+    it("should offer exports for classes with constant folded name") {
+      val constr = js.Dynamic.global.ConstantFoldedClassExport
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
@@ -855,6 +884,17 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doA((new B).asInstanceOf[js.Any])).toThrow
       expect(() => foo.doA("a")).toThrow
     }
+
+    it("should offer exports for classes ending in _= - #1090") {
+      val constr = js.Dynamic.global.ExportClassSetterNamed_=
+      val obj = js.Dynamic.newInstance(constr)()
+      expect(obj.x).toBe(1)
+    }
+
+    it("should offer exports for objects ending in _= - #1090") {
+      expect(js.Dynamic.global.ExportObjSetterNamed_=().x).toBe(1)
+    }
+
   } // describe
 
   describe("@JSExportDescendentObjects") {
@@ -883,9 +923,16 @@ object ExportsTest extends JasmineTest {
 
 }
 
+object ExportNameHolder {
+  final val className = "ConstantFoldedClassExport"
+  final val objectName = "ConstantFoldedObjectExport"
+  final val methodName = "myMethod"
+}
+
 @JSExport
 @JSExport("TheExportedObject")
 @JSExport("qualified.testobject.ExportedObject") // purposefully halfway the same as ExportedClass
+@JSExport(ExportNameHolder.objectName)
 object ExportedObject {
   @JSExport
   def witness: String = "witness"
@@ -900,6 +947,7 @@ protected object ProtectedExportedObject {
 @JSExport
 @JSExport("TheExportedClass")
 @JSExport("qualified.testclass.ExportedClass") // purposefully halfway the same as ExportedObject
+@JSExport(ExportNameHolder.className)
 class ExportedClass(_x: Int) {
   @JSExport
   val x = _x
@@ -950,4 +998,16 @@ class SomeValueClass(val i: Int) extends AnyVal
 class ExportedNamedArgClass(x: Int = 1)(y: String = x.toString)(z: Boolean = y != "foo") {
   @JSExport
   val result = x + y + z
+}
+
+@JSExport
+class ExportClassSetterNamed_= {
+  @JSExport
+  val x = 1
+}
+
+@JSExport
+object ExportObjSetterNamed_= {
+  @JSExport
+  val x = 1
 }

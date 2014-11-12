@@ -115,6 +115,9 @@ object Trees {
 
   class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = stats.last.tpe
+
+    override def toString(): String =
+      stats.mkString("Block(", ",", ")")
   }
 
   object Block {
@@ -192,7 +195,7 @@ object Trees {
    *  implement alternatives.
    *  (This is not a pattern matching construct like in Scala.)
    */
-  case class Match(selector: Tree, cases: List[(List[Tree], Tree)], default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
+  case class Match(selector: Tree, cases: List[(List[Literal], Tree)], default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   case class Debugger()(implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position

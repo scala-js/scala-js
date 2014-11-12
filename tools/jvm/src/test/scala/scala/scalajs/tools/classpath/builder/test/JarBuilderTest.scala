@@ -38,11 +38,14 @@ class JarBuilderTest {
 
     type File = Unit
 
+    val DummyVersion: String = "DUMMY"
+
     def isDirectory(f: File): Boolean = false
     def isFile(f: File): Boolean = true
     def isJSFile(f: File): Boolean = false
     def isIRFile(f: File): Boolean = false
     def isJARFile(f: File): Boolean = true
+    def exists(f: File): Boolean = true
 
     def getName(f: File): String = "jar"
     def getAbsolutePath(f: File): String = "jar"

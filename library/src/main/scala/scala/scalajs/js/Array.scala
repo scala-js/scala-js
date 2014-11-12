@@ -48,6 +48,13 @@ class Array[A] extends Object {
   /** Length of the array. */
   def length: Int = ???
 
+  /** Sets the length of the array.
+   *  If the new length is bigger than the old length, created slots are
+   *  filled with `undefined` (irrespective of the type argument `A`!).
+   *  If the new length is smaller than the old length, the array is shrunk.
+   */
+  def length_=(v: Int): Unit = ???
+
   /** Access the element at the given index. */
   @JSBracketAccess
   def apply(index: Int): A = ???

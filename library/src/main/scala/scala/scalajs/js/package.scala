@@ -20,7 +20,7 @@ package scala.scalajs
  *
  *  == Guide ==
  *
- *  General documentation on Scala.js can is available at
+ *  General documentation on Scala.js is available at
  *  [[http://www.scala-js.org/doc/]].
  *
  *  == Overview ==
@@ -53,11 +53,11 @@ package scala.scalajs
  *    - [[js.RegExp]]
  *
  *  The trait [[js.Dynamic]] is a special subtrait of [[js.Any]]. It can
- *  represent any JavaScript value in a dynamically typed way. It is possible
+ *  represent any JavaScript value in a dynamically-typed way. It is possible
  *  to call any method and read and write any field of a value of type
  *  [[js.Dynamic]].
  *
- *  The package [[scala.scalajs.js.prim]] gives definition for the four
+ *  The package [[scala.scalajs.js.prim]] gives definitions for the four
  *  primitive types of JavaScript as subtraits of [[js.Any]], but generally
  *  it is preferable to use the corresponding Scala type.
  *  - [[js.prim.Number]] corresponds to [[scala.Double]]

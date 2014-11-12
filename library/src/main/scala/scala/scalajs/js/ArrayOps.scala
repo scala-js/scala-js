@@ -22,6 +22,8 @@ class ArrayOps[A](private[this] val array: Array[A])
 
   def seq: IndexedSeq[A] = new WrappedArray(array)
 
+  override def repr: Array[A] = array
+
   override protected[this] def thisCollection: mutable.IndexedSeq[A] =
     toCollection(array)
   override protected[this] def toCollection(

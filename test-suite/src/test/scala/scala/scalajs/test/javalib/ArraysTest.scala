@@ -497,6 +497,148 @@ trait ArraysTest extends JasmineTest {
       expect(anyrefscopy).toEqual(Array[AnyRef]("a", "b", "c", null, null))
     }
 
+    it("should respond to `equals` for Booleans") {
+      val a1 = Array(true, false)
+
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array(true, false))).toBeTruthy
+
+      expect(Arrays.equals(a1, Array(true))).toBeFalsy
+      expect(Arrays.equals(a1, Array(false))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Boolean]())).toBeFalsy
+      expect(Arrays.equals(a1, Array(false, true))).toBeFalsy
+      expect(Arrays.equals(a1, Array(false, true, false))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Bytes") {
+      val a1 = Array[Byte](1, -7, 10)
+
+      expect(Arrays.equals(null: Array[Byte], null: Array[Byte])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Byte](1, -7, 10))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Byte](3))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Byte](1))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Byte]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Byte](1, -7, 11))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Byte](1, -7, 11, 20))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Chars") {
+      val a1 = Array[Char]('a', '0', '-')
+
+      expect(Arrays.equals(null: Array[Char], null: Array[Char])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Char]('a', '0', '-'))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Char]('z'))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Char]('a'))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Char]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Char]('a', '0', '+'))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Char]('a', '0', '-', 'z'))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Shorts") {
+      val a1 = Array[Short](1, -7, 10)
+
+      expect(Arrays.equals(null: Array[Short], null: Array[Short])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Short](1, -7, 10))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Short](3))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Short](1))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Short]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Short](1, -7, 11))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Short](1, -7, 11, 20))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Ints") {
+      val a1 = Array[Int](1, -7, 10)
+
+      expect(Arrays.equals(null: Array[Int], null: Array[Int])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Int](1, -7, 10))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Int](3))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Int](1))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Int]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Int](1, -7, 11))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Int](1, -7, 11, 20))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Longs") {
+      val a1 = Array[Long](1L, -7L, 10L)
+
+      expect(Arrays.equals(null: Array[Long], null: Array[Long])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Long](1L, -7L, 10L))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Long](3L))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Long](1L))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Long]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Long](1L, -7L, 11L))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Long](1L, -7L, 11L, 20L))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Floats") {
+      val a1 = Array[Float](1.1f, -7.4f, 10.0f)
+
+      expect(Arrays.equals(null: Array[Float], null: Array[Float])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Float](1.1f, -7.4f, 10.0f))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Float](3.0f))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Float](1.1f))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Float]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Float](1.1f, -7.4f, 11.0f))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Float](1.1f, -7.4f, 10.0f, 20.0f))).toBeFalsy
+    }
+
+    it("should respond to `equals` for Doubles") {
+      val a1 = Array[Double](1.1, -7.4, 10.0)
+
+      expect(Arrays.equals(null: Array[Double], null: Array[Double])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[Double](1.1, -7.4, 10.0))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[Double](3.0))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Double](1.1))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Double]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[Double](1.1, -7.4, 11.0))).toBeFalsy
+      expect(Arrays.equals(a1, Array[Double](1.1, -7.4, 10.0, 20.0))).toBeFalsy
+    }
+
+    it("should respond to `equals` for AnyRefs") {
+      class A(private val x: Int) {
+        override def equals(that: Any) = that match {
+          case that: A => this.x == that.x
+          case _ => false
+        }
+      }
+
+      def A(x: Int) = new A(x)
+
+      val a1 = Array[AnyRef](A(1), A(-7), A(10))
+
+      expect(Arrays.equals(null: Array[AnyRef], null: Array[AnyRef])).toBeTruthy
+      expect(Arrays.equals(a1, a1)).toBeTruthy
+      expect(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(10)))).toBeTruthy
+
+      expect(Arrays.equals(a1, null)).toBeFalsy
+      expect(Arrays.equals(a1, Array[AnyRef](A(3)))).toBeFalsy
+      expect(Arrays.equals(a1, Array[AnyRef](A(1)))).toBeFalsy
+      expect(Arrays.equals(a1, Array[AnyRef]())).toBeFalsy
+      expect(Arrays.equals(a1, Array[AnyRef](A(1), null, A(11)))).toBeFalsy
+      expect(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(11), A(20)))).toBeFalsy
+    }
+
   }
 
 }

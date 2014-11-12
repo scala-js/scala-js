@@ -462,31 +462,29 @@ var ScalaJS = {
   // Unboxes
 
   uZ: function(value) {
-    return ScalaJS.asBoolean(value) || false;
+    return !!ScalaJS.asBoolean(value);
   },
   uC: function(value) {
     return null === value ? 0 : ScalaJS.as.jl_Character(value).value$1;
   },
   uB: function(value) {
-    return ScalaJS.asByte(value) || 0;
+    return ScalaJS.asByte(value) | 0;
   },
   uS: function(value) {
-    return ScalaJS.asShort(value) || 0;
+    return ScalaJS.asShort(value) | 0;
   },
   uI: function(value) {
-    return ScalaJS.asInt(value) || 0;
+    return ScalaJS.asInt(value) | 0;
   },
   uJ: function(value) {
-    return ScalaJS.as.sjsr_RuntimeLong(value) ||
-      ScalaJS.m.sjsr_RuntimeLongImpl().Zero$1;
+    return null === value ? ScalaJS.m.sjsr_RuntimeLongImpl().Zero$1
+                          : ScalaJS.as.sjsr_RuntimeLong(value);
   },
   uF: function(value) {
-    // NaN || 0.0 is unfortunately 0.0
-    return null === value ? 0.0 : ScalaJS.asFloat(value);
+    return +ScalaJS.asFloat(value);
   },
   uD: function(value) {
-    // NaN || 0.0 is unfortunately 0.0
-    return null === value ? 0.0 : ScalaJS.asDouble(value);
+    return +ScalaJS.asDouble(value);
   },
 
   // TypeArray conversions

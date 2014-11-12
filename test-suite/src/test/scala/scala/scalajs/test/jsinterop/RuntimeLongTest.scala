@@ -37,7 +37,7 @@ object RuntimeLongTest extends JasmineTest {
   /** overload expect for long to add toString */
   def expect(l: RuntimeLong): JasmineExpectation = expect(l.toHexString)
 
-  describe("scala.scalajs.runtime.Long") {
+  describe("scala.scalajs.runtime.RuntimeLong") {
 
     val maxInt  = fromInt(Int.MaxValue)
     val minInt  = fromInt(Int.MinValue)
@@ -46,8 +46,8 @@ object RuntimeLongTest extends JasmineTest {
 
     it("should correctly implement negation") {
       expect(-fromInt(5)).toEqual("fffffffffffffffb")
-      expect(-fromInt(0)).toEqual("0000000000000000")
-      expect(-minInt    ).toEqual("0000000080000000")
+      expect(-fromInt(0)).toEqual("0")
+      expect(-minInt    ).toEqual("80000000")
     }
 
     it("should correctly implement comparison") {
@@ -64,18 +64,18 @@ object RuntimeLongTest extends JasmineTest {
     }
 
     it("should correctly implement addition") {
-      expect(fromInt(7) + fromInt(15)).toEqual("0000000000000016")
-      expect(    maxInt + maxInt     ).toEqual("00000000fffffffe")
-      expect(    maxInt + one        ).toEqual("0000000080000000")
+      expect(fromInt(7) + fromInt(15)).toEqual("16")
+      expect(    maxInt + maxInt     ).toEqual("fffffffe")
+      expect(    maxInt + one        ).toEqual("80000000")
     }
 
     it("should correctly implement subtraction") {
       expect(fromInt(7) - fromInt(15)).toEqual("fffffffffffffff8")
-      expect(    maxInt - maxInt    ).toEqual("0000000000000000")
+      expect(    maxInt - maxInt    ).toEqual("0")
     }
 
     it("should correctly implement multiplication") {
-      expect(fromInt(7)  * fromInt(15)).toEqual("0000000000000069")
+      expect(fromInt(7)  * fromInt(15)).toEqual("69")
       expect(fromInt(-7) * fromInt(15)).toEqual("ffffffffffffff97")
       expect(    maxInt  * maxInt     ).toEqual("3fffffff00000001")
       expect(fromHexString("001000000000000e") *
@@ -83,21 +83,21 @@ object RuntimeLongTest extends JasmineTest {
     }
 
     it("should correctly implement division") {
-      expect( fromInt(7)  / fromInt(15)).toEqual("0000000000000000")
-      expect( fromInt(24) / fromInt(5) ).toEqual("0000000000000004")
+      expect( fromInt(7)  / fromInt(15)).toEqual("0")
+      expect( fromInt(24) / fromInt(5) ).toEqual("4")
       expect( fromInt(24) / fromInt(-5)).toEqual("fffffffffffffffc")
       expect(      maxInt / fromInt(-5)).toEqual("ffffffffe6666667")
-      expect(      maxInt / billion    ).toEqual("0000000000000002")
-      expect((maxInt+one) / billion    ).toEqual("0000000000000002")
+      expect(      maxInt / billion    ).toEqual("2")
+      expect((maxInt+one) / billion    ).toEqual("2")
     }
 
     it("should correctly implement modulus") {
-      expect( fromInt(7)  % fromInt(15)).toEqual("0000000000000007")
-      expect( fromInt(24) % fromInt(5) ).toEqual("0000000000000004")
-      expect( fromInt(24) % fromInt(-5)).toEqual("0000000000000004")
-      expect(      maxInt % billion    ).toEqual("0000000008ca6bff")
-      expect((maxInt+one) % billion    ).toEqual("0000000008ca6c00")
-      expect(      maxInt % fromInt(-5)).toEqual("0000000000000002")
+      expect( fromInt(7)  % fromInt(15)).toEqual("7")
+      expect( fromInt(24) % fromInt(5) ).toEqual("4")
+      expect( fromInt(24) % fromInt(-5)).toEqual("4")
+      expect(      maxInt % billion    ).toEqual("8ca6bff")
+      expect((maxInt+one) % billion    ).toEqual("8ca6c00")
+      expect(      maxInt % fromInt(-5)).toEqual("2")
     }
 
     it("should correctly implement toString") {
@@ -109,7 +109,7 @@ object RuntimeLongTest extends JasmineTest {
     }
 
     it("should correctly implement fromDouble") {
-      expect(fromDouble( 4.5)).toEqual("0000000000000004")
+      expect(fromDouble( 4.5)).toEqual("4")
       expect(fromDouble(-4.5)).toEqual("fffffffffffffffc")
     }
 
@@ -119,9 +119,9 @@ object RuntimeLongTest extends JasmineTest {
     }
 
     it("should correctly implement fromString") {
-      expect(fromString("4")                 ).toEqual("0000000000000004")
+      expect(fromString("4")                 ).toEqual("4")
       expect(fromString("-4")                ).toEqual("fffffffffffffffc")
-      expect(fromString("4000000000")        ).toEqual("00000000ee6b2800")
+      expect(fromString("4000000000")        ).toEqual("ee6b2800")
       expect(fromString("-18014398509482040")).toEqual("ffbfffffffffffc8")
 
       expect(Try(fromString("asdf")).isFailure).toBeTruthy
@@ -132,6 +132,19 @@ object RuntimeLongTest extends JasmineTest {
       expect(fromInt( 1).numberOfLeadingZeros).toEqual(63)
       expect(fromInt(-1).numberOfLeadingZeros).toEqual(0)
       expect(fromInt( 2).numberOfLeadingZeros).toEqual(62)
+    }
+
+    it("should implement hashCode() according to spec in j.l.Long") {
+      expect(fromInt(0       ).hashCode()).toEqual(0)
+      expect(fromInt(55      ).hashCode()).toEqual(55)
+      expect(fromInt(-12     ).hashCode()).toEqual(11)
+      expect(fromInt(10006548).hashCode()).toEqual(10006548)
+      expect(fromInt(-1098748).hashCode()).toEqual(1098747)
+
+      expect(fromString("613354684553"       ).hashCode()).toEqual(-825638905)
+      expect(fromString("9863155567412"      ).hashCode()).toEqual(1910653900)
+      expect(fromString("3632147899696541255").hashCode()).toEqual(1735398658)
+      expect(fromString("7632147899696541255").hashCode()).toEqual(-1689438124)
     }
 
   }

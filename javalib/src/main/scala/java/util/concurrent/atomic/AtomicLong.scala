@@ -1,6 +1,6 @@
 package java.util.concurrent.atomic
 
-class AtomicLong(var value: Long) extends Serializable {
+class AtomicLong(private[this] var value: Long) extends Serializable {
   def get(): Long = value
   def set(newValue: Long): Unit = value = newValue
   def lazySet(newValue: Long): Unit = set(newValue)
