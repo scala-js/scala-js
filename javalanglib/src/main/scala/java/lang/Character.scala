@@ -183,6 +183,10 @@ object Character {
   final val MIN_SURROGATE = MIN_HIGH_SURROGATE
   final val MAX_SURROGATE = MAX_LOW_SURROGATE
 
+  final val MIN_CODE_POINT = 0
+  final val MAX_CODE_POINT = 0x10ffff
+  final val MIN_SUPPLEMENTARY_CODE_POINT = 0x10000
+
   /* Tests */
   def getType(ch: scala.Char): scala.Int = sys.error("unimplemented")
   def getType(codePoint: scala.Int): scala.Int = sys.error("unimplemented")
@@ -215,17 +219,26 @@ object Character {
   def isWhitespace(c: scala.Char): scala.Boolean = js.RegExp("^\\s$").test(c.toString)
   def isSpaceChar(c: scala.Char): scala.Boolean = sys.error("unimplemented")
 
-  def isHighSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_HIGH_SURROGATE) && (c <= MAX_HIGH_SURROGATE)
-  def isLowSurrogate(c: scala.Char): scala.Boolean =
-    (c >= MIN_LOW_SURROGATE) && (c <= MAX_LOW_SURROGATE)
-  def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
+  // --- UTF-16 surrogate pairs handling ---
+  // See http://en.wikipedia.org/wiki/UTF-16
+
+  private final val HighSurrogateMask       = 0xfc00 // 111111 00  00000000
+  private final val HighSurrogateID         = 0xd800 // 110110 00  00000000
+  private final val LowSurrogateMask        = 0xfc00 // 111111 00  00000000
+  private final val LowSurrogateID          = 0xdc00 // 110111 00  00000000
+  private final val SurrogateUsefulPartMask = 0x03ff // 000000 11  11111111
+
+  @inline def isHighSurrogate(c: scala.Char): scala.Boolean =
+    (c & HighSurrogateMask) == HighSurrogateID
+  @inline def isLowSurrogate(c: scala.Char): scala.Boolean =
+    (c & LowSurrogateMask) == LowSurrogateID
+  @inline def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
     isHighSurrogate(high) && isLowSurrogate(low)
 
-  def toCodePoint(high: scala.Char, low: scala.Char): scala.Int = {
-    // http://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
-    (high.toInt - 0xD800) * 0x400 + low.toInt - 0xDC00 + 0x10000
-  }
+  @inline def toCodePoint(high: scala.Char, low: scala.Char): scala.Int =
+    ((high & SurrogateUsefulPartMask) << 10) + (low & SurrogateUsefulPartMask) + 0x10000
+
+  // --- End of UTF-16 surrogate pairs handling ---
 
   def isUnicodeIdentifierStart(c: scala.Char): scala.Boolean =
     reUnicodeIdentStart.test(c.toString)

@@ -3,6 +3,8 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 import scala.scalajs.js.prim.{String => jsString}
 
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.util.regex._
 
 /**
@@ -77,10 +79,14 @@ private[runtime] trait RuntimeString { this: jsString =>
     suffix == thisjs.substring(thisjs.length - suffix.length)
   }
 
-  /** Unimplemented, unused, but referenced */
-  def getBytes(): Array[Byte] = ???
-  /** Unimplemented, unused, but referenced */
-  def getBytes(charsetName: String): Array[Byte] = ???
+  def getBytes(): Array[Byte] =
+    (this: String).getBytes(Charset.defaultCharset)
+
+  def getBytes(charsetName: String): Array[Byte] =
+    (this: String).getBytes(Charset.forName(charsetName))
+
+  def getBytes(charset: Charset): Array[Byte] =
+    charset.encode(this).array()
 
   def getChars(srcBegin: Int, srcEnd: Int,
     dst: Array[Char], dstBegin: Int): Unit = {
@@ -216,11 +222,27 @@ private[runtime] object RuntimeString {
     }
     js.String.fromCharCode(charCodes: _*)
   }
-  /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], charsetName: String): String = ???
-  /** Unimplemented, unused, but referenced */
+
+  def newString(bytes: Array[Byte]): String =
+    newString(bytes, Charset.defaultCharset)
+
+  def newString(bytes: Array[Byte], charsetName: String): String =
+    newString(bytes, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes)).toString()
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int): String =
+    newString(bytes, offset, length, Charset.defaultCharset)
+
   def newString(bytes: Array[Byte], offset: Int, length: Int,
-      charsetName: String): String = ???
+      charsetName: String): String =
+    newString(bytes, offset, length, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int,
+      charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
+
   def newString(codePoints: Array[Int], offset: Int, count: Int): String = {
     val end = offset + count
     if (offset < 0 || end < offset || end > codePoints.length)
