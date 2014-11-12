@@ -23,6 +23,7 @@ import scala.scalajs.tools.corelib.CoreJSLibs
 import scala.collection.immutable.{Seq, Traversable}
 
 /** Scala.js packager: blindly concatenates all Scala.js code in a classpath */
+@deprecated("Will be removed in 0.6. Use ScalaJSOptimizer instead.", "0.5.6")
 class ScalaJSPackager {
   import ScalaJSPackager._
 

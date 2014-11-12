@@ -14,6 +14,7 @@ import mutable.Builder
 import scala.collection.generic.CanBuildFrom
 
 /** Equivalent of scm.WrappedArray for js.Array */
+@deprecatedInheritance("Will be made final in 0.6", "0.5.6")
 class WrappedArray[A](val array: Array[A])
     extends mutable.AbstractSeq[A]
        with mutable.IndexedSeq[A]

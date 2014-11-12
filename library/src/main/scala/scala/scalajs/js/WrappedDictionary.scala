@@ -14,6 +14,7 @@ import mutable.Builder
 import scala.collection.generic.CanBuildFrom
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
+@deprecatedInheritance("Will be made final in 0.6", "0.5.6")
 @inline
 class WrappedDictionary[A](val dict: Dictionary[A])
     extends mutable.AbstractMap[String, A]

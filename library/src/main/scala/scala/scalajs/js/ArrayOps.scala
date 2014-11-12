@@ -12,6 +12,7 @@ import scala.collection.mutable
 import mutable.Builder
 
 /** Equivalent of scm.ArrayOps for js.Array */
+@deprecatedInheritance("Will be made final in 0.6", "0.5.6")
 @inline
 class ArrayOps[A](private[this] val array: Array[A])
     extends mutable.ArrayLike[A, Array[A]] {

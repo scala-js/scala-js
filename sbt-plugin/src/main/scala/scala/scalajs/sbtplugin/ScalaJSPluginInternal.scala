@@ -148,8 +148,8 @@ object ScalaJSPluginInternal {
         ((crossTarget in packageJS).value / "corejslibs.js"),
 
       packageJS := {
-        streams.value.log.warn("packageJS is deprecated and may be removed " +
-            "in the future. Use fastOptJS instead.")
+        streams.value.log.warn("packageJS is deprecated will be removed in " +
+            "0.6. Use fastOptJS instead.")
 
         // If it doesn't exist, we need to write the corejslibs so they are
         // available to HTML files
