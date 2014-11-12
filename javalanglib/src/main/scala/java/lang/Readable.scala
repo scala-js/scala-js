@@ -1,6 +1,7 @@
 package java.lang
 
+import java.nio.CharBuffer
+
 trait Readable {
-  // Not implemented (no java.nio in Scala.js):
-  // def read(cb: CharBuffer): Int
+  def read(cb: CharBuffer): Int
 }
