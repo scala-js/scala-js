@@ -3,6 +3,8 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 import scala.scalajs.js.prim.{String => jsString}
 
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.util.regex._
 
 /** Implementation for methods on java.lang.String.
@@ -68,11 +70,14 @@ private[runtime] object RuntimeString {
   def endsWith(thiz: String, suffix: String): Boolean =
     ((thiz: jsString).substring(thiz.length - suffix.length): String) == suffix
 
-  /** Unimplemented, unused, but referenced */
-  def getBytes(thiz: String): Array[Byte] = ???
+  def getBytes(thiz: String): Array[Byte] =
+    thiz.getBytes(Charset.defaultCharset)
 
-  /** Unimplemented, unused, but referenced */
-  def getBytes(thiz: String, charsetName: String): Array[Byte] = ???
+  def getBytes(thiz: String, charsetName: String): Array[Byte] =
+    thiz.getBytes(Charset.forName(charsetName))
+
+  def getBytes(thiz: String, charset: Charset): Array[Byte] =
+    charset.encode(thiz).array()
 
   def getChars(thiz: String, srcBegin: Int, srcEnd: Int,
       dst: Array[Char], dstBegin: Int): Unit = {
@@ -232,12 +237,25 @@ private[runtime] object RuntimeString {
     js.String.fromCharCode(charCodes: _*)
   }
 
-  /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], charsetName: String): String = ???
+  def newString(bytes: Array[Byte]): String =
+    newString(bytes, Charset.defaultCharset)
 
-  /** Unimplemented, unused, but referenced */
+  def newString(bytes: Array[Byte], charsetName: String): String =
+    newString(bytes, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes)).toString()
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int): String =
+    newString(bytes, offset, length, Charset.defaultCharset)
+
   def newString(bytes: Array[Byte], offset: Int, length: Int,
-      charsetName: String): String = ???
+      charsetName: String): String =
+    newString(bytes, offset, length, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int,
+      charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
 
   def newString(codePoints: Array[Int], offset: Int, count: Int): String = {
     val end = offset + count
