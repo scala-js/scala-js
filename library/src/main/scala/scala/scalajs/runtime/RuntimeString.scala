@@ -24,7 +24,7 @@ import java.util.regex._
 private[runtime] trait RuntimeString { this: jsString =>
 
   def charAt(index: Int): Char =
-    (this: jsString).charCodeAt(index).toChar
+    (this: jsString).charCodeAt(index).asInstanceOf[Int].toChar
 
   def codePointAt(index: Int): Int = {
     val thisjs: jsString = this
