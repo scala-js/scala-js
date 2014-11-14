@@ -105,6 +105,10 @@ object StringTest extends JasmineTest {
 
     when("compliant-asinstanceofs").
     it("charAt() should throw with out-of-bound indices") {
+      // Type Strings both as CharSequence and String. One will invoke the
+      // helper, the other directly the method on RuntimeString.
+      expect(() => ("Scala.js": CharSequence).charAt(-3)).toThrow
+      expect(() => ("Scala.js": CharSequence).charAt(20)).toThrow
       expect(() => "Scala.js".charAt(-3)).toThrow
       expect(() => "Scala.js".charAt(20)).toThrow
     }
