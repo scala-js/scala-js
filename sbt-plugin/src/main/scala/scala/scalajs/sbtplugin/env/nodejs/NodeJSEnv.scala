@@ -127,7 +127,6 @@ class NodeJSEnv(
           close: function() {
             if (socket === null) throw new Error("Com not open");
             socket.end();
-            socket.unref();
           }
         }
       }).call(this);
@@ -163,6 +162,11 @@ class NodeJSEnv(
         js2jvm.close()
       if (comSocket != null)
         comSocket.close()
+    }
+
+    override def stop(): Unit = {
+      close()
+      super.stop()
     }
 
     /** Waits until the JS VM has established a connection or terminates

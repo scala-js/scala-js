@@ -11,7 +11,11 @@ trait ComJSRunner extends AsyncJSRunner {
   def receive(): String
 
   /** Close the communication channel. Allows the VM to terminate if it is
-   *  still waiting for callback.
+   *  still waiting for callback. The JVM side **must** call close in
+   *  order to be able to expect termination of the VM.
+   *
+   *  Calling [[stop]] on a [ComJSRunner]] automatically closes the
+   *  channel.
    */
   def close(): Unit
 
