@@ -37,7 +37,8 @@ trait JSGlobalAddons extends JSDefinitions
     private val methodExportPrefix = exportPrefix + "meth$"
     private val propExportPrefix = exportPrefix + "prop$"
 
-    case class ExportInfo(jsName: String, pos: Position, isNamed: Boolean)
+    case class ExportInfo(jsName: String, pos: Position,
+        isNamed: Boolean, inferredShortName: Boolean)
 
     /** retrieves the names a sym should be exported to from its annotations
      *
@@ -135,7 +136,8 @@ trait JSGlobalAddons extends JSDefinitions
               "You may not export a getter or a setter as a named export")
         }
 
-        ExportInfo(name, annot.pos, named)
+        ExportInfo(name, annot.pos, named,
+            inferredShortName = annot.args.isEmpty)
       }
     }
 
@@ -172,7 +174,7 @@ trait JSGlobalAddons extends JSDefinitions
                    |name, since it is forced to be exported by a @${trgAnnot.name} on ${fs}""".stripMargin)
           }
 
-          ExportInfo(name, sym.pos, false)
+          ExportInfo(name, sym.pos, isNamed = false, inferredShortName = false)
         }.toList
       }
     }

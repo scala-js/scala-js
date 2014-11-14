@@ -53,7 +53,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val ctorExports = for {
         ctor <- constructors
         exp  <- jsInterop.exportsOf(ctor)
-      } yield (exp, ctor)
+      } yield {
+        if (exp.inferredShortName) {
+          reporter.warning(exp.pos, "Exporting a class without explicit " +
+              "name will export to the fully qualified name in 0.6.x. " +
+              "Explicity specify the name to suppress this warning.")
+        }
+
+        (exp, ctor)
+      }
 
       val exports = for {
         (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
@@ -91,6 +99,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         if (exp.isNamed)
           reporter.error(pos, "You may not use @JSNamedExport on an object")
+
+        if (exp.inferredShortName) {
+          reporter.warning(pos, "Exporting an object without explicit " +
+              "name will export to the fully qualified name in 0.6.x. " +
+              "Explicity specify the name to suppress this warning.")
+        }
 
         js.ModuleExportDef(exp.jsName)
       }

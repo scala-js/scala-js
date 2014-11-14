@@ -756,4 +756,39 @@ class JSExportTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def warnUnqualified = {
+
+    """
+    @JSExport
+    object A
+    """ hasWarns
+    """newSource1.scala:3: warning: Exporting an object without explicit name will export to the fully qualified name in 0.6.x. Explicity specify the name to suppress this warning.
+      |    @JSExport
+      |     ^
+    """
+
+    """
+    @JSExport
+    class A
+    """ hasWarns
+    """newSource1.scala:3: warning: Exporting a class without explicit name will export to the fully qualified name in 0.6.x. Explicity specify the name to suppress this warning.
+      |    @JSExport
+      |     ^
+    """
+
+    """
+    class B(x: Int) {
+      @JSExport
+      def this() = this(1)
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: Exporting a class without explicit name will export to the fully qualified name in 0.6.x. Explicity specify the name to suppress this warning.
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
 }
