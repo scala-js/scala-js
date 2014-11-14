@@ -114,6 +114,11 @@ class RhinoJSEnv(semantics: Semantics,
 
     def close(): Unit = channel.close()
 
+    override def stop(): Unit = {
+      close()
+      super.stop()
+    }
+
   }
 
   private def internalRunJS(classpath: CompleteClasspath, code: VirtualJSFile,

@@ -8,11 +8,8 @@ import scala.scalajs.tools.logging._
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-
 /** A couple of tests that test communication for mix-in into a test suite */
-trait ComTests {
+trait ComTests extends AsyncTests {
 
   protected def newJSEnv: ComJSEnv
 
@@ -56,8 +53,7 @@ trait ComTests {
     com.await()
   }
 
-  @Test
-  def comCloseJSTest = {
+  def comCloseJSTestCommon(timeout: Long) = {
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {});
       for (var i = 0; i < 10; ++i)
@@ -67,14 +63,23 @@ trait ComTests {
 
     com.start()
 
+    Thread.sleep(timeout)
+
     for (i <- 0 until 10)
       assertEquals(s"msg: $i", com.receive())
 
     assertThrowClosed("Expect receive to throw after closing of channel",
         com.receive())
 
+    com.close()
     com.await()
   }
+
+  @Test
+  def comCloseJSTest = comCloseJSTestCommon(0)
+
+  @Test
+  def comCloseJSTestDelayed = comCloseJSTestCommon(1000)
 
   @Test
   def doubleCloseTest = {
@@ -104,6 +109,7 @@ trait ComTests {
 
     com.start()
     com.send("Dummy")
+    com.close()
     com.await()
   }
 
@@ -127,16 +133,6 @@ trait ComTests {
     } catch {
       case _: Throwable =>
     }
-  }
-
-  @Test
-  def futureTest = {
-    val runner = comRunner("")
-    val fut = runner.start()
-
-    Await.result(fut, Duration.Inf)
-
-    assertFalse("VM should be terminated", runner.isRunning)
   }
 
 }
