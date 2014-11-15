@@ -16,7 +16,7 @@ abstract class Reader private[this] (_lock: Option[Object]) extends Closeable {
   def read(): Int = {
     val buf = new Array[Char](1)
     if (read(buf) == -1) -1
-    else buf(0).toInt & 0xFFFF
+    else buf(0).toInt
   }
 
   def read(cbuf: Array[Char]): Int =

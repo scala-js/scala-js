@@ -8,6 +8,8 @@
 package scala.scalajs.test
 package javalib
 
+import scala.annotation.tailrec
+
 import java.io._
 
 import scala.scalajs.js
@@ -200,7 +202,16 @@ object ReadersTest extends JasmineTest {
 
       def expectRead(str: String) = {
         val buf = new Array[Char](str.length)
-        expect(r.read(buf)).toBe(str.length)
+        @tailrec
+        def readAll(readSoFar: Int): Int = {
+          if (readSoFar == buf.length) readSoFar
+          else {
+            val newlyRead = r.read(buf, readSoFar, buf.length - readSoFar)
+            if (newlyRead == -1) readSoFar
+            else readAll(readSoFar + newlyRead)
+          }
+        }
+        expect(readAll(0)).toBe(str.length)
         expect(new String(buf)).toEqual(str)
       }
 
@@ -209,10 +220,6 @@ object ReadersTest extends JasmineTest {
       expectRead("日本語を読めますか。")
       expect(r.read()).toBe(-1)
 
-    }
-
-    it("should fail with non UTF8") {
-      expect(() => new InputStreamReader(null, "iso-latin1")).toThrow
     }
 
   }
