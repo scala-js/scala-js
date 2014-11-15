@@ -77,17 +77,33 @@ object StringTest extends JasmineTest {
       expect("banana".endsWith("na")).toBeTruthy
     }
 
-    it("should respond to `indexOf`") {
+    it("should respond to `indexOf(String)`") {
       expect("Scala.js".indexOf("js")).toBe(6)
       expect("Scala.js".indexOf("Scala.js")).toBe(0)
       expect("ananas".indexOf("na")).toBe(1)
       expect("Scala.js".indexOf("Java")).toBe(-1)
     }
 
-    it("should respond to `lastIndexOf`") {
+    it("should respond to `indexOf(int)`") {
+      expect("abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x61)).toEqual(0)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x1D306)).toEqual(3)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xD834)).toEqual(3)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xDF06)).toEqual(4)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x64)).toEqual(5)
+    }
+
+    it("should respond to `lastIndexOf(String)`") {
       expect("Scala.js".lastIndexOf("Scala.js")).toBe(0)
       expect("ananas".lastIndexOf("na")).toBe(3)
       expect("Scala.js".lastIndexOf("Java")).toBe(-1)
+    }
+
+    it("should respond to `lastIndexOf(int)`") {
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x61)).toEqual(0)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x1D306)).toEqual(8)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xD834)).toEqual(8)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xDF06)).toEqual(9)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64)).toEqual(10)
     }
 
     it("should respond to `toUpperCase`") {
@@ -190,12 +206,15 @@ object StringTest extends JasmineTest {
     }
 
     it("should respond to constructors") {
-      val charArray = Array('a','b','c','d','e','f','g','h','i')
-      val codePointArray = Array(65,67,68,69,72)
+      val charArray =
+        Array('a', 'b', 'c', 'd', '\uD834', '\uDF06', 'e', 'f', 'g', 'h', 'i')
+      val codePointArray =
+        Array(65, 0x1D306, 67, 68, 0xD834, 69, 72, 0xDF06)
+
       expect(new String()).toEqual("")
-      expect(new String(charArray)).toEqual("abcdefghi")
-      expect(new String(charArray, 3, 5)).toEqual("defgh")
-      expect(new String(codePointArray, 1, 3)).toEqual("CDE")
+      expect(new String(charArray)).toEqual("abcd\uD834\uDF06efghi")
+      expect(new String(charArray, 3, 5)).toEqual("d\uD834\uDF06ef")
+      expect(new String(codePointArray, 1, 5)).toEqual("\uD834\uDF06CD\uD834E")
       expect(new String("foo")).toEqual("foo")
       expect(new String(new StringBuffer("buffer-foo"))).toEqual("buffer-foo")
       expect(new String(new java.lang.StringBuilder("builder-foo"))

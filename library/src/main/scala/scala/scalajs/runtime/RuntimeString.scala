@@ -92,10 +92,10 @@ private[runtime] object RuntimeString {
   }
 
   def indexOf(thiz: String, ch: Int): Int =
-    thiz.indexOf(js.String.fromCharCode(ch)) // FIXME Supplementary chars
+    thiz.indexOf(fromCodePoint(ch))
 
   def indexOf(thiz: String, ch: Int, fromIndex: Int): Int =
-    thiz.indexOf(js.String.fromCharCode(ch), fromIndex) // FIXME Supplementary chars
+    thiz.indexOf(fromCodePoint(ch), fromIndex)
 
   @inline
   def indexOf(thiz: String, str: String): Int =
@@ -118,10 +118,10 @@ private[runtime] object RuntimeString {
     checkNull(thiz) == ""
 
   def lastIndexOf(thiz: String, ch: Int): Int =
-    thiz.lastIndexOf(js.String.fromCharCode(ch)) // FIXME Supplementary chars
+    thiz.lastIndexOf(fromCodePoint(ch))
 
   def lastIndexOf(thiz: String, ch: Int, fromIndex: Int): Int =
-    thiz.lastIndexOf(js.String.fromCharCode(ch), fromIndex) // FIXME Supplementary chars
+    thiz.lastIndexOf(fromCodePoint(ch), fromIndex)
 
   @inline
   def lastIndexOf(thiz: String, str: String): Int =
@@ -219,10 +219,17 @@ private[runtime] object RuntimeString {
     newString(value, 0, value.length)
 
   def newString(value: Array[Char], offset: Int, count: Int): String = {
-    var res: String = ""
-    for (c <- value.view(offset, offset + count))
-      res += c.toString
-    res
+    val end = offset + count
+    if (offset < 0 || end < offset || end > value.length)
+      throw new StringIndexOutOfBoundsException
+
+    val charCodes = new js.Array[Int]
+    var i = offset
+    while (i != end) {
+      charCodes += value(i).toInt
+      i += 1
+    }
+    js.String.fromCharCode(charCodes: _*)
   }
 
   /** Unimplemented, unused, but referenced */
@@ -232,9 +239,28 @@ private[runtime] object RuntimeString {
   def newString(bytes: Array[Byte], offset: Int, length: Int,
       charsetName: String): String = ???
 
-  def newString(codePoints: Array[Int], offset: Int, count: Int): String =
-    js.String.fromCharCode(
-        codePoints.view(offset, offset + count): _*) // FIXME Supplementary chars
+  def newString(codePoints: Array[Int], offset: Int, count: Int): String = {
+    val end = offset + count
+    if (offset < 0 || end < offset || end > codePoints.length)
+      throw new StringIndexOutOfBoundsException
+
+    val charCodes = new js.Array[Int]
+    var i = offset
+    while (i != end) {
+      val cp = codePoints(i)
+      if (cp < 0 || cp > Character.MAX_CODE_POINT)
+        throw new IllegalArgumentException
+      if (cp <= Character.MAX_VALUE) {
+        charCodes += cp
+      } else {
+        val offsetCp = cp - 0x10000
+        charCodes += (offsetCp >> 10) | 0xd800
+        charCodes += (offsetCp & 0x3ff) | 0xdc00
+      }
+      i += 1
+    }
+    js.String.fromCharCode(charCodes: _*)
+  }
 
   def newString(original: String): String =
     checkNull(original)
@@ -272,5 +298,17 @@ private[runtime] object RuntimeString {
   private def checkNull(s: String): s.type =
     if (s == null) throw new NullPointerException()
     else s
+
+  private def fromCodePoint(codePoint: Int): String = {
+    if ((codePoint & ~Character.MAX_VALUE) == 0)
+      js.String.fromCharCode(codePoint)
+    else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT)
+      throw new IllegalArgumentException
+    else {
+      val offsetCp = codePoint - 0x10000
+      js.String.fromCharCode(
+          (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
+    }
+  }
 
 }
