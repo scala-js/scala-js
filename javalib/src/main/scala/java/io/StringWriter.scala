@@ -35,6 +35,6 @@ class StringWriter extends Writer {
   override def write(str: String): Unit = buf.append(str)
 
   override def write(str: String, off: Int, len: Int): Unit =
-    buf.append(str, off, len)
+    buf.append(str, off, off + len)
 
 }
