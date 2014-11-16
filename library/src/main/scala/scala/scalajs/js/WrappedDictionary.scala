@@ -21,11 +21,14 @@ class WrappedDictionary[A](val dict: Dictionary[A])
        with mutable.MapLike[String, A, WrappedDictionary[A]] {
 
   def get(key: String): Option[A] = {
-    if (dict.hasOwnProperty(key))
+    if (contains(key))
       Some(dict(key))
     else
       None
   }
+
+  override def contains(key: String): Boolean =
+    dict.hasOwnProperty(key)
 
   def -=(key: String): this.type = {
     dict.delete(key)

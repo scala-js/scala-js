@@ -23,25 +23,8 @@ class ByteArrayOutputStream(initBufSize: Int) extends OutputStream {
     res
   }
 
-  override def toString(): String = {
-    val r = new InputStreamReader(new ByteArrayInputStream(toByteArray))
-    val out = new Array[Char](count)
-
-    var res = ""
-
-    @tailrec
-    def loop(): Unit = {
-      val c = r.read(out)
-      if (c > 0) {
-        res += new String(out, 0, c)
-        loop()
-      }
-    }
-
-    loop()
-
-    res
-  }
+  override def toString(): String =
+    new String(buf, 0, count)
 
   override def write(b: Array[Byte], off: Int, len: Int): Unit = {
     if (off < 0 || len < 0 || off + len > b.length)
