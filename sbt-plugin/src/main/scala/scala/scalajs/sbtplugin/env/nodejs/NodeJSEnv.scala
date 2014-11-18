@@ -90,15 +90,15 @@ class NodeJSEnv(
         }
 
         function tryReadMsg() {
-          if (inBuffer.length < 2) return;
-          var msgLen = inBuffer.readInt16BE(0);
-          var byteLen = (msgLen + 1) * 2;
+          if (inBuffer.length < 4) return;
+          var msgLen = inBuffer.readInt32BE(0);
+          var byteLen = 4 + msgLen * 2;
 
           if (inBuffer.length < byteLen) return;
           var res = "";
 
           for (var i = 0; i < msgLen; ++i)
-            res += String.fromCharCode(inBuffer.readInt16BE(2*(i+1)));
+            res += String.fromCharCode(inBuffer.readInt16BE(4 + i * 2));
 
           inBuffer = inBuffer.slice(byteLen);
 
@@ -118,10 +118,10 @@ class NodeJSEnv(
             if (socket === null) throw new Error("Com not open");
 
             var len = msg.length;
-            var buf = new Buffer(2*(len+1));
-            buf.writeInt16BE(len, 0);
+            var buf = new Buffer(4 + len * 2);
+            buf.writeInt32BE(len, 0);
             for (var i = 0; i < len; ++i)
-              buf.writeInt16BE(msg.charCodeAt(i), (i+1)*2);
+              buf.writeInt16BE(msg.charCodeAt(i), 4 + i * 2);
             socket.write(buf);
           },
           close: function() {
@@ -135,7 +135,7 @@ class NodeJSEnv(
 
     def send(msg: String): Unit = {
       if (awaitConnection()) {
-        jvm2js.writeShort(msg.length)
+        jvm2js.writeInt(msg.length)
         jvm2js.writeChars(msg)
         jvm2js.flush()
       }
@@ -145,7 +145,7 @@ class NodeJSEnv(
       if (!awaitConnection())
         throw new ComJSEnv.ComClosedException
       try {
-        val len = js2jvm.readShort()
+        val len = js2jvm.readInt()
         val carr = Array.fill(len)(js2jvm.readChar())
         String.valueOf(carr)
       } catch {
