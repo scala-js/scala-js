@@ -38,14 +38,18 @@ private[sbtplugin] class PhantomJettyClassLoader(jettyLoader: ClassLoader,
       // Load bridgeClasses manually since they must be associated to this
       // class loader, rather than the parent class loader in order to find the
       // jetty classes
-      val wsManager =
-        parent.getResourceAsStream(name.replace('.', '/') + ".class")
 
-      if (wsManager == null) {
-        throw new ClassNotFoundException(name)
-      } else {
-        val buf = IO.readInputStreamToByteArray(wsManager)
-        defineClass(name, buf, 0, buf.length)
+      // First check if we have loaded it already
+      Option(findLoadedClass(name)) getOrElse {
+        val wsManager =
+          parent.getResourceAsStream(name.replace('.', '/') + ".class")
+
+        if (wsManager == null) {
+          throw new ClassNotFoundException(name)
+        } else {
+          val buf = IO.readInputStreamToByteArray(wsManager)
+          defineClass(name, buf, 0, buf.length)
+        }
       }
     } else {
       try {
