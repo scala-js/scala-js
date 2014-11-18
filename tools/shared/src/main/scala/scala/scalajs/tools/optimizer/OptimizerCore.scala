@@ -1000,6 +1000,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
+    case Select(LoadModule(ClassType(moduleClassName)), _, _) =>
+      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
+      else stat
     case Closure(_, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
@@ -1248,7 +1251,12 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         true
 
       case _ =>
-        false
+        arg.tpe.base match {
+          case ClassType("s_Predef$$less$colon$less" | "s_Predef$$eq$colon$eq") =>
+            true
+          case _ =>
+            false
+        }
     }
     receiverAndArgs.exists(isLikelyOptimizable)
   }
