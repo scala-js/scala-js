@@ -317,6 +317,51 @@ object Arrays {
       throw new ArrayIndexOutOfBoundsException
   }
 
+  def hashCode(a: Array[Boolean]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Boolean(x).hashCode)
+  }
+
+  def hashCode(a: Array[Char]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Character(x).hashCode)
+  }
+
+  def hashCode(a: Array[Byte]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Byte(x).hashCode)
+  }
+
+  def hashCode(a: Array[Short]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Short(x).hashCode)
+  }
+
+  def hashCode(a: Array[Int]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Integer(x).hashCode)
+  }
+
+  def hashCode(a: Array[Long]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Long(x).hashCode)
+  }
+
+  def hashCode(a: Array[Float]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Float(x).hashCode)
+  }
+
+  def hashCode(a: Array[Double]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + new java.lang.Double(x).hashCode)
+  }
+
+  def hashCode(a: Array[AnyRef]): Int = {
+    if (a == null) 0
+    else a.foldLeft(1)((acc, x) => 31*acc + (if (x == null) 0 else x.hashCode))
+  }
+
   def equals(a: Array[Boolean], b: Array[Boolean]): Boolean =
     (a eq b) || (a != null && b != null && a.length == b.length &&
         (0 until a.size).forall(i => a(i) == b(i)))
