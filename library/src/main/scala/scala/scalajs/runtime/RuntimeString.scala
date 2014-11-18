@@ -3,6 +3,8 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 import scala.scalajs.js.prim.{String => jsString}
 
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.util.regex._
 
 /**
@@ -22,6 +24,8 @@ import java.util.regex._
  * Therefore: ALWAYS ascribe the this pointer!
  */
 private[runtime] trait RuntimeString { this: jsString =>
+
+  import RuntimeString.fromCodePoint
 
   def charAt(index: Int): Char =
     (this: jsString).charCodeAt(index).asInstanceOf[Int].toChar
@@ -75,10 +79,14 @@ private[runtime] trait RuntimeString { this: jsString =>
     suffix == thisjs.substring(thisjs.length - suffix.length)
   }
 
-  /** Unimplemented, unused, but referenced */
-  def getBytes(): Array[Byte] = ???
-  /** Unimplemented, unused, but referenced */
-  def getBytes(charsetName: String): Array[Byte] = ???
+  def getBytes(): Array[Byte] =
+    (this: String).getBytes(Charset.defaultCharset)
+
+  def getBytes(charsetName: String): Array[Byte] =
+    (this: String).getBytes(Charset.forName(charsetName))
+
+  def getBytes(charset: Charset): Array[Byte] =
+    charset.encode(this).array()
 
   def getChars(srcBegin: Int, srcEnd: Int,
     dst: Array[Char], dstBegin: Int): Unit = {
@@ -102,14 +110,11 @@ private[runtime] trait RuntimeString { this: jsString =>
 
   }
 
-  def indexOf(ch: Int): Int = {
-    val search: jsString = js.String.fromCharCode(ch)
-    (this: jsString).indexOf(search).toInt
-  }
-  def indexOf(ch: Int, fromIndex: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).indexOf(search, fromIndex).toInt
-  }
+  def indexOf(ch: Int): Int =
+    (this: String).indexOf(fromCodePoint(ch))
+
+  def indexOf(ch: Int, fromIndex: Int): Int =
+    (this: String).indexOf(fromCodePoint(ch), fromIndex)
 
   def indexOf(str: String): Int =
     (this: jsString).indexOf(str).toInt
@@ -125,14 +130,12 @@ private[runtime] trait RuntimeString { this: jsString =>
 
   def isEmpty(): Boolean = (this: jsString).length.toInt == 0
 
-  def lastIndexOf(ch: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).lastIndexOf(search).toInt
-  }
-  def lastIndexOf(ch: Int, fromIndex: Int): Int = {
-    val search = js.String.fromCharCode(ch)
-    (this: jsString).lastIndexOf(search, fromIndex).toInt
-  }
+  def lastIndexOf(ch: Int): Int =
+    (this: String).lastIndexOf(fromCodePoint(ch))
+
+  def lastIndexOf(ch: Int, fromIndex: Int): Int =
+    (this: String).lastIndexOf(fromCodePoint(ch), fromIndex)
+
   def lastIndexOf(str: String): Int =
     (this: jsString).lastIndexOf(str).toInt
   def lastIndexOf(str: String, fromIndex: Int): Int =
@@ -207,19 +210,62 @@ private[runtime] object RuntimeString {
   def newString(value: Array[Char]): String =
     newString(value, 0, value.length)
   def newString(value: Array[Char], offset: Int, count: Int): String = {
-    var res: String = ""
-    for (c <- value.view(offset, offset + count))
-      res += c.toString
-    res
+    val end = offset + count
+    if (offset < 0 || end < offset || end > value.length)
+      throw new StringIndexOutOfBoundsException
+
+    val charCodes = new js.Array[Int]
+    var i = offset
+    while (i != end) {
+      charCodes.push(value(i).toInt)
+      i += 1
+    }
+    js.String.fromCharCode(charCodes: _*)
   }
-  /** Unimplemented, unused, but referenced */
-  def newString(bytes: Array[Byte], charsetName: String): String = ???
-  /** Unimplemented, unused, but referenced */
+
+  def newString(bytes: Array[Byte]): String =
+    newString(bytes, Charset.defaultCharset)
+
+  def newString(bytes: Array[Byte], charsetName: String): String =
+    newString(bytes, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes)).toString()
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int): String =
+    newString(bytes, offset, length, Charset.defaultCharset)
+
   def newString(bytes: Array[Byte], offset: Int, length: Int,
-      charsetName: String): String = ???
-  def newString(codePoints: Array[Int], offset: Int, count: Int): String =
-    js.String.fromCharCode(
-        codePoints.view(offset, offset + count) :_*)
+      charsetName: String): String =
+    newString(bytes, offset, length, Charset.forName(charsetName))
+
+  def newString(bytes: Array[Byte], offset: Int, length: Int,
+      charset: Charset): String =
+    charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
+
+  def newString(codePoints: Array[Int], offset: Int, count: Int): String = {
+    val end = offset + count
+    if (offset < 0 || end < offset || end > codePoints.length)
+      throw new StringIndexOutOfBoundsException
+
+    val charCodes = new js.Array[Int]
+    var i = offset
+    while (i != end) {
+      val cp = codePoints(i)
+      if (cp < 0 || cp > Character.MAX_CODE_POINT)
+        throw new IllegalArgumentException
+      if (cp <= Character.MAX_VALUE) {
+        charCodes.push(cp)
+      } else {
+        val offsetCp = cp - 0x10000
+        charCodes.push((offsetCp >> 10) | 0xd800)
+        charCodes.push((offsetCp & 0x3ff) | 0xdc00)
+      }
+      i += 1
+    }
+    js.String.fromCharCode(charCodes: _*)
+  }
+
   def newString(original: String): String = original
   def newString(buffer: StringBuffer): String = buffer.toString
   def newString(builder: java.lang.StringBuilder): String = builder.toString
@@ -244,4 +290,17 @@ private[runtime] object RuntimeString {
     res
   }
 
+  // Helpers
+
+  private def fromCodePoint(codePoint: Int): String = {
+    if ((codePoint & ~Character.MAX_VALUE) == 0)
+      js.String.fromCharCode(codePoint)
+    else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT)
+      throw new IllegalArgumentException
+    else {
+      val offsetCp = codePoint - 0x10000
+      js.String.fromCharCode(
+          (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
+    }
+  }
 }
