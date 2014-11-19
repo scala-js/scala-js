@@ -22,7 +22,7 @@ FULLVER="$1"
 
 # Config
 BASEDIR="`dirname $0`/.."
-TESTDIR="$BASEDIR/scalalib/fetchedSources/$1/test/files"
+TESTDIR="$BASEDIR/partest/fetchedSources/$1/test/files"
 KNOWDIR="$BASEDIR/partest-suite/src/test/resources/scala/tools/partest/scalajs/$1/"
 
 # If the classification directory does not exist, this means (by

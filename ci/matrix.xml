@@ -63,6 +63,7 @@
          "javalibExTestSuite/fastOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
          "javalibExTestSuite/fullOptStage::testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbt ++$scala partest/fetchScalaSource &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ]]></task>
