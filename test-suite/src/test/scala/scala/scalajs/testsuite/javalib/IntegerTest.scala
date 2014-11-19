@@ -22,6 +22,32 @@ object IntegerTest extends JasmineTest {
       expect(Integer.reverseBytes(0xdeadbeef)).toEqual(0xefbeadde)
     }
 
+    it("should provide `rotateLeft`") {
+      expect(Integer.rotateLeft(0x689cd401, 0)).toEqual(0x689cd401)
+      expect(Integer.rotateLeft(0x689cd401, 1)).toEqual(0xd139a802)
+      expect(Integer.rotateLeft(0x689cd401, 8)).toEqual(0x9cd40168)
+      expect(Integer.rotateLeft(0x689cd401, 13)).toEqual(0x9a802d13)
+      expect(Integer.rotateLeft(0x689cd401, 32)).toEqual(0x689cd401)
+      expect(Integer.rotateLeft(0x689cd401, 33)).toEqual(0xd139a802)
+      expect(Integer.rotateLeft(0x689cd401, 43)).toEqual(0xe6a00b44)
+      expect(Integer.rotateLeft(0x689cd401, -1)).toEqual(0xb44e6a00)
+      expect(Integer.rotateLeft(0x689cd401, -28)).toEqual(0x89cd4016)
+      expect(Integer.rotateLeft(0x689cd401, -39)).toEqual(0x2d139a8)
+    }
+
+    it("should provide `rotateRight`") {
+      expect(Integer.rotateRight(0x689cd401, 0)).toEqual(0x689cd401)
+      expect(Integer.rotateRight(0x689cd401, 1)).toEqual(0xb44e6a00)
+      expect(Integer.rotateRight(0x689cd401, 8)).toEqual(0x1689cd4)
+      expect(Integer.rotateRight(0x689cd401, 13)).toEqual(0xa00b44e6)
+      expect(Integer.rotateRight(0x689cd401, 32)).toEqual(0x689cd401)
+      expect(Integer.rotateRight(0x689cd401, 33)).toEqual(0xb44e6a00)
+      expect(Integer.rotateRight(0x689cd401, 43)).toEqual(0x802d139a)
+      expect(Integer.rotateRight(0x689cd401, -1)).toEqual(0xd139a802)
+      expect(Integer.rotateRight(0x689cd401, -28)).toEqual(0x1689cd40)
+      expect(Integer.rotateRight(0x689cd401, -39)).toEqual(0x4e6a00b4)
+    }
+
     it("should provide `bitCount` used by Map") {
       abstract sealed class Status
       case object Used extends Status

@@ -96,13 +96,11 @@ object Integer {
     byte0 | byte1 | byte2 | byte3
   }
 
-  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int = {
-    (i << distance) | (i >>> (32-distance))
-  }
+  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
+    (i << distance) | (i >>> -distance)
 
-  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int = {
-    (i >>> distance) | (i << (32-distance))
-  }
+  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int =
+    (i >>> distance) | (i << -distance)
 
   @inline def signum(i: scala.Int): scala.Int =
     if (i == 0) 0 else if (i < 0) -1 else 1
