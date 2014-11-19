@@ -110,7 +110,7 @@ object Array {
         case value: Int     => setInt(array, index, value)
         case value: Long    => setLong(array, index, value)
         case value: Float   => setFloat(array, index, value)
-        // no Double case because it's already matched by Float
+        case value: Double  => setDouble(array, index, value)
         case _ => throw new IllegalArgumentException("argument type mismatch")
       }
   }
@@ -170,8 +170,6 @@ object Array {
   }
 
   def setDouble(array: AnyRef, index: Int, value: Double): Unit = array match {
-    // probably more logical (and maybe safer) to have the Float case as well
-    case array: Array[Float]  => array(index) = value.toFloat
     case array: Array[Double] => array(index) = value
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
