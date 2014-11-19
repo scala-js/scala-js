@@ -1,25 +1,18 @@
-package java
-package lang
+package java.lang
 
 import scala.scalajs.js
 
 class Runtime private {
-  def exit(status: Int) {
-    halt0(status)
-  }
+  def exit(status: Int): Unit =
+    halt(status)
 
   //def addShutdownHook(hook: Thread): Unit
   //def removeShutdownHook(hook: Thread): Unit
 
-  def halt(status: Int) {
-    halt0(status)
-  }
-
-  private def halt0(status: Int): Unit = {
+  def halt(status: Int): Unit = {
     val envInfo = scala.scalajs.runtime.environmentInfo
 
-    if (envInfo != js.undefined && envInfo != null &&
-        js.typeOf(envInfo.exitFunction) == "function") {
+    if (js.typeOf(envInfo.exitFunction) == "function") {
       envInfo.exitFunction(status)
       throw new IllegalStateException("__ScalaJSEnv.exitFunction returned")
     } else {
@@ -30,7 +23,7 @@ class Runtime private {
     }
   }
 
-  def availableProcessors() = 1
+  def availableProcessors(): Int = 1
   //def freeMemory(): scala.Long
   //def totalMemory(): scala.Long
   //def maxMemory(): scala.Long
