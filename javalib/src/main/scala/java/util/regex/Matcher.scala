@@ -1,12 +1,15 @@
 package java.util.regex
 
 import scala.language.implicitConversions
+
 import scala.annotation.switch
+
 import scala.scalajs.js
 
 final class Matcher private[regex] (
     private var pattern0: Pattern, private var input0: CharSequence,
-    private var regionStart0: Int, private var regionEnd0: Int) {
+    private var regionStart0: Int, private var regionEnd0: Int)
+    extends AnyRef with MatchResult {
 
   import Matcher._
 
@@ -69,7 +72,7 @@ final class Matcher private[regex] (
   def appendReplacement(sb: StringBuffer, replacement: String): Matcher = {
     sb.append(inputstr.substring(appendPos, start))
 
-    def isDigit(c: Char) = c >= '0' && c <= '9'
+    @inline def isDigit(c: Char) = c >= '0' && c <= '9'
 
     val len = replacement.length
     var i = 0
@@ -77,7 +80,7 @@ final class Matcher private[regex] (
       replacement.charAt(i) match {
         case '$' =>
           i += 1
-          var j = i
+          val j = i
           while (i < len && isDigit(replacement.charAt(i)))
             i += 1
           val group = Integer.parseInt(replacement.substring(j, i))
@@ -151,7 +154,6 @@ final class Matcher private[regex] (
 
   def usePattern(pattern: Pattern): Matcher = {
     val prevLastIndex = regexp.lastIndex
-
     pattern0 = pattern
     regexp = new js.RegExp(pattern.jspattern, pattern.jsflags)
     regexp.lastIndex = prevLastIndex

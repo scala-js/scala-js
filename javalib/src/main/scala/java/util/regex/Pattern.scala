@@ -1,9 +1,12 @@
 package java.util.regex
 
 import scala.annotation.switch
+
 import scala.scalajs.js
 
-final class Pattern private (pattern0: String, flags0: Int) {
+final class Pattern private (pattern0: String, flags0: Int)
+    extends Serializable {
+
   import Pattern._
 
   def pattern(): String = pattern0
@@ -50,7 +53,7 @@ final class Pattern private (pattern0: String, flags0: Int) {
     }
     result.push(inputStr.substring(prevEnd))
 
-    // Remove a leading empty element iff the first match was zero-length 
+    // Remove a leading empty element iff the first match was zero-length
     // and there is no other place the regex matches
     if (prevEnd == 0 && result.length == 2 && (lim > 2 || !matcher.find())) {
       Array(inputStr)
