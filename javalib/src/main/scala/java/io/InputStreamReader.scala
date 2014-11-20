@@ -57,14 +57,14 @@ class InputStreamReader(private[this] var in: InputStream,
     if (closed) null else decoder.charset.name
 
   override def read(): Int = {
-    ensureOpened()
+    ensureOpen()
 
     if (outBuf.hasRemaining) outBuf.get()
     else super.read()
   }
 
   def read(cbuf: Array[Char], off: Int, len: Int): Int = {
-    ensureOpened()
+    ensureOpen()
 
     if (off < 0 || len < 0 || len > cbuf.length - off)
       throw new IndexOutOfBoundsException
@@ -78,7 +78,7 @@ class InputStreamReader(private[this] var in: InputStream,
     } else {
       // Try and decode directly into the destination array
       val directOut = CharBuffer.wrap(cbuf, off, len)
-      val result = read(directOut)
+      val result = readImpl(directOut)
       if (result != InputStreamReader.Overflow) {
         result
       } else {
@@ -103,7 +103,7 @@ class InputStreamReader(private[this] var in: InputStream,
     def loopWithOutBuf(desiredOutBufSize: Int): Int = {
       if (outBuf.capacity < desiredOutBufSize)
         outBuf = CharBuffer.allocate(desiredOutBufSize)
-      val charsRead = read(outBuf)
+      val charsRead = readImpl(outBuf)
       if (charsRead == InputStreamReader.Overflow)
         loopWithOutBuf(desiredOutBufSize*2)
       else
@@ -123,7 +123,7 @@ class InputStreamReader(private[this] var in: InputStream,
   }
 
   @tailrec
-  private def read(out: CharBuffer): Int = {
+  private def readImpl(out: CharBuffer): Int = {
     val initPos = out.position
     val result = decoder.decode(inBuf, out, endOfInput)
 
@@ -178,7 +178,7 @@ class InputStreamReader(private[this] var in: InputStream,
         else
           inBuf.limit(inBuf.limit + bytesRead)
 
-        read(out)
+        readImpl(out)
       }
     } else if (result.isOverflow) {
       InputStreamReader.Overflow
@@ -196,8 +196,10 @@ class InputStreamReader(private[this] var in: InputStream,
   override def ready(): Boolean =
     outBuf.hasRemaining || in.available() > 0
 
-  private def ensureOpened(): Unit =
-    if (closed) throw new IOException("Stream closed")
+  private def ensureOpen(): Unit = {
+    if (closed)
+      throw new IOException("Stream closed")
+  }
 
 }
 

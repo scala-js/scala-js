@@ -42,6 +42,21 @@ object ReadersTest extends JasmineTest {
         js.Array[Int](0,0,'a','s','d','f',0,0,0,0))
     }
 
+    it("should provide read(java.nio.CharBuffer)") {
+      val r = newReader
+      val buf0 = java.nio.CharBuffer.allocate(25)
+      buf0.position(3)
+      val buf = buf0.slice()
+      buf.position(4)
+      buf.limit(14)
+
+      expect(r.read(buf)).toBe(4)
+      expect(buf.position()).toBe(8)
+      buf.flip()
+      expect(buf.toString().map(_.toInt).toJSArray).toEqual(
+          js.Array[Int](0, 0, 0, 0, 'a', 's', 'd', 'f'))
+    }
+
     it("should provide ready") {
       val r = newReader
 
