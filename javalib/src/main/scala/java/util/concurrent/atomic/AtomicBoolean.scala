@@ -1,19 +1,33 @@
 package java.util.concurrent.atomic
 
 class AtomicBoolean(private[this] var value: Boolean) extends Serializable {
-  def get(): Boolean = value
-  def set(newValue: Boolean): Unit = value = newValue
-  def lazySet(newValue: Boolean): Unit = set(newValue)
-  def compareAndSet(expect: Boolean, newValue: Boolean): Boolean = {
+  def this() = this(false)
+
+  final def get(): Boolean = value
+
+  final def compareAndSet(expect: Boolean, update: Boolean): Boolean = {
     if (expect != value) false else {
-      value = newValue
+      value = update
       true
     }
   }
-  def weakCompareAndSet(expect: Boolean, newValue: Boolean): Boolean = compareAndSet(expect, newValue)
-  def getAndSet(newValue: Boolean) = {
+
+  // For some reason, this method is not final
+  def weakCompareAndSet(expect: Boolean, update: Boolean): Boolean =
+    compareAndSet(expect, update)
+
+  final def set(newValue: Boolean): Unit =
+    value = newValue
+
+  final def lazySet(newValue: Boolean): Unit =
+    set(newValue)
+
+  final def getAndSet(newValue: Boolean): Boolean = {
     val old = value
     value = newValue
     old
   }
+
+  override def toString(): String =
+    value.toString()
 }
