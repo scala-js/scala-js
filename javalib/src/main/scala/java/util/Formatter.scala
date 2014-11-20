@@ -190,23 +190,21 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
-              val str = arg match {
-                case arg: Integer        => Integer.toOctalString(arg)
-                case arg: Long           => Long.toOctalString(arg)
-                case arg: js.prim.Number => arg.toString(8).toString()
+              val str = (arg: Any) match {
+                case arg: scala.Int  => Integer.toOctalString(arg)
+                case arg: scala.Long => Long.toOctalString(arg)
               }
               padCaptureSign(str, if (hasFlag("#")) "0" else "")
             case 'x' | 'X' =>
-              val str = arg match {
-                case arg: Integer        => Integer.toHexString(arg)
-                case arg: Long           => Long.toHexString(arg)
-                case arg: js.prim.Number => arg.toString(16).toString()
+              val str = (arg: Any) match {
+                case arg: scala.Int  => Integer.toHexString(arg)
+                case arg: scala.Long => Long.toHexString(arg)
               }
               padCaptureSign(str, if (hasFlag("#")) "0x" else "")
             case 'e' | 'E' =>
               sciNotation(if (hasPrecision) precision else 6)
             case 'g' | 'G' =>
-              val m = js.Math.abs(numberArg)
+              val m = Math.abs(numberArg)
               // precision handling according to JavaDoc
               // precision here means number of significant digits
               // not digits after decimal point
@@ -215,30 +213,27 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 else if (precision == 0) 1
                 else precision
               // between 1e-4 and 10e(p): display as fixed
-              if (m >= 1e-4 && m < js.Math.pow(10, p)) {
-                val sig = js.Math.ceil(js.Math.log(m) / js.Math.LN10)
-                with_+(numberArg.toFixed(js.Math.max(p - sig, 0)))
+              if (m >= 1e-4 && m < Math.pow(10, p)) {
+                val sig = Math.ceil(Math.log10(m))
+                with_+(numberArg.toFixed(Math.max(p - sig, 0)))
               } else sciNotation(p - 1)
             case 'f' =>
-              with_+ ( {
-                if (hasPrecision)
-                  numberArg.toFixed(precision)
-                else
-                  // JavaDoc: 6 is default precision
-                  numberArg.toFixed(6)
-              }, !js.isFinite(numberArg))
+              with_+({
+                // JavaDoc: 6 is default precision
+                numberArg.toFixed(if (hasPrecision) precision else 6)
+              }, numberArg.isNaN || numberArg.isInfinite)
           }
 
           def sciNotation(precision: Int) = {
             val exp = numberArg.toExponential(precision)
-            with_+( {
+            with_+({
               // check if we need additional 0 padding in exponent
               // JavaDoc: at least 2 digits
-              if ("e" == exp.charAt(exp.length - 3))
+              if ("e" == exp.charAt(exp.length - 3)) {
                 exp.substring(0, exp.length - 1) + "0" +
                   exp.charAt(exp.length - 1)
-              else exp
-            }, !js.isFinite(numberArg))
+              } else exp
+            }, numberArg.isNaN || numberArg.isInfinite)
           }
       }
     }
