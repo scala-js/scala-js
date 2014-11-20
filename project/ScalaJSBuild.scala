@@ -434,31 +434,28 @@ object ScalaJSBuild extends Build {
           ),
 
           fetchScalaSource := {
-            import org.eclipse.jgit.api._
-
             val s = streams.value
+            val cacheDir = s.cacheDirectory
             val ver = scalaVersion.value
             val trgDir = fetchedScalaSourceDir.value
 
-            if (!trgDir.exists) {
-              s.log.info(s"Fetching Scala source version $ver")
-
-              // Make parent dirs and stuff
-              IO.createDirectory(trgDir)
-
-              // Clone scala source code
-              new CloneCommand()
-                .setDirectory(trgDir)
-                .setURI("https://github.com/scala/scala.git")
-                .call()
-
+            val report = updateClassifiers.value
+            val scalaLibSourcesJar = report.select(
+                configuration = Set("compile"),
+                module = moduleFilter(name = "scala-library"),
+                artifact = artifactFilter(`type` = "src")).headOption.getOrElse {
+              sys.error(s"Could not fetch scala-library sources for version $ver")
             }
 
-            // Checkout proper ref. We do this anyway so we fail if
-            // something is wrong
-            val git = Git.open(trgDir)
-            s.log.info(s"Checking out Scala source version $ver")
-            git.checkout().setName(s"v$ver").call()
+            FileFunction.cached(cacheDir / s"fetchScalaSource-$ver",
+                FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
+              s.log.info(s"Fetching Scala library sources to $trgDir...")
+
+              if (trgDir.exists)
+                IO.delete(trgDir)
+              IO.createDirectory(trgDir)
+              IO.unzip(scalaLibSourcesJar, trgDir)
+            } (Set(scalaLibSourcesJar))
 
             trgDir
           },
@@ -490,14 +487,11 @@ object ScalaJSBuild extends Build {
           // Files in earlier src dirs shadow files in later dirs
           sources in Compile := {
             // Sources coming from the sources of Scala
-            val scalaSrcDir = fetchScalaSource.value / "src"
-            val scalaSrcDirs = (scalaSrcDir / "library") :: (
-                if (!scalaVersion.value.startsWith("2.10.")) Nil
-                else (scalaSrcDir / "continuations" / "library") :: Nil)
+            val scalaSrcDir = fetchScalaSource.value
 
-            // All source directories (overrides shadow scalaSrcDirs)
+            // All source directories (overrides shadow scalaSrcDir)
             val sourceDirectories =
-              (unmanagedSourceDirectories in Compile).value ++ scalaSrcDirs
+              (unmanagedSourceDirectories in Compile).value :+ scalaSrcDir
 
             // Filter sources with overrides
             def normPath(f: File): String =
@@ -795,6 +789,40 @@ object ScalaJSBuild extends Build {
 
           resolvers += Resolver.typesafeIvyRepo("releases"),
 
+          fetchedScalaSourceDir := (
+            baseDirectory.value / "fetchedSources" /
+            scalaVersion.value
+          ),
+
+          fetchScalaSource := {
+            import org.eclipse.jgit.api._
+
+            val s = streams.value
+            val ver = scalaVersion.value
+            val trgDir = fetchedScalaSourceDir.value
+
+            if (!trgDir.exists) {
+              s.log.info(s"Fetching Scala source version $ver")
+
+              // Make parent dirs and stuff
+              IO.createDirectory(trgDir)
+
+              // Clone scala source code
+              new CloneCommand()
+                .setDirectory(trgDir)
+                .setURI("https://github.com/scala/scala.git")
+                .call()
+            }
+
+            // Checkout proper ref. We do this anyway so we fail if
+            // something is wrong
+            val git = Git.open(trgDir)
+            s.log.info(s"Checking out Scala source version $ver")
+            git.checkout().setName(s"v$ver").call()
+
+            trgDir
+          },
+
           libraryDependencies ++= {
             if (shouldPartest.value)
               Seq(
@@ -849,8 +877,9 @@ object ScalaJSBuild extends Build {
             else Seq()
           },
 
-          definedTests in Test ++= {
-            if (shouldPartest.value)
+          definedTests in Test <++= Def.taskDyn[Seq[sbt.TestDefinition]] {
+            if (shouldPartest.value) Def.task {
+              val _ = (fetchScalaSource in partest).value
               Seq(new sbt.TestDefinition(
                 s"partest-${scalaVersion.value}",
                 // marker fingerprint since there are no test classes
@@ -862,7 +891,9 @@ object ScalaJSBuild extends Build {
                 true,
                 Array()
               ))
-            else Seq()
+            } else {
+              Def.task(Seq())
+            }
           }
       )
   ).dependsOn(partest % "test", library)
