@@ -27,7 +27,7 @@ import scala.scalajs.sbtplugin.env.phantomjs.{PhantomJSEnv, PhantomJettyClassLoa
 
 import scala.scalajs.ir.ScalaJSVersions
 
-import scala.scalajs.sbtplugin.testing.{TestFramework, JSClasspathLoader}
+import scala.scalajs.sbtplugin.testing.{FrameworkDetector, ScalaJSFramework}
 
 import scala.util.Try
 
@@ -354,13 +354,8 @@ object ScalaJSPluginInternal {
     env.jsRunner(cp, launcher, log, jsConsole).run()
   }
 
-  private def launcherContent(mainCl: String) = {
-    // If we are running in Node.js, we need to bracket select on
-    // global rather than this
-    """((typeof global === "object" && global &&
-         global["Object"] === Object) ? global : this)""" +
-    s"${dot2bracket(mainCl)}().main();\n"
-  }
+  private def launcherContent(mainCl: String) =
+    s"${selectOnGlobal(mainCl)}().main();\n"
 
   private def memLauncher(mainCl: String) = {
     new MemVirtualJSFile("Generated launcher file")
@@ -444,41 +439,25 @@ object ScalaJSPluginInternal {
   )
 
   val scalaJSTestFrameworkSettings = Seq(
-      // Copied from Defaults, but scoped. We need a JVM loader in
-      // loadedTestFrameworks to find out whether the framework exists.
-      testLoader in loadedTestFrameworks := {
-        TestFramework.createTestLoader(
-            Attributed.data(fullClasspath.value),
-            scalaInstance.value,
-            IO.createUniqueDirectory(taskTemporaryDirectory.value))
-      },
-
       loadedTestFrameworks := {
         // use assert to prevent warning about pure expr in stat pos
         assert(scalaJSEnsureUnforked.value)
 
-        val loader = (testLoader in loadedTestFrameworks).value
-        val isTestFrameworkDefined = try {
-          Class.forName(scalaJSTestFramework.value, false, loader)
-          true
-        } catch {
-          case _: ClassNotFoundException => false
+        val env = jsEnv.value match {
+          case env: ComJSEnv => env
+          case _ =>
+            sys.error("You need a ComJSEnv to test")
         }
-        if (isTestFrameworkDefined) {
-          loadedTestFrameworks.value.updated(
-              sbt.TestFramework(classOf[TestFramework].getName),
-              new TestFramework(
-                  environment = jsEnv.value,
-                  jsConsole = scalaJSConsole.value,
-                  testFramework = scalaJSTestFramework.value)
-          )
-        } else {
-          loadedTestFrameworks.value
-        }
-      },
 
-      // Pseudo loader to pass classpath to test framework
-      testLoader := JSClasspathLoader(scalaJSExecClasspath.value)
+        val classpath = scalaJSExecClasspath.value
+        val detector = new FrameworkDetector(env, classpath)
+        val console = scalaJSConsole.value
+        val logger = streams.value.log
+
+        detector.detect(testFrameworks.value) map { case (tf, name) =>
+          (tf, new ScalaJSFramework(name, env, classpath, logger, console))
+        }
+      }
   )
 
   val scalaJSTestBuildSettings = (
@@ -525,7 +504,10 @@ object ScalaJSPluginInternal {
 
       skip in packageJSDependencies := true,
 
-      scalaJSTestFramework := "org.scalajs.jasminetest.JasmineTestFramework",
+      // TODO change to major frameworks
+      testFrameworks := Seq(
+          TestFramework("org.scalajs.jasminetest.JasmineFramework"),
+          TestFramework("foo")),
 
       emitSourceMaps := true,
 

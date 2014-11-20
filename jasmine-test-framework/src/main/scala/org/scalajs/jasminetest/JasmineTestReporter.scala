@@ -9,25 +9,25 @@
 
 package org.scalajs.jasminetest
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSExport
-
-import scala.scalajs.runtime.StackTrace
-
-import scala.scalajs.testbridge._
+import sbt.testing._
 
 import org.scalajs.jasmine.ExpectationResult
 import org.scalajs.jasmine.Result
 import org.scalajs.jasmine.Spec
 import org.scalajs.jasmine.Suite
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSExport
+import scala.scalajs.runtime.StackTrace
+
 /** This class is passed to the actual jasmine framework as a reporter */
-class JasmineTestReporter(testOutput: TestOutput) {
+class JasmineTestReporter(taskDef: TaskDef, eventHandler: EventHandler,
+    loggers: Array[Logger], runnerDone: () => Unit) {
   private var currentSuite: Suite = _
 
   @JSExport
   def reportRunnerStarting(): Unit = {
-    testOutput.log.info("")
+    info("")
   }
 
   @JSExport
@@ -43,12 +43,24 @@ class JasmineTestReporter(testOutput: TestOutput) {
     val results = spec.results()
     val description = spec.description
 
-    if (results.passed) {
-      testOutput.succeeded(s"  $success $description")
-    } else {
-      error(s" $failure $description")
+    val selector =
+      new NestedTestSelector(spec.suite.getFullName(), description)
 
-      results.getItems foreach displayResult
+    if (results.passed) {
+      eventHandler.handle(new JasmineEvent(taskDef, Status.Success, selector))
+
+      loggers foreach { log =>
+        val success = color(log, SuccessColor, "+")
+        log.info(s"  $success $description")
+      }
+    } else {
+      eventHandler.handle(new JasmineEvent(taskDef, Status.Error, selector))
+
+      loggers foreach { log =>
+        val failure = color(log, ErrorColor, "x")
+        log.error(s" $failure $description")
+        results.getItems.foreach(displayResult(log))
+      }
     }
   }
 
@@ -61,35 +73,40 @@ class JasmineTestReporter(testOutput: TestOutput) {
     val message =
       s"${results.totalCount} specs, ${results.failedCount} failure"
 
+    val selector = new NestedSuiteSelector(suite.getFullName())
+
     if (results.passedCount != results.totalCount) {
-      error(title)
-      errorWithInfoColor(message)
+      eventHandler.handle(new JasmineEvent(taskDef, Status.Error, selector))
+
+      loggers foreach { log =>
+        log.error(title)
+        log.error(color(log, InfoColor, message))
+      }
     } else {
-      info(title)
-      infoWithInfoColor(message)
+      loggers foreach { log =>
+        log.info(title)
+        log.info(color(log, InfoColor, message))
+      }
     }
     info("")
   }
 
   @JSExport
   def reportRunnerResults(): Unit = {
-    // no need to report
+    runnerDone()
   }
 
+  private val ErrorColor = "\u001b[31m"
+  private val SuccessColor = "\u001b[32m"
+  private val InfoColor = "\u001b[34m"
+  private val Reset = "\u001b[0m"
+
   private def info(str: String) =
-    testOutput.log.info(str)
+    loggers.foreach(_.info(str))
 
-  private def infoWithInfoColor(str: String) =
-    info(withColor(testOutput.infoColor, str))
-
-  private def errorWithInfoColor(str: String) =
-    error(withColor(testOutput.infoColor, str))
-
-  private def error(msg: js.Any) =
-    testOutput.log.error(msg.toString)
-
-  private def withColor(color: testOutput.Color, message: String) =
-    testOutput.color(message, color)
+  private def color(log: Logger, color: String, msg: String) =
+    if (log.ansiCodesSupported) color + msg + Reset
+    else msg
 
   private def sanitizeMessage(message: String) = {
     val FilePattern = """^(.+?) [^ ]+\.js \(line \d+\)\.*?$""".r
@@ -102,13 +119,10 @@ class JasmineTestReporter(testOutput: TestOutput) {
     }
   }
 
-  private def failure = withColor(testOutput.errorColor, "x")
-  private def success = withColor(testOutput.successColor, "+")
-
-  private def displayResult(result: Result) = {
+  private def displayResult(log: Logger)(result: Result) = {
     (result.`type`: String) match {
       case "log" =>
-        info(s"    ${result.toString}")
+        log.info(s"    ${result.toString}")
       case "expect" =>
         val r = result.asInstanceOf[ExpectationResult]
 
@@ -120,9 +134,9 @@ class JasmineTestReporter(testOutput: TestOutput) {
           }
 
           if (stack.isEmpty)
-            testOutput.failure(s"    $message")
+            log.error(s"    $message")
           else
-            testOutput.error(s"    $message", stack)
+            log.trace(new JasmineTestException(message, stack))
         }
     }
   }

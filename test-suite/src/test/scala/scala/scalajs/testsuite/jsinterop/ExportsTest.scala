@@ -9,7 +9,7 @@ package scala.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
 import js.annotation._
-import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
+import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
 
 import scala.annotation.meta
 
@@ -773,7 +773,7 @@ object ExportsTest extends JasmineTest {
       val foo = (new FooNamed).asInstanceOf[js.Dynamic]
 
       expect(foo.bar1(lit(x = 1, y = 2))).toEqual(3)
-      if (JasmineTestFramework.hasTag("compliant-asinstanceof"))
+      if (TestSuiteContext.hasTag("compliant-asinstanceof"))
         expect(() => foo.bar1(lit(x = 1))).toThrow // missing arg
       expect(foo.bar2(lit())).toEqual(3)
       expect(foo.bar2(lit(x = 2))).toEqual(6)
