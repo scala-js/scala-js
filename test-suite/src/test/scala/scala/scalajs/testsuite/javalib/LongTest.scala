@@ -18,6 +18,36 @@ import org.scalajs.jasminetest.JasmineTest
 object LongTest extends JasmineTest {
 
   describe("java.lang.Long") {
+    it("should provide `reverseBytes`") {
+      expect(JLong.reverseBytes(0xf5ab689cd401ff14L) == 0x14ff01d49c68abf5L).toBeTruthy
+    }
+
+    it("should provide `rotateLeft`") {
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 0) == 0xf5ab689cd401ff14L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 1) == 0xeb56d139a803fe29L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 8) == 0xab689cd401ff14f5L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 13) == 0x6d139a803fe29eb5L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 64) == 0xf5ab689cd401ff14L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 65) == 0xeb56d139a803fe29L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, 80) == 0x689cd401ff14f5abL).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, -1) == 0x7ad5b44e6a00ff8aL).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, -56) == 0xab689cd401ff14f5L).toBeTruthy
+      expect(JLong.rotateLeft(0xf5ab689cd401ff14L, -70) == 0x53d6ada2735007fcL).toBeTruthy
+    }
+
+    it("should provide `rotateRight`") {
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 0) == 0xf5ab689cd401ff14L).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 1) == 0x7ad5b44e6a00ff8aL).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 8) == 0x14f5ab689cd401ffL).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 13) == 0xf8a7ad5b44e6a00fL).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 64) == 0xf5ab689cd401ff14L).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 65) == 0x7ad5b44e6a00ff8aL).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, 80) == 0xff14f5ab689cd401L).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, -1) == 0xeb56d139a803fe29L).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, -56) == 0x14f5ab689cd401ffL).toBeTruthy
+      expect(JLong.rotateRight(0xf5ab689cd401ff14L, -70) == 0x6ada2735007fc53dL).toBeTruthy
+    }
+
     it("should implement bitCount") {
       expect(JLong.bitCount(0L)).toEqual(0)
       expect(JLong.bitCount(35763829229342837L)).toEqual(26)

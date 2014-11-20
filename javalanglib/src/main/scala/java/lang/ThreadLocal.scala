@@ -1,12 +1,10 @@
 package java.lang
 
 class ThreadLocal[T] {
-  private final var hasValue = false
-  private final var i: T = _
-  private final var v: T = _
-  private final var m: ThreadLocal.ThreadLocalMap = new ThreadLocal.ThreadLocalMap()
+  private var hasValue: Boolean = false
+  private var v: T = _
 
-  protected def initialValue(): T = i
+  protected def initialValue(): T = null.asInstanceOf[T]
 
   def get(): T = {
     if (!hasValue)
@@ -14,21 +12,13 @@ class ThreadLocal[T] {
     v
   }
 
-  def remove() {
-    hasValue = false
-  }
-
-  def set(o: T) {
+  def set(o: T): Unit = {
     v = o
     hasValue = true
   }
 
-  def childValue(parentValue: T): T = parentValue
-
-  def createMap(t: Thread, firstValue: T) {}
-  def getMap(t: Thread) = m
-}
-
-object ThreadLocal {
-  class ThreadLocalMap
+  def remove(): Unit = {
+    hasValue = false
+    v = null.asInstanceOf[T] // for gc
+  }
 }

@@ -120,9 +120,17 @@ object Long {
     Integer.bitCount(lo) + Integer.bitCount(hi)
   }
 
-  def reverseBytes(i: scala.Long): scala.Long = sys.error("unimplemented")
-  def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
-  def rotateRight(i: scala.Long, distance: scala.Int): scala.Long = sys.error("unimplemented")
+  def reverseBytes(i: scala.Long): scala.Long = {
+    val hiReversed = Integer.reverseBytes((i >>> 32).toInt)
+    val loReversed = Integer.reverseBytes(i.toInt)
+    (loReversed.toLong << 32) | (hiReversed.toLong & 0xffffffffL)
+  }
+
+  def rotateLeft(i: scala.Long, distance: scala.Int): scala.Long =
+    (i << distance) | (i >>> -distance)
+
+  def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
+    (i >>> distance) | (i << -distance)
 
   def signum(i: scala.Long): scala.Long =
     if (i < 0L) -1L else if (i == 0L) 0L else 1L

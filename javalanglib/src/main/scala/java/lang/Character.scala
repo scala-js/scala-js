@@ -161,17 +161,20 @@ object Character {
 
   def valueOf(charValue: scala.Char) = new Character(charValue)
 
-  val LOWERCASE_LETTER: scala.Byte = 0
-  val UPPERCASE_LETTER: scala.Byte = 0
-  val OTHER_LETTER: scala.Byte = 0
-  val TITLECASE_LETTER: scala.Byte = 0
-  val LETTER_NUMBER: scala.Byte = 0
-  val COMBINING_SPACING_MARK: scala.Byte = 0
-  val ENCLOSING_MARK: scala.Byte = 0
-  val NON_SPACING_MARK: scala.Byte = 0
-  val MODIFIER_LETTER: scala.Byte = 0
-  val DECIMAL_DIGIT_NUMBER: scala.Byte = 0
-  val SURROGATE: scala.Byte = 0
+  /* These are supposed to be final vals of type Byte, but that's not possible.
+   * So we implement them as def's, which are binary compatible with final vals.
+   */
+  def UPPERCASE_LETTER: scala.Byte = 1
+  def LOWERCASE_LETTER: scala.Byte = 2
+  def TITLECASE_LETTER: scala.Byte = 3
+  def MODIFIER_LETTER: scala.Byte = 4
+  def OTHER_LETTER: scala.Byte = 5
+  def NON_SPACING_MARK: scala.Byte = 6
+  def ENCLOSING_MARK: scala.Byte = 7
+  def COMBINING_SPACING_MARK: scala.Byte = 8
+  def DECIMAL_DIGIT_NUMBER: scala.Byte = 9
+  def LETTER_NUMBER: scala.Byte = 10
+  def SURROGATE: scala.Byte = 19
 
   final val MIN_RADIX = 2
   final val MAX_RADIX = 36
@@ -187,9 +190,10 @@ object Character {
   final val MAX_CODE_POINT = 0x10ffff
   final val MIN_SUPPLEMENTARY_CODE_POINT = 0x10000
 
-  /* Tests */
+  // Not implemented:
   //def getType(ch: scala.Char): scala.Int
   //def getType(codePoint: scala.Int): scala.Int
+
   def digit(c: scala.Char, radix: scala.Int): scala.Int = {
     if (radix > MAX_RADIX || radix < MIN_RADIX)
       -1

@@ -44,21 +44,27 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
 
   def printStackTrace(): Unit = printStackTrace(System.err)
 
-  def printStackTrace(out: java.io.PrintStream): Unit = {
+  def printStackTrace(s: java.io.PrintStream): Unit =
+    printStackTraceImpl(s.println(_))
+
+  def printStackTrace(s: java.io.PrintWriter): Unit =
+    printStackTraceImpl(s.println(_))
+
+  private[this] def printStackTraceImpl(sprintln: String => Unit): Unit = {
     getStackTrace() // will init it if still null
 
     // Message
-    out.println(toString)
+    sprintln(toString)
 
     // Trace
     if (stackTrace.length != 0) {
       var i = 0
       while (i < stackTrace.length) {
-        out.println("  at "+stackTrace(i))
+        sprintln("  at "+stackTrace(i))
         i += 1
       }
     } else {
-      out.println("  <no stack trace available>")
+      sprintln("  <no stack trace available>")
     }
 
     // Causes
@@ -71,7 +77,7 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
       val thisLength = thisTrace.length
       val parentLength = parentTrace.length
 
-      out.println("Caused by: " + wCause.toString)
+      sprintln("Caused by: " + wCause.toString)
 
       if (thisLength != 0) {
         /* Count how many frames are shared between this stack trace and the
@@ -93,19 +99,17 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
         val lengthToPrint = thisLength - sameFrameCount
         var i = 0
         while (i < lengthToPrint) {
-          out.println("  at "+thisTrace(i))
+          sprintln("  at "+thisTrace(i))
           i += 1
         }
 
         if (sameFrameCount > 0)
-          out.println("  ... " + sameFrameCount + " more")
+          sprintln("  ... " + sameFrameCount + " more")
       } else {
-        out.println("  <no stack trace available>")
+        sprintln("  <no stack trace available>")
       }
     }
   }
-
-  // def printStackTrace(s: java.io.PrintWriter): Unit = ???
 
   override def toString() = {
     val className = getClass.getName

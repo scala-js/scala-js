@@ -1,7 +1,6 @@
 package java.lang
 
-class Void private {
-}
+final class Void private {}
 
 object Void {
   final val TYPE = classOf[scala.Unit]
