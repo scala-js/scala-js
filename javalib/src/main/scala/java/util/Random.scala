@@ -1,8 +1,8 @@
 package java.util
 
-import scala.scalajs.js
-
 import scala.annotation.tailrec
+
+import scala.scalajs.js
 
 class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
@@ -60,7 +60,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
     var i = 0
     while (i < bytes.length) {
       var rnd = nextInt()
-      var n = js.Math.min(bytes.length - i, 4)
+      var n = Math.min(bytes.length - i, 4)
       while (n > 0) {
         bytes(i) = rnd.toByte
         rnd >>= 8
@@ -96,7 +96,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
       rds = x*x + y*y
     } while (rds == 0 || rds > 1)
 
-    val c = js.Math.sqrt(-2*js.Math.log(rds)/rds)
+    val c = Math.sqrt(-2 * Math.log(rds) / rds)
 
     // Save y*c for next time
     nextNextGaussian = y*c
@@ -114,6 +114,6 @@ object Random {
     (randomInt().toLong << 32) | (randomInt().toLong & 0xffffffffL)
 
   private def randomInt(): Int =
-    (js.Math.floor(js.Math.random() * 4294967296.0) - 2147483648.0).toInt
+    (Math.floor(js.Math.random() * 4294967296.0) - 2147483648.0).toInt
 
 }
