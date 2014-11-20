@@ -119,18 +119,17 @@ class PrintWriter(protected[io] var out: Writer,
   //def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
 
   override def append(csq: CharSequence): PrintWriter = {
-    write(if (csq == null) "null" else csq.toString)
+    super.append(csq)
     this
   }
 
   override def append(csq: CharSequence, start: Int, end: Int): PrintWriter = {
-    val csq1 = if (csq == null) "null" else csq
-    write(csq1.subSequence(start, end).toString)
+    super.append(csq, start, end)
     this
   }
 
   override def append(c: Char): PrintWriter = {
-    write(c)
+    super.append(c)
     this
   }
 

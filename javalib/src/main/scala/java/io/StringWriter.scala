@@ -6,10 +6,17 @@ class StringWriter extends Writer {
 
   def this(initialSize: Int) = this()
 
-  override def append(c: Char): StringWriter = {
-    buf.append(c)
-    this
-  }
+  override def write(c: Int): Unit =
+    buf.append(c.toChar)
+
+  def write(cbuf: Array[Char], off: Int, len: Int): Unit =
+    buf.append(cbuf, off, len)
+
+  override def write(str: String): Unit =
+    buf.append(str)
+
+  override def write(str: String, off: Int, len: Int): Unit =
+    buf.append(str, off, off + len) // Third param is 'end', not 'len'
 
   override def append(csq: CharSequence): StringWriter = {
     buf.append(csq)
@@ -21,20 +28,17 @@ class StringWriter extends Writer {
     this
   }
 
-  def close(): Unit = ()
-
-  def flush(): Unit = ()
-
-  def getBuffer(): StringBuffer = buf
+  override def append(c: Char): StringWriter = {
+    buf.append(c)
+    this
+  }
 
   override def toString(): String = buf.toString
 
-  def write(cbuf: Array[Char], off: Int, len: Int): Unit =
-    buf.append(cbuf, off, len)
+  def getBuffer(): StringBuffer = buf
 
-  override def write(str: String): Unit = buf.append(str)
+  def flush(): Unit = ()
 
-  override def write(str: String, off: Int, len: Int): Unit =
-    buf.append(str, off, off + len)
+  def close(): Unit = ()
 
 }
