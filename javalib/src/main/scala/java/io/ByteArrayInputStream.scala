@@ -10,14 +10,6 @@ class ByteArrayInputStream(
 
   def this(buf: Array[Byte]) = this(buf, 0, buf.length)
 
-  override def available(): Int = count - pos
-
-  override def close(): Unit = {}
-
-  override def mark(readlimit: Int): Unit = { mark = pos }
-
-  override def markSupported(): Boolean = true
-
   override def read(): Int = {
     if (pos >= count)
       -1
@@ -35,7 +27,7 @@ class ByteArrayInputStream(
     val len = Math.min(reqLen, count - pos)
 
     if (reqLen == 0)
-       0 // 0 requested, 0 returned
+      0  // 0 requested, 0 returned
     else if (len == 0)
       -1 // nothing to read at all
     else {
@@ -45,11 +37,22 @@ class ByteArrayInputStream(
     }
   }
 
-  override def reset(): Unit = { pos = mark }
-
   override def skip(n: Long): Long = {
-    val k = Math.max(0, Math.min(n.toInt, count - pos))
-    pos += k
+    val k = Math.max(0, Math.min(n, count - pos))
+    pos += k.toInt
     k.toLong
   }
+
+  override def available(): Int = count - pos
+
+  override def markSupported(): Boolean = true
+
+  override def mark(readlimit: Int): Unit =
+    mark = pos
+
+  override def reset(): Unit =
+    pos = mark
+
+  override def close(): Unit = ()
+
 }
