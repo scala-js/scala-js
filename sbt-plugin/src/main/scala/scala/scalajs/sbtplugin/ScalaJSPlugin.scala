@@ -32,6 +32,9 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
 
+    val scalaJSStage = SettingKey[Stage]("scalaJSStage",
+        "The optimization stage at which run and test are executed", APlusSetting)
+
     val packageScalaJSLauncher = TaskKey[Attributed[File]]("packageScalaJSLauncher",
         "Writes the persistent launcher file. Fails if the mainClass is ambigous", CTask)
 
@@ -99,15 +102,15 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         "Private class loader to load jetty8 without polluting classpath. Only use this " +
         "as the `jettyClassLoader` argument of the PhantomJSEnv",
         KeyRanks.Invisible)
-
-    // Task keys to re-wire sources and run with other VM
-    val fastOptStage = TaskKey[Unit]("fastOptStage",
-        "Run/test stuff after fastOptJS. (type fastOptStage::run)", AMinusTask)
-    val fullOptStage = TaskKey[Unit]("fullOptStage",
-        "Run/test stuff after fullOptJS. (type fullOptStage::run)", AMinusTask)
   }
 
   import ScalaJSPluginInternal._
+
+  override def globalSettings: Seq[Setting[_]] = {
+    super.globalSettings ++ Seq(
+        ScalaJSKeys.scalaJSStage := Stage.PreLink
+    )
+  }
 
   /** All Scala.js settings */
   val scalaJSSettings: Seq[Setting[_]] = (

@@ -264,7 +264,10 @@ object ScalaJSBuild extends Build {
           crossVersion := ScalaJSCrossVersion.binary
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
-        val stagedRunSetting = test := {
+        test := {
+          if (scalaJSStage.value == Stage.PreLink)
+            error("Can't run toolsJS/test in preLink stage")
+
           val cp = {
             for (e <- (fullClasspath in Test).value)
               yield JSUtils.toJSstr(e.data.getAbsolutePath)
@@ -313,10 +316,6 @@ object ScalaJSBuild extends Build {
 
           runner.run()
         }
-
-        Seq(test := error("Can't run toolsJS/test in preLink stage")) ++
-        inTask(fastOptStage)(stagedRunSetting) ++
-        inTask(fullOptStage)(stagedRunSetting)
       }
   ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test")
 
