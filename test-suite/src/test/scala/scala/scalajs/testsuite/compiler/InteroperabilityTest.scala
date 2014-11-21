@@ -272,6 +272,25 @@ object InteroperabilityTest extends JasmineTest {
       expect(x.theValue).toEqual(1)
     }
 
+    it("should allow constructor params that are vals/vars in facades - #1277") {
+      js.eval("""
+          var InteroparabilityCtorInlineValue = function(x,y) {
+            this.x = x;
+            this.y = y;
+          }
+      """)
+
+      val obj = new InteroparabilityCtorInlineValue(10, -1)
+
+      expect(obj.x).toEqual(10)
+      expect(obj.y).toEqual(-1)
+
+      obj.y = 100
+
+      expect(obj.x).toEqual(10)
+      expect(obj.y).toEqual(100)
+    }
+
     it("should unbox Chars received from calling a JS interop method") {
       val obj = js.eval("""
         var obj = {
@@ -505,3 +524,5 @@ class SomeValueClass(val i: Int) extends AnyVal {
 class InteroperabilityTestCtor(x: Int = 5, y: Int = ???) extends js.Object {
   def values: js.Array[Int] = js.native
 }
+
+class InteroparabilityCtorInlineValue(val x: Int, var y: Int) extends js.Object
