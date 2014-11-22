@@ -1,13 +1,14 @@
-package java
-package lang
+package java.lang
+
+import java.io._
 
 import scala.scalajs.js
 import js.Dynamic.global
 
 object System {
-  var out: java.io.PrintStream = StandardOutPrintStream
-  var err: java.io.PrintStream = StandardErrPrintStream
-  var in: java.io.InputStream = null
+  var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
+  var err: PrintStream = new JSConsoleBasedPrintStream(isErr = true)
+  var in: InputStream = null
 
   def currentTimeMillis(): scala.Long = {
     (new js.Date).getTime().toLong
@@ -179,19 +180,52 @@ object System {
   def gc() = Runtime.getRuntime().gc()
 }
 
-private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
-  /** whether buffer is flushed. Can be true even if buffer != "" because of
-   *  line continuations. However, if !flushed => buffer != ""
+private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
+    extends PrintStream(new JSConsoleBasedPrintStream.DummyOutputStream) {
+
+  import JSConsoleBasedPrintStream._
+
+  /** Whether the buffer is flushed.
+   *  This can be true even if buffer != "" because of line continuations.
+   *  However, the converse is never true, i.e., !flushed => buffer != "".
    */
   private var flushed: scala.Boolean = true
   private var buffer: String = ""
 
-  private val lineContEnd: String = "\u21A9"
-  private val lineContStart: String = "\u21AA"
+  override def write(b: Int): Unit =
+    write(Array(b.toByte), 0, 1)
 
-  override def print(s: String): Unit = {
-    var rest: String = if (s eq null) "null" else s
-    while (!rest.isEmpty) {
+  override def write(buf: Array[scala.Byte], off: Int, len: Int): Unit = {
+    /* This does *not* decode buf as a sequence of UTF-8 code units.
+     * This is not really useful, and would uselessly pull in the UTF-8 decoder
+     * in all applications that use OutputStreams (not just PrintStreams).
+     * Instead, we use a trivial ISO-8859-1 decoder in here.
+     */
+    if (off < 0 || len < 0 || len > buf.length - off)
+      throw new IndexOutOfBoundsException
+
+    var i = 0
+    while (i < len) {
+      print((buf(i + off) & 0xff).toChar)
+      i += 1
+    }
+  }
+
+  override def print(b: scala.Boolean): Unit     = printString(String.valueOf(b))
+  override def print(c: scala.Char): Unit        = printString(String.valueOf(c))
+  override def print(i: scala.Int): Unit         = printString(String.valueOf(i))
+  override def print(l: scala.Long): Unit        = printString(String.valueOf(l))
+  override def print(f: scala.Float): Unit       = printString(String.valueOf(f))
+  override def print(d: scala.Double): Unit      = printString(String.valueOf(d))
+  override def print(s: Array[scala.Char]): Unit = printString(String.valueOf(s))
+  override def print(s: String): Unit            = printString(if (s == null) "null" else s)
+  override def print(obj: AnyRef): Unit          = printString(String.valueOf(obj))
+
+  override def println(): Unit = printString("\n")
+
+  private def printString(s: String): Unit = {
+    var rest: String = s
+    while (rest != "") {
       val nlPos = rest.indexOf("\n")
       if (nlPos < 0) {
         buffer += rest
@@ -212,29 +246,16 @@ private[lang] trait JSConsoleBasedPrintStream extends io.PrintStream {
    * symbol for the new line if the buffer is flushed.
    */
   override def flush(): Unit = if (!flushed) {
-    doWriteLine(buffer + lineContEnd)
-    buffer = lineContStart
+    doWriteLine(buffer + LineContEnd)
+    buffer = LineContStart
     flushed = true
   }
 
-  protected def doWriteLine(line: String): Unit
-}
+  override def close(): Unit = ()
 
-private[lang] object StandardOutPrintStream
-extends io.PrintStream(StandardOut, true) with JSConsoleBasedPrintStream {
-
-  override protected def doWriteLine(line: String): Unit = {
-    if (!(!global.console))
-      global.console.log(line)
-  }
-}
-
-private[lang] object StandardErrPrintStream
-extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
-
-  override protected def doWriteLine(line: String): Unit = {
+  private def doWriteLine(line: String): Unit = {
     if (!(!global.console)) {
-      if (!(!global.console.error))
+      if (isErr && !(!global.console.error))
         global.console.error(line)
       else
         global.console.log(line)
@@ -242,10 +263,13 @@ extends io.PrintStream(StandardErr, true) with JSConsoleBasedPrintStream {
   }
 }
 
-private[lang] object StandardOut extends io.OutputStream {
-  def write(b: Int) = StandardOutPrintStream.print(b.toChar.toString)
-}
+private[lang] object JSConsoleBasedPrintStream {
+  private final val LineContEnd: String = "\u21A9"
+  private final val LineContStart: String = "\u21AA"
 
-private[lang] object StandardErr extends io.OutputStream {
-  def write(b: Int) = StandardErrPrintStream.print(b.toChar.toString)
+  class DummyOutputStream extends OutputStream {
+    def write(c: Int): Unit =
+      throw new AssertionError(
+          "Should not get in JSConsoleBasedPrintStream.DummyOutputStream")
+  }
 }
