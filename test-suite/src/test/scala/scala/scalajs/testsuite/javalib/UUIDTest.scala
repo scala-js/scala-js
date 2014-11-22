@@ -154,8 +154,6 @@ object UUIDTest extends JasmineTest {
 
       val uuid2 = UUID.fromString("00000000-0000-1000-8000-000000000000")
       expect(uuid2.equals(new UUID(0x0000000000001000L, 0x8000000000000000L)))
-      println(java.lang.Long.toHexString(uuid2.getMostSignificantBits()))
-      println(java.lang.Long.toHexString(uuid2.getLeastSignificantBits()))
       expect(uuid2.getMostSignificantBits() == 0x0000000000001000L).toBeTruthy
       expect(uuid2.getLeastSignificantBits() == 0x8000000000000000L).toBeTruthy
       expect(uuid2.variant()).toEqual(2)
