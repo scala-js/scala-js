@@ -48,6 +48,25 @@ object Bits {
   private val highOffset = if (areTypedArraysBigEndian) 0 else 1
   private val lowOffset  = if (areTypedArraysBigEndian) 1 else 0
 
+  /** Hash code of a number (excluding Longs).
+   *
+   *  Because of the common encoding for integer and floating point values,
+   *  the hashCode of Floats and Doubles must align with that of Ints for the
+   *  common values.
+   *
+   *  For other values, we use the hashCode specified by the JavaDoc for
+   *  *Doubles*, even for values which are valid Float values. Because of the
+   *  previous point, we cannot align completely with the Java specification,
+   *  so there is no point trying to be a bit more aligned here. Always using
+   *  the Double version should typically be faster on VMs without fround
+   *  support because we avoid several fround operations.
+   */
+  def numberHashCode(value: Double): Int = {
+    val iv = value.toInt
+    if (iv == value) iv
+    else doubleToLongBits(value).hashCode()
+  }
+
   def intBitsToFloat(bits: Int): Float = {
     if (areTypedArraysSupported) {
       int32Array(0) = bits

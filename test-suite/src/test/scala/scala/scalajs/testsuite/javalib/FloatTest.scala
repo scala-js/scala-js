@@ -23,6 +23,32 @@ object FloatTest extends JasmineTest {
       expect(Float.box(Float.NaN) == Float.box(Float.NaN)).toBeTruthy
     }
 
+    it("hashCode") {
+      def hashCodeNotInlined(x: Any): Int = {
+        var y = x // do not inline
+        y.hashCode
+      }
+
+      def test(x: Float, expected: Int): Unit = {
+        expect(x.hashCode).toEqual(expected)
+        expect(hashCodeNotInlined(x)).toEqual(expected)
+      }
+
+      test(0.0f, 0)
+      test(-0.0f, 0)
+      test(1234.0f, 1234)
+      test(1.5f, 1073217536)
+      test(-54f, -54)
+
+      test(Float.MinPositiveValue, 916455424)
+      test(Float.MinValue, 670040063)
+      test(Float.MaxValue, -1477443585)
+
+      test(Float.NaN, 2146959360)
+      test(Float.PositiveInfinity, 2146435072)
+      test(Float.NegativeInfinity, -1048576)
+    }
+
     it("should provide `toString` with integer values when an integer") {
       expect(0.0f.toString).toEqual("0")
       expect(-0.0f.toString).toEqual("0")

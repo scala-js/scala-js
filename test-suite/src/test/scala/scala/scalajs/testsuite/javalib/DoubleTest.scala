@@ -23,6 +23,33 @@ object DoubleTest extends JasmineTest {
       expect(Double.box(Double.NaN) == Double.box(Double.NaN)).toBeTruthy
     }
 
+    it("hashCode") {
+      def hashCodeNotInlined(x: Any): Int = {
+        var y = x // do not inline
+        y.hashCode
+      }
+
+      def test(x: Double, expected: Int): Unit = {
+        expect(x.hashCode).toEqual(expected)
+        expect(hashCodeNotInlined(x)).toEqual(expected)
+      }
+
+      test(0.0, 0)
+      test(-0.0, 0)
+      test(1234.0, 1234)
+      test(1.5, 1073217536)
+      test(Math.PI, 340593891)
+      test(-54.0, -54)
+
+      test(Double.MinPositiveValue, 1)
+      test(Double.MinValue, 1048576)
+      test(Double.MaxValue, -2146435072)
+
+      test(Double.NaN, 2146959360)
+      test(Double.PositiveInfinity, 2146435072)
+      test(Double.NegativeInfinity, -1048576)
+    }
+
     it("should provide `toString` with integer values when an integer") {
       expect(0.0.toString).toEqual("0")
       expect(-0.0.toString).toEqual("0")

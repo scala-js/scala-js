@@ -181,6 +181,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       RuntimePackage.accessModule()
       RuntimePackage.callMethod("froundPolyfill__D__D")
     }
+
+    val BitsModuleClass = lookupClass("sjsr_Bits$")
+    BitsModuleClass.accessModule()
+    BitsModuleClass.callMethod("numberHashCode__D__I")
   }
 
   def reachManually(info: ManualReachability) = {

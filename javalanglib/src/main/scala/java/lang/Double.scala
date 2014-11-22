@@ -29,7 +29,7 @@ final class Double private () extends Number with Comparable[Double] {
   }
 
   @inline override def hashCode(): Int =
-    intValue
+    scala.scalajs.runtime.Bits.numberHashCode(doubleValue)
 
   @inline override def compareTo(that: Double): Int =
     Double.compare(doubleValue, that.doubleValue)

@@ -26,8 +26,9 @@ final class Float private () extends Number with Comparable[Float] {
       false
   }
 
+  // Uses the hashCode of Doubles. See Bits.numberHashCode for the rationale.
   @inline override def hashCode(): Int =
-    intValue
+    scala.scalajs.runtime.Bits.numberHashCode(doubleValue)
 
   @inline override def compareTo(that: Float): Int =
     Float.compare(floatValue, that.floatValue)
