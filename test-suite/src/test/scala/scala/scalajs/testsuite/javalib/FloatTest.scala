@@ -106,5 +106,22 @@ object FloatTest extends JasmineTest {
       expect(0f.isInfinite).toBeFalsy
     }
 
+    it("isNaN") {
+      def f(v: Float): Boolean = {
+        var v2 = v // do not inline
+        v2.isNaN
+      }
+
+      expect(f(Float.NaN)).toBeTruthy
+
+      expect(f(Float.PositiveInfinity)).toBeFalsy
+      expect(f(Float.NegativeInfinity)).toBeFalsy
+      expect(f(1f / 0)).toBeFalsy
+      expect(f(-1f / 0)).toBeFalsy
+      expect(f(0f)).toBeFalsy
+      expect(f(3f)).toBeFalsy
+      expect(f(-1.5f)).toBeFalsy
+    }
+
   }
 }

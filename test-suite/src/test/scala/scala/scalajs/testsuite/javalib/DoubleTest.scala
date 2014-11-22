@@ -101,5 +101,22 @@ object DoubleTest extends JasmineTest {
       expect((0.0).isInfinite).toBeFalsy
     }
 
+    it("isNaN") {
+      def f(v: Double): Boolean = {
+        var v2 = v // do not inline
+        v2.isNaN
+      }
+
+      expect(f(Double.NaN)).toBeTruthy
+
+      expect(f(Double.PositiveInfinity)).toBeFalsy
+      expect(f(Double.NegativeInfinity)).toBeFalsy
+      expect(f(1.0 / 0)).toBeFalsy
+      expect(f(-1.0 / 0)).toBeFalsy
+      expect(f(0.0)).toBeFalsy
+      expect(f(3.0)).toBeFalsy
+      expect(f(-1.5)).toBeFalsy
+    }
+
   }
 }
