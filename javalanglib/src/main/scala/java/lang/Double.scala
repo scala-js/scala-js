@@ -102,6 +102,9 @@ object Double {
   @inline def isInfinite(v: scala.Double): scala.Boolean =
     v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
-  def longBitsToDouble(bits: scala.Long): scala.Double = sys.error("unimplemented")
-  def doubleToLongBits(value: scala.Double): scala.Long = sys.error("unimplemented")
+  @inline def longBitsToDouble(bits: scala.Long): scala.Double =
+    scala.scalajs.runtime.Bits.longBitsToDouble(bits)
+
+  @inline def doubleToLongBits(value: scala.Double): scala.Long =
+    scala.scalajs.runtime.Bits.doubleToLongBits(value)
 }

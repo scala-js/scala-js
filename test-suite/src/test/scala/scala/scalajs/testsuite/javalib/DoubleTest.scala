@@ -118,5 +118,73 @@ object DoubleTest extends JasmineTest {
       expect(f(-1.5)).toBeFalsy
     }
 
+    it("longBitsToDouble") {
+      def isZero(v: Double, neg: Boolean): Boolean = {
+        (v == 0.0) && (1 / v == (
+            if (neg) Double.NegativeInfinity
+            else Double.PositiveInfinity))
+      }
+
+      import JDouble.{longBitsToDouble => f}
+
+      // Specials
+      expect(f(0x7ff0000000000000L)).toEqual(Double.PositiveInfinity)
+      expect(f(0xfff0000000000000L)).toEqual(Double.NegativeInfinity)
+      expect(isZero(f(0x0000000000000000L), false)).toBeTruthy
+      expect(isZero(f(0x8000000000000000L), true)).toBeTruthy
+      expect(f(0x7ff8000000000000L).isNaN).toBeTruthy // canonical NaN
+
+      // Non-canonical NaNs
+      expect(f(0x7ff0000000000001L).isNaN).toBeTruthy // smallest positive NaN
+      expect(f(0x7ff15ab515d3cca1L).isNaN).toBeTruthy // an arbitrary positive NaN
+      expect(f(0x7fffffffffffffffL).isNaN).toBeTruthy // largest positive NaN
+      expect(f(0xfff0000000000001L).isNaN).toBeTruthy // smallest negative NaN
+      expect(f(0xfff15ab515d3cca1L).isNaN).toBeTruthy // an arbitrary negative NaN
+      expect(f(0xffffffffffffffffL).isNaN).toBeTruthy // largest negative NaN
+
+      // Normal forms
+      expect(f(0x0010000000000000L)).toEqual(2.2250738585072014e-308)  // smallest pos normal form
+      expect(f(0x7fefffffffffffffL)).toEqual(1.7976931348623157e308)   // largest pos normal form
+      expect(f(0x4d124568bc6584caL)).toEqual(1.8790766677624813e63)    // an arbitrary pos normal form
+      expect(f(0x8010000000000000L)).toEqual(-2.2250738585072014e-308) // smallest neg normal form
+      expect(f(0xffefffffffffffffL)).toEqual(-1.7976931348623157e308)  // largest neg normal form
+      expect(f(0xcd124568bc6584caL)).toEqual(-1.8790766677624813e63)   // an arbitrary neg normal form
+
+      // Subnormal forms
+      expect(f(0x0000000000000001L)).toEqual(Double.MinPositiveValue)  // smallest pos subnormal form
+      expect(f(0x000fffffffffffffL)).toEqual(2.225073858507201e-308)   // largest pos subnormal form
+      expect(f(0x000c5d44ae45cb60L)).toEqual(1.719471609939382e-308)   // an arbitrary pos subnormal form
+      expect(f(0x8000000000000001L)).toEqual(-Double.MinPositiveValue) // smallest neg subnormal form
+      expect(f(0x800fffffffffffffL)).toEqual(-2.225073858507201e-308)  // largest neg subnormal form
+      expect(f(0x800c5d44ae45cb60L)).toEqual(-1.719471609939382e-308)  // an arbitrary neg subnormal form
+    }
+
+    it("doubleToLongBits") {
+      import JDouble.{doubleToLongBits => f}
+
+      // Specials
+      expect(f(Double.PositiveInfinity) == 0x7ff0000000000000L).toBeTruthy
+      expect(f(Double.NegativeInfinity) == 0xfff0000000000000L)
+      expect(f(0.0) == 0x0000000000000000L).toBeTruthy
+      expect(f(-0.0) == 0x8000000000000000L).toBeTruthy
+      expect(f(Double.NaN) == 0x7ff8000000000000L).toBeTruthy // canonical NaN
+
+      // Normal forms
+      expect(f(2.2250738585072014e-308) == 0x0010000000000000L).toBeTruthy  // smallest pos normal form
+      expect(f(1.7976931348623157e308) == 0x7fefffffffffffffL).toBeTruthy   // largest pos normal form
+      expect(f(1.8790766677624813e63) == 0x4d124568bc6584caL).toBeTruthy    // an arbitrary pos normal form
+      expect(f(-2.2250738585072014e-308) == 0x8010000000000000L).toBeTruthy // smallest neg normal form
+      expect(f(-1.7976931348623157e308) == 0xffefffffffffffffL).toBeTruthy  // largest neg normal form
+      expect(f(-1.8790766677624813e63) == 0xcd124568bc6584caL).toBeTruthy   // an arbitrary neg normal form
+
+      // Subnormal forms
+      expect(f(Double.MinPositiveValue) == 0x0000000000000001L).toBeTruthy  // smallest pos subnormal form
+      expect(f(2.225073858507201e-308) == 0x000fffffffffffffL).toBeTruthy   // largest pos subnormal form
+      expect(f(1.719471609939382e-308) == 0x000c5d44ae45cb60L).toBeTruthy   // an arbitrary pos subnormal form
+      expect(f(-Double.MinPositiveValue) == 0x8000000000000001L).toBeTruthy // smallest neg subnormal form
+      expect(f(-2.225073858507201e-308) == 0x800fffffffffffffL).toBeTruthy  // largest neg subnormal form
+      expect(f(-1.719471609939382e-308) == 0x800c5d44ae45cb60L).toBeTruthy  // an arbitrary neg subnormal form
+    }
+
   }
 }

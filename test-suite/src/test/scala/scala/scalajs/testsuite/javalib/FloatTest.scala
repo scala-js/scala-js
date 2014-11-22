@@ -123,5 +123,73 @@ object FloatTest extends JasmineTest {
       expect(f(-1.5f)).toBeFalsy
     }
 
+    it("intBitsToFloat") {
+      def isZero(v: Float, neg: Boolean): Boolean = {
+        (v == 0.0f) && (1 / v == (
+            if (neg) Float.NegativeInfinity
+            else Float.PositiveInfinity))
+      }
+
+      import JFloat.{intBitsToFloat => f}
+
+      // Specials
+      expect(f(0x7f800000)).toEqual(Float.PositiveInfinity)
+      expect(f(0xff800000)).toEqual(Float.NegativeInfinity)
+      expect(isZero(f(0x00000000), false)).toBeTruthy
+      expect(isZero(f(0x80000000), true)).toBeTruthy
+      expect(f(0x7fc00000).isNaN).toBeTruthy // canonical NaN
+
+      // Non-canonical NaNs
+      expect(f(0x7f800001).isNaN).toBeTruthy // smallest positive NaN
+      expect(f(0x7f915ab5).isNaN).toBeTruthy // an arbitrary positive NaN
+      expect(f(0x7fffffff).isNaN).toBeTruthy // largest positive NaN
+      expect(f(0xff800001).isNaN).toBeTruthy // smallest negative NaN
+      expect(f(0xff915ab5).isNaN).toBeTruthy // an arbitrary negative NaN
+      expect(f(0xffffffff).isNaN).toBeTruthy // largest negative NaN
+
+      // Normal forms
+      expect(f(0x00800000)).toEqual(1.17549435e-38f)  // smallest pos normal form
+      expect(f(0x7f7fffff)).toEqual(3.4028234e38f)    // largest pos normal form
+      expect(f(0x4d124568)).toEqual(1.53376384e8f)    // an arbitrary pos normal form
+      expect(f(0x80800000)).toEqual(-1.17549435e-38f) // smallest neg normal form
+      expect(f(0xff7fffff)).toEqual(-3.4028234e38f)   // largest neg normal form
+      expect(f(0xcd124568)).toEqual(-1.53376384e8f)   // an arbitrary neg normal form
+
+      // Subnormal forms
+      expect(f(0x00000001)).toEqual(Float.MinPositiveValue)  // smallest pos subnormal form
+      expect(f(0x007fffff)).toEqual(1.1754942e-38f)          // largest pos subnormal form
+      expect(f(0x007c5d44)).toEqual(1.1421059e-38f)          // an arbitrary pos subnormal form
+      expect(f(0x80000001)).toEqual(-Float.MinPositiveValue) // smallest neg subnormal form
+      expect(f(0x807fffff)).toEqual(-1.1754942e-38f)         // largest neg subnormal form
+      expect(f(0x807c5d44)).toEqual(-1.1421059e-38f)         // an arbitrary neg subnormal form
+    }
+
+    it("floatToIntBits") {
+      import JFloat.{floatToIntBits => f}
+
+      // Specials
+      expect(f(Float.PositiveInfinity)).toEqual(0x7f800000)
+      expect(f(Float.NegativeInfinity)).toEqual(0xff800000)
+      expect(f(0.0f)).toEqual(0x00000000)
+      expect(f(-0.0f)).toEqual(0x80000000)
+      expect(f(Float.NaN)).toEqual(0x7fc00000) // canonical NaN
+
+      // Normal forms
+      expect(f(1.17549435e-38f)).toEqual(0x00800000)  // smallest pos normal form
+      expect(f(3.4028234e38f)).toEqual(0x7f7fffff)    // largest pos normal form
+      expect(f(1.53376384e8f)).toEqual(0x4d124568)    // an arbitrary pos normal form
+      expect(f(-1.17549435e-38f)).toEqual(0x80800000) // smallest neg normal form
+      expect(f(-3.4028234e38f)).toEqual(0xff7fffff)   // largest neg normal form
+      expect(f(-1.53376384e8f)).toEqual(0xcd124568)   // an arbitrary neg normal form
+
+      // Subnormal forms
+      expect(f(Float.MinPositiveValue)).toEqual(0x00000001)  // smallest pos subnormal form
+      expect(f(1.1754942e-38f)).toEqual(0x007fffff)          // largest pos subnormal form
+      expect(f(1.1421059e-38f)).toEqual(0x007c5d44)          // an arbitrary pos subnormal form
+      expect(f(-Float.MinPositiveValue)).toEqual(0x80000001) // smallest neg subnormal form
+      expect(f(-1.1754942e-38f)).toEqual(0x807fffff)         // largest neg subnormal form
+      expect(f(-1.1421059e-38f)).toEqual(0x807c5d44)         // an arbitrary neg subnormal form
+    }
+
   }
 }

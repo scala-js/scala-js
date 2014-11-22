@@ -143,7 +143,7 @@ package object runtime {
           Double.PositiveInfinity
         } else {
           val twoPowE0 = pow(2, e0)
-          val f0 = roundToEven(av / twoPowE0 * twoPowFbits)
+          val f0 = Bits.roundToEven(av / twoPowE0 * twoPowFbits)
           if (f0 / twoPowFbits >= 2) {
             //val e = e0 + 1.0 // not used
             val f = 1.0
@@ -166,20 +166,11 @@ package object runtime {
       } else {
         // Subnormal
         val rounder = Float.MinPositiveValue.toDouble
-        roundToEven(av / rounder) * rounder
+        Bits.roundToEven(av / rounder) * rounder
       }
 
       if (isNegative) -absResult else absResult
     }
-  }
-
-  @inline private def roundToEven(n: Double): Double = {
-    val w = Math.floor(n)
-    val f = n - w
-    if (f < 0.5) w
-    else if (f > 0.5) w + 1
-    else if (w % 2 != 0) w + 1
-    else w
   }
 
 }

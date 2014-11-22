@@ -87,6 +87,9 @@ object Float {
   @inline def isInfinite(v: scala.Float): scala.Boolean =
     v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
-  def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
-  def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
+  @inline def intBitsToFloat(bits: scala.Int): scala.Float =
+    scala.scalajs.runtime.Bits.intBitsToFloat(bits)
+
+  @inline def floatToIntBits(value: scala.Float): scala.Int =
+    scala.scalajs.runtime.Bits.floatToIntBits(value)
 }
