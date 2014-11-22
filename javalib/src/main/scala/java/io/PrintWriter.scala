@@ -7,14 +7,16 @@ class PrintWriter(protected[io] var out: Writer,
 
   def this(out: Writer) = this(out, false)
 
-  /* The following constructors, although implemented, will not link, since
-   * File, FileOutputStream, BufferedOutputStream and OutputStreamWriter are
-   * not implemented. They're here just in case a third-party library on the
-   * classpath implements those.
-   */
   def this(out: OutputStream, autoFlush: Boolean) =
     this(new OutputStreamWriter(out), autoFlush)
-  def this(out: OutputStream) = this(out, false)
+  def this(out: OutputStream) =
+    this(out, false)
+
+  /* The following constructors, although implemented, will not link, since
+   * File, FileOutputStream and BufferedOutputStream are not implemented.
+   * They're here just in case a third-party library on the classpath
+   * implements those.
+   */
   def this(file: File) =
     this(new BufferedOutputStream(new FileOutputStream(file)))
   def this(file: File, csn: String) =
