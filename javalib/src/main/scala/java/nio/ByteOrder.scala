@@ -9,7 +9,7 @@ object ByteOrder {
   val LITTLE_ENDIAN: ByteOrder = new ByteOrder("LITTLE_ENDIAN")
 
   def nativeOrder(): ByteOrder = {
-    // TODO Should we actually do that properly with Typed Arrays?
-    BIG_ENDIAN
+    if (scala.scalajs.runtime.Bits.areTypedArraysBigEndian) BIG_ENDIAN
+    else LITTLE_ENDIAN
   }
 }
