@@ -11,11 +11,30 @@ class ByteArrayOutputStream(initBufSize: Int) extends OutputStream {
 
   def this() = this(32)
 
-  override def close(): Unit = {}
+  override def write(b: Int): Unit = {
+    if (count >= buf.length)
+      growBuf(1)
 
-  def reset(): Unit = { count = 0 }
+    buf(count) = b.toByte
+    count += 1
+  }
 
-  def size(): Int = count
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    if (off < 0 || len < 0 || len > b.length - off)
+      throw new IndexOutOfBoundsException()
+
+    if (count + len > buf.length)
+      growBuf(len)
+
+    System.arraycopy(b, off, buf, count, len)
+    count += len
+  }
+
+  def writeTo(out: OutputStream): Unit =
+    out.write(buf, 0, count)
+
+  def reset(): Unit =
+    count = 0
 
   def toByteArray(): Array[Byte] = {
     val res = new Array[Byte](count)
@@ -23,31 +42,18 @@ class ByteArrayOutputStream(initBufSize: Int) extends OutputStream {
     res
   }
 
+  def size(): Int = count
+
   override def toString(): String =
     new String(buf, 0, count)
 
-  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    if (off < 0 || len < 0 || off + len > b.length)
-      throw new IndexOutOfBoundsException()
+  def toString(charsetName: String): String =
+    new String(buf, 0, count, charsetName)
 
-    if (count + len > buf.length) incBuf(len)
+  override def close(): Unit = ()
 
-    System.arraycopy(b, off, buf, count, len)
-    count += len
-  }
-
-  override def write(b: Int): Unit = {
-    if (count >= buf.length) incBuf(1)
-
-    buf(count) = b.toByte
-    count += 1
-  }
-
-  def writeTo(out: OutputStream): Unit =
-    out.write(buf, 0, count)
-
-  private def incBuf(min: Int): Unit = {
-    val newSize = Math.max(buf.length + min, buf.length * 2)
+  private def growBuf(minIncrement: Int): Unit = {
+    val newSize = Math.max(count + minIncrement, buf.length * 2)
     val newBuf = new Array[Byte](newSize)
     System.arraycopy(buf, 0, newBuf, 0, count)
     buf = newBuf
