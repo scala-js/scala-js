@@ -19,9 +19,9 @@ object Jetty9Test {
 
   private val jettyPort = 23548
 
-  val runSetting = run in fastOptStage <<= Def.inputTask {
-    val env = (jsEnv in fastOptStage in Compile).value.asInstanceOf[ComJSEnv]
-    val cp = (scalaJSExecClasspath in fastOptStage in Compile).value
+  val runSetting = run <<= Def.inputTask {
+    val env = (jsEnv in Compile).value.asInstanceOf[ComJSEnv]
+    val cp = (scalaJSExecClasspath in Compile).value
     val jsConsole = scalaJSConsole.value
 
     val code = new MemVirtualJSFile("runner.js").withContent(

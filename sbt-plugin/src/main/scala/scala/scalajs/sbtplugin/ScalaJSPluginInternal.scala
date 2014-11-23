@@ -309,9 +309,18 @@ object ScalaJSPluginInternal {
         requiresDOM.?.value.getOrElse(scalaJSExecClasspath.value.requiresDOM),
 
       // Default jsEnv
-      jsEnv := preLinkJSEnv.?.value.getOrElse {
-        new RhinoJSEnv(scalaJSSemantics.value,
-            withDOM = scalaJSRequestsDOM.value)
+      jsEnv <<= Def.taskDyn {
+        scalaJSStage.value match {
+          case Stage.PreLink =>
+            Def.task {
+              preLinkJSEnv.?.value.getOrElse {
+                new RhinoJSEnv(scalaJSSemantics.value,
+                    withDOM = scalaJSRequestsDOM.value)
+              }
+            }
+          case Stage.FastOpt | Stage.FullOpt =>
+            Def.task(scalaJSDefaultPostLinkJSEnv.value)
+        }
       },
 
       // Wire jsEnv and sources for other stages
@@ -322,17 +331,16 @@ object ScalaJSPluginInternal {
           new NodeJSEnv
       },
 
-      jsEnv in fastOptStage <<= scalaJSDefaultPostLinkJSEnv,
-      jsEnv in fullOptStage <<= scalaJSDefaultPostLinkJSEnv,
-
-      // Define execution classpaths
-      scalaJSExecClasspath                 := scalaJSPreLinkClasspath.value,
-      scalaJSExecClasspath in fastOptStage := fastOptJS.value.get(scalaJSCompleteClasspath).get,
-      scalaJSExecClasspath in fullOptStage := fullOptJS.value.get(scalaJSCompleteClasspath).get,
-
-      // Dummy task need dummy tags (used for concurrency restrictions)
-      tags in fastOptStage := Seq(),
-      tags in fullOptStage := Seq()
+      scalaJSExecClasspath <<= Def.taskDyn {
+        scalaJSStage.value match {
+          case Stage.PreLink =>
+            Def.task { scalaJSPreLinkClasspath.value }
+          case Stage.FastOpt =>
+            Def.task { fastOptJS.value.get(scalaJSCompleteClasspath).get }
+          case Stage.FullOpt =>
+            Def.task { fullOptJS.value.get(scalaJSCompleteClasspath).get }
+        }
+      }
   )
 
   /** Run a class in a given environment using a given launcher */
@@ -433,11 +441,7 @@ object ScalaJSPluginInternal {
 
   val scalaJSCompileSettings = (
       scalaJSConfigSettings ++
-      scalaJSRunSettings ++
-
-      // Staged runners
-      inTask(fastOptStage)(scalaJSRunSettings) ++
-      inTask(fullOptStage)(scalaJSRunSettings)
+      scalaJSRunSettings
   )
 
   val scalaJSTestFrameworkSettings = Seq(
@@ -478,47 +482,6 @@ object ScalaJSPluginInternal {
       testLoader := JSClasspathLoader(scalaJSExecClasspath.value)
   )
 
-  /** Transformer to force keys (which are not in exclude list) to be
-   *  scoped in a given task if they weren't scoped to the Global task
-   */
-  class ForceTaskScope[A](task: TaskKey[A],
-      excl: Set[AttributeKey[_]]) extends (ScopedKey ~> ScopedKey) {
-    def apply[B](sc: ScopedKey[B]) = {
-      if (!excl.contains(sc.key) && sc.scope.task != Global) {
-        val scope = sc.scope.copy(task = Select(task.key))
-        sc.copy(scope = scope)
-      } else sc
-    }
-  }
-
-  private def filterTask(
-      settings: Seq[Def.Setting[_]],
-      task: TaskKey[_],
-      keys: Set[AttributeKey[_]],
-      excl: Set[AttributeKey[_]]) = {
-    val f = new ForceTaskScope(task, excl)
-
-    for {
-      setting <- settings if keys.contains(setting.key.key)
-    } yield setting mapKey f mapReferenced f
-  }
-
-  def stagedTestSettings[A](task: TaskKey[A]) = {
-    // Re-filter general settings
-    val hackedTestTasks = filterTask(Defaults.testTasks, task,
-        keys = Set(executeTests.key, testListeners.key,
-            testOptions.key, test.key, testOnly.key, testExecution.key),
-        excl = Set(testFilter.key, testGrouping.key))
-
-    // Re-filter settings specific to testQuick
-    val hackedTestQuickTasks = filterTask(Defaults.testTasks, task,
-        keys = Set(testFilter.key, testQuick.key),
-        excl = Set(testGrouping.key))
-
-    hackedTestTasks ++ hackedTestQuickTasks ++
-    inTask(task)(scalaJSTestFrameworkSettings)
-  }
-
   val scalaJSTestBuildSettings = (
       scalaJSConfigSettings
   ) ++ (
@@ -530,11 +493,7 @@ object ScalaJSPluginInternal {
 
   val scalaJSTestSettings = (
       scalaJSTestBuildSettings ++
-      scalaJSTestFrameworkSettings ++
-
-      // Add staged tests
-      stagedTestSettings(fastOptStage) ++
-      stagedTestSettings(fullOptStage)
+      scalaJSTestFrameworkSettings
   )
 
   val scalaJSDependenciesSettings = Seq(
