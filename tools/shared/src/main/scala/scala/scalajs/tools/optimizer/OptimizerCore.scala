@@ -2954,12 +2954,21 @@ private[optimizer] object OptimizerCore {
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
-  private case class RefinedType(base: Type, isExact: Boolean,
-      isNullable: Boolean, allocationSite: Option[AllocationSite] = None) {
+  private case class RefinedType private (base: Type, isExact: Boolean,
+      isNullable: Boolean)(
+      val allocationSite: Option[AllocationSite], dummy: Int = 0) {
+
     def isNothingType: Boolean = base == NothingType
   }
 
   private object RefinedType {
+    def apply(base: Type, isExact: Boolean, isNullable: Boolean,
+        allocationSite: Option[AllocationSite]): RefinedType =
+      new RefinedType(base, isExact, isNullable)(allocationSite)
+
+    def apply(base: Type, isExact: Boolean, isNullable: Boolean): RefinedType =
+      RefinedType(base, isExact, isNullable, None)
+
     def apply(tpe: Type): RefinedType = tpe match {
       case BooleanType | IntType | FloatType | DoubleType | StringType |
           UndefType | NothingType | _:RecordType | NoType =>
