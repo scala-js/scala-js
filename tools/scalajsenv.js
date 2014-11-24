@@ -227,7 +227,7 @@ ScalaJS.objectHashCode = function(instance) {
     case "string":
       return ScalaJS.m.sjsr_RuntimeString().hashCode__T__I(instance);
     case "number":
-      return instance | 0;
+      return ScalaJS.m.sjsr_Bits().numberHashCode__D__I(instance);
     case "boolean":
       return instance ? 1231 : 1237;
     case "undefined":

@@ -26,8 +26,9 @@ final class Float private () extends Number with Comparable[Float] {
       false
   }
 
+  // Uses the hashCode of Doubles. See Bits.numberHashCode for the rationale.
   @inline override def hashCode(): Int =
-    intValue
+    scala.scalajs.runtime.Bits.numberHashCode(doubleValue)
 
   @inline override def compareTo(that: Float): Int =
     Float.compare(floatValue, that.floatValue)
@@ -87,6 +88,9 @@ object Float {
   @inline def isInfinite(v: scala.Float): scala.Boolean =
     v == POSITIVE_INFINITY || v == NEGATIVE_INFINITY
 
-  def intBitsToFloat(bits: scala.Int): scala.Float = sys.error("unimplemented")
-  def floatToIntBits(value: scala.Float): scala.Int = sys.error("unimplemented")
+  @inline def intBitsToFloat(bits: scala.Int): scala.Float =
+    scala.scalajs.runtime.Bits.intBitsToFloat(bits)
+
+  @inline def floatToIntBits(value: scala.Float): scala.Int =
+    scala.scalajs.runtime.Bits.floatToIntBits(value)
 }
