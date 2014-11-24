@@ -522,6 +522,86 @@ trait ArraysTest extends JasmineTest {
       expect(sequencescopy).toEqual(Array[CharSequence]("b", "c", "d", "e"))
     }
 
+    it("should respond to `hashCode` for Boolean") {
+      expect(Arrays.hashCode(null: Array[Boolean])).toEqual(0)
+      expect(Arrays.hashCode(Array[Boolean]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Boolean](false))).toEqual(1268)
+      expect(Arrays.hashCode(Array[Boolean](true, false))).toEqual(40359)
+    }
+
+    it("should respond to `hashCode` for Chars") {
+      expect(Arrays.hashCode(null: Array[Char])).toEqual(0)
+      expect(Arrays.hashCode(Array[Char]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Char]('a'))).toEqual(128)
+      expect(Arrays.hashCode(Array[Char]('c', '&'))).toEqual(4068)
+      expect(Arrays.hashCode(Array[Char]('-', '5', 'q'))).toEqual(74792)
+      expect(Arrays.hashCode(Array[Char]('.', ' ', '\u4323', 'v', '~'))).toEqual(88584920)
+    }
+
+    it("should respond to `hashCode` for Bytes") {
+      expect(Arrays.hashCode(null: Array[Byte])).toEqual(0)
+      expect(Arrays.hashCode(Array[Byte]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Byte](1))).toEqual(32)
+      expect(Arrays.hashCode(Array[Byte](7, -125))).toEqual(1053)
+      expect(Arrays.hashCode(Array[Byte](3, 0, 45))).toEqual(32719)
+      expect(Arrays.hashCode(Array[Byte](0, 45, 100, 1, 1))).toEqual(30065878)
+    }
+
+    it("should respond to `hashCode` for Shorts") {
+      expect(Arrays.hashCode(null: Array[Short])).toEqual(0)
+      expect(Arrays.hashCode(Array[Short]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Short](1))).toEqual(32)
+      expect(Arrays.hashCode(Array[Short](7, -125))).toEqual(1053)
+      expect(Arrays.hashCode(Array[Short](3, 0, 4534))).toEqual(37208)
+      expect(Arrays.hashCode(Array[Short](0, 45, 100, 1, 1))).toEqual(30065878)
+    }
+
+    it("should respond to `hashCode` for Ints") {
+      expect(Arrays.hashCode(null: Array[Int])).toEqual(0)
+      expect(Arrays.hashCode(Array[Int]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Int](1))).toEqual(32)
+      expect(Arrays.hashCode(Array[Int](7, -125))).toEqual(1053)
+      expect(Arrays.hashCode(Array[Int](3, 0, 4534))).toEqual(37208)
+      expect(Arrays.hashCode(Array[Int](0, 45, 100, 1, 1, Int.MaxValue))).toEqual(-1215441431)
+    }
+
+    it("should respond to `hashCode` for Longs") {
+      expect(Arrays.hashCode(null: Array[Long])).toEqual(0)
+      expect(Arrays.hashCode(Array[Long]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Long](1L))).toEqual(32)
+      expect(Arrays.hashCode(Array[Long](7L, -125L))).toEqual(1302)
+      expect(Arrays.hashCode(Array[Long](3L, 0L, 4534L))).toEqual(37208)
+      expect(Arrays.hashCode(Array[Long](0L, 45L, 100L, 1L, 1L, Int.MaxValue))).toEqual(-1215441431)
+      expect(Arrays.hashCode(Array[Long](0L, 34573566354545L, 100L, 1L, 1L, Int.MaxValue))).toEqual(-1952288964)
+    }
+
+    it("should respond to `hashCode` for Floats") {
+      expect(Arrays.hashCode(null: Array[Float])).toEqual(0)
+      expect(Arrays.hashCode(Array[Float]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Float](1f))).toEqual(32)
+      expect(Arrays.hashCode(Array[Float](7.2f, -125.2f))).toEqual(-2082726591)
+      expect(Arrays.hashCode(Array[Float](302.1f, 0.0f, 4534f))).toEqual(-1891539602)
+      expect(Arrays.hashCode(Array[Float](0.0f, 45f, -100f, 1.1f, -1f, 3567f))).toEqual(-1591440133)
+    }
+
+    it("should respond to `hashCode` for Doubles") {
+      expect(Arrays.hashCode(null: Array[Double])).toEqual(0)
+      expect(Arrays.hashCode(Array[Double]())).toEqual(1)
+      expect(Arrays.hashCode(Array[Double](1.1))).toEqual(-1503133662)
+      expect(Arrays.hashCode(Array[Double](7.3, -125.23))).toEqual(-2075734168)
+      expect(Arrays.hashCode(Array[Double](3.9, 0.2, 4534.9))).toEqual(-557562564)
+      expect(Arrays.hashCode(Array[Double](0.1, 45.1, -100.0, 1.1, 1.7))).toEqual(-1750344582)
+      expect(Arrays.hashCode(Array[Double](0.0, 34573566354545.9, 100.2, 1.1, 1.2, Int.MaxValue))).toEqual(-1764602991)
+    }
+
+    it("should respond to `hashCode` for AnyRef") {
+      expect(Arrays.hashCode(null: Array[AnyRef])).toEqual(0)
+      expect(Arrays.hashCode(Array[AnyRef]())).toEqual(1)
+      expect(Arrays.hashCode(Array[AnyRef](null, null))).toEqual(961)
+      expect(Arrays.hashCode(Array[AnyRef]("a", "b", null))).toEqual(126046)
+      expect(Arrays.hashCode(Array[AnyRef](null, "a", "b", null, "fooooo"))).toEqual(-1237252983)
+    }
+
     it("should respond to `equals` for Booleans") {
       val a1 = Array(true, false)
 
