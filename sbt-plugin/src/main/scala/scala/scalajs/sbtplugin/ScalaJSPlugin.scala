@@ -19,13 +19,23 @@ import scala.scalajs.tools.optimizer.ScalaJSOptimizer
 
 import scala.scalajs.ir.ScalaJSVersions
 
-object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
-  val scalaJSVersion = ScalaJSVersions.current
-  val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
-  val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
+object ScalaJSPlugin extends AutoPlugin {
+  override def requires = plugins.JvmPlugin
 
-  object ScalaJSKeys {
+  object autoImport extends impl.DependencyBuilders {
     import KeyRanks._
+
+    // Some constants
+    val scalaJSVersion = ScalaJSVersions.current
+    val scalaJSIsSnapshotVersion = ScalaJSVersions.currentIsSnapshot
+    val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
+
+    // Stage values
+    val PreLinkStage = Stage.PreLink
+    val FastOptStage = Stage.FastOpt
+    val FullOptStage = Stage.FullOpt
+
+    // All our public-facing keys
 
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
@@ -104,25 +114,17 @@ object ScalaJSPlugin extends Plugin with impl.DependencyBuilders {
         KeyRanks.Invisible)
   }
 
+  import autoImport._
   import ScalaJSPluginInternal._
 
   override def globalSettings: Seq[Setting[_]] = {
     super.globalSettings ++ Seq(
-        ScalaJSKeys.scalaJSStage := Stage.PreLink
+        scalaJSStage := Stage.PreLink
     )
   }
 
-  /** All Scala.js settings */
-  val scalaJSSettings: Seq[Setting[_]] = (
+  override def projectSettings: Seq[Setting[_]] = (
       scalaJSAbstractSettings ++
-      scalaJSEcosystemSettings
-  )
-
-  /** Scala.js build settings: Allows to build Scala.js, but doesn't change
-   *  run / test commands
-   */
-  val scalaJSBuildSettings: Seq[Setting[_]] = (
-      scalaJSAbstractBuildSettings ++
       scalaJSEcosystemSettings
   )
 }

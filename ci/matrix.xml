@@ -17,69 +17,69 @@
     export JAVA_HOME=$HOME/apps/java-$java
     sbt ++$scala package packageDoc &&
     sbt ++$scala helloworld/run \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
-        ++$scala helloworld/run \
-        helloworld/clean &&
-    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.helloworld ~= (_.withDisableOptimizer(true))' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.helloworld ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        helloworld/clean &&
+    sbt 'set postLinkJSEnv in ScalaJSBuild.helloworld := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
+        'set scalaJSStage in Global := FastOptStage' \
+        ++$scala helloworld/run \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run &&
     sbt ++$scala testingExample/test \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testingExample ~= (_.withDisableOptimizer(true))' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.testingExample ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
     sbt ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
                  "noIrCheckTest/testOnly -- -- -trhino -tsource-maps" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
                  "noIrCheckTest/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
                  "noIrCheckTest/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
         testSuite/clean &&
-    sbt 'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
         testSuite/clean &&
-    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+    sbt 'set scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
         ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
-        ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
-        testSuite/clean &&
-    sbt 'set ScalaJSKeys.scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
-        'set ScalaJSKeys.scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&
-    sbt 'set ScalaJSKeys.postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(scala.scalajs.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+        'set scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+        'set scalaJSStage in Global := FastOptStage' \
+        ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
+        testSuite/clean &&
+    sbt 'set postLinkJSEnv in ScalaJSBuild.testSuite := new scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -- -tphantomjs" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -- -tphantomjs" \
         testSuite/clean &&
     sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
         ++$scala "testSuite/testOnly -- -- -trhino -tsource-maps" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
-    sbt 'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSStage in Global := FastOptStage' \
         ++$scala "javalibExTestSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala "javalibExTestSuite/testOnly -- -- -ttypedarray -tnodejs -tsource-maps" &&
     sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala partest/fetchScalaSource &&
@@ -89,9 +89,9 @@
 
   <task id="bootstrap"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt 'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+    sbt 'set scalaJSStage in Global := FastOptStage' \
         ++$scala toolsJS/test \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FullOpt' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala toolsJS/test
   ]]></task>
 
@@ -117,7 +117,7 @@
     # Go into standalone project and test
     cd sbt-plugin-test
     sbt noDOM/run withDOM/run test \
-        'set ScalaJSKeys.scalaJSStage in Global := scala.scalajs.sbtplugin.Stage.FastOpt' \
+        'set scalaJSStage in Global := FastOptStage' \
         jetty9/run test
   ]]></task>
 

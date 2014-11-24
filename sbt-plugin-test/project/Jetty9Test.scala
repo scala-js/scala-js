@@ -2,8 +2,7 @@ import sbt._
 import Keys._
 
 import scala.scalajs.sbtplugin._
-import ScalaJSPlugin._
-import ScalaJSKeys._
+import ScalaJSPlugin.autoImport._
 import Implicits._
 
 import scala.scalajs.tools.env._
