@@ -8,7 +8,7 @@ package java.util
 import scalajs.js
 
 class Date private (private val date: js.Date) extends Object
-  with Serializable with Cloneable with Comparable[Date] {
+    with Serializable with Cloneable with Comparable[Date] {
 
   import Date._
 
@@ -43,11 +43,10 @@ class Date private (private val date: js.Date) extends Object
   override def compareTo(anotherDate: Date): Int =
     date.getTime().compareTo(anotherDate.date.getTime())
 
-  override def equals(obj: Any): Boolean =
-    obj match {
-      case d: Date => d.date.getTime() == date.getTime()
-      case _ => false
-    }
+  override def equals(obj: Any): Boolean = obj match {
+    case d: Date => d.date.getTime() == date.getTime()
+    case _       => false
+  }
 
   override def hashCode(): Int = date.getTime().hashCode()
 
@@ -75,13 +74,13 @@ class Date private (private val date: js.Date) extends Object
   def getTimeZoneOffset(): Int = date.getTimezoneOffset()
 
   @Deprecated
-  def getYear(): Int = date.getFullYear()-1900
+  def getYear(): Int = date.getFullYear() - 1900
 
   @Deprecated
   def setDate(date: Int): Unit = this.date.setDate(date)
 
   @Deprecated
-  def setHours(hours: Int):Unit = date.setHours(hours)
+  def setHours(hours: Int): Unit = date.setHours(hours)
 
   @Deprecated
   def setMinutes(minutes: Int): Unit = date.setMinutes(minutes)
@@ -95,20 +94,22 @@ class Date private (private val date: js.Date) extends Object
   def setTime(time: Long): Unit = date.setTime(time)
 
   @Deprecated
-  def setYear(year: Int): Unit = date.setFullYear(1900+year)
+  def setYear(year: Int): Unit = date.setFullYear(1900 + year)
 
   @Deprecated
-  def toGMTString(): String =
-   date.getUTCDate() + " " + Months(date.getUTCMonth()) + " " +
-     date.getUTCFullYear() + " " + pad0(date.getUTCHours()) + ":" +
-     pad0(date.getUTCMinutes()) + ":" +
-     pad0(date.getUTCSeconds()) +" GMT"
+  def toGMTString(): String = {
+    date.getUTCDate() + " " + Months(date.getUTCMonth()) + " " +
+      date.getUTCFullYear() + " " + pad0(date.getUTCHours()) + ":" +
+      pad0(date.getUTCMinutes()) + ":" +
+      pad0(date.getUTCSeconds()) +" GMT"
+  }
 
   @Deprecated
-  def toLocaleString(): String =
+  def toLocaleString(): String = {
     date.getDate() + "-" + Months(date.getMonth()) + "-" +
       date.getFullYear() + "-" + pad0(date.getHours()) + ":" +
       pad0(date.getMinutes()) + ":" + pad0(date.getSeconds())
+  }
 
   override def toString(): String = {
     val offset = -date.getTimezoneOffset()
@@ -123,20 +124,24 @@ class Date private (private val date: js.Date) extends Object
 }
 
 object Date {
-  private val Days = Array("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-  private val Months = Array("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
-                             "Aug", "Sep", "Oct", "Nov", "Dec")
+  private val Days = Array(
+      "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+
+  private val Months = Array(
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
   private def pad0(i: Int): String = {
     val str = "" + i
-    if(str.length < 2) "0"+str else str
+    if (str.length < 2) "0" + str else str
   }
 
   @Deprecated
   def UTC(year: Int, month: Int, date: Int,
-          hrs: Int, min: Int, sec: Int): Long =
+      hrs: Int, min: Int, sec: Int): Long =
     js.Date.UTC(year + 1900, month, date, hrs, min, sec).toLong
 
   @Deprecated
-  def parse(string: String) = new Date(new js.Date(string)).getTime.toLong
+  def parse(string: String): Long =
+    new Date(new js.Date(string)).getTime.toLong
 }

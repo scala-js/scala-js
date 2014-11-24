@@ -2,7 +2,7 @@ package java.io
 
 class BufferedReader(in: Reader, sz: Int) extends Reader {
 
-  def this(in: Reader) = this(in, 16)
+  def this(in: Reader) = this(in, 4096)
 
   private[this] var buf = new Array[Char](sz)
 
@@ -43,7 +43,7 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
     ensureOpen()
 
     if (prepareRead()) {
-      val res = buf(pos).toInt & 0xFFFF
+      val res = buf(pos).toInt
       pos += 1
       res
     } else -1
@@ -133,13 +133,13 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
       validMark = false
       end = in.read(buf)
       pos = 0
-
       end > 0
     }
   }
 
   private def ensureOpen(): Unit = {
-    if (closed) throw new IOException("Operation on closed stream")
+    if (closed)
+      throw new IOException("Operation on closed stream")
   }
 
 }

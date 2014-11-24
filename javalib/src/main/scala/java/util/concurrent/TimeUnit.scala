@@ -109,14 +109,14 @@ object TimeUnit {
     Array(NANOSECONDS, MICROSECONDS, MILLISECONDS, SECONDS, MINUTES, HOURS, DAYS)
 
   // deliberately without type ascription to make them compile-time constants
-  final private[concurrent] val C0 = 1L
-  final private[concurrent] val C1 = C0 * 1000L
-  final private[concurrent] val C2 = C1 * 1000L
-  final private[concurrent] val C3 = C2 * 1000L
-  final private[concurrent] val C4 = C3 * 60L
-  final private[concurrent] val C5 = C4 * 60L
-  final private[concurrent] val C6 = C5 * 24L
-  final private[concurrent] val MAX = Long.MaxValue
+  private final val C0 = 1L
+  private final val C1 = C0 * 1000L
+  private final val C2 = C1 * 1000L
+  private final val C3 = C2 * 1000L
+  private final val C4 = C3 * 60L
+  private final val C5 = C4 * 60L
+  private final val C6 = C5 * 24L
+  private final val MAX = Long.MaxValue
 
   def values(): Array[TimeUnit] = _values.clone()
 
@@ -125,7 +125,7 @@ object TimeUnit {
         throw new IllegalArgumentException("No enum const TimeUnit." + name))
   }
 
-  private[concurrent] def x(a: Long, b: Long, max: Long): Long = {
+  private def x(a: Long, b: Long, max: Long): Long = {
     if (a > max) MAX
     else if (a < -max) -MAX
     else a * b

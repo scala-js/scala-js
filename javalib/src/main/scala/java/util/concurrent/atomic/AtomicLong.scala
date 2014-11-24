@@ -1,47 +1,61 @@
 package java.util.concurrent.atomic
 
-class AtomicLong(private[this] var value: Long) extends Serializable {
-  def get(): Long = value
-  def set(newValue: Long): Unit = value = newValue
-  def lazySet(newValue: Long): Unit = set(newValue)
-  def compareAndSet(expect: Long, newValue: Long): Boolean = {
-    if (expect != value) false else {
-      value = newValue
-      true
-    }
-  }
-  def weakCompareAndSet(expect: Long, newValue: Long): Boolean = compareAndSet(expect, newValue)
-  def getAndSet(newValue: Long): Long = {
+class AtomicLong(private[this] var value: Long) extends Number with Serializable {
+  def this() = this(0L)
+
+  final def get(): Long = value
+
+  final def set(newValue: Long): Unit =
+    value = newValue
+
+  final def lazySet(newValue: Long): Unit =
+    set(newValue)
+
+  final def getAndSet(newValue: Long): Long = {
     val old = value
     value = newValue
     old
   }
-  def getAndIncrement(): Long = {
-    value += 1
-    value - 1
+
+  final def compareAndSet(expect: Long, update: Long): Boolean = {
+    if (expect != value) false else {
+      value = update
+      true
+    }
   }
-  def getAndDecrement(): Long = {
-    value -= 1
-    value + 1
+
+  final def weakCompareAndSet(expect: Long, update: Long): Boolean =
+    compareAndSet(expect, update)
+
+  final def getAndIncrement(): Long =
+    getAndAdd(1L)
+
+  final def getAndDecrement(): Long =
+    getAndAdd(-1L)
+
+  @inline final def getAndAdd(delta: Long): Long = {
+    val old = value
+    value = old + delta
+    old
   }
-  def getAndAdd(delta: Long): Long = {
-    value += delta
-    value - delta
+
+  final def incrementAndGet(): Long =
+    addAndGet(1L)
+
+  final def decrementAndGet(): Long =
+    addAndGet(-1L)
+
+  @inline final def addAndGet(delta: Long): Long = {
+    val newValue = value + delta
+    value = newValue
+    newValue
   }
-  def incrementAndGet(): Long = {
-    value += 1
-    value
-  }
-  def decrementAndGet(): Long = {
-    value -= 1
-    value
-  }
-  def addAndGet(delta: Long): Long = {
-    value += delta
-    value
-  }
+
+  override def toString(): String =
+    value.toString()
+
   def intValue(): Int = value.toInt
-  def longValue(): Long = value.toLong
+  def longValue(): Long = value
   def floatValue(): Float = value.toFloat
   def doubleValue(): Double = value.toDouble
 }

@@ -22,7 +22,7 @@ class StringReader(s: String) extends Reader {
     ensureOpen()
 
     if (pos < s.length) {
-      val res = s.charAt(pos).toInt & 0xFFFF
+      val res = s.charAt(pos).toInt
       pos += 1
       res
     } else -1
@@ -62,7 +62,8 @@ class StringReader(s: String) extends Reader {
   }
 
   private def ensureOpen(): Unit = {
-    if (closed) throw new IOException("Operation on closed stream")
+    if (closed)
+      throw new IOException("Operation on closed stream")
   }
 
 }

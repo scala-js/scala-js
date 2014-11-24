@@ -303,6 +303,12 @@ private[runtime] object RuntimeString {
   def valueOf(value: Object): String =
     if (value eq null) "null" else value.toString()
 
+  def valueOf(data: Array[Char]): String =
+    valueOf(data, 0, data.length)
+
+  def valueOf(data: Array[Char], offset: Int, count: Int): String =
+    newString(data, offset, count)
+
   def format(format: String, args: Array[AnyRef]): String = {
     val frm = new java.util.Formatter()
     val res = frm.format(format, args: _*).toString()

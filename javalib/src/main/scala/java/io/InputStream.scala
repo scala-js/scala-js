@@ -1,11 +1,8 @@
 package java.io
 
 abstract class InputStream extends Closeable {
-  def available(): Int = 0
-  def close(): Unit = {}
-  def mark(readlimit: Int): Unit = {}
-  def markSupported(): Boolean = false
   def read(): Int
+
   def read(b: Array[Byte]): Int = read(b, 0, b.length)
 
   def read(b: Array[Byte], off: Int, len: Int): Int = {
@@ -18,7 +15,12 @@ abstract class InputStream extends Closeable {
       var next = 0
 
       while (bytesWritten < len && next != -1) {
-        next = read()
+        next =
+          if (bytesWritten == 0) read()
+          else {
+            try read()
+            catch { case _: IOException => -1 }
+          }
         if (next != -1) {
           b(off + bytesWritten) = next.toByte
           bytesWritten += 1
@@ -30,12 +32,22 @@ abstract class InputStream extends Closeable {
     }
   }
 
-  def reset(): Unit = throw new IOException("Reset not supported")
-
   def skip(n: Long): Long = {
     var skipped = 0
     while (skipped < n && read() != -1)
       skipped += 1
     skipped
   }
+
+  def available(): Int = 0
+
+  def close(): Unit = ()
+
+  def mark(readlimit: Int): Unit = ()
+
+  def reset(): Unit =
+    throw new IOException("Reset not supported")
+
+  def markSupported(): Boolean = false
+
 }

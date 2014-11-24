@@ -1,17 +1,31 @@
 package java.io
 
-// Note: Don't extend Readable, otherwise we'll have to implement
-// read(cb: CharBuffer), which we don't want to (depends on java.nio)
-abstract class Reader private[this] (_lock: Option[Object]) extends Closeable {
+import java.nio.CharBuffer
+
+abstract class Reader private[this] (_lock: Option[Object])
+    extends Readable with Closeable {
 
   protected val lock = _lock.getOrElse(this)
 
   protected def this(lock: Object) = this(Some(lock))
   protected def this() = this(None)
 
-  def close(): Unit
-  def mark(readAheadLimit: Int): Unit = ()
-  def markSupported(): Boolean = false
+  def read(target: CharBuffer): Int = {
+    if (!target.hasRemaining) 0
+    else if (target.hasArray) {
+      val charsRead = read(target.array,
+          target.position + target.arrayOffset, target.remaining)
+      if (charsRead != -1)
+        target.position(target.position + charsRead)
+      charsRead
+    } else {
+      val buf = new Array[Char](target.remaining)
+      val charsRead = read(buf)
+      if (charsRead != -1)
+        target.put(buf, 0, charsRead)
+      charsRead
+    }
+  }
 
   def read(): Int = {
     val buf = new Array[Char](1)
@@ -24,15 +38,23 @@ abstract class Reader private[this] (_lock: Option[Object]) extends Closeable {
 
   def read(cbuf: Array[Char], off: Int, len: Int): Int
 
-  def ready(): Boolean = false
-
-  def reset(): Unit = throw new IOException("Reset not supported")
-
   def skip(n: Long): Long = {
     if (n < 0)
-      throw new IllegalArgumentException("Can't skip negative amount")
+      throw new IllegalArgumentException("Cannot skip negative amount")
     else if (read() == -1) 0
     else 1
   }
+
+  def ready(): Boolean = false
+
+  def markSupported(): Boolean = false
+
+  def mark(readAheadLimit: Int): Unit =
+    throw new IOException("Mark not supported")
+
+  def reset(): Unit =
+    throw new IOException("Reset not supported")
+
+  def close(): Unit
 
 }

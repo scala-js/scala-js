@@ -501,7 +501,25 @@ trait ArraysTest extends JasmineTest {
     it("should respond to `copyOf` with key for AnyRef") {
       val anyrefs: Array[AnyRef] = Array("a", "b", "c")
       val anyrefscopy = Arrays.copyOf(anyrefs, 5)
+      expect(anyrefscopy.getClass() == classOf[Array[AnyRef]]).toBeTruthy
       expect(anyrefscopy).toEqual(Array[AnyRef]("a", "b", "c", null, null))
+
+      val sequences: Array[CharSequence] = Array("a", "b", "c")
+      val sequencescopy = Arrays.copyOf(sequences, 2)
+      expect(sequencescopy.getClass() == classOf[Array[CharSequence]])
+      expect(sequencescopy).toEqual(Array[CharSequence]("a", "b"))
+    }
+
+    it("should respond to `copyOfRange` for AnyRef") {
+      val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
+      val anyrefscopy = Arrays.copyOfRange(anyrefs, 2, 4)
+      expect(anyrefscopy.getClass() == classOf[Array[AnyRef]]).toBeTruthy
+      expect(anyrefscopy).toEqual(Array[AnyRef]("c", "d"))
+
+      val sequences: Array[CharSequence] = Array("a", "b", "c", "d", "e")
+      val sequencescopy = Arrays.copyOfRange(sequences, 1, 5)
+      expect(sequencescopy.getClass() == classOf[Array[CharSequence]])
+      expect(sequencescopy).toEqual(Array[CharSequence]("b", "c", "d", "e"))
     }
 
     it("should respond to `equals` for Booleans") {

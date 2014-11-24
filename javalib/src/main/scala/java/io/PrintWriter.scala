@@ -7,14 +7,16 @@ class PrintWriter(protected[io] var out: Writer,
 
   def this(out: Writer) = this(out, false)
 
-  /* The following constructors, although implemented, will not link, since
-   * File, FileOutputStream, BufferedOutputStream and OutputStreamWriter are
-   * not implemented. They're here just in case a third-party library on the
-   * classpath implements those.
-   */
   def this(out: OutputStream, autoFlush: Boolean) =
     this(new OutputStreamWriter(out), autoFlush)
-  def this(out: OutputStream) = this(out, false)
+  def this(out: OutputStream) =
+    this(out, false)
+
+  /* The following constructors, although implemented, will not link, since
+   * File, FileOutputStream and BufferedOutputStream are not implemented.
+   * They're here just in case a third-party library on the classpath
+   * implements those.
+   */
   def this(file: File) =
     this(new BufferedOutputStream(new FileOutputStream(file)))
   def this(file: File, csn: String) =
@@ -119,18 +121,17 @@ class PrintWriter(protected[io] var out: Writer,
   //def format(l: java.util.Locale, fmt: String, args: Array[Object]): PrintWriter = ???
 
   override def append(csq: CharSequence): PrintWriter = {
-    write(if (csq == null) "null" else csq.toString)
+    super.append(csq)
     this
   }
 
   override def append(csq: CharSequence, start: Int, end: Int): PrintWriter = {
-    val csq1 = if (csq == null) "null" else csq
-    write(csq1.subSequence(start, end).toString)
+    super.append(csq, start, end)
     this
   }
 
   override def append(c: Char): PrintWriter = {
-    write(c)
+    super.append(c)
     this
   }
 
