@@ -74,8 +74,8 @@ object ScalaJSGroupID {
     // Hack to work around bug in sbt macros (wrong way of collecting local
     // definitions)
     val keysSym = rootMirror.staticModule(
-        "_root_.scala.scalajs.sbtplugin.ScalaJSPlugin.ScalaJSKeys")
-    val keys = c.Expr[ScalaJSPlugin.ScalaJSKeys.type](Ident(keysSym))
+        "_root_.scala.scalajs.sbtplugin.ScalaJSPlugin.autoImport")
+    val keys = c.Expr[ScalaJSPlugin.autoImport.type](Ident(keysSym))
 
     reify {
       val cross = {

@@ -39,8 +39,7 @@ import java.net.URLClassLoader
  */
 object ScalaJSPluginInternal {
 
-  import ScalaJSPlugin.ScalaJSKeys._
-  import ScalaJSPlugin.scalaJSVersion
+  import ScalaJSPlugin.autoImport._
 
   /** Dummy setting to ensure we do not fork in Scala.js run & test. */
   val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",

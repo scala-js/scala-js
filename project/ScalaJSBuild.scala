@@ -17,8 +17,7 @@ import scala.util.Properties
 import scala.scalajs.ir
 import scala.scalajs.sbtplugin._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
-import ScalaJSPlugin._
-import ScalaJSKeys._
+import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Implicits._
 
@@ -131,18 +130,20 @@ object ScalaJSBuild extends Build {
   // Used when compiling the compiler, adding it to scalacOptions does not help
   scala.util.Properties.setProp("scalac.patmat.analysisBudget", "1024")
 
-  override lazy val settings = super.settings :+ {
-    // Most of the projects cross-compile
-    crossScalaVersions := Seq(
-      "2.10.2",
-      "2.10.3",
-      "2.10.4",
-      "2.11.0",
-      "2.11.1",
-      "2.11.2",
-      "2.11.4"
-    )
-  }
+  override lazy val settings = super.settings ++ Seq(
+      // Most of the projects cross-compile
+      crossScalaVersions := Seq(
+        "2.10.2",
+        "2.10.3",
+        "2.10.4",
+        "2.11.0",
+        "2.11.1",
+        "2.11.2",
+        "2.11.4"
+      ),
+      // Default stage
+      scalaJSStage in Global := PreLinkStage
+  )
 
   lazy val root: Project = Project(
       id = "scalajs",
