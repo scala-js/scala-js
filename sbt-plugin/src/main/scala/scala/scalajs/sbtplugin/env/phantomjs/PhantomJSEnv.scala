@@ -143,7 +143,7 @@ class PhantomJSEnv(
         |      };
         |      websocket.onerror = function(evt) {
         |        websocket = null;
-        |        ${maybeExit(-1)}
+        |        throw new Error("Websocket failed: " + evt);
         |      };
         |
         |      // Take over responsibility to auto exit
