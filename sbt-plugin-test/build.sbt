@@ -1,7 +1,5 @@
 import scala.scalajs.sbtplugin.RuntimeDOM
 
-import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
-
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
@@ -40,8 +38,7 @@ lazy val jetty9 = project.settings(baseSettings: _*).
         RuntimeDOM,
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
-    postLinkJSEnv := new PhantomJSEnv(
-      addArgs = List("--web-security=no"), // allow cross domain requests
-      jettyClassLoader = scalaJSPhantomJSClassLoader.value),
+    // Use PhantomJS, allow cross domain requests
+    postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
   )
