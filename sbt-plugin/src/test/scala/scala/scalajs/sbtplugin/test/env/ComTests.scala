@@ -83,21 +83,89 @@ trait ComTests extends AsyncTests {
 
   @Test
   def doubleCloseTest = {
-    val com = comRunner(s"""
+    val n = 10
+    val com = pingPongRunner(n)
+
+    com.start()
+
+    for (i <- 0 until n) {
+      com.send("ping")
+      assertEquals("pong", com.receive())
+    }
+
+    com.close()
+    com.await()
+  }
+
+  @Test
+  def multiEnvTest = {
+    val n = 10
+    val envs = List.fill(5)(pingPongRunner(10))
+
+    envs.foreach(_.start())
+
+    val ops = List[ComJSRunner => Unit](
+        _.send("ping"),
+        com => assertEquals("pong", com.receive())
+    )
+
+    for {
+      i   <- 0 until n
+      env <- envs
+      op  <- ops
+    } op(env)
+
+    envs.foreach(_.close())
+    envs.foreach(_.await())
+  }
+
+  private def pingPongRunner(count: Int) = {
+    comRunner(s"""
       var seen = 0;
       scalajsCom.init(function(msg) {
         scalajsCom.send("pong");
-        if (++seen >= 10)
+        if (++seen >= $count)
           scalajsCom.close();
+      });
+    """)
+  }
+
+  @Test
+  def largeMessageTest = {
+    // 1KB data
+    val baseMsg = new String(Array.tabulate(512)(_.toChar))
+    val baseLen = baseMsg.length
+
+    // Max message size: 1KB * 2^(2*iters+1) = 1MB
+    val iters = 4
+
+    val com = comRunner("""
+      scalajsCom.init(function(msg) {
+        scalajsCom.send(msg + msg);
       });
     """)
 
     com.start()
 
-    for (i <- 0 until 10) {
-      com.send("ping")
-      assertEquals("pong", com.receive())
+    com.send(baseMsg)
+
+    def resultFactor(iters: Int) = Math.pow(2, 2 * iters + 1).toInt
+
+    for (i <- 0 until iters) {
+      val reply = com.receive()
+
+      val factor = resultFactor(i)
+
+      assertEquals(baseLen * factor, reply.length)
+
+      for (j <- 0 until factor)
+        assertEquals(baseMsg, reply.substring(j * baseLen, (j + 1) * baseLen))
+
+      com.send(reply + reply)
     }
+
+    val lastLen = com.receive().length
+    assertEquals(baseLen * resultFactor(iters), lastLen)
 
     com.close()
     com.await()

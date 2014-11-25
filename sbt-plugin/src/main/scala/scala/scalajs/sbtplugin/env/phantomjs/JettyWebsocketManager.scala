@@ -59,6 +59,11 @@ private[phantomjs] final class JettyWebsocketManager(
       }
       wsListener.onClose()
       server.stop()
+
+      if (statusCode != 1000) {
+        throw new Exception("Abnormal closing of connection. " +
+            s"Code: $statusCode, Reason: $reason")
+      }
     }
 
     override def onMessage(message: String): Unit =

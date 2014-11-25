@@ -23,6 +23,7 @@ import java.net._
 
 import scala.io.Source
 import scala.collection.mutable
+import scala.annotation.tailrec
 
 class PhantomJSEnv(
     phantomjsPath: String = "phantomjs",
@@ -31,6 +32,8 @@ class PhantomJSEnv(
     val autoExit: Boolean = true,
     jettyClassLoader: ClassLoader = getClass().getClassLoader()
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
+
+  import PhantomJSEnv._
 
   protected def vmName: String = "PhantomJS"
   protected def executable: String = phantomjsPath
@@ -90,9 +93,9 @@ class PhantomJSEnv(
 
     def log(msg: String): Unit = logger.debug(s"PhantomJS WS Jetty: $msg")
 
-    mgr.start()
-
     private[this] val recvBuf = mutable.Queue.empty[String]
+
+    mgr.start()
 
     /** The websocket server starts asynchronously, but we need the port it is
      *  running on. This method waits until the port is non-negative and
@@ -115,11 +118,41 @@ class PhantomJSEnv(
 
       val code = s"""
         |(function() {
+        |  var MaxPayloadSize = $MaxCharPayloadSize;
+        |
         |  // The socket for communication
         |  var websocket = null;
         |
         |  // Buffer for messages sent before socket is open
         |  var outMsgBuf = null;
+        |
+        |  function sendImpl(msg) {
+        |    var frags = (msg.length / MaxPayloadSize) | 0;
+        |
+        |    for (var i = 0; i < frags; ++i) {
+        |      var payload = msg.substring(
+        |          i * MaxPayloadSize, (i + 1) * MaxPayloadSize);
+        |      websocket.send("1" + payload);
+        |    }
+        |
+        |    websocket.send("0" + msg.substring(frags * MaxPayloadSize));
+        |  }
+        |
+        |  function recvImpl(recvCB) {
+        |    var recvBuf = "";
+        |
+        |    return function(evt) {
+        |      var newData = recvBuf + evt.data.substring(1);
+        |      if (evt.data.charAt(0) == "0") {
+        |        recvBuf = "";
+        |        recvCB(newData);
+        |      } else if (evt.data.charAt(0) == "1") {
+        |        recvBuf = newData;
+        |      } else {
+        |        throw new Error("Bad fragmentation flag in " + evt.data);
+        |      }
+        |    };
+        |  }
         |
         |  window.scalajsCom = {
         |    init: function(recvCB) {
@@ -131,19 +164,17 @@ class PhantomJSEnv(
         |
         |      websocket.onopen = function(evt) {
         |        for (var i = 0; i < outMsgBuf.length; ++i)
-        |          websocket.send(outMsgBuf[i]);
+        |          sendImpl(outMsgBuf[i]);
         |        outMsgBuf = null;
         |      };
         |      websocket.onclose = function(evt) {
         |        websocket = null;
         |        ${maybeExit(0)}
         |      };
-        |      websocket.onmessage = function(evt) {
-        |        recvCB(evt.data);
-        |      };
+        |      websocket.onmessage = recvImpl(recvCB);
         |      websocket.onerror = function(evt) {
         |        websocket = null;
-        |        ${maybeExit(-1)}
+        |        throw new Error("Websocket failed: " + evt);
         |      };
         |
         |      // Take over responsibility to auto exit
@@ -159,7 +190,7 @@ class PhantomJSEnv(
         |      if (outMsgBuf !== null)
         |        outMsgBuf.push(msg);
         |      else
-        |        websocket.send(msg);
+        |        sendImpl(msg);
         |    },
         |    close: function() {
         |      if (websocket === null)
@@ -178,13 +209,40 @@ class PhantomJSEnv(
     }
 
     def send(msg: String): Unit = synchronized {
-      if (awaitConnection())
-        mgr.sendMessage(msg)
+      if (awaitConnection()) {
+        val fragParts = msg.length / MaxCharPayloadSize
+
+        for (i <- 0 until fragParts) {
+          val payload = msg.substring(
+              i * MaxCharPayloadSize, (i + 1) * MaxCharPayloadSize)
+          mgr.sendMessage("1" + payload)
+        }
+
+        mgr.sendMessage("0" + msg.substring(fragParts * MaxCharPayloadSize))
+      }
     }
 
     def receive(): String = synchronized {
       if (recvBuf.isEmpty && !awaitConnection())
         throw new ComJSEnv.ComClosedException
+
+      @tailrec
+      def loop(acc: String): String = {
+        val frag = receiveFrag()
+        val newAcc = acc + frag.substring(1)
+
+        if (frag(0) == '0')
+          newAcc
+        else if (frag(0) == '1')
+          loop(newAcc)
+        else
+          throw new AssertionError("Bad fragmentation flag in " + frag)
+      }
+
+      loop("")
+    }
+
+    private def receiveFrag(): String = {
       while (recvBuf.isEmpty && !mgr.isClosed)
         wait()
 
@@ -399,4 +457,10 @@ class PhantomJSEnv(
     case c   => c :: Nil
   }
 
+}
+
+object PhantomJSEnv {
+  private final val MaxByteMessageSize = 32768 // 32 KB
+  private final val MaxCharMessageSize = MaxByteMessageSize / 2 // 2B per char
+  private final val MaxCharPayloadSize = MaxCharMessageSize - 1 // frag flag
 }
