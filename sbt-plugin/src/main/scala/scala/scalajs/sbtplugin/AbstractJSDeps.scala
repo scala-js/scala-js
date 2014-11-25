@@ -71,11 +71,9 @@ object ProvidedJSModuleID {
     ProvidedJSModuleID(new JSDependency(name, Nil), configurations)
 }
 
-sealed case class RuntimeDOM(
+final case class RuntimeDOMDep(
     configurations: Option[String]) extends AbstractJSDep {
 
-  protected def withConfigs(configs: Option[String]): RuntimeDOM =
+  protected def withConfigs(configs: Option[String]): RuntimeDOMDep =
     copy(configurations = configs)
 }
-
-object RuntimeDOM extends RuntimeDOM(None)
