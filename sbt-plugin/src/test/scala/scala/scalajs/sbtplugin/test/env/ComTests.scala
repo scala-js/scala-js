@@ -131,6 +131,47 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
+  def largeMessageTest = {
+    // 1KB data
+    val baseMsg = new String(Array.tabulate(512)(_.toChar))
+    val baseLen = baseMsg.length
+
+    // Max message size: 1KB * 2^(2*iters+1) = 1MB
+    val iters = 4
+
+    val com = comRunner("""
+      scalajsCom.init(function(msg) {
+        scalajsCom.send(msg + msg);
+      });
+    """)
+
+    com.start()
+
+    com.send(baseMsg)
+
+    def resultFactor(iters: Int) = Math.pow(2, 2 * iters + 1).toInt
+
+    for (i <- 0 until iters) {
+      val reply = com.receive()
+
+      val factor = resultFactor(i)
+
+      assertEquals(baseLen * factor, reply.length)
+
+      for (j <- 0 until factor)
+        assertEquals(baseMsg, reply.substring(j * baseLen, (j + 1) * baseLen))
+
+      com.send(reply + reply)
+    }
+
+    val lastLen = com.receive().length
+    assertEquals(baseLen * resultFactor(iters), lastLen)
+
+    com.close()
+    com.await()
+  }
+
+  @Test
   def noInitTest = {
     val com = comRunner("")
 
