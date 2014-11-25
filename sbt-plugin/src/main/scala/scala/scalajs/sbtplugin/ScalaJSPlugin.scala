@@ -19,6 +19,9 @@ import scala.scalajs.tools.optimizer.ScalaJSOptimizer
 
 import scala.scalajs.ir.ScalaJSVersions
 
+import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
+import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
+
 object ScalaJSPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
 
@@ -34,6 +37,52 @@ object ScalaJSPlugin extends AutoPlugin {
     val PreLinkStage = Stage.PreLink
     val FastOptStage = Stage.FastOpt
     val FullOptStage = Stage.FullOpt
+
+    // Factory methods for JSEnvs
+
+    /**
+     *  Creates a [[Def.Initialize]] for a NodeJSEnv. Use this to explicitly
+     *  specify in your build that you would like to run with Node.js:
+     *
+     *  {{{
+     *  postLinkJSEnv := NodeJSEnv().value
+     *  }}}
+     *
+     *  Note that the resulting [[Setting]] is not scoped at all, but must be
+     *  scoped in a project that has the ScalaJSPlugin enabled to work properly.
+     *  Therefore, either put the upper line in your project settings (common
+     *  case) or scope it manually, using [[Project.inScope]].
+     */
+    def NodeJSEnv(
+        executable: String = "node",
+        args: Seq[String] = Seq.empty,
+        env: Map[String, String] = Map.empty
+    ): Def.Initialize[Task[NodeJSEnv]] = Def.task {
+      new NodeJSEnv(executable, args, env)
+    }
+
+    /**
+     *  Creates a [[Def.Initialize]] for a PhantomJSEnv. Use this to explicitly
+     *  specify in your build that you would like to run with PhantomJS:
+     *
+     *  {{{
+     *  postLinkJSEnv := PhantomJSEnv().value
+     *  }}}
+     *
+     *  Note that the resulting [[Setting]] is not scoped at all, but must be
+     *  scoped in a project that has the ScalaJSPlugin enabled to work properly.
+     *  Therefore, either put the upper line in your project settings (common
+     *  case) or scope it manually, using [[Project.inScope]].
+     */
+    def PhantomJSEnv(
+        executable: String = "phantomjs",
+        args: Seq[String] = Seq.empty,
+        env: Map[String, String] = Map.empty,
+        autoExit: Boolean = true
+    ): Def.Initialize[Task[PhantomJSEnv]] = Def.task {
+      val loader = scalaJSPhantomJSClassLoader.value
+      new PhantomJSEnv(executable, args, env, autoExit, loader)
+    }
 
     // All our public-facing keys
 
