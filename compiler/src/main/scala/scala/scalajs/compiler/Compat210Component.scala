@@ -87,6 +87,17 @@ trait Compat210Component {
     // No type ascription! Type is different in 2.10 / 2.11
     val FUNmode = analyzer.FUNmode
   }
+
+  /* Constants and predicates for primitives were moved to the ScalaPrimitives
+   * companion object. This only makes a 'val ScalaPrimitives' available which
+   * is either the true ScalaPrimitives companion if it exists, or an empty
+   * object. Typically the 2 following imports will be necessary together:
+   *
+   *   import scalaPrimitives._
+   *   import ScalaPrimitives._
+   */
+
+  val ScalaPrimitives = Compat210Component.ScalaPrimitivesCompat
 }
 
 object Compat210Component {
@@ -103,6 +114,18 @@ object Compat210Component {
         import scala.reflect.internal._
         Mode.FUNmode
       }
+    }
+  }
+
+  object LowPriorityScalaPrimitives {
+    object ScalaPrimitives
+  }
+
+  val ScalaPrimitivesCompat = {
+    import LowPriorityScalaPrimitives._
+    {
+      import scala.tools.nsc.backend._
+      ScalaPrimitives
     }
   }
 }

@@ -1967,6 +1967,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a primitive method call */
     private def genPrimitiveOp(tree: Apply, isStat: Boolean): js.Tree = {
       import scalaPrimitives._
+      import ScalaPrimitives._
 
       implicit val pos = tree.pos
 
@@ -1977,7 +1978,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code))
         genSimpleOp(tree, receiver :: args, code)
-      else if (code == scalaPrimitives.CONCAT)
+      else if (code == CONCAT)
         genStringConcat(tree, receiver, args)
       else if (code == HASH)
         genScalaHash(tree, receiver)
@@ -1997,6 +1998,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a simple operation (arithmetic, logical, or comparison) */
     private def genSimpleOp(tree: Apply, args: List[Tree], code: Int): js.Tree = {
       import scalaPrimitives._
+      import ScalaPrimitives._
 
       implicit val pos = tree.pos
 
@@ -2274,6 +2276,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for an array operation (get, set or length) */
     private def genArrayOp(tree: Tree, code: Int): js.Tree = {
       import scalaPrimitives._
+      import ScalaPrimitives._
 
       implicit val pos = tree.pos
 
@@ -2287,12 +2290,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.ArraySelect(arrayValue, arguments(0))(elemIRType)
       }
 
-      if (scalaPrimitives.isArrayGet(code)) {
+      if (isArrayGet(code)) {
         // get an item of the array
         assert(args.length == 1,
             s"Array get requires 1 argument, found ${args.length} in $tree")
         genSelect()
-      } else if (scalaPrimitives.isArraySet(code)) {
+      } else if (isArraySet(code)) {
         // set an item of the array
         assert(args.length == 2,
             s"Array set requires 2 arguments, found ${args.length} in $tree")
@@ -2330,6 +2333,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code for a coercion */
     private def genCoercion(tree: Apply, receiver: Tree, code: Int): js.Tree = {
       import scalaPrimitives._
+      import ScalaPrimitives._
 
       implicit val pos = tree.pos
 
@@ -3813,6 +3817,7 @@ abstract class GenJSCode extends plugins.PluginComponent
        * Hence we cheat here.
        */
       import scalaPrimitives._
+      import ScalaPrimitives._
       import jsPrimitives._
       if (isPrimitive(sym)) {
         getPrimitive(sym) match {
