@@ -90,9 +90,9 @@ class PhantomJSEnv(
 
     def log(msg: String): Unit = logger.debug(s"PhantomJS WS Jetty: $msg")
 
-    mgr.start()
-
     private[this] val recvBuf = mutable.Queue.empty[String]
+
+    mgr.start()
 
     /** The websocket server starts asynchronously, but we need the port it is
      *  running on. This method waits until the port is non-negative and
