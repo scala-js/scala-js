@@ -83,24 +83,51 @@ trait ComTests extends AsyncTests {
 
   @Test
   def doubleCloseTest = {
-    val com = comRunner(s"""
-      var seen = 0;
-      scalajsCom.init(function(msg) {
-        scalajsCom.send("pong");
-        if (++seen >= 10)
-          scalajsCom.close();
-      });
-    """)
+    val n = 10
+    val com = pingPongRunner(n)
 
     com.start()
 
-    for (i <- 0 until 10) {
+    for (i <- 0 until n) {
       com.send("ping")
       assertEquals("pong", com.receive())
     }
 
     com.close()
     com.await()
+  }
+
+  @Test
+  def multiEnvTest = {
+    val n = 10
+    val envs = List.fill(5)(pingPongRunner(10))
+
+    envs.foreach(_.start())
+
+    val ops = List[ComJSRunner => Unit](
+        _.send("ping"),
+        com => assertEquals("pong", com.receive())
+    )
+
+    for {
+      i   <- 0 until n
+      env <- envs
+      op  <- ops
+    } op(env)
+
+    envs.foreach(_.close())
+    envs.foreach(_.await())
+  }
+
+  private def pingPongRunner(count: Int) = {
+    comRunner(s"""
+      var seen = 0;
+      scalajsCom.init(function(msg) {
+        scalajsCom.send("pong");
+        if (++seen >= $count)
+          scalajsCom.close();
+      });
+    """)
   }
 
   @Test
