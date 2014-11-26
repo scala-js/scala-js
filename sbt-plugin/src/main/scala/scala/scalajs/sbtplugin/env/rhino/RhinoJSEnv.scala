@@ -24,7 +24,7 @@ import scala.concurrent.duration.Duration
 
 import org.mozilla.javascript._
 
-class RhinoJSEnv(semantics: Semantics,
+final class RhinoJSEnv(semantics: Semantics,
     withDOM: Boolean = false) extends ComJSEnv {
 
   import RhinoJSEnv._
