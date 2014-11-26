@@ -1,8 +1,9 @@
 package scala.scalajs.concurrent
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutor
 
-private[concurrent] object RunNowExecutionContext extends ExecutionContext {
+private[concurrent] object RunNowExecutionContext
+    extends ExecutionContextExecutor {
 
   def execute(runnable: Runnable) =
     try   { runnable.run() }

@@ -1,9 +1,10 @@
 package scala.scalajs.concurrent
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContextExecutor
 import scalajs.js
 
-private[concurrent] object QueueExecutionContext extends ExecutionContext {
+private[concurrent] object QueueExecutionContext
+    extends ExecutionContextExecutor {
 
   def execute(runnable: Runnable) = {
     val lambda: js.Function = () =>
