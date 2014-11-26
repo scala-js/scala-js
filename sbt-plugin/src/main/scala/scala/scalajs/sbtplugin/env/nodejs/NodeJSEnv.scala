@@ -164,11 +164,6 @@ class NodeJSEnv(
         comSocket.close()
     }
 
-    override def stop(): Unit = {
-      close()
-      super.stop()
-    }
-
     /** Waits until the JS VM has established a connection or terminates
      *  @return true if the connection was established
      */

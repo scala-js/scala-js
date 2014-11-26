@@ -254,11 +254,6 @@ class PhantomJSEnv(
 
     def close(): Unit = mgr.stop()
 
-    override def stop(): Unit = {
-      close()
-      super.stop()
-    }
-
     /** Waits until the JS VM has established a connection, or the VM
      *  terminated. Returns true if a connection was established.
      */
