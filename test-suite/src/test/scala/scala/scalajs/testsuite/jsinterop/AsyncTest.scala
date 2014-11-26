@@ -50,14 +50,9 @@ object AsyncTest extends JasmineTest {
   def expect(abuf: ArrayBuffer[String]): JasmineExpectation =
     expect(abuf.toJSArray)
 
-  describe("scala.scalajs.concurrent.JSExecutionContext.queue") {
-
-    beforeEach {
-      jasmine.Clock.useMock()
-    }
-
+  def queueExecOrderTests(implicit executor: ExecutionContext) = {
     it("should correctly order future calls") {
-      val res = asyncTest(JSExecutionContext.queue)
+      val res = asyncTest
 
       expect(res).toEqual(js.Array(
         "prep-future",
@@ -76,6 +71,15 @@ object AsyncTest extends JasmineTest {
         "map",
         "foreach"))
     }
+  }
+
+  describe("scala.scalajs.concurrent.JSExecutionContext.queue") {
+
+    beforeEach {
+      jasmine.Clock.useMock()
+    }
+
+    queueExecOrderTests(JSExecutionContext.queue)
 
   }
 
@@ -93,6 +97,20 @@ object AsyncTest extends JasmineTest {
           "foreach",
           "done"))
     }
+
+  }
+
+  describe("scala.scala.concurrent.ExecutionContext.global") {
+
+    beforeEach {
+      jasmine.Clock.useMock()
+    }
+
+    it("should be a queue execution context") {
+      expect(ExecutionContext.global eq JSExecutionContext.queue).toBeTruthy
+    }
+
+    queueExecOrderTests(ExecutionContext.global)
 
   }
 
