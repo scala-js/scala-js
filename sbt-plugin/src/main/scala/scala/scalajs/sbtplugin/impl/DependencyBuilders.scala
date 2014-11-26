@@ -23,21 +23,34 @@ trait DependencyBuilders {
     new ScalaJSGroupID(groupID)
   }
 
-  /** Builder to allow for stuff like:
+  /**
+   *  Dummy builder to allow declaractions like:
    *
-   *    ProvidedJS / "foo.js"
-   *    ProvidedJS / "foo.js" % "test"
+   *  {{{
+   *  RuntimeDOM % "test"
+   *  }}}
+   */
+  val RuntimeDOM = scala.scalajs.sbtplugin.RuntimeDOMDep(None)
+
+  /**
+   *  Builder to allow declarations like:
    *
+   *  {{{
+   *  ProvidedJS / "foo.js"
+   *  ProvidedJS / "foo.js" % "test"
+   *  }}}
    */
   object ProvidedJS {
     def /(name: String): ProvidedJSModuleID = ProvidedJSModuleID(name, None)
   }
 
-  /** Builder to allow for stuff like:
+  /**
+   *  Builder to allow declarations like:
    *
-   *    "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
-   *    "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
-   *
+   *  {{{
+   *  "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
+   *  "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
+   *  }}}
    */
   implicit class JSModuleIDBuilder(module: ModuleID) {
     def /(name: String): JarJSModuleID = JarJSModuleID(module, name)

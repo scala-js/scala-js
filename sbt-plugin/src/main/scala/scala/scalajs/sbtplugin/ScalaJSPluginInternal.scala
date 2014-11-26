@@ -258,7 +258,7 @@ object ScalaJSPluginInternal {
         }
 
         val requiresDOM = jsDependencies.value.exists {
-          case RuntimeDOM(configurations) =>
+          case RuntimeDOMDep(configurations) =>
             configurations.forall(_ == config)
           case _ => false
         }

@@ -1,5 +1,3 @@
-import scala.scalajs.sbtplugin.RuntimeDOM
-
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
