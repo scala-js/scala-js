@@ -7,20 +7,20 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import sbt._
 
-import scala.scalajs.tools.sem.Semantics
-import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.io.VirtualJSFile
-import scala.scalajs.tools.env.{JSEnv, JSConsole}
-import scala.scalajs.tools.optimizer.ScalaJSOptimizer
+import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.classpath._
+import org.scalajs.core.tools.io.VirtualJSFile
+import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
 
-import scala.scalajs.ir.ScalaJSVersions
+import org.scalajs.core.ir.ScalaJSVersions
 
-import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
-import scala.scalajs.sbtplugin.env.phantomjs.PhantomJSEnv
+import org.scalajs.jsenv.{JSEnv, JSConsole}
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin

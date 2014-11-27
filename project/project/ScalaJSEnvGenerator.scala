@@ -15,7 +15,7 @@ object ScalaJSEnvGenerator {
 
       val scalaCode =
         s"""
-        package scala.scalajs.tools.corelib
+        package org.scalajs.core.tools.corelib
 
         private[corelib] object ScalaJSEnvHolder {
           final val scalajsenv = raw\"\"\"$scalajsenv\"\"\"

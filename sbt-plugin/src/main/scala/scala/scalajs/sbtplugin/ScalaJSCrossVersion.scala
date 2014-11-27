@@ -7,11 +7,11 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import sbt._
 
-import scala.scalajs.ir.ScalaJSVersions
+import org.scalajs.core.ir.ScalaJSVersions
 
 object ScalaJSCrossVersion {
   private val scalaJSVersionUnmapped: String => String =

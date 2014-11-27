@@ -1,4 +1,4 @@
-package scala.scalajs.testsuite.compiler
+package org.scalajs.testsuite.compiler
 
 import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
 

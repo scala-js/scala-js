@@ -9,7 +9,7 @@ val versionSettings = Seq(
 
 val baseSettings = versionSettings ++ Seq(
   libraryDependencies +=
-    "org.scala-lang.modules.scalajs" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test"
+    "org.scala-js" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test"
 )
 
 lazy val root = project.in(file(".")).
@@ -56,7 +56,7 @@ lazy val testFrameworkJS = project.in(file("testFramework/.js")).
   settings(testFrameworkSettings: _*).
   settings(
     libraryDependencies +=
-      "org.scala-lang.modules.scalajs" %% "scalajs-test-interface" % scalaJSVersion
+      "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
   )
 
 lazy val testFrameworkJVM = project.in(file("testFramework/.jvm")).
@@ -65,7 +65,7 @@ lazy val testFrameworkJVM = project.in(file("testFramework/.jvm")).
   settings(
     libraryDependencies ++= Seq(
         "org.scala-sbt" % "test-interface" % "1.0",
-        "org.scala-lang.modules.scalajs" %% "scalajs-stubs" % scalaJSVersion % "provided"
+        "org.scala-js" %% "scalajs-stubs" % scalaJSVersion % "provided"
     )
   )
 

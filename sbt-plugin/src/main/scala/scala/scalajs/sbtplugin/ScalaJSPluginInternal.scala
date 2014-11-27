@@ -1,4 +1,4 @@
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import sbt._
 import sbt.inc.{IncOptions, ClassfileManager}
@@ -6,28 +6,28 @@ import Keys._
 
 import Implicits._
 
-import scala.scalajs.tools.sem.Semantics
-import scala.scalajs.tools.io.{IO => toolsIO, _}
-import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.classpath.builder._
-import scala.scalajs.tools.jsdep._
-import scala.scalajs.tools.optimizer.{
+import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.io.{IO => toolsIO, _}
+import org.scalajs.core.tools.classpath._
+import org.scalajs.core.tools.classpath.builder._
+import org.scalajs.core.tools.jsdep._
+import org.scalajs.core.tools.optimizer.{
   ScalaJSOptimizer,
   ScalaJSClosureOptimizer,
   IncOptimizer,
   ParIncOptimizer
 }
-import scala.scalajs.tools.corelib.CoreJSLibs
+import org.scalajs.core.tools.corelib.CoreJSLibs
 
-import scala.scalajs.tools.env._
-import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
-import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
-import scala.scalajs.sbtplugin.env.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
+import org.scalajs.jsenv._
+import org.scalajs.jsenv.rhino.RhinoJSEnv
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 
-import scala.scalajs.ir.Utils.escapeJS
-import scala.scalajs.ir.ScalaJSVersions
+import org.scalajs.core.ir.Utils.escapeJS
+import org.scalajs.core.ir.ScalaJSVersions
 
-import scala.scalajs.sbtplugin.testing.{FrameworkDetector, ScalaJSFramework}
+import org.scalajs.testadapter.ScalaJSFramework
 
 import scala.util.Try
 
@@ -570,10 +570,10 @@ object ScalaJSPluginInternal {
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin(
-          "org.scala-lang.modules.scalajs" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+          "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
 
       // and of course the Scala.js library
-      libraryDependencies += "org.scala-lang.modules.scalajs" %% "scalajs-library" % scalaJSVersion,
+      libraryDependencies += "org.scala-js" %% "scalajs-library" % scalaJSVersion,
 
       // and you will want to be cross-compiled on the Scala.js binary version
       crossVersion := ScalaJSCrossVersion.binary

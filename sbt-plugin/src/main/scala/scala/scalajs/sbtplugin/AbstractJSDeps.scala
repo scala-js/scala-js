@@ -1,10 +1,10 @@
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import sbt._
 
 import StringUtilities.nonEmpty
 
-import scala.scalajs.tools.jsdep.JSDependency
+import org.scalajs.core.tools.jsdep.JSDependency
 
 /** Something JavaScript related a project may depend on. Either a JavaScript
  *  module/library, or the DOM at runtime. */

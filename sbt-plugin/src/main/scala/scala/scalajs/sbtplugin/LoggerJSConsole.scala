@@ -7,10 +7,10 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import sbt.Logger
-import scala.scalajs.tools.env.JSConsole
+import org.scalajs.jsenv.JSConsole
 
 /** A proxy for a Logger that looks like a Mozilla console object */
 class LoggerJSConsole(logger: Logger) extends JSConsole {

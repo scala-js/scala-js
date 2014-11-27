@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 sealed trait Stage
 

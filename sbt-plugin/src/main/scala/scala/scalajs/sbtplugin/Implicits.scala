@@ -1,8 +1,8 @@
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 
 import scala.language.implicitConversions
 
-import scala.scalajs.tools.logging._
+import org.scalajs.core.tools.logging._
 import sbt.{Logger => SbtLogger, Level => SbtLevel}
 
 object Implicits {

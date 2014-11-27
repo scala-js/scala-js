@@ -2,22 +2,21 @@ package scala.tools.nsc
 
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
-import scala.scalajs.ir
+import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.classpath._
+import org.scalajs.core.tools.classpath.builder._
+import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
+import org.scalajs.core.tools.optimizer.ScalaJSClosureOptimizer
+import org.scalajs.core.tools.optimizer.ParIncOptimizer
 
-import scala.scalajs.tools.sem.Semantics
-import scala.scalajs.tools.classpath._
-import scala.scalajs.tools.classpath.builder._
-import scala.scalajs.tools.logging._
-import scala.scalajs.tools.io._
-import scala.scalajs.tools.optimizer.ScalaJSOptimizer
-import scala.scalajs.tools.optimizer.ScalaJSClosureOptimizer
-import scala.scalajs.tools.optimizer.ParIncOptimizer
-import scala.scalajs.tools.env.JSConsole
+import org.scalajs.core.ir
+import org.scalajs.core.ir.Utils.escapeJS
 
-import scala.scalajs.ir.Utils.escapeJS
-
-import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
-import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
+import org.scalajs.jsenv.JSConsole
+import org.scalajs.jsenv.rhino.RhinoJSEnv
+import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 

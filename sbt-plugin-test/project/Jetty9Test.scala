@@ -1,12 +1,12 @@
 import sbt._
 import Keys._
 
-import scala.scalajs.sbtplugin._
+import org.scalajs.sbtplugin._
 import ScalaJSPlugin.autoImport._
 import Implicits._
 
-import scala.scalajs.tools.env._
-import scala.scalajs.tools.io._
+import org.scalajs.jsenv._
+import org.scalajs.core.tools.io._
 
 import org.eclipse.jetty.server._
 import org.eclipse.jetty.server.handler._

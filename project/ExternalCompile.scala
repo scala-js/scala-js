@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 
-import scala.scalajs.sbtplugin.ScalaJSPlugin
+import org.scalajs.sbtplugin.ScalaJSPlugin
 import ScalaJSPlugin.autoImport.jsDependencyManifest
 
 object ExternalCompile {
