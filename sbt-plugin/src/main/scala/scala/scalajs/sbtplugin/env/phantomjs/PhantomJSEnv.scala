@@ -30,7 +30,7 @@ class PhantomJSEnv(
     addArgs: Seq[String] = Seq.empty,
     addEnv: Map[String, String] = Map.empty,
     val autoExit: Boolean = true,
-    jettyClassLoader: ClassLoader = getClass().getClassLoader()
+    jettyClassLoader: ClassLoader = null
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
 
   import PhantomJSEnv._
@@ -69,7 +69,11 @@ class PhantomJSEnv(
        with ComJSRunner with WebsocketListener {
 
     private def loadMgr() = {
-      val clazz = jettyClassLoader.loadClass(
+      val loader =
+        if (jettyClassLoader != null) jettyClassLoader
+        else getClass().getClassLoader()
+
+      val clazz = loader.loadClass(
           "scala.scalajs.sbtplugin.env.phantomjs.JettyWebsocketManager")
 
       val ctors = clazz.getConstructors()
