@@ -82,6 +82,10 @@ trait VirtualBinaryFile extends VirtualFile {
   def inputStream: InputStream = new ByteArrayInputStream(content)
 }
 
+trait WritableVirtualBinaryFile extends VirtualBinaryFile {
+  def outputStream: OutputStream
+}
+
 /** A virtual input file which contains JavaScript code.
  *  It may have a source map associated with it.
  */

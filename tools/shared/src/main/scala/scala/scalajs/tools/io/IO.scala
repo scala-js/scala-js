@@ -66,17 +66,62 @@ object IO {
   /** Reads the entire content of an input stream as a byte array. */
   def readInputStreamToByteArray(stream: InputStream): Array[Byte] = {
     val builder = new ByteArrayOutputStream()
+    pipe(stream, builder)
+    builder.toByteArray()
+  }
+
+  def copyTo(in: VirtualTextFile, out: WritableVirtualTextFile): Unit = {
+    val writer = out.contentWriter
+    try writeTo(in, writer)
+    finally writer.close()
+  }
+
+  def copyTo(in: VirtualBinaryFile, out: WritableVirtualBinaryFile): Unit = {
+    val outStream = out.outputStream
+    try writeTo(in, outStream)
+    finally outStream.close()
+  }
+
+  def writeTo(vf: VirtualBinaryFile, out: OutputStream): Unit = {
+    val in = vf.inputStream
+    try pipe(in, out)
+    finally in.close()
+  }
+
+  def writeTo(vf: VirtualTextFile, writer: Writer): Unit = {
+    val reader = vf.reader
+    try pipe(reader, writer)
+    finally reader.close()
+  }
+
+  /** Pipes data from [[in]] to [[out]] */
+  def pipe(in: InputStream, out: OutputStream): Unit = {
     val buffer = newBuffer[Byte]
+
     @tailrec
     def loop(): Unit = {
-      val size = stream.read(buffer)
+      val size = in.read(buffer)
       if (size > 0) {
-        builder.write(buffer, 0, size)
+        out.write(buffer, 0, size)
         loop()
       }
     }
     loop()
-    builder.toByteArray()
+  }
+
+  /** Pipes data from [[in]] to [[out]] */
+  def pipe(in: Reader, out: Writer): Unit = {
+    val buffer = newBuffer[Char]
+
+    @tailrec
+    def loop(): Unit = {
+      val size = in.read(buffer)
+      if (size > 0) {
+        out.write(buffer, 0, size)
+        loop()
+      }
+    }
+    loop()
   }
 
   /** Concatenates a bunch of VirtualTextFiles to a WritableVirtualTextFile.
@@ -84,25 +129,11 @@ object IO {
    */
   def concatFiles(output: WritableVirtualTextFile,
       files: Seq[VirtualTextFile]): Unit = {
-    val buffer = newBuffer[Char]
     val out = output.contentWriter
 
     try {
       for (file <- files) {
-        val reader = file.reader
-
-        @tailrec
-        def loop(): Unit = {
-          val size = reader.read(buffer)
-          if (size > 0) {
-            out.write(buffer, 0, size)
-            loop()
-          }
-        }
-
-        try loop()
-        finally reader.close()
-
+        writeTo(file, out)
         // New line after each file
         out.write('\n')
       }

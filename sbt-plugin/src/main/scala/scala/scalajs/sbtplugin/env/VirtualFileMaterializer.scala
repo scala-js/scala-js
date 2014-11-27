@@ -1,22 +1,23 @@
 package scala.scalajs.sbtplugin.env
 
-import scala.scalajs.tools.io.{IO => _, _}
+import scala.annotation.tailrec
 
-import sbt.IO
+import scala.scalajs.tools.io._
 
 import java.io.File
 
 /** A helper class to temporarily store virtual files to the filesystem.
- *  
+ *
  *  Can be used with tools that require real files.
  *  @param singleDir if true, forces files to be copied into
  *      [[cacheDir]]. Useful to setup include directories for
  *      example.
  */
 final class VirtualFileMaterializer(singleDir: Boolean = false) {
+  import VirtualFileMaterializer._
 
   val cacheDir = {
-    val dir = IO.createTemporaryDirectory
+    val dir = createTempDir()
     dir.deleteOnExit()
     dir
   }
@@ -30,28 +31,21 @@ final class VirtualFileMaterializer(singleDir: Boolean = false) {
     f
   }
 
-  private def materializeFileVF(vf: FileVirtualFile): File = {
-    if (!singleDir) vf.file
-    else {
-      val trg = trgFile(vf.name)
-      IO.copyFile(vf.file, trg)
-      trg
-    }
-  }
-
   def materialize(vf: VirtualTextFile): File = vf match {
-    case vf: FileVirtualFile => materializeFileVF(vf)
+    case vf: FileVirtualFile if !singleDir =>
+      vf.file
     case _ =>
       val trg = trgFile(vf.name)
-      IO.write(trg, vf.content)
+      IO.copyTo(vf, WritableFileVirtualTextFile(trg))
       trg
   }
 
   def materialize(vf: VirtualBinaryFile): File = vf match {
-    case vf: FileVirtualFile => materializeFileVF(vf)
+    case vf: FileVirtualFile if !singleDir =>
+      vf.file
     case _ =>
       val trg = trgFile(vf.name)
-      IO.write(trg, vf.content)
+      IO.copyTo(vf, WritableFileVirtualBinaryFile(trg))
       trg
   }
 
@@ -64,4 +58,32 @@ final class VirtualFileMaterializer(singleDir: Boolean = false) {
     cacheDir.delete()
   }
 
+  /** Taken from Guava:
+   *  https://github.com/google/guava/blob/1c285fc8d289c43b46aa55e7f90ec0359be5b69a/guava/src/com/google/common/io/Files.java#L413-L426
+   */
+  private def createTempDir(): File = {
+    val baseDir = new File(System.getProperty("java.io.tmpdir"))
+    val baseName = System.currentTimeMillis() + "-"
+
+    @tailrec
+    def loop(tries: Int): File = {
+      val tempDir = new File(baseDir, baseName + tries)
+      if (tempDir.mkdir())
+        tempDir
+      else if (tries < TempDirAttempts)
+        loop(tries + 1)
+      else {
+        throw new IllegalStateException("Failed to create directory within " +
+            s"$TempDirAttempts attempts (tried ${baseName}0 to " +
+            s"${baseName}${TempDirAttempts - 1})")
+      }
+    }
+
+    loop(0)
+  }
+
+}
+
+object VirtualFileMaterializer {
+  private final val TempDirAttempts = 10000
 }

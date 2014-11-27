@@ -110,6 +110,17 @@ object FileVirtualBinaryFile extends (File => FileVirtualBinaryFile) {
   }
 }
 
+trait WritableFileVirtualBinaryFile extends FileVirtualBinaryFile
+                                       with WritableVirtualBinaryFile {
+  override def outputStream: OutputStream =
+    new BufferedOutputStream(new FileOutputStream(file))
+}
+
+object WritableFileVirtualBinaryFile {
+  def apply(f: File): WritableFileVirtualBinaryFile =
+    new FileVirtualBinaryFile(f) with WritableFileVirtualBinaryFile
+}
+
 class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
                                     with VirtualJSFile {
   import FileVirtualFile._
