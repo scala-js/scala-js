@@ -89,7 +89,7 @@ object ScalaJSPluginInternal {
       def generated(classes: Iterable[File]): Unit = inherited.generated(classes)
       def complete(success: Boolean): Unit = inherited.complete(success)
     }
-    incOptions.copy(newClassfileManager = newClassfileManager)
+    incOptions.withNewClassfileManager(newClassfileManager)
   }
 
   private def scalaJSOptimizerSetting(key: TaskKey[_]): Setting[_] = (
