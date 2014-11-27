@@ -5,8 +5,6 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.env._
 import scala.scalajs.tools.logging._
 
-import scala.scalajs.sbtplugin.JSUtils._
-
 import java.io.{ Console => _, _ }
 import scala.io.Source
 

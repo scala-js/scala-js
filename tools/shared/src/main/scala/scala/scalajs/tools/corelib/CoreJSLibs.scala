@@ -30,6 +30,11 @@ object CoreJSLibs {
   private val gitHubBaseURI =
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
 
+  /** A JS expression that detects the global scope just like Scala.js */
+  val jsGlobalExpr: String =
+    """((typeof global === "object" && global &&
+         global["Object"] === Object) ? global : this)"""
+
   def libs(semantics: Semantics): Seq[VirtualJSFile] = synchronized {
     Seq(cachedLibBySemantics.getOrElseUpdate(semantics, makeLib(semantics)))
   }

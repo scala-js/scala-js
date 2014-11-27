@@ -9,8 +9,6 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import scala.scalajs.sbtplugin.JSUtils
-
 import scala.scalajs.tools.env._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.io._
@@ -67,7 +65,7 @@ final class ScalaJSFramework(
   }
 
   private def frameworkInfoLauncher = {
-    val name = JSUtils.toJSstr(frameworkName)
+    val name = jsonToString(frameworkName.toJSON)
     val code = s"""
       new org.scalajs.testinterface.internal.InfoSender($name).initAndSend();
     """

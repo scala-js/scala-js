@@ -10,15 +10,14 @@
 package scala.scalajs.sbtplugin.env.nodejs
 
 import scala.scalajs.sbtplugin.env._
-import scala.scalajs.sbtplugin.JSUtils.toJSstr
+
+import scala.scalajs.ir.Utils.escapeJS
 
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.env._
 import scala.scalajs.tools.jsdep._
 import scala.scalajs.tools.logging._
-
-import scala.scalajs.sbtplugin.JSUtils._
 
 import java.io.{ Console => _, _ }
 import java.net._
@@ -261,7 +260,7 @@ class NodeJSEnv(
         val fname = dep.lib.name
         libCache.materialize(dep.lib)
         new MemVirtualJSFile(s"require-$fname").withContent(
-          s"""$varname = require(${toJSstr(fname)});"""
+          s"""$varname = require("${escapeJS(fname)}");"""
         )
       }
     }
@@ -278,8 +277,8 @@ class NodeJSEnv(
         writer: Writer): Unit = {
       file match {
         case file: FileVirtualJSFile =>
-          val fname = toJSstr(file.file.getAbsolutePath)
-          writer.write(s"require($fname);\n")
+          val fname = file.file.getAbsolutePath
+          writer.write(s"""require("${escapeJS(fname)}");\n""")
         case _ =>
           super.writeJSFile(file, writer)
       }

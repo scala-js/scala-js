@@ -9,8 +9,6 @@
 
 package scala.scalajs.sbtplugin.testing
 
-import scala.scalajs.sbtplugin.JSUtils
-
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.env._
 import scala.scalajs.tools.classpath._
@@ -149,7 +147,7 @@ final class ScalaJSRunner private[testing] (
   // Helpers
 
   private def slaveLauncher = {
-    val frameworkJS = JSUtils.toJSstr(framework.frameworkName)
+    val frameworkJS = jsonToString(framework.frameworkName.toJSON)
     val argsJS = jsonToString(args.toList.toJSON)
     val remoteArgsJS = jsonToString(args.toList.toJSON)
     val code = s"""
@@ -160,7 +158,7 @@ final class ScalaJSRunner private[testing] (
   }
 
   private def masterLauncher = {
-    val name = JSUtils.toJSstr(framework.frameworkName)
+    val name = jsonToString(framework.frameworkName.toJSON)
     val code = s"""
       new org.scalajs.testinterface.internal.Master($name).init();
     """

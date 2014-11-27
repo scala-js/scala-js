@@ -11,12 +11,12 @@ package scala.scalajs.sbtplugin.env.phantomjs
 
 import scala.scalajs.sbtplugin.env._
 
+import scala.scalajs.ir.Utils.escapeJS
+
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.env._
 import scala.scalajs.tools.logging._
-
-import scala.scalajs.sbtplugin.JSUtils._
 
 import java.io.{ Console => _, _ }
 import java.net._
@@ -373,7 +373,7 @@ class PhantomJSEnv(
         out.write(
             s"""// Scala.js Phantom.js launcher
                |var page = require('webpage').create();
-               |var url = ${toJSstr(webF.getAbsolutePath)};
+               |var url = "${escapeJS(webF.getAbsolutePath)}";
                |var autoExit = $autoExit;
                |page.onConsoleMessage = function(msg) {
                |  console.log(msg);

@@ -7,14 +7,13 @@ import scala.scalajs.tools.classpath._
 import scala.scalajs.tools.io._
 import scala.scalajs.tools.json._
 import scala.scalajs.tools.logging._
-
-import scala.scalajs.sbtplugin.JSUtils
+import scala.scalajs.tools.corelib.CoreJSLibs
 
 import scala.collection.mutable
 
 final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
 
-  /** 
+  /**
    *  Detects which of the test frameworks in [[frameworks]] exists on
    *  the classpath.
    *
@@ -34,7 +33,7 @@ final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
 
       function frameworkExists(name) {
         var parts = name.split(".");
-        var obj = ${JSUtils.jsGlobalExpr};
+        var obj = ${CoreJSLibs.jsGlobalExpr};
         for (var i = 0; i < parts.length; ++i) {
           obj = obj[parts[i]];
           if (obj === void 0)

@@ -15,6 +15,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import scala.scalajs.ir
+import scala.scalajs.ir.Utils.escapeJS
 import scala.scalajs.sbtplugin._
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import ScalaJSPlugin.autoImport._
@@ -271,7 +272,7 @@ object ScalaJSBuild extends Build {
 
           val cp = {
             for (e <- (fullClasspath in Test).value)
-              yield JSUtils.toJSstr(e.data.getAbsolutePath)
+              yield s""""${escapeJS(e.data.getAbsolutePath)}""""
           }
 
           val code = {
@@ -827,7 +828,6 @@ object ScalaJSBuild extends Build {
 
                 val scalaFilter: FileFilter = "*.scala"
                 val files = (
-                    (pluginBase * "JSUtils.scala") +++
                     (pluginBase / "env" * scalaFilter) +++
                     (pluginBase / "env" / "nodejs" ** scalaFilter) +++
                     (pluginBase / "env" / "rhino" ** scalaFilter))

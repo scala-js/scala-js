@@ -14,9 +14,10 @@ import scala.scalajs.tools.optimizer.ScalaJSClosureOptimizer
 import scala.scalajs.tools.optimizer.ParIncOptimizer
 import scala.scalajs.tools.env.JSConsole
 
+import scala.scalajs.ir.Utils.escapeJS
+
 import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
-import scala.scalajs.sbtplugin.JSUtils._
 
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 
@@ -125,9 +126,9 @@ class MainGenericRunner {
 
   /** constructs a scala.Array[String] with the given elements */
   private def argArray(args: List[String]) = {
+    val jsArgs = args.map(escapeJS).mkString("[\"", "\", \"", "\"]")
     s"""ScalaJS.makeNativeArrayWrapper(
-          ScalaJS.d.T.getArrayOf(),
-          ${listToJS(args)})"""
+          ScalaJS.d.T.getArrayOf(), $jsArgs)"""
   }
 
   private def fastOptimize(

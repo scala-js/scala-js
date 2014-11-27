@@ -5,7 +5,6 @@ import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 
 import Implicits._
-import JSUtils._
 
 import scala.scalajs.tools.sem.Semantics
 import scala.scalajs.tools.io.{IO => toolsIO, _}
@@ -25,6 +24,7 @@ import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
 import scala.scalajs.sbtplugin.env.nodejs.NodeJSEnv
 import scala.scalajs.sbtplugin.env.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 
+import scala.scalajs.ir.Utils.escapeJS
 import scala.scalajs.ir.ScalaJSVersions
 
 import scala.scalajs.sbtplugin.testing.{FrameworkDetector, ScalaJSFramework}
@@ -354,8 +354,10 @@ object ScalaJSPluginInternal {
     env.jsRunner(cp, launcher, log, jsConsole).run()
   }
 
-  private def launcherContent(mainCl: String) =
-    s"${selectOnGlobal(mainCl)}().main();\n"
+  private def launcherContent(mainCl: String) = {
+    val parts = mainCl.split('.').map(s => s"""["${escapeJS(s)}"]""").mkString
+    s"${CoreJSLibs.jsGlobalExpr}$parts().main();\n"
+  }
 
   private def memLauncher(mainCl: String) = {
     new MemVirtualJSFile("Generated launcher file")
