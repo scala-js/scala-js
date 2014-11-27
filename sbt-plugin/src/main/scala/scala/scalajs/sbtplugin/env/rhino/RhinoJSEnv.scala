@@ -224,10 +224,6 @@ final class RhinoJSEnv(semantics: Semantics,
               // the JVM side closed the connection
           }
         }
-
-        // Enusre the channel is closed to release JVM side
-        optChannel.foreach(_.closeJS())
-
       } catch {
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
@@ -235,6 +231,9 @@ final class RhinoJSEnv(semantics: Semantics,
           sys.error(s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
+      // Ensure the channel is closed to release JVM side
+      optChannel.foreach(_.closeJS())
+
       Context.exit()
     }
   }
