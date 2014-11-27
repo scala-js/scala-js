@@ -143,14 +143,14 @@ class NodeJSEnv(
 
     def receive(): String = {
       if (!awaitConnection())
-        throw new ComJSEnv.ComClosedException
+        throw new ComJSEnv.ComClosedException("Node.js isn't connected")
       try {
         val len = js2jvm.readInt()
         val carr = Array.fill(len)(js2jvm.readChar())
         String.valueOf(carr)
       } catch {
         case e: EOFException =>
-          throw new ComJSEnv.ComClosedException
+          throw new ComJSEnv.ComClosedException(e)
       }
     }
 
