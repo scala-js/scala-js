@@ -167,7 +167,7 @@ object ScalaJSBuild extends Build {
           publishLocal := {}
       )
   ).aggregate(
-      compiler, library, testBridge, jasmineTestFramework
+      compiler, library, testInterface, jasmineTestFramework
   )
 
   /* This project is not really used in the build. Its sources are actually
@@ -274,29 +274,16 @@ object ScalaJSBuild extends Build {
               yield JSUtils.toJSstr(e.data.getAbsolutePath)
           }
 
-          val runCode = """
-            var framework = org.scalajs.jasminetest.JasmineTestFramework();
-            framework.setTags("typedarray")
-
-            // Load tests
-            scalajs.TestDetector().loadDetectedTests();
-
-            var reporter = new scalajs.JasmineConsoleReporter(true);
-
-            // Setup and run Jasmine
-            var jasmineEnv = jasmine.getEnv();
-            jasmineEnv.addReporter(reporter);
-            jasmineEnv.execute();
-          """
-
           val code = {
             s"""
             var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
-            var run = ${JSUtils.toJSstr(runCode)};
 
-            eval("(function() { 'use strict'; "+
-              "var __ScalaJSEnv = null; " +
-              lib + "; " + run + "}).call(this);");
+            var __ScalaJSEnv = null;
+
+            eval("(function() { 'use strict'; " +
+              lib + ";" +
+              "scalajs.TestRunner().runTests();" +
+            "}).call(this);");
             """
           }
 
@@ -594,7 +581,8 @@ object ScalaJSBuild extends Build {
       id = "stubs",
       base = file("stubs"),
       settings = defaultSettings ++ publishSettings ++ Seq(
-          name := "Scala.js Stubs"
+          name := "Scala.js Stubs",
+          libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
       )
   )
 
@@ -618,11 +606,11 @@ object ScalaJSBuild extends Build {
   ).dependsOn(tools)
 
   // Test framework
-  lazy val testBridge = Project(
-      id = "testBridge",
-      base = file("test-bridge"),
+  lazy val testInterface = Project(
+      id = "testInterface",
+      base = file("test-interface"),
       settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
-          name := "Scala.js test bridge",
+          name := "Scala.js test interface",
           delambdafySetting,
           scalaJSSourceMapSettings
       )
@@ -641,7 +629,7 @@ object ScalaJSBuild extends Build {
           ),
           scalaJSSourceMapSettings
       )
-  ).dependsOn(compiler % "plugin", library, testBridge)
+  ).dependsOn(compiler % "plugin", library, testInterface)
 
   // Examples
 

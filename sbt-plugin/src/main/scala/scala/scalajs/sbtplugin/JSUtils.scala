@@ -32,4 +32,15 @@ object JSUtils {
   def dot2bracket(name: String): String = {
     name.split('.').map(s => s"""[${toJSstr(s)}]""").mkString
   }
+
+  def selectOnGlobal(name: String): String = {
+    // If we are running in Node.js, we need to bracket select on
+    // global rather than this
+    jsGlobalExpr + dot2bracket(name)
+  }
+
+  /** A JavaScript expression that has the global scope as value */
+  val jsGlobalExpr: String =
+    """((typeof global === "object" && global &&
+         global["Object"] === Object) ? global : this)"""
 }

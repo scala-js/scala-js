@@ -127,9 +127,6 @@ object ScalaJSPlugin extends AutoPlugin {
     val requiresDOM = SettingKey[Boolean]("requiresDOM",
         "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
 
-    val scalaJSTestFramework = SettingKey[String]("scalaJSTestFramework",
-        "The Scala.js class that is used as a test framework, for example a class that wraps Jasmine", ASetting)
-
     val relativeSourceMaps = SettingKey[Boolean]("relativeSourceMaps",
         "Make the referenced paths on source maps relative to target path", BPlusSetting)
 

@@ -143,14 +143,14 @@ class NodeJSEnv(
 
     def receive(): String = {
       if (!awaitConnection())
-        throw new ComJSEnv.ComClosedException
+        throw new ComJSEnv.ComClosedException("Node.js isn't connected")
       try {
         val len = js2jvm.readInt()
         val carr = Array.fill(len)(js2jvm.readChar())
         String.valueOf(carr)
       } catch {
         case e: EOFException =>
-          throw new ComJSEnv.ComClosedException
+          throw new ComJSEnv.ComClosedException(e)
       }
     }
 
@@ -162,11 +162,6 @@ class NodeJSEnv(
         js2jvm.close()
       if (comSocket != null)
         comSocket.close()
-    }
-
-    override def stop(): Unit = {
-      close()
-      super.stop()
     }
 
     /** Waits until the JS VM has established a connection or terminates

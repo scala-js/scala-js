@@ -1,6 +1,6 @@
 package scala.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
+import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
 
 /** The test counter */
 private[testsuite] object TC {
@@ -32,7 +32,7 @@ object SourceMapTest extends JasmineTest {
 
   val testCount: Int = 0/*<testCount>*/
 
-  if (JasmineTestFramework.hasTag("nodejs")) {
+  if (TestSuiteContext.hasTag("nodejs")) {
     scalajs.js.Dynamic.global.require("source-map-support").install()
   }
 

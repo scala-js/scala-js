@@ -8,7 +8,7 @@
 package scala.scalajs.testsuite.compiler
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.{JasmineTest, JasmineTestFramework}
+import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
 import scala.scalajs.js.annotation._
 
 /*
@@ -348,7 +348,7 @@ object InteroperabilityTest extends JasmineTest {
         obj;
       """).asInstanceOf[InteroperabilityTestNoUnboxResultInStatement]
       obj.test() // in statement position, should not throw
-      if (JasmineTestFramework.hasTag("compliant-asinstanceof"))
+      if (TestSuiteContext.hasTag("compliant-asinstanceof"))
         expect(() => obj.test()).toThrow // in expression position, should throw
     }
 

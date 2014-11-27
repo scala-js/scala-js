@@ -19,4 +19,10 @@ trait ComJSRunner extends AsyncJSRunner {
    */
   def close(): Unit
 
+  /** Abort the associated run. Also closes the communication channel. */
+  abstract override def stop(): Unit = {
+    close()
+    super.stop()
+  }
+
 }

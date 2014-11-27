@@ -34,5 +34,12 @@ trait ComJSEnv extends AsyncJSEnv {
 }
 
 object ComJSEnv {
-  class ComClosedException extends Exception("JSCom has been closed")
+  private final val defaultMsg = "JSCom has been closed"
+
+  class ComClosedException(msg: String,
+      cause: Throwable) extends Exception(msg, cause) {
+    def this() = this(defaultMsg, null)
+    def this(cause: Throwable) = this(defaultMsg, cause)
+    def this(msg: String) = this(msg, null)
+  }
 }

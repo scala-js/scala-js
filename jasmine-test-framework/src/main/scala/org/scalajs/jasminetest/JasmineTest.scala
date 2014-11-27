@@ -10,13 +10,13 @@
 package org.scalajs.jasminetest
 
 import scala.scalajs.js
-import scala.scalajs.testbridge._
+import scala.scalajs.js.annotation.JSExportDescendentObjects
 
-import java.util.regex.Pattern
 import org.scalajs.jasmine.Jasmine
 import org.scalajs.jasmine.JasmineExpectation
 
-class JasmineTest extends Test with TestSuiteContext {
+@JSExportDescendentObjects
+class JasmineTest extends TestSuiteContext {
   def jasmine = Jasmine.jasmine
   def describe(name: String)(suite: => Unit): Unit = Jasmine.describe(name, suite _)
   def it(title: String)(test: => Unit): Unit = Jasmine.it(title, test _)

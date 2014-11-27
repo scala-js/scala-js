@@ -224,7 +224,7 @@ class PhantomJSEnv(
 
     def receive(): String = synchronized {
       if (recvBuf.isEmpty && !awaitConnection())
-        throw new ComJSEnv.ComClosedException
+        throw new ComJSEnv.ComClosedException("Phantom.js isn't connected")
 
       @tailrec
       def loop(acc: String): String = {
@@ -253,11 +253,6 @@ class PhantomJSEnv(
     }
 
     def close(): Unit = mgr.stop()
-
-    override def stop(): Unit = {
-      close()
-      super.stop()
-    }
 
     /** Waits until the JS VM has established a connection, or the VM
      *  terminated. Returns true if a connection was established.

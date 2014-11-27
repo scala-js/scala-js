@@ -24,7 +24,7 @@ import scala.concurrent.duration.Duration
 
 import org.mozilla.javascript._
 
-class RhinoJSEnv(semantics: Semantics,
+final class RhinoJSEnv(semantics: Semantics,
     withDOM: Boolean = false) extends ComJSEnv {
 
   import RhinoJSEnv._
@@ -94,14 +94,7 @@ class RhinoJSEnv(semantics: Semantics,
 
     override protected def optChannel(): Option[Channel] = Some(channel)
 
-    def send(msg: String): Unit = {
-      try {
-        channel.sendToJS(msg)
-      } catch {
-        case _: ChannelClosedException =>
-          throw new ComJSEnv.ComClosedException
-      }
-    }
+    def send(msg: String): Unit = channel.sendToJS(msg)
 
     def receive(): String = {
       try {
@@ -112,12 +105,7 @@ class RhinoJSEnv(semantics: Semantics,
       }
     }
 
-    def close(): Unit = channel.close()
-
-    override def stop(): Unit = {
-      close()
-      super.stop()
-    }
+    def close(): Unit = channel.closeJVM()
 
   }
 
@@ -183,7 +171,7 @@ class RhinoJSEnv(semantics: Semantics,
 
         comObj.addFunction("close", _ => {
           // Tell JVM side we won't send anything
-          channel.close()
+          channel.closeJS()
           // Internally register that we're done
           recvCallback = None
         })
@@ -236,10 +224,6 @@ class RhinoJSEnv(semantics: Semantics,
               // the JVM side closed the connection
           }
         }
-
-        // Enusre the channel is closed to release JVM side
-        optChannel.foreach(_.close)
-
       } catch {
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
@@ -247,6 +231,9 @@ class RhinoJSEnv(semantics: Semantics,
           sys.error(s"Exception while running JS code: ${e.getMessage}")
       }
     } finally {
+      // Ensure the channel is closed to release JVM side
+      optChannel.foreach(_.closeJS())
+
       Context.exit()
     }
   }
@@ -257,42 +244,50 @@ object RhinoJSEnv {
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {
-    private[this] var _closed = false
+    private[this] var _closedJS = false
+    private[this] var _closedJVM = false
     private[this] val js2jvm = mutable.Queue.empty[String]
     private[this] val jvm2js = mutable.Queue.empty[String]
 
     def sendToJS(msg: String): Unit = synchronized {
+      ensureOpen(_closedJVM)
       jvm2js.enqueue(msg)
       notify()
     }
 
     def sendToJVM(msg: String): Unit = synchronized {
+      ensureOpen(_closedJS)
       js2jvm.enqueue(msg)
       notify()
     }
 
     def recvJVM(): String = synchronized {
-      while (js2jvm.isEmpty && ensureOpen())
+      while (js2jvm.isEmpty && ensureOpen(_closedJS))
         wait()
 
       js2jvm.dequeue()
     }
 
     def recvJS(): String = synchronized {
-      while (jvm2js.isEmpty && ensureOpen())
+      while (jvm2js.isEmpty && ensureOpen(_closedJVM))
         wait()
 
       jvm2js.dequeue()
     }
 
-    def close(): Unit = synchronized {
-      _closed = true
+    def closeJS(): Unit = synchronized {
+      _closedJS = true
+      notify()
+    }
+
+    def closeJVM(): Unit = synchronized {
+      _closedJVM = true
       notify()
     }
 
     /** Throws if the channel is closed and returns true */
-    private def ensureOpen(): Boolean = {
-      if (_closed)
+    private def ensureOpen(closed: Boolean): Boolean = {
+      if (closed)
         throw new ChannelClosedException
       true
     }
