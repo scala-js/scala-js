@@ -318,7 +318,6 @@ object ScalaJSBuild extends Build {
       base = file("test-adapter"),
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js sbt test adapter",
-          scalaVersion := "2.10.4",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
       )
   ).dependsOn(jsEnvs)
@@ -330,6 +329,7 @@ object ScalaJSBuild extends Build {
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
           sbtPlugin := true,
+          scalaVersion := "2.10.4",
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value)
       )
