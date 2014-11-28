@@ -357,6 +357,7 @@ object ScalaJSBuild extends Build {
       settings = commonSettings ++ publishIvySettings ++ Seq(
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
+          name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
           sbtPlugin := true,
           scalaVersion := "2.10.4",
           scalaBinaryVersion :=
