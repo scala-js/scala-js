@@ -50,6 +50,10 @@ object ScalaJSBuild extends Build {
       homepage := Some(url("http://scala-js.org/")),
       licenses += ("BSD New",
           url("https://github.com/scala-js/scala-js/blob/master/LICENSE")),
+      scmInfo := Some(ScmInfo(
+          url("https://github.com/scala-js/scala-js"),
+          "scm:git:git@github.com:scala-js/scala-js.git",
+          Some("scm:git:git@github.com:scala-js/scala-js.git"))),
 
       shouldPartest := {
         val testListDir = (
@@ -67,13 +71,38 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  private val snapshotsOrReleases =
-    if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
+  val publishSettings = Seq(
+      publishMavenStyle := true,
+      publishTo := {
+        val nexus = "https://oss.sonatype.org/"
+        if (isSnapshot.value)
+          Some("snapshots" at nexus + "content/repositories/snapshots")
+        else
+          Some("releases" at nexus + "service/local/staging/deploy/maven2")
+      },
+      pomExtra := (
+          <developers>
+            <developer>
+              <id>sjrd</id>
+              <name>Sébastien Doeraene</name>
+              <url>https://github.com/sjrd/</url>
+            </developer>
+            <developer>
+              <id>gzm0</id>
+              <name>Tobias Schlatter</name>
+              <url>https://github.com/gzm0/</url>
+            </developer>
+          </developers>
+      ),
+      pomIncludeRepository := { _ => false }
+  )
 
   private def publishToScalaJSRepoSettings = Seq(
       publishTo := {
         Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
           case Seq(Some(user), Some(pass)) =>
+            val snapshotsOrReleases =
+              if (scalaJSIsSnapshotVersion) "snapshots" else "releases"
             Some(Resolver.sftp(
                 s"scala-js-$snapshotsOrReleases",
                 "repo.scala-js.org",
@@ -92,7 +121,7 @@ object ScalaJSBuild extends Build {
       bintrayOrganization in bintray := Some("scala-js")
   )
 
-  val publishSettings = (
+  val publishIvySettings = (
       if (Properties.envOrNone("PUBLISH_TO_BINTRAY") == Some("true"))
         publishToBintraySettings
       else
@@ -325,9 +354,10 @@ object ScalaJSBuild extends Build {
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
       base = file("sbt-plugin"),
-      settings = commonSettings ++ publishSettings ++ Seq(
+      settings = commonSettings ++ publishIvySettings ++ Seq(
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
+          name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
           sbtPlugin := true,
           scalaVersion := "2.10.4",
           scalaBinaryVersion :=

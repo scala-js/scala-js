@@ -556,17 +556,7 @@ object ScalaJSPluginInternal {
       scalaJSDefaultBuildConfigs
   )
 
-  val scalaJSReleasesResolver = Resolver.url("scala-js-releases",
-      url("http://dl.bintray.com/content/scala-js/scala-js-releases"))(
-      Resolver.ivyStylePatterns)
-  val scalaJSSnapshotsResolver = Resolver.url("scala-js-snapshots",
-      url("http://repo.scala-js.org/repo/snapshots/"))(
-      Resolver.ivyStylePatterns)
-
   val scalaJSEcosystemSettings = Seq(
-      // the resolver to find the compiler and library (and others)
-      resolvers ++= Seq(scalaJSReleasesResolver, scalaJSSnapshotsResolver),
-
       // you will need the Scala.js compiler plugin
       autoCompilerPlugins := true,
       addCompilerPlugin(
