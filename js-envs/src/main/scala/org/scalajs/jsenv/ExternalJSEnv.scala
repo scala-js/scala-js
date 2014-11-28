@@ -171,14 +171,7 @@ abstract class ExternalJSEnv(
 
     def isRunning(): Boolean = {
       require(vmInst != null, "start() must have been called")
-      // Emulate JDK 8 Process.isAlive
-      try {
-        vmInst.exitValue()
-        false
-      } catch {
-        case e: IllegalThreadStateException =>
-          true
-      }
+      !promise.isCompleted
     }
 
     def await(): Unit = {
