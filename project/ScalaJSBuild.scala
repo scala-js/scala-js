@@ -14,15 +14,17 @@ import java.io.{
 import scala.collection.mutable
 import scala.util.Properties
 
-import scala.scalajs.ir
-import scala.scalajs.sbtplugin._
-import scala.scalajs.sbtplugin.env.rhino.RhinoJSEnv
+import org.scalajs.core.ir
+import org.scalajs.core.ir.Utils.escapeJS
+
+import org.scalajs.sbtplugin._
+import org.scalajs.jsenv.rhino.RhinoJSEnv
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Implicits._
 
-import scala.scalajs.tools.sourcemap._
-import scala.scalajs.tools.io.MemVirtualJSFile
+import org.scalajs.core.tools.sourcemap._
+import org.scalajs.core.tools.io.MemVirtualJSFile
 
 import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
 import AssemblyKeys.{assembly, assemblyOption}
@@ -37,7 +39,8 @@ object ScalaJSBuild extends Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   val commonSettings = Seq(
-      organization := "org.scala-lang.modules.scalajs",
+      scalaVersion := "2.11.2",
+      organization := "org.scala-js",
       version := scalaJSVersion,
 
       normalizedName ~= {
@@ -98,10 +101,6 @@ object ScalaJSBuild extends Build {
       publishMavenStyle := false
   )
 
-  val defaultSettings = commonSettings ++ Seq(
-      scalaVersion := "2.11.2"
-  )
-
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
       autoCompilerPlugins := true,
       scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true))
@@ -148,13 +147,15 @@ object ScalaJSBuild extends Build {
   lazy val root: Project = Project(
       id = "scalajs",
       base = file("."),
-      settings = defaultSettings ++ Seq(
+      settings = commonSettings ++ Seq(
           name := "Scala.js",
           publishArtifact in Compile := false,
 
           clean := clean.dependsOn(
               // compiler, library and jasmineTestFramework are aggregated
-              clean in tools, clean in toolsJS, clean in plugin,
+              clean in irProject, clean in irProjectJS,
+              clean in tools, clean in toolsJS, clean in jsEnvs,
+              clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
               clean in libraryAux, clean in javalibEx,
               clean in examples, clean in helloworld,
@@ -167,29 +168,35 @@ object ScalaJSBuild extends Build {
           publishLocal := {}
       )
   ).aggregate(
-      compiler, library, testInterface, jasmineTestFramework
+      compiler, library, testInterface, stubs, jasmineTestFramework
   )
 
-  /* This project is not really used in the build. Its sources are actually
-   * added as sources of the `compiler` project (and meant to be added to the
-   * `tools` project as well).
-   * It exists mostly to be used in IDEs, because they don't like very much to
-   * have code in a project that lives outside the project's directory, and
-   * like even less that code be shared by different projects.
-   */
+  val commonIrProjectSettings = (
+      commonSettings ++ publishSettings
+  ) ++ Seq(
+      name := "Scala.js IR"
+  )
+
   lazy val irProject: Project = Project(
       id = "ir",
       base = file("ir"),
-      settings = defaultSettings ++ Seq(
-          name := "Scala.js IR",
-          exportJars := true
-      )
+      settings = commonIrProjectSettings
   )
+
+  lazy val irProjectJS: Project = Project(
+      id = "irJS",
+      base = file("ir/.js"),
+      settings = commonIrProjectSettings ++ myScalaJSSettings ++ Seq(
+          crossVersion := ScalaJSCrossVersion.binary,
+          unmanagedSourceDirectories in Compile +=
+            (scalaSource in Compile in irProject).value
+      )
+  ).dependsOn(compiler % "plugin", javalibEx)
 
   lazy val compiler: Project = Project(
       id = "compiler",
       base = file("compiler"),
-      settings = defaultSettings ++ publishSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js compiler",
           crossVersion := CrossVersion.full, // because compiler api is not binary compatible
           unmanagedSourceDirectories in Compile +=
@@ -226,12 +233,13 @@ object ScalaJSBuild extends Build {
       )
   )
 
-  val commonToolsSettings = Seq(
+  val commonToolsSettings = (
+      commonSettings ++ publishSettings
+  ) ++ Seq(
       name := "Scala.js tools",
 
-      unmanagedSourceDirectories in Compile ++= Seq(
+      unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile / "shared/src/main/scala",
-        (scalaSource in (irProject, Compile)).value),
 
       sourceGenerators in Compile <+= Def.task {
         ScalaJSEnvGenerator.generateEnvHolder(
@@ -243,25 +251,19 @@ object ScalaJSBuild extends Build {
   lazy val tools: Project = Project(
       id = "tools",
       base = file("tools/jvm"),
-      settings = defaultSettings ++ publishSettings ++ (
-          commonToolsSettings
-      ) ++ Seq(
-          scalaVersion := "2.10.4",
-
+      settings = commonToolsSettings ++ Seq(
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           )
       )
-  )
+  ).dependsOn(irProject)
 
   lazy val toolsJS: Project = Project(
       id = "toolsJS",
       base = file("tools/js"),
-      settings = defaultSettings ++ myScalaJSSettings ++ publishSettings ++ (
-          commonToolsSettings
-      ) ++ Seq(
+      settings = myScalaJSSettings ++ commonToolsSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
@@ -271,7 +273,7 @@ object ScalaJSBuild extends Build {
 
           val cp = {
             for (e <- (fullClasspath in Test).value)
-              yield JSUtils.toJSstr(e.data.getAbsolutePath)
+              yield s""""${escapeJS(e.data.getAbsolutePath)}""""
           }
 
           val code = {
@@ -296,16 +298,13 @@ object ScalaJSBuild extends Build {
           runner.run()
         }
       }
-  ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test")
+  ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test", irProjectJS)
 
-  lazy val plugin: Project = Project(
-      id = "sbtPlugin",
-      base = file("sbt-plugin"),
+  lazy val jsEnvs: Project = Project(
+      id = "jsEnvs",
+      base = file("js-envs"),
       settings = commonSettings ++ publishSettings ++ Seq(
-          name := "Scala.js sbt plugin",
-          sbtPlugin := true,
-          scalaBinaryVersion :=
-            CrossVersion.binaryScalaVersion(scalaVersion.value),
+          name := "Scala.js JS Envs",
           libraryDependencies ++= Seq(
               "org.mozilla" % "rhino" % "1.7R4",
               "org.webjars" % "envjs" % "1.2",
@@ -313,6 +312,28 @@ object ScalaJSBuild extends Build {
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
       )
   ).dependsOn(tools)
+
+  lazy val testAdapter = Project(
+      id = "testAdapter",
+      base = file("test-adapter"),
+      settings = commonSettings ++ publishSettings ++ Seq(
+          name := "Scala.js sbt test adapter",
+          scalaVersion := "2.10.4",
+          libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
+      )
+  ).dependsOn(jsEnvs)
+
+  lazy val plugin: Project = Project(
+      id = "sbtPlugin",
+      base = file("sbt-plugin"),
+      settings = commonSettings ++ publishSettings ++ Seq(
+          name := "Scala.js sbt plugin",
+          normalizedName := "sbt-scalajs",
+          sbtPlugin := true,
+          scalaBinaryVersion :=
+            CrossVersion.binaryScalaVersion(scalaVersion.value)
+      )
+  ).dependsOn(tools, jsEnvs, testAdapter)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -342,7 +363,7 @@ object ScalaJSBuild extends Build {
   lazy val javalanglib: Project = Project(
       id = "javalanglib",
       base = file("javalanglib"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "java.lang library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -365,7 +386,7 @@ object ScalaJSBuild extends Build {
   lazy val javalib: Project = Project(
       id = "javalib",
       base = file("javalib"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -380,7 +401,7 @@ object ScalaJSBuild extends Build {
   lazy val scalalib: Project = Project(
       id = "scalalib",
       base = file("scalalib"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -522,7 +543,7 @@ object ScalaJSBuild extends Build {
   lazy val libraryAux: Project = Project(
       id = "libraryAux",
       base = file("library-aux"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -537,7 +558,7 @@ object ScalaJSBuild extends Build {
   lazy val library: Project = Project(
       id = "library",
       base = file("library"),
-      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
           scalaJSSourceMapSettings,
@@ -564,7 +585,7 @@ object ScalaJSBuild extends Build {
   lazy val javalibEx: Project = Project(
       id = "javalibEx",
       base = file("javalib-ex"),
-      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
@@ -580,7 +601,7 @@ object ScalaJSBuild extends Build {
   lazy val stubs: Project = Project(
       id = "stubs",
       base = file("stubs"),
-      settings = defaultSettings ++ publishSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js Stubs",
           libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
       )
@@ -590,7 +611,7 @@ object ScalaJSBuild extends Build {
   lazy val cli: Project = Project(
       id = "cli",
       base = file("cli"),
-      settings = defaultSettings ++ assemblySettings ++ Seq(
+      settings = commonSettings ++ assemblySettings ++ Seq(
           name := "Scala.js CLI",
           scalaVersion := "2.10.4", // adapt version to tools
           libraryDependencies ++= Seq(
@@ -609,7 +630,7 @@ object ScalaJSBuild extends Build {
   lazy val testInterface = Project(
       id = "testInterface",
       base = file("test-interface"),
-      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js test interface",
           delambdafySetting,
           scalaJSSourceMapSettings
@@ -619,7 +640,7 @@ object ScalaJSBuild extends Build {
   lazy val jasmineTestFramework = Project(
       id = "jasmineTestFramework",
       base = file("jasmine-test-framework"),
-      settings = defaultSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js jasmine test framework",
 
           jsDependencies ++= Seq(
@@ -636,12 +657,12 @@ object ScalaJSBuild extends Build {
   lazy val examples: Project = Project(
       id = "examples",
       base = file("examples"),
-      settings = defaultSettings ++ Seq(
+      settings = commonSettings ++ Seq(
           name := "Scala.js examples"
       )
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = defaultSettings ++ myScalaJSSettings
+  lazy val exampleSettings = commonSettings ++ myScalaJSSettings
 
   lazy val helloworld: Project = Project(
       id = "helloworld",
@@ -681,7 +702,7 @@ object ScalaJSBuild extends Build {
   lazy val testSuite: Project = Project(
       id = "testSuite",
       base = file("test-suite"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js test suite",
           publishArtifact in Compile := false,
 
@@ -741,7 +762,7 @@ object ScalaJSBuild extends Build {
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
       base = file("no-ir-check-test"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "Scala.js not IR checked tests",
           scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(false)),
           publishArtifact in Compile := false
@@ -751,7 +772,7 @@ object ScalaJSBuild extends Build {
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
       base = file("javalib-ex-test-suite"),
-      settings = defaultSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
 
@@ -762,7 +783,7 @@ object ScalaJSBuild extends Build {
   lazy val partest: Project = Project(
       id = "partest",
       base = file("partest"),
-      settings = defaultSettings ++ Seq(
+      settings = commonSettings ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
 
@@ -820,21 +841,20 @@ object ScalaJSBuild extends Build {
               val baseSrcs = (sources in Compile).value
               // Sources for tools (and hence IR)
               val toolSrcs = (sources in (tools, Compile)).value
-              // Individual sources from the sbtplugin
-              val pluginSrcs = {
-                val pluginBase = ((scalaSource in (plugin, Compile)).value /
-                  "scala/scalajs/sbtplugin")
+              // Sources for js-envs
+              val jsenvSrcs = {
+                val jsenvBase = ((scalaSource in (jsEnvs, Compile)).value /
+                  "org/scalajs/jsenv")
 
                 val scalaFilter: FileFilter = "*.scala"
                 val files = (
-                    (pluginBase * "JSUtils.scala") +++
-                    (pluginBase / "env" * scalaFilter) +++
-                    (pluginBase / "env" / "nodejs" ** scalaFilter) +++
-                    (pluginBase / "env" / "rhino" ** scalaFilter))
+                    (jsenvBase * scalaFilter) +++
+                    (jsenvBase / "nodejs" ** scalaFilter) +++
+                    (jsenvBase / "rhino" ** scalaFilter))
 
                 files.get
               }
-              toolSrcs ++ baseSrcs ++ pluginSrcs
+              toolSrcs ++ baseSrcs ++ jsenvSrcs
             } else Seq()
           }
 
@@ -844,7 +864,7 @@ object ScalaJSBuild extends Build {
   lazy val partestSuite: Project = Project(
       id = "partestSuite",
       base = file("partest-suite"),
-      settings = defaultSettings ++ Seq(
+      settings = commonSettings ++ Seq(
           name := "Scala.js partest suite",
 
           fork in Test := true,

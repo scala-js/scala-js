@@ -13,7 +13,7 @@ import scala.tools.nsc.{ Global, Settings }
 import scala.tools.nsc.reporters.{ Reporter }
 import scala.tools.nsc.plugins.Plugin
 
-import scala.scalajs.compiler.ScalaJSPlugin
+import org.scalajs.core.compiler.ScalaJSPlugin
 
 import scala.io.Source
 
@@ -77,7 +77,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   // Stuff we provide
 
   override def banner: String = {
-    import scala.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+    import org.scalajs.core.ir.ScalaJSVersions.{ current => currentVersion }
 
     super.banner.trim + s"""
     |Scala.js version is: $currentVersion

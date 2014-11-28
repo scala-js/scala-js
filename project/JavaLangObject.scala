@@ -2,7 +2,7 @@
  * Hard-coded IR for java.lang.Object.
  */
 
-import scala.scalajs.ir
+import org.scalajs.core.ir
 import ir._
 import ir.Definitions._
 import ir.Infos._

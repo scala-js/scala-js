@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package scala.scalajs.sbtplugin
+package org.scalajs.sbtplugin
 package impl
 
 import scala.language.implicitConversions
@@ -30,7 +30,7 @@ trait DependencyBuilders {
    *  RuntimeDOM % "test"
    *  }}}
    */
-  val RuntimeDOM = scala.scalajs.sbtplugin.RuntimeDOMDep(None)
+  val RuntimeDOM = org.scalajs.sbtplugin.RuntimeDOMDep(None)
 
   /**
    *  Builder to allow declarations like:
@@ -87,7 +87,7 @@ object ScalaJSGroupID {
     // Hack to work around bug in sbt macros (wrong way of collecting local
     // definitions)
     val keysSym = rootMirror.staticModule(
-        "_root_.scala.scalajs.sbtplugin.ScalaJSPlugin.autoImport")
+        "_root_.org.scalajs.sbtplugin.ScalaJSPlugin.autoImport")
     val keys = c.Expr[ScalaJSPlugin.autoImport.type](Ident(keysSym))
 
     reify {

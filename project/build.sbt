@@ -28,6 +28,8 @@ unmanagedSourceDirectories in Compile ++= {
     root / "ir/src/main/scala",
     root / "tools/shared/src/main/scala",
     root / "tools/jvm/src/main/scala",
+    root / "js-envs/src/main/scala",
+    root / "test-adapter/src/main/scala",
     root / "sbt-plugin/src/main/scala"
   )
 }
