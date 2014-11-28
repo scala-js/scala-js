@@ -210,7 +210,7 @@ object Date extends Object {
    *
    * MDN
    */
-  def parse(s: String): Int = native
+  def parse(s: String): Double = native
 
   def UTC(year: Int, month: Int, date: Int = 1, hours: Int = 0,
       minutes: Int = 0, seconds: Int = 0, ms: Int = 0): Double = native
