@@ -100,10 +100,8 @@ final class ScalaJSRunner private[testadapter] (
         }
       }
 
-      for (reply <- optReply) {
+      for (reply <- optReply)
         slave.send(s"msg:$reply")
-        ComUtils.receiveResponse(slave)(ComUtils.okHandler)
-      }
 
       None
   }
