@@ -112,6 +112,12 @@ class NodeJSEnv(
             recvCallback = recvCB;
             socket = net.connect(${serverSocket.getLocalPort});
             socket.on('data', onData);
+            socket.on('error', function(err) {
+              socket.end();
+              // EPIPE on write is expected if the JVM closes
+              if (err.syscall !== "write" || err.code !== "EPIPE")
+                throw err;
+            });
           },
           send: function(msg) {
             if (socket === null) throw new Error("Com not open");
