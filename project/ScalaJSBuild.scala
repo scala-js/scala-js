@@ -152,12 +152,14 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
 
           clean := clean.dependsOn(
-              // compiler, library and jasmineTestFramework are aggregated
+              clean in compiler,
               clean in irProject, clean in irProjectJS,
               clean in tools, clean in toolsJS, clean in jsEnvs,
               clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in javalibEx,
+              clean in libraryAux, clean in library, clean in javalibEx,
+              clean in stubs, clean in cli,
+              clean in testInterface, clean in jasmineTestFramework,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in noIrCheckTest,
@@ -167,8 +169,6 @@ object ScalaJSBuild extends Build {
           publish := {},
           publishLocal := {}
       )
-  ).aggregate(
-      compiler, library, testInterface, stubs, jasmineTestFramework
   )
 
   val commonIrProjectSettings = (
@@ -318,7 +318,6 @@ object ScalaJSBuild extends Build {
       base = file("test-adapter"),
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js sbt test adapter",
-          scalaVersion := "2.10.4",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
       )
   ).dependsOn(jsEnvs)
@@ -330,6 +329,7 @@ object ScalaJSBuild extends Build {
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
           sbtPlugin := true,
+          scalaVersion := "2.10.4",
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value)
       )
