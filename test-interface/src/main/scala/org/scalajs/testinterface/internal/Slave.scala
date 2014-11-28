@@ -37,7 +37,10 @@ final class Slave(frameworkName: String, args: js.Array[String],
         case "stopSlave" =>
           reply(stopSlave())
         case "msg" =>
-          reply(incomingRunnerMessage(strArg))
+          val res = incomingRunnerMessage(strArg)
+          // Only reply if something failed
+          if (res.isFailure)
+            reply(res)
         case cmd =>
           throw new IllegalArgumentException(s"Unknown command: $cmd")
       }
@@ -106,7 +109,9 @@ final class Slave(frameworkName: String, args: js.Array[String],
 
   private def stopSlave(): Try[Unit] = {
     ensureRunnerExists()
-    Try { runner.done(); () }
+    val res = Try { runner.done(); () }
+    runner = null
+    res
   }
 
   private def incomingRunnerMessage(msg: String): Try[Unit] = {

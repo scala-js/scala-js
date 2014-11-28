@@ -3,7 +3,6 @@ package org.scalajs.jsenv.test
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath.PartialClasspath
 import org.scalajs.core.tools.logging._
 
 import org.junit.Test
@@ -14,9 +13,7 @@ trait ComTests extends AsyncTests {
 
   protected def newJSEnv: ComJSEnv
 
-  private def emptyCP = PartialClasspath.empty.resolve()
-
-  private def comRunner(code: String) = {
+  protected def comRunner(code: String): ComJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
     newJSEnv.comRunner(emptyCP, codeVF,
         new ScalaConsoleLogger(Level.Warn), ConsoleJSConsole)

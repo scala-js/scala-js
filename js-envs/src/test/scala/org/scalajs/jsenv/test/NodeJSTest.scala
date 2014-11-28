@@ -3,6 +3,7 @@ package org.scalajs.jsenv.test
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import org.junit.Test
+import org.junit.Assert._
 
 class NodeJSTest extends JSEnvTest with ComTests {
 
@@ -49,6 +50,30 @@ class NodeJSTest extends JSEnvTest with ComTests {
        |[object Object]
        |1,2
        |""".stripMargin
+  }
+
+  @Test
+  def slowJSEnvTest = {
+    val com = comRunner("""
+      setTimeout(function() {
+        scalajsCom.init(function(msg) {
+          scalajsCom.send("pong: " + msg);
+        });
+      }, 1000);
+    """)
+
+    val n = 20
+
+    com.start()
+
+    for (_ <- 1 to n)
+      com.send("ping")
+
+    for (_ <- 1 to n)
+      assertEquals(com.receive(), "pong: ping")
+
+    com.close()
+    com.await()
   }
 
 }
