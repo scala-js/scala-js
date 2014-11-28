@@ -109,7 +109,9 @@ final class Slave(frameworkName: String, args: js.Array[String],
 
   private def stopSlave(): Try[Unit] = {
     ensureRunnerExists()
-    Try { runner.done(); () }
+    val res = Try { runner.done(); () }
+    runner = null
+    res
   }
 
   private def incomingRunnerMessage(msg: String): Try[Unit] = {
