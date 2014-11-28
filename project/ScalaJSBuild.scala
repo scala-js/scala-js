@@ -152,12 +152,14 @@ object ScalaJSBuild extends Build {
           publishArtifact in Compile := false,
 
           clean := clean.dependsOn(
-              // compiler, library and jasmineTestFramework are aggregated
+              clean in compiler,
               clean in irProject, clean in irProjectJS,
               clean in tools, clean in toolsJS, clean in jsEnvs,
               clean in testAdapter, clean in plugin,
               clean in javalanglib, clean in javalib, clean in scalalib,
-              clean in libraryAux, clean in javalibEx,
+              clean in libraryAux, clean in library, clean in javalibEx,
+              clean in stubs, clean in cli,
+              clean in testInterface, clean in jasmineTestFramework,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in noIrCheckTest,
@@ -167,8 +169,6 @@ object ScalaJSBuild extends Build {
           publish := {},
           publishLocal := {}
       )
-  ).aggregate(
-      compiler, library, testInterface, stubs, jasmineTestFramework
   )
 
   val commonIrProjectSettings = (
