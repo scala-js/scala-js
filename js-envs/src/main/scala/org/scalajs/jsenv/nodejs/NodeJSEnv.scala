@@ -88,19 +88,20 @@ class NodeJSEnv(
         }
 
         function tryReadMsg() {
-          if (inBuffer.length < 4) return;
-          var msgLen = inBuffer.readInt32BE(0);
-          var byteLen = 4 + msgLen * 2;
+          while (inBuffer.length >= 4) {
+            var msgLen = inBuffer.readInt32BE(0);
+            var byteLen = 4 + msgLen * 2;
 
-          if (inBuffer.length < byteLen) return;
-          var res = "";
+            if (inBuffer.length < byteLen) return;
+            var res = "";
 
-          for (var i = 0; i < msgLen; ++i)
-            res += String.fromCharCode(inBuffer.readInt16BE(4 + i * 2));
+            for (var i = 0; i < msgLen; ++i)
+              res += String.fromCharCode(inBuffer.readInt16BE(4 + i * 2));
 
-          inBuffer = inBuffer.slice(byteLen);
+            inBuffer = inBuffer.slice(byteLen);
 
-          recvCallback(res);
+            recvCallback(res);
+          }
         }
 
         global.scalajsCom = {

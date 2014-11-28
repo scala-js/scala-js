@@ -3,7 +3,7 @@ package org.scalajs.jsenv.test
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath.PartialClasspath
+import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
 
 import org.junit.Test
@@ -17,9 +17,9 @@ trait AsyncTests {
 
   protected def newJSEnv: AsyncJSEnv
 
-  private def emptyCP = PartialClasspath.empty.resolve()
+  protected def emptyCP: CompleteClasspath = PartialClasspath.empty.resolve()
 
-  private def asyncRunner(code: String) = {
+  protected def asyncRunner(code: String): AsyncJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
     newJSEnv.asyncRunner(emptyCP, codeVF,
         new ScalaConsoleLogger(Level.Warn), ConsoleJSConsole)
