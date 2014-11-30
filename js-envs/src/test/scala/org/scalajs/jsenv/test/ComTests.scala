@@ -8,6 +8,9 @@ import org.scalajs.core.tools.logging._
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 /** A couple of tests that test communication for mix-in into a test suite */
 trait ComTests extends AsyncTests {
 
@@ -195,6 +198,28 @@ trait ComTests extends AsyncTests {
 
     try {
       com.await()
+      fail("Stopped VM should be in failure state")
+    } catch {
+      case _: Throwable =>
+    }
+  }
+
+  @Test
+  def futureStopTest = {
+    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
+
+    val fut = com.start()
+
+    // Make sure the VM doesn't terminate.
+    Thread.sleep(1000)
+
+    assertTrue("VM should still be running", com.isRunning)
+
+    // Stop VM instead of closing channel
+    com.stop()
+
+    try {
+      Await.result(fut, Duration.Inf)
       fail("Stopped VM should be in failure state")
     } catch {
       case _: Throwable =>
