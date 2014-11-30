@@ -73,8 +73,8 @@ final class ScalaJSRunner private[testadapter] (
     master.close()
 
     // Await all JS VMs
-    slaves.values.foreach(_.await())
-    master.await()
+    slaves.values.foreach(_.await(VMTermTimeout))
+    master.await(VMTermTimeout)
 
     // Cleanup
     master = null

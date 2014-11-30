@@ -8,6 +8,8 @@ import org.scalajs.core.tools.logging._
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.concurrent.Await
+
 /** A couple of tests that test communication for mix-in into a test suite */
 trait ComTests extends AsyncTests {
 
@@ -48,7 +50,7 @@ trait ComTests extends AsyncTests {
     }
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   def comCloseJSTestCommon(timeout: Long) = {
@@ -70,7 +72,7 @@ trait ComTests extends AsyncTests {
         com.receive())
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -92,7 +94,7 @@ trait ComTests extends AsyncTests {
     }
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -114,7 +116,7 @@ trait ComTests extends AsyncTests {
     } op(env)
 
     envs.foreach(_.close())
-    envs.foreach(_.await())
+    envs.foreach(_.await(DefaultTimeout))
   }
 
   private def pingPongRunner(count: Int) = {
@@ -166,7 +168,7 @@ trait ComTests extends AsyncTests {
     assertEquals(baseLen * resultFactor(iters), lastLen)
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -176,7 +178,7 @@ trait ComTests extends AsyncTests {
     com.start()
     com.send("Dummy")
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -194,7 +196,29 @@ trait ComTests extends AsyncTests {
     com.stop()
 
     try {
-      com.await()
+      com.await(DefaultTimeout)
+      fail("Stopped VM should be in failure state")
+    } catch {
+      case _: Throwable =>
+    }
+  }
+
+  @Test
+  def futureStopTest = {
+    val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
+
+    val fut = com.start()
+
+    // Make sure the VM doesn't terminate.
+    Thread.sleep(1000)
+
+    assertTrue("VM should still be running", com.isRunning)
+
+    // Stop VM instead of closing channel
+    com.stop()
+
+    try {
+      Await.result(fut, DefaultTimeout)
       fail("Stopped VM should be in failure state")
     } catch {
       case _: Throwable =>
