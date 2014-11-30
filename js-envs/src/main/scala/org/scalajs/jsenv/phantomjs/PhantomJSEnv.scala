@@ -24,6 +24,8 @@ import scala.io.Source
 import scala.collection.mutable
 import scala.annotation.tailrec
 
+import scala.concurrent.ExecutionContext
+
 class PhantomJSEnv(
     phantomjsPath: String = "phantomjs",
     addArgs: Seq[String] = Seq.empty,
@@ -88,6 +90,8 @@ class PhantomJSEnv(
     def onRunning(): Unit = synchronized(notifyAll())
     def onOpen(): Unit = synchronized(notifyAll())
     def onClose(): Unit = synchronized(notifyAll())
+
+    future.onComplete(_ => synchronized(notifyAll()))(ExecutionContext.global)
 
     def onMessage(msg: String): Unit = synchronized {
       recvBuf.enqueue(msg)
@@ -262,7 +266,7 @@ class PhantomJSEnv(
      */
     private def awaitConnection(): Boolean = {
       while (!mgr.isConnected && !mgr.isClosed && isRunning)
-        wait(200) // We sleep-wait for isRunning
+        wait()
 
       mgr.isConnected
     }
