@@ -68,16 +68,14 @@ final class RhinoJSEnv(semantics: Semantics,
       }
     }
 
+    def future: Future[Unit] = promise.future
+
     def start(): Future[Unit] = {
       thread.start()
-      promise.future
+      future
     }
 
     def stop(): Unit = thread.interrupt()
-
-    def isRunning(): Boolean = !promise.isCompleted
-
-    def await(): Unit = Await.result(promise.future, Duration.Inf)
 
     protected def optChannel(): Option[Channel] = None
   }

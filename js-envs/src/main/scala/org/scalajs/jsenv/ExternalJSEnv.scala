@@ -157,33 +157,18 @@ abstract class ExternalJSEnv(
       }
     }
 
+    def future: Future[Unit] = promise.future
+
     def start(): Future[Unit] = {
       require(vmInst == null, "start() may only be called once")
       vmInst = startVM()
       thread.start()
-      promise.future
+      future
     }
 
     def stop(): Unit = {
       require(vmInst != null, "start() must have been called")
       vmInst.destroy()
-    }
-
-    def isRunning(): Boolean = {
-      require(vmInst != null, "start() must have been called")
-      !promise.isCompleted
-    }
-
-    def await(): Unit = {
-      require(vmInst != null, "start() must have been called")
-      thread.join()
-      waitForVM(vmInst)
-
-      // At this point, the VM itself didn't fail. We need to check if
-      // anything bad happened while piping the data from the VM
-
-      if (ioThreadEx != null)
-        throw ioThreadEx
     }
   }
 
