@@ -29,7 +29,7 @@ import org.scalajs.core.tools.io.MemVirtualJSFile
 import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
 import AssemblyKeys.{assembly, assemblyOption}
 
-object ScalaJSBuild extends Build {
+object Build extends sbt.Build {
 
   val fetchedScalaSourceDir = settingKey[File](
     "Directory the scala source is fetched to")

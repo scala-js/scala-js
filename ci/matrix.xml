@@ -22,11 +22,11 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.helloworld ~= (_.withDisableOptimizer(true))' \
+    sbt 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set inScope(ThisScope in ScalaJSBuild.helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
+    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         'set scalaJSStage in Global := FullOptStage' \
@@ -37,7 +37,7 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.testingExample ~= (_.withDisableOptimizer(true))' \
+    sbt 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
     sbt ++$scala "testSuite/testOnly -- -trhino -tsource-maps" \
@@ -49,29 +49,29 @@
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
                  "noIrCheckTest/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
         testSuite/clean &&
-    sbt 'set scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+    sbt 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+    sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
         ++$scala "testSuite/testOnly -- -trhino -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in ScalaJSBuild.testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
-        'set scalaJSOptimizerOptions in ScalaJSBuild.testSuite ~= (_.withDisableOptimizer(true))' \
+    sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+        'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&
-    sbt 'set inScope(ThisScope in ScalaJSBuild.helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
+    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -tphantomjs" \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala "testSuite/testOnly -- -tphantomjs" \
         testSuite/clean &&
-    sbt 'set scalacOptions in ScalaJSBuild.testSuite += "-Xexperimental"' \
+    sbt 'set scalacOptions in testSuite += "-Xexperimental"' \
         ++$scala "testSuite/testOnly -- -trhino -tsource-maps" \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
