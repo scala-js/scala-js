@@ -9,7 +9,6 @@ import org.junit.Test
 import org.junit.Assert._
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 /** A couple of tests that test communication for mix-in into a test suite */
 trait ComTests extends AsyncTests {
@@ -51,7 +50,7 @@ trait ComTests extends AsyncTests {
     }
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   def comCloseJSTestCommon(timeout: Long) = {
@@ -73,7 +72,7 @@ trait ComTests extends AsyncTests {
         com.receive())
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -95,7 +94,7 @@ trait ComTests extends AsyncTests {
     }
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -117,7 +116,7 @@ trait ComTests extends AsyncTests {
     } op(env)
 
     envs.foreach(_.close())
-    envs.foreach(_.await())
+    envs.foreach(_.await(DefaultTimeout))
   }
 
   private def pingPongRunner(count: Int) = {
@@ -169,7 +168,7 @@ trait ComTests extends AsyncTests {
     assertEquals(baseLen * resultFactor(iters), lastLen)
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -179,7 +178,7 @@ trait ComTests extends AsyncTests {
     com.start()
     com.send("Dummy")
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
   @Test
@@ -197,7 +196,7 @@ trait ComTests extends AsyncTests {
     com.stop()
 
     try {
-      com.await()
+      com.await(DefaultTimeout)
       fail("Stopped VM should be in failure state")
     } catch {
       case _: Throwable =>
@@ -219,7 +218,7 @@ trait ComTests extends AsyncTests {
     com.stop()
 
     try {
-      Await.result(fut, Duration.Inf)
+      Await.result(fut, DefaultTimeout)
       fail("Stopped VM should be in failure state")
     } catch {
       case _: Throwable =>

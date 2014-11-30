@@ -14,6 +14,8 @@ import org.eclipse.jetty.util.component._
 
 import java.io.File
 
+import scala.concurrent.duration._
+
 object Jetty9Test {
 
   private val jettyPort = 23548
@@ -63,7 +65,7 @@ object Jetty9Test {
     })
 
     jetty.start()
-    runner.await()
+    runner.await(30.seconds)
     jetty.join()
   }
 

@@ -35,4 +35,15 @@ trait AsyncJSRunner {
    *  }}}
    */
   final def await(): Unit = Await.result(future, Duration.Inf)
+
+  /** Await completion of the started Run for the duration specified
+   *  by [[atMost]]. Strictly equivalent to:
+   * 
+   *  {{{
+   *  Await.result(future, atMost)
+   *  }}}
+   * 
+   */
+  final def await(atMost: Duration): Unit = Await.result(future, atMost)
+
 }

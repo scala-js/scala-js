@@ -61,7 +61,7 @@ final class ScalaJSFramework(
       fromJSON[FrameworkInfo](msg)
     } finally {
       runner.close()
-      runner.await()
+      runner.await(VMTermTimeout)
     }
   }
 

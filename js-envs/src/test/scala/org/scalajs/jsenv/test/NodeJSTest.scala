@@ -73,7 +73,7 @@ class NodeJSTest extends JSEnvTest with ComTests {
       assertEquals(com.receive(), "pong: ping")
 
     com.close()
-    com.await()
+    com.await(DefaultTimeout)
   }
 
 }
