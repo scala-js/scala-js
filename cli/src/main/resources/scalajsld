@@ -7,4 +7,4 @@ BASE="$(dirname $0)/.."
 CLILIB="$BASE/lib/scalajs-cli-assembly_$SCALA_BIN_VER-$SCALAJS_VER.jar"
 JSLIB="$BASE/lib/scalajs-library_$SCALA_BIN_VER-$SCALAJS_VER.jar"
 
-scala -classpath "$CLILIB" scala.scalajs.cli.Scalajsld --stdlib "$JSLIB" "$@"
+scala -classpath "$CLILIB" org.scalajs.cli.Scalajsld --stdlib "$JSLIB" "$@"
