@@ -95,3 +95,8 @@ lazy val multiTestJVM = project.in(file("multiTest/jvm")).
     libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test"
   ).
   dependsOn(testFrameworkJVM % "test")
+
+// Test %%% macro - #1331
+val unusedSettings = Seq(
+  libraryDependencies += "org.example" %%% "dummy" % "0.1"
+)
