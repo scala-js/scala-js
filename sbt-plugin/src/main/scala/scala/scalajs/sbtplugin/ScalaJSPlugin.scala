@@ -38,7 +38,8 @@ object ScalaJSPlugin extends AutoPlugin {
    */
   val autoImport = AutoImport
 
-  object AutoImport extends impl.DependencyBuilders {
+  object AutoImport extends impl.DependencyBuilders
+                       with cross.CrossProjectExtra {
     import KeyRanks._
 
     // Some constants
@@ -50,6 +51,9 @@ object ScalaJSPlugin extends AutoPlugin {
     val PreLinkStage = Stage.PreLink
     val FastOptStage = Stage.FastOpt
     val FullOptStage = Stage.FullOpt
+
+    // CrossType
+    val CrossType = cross.CrossType
 
     // Factory methods for JSEnvs
 
