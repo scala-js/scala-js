@@ -26,7 +26,7 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
+    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         'set scalaJSStage in Global := FullOptStage' \
@@ -65,7 +65,7 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
         testSuite/clean &&
-    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := PhantomJSEnv().value)' \
+    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala "testSuite/testOnly -- -tphantomjs" \
         'set scalaJSStage in Global := FullOptStage' \
