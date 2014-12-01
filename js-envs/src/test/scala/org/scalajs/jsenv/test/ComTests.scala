@@ -15,10 +15,12 @@ trait ComTests extends AsyncTests {
 
   protected def newJSEnv: ComJSEnv
 
+  protected def logger: Logger =
+    new ScalaConsoleLogger(Level.Warn)
+
   protected def comRunner(code: String): ComJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
-    newJSEnv.comRunner(emptyCP, codeVF,
-        new ScalaConsoleLogger(Level.Warn), ConsoleJSConsole)
+    newJSEnv.comRunner(emptyCP, codeVF, logger, ConsoleJSConsole)
   }
 
   private def assertThrowClosed(msg: String, body: => Unit): Unit = {
