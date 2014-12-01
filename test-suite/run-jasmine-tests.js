@@ -1,6 +1,6 @@
 window.onload = function() {
-  var framework = org.scalajs.jasminetest.JasmineTestFramework();
-  framework.setTags("typedarray")
+  var context = org.scalajs.jasminetest.TestSuiteContext();
+  context.setTags("typedarray");
 
   // Load tests
   scalajs.TestDetector().loadDetectedTests();
@@ -14,5 +14,5 @@ window.onload = function() {
   };
   jasmineEnv.execute();
 
-  framework.clearTags()
+  context.setTags();
 };
