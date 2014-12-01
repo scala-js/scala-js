@@ -451,7 +451,7 @@ object Build extends sbt.Build {
             "-P:scalajs:mapSourceURI:" +
             fetchedScalaSourceDir.value.toURI +
             "->https://raw.githubusercontent.com/scala/scala/v" +
-            scalaVersion.value + "/"
+            scalaVersion.value + "/src/library/"
             ),
 
           // Link sources in override directories to our GitHub repo
