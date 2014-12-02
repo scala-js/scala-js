@@ -16,12 +16,16 @@ import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
 
+import scala.annotation.tailrec
+
 import scala.io.Source
 
 import scala.collection.mutable
 
 import scala.concurrent.{Future, Promise, Await}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+
+import scala.reflect.ClassTag
 
 import org.mozilla.javascript._
 
@@ -130,6 +134,8 @@ final class RhinoJSEnv private (
       disableLiveConnect(context, scope)
       setupConsole(context, scope, console)
 
+      val taskQ = setupSetTimeout(context, scope)
+
       // Optionally setup scalaJSCom
       var recvCallback: Option[String => Unit] = None
       for (channel <- optChannel) {
@@ -144,10 +150,15 @@ final class RhinoJSEnv private (
         // Actually run the code
         context.evaluateFile(scope, code)
 
-        // Callback the com channel if necessary
-        // (if recvCallback = None, channel wasn't initialized on the client)
-        for ((channel, callback) <- optChannel zip recvCallback)
-          msgReceiveLoop(channel, callback, () => recvCallback.isDefined)
+        // Start the event loop
+
+        for (channel <- optChannel) {
+          comEventLoop(taskQ, channel,
+              () => recvCallback.get, () => recvCallback.isDefined)
+        }
+
+        // Channel is closed. Fall back to basic event loop
+        basicEventLoop(taskQ)
 
       } catch {
         case e: RhinoException =>
@@ -202,6 +213,61 @@ final class RhinoJSEnv private (
     val jsconsole = context.newObject(scope)
     jsconsole.addFunction("log", _.foreach(console.log _))
     ScriptableObject.putProperty(scope, "console", jsconsole)
+  }
+
+  private def setupSetTimeout(context: Context,
+      scope: Scriptable): TaskQueue = {
+
+    val ordering = Ordering.by[TimedTask, Deadline](_.deadline).reverse
+    val taskQ = mutable.PriorityQueue.empty(ordering)
+
+    def ensure[T : ClassTag](v: AnyRef, errMsg: String) = v match {
+      case v: T => v
+      case _    => sys.error(errMsg)
+    }
+
+    scope.addFunction("setTimeout", args => {
+      val cb = ensure[Function](args(0),
+          "First argument to setTimeout must be a function")
+
+      val deadline = Context.toNumber(args(1)).toInt.millis.fromNow
+
+      val task = new TimeoutTask(deadline, () =>
+        cb.call(context, scope, scope, args.slice(2, args.length)))
+
+      taskQ += task
+
+      task
+    })
+
+    scope.addFunction("setInterval", args => {
+      val cb = ensure[Function](args(0),
+          "First argument to setInterval must be a function")
+
+      val interval = Context.toNumber(args(1)).toInt.millis
+      val firstDeadline = interval.fromNow
+
+      val task = new IntervalTask(firstDeadline, interval, () =>
+        cb.call(context, scope, scope, args.slice(2, args.length)))
+
+      taskQ += task
+
+      task
+    })
+
+    scope.addFunction("clearTimeout", args => {
+      val task = ensure[TimeoutTask](args(0), "First argument to " +
+          "clearTimeout must be a value returned by setTimeout")
+      task.cancel()
+    })
+
+    scope.addFunction("clearInterval", args => {
+      val task = ensure[IntervalTask](args(0), "First argument to " +
+          "clearInterval must be a value returned by setInterval")
+      task.cancel()
+    })
+
+    taskQ
   }
 
   private def setupCom(context: Context, scope: Scriptable, channel: Channel,
@@ -265,16 +331,102 @@ final class RhinoJSEnv private (
       cp.allCode.foreach(context.evaluateFile(scope, _))
   }
 
-  private def msgReceiveLoop(channel: Channel,
-      callback: String => Unit, stillOpen: () => Boolean): Unit = {
+  private def basicEventLoop(taskQ: TaskQueue): Unit =
+    eventLoopImpl(taskQ, sleepWait, () => true)
 
-    try {
-      while (stillOpen())
-        callback(channel.recvJS())
-    } catch {
-      case _: ChannelClosedException =>
-        // the JVM side closed the connection
+  private def comEventLoop(taskQ: TaskQueue, channel: Channel,
+      callback: () => String => Unit, isOpen: () => Boolean): Unit = {
+
+    if (!isOpen())
+      // The channel has not been opened yet. Wait for opening.
+      eventLoopImpl(taskQ, sleepWait, () => !isOpen())
+
+    // Once we reach this point, we either:
+    // - Are done
+    // - The channel is open
+
+    // Guard call to `callback`
+    if (isOpen()) {
+      val cb = callback()
+      try {
+        @tailrec
+        def loop(): Unit = {
+          val loopResult = eventLoopImpl(taskQ, channel.recvJS _, isOpen)
+
+          loopResult match {
+            case Some(msg) =>
+              cb(msg)
+              loop()
+            case None if isOpen() =>
+              assert(taskQ.isEmpty)
+              cb(channel.recvJS())
+              loop()
+            case None =>
+              // No tasks left, channel closed
+          }
+        }
+        loop()
+      } catch {
+        case _: ChannelClosedException =>
+          // the JVM side closed the connection
+      }
     }
+  }
+
+  /** Run an event loop on [[taskQ]] using [[waitFct]] to wait
+   *
+   *  If [[waitFct]] returns a Some, this method returns this value immediately
+   *  If [[waitFct]] returns a None, we assume a sufficient amount has been
+   *  waited for the Deadline to pass. The event loop then runs the task.
+   *
+   *  Each iteration, [[continue]] is queried, whether to continue the loop.
+   *
+   *  @returns A Some returned by [[waitFct]] or None if [[continue]] has
+   *      returned false, or there are no more tasks (i.e. [[taskQ]] is empty)
+   *  @throws InterruptedException if the thread was interrupted
+   */
+  private def eventLoopImpl[T](taskQ: TaskQueue,
+      waitFct: Deadline => Option[T], continue: () => Boolean): Option[T] = {
+
+    @tailrec
+    def loop(): Option[T] = {
+      if (Thread.interrupted())
+        throw new InterruptedException()
+
+      if (taskQ.isEmpty || !continue()) None
+      else {
+        val task = taskQ.head
+        if (task.canceled) {
+          taskQ.dequeue()
+          loop()
+        } else {
+          waitFct(task.deadline) match {
+            case result @ Some(_) => result
+
+            case None =>
+              // The time has actually expired
+              val task = taskQ.dequeue()
+
+              // Perform task
+              task.task()
+
+              if (task.reschedule())
+                taskQ += task
+
+              loop()
+          }
+        }
+      }
+    }
+
+    loop()
+  }
+
+  private val sleepWait = { (deadline: Deadline) =>
+    val timeLeft = deadline.timeLeft.toMillis
+    if (timeLeft > 0)
+      Thread.sleep(timeLeft)
+    None
   }
 
 }
@@ -314,6 +466,20 @@ object RhinoJSEnv {
       jvm2js.dequeue()
     }
 
+    def recvJS(deadline: Deadline): Option[String] = synchronized {
+      var expired = false
+      while (jvm2js.isEmpty && !expired && ensureOpen(_closedJVM)) {
+        val timeLeft = deadline.timeLeft.toMillis
+        if (timeLeft > 0)
+          wait(timeLeft)
+        else
+          expired = true
+      }
+
+      if (expired) None
+      else Some(jvm2js.dequeue())
+    }
+
     def closeJS(): Unit = synchronized {
       _closedJS = true
       notify()
@@ -333,5 +499,41 @@ object RhinoJSEnv {
   }
 
   private class ChannelClosedException extends Exception
+
+  private abstract class TimedTask(val task: () => Unit) {
+    private[this] var _canceled: Boolean = false
+
+    def deadline: Deadline
+    def reschedule(): Boolean
+
+    def canceled: Boolean = _canceled
+    def cancel(): Unit = _canceled = true
+  }
+
+  private final class TimeoutTask(val deadline: Deadline,
+      task: () => Unit) extends TimedTask(task) {
+    def reschedule(): Boolean = false
+
+    override def toString(): String =
+      s"TimeoutTask($deadline, canceled = $canceled)"
+  }
+
+  private final class IntervalTask(firstDeadline: Deadline,
+      interval: FiniteDuration, task: () => Unit) extends TimedTask(task) {
+
+    private[this] var _deadline = firstDeadline
+
+    def deadline: Deadline = _deadline
+
+    def reschedule(): Boolean = {
+      _deadline += interval
+      !canceled
+    }
+
+    override def toString(): String =
+      s"IntervalTask($deadline, interval = $interval, canceled = $canceled)"
+  }
+
+  private type TaskQueue = mutable.PriorityQueue[TimedTask]
 
 }
