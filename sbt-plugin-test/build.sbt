@@ -44,57 +44,44 @@ lazy val jetty9 = project.settings(baseSettings: _*).
     Jetty9Test.runSetting
   )
 
-val testFrameworkSettings = Seq(
-  name := "Dummy cross JS/JVM test framework",
-  unmanagedSourceDirectories in Compile +=
-    baseDirectory.value / ".." / "src" / "main" / "scala"
-)
-
-lazy val testFrameworkJS = project.in(file("testFramework/.js")).
-  enablePlugins(ScalaJSPlugin).
+lazy val testFramework = crossProject.crossType(CrossType.Pure).
   settings(versionSettings: _*).
-  settings(testFrameworkSettings: _*).
-  settings(
+  settings(name := "Dummy cross JS/JVM test framework").
+  jsSettings(
     libraryDependencies +=
       "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
-  )
-
-lazy val testFrameworkJVM = project.in(file("testFramework/.jvm")).
-  settings(versionSettings: _*).
-  settings(testFrameworkSettings: _*).
-  settings(
+  ).
+  jvmSettings(
     libraryDependencies ++= Seq(
         "org.scala-sbt" % "test-interface" % "1.0",
         "org.scala-js" %% "scalajs-stubs" % scalaJSVersion % "provided"
     )
   )
 
-val multiTestSettings = Seq(
-  testFrameworks ++= Seq(
-      TestFramework("sbttest.framework.DummyFramework"),
-      TestFramework("inexistent.Foo", "another.strange.Bar")
-  ),
-  unmanagedSourceDirectories in Compile +=
-    baseDirectory.value / ".." / "shared" / "src" / "main" / "scala",
-  unmanagedSourceDirectories in Test +=
-    baseDirectory.value / ".." / "shared" / "src" / "test" / "scala"
-)
+lazy val testFrameworkJS = testFramework.js
+lazy val testFrameworkJVM = testFramework.jvm
 
-lazy val multiTestJS = project.in(file("multiTest/js")).
-  enablePlugins(ScalaJSPlugin).
-  settings(baseSettings: _*).
-  settings(multiTestSettings: _*).
-  settings(name := "Multi test framework test JS").
-  dependsOn(testFrameworkJS % "test")
-
-lazy val multiTestJVM = project.in(file("multiTest/jvm")).
-  settings(versionSettings: _*).
-  settings(multiTestSettings: _*).
+lazy val multiTest = crossProject.
   settings(
-    name := "Multi test framework test JVM",
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test"
+    testFrameworks ++= Seq(
+        TestFramework("sbttest.framework.DummyFramework"),
+        TestFramework("inexistent.Foo", "another.strange.Bar")
+    )
   ).
-  dependsOn(testFrameworkJVM % "test")
+  jsSettings(baseSettings: _*).
+  jsSettings(
+    name := "Multi test framework test JS"
+  ).
+  jvmSettings(versionSettings: _*).
+  jvmSettings(
+    name := "Multi test framework test JVM",
+    libraryDependencies +=
+      "com.novocode" % "junit-interface" % "0.9" % "test"
+  ).
+  dependsOn(testFramework % "test")
+
+lazy val multiTestJS = multiTest.js
+lazy val multiTestJVM = multiTest.jvm
 
 // Test %%% macro - #1331
 val unusedSettings = Seq(
