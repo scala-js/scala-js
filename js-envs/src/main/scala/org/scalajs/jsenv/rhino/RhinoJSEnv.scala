@@ -124,116 +124,31 @@ final class RhinoJSEnv private (
     try {
       val scope = context.initStandardObjects()
 
-      if (withDOM) {
-        // Fetch env.rhino.js from webjar
-        val name = "env.rhino.js"
-        val path = "/META-INF/resources/webjars/envjs/1.2/" + name
-        val resource = getClass.getResource(path)
-        assert(resource != null, s"need $name as resource")
+      if (withDOM)
+        setupDOM(context, scope)
 
-        // Rhino can't optimize envjs
-        context.setOptimizationLevel(-1)
-
-        // Don't print envjs header
-        scope.addFunction("print", args => ())
-
-        // Pipe file to Rhino
-        val reader = Source.fromURL(resource).bufferedReader
-        context.evaluateReader(scope, reader, name, 1, null);
-
-        // No need to actually define print here: It is captured by envjs to
-        // implement console.log, which we'll override in the next statement
-      }
-
-      // Make sure Rhino does not do its magic for JVM top-level packages (#364)
-      val PackagesObject =
-        ScriptableObject.getProperty(scope, "Packages").asInstanceOf[Scriptable]
-      val topLevelPackageIds = ScriptableObject.getPropertyIds(PackagesObject)
-      for (id <- topLevelPackageIds) (id: Any) match {
-        case name: String => ScriptableObject.deleteProperty(scope, name)
-        case index: Int   => ScriptableObject.deleteProperty(scope, index)
-        case _            => // should not happen, I think, but with Rhino you never know
-      }
-
-      // Setup console.log
-      val jsconsole = context.newObject(scope)
-      jsconsole.addFunction("log", _.foreach(console.log _))
-      ScriptableObject.putProperty(scope, "console", jsconsole)
+      disableLiveConnect(context, scope)
+      setupConsole(context, scope, console)
 
       // Optionally setup scalaJSCom
       var recvCallback: Option[String => Unit] = None
       for (channel <- optChannel) {
-        val comObj = context.newObject(scope)
-
-        comObj.addFunction("send", s =>
-          channel.sendToJVM(Context.toString(s(0))))
-
-        comObj.addFunction("init", s => s(0) match {
-          case f: Function =>
-            val cb: String => Unit =
-              msg => f.call(context, scope, scope, Array(msg))
-            recvCallback = Some(cb)
-          case _ =>
-            sys.error("First argument to init must be a function")
-        })
-
-        comObj.addFunction("close", _ => {
-          // Tell JVM side we won't send anything
-          channel.closeJS()
-          // Internally register that we're done
-          recvCallback = None
-        })
-
-        ScriptableObject.putProperty(scope, "scalajsCom", comObj)
+        setupCom(context, scope, channel,
+          setCallback = cb => recvCallback = Some(cb),
+          clrCallback = () => recvCallback = None)
       }
 
       try {
-        // Make the classpath available. Either through lazy loading or by
-        // simply inserting
-        classpath match {
-          case cp: IRClasspath =>
-            // Setup lazy loading classpath and source mapper
-            val optLoader = if (cp.scalaJSIR.nonEmpty) {
-              val loader = new ScalaJSCoreLib(semantics, cp)
+        loadClasspath(context, scope, classpath)
 
-              // Setup sourceMapper
-              if (sourceMap) {
-                val scalaJSenv = context.newObject(scope)
-
-                scalaJSenv.addFunction("sourceMapper", args => {
-                  val trace = Context.toObject(args(0), scope)
-                  loader.mapStackTrace(trace, context, scope)
-                })
-
-                ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
-              }
-
-              Some(loader)
-            } else {
-              None
-            }
-
-            // Load JS libraries
-            cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
-
-            optLoader.foreach(_.insertInto(context, scope))
-          case cp =>
-            cp.allCode.foreach(context.evaluateFile(scope, _))
-        }
-
+        // Actually run the code
         context.evaluateFile(scope, code)
 
-        // Callback the com channel if necessary (if comCallback = None, channel
-        // wasn't initialized on the client)
-        for ((channel, callback) <- optChannel zip recvCallback) {
-          try {
-            while (recvCallback.isDefined)
-              callback(channel.recvJS())
-          } catch {
-            case _: ChannelClosedException =>
-              // the JVM side closed the connection
-          }
-        }
+        // Callback the com channel if necessary
+        // (if recvCallback = None, channel wasn't initialized on the client)
+        for ((channel, callback) <- optChannel zip recvCallback)
+          msgReceiveLoop(channel, callback, () => recvCallback.isDefined)
+
       } catch {
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
@@ -245,6 +160,120 @@ final class RhinoJSEnv private (
       optChannel.foreach(_.closeJS())
 
       Context.exit()
+    }
+  }
+
+  private def setupDOM(context: Context, scope: Scriptable): Unit = {
+    // Fetch env.rhino.js from webjar
+    val name = "env.rhino.js"
+    val path = "/META-INF/resources/webjars/envjs/1.2/" + name
+    val resource = getClass.getResource(path)
+    assert(resource != null, s"need $name as resource")
+
+    // Rhino can't optimize envjs
+    context.setOptimizationLevel(-1)
+
+    // Don't print envjs header
+    scope.addFunction("print", args => ())
+
+    // Pipe file to Rhino
+    val reader = Source.fromURL(resource).bufferedReader
+    context.evaluateReader(scope, reader, name, 1, null);
+
+    // No need to actually define print here: It is captured by envjs to
+    // implement console.log, which we'll override in the next statement
+  }
+
+  /** Make sure Rhino does not do its magic for JVM top-level packages (#364) */
+  private def disableLiveConnect(context: Context, scope: Scriptable): Unit = {
+    val PackagesObject =
+      ScriptableObject.getProperty(scope, "Packages").asInstanceOf[Scriptable]
+    val topLevelPackageIds = ScriptableObject.getPropertyIds(PackagesObject)
+    for (id <- topLevelPackageIds) (id: Any) match {
+      case name: String => ScriptableObject.deleteProperty(scope, name)
+      case index: Int   => ScriptableObject.deleteProperty(scope, index)
+      case _            => // should not happen, I think, but with Rhino you never know
+    }
+  }
+
+  private def setupConsole(context: Context, scope: Scriptable,
+      console: JSConsole): Unit = {
+    // Setup console.log
+    val jsconsole = context.newObject(scope)
+    jsconsole.addFunction("log", _.foreach(console.log _))
+    ScriptableObject.putProperty(scope, "console", jsconsole)
+  }
+
+  private def setupCom(context: Context, scope: Scriptable, channel: Channel,
+      setCallback: (String => Unit) => Unit, clrCallback: () => Unit): Unit = {
+
+    val comObj = context.newObject(scope)
+
+    comObj.addFunction("send", s =>
+      channel.sendToJVM(Context.toString(s(0))))
+
+    comObj.addFunction("init", s => s(0) match {
+      case f: Function =>
+        val cb: String => Unit =
+          msg => f.call(context, scope, scope, Array(msg))
+        setCallback(cb)
+      case _ =>
+        sys.error("First argument to init must be a function")
+    })
+
+    comObj.addFunction("close", _ => {
+      // Tell JVM side we won't send anything
+      channel.closeJS()
+      // Internally register that we're done
+      clrCallback()
+    })
+
+    ScriptableObject.putProperty(scope, "scalajsCom", comObj)
+  }
+
+  /** Loads the classpath. Either through lazy loading or by simply inserting */
+  private def loadClasspath(context: Context, scope: Scriptable,
+      classpath: CompleteClasspath): Unit = classpath match {
+    case cp: IRClasspath =>
+      // Setup lazy loading classpath and source mapper
+      val optLoader = if (cp.scalaJSIR.nonEmpty) {
+        val loader = new ScalaJSCoreLib(semantics, cp)
+
+        // Setup sourceMapper
+        if (sourceMap) {
+          val scalaJSenv = context.newObject(scope)
+
+          scalaJSenv.addFunction("sourceMapper", args => {
+            val trace = Context.toObject(args(0), scope)
+            loader.mapStackTrace(trace, context, scope)
+          })
+
+          ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+        }
+
+        Some(loader)
+      } else {
+        None
+      }
+
+      // Load JS libraries
+      cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
+
+      optLoader.foreach(_.insertInto(context, scope))
+
+    case cp =>
+      cp.allCode.foreach(context.evaluateFile(scope, _))
+  }
+
+  private def msgReceiveLoop(channel: Channel,
+      callback: String => Unit, stillOpen: () => Boolean): Unit = {
+
+    try {
+      while (stillOpen())
+        callback(channel.recvJS())
+    } catch {
+      case _: ChannelClosedException =>
+        // the JVM side closed the connection
     }
   }
 
