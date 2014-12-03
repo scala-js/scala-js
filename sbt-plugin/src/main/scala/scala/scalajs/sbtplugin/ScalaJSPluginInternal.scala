@@ -5,6 +5,7 @@ import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
 import sbinary.DefaultProtocol.StringFormat
 import Cache.seqFormat
+import complete.DefaultParsers._
 
 import Implicits._
 
@@ -380,6 +381,13 @@ object ScalaJSPluginInternal {
     }
   }
 
+  private val runMainParser = {
+    Defaults.loadForParser(discoveredMainClasses) { (_, names) =>
+      val mainClasses = names.getOrElse(Nil).toSet
+      Space ~> token(NotSpace examples mainClasses)
+    }
+  }
+
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       mainClass in scalaJSLauncher := (mainClass in run).value,
@@ -410,18 +418,13 @@ object ScalaJSPluginInternal {
             launch.data, scalaJSConsole.value, streams.value.log)
       },
 
-      runMain <<= {
-        val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
-          Defaults.runMainParser(s, names getOrElse Nil))
+      runMain := {
+        // use assert to prevent warning about pure expr in stat pos
+        assert(scalaJSEnsureUnforked.value)
 
-        Def.inputTask {
-          // use assert to prevent warning about pure expr in stat pos
-          assert(scalaJSEnsureUnforked.value)
-
-          val mainCl = parser.parsed._1
-          jsRun(jsEnv.value, scalaJSExecClasspath.value, mainCl,
-              memLauncher(mainCl), scalaJSConsole.value, streams.value.log)
-        }
+        val mainClass = runMainParser.parsed
+        jsRun(jsEnv.value, scalaJSExecClasspath.value, mainClass,
+            memLauncher(mainClass), scalaJSConsole.value, streams.value.log)
       }
   )
 
