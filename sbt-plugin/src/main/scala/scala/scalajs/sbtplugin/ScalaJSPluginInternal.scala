@@ -3,6 +3,8 @@ package org.scalajs.sbtplugin
 import sbt._
 import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
+import sbinary.DefaultProtocol.StringFormat
+import Cache.seqFormat
 
 import Implicits._
 
@@ -364,6 +366,20 @@ object ScalaJSPluginInternal {
       .withContent(launcherContent(mainCl))
   }
 
+  def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
+    import xsbt.api.{Discovered, Discovery}
+
+    val jsApp = "scala.scalajs.js.JSApp"
+
+    def isJSApp(discovered: Discovered) =
+      discovered.isModule && discovered.baseClasses.contains(jsApp)
+
+    Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)) collect {
+      case (definition, discovered) if isJSApp(discovered) =>
+        definition.name
+    }
+  }
+
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       mainClass in scalaJSLauncher := (mainClass in run).value,
@@ -381,30 +397,8 @@ object ScalaJSPluginInternal {
         }
       },
 
-      /* We do currently not discover objects containing a
-       *
-       *   def main(args: Array[String]): Unit
-       *
-       * Support will be added again, as soon as we can run them
-       * reliably (e.g. without implicitly requiring that an exported
-       *
-       *   def main(): Unit
-       *
-       * exists alongside.
-       */
-      discoveredMainClasses := {
-        import xsbt.api.{Discovered, Discovery}
-
-        val jsApp = "scala.scalajs.js.JSApp"
-
-        def isJSApp(discovered: Discovered) =
-          discovered.isModule && discovered.baseClasses.contains(jsApp)
-
-        Discovery(Set(jsApp), Set.empty)(Tests.allDefs(compile.value)) collect {
-          case (definition, discovered) if isJSApp(discovered) =>
-            definition.name
-        }
-      },
+      discoveredMainClasses <<= compile.map(discoverJSApps).
+        storeAs(discoveredMainClasses).triggeredBy(compile),
 
       run <<= Def.inputTask {
         // use assert to prevent warning about pure expr in stat pos
@@ -417,10 +411,6 @@ object ScalaJSPluginInternal {
       },
 
       runMain <<= {
-        // Implicits for parsing
-        import sbinary.DefaultProtocol.StringFormat
-        import Cache.seqFormat
-
         val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
           Defaults.runMainParser(s, names getOrElse Nil))
 
