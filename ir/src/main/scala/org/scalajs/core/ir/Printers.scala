@@ -258,8 +258,8 @@ object Printers {
           print(receiver, ".", cls, "::", method)
           printArgs(args)
 
-        case TraitImplApply(impl, method, args) =>
-          print(impl, "::", method)
+        case ApplyStatic(cls, method, args) =>
+          print(cls, "::", method)
           printArgs(args)
 
         case UnaryOp(op, lhs) =>
@@ -535,7 +535,6 @@ object Printers {
             case ClassKind.Interface     => print("interface ")
             case ClassKind.RawJSType     => print("jstype ")
             case ClassKind.HijackedClass => print("hijacked class ")
-            case ClassKind.TraitImpl     => print("trait impl ")
           }
           print(name)
           parent.foreach(print(" extends ", _))
@@ -545,7 +544,9 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
-        case MethodDef(name, args, resultType, body) =>
+        case MethodDef(static, name, args, resultType, body) =>
+          if (static)
+            print("static ")
           print(name)
           printSig(args, resultType)
           printBlock(body)
@@ -652,6 +653,8 @@ object Printers {
       print(escapeJS(encodedName), ":")
       indent(); println()
 
+      if (isStatic)
+        println("isStatic: ", isStatic)
       if (isAbstract)
         println("isAbstract: ", isAbstract)
       if (isExported)
@@ -659,8 +662,8 @@ object Printers {
       if (calledMethods.nonEmpty) {
         print("calledMethods:")
         indent(); println()
-        printSeq(calledMethods.toList) { case (caller, callees) =>
-          print(escapeJS(caller), ": ")
+        printSeq(calledMethods.toList) { case (cls, callees) =>
+          print(escapeJS(cls), ": ")
           print(callees.map(escapeJS).mkString("[", ", ", "]"))
         } { _ => println() }
         undent(); println()
@@ -668,8 +671,17 @@ object Printers {
       if (calledMethodsStatic.nonEmpty) {
         print("calledMethodsStatic:")
         indent(); println()
-        printSeq(calledMethodsStatic.toList) { case (caller, callees) =>
-          print(escapeJS(caller), ": ")
+        printSeq(calledMethodsStatic.toList) { case (cls, callees) =>
+          print(escapeJS(cls), ": ")
+          print(callees.map(escapeJS).mkString("[", ", ", "]"))
+        } { _ => println() }
+        undent(); println()
+      }
+      if (calledStaticMethods.nonEmpty) {
+        print("calledStaticMethods:")
+        indent(); println()
+        printSeq(calledStaticMethods.toList) { case (cls, callees) =>
+          print(escapeJS(cls), ": ")
           print(callees.map(escapeJS).mkString("[", ", ", "]"))
         } { _ => println() }
         undent(); println()

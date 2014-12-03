@@ -80,7 +80,7 @@ object Traversers {
         traverse(receiver)
         args foreach traverse
 
-      case TraitImplApply(impl, method, args) =>
+      case ApplyStatic(cls, method, args) =>
         args foreach traverse
 
       case UnaryOp(op, lhs) =>
@@ -174,7 +174,7 @@ object Traversers {
       case ClassDef(name, kind, parent, ancestors, defs) =>
         defs foreach traverse
 
-      case MethodDef(name, args, resultType, body) =>
+      case MethodDef(static, name, args, resultType, body) =>
         traverse(body)
 
       case PropertyDef(name, getterBody, setterArg, setterBody) =>

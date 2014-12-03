@@ -212,14 +212,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val ancestorCount = data.ancestorCount
     val isStaticModule = data.kind == ClassKind.ModuleClass
     val isInterface = data.kind == ClassKind.Interface
-    val isImplClass = data.kind == ClassKind.TraitImpl
     val isRawJSType = data.kind == ClassKind.RawJSType
     val isHijackedClass = data.kind == ClassKind.HijackedClass
-    val isClass = !isInterface && !isImplClass && !isRawJSType
+    val isClass = !isInterface && !isRawJSType
     val isExported = data.isExported
-
-    val hasData = !isImplClass
-    val hasMoreThanData = isClass && !isHijackedClass
 
     var superClass: ClassInfo = _
     val ancestors = mutable.ListBuffer.empty[ClassInfo]
@@ -252,12 +248,16 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     def isNeededAtAll =
       isDataAccessed ||
       isAnySubclassInstantiated ||
-      (isImplClass && methodInfos.values.exists(_.isReachable))
+      isAnyStaticMethodReachable
 
-    lazy val methodInfos: mutable.Map[String, MethodInfo] = {
-      val ms = for (methodData <- data.methods)
+    def isAnyStaticMethodReachable =
+      staticMethodInfos.values.exists(_.isReachable)
+
+    lazy val (methodInfos, staticMethodInfos) = {
+      val allInfos = for (methodData <- data.methods)
         yield (methodData.encodedName, new MethodInfo(this, methodData))
-      mutable.Map.empty[String, MethodInfo] ++ ms
+      val (staticMethodInfos, methodInfos) = allInfos.partition(_._2.isStatic)
+      (mutable.Map(methodInfos: _*), mutable.Map(staticMethodInfos: _*))
     }
 
     def lookupMethod(methodName: String): MethodInfo = {
@@ -271,7 +271,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def tryLookupMethod(methodName: String): Option[MethodInfo] = {
-      assert(isClass || isImplClass,
+      assert(isClass,
           s"Cannot call lookupMethod($methodName) on non-class $this")
       @tailrec
       def loop(ancestorInfo: ClassInfo): Option[MethodInfo] = {
@@ -287,6 +287,19 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       loop(this)
     }
 
+    def lookupStaticMethod(methodName: String): MethodInfo = {
+      tryLookupStaticMethod(methodName).getOrElse {
+        val syntheticData = createMissingMethodInfo(methodName, isStatic = true)
+        val m = new MethodInfo(this, syntheticData)
+        m.nonExistent = true
+        staticMethodInfos += methodName -> m
+        m
+      }
+    }
+
+    def tryLookupStaticMethod(methodName: String): Option[MethodInfo] =
+      staticMethodInfos.get(methodName)
+
     override def toString(): String = encodedName
 
     /** Start reachability algorithm with the exports for that class. */
@@ -295,7 +308,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
       // Myself
       if (isExported) {
-        assert(!isImplClass, "An implementation class must not be exported")
         if (isStaticModule) accessModule()
         else instantiated()
       }
@@ -344,7 +356,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed && hasData) {
+      if (!isDataAccessed) {
         checkExistent()
         if (DebugAnalyzer)
           logger.debug(s"$this.isDataAccessed = true")
@@ -363,16 +375,13 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       }
     }
 
-    def callMethod(methodName: String, static: Boolean = false)(
+    def callMethod(methodName: String, statically: Boolean = false)(
         implicit from: From): Unit = {
-      logger.debugIndent(s"calling${if (static) " static" else ""} $this.$methodName") {
-        if (isImplClass) {
-          // methods in impl classes are always implicitly called statically
-          lookupMethod(methodName).reachStatic()
-        } else if (isConstructorName(methodName)) {
+      logger.debugIndent(s"calling${if (statically) " statically" else ""}: $this.$methodName") {
+        if (isConstructorName(methodName)) {
           // constructors are always implicitly called statically
           lookupMethod(methodName).reachStatic()
-        } else if (static) {
+        } else if (statically) {
           assert(!isReflProxyName(methodName),
               s"Trying to call statically refl proxy $this.$methodName")
           lookupMethod(methodName).reachStatic()
@@ -394,11 +403,18 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         lookupMethod(methodName).reach(this)
       }
     }
+
+    def callStaticMethod(methodName: String)(implicit from: From): Unit = {
+      logger.debugIndent(s"calling static method $this.$methodName") {
+        lookupStaticMethod(methodName).reachStatic()
+      }
+    }
   }
 
   class MethodInfo(val owner: ClassInfo, data: Infos.MethodInfo) {
 
     val encodedName = data.encodedName
+    val isStatic = data.isStatic
     val isAbstract = data.isAbstract
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
@@ -431,10 +447,12 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
+      assert(!isStatic,
+          s"Trying to dynamically reach the static method $this")
       assert(owner.isClass,
-          s"Trying to reach dynamically the non-class method $this")
+          s"Trying to dynamically reach the non-class method $this")
       assert(!isConstructorName(encodedName),
-          s"Trying to reach dynamically the constructor $this")
+          s"Trying to dynamically reach the constructor $this")
 
       checkExistent()
 
@@ -464,9 +482,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       logger.debugIndent(s"$this.doReach()") {
         implicit val from = FromMethod(this)
 
-        if (owner.isImplClass)
-          owner.checkExistent()
-
         for (moduleName <- data.accessedModules) {
           lookupModule(moduleName).accessModule()
         }
@@ -488,7 +503,13 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         for ((className, methods) <- data.calledMethodsStatic) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
-            classInfo.callMethod(methodName, static = true)
+            classInfo.callMethod(methodName, statically = true)
+        }
+
+        for ((className, methods) <- data.calledStaticMethods) {
+          val classInfo = lookupClass(className)
+          for (methodName <- methods)
+            classInfo.callStaticMethod(methodName)
         }
       }
     }
@@ -504,8 +525,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
     val kind =
-      if (encodedName.endsWith("$")) ClassKind.ModuleClass
-      else if (encodedName.endsWith("$class")) ClassKind.TraitImpl
+      if (encodedName.endsWith("$")) ClassKind.ModuleClass // wild guess
       else ClassKind.Class
     Infos.ClassInfo(
         name = s"<$encodedName>",
@@ -522,8 +542,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   }
 
   private def createMissingMethodInfo(encodedName: String,
+      isStatic: Boolean = false,
       isAbstract: Boolean = false): Infos.MethodInfo = {
-    Infos.MethodInfo(encodedName = encodedName, isAbstract = isAbstract)
+    Infos.MethodInfo(encodedName = encodedName,
+        isStatic = isStatic, isAbstract = isAbstract)
   }
 
   def warnCallStack()(implicit from: From): Unit = {

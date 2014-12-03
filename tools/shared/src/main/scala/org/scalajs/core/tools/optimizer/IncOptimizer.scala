@@ -74,6 +74,7 @@ class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
     private val ancestorsAskers = mutable.Set.empty[MethodImpl]
     private val dynamicCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
     private val staticCallers = mutable.Map.empty[String, mutable.Set[MethodImpl]]
+    private val callersOfStatic = mutable.Map.empty[String, mutable.Set[MethodImpl]]
 
     private var _ancestors: List[String] = encodedName :: Nil
 
@@ -106,10 +107,14 @@ class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit =
       staticCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
 
+    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit =
+      callersOfStatic.getOrElseUpdate(methodName, mutable.Set.empty) += caller
+
     def unregisterDependee(dependee: MethodImpl): Unit = {
       ancestorsAskers -= dependee
       dynamicCallers.values.foreach(_ -= dependee)
       staticCallers.values.foreach(_ -= dependee)
+      callersOfStatic.values.foreach(_ -= dependee)
     }
 
     def tagDynamicCallersOf(methodName: String): Unit =
@@ -117,6 +122,9 @@ class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
 
     def tagStaticCallersOf(methodName: String): Unit =
       staticCallers.remove(methodName).foreach(_.foreach(_.tag()))
+
+    def tagCallersOfStatic(methodName: String): Unit =
+      callersOfStatic.remove(methodName).foreach(_.foreach(_.tag()))
   }
 
   private class SeqMethodImpl(owner: MethodContainer,

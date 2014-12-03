@@ -39,13 +39,29 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       classDef <- allClassDefs
       if analyzer.classInfos(classDef.name.name).isNeededAtAll
     } {
+      checkStaticMembers(classDef)
       classDef.kind match {
         case ClassKind.Class | ClassKind.ModuleClass => checkClass(classDef)
-        case ClassKind.TraitImpl                     => checkTraitImpl(classDef)
         case _ =>
       }
     }
     errorCount == 0
+  }
+
+  def checkStaticMembers(classDef: ClassDef): Unit = {
+    for (member <- classDef.defs) {
+      implicit val ctx = ErrorContext(member)
+      member match {
+        case m: MethodDef if m.static =>
+          if (!m.name.isInstanceOf[Ident])
+            reportError(s"Static method ${m.name} cannot be exported")
+          else
+            checkMethodDef(m, classDef)
+
+        // Ignore non-static members
+        case _ =>
+      }
+    }
   }
 
   def checkClass(classDef: ClassDef): Unit = {
@@ -55,6 +71,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     for (member <- classDef.defs) {
       implicit val ctx = ErrorContext(member)
       member match {
+        // Ignore static members
+        case m: MethodDef if m.static =>
+
         // Scala declarations
         case v @ VarDef(_, _, _, _) =>
           checkFieldDef(v, classDef)
@@ -78,18 +97,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     }
   }
 
-  def checkTraitImpl(classDef: ClassDef): Unit = {
-    for (member <- classDef.defs) {
-      implicit val ctx = ErrorContext(member)
-      member match {
-        case m: MethodDef =>
-          checkMethodDef(m, classDef)
-        case _ =>
-          reportError(s"Invalid member for a TraitImpl")
-      }
-    }
-  }
-
   def checkFieldDef(fieldDef: VarDef, classDef: ClassDef): Unit = {
     val VarDef(name, tpe, mutable, rhs) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
@@ -101,10 +108,14 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def checkMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
-    val MethodDef(Ident(name, _), params, resultType, body) = methodDef
+    val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (!analyzer.classInfos(classDef.name.name).methodInfos(name).isReachable)
+    val classInfo = analyzer.classInfos(classDef.name.name)
+    val methodInfo =
+      if (static) classInfo.staticMethodInfos(name)
+      else classInfo.methodInfos(name)
+    if (!methodInfo.isReachable)
       return
 
     for (ParamDef(name, tpe, _) <- params)
@@ -116,8 +127,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       else resultType
 
     val advertizedSig = (params.map(_.ptpe), resultTypeForSig)
-    val sigFromName = inferMethodType(name,
-        inTraitImpl = classDef.kind == ClassKind.TraitImpl)
+    val sigFromName = inferMethodType(name, static)
     if (advertizedSig != sigFromName) {
       reportError(
           s"The signature of ${classDef.name.name}.$name, which is "+
@@ -125,7 +135,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     }
 
     val thisType =
-      if (!classDef.kind.isClass) NoType
+      if (static) NoType
       else ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, resultType)
     if (resultType == NoType)
@@ -135,7 +145,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def checkExportedMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
-    val MethodDef(_, params, resultType, body) = methodDef
+    val MethodDef(_, _, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     if (!classDef.kind.isClass) {
@@ -345,8 +355,8 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     implicit val ctx = ErrorContext(tree)
 
     def checkApplyGeneric(methodName: String, methodFullName: String,
-        args: List[Tree], inTraitImpl: Boolean): Unit = {
-      val (methodParams, resultType) = inferMethodType(methodName, inTraitImpl)
+        args: List[Tree], isStatic: Boolean): Unit = {
+      val (methodParams, resultType) = inferMethodType(methodName, isStatic)
       if (args.size != methodParams.size)
         reportError(s"Arity mismatch: ${methodParams.size} expected but "+
             s"${args.size} found")
@@ -425,8 +435,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         val clazz = lookupClass(cls)
         if (!clazz.kind.isClass)
           reportError(s"new $cls which is not a class")
-        checkApplyGeneric(ctor.name, s"$cls.$ctor", args,
-            inTraitImpl = false)
+        checkApplyGeneric(ctor.name, s"$cls.$ctor", args, isStatic = false)
 
       case LoadModule(cls) =>
         if (!cls.className.endsWith("$"))
@@ -460,17 +469,15 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case Apply(receiver, Ident(method, _), args) =>
         val receiverType = typecheckExpr(receiver, env)
         checkApplyGeneric(method, s"$receiverType.$method", args,
-            inTraitImpl = false)
+            isStatic = false)
 
       case StaticApply(receiver, cls, Ident(method, _), args) =>
         typecheckExpect(receiver, env, cls)
-        checkApplyGeneric(method, s"$cls.$method", args, inTraitImpl = false)
+        checkApplyGeneric(method, s"$cls.$method", args, isStatic = false)
 
-      case TraitImplApply(impl, Ident(method, _), args) =>
-        val clazz = lookupClass(impl)
-        if (clazz.kind != ClassKind.TraitImpl)
-          reportError(s"Cannot trait-impl apply method of non-trait-impl $impl")
-        checkApplyGeneric(method, s"$impl.$method", args, inTraitImpl = true)
+      case ApplyStatic(cls, Ident(method, _), args) =>
+        val clazz = lookupClass(cls)
+        checkApplyGeneric(method, s"$cls.$method", args, isStatic = true)
 
       case UnaryOp(op, lhs) =>
         import UnaryOp._
@@ -660,30 +667,27 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     tree.tpe
   }
 
-  def inferMethodType(encodedName: String, inTraitImpl: Boolean)(
+  def inferMethodType(encodedName: String, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
     def dropPrivateMarker(params: List[String]): List[String] =
       if (params.nonEmpty && params.head.startsWith("p")) params.tail
       else params
 
     if (isConstructorName(encodedName)) {
-      assert(!inTraitImpl, "Trait impl should not have a constructor")
+      assert(!isStatic, "Constructor cannot be static")
       val params = dropPrivateMarker(
           encodedName.stripPrefix("init___").split("__").toList)
       if (params == List("")) (Nil, NoType)
       else (params.map(decodeType), NoType)
     } else if (isReflProxyName(encodedName)) {
-      assert(!inTraitImpl, "Trait impl should not have refl proxy methods")
+      assert(!isStatic, "Refl proxy method cannot be static")
       val params = dropPrivateMarker(encodedName.split("__").toList.tail)
       (params.map(decodeType), AnyType)
     } else {
       val paramsAndResult0 =
         encodedName.split("__").toList.tail
-      val paramsAndResult1 =
-        if (inTraitImpl) paramsAndResult0.tail
-        else paramsAndResult0
       val paramsAndResult =
-        dropPrivateMarker(paramsAndResult1)
+        dropPrivateMarker(paramsAndResult0)
       (paramsAndResult.init.map(decodeType), decodeType(paramsAndResult.last))
     }
   }

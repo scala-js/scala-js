@@ -52,8 +52,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   protected def staticCall(className: String,
       methodName: String): Option[MethodID]
 
-  /** Returns the target of a trait impl call. */
-  protected def traitImplCall(traitImplName: String,
+  /** Returns the target of a call to a static method. */
+  protected def callStatic(className: String,
       methodName: String): Option[MethodID]
 
   /** Returns the list of ancestors of a class or interface. */
@@ -84,7 +84,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
   def optimize(thisType: Type, originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
     try {
-      val MethodDef(name, params, resultType, body) = originalDef
+      val MethodDef(static, name, params, resultType, body) = originalDef
       val (newParams, newBody) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
@@ -95,7 +95,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
-      val m = MethodDef(name, newParams, resultType, newBody)(None)(originalDef.pos)
+      val m = MethodDef(static, name, newParams, resultType,
+          newBody)(None)(originalDef.pos)
       val info = recreateInfo(m)
       (m, info)
     } catch {
@@ -378,9 +379,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               finishTransform(isStat))
         }
 
-      case tree: TraitImplApply =>
+      case tree: ApplyStatic =>
         trampoline {
-          pretransformTraitImplApply(tree, isStat, usePreTransform = false)(
+          pretransformApplyStatic(tree, isStat, usePreTransform = false)(
               finishTransform(isStat))
         }
 
@@ -732,8 +733,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         pretransformStaticApply(tree, isStat = false,
             usePreTransform = true)(cont)
 
-      case tree: TraitImplApply =>
-        pretransformTraitImplApply(tree, isStat = false,
+      case tree: ApplyStatic =>
+        pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
 
       case tree: JSFunctionApply =>
@@ -1074,10 +1075,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             } else {
               if (impls.forall(_.isTraitImplForwarder)) {
                 val reference = impls.head
-                val TraitImplApply(ClassType(traitImpl), Ident(methodName, _), _) =
+                val ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =
                   getMethodBody(reference).body
                 if (!impls.tail.forall(getMethodBody(_).body match {
-                  case TraitImplApply(ClassType(`traitImpl`),
+                  case ApplyStatic(ClassType(`staticCls`),
                       Ident(`methodName`, _), _) => true
                   case _ => false
                 })) {
@@ -1163,21 +1164,21 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
-  private def pretransformTraitImplApply(tree: TraitImplApply, isStat: Boolean,
+  private def pretransformApplyStatic(tree: ApplyStatic, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val TraitImplApply(implType @ ClassType(impl),
+    val ApplyStatic(classType @ ClassType(cls),
         methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
     def treeNotInlined0(transformedArgs: List[Tree]) =
-      cont(PreTransTree(TraitImplApply(implType, methodIdent,
+      cont(PreTransTree(ApplyStatic(classType, methodIdent,
           transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
 
     def treeNotInlined = treeNotInlined0(args.map(transformExpr))
 
-    val optTarget = traitImplCall(impl, methodName)
+    val optTarget = callStatic(cls, methodName)
     if (optTarget.isEmpty) {
       // just in case
       treeNotInlined
@@ -1275,7 +1276,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
     attemptedInlining += target
 
-    val MethodDef(_, formals, resultType, body) = getMethodBody(target)
+    val MethodDef(static, _, formals, resultType, body) = getMethodBody(target)
+    assert(static == optReceiver.isEmpty,
+        "There must be receiver if and only if the method is not static")
 
     body match {
       case Skip() =>
@@ -1477,7 +1480,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
-    val MethodDef(_, formals, _, BlockOrAlone(stats, This())) =
+    val MethodDef(_, _, formals, _, BlockOrAlone(stats, This())) =
       getMethodBody(target)
 
     val argsBindings = for {
@@ -3341,11 +3344,11 @@ private[optimizer] object OptimizerCore {
     var isTraitImplForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(Ident(methodName, _), params, _, body) = originalDef
+      val MethodDef(_, Ident(methodName, _), params, _, body) = originalDef
 
       isTraitImplForwarder = body match {
         // Shape of forwarders to trait impls
-        case TraitImplApply(impl, method, args) =>
+        case ApplyStatic(impl, method, args) =>
           ((args.size == params.size + 1) &&
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
@@ -3360,7 +3363,7 @@ private[optimizer] object OptimizerCore {
       inlineable = !optimizerHints.noinline
       shouldInline = inlineable && {
         optimizerHints.inline || isTraitImplForwarder || {
-          val MethodDef(_, params, _, body) = originalDef
+          val MethodDef(_, _, params, _, body) = originalDef
           body match {
             case _:Skip | _:This | _:Literal                          => true
 
@@ -3389,8 +3392,8 @@ private[optimizer] object OptimizerCore {
       true
     case StaticApply(This(), _, _, Nil) =>
       true
-    case TraitImplApply(_, Ident(methodName, _), This() :: Nil) =>
-      methodName.contains("__$init$__")
+    case ApplyStatic(_, Ident(methodName, _), This() :: Nil) =>
+      methodName.startsWith("$$init$__")
     case _ =>
       false
   }
@@ -3401,7 +3404,7 @@ private[optimizer] object OptimizerCore {
       case New(_, _, args)                   => areSimpleArgs(args)
       case Apply(receiver, _, args)          => areSimpleArgs(receiver :: args)
       case StaticApply(receiver, _, _, args) => areSimpleArgs(receiver :: args)
-      case TraitImplApply(_, _, args)        => areSimpleArgs(args)
+      case ApplyStatic(_, _, args)           => areSimpleArgs(args)
       case Select(qual, _, _)                => isSimpleArg(qual)
       case IsInstanceOf(inner, _)            => isSimpleArg(inner)
 
@@ -3422,7 +3425,7 @@ private[optimizer] object OptimizerCore {
       case New(_, _, Nil)                   => true
       case Apply(receiver, _, Nil)          => isTrivialArg(receiver)
       case StaticApply(receiver, _, _, Nil) => isTrivialArg(receiver)
-      case TraitImplApply(_, _, Nil)        => true
+      case ApplyStatic(_, _, Nil)           => true
 
       case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
@@ -3459,6 +3462,7 @@ private[optimizer] object OptimizerCore {
 
     private val calledMethods = mutable.Map.empty[String, mutable.Set[String]]
     private val calledMethodsStatic = mutable.Map.empty[String, mutable.Set[String]]
+    private val calledStaticMethods = mutable.Map.empty[String, mutable.Set[String]]
     private val instantiatedClasses = mutable.Set.empty[String]
     private val accessedModules = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
@@ -3467,8 +3471,10 @@ private[optimizer] object OptimizerCore {
       traverse(methodDef.body)
       Infos.MethodInfo(
           encodedName = methodDef.name.name,
+          isStatic = methodDef.static,
           calledMethods = calledMethods.toMap.mapValues(_.toList),
           calledMethodsStatic = calledMethodsStatic.toMap.mapValues(_.toList),
+          calledStaticMethods = calledStaticMethods.toMap.mapValues(_.toList),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           accessedClassData = accessedClassData.toList)
@@ -3479,6 +3485,9 @@ private[optimizer] object OptimizerCore {
 
     private def addCalledMethodStatic(container: String, methodName: String): Unit =
       calledMethodsStatic.getOrElseUpdate(container, mutable.Set.empty) += methodName
+
+    private def addCalledStaticMethod(container: String, methodName: String): Unit =
+      calledStaticMethods.getOrElseUpdate(container, mutable.Set.empty) += methodName
 
     private def refTypeToClassData(tpe: ReferenceType): String = tpe match {
       case ClassType(cls)     => cls
@@ -3518,8 +3527,8 @@ private[optimizer] object OptimizerCore {
 
         case StaticApply(_, ClassType(cls), method, _) =>
           addCalledMethodStatic(cls, method.name)
-        case TraitImplApply(ClassType(impl), method, _) =>
-          addCalledMethodStatic(impl, method.name)
+        case ApplyStatic(ClassType(cls), method, _) =>
+          addCalledStaticMethod(cls, method.name)
 
         case LoadModule(ClassType(cls)) =>
           accessedModules += cls.stripSuffix("$")

@@ -14,9 +14,10 @@ object Hashers {
     if (methodDef.hash.isDefined) methodDef
     else {
       val hasher = new TreeHasher()
-      val MethodDef(name, args, resultType, body) = methodDef
+      val MethodDef(static, name, args, resultType, body) = methodDef
 
       hasher.mixPos(methodDef.pos)
+      hasher.mixBoolean(static)
       hasher.mixPropertyName(name)
       hasher.mixTrees(args)
       hasher.mixType(resultType)
@@ -24,7 +25,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(name, args, resultType, body)(Some(hash))(methodDef.pos)
+      MethodDef(static, name, args, resultType, body)(Some(hash))(methodDef.pos)
     }
   }
 
@@ -189,9 +190,9 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
-        case TraitImplApply(impl, method, args) =>
-          mixTag(TagTraitImplApply)
-          mixType(impl)
+        case ApplyStatic(cls, method, args) =>
+          mixTag(TagApplyStatic)
+          mixType(cls)
           mixIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
@@ -434,25 +435,25 @@ object Hashers {
     }
 
     @inline
-    private final def mixTag(tag: Int): Unit = mixInt(tag)
+    final def mixTag(tag: Int): Unit = mixInt(tag)
 
     @inline
-    private final def mixString(str: String): Unit = treeStream.writeUTF(str)
+    final def mixString(str: String): Unit = treeStream.writeUTF(str)
 
     @inline
-    private final def mixInt(i: Int): Unit = treeStream.writeInt(i)
+    final def mixInt(i: Int): Unit = treeStream.writeInt(i)
 
     @inline
-    private final def mixLong(l: Long): Unit = treeStream.writeLong(l)
+    final def mixLong(l: Long): Unit = treeStream.writeLong(l)
 
     @inline
-    private final def mixBoolean(b: Boolean): Unit = treeStream.writeBoolean(b)
+    final def mixBoolean(b: Boolean): Unit = treeStream.writeBoolean(b)
 
     @inline
-    private final def mixFloat(f: Float): Unit = treeStream.writeFloat(f)
+    final def mixFloat(f: Float): Unit = treeStream.writeFloat(f)
 
     @inline
-    private final def mixDouble(d: Double): Unit = treeStream.writeDouble(d)
+    final def mixDouble(d: Double): Unit = treeStream.writeDouble(d)
 
   }
 

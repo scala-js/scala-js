@@ -206,7 +206,7 @@ object Trees {
 
   case class StaticApply(receiver: Tree, cls: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
-  case class TraitImplApply(impl: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
+  case class ApplyStatic(cls: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
@@ -511,7 +511,8 @@ object Trees {
     val tpe = NoType
   }
 
-  case class MethodDef(name: PropertyName, args: List[ParamDef], resultType: Type, body: Tree)(
+  case class MethodDef(static: Boolean, name: PropertyName,
+      args: List[ParamDef], resultType: Type, body: Tree)(
       val hash: Option[TreeHash])(implicit val pos: Position) extends Tree {
     val tpe = NoType
   }

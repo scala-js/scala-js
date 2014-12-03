@@ -344,7 +344,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       // Create method info builder for exported stuff
       val exports = withScopedVars(
         currentMethodInfoBuilder := currentClassInfoBuilder.addMethod(
-            dceExportName + classIdent.name, isExported = true)
+            dceExportName + classIdent.name,
+            isStatic = false, isExported = true)
       ) {
         // Generate the exported members
         val memberExports = genMemberExports(sym, exportedSymbols.toList)
@@ -417,7 +418,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body foreach gen
           case dd: DefDef =>
             currentClassInfoBuilder.addMethod(
-                encodeMethodName(dd.symbol), isAbstract = true)
+                encodeMethodName(dd.symbol),
+                isStatic = false, isAbstract = true)
           case _ => abort("Illegal tree in gen of genInterface(): " + tree)
         }
       }
@@ -454,8 +456,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
       val generatedMethods = gen(impl)
 
-      js.ClassDef(encodeClassFullNameIdent(sym), ClassKind.TraitImpl,
-          None, Nil, generatedMethods)
+      val classIdent = encodeClassFullNameIdent(sym)
+      val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
+
+      js.ClassDef(classIdent, ClassKind.Class,
+          Some(objectClassIdent), List(classIdent, objectClassIdent),
+          generatedMethods)
     }
 
     // Generate the fields of a class ------------------------------------------
@@ -465,7 +471,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genClassFields(cd: ClassDef): List[js.VarDef] = withScopedVars(
         currentMethodInfoBuilder :=
-          currentClassInfoBuilder.addMethod("__init__")
+          currentClassInfoBuilder.addMethod("__init__", isStatic = false)
     ) {
       // Non-method term members are fields, except for module members.
       (for {
@@ -529,6 +535,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         def createInfoBuilder(isAbstract: Boolean = false) = {
           currentClassInfoBuilder.addMethod(methodIdent.name,
+              isStatic = sym.owner.isImplClass,
               isAbstract = isAbstract,
               isExported = sym.isClassConstructor &&
                 jsInterop.exportsOf(sym).nonEmpty)
@@ -580,11 +587,13 @@ abstract class GenJSCode extends plugins.PluginComponent
                   js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
                       mutable = false)
                 }
-                js.MethodDef(methodIdent, jsParams, currentClassType,
+                js.MethodDef(static = false, methodIdent,
+                    jsParams, currentClassType,
                     js.Block(genStat(rhs), genThis()))(None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(methodIdent, params, resultIRType, rhs)
+                genMethodDef(static = sym.owner.isImplClass, methodIdent,
+                    params, resultIRType, rhs)
               }
             }
 
@@ -652,7 +661,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def newMutable(name: String, oldMutable: Boolean): Boolean =
         patches.getOrElse(name, oldMutable)
 
-      val js.MethodDef(methodName, params, resultType, body) = methodDef
+      val js.MethodDef(static, methodName, params, resultType, body) = methodDef
       val newParams = for {
         p @ js.ParamDef(name, ptpe, mutable) <- params
       } yield {
@@ -675,7 +684,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
       val newBody =
         transformer.transform(body, isStat = resultType == jstpe.NoType)
-      js.MethodDef(methodName, newParams, resultType, newBody)(None)(methodDef.pos)
+      js.MethodDef(static, methodName, newParams, resultType,
+          newBody)(None)(methodDef.pos)
     }
 
     /**
@@ -769,7 +779,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       withNewLocalNameScope {
         withScopedVars(
             currentMethodInfoBuilder :=
-              currentClassInfoBuilder.addMethod(proxyIdent.name)
+              currentClassInfoBuilder.addMethod(proxyIdent.name,
+                  isStatic = false)
         ) {
           val jsParams = for (param <- sym.tpe.params) yield {
             implicit val pos = param.pos
@@ -782,7 +793,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           val body = ensureBoxed(call,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
 
-          js.MethodDef(proxyIdent, jsParams, jstpe.AnyType, body)(None)
+          js.MethodDef(static = false, proxyIdent, jsParams, jstpe.AnyType,
+              body)(None)
         }
       }
     }
@@ -797,8 +809,9 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  a peculiarity of recursive tail calls: the local ValDef that replaces
      *  `this`.
      */
-    def genMethodDef(methodIdent: js.Ident, paramsSyms: List[Symbol],
-        resultIRType: jstpe.Type, tree: Tree): js.MethodDef = {
+    def genMethodDef(static: Boolean, methodIdent: js.Ident,
+        paramsSyms: List[Symbol], resultIRType: jstpe.Type,
+        tree: Tree): js.MethodDef = {
       implicit val pos = tree.pos
 
       val jsParams = for (param <- paramsSyms) yield {
@@ -845,7 +858,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      js.MethodDef(methodIdent, jsParams, resultIRType, body)(None)
+      js.MethodDef(static, methodIdent, jsParams, resultIRType, body)(None)
     }
 
     /** Gen JS code for a tree in statement position (in the IR).
@@ -1594,8 +1607,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genTraitImplApply(implIdent: js.Ident, methodIdent: js.Ident,
         arguments: List[js.Tree], resultType: jstpe.Type)(
         implicit pos: Position): js.Tree = {
-      currentMethodInfoBuilder.callsMethod(implIdent, methodIdent)
-      js.TraitImplApply(jstpe.ClassType(implIdent.name), methodIdent,
+      currentMethodInfoBuilder.callsStaticMethod(implIdent, methodIdent)
+      js.ApplyStatic(jstpe.ClassType(implIdent.name), methodIdent,
           arguments)(resultType)
     }
 
@@ -3629,7 +3642,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         ) {
           // Fourth step: patch the body to unbox parameters and box result
 
-          val js.MethodDef(_, params, _, body) = applyMethod
+          val js.MethodDef(_, _, params, _, body) = applyMethod
           val (patchedParams, patchedBody) =
             patchFunBodyWithBoxes(applyDef.symbol, params, body)
 

@@ -32,7 +32,7 @@ ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 ScalaJS.d = {};         // Data for types
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
-ScalaJS.i = {};         // Implementation class modules
+ScalaJS.s = {};         // Static methods
 ScalaJS.n = {};         // Module instances
 ScalaJS.m = {};         // Module accessors
 ScalaJS.is = {};        // isInstanceOf methods

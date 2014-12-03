@@ -151,8 +151,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     val encodedName = {
       if (sym.isClassConstructor)
         "init" + InnerSep
-      else if (foreignIsImplClass(sym.owner))
-        encodeClassFullName(sym.owner) + OuterSep + name
       else if (sym.isPrivate)
         mangleJSName(name) + OuterSep + "p" +
           sym.owner.ancestors.count(!_.isInterface).toString

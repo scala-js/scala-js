@@ -33,13 +33,14 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val name = classNameOf(symbol)
     val encodedName = encodeClassFullName(symbol)
     var isExported: Boolean = false
-    val ancestorCount = symbol.ancestors.count(!_.isInterface)
+    val ancestorCount =
+      if (symbol.isImplClass) 1
+      else symbol.ancestors.count(!_.isInterface)
     val kind = {
       if (isStaticModule(symbol))            ClassKind.ModuleClass
       else if (symbol.isInterface)           ClassKind.Interface
       else if (isRawJSType(symbol.tpe))      ClassKind.RawJSType
       else if (isHijackedBoxedClass(symbol)) ClassKind.HijackedClass
-      else if (symbol.isImplClass)           ClassKind.TraitImpl
       else                                   ClassKind.Class
     }
     val superClass =
@@ -53,9 +54,10 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     val methodInfos = mutable.ListBuffer.empty[MethodInfoBuilder]
 
-    def addMethod(encodedName: String, isAbstract: Boolean = false,
+    def addMethod(encodedName: String, isStatic: Boolean,
+        isAbstract: Boolean = false,
         isExported: Boolean = false): MethodInfoBuilder = {
-      val b = new MethodInfoBuilder(encodedName, isAbstract, isExported)
+      val b = new MethodInfoBuilder(encodedName, isStatic, isAbstract, isExported)
       methodInfos += b
       b
     }
@@ -68,11 +70,13 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
   }
 
   class MethodInfoBuilder(val encodedName: String,
+      val isStatic: Boolean,
       val isAbstract: Boolean = false,
       val isExported: Boolean = false) {
 
     val calledMethods = mutable.Set.empty[(String, String)] // (tpe, method)
     val calledMethodsStatic = mutable.Set.empty[(String, String)] // (class, method)
+    val calledStaticMethods = mutable.Set.empty[(String, String)] // (tpe, method)
     val instantiatedClasses = mutable.Set.empty[String]
     val accessedModules = mutable.Set.empty[String]
     val accessedClassData = mutable.Set.empty[String]
@@ -86,6 +90,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     def callsMethodStatic(ownerIdent: js.Ident, method: js.Ident): Unit =
       calledMethodsStatic += ((patchClassName(ownerIdent.name), method.name))
+
+    def callsStaticMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
+      calledStaticMethods += ((patchClassName(ownerIdent.name), method.name))
 
     def instantiatesClass(classSym: Symbol): Unit =
       instantiatedClasses += patchClassName(encodeClassFullName(classSym))
@@ -106,6 +113,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       for (methodInfo <- funInfo.methodInfos) {
         calledMethods ++= methodInfo.calledMethods
         calledMethodsStatic ++= methodInfo.calledMethodsStatic
+        calledStaticMethods ++= methodInfo.calledStaticMethods
         instantiatedClasses ++= methodInfo.instantiatedClasses
         accessedModules ++= methodInfo.accessedModules
         accessedClassData ++= methodInfo.accessedClassData
@@ -125,10 +133,12 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     def result(): MethodInfo = {
       MethodInfo(
           encodedName,
+          isStatic,
           isAbstract,
           isExported,
           calledMethods.toList.groupBy(_._1).mapValues(_.map(_._2)),
           calledMethodsStatic.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          calledStaticMethods.toList.groupBy(_._1).mapValues(_.map(_._2)),
           instantiatedClasses.toList,
           accessedModules.result.toList,
           accessedClassData.result.toList,

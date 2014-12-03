@@ -206,9 +206,9 @@ object Serializers {
           writeTree(receiver); writeClassType(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case TraitImplApply(impl, method, args) =>
-          writeByte(TagTraitImplApply)
-          writeClassType(impl); writeIdent(method); writeTrees(args)
+        case ApplyStatic(cls, method, args) =>
+          writeByte(TagApplyStatic)
+          writeClassType(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
@@ -376,7 +376,7 @@ object Serializers {
           writeTrees(defs)
 
         case methodDef: MethodDef =>
-          val MethodDef(name, args, resultType, body) = methodDef
+          val MethodDef(static, name, args, resultType, body) = methodDef
 
           writeByte(TagMethodDef)
           writeOptHash(methodDef.hash)
@@ -386,7 +386,8 @@ object Serializers {
           writeInt(-1)
 
           // Write out method def
-          writePropertyName(name); writeTrees(args); writeType(resultType); writeTree(body)
+          writeBoolean(static); writePropertyName(name)
+          writeTrees(args); writeType(resultType); writeTree(body)
 
           // Jump back and write true length
           val length = bufferUnderlying.jumpBack()
@@ -585,7 +586,7 @@ object Serializers {
         case TagSelect         => Select(readTree(), readIdent(), readBoolean())(readType())
         case TagApply          => Apply(readTree(), readIdent(), readTrees())(readType())
         case TagStaticApply    => StaticApply(readTree(), readClassType(), readIdent(), readTrees())(readType())
-        case TagTraitImplApply => TraitImplApply(readClassType(), readIdent(), readTrees())(readType())
+        case TagApplyStatic    => ApplyStatic(readClassType(), readIdent(), readTrees())(readType())
         case TagUnaryOp        => UnaryOp(readByte(), readTree())
         case TagBinaryOp       => BinaryOp(readByte(), readTree(), readTree())
         case TagNewArray       => NewArray(readArrayType(), readTrees())
@@ -642,7 +643,8 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())(optHash)
+          MethodDef(readBoolean(), readPropertyName(),
+              readParamDefs(), readType(), readTree())(optHash)
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())

@@ -149,7 +149,7 @@ object Scalajsp {
     import ir.Trees._
     import ir.Definitions.isReflProxyName
     val newDefs = tree.defs.filter {
-      case MethodDef(Ident(name, _), _, _, _) => !isReflProxyName(name)
+      case MethodDef(_, Ident(name, _), _, _, _) => !isReflProxyName(name)
       case _ => true
     }
     tree.copy(defs = newDefs)(tree.pos)

@@ -75,7 +75,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         implicit val pos = ctors.head.pos
 
-        val js.MethodDef(_, args, _, body) =
+        val js.MethodDef(_, _, args, _, body) =
           withNewLocalNameScope(genExportMethod(ctors, jsName))
 
         js.ConstructorExportDef(jsName, args, body)
@@ -114,9 +114,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       withScopedVars(
           currentMethodInfoBuilder :=
-            currentClassInfoBuilder.addMethod(methodIdent.name)
+            currentClassInfoBuilder.addMethod(methodIdent.name, isStatic = false)
       ) {
-        js.MethodDef(methodIdent, List(inArg), toIRType(sym.tpe.resultType),
+        js.MethodDef(static = false, methodIdent,
+            List(inArg), toIRType(sym.tpe.resultType),
             genNamedExporterBody(trgSym, inArg.ref))(None)
       }
     }
@@ -312,7 +313,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         }
       }
 
-      js.MethodDef(js.StringLiteral(jsName), formalArgs, jstpe.AnyType, body)(None)
+      js.MethodDef(static = false, js.StringLiteral(jsName),
+          formalArgs, jstpe.AnyType, body)(None)
     }
 
     /**

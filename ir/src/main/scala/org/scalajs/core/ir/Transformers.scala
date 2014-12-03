@@ -84,8 +84,8 @@ object Transformers {
           StaticApply(transformExpr(receiver), cls, method,
               args map transformExpr)(tree.tpe)
 
-        case TraitImplApply(impl, method, args) =>
-          TraitImplApply(impl, method, args map transformExpr)(tree.tpe)
+        case ApplyStatic(cls, method, args) =>
+          ApplyStatic(cls, method, args map transformExpr)(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
@@ -193,8 +193,8 @@ object Transformers {
         case VarDef(name, vtpe, mutable, rhs) =>
           VarDef(name, vtpe, mutable, transformExpr(rhs))
 
-        case MethodDef(name, args, resultType, body) =>
-          MethodDef(name, args, resultType, transformStat(body))(None)
+        case MethodDef(static, name, args, resultType, body) =>
+          MethodDef(static, name, args, resultType, transformStat(body))(None)
 
         case PropertyDef(name, getterBody, setterArg, setterBody) =>
           PropertyDef(

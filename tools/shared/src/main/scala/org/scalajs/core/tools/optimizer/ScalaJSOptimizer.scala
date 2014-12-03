@@ -199,21 +199,29 @@ class ScalaJSOptimizer(
       allData: scala.collection.Seq[Infos.ClassInfo],
       optimizer: GenIncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
 
-    def refineMethodInfo(container: optimizer.MethodContainer,
+    def refineMethodInfo(container: Option[optimizer.MethodContainer],
+        staticContainer: Option[optimizer.MethodContainer],
         methodInfo: Infos.MethodInfo): Infos.MethodInfo = {
-      container.methods.get(methodInfo.encodedName).fold(methodInfo) {
-        methodImpl => methodImpl.preciseInfo
-      }
+
+      val optPreciseInfo = for {
+        ctnr <- if (methodInfo.isStatic) staticContainer else container
+        methodImpl <- ctnr.methods.get(methodInfo.encodedName)
+      } yield methodImpl.preciseInfo
+
+      optPreciseInfo.getOrElse(methodInfo)
     }
 
-    def refineMethodInfos(container: optimizer.MethodContainer,
+    def refineMethodInfos(container: Option[optimizer.MethodContainer],
+        staticContainer: Option[optimizer.MethodContainer],
         methodInfos: List[Infos.MethodInfo]): List[Infos.MethodInfo] = {
-      methodInfos.map(m => refineMethodInfo(container, m))
+      methodInfos.map(m => refineMethodInfo(container, staticContainer, m))
     }
 
-    def refineClassInfo(container: optimizer.MethodContainer,
+    def refineClassInfo(container: Option[optimizer.MethodContainer],
+        staticContainer: Option[optimizer.MethodContainer],
         info: Infos.ClassInfo): Infos.ClassInfo = {
-      val refinedMethods = refineMethodInfos(container, info.methods)
+      val refinedMethods = refineMethodInfos(
+          container, staticContainer, info.methods)
       Infos.ClassInfo(info.name, info.encodedName, info.isExported,
           info.ancestorCount, info.kind, info.superClass, info.ancestors,
           Infos.OptimizerHints.empty, refinedMethods)
@@ -224,14 +232,10 @@ class ScalaJSOptimizer(
     } yield {
       info.kind match {
         case ClassKind.Class | ClassKind.ModuleClass =>
-          optimizer.getClass(info.encodedName).fold(info) {
-            cls => refineClassInfo(cls, info)
-          }
-
-        case ClassKind.TraitImpl =>
-          optimizer.getTraitImpl(info.encodedName).fold(info) {
-            impl => refineClassInfo(impl, info)
-          }
+          val container = optimizer.getClass(info.encodedName)
+          val staticContainer = optimizer.getStaticsNamespace(info.encodedName)
+          if (container.isEmpty && staticContainer.isEmpty) info
+          else refineClassInfo(container, staticContainer, info)
 
         case _ =>
           info
@@ -261,48 +265,57 @@ class ScalaJSOptimizer(
       def addTree(tree: js.Tree): Unit =
         builder.addJSTree(tree)
 
-      def addReachableMethods(emitFun: (String, MethodDef) => js.Tree): Unit = {
+      def addReachableMethods(statics: Boolean): Unit = {
         /* This is a bit convoluted because we have to:
          * * avoid to use classDef at all if we already know all the needed methods
          * * if any new method is needed, better to go through the defs once
          */
-        val methodNames = d.methodNames.getOrElseUpdate(
+        val (methodInfos, methodNamesCache, methodsCache) = {
+          if (statics)
+            (classInfo.staticMethodInfos, d.staticMethodNames, d.staticMethods)
+          else
+            (classInfo.methodInfos, d.methodNames, d.methods)
+        }
+        val methodNames = methodNamesCache.getOrElseUpdate(
             classDef.defs collect {
-              case MethodDef(Ident(encodedName, _), _, _, _) => encodedName
+              case MethodDef(`statics`, Ident(encodedName, _), _, _, _) =>
+                encodedName
             })
         val reachableMethods = methodNames.filter(
-            name => classInfo.methodInfos(name).isReachable)
-        if (reachableMethods.forall(d.methods.contains(_))) {
+            name => methodInfos(name).isReachable)
+        if (reachableMethods.forall(methodsCache.contains(_))) {
           for (encodedName <- reachableMethods) {
-            addTree(d.methods(encodedName))
+            addTree(methodsCache(encodedName))
           }
         } else {
           classDef.defs.foreach {
             case m: MethodDef if m.name.isInstanceOf[Ident] =>
-              if (classInfo.methodInfos(m.name.name).isReachable) {
-                addTree(d.methods.getOrElseUpdate(m.name.name,
-                    emitFun(classInfo.encodedName, m)))
+              if (methodInfos(m.name.name).isReachable) {
+                addTree(methodsCache.getOrElseUpdate(m.name.name,
+                    classEmitter.genMethod(classInfo.encodedName, m)))
               }
             case _ =>
           }
         }
       }
 
-      if (classInfo.isImplClass) {
-        if (useInliner) {
-          for {
-            method <- optimizer.findTraitImpl(classInfo.encodedName).methods.values
-            if (classInfo.methodInfos(method.encodedName).isReachable)
-          } {
-            addTree(method.desugaredDef)
-          }
-        } else {
-          addReachableMethods(classEmitter.genTraitImplMethod)
-        }
-      } else if (!classInfo.hasMoreThanData) {
+      // Static members
+      if (useInliner) {
+        for {
+          staticsNS <- optimizer.getStaticsNamespace(classInfo.encodedName)
+          method <- staticsNS.methods.values
+          if classInfo.staticMethodInfos(method.encodedName).isReachable
+        } addTree(method.desugaredDef)
+      } else {
+        addReachableMethods(statics = true)
+      }
+
+      if (!(classInfo.isClass && !classInfo.isHijackedClass)) {
         // there is only the data anyway
-        addTree(d.wholeClass.getOrElseUpdate(
-            classEmitter.genClassDef(classDef)))
+        if (classInfo.isDataAccessed) {
+          addTree(d.wholeClass.getOrElseUpdate(
+              classEmitter.genClassDef(classDef)))
+        }
       } else {
         if (classInfo.isAnySubclassInstantiated) {
           addTree(d.constructor.getOrElseUpdate(
@@ -315,7 +328,7 @@ class ScalaJSOptimizer(
               addTree(method.desugaredDef)
             }
           } else {
-            addReachableMethods(classEmitter.genMethod)
+            addReachableMethods(statics = false)
           }
           addTree(d.exportedMembers.getOrElseUpdate(js.Block {
             classDef.defs collect {
@@ -530,6 +543,9 @@ object ScalaJSOptimizer {
   private final class Desugared {
     // for class kinds that are not decomposed
     val wholeClass = new OneTimeCache[js.Tree]
+
+    val staticMethodNames = new OneTimeCache[List[String]]
+    val staticMethods = mutable.Map.empty[String, js.Tree]
 
     val constructor = new OneTimeCache[js.Tree]
     val methodNames = new OneTimeCache[List[String]]
