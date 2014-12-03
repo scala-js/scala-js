@@ -293,9 +293,11 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (sym.hasAnnotation(InlineAnnotationClass) ||
           (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
-          isStdLibClassWithAdHocInlineAnnot(sym))
+          isStdLibClassWithAdHocInlineAnnot(sym)) {
         currentClassInfoBuilder.optimizerHints =
-          currentClassInfoBuilder.optimizerHints.copy(hasInlineAnnot = true)
+          currentClassInfoBuilder.optimizerHints.
+            withHasInlineAnnot(true)
+      }
 
       // Generate members (constructor + methods)
 
@@ -553,8 +555,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               sym.name.startsWith(nme.ANON_FUN_NAME)
             }
             currentMethodInfoBuilder.optimizerHints =
-              currentMethodInfoBuilder.optimizerHints.copy(
-                  hasInlineAnnot = shouldMarkInline)
+              currentMethodInfoBuilder.optimizerHints.
+                withHasInlineAnnot(shouldMarkInline)
 
             val methodDef = {
               if (sym.isClassConstructor) {
