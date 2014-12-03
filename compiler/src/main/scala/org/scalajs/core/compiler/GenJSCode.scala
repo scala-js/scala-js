@@ -554,7 +554,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
             currentMethodInfoBuilder.optimizerHints =
               currentMethodInfoBuilder.optimizerHints.copy(
-                  isAccessor = sym.isAccessor,
                   hasInlineAnnot = shouldMarkInline)
 
             val methodDef = {

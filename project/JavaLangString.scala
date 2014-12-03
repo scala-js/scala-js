@@ -22,7 +22,7 @@ object JavaLangString {
    *  [[OptimizerHints]], so we cannot do this cleanly. But it is fine
    *  somehow because we're part of the same project implementation.
    */
-  private def inlineOptimizerHints = new OptimizerHints(2)
+  private def inlineOptimizerHints = new OptimizerHints(1)
 
   val InfoAndTree = (Info, Definition)
 

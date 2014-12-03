@@ -85,16 +85,12 @@ object Infos {
   final class OptimizerHints(val bits: Int) extends AnyVal {
     import OptimizerHints._
 
-    private[scalajs] def isAccessor: Boolean = (bits & AccessorMask) != 0
     private[scalajs] def hasInlineAnnot: Boolean = (bits & InlineAnnotMask) != 0
 
     private[scalajs] def copy(
-        isAccessor: Boolean = this.isAccessor,
         hasInlineAnnot: Boolean = this.hasInlineAnnot
     ): OptimizerHints = {
       var bits: Int = 0
-      if (isAccessor)
-        bits |= AccessorMask
       if (hasInlineAnnot)
         bits |= InlineAnnotMask
       new OptimizerHints(bits)
@@ -105,10 +101,7 @@ object Infos {
   }
 
   object OptimizerHints {
-    private final val AccessorShift = 0
-    private final val AccessorMask = 1 << AccessorShift
-
-    private final val InlineAnnotShift = 1
+    private final val InlineAnnotShift = 0
     private final val InlineAnnotMask = 1 << InlineAnnotShift
 
     final val empty: OptimizerHints =
