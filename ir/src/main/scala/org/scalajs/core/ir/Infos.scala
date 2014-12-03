@@ -85,19 +85,27 @@ object Infos {
   final class OptimizerHints(val bits: Int) extends AnyVal {
     import OptimizerHints._
 
-    def hasInlineAnnot: Boolean = (bits & InlineAnnotMask) != 0
+    def inline: Boolean = (bits & InlineMask) != 0
+    def noinline: Boolean = (bits & NoinlineMask) != 0
 
-    def withHasInlineAnnot(value: Boolean): OptimizerHints =
-      if (value) new OptimizerHints(bits | InlineAnnotMask)
-      else new OptimizerHints(bits & ~InlineAnnotMask)
+    def withInline(value: Boolean): OptimizerHints =
+      if (value) new OptimizerHints(bits | InlineMask)
+      else new OptimizerHints(bits & ~InlineMask)
+
+    def withNoinline(value: Boolean): OptimizerHints =
+      if (value) new OptimizerHints(bits | NoinlineMask)
+      else new OptimizerHints(bits & ~NoinlineMask)
 
     override def toString(): String =
       s"OptimizerHints($bits)"
   }
 
   object OptimizerHints {
-    final val InlineAnnotShift = 0
-    final val InlineAnnotMask = 1 << InlineAnnotShift
+    final val InlineShift = 0
+    final val InlineMask = 1 << InlineShift
+
+    final val NoinlineShift = 1
+    final val NoinlineMask = 1 << NoinlineShift
 
     final val empty: OptimizerHints =
       new OptimizerHints(0)

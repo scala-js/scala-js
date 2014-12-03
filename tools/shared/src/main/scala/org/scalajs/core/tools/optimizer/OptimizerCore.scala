@@ -1062,7 +1062,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 if (intrinsicCode >= 0) {
                   callIntrinsic(intrinsicCode, Some(treceiver), targs,
                       isStat, usePreTransform)(cont)
-                } else if (target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)) {
+                } else if (target.inlineable && (
+                    target.shouldInline ||
+                    shouldInlineBecauseOfArgs(treceiver :: targs))) {
                   inline(allocationSite, Some(treceiver), targs, target,
                       isStat, usePreTransform)(cont)
                 } else {
@@ -1141,8 +1143,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             callIntrinsic(intrinsicCode, Some(treceiver), targs,
                 isStat, usePreTransform)(cont)
           } else {
-            val shouldInline =
-              target.inlineable || shouldInlineBecauseOfArgs(treceiver :: targs)
+            val shouldInline = target.inlineable && (
+                target.shouldInline ||
+                shouldInlineBecauseOfArgs(treceiver :: targs))
             val allocationSite = treceiver.tpe.allocationSite
             val beingInlined =
               scope.implsBeingInlined((allocationSite, target))
@@ -1186,8 +1189,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           callIntrinsic(intrinsicCode, None, targs,
               isStat, usePreTransform)(cont)
         } else {
-          val shouldInline =
-            target.inlineable || shouldInlineBecauseOfArgs(targs)
+          val shouldInline = target.inlineable && (
+              target.shouldInline || shouldInlineBecauseOfArgs(targs))
           val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
           val beingInlined =
             scope.implsBeingInlined((allocationSite, target))
@@ -1267,6 +1270,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    require(target.inlineable)
 
     attemptedInlining += target
 
@@ -3320,6 +3325,7 @@ private[optimizer] object OptimizerCore {
 
   trait AbstractMethodID {
     def inlineable: Boolean
+    def shouldInline: Boolean
     def isTraitImplForwarder: Boolean
   }
 
@@ -3331,6 +3337,7 @@ private[optimizer] object OptimizerCore {
     def thisType: Type
 
     var inlineable: Boolean = false
+    var shouldInline: Boolean = false
     var isTraitImplForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
@@ -3350,25 +3357,28 @@ private[optimizer] object OptimizerCore {
         case _ => false
       }
 
-      inlineable = optimizerHints.hasInlineAnnot || isTraitImplForwarder || {
-        val MethodDef(_, params, _, body) = originalDef
-        body match {
-          case _:Skip | _:This | _:Literal                          => true
+      inlineable = !optimizerHints.noinline
+      shouldInline = inlineable && {
+        optimizerHints.inline || isTraitImplForwarder || {
+          val MethodDef(_, params, _, body) = originalDef
+          body match {
+            case _:Skip | _:This | _:Literal                          => true
 
-          // Shape of accessors
-          case Select(This(), _, _) if params.isEmpty               => true
-          case Assign(Select(This(), _, _), VarRef(_, _))
-              if params.size == 1                                   => true
+            // Shape of accessors
+            case Select(This(), _, _) if params.isEmpty               => true
+            case Assign(Select(This(), _, _), VarRef(_, _))
+                if params.size == 1                                   => true
 
-          // Shape of trivial call-super constructors
-          case Block(stats)
-              if params.isEmpty && isConstructorName(encodedName) &&
-                  stats.forall(isTrivialConstructorStat)            => true
+            // Shape of trivial call-super constructors
+            case Block(stats)
+                if params.isEmpty && isConstructorName(encodedName) &&
+                    stats.forall(isTrivialConstructorStat)            => true
 
-          // Simple method
-          case SimpleMethodBody()                                   => true
+            // Simple method
+            case SimpleMethodBody()                                   => true
 
-          case _ => false
+            case _ => false
+          }
         }
       }
     }

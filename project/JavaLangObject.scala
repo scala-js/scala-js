@@ -19,8 +19,7 @@ import ir.Position.NoPosition
 object JavaLangObject {
 
   /** Optimizer hints with `@inline` */
-  private def inlineOptimizerHints =
-    OptimizerHints.empty.withHasInlineAnnot(true)
+  private def inlineOptimizerHints = OptimizerHints.empty.withInline(true)
 
   val InfoAndTree = (Info, Definition)
 
