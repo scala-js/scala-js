@@ -31,13 +31,15 @@
         ++$scala helloworld/run \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run &&
-    sbt ++$scala testingExample/test \
+    sbt 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+        ++$scala testingExample/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbt 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
+    sbt 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+        'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
     sbt ++$scala "testSuite/testOnly -- -trhino -tsource-maps" \
