@@ -11,7 +11,7 @@ package org.scalajs.jsenv.rhino
 
 import scala.collection.mutable
 
-import org.mozilla.javascript.Scriptable
+import org.mozilla.javascript.{Scriptable, Context}
 
 /** A proxy for a ScalaJS "scope" field that loads scripts lazily
  *
@@ -59,8 +59,15 @@ class LazyScalaJSScope(
 
   override def get(name: String, start: Scriptable) = {
     fields.getOrElse(name, {
-      load(name)
-      fields.getOrElse(name, Scriptable.NOT_FOUND)
+      try {
+        load(name)
+        fields.getOrElse(name, Scriptable.NOT_FOUND)
+      } catch {
+        // We need to re-throw the exception if `load` fails, otherwise the
+        // JavaScript runtime will not catch it.
+        case t: RuntimeException =>
+          throw Context.throwAsScriptRuntimeEx(t)
+      }
     }).asInstanceOf[AnyRef]
   }
   override def get(index: Int, start: Scriptable) =
