@@ -99,7 +99,8 @@
 
   <task id="tools-cli-stubs"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala tools/package tools/test cli/assembly stubs/package
+    sbt ++$scala tools/package tools/test cli/assembly stubs/package \
+        jsEnvs/test
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
