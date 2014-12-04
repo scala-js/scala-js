@@ -35,21 +35,21 @@ object JavaLangString {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("hashCode__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("hashCode__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__T__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("compareTo__T__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__O__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "T" -> List("compareTo__T__I")
         ),
         optimizerHints = inlineOptimizerHints
@@ -58,21 +58,21 @@ object JavaLangString {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("charAt__I__C",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("charAt__T__I__C")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("length__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("length__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("subSequence__I__I__jl_CharSequence",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("subSequence__T__I__I__jl_CharSequence")
         ),
         accessedModules = List("sjsr_RuntimeString"),

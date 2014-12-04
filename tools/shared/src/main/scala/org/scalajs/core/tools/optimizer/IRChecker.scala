@@ -471,7 +471,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         checkApplyGeneric(method, s"$receiverType.$method", args,
             isStatic = false)
 
-      case StaticApply(receiver, cls, Ident(method, _), args) =>
+      case ApplyStatically(receiver, cls, Ident(method, _), args) =>
         typecheckExpect(receiver, env, cls)
         checkApplyGeneric(method, s"$cls.$method", args, isStatic = false)
 

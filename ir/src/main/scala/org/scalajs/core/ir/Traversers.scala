@@ -76,7 +76,7 @@ object Traversers {
         traverse(receiver)
         args foreach traverse
 
-      case StaticApply(receiver, cls, method, args) =>
+      case ApplyStatically(receiver, cls, method, args) =>
         traverse(receiver)
         args foreach traverse
 

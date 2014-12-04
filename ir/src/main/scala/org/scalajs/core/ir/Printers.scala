@@ -254,7 +254,7 @@ object Printers {
           print(receiver, ".", method)
           printArgs(args)
 
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           print(receiver, ".", cls, "::", method)
           printArgs(args)
 
@@ -659,28 +659,28 @@ object Printers {
         println("isAbstract: ", isAbstract)
       if (isExported)
         println("isExported: ", isExported)
-      if (calledMethods.nonEmpty) {
-        print("calledMethods:")
+      if (methodsCalled.nonEmpty) {
+        print("methodsCalled:")
         indent(); println()
-        printSeq(calledMethods.toList) { case (cls, callees) =>
+        printSeq(methodsCalled.toList) { case (cls, callees) =>
           print(escapeJS(cls), ": ")
           print(callees.map(escapeJS).mkString("[", ", ", "]"))
         } { _ => println() }
         undent(); println()
       }
-      if (calledMethodsStatic.nonEmpty) {
-        print("calledMethodsStatic:")
+      if (methodsCalledStatically.nonEmpty) {
+        print("methodsCalledStatically:")
         indent(); println()
-        printSeq(calledMethodsStatic.toList) { case (cls, callees) =>
+        printSeq(methodsCalledStatically.toList) { case (cls, callees) =>
           print(escapeJS(cls), ": ")
           print(callees.map(escapeJS).mkString("[", ", ", "]"))
         } { _ => println() }
         undent(); println()
       }
-      if (calledStaticMethods.nonEmpty) {
-        print("calledStaticMethods:")
+      if (staticMethodsCalled.nonEmpty) {
+        print("staticMethodsCalled:")
         indent(); println()
-        printSeq(calledStaticMethods.toList) { case (cls, callees) =>
+        printSeq(staticMethodsCalled.toList) { case (cls, callees) =>
           print(escapeJS(cls), ": ")
           print(callees.map(escapeJS).mkString("[", ", ", "]"))
         } { _ => println() }

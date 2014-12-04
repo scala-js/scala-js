@@ -80,8 +80,8 @@ object Transformers {
           Apply(transformExpr(receiver), method,
               args map transformExpr)(tree.tpe)
 
-        case StaticApply(receiver, cls, method, args) =>
-          StaticApply(transformExpr(receiver), cls, method,
+        case ApplyStatically(receiver, cls, method, args) =>
+          ApplyStatically(transformExpr(receiver), cls, method,
               args map transformExpr)(tree.tpe)
 
         case ApplyStatic(cls, method, args) =>

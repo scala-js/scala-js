@@ -597,7 +597,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
             case Skip() => true
             case _      => false
           }
-        case StaticApply(This(), ClassType(cls), methodName, args) =>
+        case ApplyStatically(This(), ClassType(cls), methodName, args) =>
           Definitions.isConstructorName(methodName.name) &&
           args.forall(isTriviallySideEffectFree) &&
           impl.owner.asInstanceOf[Class].superClass.exists { superCls =>

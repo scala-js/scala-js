@@ -202,10 +202,13 @@ object Trees {
 
   case class Select(qualifier: Tree, item: Ident, mutable: Boolean)(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** Apply an instance method with dynamic dispatch (the default). */
   case class Apply(receiver: Tree, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
-  case class StaticApply(receiver: Tree, cls: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
+  /** Apply an instance method with static dispatch (e.g., super calls). */
+  case class ApplyStatically(receiver: Tree, cls: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** Apply a static method. */
   case class ApplyStatic(cls: ClassType, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */

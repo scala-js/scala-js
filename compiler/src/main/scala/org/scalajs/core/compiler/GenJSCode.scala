@@ -1397,7 +1397,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         // The only primitive that is also callable as super call
         js.GetClass(genThis())
       } else {
-        val superCall = genStaticApplyMethod(
+        val superCall = genApplyMethodStatically(
             genThis()(sup.pos), sym, genActualArgs(sym, args))
 
         // Initialize the module instance just after the super constructor call.
@@ -1579,21 +1579,21 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isRawJSCtorDefaultParam(sym)) {
         js.UndefinedParam()(toIRType(sym.tpe.resultType))
       } else if (sym.isClassConstructor) {
-        /* See #66: we have to emit a static call to avoid calling a
-         * constructor with the same signature in a subclass */
-        genStaticApplyMethod(genExpr(receiver), sym, genActualArgs(sym, args))
+        /* See #66: we have to emit a statically linked call to avoid calling a
+         * constructor with the same signature in a subclass. */
+        genApplyMethodStatically(genExpr(receiver), sym, genActualArgs(sym, args))
       } else {
         genApplyMethod(genExpr(receiver), receiver.tpe, sym, genActualArgs(sym, args))
       }
     }
 
-    def genStaticApplyMethod(receiver: js.Tree, method: Symbol,
+    def genApplyMethodStatically(receiver: js.Tree, method: Symbol,
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val classIdent = encodeClassFullNameIdent(method.owner)
       val methodIdent = encodeMethodSym(method)
-      currentMethodInfoBuilder.callsMethodStatic(classIdent, methodIdent)
-      js.StaticApply(receiver, jstpe.ClassType(classIdent.name), methodIdent,
-          arguments)(toIRType(method.tpe.resultType))
+      currentMethodInfoBuilder.callsMethodStatically(classIdent, methodIdent)
+      js.ApplyStatically(receiver, jstpe.ClassType(classIdent.name),
+          methodIdent, arguments)(toIRType(method.tpe.resultType))
     }
 
     def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(

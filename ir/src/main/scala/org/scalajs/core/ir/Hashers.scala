@@ -182,8 +182,8 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
-        case StaticApply(receiver, cls, method, args) =>
-          mixTag(TagStaticApply)
+        case ApplyStatically(receiver, cls, method, args) =>
+          mixTag(TagApplyStatically)
           mixTree(receiver)
           mixType(cls)
           mixIdent(method)

@@ -494,19 +494,19 @@ class Analyzer(logger0: Logger, semantics: Semantics,
           lookupClass(className).accessData()
         }
 
-        for ((className, methods) <- data.calledMethods) {
+        for ((className, methods) <- data.methodsCalled) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
             classInfo.callMethod(methodName)
         }
 
-        for ((className, methods) <- data.calledMethodsStatic) {
+        for ((className, methods) <- data.methodsCalledStatically) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
             classInfo.callMethod(methodName, statically = true)
         }
 
-        for ((className, methods) <- data.calledStaticMethods) {
+        for ((className, methods) <- data.staticMethodsCalled) {
           val classInfo = lookupClass(className)
           for (methodName <- methods)
             classInfo.callStaticMethod(methodName)

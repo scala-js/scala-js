@@ -34,7 +34,7 @@ object JavaLangObject {
       MethodInfo("__init__"),
       MethodInfo("init___"),
       MethodInfo("hashCode__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "jl_System$" -> List("identityHashCode__O__I")
         ),
         accessedModules = List("jl_System")
@@ -43,7 +43,7 @@ object JavaLangObject {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("clone__O",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
           "jl_CloneNotSupportedException" -> List("init___")
         ),
@@ -55,7 +55,7 @@ object JavaLangObject {
       MethodInfo("notify__V"),
       MethodInfo("notifyAll__V"),
       MethodInfo("toString__T",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("hashCode__I"),
           "jl_Class" -> List("getName__T"),
           "jl_Integer$" -> List("toHexString__I__T")
@@ -64,22 +64,22 @@ object JavaLangObject {
       ),
       MethodInfo("finalize__V"),
       MethodInfo("clone__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("clone__O")
         )
       ),
       MethodInfo("notify__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("notify__V")
         )
       ),
       MethodInfo("notifyAll__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("notifyAll__V")
         )
       ),
       MethodInfo("finalize__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("finalize__V")
         )
       )

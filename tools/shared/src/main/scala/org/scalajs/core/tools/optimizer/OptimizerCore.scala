@@ -373,7 +373,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
               finishTransform(isStat))
         }
 
-      case tree: StaticApply =>
+      case tree: ApplyStatically =>
         trampoline {
           pretransformStaticApply(tree, isStat, usePreTransform = false)(
               finishTransform(isStat))
@@ -729,7 +729,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         pretransformApply(tree, isStat = false,
             usePreTransform = true)(cont)
 
-      case tree: StaticApply =>
+      case tree: ApplyStatically =>
         pretransformStaticApply(tree, isStat = false,
             usePreTransform = true)(cont)
 
@@ -1113,16 +1113,16 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     case ArrayType(_, _) => Definitions.ObjectClass
   }
 
-  private def pretransformStaticApply(tree: StaticApply, isStat: Boolean,
+  private def pretransformStaticApply(tree: ApplyStatically, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val StaticApply(receiver, clsType @ ClassType(cls),
+    val ApplyStatically(receiver, clsType @ ClassType(cls),
         methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
     def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) =
-      cont(PreTransTree(StaticApply(transformedReceiver, clsType,
+      cont(PreTransTree(ApplyStatically(transformedReceiver, clsType,
           methodIdent, transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
 
     def treeNotInlined =
@@ -1561,7 +1561,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             Assign(lhs, If(cond, th, value)(lhs.tpe)(stat.pos))(ass.pos) :: rest,
             cancelFun)(buildInner)(cont)
 
-      case StaticApply(ths: This, superClass, superCtor, args) :: rest
+      case ApplyStatically(ths: This, superClass, superCtor, args) :: rest
           if isConstructorName(superCtor.name) =>
         pretransformExprs(args) { targs =>
           inlineClassConstructorBody(allocationSite, inputFieldsLocalDefs,
@@ -3390,7 +3390,7 @@ private[optimizer] object OptimizerCore {
   private def isTrivialConstructorStat(stat: Tree): Boolean = stat match {
     case This() =>
       true
-    case StaticApply(This(), _, _, Nil) =>
+    case ApplyStatically(This(), _, _, Nil) =>
       true
     case ApplyStatic(_, Ident(methodName, _), This() :: Nil) =>
       methodName.startsWith("$$init$__")
@@ -3401,12 +3401,12 @@ private[optimizer] object OptimizerCore {
   private object SimpleMethodBody {
     @tailrec
     def unapply(body: Tree): Boolean = body match {
-      case New(_, _, args)                   => areSimpleArgs(args)
-      case Apply(receiver, _, args)          => areSimpleArgs(receiver :: args)
-      case StaticApply(receiver, _, _, args) => areSimpleArgs(receiver :: args)
-      case ApplyStatic(_, _, args)           => areSimpleArgs(args)
-      case Select(qual, _, _)                => isSimpleArg(qual)
-      case IsInstanceOf(inner, _)            => isSimpleArg(inner)
+      case New(_, _, args)                       => areSimpleArgs(args)
+      case Apply(receiver, _, args)              => areSimpleArgs(receiver :: args)
+      case ApplyStatically(receiver, _, _, args) => areSimpleArgs(receiver :: args)
+      case ApplyStatic(_, _, args)               => areSimpleArgs(args)
+      case Select(qual, _, _)                    => isSimpleArg(qual)
+      case IsInstanceOf(inner, _)                => isSimpleArg(inner)
 
       case Block(List(inner, Undefined())) =>
         unapply(inner)
@@ -3422,10 +3422,10 @@ private[optimizer] object OptimizerCore {
 
     @tailrec
     private def isSimpleArg(arg: Tree): Boolean = arg match {
-      case New(_, _, Nil)                   => true
-      case Apply(receiver, _, Nil)          => isTrivialArg(receiver)
-      case StaticApply(receiver, _, _, Nil) => isTrivialArg(receiver)
-      case ApplyStatic(_, _, Nil)           => true
+      case New(_, _, Nil)                       => true
+      case Apply(receiver, _, Nil)              => isTrivialArg(receiver)
+      case ApplyStatically(receiver, _, _, Nil) => isTrivialArg(receiver)
+      case ApplyStatic(_, _, Nil)               => true
 
       case ArrayLength(array)        => isTrivialArg(array)
       case ArraySelect(array, index) => isTrivialArg(array) && isTrivialArg(index)
@@ -3460,9 +3460,9 @@ private[optimizer] object OptimizerCore {
   private final class RecreateInfoTraverser extends Traversers.Traverser {
     import RecreateInfoTraverser._
 
-    private val calledMethods = mutable.Map.empty[String, mutable.Set[String]]
-    private val calledMethodsStatic = mutable.Map.empty[String, mutable.Set[String]]
-    private val calledStaticMethods = mutable.Map.empty[String, mutable.Set[String]]
+    private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
+    private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[String]]
+    private val staticMethodsCalled = mutable.Map.empty[String, mutable.Set[String]]
     private val instantiatedClasses = mutable.Set.empty[String]
     private val accessedModules = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
@@ -3472,22 +3472,22 @@ private[optimizer] object OptimizerCore {
       Infos.MethodInfo(
           encodedName = methodDef.name.name,
           isStatic = methodDef.static,
-          calledMethods = calledMethods.toMap.mapValues(_.toList),
-          calledMethodsStatic = calledMethodsStatic.toMap.mapValues(_.toList),
-          calledStaticMethods = calledStaticMethods.toMap.mapValues(_.toList),
+          methodsCalled = methodsCalled.toMap.mapValues(_.toList),
+          methodsCalledStatically = methodsCalledStatically.toMap.mapValues(_.toList),
+          staticMethodsCalled = staticMethodsCalled.toMap.mapValues(_.toList),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           accessedClassData = accessedClassData.toList)
     }
 
-    private def addCalledMethod(container: String, methodName: String): Unit =
-      calledMethods.getOrElseUpdate(container, mutable.Set.empty) += methodName
+    private def addMethodCalled(container: String, methodName: String): Unit =
+      methodsCalled.getOrElseUpdate(container, mutable.Set.empty) += methodName
 
-    private def addCalledMethodStatic(container: String, methodName: String): Unit =
-      calledMethodsStatic.getOrElseUpdate(container, mutable.Set.empty) += methodName
+    private def addMethodCalledStatically(container: String, methodName: String): Unit =
+      methodsCalledStatically.getOrElseUpdate(container, mutable.Set.empty) += methodName
 
-    private def addCalledStaticMethod(container: String, methodName: String): Unit =
-      calledStaticMethods.getOrElseUpdate(container, mutable.Set.empty) += methodName
+    private def addStaticMethodCalled(container: String, methodName: String): Unit =
+      staticMethodsCalled.getOrElseUpdate(container, mutable.Set.empty) += methodName
 
     private def refTypeToClassData(tpe: ReferenceType): String = tpe match {
       case ClassType(cls)     => cls
@@ -3506,29 +3506,29 @@ private[optimizer] object OptimizerCore {
       tree match {
         case New(ClassType(cls), ctor, _) =>
           instantiatedClasses += cls
-          addCalledMethodStatic(cls, ctor.name)
+          addMethodCalledStatically(cls, ctor.name)
 
         case Apply(receiver, method, _) =>
           receiver.tpe match {
             case ClassType(cls) if !Definitions.HijackedClasses.contains(cls) =>
-              addCalledMethod(cls, method.name)
+              addMethodCalled(cls, method.name)
             case AnyType =>
-              addCalledMethod(Definitions.ObjectClass, method.name)
+              addMethodCalled(Definitions.ObjectClass, method.name)
             case ArrayType(_, _) if method.name != "clone__O" =>
               /* clone__O is overridden in the pseudo Array classes and is
                * always kept anyway, because it is in scalajsenv.js.
                * Other methods delegate to Object, which we can model with
                * a static call to Object.method.
                */
-              addCalledMethodStatic(Definitions.ObjectClass, method.name)
+              addMethodCalledStatically(Definitions.ObjectClass, method.name)
             case _ =>
               // Nothing to do
           }
 
-        case StaticApply(_, ClassType(cls), method, _) =>
-          addCalledMethodStatic(cls, method.name)
+        case ApplyStatically(_, ClassType(cls), method, _) =>
+          addMethodCalledStatically(cls, method.name)
         case ApplyStatic(ClassType(cls), method, _) =>
-          addCalledStaticMethod(cls, method.name)
+          addStaticMethodCalled(cls, method.name)
 
         case LoadModule(ClassType(cls)) =>
           accessedModules += cls.stripSuffix("$")

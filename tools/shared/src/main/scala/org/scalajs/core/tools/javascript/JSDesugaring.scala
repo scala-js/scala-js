@@ -418,9 +418,9 @@ object JSDesugaring {
               case Apply(receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(rec(receiver), method, newArgs)(arg.tpe)
-              case StaticApply(receiver, cls, method, args) if noExtractYet =>
+              case ApplyStatically(receiver, cls, method, args) if noExtractYet =>
                 val newArgs = recs(args)
-                StaticApply(rec(receiver), cls, method, newArgs)(arg.tpe)
+                ApplyStatically(rec(receiver), cls, method, newArgs)(arg.tpe)
               case ApplyStatic(cls, method, args) if noExtractYet =>
                 ApplyStatic(cls, method, recs(args))(arg.tpe)
               case ArrayLength(array) if noExtractYet =>
@@ -539,7 +539,7 @@ object JSDesugaring {
           allowSideEffects
         case Apply(receiver, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
         case ApplyStatic(cls, method, args) =>
           allowSideEffects && (args forall test)
@@ -821,9 +821,9 @@ object JSDesugaring {
             redo(Apply(newReceiver, method, newArgs)(rhs.tpe))
           }
 
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           unnest(receiver, args) { (newReceiver, newArgs) =>
-            redo(StaticApply(newReceiver, cls, method, newArgs)(rhs.tpe))
+            redo(ApplyStatically(newReceiver, cls, method, newArgs)(rhs.tpe))
           }
 
         case ApplyStatic(cls, method, args) =>
@@ -1049,7 +1049,7 @@ object JSDesugaring {
             js.Apply(newReceiver DOT method, newArgs)
           }
 
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           val fun = encodeClassVar(cls.className).prototype DOT method
           js.Apply(fun DOT "call", (receiver :: args) map transformExpr)
 

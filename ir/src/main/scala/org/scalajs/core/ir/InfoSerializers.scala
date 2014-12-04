@@ -77,13 +77,13 @@ object InfoSerializers {
         s.writeBoolean(isStatic)
         s.writeBoolean(isAbstract)
         s.writeBoolean(isExported)
-        writeSeq(calledMethods.toSeq) {
+        writeSeq(methodsCalled.toSeq) {
           case (cls, callees) => s.writeUTF(cls); writeStrings(callees)
         }
-        writeSeq(calledMethodsStatic.toSeq) {
+        writeSeq(methodsCalledStatically.toSeq) {
           case (cls, callees) => s.writeUTF(cls); writeStrings(callees)
         }
-        writeSeq(calledStaticMethods.toSeq) {
+        writeSeq(staticMethodsCalled.toSeq) {
           case (cls, callees) => s.writeUTF(cls); writeStrings(callees)
         }
         writeStrings(instantiatedClasses)
@@ -142,15 +142,15 @@ object InfoSerializers {
         val isStatic = readBoolean()
         val isAbstract = readBoolean()
         val isExported = readBoolean()
-        val calledMethods = readList(readUTF() -> readStrings()).toMap
-        val calledMethodsStatic = readList(readUTF() -> readStrings()).toMap
-        val calledStaticMethods = readList(readUTF() -> readStrings()).toMap
+        val methodsCalled = readList(readUTF() -> readStrings()).toMap
+        val methodsCalledStatically = readList(readUTF() -> readStrings()).toMap
+        val staticMethodsCalled = readList(readUTF() -> readStrings()).toMap
         val instantiatedClasses = readStrings()
         val accessedModules = readStrings()
         val accessedClassData = readStrings()
         val optimizerHints = new OptimizerHints(readInt())
         MethodInfo(encodedName, isStatic, isAbstract, isExported,
-            calledMethods, calledMethodsStatic, calledStaticMethods,
+            methodsCalled, methodsCalledStatically, staticMethodsCalled,
             instantiatedClasses, accessedModules, accessedClassData,
             optimizerHints)
       }

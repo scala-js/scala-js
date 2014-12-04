@@ -38,8 +38,8 @@ private[ir] object Tags {
   final val TagStoreModule = TagLoadModule + 1
   final val TagSelect = TagStoreModule + 1
   final val TagApply = TagSelect + 1
-  final val TagStaticApply = TagApply + 1
-  final val TagApplyStatic = TagStaticApply + 1
+  final val TagApplyStatically = TagApply + 1
+  final val TagApplyStatic = TagApplyStatically + 1
   final val TagUnaryOp = TagApplyStatic + 1
   final val TagBinaryOp = TagUnaryOp + 1
   final val TagNewArray = TagBinaryOp + 1

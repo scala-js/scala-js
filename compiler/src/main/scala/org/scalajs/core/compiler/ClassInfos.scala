@@ -74,25 +74,25 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       val isAbstract: Boolean = false,
       val isExported: Boolean = false) {
 
-    val calledMethods = mutable.Set.empty[(String, String)] // (tpe, method)
-    val calledMethodsStatic = mutable.Set.empty[(String, String)] // (class, method)
-    val calledStaticMethods = mutable.Set.empty[(String, String)] // (tpe, method)
+    val methodsCalled = mutable.Set.empty[(String, String)] // (tpe, method)
+    val methodsCalledStatically = mutable.Set.empty[(String, String)] // (class, method)
+    val staticMethodsCalled = mutable.Set.empty[(String, String)] // (tpe, method)
     val instantiatedClasses = mutable.Set.empty[String]
     val accessedModules = mutable.Set.empty[String]
     val accessedClassData = mutable.Set.empty[String]
     var optimizerHints: OptimizerHints = OptimizerHints.empty
 
     def callsMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
-      calledMethods += ((patchClassName(ownerIdent.name), method.name))
+      methodsCalled += ((patchClassName(ownerIdent.name), method.name))
 
     def callsMethod(owner: Symbol, method: js.Ident): Unit =
-      calledMethods += ((patchClassName(encodeClassFullName(owner)), method.name))
+      methodsCalled += ((patchClassName(encodeClassFullName(owner)), method.name))
 
-    def callsMethodStatic(ownerIdent: js.Ident, method: js.Ident): Unit =
-      calledMethodsStatic += ((patchClassName(ownerIdent.name), method.name))
+    def callsMethodStatically(ownerIdent: js.Ident, method: js.Ident): Unit =
+      methodsCalledStatically += ((patchClassName(ownerIdent.name), method.name))
 
     def callsStaticMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
-      calledStaticMethods += ((patchClassName(ownerIdent.name), method.name))
+      staticMethodsCalled += ((patchClassName(ownerIdent.name), method.name))
 
     def instantiatesClass(classSym: Symbol): Unit =
       instantiatedClasses += patchClassName(encodeClassFullName(classSym))
@@ -111,9 +111,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     def createsAnonFunction(funInfo: ClassInfoBuilder): Unit = {
       for (methodInfo <- funInfo.methodInfos) {
-        calledMethods ++= methodInfo.calledMethods
-        calledMethodsStatic ++= methodInfo.calledMethodsStatic
-        calledStaticMethods ++= methodInfo.calledStaticMethods
+        methodsCalled ++= methodInfo.methodsCalled
+        methodsCalledStatically ++= methodInfo.methodsCalledStatically
+        staticMethodsCalled ++= methodInfo.staticMethodsCalled
         instantiatedClasses ++= methodInfo.instantiatedClasses
         accessedModules ++= methodInfo.accessedModules
         accessedClassData ++= methodInfo.accessedClassData
@@ -136,9 +136,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
           isStatic,
           isAbstract,
           isExported,
-          calledMethods.toList.groupBy(_._1).mapValues(_.map(_._2)),
-          calledMethodsStatic.toList.groupBy(_._1).mapValues(_.map(_._2)),
-          calledStaticMethods.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          methodsCalled.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          methodsCalledStatically.toList.groupBy(_._1).mapValues(_.map(_._2)),
+          staticMethodsCalled.toList.groupBy(_._1).mapValues(_.map(_._2)),
           instantiatedClasses.toList,
           accessedModules.result.toList,
           accessedClassData.result.toList,
