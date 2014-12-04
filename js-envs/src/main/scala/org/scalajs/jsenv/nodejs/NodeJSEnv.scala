@@ -23,11 +23,20 @@ import java.net._
 
 import scala.io.Source
 
-class NodeJSEnv(
-  nodejsPath: String = "node",
-  addArgs:    Seq[String] = Seq.empty,
-  addEnv:     Map[String, String] = Map.empty
+class NodeJSEnv private (
+  nodejsPath: String,
+  addArgs: Seq[String],
+  addEnv: Map[String, String],
+  sourceMap: Boolean
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
+
+  def this(nodejsPath: String = "node", addArgs: Seq[String] = Seq.empty,
+      addEnv: Map[String, String] = Map.empty) = {
+    this(nodejsPath, addArgs, addEnv, sourceMap = true)
+  }
+
+  def withSourceMap(sourceMap: Boolean): NodeJSEnv =
+    new NodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
 
   protected def vmName: String = "node.js"
   protected def executable: String = nodejsPath
@@ -202,15 +211,17 @@ class NodeJSEnv(
     /** File(s) to automatically install source-map-support.
      *  Is used by [[initFiles]], override to change/disable.
      */
-    protected def installSourceMap(): Seq[VirtualJSFile] = Seq(
-        new MemVirtualJSFile("sourceMapSupport.js").withContent(
-          """
-          try {
-            require('source-map-support').install();
-          } catch (e) {}
-          """
-        )
-    )
+    protected def installSourceMap(): Seq[VirtualJSFile] = {
+      if (sourceMap) Seq(
+          new MemVirtualJSFile("sourceMapSupport.js").withContent(
+            """
+            try {
+              require('source-map-support').install();
+            } catch (e) {}
+            """
+          )
+      ) else Seq()
+    }
 
     /** File(s) to hack console.log to prevent if from changing `%%` to `%`.
      *  Is used by [[initFiles]], override to change/disable.

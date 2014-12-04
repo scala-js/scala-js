@@ -25,10 +25,19 @@ import scala.concurrent.duration.Duration
 
 import org.mozilla.javascript._
 
-final class RhinoJSEnv(semantics: Semantics,
-    withDOM: Boolean = false) extends ComJSEnv {
+final class RhinoJSEnv private (
+    semantics: Semantics,
+    withDOM: Boolean,
+    sourceMap: Boolean
+) extends ComJSEnv {
 
   import RhinoJSEnv._
+
+  def this(semantics: Semantics = Semantics.Defaults, withDOM: Boolean = false) =
+    this(semantics, withDOM, sourceMap = true)
+
+  def withSourceMap(sourceMap: Boolean): RhinoJSEnv =
+    new RhinoJSEnv(semantics, withDOM, sourceMap)
 
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
@@ -188,14 +197,16 @@ final class RhinoJSEnv(semantics: Semantics,
               val loader = new ScalaJSCoreLib(semantics, cp)
 
               // Setup sourceMapper
-              val scalaJSenv = context.newObject(scope)
+              if (sourceMap) {
+                val scalaJSenv = context.newObject(scope)
 
-              scalaJSenv.addFunction("sourceMapper", args => {
-                val trace = Context.toObject(args(0), scope)
-                loader.mapStackTrace(trace, context, scope)
-              })
+                scalaJSenv.addFunction("sourceMapper", args => {
+                  val trace = Context.toObject(args(0), scope)
+                  loader.mapStackTrace(trace, context, scope)
+                })
 
-              ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+                ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+              }
 
               Some(loader)
             } else {
