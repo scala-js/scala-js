@@ -3,6 +3,9 @@ package org.scalajs.sbtplugin
 import sbt._
 import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
+import sbinary.DefaultProtocol.StringFormat
+import Cache.seqFormat
+import complete.DefaultParsers._
 
 import Implicits._
 
@@ -364,6 +367,27 @@ object ScalaJSPluginInternal {
       .withContent(launcherContent(mainCl))
   }
 
+  def discoverJSApps(analysis: inc.Analysis): Seq[String] = {
+    import xsbt.api.{Discovered, Discovery}
+
+    val jsApp = "scala.scalajs.js.JSApp"
+
+    def isJSApp(discovered: Discovered) =
+      discovered.isModule && discovered.baseClasses.contains(jsApp)
+
+    Discovery(Set(jsApp), Set.empty)(Tests.allDefs(analysis)) collect {
+      case (definition, discovered) if isJSApp(discovered) =>
+        definition.name
+    }
+  }
+
+  private val runMainParser = {
+    Defaults.loadForParser(discoveredMainClasses) { (_, names) =>
+      val mainClasses = names.getOrElse(Nil).toSet
+      Space ~> token(NotSpace examples mainClasses)
+    }
+  }
+
   // These settings will be filtered by the stage dummy tasks
   val scalaJSRunSettings = Seq(
       mainClass in scalaJSLauncher := (mainClass in run).value,
@@ -381,30 +405,8 @@ object ScalaJSPluginInternal {
         }
       },
 
-      /* We do currently not discover objects containing a
-       *
-       *   def main(args: Array[String]): Unit
-       *
-       * Support will be added again, as soon as we can run them
-       * reliably (e.g. without implicitly requiring that an exported
-       *
-       *   def main(): Unit
-       *
-       * exists alongside.
-       */
-      discoveredMainClasses := {
-        import xsbt.api.{Discovered, Discovery}
-
-        val jsApp = "scala.scalajs.js.JSApp"
-
-        def isJSApp(discovered: Discovered) =
-          discovered.isModule && discovered.baseClasses.contains(jsApp)
-
-        Discovery(Set(jsApp), Set.empty)(Tests.allDefs(compile.value)) collect {
-          case (definition, discovered) if isJSApp(discovered) =>
-            definition.name
-        }
-      },
+      discoveredMainClasses <<= compile.map(discoverJSApps).
+        storeAs(discoveredMainClasses).triggeredBy(compile),
 
       run <<= Def.inputTask {
         // use assert to prevent warning about pure expr in stat pos
@@ -416,22 +418,13 @@ object ScalaJSPluginInternal {
             launch.data, scalaJSConsole.value, streams.value.log)
       },
 
-      runMain <<= {
-        // Implicits for parsing
-        import sbinary.DefaultProtocol.StringFormat
-        import Cache.seqFormat
+      runMain := {
+        // use assert to prevent warning about pure expr in stat pos
+        assert(scalaJSEnsureUnforked.value)
 
-        val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
-          Defaults.runMainParser(s, names getOrElse Nil))
-
-        Def.inputTask {
-          // use assert to prevent warning about pure expr in stat pos
-          assert(scalaJSEnsureUnforked.value)
-
-          val mainCl = parser.parsed._1
-          jsRun(jsEnv.value, scalaJSExecClasspath.value, mainCl,
-              memLauncher(mainCl), scalaJSConsole.value, streams.value.log)
-        }
+        val mainClass = runMainParser.parsed
+        jsRun(jsEnv.value, scalaJSExecClasspath.value, mainClass,
+            memLauncher(mainClass), scalaJSConsole.value, streams.value.log)
       }
   )
 
