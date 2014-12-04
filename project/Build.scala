@@ -643,7 +643,6 @@ object Build extends sbt.Build {
       base = file("cli"),
       settings = commonSettings ++ assemblySettings ++ Seq(
           name := "Scala.js CLI",
-          scalaVersion := "2.10.4", // adapt version to tools
           libraryDependencies ++= Seq(
               "com.github.scopt" %% "scopt" % "3.2.0"
           ),
