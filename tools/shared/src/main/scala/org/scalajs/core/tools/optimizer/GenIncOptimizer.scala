@@ -507,7 +507,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     /** UPDATE PASS ONLY. */
     def updateIsInlineable(classInfo: Analyzer#ClassInfo): Boolean = {
       val oldTryNewInlineable = tryNewInlineable
-      isInlineable = classInfo.optimizerHints.hasInlineAnnot
+      isInlineable = classInfo.optimizerHints.inline
       if (!isInlineable) {
         tryNewInlineable = None
       } else {

@@ -17,12 +17,8 @@ import ir.Position.NoPosition
  */
 object JavaLangString {
 
-  /** Optimizer hints with `@inline`
-   *  Unfortunately we do not have access to private details of
-   *  [[OptimizerHints]], so we cannot do this cleanly. But it is fine
-   *  somehow because we're part of the same project implementation.
-   */
-  private def inlineOptimizerHints = new OptimizerHints(2)
+  /** Optimizer hints with `@inline` */
+  private def inlineOptimizerHints = OptimizerHints.empty.withInline(true)
 
   val InfoAndTree = (Info, Definition)
 

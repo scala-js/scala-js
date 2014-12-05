@@ -291,11 +291,15 @@ abstract class GenJSCode extends plugins.PluginComponent
         (fullName.startsWith("scala.collection.mutable.ArrayOps$of"))
       }
 
-      if (sym.hasAnnotation(InlineAnnotationClass) ||
+      val shouldMarkInline = (
+          sym.hasAnnotation(InlineAnnotationClass) ||
           (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
           isStdLibClassWithAdHocInlineAnnot(sym))
-        currentClassInfoBuilder.optimizerHints =
-          currentClassInfoBuilder.optimizerHints.copy(hasInlineAnnot = true)
+
+      currentClassInfoBuilder.optimizerHints =
+        currentClassInfoBuilder.optimizerHints.
+          withInline(shouldMarkInline).
+          withNoinline(sym.hasAnnotation(NoinlineAnnotationClass))
 
       // Generate members (constructor + methods)
 
@@ -548,14 +552,26 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutableLocalVars := mutable.Set.empty,
               mutatedLocalVars := mutable.Set.empty
           ) {
-            def shouldMarkInline = {
+            def isTraitImplForwarder = dd.rhs match {
+              case app: Apply => foreignIsImplClass(app.symbol.owner)
+              case _          => false
+            }
+
+            val shouldMarkInline = {
               sym.hasAnnotation(InlineAnnotationClass) ||
               sym.name.startsWith(nme.ANON_FUN_NAME)
             }
+
+            val shouldMarkNoinline = {
+              sym.hasAnnotation(NoinlineAnnotationClass) &&
+              !isTraitImplForwarder &&
+              !ignoreNoinlineAnnotation(sym)
+            }
+
             currentMethodInfoBuilder.optimizerHints =
-              currentMethodInfoBuilder.optimizerHints.copy(
-                  isAccessor = sym.isAccessor,
-                  hasInlineAnnot = shouldMarkInline)
+              currentMethodInfoBuilder.optimizerHints.
+                withInline(shouldMarkInline).
+                withNoinline(shouldMarkNoinline)
 
             val methodDef = {
               if (sym.isClassConstructor) {
@@ -3896,6 +3912,19 @@ abstract class GenJSCode extends plugins.PluginComponent
     HijackedBoxedClasses.toSet
 
   private lazy val InlineAnnotationClass = requiredClass[scala.inline]
+  private lazy val NoinlineAnnotationClass = requiredClass[scala.noinline]
+
+  private lazy val ignoreNoinlineAnnotation: Set[Symbol] = {
+    val ccClass = getClassIfDefined("scala.util.continuations.ControlContext")
+
+    Set(
+        getMemberIfDefined(ListClass, nme.map),
+        getMemberIfDefined(ListClass, nme.flatMap),
+        getMemberIfDefined(ListClass, newTermName("collect")),
+        getMemberIfDefined(ccClass, nme.map),
+        getMemberIfDefined(ccClass, nme.flatMap)
+    ) - NoSymbol
+  }
 
   private def isMaybeJavaScriptException(tpe: Type) =
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
