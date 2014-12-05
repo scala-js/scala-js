@@ -184,7 +184,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def stopTest = {
+  def stopTestCom = {
     val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
 
     com.start()

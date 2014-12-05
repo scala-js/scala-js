@@ -5,7 +5,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.junit.Test
 import org.junit.Assert._
 
-class NodeJSTest extends JSEnvTest with ComTests {
+class NodeJSTest extends TimeoutComTests {
 
   protected def newJSEnv = new NodeJSEnv
 

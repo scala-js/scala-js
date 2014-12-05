@@ -16,12 +16,16 @@ import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
 
+import scala.annotation.tailrec
+
 import scala.io.Source
 
 import scala.collection.mutable
 
 import scala.concurrent.{Future, Promise, Await}
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
+
+import scala.reflect.ClassTag
 
 import org.mozilla.javascript._
 
@@ -124,116 +128,38 @@ final class RhinoJSEnv private (
     try {
       val scope = context.initStandardObjects()
 
-      if (withDOM) {
-        // Fetch env.rhino.js from webjar
-        val name = "env.rhino.js"
-        val path = "/META-INF/resources/webjars/envjs/1.2/" + name
-        val resource = getClass.getResource(path)
-        assert(resource != null, s"need $name as resource")
+      if (withDOM)
+        setupDOM(context, scope)
 
-        // Rhino can't optimize envjs
-        context.setOptimizationLevel(-1)
+      disableLiveConnect(context, scope)
+      setupConsole(context, scope, console)
 
-        // Don't print envjs header
-        scope.addFunction("print", args => ())
-
-        // Pipe file to Rhino
-        val reader = Source.fromURL(resource).bufferedReader
-        context.evaluateReader(scope, reader, name, 1, null);
-
-        // No need to actually define print here: It is captured by envjs to
-        // implement console.log, which we'll override in the next statement
-      }
-
-      // Make sure Rhino does not do its magic for JVM top-level packages (#364)
-      val PackagesObject =
-        ScriptableObject.getProperty(scope, "Packages").asInstanceOf[Scriptable]
-      val topLevelPackageIds = ScriptableObject.getPropertyIds(PackagesObject)
-      for (id <- topLevelPackageIds) (id: Any) match {
-        case name: String => ScriptableObject.deleteProperty(scope, name)
-        case index: Int   => ScriptableObject.deleteProperty(scope, index)
-        case _            => // should not happen, I think, but with Rhino you never know
-      }
-
-      // Setup console.log
-      val jsconsole = context.newObject(scope)
-      jsconsole.addFunction("log", _.foreach(console.log _))
-      ScriptableObject.putProperty(scope, "console", jsconsole)
+      val taskQ = setupSetTimeout(context, scope)
 
       // Optionally setup scalaJSCom
       var recvCallback: Option[String => Unit] = None
       for (channel <- optChannel) {
-        val comObj = context.newObject(scope)
-
-        comObj.addFunction("send", s =>
-          channel.sendToJVM(Context.toString(s(0))))
-
-        comObj.addFunction("init", s => s(0) match {
-          case f: Function =>
-            val cb: String => Unit =
-              msg => f.call(context, scope, scope, Array(msg))
-            recvCallback = Some(cb)
-          case _ =>
-            sys.error("First argument to init must be a function")
-        })
-
-        comObj.addFunction("close", _ => {
-          // Tell JVM side we won't send anything
-          channel.closeJS()
-          // Internally register that we're done
-          recvCallback = None
-        })
-
-        ScriptableObject.putProperty(scope, "scalajsCom", comObj)
+        setupCom(context, scope, channel,
+          setCallback = cb => recvCallback = Some(cb),
+          clrCallback = () => recvCallback = None)
       }
 
       try {
-        // Make the classpath available. Either through lazy loading or by
-        // simply inserting
-        classpath match {
-          case cp: IRClasspath =>
-            // Setup lazy loading classpath and source mapper
-            val optLoader = if (cp.scalaJSIR.nonEmpty) {
-              val loader = new ScalaJSCoreLib(semantics, cp)
+        loadClasspath(context, scope, classpath)
 
-              // Setup sourceMapper
-              if (sourceMap) {
-                val scalaJSenv = context.newObject(scope)
-
-                scalaJSenv.addFunction("sourceMapper", args => {
-                  val trace = Context.toObject(args(0), scope)
-                  loader.mapStackTrace(trace, context, scope)
-                })
-
-                ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
-              }
-
-              Some(loader)
-            } else {
-              None
-            }
-
-            // Load JS libraries
-            cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
-
-            optLoader.foreach(_.insertInto(context, scope))
-          case cp =>
-            cp.allCode.foreach(context.evaluateFile(scope, _))
-        }
-
+        // Actually run the code
         context.evaluateFile(scope, code)
 
-        // Callback the com channel if necessary (if comCallback = None, channel
-        // wasn't initialized on the client)
-        for ((channel, callback) <- optChannel zip recvCallback) {
-          try {
-            while (recvCallback.isDefined)
-              callback(channel.recvJS())
-          } catch {
-            case _: ChannelClosedException =>
-              // the JVM side closed the connection
-          }
+        // Start the event loop
+
+        for (channel <- optChannel) {
+          comEventLoop(taskQ, channel,
+              () => recvCallback.get, () => recvCallback.isDefined)
         }
+
+        // Channel is closed. Fall back to basic event loop
+        basicEventLoop(taskQ)
+
       } catch {
         case e: RhinoException =>
           // Trace here, since we want to be in the context to trace.
@@ -246,6 +172,261 @@ final class RhinoJSEnv private (
 
       Context.exit()
     }
+  }
+
+  private def setupDOM(context: Context, scope: Scriptable): Unit = {
+    // Fetch env.rhino.js from webjar
+    val name = "env.rhino.js"
+    val path = "/META-INF/resources/webjars/envjs/1.2/" + name
+    val resource = getClass.getResource(path)
+    assert(resource != null, s"need $name as resource")
+
+    // Rhino can't optimize envjs
+    context.setOptimizationLevel(-1)
+
+    // Don't print envjs header
+    scope.addFunction("print", args => ())
+
+    // Pipe file to Rhino
+    val reader = Source.fromURL(resource).bufferedReader
+    context.evaluateReader(scope, reader, name, 1, null);
+
+    // No need to actually define print here: It is captured by envjs to
+    // implement console.log, which we'll override in the next statement
+  }
+
+  /** Make sure Rhino does not do its magic for JVM top-level packages (#364) */
+  private def disableLiveConnect(context: Context, scope: Scriptable): Unit = {
+    val PackagesObject =
+      ScriptableObject.getProperty(scope, "Packages").asInstanceOf[Scriptable]
+    val topLevelPackageIds = ScriptableObject.getPropertyIds(PackagesObject)
+    for (id <- topLevelPackageIds) (id: Any) match {
+      case name: String => ScriptableObject.deleteProperty(scope, name)
+      case index: Int   => ScriptableObject.deleteProperty(scope, index)
+      case _            => // should not happen, I think, but with Rhino you never know
+    }
+  }
+
+  private def setupConsole(context: Context, scope: Scriptable,
+      console: JSConsole): Unit = {
+    // Setup console.log
+    val jsconsole = context.newObject(scope)
+    jsconsole.addFunction("log", _.foreach(console.log _))
+    ScriptableObject.putProperty(scope, "console", jsconsole)
+  }
+
+  private def setupSetTimeout(context: Context,
+      scope: Scriptable): TaskQueue = {
+
+    val ordering = Ordering.by[TimedTask, Deadline](_.deadline).reverse
+    val taskQ = mutable.PriorityQueue.empty(ordering)
+
+    def ensure[T : ClassTag](v: AnyRef, errMsg: String) = v match {
+      case v: T => v
+      case _    => sys.error(errMsg)
+    }
+
+    scope.addFunction("setTimeout", args => {
+      val cb = ensure[Function](args(0),
+          "First argument to setTimeout must be a function")
+
+      val deadline = Context.toNumber(args(1)).toInt.millis.fromNow
+
+      val task = new TimeoutTask(deadline, () =>
+        cb.call(context, scope, scope, args.slice(2, args.length)))
+
+      taskQ += task
+
+      task
+    })
+
+    scope.addFunction("setInterval", args => {
+      val cb = ensure[Function](args(0),
+          "First argument to setInterval must be a function")
+
+      val interval = Context.toNumber(args(1)).toInt.millis
+      val firstDeadline = interval.fromNow
+
+      val task = new IntervalTask(firstDeadline, interval, () =>
+        cb.call(context, scope, scope, args.slice(2, args.length)))
+
+      taskQ += task
+
+      task
+    })
+
+    scope.addFunction("clearTimeout", args => {
+      val task = ensure[TimeoutTask](args(0), "First argument to " +
+          "clearTimeout must be a value returned by setTimeout")
+      task.cancel()
+    })
+
+    scope.addFunction("clearInterval", args => {
+      val task = ensure[IntervalTask](args(0), "First argument to " +
+          "clearInterval must be a value returned by setInterval")
+      task.cancel()
+    })
+
+    taskQ
+  }
+
+  private def setupCom(context: Context, scope: Scriptable, channel: Channel,
+      setCallback: (String => Unit) => Unit, clrCallback: () => Unit): Unit = {
+
+    val comObj = context.newObject(scope)
+
+    comObj.addFunction("send", s =>
+      channel.sendToJVM(Context.toString(s(0))))
+
+    comObj.addFunction("init", s => s(0) match {
+      case f: Function =>
+        val cb: String => Unit =
+          msg => f.call(context, scope, scope, Array(msg))
+        setCallback(cb)
+      case _ =>
+        sys.error("First argument to init must be a function")
+    })
+
+    comObj.addFunction("close", _ => {
+      // Tell JVM side we won't send anything
+      channel.closeJS()
+      // Internally register that we're done
+      clrCallback()
+    })
+
+    ScriptableObject.putProperty(scope, "scalajsCom", comObj)
+  }
+
+  /** Loads the classpath. Either through lazy loading or by simply inserting */
+  private def loadClasspath(context: Context, scope: Scriptable,
+      classpath: CompleteClasspath): Unit = classpath match {
+    case cp: IRClasspath =>
+      // Setup lazy loading classpath and source mapper
+      val optLoader = if (cp.scalaJSIR.nonEmpty) {
+        val loader = new ScalaJSCoreLib(semantics, cp)
+
+        // Setup sourceMapper
+        if (sourceMap) {
+          val scalaJSenv = context.newObject(scope)
+
+          scalaJSenv.addFunction("sourceMapper", args => {
+            val trace = Context.toObject(args(0), scope)
+            loader.mapStackTrace(trace, context, scope)
+          })
+
+          ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+        }
+
+        Some(loader)
+      } else {
+        None
+      }
+
+      // Load JS libraries
+      cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
+
+      optLoader.foreach(_.insertInto(context, scope))
+
+    case cp =>
+      cp.allCode.foreach(context.evaluateFile(scope, _))
+  }
+
+  private def basicEventLoop(taskQ: TaskQueue): Unit =
+    eventLoopImpl(taskQ, sleepWait, () => true)
+
+  private def comEventLoop(taskQ: TaskQueue, channel: Channel,
+      callback: () => String => Unit, isOpen: () => Boolean): Unit = {
+
+    if (!isOpen())
+      // The channel has not been opened yet. Wait for opening.
+      eventLoopImpl(taskQ, sleepWait, () => !isOpen())
+
+    // Once we reach this point, we either:
+    // - Are done
+    // - The channel is open
+
+    // Guard call to `callback`
+    if (isOpen()) {
+      val cb = callback()
+      try {
+        @tailrec
+        def loop(): Unit = {
+          val loopResult = eventLoopImpl(taskQ, channel.recvJS _, isOpen)
+
+          loopResult match {
+            case Some(msg) =>
+              cb(msg)
+              loop()
+            case None if isOpen() =>
+              assert(taskQ.isEmpty)
+              cb(channel.recvJS())
+              loop()
+            case None =>
+              // No tasks left, channel closed
+          }
+        }
+        loop()
+      } catch {
+        case _: ChannelClosedException =>
+          // the JVM side closed the connection
+      }
+    }
+  }
+
+  /** Run an event loop on [[taskQ]] using [[waitFct]] to wait
+   *
+   *  If [[waitFct]] returns a Some, this method returns this value immediately
+   *  If [[waitFct]] returns a None, we assume a sufficient amount has been
+   *  waited for the Deadline to pass. The event loop then runs the task.
+   *
+   *  Each iteration, [[continue]] is queried, whether to continue the loop.
+   *
+   *  @returns A Some returned by [[waitFct]] or None if [[continue]] has
+   *      returned false, or there are no more tasks (i.e. [[taskQ]] is empty)
+   *  @throws InterruptedException if the thread was interrupted
+   */
+  private def eventLoopImpl[T](taskQ: TaskQueue,
+      waitFct: Deadline => Option[T], continue: () => Boolean): Option[T] = {
+
+    @tailrec
+    def loop(): Option[T] = {
+      if (Thread.interrupted())
+        throw new InterruptedException()
+
+      if (taskQ.isEmpty || !continue()) None
+      else {
+        val task = taskQ.head
+        if (task.canceled) {
+          taskQ.dequeue()
+          loop()
+        } else {
+          waitFct(task.deadline) match {
+            case result @ Some(_) => result
+
+            case None =>
+              // The time has actually expired
+              val task = taskQ.dequeue()
+
+              // Perform task
+              task.task()
+
+              if (task.reschedule())
+                taskQ += task
+
+              loop()
+          }
+        }
+      }
+    }
+
+    loop()
+  }
+
+  private val sleepWait = { (deadline: Deadline) =>
+    val timeLeft = deadline.timeLeft.toMillis
+    if (timeLeft > 0)
+      Thread.sleep(timeLeft)
+    None
   }
 
 }
@@ -285,6 +466,20 @@ object RhinoJSEnv {
       jvm2js.dequeue()
     }
 
+    def recvJS(deadline: Deadline): Option[String] = synchronized {
+      var expired = false
+      while (jvm2js.isEmpty && !expired && ensureOpen(_closedJVM)) {
+        val timeLeft = deadline.timeLeft.toMillis
+        if (timeLeft > 0)
+          wait(timeLeft)
+        else
+          expired = true
+      }
+
+      if (expired) None
+      else Some(jvm2js.dequeue())
+    }
+
     def closeJS(): Unit = synchronized {
       _closedJS = true
       notify()
@@ -304,5 +499,41 @@ object RhinoJSEnv {
   }
 
   private class ChannelClosedException extends Exception
+
+  private abstract class TimedTask(val task: () => Unit) {
+    private[this] var _canceled: Boolean = false
+
+    def deadline: Deadline
+    def reschedule(): Boolean
+
+    def canceled: Boolean = _canceled
+    def cancel(): Unit = _canceled = true
+  }
+
+  private final class TimeoutTask(val deadline: Deadline,
+      task: () => Unit) extends TimedTask(task) {
+    def reschedule(): Boolean = false
+
+    override def toString(): String =
+      s"TimeoutTask($deadline, canceled = $canceled)"
+  }
+
+  private final class IntervalTask(firstDeadline: Deadline,
+      interval: FiniteDuration, task: () => Unit) extends TimedTask(task) {
+
+    private[this] var _deadline = firstDeadline
+
+    def deadline: Deadline = _deadline
+
+    def reschedule(): Boolean = {
+      _deadline += interval
+      !canceled
+    }
+
+    override def toString(): String =
+      s"IntervalTask($deadline, interval = $interval, canceled = $canceled)"
+  }
+
+  private type TaskQueue = mutable.PriorityQueue[TimedTask]
 
 }
