@@ -2541,23 +2541,21 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
 
         for {
-          (primTypeOf, reflBoxClass) <- Seq(
-              ("string", StringClass),
-              ("number", NumberReflectiveCallClass),
-              ("boolean", BooleanReflectiveCallClass)
+          (rtClass, reflBoxClass) <- Seq(
+              (StringClass, StringClass),
+              (BoxedDoubleClass, NumberReflectiveCallClass),
+              (BoxedBooleanClass, BooleanReflectiveCallClass),
+              (BoxedLongClass, LongReflectiveCallClass)
           )
           implMethodSym = matchingSymIn(reflBoxClass)
           if implMethodSym != NoSymbol && implMethodSym.isPublic
         } {
-          callStatement = js.If(
-              js.BinaryOp(js.BinaryOp.===,
-                js.UnaryOp(js.UnaryOp.typeof, callTrg),
-                js.StringLiteral(primTypeOf)), {
+          callStatement = js.If(genIsInstanceOf(callTrg, rtClass.tpe), {
             if (implMethodSym.owner == ObjectClass) {
               // If the method is defined on Object, we can call it normally.
               genApplyMethod(callTrg, receiver.tpe, implMethodSym, arguments)
             } else {
-              if (primTypeOf == "string") {
+              if (rtClass == StringClass) {
                 val (rtModuleClass, methodIdent) =
                   encodeRTStringMethodSym(implMethodSym)
                 val retTpe = implMethodSym.tpe.resultType
@@ -2579,7 +2577,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                     case _:INT | LONG => true
                     case _            => false
                   }
-                  if (primTypeOf == "number" &&
+                  if (rtClass == BoxedDoubleClass &&
                       toTypeKind(implMethodSym.tpe.resultType) == DoubleKind &&
                       isIntOrLongKind(toTypeKind(sym.tpe.resultType))) {
                     // This must be an Int, and not a Double

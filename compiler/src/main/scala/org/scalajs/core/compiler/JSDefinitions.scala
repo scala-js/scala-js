@@ -106,6 +106,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val BooleanReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.BooleanReflectiveCall")
     lazy val NumberReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.NumberReflectiveCall")
     lazy val IntegerReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.IntegerReflectiveCall")
+    lazy val LongReflectiveCallClass = getRequiredClass("scala.scalajs.runtime.LongReflectiveCall")
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
       lazy val Runtime_wrapJavaScriptException    = getMemberMethod(RuntimePackageModule, newTermName("wrapJavaScriptException"))
