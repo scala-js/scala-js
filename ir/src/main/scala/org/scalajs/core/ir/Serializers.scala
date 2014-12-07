@@ -201,14 +201,14 @@ object Serializers {
           writeTree(receiver); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case StaticApply(receiver, cls, method, args) =>
-          writeByte(TagStaticApply)
+        case ApplyStatically(receiver, cls, method, args) =>
+          writeByte(TagApplyStatically)
           writeTree(receiver); writeClassType(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case TraitImplApply(impl, method, args) =>
-          writeByte(TagTraitImplApply)
-          writeClassType(impl); writeIdent(method); writeTrees(args)
+        case ApplyStatic(cls, method, args) =>
+          writeByte(TagApplyStatic)
+          writeClassType(cls); writeIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
@@ -376,7 +376,7 @@ object Serializers {
           writeTrees(defs)
 
         case methodDef: MethodDef =>
-          val MethodDef(name, args, resultType, body) = methodDef
+          val MethodDef(static, name, args, resultType, body) = methodDef
 
           writeByte(TagMethodDef)
           writeOptHash(methodDef.hash)
@@ -386,7 +386,8 @@ object Serializers {
           writeInt(-1)
 
           // Write out method def
-          writePropertyName(name); writeTrees(args); writeType(resultType); writeTree(body)
+          writeBoolean(static); writePropertyName(name)
+          writeTrees(args); writeType(resultType); writeTree(body)
 
           // Jump back and write true length
           val length = bufferUnderlying.jumpBack()
@@ -579,25 +580,25 @@ object Serializers {
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew            => New(readClassType(), readIdent(), readTrees())
-        case TagLoadModule     => LoadModule(readClassType())
-        case TagStoreModule    => StoreModule(readClassType(), readTree())
-        case TagSelect         => Select(readTree(), readIdent(), readBoolean())(readType())
-        case TagApply          => Apply(readTree(), readIdent(), readTrees())(readType())
-        case TagStaticApply    => StaticApply(readTree(), readClassType(), readIdent(), readTrees())(readType())
-        case TagTraitImplApply => TraitImplApply(readClassType(), readIdent(), readTrees())(readType())
-        case TagUnaryOp        => UnaryOp(readByte(), readTree())
-        case TagBinaryOp       => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray       => NewArray(readArrayType(), readTrees())
-        case TagArrayValue     => ArrayValue(readArrayType(), readTrees())
-        case TagArrayLength    => ArrayLength(readTree())
-        case TagArraySelect    => ArraySelect(readTree(), readTree())(readType())
-        case TagRecordValue    => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf   => IsInstanceOf(readTree(), readReferenceType())
-        case TagAsInstanceOf   => AsInstanceOf(readTree(), readReferenceType())
-        case TagUnbox          => Unbox(readTree(), readByte().toChar)
-        case TagGetClass       => GetClass(readTree())
-        case TagCallHelper     => CallHelper(readString(), readTrees())(readType())
+        case TagNew             => New(readClassType(), readIdent(), readTrees())
+        case TagLoadModule      => LoadModule(readClassType())
+        case TagStoreModule     => StoreModule(readClassType(), readTree())
+        case TagSelect          => Select(readTree(), readIdent(), readBoolean())(readType())
+        case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
+        case TagApplyStatically => ApplyStatically(readTree(), readClassType(), readIdent(), readTrees())(readType())
+        case TagApplyStatic     => ApplyStatic(readClassType(), readIdent(), readTrees())(readType())
+        case TagUnaryOp         => UnaryOp(readByte(), readTree())
+        case TagBinaryOp        => BinaryOp(readByte(), readTree(), readTree())
+        case TagNewArray        => NewArray(readArrayType(), readTrees())
+        case TagArrayValue      => ArrayValue(readArrayType(), readTrees())
+        case TagArrayLength     => ArrayLength(readTree())
+        case TagArraySelect     => ArraySelect(readTree(), readTree())(readType())
+        case TagRecordValue     => RecordValue(readType().asInstanceOf[RecordType], readTrees())
+        case TagIsInstanceOf    => IsInstanceOf(readTree(), readReferenceType())
+        case TagAsInstanceOf    => AsInstanceOf(readTree(), readReferenceType())
+        case TagUnbox           => Unbox(readTree(), readByte().toChar)
+        case TagGetClass        => GetClass(readTree())
+        case TagCallHelper      => CallHelper(readString(), readTrees())(readType())
 
         case TagJSNew                => JSNew(readTree(), readTrees())
         case TagJSDotSelect          => JSDotSelect(readTree(), readIdent())
@@ -642,7 +643,8 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(readPropertyName(), readParamDefs(), readType(), readTree())(optHash)
+          MethodDef(readBoolean(), readPropertyName(),
+              readParamDefs(), readType(), readTree())(optHash)
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())

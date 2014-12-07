@@ -32,8 +32,8 @@ import org.scalajs.core.tools.logging._
 
 /** Incremental optimizer.
  *  An incremental optimizer consumes the reachability analysis produced by
- *  an [[Analyzer]], as well as trees for classes, trait impls, etc., and
- *  optimizes them in an incremental way.
+ *  an [[Analyzer]], as well as trees for classes, and optimizes them in an
+ *  incremental way.
  *  It maintains state between runs to do a minimal amount of work on every
  *  run, based on detecting what parts of the program must be re-optimized,
  *  and keeping optimized results from previous runs for the rest.
@@ -58,7 +58,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
   private var objectClass: Class = _
   private val classes = CollOps.emptyMap[String, Class]
-  private val traitImpls = CollOps.emptyParMap[String, TraitImpl]
+  private val statics = CollOps.emptyParMap[String, StaticsNamespace]
 
   protected def getInterface(encodedName: String): InterfaceType
 
@@ -68,11 +68,15 @@ abstract class GenIncOptimizer(semantics: Semantics) {
   protected def newMethodImpl(owner: MethodContainer,
       encodedName: String): MethodImpl
 
-  def findTraitImpl(encodedName: String): TraitImpl = traitImpls(encodedName)
-  def findClass(encodedName: String): Class = classes(encodedName)
+  def findStaticsNamespace(encodedName: String): StaticsNamespace =
+    statics(encodedName)
+  def findClass(encodedName: String): Class =
+    classes(encodedName)
 
-  def getTraitImpl(encodedName: String): Option[TraitImpl] = traitImpls.get(encodedName)
-  def getClass(encodedName: String): Option[Class] = classes.get(encodedName)
+  def getStaticsNamespace(encodedName: String): Option[StaticsNamespace] =
+    statics.get(encodedName)
+  def getClass(encodedName: String): Option[Class] =
+    classes.get(encodedName)
 
   type GetClassTreeIfChanged =
     (String, Option[String]) => Option[(ClassDef, Option[String])]
@@ -111,53 +115,53 @@ abstract class GenIncOptimizer(semantics: Semantics) {
       getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
     val neededClasses = CollOps.emptyParMap[String, analyzer.ClassInfo]
-    val neededTraitImpls = CollOps.emptyParMap[String, analyzer.ClassInfo]
+    val neededStatics = CollOps.emptyParMap[String, analyzer.ClassInfo]
     for {
       classInfo <- analyzer.classInfos.values
       if classInfo.isNeededAtAll
     } {
       if (classInfo.isClass && classInfo.isAnySubclassInstantiated)
         CollOps.put(neededClasses, classInfo.encodedName, classInfo)
-      else if (classInfo.isImplClass)
-        CollOps.put(neededTraitImpls, classInfo.encodedName, classInfo)
+      if (classInfo.isAnyStaticMethodReachable)
+        CollOps.put(neededStatics, classInfo.encodedName, classInfo)
     }
 
-    /* Remove deleted trait impls, and update existing trait impls.
+    /* Remove deleted statics, and update existing statics.
      * We don't even have to notify callers in case of additions or removals
      * because callers have got to be invalidated by themselves.
      * Only changed methods need to trigger notifications.
      *
      * Non-batch mode only.
      */
-    assert(!batchMode || traitImpls.isEmpty)
+    assert(!batchMode || statics.isEmpty)
     if (!batchMode) {
-      CollOps.retain(traitImpls) { (traitImplName, traitImpl) =>
-        CollOps.remove(neededTraitImpls, traitImplName).fold {
+      CollOps.retain(statics) { (staticsName, staticsNS) =>
+        CollOps.remove(neededStatics, staticsName).fold {
           /* Deleted trait impl. Mark all its methods as deleted, and remove it
            * from known trait impls.
            */
-          traitImpl.methods.values.foreach(_.delete())
+          staticsNS.methods.values.foreach(_.delete())
 
           false
         } { traitImplInfo =>
           /* Existing trait impl. Update it. */
           val (added, changed, removed) =
-            traitImpl.updateWith(traitImplInfo, getClassTreeIfChanged)
+            staticsNS.updateWith(traitImplInfo, getClassTreeIfChanged)
           for (method <- changed)
-            traitImpl.myInterface.tagStaticCallersOf(method)
+            staticsNS.myInterface.tagStaticCallersOf(method)
 
           true
         }
       }
     }
 
-    /* Add new trait impls.
+    /* Add new statics.
      * Easy, we don't have to notify anyone.
      */
-    for (traitImplInfo <- neededTraitImpls.values) {
-      val traitImpl = new TraitImpl(traitImplInfo.encodedName)
-      CollOps.put(traitImpls, traitImpl.encodedName, traitImpl)
-      traitImpl.updateWith(traitImplInfo, getClassTreeIfChanged)
+    for (classInfo <- neededStatics.values) {
+      val staticsNS = new StaticsNamespace(classInfo.encodedName)
+      CollOps.put(statics, staticsNS.encodedName, staticsNS)
+      staticsNS.updateWith(classInfo, getClassTreeIfChanged)
     }
 
     if (!batchMode) {
@@ -230,7 +234,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     logger.debug(s"Optimizing $count methods.")
 
   /** Base class for [[Class]] and [[TraitImpl]]. */
-  abstract class MethodContainer(val encodedName: String) {
+  abstract class MethodContainer(val encodedName: String,
+      val isStatic: Boolean) {
     def thisType: Type
 
     val myInterface = getInterface(encodedName)
@@ -240,8 +245,11 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     var lastVersion: Option[String] = None
 
     private def reachableMethodsOf(info: Analyzer#ClassInfo): Set[String] = {
+      val methodInfos: scala.collection.Map[String, Analyzer#MethodInfo] =
+        if (isStatic) info.staticMethodInfos
+        else info.methodInfos
       (for {
-        methodInfo <- info.methodInfos.values
+        methodInfo <- methodInfos.values
         if methodInfo.isReachable && !methodInfo.isAbstract
       } yield {
         methodInfo.encodedName
@@ -251,7 +259,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(info: Analyzer#ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged): (Set[String], Set[String], Set[String]) = {
-      myInterface.ancestors = info.ancestors.map(_.encodedName).toList
+      if (!isStatic)
+        myInterface.ancestors = info.ancestors.map(_.encodedName).toList
 
       val addedMethods = Set.newBuilder[String]
       val changedMethods = Set.newBuilder[String]
@@ -284,10 +293,14 @@ abstract class GenIncOptimizer(semantics: Semantics) {
         }
         tree.defs.foreach {
           case methodDef: MethodDef if methodDef.name.isInstanceOf[Ident] &&
-              reachableMethods.contains(methodDef.name.name) =>
+              reachableMethods.contains(methodDef.name.name) &&
+              methodDef.static == isStatic =>
             val methodName = methodDef.name.name
 
-            val methodInfo = info.methodInfos(methodName)
+            val methodInfo =
+              if (isStatic) info.staticMethodInfos(methodName)
+              else info.methodInfos(methodName)
+
             methods.get(methodName).fold {
               addedMethods += methodName
               val method = newMethodImpl(this, methodName)
@@ -315,7 +328,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
    *  [[Class]] form a tree of the class hierarchy.
    */
   class Class(val superClass: Option[Class],
-      _encodedName: String) extends MethodContainer(_encodedName) {
+      _encodedName: String) extends MethodContainer(
+      _encodedName, isStatic = false) {
     if (encodedName == Definitions.ObjectClass) {
       assert(superClass.isEmpty)
       assert(objectClass == null)
@@ -578,12 +592,12 @@ abstract class GenIncOptimizer(semantics: Semantics) {
           stats.forall(isElidableStat)
         case Assign(Select(This(), _, _), rhs) =>
           isTriviallySideEffectFree(rhs)
-        case TraitImplApply(ClassType(traitImpl), methodName, List(This())) =>
-          traitImpls(traitImpl).methods(methodName.name).originalDef.body match {
+        case ApplyStatic(ClassType(cls), methodName, List(This())) =>
+          statics(cls).methods(methodName.name).originalDef.body match {
             case Skip() => true
             case _      => false
           }
-        case StaticApply(This(), ClassType(cls), methodName, args) =>
+        case ApplyStatically(This(), ClassType(cls), methodName, args) =>
           Definitions.isConstructorName(methodName.name) &&
           args.forall(isTriviallySideEffectFree) &&
           impl.owner.asInstanceOf[Class].superClass.exists { superCls =>
@@ -623,8 +637,9 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     }
   }
 
-  /** Trait impl. */
-  class TraitImpl(_encodedName: String) extends MethodContainer(_encodedName) {
+  /** Namespace for static members of a class. */
+  class StaticsNamespace(_encodedName: String) extends MethodContainer(
+      _encodedName, isStatic = true) {
     def thisType: Type = NoType
   }
 
@@ -675,11 +690,17 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     /** PROCESS PASS ONLY. */
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit
 
+    /** PROCESS PASS ONLY. */
+    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit
+
     /** UPDATE PASS ONLY. */
     def tagDynamicCallersOf(methodName: String): Unit
 
     /** UPDATE PASS ONLY. */
     def tagStaticCallersOf(methodName: String): Unit
+
+    /** UPDATE PASS ONLY. */
+    def tagCallersOfStatic(methodName: String): Unit
   }
 
   /** A method implementation.
@@ -729,6 +750,13 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     private def registerStaticCall(intf: InterfaceType,
         methodName: String): Unit = {
       intf.registerStaticCaller(methodName, this)
+      registeredTo(intf)
+    }
+
+    /** PROCESS PASS ONLY. */
+    private def registerCallStatic(intf: InterfaceType,
+        methodName: String): Unit = {
+      intf.registerCallerOfStatic(methodName, this)
       registeredTo(intf)
     }
 
@@ -816,11 +844,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     /** PROCESS PASS ONLY. */
     def process(): Unit = if (!_deleted) {
       val (optimizedDef, info) = new Optimizer().optimize(thisType, originalDef)
-      desugaredDef =
-        if (owner.isInstanceOf[Class])
-          classEmitter.genMethod(owner.encodedName, optimizedDef)
-        else
-          classEmitter.genTraitImplMethod(owner.encodedName, optimizedDef)
+      desugaredDef = classEmitter.genMethod(owner.encodedName, optimizedDef)
       preciseInfo = info
       resetTag()
     }
@@ -850,11 +874,11 @@ abstract class GenIncOptimizer(semantics: Semantics) {
         clazz.lookupMethod(methodName)
       }
 
-      protected def traitImplCall(traitImplName: String,
+      protected def callStatic(className: String,
           methodName: String): Option[MethodID] = {
-        val traitImpl = traitImpls(traitImplName)
-        registerStaticCall(traitImpl.myInterface, methodName)
-        traitImpl.methods.get(methodName)
+        val staticsNS = statics(className)
+        registerCallStatic(staticsNS.myInterface, methodName)
+        staticsNS.methods.get(methodName)
       }
 
       protected def getAncestorsOf(intfName: String): List[String] = {

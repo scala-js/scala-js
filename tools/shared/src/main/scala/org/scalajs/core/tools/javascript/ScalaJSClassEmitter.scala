@@ -34,32 +34,38 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
     var reverseParts: List[js.Tree] = Nil
 
-    if (kind == ClassKind.TraitImpl) {
-      reverseParts ::= genTraitImpl(tree)
-    } else {
-      if (kind.isClass)
-        reverseParts ::= genClass(tree)
-      if (kind.isClass || kind == ClassKind.Interface ||
-          tree.name.name == Definitions.StringClass)
-        reverseParts ::= genInstanceTests(tree)
-      reverseParts ::= genArrayInstanceTests(tree)
-      reverseParts ::= genTypeData(tree)
-      if (kind.isClass)
-        reverseParts ::= genSetTypeData(tree)
-      if (kind == ClassKind.ModuleClass)
-        reverseParts ::= genModuleAccessor(tree)
-      if (kind.isClass)
-        reverseParts ::= genClassExports(tree)
-    }
+    reverseParts ::= genStaticMembers(tree)
+    if (kind.isClass)
+      reverseParts ::= genClass(tree)
+    if (kind.isClass || kind == ClassKind.Interface ||
+        tree.name.name == Definitions.StringClass)
+      reverseParts ::= genInstanceTests(tree)
+    reverseParts ::= genArrayInstanceTests(tree)
+    reverseParts ::= genTypeData(tree)
+    if (kind.isClass)
+      reverseParts ::= genSetTypeData(tree)
+    if (kind == ClassKind.ModuleClass)
+      reverseParts ::= genModuleAccessor(tree)
+    if (kind.isClass)
+      reverseParts ::= genClassExports(tree)
 
     js.Block(reverseParts.reverse)
+  }
+
+  def genStaticMembers(tree: ClassDef): js.Tree = {
+    val className = tree.name.name
+    val staticMemberDefs = tree.defs collect {
+      case m: MethodDef if m.static =>
+        genMethod(className, m)
+    }
+    js.Block(staticMemberDefs)(tree.pos)
   }
 
   def genClass(tree: ClassDef): js.Tree = {
     val className = tree.name.name
     val typeFunctionDef = genConstructor(tree)
     val memberDefs = tree.defs collect {
-      case m: MethodDef =>
+      case m: MethodDef if !m.static =>
         genMethod(className, m)
       case p: PropertyDef =>
         genProperty(className, p)
@@ -77,7 +83,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val tpe = ClassType(className)
 
     assert(tree.parent.isDefined || className == Definitions.ObjectClass,
-        "Class $className is missing a parent class")
+        s"Class $className is missing a parent class")
 
     val ctorFun = {
       val superCtorCall = tree.parent.fold[js.Tree] {
@@ -133,9 +139,19 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
   /** Generates a method. */
   def genMethod(className: String, method: MethodDef): js.Tree = {
     implicit val pos = method.pos
+
     val methodFun = js.Function(method.args.map(transformParamDef),
         desugarBody(method.body, method.resultType == NoType))
-    genAddToPrototype(className, method.name, methodFun)
+
+    if (method.static) {
+      val Ident(methodName, origName) = method.name
+      js.Assign(
+          js.DotSelect(envField("s"),
+              js.Ident(className + "__" + methodName, origName)),
+          methodFun)
+    } else {
+      genAddToPrototype(className, method.name, methodFun)
+    }
   }
 
   /** Generates a property. */
@@ -354,7 +370,6 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val classIdent = transformIdent(tree.name)
     val className = classIdent.name
     val kind = tree.kind
-    assert(kind.isType)
 
     val isObjectClass =
       className == ObjectClass
@@ -499,24 +514,6 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       createNamespace,
       expAccessorVar := baseAccessor
     )
-  }
-
-  def genTraitImpl(tree: ClassDef): js.Tree = {
-    val traitImplName = tree.name.name
-    val defs = tree.defs collect {
-      case m: MethodDef =>
-        genTraitImplMethod(traitImplName, m)
-    }
-    js.Block(defs)(tree.pos)
-  }
-
-  def genTraitImplMethod(traitImplName: String, tree: MethodDef): js.Tree = {
-    implicit val pos = tree.pos
-    val MethodDef(name: Ident, args, resultType, body) = tree
-    js.Assign(
-        js.DotSelect(envField("i"), name),
-        js.Function(args.map(transformParamDef),
-            desugarBody(body, resultType == NoType)))
   }
 
   /** Generate a dummy parent. Used by ScalaJSOptimizer */

@@ -35,21 +35,21 @@ object JavaLangString {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("hashCode__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("hashCode__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__T__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("compareTo__T__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__O__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "T" -> List("compareTo__T__I")
         ),
         optimizerHints = inlineOptimizerHints
@@ -58,21 +58,21 @@ object JavaLangString {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("charAt__I__C",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("charAt__T__I__C")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("length__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("length__T__I")
         ),
         accessedModules = List("sjsr_RuntimeString"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("subSequence__I__I__jl_CharSequence",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("subSequence__T__I__I__jl_CharSequence")
         ),
         accessedModules = List("sjsr_RuntimeString"),
@@ -99,6 +99,7 @@ object JavaLangString {
       List(
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
+          static = false,
           Ident("equals__O__Z", Some("equals__O__Z")),
           List(ParamDef(Ident("that", Some("that")), AnyType, mutable = false)),
           BooleanType,
@@ -110,6 +111,7 @@ object JavaLangString {
 
         /* def hashCode(): Int = RuntimeString.hashCode(this) */
         MethodDef(
+          static = false,
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
@@ -122,6 +124,7 @@ object JavaLangString {
 
         /* def compareTo(that: String): Int = RuntimeString.compareTo(this, that) */
         MethodDef(
+          static = false,
           Ident("compareTo__T__I", Some("compareTo__T__I")),
           List(ParamDef(Ident("that", Some("that")), ThisType, mutable = false)),
           IntType,
@@ -136,6 +139,7 @@ object JavaLangString {
 
         /* def compareTo(that: Object): Int = compareTo(that.asInstanceOf[String]) */
         MethodDef(
+          static = false,
           Ident("compareTo__O__I", Some("compareTo__O__I")),
           List(ParamDef(Ident("that", Some("that")), AnyType, mutable = false)),
           IntType,
@@ -150,6 +154,7 @@ object JavaLangString {
 
         /* def toString(): String = this */
         MethodDef(
+          static = false,
           Ident("toString__T", Some("toString__T")),
           Nil,
           ClassType(StringClass),
@@ -159,6 +164,7 @@ object JavaLangString {
 
         /* def charAt(i: Int): Char = RuntimeString.charAt(this, i) */
         MethodDef(
+          static = false,
           Ident("charAt__I__C", Some("charAt__I__C")),
           List(ParamDef(Ident("i", Some("i")), IntType, mutable = false)),
           IntType,
@@ -173,6 +179,7 @@ object JavaLangString {
 
         /* def length(): Int = RuntimeString.length(this) */
         MethodDef(
+          static = false,
           Ident("length__I", Some("length__I")),
           Nil,
           IntType,
@@ -187,6 +194,7 @@ object JavaLangString {
          *   RuntimeString.subSequence(this, begin, end)
          */
         MethodDef(
+          static = false,
           Ident("subSequence__I__I__jl_CharSequence",
             Some("subSequence__I__I__jl_CharSequence")),
           List(

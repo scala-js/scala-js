@@ -88,6 +88,7 @@ class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
     private val ancestorsAskers = TrieSet.empty[MethodImpl]
     private val dynamicCallers = TrieMap.empty[String, TrieSet[MethodImpl]]
     private val staticCallers = TrieMap.empty[String, TrieSet[MethodImpl]]
+    private val callersOfStatic = TrieMap.empty[String, TrieSet[MethodImpl]]
 
     private var _ancestors: List[String] = encodedName :: Nil
 
@@ -135,11 +136,16 @@ class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit =
       staticCallers.getOrPut(methodName, TrieSet.empty) += caller
 
+    /** PROCESS PASS ONLY. */
+    def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit =
+      callersOfStatic.getOrPut(methodName, TrieSet.empty) += caller
+
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: MethodImpl): Unit = {
       ancestorsAskers -= dependee
       dynamicCallers.valuesIterator.foreach(_ -= dependee)
       staticCallers.valuesIterator.foreach(_ -= dependee)
+      callersOfStatic.valuesIterator.foreach(_ -= dependee)
     }
 
     /** UPDATE PASS ONLY. */
@@ -149,6 +155,10 @@ class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
     /** UPDATE PASS ONLY. */
     def tagStaticCallersOf(methodName: String): Unit =
       staticCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
+
+    /** UPDATE PASS ONLY. */
+    def tagCallersOfStatic(methodName: String): Unit =
+      callersOfStatic.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
   }
 
   private class ParMethodImpl(owner: MethodContainer,

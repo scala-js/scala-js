@@ -418,11 +418,11 @@ object JSDesugaring {
               case Apply(receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(rec(receiver), method, newArgs)(arg.tpe)
-              case StaticApply(receiver, cls, method, args) if noExtractYet =>
+              case ApplyStatically(receiver, cls, method, args) if noExtractYet =>
                 val newArgs = recs(args)
-                StaticApply(rec(receiver), cls, method, newArgs)(arg.tpe)
-              case TraitImplApply(impl, method, args) if noExtractYet =>
-                TraitImplApply(impl, method, recs(args))(arg.tpe)
+                ApplyStatically(rec(receiver), cls, method, newArgs)(arg.tpe)
+              case ApplyStatic(cls, method, args) if noExtractYet =>
+                ApplyStatic(cls, method, recs(args))(arg.tpe)
               case ArrayLength(array) if noExtractYet =>
                 ArrayLength(rec(array))
               case ArraySelect(array, index) if noExtractYet =>
@@ -539,9 +539,9 @@ object JSDesugaring {
           allowSideEffects
         case Apply(receiver, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case TraitImplApply(impl, method, args) =>
+        case ApplyStatic(cls, method, args) =>
           allowSideEffects && (args forall test)
         case GetClass(arg) =>
           allowSideEffects && test(arg)
@@ -821,14 +821,14 @@ object JSDesugaring {
             redo(Apply(newReceiver, method, newArgs)(rhs.tpe))
           }
 
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           unnest(receiver, args) { (newReceiver, newArgs) =>
-            redo(StaticApply(newReceiver, cls, method, newArgs)(rhs.tpe))
+            redo(ApplyStatically(newReceiver, cls, method, newArgs)(rhs.tpe))
           }
 
-        case TraitImplApply(impl, method, args) =>
+        case ApplyStatic(cls, method, args) =>
           unnest(args) { newArgs =>
-            redo(TraitImplApply(impl, method, newArgs)(rhs.tpe))
+            redo(ApplyStatic(cls, method, newArgs)(rhs.tpe))
           }
 
         case UnaryOp(op, lhs) =>
@@ -1049,12 +1049,15 @@ object JSDesugaring {
             js.Apply(newReceiver DOT method, newArgs)
           }
 
-        case StaticApply(receiver, cls, method, args) =>
+        case ApplyStatically(receiver, cls, method, args) =>
           val fun = encodeClassVar(cls.className).prototype DOT method
           js.Apply(fun DOT "call", (receiver :: args) map transformExpr)
 
-        case TraitImplApply(impl, method, args) =>
-          js.Apply(envField("i") DOT method, args map transformExpr)
+        case ApplyStatic(cls, method, args) =>
+          val Ident(methodName, origName) = method
+          val fullName = cls.className + "__" + methodName
+          val methodIdent = js.Ident(fullName, origName)
+          js.Apply(envField("s") DOT methodIdent, args map transformExpr)
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._

@@ -126,7 +126,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       Info("d"),
       Info("c"),
       Info("h"),
-      Info("i", isTraitImpl = true),
+      Info("s", isStatics = true),
       Info("n", isModule = true),
       Info("m", isModule = true),
       Info("is"),
@@ -137,12 +137,12 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   private def lazifyScalaJSFields(scope: Scriptable) = {
     val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
 
-    def makeLazyScalaJSScope(base: Scriptable, isModule: Boolean, isTraitImpl: Boolean) =
-      new LazyScalaJSScope(this, scope, base, isModule, isTraitImpl)
+    def makeLazyScalaJSScope(base: Scriptable, isModule: Boolean, isStatics: Boolean) =
+      new LazyScalaJSScope(this, scope, base, isModule, isStatics)
 
-    for (Info(name, isModule, isTraitImpl) <- scalaJSLazyFields) {
+    for (Info(name, isModule, isStatics) <- scalaJSLazyFields) {
       val base = ScalaJS.get(name, ScalaJS).asInstanceOf[Scriptable]
-      val lazified = makeLazyScalaJSScope(base, isModule, isTraitImpl)
+      val lazified = makeLazyScalaJSScope(base, isModule, isStatics)
       ScalaJS.put(name, ScalaJS, lazified)
     }
   }
@@ -165,7 +165,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
 
 object ScalaJSCoreLib {
   private case class Info(name: String,
-      isModule: Boolean = false, isTraitImpl: Boolean = false)
+      isModule: Boolean = false, isStatics: Boolean = false)
 
   private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 

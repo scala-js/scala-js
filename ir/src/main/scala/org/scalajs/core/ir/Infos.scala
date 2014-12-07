@@ -55,10 +55,12 @@ object Infos {
 
   final class MethodInfo private (
       val encodedName: String,
+      val isStatic: Boolean,
       val isAbstract: Boolean,
       val isExported: Boolean,
-      val calledMethods: Map[String, List[String]],
-      val calledMethodsStatic: Map[String, List[String]],
+      val methodsCalled: Map[String, List[String]],
+      val methodsCalledStatically: Map[String, List[String]],
+      val staticMethodsCalled: Map[String, List[String]],
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
       val accessedClassData: List[String],
@@ -68,17 +70,20 @@ object Infos {
   object MethodInfo {
     def apply(
         encodedName: String,
+        isStatic: Boolean = false,
         isAbstract: Boolean = false,
         isExported: Boolean = false,
-        calledMethods: Map[String, List[String]] = Map.empty,
-        calledMethodsStatic: Map[String, List[String]] = Map.empty,
+        methodsCalled: Map[String, List[String]] = Map.empty,
+        methodsCalledStatically: Map[String, List[String]] = Map.empty,
+        staticMethodsCalled: Map[String, List[String]] = Map.empty,
         instantiatedClasses: List[String] = Nil,
         accessedModules: List[String] = Nil,
         accessedClassData: List[String] = Nil,
         optimizerHints: OptimizerHints = OptimizerHints.empty): MethodInfo = {
-      new MethodInfo(encodedName, isAbstract, isExported, calledMethods,
-          calledMethodsStatic, instantiatedClasses, accessedModules,
-          accessedClassData, optimizerHints)
+      new MethodInfo(encodedName, isStatic, isAbstract, isExported,
+          methodsCalled, methodsCalledStatically, staticMethodsCalled,
+          instantiatedClasses, accessedModules, accessedClassData,
+          optimizerHints)
     }
   }
 

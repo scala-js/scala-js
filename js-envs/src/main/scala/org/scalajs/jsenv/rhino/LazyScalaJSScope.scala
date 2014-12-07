@@ -30,7 +30,7 @@ class LazyScalaJSScope(
     globalScope: Scriptable,
     base: Scriptable,
     isModule: Boolean = false,
-    isTraitImpl: Boolean = false) extends Scriptable {
+    isStatics: Boolean = false) extends Scriptable {
 
   private val fields = mutable.HashMap.empty[String, Any]
   private var prototype: Scriptable = _
@@ -50,7 +50,7 @@ class LazyScalaJSScope(
     coreLib.load(globalScope, propNameToEncodedName(name))
 
   private def propNameToEncodedName(name: String): String = {
-    if (isTraitImpl) name.split("__")(0)
+    if (isStatics) name.split("__")(0)
     else if (isModule) name + "$"
     else name
   }

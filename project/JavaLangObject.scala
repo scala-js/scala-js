@@ -34,7 +34,7 @@ object JavaLangObject {
       MethodInfo("__init__"),
       MethodInfo("init___"),
       MethodInfo("hashCode__I",
-        calledMethods = Map(
+        methodsCalled = Map(
           "jl_System$" -> List("identityHashCode__O__I")
         ),
         accessedModules = List("jl_System")
@@ -43,7 +43,7 @@ object JavaLangObject {
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("clone__O",
-        calledMethods = Map(
+        methodsCalled = Map(
           "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
           "jl_CloneNotSupportedException" -> List("init___")
         ),
@@ -55,7 +55,7 @@ object JavaLangObject {
       MethodInfo("notify__V"),
       MethodInfo("notifyAll__V"),
       MethodInfo("toString__T",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("hashCode__I"),
           "jl_Class" -> List("getName__T"),
           "jl_Integer$" -> List("toHexString__I__T")
@@ -64,22 +64,22 @@ object JavaLangObject {
       ),
       MethodInfo("finalize__V"),
       MethodInfo("clone__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("clone__O")
         )
       ),
       MethodInfo("notify__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("notify__V")
         )
       ),
       MethodInfo("notifyAll__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("notifyAll__V")
         )
       ),
       MethodInfo("finalize__",
-        calledMethods = Map(
+        methodsCalled = Map(
           "O" -> List("finalize__V")
         )
       )
@@ -100,6 +100,7 @@ object JavaLangObject {
       List(
         /* def this() = () */
         MethodDef(
+          static = false,
           Ident("init___", Some("<init>")),
           Nil,
           AnyType,
@@ -107,6 +108,7 @@ object JavaLangObject {
 
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
+          static = false,
           Ident("hashCode__I", Some("hashCode__I")),
           Nil,
           IntType,
@@ -119,6 +121,7 @@ object JavaLangObject {
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
+          static = false,
           Ident("equals__O__Z", Some("equals__O__Z")),
           List(ParamDef(Ident("that", Some("that")), AnyType, mutable = false)),
           BooleanType,
@@ -133,6 +136,7 @@ object JavaLangObject {
          *   else throw new CloneNotSupportedException()
          */
         MethodDef(
+          static = false,
           Ident("clone__O", Some("clone__O")),
           Nil,
           AnyType,
@@ -151,6 +155,7 @@ object JavaLangObject {
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
          */
         MethodDef(
+          static = false,
           Ident("toString__T", Some("toString__T")),
           Nil,
           ClassType(StringClass),
@@ -175,6 +180,7 @@ object JavaLangObject {
 
           /* def notify(): Unit = () */
           MethodDef(
+            static = false,
             Ident("notify__V", Some("notify__V")),
             Nil,
             NoType,
@@ -182,6 +188,7 @@ object JavaLangObject {
 
           /* def notifyAll(): Unit = () */
           MethodDef(
+            static = false,
             Ident("notifyAll__V", Some("notifyAll__V")),
             Nil,
             NoType,
@@ -189,6 +196,7 @@ object JavaLangObject {
 
           /* def finalize(): Unit = () */
           MethodDef(
+            static = false,
             Ident("finalize__V", Some("finalize__V")),
             Nil,
             NoType,
@@ -204,18 +212,18 @@ object JavaLangObject {
            * - toString
            */
 
-          MethodDef(Ident("clone__"), Nil, AnyType,
+          MethodDef(static = false, Ident("clone__"), Nil, AnyType,
             Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(None),
 
-          MethodDef(Ident("notify__"), Nil, AnyType, Block(
+          MethodDef(static = false, Ident("notify__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
             Undefined()))(None),
 
-          MethodDef(Ident("notifyAll__"), Nil, AnyType, Block(
+          MethodDef(static = false, Ident("notifyAll__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
             Undefined()))(None),
 
-          MethodDef(Ident("finalize__"), Nil, AnyType, Block(
+          MethodDef(static = false, Ident("finalize__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
             Undefined()))(None),
 
@@ -223,6 +231,7 @@ object JavaLangObject {
 
           /* JSExport for toString(). */
           MethodDef(
+            static = false,
             StringLiteral("toString"),
             Nil,
             AnyType,
