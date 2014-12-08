@@ -38,6 +38,9 @@ object UndefOr {
     value.map(ev).asInstanceOf[Any]
 }
 
+/** @define option [[UndefOr]]
+ *  @define none [[undefined]]
+ */
 final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   import UndefOrOps._
 
