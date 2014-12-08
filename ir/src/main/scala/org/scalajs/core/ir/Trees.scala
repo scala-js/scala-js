@@ -510,7 +510,7 @@ object Trees {
 
   // Classes
 
-  case class ClassDef(name: Ident, kind: ClassKind, parent: Option[Ident], ancestors: List[Ident], defs: List[Tree])(implicit val pos: Position) extends Tree {
+  case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident], parents: List[Ident], defs: List[Tree])(implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 

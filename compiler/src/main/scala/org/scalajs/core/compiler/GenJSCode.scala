@@ -379,7 +379,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           classIdent,
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
-          sym.ancestors.map(encodeClassFullNameIdent),
+          genClassParents(sym),
           hashedDefs)
 
       classDefinition
@@ -429,8 +429,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       for (exp <- jsInterop.exportsOf(sym))
         reporter.error(exp.pos, "You may not export a trait")
 
-      js.ClassDef(classIdent, ClassKind.Interface, None,
-          sym.ancestors.map(encodeClassFullNameIdent), Nil)
+      val parents = genClassParents(sym)
+
+      js.ClassDef(classIdent, ClassKind.Interface, None, parents, Nil)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -460,8 +461,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
 
       js.ClassDef(classIdent, ClassKind.Class,
-          Some(objectClassIdent), List(classIdent, objectClassIdent),
+          Some(objectClassIdent), List(objectClassIdent),
           generatedMethods)
+    }
+
+    private def genClassParents(sym: Symbol)(implicit pos: Position): List[js.Ident] = {
+      for (parent <- sym.info.parents) yield {
+        val typeSym = parent.typeSymbol
+        assert(typeSym != NoSymbol, "parent needs symbol")
+        encodeClassFullNameIdent(typeSym)
+      }
     }
 
     // Generate the fields of a class ------------------------------------------

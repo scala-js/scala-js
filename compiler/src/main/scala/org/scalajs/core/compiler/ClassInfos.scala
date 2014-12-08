@@ -33,9 +33,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val name = classNameOf(symbol)
     val encodedName = encodeClassFullName(symbol)
     var isExported: Boolean = false
-    val ancestorCount =
-      if (symbol.isImplClass) 1
-      else symbol.ancestors.count(!_.isInterface)
+
     val kind = {
       if (isStaticModule(symbol))            ClassKind.ModuleClass
       else if (symbol.isInterface)           ClassKind.Interface
@@ -43,12 +41,18 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       else if (isHijackedBoxedClass(symbol)) ClassKind.HijackedClass
       else                                   ClassKind.Class
     }
+
     val superClass =
       if (kind.isClass || kind == ClassKind.HijackedClass)
         encodeClassFullName(symbol.superClass)
       else
         ""
-    val ancestors = (symbol :: symbol.ancestors) map encodeClassFullName
+
+    val parents = for (parent <- symbol.info.parents) yield {
+      val typeSym = parent.typeSymbol
+      assert(typeSym != NoSymbol, "parent needs symbol")
+      encodeClassFullName(typeSym)
+    }
 
     var optimizerHints: OptimizerHints = OptimizerHints.empty
 
@@ -63,8 +67,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     }
 
     def result(): ClassInfo = {
-      ClassInfo(name, encodedName, isExported, ancestorCount, kind,
-          superClass, ancestors, optimizerHints,
+      ClassInfo(name, encodedName, isExported, kind,
+          superClass, parents, optimizerHints,
           methodInfos.map(_.result()).result())
     }
   }

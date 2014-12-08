@@ -27,8 +27,13 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
   import JSDesugaring._
 
-  /** Desugar a Scala.js class into ECMAScript 5 constructs */
-  def genClassDef(tree: ClassDef): js.Tree = {
+  /** Desugar a Scala.js class into ECMAScript 5 constructs
+   *
+   *  @param tree The IR tree to emit to raw JavaScript
+   *  @param ancestors Encoded names of the ancestors of the class (not only
+   *                   parents), including the class itself.
+   */
+  def genClassDef(tree: ClassDef, ancestors: List[String]): js.Tree = {
     implicit val pos = tree.pos
     val kind = tree.kind
 
@@ -41,7 +46,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
         tree.name.name == Definitions.StringClass)
       reverseParts ::= genInstanceTests(tree)
     reverseParts ::= genArrayInstanceTests(tree)
-    reverseParts ::= genTypeData(tree)
+    reverseParts ::= genTypeData(tree, ancestors)
     if (kind.isClass)
       reverseParts ::= genSetTypeData(tree)
     if (kind == ClassKind.ModuleClass)
@@ -82,11 +87,11 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val className = classIdent.name
     val tpe = ClassType(className)
 
-    assert(tree.parent.isDefined || className == Definitions.ObjectClass,
+    assert(tree.superClass.isDefined || className == Definitions.ObjectClass,
         s"Class $className is missing a parent class")
 
     val ctorFun = {
-      val superCtorCall = tree.parent.fold[js.Tree] {
+      val superCtorCall = tree.superClass.fold[js.Tree] {
         js.Skip()(tree.pos)
       } { parentIdent =>
         implicit val pos = tree.pos
@@ -112,7 +117,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       val docComment = js.DocComment("@constructor")
       val ctorDef = js.Assign(typeVar, ctorFun)
 
-      val chainProto = tree.parent.fold[js.Tree] {
+      val chainProto = tree.superClass.fold[js.Tree] {
         js.Skip()
       } { parentIdent =>
         js.Block(
@@ -361,7 +366,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(createIsArrayOfStat, createAsArrayOfStat)
   }
 
-  def genTypeData(tree: ClassDef): js.Tree = {
+  def genTypeData(tree: ClassDef, ancestors: List[String]): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -378,7 +383,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
 
-    val parentData = tree.parent.fold[js.Tree] {
+    val parentData = tree.superClass.fold[js.Tree] {
       if (isObjectClass) js.Null()
       else js.Undefined()
     } { parent =>
@@ -386,8 +391,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     }
 
     val ancestorsRecord = js.ObjectConstr(
-        for (ancestor <- classIdent :: tree.ancestors.map(transformIdent))
-          yield (ancestor, js.IntLiteral(1)))
+        ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
     val typeData = js.New(envField("ClassTypeData"), List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),

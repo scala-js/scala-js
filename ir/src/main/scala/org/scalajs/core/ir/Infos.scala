@@ -14,14 +14,13 @@ object Infos {
   sealed class RoughClassInfo protected (
       val name: String,
       val encodedName: String,
-      val isExported: Boolean,
-      val ancestorCount: Int
+      val isExported: Boolean
   )
 
   object RoughClassInfo {
-    def apply(name: String, encodedName: String, isExported: Boolean,
-        ancestorCount: Int): RoughClassInfo = {
-      new RoughClassInfo(name, encodedName, isExported, ancestorCount)
+    def apply(name: String, encodedName: String,
+        isExported: Boolean): RoughClassInfo = {
+      new RoughClassInfo(name, encodedName, isExported)
     }
   }
 
@@ -29,27 +28,25 @@ object Infos {
       name: String,
       encodedName: String,
       isExported: Boolean,
-      ancestorCount: Int,
       val kind: ClassKind,
       val superClass: String,
-      val ancestors: List[String], // includes this class
+      val parents: List[String], // does not include this class
       val optimizerHints: OptimizerHints,
       val methods: List[MethodInfo]
-  ) extends RoughClassInfo(name, encodedName, isExported, ancestorCount)
+  ) extends RoughClassInfo(name, encodedName, isExported)
 
   object ClassInfo {
     def apply(
         name: String,
         encodedName: String,
         isExported: Boolean = false,
-        ancestorCount: Int = 0,
         kind: ClassKind = ClassKind.Class,
         superClass: String = "",
-        ancestors: List[String] = Nil,
+        parents: List[String] = Nil,
         optimizerHints: OptimizerHints = OptimizerHints.empty,
         methods: List[MethodInfo] = Nil): ClassInfo = {
-      new ClassInfo(name, encodedName, isExported, ancestorCount,
-          kind, superClass, ancestors, optimizerHints, methods)
+      new ClassInfo(name, encodedName, isExported, kind, superClass,
+          parents, optimizerHints, methods)
     }
   }
 

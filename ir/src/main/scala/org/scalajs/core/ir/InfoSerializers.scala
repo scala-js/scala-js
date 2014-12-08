@@ -65,10 +65,9 @@ object InfoSerializers {
       s.writeUTF(name)
       s.writeUTF(encodedName)
       s.writeBoolean(isExported)
-      s.writeInt(ancestorCount)
       s.writeByte(ClassKind.toByte(kind))
       s.writeUTF(superClass)
-      writeStrings(ancestors)
+      writeStrings(parents)
       s.writeInt(optimizerHints.bits)
 
       def writeMethodInfo(methodInfo: MethodInfo): Unit = {
@@ -114,8 +113,7 @@ object InfoSerializers {
       val name = readUTF()
       val encodedName = readUTF()
       val isExported = readBoolean()
-      val ancestorCount = readInt()
-      val info = RoughClassInfo(name, encodedName, isExported, ancestorCount)
+      val info = RoughClassInfo(name, encodedName, isExported)
 
       (version, info)
     }
@@ -128,10 +126,9 @@ object InfoSerializers {
       val name = readUTF()
       val encodedName = readUTF()
       val isExported = readBoolean()
-      val ancestorCount = readInt()
       val kind = ClassKind.fromByte(readByte())
       val superClass = readUTF()
-      val ancestors = readList(readUTF())
+      val parents = readList(readUTF())
 
       val optimizerHints =
         if (version == "0.5.0" || version == "0.5.2") OptimizerHints.empty
@@ -157,8 +154,8 @@ object InfoSerializers {
 
       val methods = readList(readMethod())
 
-      val info = ClassInfo(name, encodedName, isExported, ancestorCount, kind,
-          superClass, ancestors, optimizerHints, methods)
+      val info = ClassInfo(name, encodedName, isExported, kind,
+          superClass, parents, optimizerHints, methods)
 
       (version, info)
     }

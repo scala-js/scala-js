@@ -223,7 +223,7 @@ class ScalaJSOptimizer(
       val refinedMethods = refineMethodInfos(
           container, staticContainer, info.methods)
       Infos.ClassInfo(info.name, info.encodedName, info.isExported,
-          info.ancestorCount, info.kind, info.superClass, info.ancestors,
+          info.kind, info.superClass, info.parents,
           Infos.OptimizerHints.empty, refinedMethods)
     }
 
@@ -299,6 +299,8 @@ class ScalaJSOptimizer(
         }
       }
 
+      def ancestorNames = classInfo.ancestors.map(_.encodedName)
+
       // Static members
       if (useInliner) {
         for {
@@ -314,7 +316,7 @@ class ScalaJSOptimizer(
         // there is only the data anyway
         if (classInfo.isDataAccessed) {
           addTree(d.wholeClass.getOrElseUpdate(
-              classEmitter.genClassDef(classDef)))
+              classEmitter.genClassDef(classDef, ancestorNames)))
         }
       } else {
         if (classInfo.isAnySubclassInstantiated) {
@@ -343,7 +345,7 @@ class ScalaJSOptimizer(
           addTree(d.typeData.getOrElseUpdate(js.Block(
             classEmitter.genInstanceTests(classDef),
             classEmitter.genArrayInstanceTests(classDef),
-            classEmitter.genTypeData(classDef)
+            classEmitter.genTypeData(classDef, ancestorNames)
           )(classDef.pos)))
         }
         if (classInfo.isAnySubclassInstantiated)

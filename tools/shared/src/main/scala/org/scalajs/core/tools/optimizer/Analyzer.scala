@@ -25,6 +25,8 @@ import ScalaJSOptimizer._
 class Analyzer(logger0: Logger, semantics: Semantics,
     allData: Seq[Infos.ClassInfo], globalWarnEnabled: Boolean,
     isBeforeOptimizer: Boolean) {
+  import Analyzer._
+
   /* Set this to true to debug the DCE analyzer.
    * We don't rely on config to disable 'debug' messages because we want
    * to use 'debug' for displaying more stack trace info that the user can
@@ -208,8 +210,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   }
 
   class ClassInfo(data: Infos.ClassInfo) {
+    private[this] var _linking = false
+    private[this] var _linked = false
+
     val encodedName = data.encodedName
-    val ancestorCount = data.ancestorCount
     val isStaticModule = data.kind == ClassKind.ModuleClass
     val isInterface = data.kind == ClassKind.Interface
     val isRawJSType = data.kind == ClassKind.RawJSType
@@ -218,19 +222,50 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val isExported = data.isExported
 
     var superClass: ClassInfo = _
-    val ancestors = mutable.ListBuffer.empty[ClassInfo]
+    var ancestors: List[ClassInfo] = _
     val descendants = mutable.ListBuffer.empty[ClassInfo]
 
     var nonExistent: Boolean = false
     var warnEnabled: Boolean = true
 
+    /** Ensures that this class and its dependencies are linked.
+     *
+     *  @throws CyclicDependencyException if this class is already linking
+     */
     def linkClasses(): Unit = {
+      if (_linking)
+        throw CyclicDependencyException(encodedName :: Nil)
+
+      if (!_linked) {
+        _linking = true
+        try {
+          linkClassesImpl()
+        } catch {
+          case CyclicDependencyException(chain) =>
+            throw CyclicDependencyException(encodedName :: chain)
+        }
+        _linking = false
+        _linked = true
+      }
+    }
+
+    private[this] def linkClassesImpl(): Unit = {
       if (data.superClass != "")
         superClass = lookupClass(data.superClass)
-      ancestors ++= data.ancestors.map(lookupClass)
+
+      ancestors = this +: data.parents.flatMap { anc =>
+        val cls = lookupClass(anc)
+        cls.linkClasses()
+        cls.ancestors
+      }.distinct
+
       for (ancestor <- ancestors)
         ancestor.descendants += this
     }
+
+    lazy val ancestorCount: Int =
+      if (superClass == null) 0
+      else superClass.ancestorCount + 1
 
     lazy val descendentClasses = descendants.filter(_.isClass)
 
@@ -531,10 +566,9 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         name = s"<$encodedName>",
         encodedName = encodedName,
         isExported = false,
-        ancestorCount = if (kind.isClass) 1 else 0,
         kind = kind,
         superClass = if (kind.isClass) "O" else "",
-        ancestors = List(encodedName, "O"),
+        parents = List("O"),
         methods = List(
             createMissingMethodInfo("__init__"),
             createMissingMethodInfo("init___"))
@@ -605,5 +639,18 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     rec(Level.Warn, Some(from))
+  }
+}
+
+object Analyzer {
+  final case class CyclicDependencyException(
+      chain: List[String]) extends Exception(mkMsg(chain))
+
+  private def mkMsg(chain: List[String]) = {
+    val buf = new StringBuffer
+    buf.append("A cyclic dependency has been encountered: \n")
+    for (elem <- chain)
+      buf.append(s"  - $elem\n")
+    buf.toString
   }
 }
