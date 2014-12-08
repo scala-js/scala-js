@@ -101,8 +101,11 @@ package object runtime {
     }
   }
 
-  /** Information about the environment Scala.js runs in. */
-  def environmentInfo: js.Dynamic = sys.error("stub")
+  /** Information about the environment Scala.js runs in
+   * 
+   *  See [[EnvironmentInfo]] for details.
+   */
+  def environmentInfo: EnvironmentInfo = sys.error("stub")
 
   /** Polyfill for fround in case we use strict Floats and even Typed Arrays
    *  are not available.

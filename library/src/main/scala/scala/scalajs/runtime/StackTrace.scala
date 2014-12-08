@@ -109,15 +109,8 @@ object StackTrace {
     }
 
     // Map stack trace through environment (if supported)
-    val envInfo = environmentInfo
-    val hasMapper = envInfo != js.undefined && envInfo != null &&
-        js.typeOf(envInfo.sourceMapper) == "function"
-
     val mappedTrace =
-      if (hasMapper)
-        envInfo.sourceMapper(trace).asInstanceOf[js.Array[JSStackTraceElem]]
-      else
-        trace
+      environmentInfo.sourceMapper.fold(trace)(mapper => mapper(trace))
 
     // Convert JS objects to java.lang.StackTraceElements
     // While loop due to space concerns

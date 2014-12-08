@@ -592,7 +592,7 @@ object Build extends sbt.Build {
           name := "Scala.js library",
           delambdafySetting,
           scalaJSSourceMapSettings,
-          scalacOptions in (Compile, doc) += "-implicits",
+          scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := true
       ) ++ (
           scalaJSExternalCompileSettings
