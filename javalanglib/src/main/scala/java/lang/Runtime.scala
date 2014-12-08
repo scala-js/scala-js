@@ -12,14 +12,14 @@ class Runtime private {
   def halt(status: Int): Unit = {
     val envInfo = scala.scalajs.runtime.environmentInfo
 
-    if (js.typeOf(envInfo.exitFunction) == "function") {
-      envInfo.exitFunction(status)
-      throw new IllegalStateException("__ScalaJSEnv.exitFunction returned")
-    } else {
+    envInfo.exitFunction.fold {
       // We don't have an exit function. Fail
       throw new SecurityException("Cannot terminate a JavaScript program. " +
           "Define a JavaScript function `__ScalaJSEnv.exitFunction` to " +
           "be called on exit.")
+    } { exitFunction =>
+      exitFunction(status)
+      throw new IllegalStateException("__ScalaJSEnv.exitFunction returned")
     }
   }
 
