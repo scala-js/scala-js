@@ -148,18 +148,19 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   }
 
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
-    providers.get(encodedName) foreach { irFile =>
-      val codeWriter = new java.io.StringWriter
-      val printer = new Printers.JSTreePrinter(codeWriter)
-      val classDef = irFile.tree
-      val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
-      printer.printTopLevelTree(desugared)
-      printer.complete()
-      val ctx = Context.getCurrentContext()
-      val fakeFileName = encodedName + PseudoFileSuffix
-      ctx.evaluateString(scope, codeWriter.toString(),
-          fakeFileName, 1, null)
-    }
+    val irFile = providers.getOrElse(encodedName,
+        sys.error(s"Rhino was unable to load Scala.js class: $encodedName"))
+
+    val codeWriter = new java.io.StringWriter
+    val printer = new Printers.JSTreePrinter(codeWriter)
+    val classDef = irFile.tree
+    val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
+    printer.printTopLevelTree(desugared)
+    printer.complete()
+    val ctx = Context.getCurrentContext()
+    val fakeFileName = encodedName + PseudoFileSuffix
+    ctx.evaluateString(scope, codeWriter.toString(),
+        fakeFileName, 1, null)
   }
 }
 
