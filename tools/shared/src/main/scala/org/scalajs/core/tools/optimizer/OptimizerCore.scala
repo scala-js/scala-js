@@ -1600,11 +1600,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             else {
               inlineClassConstructorBodyList(allocationSite,
                   thisLocalDef, inputFieldsLocalDefs,
-                  cls, rest, cancelFun) { (outputFieldsLocalDefs, cont1) =>
-                buildInner(outputFieldsLocalDefs, { tinner =>
-                  cont1(PreTransBlock(transformedStat :: Nil, tinner))
-                })
-              }(cont)
+                  cls, rest, cancelFun)(buildInner) { tinner =>
+                cont(PreTransBlock(transformedStat :: Nil, tinner))
+              }
             }
         }
 
