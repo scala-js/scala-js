@@ -133,6 +133,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
     val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
     val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
+    val mutatedFields            = new ScopedVar[mutable.Set[Symbol]]
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
 
     var isModuleInitialized: Boolean = false // see genApply for super calls
@@ -235,7 +236,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (!isPrimitive && !isRawJSImplClass) {
             withScopedVars(
                 currentClassInfoBuilder := new ClassInfoBuilder(sym.asClass),
-                currentClassSym         := sym
+                currentClassSym         := sym,
+                mutatedFields           := mutable.Set.empty
             ) {
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
@@ -303,11 +305,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Generate members (constructor + methods)
 
-      val generatedMembers = new ListBuffer[js.Tree]
+      val generatedMethods = new ListBuffer[js.MethodDef]
       val exportedSymbols = new ListBuffer[Symbol]
-
-      if (!isHijacked)
-        generatedMembers ++= genClassFields(cd)
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -325,9 +324,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                 _.symbol == JSExportNamedAnnotation)
 
             if (isNamedExport)
-              generatedMembers += genNamedExporterDef(dd)
+              generatedMethods += genNamedExporterDef(dd)
             else
-              generatedMembers ++= genMethod(dd)
+              generatedMethods ++= genMethod(dd)
 
             if (isExport) {
               // We add symbols that we have to export here. This way we also
@@ -340,6 +339,25 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       gen(impl)
+
+      // Generate fields if necessary (and add to methods + ctors)
+      val generatedMembers = {
+        if (!isHijacked) {
+          val (fields, needMutable) = genClassFields(cd)
+
+          if (needMutable.isEmpty) {
+            // Nothing to do
+            fields ++ generatedMethods.toList
+          } else {
+            val withFixedMutability = generatedMethods.map(
+                patchMutableFlagOfFields(_, needMutable)).toList
+            fields ++ withFixedMutability
+          }
+        } else {
+          // No fields needed
+          generatedMethods.toList
+        }
+      }
 
       // Create method info builder for exported stuff
       val exports = withScopedVars(
@@ -367,7 +385,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Hashed definitions of the class
       val hashedDefs =
-        Hashers.hashDefs(generatedMembers.toList ++ exports ++ reflProxies)
+        Hashers.hashDefs(generatedMembers ++ exports ++ reflProxies)
 
       // The complete class definition
       val kind =
@@ -468,20 +486,64 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     /** Gen definitions for the fields of a class.
      *  The fields are initialized with the zero of their types.
+     *  @returns Tuple of JS trees and a set of fields that need to be patched
+     *           to be mutable
      */
-    def genClassFields(cd: ClassDef): List[js.VarDef] = withScopedVars(
-        currentMethodInfoBuilder :=
-          currentClassInfoBuilder.addMethod("__init__", isStatic = false)
-    ) {
-      // Non-method term members are fields, except for module members.
-      (for {
-        f <- currentClassSym.info.decls
-        if !f.isMethod && f.isTerm && !f.isModule
-      } yield {
-        implicit val pos = f.pos
-        js.VarDef(encodeFieldSym(f), toIRType(f.tpe),
-            mutable = f.isMutable, genZeroOf(f.tpe))
-      }).toList
+    def genClassFields(cd: ClassDef): (List[js.VarDef], Set[String]) = {
+      withScopedVars(
+          currentMethodInfoBuilder :=
+            currentClassInfoBuilder.addMethod("__init__", isStatic = false)
+      ) {
+        val needMutable = mutable.Set.empty[String]
+
+        // Non-method term members are fields, except for module members.
+        val trees = for {
+          f <- currentClassSym.info.decls
+          if !f.isMethod && f.isTerm && !f.isModule
+        } yield {
+          implicit val pos = f.pos
+
+          val suspectMutable = suspectFieldMutable(f)
+          val mutable = mutatedFields.contains(f) || suspectMutable
+          val encodedIdent = encodeFieldSym(f)
+
+          if (mutable && !suspectMutable)
+            needMutable += encodedIdent.name
+
+          js.VarDef(encodedIdent, toIRType(f.tpe),
+              mutable, genZeroOf(f.tpe))
+        }
+
+        (trees.toList, needMutable.toSet)
+      }
+    }
+
+    /** Patches the mutable flags of selected fields in a [[js.MethodDef]]
+     *
+     *  @param needMutable A set of field names that need their mutable flag to
+     *                     be changed to true
+     */
+    private def patchMutableFlagOfFields(methodDef: js.MethodDef,
+        needMutable: Set[String]): js.MethodDef = {
+
+      def newMutable(name: String, oldMutable: Boolean): Boolean =
+        needMutable.contains(name) || oldMutable
+
+      val js.MethodDef(static, methodName, params, resultType, body) = methodDef
+
+      val transformer = new ir.Transformers.Transformer {
+        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+          case js.Select(qualifier, name, mutable) =>
+            js.Select(qualifier, name, newMutable(name.name, mutable))(tree.tpe)(tree.pos)
+          case _ =>
+            super.transform(tree, isStat)
+        }
+      }
+
+      val newBody =
+        transformer.transform(body, isStat = resultType == jstpe.NoType)
+      js.MethodDef(static, methodName, params, resultType,
+          newBody)(None)(methodDef.pos)
     }
 
     // Generate a method -------------------------------------------------------
@@ -984,7 +1046,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             paramAccessorLocals(sym).ref
           } else {
             js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                mutable = sym.isMutable)(toIRType(sym.tpe))
+                mutable = suspectFieldMutable(sym))(toIRType(sym.tpe))
           }
 
         case Ident(name) =>
@@ -1043,8 +1105,10 @@ abstract class GenJSCode extends plugins.PluginComponent
             abort(s"Assignment to static member ${sym.fullName} not supported")
           val genLhs = lhs match {
             case Select(qualifier, _) =>
+              if (!currentMethodSym.isClassConstructor)
+                mutatedFields += sym
               js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
+                  mutable = suspectFieldMutable(sym))(toIRType(sym.tpe))
             case _ =>
               mutatedLocalVars += sym
               js.VarRef(encodeLocalSym(sym), sym.isMutable)(toIRType(sym.tpe))
@@ -3438,7 +3502,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       withScopedVars(
           currentClassInfoBuilder := new ClassInfoBuilder(sym.asClass),
-          currentClassSym         := sym
+          currentClassSym         := sym,
+          mutatedFields           := mutable.Set.empty
       ) {
         val (functionMakerBase, arity) =
           tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
@@ -3525,7 +3590,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       withScopedVars(
           currentClassInfoBuilder := new ClassInfoBuilder(sym.asClass),
-          currentClassSym         := sym
+          currentClassSym         := sym,
+          mutatedFields           := mutable.Set.empty
       ) {
         val (functionMaker, _) =
           tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
@@ -3895,6 +3961,21 @@ abstract class GenJSCode extends plugins.PluginComponent
     val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
     if (!result.isOverloaded) result
     else result.alternatives.head
+  }
+
+  /** Whether a field is suspected to be mutable in the IR's terms
+   *
+   *  A field is mutable in the IR, if it is assigned to elsewhere than in the
+   *  constructor of its class.
+   *
+   *  Mixed-in fields are always mutable, since they will be assigned to in
+   *  a trait initializer (rather than a constructor).
+   *  Further, in 2.10.x fields used to implement lazy vals are not marked
+   *  mutable (but assigned to in the accessor).
+   */
+  private def suspectFieldMutable(sym: Symbol) = {
+    import scala.reflect.internal.Flags
+    sym.hasFlag(Flags.MIXEDIN) || sym.isMutable || sym.isLazy
   }
 
   private def isStringType(tpe: Type): Boolean =
