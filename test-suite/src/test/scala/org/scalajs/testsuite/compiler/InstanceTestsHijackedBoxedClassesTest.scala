@@ -24,6 +24,13 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect((684321L    : Any).isInstanceOf[Long]   ).toBeTruthy
       expect((3.14f      : Any).isInstanceOf[Float]  ).toBeTruthy
       expect((3.14       : Any).isInstanceOf[Double] ).toBeTruthy
+
+      expect((45  : Any).isInstanceOf[Float] ).toBeTruthy
+      expect((45  : Any).isInstanceOf[Double]).toBeTruthy
+      expect((3.0f: Any).isInstanceOf[Int]   ).toBeTruthy
+      expect((3.0f: Any).isInstanceOf[Double]).toBeTruthy
+      expect((5.0 : Any).isInstanceOf[Int]   ).toBeTruthy
+      expect((5.0 : Any).isInstanceOf[Float] ).toBeTruthy
     }
 
     it("should support isInstanceOf (negative)") {

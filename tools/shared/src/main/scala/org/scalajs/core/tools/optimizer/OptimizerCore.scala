@@ -2978,8 +2978,10 @@ private[optimizer] object OptimizerCore {
       RefinedType(base, isExact, isNullable, None)
 
     def apply(tpe: Type): RefinedType = tpe match {
-      case BooleanType | IntType | FloatType | DoubleType | StringType |
-          UndefType | NothingType | _:RecordType | NoType =>
+      case IntType | FloatType | DoubleType =>
+        RefinedType(tpe, isExact = false, isNullable = false)
+      case BooleanType | StringType | UndefType | NothingType |
+          _:RecordType | NoType =>
         RefinedType(tpe, isExact = true, isNullable = false)
       case NullType =>
         RefinedType(tpe, isExact = true, isNullable = true)
