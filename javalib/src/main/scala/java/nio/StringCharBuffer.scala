@@ -1,8 +1,7 @@
 package java.nio
 
 private[nio] final class StringCharBuffer private (
-    _capacity: Int, private[this] var _csq: CharSequence,
-    private[this] var _csqOffset: Int,
+    _capacity: Int, _csq: CharSequence, _csqOffset: Int,
     _initialPosition: Int, _initialLimit: Int)
     extends CharBuffer(_capacity) {
 

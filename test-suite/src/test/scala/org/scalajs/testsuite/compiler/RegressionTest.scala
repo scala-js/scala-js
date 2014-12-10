@@ -283,5 +283,41 @@ object RegressionTest extends JasmineTest {
       expect(a).toEqual(1)
       expect(b).toEqual(2)
     }
+
+    it("should properly order ctor statements when inlining - #1369") {
+      trait Bar {
+        def x: Int
+        var y = x + 1
+      }
+
+      @inline
+      class A(var x: Int) extends Bar
+
+      val obj = new A(1)
+      expect(obj.x).toEqual(1)
+      expect(obj.y).toEqual(2)
+    }
+
+    it("should not restrict mutability of fields - #1021") {
+      class A {
+        /* This var is refered to in the lambda passed to `foreach`. Therefore
+         * it is altered in another compilation unit (even though it is
+         * private[this]).
+         * This test makes sure the compiler doesn't wrongly mark it as
+         * immutable because it is not changed in its compilation unit itself.
+         */
+        private[this] var x: Int = 1
+
+        def get: Int = x
+
+        def foo(): Unit =
+          Seq(2).foreach(x = _)
+      }
+
+      val a = new A()
+      expect(a.get).toEqual(1)
+      a.foo()
+      expect(a.get).toEqual(2)
+    }
   }
 }
