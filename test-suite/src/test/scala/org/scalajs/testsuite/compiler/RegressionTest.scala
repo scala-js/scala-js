@@ -283,5 +283,19 @@ object RegressionTest extends JasmineTest {
       expect(a).toEqual(1)
       expect(b).toEqual(2)
     }
+
+    it("should properly order ctor statements when inlining - #1369") {
+      trait Bar {
+        def x: Int
+        var y = x + 1
+      }
+
+      @inline
+      class A(var x: Int) extends Bar
+
+      val obj = new A(1)
+      expect(obj.x).toEqual(1)
+      expect(obj.y).toEqual(2)
+    }
   }
 }
