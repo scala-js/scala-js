@@ -26,10 +26,9 @@ object JavaLangObject {
   private def Info = ClassInfo(
     name = "java.lang.Object",
     encodedName = "O",
-    ancestorCount = 0,
     kind = ClassKind.Class,
     superClass = "",
-    ancestors = List("O"),
+    parents = List(),
     methods = List(
       MethodInfo("__init__"),
       MethodInfo("init___"),

@@ -47,7 +47,8 @@ object Scalajsp {
         .text("Read *.sjsir file(s) from the given JAR.")
       opt[Unit]('d', "desugar")
         .action { (_, c) => c.copy(desugar = true) }
-        .text("Desugar JS trees. This yields runnable JavaScript")
+        .text("Desugar JS trees. Generates ECMAScript5 code. However, " +
+            "the generated runtime type information will be wrong.")
       opt[Unit]('i', "infos")
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
@@ -99,7 +100,7 @@ object Scalajsp {
 
       if (opts.desugar)
         new JSTreePrinter(stdout).printTopLevelTree(
-            new ScalaJSClassEmitter(Semantics.Defaults).genClassDef(outTree))
+            new ScalaJSClassEmitter(Semantics.Defaults).genClassDef(outTree, Nil))
       else
         new IRTreePrinter(stdout).printTopLevelTree(outTree)
     }

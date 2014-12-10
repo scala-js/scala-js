@@ -528,7 +528,7 @@ object Printers {
 
         // Classes
 
-        case ClassDef(name, kind, parent, ancestors, defs) =>
+        case ClassDef(name, kind, superClass, parents, defs) =>
           kind match {
             case ClassKind.Class         => print("class ")
             case ClassKind.ModuleClass   => print("module class ")
@@ -537,9 +537,9 @@ object Printers {
             case ClassKind.HijackedClass => print("hijacked class ")
           }
           print(name)
-          parent.foreach(print(" extends ", _))
-          if (ancestors.nonEmpty)
-            printRow(ancestors, " ancestors ", ", ", "")
+          superClass.foreach(print(" extends ", _))
+          if (parents.nonEmpty)
+            printRow(parents, " parents ", ", ", "")
           print(" ")
           printColumn(defs, "{", "", "}")
           println()
@@ -630,13 +630,12 @@ object Printers {
       println("name: ", escapeJS(name))
       println("encodedName: ", escapeJS(encodedName))
       println("isExported: ", isExported)
-      println("ancestorCount: ", ancestorCount)
       println("kind: ", kind)
       println("superClass: ", superClass)
 
-      if (ancestors.nonEmpty) {
-        println("ancestors: ",
-            ancestors.map(escapeJS).mkString("[", ", ", "]"))
+      if (parents.nonEmpty) {
+        println("parents: ",
+            parents.map(escapeJS).mkString("[", ", ", "]"))
       }
 
       if (optimizerHints != OptimizerHints.empty)

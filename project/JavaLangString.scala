@@ -25,11 +25,10 @@ object JavaLangString {
   private def Info = ClassInfo(
     name = "java.lang.String",
     encodedName = "T",
-    ancestorCount = 1,
     kind = ClassKind.HijackedClass,
     superClass = "O",
-    ancestors = List(
-      "T", "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable", "O"),
+    parents = List(
+      "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable", "O"),
     methods = List(
       MethodInfo("equals__O__Z",
         optimizerHints = inlineOptimizerHints

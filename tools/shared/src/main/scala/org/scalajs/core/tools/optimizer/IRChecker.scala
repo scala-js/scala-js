@@ -30,8 +30,12 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   def errorCount: Int = _errorCount
 
   private val classes: mutable.Map[String, CheckedClass] = {
-    mutable.Map.empty[String, CheckedClass] ++=
-      allClassDefs.map(new CheckedClass(_)).map(c => c.name -> c)
+    val tups = for (classDef <- allClassDefs) yield {
+      implicit val ctx = ErrorContext(classDef)
+      val c = new CheckedClass(classDef)
+      c.name -> c
+    }
+    mutable.Map(tups: _*)
   }
 
   def check(): Boolean = {
@@ -794,17 +798,27 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       val name: String,
       val kind: ClassKind,
       val superClassName: Option[String],
-      val ancestors: Set[String],
-      _fields: TraversableOnce[CheckedField] = Nil) {
+      val parents: Set[String],
+      _fields: TraversableOnce[CheckedField] = Nil)(
+      implicit ctx: ErrorContext) {
 
     val fields = _fields.map(f => f.name -> f).toMap
 
     lazy val superClass = superClassName.map(classes)
 
-    def this(classDef: ClassDef) = {
+    lazy val ancestors: Set[String] = {
+      val strictAncestors = for {
+        parent   <- parents
+        ancestor <- lookupClass(parent).ancestors
+      } yield ancestor
+
+      strictAncestors + this.name
+    }
+
+    def this(classDef: ClassDef)(implicit ctx: ErrorContext) = {
       this(classDef.name.name, classDef.kind,
-          classDef.parent.map(_.name),
-          classDef.ancestors.map(_.name).toSet,
+          classDef.superClass.map(_.name),
+          classDef.parents.map(_.name).toSet,
           CheckedClass.collectFields(classDef))
     }
 

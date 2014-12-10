@@ -38,6 +38,8 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     (providers, exportedSymbols)
   }
 
+  private val ancestorStore = mutable.Map.empty[String, List[String]]
+
   def insertInto(context: Context, scope: Scriptable) = {
     CoreJSLibs.libs(semantics).foreach(context.evaluateFile(scope, _))
     lazifyScalaJSFields(scope)
@@ -102,7 +104,10 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     val irFile = providers(fileName.stripSuffix(PseudoFileSuffix))
     val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
     val classDef = irFile.tree
-    val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
+    val className = classDef.name.name
+    val desugared = new ScalaJSClassEmitter(semantics).
+      genClassDef(classDef, ancestorStore.getOrElse(className,
+        throw new AssertionError(s"$className should be loaded")))
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -147,20 +152,41 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     }
   }
 
-  private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
-    val irFile = providers.getOrElse(encodedName,
-        sys.error(s"Rhino was unable to load Scala.js class: $encodedName"))
+  private[rhino] def load(scope: Scriptable, encodedName: String): Unit =
+    loadAncestors(scope, encodedName)
 
-    val codeWriter = new java.io.StringWriter
-    val printer = new Printers.JSTreePrinter(codeWriter)
-    val classDef = irFile.tree
-    val desugared = new ScalaJSClassEmitter(semantics).genClassDef(classDef)
-    printer.printTopLevelTree(desugared)
-    printer.complete()
-    val ctx = Context.getCurrentContext()
-    val fakeFileName = encodedName + PseudoFileSuffix
-    ctx.evaluateString(scope, codeWriter.toString(),
-        fakeFileName, 1, null)
+  private def loadAncestors(scope: Scriptable,
+      encodedName: String): List[String] = {
+    ancestorStore.getOrElseUpdate(encodedName, {
+      val irFile = providers.getOrElse(encodedName,
+          sys.error(s"Rhino was unable to load Scala.js class: $encodedName"))
+
+      // Desugar tree
+      val classDef = irFile.tree
+      val className = classDef.name.name
+
+      val strictAncestors = for {
+        parent   <- classDef.parents
+        ancestor <- loadAncestors(scope, parent.name)
+      } yield ancestor
+
+      val ancestors = className :: strictAncestors.distinct
+
+      val desugared =
+        new ScalaJSClassEmitter(semantics).genClassDef(classDef, ancestors)
+
+      // Write tree
+      val codeWriter = new java.io.StringWriter
+      val printer = new Printers.JSTreePrinter(codeWriter)
+      printer.printTopLevelTree(desugared)
+      printer.complete()
+      val ctx = Context.getCurrentContext()
+      val fakeFileName = encodedName + PseudoFileSuffix
+      ctx.evaluateString(scope, codeWriter.toString(),
+          fakeFileName, 1, null)
+
+      ancestors
+    })
   }
 }
 
