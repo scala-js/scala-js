@@ -130,9 +130,7 @@ object InfoSerializers {
       val superClass = readUTF()
       val parents = readList(readUTF())
 
-      val optimizerHints =
-        if (version == "0.5.0" || version == "0.5.2") OptimizerHints.empty
-        else new OptimizerHints(readInt())
+      val optimizerHints = new OptimizerHints(readInt())
 
       def readMethod(): MethodInfo = {
         val encodedName = readUTF()
