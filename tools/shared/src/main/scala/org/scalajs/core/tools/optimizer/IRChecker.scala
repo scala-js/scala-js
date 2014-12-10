@@ -262,17 +262,24 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       case Assign(select, rhs) =>
         select match {
-          case Select(_, Ident(name, _), false) =>
-            /* TODO In theory this case would verify that we never assign to
-             * an immutable field. But we cannot do that because we *do* emit
-             * such assigns in constructors.
-             * In the future we might want to check that only these legal
-             * special cases happen, and nothing else. But it seems non-trivial
-             * to do so, so currently we trust scalac not to make us emit
-             * illegal assigns.
-             */
-            //reportError(s"Assignment to immutable field $name.")
-          case VarRef(Ident(name, _), false) =>
+          case Select(receiver, Ident(name, _)) =>
+            receiver.tpe match {
+              case ClassType(clazz) =>
+                /* TODO In theory this case would verify that we never assign to
+                 * an immutable field. But we cannot do that because we *do* emit
+                 * such assigns in constructors.
+                 * In the future we might want to check that only these legal
+                 * special cases happen, and nothing else. But it seems non-trivial
+                 * to do so, so currently we trust scalac not to make us emit
+                 * illegal assigns.
+                 */
+                //for {
+                //  f <- lookupClass(clazz).lookupField(name)
+                //  if !f.mutable
+                //} reportError(s"Assignment to immutable field $name.")
+              case _ =>
+            }
+          case VarRef(Ident(name, _)) if !env.locals(name).mutable =>
             reportError(s"Assignment to immutable variable $name.")
           case _ =>
         }
@@ -460,7 +467,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         if (!cls.className.endsWith("$"))
           reportError("LoadModule of non-module class $cls")
 
-      case Select(qualifier, Ident(item, _), mutable) =>
+      case Select(qualifier, Ident(item, _)) =>
         val qualType = typecheckExpr(qualifier, env)
         qualType match {
           case ClassType(cls) =>
@@ -474,9 +481,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
                 if (fieldDef.tpe != tree.tpe)
                   reportError(s"Select $cls.$item of type "+
                       s"${fieldDef.tpe} typed as ${tree.tpe}")
-                if (fieldDef.mutable != mutable)
-                  reportError(s"Select $cls.$item with "+
-                      s"mutable=${fieldDef.mutable} marked as mutable=$mutable")
               }
             }
           case NullType | NothingType =>
@@ -630,16 +634,13 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       // Atomic expressions
 
-      case VarRef(Ident(name, _), mutable) =>
+      case VarRef(Ident(name, _)) =>
         env.locals.get(name).fold[Unit] {
           reportError(s"Cannot find variable $name in scope")
         } { localDef =>
           if (tree.tpe != localDef.tpe)
             reportError(s"Variable $name of type ${localDef.tpe} "+
                 s"typed as ${tree.tpe}")
-          if (mutable != localDef.mutable)
-            reportError(s"Variable $name with mutable=${localDef.mutable} "+
-                s"marked as mutable=$mutable")
         }
 
       case This() =>

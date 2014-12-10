@@ -679,8 +679,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             assert(isStat)
             super.transform(js.VarDef(
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
-          case js.VarRef(name, mutable) =>
-            js.VarRef(name, newMutable(name.name, mutable))(tree.tpe)(tree.pos)
           case js.Closure(captureParams, params, body, captureValues) =>
             js.Closure(captureParams, params, body,
                 captureValues.map(transformExpr))(tree.pos)
@@ -989,8 +987,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
           } else {
-            js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                mutable = sym.isMutable)(toIRType(sym.tpe))
+            js.Select(genExpr(qualifier),
+                encodeFieldSym(sym))(toIRType(sym.tpe))
           }
 
         case Ident(name) =>
@@ -1004,7 +1002,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               // a local variable. Put a literal undefined param again
               js.UndefinedParam()(toIRType(sym.tpe))
             } else {
-              js.VarRef(encodeLocalSym(sym), sym.isMutable)(toIRType(sym.tpe))
+              js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
             }
           } else {
             sys.error("Cannot use package as value: " + tree)
@@ -1049,11 +1047,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             abort(s"Assignment to static member ${sym.fullName} not supported")
           val genLhs = lhs match {
             case Select(qualifier, _) =>
-              js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
+              js.Select(genExpr(qualifier),
+                  encodeFieldSym(sym))(toIRType(sym.tpe))
             case _ =>
               mutatedLocalVars += sym
-              js.VarRef(encodeLocalSym(sym), sym.isMutable)(toIRType(sym.tpe))
+              js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
           }
           js.Assign(genLhs, genExpr(rhs))
 
@@ -1085,9 +1083,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genThis()(implicit pos: Position): js.Tree = {
       if (methodTailJumpThisSym.get != NoSymbol) {
-        js.VarRef(
-          encodeLocalSym(methodTailJumpThisSym),
-          methodTailJumpThisSym.isMutable)(currentClassType)
+        js.VarRef(encodeLocalSym(methodTailJumpThisSym))(currentClassType)
       } else {
         if (tryingToGenMethodAsJSFunction)
           throw new CancelGenMethodAsJSFunction(
@@ -1213,7 +1209,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val blockAST = genStatOrExpr(block, isStat)
 
       val exceptIdent = freshLocalIdent("e")
-      val origExceptVar = js.VarRef(exceptIdent, mutable = false)(jstpe.AnyType)
+      val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
 
       val resultType = toIRType(tree.tpe)
 
@@ -1521,13 +1517,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           (formalArgSym, actualArg) <- formalArgs zip actualArgs
           formalArg = encodeLocalSym(formalArgSym)
           if (actualArg match {
-            case js.VarRef(`formalArg`, _) => false
-            case _                         => true
+            case js.VarRef(`formalArg`) => false
+            case _                      => true
           })
         } yield {
           mutatedLocalVars += formalArgSym
           val tpe = toIRType(formalArgSym.tpe)
-          (js.VarRef(formalArg, formalArgSym.isMutable)(tpe), tpe,
+          (js.VarRef(formalArg)(tpe), tpe,
               freshLocalIdent("temp$" + formalArg.name),
               actualArg)
         }
@@ -1550,9 +1546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               yield js.VarDef(tempArg, argType, mutable = false, actualArg)
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
-              yield js.Assign(
-                  formalArg,
-                  js.VarRef(tempArg, mutable = false)(argType))
+              yield js.Assign(formalArg, js.VarRef(tempArg)(argType))
           js.Block(tempAssignments ++ trueAssignments :+ jump)
       }
     }
@@ -2511,7 +2505,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val callTrgIdent = freshLocalIdent()
         val callTrgVarDef =
           js.VarDef(callTrgIdent, receiverType, mutable = false, genExpr(receiver))
-        val callTrg = js.VarRef(callTrgIdent, mutable = false)(receiverType)
+        val callTrg = js.VarRef(callTrgIdent)(receiverType)
 
         val arguments = args zip sym.tpe.params map { case (arg, param) =>
           /* No need for enteringPosterasure, because value classes are not
@@ -2821,7 +2815,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.Assign(js.JSBracketSelect(res, name), value) :: Nil
               case tupExpr =>
                 val tupIdent = freshLocalIdent("tup")
-                val tup = js.VarRef(tupIdent, mutable = false)(tuple2Type)
+                val tup = js.VarRef(tupIdent)(tuple2Type)
                 js.VarDef(tupIdent, tuple2Type, mutable = false, tupExpr) ::
                 js.Assign(js.JSBracketSelect(res,
                     genApplyMethod(tup, TupleClass(2), js.Ident("$$und1__O"), Nil, jstpe.AnyType)),
@@ -2964,7 +2958,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.Block(
                   js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
                   js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg2,
-                      js.VarRef(temp, mutable = false)(jstpe.AnyType)), 'Z'))
+                      js.VarRef(temp)(jstpe.AnyType)), 'Z'))
           }
       })
     }
@@ -3765,9 +3759,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def makeCaptures(actualCaptures: List[js.Tree]) = {
         (actualCaptures map { c => (c: @unchecked) match {
-          case js.VarRef(ident, _) =>
+          case js.VarRef(ident) =>
             (js.ParamDef(ident, c.tpe, mutable = false)(c.pos),
-                js.VarRef(ident, false)(c.tpe)(c.pos))
+                js.VarRef(ident)(c.tpe)(c.pos))
         }}).unzip
       }
 

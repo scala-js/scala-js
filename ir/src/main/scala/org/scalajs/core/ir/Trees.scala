@@ -89,15 +89,13 @@ object Trees {
   case class VarDef(name: Ident, vtpe: Type, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
 
-    def ref(implicit pos: Position): VarRef =
-      VarRef(name, mutable = mutable)(vtpe)
+    def ref(implicit pos: Position): VarRef = VarRef(name)(vtpe)
   }
 
   case class ParamDef(name: Ident, ptpe: Type, mutable: Boolean)(implicit val pos: Position) extends Tree {
     val tpe = NoType
 
-    def ref(implicit pos: Position): VarRef =
-      VarRef(name, mutable = mutable)(ptpe)
+    def ref(implicit pos: Position): VarRef = VarRef(name)(ptpe)
   }
 
   // Control flow constructs
@@ -200,7 +198,7 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Select(qualifier: Tree, item: Ident, mutable: Boolean)(val tpe: Type)(implicit val pos: Position) extends Tree
+  case class Select(qualifier: Tree, item: Ident)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Apply an instance method with dynamic dispatch (the default). */
   case class Apply(receiver: Tree, method: Ident, args: List[Tree])(val tpe: Type)(implicit val pos: Position) extends Tree
@@ -533,7 +531,7 @@ object Trees {
 
   // Atomic expressions
 
-  case class VarRef(ident: Ident, mutable: Boolean)(val tpe: Type)(implicit val pos: Position) extends Tree
+  case class VarRef(ident: Ident)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   case class This()(val tpe: Type)(implicit val pos: Position) extends Tree
 

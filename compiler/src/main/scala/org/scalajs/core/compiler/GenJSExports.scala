@@ -306,7 +306,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else {
           js.Match(
               js.Unbox(js.JSBracketSelect(
-                  js.VarRef(js.Ident("arguments"), false)(jstpe.AnyType),
+                  js.VarRef(js.Ident("arguments"))(jstpe.AnyType),
                   js.StringLiteral("length")),
                   'I'),
               cases.toList, defaultCase)(jstpe.AnyType)
@@ -441,16 +441,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         // Copy arguments that go to vararg into an array, put it in a wrapper
 
         val countIdent = freshLocalIdent("count")
-        val count = js.VarRef(countIdent, mutable = false)(jstpe.IntType)
+        val count = js.VarRef(countIdent)(jstpe.IntType)
 
         val counterIdent = freshLocalIdent("i")
-        val counter = js.VarRef(counterIdent, mutable = true)(jstpe.IntType)
+        val counter = js.VarRef(counterIdent)(jstpe.IntType)
 
         val arrayIdent = freshLocalIdent("varargs")
-        val array = js.VarRef(arrayIdent, mutable = false)(jstpe.AnyType)
+        val array = js.VarRef(arrayIdent)(jstpe.AnyType)
 
-        val arguments = js.VarRef(js.Ident("arguments"),
-            mutable = false)(jstpe.AnyType)
+        val arguments = js.VarRef(js.Ident("arguments"))(jstpe.AnyType)
         val argLen = js.Unbox(
             js.JSBracketSelect(arguments, js.StringLiteral("length")), 'I')
         val argOffset = js.IntLiteral(normalArgc)

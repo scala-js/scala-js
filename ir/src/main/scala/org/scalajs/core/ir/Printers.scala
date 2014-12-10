@@ -247,7 +247,7 @@ object Printers {
         case StoreModule(cls, value) =>
           print("mod:", cls, "<-", value)
 
-        case Select(qualifier, item, _) =>
+        case Select(qualifier, item) =>
           print(qualifier, ".", item)
 
         case Apply(receiver, method, args) =>
@@ -401,7 +401,7 @@ object Printers {
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
             case JSDotSelect(qual, _)     => containsOnlySelectsFromAtom(qual)
             case JSBracketSelect(qual, _) => containsOnlySelectsFromAtom(qual)
-            case VarRef(_, _)             => true
+            case VarRef(_)                => true
             case This()                   => true
             case _                        => false // in particular, Apply
           }
@@ -542,7 +542,7 @@ object Printers {
 
         // Atomic expressions
 
-        case VarRef(ident, _) =>
+        case VarRef(ident) =>
           print(ident)
 
         case This() =>

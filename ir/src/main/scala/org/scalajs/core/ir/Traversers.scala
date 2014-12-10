@@ -69,7 +69,7 @@ object Traversers {
       case StoreModule(cls, value) =>
         traverse(value)
 
-      case Select(qualifier, item, mutable) =>
+      case Select(qualifier, item) =>
         traverse(qualifier)
 
       case Apply(receiver, method, args) =>

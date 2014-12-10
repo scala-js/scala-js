@@ -29,9 +29,9 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
     implicit val pos = pos_in
 
     wrapTransform(tree) {
-      case VarDef(ident, _, EmptyTree) =>
+      case VarDef(ident, EmptyTree) =>
         new Node(Token.VAR, transformName(ident))
-      case VarDef(ident, _, rhs) =>
+      case VarDef(ident, rhs) =>
         val node = transformName(ident)
         node.addChildToFront(transformExpr(rhs))
         new Node(Token.VAR, node)
@@ -196,7 +196,7 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
         Node.newNumber(value)
       case StringLiteral(value) =>
         Node.newString(value)
-      case VarRef(ident, _) =>
+      case VarRef(ident) =>
         transformName(ident)
       case This() =>
         new Node(Token.THIS)

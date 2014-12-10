@@ -104,7 +104,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       } yield {
         implicit val pos = field.pos
         desugarJavaScript(
-            Assign(Select(This()(tpe), name, mutable)(vtpe), rhs),
+            Assign(Select(This()(tpe), name)(vtpe), rhs),
             semantics)
       }
       js.Function(Nil,
@@ -145,8 +145,9 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
   def genMethod(className: String, method: MethodDef): js.Tree = {
     implicit val pos = method.pos
 
+    val paramEnv = Env.empty.withParams(method.args)
     val methodFun = js.Function(method.args.map(transformParamDef),
-        desugarBody(method.body, method.resultType == NoType))
+        desugarBody(method.body, method.resultType == NoType, paramEnv))
 
     if (method.static) {
       val Ident(methodName, origName) = method.name
@@ -166,7 +167,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
     // defineProperty method
     val defProp =
-      js.BracketSelect(js.VarRef(js.Ident("Object"), false),
+      js.BracketSelect(js.VarRef(js.Ident("Object")),
           js.StringLiteral("defineProperty"))
 
     // class prototype
@@ -190,16 +191,22 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
         js.StringLiteral("enumerable") -> js.BooleanLiteral(true) :: Nil
 
       // Optionally add getter
-      val wget =
+      val wget = {
         if (property.getterBody == EmptyTree) base
-        else js.StringLiteral("get") ->
-          js.Function(Nil, desugarBody(property.getterBody, isStat = false)) :: base
+        else {
+          val body = desugarBody(property.getterBody, isStat = false, Env.empty)
+          js.StringLiteral("get") -> js.Function(Nil, body) :: base
+        }
+      }
 
       // Optionally add setter
       if (property.setterBody == EmptyTree) wget
-      else js.StringLiteral("set") ->
-          js.Function(transformParamDef(property.setterArg) :: Nil,
-              desugarBody(property.setterBody, isStat = true)) :: wget
+      else {
+        val env = Env.empty.withParams(property.setterArg :: Nil)
+        val body = desugarBody(property.setterBody, isStat = true, env)
+        js.StringLiteral("set") -> js.Function(
+            transformParamDef(property.setterArg) :: Nil, body) :: wget
+      }
     }
 
     js.Apply(defProp, proto :: name :: descriptor :: Nil)
@@ -243,7 +250,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val isAncestorOfBoxedBooleanClass =
       AncestorsOfBoxedBooleanClass.contains(className)
 
-    val objParam = js.ParamDef(Ident("obj"), mutable = false)
+    val objParam = js.ParamDef(Ident("obj"))
     val obj = objParam.ref
 
     val createIsStat = {
@@ -305,17 +312,17 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val className = classIdent.name
     val displayName = decodeClassName(className)
 
-    val objParam = js.ParamDef(Ident("obj"), mutable = false)
+    val objParam = js.ParamDef(Ident("obj"))
     val obj = objParam.ref
 
-    val depthParam = js.ParamDef(Ident("depth"), mutable = false)
+    val depthParam = js.ParamDef(Ident("depth"))
     val depth = depthParam.ref
 
     val createIsArrayOfStat = {
       envField("isArrayOf") DOT classIdent :=
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
-            val dataVarDef = js.VarDef(Ident("data"), false, {
+            val dataVarDef = js.VarDef(Ident("data"), {
               obj && (obj DOT "$classData")
             })
             val data = dataVarDef.ref
@@ -324,7 +331,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
               js.If(!data, {
                 js.Return(js.BooleanLiteral(false))
               }, {
-                val arrayDepthVarDef = js.VarDef(Ident("arrayDepth"), false, {
+                val arrayDepthVarDef = js.VarDef(Ident("arrayDepth"), {
                   (data DOT "arrayDepth") || js.IntLiteral(0)
                 })
                 val arrayDepth = arrayDepthVarDef.ref
@@ -408,7 +415,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
             envField("isArrayOf") DOT classIdent)
         } else if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
-          val xParam = js.ParamDef(Ident("x"), mutable = false)
+          val xParam = js.ParamDef(Ident("x"))
           List(js.Function(List(xParam), js.Return {
             genIsInstanceOf(xParam.ref, ClassType(className))
           }))
@@ -494,7 +501,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       js.DocComment("@constructor"),
       expCtorVar := js.Function(args.map(transformParamDef), js.Block(
         js.Apply(js.DotSelect(baseCtor, js.Ident("call")), List(js.This())),
-        desugarBody(body, isStat = true)
+        desugarBody(body, isStat = true, Env.empty.withParams(args))
       )),
       expCtorVar DOT "prototype" := baseCtor DOT "prototype"
     )
@@ -530,12 +537,12 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
   // Helpers
 
   /** Desugars a function body of the IR into ES5 JavaScript. */
-  private def desugarBody(tree: Tree, isStat: Boolean): js.Tree = {
+  private def desugarBody(tree: Tree, isStat: Boolean, env: Env): js.Tree = {
     implicit val pos = tree.pos
     val withReturn =
       if (isStat) tree
       else Return(tree)
-    desugarJavaScript(withReturn, semantics) match {
+    desugarJavaScript(withReturn, semantics, env) match {
       case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
       case other                                        => other
     }

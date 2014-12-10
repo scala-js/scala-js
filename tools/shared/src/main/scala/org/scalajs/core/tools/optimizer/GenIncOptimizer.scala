@@ -590,7 +590,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
       def isElidableStat(tree: Tree): Boolean = tree match {
         case Block(stats) =>
           stats.forall(isElidableStat)
-        case Assign(Select(This(), _, _), rhs) =>
+        case Assign(Select(This(), _), rhs) =>
           isTriviallySideEffectFree(rhs)
         case ApplyStatic(ClassType(cls), methodName, List(This())) =>
           statics(cls).methods(methodName.name).originalDef.body match {

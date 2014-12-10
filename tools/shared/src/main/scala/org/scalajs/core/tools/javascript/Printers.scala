@@ -96,12 +96,12 @@ object Printers {
 
         // Definitions
 
-        case VarDef(ident, mutable, rhs) =>
+        case VarDef(ident, rhs) =>
           print("var ", ident)
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
-        case ParamDef(ident, mutable) =>
+        case ParamDef(ident) =>
           print(ident)
 
         // Control flow constructs
@@ -206,7 +206,7 @@ object Printers {
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
             case DotSelect(qual, _)     => containsOnlySelectsFromAtom(qual)
             case BracketSelect(qual, _) => containsOnlySelectsFromAtom(qual)
-            case VarRef(_, _)           => true
+            case VarRef(_)              => true
             case This()                 => true
             case _                      => false // in particular, Apply
           }
@@ -317,7 +317,7 @@ object Printers {
 
         // Atomic expressions
 
-        case VarRef(ident, _) =>
+        case VarRef(ident) =>
           print(ident)
 
         case This() =>

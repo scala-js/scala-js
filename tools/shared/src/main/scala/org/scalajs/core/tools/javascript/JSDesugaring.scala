@@ -11,18 +11,21 @@ package org.scalajs.core.tools.javascript
 
 import scala.language.implicitConversions
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
-import org.scalajs.core.ir._
-import Position._
-import Transformers._
-import org.scalajs.core.ir.Trees._
-import org.scalajs.core.ir.Types._
+import org.scalajs.core.ir
+import ir._
+import ir.Position._
+import ir.Transformers._
+import ir.Trees._
+import ir.Types._
 
 import org.scalajs.core.tools.sem._
 import CheckedBehavior._
 
 import org.scalajs.core.tools.javascript.{Trees => js}
+
+import java.io.StringWriter
 
 /** Desugaring of the IR to regular ES5 JavaScript.
  *
@@ -101,15 +104,27 @@ object JSDesugaring {
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** Desugars a statement of the IR into ES5 JavaScript. */
-  def desugarJavaScript(tree: Tree, semantics: Semantics): js.Tree = {
-    new JSDesugar(semantics).transformStat(tree)
+  def desugarJavaScript(tree: Tree, semantics: Semantics): js.Tree =
+    desugarJavaScript(tree, semantics, Env.empty)
+
+  /** Desugars a statement of the IR into ES5 JavaScript under a
+   *  given environment.
+   */
+  def desugarJavaScript(tree: Tree, semantics: Semantics, env: Env): js.Tree = {
+    val desugar = new JSDesugar(semantics)
+    try {
+      desugar.transformStat(tree)(env)
+    } catch {
+      case cause: Throwable =>
+        throw new DesugarException(tree, cause)
+    }
   }
 
   private[javascript] implicit def transformIdent(ident: Ident): js.Ident =
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
-    js.ParamDef(paramDef.name, paramDef.mutable)(paramDef.pos)
+    js.ParamDef(paramDef.name)(paramDef.pos)
 
   private class JSDesugar(semantics: Semantics) {
 
@@ -158,36 +173,30 @@ object JSDesugaring {
     // Now the work
 
     /** Desugar a statement of the IR into ES5 JS */
-    def transformStat(tree: Tree): js.Tree = {
+    def transformStat(tree: Tree)(implicit env: Env): js.Tree = {
       implicit val pos = tree.pos
 
       tree match {
+        // VarDefs at the end of block. Normal VarDefs are handled in
+        // transformBlockStats
+
+        case VarDef(_, _, _, EmptyTree) =>
+          js.Skip()
+
+        case VarDef(_, _, _, rhs) =>
+          pushLhsInto(EmptyTree, rhs)
+
         // Statement-only language constructs
 
         case Skip() =>
           js.Skip()
 
-        case VarDef(varIdent, RecordType(fields), recMutable, EmptyTree) =>
-          js.Block(for {
-            RecordType.Field(fieldName, fieldOrigName, tpe, fieldMutable) <- fields
-          } yield {
-            transformStat {
-              VarDef(makeRecordFieldIdent(varIdent, fieldName, fieldOrigName),
-                  tpe, recMutable || fieldMutable, EmptyTree)
-            }
-          })
-
-        case VarDef(name, _, mutable, EmptyTree) =>
-          js.VarDef(name, mutable, js.EmptyTree)
-
-        case VarDef(_, _, _, rhs) =>
-          pushLhsInto(tree, rhs)
-
         case Assign(RecordFieldVarRef(lhs), rhs) =>
           pushLhsInto(Assign(lhs, EmptyTree), rhs)
 
-        case Assign(select @ Select(qualifier, item, mutable), rhs) =>
-          unnest(qualifier, rhs) { (newQualifier, newRhs) =>
+        case Assign(select @ Select(qualifier, item), rhs) =>
+          unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
+            implicit val env = env0
             js.Assign(
                 js.DotSelect(transformExpr(newQualifier), item)(select.pos),
                 transformExpr(newRhs))
@@ -195,7 +204,8 @@ object JSDesugaring {
 
         case Assign(select @ ArraySelect(array, index), rhs) =>
           unnest(List(array, index, rhs)) {
-            case List(newArray, newIndex, newRhs) =>
+            case (List(newArray, newIndex, newRhs), env0) =>
+              implicit val env = env0
               js.Assign(
                   js.BracketSelect(js.DotSelect(transformExpr(newArray),
                       js.Ident("u"))(select.pos),
@@ -204,7 +214,8 @@ object JSDesugaring {
           }
 
         case Assign(select @ JSDotSelect(qualifier, item), rhs) =>
-          unnest(qualifier, rhs) { (newQualifier, newRhs) =>
+          unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
+            implicit val env = env0
             js.Assign(
                 js.DotSelect(transformExpr(newQualifier), item)(select.pos),
                 transformExpr(newRhs))
@@ -212,7 +223,8 @@ object JSDesugaring {
 
         case Assign(select @ JSBracketSelect(qualifier, item), rhs) =>
           unnest(List(qualifier, item, rhs)) {
-            case List(newQualifier, newItem, newRhs) =>
+            case (List(newQualifier, newItem, newRhs), env0) =>
+              implicit val env = env0
               js.Assign(
                   js.BracketSelect(transformExpr(newQualifier),
                       transformExpr(newItem))(select.pos),
@@ -226,7 +238,8 @@ object JSDesugaring {
           sys.error(s"Illegal Assign in transformStat: $tree")
 
         case StoreModule(cls, value) =>
-          unnest(value) { newValue =>
+          unnest(value) { (newValue, env0) =>
+            implicit val env = env0
             js.Assign(
                 js.DotSelect(envField("n"), Ident(cls.className)),
                 transformExpr(newValue))
@@ -241,7 +254,8 @@ object JSDesugaring {
             js.While(transformExpr(cond), transformStat(body), newLabel)
           } else {
             js.While(js.BooleanLiteral(true), {
-              unnest(cond) { newCond =>
+              unnest(cond) { (newCond, env0) =>
+                implicit val env = env0
                 js.If(transformExpr(newCond), transformStat(body), js.Break())
               }
             }, newLabel)
@@ -261,7 +275,8 @@ object JSDesugaring {
              */
             js.While(js.BooleanLiteral(true), {
               js.Block(transformStat(body), {
-                unnest(cond) { newCond =>
+                unnest(cond) { (newCond, env0) =>
+                  implicit val env = env0
                   js.If(transformExpr(newCond), js.Skip(), js.Break())
                 }
               })
@@ -272,12 +287,14 @@ object JSDesugaring {
           js.Debugger()
 
         case JSDelete(JSDotSelect(obj, prop)) =>
-          unnest(obj) { (newObj) =>
+          unnest(obj) { (newObj, env0) =>
+            implicit val env = env0
             js.Delete(js.DotSelect(transformExpr(newObj), prop))
           }
 
         case JSDelete(JSBracketSelect(obj, prop)) =>
-          unnest(obj, prop) { (newObj, newProp) =>
+          unnest(obj, prop) { (newObj, newProp, env0) =>
+            implicit val env = env0
             js.Delete(js.BracketSelect(
                 transformExpr(newObj), transformExpr(newProp)))
           }
@@ -303,15 +320,51 @@ object JSDesugaring {
     private object RecordFieldVarRef {
       def unapply(tree: Tree): Option[VarRef] = {
         tree match {
-          case Select(RecordVarRef(VarRef(recIdent, recMutable)),
-              fieldIdent, fieldMutable) =>
+          case Select(RecordVarRef(VarRef(recIdent)), fieldIdent) =>
             implicit val pos = tree.pos
-            Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent),
-                recMutable || fieldMutable)(tree.tpe))
+            Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent))(tree.tpe))
           case _ =>
             None
         }
       }
+    }
+
+    def transformBlockStats(trees: List[Tree])(
+        implicit env: Env): (List[js.Tree], Env) = {
+
+      def emptyVarDef(varIdent: Ident, tpe: Type)(implicit pos: Position) = {
+        tpe match {
+          case RecordType(fields) =>
+            for {
+              RecordType.Field(fldName, fldOrigName, tpe, _) <- fields
+            } yield {
+              val ident = makeRecordFieldIdent(varIdent, fldName, fldOrigName)
+              js.VarDef(ident, js.EmptyTree)
+            }
+        case _ =>
+            List(js.VarDef(varIdent, js.EmptyTree))
+        }
+      }
+
+      @tailrec
+      def transformLoop(trees: List[Tree], env: Env,
+          acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
+        case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
+          val newEnv = env.withDef(ident, tpe, mutable)
+          val newTrees =
+            if (rhs == EmptyTree) emptyVarDef(ident, tpe)(tree.pos)
+            else pushLhsInto(tree, rhs)(env) :: Nil
+
+          transformLoop(ts, newEnv, newTrees reverse_::: acc)
+
+        case tree :: ts =>
+          transformLoop(ts, env, transformStat(tree)(env) :: acc)
+
+        case Nil =>
+          (acc.reverse, env)
+      }
+
+      transformLoop(trees, env, Nil)
     }
 
     private object RecordVarRef {
@@ -320,11 +373,9 @@ object JSDesugaring {
         else {
           tree match {
             case tree: VarRef => Some(tree)
-            case Select(RecordVarRef(VarRef(recIdent, recMutable)),
-                fieldIdent, fieldMutable) =>
+            case Select(RecordVarRef(VarRef(recIdent)), fieldIdent) =>
               implicit val pos = tree.pos
-              Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent),
-                  recMutable || fieldMutable)(tree.tpe))
+              Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent))(tree.tpe))
           }
         }
       }
@@ -347,11 +398,12 @@ object JSDesugaring {
      *  an identifier (except those after the last non-expression argument).
      *  Hence the predicate `isPureExpressionWithoutIdent`.
      */
-    def unnest(args: List[Tree])(
-        makeStat: List[Tree] => js.Tree): js.Tree = {
-      if (args forall isExpression) makeStat(args)
+    def unnest(args: List[Tree])(makeStat: (List[Tree], Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      if (args forall isExpression) makeStat(args, env)
       else {
         val extractedStatements = new scala.collection.mutable.ListBuffer[js.Tree]
+        var innerEnv = env
 
         /* Attention! Everything must be processed recursively
          * *right-to-left*! Indeed, the point is that noExtractYet will tell
@@ -360,9 +412,13 @@ object JSDesugaring {
          * in temporary variables (or simply statements, in the Block case).
          * If nothing has, we can keep more in place without having to extract
          * that expression in a temporary variable.
+         *
+         * Also note that environments are handled the wrong way around. This is
+         * ok, since the same local name may not appear multiple times inside a
+         * single method.
          */
 
-        def rec(arg: Tree): Tree = {
+        def rec(arg: Tree)(implicit env: Env): Tree = {
           def noExtractYet = extractedStatements.isEmpty
 
           if (if (noExtractYet) isExpression(arg) else isPureExpression(arg)) {
@@ -371,9 +427,11 @@ object JSDesugaring {
             implicit val pos = arg.pos
             arg match {
               case Block(stats :+ expr) =>
-                val result = rec(expr) // right-to-left, remember?
+                val (jsStats, newEnv) = transformBlockStats(stats)
+                innerEnv = newEnv
+                val result = rec(expr)(newEnv) // right-to-left, remember?
                 // Put the stats in a Block because ++=: is not smart
-                js.Block(stats.map(transformStat)) +=: extractedStatements
+                js.Block(jsStats) +=: extractedStatements
                 result
 
               case UnaryOp(op, lhs) =>
@@ -410,8 +468,8 @@ object JSDesugaring {
 
               case New(cls, constr, args) if noExtractYet =>
                 New(cls, constr, recs(args))
-              case Select(qualifier, item, mutable) if noExtractYet =>
-                Select(rec(qualifier), item, mutable)(arg.tpe)
+              case Select(qualifier, item) if noExtractYet =>
+                Select(rec(qualifier), item)(arg.tpe)
               case Apply(receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(rec(receiver), method, newArgs)(arg.tpe)
@@ -434,15 +492,17 @@ object JSDesugaring {
 
               case _ =>
                 val temp = newSyntheticVar()
-                val computeTemp =
-                  pushLhsInto(VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
+                val newEnv = env.withDef(temp, arg.tpe, false)
+                innerEnv = newEnv
+                val computeTemp = pushLhsInto(
+                    VarDef(temp, arg.tpe, mutable = false, EmptyTree), arg)
                 computeTemp +=: extractedStatements
-                VarRef(temp, mutable = false)(arg.tpe)
+                VarRef(temp)(arg.tpe)
             }
           }
         }
 
-        def recs(args: List[Tree]): List[Tree] = {
+        def recs(args: List[Tree])(implicit env: Env): List[Tree] = {
           // This is a right-to-left map
           args.foldRight[List[Tree]](Nil) { (arg, acc) =>
             rec(arg) :: acc
@@ -454,32 +514,34 @@ object JSDesugaring {
         assert(extractedStatements.nonEmpty,
             "Reached computeTemps with no temp to compute")
 
-        val newStatement = makeStat(newArgs)
+        val newStatement = makeStat(newArgs, innerEnv)
         js.Block(extractedStatements.result() ::: List(newStatement))(newStatement.pos)
       }
     }
 
     /** Same as above, for a single argument */
-    def unnest(arg: Tree)(
-        makeStat: Tree => js.Tree): js.Tree = {
+    def unnest(arg: Tree)(makeStat: (Tree, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
       unnest(List(arg)) {
-        case List(newArg) => makeStat(newArg)
+        case (List(newArg), env) => makeStat(newArg, env)
       }
     }
 
     /** Same as above, for two arguments */
     def unnest(lhs: Tree, rhs: Tree)(
-        makeStat: (Tree, Tree) => js.Tree): js.Tree = {
+        makeStat: (Tree, Tree, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
       unnest(List(lhs, rhs)) {
-        case List(newLhs, newRhs) => makeStat(newLhs, newRhs)
+        case (List(newLhs, newRhs), env) => makeStat(newLhs, newRhs, env)
       }
     }
 
     /** Same as above, for one head argument and a list of arguments */
     def unnest(arg0: Tree, args: List[Tree])(
-        makeStat: (Tree, List[Tree]) => js.Tree): js.Tree = {
-      unnest(arg0 :: args) { newArgs =>
-        makeStat(newArgs.head, newArgs.tail)
+        makeStat: (Tree, List[Tree], Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      unnest(arg0 :: args) { (newArgs, env) =>
+        makeStat(newArgs.head, newArgs.tail, env)
       }
     }
 
@@ -488,8 +550,8 @@ object JSDesugaring {
      *  will always produce the same result and never have side-effects.
      *  A side-effect free expression can be elided if its result is not used.
      */
-    private def isExpressionInternal(tree: Tree,
-        allowUnpure: Boolean, allowSideEffects: Boolean): Boolean = {
+    private def isExpressionInternal(tree: Tree, allowUnpure: Boolean,
+        allowSideEffects: Boolean)(implicit env: Env): Boolean = {
 
       require(!allowSideEffects || allowUnpure)
 
@@ -499,11 +561,13 @@ object JSDesugaring {
         case _: This      => true
         case _: JSEnvInfo => true
 
-        // Vars and fields (side-effect free, pure if immutable)
-        case VarRef(_, mutable) =>
-          allowUnpure || !mutable
-        case Select(qualifier, item, mutable) =>
-          (allowUnpure || !mutable) && test(qualifier)
+        // Vars (side-effect free, pure if immutable)
+        case VarRef(name) =>
+          allowUnpure || !env.isLocalMutable(name)
+
+        // Fields may throw if qualifier is null
+        case Select(qualifier, item) =>
+          allowSideEffects && test(qualifier)
 
         // Expressions preserving pureness
         case Block(trees)            => trees forall test
@@ -576,61 +640,58 @@ object JSDesugaring {
 
     /** Test whether the given tree is a standard JS expression.
      */
-    def isExpression(tree: Tree): Boolean =
+    def isExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = true, allowSideEffects = true)
 
     /** Test whether the given tree is a side-effect-free standard JS expression.
      */
-    def isSideEffectFreeExpression(tree: Tree): Boolean =
+    def isSideEffectFreeExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = true, allowSideEffects = false)
 
     /** Test whether the given tree is a pure standard JS expression.
      */
-    def isPureExpression(tree: Tree): Boolean =
+    def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false)
 
-    def doVarDef(ident: Ident, tpe: Type, mutable: Boolean, rhs: Tree): js.Tree = {
+    def doVarDef(ident: Ident, tpe: Type,
+        rhs: Tree)(implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       tpe match {
         case RecordType(fields) =>
           val elems = (rhs: @unchecked) match {
             case RecordValue(_, elems) =>
               elems
-            case VarRef(rhsIdent, rhsMutable) =>
-              for (RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields)
-                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName),
-                    rhsMutable || fMutable)(fTpe)
+            case VarRef(rhsIdent) =>
+              for (RecordType.Field(fName, fOrigName, fTpe, _) <- fields)
+                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
           }
           js.Block(for {
             (RecordType.Field(fName, fOrigName, fTpe, fMutable),
                 fRhs) <- fields zip elems
           } yield {
-            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName),
-                fTpe, mutable || fMutable, fRhs)
+            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe, fRhs)
           })
 
         case _ =>
-          js.VarDef(ident, mutable, transformExpr(rhs))
+          js.VarDef(ident, transformExpr(rhs))
       }
     }
 
-    def doAssign(lhs: Tree, rhs: Tree): js.Tree = {
+    def doAssign(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       lhs.tpe match {
         case RecordType(fields) =>
-          val VarRef(ident, mutable) = lhs
+          val VarRef(ident) = lhs
           val elems = (rhs: @unchecked) match {
-            case VarRef(rhsIdent, rhsMutable) =>
+            case VarRef(rhsIdent) =>
               for (RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields)
-                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName),
-                    rhsMutable || fMutable)(fTpe)
+                yield VarRef(makeRecordFieldIdent(rhsIdent, fName, fOrigName))(fTpe)
           }
           js.Block(for {
             (RecordType.Field(fName, fOrigName, fTpe, fMutable),
                 fRhs) <- fields zip elems
           } yield {
-            doAssign(VarRef(makeRecordFieldIdent(ident, fName, fOrigName),
-                mutable || fMutable)(fTpe), fRhs)
+            doAssign(VarRef(makeRecordFieldIdent(ident, fName, fOrigName))(fTpe), fRhs)
           })
 
         case _ =>
@@ -642,11 +703,12 @@ object JSDesugaring {
      *  lhs can be either a EmptyTree, a VarDef, a Assign or a
      *  Return
      */
-    def pushLhsInto(lhs: Tree, rhs: Tree): js.Tree = {
+    def pushLhsInto(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
       implicit val rhsPos = rhs.pos
 
-      /** Push the current lhs further into a deeper rhs */
-      @inline def redo(newRhs: Tree) = pushLhsInto(lhs, newRhs)
+      /** Push the current lhs further into a deeper rhs. */
+      @inline def redo(newRhs: Tree)(implicit env: Env) =
+        pushLhsInto(lhs, newRhs)
 
       if (rhs.tpe == NothingType && lhs != EmptyTree) {
         /* A touch of peephole dead code elimination.
@@ -655,19 +717,22 @@ object JSDesugaring {
          */
         val transformedRhs = pushLhsInto(EmptyTree, rhs)
         lhs match {
-          case VarDef(name, _, mutable, _) =>
+          case VarDef(name, _, _, _) =>
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
-            js.Block(js.VarDef(name, true, js.EmptyTree), transformedRhs)
+            js.Block(js.VarDef(name, js.EmptyTree), transformedRhs)
+
           case _ =>
             transformedRhs
         }
       } else (rhs match {
         // Handle the Block before testing whether it is an expression
 
-        case Block(stats :+ expr) =>
-          js.Block((stats map transformStat) :+ redo(expr))
+        case Block(stats0 :+ expr0) =>
+          val (stats1, env0) = transformBlockStats(stats0)
+          val expr1 = redo(expr0)(env0)
+          js.Block(stats1 :+ expr1)
 
         // Base case, rhs is already a regular JS expression
 
@@ -676,8 +741,8 @@ object JSDesugaring {
             case EmptyTree =>
               if (isSideEffectFreeExpression(rhs)) js.Skip()
               else transformExpr(rhs)
-            case VarDef(name, tpe, mutable, _) =>
-              doVarDef(name, tpe, mutable, rhs)
+            case VarDef(name, tpe, _, _) =>
+              doVarDef(name, tpe, rhs)
             case Assign(lhs, _) =>
               doAssign(lhs, rhs)
             case Return(_, None) =>
@@ -697,17 +762,19 @@ object JSDesugaring {
         case RecordValue(recTpe, elems) =>
           (lhs: @unchecked) match {
             case EmptyTree =>
-              js.Block(elems map transformStat)
-            case VarDef(name, tpe, mutable, _) =>
-              unnest(elems) { newElems =>
-                doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))
+              val (newStat, _) = transformBlockStats(elems)
+              js.Block(newStat)
+            case VarDef(name, tpe, _, _) =>
+              unnest(elems) { (newElems, env) =>
+                doVarDef(name, tpe, RecordValue(recTpe, newElems))(env)
               }
             case Assign(lhs, _) =>
-              unnest(elems) { newElems =>
+              unnest(elems) { (newElems, env0) =>
+                implicit val env = env0
                 val temp = newSyntheticVar()
                 js.Block(
-                    doVarDef(temp, recTpe, false, RecordValue(recTpe, newElems)),
-                    doAssign(lhs, VarRef(temp, false)(recTpe)))
+                    doVarDef(temp, recTpe, RecordValue(recTpe, newElems)),
+                    doAssign(lhs, VarRef(temp)(recTpe)))
               }
             case Return(_, label @ Some(l)) =>
               val newLhs = labeledExprLHSes(l)
@@ -736,7 +803,8 @@ object JSDesugaring {
           js.Continue(label.map(transformIdent))
 
         case If(cond, thenp, elsep) =>
-          unnest(cond) { newCond =>
+          unnest(cond) { (newCond, env0) =>
+            implicit val env = env0
             js.If(transformExpr(newCond), redo(thenp), redo(elsep))
           }
 
@@ -766,8 +834,8 @@ object JSDesugaring {
 
         // TODO Treat throw as an LHS?
         case Throw(expr) =>
-          unnest(expr) { newExpr =>
-            js.Throw(transformExpr(newExpr))
+          unnest(expr) { (newExpr, env) =>
+            js.Throw(transformExpr(newExpr)(env))
           }
 
         /** Matches are desugared into switches
@@ -782,7 +850,8 @@ object JSDesugaring {
          *    would use the fall-through behavior to implement alternatives).
          */
         case Match(selector, cases, default) =>
-          unnest(selector) { newSelector =>
+          unnest(selector) { (newSelector, env0) =>
+            implicit val env = env0
             val newCases = {
               for {
                 (values, body) <- cases
@@ -804,136 +873,136 @@ object JSDesugaring {
         // Scala expressions (if we reach here their arguments are not expressions)
 
         case New(cls, ctor, args) =>
-          unnest(args) { newArgs =>
-            redo(New(cls, ctor, newArgs))
+          unnest(args) { (newArgs, env) =>
+            redo(New(cls, ctor, newArgs))(env)
           }
 
-        case Select(qualifier, item, mutable) =>
-          unnest(qualifier) { newQualifier =>
-            redo(Select(newQualifier, item, mutable)(rhs.tpe))
+        case Select(qualifier, item) =>
+          unnest(qualifier) { (newQualifier, env) =>
+            redo(Select(newQualifier, item)(rhs.tpe))(env)
           }
 
         case Apply(receiver, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs) =>
-            redo(Apply(newReceiver, method, newArgs)(rhs.tpe))
+          unnest(receiver, args) { (newReceiver, newArgs, env) =>
+            redo(Apply(newReceiver, method, newArgs)(rhs.tpe))(env)
           }
 
         case ApplyStatically(receiver, cls, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs) =>
-            redo(ApplyStatically(newReceiver, cls, method, newArgs)(rhs.tpe))
+          unnest(receiver, args) { (newReceiver, newArgs, env) =>
+            redo(ApplyStatically(newReceiver, cls, method, newArgs)(rhs.tpe))(env)
           }
 
         case ApplyStatic(cls, method, args) =>
-          unnest(args) { newArgs =>
-            redo(ApplyStatic(cls, method, newArgs)(rhs.tpe))
+          unnest(args) { (newArgs, env) =>
+            redo(ApplyStatic(cls, method, newArgs)(rhs.tpe))(env)
           }
 
         case UnaryOp(op, lhs) =>
-          unnest(lhs) { newLhs =>
-            redo(UnaryOp(op, newLhs))
+          unnest(lhs) { (newLhs, env) =>
+            redo(UnaryOp(op, newLhs))(env)
           }
 
         case BinaryOp(op, lhs, rhs) =>
-          unnest(lhs, rhs) { (newLhs, newRhs) =>
-            redo(BinaryOp(op, newLhs, newRhs))
+          unnest(lhs, rhs) { (newLhs, newRhs, env) =>
+            redo(BinaryOp(op, newLhs, newRhs))(env)
           }
 
         case NewArray(tpe, lengths) =>
-          unnest(lengths) { newLengths =>
-            redo(NewArray(tpe, newLengths))
+          unnest(lengths) { (newLengths, env) =>
+            redo(NewArray(tpe, newLengths))(env)
           }
 
         case ArrayValue(tpe, elems) =>
-          unnest(elems) { newElems =>
-            redo(ArrayValue(tpe, newElems))
+          unnest(elems) { (newElems, env) =>
+            redo(ArrayValue(tpe, newElems))(env)
           }
 
         case ArrayLength(array) =>
-          unnest(array) { newArray =>
-            redo(ArrayLength(newArray))
+          unnest(array) { (newArray, env) =>
+            redo(ArrayLength(newArray))(env)
           }
 
         case ArraySelect(array, index) =>
-          unnest(array, index) { (newArray, newIndex) =>
-            redo(ArraySelect(newArray, newIndex)(rhs.tpe))
+          unnest(array, index) { (newArray, newIndex, env) =>
+            redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
           }
 
         case IsInstanceOf(expr, cls) =>
-          unnest(expr) { newExpr =>
-            redo(IsInstanceOf(newExpr, cls))
+          unnest(expr) { (newExpr, env) =>
+            redo(IsInstanceOf(newExpr, cls))(env)
           }
 
         case AsInstanceOf(expr, cls) =>
           if (semantics.asInstanceOfs == Unchecked) {
             redo(expr)
           } else {
-            unnest(expr) { newExpr =>
-              redo(AsInstanceOf(newExpr, cls))
+            unnest(expr) { (newExpr, env) =>
+              redo(AsInstanceOf(newExpr, cls))(env)
             }
           }
 
         case Unbox(expr, charCode) =>
-          unnest(expr) { newExpr =>
-            redo(Unbox(newExpr, charCode))
+          unnest(expr) { (newExpr, env) =>
+            redo(Unbox(newExpr, charCode))(env)
           }
 
         case GetClass(expr) =>
-          unnest(expr) { newExpr =>
-            redo(GetClass(newExpr))
+          unnest(expr) { (newExpr, env) =>
+            redo(GetClass(newExpr))(env)
           }
 
         case CallHelper(helper, args) =>
-          unnest(args) { newArgs =>
-            redo(CallHelper(helper, newArgs)(rhs.tpe))
+          unnest(args) { (newArgs, env) =>
+            redo(CallHelper(helper, newArgs)(rhs.tpe))(env)
           }
 
         // JavaScript expressions (if we reach here their arguments are not expressions)
 
         case JSNew(ctor, args) =>
-          unnest(ctor :: args) { newCtorAndArgs =>
+          unnest(ctor :: args) { (newCtorAndArgs, env) =>
             val newCtor :: newArgs = newCtorAndArgs
-            redo(JSNew(newCtor, newArgs))
+            redo(JSNew(newCtor, newArgs))(env)
           }
 
         case JSFunctionApply(fun, args) =>
-          unnest(fun :: args) { newFunAndArgs =>
+          unnest(fun :: args) { (newFunAndArgs, env) =>
             val newFun :: newArgs = newFunAndArgs
-            redo(JSFunctionApply(newFun, newArgs))
+            redo(JSFunctionApply(newFun, newArgs))(env)
           }
 
         case JSDotMethodApply(receiver, method, args) =>
-          unnest(receiver :: args) { newReceiverAndArgs =>
+          unnest(receiver :: args) { (newReceiverAndArgs, env) =>
             val newReceiver :: newArgs = newReceiverAndArgs
-            redo(JSDotMethodApply(newReceiver, method, newArgs))
+            redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
           }
 
         case JSBracketMethodApply(receiver, method, args) =>
-          unnest(receiver :: method :: args) { newReceiverAndArgs =>
+          unnest(receiver :: method :: args) { (newReceiverAndArgs, env) =>
             val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-            redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))
+            redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
           }
 
         case JSDotSelect(qualifier, item) =>
-          unnest(qualifier) { newQualifier =>
-            redo(JSDotSelect(newQualifier, item))
+          unnest(qualifier) { (newQualifier, env) =>
+            redo(JSDotSelect(newQualifier, item))(env)
           }
 
         case JSBracketSelect(qualifier, item) =>
-          unnest(qualifier, item) { (newQualifier, newItem) =>
-            redo(JSBracketSelect(newQualifier, newItem))
+          unnest(qualifier, item) { (newQualifier, newItem, env) =>
+            redo(JSBracketSelect(newQualifier, newItem))(env)
           }
 
         case JSUnaryOp(op, lhs) =>
-          unnest(lhs) { newLhs =>
-            redo(JSUnaryOp(op, newLhs))
+          unnest(lhs) { (newLhs, env) =>
+            redo(JSUnaryOp(op, newLhs))(env)
           }
 
         case JSBinaryOp(JSBinaryOp.&&, lhs, rhs) =>
           if (lhs.tpe == BooleanType) {
             redo(If(lhs, rhs, BooleanLiteral(false))(AnyType))
           } else {
-            unnest(lhs) { newLhs =>
-              redo(If(newLhs, rhs, newLhs)(AnyType))
+            unnest(lhs) { (newLhs, env) =>
+              redo(If(newLhs, rhs, newLhs)(AnyType))(env)
             }
           }
 
@@ -941,33 +1010,33 @@ object JSDesugaring {
           if (lhs.tpe == BooleanType) {
             redo(If(lhs, BooleanLiteral(true), rhs)(AnyType))
           } else {
-            unnest(lhs) { newLhs =>
-              redo(If(newLhs, newLhs, rhs)(AnyType))
+            unnest(lhs) { (newLhs, env) =>
+              redo(If(newLhs, newLhs, rhs)(AnyType))(env)
             }
           }
 
         case JSBinaryOp(op, lhs, rhs) =>
-          unnest(lhs, rhs) { (newLhs, newRhs) =>
-            redo(JSBinaryOp(op, newLhs, newRhs))
+          unnest(lhs, rhs) { (newLhs, newRhs, env) =>
+            redo(JSBinaryOp(op, newLhs, newRhs))(env)
           }
 
         case JSArrayConstr(items) =>
-          unnest(items) { newItems =>
-            redo(JSArrayConstr(newItems))
+          unnest(items) { (newItems, env) =>
+            redo(JSArrayConstr(newItems))(env)
           }
 
         case JSObjectConstr(fields) =>
           val names = fields map (_._1)
           val items = fields map (_._2)
-          unnest(items) { newItems =>
-            redo(JSObjectConstr(names.zip(newItems)))
+          unnest(items) { (newItems, env) =>
+            redo(JSObjectConstr(names.zip(newItems)))(env)
           }
 
         // Closures
 
         case Closure(captureParams, params, body, captureValues) =>
-          unnest(captureValues) { newCaptureValues =>
-            redo(Closure(captureParams, params, body, newCaptureValues))
+          unnest(captureValues) { (newCaptureValues, env) =>
+            redo(Closure(captureParams, params, body, newCaptureValues))(env)
           }
 
         case _ =>
@@ -997,7 +1066,7 @@ object JSDesugaring {
     // Desugar Scala operations to JavaScript operations -----------------------
 
     /** Desugar an expression of the IR into ES5 JS */
-    def transformExpr(tree: Tree): js.Tree = {
+    def transformExpr(tree: Tree)(implicit env: Env): js.Tree = {
       import TreeDSL._
 
       implicit val pos = tree.pos
@@ -1009,7 +1078,8 @@ object JSDesugaring {
         // Control flow constructs
 
         case Block(stats :+ expr) =>
-          js.Block((stats map transformStat) :+ transformExpr(expr))
+          val (newStats, newEnv) = transformBlockStats(stats)
+          js.Block(newStats :+ transformExpr(expr)(newEnv))
 
         // Note that these work even if thenp/elsep is not a BooleanType
         case If(cond, BooleanLiteral(true), elsep) =>
@@ -1029,10 +1099,10 @@ object JSDesugaring {
         case LoadModule(cls) =>
           genLoadModule(cls.className)
 
-        case RecordFieldVarRef(VarRef(name, mutable)) =>
-          js.VarRef(name, mutable)
+        case RecordFieldVarRef(VarRef(name)) =>
+          js.VarRef(name)
 
-        case Select(qualifier, item, _) =>
+        case Select(qualifier, item) =>
           transformExpr(qualifier) DOT item
 
         case Apply(receiver, method, args) =>
@@ -1315,16 +1385,17 @@ object JSDesugaring {
 
         // Atomic expressions
 
-        case VarRef(name, mutable) =>
-          js.VarRef(name, mutable)
+        case VarRef(name) =>
+          js.VarRef(name)
 
         case This() =>
           js.This()
 
         case Closure(captureParams, params, body, captureValues) =>
           val transformedBody = {
+            val env = Env.empty.withParams(captureParams)
             val withReturn = Return(body, None)
-            transformStat(withReturn) match {
+            (transformStat(withReturn)(env)) match {
               case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
               case other                                        => other
             }
@@ -1441,6 +1512,45 @@ object JSDesugaring {
       js.Apply(envField("m") DOT moduleClass, Nil)
     }
 
+    private implicit class RecordAwareEnv(env: Env) {
+      def withDef(ident: Ident, tpe: Type, mutable: Boolean): Env = tpe match {
+        case RecordType(fields) =>
+          withRecordDefs(ident, fields, mutable)
+        case _ =>
+          env.withDef(ident, mutable)
+      }
+
+      private def withRecordDefs(recIdent: Ident,
+          fields: List[RecordType.Field], recMutable: Boolean): Env = {
+        fields.foldLeft(env) { (env, fld) =>
+          val ident = makeRecordFieldIdent(recIdent, fld.name,
+              fld.originalName)(recIdent.pos)
+          env.withDef(ident, fld.tpe, recMutable || fld.mutable)
+        }
+      }
+    }
+  }
+
+  // Environment
+
+  final class Env private (vars: Map[String, Boolean]) {
+    def isLocalMutable(ident: Ident): Boolean = vars(ident.name)
+
+    def withParams(params: List[ParamDef]): Env = {
+      params.foldLeft(this) {
+        case (env, ParamDef(name, tpe, mutable)) =>
+          // ParamDefs may not contain record types
+          env.withDef(name, mutable)
+      }
+    }
+
+    def withDef(ident: Ident, mutable: Boolean): Env =
+      new Env(vars + (ident.name -> mutable))
+
+  }
+
+  object Env {
+    def empty: Env = new Env(Map.empty)
   }
 
   // Helpers
@@ -1512,11 +1622,20 @@ object JSDesugaring {
     js.DotSelect(envField(field), js.Ident(className))
 
   private[javascript] def envField(field: String)(implicit pos: Position): js.Tree =
-    js.DotSelect(js.VarRef(js.Ident(ScalaJSEnvironmentName), false),
-        js.Ident(field))
+    js.DotSelect(js.VarRef(js.Ident(ScalaJSEnvironmentName)), js.Ident(field))
 
   private[javascript] implicit class MyTreeOps(val self: js.Tree) {
     def prototype(implicit pos: Position): js.Tree =
       js.DotSelect(self, js.Ident("prototype"))
+  }
+
+  class DesugarException(tree: Tree,
+      cause: Throwable) extends Exception(exceptionMsg(tree), cause)
+
+  private def exceptionMsg(tree: Tree): String = {
+    val writer = new StringWriter
+    val printer = new ir.Printers.IRTreePrinter(writer)
+    printer.printTopLevelTree(tree)
+    "Exception while desugaring: " + writer.toString
   }
 }

@@ -168,11 +168,10 @@ object Hashers {
           mixType(cls)
           mixTree(value)
 
-        case Select(qualifier, item, mutable) =>
+        case Select(qualifier, item) =>
           mixTag(TagSelect)
           mixTree(qualifier)
           mixIdent(item)
-          mixBoolean(mutable)
           mixType(tree.tpe)
 
         case Apply(receiver, method, args) =>
@@ -357,10 +356,9 @@ object Hashers {
           mixTag(TagClassOf)
           mixType(cls)
 
-        case VarRef(ident, mutable) =>
+        case VarRef(ident) =>
           mixTag(TagVarRef)
           mixIdent(ident)
-          mixBoolean(mutable)
           mixType(tree.tpe)
 
         case This() =>

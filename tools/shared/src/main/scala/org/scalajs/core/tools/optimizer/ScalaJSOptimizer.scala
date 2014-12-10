@@ -254,7 +254,6 @@ class ScalaJSOptimizer(
     def addPersistentFile(classInfo: analyzer.ClassInfo,
         persistentFile: PersistentIRFile) = {
       import ir.Trees._
-      import javascript.JSDesugaring.{desugarJavaScript => desugar}
 
       val d = persistentFile.desugared
       lazy val classDef = {
