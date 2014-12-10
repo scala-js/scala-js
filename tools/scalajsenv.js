@@ -214,9 +214,10 @@ ScalaJS.objectEquals = function(instance, rhs) {
 };
 
 ScalaJS.numberEquals = function(lhs, rhs) {
-  return (
-    lhs === rhs // 0.0 === -0.0 to prioritize the Int case over the Double case
-  ) || (
+  return (lhs === rhs) ? (
+    // 0.0.equals(-0.0) must be false
+    lhs !== 0 || 1/lhs === 1/rhs
+  ) : (
     // are they both NaN?
     (lhs !== lhs) && (rhs !== rhs)
   );
@@ -251,7 +252,7 @@ ScalaJS.comparableCompareTo = function(instance, rhs) {
 //!if asInstanceOfs != Unchecked
       ScalaJS.as.jl_Number(rhs);
 //!endif
-      return ScalaJS.numberEquals(instance, rhs) ? 0 : (instance < rhs ? -1 : 1);
+      return ScalaJS.m.jl_Double().compare__D__D__I(instance, rhs);
     case "boolean":
 //!if asInstanceOfs != Unchecked
       ScalaJS.asBoolean(rhs);
@@ -375,15 +376,15 @@ ScalaJS.systemIdentityHashCode = function(obj) {
 // is/as for hijacked boxed classes (the non-trivial ones)
 
 ScalaJS.isByte = function(v) {
-  return (v << 24 >> 24) === v;
+  return (v << 24 >> 24) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isShort = function(v) {
-  return (v << 16 >> 16) === v;
+  return (v << 16 >> 16) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isInt = function(v) {
-  return (v | 0) === v;
+  return (v | 0) === v && 1/v !== 1/-0;
 };
 
 ScalaJS.isFloat = function(v) {

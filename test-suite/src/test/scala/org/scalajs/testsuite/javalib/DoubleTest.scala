@@ -19,8 +19,10 @@ object DoubleTest extends JasmineTest {
   describe("java.lang.Double") {
 
     it("should provide proper `equals`") {
-      expect(Double.box(0.0) == Double.box(-0.0)).toBeTruthy
-      expect(Double.box(Double.NaN) == Double.box(Double.NaN)).toBeTruthy
+      expect(0.0.equals(0.0)).toBeTruthy
+      expect(-0.0.equals(-0.0)).toBeTruthy
+      expect(0.0.equals(-0.0)).toBeFalsy
+      expect(Float.NaN.equals(Float.NaN)).toBeTruthy
     }
 
     it("hashCode") {
@@ -35,7 +37,7 @@ object DoubleTest extends JasmineTest {
       }
 
       test(0.0, 0)
-      test(-0.0, 0)
+      test(-0.0, -2147483648)
       test(1234.0, 1234)
       test(1.5, 1073217536)
       test(Math.PI, 340593891)
@@ -105,6 +107,10 @@ object DoubleTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Double.NaN, Double.NaN)).toEqual(0)
+
+      // And -0.0 < 0.0
+      expect(compare(-0.0, 0.0)).toBeLessThan(0)
+      expect(compare(0.0, -0.0)).toBeGreaterThan(0)
     }
 
     it("should be a Comparable") {
@@ -118,6 +124,10 @@ object DoubleTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Double.NaN, Double.NaN)).toEqual(0)
+
+      // And -0.0 < 0.0
+      expect(compare(-0.0, 0.0)).toBeLessThan(0)
+      expect(compare(0.0, -0.0)).toBeGreaterThan(0)
     }
 
     it("should provide isInfinite - #515") {
