@@ -1060,7 +1060,6 @@ object JSDesugaring {
           import UnaryOp._
           val newLhs = transformExpr(lhs)
           (op: @switch) match {
-            case `typeof`    => js.UnaryOp("typeof", newLhs)
             case Boolean_!   => js.UnaryOp("!", newLhs)
             case DoubleToInt => js.BinaryOp("|", newLhs, js.IntLiteral(0))
 
@@ -1103,9 +1102,6 @@ object JSDesugaring {
                 js.BinaryOp("+", newLhs, newRhs)
               else
                 js.BinaryOp("+", js.BinaryOp("+", js.StringLiteral(""), newLhs), newRhs)
-
-            case `in`         => js.BinaryOp("in", newLhs, newRhs)
-            case `instanceof` => js.BinaryOp("instanceof", newLhs, newRhs)
 
             case Int_+ => or0(js.BinaryOp("+", newLhs, newRhs))
             case Int_- =>

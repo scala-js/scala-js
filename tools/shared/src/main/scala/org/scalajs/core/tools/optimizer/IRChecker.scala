@@ -501,8 +501,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         (op: @switch) match {
-          case `typeof` =>
-            typecheckExpr(lhs, env)
           case IntToLong =>
             typecheckExpect(lhs, env, IntType)
           case LongToInt | LongToDouble =>
@@ -517,12 +515,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         import BinaryOp._
         (op: @switch) match {
           case === | !== | String_+ =>
-            typecheckExpr(lhs, env)
-            typecheckExpr(rhs, env)
-          case `in` =>
-            typecheckExpect(lhs, env, ClassType(StringClass))
-            typecheckExpr(rhs, env)
-          case `instanceof` =>
             typecheckExpr(lhs, env)
             typecheckExpr(rhs, env)
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |

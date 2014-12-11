@@ -265,7 +265,6 @@ object Printers {
         case UnaryOp(op, lhs) =>
           import UnaryOp._
           print("(", (op: @switch) match {
-            case `typeof`                  => "typeof"
             case Boolean_!                 => "!"
             case IntToLong | DoubleToLong  => "(long)"
             case DoubleToInt | LongToInt   => "(int)"
@@ -294,9 +293,6 @@ object Printers {
             case !== => "!=="
 
             case String_+ => "+[string]"
-
-            case `in`         => "in"
-            case `instanceof` => "instanceof"
 
             case Int_+ => "+[int]"
             case Int_- => "-[int]"

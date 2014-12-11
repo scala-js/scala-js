@@ -1647,7 +1647,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def genTypeOfTest(typeString: String) = {
         js.BinaryOp(js.BinaryOp.===,
-            js.UnaryOp(js.UnaryOp.typeof, value),
+            js.JSUnaryOp("typeof", value),
             js.StringLiteral(typeString))
       }
 
@@ -1662,7 +1662,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                 s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
             js.BooleanLiteral(true)
           case sym =>
-            js.BinaryOp(js.BinaryOp.instanceof, value, genGlobalJSObject(sym))
+            js.Unbox(
+                js.JSBinaryOp("instanceof", value, genGlobalJSObject(sym)), 'Z')
         }
       } else {
         val refType = toReferenceType(to)
@@ -2933,7 +2934,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.BinaryOp(js.BinaryOp.===, arg, js.Undefined())
             case TYPEOF =>
               // js.typeOf(arg)
-              js.UnaryOp(js.UnaryOp.typeof, arg)
+              genAsInstanceOf(js.JSUnaryOp("typeof", arg), StringClass.tpe)
 
             case OBJPROPS =>
               // js.Object.properties(arg)
@@ -2961,8 +2962,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               val temp = freshLocalIdent()
               js.Block(
                   js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
-                  js.BinaryOp(js.BinaryOp.in, arg2,
-                      js.VarRef(temp, mutable = false)(jstpe.AnyType)))
+                  js.Unbox(js.JSBinaryOp("in", arg2,
+                      js.VarRef(temp, mutable = false)(jstpe.AnyType)), 'Z'))
           }
       })
     }
