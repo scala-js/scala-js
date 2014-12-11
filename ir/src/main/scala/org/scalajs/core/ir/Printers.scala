@@ -437,14 +437,47 @@ object Printers {
         case JSDelete(prop) =>
           print("delete ", prop)
 
-        case JSUnaryOp("typeof", lhs) =>
-          print("typeof(", lhs, ")")
-
         case JSUnaryOp(op, lhs) =>
-          print("(", op, lhs, ")")
+          import JSUnaryOp._
+          print("(", (op: @switch) match {
+            case + => "+"
+            case - => "-"
+            case ~ => "~"
+            case ! => "!"
+
+            case `typeof` => "typeof "
+          }, lhs, ")")
 
         case JSBinaryOp(op, lhs, rhs) =>
-          print("(", lhs, " ", op, " ", rhs, ")")
+          import JSBinaryOp._
+          print("(", lhs, " ", (op: @switch) match {
+            case === => "==="
+            case !== => "!=="
+
+            case + => "+"
+            case - => "-"
+            case * => "*"
+            case / => "/"
+            case % => "%"
+
+            case |   => "|"
+            case &   => "&"
+            case ^   => "^"
+            case <<  => "<<"
+            case >>  => ">>"
+            case >>> => ">>>"
+
+            case <  => "<"
+            case <= => "<="
+            case >  => ">"
+            case >= => ">="
+
+            case && => "&&"
+            case || => "||"
+
+            case `in`         => "in"
+            case `instanceof` => "instanceof"
+          }, " ", rhs, ")")
 
         case JSArrayConstr(items) =>
           printRow(items, "[", ", ", "]")

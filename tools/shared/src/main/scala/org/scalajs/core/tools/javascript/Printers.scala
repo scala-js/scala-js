@@ -229,14 +229,47 @@ object Printers {
         case Delete(prop) =>
           print("delete ", prop)
 
-        case UnaryOp("typeof", lhs) =>
-          print("typeof(", lhs, ")")
-
         case UnaryOp(op, lhs) =>
-          print("(", op, lhs, ")")
+          import ir.Trees.JSUnaryOp._
+          print("(", (op: @switch) match {
+            case + => "+"
+            case - => "-"
+            case ~ => "~"
+            case ! => "!"
+
+            case `typeof` => "typeof "
+          }, lhs, ")")
 
         case BinaryOp(op, lhs, rhs) =>
-          print("(", lhs, " ", op, " ", rhs, ")")
+          import ir.Trees.JSBinaryOp._
+          print("(", lhs, " ", (op: @switch) match {
+            case === => "==="
+            case !== => "!=="
+
+            case + => "+"
+            case - => "-"
+            case * => "*"
+            case / => "/"
+            case % => "%"
+
+            case |   => "|"
+            case &   => "&"
+            case ^   => "^"
+            case <<  => "<<"
+            case >>  => ">>"
+            case >>> => ">>>"
+
+            case <  => "<"
+            case <= => "<="
+            case >  => ">"
+            case >= => ">="
+
+            case && => "&&"
+            case || => "||"
+
+            case `in`         => "in"
+            case `instanceof` => "instanceof"
+          }, " ", rhs, ")")
 
         case ArrayConstr(items) =>
           printRow(items, "[", ", ", "]")

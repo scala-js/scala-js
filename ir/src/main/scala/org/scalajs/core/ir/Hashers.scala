@@ -296,12 +296,12 @@ object Hashers {
 
         case JSUnaryOp(op, lhs) =>
           mixTag(TagJSUnaryOp)
-          mixString(op)
+          mixInt(op)
           mixTree(lhs)
 
         case JSBinaryOp(op, lhs, rhs) =>
           mixTag(TagJSBinaryOp)
-          mixString(op)
+          mixInt(op)
           mixTree(lhs)
           mixTree(rhs)
 

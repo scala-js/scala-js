@@ -11,6 +11,7 @@ package org.scalajs.core.tools.javascript
 
 import scala.language.implicitConversions
 
+import org.scalajs.core.ir
 import org.scalajs.core.ir.Position
 
 import Trees._
@@ -28,16 +29,16 @@ private[javascript] object TreeDSL {
     // Some operators that we use
 
     def ===(that: Tree)(implicit pos: Position): Tree =
-      BinaryOp("===", self, that)
+      BinaryOp(ir.Trees.JSBinaryOp.===, self, that)
     def ===(that: String)(implicit pos: Position): Tree =
-      BinaryOp("===", self, StringLiteral(that))
+      BinaryOp(ir.Trees.JSBinaryOp.===, self, StringLiteral(that))
 
     def unary_!()(implicit pos: Position): Tree =
-      UnaryOp("!", self)
+      UnaryOp(ir.Trees.JSUnaryOp.!, self)
     def &&(that: Tree)(implicit pos: Position): Tree =
-      BinaryOp("&&", self, that)
+      BinaryOp(ir.Trees.JSBinaryOp.&&, self, that)
     def ||(that: Tree)(implicit pos: Position): Tree =
-      BinaryOp("||", self, that)
+      BinaryOp(ir.Trees.JSBinaryOp.||, self, that)
 
     // Other constructs
 
@@ -46,5 +47,5 @@ private[javascript] object TreeDSL {
   }
 
   def typeof(expr: Tree)(implicit pos: Position): Tree =
-    UnaryOp("typeof", expr)
+    UnaryOp(ir.Trees.JSUnaryOp.typeof, expr)
 }

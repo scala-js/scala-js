@@ -250,10 +250,10 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       envField("is") DOT classIdent :=
         js.Function(List(objParam), js.Return(className match {
           case Definitions.ObjectClass =>
-            js.BinaryOp("!==", obj, js.Null())
+            js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
           case Definitions.StringClass =>
-            js.UnaryOp("typeof", obj) === js.StringLiteral("string")
+            js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
           case _ =>
             var test = (obj && (obj DOT "$classData") &&
@@ -261,13 +261,13 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
             if (isAncestorOfString)
               test = test || (
-                  js.UnaryOp("typeof", obj) === js.StringLiteral("string"))
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
             if (isAncestorOfHijackedNumberClass)
               test = test || (
-                  js.UnaryOp("typeof", obj) === js.StringLiteral("number"))
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
             if (isAncestorOfBoxedBooleanClass)
               test = test || (
-                  js.UnaryOp("typeof", obj) === js.StringLiteral("boolean"))
+                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
 
             !(!test)
         }))
@@ -332,9 +332,9 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
                   arrayDepthVarDef,
                   js.Return {
                     // Array[A] </: Array[Array[A]]
-                    !js.BinaryOp("<", arrayDepth, depth) && (
+                    !js.BinaryOp(JSBinaryOp.<, arrayDepth, depth) && (
                       // Array[Array[A]] <: Array[Object]
-                      js.BinaryOp(">", arrayDepth, depth) ||
+                      js.BinaryOp(JSBinaryOp.>, arrayDepth, depth) ||
                       // Array[Int] </: Array[Object]
                       !js.BracketSelect(data DOT "arrayBase", js.StringLiteral("isPrimitive"))
                     )
@@ -557,7 +557,8 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     for (i <- 0 until parts.length-1) {
       namespace = js.BracketSelect(namespace, js.StringLiteral(parts(i)))
       statements +=
-        js.Assign(namespace, js.BinaryOp("||", namespace, js.ObjectConstr(Nil)))
+        js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
+            namespace, js.ObjectConstr(Nil)))
     }
     val lhs = js.BracketSelect(namespace, js.StringLiteral(parts.last))
     (js.Block(statements.result()), lhs)

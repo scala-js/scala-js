@@ -417,8 +417,20 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably ++ and --
    */
-  case class JSUnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree {
+  case class JSUnaryOp(op: JSUnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = AnyType
+  }
+
+  object JSUnaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val + = 1
+    final val - = 2
+    final val ~ = 3
+    final val ! = 4
+
+    final val typeof = 5
   }
 
   /** Binary operation (always preserves pureness).
@@ -426,8 +438,40 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably +=, -=, *=, /= and %=
    */
-  case class JSBinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
+  case class JSBinaryOp(op: JSBinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = AnyType
+  }
+
+  object JSBinaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val === = 1
+    final val !== = 2
+
+    final val + = 3
+    final val - = 4
+    final val * = 5
+    final val / = 6
+    final val % = 7
+
+    final val |   = 8
+    final val &   = 9
+    final val ^   = 10
+    final val <<  = 11
+    final val >>  = 12
+    final val >>> = 13
+
+    final val <  = 14
+    final val <= = 15
+    final val >  = 16
+    final val >= = 17
+
+    final val && = 18
+    final val || = 19
+
+    final val in         = 20
+    final val instanceof = 21
   }
 
   case class JSArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree {
