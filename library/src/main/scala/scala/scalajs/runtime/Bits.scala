@@ -63,7 +63,7 @@ object Bits {
    */
   def numberHashCode(value: Double): Int = {
     val iv = value.toInt
-    if (iv == value) iv
+    if (iv == value && 1.0/value != Double.NegativeInfinity) iv
     else doubleToLongBits(value).hashCode()
   }
 

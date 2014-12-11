@@ -151,6 +151,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
+    val DoubleModuleClass = lookupClass("jl_Double$")
+    DoubleModuleClass.accessModule()
+    DoubleModuleClass.callMethod("compare__D__D__I")
+
     val RTStringModuleClass = lookupClass("sjsr_RuntimeString$")
     RTStringModuleClass.accessModule()
     RTStringModuleClass.callMethod("hashCode__T__I")

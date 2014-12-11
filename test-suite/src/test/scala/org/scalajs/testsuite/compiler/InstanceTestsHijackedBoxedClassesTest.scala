@@ -24,6 +24,17 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect((684321L    : Any).isInstanceOf[Long]   ).toBeTruthy
       expect((3.14f      : Any).isInstanceOf[Float]  ).toBeTruthy
       expect((3.14       : Any).isInstanceOf[Double] ).toBeTruthy
+
+      expect((45  : Any).isInstanceOf[Float] ).toBeTruthy
+      expect((45  : Any).isInstanceOf[Double]).toBeTruthy
+      expect((3.0f: Any).isInstanceOf[Int]   ).toBeTruthy
+      expect((3.0f: Any).isInstanceOf[Double]).toBeTruthy
+      expect((5.0 : Any).isInstanceOf[Int]   ).toBeTruthy
+      expect((5.0 : Any).isInstanceOf[Float] ).toBeTruthy
+
+      expect((0.0 : Any).isInstanceOf[Int]).toBeTruthy
+      expect((0.0 : Any).isInstanceOf[Float]).toBeTruthy
+      expect((-0.0: Any).isInstanceOf[Float]).toBeTruthy
     }
 
     it("should support isInstanceOf (negative)") {
@@ -36,6 +47,8 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect(('d'  : Any).isInstanceOf[Long]   ).toBeFalsy
       expect(('f'  : Any).isInstanceOf[Float]  ).toBeFalsy
       expect(('g'  : Any).isInstanceOf[Double] ).toBeFalsy
+
+      expect((-0.0: Any).isInstanceOf[Int]).toBeFalsy
     }
 
     it("should support asInstanceOf (positive)") {
@@ -62,6 +75,8 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect(() => ('d'  : Any).asInstanceOf[Long]   ).toThrow
       expect(() => ('f'  : Any).asInstanceOf[Float]  ).toThrow
       expect(() => ('g'  : Any).asInstanceOf[Double] ).toThrow
+
+      expect(() => (-0.0: Any).asInstanceOf[Int]).toThrow
     }
 
     it("should support isInstanceOf via java.lang.Class (positive)") {
@@ -77,6 +92,10 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       test(684321L    , classOf[java.lang.Long])
       test(3.14f      , classOf[java.lang.Float])
       test(3.14       , classOf[java.lang.Double])
+
+      test(0.0, classOf[java.lang.Integer])
+      test(0.0, classOf[java.lang.Double])
+      test(-0.0, classOf[java.lang.Double])
     }
 
     it("should support isInstanceOf via java.lang.Class (negative)") {
@@ -92,6 +111,8 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       test('d'  , classOf[java.lang.Long])
       test('e'  , classOf[java.lang.Float])
       test('f'  , classOf[java.lang.Double])
+
+      test(-0.0, classOf[java.lang.Integer])
     }
 
   }

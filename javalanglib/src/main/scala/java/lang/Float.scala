@@ -65,19 +65,8 @@ object Float {
   @inline def toString(f: scala.Float): String =
     "" + f
 
-  def compare(a: scala.Float, b: scala.Float): scala.Int = {
-    // NaN must equal itself, and be greater than anything else
-    if (isNaN(a)) {
-      if (isNaN(b)) 0
-      else 1
-    } else if (isNaN(b)) {
-      -1
-    } else {
-      if (a == b) 0
-      else if (a < b) -1
-      else 1
-    }
-  }
+  @inline def compare(a: scala.Float, b: scala.Float): scala.Int =
+    Double.compare(a, b)
 
   @inline protected def equals(a: scala.Float, b: scala.Float): scala.Boolean =
     a == b || (isNaN(a) && isNaN(b))

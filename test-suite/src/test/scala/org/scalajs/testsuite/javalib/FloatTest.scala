@@ -19,8 +19,10 @@ object FloatTest extends JasmineTest {
   describe("java.lang.Float") {
 
     it("should provide proper `equals`") {
-      expect(Float.box(0.0f) == Float.box(-0.0f)).toBeTruthy
-      expect(Float.box(Float.NaN) == Float.box(Float.NaN)).toBeTruthy
+      expect(0.0f.equals(0.0f)).toBeTruthy
+      expect(-0.0f.equals(-0.0f)).toBeTruthy
+      expect(0.0f.equals(-0.0f)).toBeFalsy
+      expect(Float.NaN.equals(Float.NaN)).toBeTruthy
     }
 
     it("hashCode") {
@@ -35,7 +37,7 @@ object FloatTest extends JasmineTest {
       }
 
       test(0.0f, 0)
-      test(-0.0f, 0)
+      test(-0.0f, -2147483648)
       test(1234.0f, 1234)
       test(1.5f, 1073217536)
       test(-54f, -54)
@@ -109,6 +111,10 @@ object FloatTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Float.NaN, Float.NaN)).toEqual(0)
+
+      // And -0.0 < 0.0
+      expect(compare(-0.0f, 0.0f)).toBeLessThan(0)
+      expect(compare(0.0f, -0.0f)).toBeGreaterThan(0)
     }
 
     it("should be a Comparable") {
@@ -122,6 +128,10 @@ object FloatTest extends JasmineTest {
 
       // From compareTo's point of view, NaN is equal to NaN
       expect(compare(Float.NaN, Float.NaN)).toEqual(0)
+
+      // And -0.0 < 0.0
+      expect(compare(-0.0f, 0.0f)).toBeLessThan(0)
+      expect(compare(0.0f, -0.0f)).toBeGreaterThan(0)
     }
 
     it("should provide isInfinite - #515") {
