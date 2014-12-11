@@ -291,11 +291,11 @@ object Serializers {
 
         case JSUnaryOp(op, lhs) =>
           writeByte(TagJSUnaryOp)
-          writeString(op); writeTree(lhs)
+          writeInt(op); writeTree(lhs)
 
         case JSBinaryOp(op, lhs, rhs) =>
           writeByte(TagJSBinaryOp)
-          writeString(op); writeTree(lhs); writeTree(rhs)
+          writeInt(op); writeTree(lhs); writeTree(rhs)
 
         case JSArrayConstr(items) =>
           writeByte(TagJSArrayConstr)
@@ -607,8 +607,8 @@ object Serializers {
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
         case TagJSDelete             => JSDelete(readTree())
-        case TagJSUnaryOp            => JSUnaryOp(readString(), readTree())
-        case TagJSBinaryOp           => JSBinaryOp(readString(), readTree(), readTree())
+        case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
+        case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))

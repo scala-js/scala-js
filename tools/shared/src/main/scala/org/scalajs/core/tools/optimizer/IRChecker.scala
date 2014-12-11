@@ -43,10 +43,19 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       classDef <- allClassDefs
       if analyzer.classInfos(classDef.name.name).isNeededAtAll
     } {
+      implicit val ctx = ErrorContext(classDef)
       checkStaticMembers(classDef)
       classDef.kind match {
-        case ClassKind.Class | ClassKind.ModuleClass => checkClass(classDef)
+        case ClassKind.RawJSType | ClassKind.Interface =>
+          if (classDef.defs exists {
+            case m: MethodDef if m.static => false
+            case _                        => true
+          }) {
+            reportError(s"${classDef.name} of kind ${classDef.kind} cannot "+
+                "have instance members")
+          }
         case _ =>
+          checkScalaClassDef(classDef)
       }
     }
     errorCount == 0
@@ -68,9 +77,15 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     }
   }
 
-  def checkClass(classDef: ClassDef): Unit = {
+  def checkScalaClassDef(classDef: ClassDef): Unit = {
+    assert(classDef.kind != ClassKind.RawJSType &&
+        classDef.kind != ClassKind.Interface)
+
     if (!analyzer.classInfos(classDef.name.name).isAnySubclassInstantiated)
       return
+
+    val isNormalClass =
+      classDef.kind == ClassKind.Class || classDef.kind == ClassKind.ModuleClass
 
     for (member <- classDef.defs) {
       implicit val ctx = ErrorContext(member)
@@ -79,19 +94,19 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         case m: MethodDef if m.static =>
 
         // Scala declarations
-        case v @ VarDef(_, _, _, _) =>
+        case v @ VarDef(_, _, _, _) if isNormalClass =>
           checkFieldDef(v, classDef)
         case m: MethodDef if m.name.isInstanceOf[Ident] =>
           checkMethodDef(m, classDef)
 
         // Exports
-        case m: MethodDef if m.name.isInstanceOf[StringLiteral] =>
+        case m: MethodDef if m.name.isInstanceOf[StringLiteral] && isNormalClass =>
           checkExportedMethodDef(m, classDef)
-        case member @ PropertyDef(_: StringLiteral, _, _, _) =>
+        case member @ PropertyDef(_: StringLiteral, _, _, _) if isNormalClass =>
           checkExportedPropertyDef(member, classDef)
-        case member @ ConstructorExportDef(_, _, _) =>
+        case member @ ConstructorExportDef(_, _, _) if isNormalClass =>
           checkConstructorExportDef(member, classDef)
-        case member @ ModuleExportDef(_) =>
+        case member @ ModuleExportDef(_) if isNormalClass =>
           checkModuleExportDef(member, classDef)
 
         // Anything else is illegal
@@ -486,8 +501,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         (op: @switch) match {
-          case `typeof` =>
-            typecheckExpr(lhs, env)
           case IntToLong =>
             typecheckExpect(lhs, env, IntType)
           case LongToInt | LongToDouble =>
@@ -502,12 +515,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         import BinaryOp._
         (op: @switch) match {
           case === | !== | String_+ =>
-            typecheckExpr(lhs, env)
-            typecheckExpr(rhs, env)
-          case `in` =>
-            typecheckExpect(lhs, env, ClassType(StringClass))
-            typecheckExpr(rhs, env)
-          case `instanceof` =>
             typecheckExpr(lhs, env)
             typecheckExpr(rhs, env)
           case Int_+ | Int_- | Int_* | Int_/ | Int_% |

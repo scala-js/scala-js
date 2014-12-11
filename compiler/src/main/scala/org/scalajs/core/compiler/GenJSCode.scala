@@ -478,10 +478,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen definitions for the fields of a class.
      *  The fields are initialized with the zero of their types.
      */
-    def genClassFields(cd: ClassDef): List[js.VarDef] = withScopedVars(
-        currentMethodInfoBuilder :=
-          currentClassInfoBuilder.addMethod("__init__", isStatic = false)
-    ) {
+    def genClassFields(cd: ClassDef): List[js.VarDef] = {
       // Non-method term members are fields, except for module members.
       (for {
         f <- currentClassSym.info.decls
@@ -1650,7 +1647,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def genTypeOfTest(typeString: String) = {
         js.BinaryOp(js.BinaryOp.===,
-            js.UnaryOp(js.UnaryOp.typeof, value),
+            js.JSUnaryOp(js.JSUnaryOp.typeof, value),
             js.StringLiteral(typeString))
       }
 
@@ -1665,7 +1662,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                 s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
             js.BooleanLiteral(true)
           case sym =>
-            js.BinaryOp(js.BinaryOp.instanceof, value, genGlobalJSObject(sym))
+            js.Unbox(js.JSBinaryOp(
+                js.JSBinaryOp.instanceof, value, genGlobalJSObject(sym)), 'Z')
         }
       } else {
         val refType = toReferenceType(to)
@@ -2936,7 +2934,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.BinaryOp(js.BinaryOp.===, arg, js.Undefined())
             case TYPEOF =>
               // js.typeOf(arg)
-              js.UnaryOp(js.UnaryOp.typeof, arg)
+              genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
+                  StringClass.tpe)
 
             case OBJPROPS =>
               // js.Object.properties(arg)
@@ -2964,8 +2963,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               val temp = freshLocalIdent()
               js.Block(
                   js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
-                  js.BinaryOp(js.BinaryOp.in, arg2,
-                      js.VarRef(temp, mutable = false)(jstpe.AnyType)))
+                  js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg2,
+                      js.VarRef(temp, mutable = false)(jstpe.AnyType)), 'Z'))
           }
       })
     }
@@ -2986,7 +2985,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = tree.symbol
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
-      val funName = sym.unexpandedName.decoded
       val receiver = genExpr(receiver0)
       val argArray = genPrimitiveJSArgs(sym, args0)
 
@@ -2998,20 +2996,17 @@ abstract class GenJSCode extends plugins.PluginComponent
         sym.hasAnnotation(JSNameAnnotation) ||
         sym.hasAnnotation(JSBracketAccessAnnotation)
 
-      val boxedResult = funName match {
-        case "unary_+" | "unary_-" | "unary_~" | "unary_!" =>
-          assert(argc == 0)
-          js.JSUnaryOp(funName.substring(funName.length-1), receiver)
+      val boxedResult = sym.name match {
+        case JSUnaryOpMethodName(code) if argc == 0 =>
+          js.JSUnaryOp(code, receiver)
 
-        case "+" | "-" | "*" | "/" | "%" | "<<" | ">>" | ">>>" |
-             "&" | "|" | "^" | "&&" | "||" | "<" | ">" | "<=" | ">=" =>
-          assert(argc == 1)
-          js.JSBinaryOp(funName, receiver, args.head)
+        case JSBinaryOpMethodName(code) if argc == 1 =>
+          js.JSBinaryOp(code, receiver, args.head)
 
-        case "apply" if receiver0.tpe.typeSymbol.isSubClass(JSThisFunctionClass) =>
+        case nme.apply if receiver0.tpe.typeSymbol.isSubClass(JSThisFunctionClass) =>
           js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
 
-        case "apply" if !hasExplicitJSEncoding =>
+        case nme.apply if !hasExplicitJSEncoding =>
           argArray match {
             case js.JSArrayConstr(args) =>
               js.JSFunctionApply(receiver, args)
@@ -3066,6 +3061,46 @@ abstract class GenJSCode extends plugins.PluginComponent
           fromAny(boxedResult,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
+    }
+
+    private object JSUnaryOpMethodName {
+      private val map = Map(
+        nme.UNARY_+ -> js.JSUnaryOp.+,
+        nme.UNARY_- -> js.JSUnaryOp.-,
+        nme.UNARY_~ -> js.JSUnaryOp.~,
+        nme.UNARY_! -> js.JSUnaryOp.!
+      )
+
+      def unapply(name: TermName): Option[js.JSUnaryOp.Code] =
+        map.get(name)
+    }
+
+    private object JSBinaryOpMethodName {
+      private val map = Map(
+        nme.ADD -> js.JSBinaryOp.+,
+        nme.SUB -> js.JSBinaryOp.-,
+        nme.MUL -> js.JSBinaryOp.*,
+        nme.DIV -> js.JSBinaryOp./,
+        nme.MOD -> js.JSBinaryOp.%,
+
+        nme.LSL -> js.JSBinaryOp.<<,
+        nme.ASR -> js.JSBinaryOp.>>,
+        nme.LSR -> js.JSBinaryOp.>>>,
+        nme.OR  -> js.JSBinaryOp.|,
+        nme.AND -> js.JSBinaryOp.&,
+        nme.XOR -> js.JSBinaryOp.^,
+
+        nme.LT -> js.JSBinaryOp.<,
+        nme.LE -> js.JSBinaryOp.<=,
+        nme.GT -> js.JSBinaryOp.>,
+        nme.GE -> js.JSBinaryOp.>=,
+
+        nme.ZAND -> js.JSBinaryOp.&&,
+        nme.ZOR  -> js.JSBinaryOp.||
+      )
+
+      def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
+        map.get(name)
     }
 
     /** Gen JS code to call a primitive JS method with variadic parameters. */

@@ -132,8 +132,8 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       Info("c"),
       Info("h"),
       Info("s", isStatics = true),
-      Info("n", isModule = true),
-      Info("m", isModule = true),
+      Info("n"),
+      Info("m"),
       Info("is"),
       Info("as"),
       Info("isArrayOf"),
@@ -142,12 +142,12 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   private def lazifyScalaJSFields(scope: Scriptable) = {
     val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
 
-    def makeLazyScalaJSScope(base: Scriptable, isModule: Boolean, isStatics: Boolean) =
-      new LazyScalaJSScope(this, scope, base, isModule, isStatics)
+    def makeLazyScalaJSScope(base: Scriptable, isStatics: Boolean) =
+      new LazyScalaJSScope(this, scope, base, isStatics)
 
-    for (Info(name, isModule, isStatics) <- scalaJSLazyFields) {
+    for (Info(name, isStatics) <- scalaJSLazyFields) {
       val base = ScalaJS.get(name, ScalaJS).asInstanceOf[Scriptable]
-      val lazified = makeLazyScalaJSScope(base, isModule, isStatics)
+      val lazified = makeLazyScalaJSScope(base, isStatics)
       ScalaJS.put(name, ScalaJS, lazified)
     }
   }
@@ -191,8 +191,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
 }
 
 object ScalaJSCoreLib {
-  private case class Info(name: String,
-      isModule: Boolean = false, isStatics: Boolean = false)
+  private case class Info(name: String, isStatics: Boolean = false)
 
   private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 

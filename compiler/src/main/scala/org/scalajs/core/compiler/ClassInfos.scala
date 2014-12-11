@@ -102,7 +102,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       instantiatedClasses += patchClassName(encodeClassFullName(classSym))
 
     def accessesModule(moduleClassSym: Symbol): Unit =
-      accessedModules += patchModuleName(encodeModuleFullName(moduleClassSym))
+      accessedModules += patchClassName(encodeClassFullName(moduleClassSym))
 
     def accessesClassData(refType: jstpe.ReferenceType): Unit = {
       val className = refType match {
@@ -126,11 +126,6 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     private def patchClassName(name: String): String = name match {
       case "jl_String$" => "sjsr_RuntimeString$"
-      case _ => name
-    }
-
-    private def patchModuleName(name: String): String = name match {
-      case "jl_String" => "sjsr_RuntimeString"
       case _ => name
     }
 

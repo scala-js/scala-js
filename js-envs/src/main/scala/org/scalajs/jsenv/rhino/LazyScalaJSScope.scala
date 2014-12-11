@@ -29,7 +29,6 @@ class LazyScalaJSScope(
     coreLib: ScalaJSCoreLib,
     globalScope: Scriptable,
     base: Scriptable,
-    isModule: Boolean = false,
     isStatics: Boolean = false) extends Scriptable {
 
   private val fields = mutable.HashMap.empty[String, Any]
@@ -51,7 +50,6 @@ class LazyScalaJSScope(
 
   private def propNameToEncodedName(name: String): String = {
     if (isStatics) name.split("__")(0)
-    else if (isModule) name + "$"
     else name
   }
 

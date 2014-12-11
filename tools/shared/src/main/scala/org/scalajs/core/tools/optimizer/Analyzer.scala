@@ -15,6 +15,7 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir
 import ir.{ClassKind, Definitions, Infos}
+import Definitions.{isConstructorName, isReflProxyName}
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.LongImpl
@@ -94,10 +95,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         c.linkClasses()
         c
     }
-  }
-
-  def lookupModule(encodedName: String): ClassInfo = {
-    lookupClass(encodedName+"$")
   }
 
   linkClasses()
@@ -199,7 +196,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     // Don't lookupClass here, since we don't want to create any
     // symbols. If a symbol doesn't exist, we fail.
     info match {
-      case ReachObject(name) => classInfos(name + "$").accessModule()
+      case ReachModule(name) => classInfos(name).accessModule()
       case Instantiate(name) => classInfos(name).instantiated()
       case ReachMethod(className, methodName, static) =>
         classInfos(className).callMethod(methodName, static)
@@ -359,8 +356,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def accessModule()(implicit from: From): Unit = {
-      assert(isStaticModule, s"Cannot call accessModule() on non-module $this")
-      if (!isModuleAccessed) {
+      if (!isStaticModule) {
+        logger.warn(s"Cannot access module for non-module $this")
+        warnCallStack()
+      } else if (!isModuleAccessed) {
         logger.debugIndent(s"$this.isModuleAccessed = true") {
           isModuleAccessed = true
           instantiated()
@@ -389,7 +388,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
           if (instantiatedFrom.isEmpty)
             instantiatedFrom = Some(from)
           accessData()
-          methodInfos.get("__init__").foreach(_.reachStatic())
         }
       }
     }
@@ -522,7 +520,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         implicit val from = FromMethod(this)
 
         for (moduleName <- data.accessedModules) {
-          lookupModule(moduleName).accessModule()
+          lookupClass(moduleName).accessModule()
         }
 
         for (className <- data.instantiatedClasses) {
@@ -554,27 +552,16 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
   }
 
-  def isReflProxyName(encodedName: String): Boolean = {
-    encodedName.endsWith("__") &&
-    (encodedName != "init___") && (encodedName != "__init__")
-  }
-
-  def isConstructorName(encodedName: String): Boolean =
-    encodedName.startsWith("init___") || (encodedName == "__init__")
-
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
-    val kind =
-      if (encodedName.endsWith("$")) ClassKind.ModuleClass // wild guess
-      else ClassKind.Class
+    // We create a module class to avoid cascading errors
     Infos.ClassInfo(
         name = s"<$encodedName>",
         encodedName = encodedName,
         isExported = false,
-        kind = kind,
-        superClass = if (kind.isClass) "O" else "",
+        kind = ClassKind.ModuleClass,
+        superClass = "O",
         parents = List("O"),
         methods = List(
-            createMissingMethodInfo("__init__"),
             createMissingMethodInfo("init___"))
     )
   }

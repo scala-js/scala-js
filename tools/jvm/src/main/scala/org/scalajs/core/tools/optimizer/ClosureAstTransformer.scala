@@ -1,5 +1,7 @@
 package org.scalajs.core.tools.optimizer
 
+import scala.annotation.switch
+
 import org.scalajs.core.ir
 import ir.Position
 import ir.Position.NoPosition
@@ -327,47 +329,49 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
 
   // Helpers for IR
   @inline
-  private def mkUnaryOp(op: String, lhs: Node): Node = {
-    val tok = op match {
-      case "!"      => Token.NOT
-      case "~"      => Token.BITNOT
-      case "+"      => Token.POS
-      case "-"      => Token.NEG
-      case "typeof" => Token.TYPEOF
-      case _        => throw new TransformException(s"Unhandled unary op: $op")
+  private def mkUnaryOp(op: UnaryOp.Code, lhs: Node): Node = {
+    import ir.Trees.JSUnaryOp._
+    val tok = (op: @switch) match {
+      case !        => Token.NOT
+      case ~        => Token.BITNOT
+      case +        => Token.POS
+      case -        => Token.NEG
+      case `typeof` => Token.TYPEOF
     }
 
     new Node(tok, lhs)
   }
 
   @inline
-  private def mkBinaryOp(op: String, lhs: Node, rhs: Node): Node = {
-    val tok = op match {
-      case "|"          => Token.BITOR
-      case "&"          => Token.BITAND
-      case "^"          => Token.BITXOR
-      case "=="         => Token.EQ
-      case "!="         => Token.NE
-      case "<"          => Token.LT
-      case "<="         => Token.LE
-      case ">"          => Token.GT
-      case ">="         => Token.GE
-      case "<<"         => Token.LSH
-      case ">>"         => Token.RSH
-      case ">>>"        => Token.URSH
-      case "+"          => Token.ADD
-      case "-"          => Token.SUB
-      case "*"          => Token.MUL
-      case "/"          => Token.DIV
-      case "%"          => Token.MOD
-      case "==="        => Token.SHEQ
-      case "!=="        => Token.SHNE
-      case "in"         => Token.IN
-      case "instanceof" => Token.INSTANCEOF
-      case "||"         => Token.OR
-      case "&&"         => Token.AND
-      case _ =>
-        throw new TransformException(s"Unhandled binary op: $op")
+  private def mkBinaryOp(op: BinaryOp.Code, lhs: Node, rhs: Node): Node = {
+    import ir.Trees.JSBinaryOp._
+    val tok = (op: @switch) match {
+      case === => Token.SHEQ
+      case !== => Token.SHNE
+
+      case + => Token.ADD
+      case - => Token.SUB
+      case * => Token.MUL
+      case / => Token.DIV
+      case % => Token.MOD
+
+      case |   => Token.BITOR
+      case &   => Token.BITAND
+      case ^   => Token.BITXOR
+      case <<  => Token.LSH
+      case >>  => Token.RSH
+      case >>> => Token.URSH
+
+      case <  => Token.LT
+      case <= => Token.LE
+      case >  => Token.GT
+      case >= => Token.GE
+
+      case || => Token.OR
+      case && => Token.AND
+
+      case `in`         => Token.IN
+      case `instanceof` => Token.INSTANCEOF
     }
 
     new Node(tok, lhs, rhs)

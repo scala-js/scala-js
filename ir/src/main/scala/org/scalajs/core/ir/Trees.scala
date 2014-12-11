@@ -215,7 +215,6 @@ object Trees {
   case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     import UnaryOp._
     val tpe = (op: @switch) match {
-      case `typeof`                 => StringType
       case LongToInt | DoubleToInt  => IntType
       case IntToLong | DoubleToLong => LongType
       case DoubleToFloat            => FloatType
@@ -228,16 +227,14 @@ object Trees {
     /** Codes are raw Ints to be able to write switch matches on them. */
     type Code = Int
 
-    final val typeof = 1
+    final val Boolean_! = 1
 
-    final val Boolean_! = 2
-
-    final val IntToLong     = 3
-    final val LongToInt     = 4
-    final val LongToDouble  = 5
-    final val DoubleToInt   = 6
-    final val DoubleToFloat = 7
-    final val DoubleToLong  = 8
+    final val IntToLong     = 2
+    final val LongToInt     = 3
+    final val LongToDouble  = 4
+    final val DoubleToInt   = 5
+    final val DoubleToFloat = 6
+    final val DoubleToLong  = 7
   }
 
   /** Binary operation (always preserves pureness). */
@@ -245,7 +242,6 @@ object Trees {
     import BinaryOp._
     val tpe = (op: @switch) match {
       case === | !== |
-          `in` | `instanceof` |
           Num_== | Num_!= | Num_< | Num_<= | Num_> | Num_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
           Boolean_== | Boolean_!= | Boolean_| | Boolean_& =>
@@ -274,65 +270,62 @@ object Trees {
 
     final val String_+ = 3
 
-    final val in         = 4
-    final val instanceof = 5
+    final val Int_+ = 4
+    final val Int_- = 5
+    final val Int_* = 6
+    final val Int_/ = 7
+    final val Int_% = 8
 
-    final val Int_+ = 6
-    final val Int_- = 7
-    final val Int_* = 8
-    final val Int_/ = 9
-    final val Int_% = 10
+    final val Int_|   = 9
+    final val Int_&   = 10
+    final val Int_^   = 11
+    final val Int_<<  = 12
+    final val Int_>>> = 13
+    final val Int_>>  = 14
 
-    final val Int_|   = 11
-    final val Int_&   = 12
-    final val Int_^   = 13
-    final val Int_<<  = 14
-    final val Int_>>> = 15
-    final val Int_>>  = 16
+    final val Float_+ = 15
+    final val Float_- = 16
+    final val Float_* = 17
+    final val Float_/ = 18
+    final val Float_% = 19
 
-    final val Float_+ = 17
-    final val Float_- = 18
-    final val Float_* = 19
-    final val Float_/ = 20
-    final val Float_% = 21
+    final val Double_+ = 20
+    final val Double_- = 21
+    final val Double_* = 22
+    final val Double_/ = 23
+    final val Double_% = 24
 
-    final val Double_+ = 22
-    final val Double_- = 23
-    final val Double_* = 24
-    final val Double_/ = 25
-    final val Double_% = 26
+    final val Num_== = 25
+    final val Num_!= = 26
+    final val Num_<  = 27
+    final val Num_<= = 28
+    final val Num_>  = 29
+    final val Num_>= = 30
 
-    final val Num_== = 27
-    final val Num_!= = 28
-    final val Num_<  = 29
-    final val Num_<= = 30
-    final val Num_>  = 31
-    final val Num_>= = 32
+    final val Long_+ = 31
+    final val Long_- = 32
+    final val Long_* = 33
+    final val Long_/ = 34
+    final val Long_% = 35
 
-    final val Long_+ = 33
-    final val Long_- = 34
-    final val Long_* = 35
-    final val Long_/ = 36
-    final val Long_% = 37
+    final val Long_|   = 36
+    final val Long_&   = 37
+    final val Long_^   = 38
+    final val Long_<<  = 39
+    final val Long_>>> = 40
+    final val Long_>>  = 41
 
-    final val Long_|   = 38
-    final val Long_&   = 39
-    final val Long_^   = 40
-    final val Long_<<  = 41
-    final val Long_>>> = 42
-    final val Long_>>  = 43
+    final val Long_== = 42
+    final val Long_!= = 43
+    final val Long_<  = 44
+    final val Long_<= = 45
+    final val Long_>  = 46
+    final val Long_>= = 47
 
-    final val Long_== = 44
-    final val Long_!= = 45
-    final val Long_<  = 46
-    final val Long_<= = 47
-    final val Long_>  = 48
-    final val Long_>= = 49
-
-    final val Boolean_== = 50
-    final val Boolean_!= = 51
-    final val Boolean_|  = 52
-    final val Boolean_&  = 53
+    final val Boolean_== = 48
+    final val Boolean_!= = 49
+    final val Boolean_|  = 50
+    final val Boolean_&  = 51
   }
 
   case class NewArray(tpe: ArrayType, lengths: List[Tree])(implicit val pos: Position) extends Tree {
@@ -424,8 +417,20 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably ++ and --
    */
-  case class JSUnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree {
+  case class JSUnaryOp(op: JSUnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = AnyType
+  }
+
+  object JSUnaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val + = 1
+    final val - = 2
+    final val ~ = 3
+    final val ! = 4
+
+    final val typeof = 5
   }
 
   /** Binary operation (always preserves pureness).
@@ -433,8 +438,40 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably +=, -=, *=, /= and %=
    */
-  case class JSBinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
+  case class JSBinaryOp(op: JSBinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
     val tpe = AnyType
+  }
+
+  object JSBinaryOp {
+    /** Codes are raw Ints to be able to write switch matches on them. */
+    type Code = Int
+
+    final val === = 1
+    final val !== = 2
+
+    final val + = 3
+    final val - = 4
+    final val * = 5
+    final val / = 6
+    final val % = 7
+
+    final val |   = 8
+    final val &   = 9
+    final val ^   = 10
+    final val <<  = 11
+    final val >>  = 12
+    final val >>> = 13
+
+    final val <  = 14
+    final val <= = 15
+    final val >  = 16
+    final val >= = 17
+
+    final val && = 18
+    final val || = 19
+
+    final val in         = 20
+    final val instanceof = 21
   }
 
   case class JSArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree {

@@ -30,13 +30,12 @@ object JavaLangObject {
     superClass = "",
     parents = List(),
     methods = List(
-      MethodInfo("__init__"),
       MethodInfo("init___"),
       MethodInfo("hashCode__I",
         methodsCalled = Map(
           "jl_System$" -> List("identityHashCode__O__I")
         ),
-        accessedModules = List("jl_System")
+        accessedModules = List("jl_System$")
       ),
       MethodInfo("equals__O__Z",
         optimizerHints = inlineOptimizerHints
@@ -47,7 +46,7 @@ object JavaLangObject {
           "jl_CloneNotSupportedException" -> List("init___")
         ),
         instantiatedClasses = List("jl_CloneNotSupportedException"),
-        accessedModules = List("sjsr_package"),
+        accessedModules = List("sjsr_package$"),
         accessedClassData = List("jl_Cloneable"),
         optimizerHints = inlineOptimizerHints
       ),
@@ -59,7 +58,7 @@ object JavaLangObject {
           "jl_Class" -> List("getName__T"),
           "jl_Integer$" -> List("toHexString__I__T")
         ),
-        accessedModules = List("jl_Integer")
+        accessedModules = List("jl_Integer$")
       ),
       MethodInfo("finalize__V"),
       MethodInfo("clone__",

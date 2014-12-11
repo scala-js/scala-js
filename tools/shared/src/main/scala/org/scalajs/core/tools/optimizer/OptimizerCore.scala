@@ -3531,7 +3531,7 @@ private[optimizer] object OptimizerCore {
           addStaticMethodCalled(cls, method.name)
 
         case LoadModule(ClassType(cls)) =>
-          accessedModules += cls.stripSuffix("$")
+          accessedModules += cls
 
         case NewArray(tpe, _) =>
           addAccessedClassData(tpe)

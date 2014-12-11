@@ -151,14 +151,24 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably ++ and --
    */
-  case class UnaryOp(op: String, lhs: Tree)(implicit val pos: Position) extends Tree
+  case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree
+
+  object UnaryOp {
+    /** Codes are the same as in the IR. */
+    type Code = ir.Trees.JSUnaryOp.Code
+  }
 
   /** Binary operation (always preserves pureness).
    *
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably +=, -=, *=, /= and %=
    */
-  case class BinaryOp(op: String, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
+  case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
+
+  object BinaryOp {
+    /** Codes are the same as in the IR. */
+    type Code = ir.Trees.JSBinaryOp.Code
+  }
 
   case class ArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree
 
