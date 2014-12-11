@@ -27,7 +27,7 @@ class NodeJSEnv private (
   nodejsPath: String,
   addArgs: Seq[String],
   addEnv: Map[String, String],
-  sourceMap: Boolean
+  val sourceMap: Boolean
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
 
   def this(nodejsPath: String = "node", addArgs: Seq[String] = Seq.empty,

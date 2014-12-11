@@ -32,7 +32,7 @@ import org.mozilla.javascript._
 final class RhinoJSEnv private (
     semantics: Semantics,
     withDOM: Boolean,
-    sourceMap: Boolean
+    val sourceMap: Boolean
 ) extends ComJSEnv {
 
   import RhinoJSEnv._

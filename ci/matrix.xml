@@ -42,47 +42,44 @@
         'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
-    sbt ++$scala "testSuite/testOnly -- -trhino -tsource-maps" \
-                 "noIrCheckTest/testOnly -- -trhino -tsource-maps" \
+    sbt ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
-                 "noIrCheckTest/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
+        ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
-                 "noIrCheckTest/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
+        ++$scala testSuite/test noIrCheckTest/test \
         testSuite/clean &&
     sbt 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
+        ++$scala testSuite/test \
         testSuite/clean &&
     sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
-        ++$scala "testSuite/testOnly -- -trhino -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
+        ++$scala testSuite/test \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
+        ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
+        ++$scala testSuite/test \
         testSuite/clean &&
     sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps -tcompliant-asinstanceofs -tstrict-floats" \
+        ++$scala testSuite/test \
         testSuite/clean &&
     sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -tphantomjs" \
+        ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala "testSuite/testOnly -- -tphantomjs" \
+        ++$scala testSuite/test \
         testSuite/clean &&
     sbt 'set scalacOptions in testSuite += "-Xexperimental"' \
-        ++$scala "testSuite/testOnly -- -trhino -tsource-maps" \
+        ++$scala testSuite/test \
         'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
+        ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala "testSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" &&
+        ++$scala testSuite/test &&
     sbt 'set scalaJSStage in Global := FastOptStage' \
-        ++$scala "javalibExTestSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" \
+        ++$scala javalibExTestSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala "javalibExTestSuite/testOnly -- -ttypedarray -tnodejs -tsource-maps" &&
+        ++$scala javalibExTestSuite/test &&
     sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala partest/fetchScalaSource &&
     sh ci/checksizes.sh $scala &&
