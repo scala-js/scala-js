@@ -37,14 +37,14 @@ object JavaLangString {
         methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("hashCode__T__I")
         ),
-        accessedModules = List("sjsr_RuntimeString"),
+        accessedModules = List("sjsr_RuntimeString$"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__T__I",
         methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("compareTo__T__T__I")
         ),
-        accessedModules = List("sjsr_RuntimeString"),
+        accessedModules = List("sjsr_RuntimeString$"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("compareTo__O__I",
@@ -60,21 +60,21 @@ object JavaLangString {
         methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("charAt__T__I__C")
         ),
-        accessedModules = List("sjsr_RuntimeString"),
+        accessedModules = List("sjsr_RuntimeString$"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("length__I",
         methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("length__T__I")
         ),
-        accessedModules = List("sjsr_RuntimeString"),
+        accessedModules = List("sjsr_RuntimeString$"),
         optimizerHints = inlineOptimizerHints
       ),
       MethodInfo("subSequence__I__I__jl_CharSequence",
         methodsCalled = Map(
           "sjsr_RuntimeString$" -> List("subSequence__T__I__I__jl_CharSequence")
         ),
-        accessedModules = List("sjsr_RuntimeString"),
+        accessedModules = List("sjsr_RuntimeString$"),
         optimizerHints = inlineOptimizerHints
       )
     )

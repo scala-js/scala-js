@@ -447,13 +447,9 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
     require(tree.kind == ClassKind.ModuleClass,
         s"genModuleAccessor called with non-module class: $className")
-    assert(className.endsWith("$"))
 
-    val moduleName = className.dropRight(1)
-    val moduleIdent = Ident(moduleName)
-
-    val moduleInstanceVar = envField("n") DOT moduleIdent
-    val accessorVar = envField("m") DOT moduleIdent
+    val moduleInstanceVar = envField("n") DOT classIdent
+    val accessorVar = envField("m") DOT classIdent
 
     val createModuleInstanceField = {
       moduleInstanceVar := js.Undefined()
@@ -510,7 +506,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     implicit val pos = tree.pos
 
     val baseAccessor =
-      envField("m") DOT cd.name.name.dropRight(1)
+      envField("m") DOT cd.name.name
     val (createNamespace, expAccessorVar) =
       genCreateNamespaceInExports(tree.fullName)
 

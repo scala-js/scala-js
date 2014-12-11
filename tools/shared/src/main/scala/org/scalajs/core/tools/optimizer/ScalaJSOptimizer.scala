@@ -392,7 +392,7 @@ object ScalaJSOptimizer {
   )
 
   sealed abstract class ManualReachability
-  final case class ReachObject(name: String) extends ManualReachability
+  final case class ReachModule(name: String) extends ManualReachability
   final case class Instantiate(name: String) extends ManualReachability
   final case class ReachMethod(className: String, methodName: String,
       static: Boolean) extends ManualReachability

@@ -226,9 +226,9 @@ ScalaJS.numberEquals = function(lhs, rhs) {
 ScalaJS.objectHashCode = function(instance) {
   switch (typeof instance) {
     case "string":
-      return ScalaJS.m.sjsr_RuntimeString().hashCode__T__I(instance);
+      return ScalaJS.m.sjsr_RuntimeString$().hashCode__T__I(instance);
     case "number":
-      return ScalaJS.m.sjsr_Bits().numberHashCode__D__I(instance);
+      return ScalaJS.m.sjsr_Bits$().numberHashCode__D__I(instance);
     case "boolean":
       return instance ? 1231 : 1237;
     case "undefined":
@@ -252,7 +252,7 @@ ScalaJS.comparableCompareTo = function(instance, rhs) {
 //!if asInstanceOfs != Unchecked
       ScalaJS.as.jl_Number(rhs);
 //!endif
-      return ScalaJS.m.jl_Double().compare__D__D__I(instance, rhs);
+      return ScalaJS.m.jl_Double$().compare__D__D__I(instance, rhs);
     case "boolean":
 //!if asInstanceOfs != Unchecked
       ScalaJS.asBoolean(rhs);
@@ -315,7 +315,7 @@ ScalaJS.numberIntValue = function(instance) {
 };
 ScalaJS.numberLongValue = function(instance) {
   if (typeof instance === "number")
-    return ScalaJS.m.sjsr_RuntimeLong().fromDouble__D__sjsr_RuntimeLong(instance);
+    return ScalaJS.m.sjsr_RuntimeLong$().fromDouble__D__sjsr_RuntimeLong(instance);
   else
     return instance.longValue__J();
 };
@@ -458,7 +458,7 @@ ScalaJS.uI = function(value) {
   return ScalaJS.asInt(value) | 0;
 };
 ScalaJS.uJ = function(value) {
-  return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1
+  return null === value ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1
                         : ScalaJS.as.sjsr_RuntimeLong(value);
 };
 ScalaJS.uF = function(value) {
@@ -472,7 +472,7 @@ ScalaJS.uD = function(value) {
 };
 //!else
 ScalaJS.uJ = function(value) {
-  return null === value ? ScalaJS.m.sjsr_RuntimeLong().Zero$1 : value;
+  return null === value ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1 : value;
 };
 //!endif
 
@@ -582,7 +582,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
   // is a special case here, since the class has not
   // been defined yet, when this file is read
   if (componentZero == "longZero")
-    componentZero = ScalaJS.m.sjsr_RuntimeLong().Zero$1;
+    componentZero = ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
 
   /** @constructor */
   var ArrayClass = function(arg) {
@@ -669,7 +669,7 @@ ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
            this === ScalaJS.d.jl_Double)
     return 0;
   else if (this === ScalaJS.d.jl_Long)
-    return ScalaJS.m.sjsr_RuntimeLong().Zero$1;
+    return ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
   else if (this === ScalaJS.d.sr_BoxedUnit)
     return void 0;
   else
@@ -764,7 +764,7 @@ ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
     array[0] = v;
     return array[0];
   }) : (function(v) {
-    return ScalaJS.m.sjsr_package().froundPolyfill__D__D(+v);
+    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
   }));
 //!else
   (function(v) {

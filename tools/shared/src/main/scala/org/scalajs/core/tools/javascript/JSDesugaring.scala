@@ -226,12 +226,9 @@ object JSDesugaring {
           sys.error(s"Illegal Assign in transformStat: $tree")
 
         case StoreModule(cls, value) =>
-          assert(cls.className.endsWith("$"),
-              s"Trying to store module for non-module class $cls")
-          val moduleName = cls.className.dropRight(1)
           unnest(value) { newValue =>
             js.Assign(
-                js.DotSelect(envField("n"), Ident(moduleName)),
+                js.DotSelect(envField("n"), Ident(cls.className)),
                 transformExpr(newValue))
           }
 
@@ -1441,10 +1438,7 @@ object JSDesugaring {
     private def genLoadModule(moduleClass: String)(
         implicit pos: Position): js.Tree = {
       import TreeDSL._
-      assert(moduleClass.endsWith("$"),
-          s"Trying to load module for non-module class $moduleClass")
-      val moduleName = moduleClass.dropRight(1)
-      js.Apply(envField("m") DOT moduleName, Nil)
+      js.Apply(envField("m") DOT moduleClass, Nil)
     }
 
   }

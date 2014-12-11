@@ -155,9 +155,10 @@ class MainGenericRunner {
 
   private def fastOptReachable(mainObjName: String) = {
     import ScalaJSOptimizer._
+    val mainModuleName = mainObjName + "$"
     List(
-      ReachObject(mainObjName),
-      ReachMethod(mainObjName + '$', "main__AT__V", static = false)
+      ReachModule(mainModuleName),
+      ReachMethod(mainModuleName, "main__AT__V", static = false)
     )
   }
 

@@ -195,10 +195,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     js.Ident(encodeClassFullName(sym), Some(sym.fullName))
   }
 
-  def encodeModuleFullNameIdent(sym: Symbol)(implicit pos: Position): js.Ident = {
-    js.Ident(encodeModuleFullName(sym), Some(sym.fullName))
-  }
-
   def encodeClassFullName(sym: Symbol): String = {
     ir.Definitions.encodeClassName(
         sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
@@ -206,9 +202,6 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
     sym.isModuleClass && !foreignIsImplClass(sym)
-
-  def encodeModuleFullName(sym: Symbol): String =
-    ir.Definitions.encodeClassName(sym.fullName + "$").dropRight(1)
 
   private def encodeMemberNameInternal(sym: Symbol): String =
     sym.name.toString.replace("_", "$und")
