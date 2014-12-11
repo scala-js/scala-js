@@ -15,6 +15,7 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir
 import ir.{ClassKind, Definitions, Infos}
+import Definitions.{isConstructorName, isReflProxyName}
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.LongImpl
@@ -389,7 +390,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
           if (instantiatedFrom.isEmpty)
             instantiatedFrom = Some(from)
           accessData()
-          methodInfos.get("__init__").foreach(_.reachStatic())
         }
       }
     }
@@ -554,14 +554,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
   }
 
-  def isReflProxyName(encodedName: String): Boolean = {
-    encodedName.endsWith("__") &&
-    (encodedName != "init___") && (encodedName != "__init__")
-  }
-
-  def isConstructorName(encodedName: String): Boolean =
-    encodedName.startsWith("init___") || (encodedName == "__init__")
-
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
     val kind =
       if (encodedName.endsWith("$")) ClassKind.ModuleClass // wild guess
@@ -574,7 +566,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         superClass = if (kind.isClass) "O" else "",
         parents = List("O"),
         methods = List(
-            createMissingMethodInfo("__init__"),
             createMissingMethodInfo("init___"))
     )
   }

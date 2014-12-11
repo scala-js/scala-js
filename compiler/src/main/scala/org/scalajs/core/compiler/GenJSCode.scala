@@ -478,10 +478,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen definitions for the fields of a class.
      *  The fields are initialized with the zero of their types.
      */
-    def genClassFields(cd: ClassDef): List[js.VarDef] = withScopedVars(
-        currentMethodInfoBuilder :=
-          currentClassInfoBuilder.addMethod("__init__", isStatic = false)
-    ) {
+    def genClassFields(cd: ClassDef): List[js.VarDef] = {
       // Non-method term members are fields, except for module members.
       (for {
         f <- currentClassSym.info.decls

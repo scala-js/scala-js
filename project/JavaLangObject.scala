@@ -30,7 +30,6 @@ object JavaLangObject {
     superClass = "",
     parents = List(),
     methods = List(
-      MethodInfo("__init__"),
       MethodInfo("init___"),
       MethodInfo("hashCode__I",
         methodsCalled = Map(
