@@ -159,7 +159,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       encodedName: String): List[String] = {
     ancestorStore.getOrElseUpdate(encodedName, {
       val irFile = providers.getOrElse(encodedName,
-          sys.error(s"Rhino was unable to load Scala.js class: $encodedName"))
+        throw new ClassNotFoundException(encodedName))
 
       // Desugar tree
       val classDef = irFile.tree
@@ -196,4 +196,8 @@ object ScalaJSCoreLib {
   private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 
   private final val PseudoFileSuffix = ".sjsir"
+
+  final class ClassNotFoundException(className: String) extends Exception(
+    s"Rhino was unable to load Scala.js class: $className")
+
 }
