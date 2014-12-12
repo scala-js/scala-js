@@ -63,7 +63,7 @@ class LazyScalaJSScope(
       } catch {
         // We need to re-throw the exception if `load` fails, otherwise the
         // JavaScript runtime will not catch it.
-        case t: RuntimeException =>
+        case t: ScalaJSCoreLib.ClassNotFoundException =>
           throw Context.throwAsScriptRuntimeEx(t)
       }
     }).asInstanceOf[AnyRef]
