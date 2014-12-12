@@ -32,10 +32,6 @@ object SourceMapTest extends JasmineTest {
 
   val testCount: Int = 0/*<testCount>*/
 
-  if (TestSuiteContext.hasTag("nodejs")) {
-    scalajs.js.Dynamic.global.require("source-map-support").install()
-  }
-
   when("source-maps").
   describe("Source Maps") {
 
