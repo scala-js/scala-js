@@ -3,7 +3,7 @@ package org.scalajs.jsenv.test
 import org.scalajs.jsenv._
 
 import org.scalajs.core.tools.io.MemVirtualJSFile
-import org.scalajs.core.tools.classpath.PartialClasspath
+import org.scalajs.core.tools.classpath.CompleteClasspath
 import org.scalajs.core.tools.logging._
 
 import org.junit.Assert._
@@ -16,7 +16,7 @@ abstract class JSEnvTest {
 
   implicit class RunMatcher(codeStr: String) {
 
-    val emptyCP = PartialClasspath.empty.resolve()
+    val emptyCP = CompleteClasspath.empty
     val code    = new MemVirtualJSFile("testScript.js").withContent(codeStr)
 
     def hasOutput(expectedOut: String): Unit = {

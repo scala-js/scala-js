@@ -19,7 +19,7 @@ trait AsyncTests {
 
   protected def newJSEnv: AsyncJSEnv
 
-  protected def emptyCP: CompleteClasspath = PartialClasspath.empty.resolve()
+  protected def emptyCP: CompleteClasspath = CompleteClasspath.empty
 
   protected def asyncRunner(code: String): AsyncJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)

@@ -11,7 +11,7 @@ package org.scalajs.core.tools.classpath
 
 import scala.collection.immutable.Seq
 
-import org.scalajs.core.tools.io.VirtualJSFile
+import org.scalajs.core.tools.io.{VirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.jsdep.ResolutionInfo
 
 /** A classpath where nothing is missing. Therefore:
@@ -31,5 +31,16 @@ abstract class CompleteClasspath(
 
   /** All code in this complete classpath */
   final def allCode: Seq[VirtualJSFile] = jsLibs.map(_.lib) :+ scalaJSCode
+
+}
+
+object CompleteClasspath {
+
+  def empty: CompleteClasspath = {
+    new CompleteClasspath(Seq.empty, false, Some("")) {
+      def scalaJSCode: VirtualJSFile =
+        new MemVirtualJSFile("empty.js")
+    }
+  }
 
 }
