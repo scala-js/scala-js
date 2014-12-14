@@ -51,6 +51,23 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noBadBracketCall = {
+
+    """
+    class A extends js.Object {
+      @js.annotation.JSBracketCall
+      def foo(): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: @JSBracketCall methods must have at least one non-repeated parameter
+      |      def foo(): Int = js.native
+      |          ^
+    """
+
+  }
+
+  @Test
   def onlyJSRawTraits = {
 
     """

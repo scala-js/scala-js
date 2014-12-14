@@ -361,6 +361,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             "not allowed in types extending js.Any")
       }
 
+      if (jsInterop.isJSBracketCall(sym)) {
+        // JS bracket calls must have at least one non-repeated parameter
+        sym.tpe.paramss match {
+          case (param :: _) :: _ if !isScalaRepeatedParamType(param.tpe) =>
+            // ok
+          case _ =>
+            reporter.error(tree.pos, "@JSBracketCall methods must have at "+
+                "least one non-repeated parameter")
+        }
+      }
+
       if (sym.hasAnnotation(NativeAttr)) {
         // Native methods are not allowed
         reporter.error(tree.pos, "Methods in a js.Any may not be @native")

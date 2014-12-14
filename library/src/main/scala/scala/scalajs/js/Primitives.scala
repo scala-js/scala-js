@@ -14,9 +14,10 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import scala.language.{dynamics, implicitConversions}
 
-import scala.language.{ dynamics, implicitConversions }
+import annotation.{JSBracketAccess, JSBracketCall}
+
 import scala.reflect.ClassTag
 import scala.collection.{ immutable, mutable }
 import scala.collection.generic.CanBuildFrom
@@ -155,7 +156,8 @@ trait LowPrioAnyImplicits {
  */
 sealed trait Dynamic extends Any with scala.Dynamic {
   /** Calls a method of this object. */
-  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = sys.error("stub")
+  @JSBracketCall
+  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = native
 
   /** Reads a field of this object. */
   @JSBracketAccess

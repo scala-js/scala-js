@@ -2743,41 +2743,21 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       lazy val js.JSArrayConstr(genArgs) = genArgArray
 
-      def extractFirstArg() = {
-        (genArgArray: @unchecked) match {
-          case js.JSArrayConstr(firstArg :: otherArgs) =>
-            (firstArg, js.JSArrayConstr(otherArgs))
-          case js.JSBracketMethodApply(
-              js.JSArrayConstr(firstArg :: firstPart), concat, otherParts) =>
-            (firstArg, js.JSBracketMethodApply(
-                js.JSArrayConstr(firstPart), concat, otherParts))
-        }
-      }
-
       if (code == DYNNEW) {
         // js.Dynamic.newInstance(clazz)(actualArgs:_*)
-        val (jsClass, actualArgArray) = extractFirstArg()
+        val (jsClass, actualArgArray) = extractFirstArg(genArgArray)
         actualArgArray match {
           case js.JSArrayConstr(actualArgs) =>
             js.JSNew(jsClass, actualArgs)
           case _ =>
             genNewJSWithVarargs(jsClass, actualArgArray)
         }
-      } else if (code == DYNAPPLY) {
-        // js.Dynamic.applyDynamic(methodName)(actualArgs:_*)
-        val (methodName, actualArgArray) = extractFirstArg()
-        actualArgArray match {
-          case js.JSArrayConstr(actualArgs) =>
-            js.JSBracketMethodApply(receiver, methodName, actualArgs)
-          case _ =>
-            genApplyJSMethodWithVarargs(receiver, methodName, actualArgArray)
-        }
       } else if (code == DYNLITN) {
         // We have a call of the form:
         //   js.Dynamic.literal(name1 = ..., name2 = ...)
         // Translate to:
         //   {"name1": ..., "name2": ... }
-        extractFirstArg() match {
+        extractFirstArg(genArgArray) match {
           case (js.StringLiteral("apply"),
                 js.JSArrayConstr(jse.LitNamed(pairs))) =>
             js.JSObjectConstr(pairs)
@@ -2799,7 +2779,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         //   obj
 
         // Extract first arg to future proof against varargs
-        extractFirstArg() match {
+        extractFirstArg(genArgArray) match {
           // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
           case (js.StringLiteral("apply"),
                 js.JSArrayConstr(jse.LitNamed(pairs))) =>
@@ -2986,7 +2966,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def hasExplicitJSEncoding =
         sym.hasAnnotation(JSNameAnnotation) ||
-        sym.hasAnnotation(JSBracketAccessAnnotation)
+        sym.hasAnnotation(JSBracketAccessAnnotation) ||
+        sym.hasAnnotation(JSBracketCallAnnotation)
 
       val boxedResult = sym.name match {
         case JSUnaryOpMethodName(code) if argc == 0 =>
@@ -3031,6 +3012,14 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.Assign(
                     js.JSBracketSelect(receiver, keyArg),
                     valueArg)
+            }
+          } else if (jsInterop.isJSBracketCall(sym)) {
+            val (methodName, actualArgArray) = extractFirstArg(argArray)
+            actualArgArray match {
+              case js.JSArrayConstr(actualArgs) =>
+                js.JSBracketMethodApply(receiver, methodName, actualArgs)
+              case _ =>
+                genApplyJSMethodWithVarargs(receiver, methodName, actualArgArray)
             }
           } else {
             argArray match {
@@ -3093,6 +3082,19 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def unapply(name: TermName): Option[js.JSBinaryOp.Code] =
         map.get(name)
+    }
+
+    /** Extract the first argument to a primitive JS call. */
+    private def extractFirstArg(argArray: js.Tree): (js.Tree, js.Tree) = {
+      implicit val pos = argArray.pos
+      (argArray: @unchecked) match {
+        case js.JSArrayConstr(firstArg :: otherArgs) =>
+          (firstArg, js.JSArrayConstr(otherArgs))
+        case js.JSBracketMethodApply(
+            js.JSArrayConstr(firstArg :: firstPart), concat, otherParts) =>
+          (firstArg, js.JSBracketMethodApply(
+              js.JSArrayConstr(firstPart), concat, otherParts))
+      }
     }
 
     /** Gen JS code to call a primitive JS method with variadic parameters. */
