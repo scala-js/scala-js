@@ -2752,31 +2752,23 @@ abstract class GenJSCode extends plugins.PluginComponent
           case _ =>
             genNewJSWithVarargs(jsClass, actualArgArray)
         }
-      } else if (code == DYNLITN) {
-        // We have a call of the form:
-        //   js.Dynamic.literal(name1 = ..., name2 = ...)
-        // Translate to:
-        //   {"name1": ..., "name2": ... }
-        extractFirstArg(genArgArray) match {
-          case (js.StringLiteral("apply"),
-                js.JSArrayConstr(jse.LitNamed(pairs))) =>
-            js.JSObjectConstr(pairs)
-          case (js.StringLiteral(name), _) if name != "apply" =>
-            reporter.error(pos,
-                s"js.Dynamic.literal does not have a method named $name")
-            js.Undefined()
-          case _ =>
-            reporter.error(pos,
-                "js.Dynamic.literal.applyDynamicNamed may not be called directly")
-            js.Undefined()
-        }
       } else if (code == DYNLIT) {
-        // We have a call of some other form
-        //   js.Dynamic.literal(...)
-        // Translate to:
-        //   var obj = {};
-        //   obj[...] = ...;
-        //   obj
+        /* We have a call of the form:
+         *   js.Dynamic.literal(name1 = arg1, name2 = arg2, ...)
+         * or
+         *   js.Dynamic.literal(name1 -> arg1, name2 -> arg2, ...)
+         * or in general
+         *   js.Dynamic.literal(tup1, tup2, ...)
+         *
+         * Translate to:
+         *   var obj = {};
+         *   obj[name1] = arg1;
+         *   obj[name2] = arg2;
+         *   ...
+         *   obj
+         * or, if possible, to:
+         *   {name1: arg1, name2: arg2, ... }
+         */
 
         // Extract first arg to future proof against varargs
         extractFirstArg(genArgArray) match {
@@ -2823,7 +2815,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.Undefined()
           case _ =>
             reporter.error(pos,
-                "js.Dynamic.literal.applyDynamic may not be called directly")
+                s"js.Dynamic.literal.${tree.symbol.name} may not be called directly")
             js.Undefined()
         }
       } else if (code == ARR_CREATE) {

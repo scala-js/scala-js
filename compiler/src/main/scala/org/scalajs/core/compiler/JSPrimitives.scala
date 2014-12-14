@@ -36,8 +36,7 @@ abstract class JSPrimitives {
 
   val DYNNEW = 321 // Instantiate a new JavaScript object
 
-  val DYNLITN = 333   // js.Dynamic.literal.applyDynamicNamed
-  val DYNLIT = 334    // js.Dynamic.literal.applyDynamic
+  val DYNLIT = 334    // js.Dynamic.literal.applyDynamic{,Named}
 
   val DICT_DEL = 335   // js.Dictionary.delete
 
@@ -83,7 +82,7 @@ abstract class JSPrimitives {
 
     addPrimitive(JSDynamic_newInstance, DYNNEW)
 
-    addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLITN)
+    addPrimitive(JSDynamicLiteral_applyDynamicNamed, DYNLIT)
     addPrimitive(JSDynamicLiteral_applyDynamic, DYNLIT)
 
     addPrimitive(JSDictionary_delete, DICT_DEL)
