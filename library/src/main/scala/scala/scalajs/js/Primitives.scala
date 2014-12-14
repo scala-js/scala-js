@@ -158,10 +158,12 @@ sealed trait Dynamic extends Any with scala.Dynamic {
   def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = sys.error("stub")
 
   /** Reads a field of this object. */
-  def selectDynamic(name: java.lang.String): Dynamic = sys.error("stub")
+  @JSBracketAccess
+  def selectDynamic(name: java.lang.String): Dynamic = native
 
   /** Writes a field of this object. */
-  def updateDynamic(name: java.lang.String)(value: Any): Unit = sys.error("stub")
+  @JSBracketAccess
+  def updateDynamic(name: java.lang.String)(value: Any): Unit = native
 
   /** Calls this object as a callable. */
   def apply(args: Any*): Dynamic = native

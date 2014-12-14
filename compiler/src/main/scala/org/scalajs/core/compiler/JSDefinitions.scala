@@ -32,8 +32,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
-      lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
-      lazy val JSDynamic_updateDynamic = getMemberMethod(JSDynamicClass, newTermName("updateDynamic"))
       lazy val JSDynamic_applyDynamic  = getMemberMethod(JSDynamicClass, newTermName("applyDynamic"))
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
       lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))

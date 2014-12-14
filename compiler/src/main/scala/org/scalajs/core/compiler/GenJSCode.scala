@@ -2921,10 +2921,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case F2JSTHIS =>
               genFunctionToJSFunction(isThisFunction = true)
 
-            case DYNSELECT =>
-              // js.Dynamic.selectDynamic(arg)
-              js.JSBracketSelect(receiver, arg)
-
             case DICT_DEL =>
               // js.Dictionary.delete(arg)
               js.JSDelete(js.JSBracketSelect(receiver, arg))
@@ -2948,10 +2944,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case List(arg1, arg2) =>
           code match {
-            case DYNUPDATE =>
-              // js.Dynamic.updateDynamic(arg1)(arg2)
-              js.Assign(js.JSBracketSelect(receiver, arg1), arg2)
-
             case HASPROP =>
               // js.Object.hasProperty(arg1, arg2)
               /* Here we have an issue with evaluation order of arg1 and arg2,
