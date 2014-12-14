@@ -284,10 +284,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     private def transformJSAny(implDef: ImplDef) = {
       val sym = implDef.symbol
 
-      lazy val badParent = sym.info.parents.find(t => !(t <:< JSAnyClass.tpe))
-      val inScalaJSJSPackage =
-        sym.enclosingPackage == ScalaJSJSPackage ||
-        sym.enclosingPackage == ScalaJSJSPrimPackage
+      lazy val badParent = sym.info.parents find { t =>
+        /* We have to allow scala.Dynamic to be able to define js.Dynamic
+         * and similar constructs. This causes the unsoundness filed as #1385.
+         */
+        !(t <:< JSAnyClass.tpe || t =:= AnyRefClass.tpe || t =:= DynamicClass.tpe)
+      }
 
       implDef match {
         // Check that we do not have a case modifier
@@ -296,8 +298,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "js.Any may not have a case modifier")
 
         // Check that we do not extends a trait that does not extends js.Any
-        case _ if !inScalaJSJSPackage && !badParent.isEmpty &&
-          !isJSLambda(sym) =>
+        case _ if badParent.isDefined && !isJSLambda(sym) =>
           val badName = badParent.get.typeSymbol.fullName
           reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
               "which does not extend js.Any.")

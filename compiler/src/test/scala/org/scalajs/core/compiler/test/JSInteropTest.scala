@@ -203,20 +203,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExtendJSAny = {
-
-    """
-    class A extends js.Any
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: illegal inheritance from sealed trait Any
-      |    class A extends js.Any
-      |                       ^
-    """
-
-  }
-
-  @Test
   def noNativeInJSAny = {
 
     """
