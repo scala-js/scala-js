@@ -57,7 +57,7 @@ trait TestHelpers extends DirectTest {
     private def repResult(body: => Unit) = {
       errBuffer.reset()
       body
-      errBuffer.toString
+      errBuffer.toString.replaceAll("\r\n?", "\n")
     }
   }
 

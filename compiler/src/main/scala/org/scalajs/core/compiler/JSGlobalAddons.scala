@@ -239,6 +239,10 @@ trait JSGlobalAddons extends JSDefinitions
     def isJSBracketAccess(sym: Symbol) =
       sym.hasAnnotation(JSBracketAccessAnnotation)
 
+    /** has this symbol to be translated into a JS bracket call (JS to Scala) */
+    def isJSBracketCall(sym: Symbol) =
+      sym.hasAnnotation(JSBracketCallAnnotation)
+
   }
 
 }

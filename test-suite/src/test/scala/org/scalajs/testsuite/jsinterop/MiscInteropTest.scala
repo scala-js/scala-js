@@ -84,6 +84,30 @@ object MiscInteropTest extends JasmineTest {
     it("should compile js.undefined") {
       expect(() => js.undefined.asInstanceOf[js.prim.Number].toString(10)).toThrow
     }
+
+    it("should allow to define direct subtraits of js.Any") {
+      val f = js.Dynamic.literal(
+        foo = (x: Int) => x + 1
+      ).asInstanceOf[DirectSubtraitOfJSAny]
+
+      expect(f.foo(5)).toEqual(6)
+    }
+
+    it("should allow to define direct subclasses of js.Any") {
+      val f = js.Dynamic.literal(
+        bar = (x: Int) => x + 2
+      ).asInstanceOf[DirectSubclassOfJSAny]
+
+      expect(f.bar(5)).toEqual(7)
+    }
+  }
+
+  trait DirectSubtraitOfJSAny extends js.Any {
+    def foo(x: Int): Int = js.native
+  }
+
+  class DirectSubclassOfJSAny extends js.Any {
+    def bar(x: Int): Int = js.native
   }
 
 }

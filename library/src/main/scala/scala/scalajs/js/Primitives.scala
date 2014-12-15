@@ -14,20 +14,33 @@
  */
 package scala.scalajs.js
 
-import annotation.JSBracketAccess
+import scala.language.{dynamics, implicitConversions}
 
-import scala.language.{ dynamics, implicitConversions }
+import annotation.{JSBracketAccess, JSBracketCall}
+
 import scala.reflect.ClassTag
 import scala.collection.{ immutable, mutable }
 import scala.collection.generic.CanBuildFrom
 
-/** Super-type of all JavaScript values.
+/** Supertype of all JavaScript values.
  *
- *  All values of a subtype of this trait represent JavaScript values, without
- *  boxing of proxying of any kind.
+ *  Subtypes of [[Any js.Any]] are facade types to APIs implemented in
+ *  JavaScript code. Their implementation is irrelevant and never emitted.
+ *  As such, all members must be defined with their right-hand-side being
+ *  [[native js.native]].
+ *
+ *  In most cases, you should extend [[Object js.Object]] instead of this
+ *  trait to define facade types.
+ *
+ *  It is not possible to define traits or classes that inherit both from this
+ *  trait and a strict subtype of [[AnyRef]]. In fact, you should think of
+ *  [[Any js.Any]] as a third direct subclass of [[scala.Any]], besides
+ *  [[scala.AnyRef]] and [[scala.AnyVal]].
+ *
+ *  See the [[http://www.scala-js.org/doc/js-interoperability.html JavaScript
+ *  interoperability guide]] of Scala.js for more details.
  */
-sealed trait Any extends scala.AnyRef {
-}
+trait Any extends scala.AnyRef
 
 /** Provides implicit conversions from Scala values to JavaScript values. */
 object Any extends LowPrioAnyImplicits {
@@ -143,13 +156,16 @@ trait LowPrioAnyImplicits {
  */
 sealed trait Dynamic extends Any with scala.Dynamic {
   /** Calls a method of this object. */
-  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = sys.error("stub")
+  @JSBracketCall
+  def applyDynamic(name: java.lang.String)(args: Any*): Dynamic = native
 
   /** Reads a field of this object. */
-  def selectDynamic(name: java.lang.String): Dynamic = sys.error("stub")
+  @JSBracketAccess
+  def selectDynamic(name: java.lang.String): Dynamic = native
 
   /** Writes a field of this object. */
-  def updateDynamic(name: java.lang.String)(value: Any): Unit = sys.error("stub")
+  @JSBracketAccess
+  def updateDynamic(name: java.lang.String)(value: Any): Unit = native
 
   /** Calls this object as a callable. */
   def apply(args: Any*): Dynamic = native

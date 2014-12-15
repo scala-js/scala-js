@@ -32,9 +32,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
-      lazy val JSDynamic_selectDynamic = getMemberMethod(JSDynamicClass, newTermName("selectDynamic"))
-      lazy val JSDynamic_updateDynamic = getMemberMethod(JSDynamicClass, newTermName("updateDynamic"))
-      lazy val JSDynamic_applyDynamic  = getMemberMethod(JSDynamicClass, newTermName("applyDynamic"))
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
       lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))
     lazy val JSNumberClass    = getRequiredClass("scala.scalajs.js.prim.Number")
@@ -61,6 +58,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
     lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
+    lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")
     lazy val JSExportDescendentObjectsAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportDescendentObjects")
     lazy val JSExportDescendentClassesAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportDescendentClasses")
@@ -68,7 +66,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSExportNamedAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSExportNamed")
 
     lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor
-    lazy val JSDynamicTpe   = JSDynamicClass.toTypeConstructor
     lazy val JSNumberTpe    = JSNumberClass.toTypeConstructor
     lazy val JSBooleanTpe   = JSBooleanClass.toTypeConstructor
     lazy val JSStringTpe    = JSStringClass.toTypeConstructor

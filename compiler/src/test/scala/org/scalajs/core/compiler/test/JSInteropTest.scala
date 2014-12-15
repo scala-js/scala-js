@@ -51,6 +51,23 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noBadBracketCall = {
+
+    """
+    class A extends js.Object {
+      @js.annotation.JSBracketCall
+      def foo(): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: @JSBracketCall methods must have at least one non-repeated parameter
+      |      def foo(): Int = js.native
+      |          ^
+    """
+
+  }
+
+  @Test
   def onlyJSRawTraits = {
 
     """
@@ -198,20 +215,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: Local classes and objects may not extend js.Any
       |        object B extends js.Object
       |               ^
-    """
-
-  }
-
-  @Test
-  def noExtendJSAny = {
-
-    """
-    class A extends js.Any
-    """ hasErrors
-    """
-      |newSource1.scala:3: error: illegal inheritance from sealed trait Any
-      |    class A extends js.Any
-      |                       ^
     """
 
   }
