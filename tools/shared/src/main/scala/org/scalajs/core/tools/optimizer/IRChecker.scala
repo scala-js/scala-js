@@ -141,8 +141,9 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
 
+    val isConstructor = isConstructorName(name)
     val resultTypeForSig =
-      if (isConstructorName(name)) NoType
+      if (isConstructor) NoType
       else resultType
 
     val advertizedSig = (params.map(_.ptpe), resultTypeForSig)
@@ -156,7 +157,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val thisType =
       if (static) NoType
       else ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, params, resultType)
+    val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
     if (resultType == NoType)
       typecheckStat(body, bodyEnv)
     else
@@ -262,17 +263,18 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       case Assign(select, rhs) =>
         select match {
-          case Select(_, Ident(name, _), false) =>
-            /* TODO In theory this case would verify that we never assign to
-             * an immutable field. But we cannot do that because we *do* emit
-             * such assigns in constructors.
-             * In the future we might want to check that only these legal
-             * special cases happen, and nothing else. But it seems non-trivial
-             * to do so, so currently we trust scalac not to make us emit
-             * illegal assigns.
-             */
-            //reportError(s"Assignment to immutable field $name.")
-          case VarRef(Ident(name, _), false) =>
+          case Select(This(), Ident(_, _)) if env.inConstructor =>
+            // ok
+          case Select(receiver, Ident(name, _)) =>
+            receiver.tpe match {
+              case ClassType(clazz) =>
+                for {
+                  f <- lookupClass(clazz).lookupField(name)
+                  if !f.mutable
+                } reportError(s"Assignment to immutable field $name.")
+              case _ =>
+            }
+          case VarRef(Ident(name, _)) if !env.locals(name).mutable =>
             reportError(s"Assignment to immutable variable $name.")
           case _ =>
         }
@@ -460,7 +462,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
         if (!cls.className.endsWith("$"))
           reportError("LoadModule of non-module class $cls")
 
-      case Select(qualifier, Ident(item, _), mutable) =>
+      case Select(qualifier, Ident(item, _)) =>
         val qualType = typecheckExpr(qualifier, env)
         qualType match {
           case ClassType(cls) =>
@@ -474,9 +476,6 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
                 if (fieldDef.tpe != tree.tpe)
                   reportError(s"Select $cls.$item of type "+
                       s"${fieldDef.tpe} typed as ${tree.tpe}")
-                if (fieldDef.mutable != mutable)
-                  reportError(s"Select $cls.$item with "+
-                      s"mutable=${fieldDef.mutable} marked as mutable=$mutable")
               }
             }
           case NullType | NothingType =>
@@ -630,16 +629,13 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
 
       // Atomic expressions
 
-      case VarRef(Ident(name, _), mutable) =>
+      case VarRef(Ident(name, _)) =>
         env.locals.get(name).fold[Unit] {
           reportError(s"Cannot find variable $name in scope")
         } { localDef =>
           if (tree.tpe != localDef.tpe)
             reportError(s"Variable $name of type ${localDef.tpe} "+
                 s"typed as ${tree.tpe}")
-          if (mutable != localDef.mutable)
-            reportError(s"Variable $name with mutable=${localDef.mutable} "+
-                s"marked as mutable=$mutable")
         }
 
       case This() =>
@@ -767,37 +763,47 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       /** Local variables in scope (including through closures). */
       val locals: Map[String, LocalDef],
       /** Return types by label. */
-      val returnTypes: Map[Option[String], Type]
+      val returnTypes: Map[Option[String], Type],
+      /** Whether we're in a constructor of the class */
+      val inConstructor: Boolean
   ) {
     def withThis(thisTpe: Type): Env =
-      new Env(thisTpe, this.locals, this.returnTypes)
+      new Env(thisTpe, this.locals, this.returnTypes, this.inConstructor)
 
     def withLocal(localDef: LocalDef): Env =
-      new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes)
+      new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
+          this.inConstructor)
 
     def withLocals(localDefs: TraversableOnce[LocalDef]): Env =
-      new Env(thisTpe, locals ++ localDefs.map(d => d.name -> d), returnTypes)
+      new Env(thisTpe, locals ++ localDefs.map(d => d.name -> d), returnTypes,
+          this.inConstructor)
 
     def withReturnType(returnType: Type): Env =
-      new Env(this.thisTpe, this.locals, returnTypes + (None -> returnType))
+      new Env(this.thisTpe, this.locals,
+          returnTypes + (None -> returnType), this.inConstructor)
 
     def withLabeledReturnType(label: String, returnType: Type): Env =
-      new Env(this.thisTpe, this.locals, returnTypes + (Some(label) -> returnType))
+      new Env(this.thisTpe, this.locals,
+          returnTypes + (Some(label) -> returnType), this.inConstructor)
 
     def withArgumentsVar(pos: Position): Env =
       withLocal(LocalDef("arguments", AnyType, mutable = false)(pos))
+
+    def withInConstructor(inConstructor: Boolean): Env =
+      new Env(this.thisTpe, this.locals, this.returnTypes, inConstructor)
   }
 
   object Env {
-    val empty: Env = new Env(NoType, Map.empty, Map.empty)
+    val empty: Env = new Env(NoType, Map.empty, Map.empty, false)
 
     def fromSignature(thisType: Type, params: List[ParamDef],
-        resultType: Type): Env = {
+        resultType: Type, isConstructor: Boolean = false): Env = {
       val paramLocalDefs =
         for (p @ ParamDef(name, tpe, mutable) <- params) yield
           name.name -> LocalDef(name.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap,
-          Map(None -> (if (resultType == NoType) AnyType else resultType)))
+          Map(None -> (if (resultType == NoType) AnyType else resultType)),
+          isConstructor)
     }
   }
 

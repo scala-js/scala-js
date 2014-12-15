@@ -191,9 +191,9 @@ object Serializers {
           writeByte(TagStoreModule)
           writeClassType(cls); writeTree(value)
 
-        case Select(qualifier, item, mutable) =>
+        case Select(qualifier, item) =>
           writeByte(TagSelect)
-          writeTree(qualifier); writeIdent(item); writeBoolean(mutable)
+          writeTree(qualifier); writeIdent(item)
           writeType(tree.tpe)
 
         case Apply(receiver, method, args) =>
@@ -351,9 +351,9 @@ object Serializers {
           writeByte(TagClassOf)
           writeReferenceType(cls)
 
-        case VarRef(ident, mutable) =>
+        case VarRef(ident) =>
           writeByte(TagVarRef)
-          writeIdent(ident); writeBoolean(mutable)
+          writeIdent(ident)
           writeType(tree.tpe)
 
         case This() =>
@@ -583,7 +583,7 @@ object Serializers {
         case TagNew             => New(readClassType(), readIdent(), readTrees())
         case TagLoadModule      => LoadModule(readClassType())
         case TagStoreModule     => StoreModule(readClassType(), readTree())
-        case TagSelect          => Select(readTree(), readIdent(), readBoolean())(readType())
+        case TagSelect          => Select(readTree(), readIdent())(readType())
         case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
         case TagApplyStatically => ApplyStatically(readTree(), readClassType(), readIdent(), readTrees())(readType())
         case TagApplyStatic     => ApplyStatic(readClassType(), readIdent(), readTrees())(readType())
@@ -625,7 +625,7 @@ object Serializers {
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readReferenceType())
 
-        case TagVarRef  => VarRef(readIdent(), readBoolean())(readType())
+        case TagVarRef  => VarRef(readIdent())(readType())
         case TagThis    => This()(readType())
         case TagClosure =>
           Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())

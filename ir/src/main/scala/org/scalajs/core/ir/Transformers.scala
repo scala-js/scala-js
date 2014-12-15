@@ -73,8 +73,8 @@ object Transformers {
         case StoreModule(cls, value) =>
           StoreModule(cls, transformExpr(value))
 
-        case Select(qualifier, item, mutable) =>
-          Select(transformExpr(qualifier), item, mutable)(tree.tpe)
+        case Select(qualifier, item) =>
+          Select(transformExpr(qualifier), item)(tree.tpe)
 
         case Apply(receiver, method, args) =>
           Apply(transformExpr(receiver), method,

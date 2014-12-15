@@ -71,7 +71,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
    */
   protected def tryNewInlineableClass(className: String): Option[RecordValue]
 
-  private val usedLocalNames = mutable.Set.empty[String]
+  /** Used local names and whether they are mutable */
+  private val usedLocalNames = mutable.Map.empty[String, Boolean]
+
   private val usedLabelNames = mutable.Set.empty[String]
   private var statesInUse: List[State[_]] = Nil
 
@@ -115,26 +117,34 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     finally statesInUse = statesInUse.tail
   }
 
-  private def freshLocalName(base: String): String =
-    freshNameGeneric(usedLocalNames, base)
+  private def freshLocalName(base: String, mutable: Boolean): String = {
+    val result = freshNameGeneric(usedLocalNames.contains, base)
+    usedLocalNames += result -> mutable
+    result
+  }
 
-  private def freshLabelName(base: String): String =
-    freshNameGeneric(usedLabelNames, base)
+  private def freshLabelName(base: String): String = {
+    val result = freshNameGeneric(usedLabelNames, base)
+    usedLabelNames += result
+    result
+  }
 
   private val isReserved = isKeyword ++ Seq("arguments", "eval", "ScalaJS")
 
-  private def freshNameGeneric(usedNames: mutable.Set[String], base: String): String = {
-    val result = if (!usedNames.contains(base) && !isReserved(base)) {
+  private def freshNameGeneric(nameUsed: String => Boolean,
+      base: String): String = {
+    if (!nameUsed(base) && !isReserved(base)) {
       base
     } else {
       var i = 1
-      while (usedNames.contains(base + "$" + i))
+      while (nameUsed(base + "$" + i))
         i += 1
       base + "$" + i
     }
-    usedNames += result
-    result
   }
+
+  // Just a helper to make the callsites more understandable
+  private def localIsMutable(name: String): Boolean = usedLocalNames(name)
 
   private def tryOrRollback(body: CancelFun => TailRec[Tree])(
       fallbackFun: () => TailRec[Tree]): TailRec[Tree] = {
@@ -142,7 +152,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       fallbackFun()
     } else {
       val trampolineId = curTrampolineId
-      val savedUsedLocalNames = usedLocalNames.toSet
+      val savedUsedLocalNames = usedLocalNames.toMap
       val savedUsedLabelNames = usedLabelNames.toSet
       val savedStates = statesInUse.map(_.makeBackup())
 
@@ -315,7 +325,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Try(block, errVar @ Ident(name, originalName), handler, finalizer) =>
         val newBlock = transform(block, isStat)
 
-        val newName = freshLocalName(name)
+        val newName = freshLocalName(name, false)
         val newOriginalName = originalName.orElse(Some(name))
         val localDef = LocalDef(RefinedType(AnyType), true,
             ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
@@ -613,7 +623,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case tree: Block =>
         pretransformBlock(tree)(cont)
 
-      case VarRef(Ident(name, _), _) =>
+      case VarRef(Ident(name, _)) =>
         val localDef = scope.env.localDefs.getOrElse(name,
             sys.error(s"Cannot find local def '$name' at $pos\n" +
                 s"While optimizing $myself\n" +
@@ -835,16 +845,15 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   private def pretransformSelectCommon(tree: Select, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val Select(qualifier, item, mutable) = tree
+    val Select(qualifier, item) = tree
     pretransformExpr(qualifier) { preTransQual =>
-      pretransformSelectCommon(tree.tpe, preTransQual, item, mutable,
+      pretransformSelectCommon(tree.tpe, preTransQual, item,
           isLhsOfAssign)(cont)(scope, tree.pos)
     }
   }
 
   private def pretransformSelectCommon(expectedType: Type,
-      preTransQual: PreTransform, item: Ident, mutable: Boolean,
-      isLhsOfAssign: Boolean)(
+      preTransQual: PreTransform, item: Ident, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     preTransQual match {
@@ -883,7 +892,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           case PreTransRecordTree(newQual, origType, cancelFun) =>
             val recordType = newQual.tpe.asInstanceOf[RecordType]
             val field = recordType.findField(item.name)
-            val sel = Select(newQual, item, mutable)(field.tpe)
+            val sel = Select(newQual, item)(field.tpe)
             sel.tpe match {
               case _: RecordType =>
                 cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
@@ -892,7 +901,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             }
 
           case PreTransTree(newQual, _) =>
-            cont(PreTransTree(Select(newQual, item, mutable)(expectedType),
+            cont(PreTransTree(Select(newQual, item)(expectedType),
                 RefinedType(expectedType)))
         }
     }
@@ -910,14 +919,13 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             PreTransTree(Block(stats :+ tree), tpe)
         }
 
-      case PreTransLocalDef(localDef @ LocalDef(tpe, mutable, replacement)) =>
+      case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
           case ReplaceWithRecordVarRef(name, originalName,
               recordType, used, cancelFun) =>
             used.value = true
             PreTransRecordTree(
-                VarRef(Ident(name, originalName), mutable)(recordType),
-                tpe, cancelFun)
+                VarRef(Ident(name, originalName))(recordType), tpe, cancelFun)
 
           case InlineClassInstanceReplacement(recordType, fieldLocalDefs, cancelFun) =>
             if (!isImmutableType(recordType))
@@ -1001,7 +1009,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
-    case Select(LoadModule(ClassType(moduleClassName)), _, _) =>
+    case Select(LoadModule(ClassType(moduleClassName)), _) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
     case Closure(_, _, _, captureValues) =>
@@ -1297,18 +1305,18 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             "There was a This(), there should be a receiver")
         cont(optReceiver.get)
 
-      case Select(This(), field, mutable) if formals.isEmpty =>
+      case Select(This(), field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get, field, mutable,
+        pretransformSelectCommon(body.tpe, optReceiver.get, field,
             isLhsOfAssign = false)(cont)
 
-      case Assign(lhs @ Select(This(), field, mutable), VarRef(Ident(rhsName, _), _))
+      case Assign(lhs @ Select(This(), field), VarRef(Ident(rhsName, _)))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(lhs.tpe, optReceiver.get, field, mutable,
+        pretransformSelectCommon(lhs.tpe, optReceiver.get, field,
             isLhsOfAssign = true) { preTransLhs =>
           // TODO Support assignment of record
           cont(PreTransTree(
@@ -1514,7 +1522,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             inputFieldsLocalDefs, cls, rest, cancelFun)(buildInner)(cont)
 
       case Assign(s @ Select(ths: This,
-          Ident(fieldName, fieldOrigName), false), value) :: rest =>
+          Ident(fieldName, fieldOrigName)), value) :: rest
+          if !inputFieldsLocalDefs(fieldName).mutable =>
         pretransformExpr(value) { tvalue =>
           withNewLocalDef(Binding(fieldName, fieldOrigName, s.tpe, false,
               tvalue)) { (localDef, cont1) =>
@@ -1550,8 +1559,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
        *
        * Typical shape of initialization of outer pointer of inner classes.
        */
-      case If(cond, th: Throw,
-          Assign(Select(This(), _, false), value)) :: rest =>
+      case If(cond, th: Throw, Assign(Select(This(), _), value)) :: rest =>
         // work around a bug of the compiler (these should be @-bindings)
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
@@ -1641,9 +1649,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
              * the equals() method has been inlined as a reference
              * equality test.
              */
-            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent, _), Null()),
-                BinaryOp(BinaryOp.===, VarRef(rhsIdent, _), Null()),
-                BinaryOp(BinaryOp.===, VarRef(lhsIdent2, _), VarRef(rhsIdent2, _)))
+            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
                 if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
               elsep
 
@@ -2554,7 +2562,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     val (paramLocalDefs, newParamDefs) = (for {
       p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable) <- params
     } yield {
-      val newName = freshLocalName(name)
+      val newName = freshLocalName(name, mutable)
       val newOriginalName = originalName.orElse(Some(newName))
       val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
@@ -2765,7 +2773,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     implicit val pos = value.pos
 
     def withDedicatedVar(tpe: RefinedType): TailRec[Tree] = {
-      val newName = freshLocalName(name)
+      val newName = freshLocalName(name, mutable)
       val newOriginalName = originalName.orElse(Some(name))
 
       val used = new SimpleState(false)
@@ -2872,7 +2880,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           buildInner(LocalDef(refinedType, false,
               ReplaceWithConstant(literal)), cont)
 
-        case PreTransTree(VarRef(Ident(refName, refOriginalName), false), _) =>
+        case PreTransTree(VarRef(Ident(refName, refOriginalName)), _)
+            if !localIsMutable(refName) =>
           buildInner(LocalDef(refinedType, false,
               ReplaceWithVarRef(refName, refOriginalName,
                   new SimpleState(true), None)), cont)
@@ -3012,7 +3021,7 @@ private[optimizer] object OptimizerCore {
     def newReplacement(implicit pos: Position): Tree = replacement match {
       case ReplaceWithVarRef(name, originalName, used, _) =>
         used.value = true
-        VarRef(Ident(name, originalName), mutable)(tpe.base)
+        VarRef(Ident(name, originalName))(tpe.base)
 
       case ReplaceWithRecordVarRef(_, _, _, _, cancelFun) =>
         cancelFun()
@@ -3352,7 +3361,7 @@ private[optimizer] object OptimizerCore {
           ((args.size == params.size + 1) &&
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
-                case (VarRef(Ident(aname, _), _),
+                case (VarRef(Ident(aname, _)),
                     ParamDef(Ident(pname, _), _, _)) => aname == pname
                 case _ => false
               }))
@@ -3368,8 +3377,8 @@ private[optimizer] object OptimizerCore {
             case _:Skip | _:This | _:Literal                          => true
 
             // Shape of accessors
-            case Select(This(), _, _) if params.isEmpty               => true
-            case Assign(Select(This(), _, _), VarRef(_, _))
+            case Select(This(), _) if params.isEmpty                  => true
+            case Assign(Select(This(), _), VarRef(_))
                 if params.size == 1                                   => true
 
             // Shape of trivial call-super constructors
@@ -3405,7 +3414,7 @@ private[optimizer] object OptimizerCore {
       case Apply(receiver, _, args)              => areSimpleArgs(receiver :: args)
       case ApplyStatically(receiver, _, _, args) => areSimpleArgs(receiver :: args)
       case ApplyStatic(_, _, args)               => areSimpleArgs(args)
-      case Select(qual, _, _)                    => isSimpleArg(qual)
+      case Select(qual, _)                       => isSimpleArg(qual)
       case IsInstanceOf(inner, _)                => isSimpleArg(inner)
 
       case Block(List(inner, Undefined())) =>
@@ -3579,7 +3588,7 @@ private[optimizer] object OptimizerCore {
   }
 
   private class RollbackException(val trampolineId: Int,
-      val savedUsedLocalNames: Set[String],
+      val savedUsedLocalNames: Map[String, Boolean],
       val savedUsedLabelNames: Set[String],
       val savedStates: List[Any],
       val cont: () => TailRec[Tree]) extends ControlThrowable

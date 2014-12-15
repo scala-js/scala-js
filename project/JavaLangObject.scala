@@ -126,7 +126,7 @@ object JavaLangObject {
           {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
-              VarRef(Ident("that", Some("that")), mutable = false)(AnyType))
+              VarRef(Ident("that", Some("that")))(AnyType))
           })(None),
 
         /* protected def clone(): Object =

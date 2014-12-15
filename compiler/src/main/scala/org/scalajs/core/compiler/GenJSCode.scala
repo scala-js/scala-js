@@ -133,6 +133,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
     val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
     val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
+    val unexpectedMutatedFields  = new ScopedVar[mutable.Set[Symbol]]
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
 
     var isModuleInitialized: Boolean = false // see genApply for super calls
@@ -235,7 +236,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (!isPrimitive && !isRawJSImplClass) {
             withScopedVars(
                 currentClassInfoBuilder := new ClassInfoBuilder(sym.asClass),
-                currentClassSym         := sym
+                currentClassSym         := sym,
+                unexpectedMutatedFields := mutable.Set.empty
             ) {
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
@@ -303,11 +305,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Generate members (constructor + methods)
 
-      val generatedMembers = new ListBuffer[js.Tree]
+      val generatedMethods = new ListBuffer[js.MethodDef]
       val exportedSymbols = new ListBuffer[Symbol]
-
-      if (!isHijacked)
-        generatedMembers ++= genClassFields(cd)
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -325,9 +324,9 @@ abstract class GenJSCode extends plugins.PluginComponent
                 _.symbol == JSExportNamedAnnotation)
 
             if (isNamedExport)
-              generatedMembers += genNamedExporterDef(dd)
+              generatedMethods += genNamedExporterDef(dd)
             else
-              generatedMembers ++= genMethod(dd)
+              generatedMethods ++= genMethod(dd)
 
             if (isExport) {
               // We add symbols that we have to export here. This way we also
@@ -340,6 +339,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       gen(impl)
+
+      // Generate fields if necessary (and add to methods + ctors)
+      val generatedMembers =
+        if (!isHijacked) genClassFields(cd) ++ generatedMethods.toList
+        else generatedMethods.toList // No fields needed
 
       // Create method info builder for exported stuff
       val exports = withScopedVars(
@@ -367,7 +371,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // Hashed definitions of the class
       val hashedDefs =
-        Hashers.hashDefs(generatedMembers.toList ++ exports ++ reflProxies)
+        Hashers.hashDefs(generatedMembers ++ exports ++ reflProxies)
 
       // The complete class definition
       val kind =
@@ -485,8 +489,10 @@ abstract class GenJSCode extends plugins.PluginComponent
         if !f.isMethod && f.isTerm && !f.isModule
       } yield {
         implicit val pos = f.pos
+        val mutable =
+          suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
         js.VarDef(encodeFieldSym(f), toIRType(f.tpe),
-            mutable = f.isMutable, genZeroOf(f.tpe))
+            mutable, genZeroOf(f.tpe))
       }).toList
     }
 
@@ -679,8 +685,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             assert(isStat)
             super.transform(js.VarDef(
                 name, vtpe, newMutable(name.name, mutable), rhs)(tree.pos), isStat)
-          case js.VarRef(name, mutable) =>
-            js.VarRef(name, newMutable(name.name, mutable))(tree.tpe)(tree.pos)
           case js.Closure(captureParams, params, body, captureValues) =>
             js.Closure(captureParams, params, body,
                 captureValues.map(transformExpr))(tree.pos)
@@ -989,8 +993,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
           } else {
-            js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                mutable = sym.isMutable)(toIRType(sym.tpe))
+            js.Select(genExpr(qualifier),
+                encodeFieldSym(sym))(toIRType(sym.tpe))
           }
 
         case Ident(name) =>
@@ -1004,7 +1008,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               // a local variable. Put a literal undefined param again
               js.UndefinedParam()(toIRType(sym.tpe))
             } else {
-              js.VarRef(encodeLocalSym(sym), sym.isMutable)(toIRType(sym.tpe))
+              js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
             }
           } else {
             sys.error("Cannot use package as value: " + tree)
@@ -1049,11 +1053,18 @@ abstract class GenJSCode extends plugins.PluginComponent
             abort(s"Assignment to static member ${sym.fullName} not supported")
           val genLhs = lhs match {
             case Select(qualifier, _) =>
-              js.Select(genExpr(qualifier), encodeFieldSym(sym),
-                  mutable = sym.isMutable)(toIRType(sym.tpe))
+              val ctorAssignment = (
+                  currentMethodSym.isClassConstructor &&
+                  currentMethodSym.owner == qualifier.symbol &&
+                  qualifier.isInstanceOf[This]
+              )
+              if (!ctorAssignment && !suspectFieldMutable(sym))
+                unexpectedMutatedFields += sym
+              js.Select(genExpr(qualifier),
+                  encodeFieldSym(sym))(toIRType(sym.tpe))
             case _ =>
               mutatedLocalVars += sym
-              js.VarRef(encodeLocalSym(sym), sym.isMutable)(toIRType(sym.tpe))
+              js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
           }
           js.Assign(genLhs, genExpr(rhs))
 
@@ -1085,9 +1096,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genThis()(implicit pos: Position): js.Tree = {
       if (methodTailJumpThisSym.get != NoSymbol) {
-        js.VarRef(
-          encodeLocalSym(methodTailJumpThisSym),
-          methodTailJumpThisSym.isMutable)(currentClassType)
+        js.VarRef(encodeLocalSym(methodTailJumpThisSym))(currentClassType)
       } else {
         if (tryingToGenMethodAsJSFunction)
           throw new CancelGenMethodAsJSFunction(
@@ -1213,7 +1222,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val blockAST = genStatOrExpr(block, isStat)
 
       val exceptIdent = freshLocalIdent("e")
-      val origExceptVar = js.VarRef(exceptIdent, mutable = false)(jstpe.AnyType)
+      val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
 
       val resultType = toIRType(tree.tpe)
 
@@ -1521,13 +1530,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           (formalArgSym, actualArg) <- formalArgs zip actualArgs
           formalArg = encodeLocalSym(formalArgSym)
           if (actualArg match {
-            case js.VarRef(`formalArg`, _) => false
-            case _                         => true
+            case js.VarRef(`formalArg`) => false
+            case _                      => true
           })
         } yield {
           mutatedLocalVars += formalArgSym
           val tpe = toIRType(formalArgSym.tpe)
-          (js.VarRef(formalArg, formalArgSym.isMutable)(tpe), tpe,
+          (js.VarRef(formalArg)(tpe), tpe,
               freshLocalIdent("temp$" + formalArg.name),
               actualArg)
         }
@@ -1550,9 +1559,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               yield js.VarDef(tempArg, argType, mutable = false, actualArg)
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
-              yield js.Assign(
-                  formalArg,
-                  js.VarRef(tempArg, mutable = false)(argType))
+              yield js.Assign(formalArg, js.VarRef(tempArg)(argType))
           js.Block(tempAssignments ++ trueAssignments :+ jump)
       }
     }
@@ -2511,7 +2518,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val callTrgIdent = freshLocalIdent()
         val callTrgVarDef =
           js.VarDef(callTrgIdent, receiverType, mutable = false, genExpr(receiver))
-        val callTrg = js.VarRef(callTrgIdent, mutable = false)(receiverType)
+        val callTrg = js.VarRef(callTrgIdent)(receiverType)
 
         val arguments = args zip sym.tpe.params map { case (arg, param) =>
           /* No need for enteringPosterasure, because value classes are not
@@ -2821,7 +2828,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 js.Assign(js.JSBracketSelect(res, name), value) :: Nil
               case tupExpr =>
                 val tupIdent = freshLocalIdent("tup")
-                val tup = js.VarRef(tupIdent, mutable = false)(tuple2Type)
+                val tup = js.VarRef(tupIdent)(tuple2Type)
                 js.VarDef(tupIdent, tuple2Type, mutable = false, tupExpr) ::
                 js.Assign(js.JSBracketSelect(res,
                     genApplyMethod(tup, TupleClass(2), js.Ident("$$und1__O"), Nil, jstpe.AnyType)),
@@ -2964,7 +2971,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.Block(
                   js.VarDef(temp, jstpe.AnyType, mutable = false, arg1),
                   js.Unbox(js.JSBinaryOp(js.JSBinaryOp.in, arg2,
-                      js.VarRef(temp, mutable = false)(jstpe.AnyType)), 'Z'))
+                      js.VarRef(temp)(jstpe.AnyType)), 'Z'))
           }
       })
     }
@@ -3765,9 +3772,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def makeCaptures(actualCaptures: List[js.Tree]) = {
         (actualCaptures map { c => (c: @unchecked) match {
-          case js.VarRef(ident, _) =>
+          case js.VarRef(ident) =>
             (js.ParamDef(ident, c.tpe, mutable = false)(c.pos),
-                js.VarRef(ident, false)(c.tpe)(c.pos))
+                js.VarRef(ident)(c.tpe)(c.pos))
         }}).unzip
       }
 
@@ -3939,6 +3946,21 @@ abstract class GenJSCode extends plugins.PluginComponent
     val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
     if (!result.isOverloaded) result
     else result.alternatives.head
+  }
+
+  /** Whether a field is suspected to be mutable in the IR's terms
+   *
+   *  A field is mutable in the IR, if it is assigned to elsewhere than in the
+   *  constructor of its class.
+   *
+   *  Mixed-in fields are always mutable, since they will be assigned to in
+   *  a trait initializer (rather than a constructor).
+   *  Further, in 2.10.x fields used to implement lazy vals are not marked
+   *  mutable (but assigned to in the accessor).
+   */
+  private def suspectFieldMutable(sym: Symbol) = {
+    import scala.reflect.internal.Flags
+    sym.hasFlag(Flags.MIXEDIN) || sym.isMutable || sym.isLazy
   }
 
   private def isStringType(tpe: Type): Boolean =

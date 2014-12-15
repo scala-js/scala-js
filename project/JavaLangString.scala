@@ -105,7 +105,7 @@ object JavaLangString {
           {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
-              VarRef(Ident("that", Some("that")), mutable = false)(AnyType))
+              VarRef(Ident("that", Some("that")))(AnyType))
           })(None),
 
         /* def hashCode(): Int = RuntimeString.hashCode(this) */
@@ -133,7 +133,7 @@ object JavaLangString {
               Ident("compareTo__T__T__I", Some("compareTo__T__T__I")),
               List(
                 This()(ThisType),
-                VarRef(Ident("that", Some("that")), mutable = false)(ThisType)))(IntType)
+                VarRef(Ident("that", Some("that")))(ThisType)))(IntType)
           })(None),
 
         /* def compareTo(that: Object): Int = compareTo(that.asInstanceOf[String]) */
@@ -147,7 +147,7 @@ object JavaLangString {
               This()(ThisType),
               Ident("compareTo__T__I", Some("compareTo__T__I")),
               List(AsInstanceOf(
-                VarRef(Ident("that", Some("that")), mutable = false)(AnyType),
+                VarRef(Ident("that", Some("that")))(AnyType),
                 ThisType)))(IntType)
           })(None),
 
@@ -173,7 +173,7 @@ object JavaLangString {
               Ident("charAt__T__I__C", Some("charAt__T__I__C")),
               List(
                 This()(ThisType),
-                VarRef(Ident("i", Some("i")), mutable = false)(IntType)))(IntType)
+                VarRef(Ident("i", Some("i")))(IntType)))(IntType)
           })(None),
 
         /* def length(): Int = RuntimeString.length(this) */
@@ -208,8 +208,8 @@ object JavaLangString {
                 Some("subSequence__T__I__I__jl_CharSequence")),
               List(
                 This()(ThisType),
-                VarRef(Ident("begin", Some("begin")), mutable = false)(IntType),
-                VarRef(Ident("end", Some("end")), mutable = false)(IntType)))(
+                VarRef(Ident("begin", Some("begin")))(IntType),
+                VarRef(Ident("end", Some("end")))(IntType)))(
               ClassType("jl_CharSequence"))
           })(None)
       ))

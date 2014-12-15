@@ -57,14 +57,12 @@ object Trees {
 
   // Definitions
 
-  case class VarDef(name: Ident, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends Tree {
-    def ref(implicit pos: Position): Tree =
-      VarRef(name, mutable = mutable)
+  case class VarDef(name: Ident, rhs: Tree)(implicit val pos: Position) extends Tree {
+    def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
-  case class ParamDef(name: Ident, mutable: Boolean)(implicit val pos: Position) extends Tree {
-    def ref(implicit pos: Position): Tree =
-      VarRef(name, mutable = mutable)
+  case class ParamDef(name: Ident)(implicit val pos: Position) extends Tree {
+    def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
   // Control flow constructs
@@ -196,7 +194,7 @@ object Trees {
 
   // Atomic expressions
 
-  case class VarRef(ident: Ident, mutable: Boolean)(implicit val pos: Position) extends Tree
+  case class VarRef(ident: Ident)(implicit val pos: Position) extends Tree
 
   case class This()(implicit val pos: Position) extends Tree
 
