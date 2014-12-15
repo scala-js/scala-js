@@ -78,30 +78,30 @@ trait TimeoutTests extends JSEnvTest {
     val deadline = 1.second.fromNow
 
     """
-    var i1 = setInterval(function() { console.log("each 230"); }, 230);
-    var i2 = setInterval(function() { console.log("each 310"); }, 310);
-    var i3 = setInterval(function() { console.log("each 130"); }, 130);
+    var i1 = setInterval(function() { console.log("each 2200"); }, 2200);
+    var i2 = setInterval(function() { console.log("each 3100"); }, 3100);
+    var i3 = setInterval(function() { console.log("each 1300"); }, 1300);
 
     setTimeout(function() {
       clearInterval(i1);
       clearInterval(i2);
       clearInterval(i3);
-    }, 1000);
+    }, 10000);
     """ hasOutput
-    """|each 130
-       |each 230
-       |each 130
-       |each 310
-       |each 130
-       |each 230
-       |each 130
-       |each 310
-       |each 130
-       |each 230
-       |each 130
-       |each 130
-       |each 230
-       |each 310
+    """|each 1300
+       |each 2200
+       |each 1300
+       |each 3100
+       |each 1300
+       |each 2200
+       |each 1300
+       |each 3100
+       |each 1300
+       |each 2200
+       |each 1300
+       |each 2200
+       |each 1300
+       |each 3100
        |""".stripMargin
 
      assertTrue("Execution took too little time", deadline.isOverdue())
