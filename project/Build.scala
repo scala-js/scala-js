@@ -19,12 +19,15 @@ import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.rhino.RhinoJSEnv
+import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Implicits._
 
 import org.scalajs.core.tools.sourcemap._
 import org.scalajs.core.tools.io.MemVirtualJSFile
+import org.scalajs.core.tools.sem.CheckedBehavior
 
 import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
 import AssemblyKeys.{assembly, assemblyOption}
@@ -728,10 +731,61 @@ object Build extends sbt.Build {
 
   // Testing
 
+  val testTagSettings = Seq(
+      testOptions in Test ++= {
+        val envTags = (jsEnv in Test).value match {
+          case env: RhinoJSEnv =>
+            val baseArgs = Seq("-trhino")
+            val args =
+              if (env.sourceMap) baseArgs :+ "-tsource-maps"
+              else baseArgs
+
+            Seq(Tests.Argument(args: _*))
+
+          case env: NodeJSEnv =>
+            val baseArgs = Seq("-tnodejs", "-ttypedarray")
+            val args = {
+              if (env.sourceMap) {
+                if (!env.hasSourceMapSupport) {
+                  val projectId = thisProject.value.id
+                  sys.error("You must install Node.js source map support to " +
+                    "run the full Scala.js test suite (npm install " +
+                    "source-map-support). To deactivate source map " +
+                    s"tests, do: set postLinkJSEnv in $projectId := " +
+                    "NodeJSEnv().value.withSourceMap(false)")
+                }
+                baseArgs :+ "-tsource-maps"
+              } else
+                baseArgs
+            }
+
+            Seq(Tests.Argument(args: _*))
+
+          case _: PhantomJSEnv =>
+            Seq(Tests.Argument("-tphantomjs"))
+          case _ =>
+            Seq()
+        }
+
+        val sems = (scalaJSSemantics in Test).value
+        val semTags = (
+            if (sems.asInstanceOfs == CheckedBehavior.Compliant)
+              Seq(Tests.Argument("-tcompliant-asinstanceofs"))
+            else
+              Seq()
+        ) ++ (
+            if (sems.strictFloats) Seq(Tests.Argument("-tstrict-floats"))
+            else Seq()
+        )
+
+        envTags ++ semTags
+      }
+  )
+
   lazy val testSuite: Project = Project(
       id = "testSuite",
       base = file("test-suite"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
           name := "Scala.js test suite",
           publishArtifact in Compile := false,
 
@@ -791,7 +845,7 @@ object Build extends sbt.Build {
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
       base = file("no-ir-check-test"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
           name := "Scala.js not IR checked tests",
           scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(false)),
           publishArtifact in Compile := false
@@ -801,7 +855,7 @@ object Build extends sbt.Build {
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
       base = file("javalib-ex-test-suite"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
 

@@ -14,6 +14,8 @@ abstract class ExternalJSEnv(
   final protected val additionalArgs: Seq[String],
   final protected val additionalEnv:  Map[String, String]) extends AsyncJSEnv {
 
+  import ExternalJSEnv._
+
   /** Printable name of this VM */
   protected def vmName: String
 
@@ -73,7 +75,10 @@ abstract class ExternalJSEnv(
       finally { errSrc.close }
     }
 
-    /** Wait for the VM to terminate, verify exit code */
+    /** Wait for the VM to terminate, verify exit code
+     *
+     *  @throws NonZeroExitException if VM returned a non-zero code
+     */
     final protected def waitForVM(vmInst: Process): Unit = {
       // Make sure we are done.
       vmInst.waitFor()
@@ -81,7 +86,7 @@ abstract class ExternalJSEnv(
       // Get return value and return
       val retVal = vmInst.exitValue
       if (retVal != 0)
-        sys.error(s"$vmName exited with code $retVal")
+        throw new NonZeroExitException(vmName, retVal)
     }
 
     protected def startVM(): Process = {
@@ -172,4 +177,9 @@ abstract class ExternalJSEnv(
     }
   }
 
+}
+
+object ExternalJSEnv {
+  final case class NonZeroExitException(vmName: String, retVal: Int)
+      extends Exception(s"$vmName exited with code $retVal")
 }

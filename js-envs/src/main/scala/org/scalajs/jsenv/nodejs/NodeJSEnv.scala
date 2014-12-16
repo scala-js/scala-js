@@ -27,7 +27,7 @@ class NodeJSEnv private (
   nodejsPath: String,
   addArgs: Seq[String],
   addEnv: Map[String, String],
-  sourceMap: Boolean
+  val sourceMap: Boolean
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
 
   def this(nodejsPath: String = "node", addArgs: Seq[String] = Seq.empty,
@@ -37,6 +37,25 @@ class NodeJSEnv private (
 
   def withSourceMap(sourceMap: Boolean): NodeJSEnv =
     new NodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
+
+  /** True, if the installed node executable supports source mapping.
+   *
+   *  Do `npm install source-map-support` if you need source maps.
+   */
+  lazy val hasSourceMapSupport: Boolean = {
+    val code = new MemVirtualJSFile("source-map-support-probe.js")
+      .withContent("""require('source-map-support').install();""")
+    val runner =
+      jsRunner(CompleteClasspath.empty, code, NullLogger, NullJSConsole)
+
+    try {
+      runner.run()
+      true
+    } catch {
+      case t: ExternalJSEnv.NonZeroExitException =>
+        false
+    }
+  }
 
   protected def vmName: String = "node.js"
   protected def executable: String = nodejsPath
