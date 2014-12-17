@@ -69,11 +69,6 @@ package scala.scalajs
  *  value `undefined` takes the role of `None`.
  */
 package object js extends js.GlobalScope {
-  /** The constant Not-a-Number. */
-  val NaN: Double = native
-  /** The constant Positive Infinity. */
-  val Infinity: Double = native
-
   /** The undefined value. */
   def undefined: js.UndefOr[Nothing] = sys.error("stub")
 
@@ -97,18 +92,6 @@ package object js extends js.GlobalScope {
 
   /** Evaluates JavaScript code and returns the result. */
   def eval(x: String): Any = native
-
-  /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Int): Double = native
-  /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): Double = native
-  /** Parses a string as a floating point number. */
-  def parseFloat(string: String): Double = native
-
-  /** Tests whether the given value is Not-a-Number. */
-  def isNaN(number: Double): Boolean = native
-  /** Tests whether the given value is a finite number. */
-  def isFinite(number: Double): Boolean = native
 
   /** Denotes a method body as native JavaScript. For use in facade types:
    *

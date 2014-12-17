@@ -74,7 +74,7 @@ object Double {
 
   def parseDouble(s: String): scala.Double = {
     if (doubleStrPat.test(s))
-      js.parseFloat(s)
+      js.Dynamic.global.parseFloat(s).asInstanceOf[scala.Double]
     else
       throw new NumberFormatException(s"""For input string: "$s"""")
   }
