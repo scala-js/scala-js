@@ -441,13 +441,13 @@ object ExportsTest extends JasmineTest {
 
     }
 
-    it("should prefer overloads taking a js.Undefined over methods with default parameters") {
+    it("should prefer overloads taking a Unit over methods with default parameters") {
       class A {
         @JSExport
         def foo(a: Int)(b: String = "asdf") = s"$a $b"
 
         @JSExport
-        def foo(a: Int, b: js.prim.Undefined) = "woot"
+        def foo(a: Int, b: Unit) = "woot"
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]

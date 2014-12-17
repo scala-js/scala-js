@@ -15,10 +15,13 @@ object System {
   }
 
   private[this] val getHighPrecisionTime: js.Function0[scala.Double] = {
-    if (!(!global.performance)) {
-      if (!(!global.performance.now)) {
+    import js.DynamicImplicits.truthValue
+
+    // We've got to use selectDynamic explicitly not to crash Scala 2.10
+    if (global.selectDynamic("performance")) {
+      if (global.performance.selectDynamic("now")) {
         () => global.performance.now().asInstanceOf[scala.Double]
-      } else if (!(!(global.performance.webkitNow))) {
+      } else if (global.performance.selectDynamic("webkitNow")) {
         () => global.performance.webkitNow().asInstanceOf[scala.Double]
       } else {
         () => new js.Date().getTime()
@@ -135,10 +138,9 @@ object System {
   }
 
   def identityHashCode(x: Object): scala.Int = {
-    import js.prim
-    x match {
+    (x: Any) match {
       case null => 0
-      case _:prim.Boolean | _:prim.Number | _:prim.String | _:prim.Undefined =>
+      case _:scala.Boolean | _:scala.Double | _:String | () =>
         x.hashCode()
       case _ =>
         if (x.getClass == null) {
@@ -254,8 +256,11 @@ private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    if (!(!global.console)) {
-      if (isErr && !(!global.console.error))
+    import js.DynamicImplicits.truthValue
+
+    // We've got to use selectDynamic explicitly not to crash Scala 2.10
+    if (global.selectDynamic("console")) {
+      if (isErr && global.console.selectDynamic("error"))
         global.console.error(line)
       else
         global.console.log(line)

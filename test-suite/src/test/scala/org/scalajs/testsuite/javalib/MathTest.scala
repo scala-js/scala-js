@@ -26,13 +26,13 @@ object MathTest extends JasmineTest {
 
     it("should respond to `log1p`") {
       expect(Math.log1p(-2.0).isNaN).toBeTruthy
-      expect(Math.log1p(js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.log1p(Double.NaN).isNaN).toBeTruthy
       expect(Math.log1p(0.0)).toEqual(0.0)
     }
 
     it("should respond to `log10`") {
       expect(Math.log10(-230.0).isNaN).toBeTruthy
-      expect(Math.log10(js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.log10(Double.NaN).isNaN).toBeTruthy
     }
 
     it("should respond to `signum` for Double") {
@@ -45,7 +45,7 @@ object MathTest extends JasmineTest {
       expect(Math.signum(-0.0)).toEqual(-0.0)
       expect(1 / Math.signum(-0.0) < 0).toBeTruthy
 
-      expect(Math.signum(js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.signum(Double.NaN).isNaN).toBeTruthy
     }
 
     it("should respond to `signum` for Float") {
@@ -58,7 +58,7 @@ object MathTest extends JasmineTest {
       expect(Math.signum(-0.0f)).toEqual(-0.0f)
       expect(1 / Math.signum(-0.0f) < 0).toBeTruthy
 
-      expect(Math.signum(js.Number.NaN.toFloat).isNaN).toBeTruthy
+      expect(Math.signum(Float.NaN).isNaN).toBeTruthy
     }
 
     it("should respond to `nextUp` for Double") {
@@ -75,8 +75,8 @@ object MathTest extends JasmineTest {
     }
 
     it("should respond to `nextAfter` for Double") {
-      expect(Math.nextAfter(1.0, js.Number.NaN.toDouble).isNaN).toBeTruthy
-      expect(Math.nextAfter(js.Number.NaN.toDouble, 1.0).isNaN).toBeTruthy
+      expect(Math.nextAfter(1.0, Double.NaN).isNaN).toBeTruthy
+      expect(Math.nextAfter(Double.NaN, 1.0).isNaN).toBeTruthy
       expect(Math.nextAfter(0.0, 0.0)).toEqual(0.0)
       expect(Math.nextAfter(0.0, -0.0)).toEqual(-0.0)
       expect(Math.nextAfter(-0.0, 0.0)).toEqual(0.0)
@@ -99,7 +99,7 @@ object MathTest extends JasmineTest {
     it("should respond to `hypot`") {
       expect(Math.hypot(0.0, 0.0)).toBeCloseTo(0.0)
       expect(Math.hypot(3.0, 4.0)).toBeCloseTo(5.0)
-      expect(Math.hypot(3.0, js.Number.NaN.toDouble).isNaN).toBeTruthy
+      expect(Math.hypot(3.0, Double.NaN).isNaN).toBeTruthy
       expect(Math.hypot(Double.NegativeInfinity, 4.0)).toEqual(Double.PositiveInfinity)
     }
 

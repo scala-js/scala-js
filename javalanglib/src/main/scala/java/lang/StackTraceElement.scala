@@ -48,8 +48,7 @@ final class StackTraceElement(declaringClass: String, methodName: String,
   }
 
   private def columnNumber: Int = {
-    val rawNum = this.asInstanceOf[js.Dynamic].columnNumber
-    if (!(!rawNum)) rawNum.asInstanceOf[Int]
-    else -1
+    this.asInstanceOf[js.Dynamic].columnNumber
+      .asInstanceOf[js.UndefOr[Int]].getOrElse(-1)
   }
 }

@@ -28,9 +28,6 @@ object UndefOr {
   implicit def any2undefOrA[A](value: A): UndefOr[A] =
     value.asInstanceOf[UndefOr[A]]
 
-  implicit def undef2undefOr(value: prim.Undefined): UndefOr[Nothing] =
-    value.asInstanceOf[UndefOr[Nothing]]
-
   implicit def undefOr2ops[A](value: UndefOr[A]): UndefOrOps[A] =
     new UndefOrOps(value)
 

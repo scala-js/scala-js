@@ -44,9 +44,8 @@ package object runtime {
     c.prototype = ctor.prototype
     val instance = js.Dynamic.newInstance(c)()
     val result = ctor.applyDynamic("apply")(instance, args)
-    (result: js.Any) match {
-      case _:js.prim.Undefined | _:js.prim.Number | _:js.prim.Boolean |
-          _:js.prim.String | null =>
+    (result: Any) match {
+      case _:Double | _:Boolean | _:String | () | null =>
         instance
       case _ =>
         result
@@ -102,7 +101,7 @@ package object runtime {
   }
 
   /** Information about the environment Scala.js runs in
-   * 
+   *
    *  See [[EnvironmentInfo]] for details.
    */
   def environmentInfo: EnvironmentInfo = sys.error("stub")

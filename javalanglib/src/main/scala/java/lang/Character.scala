@@ -271,7 +271,8 @@ object Character {
   /* Misc */
   //def reverseBytes(ch: scala.Char): scala.Char
 
-  @inline def toString(c: scala.Char) = js.String.fromCharCode(c.toInt)
+  @inline def toString(c: scala.Char): String =
+    js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
 
   @inline def compare(x: scala.Char, y: scala.Char): scala.Int =
     x - y

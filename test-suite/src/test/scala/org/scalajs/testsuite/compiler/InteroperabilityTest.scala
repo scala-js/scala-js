@@ -354,27 +354,6 @@ object InteroperabilityTest extends JasmineTest {
     }
 
     when("compliant-asinstanceof").
-    it("should protect conversions from JS types to Scala types") {
-      class Foo
-      val foo: Any = new Foo
-
-      val invalidNumber: js.prim.Number = foo.asInstanceOf[js.prim.Number]
-      val nullNumber: js.prim.Number = null
-      expect(() => invalidNumber: Double).toThrow
-      expect(nullNumber: Double).toEqual(0)
-
-      val invalidBoolean: js.prim.Boolean = foo.asInstanceOf[js.prim.Boolean]
-      val nullBoolean: js.prim.Boolean = null
-      expect(() => invalidBoolean: Boolean).toThrow
-      expect(nullBoolean: Boolean).toEqual(false)
-
-      val invalidString: js.prim.String = foo.asInstanceOf[js.prim.String]
-      val nullString: js.prim.String = null
-      expect(() => invalidString: String).toThrow
-      expect(nullString: String).toBeNull
-    }
-
-    when("compliant-asinstanceof").
     it("should asInstanceOf values received from calling a JS interop method") {
       val obj = js.eval("""
         var obj = {

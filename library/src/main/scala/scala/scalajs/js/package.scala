@@ -57,41 +57,25 @@ package scala.scalajs
  *  to call any method and read and write any field of a value of type
  *  [[js.Dynamic]].
  *
- *  The package [[scala.scalajs.js.prim]] gives definitions for the four
- *  primitive types of JavaScript as subtraits of [[js.Any]], but generally
- *  it is preferable to use the corresponding Scala type.
- *  - [[js.prim.Number]] corresponds to [[scala.Double]]
- *  - [[js.prim.Boolean]] corresponds to [[scala.Boolean]]
- *  - [[js.prim.String]] corresponds to [[java.lang.String]]
- *  - [[js.prim.Undefined]] corresponds to [[scala.Unit]]
+ *  There are no explicit definitions for JavaScript primitive types, as one
+ *  could expect, because the corresponding Scala types stand in their stead:
+ *  - [[Boolean]] is a primitive JavaScript boolean
+ *  - [[Double]] is a primitive JavaScript number
+ *  - [[String]] is a primitive JavaScript string
+ *  - [[Unit]] is the type of the JavaScript undefined value
+ *  - [[Null]] is the type of the JavaScript null value
  *
  *  [[js.UndefOr]] gives a [[scala.Option]]-like interface where the JavaScript
  *  value `undefined` takes the role of `None`.
  */
 package object js extends js.GlobalScope {
-  /** The type of JavaScript numbers, which is [[scala.Double]]. */
-  type Number = scala.Double
-  /** The type of JavaScript booleans, which is [[scala.Boolean]]. */
-  type Boolean = scala.Boolean
-  /** The type of JavaScript strings, which is [[java.lang.String]]. */
-  type String = java.lang.String
-  /** The type of the JavaScript undefined value, which is [[scala.Unit]]. */
-  type Undefined = scala.Unit
-
-  /** The top-level `Number` JavaScript object. */
-  val Number: js.prim.Number.type = native
-  /** The top-level `Boolean` JavaScript object. */
-  val Boolean: js.prim.Boolean.type = native
-  /** The top-level `String` JavaScript object. */
-  val String: js.prim.String.type = native
-
   /** The constant Not-a-Number. */
   val NaN: Double = native
   /** The constant Positive Infinity. */
   val Infinity: Double = native
 
   /** The undefined value. */
-  def undefined: js.prim.Undefined = sys.error("stub")
+  def undefined: js.UndefOr[Nothing] = sys.error("stub")
 
   /** Tests whether the given value is undefined. */
   def isUndefined(v: scala.Any): Boolean = sys.error("stub")
@@ -115,9 +99,9 @@ package object js extends js.GlobalScope {
   def eval(x: String): Any = native
 
   /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Int): js.Number = native
+  def parseInt(s: String, radix: Int): Double = native
   /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): js.Number = native
+  def parseInt(s: String): Double = native
   /** Parses a string as a floating point number. */
   def parseFloat(string: String): Double = native
 

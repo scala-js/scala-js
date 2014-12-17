@@ -1,7 +1,7 @@
 package scala.scalajs.runtime
 
 import scala.scalajs.js
-import scala.scalajs.js.prim.{String => jsString}
+import js.JSStringOps._
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -16,9 +16,24 @@ import java.util.regex._
  */
 private[runtime] object RuntimeString {
 
+  /** Operations on a primitive JS string that are shadowed by Scala methods,
+   *  and that we need to implement these very Scala methods.
+   */
+  private trait SpecialJSStringOps extends js.Any {
+    def length: Int = js.native
+    def charCodeAt(index: Int): Int = js.native
+
+    def toLowerCase(): String = js.native
+    def toUpperCase(): String = js.native
+    def trim(): String = js.native
+  }
+
+  private def specialJSStringOps(s: String): SpecialJSStringOps =
+    s.asInstanceOf[SpecialJSStringOps]
+
   @inline
   def charAt(thiz: String, index: Int): Char =
-    (thiz: jsString).charCodeAt(index).asInstanceOf[Int].toChar
+    specialJSStringOps(thiz).charCodeAt(index).toChar
 
   def codePointAt(thiz: String, index: Int): Int = {
     val high = thiz.charAt(index)
@@ -48,7 +63,8 @@ private[runtime] object RuntimeString {
   @inline
   def compareTo(thiz: String, anotherString: String): Int = {
     if (thiz.equals(anotherString)) 0
-    else if ((thiz: jsString) < (anotherString: jsString)) -1
+    else if ((thiz.asInstanceOf[js.Dynamic] <
+        anotherString.asInstanceOf[js.Dynamic]).asInstanceOf[Boolean]) -1
     else 1
   }
 
@@ -68,7 +84,7 @@ private[runtime] object RuntimeString {
     thiz.indexOf(s.toString) != -1
 
   def endsWith(thiz: String, suffix: String): Boolean =
-    ((thiz: jsString).substring(thiz.length - suffix.length): String) == suffix
+    thiz.jsSubstring(thiz.length - suffix.length) == suffix
 
   def getBytes(thiz: String): Array[Byte] =
     thiz.getBytes(Charset.defaultCharset)
@@ -104,11 +120,11 @@ private[runtime] object RuntimeString {
 
   @inline
   def indexOf(thiz: String, str: String): Int =
-    (thiz: jsString).indexOf(str).asInstanceOf[Int]
+    thiz.jsIndexOf(str)
 
   @inline
   def indexOf(thiz: String, str: String, fromIndex: Int): Int =
-    (thiz: jsString).indexOf(str, fromIndex).asInstanceOf[Int]
+    thiz.jsIndexOf(str, fromIndex)
 
   /* Just returning this string is a valid implementation for `intern` in
    * JavaScript, since strings are primitive values. Therefore, value equality
@@ -130,15 +146,15 @@ private[runtime] object RuntimeString {
 
   @inline
   def lastIndexOf(thiz: String, str: String): Int =
-    (thiz: jsString).lastIndexOf(str).asInstanceOf[Int]
+    thiz.jsLastIndexOf(str)
 
   @inline
   def lastIndexOf(thiz: String, str: String, fromIndex: Int): Int =
-    (thiz: jsString).lastIndexOf(str, fromIndex).asInstanceOf[Int]
+    thiz.jsLastIndexOf(str, fromIndex)
 
   @inline
   def length(thiz: String): Int =
-    (thiz: jsString).length.asInstanceOf[Int]
+    specialJSStringOps(thiz).length
 
   @inline
   def matches(thiz: String, regex: String): Boolean = {
@@ -148,11 +164,11 @@ private[runtime] object RuntimeString {
 
   @inline
   def replace(thiz: String, oldChar: Char, newChar: Char): String =
-    (thiz: String).replace(oldChar.toString, newChar.toString)
+    thiz.replace(oldChar.toString, newChar.toString)
 
   @inline
   def replace(thiz: String, target: CharSequence, replacement: CharSequence): String =
-    (thiz: jsString).split(target.toString).join(replacement.toString)
+    thiz.jsSplit(target.toString).join(replacement.toString)
 
   def replaceAll(thiz: String, regex: String, replacement: String): String = {
     checkNull(thiz)
@@ -179,7 +195,7 @@ private[runtime] object RuntimeString {
 
   @inline
   def startsWith(thiz: String, prefix: String, toffset: Int): Boolean =
-    ((thiz: jsString).substring(toffset, prefix.length): String) == prefix
+    thiz.jsSubstring(toffset, prefix.length) == prefix
 
   @inline
   def subSequence(thiz: String, beginIndex: Int, endIndex: Int): CharSequence =
@@ -187,11 +203,11 @@ private[runtime] object RuntimeString {
 
   @inline
   def substring(thiz: String, beginIndex: Int): String =
-    (thiz: jsString).substring(beginIndex)
+    thiz.jsSubstring(beginIndex)
 
   @inline
   def substring(thiz: String, beginIndex: Int, endIndex: Int): String =
-    (thiz: jsString).substring(beginIndex, endIndex)
+    thiz.jsSubstring(beginIndex, endIndex)
 
   def toCharArray(thiz: String): Array[Char] = {
     val length = thiz.length
@@ -206,15 +222,15 @@ private[runtime] object RuntimeString {
 
   @inline
   def toLowerCase(thiz: String): String =
-    (thiz: jsString).toLowerCase()
+    specialJSStringOps(thiz).toLowerCase()
 
   @inline
   def toUpperCase(thiz: String): String =
-    (thiz: jsString).toUpperCase()
+    specialJSStringOps(thiz).toUpperCase()
 
   @inline
   def trim(thiz: String): String =
-    (thiz: jsString).trim()
+    specialJSStringOps(thiz).trim()
 
   // Constructors
 
@@ -234,7 +250,7 @@ private[runtime] object RuntimeString {
       charCodes += value(i).toInt
       i += 1
     }
-    js.String.fromCharCode(charCodes: _*)
+    fromCharCode(charCodes: _*)
   }
 
   def newString(bytes: Array[Byte]): String =
@@ -277,7 +293,7 @@ private[runtime] object RuntimeString {
       }
       i += 1
     }
-    js.String.fromCharCode(charCodes: _*)
+    fromCharCode(charCodes: _*)
   }
 
   def newString(original: String): String =
@@ -325,14 +341,19 @@ private[runtime] object RuntimeString {
 
   private def fromCodePoint(codePoint: Int): String = {
     if ((codePoint & ~Character.MAX_VALUE) == 0)
-      js.String.fromCharCode(codePoint)
+      fromCharCode(codePoint)
     else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT)
       throw new IllegalArgumentException
     else {
       val offsetCp = codePoint - 0x10000
-      js.String.fromCharCode(
+      fromCharCode(
           (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
     }
+  }
+
+  @inline private def fromCharCode(charCodes: Int*): String = {
+    js.Dynamic.global.String.applyDynamic("fromCharCode")(
+        charCodes.asInstanceOf[Seq[js.Any]]: _*).asInstanceOf[String]
   }
 
 }

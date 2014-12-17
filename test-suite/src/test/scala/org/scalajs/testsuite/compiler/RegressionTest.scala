@@ -28,13 +28,6 @@ object RegressionTest extends JasmineTest {
       expect(mod.getClass.getName).toEqual("double")
     }
 
-    it("js.prim.String + js.prim.String is ambiguous - #20") {
-      val a: js.prim.String = "a"
-      val b: js.prim.String = "b"
-      val c: js.prim.String = a + b
-      expect(c).toEqual("ab")
-    }
-
     it("Abort with some pattern match guards - #22") {
       object PatternMatchGuards {
         def go(f: Int => Int) = f(1)
@@ -72,10 +65,10 @@ object RegressionTest extends JasmineTest {
       new Bug66B("", "")
     }
 
-    it("should not swallow Unit expressions when converting to js.prim.Undefined - #83") {
+    it("should not swallow Unit expressions when converting to js.Any - #83") {
       var effectHappened = false
       def doEffect(): Unit = effectHappened = true
-      def f(): js.prim.Undefined = doEffect()
+      def f(): js.Any = doEffect()
       f()
       expect(effectHappened).toBeTruthy
     }
