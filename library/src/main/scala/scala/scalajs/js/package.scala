@@ -110,26 +110,6 @@ package object js extends js.GlobalScope {
   /** Tests whether the given value is a finite number. */
   def isFinite(number: Double): Boolean = native
 
-  /** Decodes a Uniform Resource Identifier (URI).
-   *  @see [[encodeURI]]
-   */
-  def decodeURI(encodedURI: String): String = native
-
-  /** Decodes a Uniform Resource Identifier (URI) component.
-   *  @see [[encodeURIComponent]]
-   */
-  def decodeURIComponent(encodedURIComponent: String): String = native
-
-  /** Encodes a Uniform Resource Identifier (URI).
-   *  @see [[decodeURI]]
-   */
-  def encodeURI(uri: String): String = native
-
-  /** Encodes a Uniform Resource Identifier (URI) component.
-   *  @see [[decodeURIComponent]]
-   */
-  def encodeURIComponent(uriComponent: String): String = native
-
   /** Denotes a method body as native JavaScript. For use in facade types:
    *
    *  {{{

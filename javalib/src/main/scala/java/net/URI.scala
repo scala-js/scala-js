@@ -2,7 +2,7 @@ package java.net
 
 import scala.scalajs.js.RegExp
 import scala.scalajs.js
-import scala.scalajs.js.{decodeURIComponent => decode}
+import scala.scalajs.js.URIUtils.{decodeURIComponent => decode}
 
 import scala.annotation.tailrec
 
