@@ -2830,7 +2830,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case GETCLASS  => js.GetClass(receiver)
             case ENV_INFO  => js.JSEnvInfo()
             case DEBUGGER  => js.Debugger()
-            case UNDEFVAL  => js.Undefined()
             case UNITVAL   => js.Undefined()
             case UNITTYPE  => genClassConstant(UnitTpe)
             case JS_NATIVE =>
@@ -2900,9 +2899,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               // js.Dictionary.delete(arg)
               js.JSDelete(js.JSBracketSelect(receiver, arg))
 
-            case ISUNDEF =>
-              // js.isUndefined(arg)
-              js.BinaryOp(js.BinaryOp.===, arg, js.Undefined())
             case TYPEOF =>
               // js.typeOf(arg)
               genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),

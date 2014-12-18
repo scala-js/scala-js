@@ -22,11 +22,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
   class JSDefinitionsClass {
 
     lazy val ScalaJSJSPackage = getPackage(newTermNameCached("scala.scalajs.js")) // compat 2.10/2.11
-      lazy val JSPackage_undefined   = getMemberMethod(ScalaJSJSPackage, newTermName("undefined"))
-      lazy val JSPackage_isUndefined = getMemberMethod(ScalaJSJSPackage, newTermName("isUndefined"))
-      lazy val JSPackage_typeOf      = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
-      lazy val JSPackage_debugger    = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
-      lazy val JSPackage_native      = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
+      lazy val JSPackage_typeOf   = getMemberMethod(ScalaJSJSPackage, newTermName("typeOf"))
+      lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
+      lazy val JSPackage_native   = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
 
     lazy val ScalaJSJSPrimPackage = getPackage(newTermNameCached("scala.scalajs.js.prim")) // compat 2.10/2.11
 

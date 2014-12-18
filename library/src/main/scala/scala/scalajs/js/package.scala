@@ -10,13 +10,10 @@
 
 package scala.scalajs
 
-/** Contains primitive types for interoperability with JavaScript libraries.
+/** Types, methods and values for interoperability with JavaScript libraries.
+ *
  *  This package is only relevant to the Scala.js compiler, and should not be
  *  referenced by any project compiled to the JVM.
- *
- *  All the values and methods in this package object are representatives of
- *  standard variables and functions available in the top-level scope, as
- *  standardized in ECMAScript 5.1.
  *
  *  == Guide ==
  *
@@ -35,8 +32,8 @@ package scala.scalajs
  *  compiling to JavaScript.
  *
  *  Implicit conversions to and from standard Scala types to their equivalent
- *  in JavaScript are provided. For example, from Scala arrays to JavaScript
- *  arrays and back.
+ *  in JavaScript are provided. For example, from Scala functions to JavaScript
+ *  functions and back.
  *
  *  The most important subclasses of [[js.Any]] are:
  *  - [[js.Dynamic]], a dynamically typed interface to JavaScript APIs
@@ -68,12 +65,14 @@ package scala.scalajs
  *  [[js.UndefOr]] gives a [[scala.Option]]-like interface where the JavaScript
  *  value `undefined` takes the role of `None`.
  */
-package object js extends js.GlobalScope {
+package object js {
   /** The undefined value. */
-  def undefined: js.UndefOr[Nothing] = sys.error("stub")
+  @inline def undefined: js.UndefOr[Nothing] =
+    ().asInstanceOf[js.UndefOr[Nothing]]
 
   /** Tests whether the given value is undefined. */
-  def isUndefined(v: scala.Any): Boolean = sys.error("stub")
+  @inline def isUndefined(v: scala.Any): Boolean =
+    v.asInstanceOf[scala.AnyRef] eq undefined
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
   def typeOf(x: Any): String = sys.error("stub")
@@ -91,7 +90,8 @@ package object js extends js.GlobalScope {
   def debugger(): Unit = sys.error("stub")
 
   /** Evaluates JavaScript code and returns the result. */
-  def eval(x: String): Any = native
+  @inline def eval(x: String): Any =
+    js.Dynamic.global.eval(x)
 
   /** Denotes a method body as native JavaScript. For use in facade types:
    *
