@@ -117,7 +117,7 @@ class MainGenericRunner {
   }
 
   private def runnerJSFile(mainObj: String, args: List[String]) = {
-    val jsObj = "ScalaJS.m." + mainObj
+    val jsObj = "ScalaJS.m." + mainObj + "$"
     val jsArgs = argArray(args)
     new MemVirtualJSFile("Generated launcher file").
       withContent(s"$jsObj().main__AT__V($jsArgs);")
