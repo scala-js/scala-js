@@ -76,9 +76,6 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))
 
-    for (export <- inputs.additionalExports)
-      module.add(toClosureInput(export))
-
     // Compile the module
     val closureExterns =
       (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
@@ -150,12 +147,7 @@ object ScalaJSClosureOptimizer {
       /** Input to optimize (classpath or file-list) */
       input: T,
       /** Additional externs files to be given to Closure. */
-      additionalExterns: Seq[VirtualJSFile] = Nil,
-      /** Additional exports to be given to Closure.
-       *  These files are just appended to the classpath, given to Closure,
-       *  but not used in the Scala.js optimizer pass when direct optimizing
-       */
-      additionalExports: Seq[VirtualJSFile] = Nil
+      additionalExterns: Seq[VirtualJSFile] = Nil
   )
 
   /** Configuration the closure part of the optimizer needs.

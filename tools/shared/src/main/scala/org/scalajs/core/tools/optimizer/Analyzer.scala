@@ -75,7 +75,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   case class FromMethod(methodInfo: MethodInfo) extends From
   case object FromCore extends From
   case object FromExports extends From
-  case object FromManual extends From
 
   var allAvailable: Boolean = true
 
@@ -106,8 +105,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       classInfo.linkClasses()
   }
 
-  def computeReachability(manuallyReachable: Seq[ManualReachability],
-      noWarnMissing: Seq[NoWarnMissing]): Unit = {
+  def computeReachability(noWarnMissing: Seq[NoWarnMissing]): Unit = {
     // Stuff reachable from core symbols always should warn
     reachCoreSymbols()
 
@@ -115,7 +113,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     noWarnMissing.foreach(disableWarning _)
 
     // Reach all user stuff
-    manuallyReachable.foreach(reachManually _)
     for (classInfo <- classInfos.values)
       classInfo.reachExports()
   }
@@ -188,19 +185,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val BitsModuleClass = lookupClass("sjsr_Bits$")
     BitsModuleClass.accessModule()
     BitsModuleClass.callMethod("numberHashCode__D__I")
-  }
-
-  def reachManually(info: ManualReachability) = {
-    implicit val from = FromManual
-
-    // Don't lookupClass here, since we don't want to create any
-    // symbols. If a symbol doesn't exist, we fail.
-    info match {
-      case ReachModule(name) => classInfos(name).accessModule()
-      case Instantiate(name) => classInfos(name).instantiated()
-      case ReachMethod(className, methodName, static) =>
-        classInfos(className).callMethod(methodName, static)
-    }
   }
 
   def disableWarning(noWarn: NoWarnMissing) = noWarn match {
@@ -603,8 +587,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
                 logger.log(level, s"$verb from scalajs-corejslib.js")
               case FromExports =>
                 logger.log(level, "exported to JavaScript with @JSExport")
-              case FromManual =>
-                logger.log(level, "manually made reachable")
             }
         }
       }

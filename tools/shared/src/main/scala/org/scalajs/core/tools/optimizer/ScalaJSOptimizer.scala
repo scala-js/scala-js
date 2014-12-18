@@ -119,7 +119,7 @@ class ScalaJSOptimizer(
             val analyzer = new Analyzer(logger, semantics, allData,
                 globalWarnEnabled = true,
                 isBeforeOptimizer = !outCfg.disableOptimizer)
-            analyzer.computeReachability(manuallyReachable, noWarnMissing)
+            analyzer.computeReachability(noWarnMissing)
             analyzer
           }
         if (outCfg.checkIR) {
@@ -151,7 +151,7 @@ class ScalaJSOptimizer(
             val refinedAnalyzer = new Analyzer(logger, semantics, refinedData,
                 globalWarnEnabled = false,
                 isBeforeOptimizer = false)
-            refinedAnalyzer.computeReachability(manuallyReachable, noWarnMissing)
+            refinedAnalyzer.computeReachability(noWarnMissing)
             refinedAnalyzer
           }
         } else {
@@ -384,17 +384,9 @@ object ScalaJSOptimizer {
   final case class Inputs[T](
       /** The CompleteNCClasspath or the IR files to be packaged. */
       input: T,
-      /** Manual additions to reachability */
-      manuallyReachable: Seq[ManualReachability] = Nil,
       /** Elements we won't warn even if they don't exist */
       noWarnMissing: Seq[NoWarnMissing] = Nil
   )
-
-  sealed abstract class ManualReachability
-  final case class ReachModule(name: String) extends ManualReachability
-  final case class Instantiate(name: String) extends ManualReachability
-  final case class ReachMethod(className: String, methodName: String,
-      static: Boolean) extends ManualReachability
 
   sealed abstract class NoWarnMissing
   final case class NoWarnClass(className: String) extends NoWarnMissing
