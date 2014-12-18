@@ -617,8 +617,10 @@ object URI {
     new RegExp("[^a-z0-9-_.!~*'(),;:$&+=%\\s]|%(?![0-9a-f]{2})", "ig")
 
   /** Quote any character not in unreserved, punct, escaped or other */
-  private def quoteUserInfo(str: String) =
-    (str: js.prim.String).replace(userInfoQuoteRe, quoteChar)
+  private def quoteUserInfo(str: String) = {
+    import js.JSStringOps._
+    str.jsReplace(userInfoQuoteRe, quoteChar)
+  }
 
   /** matches any character not in unreserved, punct, escaped, other or equal
    *  to '/' or '@'
@@ -629,8 +631,10 @@ object URI {
   /** Quote any character not in unreserved, punct, escaped, other or equal
    *  to '/' or '@'
    */
-  private def quotePath(str: String) =
-    (str: js.prim.String).replace(pathQuoteRe, quoteChar)
+  private def quotePath(str: String) = {
+    import js.JSStringOps._
+    str.jsReplace(pathQuoteRe, quoteChar)
+  }
 
   /** matches any character not in unreserved, punct, escaped, other or equal
    *  to '@', '[' or ']'
@@ -645,16 +649,20 @@ object URI {
   /** Quote any character not in unreserved, punct, escaped, other or equal
    *  to '@'
    */
-  private def quoteAuthority(str: String) =
-    (str: js.prim.String).replace(authorityQuoteRe, quoteChar)
+  private def quoteAuthority(str: String) = {
+    import js.JSStringOps._
+    str.jsReplace(authorityQuoteRe, quoteChar)
+  }
 
   /** matches any character not in unreserved, reserved, escaped or other */
   private val illegalQuoteRe =
     new RegExp("[^a-z0-9-_.!~*'(),;:$&+=?/\\[\\]%\\s]|%(?![0-9a-f]{2})", "ig")
 
   /** Quote any character not in unreserved, reserved, escaped or other */
-  private def quoteIllegal(str: String) =
-    (str: js.prim.String).replace(illegalQuoteRe, quoteChar)
+  private def quoteIllegal(str: String) = {
+    import js.JSStringOps._
+    str.jsReplace(illegalQuoteRe, quoteChar)
+  }
 
   /** Case-sensitive comparison that is case-insensitive inside URI
    *  escapes. Will compare `a%A0` and `a%a0` as equal, but `a%A0` and

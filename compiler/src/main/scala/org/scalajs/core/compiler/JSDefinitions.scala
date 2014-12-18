@@ -34,10 +34,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
       lazy val JSDictionary_delete = getMemberMethod(JSDictionaryClass, newTermName("delete"))
-    lazy val JSNumberClass    = getRequiredClass("scala.scalajs.js.prim.Number")
-    lazy val JSBooleanClass   = getRequiredClass("scala.scalajs.js.prim.Boolean")
-    lazy val JSStringClass    = getRequiredClass("scala.scalajs.js.prim.String")
-    lazy val JSUndefinedClass = getRequiredClass("scala.scalajs.js.prim.Undefined")
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
@@ -65,12 +61,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSExportAllAnnotation     = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
     lazy val JSExportNamedAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSExportNamed")
 
-    lazy val JSAnyTpe       = JSAnyClass.toTypeConstructor
-    lazy val JSNumberTpe    = JSNumberClass.toTypeConstructor
-    lazy val JSBooleanTpe   = JSBooleanClass.toTypeConstructor
-    lazy val JSStringTpe    = JSStringClass.toTypeConstructor
-    lazy val JSUndefinedTpe = JSUndefinedClass.toTypeConstructor
-    lazy val JSObjectTpe    = JSObjectClass.toTypeConstructor
+    lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
+    lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
 
     lazy val JSGlobalScopeTpe = JSGlobalScopeClass.toTypeConstructor
 

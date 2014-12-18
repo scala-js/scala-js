@@ -124,6 +124,8 @@ object Integer {
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
 
-  @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String =
-    ((i: js.prim.Number) >>> 0).toString(base)
+  @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
+    import js.JSNumberOps._
+    i.toUint.toString(base)
+  }
 }

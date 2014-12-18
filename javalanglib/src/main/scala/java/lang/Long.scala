@@ -54,6 +54,8 @@ object Long {
     parseLong(s, 10)
 
   def parseLong(s: String, radix: Int): scala.Long = {
+    import js.JSStringOps._
+
     def fail() = throw new NumberFormatException(s"""For input string: "$s"""")
 
     if (s.isEmpty) {
@@ -72,13 +74,13 @@ object Long {
       @tailrec
       def loop(str0: String, acc: scala.Long): scala.Long = if (str0.length > 0) {
         val MaxLen = 9
-        val cur = (str0: js.prim.String).substring(0, MaxLen): String
+        val cur = str0.jsSubstring(0, MaxLen)
         val macc = acc * fastPow(radix, cur.length)
-        val ival = js.parseInt(cur, radix): scala.Double
+        val ival = js.parseInt(cur, radix)
         if (ival.isNaN)
           fail()
         val cval = ival.toInt.toLong // faster than ival.toLong
-        loop((str0: js.prim.String).substring(MaxLen), macc + cval)
+        loop(str0.jsSubstring(MaxLen), macc + cval)
       } else acc
 
       loop(s, 0L)

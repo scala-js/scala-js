@@ -3,7 +3,7 @@ package scala.scalajs.runtime
 import scala.annotation.tailrec
 
 import scala.scalajs.js
-import scala.scalajs.js.prim.{String => jsString}
+import js.JSStringOps._
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
@@ -79,7 +79,7 @@ object StackTrace {
    * StackTraceElements.
    */
   private def normalizedLinesToStackTrace(
-      lines: js.Array[jsString]): Array[StackTraceElement] = {
+      lines: js.Array[String]): Array[StackTraceElement] = {
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
 
@@ -270,45 +270,64 @@ object StackTrace {
    * Most comments -and lack thereof- have also been copied therefrom.
    */
 
-  private def normalizeStackTraceLines(e: js.Dynamic): js.Array[jsString] = {
+  private def normalizeStackTraceLines(e: js.Dynamic): js.Array[String] = {
+    import js.DynamicImplicits.{truthValue, number2dynamic}
+
     /* You would think that we could test once and for all which "mode" to
      * adopt. But the format can actually differ for different exceptions
      * on some browsers, e.g., exceptions in Chrome there may or may not have
      * arguments or stack.
      */
+
+    /* Ideally we would write tests like
+     *   if (e.arguments && e.stack)
+     * but Scala 2.10 does not like that (too much Dynamic magic, I suppose).
+     * So we define inlineable defs for the fields we're interested in.
+     * This way we make the compiler happy
+     */
+    @inline def arguments = e.arguments
+    @inline def stack = e.stack
+    @inline def sourceURL = e.sourceURL
+    @inline def number = e.number
+    @inline def fileName = e.fileName
+    @inline def message = e.message
+    @inline def `opera#sourceloc` = e.`opera#sourceloc`
+    @inline def stacktrace = e.stacktrace
+
     if (!e) {
-      js.Array[jsString]()
+      js.Array[String]()
     } else if (isRhino) {
       extractRhino(e)
-    } else if (!(!e.arguments) && !(!e.stack)) {
+    } else if (arguments && stack) {
       extractChrome(e)
-    } else if (!(!e.stack) && !(!e.sourceURL)) {
+    } else if (stack && sourceURL) {
       extractSafari(e)
-    } else if (!(!e.stack) && !(!e.number)) {
+    } else if (stack && number) {
       extractIE(e)
-    } else if (!(!e.stack) && !(!e.fileName)) {
+    } else if (stack && fileName) {
       extractFirefox(e)
-    } else if (!(!e.message) && !(!e.`opera#sourceloc`)) {
+    } else if (message && `opera#sourceloc`) {
       // e.message.indexOf("Backtrace:") > -1 -> opera9
       // 'opera#sourceloc' in e -> opera9, opera10a
       // !e.stacktrace -> opera9
-      if (!e.stacktrace) {
+      @inline def messageIsLongerThanStacktrace =
+        message.split("\n").length > stacktrace.split("\n").length
+      if (!stacktrace) {
         extractOpera9(e) // use e.message
-      } else if ((e.message.indexOf("\n") > -1) &&
-          (e.message.split("\n").length > e.stacktrace.split("\n").length)) {
+      } else if ((message.indexOf("\n") > -1) && messageIsLongerThanStacktrace) {
         // e.message may have more stack entries than e.stacktrace
         extractOpera9(e) // use e.message
       } else {
         extractOpera10a(e) // use e.stacktrace
       }
-    } else if (!(!e.message) && !(!e.stack) && !(!e.stacktrace)) {
-      // e.stacktrace && e.stack -> opera10b
-      if (e.stacktrace.indexOf("called from line") < 0) {
+    } else if (message && stack && stacktrace) {
+      // stacktrace && stack -> opera10b
+      if (stacktrace.indexOf("called from line") < 0) {
         extractOpera10b(e)
       } else {
         extractOpera11(e)
       }
-    } else if (!(!e.stack) && !e.fileName) {
+    } else if (stack && !fileName) {
       /* Chrome 27 does not have e.arguments as earlier versions,
        * but still does not have e.fileName as Firefox */
       extractChrome(e)
@@ -317,22 +336,22 @@ object StackTrace {
     }
   }
 
-  private def extractRhino(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[js.UndefOr[jsString]]).getOrElse[jsString]("")
-      .replace("""^\s+at\s+""".re("gm"), "") // remove 'at' and indentation
-      .replace("""^(.+?)(?: \((.+)\))?$""".re("gm"), "$2@$1")
-      .replace("""\r\n?""".re("gm"), "\n") // Rhino has platform-dependent EOL's
-      .split("\n")
+  private def extractRhino(e: js.Dynamic): js.Array[String] = {
+    (e.stack.asInstanceOf[js.UndefOr[String]]).getOrElse("")
+      .jsReplace("""^\s+at\s+""".re("gm"), "") // remove 'at' and indentation
+      .jsReplace("""^(.+?)(?: \((.+)\))?$""".re("gm"), "$2@$1")
+      .jsReplace("""\r\n?""".re("gm"), "\n") // Rhino has platform-dependent EOL's
+      .jsSplit("\n")
   }
 
-  private def extractChrome(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[jsString] + "\n")
-      .replace("""^[\s\S]+?\s+at\s+""".re, " at ") // remove message
-      .replace("""^\s+(at eval )?at\s+""".re("gm"), "") // remove 'at' and indentation
-      .replace("""^([^\(]+?)([\n])""".re("gm"), "{anonymous}() ($1)$2") // see note
-      .replace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
-      .replace("""^([^\(]+|\{anonymous\}\(\)) \((.+)\)$""".re("gm"), "$1@$2")
-      .split("\n")
+  private def extractChrome(e: js.Dynamic): js.Array[String] = {
+    (e.stack.asInstanceOf[String] + "\n")
+      .jsReplace("""^[\s\S]+?\s+at\s+""".re, " at ") // remove message
+      .jsReplace("""^\s+(at eval )?at\s+""".re("gm"), "") // remove 'at' and indentation
+      .jsReplace("""^([^\(]+?)([\n])""".re("gm"), "{anonymous}() ($1)$2") // see note
+      .jsReplace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
+      .jsReplace("""^([^\(]+|\{anonymous\}\(\)) \((.+)\)$""".re("gm"), "$1@$2")
+      .jsSplit("\n")
       .jsSlice(0, -1)
 
     /* Note: there was a $ next to the \n here in the original code, but it
@@ -340,36 +359,36 @@ object StackTrace {
      */
   }
 
-  private def extractFirefox(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[jsString])
-      .replace("""(?:\n@:0)?\s+$""".re("m"), "")
-      .replace("""^(?:\((\S*)\))?@""".re("gm"), "{anonymous}($1)@")
-      .split("\n")
+  private def extractFirefox(e: js.Dynamic): js.Array[String] = {
+    (e.stack.asInstanceOf[String])
+      .jsReplace("""(?:\n@:0)?\s+$""".re("m"), "")
+      .jsReplace("""^(?:\((\S*)\))?@""".re("gm"), "{anonymous}($1)@")
+      .jsSplit("\n")
   }
 
-  private def extractIE(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[jsString])
-      .replace("""^\s*at\s+(.*)$""".re("gm"), "$1")
-      .replace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
-      .replace("""^([^\(]+|\{anonymous\}\(\))\s+\((.+)\)$""".re("gm"), "$1@$2")
-      .split("\n")
+  private def extractIE(e: js.Dynamic): js.Array[String] = {
+    (e.stack.asInstanceOf[String])
+      .jsReplace("""^\s*at\s+(.*)$""".re("gm"), "$1")
+      .jsReplace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
+      .jsReplace("""^([^\(]+|\{anonymous\}\(\))\s+\((.+)\)$""".re("gm"), "$1@$2")
+      .jsSplit("\n")
       .jsSlice(1)
   }
 
-  private def extractSafari(e: js.Dynamic): js.Array[jsString] = {
-    (e.stack.asInstanceOf[jsString])
-      .replace("""\[native code\]\n""".re("m"), "")
-      .replace("""^(?=\w+Error\:).*$\n""".re("m"), "")
-      .replace("""^@""".re("gm"), "{anonymous}()@")
-      .split("\n")
+  private def extractSafari(e: js.Dynamic): js.Array[String] = {
+    (e.stack.asInstanceOf[String])
+      .jsReplace("""\[native code\]\n""".re("m"), "")
+      .jsReplace("""^(?=\w+Error\:).*$\n""".re("m"), "")
+      .jsReplace("""^@""".re("gm"), "{anonymous}()@")
+      .jsSplit("\n")
   }
 
-  private def extractOpera9(e: js.Dynamic): js.Array[jsString] = {
+  private def extractOpera9(e: js.Dynamic): js.Array[String] = {
     // "  Line 43 of linked script file://localhost/G:/js/stacktrace.js\n"
     // "  Line 7 of inline#1 script in file://localhost/G:/js/test/functional/testcase1.html\n"
     val lineRE = """Line (\d+).*script (?:in )?(\S+)""".re("i")
-    val lines = (e.message.asInstanceOf[jsString]).split("\n")
-    val result = new js.Array[jsString]
+    val lines = (e.message.asInstanceOf[String]).jsSplit("\n")
+    val result = new js.Array[String]
 
     var i = 2
     val len = lines.length.toInt
@@ -385,12 +404,12 @@ object StackTrace {
     result
   }
 
-  private def extractOpera10a(e: js.Dynamic): js.Array[jsString] = {
+  private def extractOpera10a(e: js.Dynamic): js.Array[String] = {
     // "  Line 27 of linked script file://localhost/G:/js/stacktrace.js\n"
     // "  Line 11 of inline#1 script in file://localhost/G:/js/test/functional/testcase1.html: In function foo\n"
     val lineRE = """Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$""".re("i")
-    val lines = (e.stacktrace.asInstanceOf[jsString]).split("\n")
-    val result = new js.Array[jsString]
+    val lines = (e.stacktrace.asInstanceOf[String]).jsSplit("\n")
+    val result = new js.Array[String]
 
     var i = 0
     val len = lines.length.toInt
@@ -407,13 +426,13 @@ object StackTrace {
     result
   }
 
-  private def extractOpera10b(e: js.Dynamic): js.Array[jsString] = {
+  private def extractOpera10b(e: js.Dynamic): js.Array[String] = {
     // "<anonymous function: run>([arguments not available])@file://localhost/G:/js/stacktrace.js:27\n" +
     // "printStackTrace([arguments not available])@file://localhost/G:/js/stacktrace.js:18\n" +
     // "@file://localhost/G:/js/test/functional/testcase1.html:15"
     val lineRE = """^(.*)@(.+):(\d+)$""".re
-    val lines = (e.stacktrace.asInstanceOf[jsString]).split("\n")
-    val result = new js.Array[jsString]
+    val lines = (e.stacktrace.asInstanceOf[String]).jsSplit("\n")
+    val result = new js.Array[String]
 
     var i = 0
     val len = lines.length.toInt
@@ -429,10 +448,10 @@ object StackTrace {
     result
   }
 
-  private def extractOpera11(e: js.Dynamic): js.Array[jsString] = {
+  private def extractOpera11(e: js.Dynamic): js.Array[String] = {
     val lineRE = """^.*line (\d+), column (\d+)(?: in (.+))? in (\S+):$""".re
-    val lines = (e.stacktrace.asInstanceOf[jsString]).split("\n")
-    val result = new js.Array[jsString]
+    val lines = (e.stacktrace.asInstanceOf[String]).jsSplit("\n")
+    val result = new js.Array[String]
 
     var i = 0
     val len = lines.length.toInt
@@ -441,9 +460,9 @@ object StackTrace {
       if (mtch ne null) {
         val location = mtch(4).get + ":" + mtch(1).get + ":" + mtch(2).get
         val fnName0 = mtch(2).getOrElse("global code")
-        val fnName = (fnName0: jsString)
-          .replace("""<anonymous function: (\S+)>""".re, "$1")
-          .replace("""<anonymous function>""".re, "{anonymous}")
+        val fnName = fnName0
+          .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
+          .jsReplace("""<anonymous function>""".re, "{anonymous}")
         result.push(fnName + "@" + location
             /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
       }
@@ -453,7 +472,7 @@ object StackTrace {
     result
   }
 
-  private def extractOther(e: js.Dynamic): js.Array[jsString] = {
+  private def extractOther(e: js.Dynamic): js.Array[String] = {
     js.Array()
   }
 
@@ -491,9 +510,8 @@ object StackTrace {
    */
   implicit class ColumnStackTraceElement(ste: StackTraceElement) {
     def getColumnNumber: Int = {
-      val num = ste.asInstanceOf[js.Dynamic].columnNumber
-      if (!(!num)) num.asInstanceOf[Int]
-      else -1 // Not very Scala-ish, but consistent with StackTraceElemnt
+      ste.asInstanceOf[js.Dynamic].columnNumber
+        .asInstanceOf[js.UndefOr[Int]].getOrElse(-1)
     }
   }
 

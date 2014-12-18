@@ -82,7 +82,7 @@ object MiscInteropTest extends JasmineTest {
     }
 
     it("should compile js.undefined") {
-      expect(() => js.undefined.asInstanceOf[js.prim.Number].toString(10)).toThrow
+      expect(() => js.undefined.asInstanceOf[js.Dynamic].toFixed()).toThrow
     }
 
     it("should allow to define direct subtraits of js.Any") {

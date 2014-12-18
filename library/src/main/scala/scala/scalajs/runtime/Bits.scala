@@ -16,9 +16,9 @@ import js.typedarray
 /** Low-level stuff. */
 object Bits {
 
-  val areTypedArraysSupported = (
-      !(!global.ArrayBuffer) && !(!global.Int32Array) &&
-      !(!global.Float32Array) && !(!global.Float64Array))
+  val areTypedArraysSupported = js.DynamicImplicits.truthValue(
+      global.ArrayBuffer && global.Int32Array &&
+      global.Float32Array && global.Float64Array)
 
   private val arrayBuffer =
     if (areTypedArraysSupported) new typedarray.ArrayBuffer(8)
@@ -134,11 +134,13 @@ object Bits {
   }
 
   private def longBitsToDoublePolyfill(bits: Long): Double = {
+    import js.JSNumberOps._
+
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
     val hi = (bits >>> 32).toInt
-    val lo = ((bits.toInt: js.prim.Number) >>> 0).toDouble
+    val lo = bits.toInt.toUint
     val s = hi < 0
     val e = (hi >> hifbits) & ((1 << ebits) - 1)
     val f = (hi & ((1 << hifbits) - 1)).toDouble * 0x100000000L.toDouble + lo

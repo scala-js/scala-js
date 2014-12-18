@@ -1659,18 +1659,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
 
       if (isRawJSType(to)) {
-        to.typeSymbol match {
-          case JSNumberClass    => genTypeOfTest("number")
-          case JSStringClass    => genTypeOfTest("string")
-          case JSBooleanClass   => genTypeOfTest("boolean")
-          case JSUndefinedClass => genTypeOfTest("undefined")
-          case sym if sym.isTrait =>
-            reporter.error(pos,
-                s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
-            js.BooleanLiteral(true)
-          case sym =>
-            js.Unbox(js.JSBinaryOp(
-                js.JSBinaryOp.instanceof, value, genGlobalJSObject(sym)), 'Z')
+        val sym = to.typeSymbol
+        if (sym.isTrait) {
+          reporter.error(pos,
+              s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
+          js.BooleanLiteral(true)
+        } else {
+          js.Unbox(js.JSBinaryOp(
+              js.JSBinaryOp.instanceof, value, genGlobalJSObject(sym)), 'Z')
         }
       } else {
         val refType = toReferenceType(to)

@@ -33,7 +33,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
   // Begin implem of format()
 
   def format(format_in: String, args: Array[AnyRef]): Formatter = ifNotClosed {
-    import js.Any.fromDouble // to have .toFixed and .toExponential on Doubles
+    import js.JSNumberOps._
 
     var fmt: String = format_in
     var lastImplicitIndex: Int = 0
@@ -186,7 +186,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 throw new FormatFlagsConversionMismatchException("#", 's')
             }
             case 'c' | 'C' =>
-              pad(js.String.fromCharCode(intArg))
+              pad(intArg.toChar.toString)
             case 'd' =>
               with_+(numberArg.toString())
             case 'o' =>
@@ -214,7 +214,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
                 else precision
               // between 1e-4 and 10e(p): display as fixed
               if (m >= 1e-4 && m < Math.pow(10, p)) {
-                val sig = Math.ceil(Math.log10(m))
+                val sig = Math.ceil(Math.log10(m)).toInt
                 with_+(numberArg.toFixed(Math.max(p - sig, 0)))
               } else sciNotation(p - 1)
             case 'f' =>
@@ -229,7 +229,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             with_+({
               // check if we need additional 0 padding in exponent
               // JavaDoc: at least 2 digits
-              if ("e" == exp.charAt(exp.length - 3)) {
+              if ('e' == exp.charAt(exp.length - 3)) {
                 exp.substring(0, exp.length - 1) + "0" +
                   exp.charAt(exp.length - 1)
               } else exp
