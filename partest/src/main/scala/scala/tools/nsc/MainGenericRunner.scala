@@ -103,11 +103,12 @@ class MainGenericRunner {
     val output = WritableMemVirtualJSFile("partest-fastOpt.js")
 
     optimizer.optimizeCP(
-        Inputs(classpath, noWarnMissing),
-        OutputConfig(
+        classpath,
+        Config(
             output        = output,
             wantSourceMap = false,
-            checkIR       = true),
+            checkIR       = true,
+            noWarnMissing = noWarnMissing),
         logger)
   }
 
@@ -120,11 +121,12 @@ class MainGenericRunner {
     val output = WritableMemVirtualJSFile("partest-fullOpt.js")
 
     fullOptimizer.optimizeCP(fastOptimizer,
-        Inputs(input = ScalaJSOptimizer.Inputs(classpath, noWarnMissing)),
-        OutputConfig(
+        classpath, 
+        Config(
           output,
           checkIR = true,
-          wantSourceMap = false),
+          wantSourceMap = false,
+          noWarnMissing = noWarnMissing),
         logger)
   }
 

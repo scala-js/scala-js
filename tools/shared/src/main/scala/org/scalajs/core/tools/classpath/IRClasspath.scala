@@ -42,10 +42,8 @@ final class IRClasspath(
     if (scalaJSIR.nonEmpty) {
       val semantics = Semantics.compliantTo(requiredCompliance.map(_.semantics))
       val output = WritableMemVirtualJSFile(outName)
-      new ScalaJSOptimizer(semantics).optimizeCP(
-          Inputs(this),
-          OutputConfig(output),
-          NullLogger)
+      new ScalaJSOptimizer(semantics).optimizeCP(this,
+          Config(output), NullLogger)
       output
     } else {
       // We cannot run the optimizer without IR, because it will complain about

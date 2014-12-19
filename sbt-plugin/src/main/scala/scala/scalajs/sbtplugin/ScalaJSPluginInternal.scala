@@ -143,8 +143,8 @@ object ScalaJSPluginInternal {
 
         import ScalaJSOptimizer._
         val outCP = (scalaJSOptimizer in fastOptJS).value.optimizeCP(
-            Inputs(input = (scalaJSPreLinkClasspath in fastOptJS).value),
-            OutputConfig(
+            (scalaJSPreLinkClasspath in fastOptJS).value,
+            Config(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
                 wantSourceMap = (emitSourceMaps in fastOptJS).value,
@@ -188,9 +188,8 @@ object ScalaJSPluginInternal {
         import ScalaJSClosureOptimizer._
         val outCP = new ScalaJSClosureOptimizer(semantics).optimizeCP(
             (scalaJSOptimizer in fullOptJS).value,
-            Inputs(ScalaJSOptimizer.Inputs(
-                input = (scalaJSPreLinkClasspath in fullOptJS).value)),
-            OutputConfig(
+            (scalaJSPreLinkClasspath in fullOptJS).value,
+            Config(
                 output = WritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
                 wantSourceMap = (emitSourceMaps in fullOptJS).value,

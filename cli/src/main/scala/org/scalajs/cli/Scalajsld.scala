@@ -145,9 +145,8 @@ object Scalajsld {
     val semantics = options.semantics.optimized
 
     new ScalaJSClosureOptimizer(semantics).optimizeCP(
-        newScalaJSOptimizer(semantics),
-        Inputs(ScalaJSOptimizer.Inputs(cp)),
-        OutputConfig(
+        newScalaJSOptimizer(semantics), cp,
+        Config(
             output = output,
             wantSourceMap = options.sourceMap,
             relativizeSourceMapBase = options.relativizeSourceMap,
@@ -160,9 +159,8 @@ object Scalajsld {
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSOptimizer._
 
-    newScalaJSOptimizer(options.semantics).optimizeCP(
-        Inputs(cp),
-        OutputConfig(
+    newScalaJSOptimizer(options.semantics).optimizeCP(cp,
+        Config(
             output = output,
             wantSourceMap = options.sourceMap,
             checkIR = options.checkIR,

@@ -27,7 +27,7 @@ object QuickLinker {
     import ScalaJSOptimizer._
     val optimized = optimizer.optimizeCP(
       Inputs(complete),
-      OutputConfig(out),
+      Config(out),
       new ScalaConsoleLogger
     )
 
