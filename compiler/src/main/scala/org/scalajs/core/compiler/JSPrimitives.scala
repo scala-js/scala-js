@@ -42,8 +42,6 @@ abstract class JSPrimitives {
 
   val ARR_CREATE = 337 // js.Array.apply (array literal syntax)
 
-  val UNDEFVAL = 342  // js.undefined
-  val ISUNDEF = 343   // js.isUndefined
   val TYPEOF = 344    // typeof x
   val DEBUGGER = 345  // js.debugger()
   val HASPROP = 346   // js.Object.hasProperty(o, p), equiv to `p in o` in JS
@@ -93,8 +91,6 @@ abstract class JSPrimitives {
 
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
-    addPrimitive(JSPackage_undefined, UNDEFVAL)
-    addPrimitive(JSPackage_isUndefined, ISUNDEF)
     addPrimitive(JSPackage_native, JS_NATIVE)
 
     addPrimitive(JSObject_hasProperty, HASPROP)

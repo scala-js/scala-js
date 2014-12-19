@@ -10,13 +10,10 @@
 
 package scala.scalajs
 
-/** Contains primitive types for interoperability with JavaScript libraries.
+/** Types, methods and values for interoperability with JavaScript libraries.
+ *
  *  This package is only relevant to the Scala.js compiler, and should not be
  *  referenced by any project compiled to the JVM.
- *
- *  All the values and methods in this package object are representatives of
- *  standard variables and functions available in the top-level scope, as
- *  standardized in ECMAScript 5.1.
  *
  *  == Guide ==
  *
@@ -35,8 +32,8 @@ package scala.scalajs
  *  compiling to JavaScript.
  *
  *  Implicit conversions to and from standard Scala types to their equivalent
- *  in JavaScript are provided. For example, from Scala arrays to JavaScript
- *  arrays and back.
+ *  in JavaScript are provided. For example, from Scala functions to JavaScript
+ *  functions and back.
  *
  *  The most important subclasses of [[js.Any]] are:
  *  - [[js.Dynamic]], a dynamically typed interface to JavaScript APIs
@@ -68,17 +65,14 @@ package scala.scalajs
  *  [[js.UndefOr]] gives a [[scala.Option]]-like interface where the JavaScript
  *  value `undefined` takes the role of `None`.
  */
-package object js extends js.GlobalScope {
-  /** The constant Not-a-Number. */
-  val NaN: Double = native
-  /** The constant Positive Infinity. */
-  val Infinity: Double = native
-
+package object js {
   /** The undefined value. */
-  def undefined: js.UndefOr[Nothing] = sys.error("stub")
+  @inline def undefined: js.UndefOr[Nothing] =
+    ().asInstanceOf[js.UndefOr[Nothing]]
 
   /** Tests whether the given value is undefined. */
-  def isUndefined(v: scala.Any): Boolean = sys.error("stub")
+  @inline def isUndefined(v: scala.Any): Boolean =
+    v.asInstanceOf[scala.AnyRef] eq undefined
 
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
   def typeOf(x: Any): String = sys.error("stub")
@@ -96,39 +90,8 @@ package object js extends js.GlobalScope {
   def debugger(): Unit = sys.error("stub")
 
   /** Evaluates JavaScript code and returns the result. */
-  def eval(x: String): Any = native
-
-  /** Parses a string as an integer with a given radix. */
-  def parseInt(s: String, radix: Int): Double = native
-  /** Parses a string as an integer with auto-detected radix. */
-  def parseInt(s: String): Double = native
-  /** Parses a string as a floating point number. */
-  def parseFloat(string: String): Double = native
-
-  /** Tests whether the given value is Not-a-Number. */
-  def isNaN(number: Double): Boolean = native
-  /** Tests whether the given value is a finite number. */
-  def isFinite(number: Double): Boolean = native
-
-  /** Decodes a Uniform Resource Identifier (URI).
-   *  @see [[encodeURI]]
-   */
-  def decodeURI(encodedURI: String): String = native
-
-  /** Decodes a Uniform Resource Identifier (URI) component.
-   *  @see [[encodeURIComponent]]
-   */
-  def decodeURIComponent(encodedURIComponent: String): String = native
-
-  /** Encodes a Uniform Resource Identifier (URI).
-   *  @see [[decodeURI]]
-   */
-  def encodeURI(uri: String): String = native
-
-  /** Encodes a Uniform Resource Identifier (URI) component.
-   *  @see [[decodeURIComponent]]
-   */
-  def encodeURIComponent(uriComponent: String): String = native
+  @inline def eval(x: String): Any =
+    js.Dynamic.global.eval(x)
 
   /** Denotes a method body as native JavaScript. For use in facade types:
    *

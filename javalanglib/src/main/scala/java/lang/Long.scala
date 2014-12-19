@@ -76,14 +76,15 @@ object Long {
         val MaxLen = 9
         val cur = str0.jsSubstring(0, MaxLen)
         val macc = acc * fastPow(radix, cur.length)
-        val ival = js.parseInt(cur, radix)
-        if (ival.isNaN)
-          fail()
-        val cval = ival.toInt.toLong // faster than ival.toLong
+        val cval = Integer.parseInt(cur, radix).toLong
         loop(str0.jsSubstring(MaxLen), macc + cval)
       } else acc
 
-      loop(s, 0L)
+      try {
+        loop(s, 0L)
+      } catch {
+        case _: NumberFormatException => fail() // for the correct error message
+      }
     }
   }
 

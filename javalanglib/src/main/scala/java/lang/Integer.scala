@@ -64,9 +64,9 @@ object Integer {
           if (Character.digit(s(i), radix) < 0) fail
           i += 1
         }
-        val res = js.parseInt(s, radix)
+        val res = js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
 
-        if (js.isNaN(res) || res > MAX_VALUE || res < MIN_VALUE)
+        if (res.isNaN || res > MAX_VALUE || res < MIN_VALUE)
           fail
         else
           res.toInt
