@@ -20,7 +20,6 @@ import scala.util.control.TailCalls.{done => _, _} // done is a too generic term
 
 import org.scalajs.core.ir._
 import Definitions.{ObjectClass, isConstructorName, isReflProxyName}
-import Infos.OptimizerHints
 import Trees._
 import Types._
 
@@ -98,7 +97,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
       val m = MethodDef(static, name, newParams, resultType,
-          newBody)(None)(originalDef.pos)
+          newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = recreateInfo(m)
       (m, info)
     } catch {

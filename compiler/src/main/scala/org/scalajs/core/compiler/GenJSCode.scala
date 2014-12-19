@@ -18,6 +18,7 @@ import scala.annotation.tailrec
 
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
+import ir.Trees.OptimizerHints
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -298,8 +299,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
           isStdLibClassWithAdHocInlineAnnot(sym))
 
-      currentClassInfoBuilder.optimizerHints =
-        currentClassInfoBuilder.optimizerHints.
+      val optimizerHints =
+        OptimizerHints.empty.
           withInline(shouldMarkInline).
           withNoinline(sym.hasAnnotation(NoinlineAnnotationClass))
 
@@ -346,11 +347,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         else generatedMethods.toList // No fields needed
 
       // Create method info builder for exported stuff
-      val exports = withScopedVars(
-        currentMethodInfoBuilder := currentClassInfoBuilder.addMethod(
-            dceExportName + classIdent.name,
-            isStatic = false, isExported = true)
-      ) {
+      val exports = {
         // Generate the exported members
         val memberExports = genMemberExports(sym, exportedSymbols.toList)
 
@@ -384,7 +381,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassParents(sym),
-          hashedDefs)
+          hashedDefs)(
+          optimizerHints)
 
       classDefinition
     }
@@ -402,7 +400,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         reporter.error(exp.pos, "You may not export a class extending js.Any")
 
       val classIdent = encodeClassFullNameIdent(sym)
-      js.ClassDef(classIdent, ClassKind.RawJSType, None, Nil, Nil)
+      js.ClassDef(classIdent, ClassKind.RawJSType, None, Nil, Nil)(
+          OptimizerHints.empty)
     }
 
     // Generate an interface ---------------------------------------------------
@@ -416,18 +415,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classIdent = encodeClassFullNameIdent(sym)
 
       // fill in class info builder
-      def gen(tree: Tree) {
+      def gen(tree: Tree): List[js.MethodDef] = {
         tree match {
-          case EmptyTree => ()
-          case Template(_, _, body) => body foreach gen
-          case dd: DefDef =>
-            currentClassInfoBuilder.addMethod(
-                encodeMethodName(dd.symbol),
-                isStatic = false, isAbstract = true)
-          case _ => abort("Illegal tree in gen of genInterface(): " + tree)
+          case EmptyTree            => Nil
+          case Template(_, _, body) => body.flatMap(gen)
+          case dd: DefDef           => genMethod(dd).toList
+          case _ =>
+            abort("Illegal tree in gen of genInterface(): " + tree)
         }
       }
-      gen(cd.impl)
+      val generatedMethods = gen(cd.impl)
 
       // Check that interface/trait is not exported
       for (exp <- jsInterop.exportsOf(sym))
@@ -435,7 +432,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val parents = genClassParents(sym)
 
-      js.ClassDef(classIdent, ClassKind.Interface, None, parents, Nil)
+      js.ClassDef(classIdent, ClassKind.Interface, None, parents,
+          generatedMethods)(OptimizerHints.empty)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -453,6 +451,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body.flatMap(gen)
 
           case dd: DefDef =>
+            assert(!dd.symbol.isDeferred,
+                s"Found an abstract method in an impl class at $pos: ${dd.symbol.fullName}")
             val m = genMethod(dd)
             m.toList
 
@@ -466,7 +466,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       js.ClassDef(classIdent, ClassKind.Class,
           Some(objectClassIdent), List(objectClassIdent),
-          generatedMethods)
+          generatedMethods)(OptimizerHints.empty)
     }
 
     private def genClassParents(sym: Symbol)(implicit pos: Position): List[js.Ident] = {
@@ -540,24 +540,30 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
-        assert(!sym.owner.isInterface,
-            "genMethod() must not be called for methods in interfaces: "+sym)
-
         val methodIdent = encodeMethodSym(sym)
 
         def createInfoBuilder(isAbstract: Boolean = false) = {
           currentClassInfoBuilder.addMethod(methodIdent.name,
               isStatic = sym.owner.isImplClass,
               isAbstract = isAbstract,
-              isExported = sym.isClassConstructor &&
-                jsInterop.exportsOf(sym).nonEmpty)
+              isExported = false)
+        }
+
+        def jsParams = for (param <- params) yield {
+          implicit val pos = param.pos
+          js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+              mutable = false)
         }
 
         if (scalaPrimitives.isPrimitive(sym)) {
           None
-        } else if (sym.isDeferred) {
-          createInfoBuilder(isAbstract = true)
-          None
+        } else if (sym.isDeferred || sym.owner.isInterface) {
+          val infoBuilder = createInfoBuilder(isAbstract = true)
+          Some((
+              js.MethodDef(static = false, methodIdent,
+                  jsParams, currentClassType, js.EmptyTree)(
+                  OptimizerHints.empty, None)),
+              infoBuilder)
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
         } else if (isTrivialConstructor(sym, params, rhs)) {
@@ -587,25 +593,20 @@ abstract class GenJSCode extends plugins.PluginComponent
               !ignoreNoinlineAnnotation(sym)
             }
 
-            currentMethodInfoBuilder.optimizerHints =
-              currentMethodInfoBuilder.optimizerHints.
+            val optimizerHints =
+              OptimizerHints.empty.
                 withInline(shouldMarkInline).
                 withNoinline(shouldMarkNoinline)
 
             val methodDef = {
               if (sym.isClassConstructor) {
-                val jsParams = for (param <- params) yield {
-                  implicit val pos = param.pos
-                  js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-                      mutable = false)
-                }
                 js.MethodDef(static = false, methodIdent,
                     jsParams, currentClassType,
-                    js.Block(genStat(rhs), genThis()))(None)
+                    js.Block(genStat(rhs), genThis()))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 genMethodDef(static = sym.owner.isImplClass, methodIdent,
-                    params, resultIRType, rhs)
+                    params, resultIRType, rhs, optimizerHints)
               }
             }
 
@@ -695,7 +696,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val newBody =
         transformer.transform(body, isStat = resultType == jstpe.NoType)
       js.MethodDef(static, methodName, newParams, resultType,
-          newBody)(None)(methodDef.pos)
+          newBody)(methodDef.optimizerHints, None)(methodDef.pos)
     }
 
     /**
@@ -804,7 +805,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
 
           js.MethodDef(static = false, proxyIdent, jsParams, jstpe.AnyType,
-              body)(None)
+              body)(OptimizerHints.empty, None)
         }
       }
     }
@@ -821,7 +822,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genMethodDef(static: Boolean, methodIdent: js.Ident,
         paramsSyms: List[Symbol], resultIRType: jstpe.Type,
-        tree: Tree): js.MethodDef = {
+        tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
 
       val jsParams = for (param <- paramsSyms) yield {
@@ -868,7 +869,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      js.MethodDef(static, methodIdent, jsParams, resultIRType, body)(None)
+      js.MethodDef(static, methodIdent, jsParams, resultIRType, body)(
+          optimizerHints, None)
     }
 
     /** Gen JS code for a tree in statement position (in the IR).

@@ -29,7 +29,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
     for (irFile <- classpath.scalaJSIR) {
-      val info = irFile.roughInfo
+      val info = irFile.info
       providers += info.encodedName -> irFile
       if (info.isExported)
         exportedSymbols += info.encodedName

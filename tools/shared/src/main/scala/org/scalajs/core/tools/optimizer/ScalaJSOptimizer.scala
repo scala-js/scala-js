@@ -222,9 +222,8 @@ class ScalaJSOptimizer(
         info: Infos.ClassInfo): Infos.ClassInfo = {
       val refinedMethods = refineMethodInfos(
           container, staticContainer, info.methods)
-      Infos.ClassInfo(info.name, info.encodedName, info.isExported,
-          info.kind, info.superClass, info.parents,
-          Infos.OptimizerHints.empty, refinedMethods)
+      Infos.ClassInfo(info.encodedName, info.isExported,
+          info.kind, info.superClass, info.parents, refinedMethods)
     }
 
     for {
@@ -288,7 +287,8 @@ class ScalaJSOptimizer(
           }
         } else {
           classDef.defs.foreach {
-            case m: MethodDef if m.name.isInstanceOf[Ident] =>
+            case m: MethodDef if m.name.isInstanceOf[Ident] &&
+                m.body != EmptyTree =>
               if (methodInfos(m.name.name).isReachable) {
                 addTree(methodsCache.getOrElseUpdate(m.name.name,
                     classEmitter.genMethod(classInfo.encodedName, m)))

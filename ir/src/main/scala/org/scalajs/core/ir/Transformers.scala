@@ -183,7 +183,8 @@ object Transformers {
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
       val ClassDef(name, kind, superClass, parents, defs) = tree
-      ClassDef(name, kind, superClass, parents, defs.map(transformDef))(tree.pos)
+      ClassDef(name, kind, superClass, parents, defs.map(transformDef))(
+          tree.optimizerHints)(tree.pos)
     }
 
     def transformDef(tree: Tree): Tree = {
@@ -193,8 +194,10 @@ object Transformers {
         case VarDef(name, vtpe, mutable, rhs) =>
           VarDef(name, vtpe, mutable, transformExpr(rhs))
 
-        case MethodDef(static, name, args, resultType, body) =>
-          MethodDef(static, name, args, resultType, transformStat(body))(None)
+        case tree: MethodDef =>
+          val MethodDef(static, name, args, resultType, body) = tree
+          MethodDef(static, name, args, resultType, transformStat(body))(
+              tree.optimizerHints, None)
 
         case PropertyDef(name, getterBody, setterArg, setterBody) =>
           PropertyDef(

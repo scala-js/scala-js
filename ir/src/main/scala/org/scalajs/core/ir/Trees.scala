@@ -545,13 +545,17 @@ object Trees {
 
   // Classes
 
-  case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident], parents: List[Ident], defs: List[Tree])(implicit val pos: Position) extends Tree {
+  case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
+      parents: List[Ident], defs: List[Tree])(
+      val optimizerHints: OptimizerHints)(
+      implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
   case class MethodDef(static: Boolean, name: PropertyName,
       args: List[ParamDef], resultType: Type, body: Tree)(
-      val hash: Option[TreeHash])(implicit val pos: Position) extends Tree {
+      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
+      implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
@@ -565,6 +569,35 @@ object Trees {
 
   case class ModuleExportDef(fullName: String)(implicit val pos: Position) extends Tree {
     val tpe = NoType
+  }
+
+  final class OptimizerHints(val bits: Int) extends AnyVal {
+    import OptimizerHints._
+
+    def inline: Boolean = (bits & InlineMask) != 0
+    def noinline: Boolean = (bits & NoinlineMask) != 0
+
+    def withInline(value: Boolean): OptimizerHints =
+      if (value) new OptimizerHints(bits | InlineMask)
+      else new OptimizerHints(bits & ~InlineMask)
+
+    def withNoinline(value: Boolean): OptimizerHints =
+      if (value) new OptimizerHints(bits | NoinlineMask)
+      else new OptimizerHints(bits & ~NoinlineMask)
+
+    override def toString(): String =
+      s"OptimizerHints($bits)"
+  }
+
+  object OptimizerHints {
+    final val InlineShift = 0
+    final val InlineMask = 1 << InlineShift
+
+    final val NoinlineShift = 1
+    final val NoinlineMask = 1 << NoinlineShift
+
+    final val empty: OptimizerHints =
+      new OptimizerHints(0)
   }
 
   /** A hash of a tree (usually a MethodDef). Contains two SHA-1 hashes */

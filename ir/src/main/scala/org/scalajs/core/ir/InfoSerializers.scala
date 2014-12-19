@@ -27,20 +27,12 @@ object InfoSerializers {
     new Serializer().serialize(stream, classInfo)
   }
 
-  def deserializeRoughInfo(stream: InputStream): RoughClassInfo = {
-    deserializeVersionRoughInfo(stream)._2
+  def deserialize(stream: InputStream): ClassInfo = {
+    deserializeWithVersion(stream)._2
   }
 
-  def deserializeFullInfo(stream: InputStream): ClassInfo = {
-    deserializeVersionFullInfo(stream)._2
-  }
-
-  def deserializeVersionRoughInfo(stream: InputStream): (String, RoughClassInfo) = {
-    new Deserializer(stream).deserializeRough()
-  }
-
-  def deserializeVersionFullInfo(stream: InputStream): (String, ClassInfo) = {
-    new Deserializer(stream).deserializeFull()
+  def deserializeWithVersion(stream: InputStream): (String, ClassInfo) = {
+    new Deserializer(stream).deserialize()
   }
 
   private final class Serializer {
@@ -62,13 +54,11 @@ object InfoSerializers {
       s.writeUTF(ScalaJSVersions.binaryEmitted)
 
       import classInfo._
-      s.writeUTF(name)
       s.writeUTF(encodedName)
       s.writeBoolean(isExported)
       s.writeByte(ClassKind.toByte(kind))
       s.writeUTF(superClass)
       writeStrings(parents)
-      s.writeInt(optimizerHints.bits)
 
       def writeMethodInfo(methodInfo: MethodInfo): Unit = {
         import methodInfo._
@@ -88,7 +78,6 @@ object InfoSerializers {
         writeStrings(instantiatedClasses)
         writeStrings(accessedModules)
         writeStrings(accessedClassData)
-        s.writeInt(optimizerHints.bits)
       }
 
       writeSeq(methods)(writeMethodInfo(_))
@@ -106,31 +95,16 @@ object InfoSerializers {
     def readStrings(): List[String] =
       readList(input.readUTF())
 
-    def deserializeRough(): (String, RoughClassInfo) = {
-      val version = readHeader()
-
-      import input._
-      val name = readUTF()
-      val encodedName = readUTF()
-      val isExported = readBoolean()
-      val info = RoughClassInfo(name, encodedName, isExported)
-
-      (version, info)
-    }
-
-    def deserializeFull(): (String, ClassInfo) = {
+    def deserialize(): (String, ClassInfo) = {
       val version = readHeader()
 
       import input._
 
-      val name = readUTF()
       val encodedName = readUTF()
       val isExported = readBoolean()
       val kind = ClassKind.fromByte(readByte())
       val superClass = readUTF()
       val parents = readList(readUTF())
-
-      val optimizerHints = new OptimizerHints(readInt())
 
       def readMethod(): MethodInfo = {
         val encodedName = readUTF()
@@ -143,17 +117,15 @@ object InfoSerializers {
         val instantiatedClasses = readStrings()
         val accessedModules = readStrings()
         val accessedClassData = readStrings()
-        val optimizerHints = new OptimizerHints(readInt())
         MethodInfo(encodedName, isStatic, isAbstract, isExported,
             methodsCalled, methodsCalledStatically, staticMethodsCalled,
-            instantiatedClasses, accessedModules, accessedClassData,
-            optimizerHints)
+            instantiatedClasses, accessedModules, accessedClassData)
       }
 
       val methods = readList(readMethod())
 
-      val info = ClassInfo(name, encodedName, isExported, kind,
-          superClass, parents, optimizerHints, methods)
+      val info = ClassInfo(encodedName, isExported, kind,
+          superClass, parents, methods)
 
       (version, info)
     }

@@ -24,7 +24,6 @@ object JavaLangObject {
   val InfoAndTree = (Info, Definition)
 
   private def Info = ClassInfo(
-    name = "java.lang.Object",
     encodedName = "O",
     kind = ClassKind.Class,
     superClass = "",
@@ -37,9 +36,7 @@ object JavaLangObject {
         ),
         accessedModules = List("jl_System$")
       ),
-      MethodInfo("equals__O__Z",
-        optimizerHints = inlineOptimizerHints
-      ),
+      MethodInfo("equals__O__Z"),
       MethodInfo("clone__O",
         methodsCalled = Map(
           "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
@@ -47,8 +44,7 @@ object JavaLangObject {
         ),
         instantiatedClasses = List("jl_CloneNotSupportedException"),
         accessedModules = List("sjsr_package$"),
-        accessedClassData = List("jl_Cloneable"),
-        optimizerHints = inlineOptimizerHints
+        accessedClassData = List("jl_Cloneable")
       ),
       MethodInfo("notify__V"),
       MethodInfo("notifyAll__V"),
@@ -80,6 +76,12 @@ object JavaLangObject {
         methodsCalled = Map(
           "O" -> List("finalize__V")
         )
+      ),
+      MethodInfo("toString",
+        isExported = true,
+        methodsCalled = Map(
+          "O" -> List("toString__T")
+        )
       )
     )
   )
@@ -102,7 +104,7 @@ object JavaLangObject {
           Ident("init___", Some("<init>")),
           Nil,
           AnyType,
-          This()(ThisType))(None),
+          This()(ThisType))(OptimizerHints.empty, None),
 
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
@@ -115,7 +117,7 @@ object JavaLangObject {
               LoadModule(ClassType("jl_System$")),
               Ident("identityHashCode__O__I", Some("identityHashCode")),
               List(This()(ThisType)))(IntType)
-          })(None),
+          })(OptimizerHints.empty, None),
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
@@ -127,7 +129,7 @@ object JavaLangObject {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")))(AnyType))
-          })(None),
+          })(inlineOptimizerHints, None),
 
         /* protected def clone(): Object =
          *   if (this.isInstanceOf[Cloneable]) <clone>(this)
@@ -147,7 +149,7 @@ object JavaLangObject {
               Throw(New(ClassType("jl_CloneNotSupportedException"),
                 Ident("init___", Some("<init>")), Nil))
             })(AnyType)
-          })(None),
+          })(inlineOptimizerHints, None),
 
         /* def toString(): String =
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
@@ -170,7 +172,7 @@ object JavaLangObject {
                 Ident("toHexString__I__T"),
                 List(Apply(This()(ThisType), Ident("hashCode__I"), Nil)(IntType)))(
                 ClassType(StringClass)))
-          })(None),
+          })(OptimizerHints.empty, None),
 
           /* Since wait() is not supported in any way, a correct implementation
            * of notify() and notifyAll() is to do nothing.
@@ -182,7 +184,7 @@ object JavaLangObject {
             Ident("notify__V", Some("notify__V")),
             Nil,
             NoType,
-            Skip())(None),
+            Skip())(OptimizerHints.empty, None),
 
           /* def notifyAll(): Unit = () */
           MethodDef(
@@ -190,7 +192,7 @@ object JavaLangObject {
             Ident("notifyAll__V", Some("notifyAll__V")),
             Nil,
             NoType,
-            Skip())(None),
+            Skip())(OptimizerHints.empty, None),
 
           /* def finalize(): Unit = () */
           MethodDef(
@@ -198,7 +200,7 @@ object JavaLangObject {
             Ident("finalize__V", Some("finalize__V")),
             Nil,
             NoType,
-            Skip())(None),
+            Skip())(OptimizerHints.empty, None),
 
           /* Reflective proxies
            * Note that we do not need to proxy the following methods, since
@@ -211,19 +213,20 @@ object JavaLangObject {
            */
 
           MethodDef(static = false, Ident("clone__"), Nil, AnyType,
-            Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(None),
+            Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(
+            OptimizerHints.empty, None),
 
           MethodDef(static = false, Ident("notify__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
-            Undefined()))(None),
+            Undefined()))(OptimizerHints.empty, None),
 
           MethodDef(static = false, Ident("notifyAll__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
-            Undefined()))(None),
+            Undefined()))(OptimizerHints.empty, None),
 
           MethodDef(static = false, Ident("finalize__"), Nil, AnyType, Block(
             Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
-            Undefined()))(None),
+            Undefined()))(OptimizerHints.empty, None),
 
           // Exports
 
@@ -237,8 +240,8 @@ object JavaLangObject {
               Apply(This()(ThisType),
                   Ident("toString__T", Some("toString__T")),
                   Nil)(ClassType(StringClass))
-            })(None)
-      ))
+            })(OptimizerHints.empty, None)
+      ))(OptimizerHints.empty)
 
       Hashers.hashClassDef(classDef)
   }

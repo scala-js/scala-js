@@ -270,8 +270,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     lazy val descendentClasses = descendants.filter(_.isClass)
 
-    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
-
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false
@@ -456,8 +454,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
 
-    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
-
     var isReachable: Boolean = false
 
     var calledFrom: Option[From] = None
@@ -486,6 +482,8 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
       assert(!isStatic,
           s"Trying to dynamically reach the static method $this")
+      assert(!isAbstract,
+          s"Trying to dynamically reach the abstract method $this")
       assert(owner.isClass,
           s"Trying to dynamically reach the non-class method $this")
       assert(!isConstructorName(encodedName),
@@ -555,7 +553,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
     // We create a module class to avoid cascading errors
     Infos.ClassInfo(
-        name = s"<$encodedName>",
         encodedName = encodedName,
         isExported = false,
         kind = ClassKind.ModuleClass,

@@ -22,10 +22,12 @@ object Hashers {
       hasher.mixTrees(args)
       hasher.mixType(resultType)
       hasher.mixTree(body)
+      hasher.mixInt(methodDef.optimizerHints.bits)
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(static, name, args, resultType, body)(Some(hash))(methodDef.pos)
+      MethodDef(static, name, args, resultType, body)(
+          methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
 
@@ -36,8 +38,10 @@ object Hashers {
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */
-  def hashClassDef(classDef: ClassDef): ClassDef =
-    classDef.copy(defs = hashDefs(classDef.defs))(classDef.pos)
+  def hashClassDef(classDef: ClassDef): ClassDef = {
+    classDef.copy(defs = hashDefs(classDef.defs))(
+        classDef.optimizerHints)(classDef.pos)
+  }
 
   def hashesEqual(x: TreeHash, y: TreeHash, considerPos: Boolean): Boolean = {
     Arrays.equals(x.treeHash, y.treeHash) &&

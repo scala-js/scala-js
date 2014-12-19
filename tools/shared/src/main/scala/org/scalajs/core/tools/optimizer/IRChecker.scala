@@ -46,13 +46,21 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
       implicit val ctx = ErrorContext(classDef)
       checkStaticMembers(classDef)
       classDef.kind match {
-        case ClassKind.RawJSType | ClassKind.Interface =>
+        case ClassKind.RawJSType =>
           if (classDef.defs exists {
             case m: MethodDef if m.static => false
             case _                        => true
           }) {
-            reportError(s"${classDef.name} of kind ${classDef.kind} cannot "+
+            reportError(s"Raw JS type ${classDef.name} cannot "+
                 "have instance members")
+          }
+        case ClassKind.Interface =>
+          if (classDef.defs exists {
+            case m: MethodDef if m.static || m.body == EmptyTree => false
+            case _                                               => true
+          }) {
+            reportError(s"Interface ${classDef.name} cannot "+
+                "have concrete instance members")
           }
         case _ =>
           checkScalaClassDef(classDef)
@@ -154,14 +162,23 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
           s"$advertizedSig, does not match its name (should be $sigFromName).")
     }
 
-    val thisType =
-      if (static) NoType
-      else ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
-    if (resultType == NoType)
-      typecheckStat(body, bodyEnv)
-    else
-      typecheckExpect(body, bodyEnv, resultType)
+    if (body == EmptyTree) {
+      // Abstract
+      if (static)
+        reportError(s"Static method ${classDef.name.name}.$name cannot be abstract")
+      else if (isConstructor)
+        reportError(s"Constructor ${classDef.name.name}.$name cannot be abstract")
+    } else {
+      // Concrete
+      val thisType =
+        if (static) NoType
+        else ClassType(classDef.name.name)
+      val bodyEnv = Env.fromSignature(thisType, params, resultType, isConstructor)
+      if (resultType == NoType)
+        typecheckStat(body, bodyEnv)
+      else
+        typecheckExpect(body, bodyEnv, resultType)
+    }
   }
 
   def checkExportedMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
@@ -176,7 +193,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     if (static)
       reportError("Exported method def cannot be static")
 
-    if (name.contains("__"))
+    if (name.contains("__") && name != Definitions.ExportedConstructorsName)
       reportError("Exported method def name cannot contain __")
 
     for (ParamDef(name, tpe, _) <- params) {
