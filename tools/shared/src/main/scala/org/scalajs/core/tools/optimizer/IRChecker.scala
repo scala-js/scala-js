@@ -165,13 +165,19 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def checkExportedMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
-    val MethodDef(_, _, params, resultType, body) = methodDef
+    val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     if (!classDef.kind.isClass) {
       reportError(s"Exported method def can only appear in a class")
       return
     }
+
+    if (static)
+      reportError("Exported method def cannot be static")
+
+    if (name.contains("__"))
+      reportError("Exported method def name cannot contain __")
 
     for (ParamDef(name, tpe, _) <- params) {
       if (tpe == NoType)
