@@ -1393,7 +1393,7 @@ object JSDesugaring {
 
         case Closure(captureParams, params, body, captureValues) =>
           val transformedBody = {
-            val env = Env.empty.withParams(captureParams)
+            val env = Env.empty.withParams(captureParams ++ params)
             val withReturn = Return(body, None)
             (transformStat(withReturn)(env)) match {
               case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
