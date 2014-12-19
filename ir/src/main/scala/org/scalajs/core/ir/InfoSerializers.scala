@@ -54,7 +54,6 @@ object InfoSerializers {
       s.writeUTF(ScalaJSVersions.binaryEmitted)
 
       import classInfo._
-      s.writeUTF(name)
       s.writeUTF(encodedName)
       s.writeBoolean(isExported)
       s.writeByte(ClassKind.toByte(kind))
@@ -103,7 +102,6 @@ object InfoSerializers {
 
       import input._
 
-      val name = readUTF()
       val encodedName = readUTF()
       val isExported = readBoolean()
       val kind = ClassKind.fromByte(readByte())
@@ -132,7 +130,7 @@ object InfoSerializers {
 
       val methods = readList(readMethod())
 
-      val info = ClassInfo(name, encodedName, isExported, kind,
+      val info = ClassInfo(encodedName, isExported, kind,
           superClass, parents, optimizerHints, methods)
 
       (version, info)

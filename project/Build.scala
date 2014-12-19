@@ -377,7 +377,7 @@ object Build extends sbt.Build {
   private def serializeHardcodedIR(base: File,
       infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef)): File = {
     // We assume that there are no weird characters in the full name
-    val fullName = infoAndTree._1.name
+    val fullName = ir.Definitions.decodeClassName(infoAndTree._1.encodedName)
     val output = base / (fullName.replace('.', '/') + ".sjsir")
 
     if (!output.exists()) {

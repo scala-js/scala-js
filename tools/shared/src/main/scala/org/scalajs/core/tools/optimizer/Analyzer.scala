@@ -555,7 +555,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
   private def createMissingClassInfo(encodedName: String): Infos.ClassInfo = {
     // We create a module class to avoid cascading errors
     Infos.ClassInfo(
-        name = s"<$encodedName>",
         encodedName = encodedName,
         isExported = false,
         kind = ClassKind.ModuleClass,

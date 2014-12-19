@@ -656,7 +656,6 @@ object Printers {
   class InfoPrinter(protected val out: Writer) extends IndentationManager {
     def printClassInfo(classInfo: ClassInfo): Unit = {
       import classInfo._
-      println("name: ", escapeJS(name))
       println("encodedName: ", escapeJS(encodedName))
       println("isExported: ", isExported)
       println("kind: ", kind)

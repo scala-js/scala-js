@@ -12,7 +12,6 @@ package org.scalajs.core.ir
 object Infos {
 
   final class ClassInfo private (
-      val name: String,
       val encodedName: String,
       val isExported: Boolean,
       val kind: ClassKind,
@@ -24,7 +23,6 @@ object Infos {
 
   object ClassInfo {
     def apply(
-        name: String,
         encodedName: String,
         isExported: Boolean = false,
         kind: ClassKind = ClassKind.Class,
@@ -32,7 +30,7 @@ object Infos {
         parents: List[String] = Nil,
         optimizerHints: OptimizerHints = OptimizerHints.empty,
         methods: List[MethodInfo] = Nil): ClassInfo = {
-      new ClassInfo(name, encodedName, isExported, kind, superClass,
+      new ClassInfo(encodedName, isExported, kind, superClass,
           parents, optimizerHints, methods)
     }
   }

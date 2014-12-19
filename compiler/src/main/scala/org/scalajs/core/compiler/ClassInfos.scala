@@ -30,7 +30,6 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
   }
 
   class ClassInfoBuilder(val symbol: ClassSymbol) {
-    val name = classNameOf(symbol)
     val encodedName = encodeClassFullName(symbol)
     var isExported: Boolean = false
 
@@ -67,7 +66,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     }
 
     def result(): ClassInfo = {
-      ClassInfo(name, encodedName, isExported, kind,
+      ClassInfo(encodedName, isExported, kind,
           superClass, parents, optimizerHints,
           methodInfos.map(_.result()).result())
     }

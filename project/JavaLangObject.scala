@@ -24,7 +24,6 @@ object JavaLangObject {
   val InfoAndTree = (Info, Definition)
 
   private def Info = ClassInfo(
-    name = "java.lang.Object",
     encodedName = "O",
     kind = ClassKind.Class,
     superClass = "",

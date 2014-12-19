@@ -23,7 +23,6 @@ object JavaLangString {
   val InfoAndTree = (Info, Definition)
 
   private def Info = ClassInfo(
-    name = "java.lang.String",
     encodedName = "T",
     kind = ClassKind.HijackedClass,
     superClass = "O",
