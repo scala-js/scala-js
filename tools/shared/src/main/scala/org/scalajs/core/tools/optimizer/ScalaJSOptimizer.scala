@@ -45,9 +45,7 @@ class ScalaJSOptimizer(
   def this(semantics: Semantics) = this(semantics, new IncOptimizer(_))
 
   /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
-   *  See [[ScalaJSOptimizer.Inputs]] for details about the required and
-   *  optional inputs.
-   *  See [[ScalaJSOptimizer.OutputConfig]] for details about the configuration
+   *  See [[ScalaJSOptimizer.Config]] for details about the configuration
    *  for the output of this method.
    *  Returns a [[CompleteCIClasspath]] containing the result of the
    *  optimizations.
@@ -57,24 +55,23 @@ class ScalaJSOptimizer(
    *  - No IR in result
    *  - CoreJSLibs in result (since they are implicitly in the CompleteIRCP)
    */
-  def optimizeCP(inputs: Inputs[IRClasspath], outCfg: OutputConfig,
+  def optimizeCP(classpath: IRClasspath, cfg: Config,
       logger: Logger): LinkedClasspath = {
 
-    val cp = inputs.input
-
-    CacheUtils.cached(cp.version, outCfg.output, outCfg.cache) {
-      logger.info(s"Fast optimizing ${outCfg.output.path}")
-      optimizeIR(inputs.copy(input = inputs.input.scalaJSIR), outCfg, logger)
+    CacheUtils.cached(classpath.version, cfg.output, cfg.cache) {
+      logger.info(s"Fast optimizing ${cfg.output.path}")
+      optimizeIR(classpath.scalaJSIR, cfg, logger)
     }
 
-    new LinkedClasspath(cp.jsLibs, outCfg.output, cp.requiresDOM, cp.version)
+    new LinkedClasspath(classpath.jsLibs, cfg.output,
+        classpath.requiresDOM, classpath.version)
   }
 
-  def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
-      outCfg: OutputConfig, logger: Logger): Unit = {
+  def optimizeIR(irFiles: Traversable[VirtualScalaJSIRFile],
+      cfg: Config, logger: Logger): Unit = {
 
     val builder = {
-      import outCfg._
+      import cfg._
       if (wantSourceMap)
         new JSFileBuilderWithSourceMap(output.name,
             output.contentWriter,
@@ -87,30 +84,29 @@ class ScalaJSOptimizer(
     builder.addLine("'use strict';")
     CoreJSLibs.libs(semantics).foreach(builder.addFile _)
 
-    optimizeIR(inputs, outCfg, builder, logger)
+    optimizeIR(irFiles, cfg, builder, logger)
 
     builder.complete()
     builder.closeWriters()
   }
 
-  def optimizeIR(inputs: Inputs[Traversable[VirtualScalaJSIRFile]],
-      outCfg: OptimizerConfig, builder: JSTreeBuilder, logger: Logger): Unit = {
+  def optimizeIR(irFiles: Traversable[VirtualScalaJSIRFile],
+      cfg: OptimizerConfig, builder: JSTreeBuilder, logger: Logger): Unit = {
 
     /* Handle tree equivalence: If we handled source maps so far, positions are
        still up-to-date. Otherwise we need to flush the state if proper
        positions are requested now.
      */
-    if (outCfg.wantSourceMap && !persistentState.wasWithSourceMap)
+    if (cfg.wantSourceMap && !persistentState.wasWithSourceMap)
       clean()
 
-    persistentState.wasWithSourceMap = outCfg.wantSourceMap
+    persistentState.wasWithSourceMap = cfg.wantSourceMap
 
     persistentState.startRun()
     try {
-      import inputs._
       val allData =
         GenIncOptimizer.logTime(logger, "Read info") {
-          readAllData(inputs.input, logger)
+          readAllData(irFiles, logger)
         }
       val (useOptimizer, refinedAnalyzer) = GenIncOptimizer.logTime(
           logger, "Optimizations part") {
@@ -118,15 +114,15 @@ class ScalaJSOptimizer(
           GenIncOptimizer.logTime(logger, "Compute reachability") {
             val analyzer = new Analyzer(logger, semantics, allData,
                 globalWarnEnabled = true,
-                isBeforeOptimizer = !outCfg.disableOptimizer)
-            analyzer.computeReachability(noWarnMissing)
+                isBeforeOptimizer = !cfg.disableOptimizer)
+            analyzer.computeReachability(cfg.noWarnMissing)
             analyzer
           }
-        if (outCfg.checkIR) {
+        if (cfg.checkIR) {
           GenIncOptimizer.logTime(logger, "Check IR") {
             if (analyzer.allAvailable)
               checkIR(analyzer, logger)
-            else if (inputs.noWarnMissing.isEmpty)
+            else if (cfg.noWarnMissing.isEmpty)
               sys.error("Could not check IR because there where linking errors.")
           }
         }
@@ -136,26 +132,26 @@ class ScalaJSOptimizer(
           persistentFile.treeIfChanged(lastVersion)
         }
 
-        val useOptimizer = analyzer.allAvailable && !outCfg.disableOptimizer
+        val useOptimizer = analyzer.allAvailable && !cfg.disableOptimizer
 
-        if (outCfg.batchMode)
+        if (cfg.batchMode)
           optimizer = optimizerFactory(semantics)
 
         val refinedAnalyzer = if (useOptimizer) {
           GenIncOptimizer.logTime(logger, "Inliner") {
             optimizer.update(analyzer, getClassTreeIfChanged,
-                outCfg.wantSourceMap, logger)
+                cfg.wantSourceMap, logger)
           }
           GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
             val refinedData = computeRefinedData(allData, optimizer)
             val refinedAnalyzer = new Analyzer(logger, semantics, refinedData,
                 globalWarnEnabled = false,
                 isBeforeOptimizer = false)
-            refinedAnalyzer.computeReachability(noWarnMissing)
+            refinedAnalyzer.computeReachability(cfg.noWarnMissing)
             refinedAnalyzer
           }
         } else {
-          if (inputs.noWarnMissing.isEmpty && !outCfg.disableOptimizer)
+          if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
             logger.warn("Not running the inliner because there where linking errors.")
           analyzer
         }
@@ -165,7 +161,7 @@ class ScalaJSOptimizer(
         buildDCEedOutput(builder, refinedAnalyzer, useOptimizer)
       }
     } finally {
-      persistentState.endRun(outCfg.unCache)
+      persistentState.endRun(cfg.unCache)
       logger.debug(
           s"Inc. opt stats: reused: ${persistentState.statsReused} -- "+
           s"invalidated: ${persistentState.statsInvalidated} -- "+
@@ -380,13 +376,6 @@ class ScalaJSOptimizer(
 }
 
 object ScalaJSOptimizer {
-  /** Inputs of the Scala.js optimizer. */
-  final case class Inputs[T](
-      /** The CompleteNCClasspath or the IR files to be packaged. */
-      input: T,
-      /** Elements we won't warn even if they don't exist */
-      noWarnMissing: Seq[NoWarnMissing] = Nil
-  )
 
   sealed abstract class NoWarnMissing
   final case class NoWarnClass(className: String) extends NoWarnMissing
@@ -409,10 +398,12 @@ object ScalaJSOptimizer {
     val disableOptimizer: Boolean
     /** If true, nothing is performed incrementally */
     val batchMode: Boolean
+    /** Elements we won't warn even if they don't exist */
+    val noWarnMissing: Seq[NoWarnMissing]
   }
 
   /** Configuration for the output of the Scala.js optimizer. */
-  final case class OutputConfig(
+  final case class Config(
       /** Writer for the output. */
       output: WritableVirtualJSFile,
       /** Cache file */
@@ -430,7 +421,9 @@ object ScalaJSOptimizer {
       /** If true, no optimizations are performed */
       disableOptimizer: Boolean = false,
       /** If true, nothing is performed incrementally */
-      batchMode: Boolean = false
+      batchMode: Boolean = false,
+      /** Elements we won't warn even if they don't exist */
+      noWarnMissing: Seq[NoWarnMissing] = Nil
   ) extends OptimizerConfig
 
   // Private helpers -----------------------------------------------------------
