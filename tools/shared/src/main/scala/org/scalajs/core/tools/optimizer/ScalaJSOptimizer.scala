@@ -287,7 +287,8 @@ class ScalaJSOptimizer(
           }
         } else {
           classDef.defs.foreach {
-            case m: MethodDef if m.name.isInstanceOf[Ident] =>
+            case m: MethodDef if m.name.isInstanceOf[Ident] &&
+                m.body != EmptyTree =>
               if (methodInfos(m.name.name).isReachable) {
                 addTree(methodsCache.getOrElseUpdate(m.name.name,
                     classEmitter.genMethod(classInfo.encodedName, m)))

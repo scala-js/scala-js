@@ -482,6 +482,8 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
       assert(!isStatic,
           s"Trying to dynamically reach the static method $this")
+      assert(!isAbstract,
+          s"Trying to dynamically reach the abstract method $this")
       assert(owner.isClass,
           s"Trying to dynamically reach the non-class method $this")
       assert(!isConstructorName(encodedName),

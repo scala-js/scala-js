@@ -70,7 +70,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val className = tree.name.name
     val typeFunctionDef = genConstructor(tree)
     val memberDefs = tree.defs collect {
-      case m: MethodDef if !m.static =>
+      case m: MethodDef if !m.static && m.body != EmptyTree =>
         genMethod(className, m)
       case p: PropertyDef =>
         genProperty(className, p)

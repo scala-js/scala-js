@@ -419,18 +419,16 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classIdent = encodeClassFullNameIdent(sym)
 
       // fill in class info builder
-      def gen(tree: Tree) {
+      def gen(tree: Tree): List[js.MethodDef] = {
         tree match {
-          case EmptyTree => ()
-          case Template(_, _, body) => body foreach gen
-          case dd: DefDef =>
-            currentClassInfoBuilder.addMethod(
-                encodeMethodName(dd.symbol),
-                isStatic = false, isAbstract = true)
-          case _ => abort("Illegal tree in gen of genInterface(): " + tree)
+          case EmptyTree            => Nil
+          case Template(_, _, body) => body.flatMap(gen)
+          case dd: DefDef           => genMethod(dd).toList
+          case _ =>
+            abort("Illegal tree in gen of genInterface(): " + tree)
         }
       }
-      gen(cd.impl)
+      val generatedMethods = gen(cd.impl)
 
       // Check that interface/trait is not exported
       for (exp <- jsInterop.exportsOf(sym))
@@ -438,8 +436,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val parents = genClassParents(sym)
 
-      js.ClassDef(classIdent, ClassKind.Interface, None, parents, Nil)(
-          OptimizerHints.empty)
+      js.ClassDef(classIdent, ClassKind.Interface, None, parents,
+          generatedMethods)(OptimizerHints.empty)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -457,6 +455,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           case Template(_, _, body) => body.flatMap(gen)
 
           case dd: DefDef =>
+            assert(!dd.symbol.isDeferred,
+                s"Found an abstract method in an impl class at $pos: ${dd.symbol.fullName}")
             val m = genMethod(dd)
             m.toList
 
@@ -544,9 +544,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
-        assert(!sym.owner.isInterface,
-            "genMethod() must not be called for methods in interfaces: "+sym)
-
         val methodIdent = encodeMethodSym(sym)
 
         def createInfoBuilder(isAbstract: Boolean = false) = {
@@ -557,11 +554,21 @@ abstract class GenJSCode extends plugins.PluginComponent
                 jsInterop.exportsOf(sym).nonEmpty)
         }
 
+        def jsParams = for (param <- params) yield {
+          implicit val pos = param.pos
+          js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+              mutable = false)
+        }
+
         if (scalaPrimitives.isPrimitive(sym)) {
           None
-        } else if (sym.isDeferred) {
-          createInfoBuilder(isAbstract = true)
-          None
+        } else if (sym.isDeferred || sym.owner.isInterface) {
+          val infoBuilder = createInfoBuilder(isAbstract = true)
+          Some((
+              js.MethodDef(static = false, methodIdent,
+                  jsParams, currentClassType, js.EmptyTree)(
+                  OptimizerHints.empty, None)),
+              infoBuilder)
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
         } else if (isTrivialConstructor(sym, params, rhs)) {
@@ -598,11 +605,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val methodDef = {
               if (sym.isClassConstructor) {
-                val jsParams = for (param <- params) yield {
-                  implicit val pos = param.pos
-                  js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-                      mutable = false)
-                }
                 js.MethodDef(static = false, methodIdent,
                     jsParams, currentClassType,
                     js.Block(genStat(rhs), genThis()))(optimizerHints, None)

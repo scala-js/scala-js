@@ -584,7 +584,10 @@ object Printers {
             print("static ")
           print(name)
           printSig(args, resultType)
-          printBlock(body)
+          if (body == EmptyTree)
+            print("<abstract>")
+          else
+            printBlock(body)
 
         case PropertyDef(name, _, _, _) =>
           // TODO
