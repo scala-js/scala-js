@@ -207,7 +207,7 @@ final class Analyzer(semantics: Semantics,
     var isModuleAccessed: Boolean = false
     var isDataAccessed: Boolean = false
 
-    var instantiatedFrom: Option[From] = None
+    var instantiatedFrom: List[From] = Nil
 
     val delayedCalls = mutable.Map.empty[String, From]
 
@@ -296,9 +296,9 @@ final class Analyzer(semantics: Semantics,
     }
 
     def instantiated()(implicit from: From): Unit = {
+      instantiatedFrom ::= from
       if (!isInstantiated && isClass) {
         isInstantiated = true
-        instantiatedFrom = Some(from)
         ancestors.foreach(_.subclassInstantiated())
 
         for ((methodName, from) <- delayedCalls)
@@ -307,10 +307,9 @@ final class Analyzer(semantics: Semantics,
     }
 
     private def subclassInstantiated()(implicit from: From): Unit = {
+      instantiatedFrom ::= from
       if (!isAnySubclassInstantiated && isClass) {
         isAnySubclassInstantiated = true
-        if (instantiatedFrom.isEmpty)
-          instantiatedFrom = Some(from)
         accessData()
       }
     }
@@ -373,8 +372,8 @@ final class Analyzer(semantics: Semantics,
 
     var isReachable: Boolean = false
 
-    var calledFrom: Option[From] = None
-    var instantiatedSubclass: Option[ClassInfo] = None
+    var calledFrom: List[From] = Nil
+    var instantiatedSubclasses: List[ClassInfo] = Nil
 
     var nonExistent: Boolean = false
 
@@ -386,9 +385,9 @@ final class Analyzer(semantics: Semantics,
 
       checkExistent()
 
+      calledFrom ::= from
       if (!isReachable) {
         isReachable = true
-        calledFrom = Some(from)
         doReach()
       }
     }
@@ -405,10 +404,11 @@ final class Analyzer(semantics: Semantics,
 
       checkExistent()
 
+      calledFrom ::= from
+      instantiatedSubclasses ::= inClass
+
       if (!isReachable) {
         isReachable = true
-        calledFrom = Some(from)
-        instantiatedSubclass = Some(inClass)
         doReach()
       }
     }

@@ -43,7 +43,7 @@ object Analysis {
     def isAnySubclassInstantiated: Boolean
     def isModuleAccessed: Boolean
     def isDataAccessed: Boolean
-    def instantiatedFrom: Option[From]
+    def instantiatedFrom: Seq[From]
     def isNeededAtAll: Boolean
     def isAnyStaticMethodReachable: Boolean
     def methodInfos: scala.collection.Map[String, MethodInfo]
@@ -58,8 +58,8 @@ object Analysis {
     def isExported: Boolean
     def isReflProxy: Boolean
     def isReachable: Boolean
-    def calledFrom: Option[From]
-    def instantiatedSubclass: Option[ClassInfo]
+    def calledFrom: Seq[From]
+    def instantiatedSubclasses: Seq[ClassInfo]
     def nonExistent: Boolean
   }
 
@@ -96,8 +96,8 @@ object Analysis {
     private[this] var indentation: String = ""
 
     def logCallStack(from: From, level: Level): Unit = {
-      seenInfos.clear()
       logCallStackImpl(level, Some(from))
+      seenInfos.clear()
     }
 
     private def log(level: Level, msg: String) =
@@ -132,8 +132,8 @@ object Analysis {
               case FromMethod(methodInfo) =>
                 log(level, s"$verb from $methodInfo")
                 if (onlyOnce(methodInfo)) {
-                  methodInfo.instantiatedSubclass.foreach(involvedClasses += _)
-                  loopTrace(methodInfo.calledFrom)
+                  involvedClasses ++= methodInfo.instantiatedSubclasses
+                  loopTrace(methodInfo.calledFrom.headOption)
                 }
               case FromCore =>
                 log(level, s"$verb from scalajs-corejslib.js")
@@ -154,7 +154,7 @@ object Analysis {
             log(level, s"$classInfo")
             if (onlyOnce(classInfo))
               logCallStackImpl(Level.Debug,
-                  classInfo.instantiatedFrom, verb = "instantiated")
+                  classInfo.instantiatedFrom.headOption, verb = "instantiated")
             // recurse with Debug log level not to overwhelm the user
           }
         }
