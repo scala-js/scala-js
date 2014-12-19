@@ -223,8 +223,7 @@ class ScalaJSOptimizer(
       val refinedMethods = refineMethodInfos(
           container, staticContainer, info.methods)
       Infos.ClassInfo(info.encodedName, info.isExported,
-          info.kind, info.superClass, info.parents,
-          Infos.OptimizerHints.empty, refinedMethods)
+          info.kind, info.superClass, info.parents, refinedMethods)
     }
 
     for {

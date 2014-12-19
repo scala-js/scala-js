@@ -13,6 +13,7 @@ import scala.reflect.internal.Flags
 
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe}
+import ir.Trees.OptimizerHints
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -118,7 +119,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       ) {
         js.MethodDef(static = false, methodIdent,
             List(inArg), toIRType(sym.tpe.resultType),
-            genNamedExporterBody(trgSym, inArg.ref))(None)
+            genNamedExporterBody(trgSym, inArg.ref))(
+            OptimizerHints.empty, None)
       }
     }
 
@@ -314,7 +316,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       js.MethodDef(static = false, js.StringLiteral(jsName),
-          formalArgs, jstpe.AnyType, body)(None)
+          formalArgs, jstpe.AnyType, body)(OptimizerHints.empty, None)
     }
 
     /**

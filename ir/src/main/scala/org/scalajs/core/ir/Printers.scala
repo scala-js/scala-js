@@ -557,7 +557,10 @@ object Printers {
 
         // Classes
 
-        case ClassDef(name, kind, superClass, parents, defs) =>
+        case tree: ClassDef =>
+          val ClassDef(name, kind, superClass, parents, defs) = tree
+          if (tree.optimizerHints != OptimizerHints.empty)
+            print("@hints(", tree.optimizerHints.bits, ") ")
           kind match {
             case ClassKind.Class         => print("class ")
             case ClassKind.ModuleClass   => print("module class ")
@@ -573,7 +576,10 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
-        case MethodDef(static, name, args, resultType, body) =>
+        case tree: MethodDef =>
+          val MethodDef(static, name, args, resultType, body) = tree
+          if (tree.optimizerHints != OptimizerHints.empty)
+            print("@hints(", tree.optimizerHints.bits, ") ")
           if (static)
             print("static ")
           print(name)
@@ -666,9 +672,6 @@ object Printers {
             parents.map(escapeJS).mkString("[", ", ", "]"))
       }
 
-      if (optimizerHints != OptimizerHints.empty)
-        println("optimizerHints: ", optimizerHints)
-
       print("methods:")
       indent(); println()
       methods.foreach(printMethodInfo)
@@ -725,8 +728,6 @@ object Printers {
         println("accessedClassData: ",
             accessedClassData.map(escapeJS).mkString("[", ", ", "]"))
       }
-      if (optimizerHints != OptimizerHints.empty)
-        println("optimizerHints: ", optimizerHints)
 
       undent(); println()
     }

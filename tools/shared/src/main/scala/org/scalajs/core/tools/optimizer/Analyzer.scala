@@ -270,8 +270,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     lazy val descendentClasses = descendants.filter(_.isClass)
 
-    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
-
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false
@@ -455,8 +453,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val isAbstract = data.isAbstract
     val isExported = data.isExported
     val isReflProxy = isReflProxyName(encodedName)
-
-    def optimizerHints: Infos.OptimizerHints = data.optimizerHints
 
     var isReachable: Boolean = false
 

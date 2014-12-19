@@ -17,7 +17,6 @@ object Infos {
       val kind: ClassKind,
       val superClass: String,
       val parents: List[String], // does not include this class
-      val optimizerHints: OptimizerHints,
       val methods: List[MethodInfo]
   )
 
@@ -28,10 +27,9 @@ object Infos {
         kind: ClassKind = ClassKind.Class,
         superClass: String = "",
         parents: List[String] = Nil,
-        optimizerHints: OptimizerHints = OptimizerHints.empty,
         methods: List[MethodInfo] = Nil): ClassInfo = {
       new ClassInfo(encodedName, isExported, kind, superClass,
-          parents, optimizerHints, methods)
+          parents, methods)
     }
   }
 
@@ -45,8 +43,7 @@ object Infos {
       val staticMethodsCalled: Map[String, List[String]],
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
-      val accessedClassData: List[String],
-      val optimizerHints: OptimizerHints
+      val accessedClassData: List[String]
   )
 
   object MethodInfo {
@@ -60,42 +57,11 @@ object Infos {
         staticMethodsCalled: Map[String, List[String]] = Map.empty,
         instantiatedClasses: List[String] = Nil,
         accessedModules: List[String] = Nil,
-        accessedClassData: List[String] = Nil,
-        optimizerHints: OptimizerHints = OptimizerHints.empty): MethodInfo = {
+        accessedClassData: List[String] = Nil): MethodInfo = {
       new MethodInfo(encodedName, isStatic, isAbstract, isExported,
           methodsCalled, methodsCalledStatically, staticMethodsCalled,
-          instantiatedClasses, accessedModules, accessedClassData,
-          optimizerHints)
+          instantiatedClasses, accessedModules, accessedClassData)
     }
-  }
-
-  final class OptimizerHints(val bits: Int) extends AnyVal {
-    import OptimizerHints._
-
-    def inline: Boolean = (bits & InlineMask) != 0
-    def noinline: Boolean = (bits & NoinlineMask) != 0
-
-    def withInline(value: Boolean): OptimizerHints =
-      if (value) new OptimizerHints(bits | InlineMask)
-      else new OptimizerHints(bits & ~InlineMask)
-
-    def withNoinline(value: Boolean): OptimizerHints =
-      if (value) new OptimizerHints(bits | NoinlineMask)
-      else new OptimizerHints(bits & ~NoinlineMask)
-
-    override def toString(): String =
-      s"OptimizerHints($bits)"
-  }
-
-  object OptimizerHints {
-    final val InlineShift = 0
-    final val InlineMask = 1 << InlineShift
-
-    final val NoinlineShift = 1
-    final val NoinlineMask = 1 << NoinlineShift
-
-    final val empty: OptimizerHints =
-      new OptimizerHints(0)
   }
 
 }

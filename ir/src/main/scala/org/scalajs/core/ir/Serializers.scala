@@ -367,13 +367,15 @@ object Serializers {
           writeTree(body)
           writeTrees(captureValues)
 
-        case ClassDef(name, kind, superClass, parents, defs) =>
+        case tree: ClassDef =>
+          val ClassDef(name, kind, superClass, parents, defs) = tree
           writeByte(TagClassDef)
           writeIdent(name)
           writeByte(ClassKind.toByte(kind))
           writeOptIdent(superClass)
           writeIdents(parents)
           writeTrees(defs)
+          writeInt(tree.optimizerHints.bits)
 
         case methodDef: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = methodDef
@@ -388,6 +390,7 @@ object Serializers {
           // Write out method def
           writeBoolean(static); writePropertyName(name)
           writeTrees(args); writeType(resultType); writeTree(body)
+          writeInt(methodDef.optimizerHints.bits)
 
           // Jump back and write true length
           val length = bufferUnderlying.jumpBack()
@@ -636,7 +639,8 @@ object Serializers {
           val superClass = readOptIdent()
           val parents = readIdents()
           val defs = readTrees()
-          ClassDef(name, kind, superClass, parents, defs)
+          val optimizerHints = new OptimizerHints(readInt())
+          ClassDef(name, kind, superClass, parents, defs)(optimizerHints)
 
         case TagMethodDef =>
           val optHash = readOptHash()
@@ -644,7 +648,8 @@ object Serializers {
           val len = readInt()
           assert(len >= 0)
           MethodDef(readBoolean(), readPropertyName(),
-              readParamDefs(), readType(), readTree())(optHash)
+              readParamDefs(), readType(), readTree())(
+              new OptimizerHints(readInt()), optHash)
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())

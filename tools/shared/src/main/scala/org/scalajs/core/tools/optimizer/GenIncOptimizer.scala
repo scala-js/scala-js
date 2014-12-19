@@ -18,7 +18,6 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir._
 import Definitions.isConstructorName
-import Infos.OptimizerHints
 import Trees._
 import Types._
 
@@ -244,6 +243,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
     var lastVersion: Option[String] = None
 
+    protected var optimizerHints: OptimizerHints = OptimizerHints.empty
+
     private def reachableMethodsOf(info: Analyzer#ClassInfo): Set[String] = {
       val methodInfos: scala.collection.Map[String, Analyzer#MethodInfo] =
         if (isStatic) info.staticMethodInfos
@@ -315,6 +316,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
           case _ => // ignore
         }
+        optimizerHints = tree.optimizerHints
       }
 
       (addedMethods.result(), changedMethods.result(), deletedMethods.result())
@@ -521,7 +523,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     /** UPDATE PASS ONLY. */
     def updateIsInlineable(classInfo: Analyzer#ClassInfo): Boolean = {
       val oldTryNewInlineable = tryNewInlineable
-      isInlineable = classInfo.optimizerHints.inline
+      isInlineable = optimizerHints.inline
       if (!isInlineable) {
         tryNewInlineable = None
       } else {
@@ -792,22 +794,19 @@ abstract class GenIncOptimizer(semantics: Semantics) {
         methodDef: MethodDef): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
 
-      val bodyChanged = {
+      val changed = {
         originalDef == null ||
         (methodDef.hash zip originalDef.hash).forall {
           case (h1, h2) => !Hashers.hashesEqual(h1, h2, considerPositions)
         }
       }
 
-      if (bodyChanged)
+      if (changed) {
         tagBodyAskers()
 
-      val hints = methodInfo.optimizerHints
-      val changed = hints != optimizerHints || bodyChanged
-      if (changed) {
         val oldAttributes = (inlineable, isTraitImplForwarder)
 
-        optimizerHints = hints
+        optimizerHints = methodDef.optimizerHints
         originalDef = methodDef
         desugaredDef = null
         preciseInfo = null

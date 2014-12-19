@@ -153,7 +153,7 @@ object Scalajsp {
       case MethodDef(_, Ident(name, _), _, _, _) => !isReflProxyName(name)
       case _ => true
     }
-    tree.copy(defs = newDefs)(tree.pos)
+    tree.copy(defs = newDefs)(tree.optimizerHints)(tree.pos)
   }
 
 }

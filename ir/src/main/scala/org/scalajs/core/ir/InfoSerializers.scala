@@ -59,7 +59,6 @@ object InfoSerializers {
       s.writeByte(ClassKind.toByte(kind))
       s.writeUTF(superClass)
       writeStrings(parents)
-      s.writeInt(optimizerHints.bits)
 
       def writeMethodInfo(methodInfo: MethodInfo): Unit = {
         import methodInfo._
@@ -79,7 +78,6 @@ object InfoSerializers {
         writeStrings(instantiatedClasses)
         writeStrings(accessedModules)
         writeStrings(accessedClassData)
-        s.writeInt(optimizerHints.bits)
       }
 
       writeSeq(methods)(writeMethodInfo(_))
@@ -108,8 +106,6 @@ object InfoSerializers {
       val superClass = readUTF()
       val parents = readList(readUTF())
 
-      val optimizerHints = new OptimizerHints(readInt())
-
       def readMethod(): MethodInfo = {
         val encodedName = readUTF()
         val isStatic = readBoolean()
@@ -121,17 +117,15 @@ object InfoSerializers {
         val instantiatedClasses = readStrings()
         val accessedModules = readStrings()
         val accessedClassData = readStrings()
-        val optimizerHints = new OptimizerHints(readInt())
         MethodInfo(encodedName, isStatic, isAbstract, isExported,
             methodsCalled, methodsCalledStatically, staticMethodsCalled,
-            instantiatedClasses, accessedModules, accessedClassData,
-            optimizerHints)
+            instantiatedClasses, accessedModules, accessedClassData)
       }
 
       val methods = readList(readMethod())
 
       val info = ClassInfo(encodedName, isExported, kind,
-          superClass, parents, optimizerHints, methods)
+          superClass, parents, methods)
 
       (version, info)
     }

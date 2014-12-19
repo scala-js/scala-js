@@ -53,8 +53,6 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
       encodeClassFullName(typeSym)
     }
 
-    var optimizerHints: OptimizerHints = OptimizerHints.empty
-
     val methodInfos = mutable.ListBuffer.empty[MethodInfoBuilder]
 
     def addMethod(encodedName: String, isStatic: Boolean,
@@ -67,8 +65,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
 
     def result(): ClassInfo = {
       ClassInfo(encodedName, isExported, kind,
-          superClass, parents, optimizerHints,
-          methodInfos.map(_.result()).result())
+          superClass, parents, methodInfos.map(_.result()).result())
     }
   }
 
@@ -83,7 +80,6 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     val instantiatedClasses = mutable.Set.empty[String]
     val accessedModules = mutable.Set.empty[String]
     val accessedClassData = mutable.Set.empty[String]
-    var optimizerHints: OptimizerHints = OptimizerHints.empty
 
     def callsMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
       methodsCalled += ((patchClassName(ownerIdent.name), method.name))
@@ -139,8 +135,7 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
           staticMethodsCalled.toList.groupBy(_._1).mapValues(_.map(_._2)),
           instantiatedClasses.toList,
           accessedModules.result.toList,
-          accessedClassData.result.toList,
-          optimizerHints
+          accessedClassData.result.toList
       )
     }
   }
