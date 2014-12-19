@@ -57,6 +57,8 @@ object Definitions {
 
   val ThrowableClass = "jl_Throwable"
 
+  val ExportedConstructorsName = "__exportedInits"
+
   /** Encodes a class name. */
   def encodeClassName(fullName: String): String = {
     val base = fullName.replace("_", "$und").replace(".", "_")

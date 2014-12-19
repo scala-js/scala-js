@@ -347,11 +347,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         else generatedMethods.toList // No fields needed
 
       // Create method info builder for exported stuff
-      val exports = withScopedVars(
-        currentMethodInfoBuilder := currentClassInfoBuilder.addMethod(
-            dceExportName + classIdent.name,
-            isStatic = false, isExported = true)
-      ) {
+      val exports = {
         // Generate the exported members
         val memberExports = genMemberExports(sym, exportedSymbols.toList)
 
@@ -550,8 +546,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           currentClassInfoBuilder.addMethod(methodIdent.name,
               isStatic = sym.owner.isImplClass,
               isAbstract = isAbstract,
-              isExported = sym.isClassConstructor &&
-                jsInterop.exportsOf(sym).nonEmpty)
+              isExported = false)
         }
 
         def jsParams = for (param <- params) yield {

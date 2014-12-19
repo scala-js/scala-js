@@ -76,6 +76,12 @@ object JavaLangObject {
         methodsCalled = Map(
           "O" -> List("finalize__V")
         )
+      ),
+      MethodInfo("toString",
+        isExported = true,
+        methodsCalled = Map(
+          "O" -> List("toString__T")
+        )
       )
     )
   )

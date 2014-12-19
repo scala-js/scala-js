@@ -193,7 +193,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     if (static)
       reportError("Exported method def cannot be static")
 
-    if (name.contains("__"))
+    if (name.contains("__") && name != Definitions.ExportedConstructorsName)
       reportError("Exported method def name cannot contain __")
 
     for (ParamDef(name, tpe, _) <- params) {
