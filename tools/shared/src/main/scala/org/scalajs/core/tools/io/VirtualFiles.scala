@@ -109,9 +109,6 @@ trait WritableVirtualJSFile extends WritableVirtualTextFile with VirtualJSFile {
  *  It contains the class info and the IR tree.
  */
 trait VirtualScalaJSIRFile extends VirtualFile {
-  /** Rough class info of this file. */
-  def roughInfo: ir.Infos.RoughClassInfo = info
-
   /** Class info of this file. */
   def info: ir.Infos.ClassInfo =
     infoAndTree._1
@@ -127,26 +124,12 @@ trait VirtualScalaJSIRFile extends VirtualFile {
 /** Base trait for virtual Scala.js IR files that are serialized as binary file.
  */
 trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScalaJSIRFile {
-  /** Rough class info of this file. */
-  override def roughInfo: ir.Infos.RoughClassInfo = {
-    // Overridden to read only the necessary parts
-    val stream = inputStream
-    try {
-      ir.InfoSerializers.deserializeRoughInfo(stream)
-    } catch {
-      case e: IOException =>
-        throw new IOException(s"Failed to deserialize rough info of $path", e)
-    } finally {
-      stream.close()
-    }
-  }
-
   /** Class info of this file. */
   override def info: ir.Infos.ClassInfo = {
     // Overridden to read only the necessary parts
     val stream = inputStream
     try {
-      ir.InfoSerializers.deserializeFullInfo(stream)
+      ir.InfoSerializers.deserialize(stream)
     } catch {
       case e: IOException =>
         throw new IOException(s"Failed to deserialize info of $path", e)
@@ -159,7 +142,7 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
   override def infoAndTree: (ir.Infos.ClassInfo, ir.Trees.ClassDef) = {
     val stream = inputStream
     try {
-      val (version, info) = ir.InfoSerializers.deserializeVersionFullInfo(stream)
+      val (version, info) = ir.InfoSerializers.deserializeWithVersion(stream)
       val tree = ir.Serializers.deserialize(
           stream, version).asInstanceOf[ir.Trees.ClassDef]
       (info, tree)

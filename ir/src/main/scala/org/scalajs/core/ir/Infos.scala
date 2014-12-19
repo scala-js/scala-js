@@ -11,29 +11,16 @@ package org.scalajs.core.ir
 
 object Infos {
 
-  sealed class RoughClassInfo protected (
+  final class ClassInfo private (
       val name: String,
       val encodedName: String,
-      val isExported: Boolean
-  )
-
-  object RoughClassInfo {
-    def apply(name: String, encodedName: String,
-        isExported: Boolean): RoughClassInfo = {
-      new RoughClassInfo(name, encodedName, isExported)
-    }
-  }
-
-  final class ClassInfo protected (
-      name: String,
-      encodedName: String,
-      isExported: Boolean,
+      val isExported: Boolean,
       val kind: ClassKind,
       val superClass: String,
       val parents: List[String], // does not include this class
       val optimizerHints: OptimizerHints,
       val methods: List[MethodInfo]
-  ) extends RoughClassInfo(name, encodedName, isExported)
+  )
 
   object ClassInfo {
     def apply(
