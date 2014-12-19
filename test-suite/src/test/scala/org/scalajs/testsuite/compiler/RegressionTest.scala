@@ -312,5 +312,38 @@ object RegressionTest extends JasmineTest {
       a.foo()
       expect(a.get).toEqual(2)
     }
+
+    it("should populate desugar environments with Closure params - #1399") {
+      /* To query whether a field is mutable, the JSDesugar needs to first
+       * unnest a statement block from an argument list, and then unnest the
+       * parameter under test.
+       * It will then test, if it is immutable, which will trigger an
+       * environment lookup.
+       */
+
+      // We need a true class for @noinline to work
+      class Test {
+        @noinline
+        def concat(x: Any, y: Any) = x.toString + y.toString
+
+        @noinline
+        def fct: Function1[Any, String] = { (v: Any) => // parameter under test
+          /* Pass `v` as a first parameter, a true block as a second parameter.
+           * Note that this only works after optimizations, because `v` is first
+           * asInstanceOfd to Object and hence not the original `v` is used in
+           * the call itself.
+           * The optimizer eliminates the useless asInstanceOf.
+           */
+          concat(v, {
+            // This must be a true block
+            var x = 1
+            while (x < 5) x += 1
+            x
+          })
+        }
+      }
+
+      expect(new Test().fct(1)).toEqual("15")
+    }
   }
 }
