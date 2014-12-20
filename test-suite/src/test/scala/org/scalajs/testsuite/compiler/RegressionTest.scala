@@ -345,5 +345,32 @@ object RegressionTest extends JasmineTest {
 
       expect(new Test().fct(1)).toEqual("15")
     }
+
+    it("should support debugger statements through the whole pipeline - #1402") {
+      // A function that hopfully persuades the optimizer not to optimize
+      // we need a debugger statement that is unreachable, but not eliminated
+      @noinline
+      class A(var z: Int = 4) {
+        var x: Int = _
+        var y: Int = _
+
+        @noinline
+        def plus(x0: Int, y0: Int) = {
+          x = x0
+          y = y0
+          var res = 0
+          while (x > 0 || y > 0 || z > 0) {
+            if (x > 0) x -= 1
+            else if (y > 0) y -= 1
+            else z -= 1
+            res += 1
+          }
+          res
+        }
+      }
+
+      if (new A().plus(5, 10) < 3)
+        js.debugger()
+    }
   }
 }

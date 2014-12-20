@@ -170,7 +170,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:LoadModule | _:JSEnvInfo |
+        case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:JSEnvInfo |
             _:Literal | _:VarRef | _:This | EmptyTree =>
           tree
 
