@@ -151,6 +151,10 @@ object ScalaJSClosureOptimizer {
       output: WritableVirtualJSFile,
       /** Cache file */
       cache: Option[WritableVirtualTextFile] = None,
+      /** Whether to only warn if the linker has errors. Implicitly true, if
+       *  noWarnMissing is nonEmpty
+       */
+      bypassLinkingErrors: Boolean = false,
       /** If true, performs expensive checks of the IR for the used parts. */
       checkIR: Boolean = false,
       /** If true, the optimizer removes trees that have not been used in the
