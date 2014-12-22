@@ -18,4 +18,4 @@ package scala.scalajs.js
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
-trait GlobalScope extends Object
+trait GlobalScope extends Any
