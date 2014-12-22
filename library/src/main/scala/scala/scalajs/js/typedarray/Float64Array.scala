@@ -25,6 +25,6 @@ class Float64Array private extends TypedArray[Double, Float64Array] {
 }
 
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
- *  Float64Array companion
+ *  [[Float64Array]] companion
  */
 object Float64Array extends TypedArrayStatic
