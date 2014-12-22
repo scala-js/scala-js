@@ -49,8 +49,10 @@ class MainGenericRunner {
       line  <- Source.fromFile(fname).getLines
       if !line.startsWith("#")
     } yield line.split('.') match {
-      case Array(className) =>             NoWarnClass(className)
-      case Array(className, methodName) => NoWarnMethod(className, methodName)
+      case Array(className) =>
+        NoWarnMissing.Class(className)
+      case Array(className, methodName) =>
+        NoWarnMissing.Method(className, methodName)
     }
   }
 
