@@ -214,7 +214,7 @@ class MainGenericRunner {
   }
 
   private def newScalaJSOptimizer(semantics: Semantics) =
-    new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
+    new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
 
   private def urlToFile(url: java.net.URL) = {
     try {

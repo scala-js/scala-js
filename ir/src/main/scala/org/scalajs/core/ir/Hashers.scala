@@ -48,6 +48,22 @@ object Hashers {
       (!considerPos || Arrays.equals(x.posHash, y.posHash))
   }
 
+  def hashAsVersion(hash: TreeHash, considerPos: Boolean): String = {
+    // 2 chars per byte, 20 bytes per hash
+    val size = 2 * (if (considerPos) 2 else 1) * 20
+    val builder = new StringBuilder(size)
+
+    def append(hash: Array[Byte]) =
+      for (b <- hash) builder.append(f"$b%02X")
+
+    append(hash.treeHash)
+
+    if (considerPos)
+      append(hash.posHash)
+
+    builder.toString
+  }
+
   private final class TreeHasher {
     private def newDigest = MessageDigest.getInstance("SHA-1")
     private def newDigestStream(digest: MessageDigest) = {

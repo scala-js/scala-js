@@ -19,7 +19,8 @@ import org.scalajs.core.tools.sem.Semantics
 
 import ConcurrencyUtils._
 
-class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
+class ParIncOptimizer(semantics: Semantics, considerPositions: Boolean)
+     extends GenIncOptimizer(semantics, considerPositions) {
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
@@ -195,4 +196,8 @@ class ParIncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
 
   }
 
+}
+
+object ParIncOptimizer {
+  val factory: ScalaJSOptimizer.OptimizerFactory = new ParIncOptimizer(_, _)
 }

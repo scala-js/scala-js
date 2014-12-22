@@ -99,9 +99,9 @@ object ScalaJSPluginInternal {
       scalaJSOptimizer in key := {
         val semantics = (scalaJSSemantics in key).value
         if ((scalaJSOptimizerOptions in key).value.parallel)
-          new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
+          new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
         else
-          new ScalaJSOptimizer(semantics, new IncOptimizer(_))
+          new ScalaJSOptimizer(semantics, IncOptimizer.factory)
       }
   )
 

@@ -23,14 +23,14 @@ import Types._
 import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
-class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger) {
+class IRChecker(unit: LinkingUnit, logger: Logger) {
   import IRChecker._
 
   private var _errorCount: Int = 0
   def errorCount: Int = _errorCount
 
   private val classes: mutable.Map[String, CheckedClass] = {
-    val tups = for (classDef <- allClassDefs) yield {
+    val tups = for (classDef <- unit.classDefs) yield {
       implicit val ctx = ErrorContext(classDef)
       val c = new CheckedClass(classDef)
       c.name -> c
@@ -39,26 +39,24 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def check(): Boolean = {
-    for {
-      classDef <- allClassDefs
-      if analysis.classInfos(classDef.name.name).isNeededAtAll
-    } {
+    for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
       checkStaticMembers(classDef)
       classDef.kind match {
         case ClassKind.RawJSType =>
-          if (classDef.defs exists {
-            case m: MethodDef if m.static => false
-            case _                        => true
-          }) {
+          if (classDef.fields.nonEmpty ||
+              classDef.memberMethods.nonEmpty ||
+              classDef.abstractMethods.nonEmpty ||
+              classDef.exportedMembers.nonEmpty ||
+              classDef.classExports.nonEmpty) {
             reportError(s"Raw JS type ${classDef.name} cannot "+
                 "have instance members")
           }
         case ClassKind.Interface =>
-          if (classDef.defs exists {
-            case m: MethodDef if m.static || m.body == EmptyTree => false
-            case _                                               => true
-          }) {
+          if (classDef.fields.nonEmpty ||
+              classDef.memberMethods.nonEmpty ||
+              classDef.exportedMembers.nonEmpty ||
+              classDef.classExports.nonEmpty) {
             reportError(s"Interface ${classDef.name} cannot "+
                 "have concrete instance members")
           }
@@ -69,62 +67,91 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     errorCount == 0
   }
 
-  def checkStaticMembers(classDef: ClassDef): Unit = {
-    for (member <- classDef.defs) {
-      implicit val ctx = ErrorContext(member)
-      member match {
-        case m: MethodDef if m.static =>
-          if (!m.name.isInstanceOf[Ident])
-            reportError(s"Static method ${m.name} cannot be exported")
-          else
-            checkMethodDef(m, classDef)
+  def checkStaticMembers(classDef: LinkedClass): Unit = {
+    for (member <- classDef.staticMethods) {
+      val methodDef = member.tree
+      implicit val ctx = ErrorContext(methodDef)
 
-        // Ignore non-static members
-        case _ =>
-      }
+      assert(methodDef.static, "Found non-static member in static defs")
+
+      if (!methodDef.name.isInstanceOf[Ident])
+        reportError(s"Static method ${methodDef.name} cannot be exported")
+      else
+        checkMethodDef(methodDef, classDef)
     }
   }
 
-  def checkScalaClassDef(classDef: ClassDef): Unit = {
+  def checkScalaClassDef(classDef: LinkedClass): Unit = {
     assert(classDef.kind != ClassKind.RawJSType &&
         classDef.kind != ClassKind.Interface)
 
-    if (!analysis.classInfos(classDef.name.name).isAnySubclassInstantiated)
-      return
-
-    val isNormalClass =
-      classDef.kind == ClassKind.Class || classDef.kind == ClassKind.ModuleClass
-
-    for (member <- classDef.defs) {
-      implicit val ctx = ErrorContext(member)
-      member match {
-        // Ignore static members
-        case m: MethodDef if m.static =>
-
-        // Scala declarations
-        case v @ VarDef(_, _, _, _) if isNormalClass =>
-          checkFieldDef(v, classDef)
-        case m: MethodDef if m.name.isInstanceOf[Ident] =>
-          checkMethodDef(m, classDef)
-
-        // Exports
-        case m: MethodDef if m.name.isInstanceOf[StringLiteral] && isNormalClass =>
-          checkExportedMethodDef(m, classDef)
-        case member @ PropertyDef(_: StringLiteral, _, _, _) if isNormalClass =>
-          checkExportedPropertyDef(member, classDef)
-        case member @ ConstructorExportDef(_, _, _) if isNormalClass =>
-          checkConstructorExportDef(member, classDef)
-        case member @ ModuleExportDef(_) if isNormalClass =>
-          checkModuleExportDef(member, classDef)
-
-        // Anything else is illegal
-        case _ =>
-          reportError(s"Illegal class member of type ${member.getClass.getName}")
+    // Is this a normal class?
+    if (classDef.kind != ClassKind.HijackedClass) {
+      // Check fields
+      for (field <- classDef.fields) {
+        implicit val ctx = ErrorContext(field)
+        checkFieldDef(field, classDef)
       }
+
+      // Check exported members
+      for (member <- classDef.exportedMembers) {
+        implicit val ctx = ErrorContext(member.tree)
+
+        member.tree match {
+          case m: MethodDef =>
+            assert(m.name.isInstanceOf[StringLiteral],
+              "Exported method must have StringLiteral as name")
+            checkExportedMethodDef(m, classDef)
+          case p: PropertyDef =>
+            assert(p.name.isInstanceOf[StringLiteral],
+              "Exported property must have StringLiteral as name")
+            checkExportedPropertyDef(p, classDef)
+          // Anything else is illegal
+          case _ =>
+            reportError("Illegal exported class member of type " +
+                member.tree.getClass.getName)
+        }
+      }
+
+      // Check classExports
+      for (tree <- classDef.classExports) {
+        implicit val ctx = ErrorContext(tree)
+
+        tree match {
+          case member @ ConstructorExportDef(_, _, _) =>
+            checkConstructorExportDef(member, classDef)
+          case member @ ModuleExportDef(_) =>
+            checkModuleExportDef(member, classDef)
+          // Anything else is illegal
+          case _ =>
+            reportError("Illegal class export of type " +
+                tree.getClass.getName)
+        }
+      }
+    } else {
+      implicit val ctx = ErrorContext(classDef)
+
+      if (classDef.fields.nonEmpty)
+        reportError("Hijacked classes may not have fields")
+
+      if (classDef.exportedMembers.nonEmpty || classDef.classExports.nonEmpty)
+        reportError("Hijacked classes may not have exports")
+    }
+
+    // Check methods
+    for (method <- classDef.memberMethods ++ classDef.abstractMethods) {
+      val tree = method.tree
+      implicit val ctx = ErrorContext(tree)
+
+      assert(!tree.static, "Member or abstract method may not be static")
+      assert(tree.name.isInstanceOf[Ident],
+          "Normal method must have Ident as name")
+
+      checkMethodDef(tree, classDef)
     }
   }
 
-  def checkFieldDef(fieldDef: VarDef, classDef: ClassDef): Unit = {
+  def checkFieldDef(fieldDef: VarDef, classDef: LinkedClass): Unit = {
     val VarDef(name, tpe, mutable, rhs) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
@@ -134,16 +161,9 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
       typecheckExpect(rhs, Env.empty, tpe)
   }
 
-  def checkMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
+  def checkMethodDef(methodDef: MethodDef, classDef: LinkedClass): Unit = {
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
-
-    val classInfo = analysis.classInfos(classDef.name.name)
-    val methodInfo =
-      if (static) classInfo.staticMethodInfos(name)
-      else classInfo.methodInfos(name)
-    if (!methodInfo.isReachable)
-      return
 
     for (ParamDef(name, tpe, _) <- params)
       if (tpe == NoType)
@@ -181,7 +201,8 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     }
   }
 
-  def checkExportedMethodDef(methodDef: MethodDef, classDef: ClassDef): Unit = {
+  def checkExportedMethodDef(methodDef: MethodDef,
+      classDef: LinkedClass): Unit = {
     val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -215,7 +236,8 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     typecheckExpect(body, bodyEnv, resultType)
   }
 
-  def checkExportedPropertyDef(propDef: PropertyDef, classDef: ClassDef): Unit = {
+  def checkExportedPropertyDef(propDef: PropertyDef,
+      classDef: LinkedClass): Unit = {
     val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
@@ -242,7 +264,7 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def checkConstructorExportDef(ctorDef: ConstructorExportDef,
-      classDef: ClassDef): Unit = {
+      classDef: LinkedClass): Unit = {
     val ConstructorExportDef(_, params, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
 
@@ -266,7 +288,7 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   def checkModuleExportDef(moduleDef: ModuleExportDef,
-      classDef: ClassDef): Unit = {
+      classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(moduleDef)
 
     if (classDef.kind != ClassKind.ModuleClass)
@@ -292,7 +314,8 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
             receiver.tpe match {
               case ClassType(clazz) =>
                 for {
-                  f <- lookupClass(clazz).lookupField(name)
+                  c <- tryLookupClass(clazz).right
+                  f <- c.lookupField(name)
                   if !f.mutable
                 } reportError(s"Assignment to immutable field $name.")
               case _ =>
@@ -489,16 +512,19 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
         val qualType = typecheckExpr(qualifier, env)
         qualType match {
           case ClassType(cls) =>
-            val clazz = lookupClass(cls)
-            if (!clazz.kind.isClass) {
+            val maybeClass = tryLookupClass(cls)
+            val kind = maybeClass.fold(_.kind, _.kind)
+            if (!kind.isClass) {
               reportError(s"Cannot select $item of non-class $cls")
             } else {
-              clazz.lookupField(item).fold[Unit] {
-                reportError(s"Class $cls does not have a field $item")
-              } { fieldDef =>
-                if (fieldDef.tpe != tree.tpe)
-                  reportError(s"Select $cls.$item of type "+
+              maybeClass.right foreach {
+                _.lookupField(item).fold[Unit] {
+                  reportError(s"Class $cls does not have a field $item")
+                } { fieldDef =>
+                  if (fieldDef.tpe != tree.tpe)
+                    reportError(s"Select $cls.$item of type "+
                       s"${fieldDef.tpe} typed as ${tree.tpe}")
+                }
               }
             }
           case NullType | NothingType =>
@@ -745,8 +771,8 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     } else if (encodedName == "sr_Null$") {
       NullType
     } else {
-      val clazz = lookupClass(encodedName)
-      if (clazz.kind == ClassKind.RawJSType) AnyType
+      val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
+      if (kind == ClassKind.RawJSType) AnyType
       else ClassType(encodedName)
     }
   }
@@ -761,6 +787,19 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     _errorCount += 1
   }
 
+  def lookupInfo(className: String)(implicit ctx: ErrorContext): Infos.ClassInfo = {
+    unit.infos.getOrElse(className, {
+      reportError(s"Cannot find info for class $className")
+      Infos.ClassInfo(className)
+    })
+  }
+
+  def tryLookupClass(className: String)(
+       implicit ctx: ErrorContext): Either[Infos.ClassInfo, CheckedClass] = {
+    classes.get(className).fold[Either[Infos.ClassInfo, CheckedClass]](
+        Left(lookupInfo(className)))(Right(_))
+  }
+
   def lookupClass(className: String)(implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
@@ -773,7 +812,12 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
     lookupClass(classType.className)
 
   def isSubclass(lhs: String, rhs: String)(implicit ctx: ErrorContext): Boolean = {
-    lookupClass(lhs).isSubclass(lookupClass(rhs))
+    tryLookupClass(lhs).fold({ info =>
+      info.parents.exists(_ == rhs) ||
+      info.parents.exists(isSubclass(_, rhs))
+    }, { lhsClass =>
+      lhsClass.ancestors.contains(rhs)
+    })
   }
 
   def isSubtype(lhs: Type, rhs: Type)(implicit ctx: ErrorContext): Boolean = {
@@ -834,7 +878,7 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
       val name: String,
       val kind: ClassKind,
       val superClassName: Option[String],
-      val parents: Set[String],
+      val ancestors: Set[String],
       _fields: TraversableOnce[CheckedField] = Nil)(
       implicit ctx: ErrorContext) {
 
@@ -842,24 +886,12 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
 
     lazy val superClass = superClassName.map(classes)
 
-    lazy val ancestors: Set[String] = {
-      val strictAncestors = for {
-        parent   <- parents
-        ancestor <- lookupClass(parent).ancestors
-      } yield ancestor
-
-      strictAncestors + this.name
-    }
-
-    def this(classDef: ClassDef)(implicit ctx: ErrorContext) = {
+    def this(classDef: LinkedClass)(implicit ctx: ErrorContext) = {
       this(classDef.name.name, classDef.kind,
           classDef.superClass.map(_.name),
-          classDef.parents.map(_.name).toSet,
-          CheckedClass.collectFields(classDef))
+          classDef.ancestors.toSet,
+          classDef.fields.map(CheckedClass.checkedField))
     }
-
-    def isSubclass(that: CheckedClass): Boolean =
-      this == that || ancestors.contains(that.name)
 
     def isAncestorOfHijackedClass: Boolean =
       AncestorsOfHijackedClasses.contains(name)
@@ -869,11 +901,9 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
   }
 
   object CheckedClass {
-    private def collectFields(classDef: ClassDef) = {
-      classDef.defs collect {
-        case VarDef(Ident(name, _), tpe, mutable, _) =>
-          new CheckedField(name, tpe, mutable)
-      }
+    private def checkedField(varDef: VarDef) = {
+      val VarDef(Ident(name, _), tpe, mutable, _) = varDef
+      new CheckedField(name, tpe, mutable)
     }
   }
 
@@ -881,13 +911,9 @@ class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger)
 }
 
 object IRChecker {
-  private final class ErrorContext(val tree: Tree) extends AnyVal {
-    override def toString(): String = {
-      val pos = tree.pos
-      s"${pos.source}(${pos.line+1}:${pos.column+1}:${tree.getClass.getSimpleName})"
-    }
-
-    def pos: Position = tree.pos
+  private final class ErrorContext private (pos: Position, name: String) {
+    override def toString(): String =
+      s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
   }
 
   private object ErrorContext {
@@ -895,7 +921,10 @@ object IRChecker {
       ErrorContext(tree)
 
     def apply(tree: Tree): ErrorContext =
-      new ErrorContext(tree)
+      new ErrorContext(tree.pos, tree.getClass.getSimpleName)
+
+    def apply(linkedClass: LinkedClass): ErrorContext =
+      new ErrorContext(linkedClass.pos, "ClassDef")
   }
 
   private def isConstructorName(name: String): Boolean =

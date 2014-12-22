@@ -83,7 +83,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
   private var curTrampolineId = 0
 
-  def optimize(thisType: Type, originalDef: MethodDef): (MethodDef, Infos.MethodInfo) = {
+  def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
       val MethodDef(static, name, params, resultType, body) = originalDef
       val (newParams, newBody) = try {
@@ -99,7 +99,8 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = recreateInfo(m)
-      (m, info)
+
+      new LinkedMember(info, m, None)
     } catch {
       case NonFatal(cause) =>
         throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
