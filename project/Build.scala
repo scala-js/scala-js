@@ -611,6 +611,42 @@ object Build extends sbt.Build {
                 (products in libraryAux).value)
             val filter = ("*.sjsir": NameFilter)
             allProducts.flatMap(base => Path.selectSubpaths(base, filter))
+          },
+
+          /* After executing the normal doc command, copy everything verbatim to
+           * `patched-api` (same directory structure). In addition, append our
+           * additional doc CSS to `lib/template.css` after copying.
+           */
+          doc in Compile := {
+            val docDir = (doc in Compile).value
+            val cacheDir = streams.value.cacheDirectory
+            val outDir = crossTarget.value / "patched-api"
+            val docPaths =
+              Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
+
+            val additionalStylesFile =
+              baseDirectory.value / "additional-doc-styles.css"
+
+            FileFunction.cached(cacheDir,
+                FilesInfo.lastModified, FilesInfo.exists) { files =>
+              for {
+                file <- files
+                if file != additionalStylesFile
+              } yield {
+                val relPath = docPaths(file)
+                val outFile = outDir / relPath
+                IO.copyFile(file, outFile)
+
+                if (relPath == "lib/template.css") {
+                  val styles = IO.read(additionalStylesFile)
+                  IO.append(outFile, styles)
+                }
+
+                outFile
+              }
+            } (docPaths.keySet + additionalStylesFile)
+
+            outDir
           }
       ))
   ).dependsOn(compiler % "plugin")

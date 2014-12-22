@@ -2,6 +2,9 @@ package scala.scalajs.js.typedarray
 
 import scala.scalajs.js
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  A [[TypedArray]] of single precision floats
+ */
 class Float32Array private extends TypedArray[Float, Float32Array] {
 
   /** Constructs a Float32Array with the given length. Initialized to all 0 */
@@ -21,4 +24,7 @@ class Float32Array private extends TypedArray[Float, Float32Array] {
 
 }
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  [[Float32Array]] companion
+ */
 object Float32Array extends TypedArrayStatic
