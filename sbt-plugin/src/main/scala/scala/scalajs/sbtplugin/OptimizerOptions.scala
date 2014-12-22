@@ -20,6 +20,8 @@ import OptimizerOptions._
  *  instance.
  */
 final class OptimizerOptions private (
+    /** Whether to only warn if the linker has errors */
+    val bypassLinkingErrors: Boolean = false,
     /** Whether to parallelize the optimizer (currently fastOptJS only) **/
     val parallel: Boolean = true,
     /** Whether to run the optimizer in batch (i.e. non-incremental) mode */
@@ -32,33 +34,36 @@ final class OptimizerOptions private (
     val checkScalaJSIR: Boolean = false
 ) {
 
-  def withParallel(parallel: Boolean): OptimizerOptions = {
-    new OptimizerOptions(parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
-  }
+  def withBypassLinkingErrors(bypassLinkingErrors: Boolean): OptimizerOptions =
+    copy(bypassLinkingErrors = bypassLinkingErrors)
 
-  def withBatchMode(batchMode: Boolean): OptimizerOptions = {
-    new OptimizerOptions(parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
-  }
+  def withParallel(parallel: Boolean): OptimizerOptions =
+    copy(parallel = parallel)
 
-  def withDisableOptimizer(disableOptimizer: Boolean): OptimizerOptions = {
-    new OptimizerOptions(parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
-  }
+  def withBatchMode(batchMode: Boolean): OptimizerOptions =
+    copy(batchMode = batchMode)
 
-  def withPrettyPrintFullOptJS(prettyPrintFullOptJS: Boolean): OptimizerOptions = {
-    new OptimizerOptions(parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
-  }
+  def withDisableOptimizer(disableOptimizer: Boolean): OptimizerOptions =
+    copy(disableOptimizer = disableOptimizer)
 
-  def withCheckScalaJSIR(checkScalaJSIR: Boolean): OptimizerOptions = {
-    new OptimizerOptions(parallel, batchMode,
+  def withPrettyPrintFullOptJS(prettyPrintFullOptJS: Boolean): OptimizerOptions =
+    copy(prettyPrintFullOptJS = prettyPrintFullOptJS)
+
+  def withCheckScalaJSIR(checkScalaJSIR: Boolean): OptimizerOptions =
+    copy(checkScalaJSIR = checkScalaJSIR)
+
+  private def copy(bypassLinkingErrors: Boolean = bypassLinkingErrors,
+      parallel: Boolean = parallel, batchMode: Boolean = batchMode,
+      disableOptimizer: Boolean = disableOptimizer,
+      prettyPrintFullOptJS: Boolean = prettyPrintFullOptJS,
+      checkScalaJSIR: Boolean = checkScalaJSIR) = {
+    new OptimizerOptions(bypassLinkingErrors, parallel, batchMode,
         disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
   }
 
   override def toString: String = {
     s"""OptimizerOptions(
+       |  bypassLinkingErrors  = $bypassLinkingErrors
        |  parallel             = $parallel
        |  batchMode            = $batchMode
        |  disableOptimizer     = $disableOptimizer
