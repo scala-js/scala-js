@@ -19,106 +19,61 @@ import Definitions.{isConstructorName, isReflProxyName}
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.LongImpl
-import org.scalajs.core.tools.logging._
 
 import ScalaJSOptimizer._
 
-class Analyzer(logger0: Logger, semantics: Semantics,
-    allData: Seq[Infos.ClassInfo], globalWarnEnabled: Boolean,
-    isBeforeOptimizer: Boolean) {
+final class Analyzer(semantics: Semantics,
+    reachOptimizerSymbols: Boolean) extends Analysis {
   import Analyzer._
+  import Analysis._
 
-  /* Set this to true to debug the DCE analyzer.
-   * We don't rely on config to disable 'debug' messages because we want
-   * to use 'debug' for displaying more stack trace info that the user can
-   * see with the 'last' command.
-   */
-  val DebugAnalyzer = false
+  private[this] var _allAvailable: Boolean = true
+  private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
+  private[this] val _errors = mutable.Buffer.empty[Error]
 
-  object logger extends Logger {
-    var indentation: String = ""
+  def allAvailable: Boolean = _allAvailable
+  def classInfos: scala.collection.Map[String, Analysis.ClassInfo] = _classInfos
+  def errors: Seq[Error] = _errors
 
-    def indent(): Unit = indentation += "  "
-    def undent(): Unit = indentation = indentation.substring(2)
-
-    def log(level: Level, message: => String) =
-      logger0.log(level, indentation+message)
-    def success(message: => String) =
-      logger0.success(indentation+message)
-    def trace(t: => Throwable) =
-      logger0.trace(t)
-
-    def indented[A](body: => A): A = {
-      indent()
-      try body
-      finally undent()
-    }
-
-    def debugIndent[A](message: => String)(body: => A): A = {
-      if (DebugAnalyzer) {
-        debug(message)
-        indented(body)
-      } else {
-        body
-      }
-    }
-
-    def temporarilyNotIndented[A](body: => A): A = {
-      val savedIndent = indentation
-      indentation = ""
-      try body
-      finally indentation = savedIndent
-    }
-  }
-
-  sealed trait From
-  case class FromMethod(methodInfo: MethodInfo) extends From
-  case object FromCore extends From
-  case object FromExports extends From
-
-  var allAvailable: Boolean = true
-
-  val classInfos: mutable.Map[String, ClassInfo] = {
-    val cs = for (classData <- allData)
-      yield (classData.encodedName, new ClassInfo(classData))
-    mutable.Map.empty[String, ClassInfo] ++ cs
-  }
-
-  def lookupClass(encodedName: String): ClassInfo = {
-    classInfos.get(encodedName) match {
+  private def lookupClass(encodedName: String): ClassInfo = {
+    _classInfos.get(encodedName) match {
       case Some(info) => info
       case None =>
         val c = new ClassInfo(createMissingClassInfo(encodedName))
-        classInfos += encodedName -> c
+        _classInfos += encodedName -> c
         c.nonExistent = true
         c.linkClasses()
         c
     }
   }
 
-  linkClasses()
+  def computeReachability(allData: Seq[Infos.ClassInfo]): Analysis = {
+    require(_classInfos.isEmpty, "Cannot run the same Analyzer multiple times")
 
-  def linkClasses(): Unit = {
-    if (!classInfos.contains(ir.Definitions.ObjectClass))
+    // Load data
+    for (classData <- allData)
+      _classInfos += classData.encodedName -> new ClassInfo(classData)
+
+    linkClasses()
+
+    reachCoreSymbols()
+
+    // Reach all user stuff
+    for (classInfo <- _classInfos.values)
+      classInfo.reachExports()
+
+    this
+  }
+
+  private def linkClasses(): Unit = {
+    if (!_classInfos.contains(ir.Definitions.ObjectClass))
       sys.error("Fatal error: could not find java.lang.Object on the classpath")
-    for (classInfo <- classInfos.values.toList)
+    for (classInfo <- _classInfos.values.toList)
       classInfo.linkClasses()
   }
 
-  def computeReachability(noWarnMissing: Seq[NoWarnMissing]): Unit = {
-    // Stuff reachable from core symbols always should warn
-    reachCoreSymbols()
-
-    // Disable warnings as requested
-    noWarnMissing.foreach(disableWarning _)
-
-    // Reach all user stuff
-    for (classInfo <- classInfos.values)
-      classInfo.reachExports()
-  }
-
   /** Reach symbols used directly by scalajsenv.js. */
-  def reachCoreSymbols(): Unit = {
+  private def reachCoreSymbols(): Unit = {
     import semantics._
     import CheckedBehavior._
 
@@ -158,7 +113,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
       RTLongClass.callMethod(method)
 
-    if (isBeforeOptimizer) {
+    if (reachOptimizerSymbols) {
       for (method <- LongImpl.AllIntrinsicMethods)
         RTLongClass.callMethod(method)
     }
@@ -168,7 +123,7 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     for (method <- LongImpl.AllModuleMethods)
       RTLongModuleClass.callMethod(method)
 
-    if (isBeforeOptimizer) {
+    if (reachOptimizerSymbols) {
       for (hijacked <- Definitions.HijackedClasses)
         lookupClass(hijacked).instantiated()
     } else {
@@ -187,18 +142,12 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     BitsModuleClass.callMethod("numberHashCode__D__I")
   }
 
-  def disableWarning(noWarn: NoWarnMissing) = noWarn match {
-    case NoWarnClass(className) =>
-      lookupClass(className).warnEnabled = false
-    case NoWarnMethod(className, methodName) =>
-      lookupClass(className).lookupMethod(methodName).warnEnabled = false
-  }
-
-  class ClassInfo(data: Infos.ClassInfo) {
+  private class ClassInfo(data: Infos.ClassInfo) extends Analysis.ClassInfo {
     private[this] var _linking = false
     private[this] var _linked = false
 
     val encodedName = data.encodedName
+    val kind = data.kind
     val isStaticModule = data.kind == ClassKind.ModuleClass
     val isInterface = data.kind == ClassKind.Interface
     val isRawJSType = data.kind == ClassKind.RawJSType
@@ -211,7 +160,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     val descendants = mutable.ListBuffer.empty[ClassInfo]
 
     var nonExistent: Boolean = false
-    var warnEnabled: Boolean = true
 
     /** Ensures that this class and its dependencies are linked.
      *
@@ -339,24 +287,19 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     def accessModule()(implicit from: From): Unit = {
       if (!isStaticModule) {
-        logger.warn(s"Cannot access module for non-module $this")
-        warnCallStack()
+        _errors += NotAModule(this, from)
       } else if (!isModuleAccessed) {
-        logger.debugIndent(s"$this.isModuleAccessed = true") {
-          isModuleAccessed = true
-          instantiated()
-          callMethod("init___")
-        }
+        isModuleAccessed = true
+        instantiated()
+        callMethod("init___")
       }
     }
 
     def instantiated()(implicit from: From): Unit = {
       if (!isInstantiated && isClass) {
-        logger.debugIndent(s"$this.isInstantiated = true") {
-          isInstantiated = true
-          instantiatedFrom = Some(from)
-          ancestors.foreach(_.subclassInstantiated())
-        }
+        isInstantiated = true
+        instantiatedFrom = Some(from)
+        ancestors.foreach(_.subclassInstantiated())
 
         for ((methodName, from) <- delayedCalls)
           delayedCallMethod(methodName)(from)
@@ -365,52 +308,43 @@ class Analyzer(logger0: Logger, semantics: Semantics,
 
     private def subclassInstantiated()(implicit from: From): Unit = {
       if (!isAnySubclassInstantiated && isClass) {
-        logger.debugIndent(s"$this.isAnySubclassInstantiated = true") {
-          isAnySubclassInstantiated = true
-          if (instantiatedFrom.isEmpty)
-            instantiatedFrom = Some(from)
-          accessData()
-        }
+        isAnySubclassInstantiated = true
+        if (instantiatedFrom.isEmpty)
+          instantiatedFrom = Some(from)
+        accessData()
       }
     }
 
     def accessData()(implicit from: From): Unit = {
       if (!isDataAccessed) {
         checkExistent()
-        if (DebugAnalyzer)
-          logger.debug(s"$this.isDataAccessed = true")
         isDataAccessed = true
       }
     }
 
     def checkExistent()(implicit from: From): Unit = {
       if (nonExistent) {
-        if (warnEnabled && globalWarnEnabled) {
-          logger.warn(s"Referring to non-existent class $encodedName")
-          warnCallStack()
-        }
+        _errors += MissingClass(this, from)
         nonExistent = false
-        allAvailable = false
+        _allAvailable = false
       }
     }
 
     def callMethod(methodName: String, statically: Boolean = false)(
         implicit from: From): Unit = {
-      logger.debugIndent(s"calling${if (statically) " statically" else ""}: $this.$methodName") {
-        if (isConstructorName(methodName)) {
-          // constructors are always implicitly called statically
-          lookupMethod(methodName).reachStatic()
-        } else if (statically) {
-          assert(!isReflProxyName(methodName),
-              s"Trying to call statically refl proxy $this.$methodName")
-          lookupMethod(methodName).reachStatic()
-        } else {
-          for (descendentClass <- descendentClasses) {
-            if (descendentClass.isInstantiated)
-              descendentClass.delayedCallMethod(methodName)
-            else
-              descendentClass.delayedCalls += ((methodName, from))
-          }
+      if (isConstructorName(methodName)) {
+        // constructors are always implicitly called statically
+        lookupMethod(methodName).reachStatic()
+      } else if (statically) {
+        assert(!isReflProxyName(methodName),
+            s"Trying to call statically refl proxy $this.$methodName")
+        lookupMethod(methodName).reachStatic()
+      } else {
+        for (descendentClass <- descendentClasses) {
+          if (descendentClass.isInstantiated)
+            descendentClass.delayedCallMethod(methodName)
+          else
+            descendentClass.delayedCalls += ((methodName, from))
         }
       }
     }
@@ -424,13 +358,12 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     }
 
     def callStaticMethod(methodName: String)(implicit from: From): Unit = {
-      logger.debugIndent(s"calling static method $this.$methodName") {
-        lookupStaticMethod(methodName).reachStatic()
-      }
+      lookupStaticMethod(methodName).reachStatic()
     }
   }
 
-  class MethodInfo(val owner: ClassInfo, data: Infos.MethodInfo) {
+  private class MethodInfo(val owner: ClassInfo,
+      data: Infos.MethodInfo) extends Analysis.MethodInfo {
 
     val encodedName = data.encodedName
     val isStatic = data.isStatic
@@ -444,7 +377,6 @@ class Analyzer(logger0: Logger, semantics: Semantics,
     var instantiatedSubclass: Option[ClassInfo] = None
 
     var nonExistent: Boolean = false
-    var warnEnabled: Boolean = true
 
     override def toString(): String = s"$owner.$encodedName"
 
@@ -455,11 +387,9 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       checkExistent()
 
       if (!isReachable) {
-        logger.debugIndent(s"$this.isReachable = true") {
-          isReachable = true
-          calledFrom = Some(from)
-          doReach()
-        }
+        isReachable = true
+        calledFrom = Some(from)
+        doReach()
       }
     }
 
@@ -476,60 +406,51 @@ class Analyzer(logger0: Logger, semantics: Semantics,
       checkExistent()
 
       if (!isReachable) {
-        logger.debugIndent(s"$this.isReachable = true") {
-          isReachable = true
-          calledFrom = Some(from)
-          instantiatedSubclass = Some(inClass)
-          doReach()
-        }
+        isReachable = true
+        calledFrom = Some(from)
+        instantiatedSubclass = Some(inClass)
+        doReach()
       }
     }
 
     private def checkExistent()(implicit from: From) = {
       if (nonExistent) {
-        if (warnEnabled && owner.warnEnabled && globalWarnEnabled) {
-          logger.temporarilyNotIndented {
-            logger.warn(s"Referring to non-existent method $this")
-            warnCallStack()
-          }
-        }
-        allAvailable = false
+        _errors += MissingMethod(this, from)
+        _allAvailable = false
       }
     }
 
     private[this] def doReach(): Unit = {
-      logger.debugIndent(s"$this.doReach()") {
-        implicit val from = FromMethod(this)
+      implicit val from = FromMethod(this)
 
-        for (moduleName <- data.accessedModules) {
-          lookupClass(moduleName).accessModule()
-        }
+      for (moduleName <- data.accessedModules) {
+        lookupClass(moduleName).accessModule()
+      }
 
-        for (className <- data.instantiatedClasses) {
-          lookupClass(className).instantiated()
-        }
+      for (className <- data.instantiatedClasses) {
+        lookupClass(className).instantiated()
+      }
 
-        for (className <- data.accessedClassData) {
-          lookupClass(className).accessData()
-        }
+      for (className <- data.accessedClassData) {
+        lookupClass(className).accessData()
+      }
 
-        for ((className, methods) <- data.methodsCalled) {
-          val classInfo = lookupClass(className)
-          for (methodName <- methods)
-            classInfo.callMethod(methodName)
-        }
+      for ((className, methods) <- data.methodsCalled) {
+        val classInfo = lookupClass(className)
+        for (methodName <- methods)
+          classInfo.callMethod(methodName)
+      }
 
-        for ((className, methods) <- data.methodsCalledStatically) {
-          val classInfo = lookupClass(className)
-          for (methodName <- methods)
-            classInfo.callMethod(methodName, statically = true)
-        }
+      for ((className, methods) <- data.methodsCalledStatically) {
+        val classInfo = lookupClass(className)
+        for (methodName <- methods)
+          classInfo.callMethod(methodName, statically = true)
+      }
 
-        for ((className, methods) <- data.staticMethodsCalled) {
-          val classInfo = lookupClass(className)
-          for (methodName <- methods)
-            classInfo.callStaticMethod(methodName)
-        }
+      for ((className, methods) <- data.staticMethodsCalled) {
+        val classInfo = lookupClass(className)
+        for (methodName <- methods)
+          classInfo.callStaticMethod(methodName)
       }
     }
   }
@@ -554,65 +475,10 @@ class Analyzer(logger0: Logger, semantics: Semantics,
         isStatic = isStatic, isAbstract = isAbstract)
   }
 
-  def warnCallStack()(implicit from: From): Unit = {
-    val seenInfos = mutable.Set.empty[AnyRef]
-
-    def rec(level: Level, optFrom: Option[From],
-        verb: String = "called"): Unit = {
-      val involvedClasses = new mutable.ListBuffer[ClassInfo]
-
-      def onlyOnce(info: AnyRef): Boolean = {
-        if (seenInfos.add(info)) {
-          true
-        } else {
-          logger.log(level, "  (already seen, not repeating call stack)")
-          false
-        }
-      }
-
-      @tailrec
-      def loopTrace(optFrom: Option[From], verb: String = "called"): Unit = {
-        optFrom match {
-          case None =>
-            logger.log(level, s"$verb from ... er ... nowhere!? (this is a bug in dce)")
-          case Some(from) =>
-            from match {
-              case FromMethod(methodInfo) =>
-                logger.log(level, s"$verb from $methodInfo")
-                if (onlyOnce(methodInfo)) {
-                  methodInfo.instantiatedSubclass.foreach(involvedClasses += _)
-                  loopTrace(methodInfo.calledFrom)
-                }
-              case FromCore =>
-                logger.log(level, s"$verb from scalajs-corejslib.js")
-              case FromExports =>
-                logger.log(level, "exported to JavaScript with @JSExport")
-            }
-        }
-      }
-
-      logger.indented {
-        loopTrace(optFrom, verb = verb)
-      }
-
-      if (involvedClasses.nonEmpty) {
-        logger.log(level, "involving instantiated classes:")
-        logger.indented {
-          for (classInfo <- involvedClasses.result().distinct) {
-            logger.log(level, s"$classInfo")
-            if (onlyOnce(classInfo))
-              rec(Level.Debug, classInfo.instantiatedFrom, verb = "instantiated")
-            // recurse with Debug log level not to overwhelm the user
-          }
-        }
-      }
-    }
-
-    rec(Level.Warn, Some(from))
-  }
 }
 
 object Analyzer {
+
   final case class CyclicDependencyException(
       chain: List[String]) extends Exception(mkMsg(chain))
 

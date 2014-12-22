@@ -30,7 +30,7 @@ import javascript.ScalaJSClassEmitter
 import org.scalajs.core.tools.logging._
 
 /** Incremental optimizer.
- *  An incremental optimizer consumes the reachability analysis produced by
+ *  An incremental optimizer consumes the reachability [[Analysis]] produced by
  *  an [[Analyzer]], as well as trees for classes, and optimizes them in an
  *  incremental way.
  *  It maintains state between runs to do a minimal amount of work on every
@@ -88,7 +88,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
   }
 
   /** Update the incremental analyzer with a new run. */
-  def update(analyzer: Analyzer,
+  def update(analysis: Analysis,
       getClassTreeIfChanged: GetClassTreeIfChanged, considerPositions: Boolean,
       logger: Logger): Unit = withLogger(logger) {
 
@@ -98,7 +98,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
     logTime(logger, "Incremental part of inc. optimizer") {
       /* UPDATE PASS */
-      updateAndTagEverything(analyzer, getClassTreeIfChanged)
+      updateAndTagEverything(analysis, getClassTreeIfChanged)
     }
 
     logTime(logger, "Optimizer part of inc. optimizer") {
@@ -110,16 +110,18 @@ abstract class GenIncOptimizer(semantics: Semantics) {
   /** Incremental part: update state and detect what needs to be re-optimized.
    *  UPDATE PASS ONLY. (This IS the update pass).
    */
-  private def updateAndTagEverything(analyzer: Analyzer,
+  private def updateAndTagEverything(analysis: Analysis,
       getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
-    val neededClasses = CollOps.emptyParMap[String, analyzer.ClassInfo]
-    val neededStatics = CollOps.emptyParMap[String, analyzer.ClassInfo]
+    val neededClasses = CollOps.emptyParMap[String, Analysis.ClassInfo]
+    val neededStatics = CollOps.emptyParMap[String, Analysis.ClassInfo]
     for {
-      classInfo <- analyzer.classInfos.values
+      classInfo <- analysis.classInfos.values
       if classInfo.isNeededAtAll
     } {
-      if (classInfo.isClass && classInfo.isAnySubclassInstantiated)
+      if (classInfo.isAnySubclassInstantiated && !(
+          classInfo.kind == ClassKind.Interface ||
+          classInfo.kind == ClassKind.RawJSType))
         CollOps.put(neededClasses, classInfo.encodedName, classInfo)
       if (classInfo.isAnyStaticMethodReachable)
         CollOps.put(neededStatics, classInfo.encodedName, classInfo)
@@ -195,7 +197,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
      */
 
     // Group children by (immediate) parent
-    val newChildrenByParent = CollOps.emptyAccMap[String, Analyzer#ClassInfo]
+    val newChildrenByParent = CollOps.emptyAccMap[String, Analysis.ClassInfo]
 
     for (classInfo <- neededClasses.values) {
       val superInfo = classInfo.superClass
@@ -245,8 +247,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
     protected var optimizerHints: OptimizerHints = OptimizerHints.empty
 
-    private def reachableMethodsOf(info: Analyzer#ClassInfo): Set[String] = {
-      val methodInfos: scala.collection.Map[String, Analyzer#MethodInfo] =
+    private def reachableMethodsOf(info: Analysis.ClassInfo): Set[String] = {
+      val methodInfos: scala.collection.Map[String, Analysis.MethodInfo] =
         if (isStatic) info.staticMethodInfos
         else info.methodInfos
       (for {
@@ -258,7 +260,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     }
 
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
-    def updateWith(info: Analyzer#ClassInfo,
+    def updateWith(info: Analysis.ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged): (Set[String], Set[String], Set[String]) = {
       if (!isStatic)
         myInterface.ancestors = info.ancestors.map(_.encodedName).toList
@@ -369,8 +371,8 @@ abstract class GenIncOptimizer(semantics: Semantics) {
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
     def walkClassesForDeletions(
-        getClassInfoIfNeeded: String => Option[Analyzer#ClassInfo]): Boolean = {
-      def sameSuperClass(info: Analyzer#ClassInfo): Boolean =
+        getClassInfoIfNeeded: String => Option[Analysis.ClassInfo]): Boolean = {
+      def sameSuperClass(info: Analysis.ClassInfo): Boolean =
         if (info.superClass == null) superClass.isEmpty
         else superClass.exists(_.encodedName == info.superClass.encodedName)
 
@@ -422,7 +424,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
     /** UPDATE PASS ONLY. */
     def walkForChanges(
-        getClassInfo: String => Analyzer#ClassInfo,
+        getClassInfo: String => Analysis.ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged,
         parentMethodAttributeChanges: Set[String]): Unit = {
 
@@ -497,7 +499,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
 
     /** UPDATE PASS ONLY. */
     def walkForAdditions(
-        getNewChildren: String => GenIterable[Analyzer#ClassInfo],
+        getNewChildren: String => GenIterable[Analysis.ClassInfo],
         getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
       val subclassAcc = CollOps.prepAdd(subclasses)
@@ -521,7 +523,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     }
 
     /** UPDATE PASS ONLY. */
-    def updateIsInlineable(classInfo: Analyzer#ClassInfo): Boolean = {
+    def updateIsInlineable(classInfo: Analysis.ClassInfo): Boolean = {
       val oldTryNewInlineable = tryNewInlineable
       isInlineable = optimizerHints.inline
       if (!isInlineable) {
@@ -540,7 +542,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
     }
 
     /** UPDATE PASS ONLY. */
-    def setupAfterCreation(classInfo: Analyzer#ClassInfo,
+    def setupAfterCreation(classInfo: Analysis.ClassInfo,
         getClassTreeIfChanged: GetClassTreeIfChanged): Unit = {
 
       updateWith(classInfo, getClassTreeIfChanged)
@@ -790,7 +792,7 @@ abstract class GenIncOptimizer(semantics: Semantics) {
      *  In the process, tags all the body askers if the body changes.
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
-    def updateWith(methodInfo: Analyzer#MethodInfo,
+    def updateWith(methodInfo: Analysis.MethodInfo,
         methodDef: MethodDef): Boolean = {
       assert(!_deleted, "updateWith() called on a deleted method")
 

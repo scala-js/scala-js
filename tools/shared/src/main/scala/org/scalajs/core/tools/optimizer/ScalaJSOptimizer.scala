@@ -108,20 +108,22 @@ class ScalaJSOptimizer(
         GenIncOptimizer.logTime(logger, "Read info") {
           readAllData(irFiles, logger)
         }
-      val (useOptimizer, refinedAnalyzer) = GenIncOptimizer.logTime(
+      val (useOptimizer, refinedAnalysis) = GenIncOptimizer.logTime(
           logger, "Optimizations part") {
-        val analyzer =
+        val analysis =
           GenIncOptimizer.logTime(logger, "Compute reachability") {
-            val analyzer = new Analyzer(logger, semantics, allData,
-                globalWarnEnabled = true,
-                isBeforeOptimizer = !cfg.disableOptimizer)
-            analyzer.computeReachability(cfg.noWarnMissing)
-            analyzer
+            val analyzer = new Analyzer(semantics,
+                reachOptimizerSymbols = !cfg.disableOptimizer)
+            analyzer.computeReachability(allData)
           }
+
+        val filteredErrors = filterErrors(analysis.errors, cfg.noWarnMissing)
+        filteredErrors.foreach(Analysis.logError(_, logger, Level.Warn))
+
         if (cfg.checkIR) {
           GenIncOptimizer.logTime(logger, "Check IR") {
-            if (analyzer.allAvailable)
-              checkIR(analyzer, logger)
+            if (analysis.allAvailable)
+              checkIR(analysis, logger)
             else if (cfg.noWarnMissing.isEmpty)
               sys.error("Could not check IR because there where linking errors.")
           }
@@ -132,33 +134,31 @@ class ScalaJSOptimizer(
           persistentFile.treeIfChanged(lastVersion)
         }
 
-        val useOptimizer = analyzer.allAvailable && !cfg.disableOptimizer
+        val useOptimizer = analysis.allAvailable && !cfg.disableOptimizer
 
         if (cfg.batchMode)
           optimizer = optimizerFactory(semantics)
 
-        val refinedAnalyzer = if (useOptimizer) {
+        val refinedAnalysis = if (useOptimizer) {
           GenIncOptimizer.logTime(logger, "Inliner") {
-            optimizer.update(analyzer, getClassTreeIfChanged,
+            optimizer.update(analysis, getClassTreeIfChanged,
                 cfg.wantSourceMap, logger)
           }
           GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
             val refinedData = computeRefinedData(allData, optimizer)
-            val refinedAnalyzer = new Analyzer(logger, semantics, refinedData,
-                globalWarnEnabled = false,
-                isBeforeOptimizer = false)
-            refinedAnalyzer.computeReachability(cfg.noWarnMissing)
-            refinedAnalyzer
+            val refinedAnalyzer = new Analyzer(semantics,
+                reachOptimizerSymbols = false)
+            refinedAnalyzer.computeReachability(refinedData)
           }
         } else {
           if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
             logger.warn("Not running the inliner because there where linking errors.")
-          analyzer
+          analysis
         }
-        (useOptimizer, refinedAnalyzer)
+        (useOptimizer, refinedAnalysis)
       }
       GenIncOptimizer.logTime(logger, "Write DCE'ed output") {
-        buildDCEedOutput(builder, refinedAnalyzer, useOptimizer)
+        buildDCEedOutput(builder, refinedAnalysis, useOptimizer)
       }
     } finally {
       persistentState.endRun(cfg.unCache)
@@ -180,13 +180,13 @@ class ScalaJSOptimizer(
     ir.map(persistentState.getPersistentIRFile(_).info).toSeq
   }
 
-  private def checkIR(analyzer: Analyzer, logger: Logger): Unit = {
+  private def checkIR(analysis: Analysis, logger: Logger): Unit = {
     val allClassDefs = for {
-      classInfo <- analyzer.classInfos.values
+      classInfo <- analysis.classInfos.values
       persistentIRFile <- persistentState.encodedNameToPersistentFile.get(
           classInfo.encodedName)
     } yield persistentIRFile.tree
-    val checker = new IRChecker(analyzer, allClassDefs.toSeq, logger)
+    val checker = new IRChecker(analysis, allClassDefs.toSeq, logger)
     if (!checker.check())
       sys.error(s"There were ${checker.errorCount} IR checking errors.")
   }
@@ -239,14 +239,14 @@ class ScalaJSOptimizer(
   }
 
   private def buildDCEedOutput(builder: JSTreeBuilder,
-      analyzer: Analyzer, useInliner: Boolean): Unit = {
+      analysis: Analysis, useInliner: Boolean): Unit = {
 
-    def compareClassInfo(lhs: analyzer.ClassInfo, rhs: analyzer.ClassInfo) = {
+    def compareClassInfo(lhs: Analysis.ClassInfo, rhs: Analysis.ClassInfo) = {
       if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
       else lhs.encodedName.compareTo(rhs.encodedName) < 0
     }
 
-    def addPersistentFile(classInfo: analyzer.ClassInfo,
+    def addPersistentFile(classInfo: Analysis.ClassInfo,
         persistentFile: PersistentIRFile) = {
       import ir.Trees._
 
@@ -294,7 +294,7 @@ class ScalaJSOptimizer(
         }
       }
 
-      def ancestorNames = classInfo.ancestors.map(_.encodedName)
+      def ancestorNames = classInfo.ancestors.map(_.encodedName).toList
 
       // Static members
       if (useInliner) {
@@ -307,7 +307,9 @@ class ScalaJSOptimizer(
         addReachableMethods(statics = true)
       }
 
-      if (!(classInfo.isClass && !classInfo.isHijackedClass)) {
+      if (classInfo.kind == ClassKind.Interface ||
+          classInfo.kind == ClassKind.RawJSType ||
+          classInfo.kind == ClassKind.HijackedClass) {
         // there is only the data anyway
         if (classInfo.isDataAccessed) {
           addTree(d.wholeClass.getOrElseUpdate(
@@ -356,7 +358,7 @@ class ScalaJSOptimizer(
 
 
     for {
-      classInfo <- analyzer.classInfos.values.toSeq.sortWith(compareClassInfo)
+      classInfo <- analysis.classInfos.values.toSeq.sortWith(compareClassInfo)
       if classInfo.isNeededAtAll
     } {
       val optPersistentFile =
@@ -377,10 +379,15 @@ class ScalaJSOptimizer(
 
 object ScalaJSOptimizer {
 
-  sealed abstract class NoWarnMissing
-  final case class NoWarnClass(className: String) extends NoWarnMissing
-  final case class NoWarnMethod(className: String, methodName: String)
-    extends NoWarnMissing
+  sealed abstract class NoWarnMissing {
+    def className: String
+  }
+
+  object NoWarnMissing {
+    final case class Class(className: String) extends NoWarnMissing
+    final case class Method(className: String, methodName: String)
+        extends NoWarnMissing
+  }
 
   /** Configurations relevant to the optimizer */
   trait OptimizerConfig {
@@ -427,6 +434,45 @@ object ScalaJSOptimizer {
   ) extends OptimizerConfig
 
   // Private helpers -----------------------------------------------------------
+
+  private def filterErrors(errors: scala.collection.Seq[Analysis.Error],
+      noWarnMissing: Seq[NoWarnMissing]) = {
+    import NoWarnMissing._
+    import Analysis._
+
+    val classNoWarns = mutable.Set.empty[String]
+    val methodNoWarnsBuf = mutable.Buffer.empty[Method]
+
+    // Basically a type safe partition
+    noWarnMissing.foreach {
+      case Class(className) =>
+        classNoWarns += className
+      case m: Method =>
+        methodNoWarnsBuf += m
+    }
+
+    val trueFct = (_: String) => true
+
+    val methodNoWarns = for {
+      (className, elems) <- methodNoWarnsBuf.groupBy(_.className)
+    } yield {
+      if (classNoWarns.contains(className))
+        className -> trueFct
+      else
+        className -> elems.map(_.methodName).toSet
+    }
+
+    errors filter {
+      case MissingClass(info, _) =>
+        !classNoWarns.contains(info.encodedName)
+      case MissingMethod(info, _) =>
+        methodNoWarns.get(info.owner.encodedName).fold(true) { setf =>
+          !setf(info.encodedName)
+        }
+      case _ =>
+        true
+    }
+  }
 
   private final class PersistentState {
     val files = mutable.Map.empty[String, PersistentIRFile]
