@@ -847,7 +847,10 @@ object Build extends sbt.Build {
       base = file("no-ir-check-test"),
       settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
           name := "Scala.js not IR checked tests",
-          scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(false)),
+          scalaJSOptimizerOptions ~= (_.
+              withCheckScalaJSIR(false).
+              withBypassLinkingErrors(true)
+          ),
           publishArtifact in Compile := false
      )
   ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")

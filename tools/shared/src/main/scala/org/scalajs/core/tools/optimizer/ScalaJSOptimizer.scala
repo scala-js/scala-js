@@ -117,8 +117,13 @@ class ScalaJSOptimizer(
             analyzer.computeReachability(allData)
           }
 
+        val bypass = cfg.bypassLinkingErrors || cfg.noWarnMissing.nonEmpty
+        val linkingErrLevel = if (bypass) Level.Warn else Level.Error
         val filteredErrors = filterErrors(analysis.errors, cfg.noWarnMissing)
-        filteredErrors.foreach(Analysis.logError(_, logger, Level.Warn))
+        filteredErrors.foreach(Analysis.logError(_, logger, linkingErrLevel))
+
+        if (analysis.errors.nonEmpty && !bypass)
+          sys.error("There were linking errors")
 
         if (cfg.checkIR) {
           GenIncOptimizer.logTime(logger, "Check IR") {
@@ -395,6 +400,10 @@ object ScalaJSOptimizer {
      *  optimizer to decide whether a position change should trigger re-inlining
      */
     val wantSourceMap: Boolean
+    /** Whether to only warn if the linker has errors. Implicitly true, if
+     *  noWarnMissing is nonEmpty
+     */
+    val bypassLinkingErrors: Boolean
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean
     /** If true, the optimizer removes trees that have not been used in the
@@ -419,6 +428,10 @@ object ScalaJSOptimizer {
       wantSourceMap: Boolean = false,
       /** Base path to relativize paths in the source map. */
       relativizeSourceMapBase: Option[URI] = None,
+      /** Whether to only warn if the linker has errors. Implicitly true, if
+       *  noWarnMissing is nonEmpty
+       */
+      bypassLinkingErrors: Boolean = false,
       /** If true, performs expensive checks of the IR for the used parts. */
       checkIR: Boolean = false,
       /** If true, the optimizer removes trees that have not been used in the

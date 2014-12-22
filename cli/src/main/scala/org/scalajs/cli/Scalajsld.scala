@@ -42,6 +42,7 @@ object Scalajsld {
     prettyPrint: Boolean = false,
     sourceMap: Boolean = false,
     relativizeSourceMap: Option[URI] = None,
+    bypassLinkingErrors: Boolean = false,
     checkIR: Boolean = false,
     stdLib: Option[File] = None,
     logLevel: Level = Level.Info)
@@ -83,6 +84,9 @@ object Scalajsld {
           c.semantics.withAsInstanceOfs(Compliant))
         }
         .text("Use compliant asInstanceOfs")
+      opt[Unit]('b', "bypassLinkingErrors")
+        .action { (_, c) => c.copy(bypassLinkingErrors = true) }
+        .text("Only warn if there are linking errors")
       opt[Unit]('c', "checkIR")
         .action { (_, c) => c.copy(checkIR = true) }
         .text("Check IR before optimizing")
@@ -150,6 +154,7 @@ object Scalajsld {
             output = output,
             wantSourceMap = options.sourceMap,
             relativizeSourceMapBase = options.relativizeSourceMap,
+            bypassLinkingErrors = options.bypassLinkingErrors,
             checkIR = options.checkIR,
             prettyPrint = options.prettyPrint),
         newLogger(options))
@@ -163,6 +168,7 @@ object Scalajsld {
         Config(
             output = output,
             wantSourceMap = options.sourceMap,
+            bypassLinkingErrors = options.bypassLinkingErrors,
             checkIR = options.checkIR,
             disableOptimizer = options.noOpt,
             relativizeSourceMapBase = options.relativizeSourceMap),
