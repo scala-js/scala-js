@@ -180,7 +180,7 @@ object StackTrace {
     val encoded =
       if (encodedName.charAt(0) == '$') encodedName.substring(1)
       else encodedName
-    val base = if (decompressedClasses.hasOwnProperty(encoded)) {
+    val base = if (decompressedClasses.contains(encoded)) {
       decompressedClasses(encoded)
     } else {
       @tailrec
@@ -241,7 +241,8 @@ object StackTrace {
       ju_   = "java_util_"
   ).asInstanceOf[js.Dictionary[String]]
 
-  private val compressedPrefixes = js.Object.keys(decompressedPrefixes)
+  private val compressedPrefixes =
+    js.Object.keys(decompressedPrefixes.asInstanceOf[js.Object])
 
   // end of decodeClassName ----------------------------------------------------
 

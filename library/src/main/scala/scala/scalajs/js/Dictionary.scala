@@ -20,7 +20,7 @@ import annotation.JSBracketAccess
  *
  *  Using objects as dictionaries (maps from strings to values) through their
  *  properties is a common idiom in JavaScript. This trait lets you treat an
- *  object as such a dictionary.
+ *  object as such a dictionary, with the familiar API of a Map.
  *
  *  To use it, cast your object, say `x`, into a [[Dictionary]] using
  *  {{{
@@ -29,46 +29,39 @@ import annotation.JSBracketAccess
  *  then use it as
  *  {{{
  *  xDict("prop") = 5
- *  println(xDict("prop")) // displays 5
- *  xDict.delete("prop")   // removes the property "prop"
- *  println(xDict("prop")) // displays undefined
+ *  println(xDict.get("prop")) // displays Some(5)
+ *  xDict -= "prop"            // removes the property "prop"
+ *  println(xDict.get("prop")) // displays None
  *  }}}
  *
- *  To enumerate all the keys of a dictionary, use [[js.Object.keys]], which
- *  returns a [[js.Array]] of the properties. It can be used in a for
- *  comprehension like this:
+ *  To enumerate all the keys of a dictionary, use collection methods or
+ *  for comprehensions. For example:
  *  {{{
- *  for (prop <- js.Object.keys(xDict)) {
- *    val value = xDict(prop)
+ *  for ((prop, value) <- xDict) {
  *    println(prop + " -> " + value)
  *  }
  *  }}}
+ *  Note that this does not enumerate properties in the prototype chain of
+ *  `xDict`.
+ *
+ *  This trait extends [[Any js.Any]] directly, because it is not safe to
+ *  call methods of [[Object js.Object]] on it, given that the name of these
+ *  methods could be used as keys in the dictionary.
  */
-sealed trait Dictionary[A] extends Object {
+sealed trait Dictionary[A] extends Any {
   /** Reads a field of this object by its name.
    *
-   *  This will fail with a ClassCastException if the key doesn't exist and
-   *  the return type doesn't allow js.undefined as value. If the return type
-   *  does allow js.undefined, applying with a non-existent key will return
-   *  js.undefined.
+   *  This must not be called if the dictionary does not contain the key.
    */
   @JSBracketAccess
-  def apply(key: String): A = native
-
-  /** Reads a field of this object by its name.
-   *
-   *  This will return undefined if the key doesn't exist. It will also return
-   *  undefined if the value associated with the key is undefined. To truly
-   *  check for the existence of a property, use [[js.Object.hasOwnProperty]].
-   */
-  @JSBracketAccess
-  def get(key: String): UndefOr[A] = native
+  private[js] def rawApply(key: String): A = native
 
   /** Writes a field of this object by its name. */
   @JSBracketAccess
   def update(key: String, value: A): Unit = native
 
   /** Deletes a property of this object by its name.
+   *
    *  The property must be configurable.
    *  This method is equivalent to the "delete" keyword in JavaScript.
    *
