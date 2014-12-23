@@ -23,7 +23,7 @@ import Types._
 import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
-class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger) {
+class IRChecker(analysis: Analysis, allClassDefs: Seq[ClassDef], logger: Logger) {
   import IRChecker._
 
   private var _errorCount: Int = 0
@@ -41,7 +41,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
   def check(): Boolean = {
     for {
       classDef <- allClassDefs
-      if analyzer.classInfos(classDef.name.name).isNeededAtAll
+      if analysis.classInfos(classDef.name.name).isNeededAtAll
     } {
       implicit val ctx = ErrorContext(classDef)
       checkStaticMembers(classDef)
@@ -89,7 +89,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     assert(classDef.kind != ClassKind.RawJSType &&
         classDef.kind != ClassKind.Interface)
 
-    if (!analyzer.classInfos(classDef.name.name).isAnySubclassInstantiated)
+    if (!analysis.classInfos(classDef.name.name).isAnySubclassInstantiated)
       return
 
     val isNormalClass =
@@ -138,7 +138,7 @@ class IRChecker(analyzer: Analyzer, allClassDefs: Seq[ClassDef], logger: Logger)
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    val classInfo = analyzer.classInfos(classDef.name.name)
+    val classInfo = analysis.classInfos(classDef.name.name)
     val methodInfo =
       if (static) classInfo.staticMethodInfos(name)
       else classInfo.methodInfos(name)

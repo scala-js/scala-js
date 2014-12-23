@@ -39,33 +39,26 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
   /** Fully optimizes an [[IRClasspath]] by asking the ScalaJSOptimizer to
    *  emit a closure AST and then compiling this AST directly
    */
-  def optimizeCP(optimizer: ScalaJSOptimizer,
-      inputs: Inputs[ScalaJSOptimizer.Inputs[IRClasspath]],
-      outCfg: OutputConfig, logger: Logger): LinkedClasspath = {
+  def optimizeCP(optimizer: ScalaJSOptimizer, classpath: IRClasspath,
+      cfg: Config, logger: Logger): LinkedClasspath = {
 
-    val cp = inputs.input.input
-
-    CacheUtils.cached(cp.version, outCfg.output, outCfg.cache) {
-      logger.info(s"Full Optimizing ${outCfg.output.path}")
-
-      val irFastOptInput =
-        inputs.input.copy(input = inputs.input.input.scalaJSIR)
-      val irFullOptInput = inputs.copy(input = irFastOptInput)
-
-      optimizeIR(optimizer, irFullOptInput, outCfg, logger)
+    CacheUtils.cached(classpath.version, cfg.output, cfg.cache) {
+      logger.info(s"Full Optimizing ${cfg.output.path}")
+      optimizeIR(optimizer, classpath.scalaJSIR, cfg, logger)
     }
 
-    new LinkedClasspath(cp.jsLibs, outCfg.output, cp.requiresDOM, cp.version)
+    new LinkedClasspath(classpath.jsLibs, cfg.output,
+        classpath.requiresDOM, classpath.version)
   }
 
   def optimizeIR(optimizer: ScalaJSOptimizer,
-      inputs: Inputs[ScalaJSOptimizer.Inputs[Traversable[VirtualScalaJSIRFile]]],
-      outCfg: OutputConfig, logger: Logger): Unit = {
+      irFiles:Traversable[VirtualScalaJSIRFile], cfg: Config,
+      logger: Logger): Unit = {
 
     // Build Closure IR via ScalaJSOptimizer
-    val builder = new ClosureAstBuilder(outCfg.relativizeSourceMapBase)
+    val builder = new ClosureAstBuilder(cfg.relativizeSourceMapBase)
 
-    optimizer.optimizeIR(inputs.input, outCfg, builder, logger)
+    optimizer.optimizeIR(irFiles, cfg, builder, logger)
 
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
@@ -76,23 +69,18 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))
 
-    for (export <- inputs.additionalExports)
-      module.add(toClosureInput(export))
-
     // Compile the module
-    val closureExterns =
-      (ScalaJSExternsFile +: inputs.additionalExterns).map(toClosureSource)
-
-    val options = closureOptions(outCfg)
+    val closureExterns = toClosureSource(ScalaJSExternsFile)
+    val options = closureOptions(cfg)
     val compiler = closureCompiler(logger)
 
     val result = GenIncOptimizer.logTime(logger, "Closure Compiler pass") {
       compiler.compileModules(
-          closureExterns.asJava, List(module).asJava, options)
+          List(closureExterns).asJava, List(module).asJava, options)
     }
 
     GenIncOptimizer.logTime(logger, "Write Closure result") {
-      writeResult(result, compiler, outCfg.output)
+      writeResult(result, compiler, cfg.output)
     }
   }
 
@@ -145,21 +133,9 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
 }
 
 object ScalaJSClosureOptimizer {
-  /** Inputs of the Scala.js Closure optimizer. */
-  final case class Inputs[T](
-      /** Input to optimize (classpath or file-list) */
-      input: T,
-      /** Additional externs files to be given to Closure. */
-      additionalExterns: Seq[VirtualJSFile] = Nil,
-      /** Additional exports to be given to Closure.
-       *  These files are just appended to the classpath, given to Closure,
-       *  but not used in the Scala.js optimizer pass when direct optimizing
-       */
-      additionalExports: Seq[VirtualJSFile] = Nil
-  )
 
   /** Configuration the closure part of the optimizer needs.
-   *  See [[OutputConfig]] for a description of the fields.
+   *  See [[Config]] for a description of the fields.
    */
   trait OptimizerConfig {
     val output: WritableVirtualJSFile
@@ -170,11 +146,15 @@ object ScalaJSClosureOptimizer {
   }
 
   /** Configuration for the output of the Scala.js Closure optimizer */
-  final case class OutputConfig(
+  final case class Config(
       /** Writer for the output */
       output: WritableVirtualJSFile,
       /** Cache file */
       cache: Option[WritableVirtualTextFile] = None,
+      /** Whether to only warn if the linker has errors. Implicitly true, if
+       *  noWarnMissing is nonEmpty
+       */
+      bypassLinkingErrors: Boolean = false,
       /** If true, performs expensive checks of the IR for the used parts. */
       checkIR: Boolean = false,
       /** If true, the optimizer removes trees that have not been used in the
@@ -190,7 +170,9 @@ object ScalaJSClosureOptimizer {
       /** Pretty-print the output. */
       prettyPrint: Boolean = false,
       /** Base path to relativize paths in the source map */
-      relativizeSourceMapBase: Option[URI] = None
+      relativizeSourceMapBase: Option[URI] = None,
+      /** Elements we won't warn even if they don't exist */
+      noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = Nil
   ) extends OptimizerConfig with ScalaJSOptimizer.OptimizerConfig
 
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */

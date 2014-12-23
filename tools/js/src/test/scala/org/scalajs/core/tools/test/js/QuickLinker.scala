@@ -25,11 +25,8 @@ object QuickLinker {
     val out = WritableMemVirtualJSFile("out.js")
 
     import ScalaJSOptimizer._
-    val optimized = optimizer.optimizeCP(
-      Inputs(complete),
-      OutputConfig(out),
-      new ScalaConsoleLogger
-    )
+    val optimized = optimizer.optimizeCP(complete, Config(out),
+        new ScalaConsoleLogger)
 
     out.content
   }
