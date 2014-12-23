@@ -7,15 +7,20 @@
 \*                                                                      */
 
 
+package scala.scalajs.js.timers
 
-package scala.scalajs.js
+import scala.scalajs.js
 
-/** Marker trait for top-level objects representing the JS global scope.
+/** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
+ *  A handle returned from a call to [[setTimeout]].
  *
- *  When calling method on a top-level object or package object that is a
- *  subtype of GlobalScope, the receiver is dropped, and the JavaScript global
- *  scope is used instead.
- *
- *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
+ *  May only be used to pass to [[clearTimeout]].
  */
-trait GlobalScope extends Any
+trait SetTimeoutHandle extends js.Any
+
+/** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
+ *  A handle returned from a call to [[setInterval]].
+ *
+ *  May only be used to pass to [[clearInterval]].
+ */
+trait SetIntervalHandle extends js.Any

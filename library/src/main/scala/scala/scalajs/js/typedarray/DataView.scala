@@ -2,6 +2,10 @@ package scala.scalajs.js.typedarray
 
 import scala.scalajs.js
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  A DataView allows for extraction of particular data types at specific
+ *  offsets.
+ */
 class DataView(buffer: ArrayBuffer, byteOffset: Int = 0,
     byteLength: Int = ???) extends ArrayBufferView {
 

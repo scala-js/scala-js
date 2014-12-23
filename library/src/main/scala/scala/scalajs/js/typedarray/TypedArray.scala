@@ -3,6 +3,10 @@ package scala.scalajs.js.typedarray
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSBracketAccess
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  A TypedArray allows to view an [[ArrayBuffer]] as an array of values of a
+ *  particular numeric type.
+ */
 trait TypedArray[T, Repr] extends ArrayBufferView {
 
   /** The number of elements in this TypedArray */
@@ -41,6 +45,9 @@ trait TypedArray[T, Repr] extends ArrayBufferView {
 
 }
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  Static information that exists for any concrete TypedArray
+ */
 trait TypedArrayStatic extends js.Object {
   val BYTES_PER_ELEMENT: Int = js.native
 }

@@ -2,58 +2,97 @@ package scala.scalajs.js
 
 import JSConverters._
 
-/** The typdearray package provides facade types for JavaScript
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  The typdearray package provides facade types for JavaScript
  *  ArrayBuffer, TypeArrays and DataView. Further, it provides
  *  conversions between primitive Scala arrays and TypedArrays
  */
 package object typedarray {
 
   // Implicit classes scala.Array -> TypedArray
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Byte]]]
+   */
   implicit class AB2TA(val array: scala.Array[Byte]) extends AnyVal {
     def toTypedArray: Int8Array = byteArray2Int8Array(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Short]]]
+   */
   implicit class AS2TA(val array: scala.Array[Short]) extends AnyVal {
     def toTypedArray: Int16Array = shortArray2Int16Array(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Char]]]
+   */
   implicit class AC2TA(val array: scala.Array[Char]) extends AnyVal {
     def toTypedArray: Uint16Array = charArray2Uint16Array(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Int]]]
+   */
   implicit class AI2TA(val array: scala.Array[Int]) extends AnyVal {
     def toTypedArray: Int32Array = intArray2Int32Array(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Float]]]
+   */
   implicit class AF2TA(val array: scala.Array[Float]) extends AnyVal {
     def toTypedArray: Float32Array = floatArray2Float32Array(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toTypedArray` conversion to a [[scala.Array[Double]]]
+   */
   implicit class AD2TA(val array: scala.Array[Double]) extends AnyVal {
     def toTypedArray: Float64Array = doubleArray2Float64Array(array)
   }
 
   // Implicit classes TypedArray -> scala.Array
+
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Int8Array]]
+   */
   implicit class TA2AB(val array: Int8Array) extends AnyVal {
     def toArray: scala.Array[Byte] = int8Array2ByteArray(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Int16Array]]
+   */
   implicit class TA2AS(val array: Int16Array) extends AnyVal {
     def toArray: scala.Array[Short] = int16Array2ShortArray(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Uint16Array]]
+   */
   implicit class TA2AC(val array: Uint16Array) extends AnyVal {
     def toArray: scala.Array[Char] = uint16Array2CharArray(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Int32Array]]
+   */
   implicit class TA2AI(val array: Int32Array) extends AnyVal {
     def toArray: scala.Array[Int] = int32Array2IntArray(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Float32Array]]
+   */
   implicit class TA2AF(val array: Float32Array) extends AnyVal {
     def toArray: scala.Array[Float] = float32Array2FloatArray(array)
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Adds `toArray` conversion to a [[Float64Array]]
+   */
   implicit class TA2AD(val array: Float64Array) extends AnyVal {
     def toArray: scala.Array[Double] = float64Array2DoubleArray(array)
   }

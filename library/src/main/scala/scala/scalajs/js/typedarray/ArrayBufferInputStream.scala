@@ -2,7 +2,8 @@ package scala.scalajs.js.typedarray
 
 import java.io.InputStream
 
-/** A java.io.InputStream wrapping a JavaScript ArrayBuffer
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  A java.io.InputStream wrapping a JavaScript ArrayBuffer
  *
  *  This class is extremely similar to a ByteArrayInputStream, but
  *  uses ArrayBuffers as the underlying representation. Stream
