@@ -39,6 +39,8 @@ lazy val jetty9 = project.settings(baseSettings: _*).
         RuntimeDOM,
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
+    // A test for packageJSDependencies, although we don't use it
+    skip in packageJSDependencies := false,
     // Use PhantomJS, allow cross domain requests
     postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
