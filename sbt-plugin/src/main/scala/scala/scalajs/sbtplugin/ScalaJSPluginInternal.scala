@@ -237,7 +237,7 @@ object ScalaJSPluginInternal {
         else Def.task {
           val cp = scalaJSPreLinkClasspath.value
           val output = (artifactPath in packageJSDependencies).value
-          val taskCache = WritableFileVirtualJSFile(
+          val taskCache = WritableFileVirtualTextFile(
               streams.value.cacheDirectory / "package-js-deps")
 
           IO.createDirectory(output.getParentFile)
