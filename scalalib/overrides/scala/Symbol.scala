@@ -42,21 +42,13 @@ object Symbol extends JSUniquenessCache[Symbol] {
 
 private[scala] abstract class JSUniquenessCache[V]
 {
-  private val map = js.Dictionary.empty[js.Any] // V | js.Undefined
+  private val cache = js.Dictionary.empty[V]
 
   protected def valueFromKey(k: String): V
   protected def keyFromValue(v: V): Option[String]
 
-  def apply(name: String): V = {
-    val cachedSym = map(name)
-    if (js.isUndefined(cachedSym)) {
-      val sym = valueFromKey(name)
-      map(name) = sym.asInstanceOf[js.Any]
-      sym.asInstanceOf[V]
-    } else {
-      cachedSym.asInstanceOf[V]
-    }
-  }
+  def apply(name: String): V =
+    cache.getOrElseUpdate(name, valueFromKey(name))
 
   def unapply(other: V): Option[String] = keyFromValue(other)
 }

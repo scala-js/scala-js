@@ -22,7 +22,7 @@ object DictionaryTest extends JasmineTest {
       expect(obj("foo")).toEqual(42)
       expect(obj("bar")).toEqual("foobar")
       obj.delete("foo")
-      expect(obj("foo")).toBeUndefined
+      expect(obj.contains("foo")).toBeFalsy
       expect(obj.asInstanceOf[js.Object].hasOwnProperty("foo")).toBeFalsy
       expect(obj("bar")).toEqual("foobar")
     }
@@ -38,17 +38,56 @@ object DictionaryTest extends JasmineTest {
       expect(obj("nonconfig")).toEqual(4)
     }
 
+    it("apply should throw when not found") {
+      val obj = js.Dictionary("foo" -> "bar")
+      expect(() => obj("bar")).toThrow
+    }
+
     it("should provide `get`") {
       val obj = js.Dictionary.empty[Int]
       obj("hello") = 1
 
-      expect(obj.get("hello").isDefined).toBeTruthy
+      expect(obj.get("hello") == Some(1)).toBeTruthy
       expect(obj.get("world").isDefined).toBeFalsy
+    }
+
+    it("-= should ignore deleting a non-existent key") {
+      val obj = js.Dictionary("a" -> "A")
+      obj -= "b"
     }
 
     it("should treat delete as a statement - #907") {
       val obj = js.Dictionary("a" -> "A")
       obj.delete("a")
+    }
+
+    it("should provide keys") {
+      val obj = js.Dictionary("a" -> "A", "b" -> "B")
+      val keys = obj.keys.toList
+      expect(keys.size).toEqual(2)
+      expect(keys.contains("a")).toBeTruthy
+      expect(keys.contains("b")).toBeTruthy
+    }
+
+    it("should survive the key 'hasOwnProperty' - #1414") {
+      val obj = js.Dictionary.empty[Int]
+      expect(obj.contains("hasOwnProperty")).toBeFalsy
+      obj("hasOwnProperty") = 5
+      expect(obj.contains("hasOwnProperty")).toBeTruthy
+      obj.delete("hasOwnProperty")
+      expect(obj.contains("hasOwnProperty")).toBeFalsy
+    }
+
+    it("should provide an iterator") {
+      val obj = js.Dictionary("foo" -> 5, "bar" -> 42, "babar" -> 0)
+      var elems: List[(String, Int)] = Nil
+      for ((prop, value) <- obj) {
+        elems ::= (prop, value)
+      }
+      expect(elems.size).toEqual(3)
+      expect(elems.contains(("foo", 5))).toBeTruthy
+      expect(elems.contains(("bar", 42))).toBeTruthy
+      expect(elems.contains(("babar", 0))).toBeTruthy
     }
 
     it("should desugar arguments to delete statements - #908") {
