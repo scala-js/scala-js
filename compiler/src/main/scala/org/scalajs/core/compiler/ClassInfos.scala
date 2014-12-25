@@ -34,9 +34,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     var isExported: Boolean = false
 
     val kind = {
-      if (isStaticModule(symbol))            ClassKind.ModuleClass
+      if (isRawJSType(symbol.tpe))           ClassKind.RawJSType
+      else if (isStaticModule(symbol))       ClassKind.ModuleClass
       else if (symbol.isInterface)           ClassKind.Interface
-      else if (isRawJSType(symbol.tpe))      ClassKind.RawJSType
       else if (isHijackedBoxedClass(symbol)) ClassKind.HijackedClass
       else                                   ClassKind.Class
     }
