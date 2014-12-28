@@ -179,6 +179,6 @@ object Scalajsld {
     new ScalaConsoleLogger(options.logLevel)
 
   private def newScalaJSOptimizer(semantics: Semantics) =
-    new ScalaJSOptimizer(semantics, new ParIncOptimizer(_))
+    new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
 
 }

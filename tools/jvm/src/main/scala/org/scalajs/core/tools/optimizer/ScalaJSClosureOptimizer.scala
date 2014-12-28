@@ -74,12 +74,12 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
     val options = closureOptions(cfg)
     val compiler = closureCompiler(logger)
 
-    val result = GenIncOptimizer.logTime(logger, "Closure Compiler pass") {
+    val result = logTime(logger, "Closure: Compiler pass") {
       compiler.compileModules(
           List(closureExterns).asJava, List(module).asJava, options)
     }
 
-    GenIncOptimizer.logTime(logger, "Write Closure result") {
+    logTime(logger, "Closure: Write result") {
       writeResult(result, compiler, cfg.output)
     }
   }

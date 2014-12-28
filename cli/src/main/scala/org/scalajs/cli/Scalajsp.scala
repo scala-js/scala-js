@@ -15,6 +15,7 @@ import ir.Trees.{Tree, ClassDef}
 import ir.Printers.{InfoPrinter, IRTreePrinter}
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.optimizer.LinkedClass
 import org.scalajs.core.tools.javascript
 import javascript.ScalaJSClassEmitter
 import javascript.Printers.JSTreePrinter
@@ -93,15 +94,18 @@ object Scalajsp {
     if (opts.infos)
       new InfoPrinter(stdout).printClassInfo(vfile.info)
     else {
+      val (info, tree) = vfile.infoAndTree
       val outTree = {
-        if (opts.showReflProxy) vfile.tree
-        else filterOutReflProxies(vfile.tree)
+        if (opts.showReflProxy) tree
+        else filterOutReflProxies(tree)
       }
 
-      if (opts.desugar)
-        new JSTreePrinter(stdout).printTopLevelTree(
-            new ScalaJSClassEmitter(Semantics.Defaults).genClassDef(outTree, Nil))
-      else
+      if (opts.desugar) {
+        val pseudoLinked = LinkedClass(info, outTree, ancestors = Nil)
+        val printer = new JSTreePrinter(stdout)
+        val emitter = new ScalaJSClassEmitter(Semantics.Defaults)
+        printer.printTopLevelTree(emitter.genClassDef(pseudoLinked))
+      } else
         new IRTreePrinter(stdout).printTopLevelTree(outTree)
     }
 

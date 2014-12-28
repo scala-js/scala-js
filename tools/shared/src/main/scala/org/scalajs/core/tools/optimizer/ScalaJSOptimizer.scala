@@ -32,17 +32,19 @@ import org.scalajs.core.tools.javascript
 import javascript.{Trees => js}
 
 /** Scala.js optimizer: does type-aware global dce. */
-class ScalaJSOptimizer(
-    semantics: Semantics,
-    optimizerFactory: (Semantics) => GenIncOptimizer) {
+class ScalaJSOptimizer(semantics: Semantics,
+    optimizerFactory: ScalaJSOptimizer.OptimizerFactory) {
   import ScalaJSOptimizer._
 
-  private val classEmitter = new javascript.ScalaJSClassEmitter(semantics)
+  private[this] var withSourceMap: Boolean = _
+  private[this] var linker: Linker = _
+  private[this] var optimizer: GenIncOptimizer = _
+  private[this] var refiner: Refiner = _
+  private[this] var emitter: Emitter = _
 
-  private[this] var persistentState: PersistentState = new PersistentState
-  private[this] var optimizer: GenIncOptimizer = optimizerFactory(semantics)
+  clean()
 
-  def this(semantics: Semantics) = this(semantics, new IncOptimizer(_))
+  def this(semantics: Semantics) = this(semantics, IncOptimizer.factory)
 
   /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
    *  See [[ScalaJSOptimizer.Config]] for details about the configuration
@@ -93,292 +95,66 @@ class ScalaJSOptimizer(
   def optimizeIR(irFiles: Traversable[VirtualScalaJSIRFile],
       cfg: OptimizerConfig, builder: JSTreeBuilder, logger: Logger): Unit = {
 
-    /* Handle tree equivalence: If we handled source maps so far, positions are
-       still up-to-date. Otherwise we need to flush the state if proper
-       positions are requested now.
-     */
-    if (cfg.wantSourceMap && !persistentState.wasWithSourceMap)
-      clean()
+    // Update state that is a per-run configuration for the overall optimizer,
+    // but not the phases
+    if (cfg.wantSourceMap != withSourceMap) {
+      withSourceMap = cfg.wantSourceMap
+      resetState()
+    }
 
-    persistentState.wasWithSourceMap = cfg.wantSourceMap
+    val linkResult = logTime(logger, "Linker") {
+      linker.link(irFiles, logger,
+          reachOptimizerSymbols = !cfg.disableOptimizer,
+          cfg.bypassLinkingErrors, cfg.noWarnMissing)
+    }
 
-    persistentState.startRun()
-    try {
-      val allData =
-        GenIncOptimizer.logTime(logger, "Read info") {
-          readAllData(irFiles, logger)
-        }
-      val (useOptimizer, refinedAnalysis) = GenIncOptimizer.logTime(
-          logger, "Optimizations part") {
-        val analysis =
-          GenIncOptimizer.logTime(logger, "Compute reachability") {
-            val analyzer = new Analyzer(semantics,
-                reachOptimizerSymbols = !cfg.disableOptimizer)
-            analyzer.computeReachability(allData)
-          }
-
-        val bypass = cfg.bypassLinkingErrors || cfg.noWarnMissing.nonEmpty
-        val linkingErrLevel = if (bypass) Level.Warn else Level.Error
-        val filteredErrors = filterErrors(analysis.errors, cfg.noWarnMissing)
-        filteredErrors.foreach(Analysis.logError(_, logger, linkingErrLevel))
-
-        if (analysis.errors.nonEmpty && !bypass)
-          sys.error("There were linking errors")
-
-        if (cfg.checkIR) {
-          GenIncOptimizer.logTime(logger, "Check IR") {
-            if (analysis.allAvailable)
-              checkIR(analysis, logger)
-            else if (cfg.noWarnMissing.isEmpty)
-              sys.error("Could not check IR because there where linking errors.")
-          }
-        }
-        def getClassTreeIfChanged(encodedName: String,
-            lastVersion: Option[String]): Option[(ir.Trees.ClassDef, Option[String])] = {
-          val persistentFile = persistentState.encodedNameToPersistentFile(encodedName)
-          persistentFile.treeIfChanged(lastVersion)
-        }
-
-        val useOptimizer = analysis.allAvailable && !cfg.disableOptimizer
-
-        if (cfg.batchMode)
-          optimizer = optimizerFactory(semantics)
-
-        val refinedAnalysis = if (useOptimizer) {
-          GenIncOptimizer.logTime(logger, "Inliner") {
-            optimizer.update(analysis, getClassTreeIfChanged,
-                cfg.wantSourceMap, logger)
-          }
-          GenIncOptimizer.logTime(logger, "Refined reachability analysis") {
-            val refinedData = computeRefinedData(allData, optimizer)
-            val refinedAnalyzer = new Analyzer(semantics,
-                reachOptimizerSymbols = false)
-            refinedAnalyzer.computeReachability(refinedData)
-          }
-        } else {
-          if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
-            logger.warn("Not running the inliner because there where linking errors.")
-          analysis
-        }
-        (useOptimizer, refinedAnalysis)
+    if (cfg.checkIR) {
+      logTime(logger, "Check IR") {
+        if (linkResult.isComplete) {
+          val checker = new IRChecker(linkResult, logger)
+          if (!checker.check())
+            sys.error(s"There were ${checker.errorCount} IR checking errors.")
+        } else if (cfg.noWarnMissing.isEmpty)
+          sys.error("Could not check IR because there where linking errors.")
       }
-      GenIncOptimizer.logTime(logger, "Write DCE'ed output") {
-        buildDCEedOutput(builder, refinedAnalysis, useOptimizer)
+    }
+
+    val useOptimizer = linkResult.isComplete && !cfg.disableOptimizer
+
+    if (cfg.batchMode)
+      resetStateFromOptimizer()
+
+    val finalResult = if (useOptimizer) {
+      val rawOptimized = logTime(logger, "Inc. optimizer") {
+        optimizer.update(linkResult, logger)
       }
-    } finally {
-      persistentState.endRun(cfg.unCache)
-      logger.debug(
-          s"Inc. opt stats: reused: ${persistentState.statsReused} -- "+
-          s"invalidated: ${persistentState.statsInvalidated} -- "+
-          s"trees read: ${persistentState.statsTreesRead}")
+
+      logTime(logger, "Refiner") {
+        refiner.refine(rawOptimized, logger)
+      }
+    } else {
+      if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
+        logger.warn("Not running the optimizer because there where linking errors.")
+      linkResult
+    }
+
+    logTime(logger, "Emitter (write output)") {
+      emitter.emit(finalResult, builder, logger)
     }
   }
 
   /** Resets all persistent state of this optimizer */
-  def clean(): Unit = {
-    persistentState = new PersistentState
-    optimizer = optimizerFactory(semantics)
+  def clean(): Unit = resetState()
+
+  private def resetState(): Unit = {
+    linker = new Linker(semantics, withSourceMap)
+    resetStateFromOptimizer()
   }
 
-  private def readAllData(ir: Traversable[VirtualScalaJSIRFile],
-      logger: Logger): scala.collection.Seq[Infos.ClassInfo] = {
-    ir.map(persistentState.getPersistentIRFile(_).info).toSeq
-  }
-
-  private def checkIR(analysis: Analysis, logger: Logger): Unit = {
-    val allClassDefs = for {
-      classInfo <- analysis.classInfos.values
-      persistentIRFile <- persistentState.encodedNameToPersistentFile.get(
-          classInfo.encodedName)
-    } yield persistentIRFile.tree
-    val checker = new IRChecker(analysis, allClassDefs.toSeq, logger)
-    if (!checker.check())
-      sys.error(s"There were ${checker.errorCount} IR checking errors.")
-  }
-
-  private def computeRefinedData(
-      allData: scala.collection.Seq[Infos.ClassInfo],
-      optimizer: GenIncOptimizer): scala.collection.Seq[Infos.ClassInfo] = {
-
-    def refineMethodInfo(container: Option[optimizer.MethodContainer],
-        staticContainer: Option[optimizer.MethodContainer],
-        methodInfo: Infos.MethodInfo): Infos.MethodInfo = {
-
-      val optPreciseInfo = for {
-        ctnr <- if (methodInfo.isStatic) staticContainer else container
-        methodImpl <- ctnr.methods.get(methodInfo.encodedName)
-      } yield methodImpl.preciseInfo
-
-      optPreciseInfo.getOrElse(methodInfo)
-    }
-
-    def refineMethodInfos(container: Option[optimizer.MethodContainer],
-        staticContainer: Option[optimizer.MethodContainer],
-        methodInfos: List[Infos.MethodInfo]): List[Infos.MethodInfo] = {
-      methodInfos.map(m => refineMethodInfo(container, staticContainer, m))
-    }
-
-    def refineClassInfo(container: Option[optimizer.MethodContainer],
-        staticContainer: Option[optimizer.MethodContainer],
-        info: Infos.ClassInfo): Infos.ClassInfo = {
-      val refinedMethods = refineMethodInfos(
-          container, staticContainer, info.methods)
-      Infos.ClassInfo(info.encodedName, info.isExported,
-          info.kind, info.superClass, info.parents, refinedMethods)
-    }
-
-    for {
-      info <- allData
-    } yield {
-      info.kind match {
-        case ClassKind.Class | ClassKind.ModuleClass =>
-          val container = optimizer.getClass(info.encodedName)
-          val staticContainer = optimizer.getStaticsNamespace(info.encodedName)
-          if (container.isEmpty && staticContainer.isEmpty) info
-          else refineClassInfo(container, staticContainer, info)
-
-        case _ =>
-          info
-      }
-    }
-  }
-
-  private def buildDCEedOutput(builder: JSTreeBuilder,
-      analysis: Analysis, useInliner: Boolean): Unit = {
-
-    def compareClassInfo(lhs: Analysis.ClassInfo, rhs: Analysis.ClassInfo) = {
-      if (lhs.ancestorCount != rhs.ancestorCount) lhs.ancestorCount < rhs.ancestorCount
-      else lhs.encodedName.compareTo(rhs.encodedName) < 0
-    }
-
-    def addPersistentFile(classInfo: Analysis.ClassInfo,
-        persistentFile: PersistentIRFile) = {
-      import ir.Trees._
-
-      val d = persistentFile.desugared
-      lazy val classDef = {
-        persistentState.statsTreesRead += 1
-        persistentFile.tree
-      }
-
-      def addTree(tree: js.Tree): Unit =
-        builder.addJSTree(tree)
-
-      def addReachableMethods(statics: Boolean): Unit = {
-        /* This is a bit convoluted because we have to:
-         * * avoid to use classDef at all if we already know all the needed methods
-         * * if any new method is needed, better to go through the defs once
-         */
-        val (methodInfos, methodNamesCache, methodsCache) = {
-          if (statics)
-            (classInfo.staticMethodInfos, d.staticMethodNames, d.staticMethods)
-          else
-            (classInfo.methodInfos, d.methodNames, d.methods)
-        }
-        val methodNames = methodNamesCache.getOrElseUpdate(
-            classDef.defs collect {
-              case MethodDef(`statics`, Ident(encodedName, _), _, _, _) =>
-                encodedName
-            })
-        val reachableMethods = methodNames.filter(
-            name => methodInfos(name).isReachable)
-        if (reachableMethods.forall(methodsCache.contains(_))) {
-          for (encodedName <- reachableMethods) {
-            addTree(methodsCache(encodedName))
-          }
-        } else {
-          classDef.defs.foreach {
-            case m: MethodDef if m.name.isInstanceOf[Ident] &&
-                m.body != EmptyTree =>
-              if (methodInfos(m.name.name).isReachable) {
-                addTree(methodsCache.getOrElseUpdate(m.name.name,
-                    classEmitter.genMethod(classInfo.encodedName, m)))
-              }
-            case _ =>
-          }
-        }
-      }
-
-      def ancestorNames = classInfo.ancestors.map(_.encodedName).toList
-
-      // Static members
-      if (useInliner) {
-        for {
-          staticsNS <- optimizer.getStaticsNamespace(classInfo.encodedName)
-          method <- staticsNS.methods.values
-          if classInfo.staticMethodInfos(method.encodedName).isReachable
-        } addTree(method.desugaredDef)
-      } else {
-        addReachableMethods(statics = true)
-      }
-
-      if (classInfo.kind == ClassKind.Interface ||
-          classInfo.kind == ClassKind.RawJSType ||
-          classInfo.kind == ClassKind.HijackedClass) {
-        // there is only the data anyway
-        if (classInfo.isDataAccessed) {
-          addTree(d.wholeClass.getOrElseUpdate(
-              classEmitter.genClassDef(classDef, ancestorNames)))
-        }
-      } else {
-        if (classInfo.isAnySubclassInstantiated) {
-          addTree(d.constructor.getOrElseUpdate(
-              classEmitter.genConstructor(classDef)))
-          if (useInliner) {
-            for {
-              method <- optimizer.findClass(classInfo.encodedName).methods.values
-              if (classInfo.methodInfos(method.encodedName).isReachable)
-            } {
-              addTree(method.desugaredDef)
-            }
-          } else {
-            addReachableMethods(statics = false)
-          }
-          addTree(d.exportedMembers.getOrElseUpdate(js.Block {
-            classDef.defs collect {
-              case m: MethodDef if m.name.isInstanceOf[StringLiteral] =>
-                classEmitter.genMethod(classInfo.encodedName, m)
-              case p: PropertyDef =>
-                classEmitter.genProperty(classInfo.encodedName, p)
-            }
-          }(classDef.pos)))
-        }
-        if (classInfo.isDataAccessed) {
-          addTree(d.typeData.getOrElseUpdate(js.Block(
-            classEmitter.genInstanceTests(classDef),
-            classEmitter.genArrayInstanceTests(classDef),
-            classEmitter.genTypeData(classDef, ancestorNames)
-          )(classDef.pos)))
-        }
-        if (classInfo.isAnySubclassInstantiated)
-          addTree(d.setTypeData.getOrElseUpdate(
-              classEmitter.genSetTypeData(classDef)))
-        if (classInfo.isModuleAccessed)
-          addTree(d.moduleAccessor.getOrElseUpdate(
-              classEmitter.genModuleAccessor(classDef)))
-        addTree(d.classExports.getOrElseUpdate(
-            classEmitter.genClassExports(classDef)))
-      }
-    }
-
-
-    for {
-      classInfo <- analysis.classInfos.values.toSeq.sortWith(compareClassInfo)
-      if classInfo.isNeededAtAll
-    } {
-      val optPersistentFile =
-        persistentState.encodedNameToPersistentFile.get(classInfo.encodedName)
-
-      // if we have a persistent file, this is not a dummy class
-      optPersistentFile.fold {
-        if (classInfo.isAnySubclassInstantiated) {
-          // Subclass will emit constructor that references this dummy class.
-          // Therefore, we need to emit a dummy parent.
-          builder.addJSTree(
-              classEmitter.genDummyParent(classInfo.encodedName))
-        }
-      } { pf => addPersistentFile(classInfo, pf) }
-    }
+  private def resetStateFromOptimizer(): Unit = {
+    optimizer = optimizerFactory(semantics, withSourceMap)
+    refiner = new Refiner(semantics)
+    emitter = new Emitter(semantics)
   }
 }
 
@@ -393,6 +169,8 @@ object ScalaJSOptimizer {
     final case class Method(className: String, methodName: String)
         extends NoWarnMissing
   }
+
+  type OptimizerFactory = (Semantics, Boolean) => GenIncOptimizer
 
   /** Configurations relevant to the optimizer */
   trait OptimizerConfig {
@@ -446,168 +224,4 @@ object ScalaJSOptimizer {
       noWarnMissing: Seq[NoWarnMissing] = Nil
   ) extends OptimizerConfig
 
-  // Private helpers -----------------------------------------------------------
-
-  private def filterErrors(errors: scala.collection.Seq[Analysis.Error],
-      noWarnMissing: Seq[NoWarnMissing]) = {
-    import NoWarnMissing._
-    import Analysis._
-
-    val classNoWarns = mutable.Set.empty[String]
-    val methodNoWarnsBuf = mutable.Buffer.empty[Method]
-
-    // Basically a type safe partition
-    noWarnMissing.foreach {
-      case Class(className) =>
-        classNoWarns += className
-      case m: Method =>
-        methodNoWarnsBuf += m
-    }
-
-    val trueFct = (_: String) => true
-
-    val methodNoWarns = for {
-      (className, elems) <- methodNoWarnsBuf.groupBy(_.className)
-    } yield {
-      if (classNoWarns.contains(className))
-        className -> trueFct
-      else
-        className -> elems.map(_.methodName).toSet
-    }
-
-    errors filter {
-      case MissingClass(info, _) =>
-        !classNoWarns.contains(info.encodedName)
-      case MissingMethod(info, _) =>
-        methodNoWarns.get(info.owner.encodedName).fold(true) { setf =>
-          !setf(info.encodedName)
-        }
-      case _ =>
-        true
-    }
-  }
-
-  private final class PersistentState {
-    val files = mutable.Map.empty[String, PersistentIRFile]
-    val encodedNameToPersistentFile =
-      mutable.Map.empty[String, PersistentIRFile]
-
-    var statsReused: Int = 0
-    var statsInvalidated: Int = 0
-    var statsTreesRead: Int = 0
-
-    var wasWithSourceMap: Boolean = true
-
-    def startRun(): Unit = {
-      statsReused = 0
-      statsInvalidated = 0
-      statsTreesRead = 0
-      for (file <- files.values)
-        file.startRun()
-    }
-
-    def getPersistentIRFile(irFile: VirtualScalaJSIRFile): PersistentIRFile = {
-      val file = files.getOrElseUpdate(irFile.path,
-          new PersistentIRFile(irFile.path))
-      if (file.updateFile(irFile))
-        statsReused += 1
-      else
-        statsInvalidated += 1
-      encodedNameToPersistentFile += ((file.info.encodedName, file))
-      file
-    }
-
-    def endRun(unCache: Boolean): Unit = {
-      // "Garbage-collect" persisted versions of files that have disappeared
-      files.retain((_, f) => f.cleanAfterRun(unCache))
-      encodedNameToPersistentFile.clear()
-    }
-  }
-
-  private final class PersistentIRFile(val path: String) {
-    import ir.Trees._
-
-    private[this] var existedInThisRun: Boolean = false
-    private[this] var desugaredUsedInThisRun: Boolean = false
-
-    private[this] var irFile: VirtualScalaJSIRFile = null
-    private[this] var version: Option[String] = None
-    private[this] var _info: Infos.ClassInfo = null
-    private[this] var _tree: ClassDef = null
-    private[this] var _desugared: Desugared = null
-
-    def startRun(): Unit = {
-      existedInThisRun = false
-      desugaredUsedInThisRun = false
-    }
-
-    def updateFile(irFile: VirtualScalaJSIRFile): Boolean = {
-      existedInThisRun = true
-      this.irFile = irFile
-      if (version.isDefined && version == irFile.version) {
-        // yeepeeh, nothing to do
-        true
-      } else {
-        version = irFile.version
-        _info = irFile.info
-        _tree = null
-        _desugared = null
-        false
-      }
-    }
-
-    def info: Infos.ClassInfo = _info
-
-    def desugared: Desugared = {
-      desugaredUsedInThisRun = true
-      if (_desugared == null)
-        _desugared = new Desugared
-      _desugared
-    }
-
-    def tree: ClassDef = {
-      if (_tree == null)
-        _tree = irFile.tree
-      _tree
-    }
-
-    def treeIfChanged(lastVersion: Option[String]): Option[(ClassDef, Option[String])] = {
-      if (lastVersion.isDefined && lastVersion == version) None
-      else Some((tree, version))
-    }
-
-    /** Returns true if this file should be kept for the next run at all. */
-    def cleanAfterRun(unCache: Boolean): Boolean = {
-      irFile = null
-      if (unCache && !desugaredUsedInThisRun)
-        _desugared = null // free desugared if unused in this run
-      existedInThisRun
-    }
-  }
-
-  private final class Desugared {
-    // for class kinds that are not decomposed
-    val wholeClass = new OneTimeCache[js.Tree]
-
-    val staticMethodNames = new OneTimeCache[List[String]]
-    val staticMethods = mutable.Map.empty[String, js.Tree]
-
-    val constructor = new OneTimeCache[js.Tree]
-    val methodNames = new OneTimeCache[List[String]]
-    val methods = mutable.Map.empty[String, js.Tree]
-    val exportedMembers = new OneTimeCache[js.Tree]
-    val typeData = new OneTimeCache[js.Tree]
-    val setTypeData = new OneTimeCache[js.Tree]
-    val moduleAccessor = new OneTimeCache[js.Tree]
-    val classExports = new OneTimeCache[js.Tree]
-  }
-
-  private final class OneTimeCache[A >: Null] {
-    private[this] var value: A = null
-    def getOrElseUpdate(v: => A): A = {
-      if (value == null)
-        value = v
-      value
-    }
-  }
 }

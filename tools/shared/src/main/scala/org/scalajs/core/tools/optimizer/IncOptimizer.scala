@@ -14,7 +14,8 @@ import scala.collection.mutable
 
 import org.scalajs.core.tools.sem.Semantics
 
-class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
+class IncOptimizer(semantics: Semantics, considerPositions: Boolean)
+    extends GenIncOptimizer(semantics, considerPositions) {
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
@@ -163,4 +164,8 @@ class IncOptimizer(semantics: Semantics) extends GenIncOptimizer(semantics) {
 
   }
 
+}
+
+object IncOptimizer {
+  val factory: ScalaJSOptimizer.OptimizerFactory = new IncOptimizer(_, _)
 }

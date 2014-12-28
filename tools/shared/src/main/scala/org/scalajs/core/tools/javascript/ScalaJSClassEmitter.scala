@@ -20,6 +20,8 @@ import CheckedBehavior.Unchecked
 
 import org.scalajs.core.tools.javascript.{Trees => js}
 
+import org.scalajs.core.tools.optimizer.LinkedClass
+
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
  */
@@ -33,7 +35,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
    *  @param ancestors Encoded names of the ancestors of the class (not only
    *                   parents), including the class itself.
    */
-  def genClassDef(tree: ClassDef, ancestors: List[String]): js.Tree = {
+  def genClassDef(tree: LinkedClass): js.Tree = {
     implicit val pos = tree.pos
     val kind = tree.kind
 
@@ -46,7 +48,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
         tree.name.name == Definitions.StringClass)
       reverseParts ::= genInstanceTests(tree)
     reverseParts ::= genArrayInstanceTests(tree)
-    reverseParts ::= genTypeData(tree, ancestors)
+    reverseParts ::= genTypeData(tree)
     if (kind.isClass)
       reverseParts ::= genSetTypeData(tree)
     if (kind == ClassKind.ModuleClass)
@@ -57,30 +59,26 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(reverseParts.reverse)
   }
 
-  def genStaticMembers(tree: ClassDef): js.Tree = {
+  def genStaticMembers(tree: LinkedClass): js.Tree = {
     val className = tree.name.name
-    val staticMemberDefs = tree.defs collect {
-      case m: MethodDef if m.static =>
-        genMethod(className, m)
-    }
+    val staticMemberDefs =
+      tree.staticMethods.map(m => genMethod(className, m.tree))
     js.Block(staticMemberDefs)(tree.pos)
   }
 
-  def genClass(tree: ClassDef): js.Tree = {
+  def genClass(tree: LinkedClass): js.Tree = {
     val className = tree.name.name
     val typeFunctionDef = genConstructor(tree)
-    val memberDefs = tree.defs collect {
-      case m: MethodDef if !m.static && m.body != EmptyTree =>
-        genMethod(className, m)
-      case p: PropertyDef =>
-        genProperty(className, p)
-    }
+    val memberDefs =
+      tree.memberMethods.map(m => genMethod(className, m.tree))
 
-    js.Block(typeFunctionDef :: memberDefs)(tree.pos)
+    val exportedDefs = genExportedMembers(tree)
+
+    js.Block(typeFunctionDef +: memberDefs :+ exportedDefs)(tree.pos)
   }
 
   /** Generates the JS constructor for a class. */
-  def genConstructor(tree: ClassDef): js.Tree = {
+  def genConstructor(tree: LinkedClass): js.Tree = {
     assert(tree.kind.isClass)
 
     val classIdent = tree.name
@@ -100,7 +98,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
             List(js.This()))
       }
       val fieldDefs = for {
-        field @ VarDef(name, vtpe, mutable, rhs) <- tree.defs
+        field @ VarDef(name, vtpe, mutable, rhs) <- tree.fields
       } yield {
         implicit val pos = field.pos
         desugarJavaScript(
@@ -233,7 +231,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     genAddToPrototype(className, newName, value)
   }
 
-  def genInstanceTests(tree: ClassDef): js.Tree = {
+  def genInstanceTests(tree: LinkedClass): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -302,7 +300,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(createIsStat, createAsStat)
   }
 
-  def genArrayInstanceTests(tree: ClassDef): js.Tree = {
+  def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -373,7 +371,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(createIsArrayOfStat, createAsArrayOfStat)
   }
 
-  def genTypeData(tree: ClassDef, ancestors: List[String]): js.Tree = {
+  def genTypeData(tree: LinkedClass): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -398,7 +396,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     }
 
     val ancestorsRecord = js.ObjectConstr(
-        ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
+        tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
     val typeData = js.New(envField("ClassTypeData"), List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
@@ -432,7 +430,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     envField("d") DOT classIdent := typeData
   }
 
-  def genSetTypeData(tree: ClassDef): js.Tree = {
+  def genSetTypeData(tree: LinkedClass): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -443,7 +441,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
       envField("d") DOT tree.name
   }
 
-  def genModuleAccessor(tree: ClassDef): js.Tree = {
+  def genModuleAccessor(tree: LinkedClass): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -475,8 +473,24 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(createModuleInstanceField, createAccessor)
   }
 
-  def genClassExports(tree: ClassDef): js.Tree = {
-    val exports = tree.defs collect {
+  def genExportedMembers(tree: LinkedClass): js.Tree = {
+    val exports = tree.exportedMembers map { member =>
+      member.tree match {
+        case m: MethodDef =>
+          genMethod(tree.encodedName, m)
+        case p: PropertyDef =>
+          genProperty(tree.encodedName, p)
+        case tree =>
+          throw new AssertionError(
+              "Illegal exportedMember " + tree.getClass.getName)
+      }
+    }
+
+    js.Block(exports)(tree.pos)
+  }
+  
+  def genClassExports(tree: LinkedClass): js.Tree = {
+    val exports = tree.classExports collect {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
       case e: ModuleExportDef =>
@@ -486,7 +500,8 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(exports)(tree.pos)
   }
 
-  def genConstructorExportDef(cd: ClassDef, tree: ConstructorExportDef): js.Tree = {
+  def genConstructorExportDef(cd: LinkedClass,
+      tree: ConstructorExportDef): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -507,7 +522,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     )
   }
 
-  def genModuleExportDef(cd: ClassDef, tree: ModuleExportDef): js.Tree = {
+  def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -520,17 +535,6 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     js.Block(
       createNamespace,
       expAccessorVar := baseAccessor
-    )
-  }
-
-  /** Generate a dummy parent. Used by ScalaJSOptimizer */
-  def genDummyParent(name: String): js.Tree = {
-    implicit val pos = Position.NoPosition
-
-    js.Block(
-        js.DocComment("@constructor (dummy parent)"))
-        js.Assign(js.DotSelect(envField("h"), js.Ident(name)),
-            js.Function(Nil, js.Skip())
     )
   }
 

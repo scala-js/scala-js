@@ -324,7 +324,6 @@ final class Analyzer(semantics: Semantics,
     def checkExistent()(implicit from: From): Unit = {
       if (nonExistent) {
         _errors += MissingClass(this, from)
-        nonExistent = false
         _allAvailable = false
       }
     }
