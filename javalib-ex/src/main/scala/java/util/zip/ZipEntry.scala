@@ -1,5 +1,6 @@
 package java.util.zip
 
+/** Pure Scala implementation of ZipEntry */
 class ZipEntry(private[this] val _name: String) extends Cloneable {
 
   private[this] var _comment: String = null
