@@ -10,6 +10,8 @@ package org.scalajs.testsuite.javalib
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
 
+import scala.scalajs.niocharset.StandardCharsets
+
 import org.scalajs.jasminetest.JasmineTest
 
 object StringTest extends JasmineTest {
@@ -231,6 +233,19 @@ object StringTest extends JasmineTest {
       expect(String.format("%05d", new Integer(-10))).toEqual("-0010")
       expect(String.format("%x", new Integer(-3))).toEqual("fffffffd")
       expect(String.format("%x", new java.lang.Byte(-4.toByte))).toEqual("fffffffc")
+    }
+
+    it("should respond to `getBytes`") {
+      import StandardCharsets._
+
+      expect("hello-world".getBytes(UTF_8).toJSArray).toEqual(
+          js.Array(104, 101, 108, 108, 111, 45, 119, 111, 114, 108, 100))
+      expect("ᚠᛇᚻ᛫ᛒᛦᚦ᛫ᚠᚱᚩᚠᚢᚱ᛫ᚠᛁᚱᚪ᛫ᚷᛖᚻᚹᛦᛚᚳᚢᛗ".getBytes(UTF_16).toJSArray).toEqual(
+          js.Array(-2, -1, 22, -96, 22, -57, 22, -69, 22, -21, 22, -46, 22, -26,
+              22, -90, 22, -21, 22, -96, 22, -79, 22, -87, 22, -96, 22, -94, 22,
+              -79, 22, -21, 22, -96, 22, -63, 22, -79, 22, -86, 22, -21, 22,
+              -73, 22, -42, 22, -69, 22, -71, 22, -26, 22, -38, 22, -77, 22,
+              -94, 22, -41))
     }
 
   }
