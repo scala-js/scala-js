@@ -92,8 +92,12 @@ private[runtime] object RuntimeString {
   def getBytes(thiz: String, charsetName: String): Array[Byte] =
     thiz.getBytes(Charset.forName(charsetName))
 
-  def getBytes(thiz: String, charset: Charset): Array[Byte] =
-    charset.encode(thiz).array()
+  def getBytes(thiz: String, charset: Charset): Array[Byte] = {
+    val buf = charset.encode(thiz)
+    val res = new Array[Byte](buf.remaining)
+    buf.get(res)
+    res
+  }
 
   def getChars(thiz: String, srcBegin: Int, srcEnd: Int,
       dst: Array[Char], dstBegin: Int): Unit = {
