@@ -5,6 +5,12 @@ import java.io._
 import scala.scalajs.js
 import scala.scalajs.js.typedarray._
 
+/** <a href="https://stuk.github.io/jszip/" target="_blank"
+ *     class="badge badge-external" style="float: right;">
+ *  External: JSZip</a>
+ *  ZipInputStream implementation using
+ *  <a href="https://stuk.github.io/jszip/" target="_blank">JSZip</a>
+ */
 class ZipInputStream(in: InputStream) extends InflaterInputStream(in) {
 
   // Not implemented

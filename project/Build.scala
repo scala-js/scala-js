@@ -588,6 +588,46 @@ object Build extends sbt.Build {
       )
   ).dependsOn(compiler % "plugin")
 
+  /** Patch the scaladoc css */
+  private val patchDocSetting = {
+    /* After executing the normal doc command, copy everything verbatim to
+     * `patched-api` (same directory structure). In addition, append our
+     * additional doc CSS to `lib/template.css` after copying.
+     */
+
+    doc in Compile := {
+      val docDir = (doc in Compile).value
+      val cacheDir = streams.value.cacheDirectory
+      val outDir = crossTarget.value / "patched-api"
+      val docPaths =
+        Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
+
+      val additionalStylesFile =
+        (baseDirectory in library).value / "additional-doc-styles.css"
+
+      FileFunction.cached(cacheDir,
+          FilesInfo.lastModified, FilesInfo.exists) { files =>
+        for {
+          file <- files
+          if file != additionalStylesFile
+        } yield {
+          val relPath = docPaths(file)
+          val outFile = outDir / relPath
+          IO.copyFile(file, outFile)
+
+          if (relPath == "lib/template.css") {
+            val styles = IO.read(additionalStylesFile)
+            IO.append(outFile, styles)
+          }
+
+          outFile
+        }
+      } (docPaths.keySet + additionalStylesFile)
+
+      outDir
+    }
+  }
+
   lazy val library: Project = Project(
       id = "library",
       base = file("library"),
@@ -613,41 +653,7 @@ object Build extends sbt.Build {
             allProducts.flatMap(base => Path.selectSubpaths(base, filter))
           },
 
-          /* After executing the normal doc command, copy everything verbatim to
-           * `patched-api` (same directory structure). In addition, append our
-           * additional doc CSS to `lib/template.css` after copying.
-           */
-          doc in Compile := {
-            val docDir = (doc in Compile).value
-            val cacheDir = streams.value.cacheDirectory
-            val outDir = crossTarget.value / "patched-api"
-            val docPaths =
-              Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
-
-            val additionalStylesFile =
-              baseDirectory.value / "additional-doc-styles.css"
-
-            FileFunction.cached(cacheDir,
-                FilesInfo.lastModified, FilesInfo.exists) { files =>
-              for {
-                file <- files
-                if file != additionalStylesFile
-              } yield {
-                val relPath = docPaths(file)
-                val outFile = outDir / relPath
-                IO.copyFile(file, outFile)
-
-                if (relPath == "lib/template.css") {
-                  val styles = IO.read(additionalStylesFile)
-                  IO.append(outFile, styles)
-                }
-
-                outFile
-              }
-            } (docPaths.keySet + additionalStylesFile)
-
-            outDir
-          }
+          patchDocSetting
       ))
   ).dependsOn(compiler % "plugin")
 
@@ -661,7 +667,8 @@ object Build extends sbt.Build {
           scalaJSSourceMapSettings,
           exportJars := true,
           jsDependencies +=
-            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip"
+            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip",
+          patchDocSetting
       ) ++ (
           scalaJSExternalCompileSettings
       )

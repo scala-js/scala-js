@@ -2,6 +2,9 @@ package java.io
 
 import scala.scalajs.js.typedarray._
 
+/** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+ *  DataInputStream implementation using JavaScript typed arrays.
+ */
 class DataInputStream(in: InputStream) extends FilterInputStream(in)
                                           with DataInput {
 

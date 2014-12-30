@@ -2,6 +2,7 @@ package java.util.zip
 
 import java.io._
 
+/** Dummy implementation of InflatorInputStream. Does not do anything. */
 class InflaterInputStream(in: InputStream) extends FilterInputStream(in) {
 
   // Not implemented:
