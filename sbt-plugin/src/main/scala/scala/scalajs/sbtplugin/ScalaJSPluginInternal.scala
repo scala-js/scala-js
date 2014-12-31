@@ -500,11 +500,6 @@ object ScalaJSPluginInternal {
 
       skip in packageJSDependencies := true,
 
-      // TODO change to major frameworks
-      testFrameworks := Seq(
-          TestFramework("org.scalajs.jasminetest.JasmineFramework"),
-          TestFramework("foo")),
-
       emitSourceMaps := true,
 
       scalaJSOptimizerOptions := OptimizerOptions(),

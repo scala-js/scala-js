@@ -135,7 +135,9 @@ object Build extends sbt.Build {
 
   val myScalaJSSettings = ScalaJSPluginInternal.scalaJSAbstractSettings ++ Seq(
       autoCompilerPlugins := true,
-      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true))
+      scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
+      testFrameworks +=
+        TestFramework("org.scalajs.jasminetest.JasmineFramework")
   )
 
   val scalaJSSourceMapSettings = scalacOptions ++= {
