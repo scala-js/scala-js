@@ -11,9 +11,12 @@ package org.scalajs.core.tools.sem
 
 import scala.collection.immutable.Traversable
 
+import org.scalajs.core.tools.optimizer.LinkedClass
+
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
-    val strictFloats: Boolean) {
+    val strictFloats: Boolean,
+    val runtimeClassName: Semantics.RuntimeClassNameFunction) {
 
   import Semantics._
 
@@ -22,6 +25,9 @@ final class Semantics private (
 
   def withStrictFloats(strictFloats: Boolean): Semantics =
     copy(strictFloats = strictFloats)
+
+  def withRuntimeClassName(runtimeClassName: RuntimeClassNameFunction): Semantics =
+    copy(runtimeClassName = runtimeClassName)
 
   def optimized: Semantics =
     copy(asInstanceOfs = this.asInstanceOfs.optimized)
@@ -66,10 +72,12 @@ final class Semantics private (
 
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
-      strictFloats: Boolean = this.strictFloats): Semantics = {
+      strictFloats: Boolean = this.strictFloats,
+      runtimeClassName: RuntimeClassNameFunction = this.runtimeClassName): Semantics = {
     new Semantics(
-        asInstanceOfs = asInstanceOfs,
-        strictFloats  = strictFloats)
+        asInstanceOfs    = asInstanceOfs,
+        strictFloats     = strictFloats,
+        runtimeClassName = runtimeClassName)
   }
 }
 
@@ -77,9 +85,12 @@ object Semantics {
   private val HashSeed =
     scala.util.hashing.MurmurHash3.stringHash(classOf[Semantics].getName)
 
+  type RuntimeClassNameFunction = LinkedClass => String
+
   val Defaults: Semantics = new Semantics(
-      asInstanceOfs = CheckedBehavior.Fatal,
-      strictFloats  = false)
+      asInstanceOfs    = CheckedBehavior.Fatal,
+      strictFloats     = false,
+      runtimeClassName = _.fullName)
 
   def compliantTo(semantics: Traversable[String]): Semantics = {
     import Defaults._
@@ -91,7 +102,8 @@ object Semantics {
       if (semsSet.contains(name)) compliant else default
 
     new Semantics(
-        asInstanceOfs = sw("asInstanceOfs", Compliant, asInstanceOfs),
-        strictFloats  = sw("strictFloats",  true,      strictFloats))
+        asInstanceOfs    = sw("asInstanceOfs", Compliant, asInstanceOfs),
+        strictFloats     = sw("strictFloats",  true,      strictFloats),
+        runtimeClassName = Defaults.runtimeClassName)
   }
 }

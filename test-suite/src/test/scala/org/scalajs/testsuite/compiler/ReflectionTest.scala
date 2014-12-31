@@ -17,9 +17,17 @@ import org.scalajs.jasminetest.JasmineTest
 object ReflectionTest extends JasmineTest {
 
   describe("Scala.js Reflection (through java.lang.Class)") {
+    it("java.lang.Class.getName under normal circumstances") {
+      expect(classOf[scala.Some[_]].getName).toEqual("scala.Some")
+    }
+
     it("should append $ to class name of objects") {
       expect(TestObject.getClass.getName).toEqual(
         "org.scalajs.testsuite.compiler.ReflectionTest$TestObject$")
+    }
+
+    it("java.lang.Class.getName renamed through semantics") {
+      expect(classOf[RenamedTestClass].getName).toEqual("renamed.test.Class")
     }
 
     it("should support isInstance") {
@@ -65,5 +73,7 @@ object ReflectionTest extends JasmineTest {
   }
 
   object TestObject
+
+  class RenamedTestClass
 
 }

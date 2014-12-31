@@ -51,6 +51,8 @@ final case class LinkedClass(
   def encodedName: String = name.name
   def isExported: Boolean = classExports.nonEmpty
 
+  def fullName: String = Definitions.decodeClassName(encodedName)
+
   def toInfo: Infos.ClassInfo = {
     val methodInfos = (
         staticMethods.map(_.info) ++
