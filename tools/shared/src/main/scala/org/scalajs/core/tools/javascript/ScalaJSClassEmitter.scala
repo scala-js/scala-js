@@ -401,7 +401,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val typeData = js.New(envField("ClassTypeData"), List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
-        js.StringLiteral(decodeClassName(className)),
+        js.StringLiteral(semantics.runtimeClassName(tree)),
         parentData,
         ancestorsRecord
     ) ++ (
@@ -488,7 +488,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
     js.Block(exports)(tree.pos)
   }
-  
+
   def genClassExports(tree: LinkedClass): js.Tree = {
     val exports = tree.classExports collect {
       case e: ConstructorExportDef =>

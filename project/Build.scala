@@ -312,7 +312,7 @@ object Build extends sbt.Build {
 
           val code = {
             s"""
-            var lib = scalajs.QuickLinker().linkNode(${cp.mkString(", ")});
+            var lib = scalajs.QuickLinker().linkTestSuiteNode(${cp.mkString(", ")});
 
             var __ScalaJSEnv = null;
 
@@ -835,6 +835,13 @@ object Build extends sbt.Build {
           publishArtifact in Compile := false,
 
           scalacOptions ~= (_.filter(_ != "-deprecation")),
+
+          scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
+            case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+              "renamed.test.Class"
+            case fullName =>
+              fullName
+          })),
 
           sources in Test ++= {
             if (!scalaVersion.value.startsWith("2.10") &&

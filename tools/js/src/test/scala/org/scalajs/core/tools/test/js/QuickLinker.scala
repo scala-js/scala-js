@@ -14,13 +14,29 @@ object QuickLinker {
 
   /** Link a Scala.js application on Node.js */
   @JSExport
-  def linkNode(cpEntries: String*): String = {
+  def linkNode(cpEntries: String*): String =
+    linkNodeInternal(Semantics.Defaults, cpEntries: _*)
+
+  /** Link the Scala.js test suite on Node.js */
+  @JSExport
+  def linkTestSuiteNode(cpEntries: String*): String = {
+    val semantics = Semantics.Defaults.withRuntimeClassName(_.fullName match {
+      case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+        "renamed.test.Class"
+      case fullName =>
+        fullName
+    })
+    linkNodeInternal(semantics, cpEntries: _*)
+  }
+
+  /** Link a Scala.js application on Node.js */
+  def linkNodeInternal(semantics: Semantics, cpEntries: String*): String = {
     val builder = new AbstractPartialClasspathBuilder with NodeFileSystem
     val cp = builder.build(cpEntries.toList)
 
     val complete = cp.resolve()
 
-    val optimizer = new ScalaJSOptimizer(Semantics.Defaults.optimized)
+    val optimizer = new ScalaJSOptimizer(semantics.optimized)
 
     val out = WritableMemVirtualJSFile("out.js")
 
