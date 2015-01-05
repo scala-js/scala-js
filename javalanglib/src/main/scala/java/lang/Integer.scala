@@ -31,6 +31,21 @@ final class Integer private () extends Number with Comparable[Integer] {
   @inline override def toString(): String =
     Integer.toString(intValue)
 
+  /* Methods of java.lang.Byte and java.lang.Short.
+   * When calling a method of j.l.Byte or j.l.Short on a primitive value,
+   * it appears to be called directly on the primitive value, which has type
+   * IntType. Call resolution, by the analyzer and the optimizer, will then
+   * look for the method in the class j.l.Integer instead of j.l.Byte or
+   * j.l.Short. This is why we add here the methods of these two classes that
+   * are not already in j.l.Integer.
+   */
+
+  @inline def compareTo(that: Byte): Int =
+    Integer.compare(intValue, that.intValue)
+
+  @inline def compareTo(that: Short): Int =
+    Integer.compare(intValue, that.intValue)
+
 }
 
 object Integer {
