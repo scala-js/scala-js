@@ -82,7 +82,7 @@ final class Analyzer(semantics: Semantics,
     def instantiateClassWith(className: String, constructor: String): ClassInfo = {
       val info = lookupClass(className)
       info.instantiated()
-      info.callMethod(constructor)
+      info.callMethod(constructor, statically = true)
       info
     }
 
@@ -110,7 +110,9 @@ final class Analyzer(semantics: Semantics,
 
     val RTLongClass = lookupClass(LongImpl.RuntimeLongClass)
     RTLongClass.instantiated()
-    for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
+    for (method <- LongImpl.AllConstructors)
+      RTLongClass.callMethod(method, statically = true)
+    for (method <- LongImpl.AllMethods)
       RTLongClass.callMethod(method)
 
     if (reachOptimizerSymbols) {
@@ -293,7 +295,7 @@ final class Analyzer(semantics: Semantics,
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
         instantiated()
-        callMethod("init___")
+        callMethod("init___", statically = true)
       }
     }
 
@@ -333,7 +335,9 @@ final class Analyzer(semantics: Semantics,
     def callMethod(methodName: String, statically: Boolean = false)(
         implicit from: From): Unit = {
       if (isConstructorName(methodName)) {
-        // constructors are always implicitly called statically
+        // constructors must always be called statically
+        assert(statically,
+            s"Trying to call dynamically the constructor $this.$methodName from $from")
         lookupMethod(methodName).reachStatic()
       } else if (statically) {
         assert(!isReflProxyName(methodName),

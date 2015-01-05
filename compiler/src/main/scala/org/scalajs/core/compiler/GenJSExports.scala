@@ -595,7 +595,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val thisType =
         if (sym.owner == ObjectClass) jstpe.ClassType(ir.Definitions.ObjectClass)
         else encodeClassType(sym.owner)
-      val call = genApplyMethod(js.This()(thisType), sym.owner, sym, args)
+      val receiver = js.This()(thisType)
+      val call =
+        if (sym.isClassConstructor)
+          genApplyMethodStatically(receiver, sym, args)
+        else
+          genApplyMethod(receiver, sym.owner, sym, args)
       ensureBoxed(call,
         enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
     }

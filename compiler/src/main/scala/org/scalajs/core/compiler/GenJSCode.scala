@@ -1772,7 +1772,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           s"Trying to instantiate a raw JS function def $clazz")
       val ctorIdent = encodeMethodSym(ctor)
       currentMethodInfoBuilder.instantiatesClass(clazz)
-      currentMethodInfoBuilder.callsMethod(clazz, ctorIdent)
+      currentMethodInfoBuilder.callsMethodStatically(clazz, ctorIdent)
       js.New(jstpe.ClassType(encodeClassFullName(clazz)),
           ctorIdent, arguments)
     }

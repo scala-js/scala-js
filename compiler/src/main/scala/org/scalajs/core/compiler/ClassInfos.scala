@@ -91,6 +91,9 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     def callsMethodStatically(ownerIdent: js.Ident, method: js.Ident): Unit =
       methodsCalledStatically += ((patchClassName(ownerIdent.name), method.name))
 
+    def callsMethodStatically(owner: Symbol, method: js.Ident): Unit =
+      methodsCalledStatically += ((patchClassName(encodeClassFullName(owner)), method.name))
+
     def callsStaticMethod(ownerIdent: js.Ident, method: js.Ident): Unit =
       staticMethodsCalled += ((patchClassName(ownerIdent.name), method.name))
 

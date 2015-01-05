@@ -39,7 +39,9 @@ object JavaLangObject {
       MethodInfo("equals__O__Z"),
       MethodInfo("clone__O",
         methodsCalled = Map(
-          "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
+          "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object")
+        ),
+        methodsCalledStatically = Map(
           "jl_CloneNotSupportedException" -> List("init___")
         ),
         instantiatedClasses = List("jl_CloneNotSupportedException"),
