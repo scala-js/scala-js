@@ -380,7 +380,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           classIdent,
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
-          genClassParents(sym),
+          genClassInterfaces(sym),
           hashedDefs)(
           optimizerHints)
 
@@ -430,9 +430,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       for (exp <- jsInterop.exportsOf(sym))
         reporter.error(exp.pos, "You may not export a trait")
 
-      val parents = genClassParents(sym)
+      val interfaces = genClassInterfaces(sym)
 
-      js.ClassDef(classIdent, ClassKind.Interface, None, parents,
+      js.ClassDef(classIdent, ClassKind.Interface, None, interfaces,
           generatedMethods)(OptimizerHints.empty)
     }
 
@@ -465,14 +465,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
 
       js.ClassDef(classIdent, ClassKind.Class,
-          Some(objectClassIdent), List(objectClassIdent),
+          Some(objectClassIdent), Nil,
           generatedMethods)(OptimizerHints.empty)
     }
 
-    private def genClassParents(sym: Symbol)(implicit pos: Position): List[js.Ident] = {
-      for (parent <- sym.info.parents) yield {
-        val typeSym = parent.typeSymbol
-        assert(typeSym != NoSymbol, "parent needs symbol")
+    private def genClassInterfaces(sym: Symbol)(
+        implicit pos: Position): List[js.Ident] = {
+      for {
+        parent <- sym.info.parents
+        typeSym = parent.typeSymbol
+        _ = assert(typeSym != NoSymbol, "parent needs symbol")
+        if (typeSym.isInterface)
+      } yield {
         encodeClassFullNameIdent(typeSym)
       }
     }

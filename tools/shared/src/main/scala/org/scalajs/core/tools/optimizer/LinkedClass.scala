@@ -30,7 +30,7 @@ final case class LinkedClass(
     name: Ident,
     kind: ClassKind,
     superClass: Option[Ident],
-    parents: List[Ident],
+    interfaces: List[Ident],
     fields: List[VarDef],
     staticMethods: List[LinkedMember[MethodDef]],
     memberMethods: List[LinkedMember[MethodDef]],
@@ -62,8 +62,8 @@ final case class LinkedClass(
         classExportInfo
     )
 
-    Infos.ClassInfo(encodedName, isExported, kind, superClass.fold("")(_.name),
-      parents.map(_.name), methodInfos)
+    Infos.ClassInfo(encodedName, isExported, kind, superClass.map(_.name),
+      interfaces.map(_.name), methodInfos)
   }
 }
 
@@ -130,7 +130,7 @@ object LinkedClass {
         classDef.name,
         classDef.kind,
         classDef.superClass,
-        classDef.parents,
+        classDef.interfaces,
         fields.toList,
         staticMethods.toList,
         memberMethods.toList,
@@ -155,7 +155,7 @@ object LinkedClass {
         name = Ident(encodedName),
         kind = ClassKind.Class,
         superClass = Some(Ident(Definitions.ObjectClass)),
-        parents = List(Ident(Definitions.ObjectClass)),
+        interfaces = Nil,
         fields = Nil,
         staticMethods = Nil,
         memberMethods = Nil,

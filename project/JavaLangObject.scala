@@ -26,8 +26,8 @@ object JavaLangObject {
   private def Info = ClassInfo(
     encodedName = "O",
     kind = ClassKind.Class,
-    superClass = "",
-    parents = List(),
+    superClass = None,
+    interfaces = Nil,
     methods = List(
       MethodInfo("init___"),
       MethodInfo("hashCode__I",

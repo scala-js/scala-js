@@ -168,7 +168,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       val className = classDef.name.name
 
       val strictAncestors = for {
-        parent   <- classDef.parents
+        parent   <- classDef.superClass ++: classDef.interfaces
         ancestor <- loadAncestors(scope, parent.name)
       } yield ancestor
 

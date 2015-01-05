@@ -25,9 +25,9 @@ object JavaLangString {
   private def Info = ClassInfo(
     encodedName = "T",
     kind = ClassKind.HijackedClass,
-    superClass = "O",
-    parents = List(
-      "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable", "O"),
+    superClass = Some("O"),
+    interfaces = List(
+      "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable"),
     methods = List(
       MethodInfo("equals__O__Z"),
       MethodInfo("hashCode__I",
@@ -81,8 +81,7 @@ object JavaLangString {
       List(
           Ident("Ljava_io_Serializable", Some("java.io.Serializable")),
           Ident("jl_CharSequence", Some("java.lang.CharSequence")),
-          Ident("jl_Comparable", Some("java.lang.Comparable")),
-          Ident("O", Some("java.lang.Object"))
+          Ident("jl_Comparable", Some("java.lang.Comparable"))
       ),
       List(
         /* def equals(that: Object): Boolean = this eq that */

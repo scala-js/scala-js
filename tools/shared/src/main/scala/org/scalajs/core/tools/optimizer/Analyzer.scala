@@ -183,11 +183,13 @@ final class Analyzer(semantics: Semantics,
     }
 
     private[this] def linkClassesImpl(): Unit = {
-      if (data.superClass != "")
-        superClass = lookupClass(data.superClass)
+      for (superCls <- data.superClass)
+        superClass = lookupClass(superCls)
 
-      ancestors = this +: data.parents.flatMap { anc =>
-        val cls = lookupClass(anc)
+      val parents = data.superClass ++: data.interfaces
+
+      ancestors = this +: parents.flatMap { parent =>
+        val cls = lookupClass(parent)
         cls.linkClasses()
         cls.ancestors
       }.distinct
@@ -460,8 +462,8 @@ final class Analyzer(semantics: Semantics,
         encodedName = encodedName,
         isExported = false,
         kind = ClassKind.ModuleClass,
-        superClass = "O",
-        parents = List("O"),
+        superClass = Some("O"),
+        interfaces = Nil,
         methods = List(
             createMissingMethodInfo("init___"))
     )

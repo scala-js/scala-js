@@ -57,8 +57,8 @@ object InfoSerializers {
       s.writeUTF(encodedName)
       s.writeBoolean(isExported)
       s.writeByte(ClassKind.toByte(kind))
-      s.writeUTF(superClass)
-      writeStrings(parents)
+      s.writeUTF(superClass.getOrElse(""))
+      writeStrings(interfaces)
 
       def writeMethodInfo(methodInfo: MethodInfo): Unit = {
         import methodInfo._
@@ -103,8 +103,9 @@ object InfoSerializers {
       val encodedName = readUTF()
       val isExported = readBoolean()
       val kind = ClassKind.fromByte(readByte())
-      val superClass = readUTF()
-      val parents = readList(readUTF())
+      val superClass0 = readUTF()
+      val superClass = if (superClass0 == "") None else Some(superClass0)
+      val interfaces = readList(readUTF())
 
       def readMethod(): MethodInfo = {
         val encodedName = readUTF()
@@ -125,7 +126,7 @@ object InfoSerializers {
       val methods = readList(readMethod())
 
       val info = ClassInfo(encodedName, isExported, kind,
-          superClass, parents, methods)
+          superClass, interfaces, methods)
 
       (version, info)
     }

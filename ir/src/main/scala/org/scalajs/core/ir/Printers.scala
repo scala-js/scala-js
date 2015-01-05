@@ -670,9 +670,9 @@ object Printers {
       println("kind: ", kind)
       println("superClass: ", superClass)
 
-      if (parents.nonEmpty) {
-        println("parents: ",
-            parents.map(escapeJS).mkString("[", ", ", "]"))
+      if (interfaces.nonEmpty) {
+        println("interfaces: ",
+            interfaces.map(escapeJS).mkString("[", ", ", "]"))
       }
 
       print("methods:")

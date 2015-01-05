@@ -165,8 +165,8 @@ class MainGenericRunner {
       encodedName = encodedClassName,
       kind = ClassKind.ModuleClass,
       isExported = true,
-      superClass = "O",
-      parents = List("O"),
+      superClass = Some("O"),
+      interfaces = Nil,
       methods = List(
           MethodInfo("launch",
               isExported = true,
@@ -184,7 +184,7 @@ class MainGenericRunner {
         Ident(encodedClassName, Some(className)),
         ClassKind.ModuleClass,
         Some(Ident("O", Some("java.lang.Object"))),
-        List(Ident("O", Some("java.lang.Object"))),
+        Nil,
         List(
           MethodDef(
             static = false,

@@ -15,8 +15,8 @@ object Infos {
       val encodedName: String,
       val isExported: Boolean,
       val kind: ClassKind,
-      val superClass: String,
-      val parents: List[String], // does not include this class
+      val superClass: Option[String], // always None for interfaces
+      val interfaces: List[String], // direct parent interfaces only
       val methods: List[MethodInfo]
   )
 
@@ -25,11 +25,11 @@ object Infos {
         encodedName: String,
         isExported: Boolean = false,
         kind: ClassKind = ClassKind.Class,
-        superClass: String = "",
-        parents: List[String] = Nil,
+        superClass: Option[String] = None,
+        interfaces: List[String] = Nil,
         methods: List[MethodInfo] = Nil): ClassInfo = {
       new ClassInfo(encodedName, isExported, kind, superClass,
-          parents, methods)
+          interfaces, methods)
     }
   }
 

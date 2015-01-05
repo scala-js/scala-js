@@ -229,7 +229,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
         classDef.name,
         classDef.kind,
         classDef.superClass,
-        classDef.parents,
+        classDef.interfaces,
         fields.toList,
         staticMethods.toList,
         memberMethods.toList,
