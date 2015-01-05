@@ -578,7 +578,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
         } else if (isTrivialConstructor(sym, params, rhs)) {
-          createInfoBuilder().callsMethod(sym.owner.superClass, methodIdent)
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
