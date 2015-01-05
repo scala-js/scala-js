@@ -372,7 +372,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       // The complete class definition
       val kind =
-        if (sym.isModuleClass) ClassKind.ModuleClass
+        if (isStaticModule(sym)) ClassKind.ModuleClass
         else if (isHijacked) ClassKind.HijackedClass
         else ClassKind.Class
 
