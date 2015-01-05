@@ -42,10 +42,8 @@ trait ClassInfos extends SubComponent { self: GenJSCode =>
     }
 
     val superClass =
-      if (kind.isClass || kind == ClassKind.HijackedClass)
-        Some(encodeClassFullName(symbol.superClass))
-      else
-        None
+      if (symbol.isInterface) None
+      else Some(encodeClassFullName(symbol.superClass))
 
     val interfaces = for {
       parent <- symbol.info.parents

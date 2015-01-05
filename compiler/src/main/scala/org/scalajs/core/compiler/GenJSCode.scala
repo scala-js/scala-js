@@ -400,7 +400,14 @@ abstract class GenJSCode extends plugins.PluginComponent
         reporter.error(exp.pos, "You may not export a class extending js.Any")
 
       val classIdent = encodeClassFullNameIdent(sym)
-      js.ClassDef(classIdent, ClassKind.RawJSType, None, Nil, Nil)(
+      val superClass =
+        if (sym.isInterface) None
+        else Some(encodeClassFullNameIdent(sym.superClass))
+
+      js.ClassDef(classIdent, ClassKind.RawJSType,
+          superClass,
+          genClassInterfaces(sym),
+          Nil)(
           OptimizerHints.empty)
     }
 

@@ -74,4 +74,37 @@ object RuntimeTypesTest extends JasmineTest {
 
   }
 
+  describe("Raw JS types") {
+
+    it("Arrays of raw JS types") {
+      val arrayOfParentJSType = new Array[ParentJSType](0)
+      val arrayOfJSInterface = new Array[SomeJSInterface](0)
+      val arrayOfJSClass = new Array[SomeJSClass](0)
+
+      expect(arrayOfParentJSType.isInstanceOf[Array[AnyRef]]).toBeTruthy
+      expect(arrayOfJSInterface.isInstanceOf[Array[AnyRef]]).toBeTruthy
+      expect(arrayOfJSClass.isInstanceOf[Array[AnyRef]]).toBeTruthy
+
+      expect(arrayOfParentJSType.isInstanceOf[Array[ParentJSType]]).toBeTruthy
+      expect(arrayOfJSInterface.isInstanceOf[Array[SomeJSInterface]]).toBeTruthy
+      expect(arrayOfJSClass.isInstanceOf[Array[SomeJSClass]]).toBeTruthy
+
+      expect(arrayOfJSInterface.isInstanceOf[Array[ParentJSType]]).toBeTruthy
+      expect(arrayOfJSClass.isInstanceOf[Array[ParentJSType]]).toBeTruthy
+
+      expect(arrayOfParentJSType.isInstanceOf[Array[SomeJSInterface]]).toBeFalsy
+      expect(arrayOfParentJSType.isInstanceOf[Array[SomeJSClass]]).toBeFalsy
+
+      expect(arrayOfJSInterface.isInstanceOf[Array[js.Object]]).toBeFalsy
+      expect(arrayOfJSClass.isInstanceOf[Array[js.Object]]).toBeTruthy
+    }
+
+  }
+
+  trait ParentJSType extends js.Object
+
+  trait SomeJSInterface extends ParentJSType
+
+  class SomeJSClass extends ParentJSType
+
 }
