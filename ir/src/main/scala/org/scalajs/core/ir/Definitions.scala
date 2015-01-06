@@ -57,6 +57,8 @@ object Definitions {
 
   val ThrowableClass = "jl_Throwable"
 
+  val PseudoArrayClass = "s_Array"
+
   val ExportedConstructorsName = "__exportedInits"
 
   /** Encodes a class name. */

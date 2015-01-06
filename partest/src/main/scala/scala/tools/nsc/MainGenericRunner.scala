@@ -161,23 +161,6 @@ class MainGenericRunner {
     val exportName = "PartestLauncher"
     val encodedClassName = ir.Definitions.encodeClassName(className)
 
-    val info = ClassInfo(
-      encodedName = encodedClassName,
-      kind = ClassKind.ModuleClass,
-      isExported = true,
-      superClass = Some("O"),
-      interfaces = Nil,
-      methods = List(
-          MethodInfo("launch",
-              isExported = true,
-              accessedModules = List(mainModuleClassName),
-              methodsCalled = Map(
-                  mainModuleClassName -> List("main__AT__V")
-              )
-          )
-      )
-    )
-
     val definition = {
       implicit val DummyPos = ir.Position.NoPosition
       ClassDef(
@@ -203,6 +186,8 @@ class MainGenericRunner {
         )
       )(OptimizerHints.empty)
     }
+
+    val info = generateClassInfo(definition)
 
     val infoAndDefinition = (info, definition)
 

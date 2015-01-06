@@ -14,6 +14,7 @@ import scala.reflect.internal.Flags
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe}
 import ir.Trees.OptimizerHints
+import ir.Infos.MethodInfoBuilder
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -61,10 +62,12 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         Nil
       } else {
         withScopedVars(
-          currentMethodInfoBuilder := currentClassInfoBuilder.addMethod(
-              ir.Definitions.ExportedConstructorsName,
-              isStatic = false, isExported = true)
+          currentMethodInfoBuilder := new MethodInfoBuilder
         ) {
+          currentMethodInfoBuilder
+            .setEncodedName(ir.Definitions.ExportedConstructorsName)
+            .setIsExported(true)
+
           val exports = for {
             (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
           } yield {
@@ -89,6 +92,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             js.ConstructorExportDef(jsName, args, body)
           }
+
+          currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
 
           exports.toList
         }
@@ -124,13 +129,17 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val methodIdent = encodeMethodSym(sym)
 
       withScopedVars(
-          currentMethodInfoBuilder :=
-            currentClassInfoBuilder.addMethod(methodIdent.name, isStatic = false)
+          currentMethodInfoBuilder := new MethodInfoBuilder
       ) {
-        js.MethodDef(static = false, methodIdent,
+        currentMethodInfoBuilder.setEncodedName(methodIdent.name)
+
+        val result = js.MethodDef(static = false, methodIdent,
             List(inArg), toIRType(sym.tpe.resultType),
             genNamedExporterBody(trgSym, inArg.ref))(
             OptimizerHints.empty, None)
+
+        currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
+        result
       }
     }
 
@@ -182,15 +191,21 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
 
       withScopedVars(
-        currentMethodInfoBuilder := currentClassInfoBuilder.addMethod(
-            jsName, isStatic = false, isExported = true)
+        currentMethodInfoBuilder := new MethodInfoBuilder
       ) {
-        withNewLocalNameScope {
+        currentMethodInfoBuilder
+          .setEncodedName(jsName)
+          .setIsExported(true)
+
+        val result = withNewLocalNameScope {
           if (isProp)
             genExportProperty(alts, jsName)
           else
             genExportMethod(alts.map(ExportedSymbol), jsName)
         }
+
+        currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
+        result
       }
     }
 
@@ -410,7 +425,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             val optCond = typeTest match {
               case HijackedTypeTest(boxedClassName, _) =>
-                Some(js.IsInstanceOf(param.ref, jstpe.ClassType(boxedClassName)))
+                val tpe = jstpe.ClassType(boxedClassName)
+                currentMethodInfoBuilder.addAccessedClassData(tpe)
+                Some(js.IsInstanceOf(param.ref, tpe))
 
               case InstanceOfTypeTest(tpe) =>
                 Some(genIsInstanceOf(param.ref, tpe))
@@ -540,8 +557,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               val boxedClass = tpe.valueClazz
               val unboxMethod = boxedClass.derivedValueClassUnbox
               genApplyMethod(
-                  genAsInstanceOf(jsArg, tpe),
-                  boxedClass, unboxMethod, Nil)
+                  genAsInstanceOf(jsArg, tpe), unboxMethod, Nil)
             case tpe =>
               genAsInstanceOf(jsArg, tpe)
           }
@@ -567,7 +583,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             }
 
             // Pass previous arguments to defaultGetter
-            genApplyMethod(trgTree, trgSym, defaultGetter,
+            genApplyMethod(trgTree, defaultGetter,
                 result.take(defaultGetter.tpe.params.size).toList.map(_.ref))
           }, {
             // Otherwise, unbox the argument
@@ -600,9 +616,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         if (sym.isClassConstructor)
           genApplyMethodStatically(receiver, sym, args)
         else
-          genApplyMethod(receiver, sym.owner, sym, args)
+          genApplyMethod(receiver, sym, args)
       ensureBoxed(call,
-        enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+          enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
     }
 
     private sealed abstract class Exported {

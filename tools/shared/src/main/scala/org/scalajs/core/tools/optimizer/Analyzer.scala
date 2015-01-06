@@ -437,13 +437,31 @@ final class Analyzer(semantics: Semantics,
       }
 
       for (className <- data.accessedClassData) {
-        lookupClass(className).accessData()
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className).accessData()
       }
 
       for ((className, methods) <- data.methodsCalled) {
-        val classInfo = lookupClass(className)
-        for (methodName <- methods)
-          classInfo.callMethod(methodName)
+        if (className == Definitions.PseudoArrayClass) {
+          /* The pseudo Array class is not reified in our analyzer/analysis,
+           * so we need to cheat here.
+           * In the Array[T] class family, only clone__O is defined and
+           * overrides j.l.Object.clone__O. Since this method is implemented
+           * in scalajsenv.js and always kept, we can ignore it.
+           * All other methods resolve to their definition in Object, so we
+           * can model their reachability by calling them statically in the
+           * Object class.
+           */
+          val objectClass = lookupClass(Definitions.ObjectClass)
+          for (methodName <- methods) {
+            if (methodName != "clone__O")
+              objectClass.callMethod(methodName, statically = true)
+          }
+        } else {
+          val classInfo = lookupClass(className)
+          for (methodName <- methods)
+            classInfo.callMethod(methodName)
+        }
       }
 
       for ((className, methods) <- data.methodsCalledStatically) {
