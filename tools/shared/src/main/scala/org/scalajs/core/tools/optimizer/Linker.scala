@@ -101,26 +101,22 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
         methodNoWarnsBuf += m
     }
 
-    val trueFct = (_: String) => true
-
     val methodNoWarns = for {
       (className, elems) <- methodNoWarnsBuf.groupBy(_.className)
     } yield {
-      if (classNoWarns.contains(className))
-        className -> trueFct
-      else
-        className -> elems.map(_.methodName).toSet
+      className -> elems.map(_.methodName).toSet
     }
 
-    errors filter {
+    errors filterNot {
       case MissingClass(info, _) =>
-        !classNoWarns.contains(info.encodedName)
+        classNoWarns.contains(info.encodedName)
       case MissingMethod(info, _) =>
-        methodNoWarns.get(info.owner.encodedName).fold(true) { setf =>
-          !setf(info.encodedName)
+        classNoWarns.contains(info.owner.encodedName) ||
+        methodNoWarns.get(info.owner.encodedName).exists { setf =>
+          setf(info.encodedName)
         }
       case _ =>
-        true
+        false
     }
   }
 
