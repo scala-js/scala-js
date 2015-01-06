@@ -42,7 +42,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
 
   def link(irInput: Traversable[VirtualScalaJSIRFile], logger: Logger,
       reachOptimizerSymbols: Boolean, bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing]): LinkingUnit = {
+      noWarnMissing: Seq[NoWarnMissing], checkInfos: Boolean): LinkingUnit = {
     startRun()
 
     val encodedNameToPersistentFile =
@@ -57,7 +57,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
 
     try {
       link(infos, getTree, logger, reachOptimizerSymbols,
-          bypassLinkingErrors, noWarnMissing)
+          bypassLinkingErrors, noWarnMissing, checkInfos)
     } finally {
       endRun(logger)
     }
@@ -66,7 +66,17 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
   def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
       logger: Logger, reachOptimizerSymbols: Boolean,
       bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing]): LinkingUnit = {
+      noWarnMissing: Seq[NoWarnMissing], checkInfos: Boolean): LinkingUnit = {
+
+    if (checkInfos) {
+      logTime(logger, "Linker: Check Infos") {
+        val infoAndTrees =
+          infoInput.map(info => (info, getTree(info.encodedName)._1))
+        val checker = new InfoChecker(infoAndTrees, logger)
+        if (!checker.check())
+          sys.error(s"There were ${checker.errorCount} Info checking errors.")
+      }
+    }
 
     val analysis = logTime(logger, "Linker: Compute reachability") {
       val analyzer = new Analyzer(semantics, reachOptimizerSymbols)
