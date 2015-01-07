@@ -11,6 +11,8 @@ package org.scalajs.core.ir
 
 import scala.annotation.tailrec
 
+import Trees._
+
 object Types {
 
   /** Type of an expression in the IR. */
@@ -115,6 +117,18 @@ object Types {
 
   /** No type. */
   case object NoType extends Type
+
+  /** Generates a literal zero of the given type. */
+  def zeroOf(tpe: Type)(implicit pos: Position): Literal = tpe match {
+    case BooleanType => BooleanLiteral(false)
+    case IntType     => IntLiteral(0)
+    case LongType    => LongLiteral(0L)
+    case FloatType   => FloatLiteral(0.0f)
+    case DoubleType  => DoubleLiteral(0.0)
+    case StringType  => StringLiteral("")
+    case UndefType   => Undefined()
+    case _           => Null()
+  }
 
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
    *  [[NoType]] is never a subtype or supertype of anything (including

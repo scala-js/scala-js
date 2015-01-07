@@ -191,8 +191,8 @@ object Transformers {
       implicit val pos = tree.pos
 
       tree match {
-        case VarDef(name, vtpe, mutable, rhs) =>
-          VarDef(name, vtpe, mutable, transformExpr(rhs))
+        case FieldDef(_, _, _) =>
+          tree
 
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree

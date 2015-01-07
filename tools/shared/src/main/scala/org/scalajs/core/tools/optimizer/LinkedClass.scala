@@ -32,7 +32,7 @@ final case class LinkedClass(
     superClass: Option[Ident],
     interfaces: List[Ident],
     jsName: Option[String],
-    fields: List[VarDef],
+    fields: List[FieldDef],
     staticMethods: List[LinkedMember[MethodDef]],
     memberMethods: List[LinkedMember[MethodDef]],
     abstractMethods: List[LinkedMember[MethodDef]],
@@ -75,7 +75,7 @@ object LinkedClass {
 
     val memberInfoByName = Map(info.methods.map(m => m.encodedName -> m): _*)
 
-    val fields = mutable.Buffer.empty[VarDef]
+    val fields = mutable.Buffer.empty[FieldDef]
     val staticMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val memberMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val abstractMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
@@ -98,7 +98,7 @@ object LinkedClass {
         staticMethods += linkedMethod(m)
 
       // Fields
-      case field @ VarDef(_, _, _, _) =>
+      case field @ FieldDef(_, _, _) =>
         fields += field
 
       // Normal methods

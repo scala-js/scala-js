@@ -552,6 +552,11 @@ object Trees {
     val tpe = NoType
   }
 
+  case class FieldDef(name: Ident, ftpe: Type, mutable: Boolean)(
+      implicit val pos: Position) extends Tree {
+    val tpe = NoType
+  }
+
   case class MethodDef(static: Boolean, name: PropertyName,
       args: List[ParamDef], resultType: Type, body: Tree)(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(

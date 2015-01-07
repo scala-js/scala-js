@@ -343,7 +343,7 @@ abstract class GenIncOptimizer(semantics: Semantics,
     var isModuleClass: Boolean = false
     var hasElidableModuleAccessor: Boolean = false
 
-    var fields: List[VarDef] = Nil
+    var fields: List[FieldDef] = Nil
     var isInlineable: Boolean = false
     var tryNewInlineable: Option[RecordValue] = None
 
@@ -511,9 +511,10 @@ abstract class GenIncOptimizer(semantics: Semantics,
       } else {
         val allFields = reverseParentChain.flatMap(_.fields)
         val (fieldValues, fieldTypes) = (for {
-          VarDef(Ident(name, originalName), tpe, mutable, rhs) <- allFields
+          f @ FieldDef(Ident(name, originalName), tpe, mutable) <- allFields
         } yield {
-          (rhs, RecordType.Field(name, originalName, tpe, mutable))
+          (zeroOf(tpe)(f.pos),
+              RecordType.Field(name, originalName, tpe, mutable))
         }).unzip
         tryNewInlineable = Some(
             RecordValue(RecordType(fieldTypes), fieldValues)(Position.NoPosition))

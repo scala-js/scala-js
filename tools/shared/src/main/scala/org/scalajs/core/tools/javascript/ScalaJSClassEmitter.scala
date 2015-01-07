@@ -98,11 +98,11 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
             List(js.This()))
       }
       val fieldDefs = for {
-        field @ VarDef(name, vtpe, mutable, rhs) <- tree.fields
+        field @ FieldDef(name, ftpe, mutable) <- tree.fields
       } yield {
         implicit val pos = field.pos
         desugarJavaScript(
-            Assign(Select(This()(tpe), name)(vtpe), rhs),
+            Assign(Select(This()(tpe), name)(ftpe), zeroOf(ftpe)),
             semantics)
       }
       js.Function(Nil,
