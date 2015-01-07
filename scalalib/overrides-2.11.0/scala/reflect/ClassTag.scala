@@ -85,9 +85,9 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     if (x == null) None
     else {
       val staticClass = classTag[U].runtimeClass
-      val dynamicClass = x.getClass
-      val effectiveClass = if (staticClass.isPrimitive) staticClass else dynamicClass
-      val conforms = runtimeClass.isAssignableFrom(effectiveClass)
+      val conforms =
+        if (staticClass.isPrimitive) runtimeClass.isAssignableFrom(staticClass)
+        else runtimeClass.isInstance(x)
       if (conforms) Some(x.asInstanceOf[T]) else None
     }
 

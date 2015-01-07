@@ -9,6 +9,8 @@ package org.scalajs.testsuite.compiler
 
 import scala.language.implicitConversions
 
+import scala.reflect.{classTag, ClassTag}
+
 import scala.scalajs.js
 import js.annotation.JSName
 
@@ -16,6 +18,11 @@ import org.scalajs.jasminetest.JasmineTest
 
 /** Tests the little reflection we support */
 object ReflectionTest extends JasmineTest {
+
+  def implicitClassTagTest[A: ClassTag](x: Any): Boolean = x match {
+    case x: A => true
+    case _    => false
+  }
 
   describe("Scala.js Reflection (through java.lang.Class)") {
     it("java.lang.Class.getName under normal circumstances") {
@@ -51,10 +58,22 @@ object ReflectionTest extends JasmineTest {
       val other = (5, 6): Any
       expect(other.isInstanceOf[ReflectionTestRawJSClass]).toBeFalsy
       expect(classOf[ReflectionTestRawJSClass].isInstance(other)).toBeFalsy
+
+      val ct = classTag[ReflectionTestRawJSClass]
+      expect(ct.unapply(obj).isDefined).toBeTruthy
+      expect(ct.unapply(other).isDefined).toBeFalsy
+
+      expect(implicitClassTagTest[ReflectionTestRawJSClass](obj)).toBeTruthy
+      expect(implicitClassTagTest[ReflectionTestRawJSClass](other)).toBeFalsy
     }
 
     it("isInstance for raw JS traits should fail") {
       expect(() => classOf[ReflectionTestRawJSTrait].isInstance(5)).toThrow
+
+      val ct = classTag[ReflectionTestRawJSTrait]
+      expect(() => ct.unapply(new AnyRef)).toThrow
+
+      expect(() => implicitClassTagTest[ReflectionTestRawJSTrait](new AnyRef)).toThrow
     }
 
     it("getClass() for normal types") {
