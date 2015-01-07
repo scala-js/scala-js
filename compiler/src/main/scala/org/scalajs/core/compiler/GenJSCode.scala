@@ -1664,14 +1664,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genIsInstanceOf(value: js.Tree, to: Type)(
         implicit pos: Position): js.Tree = {
 
-      def genTypeOfTest(typeString: String) = {
-        js.BinaryOp(js.BinaryOp.===,
-            js.JSUnaryOp(js.JSUnaryOp.typeof, value),
-            js.StringLiteral(typeString))
-      }
+      val sym = to.typeSymbol
 
-      if (isRawJSType(to)) {
-        val sym = to.typeSymbol
+      if (sym == ObjectClass) {
+        js.BinaryOp(js.BinaryOp.!==, value, js.Null())
+      } else if (isRawJSType(to)) {
         if (sym.isTrait) {
           reporter.error(pos,
               s"isInstanceOf[${sym.fullName}] not supported because it is a raw JS trait")
@@ -1697,8 +1694,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.AsInstanceOf(value, refType)
       }
 
-      if (isRawJSType(to)) {
-        // asInstanceOf on JavaScript is completely erased
+      val sym = to.typeSymbol
+
+      if (sym == ObjectClass || isRawJSType(to)) {
+        /* asInstanceOf[Object] always succeeds, and
+         * asInstanceOf to a raw JS type is completely erased.
+         */
         value
       } else if (FunctionClass.seq contains to.typeSymbol) {
         /* Don't hide a JSFunctionToScala inside a useless cast, otherwise
