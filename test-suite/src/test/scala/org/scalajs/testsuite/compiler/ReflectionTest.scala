@@ -10,6 +10,7 @@ package org.scalajs.testsuite.compiler
 import scala.language.implicitConversions
 
 import scala.scalajs.js
+import js.annotation.JSName
 
 import org.scalajs.jasminetest.JasmineTest
 
@@ -36,6 +37,24 @@ object ReflectionTest extends JasmineTest {
       val b = new B
       expect(classOf[A].isInstance(b)).toBeTruthy
       expect(classOf[A].isInstance("hello")).toBeFalsy
+    }
+
+    it("isInstance for raw JS class") {
+      js.Dynamic.global.ReflectionTestRawJSClass = { (_: js.Dynamic) =>
+        // no-op
+      }: js.ThisFunction
+
+      val obj = new ReflectionTestRawJSClass
+      expect(obj.isInstanceOf[ReflectionTestRawJSClass]).toBeTruthy
+      expect(classOf[ReflectionTestRawJSClass].isInstance(obj)).toBeTruthy
+
+      val other = (5, 6): Any
+      expect(other.isInstanceOf[ReflectionTestRawJSClass]).toBeFalsy
+      expect(classOf[ReflectionTestRawJSClass].isInstance(other)).toBeFalsy
+    }
+
+    it("isInstance for raw JS traits should fail") {
+      expect(() => classOf[ReflectionTestRawJSTrait].isInstance(5)).toThrow
     }
 
     it("getClass() for normal types") {
@@ -75,5 +94,10 @@ object ReflectionTest extends JasmineTest {
   object TestObject
 
   class RenamedTestClass
+
+  @JSName("ReflectionTestRawJSClass")
+  class ReflectionTestRawJSClass extends js.Object
+
+  trait ReflectionTestRawJSTrait extends js.Object
 
 }

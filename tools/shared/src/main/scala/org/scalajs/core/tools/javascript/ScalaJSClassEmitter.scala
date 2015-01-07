@@ -421,6 +421,21 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
           /* java.lang.String and ancestors of hijacked classes have a normal
            * ScalaJS.is.pack_Class test but with a non-standard behavior. */
           List(envField("is") DOT classIdent)
+        } else if (tree.kind == ClassKind.RawJSType) {
+          /* Raw JS types have an instanceof operator-based isInstanceOf test
+           * dictated by their jsName. If there is no jsName, the test cannot
+           * be performed and must throw.
+           */
+          tree.jsName.fold[List[js.Tree]] {
+            List(envField("noIsInstance"))
+          } { jsName =>
+            val jsCtor = jsName.split("\\.").foldLeft(envField("g")) {
+              (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
+            }
+            List(js.Function(List(js.ParamDef(Ident("x"))), js.Return {
+              js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
+            }))
+          }
         } else {
           // For other classes, the isInstance function can be inferred.
           Nil

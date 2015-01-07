@@ -546,7 +546,7 @@ object Trees {
   // Classes
 
   case class ClassDef(name: Ident, kind: ClassKind, superClass: Option[Ident],
-      interfaces: List[Ident], defs: List[Tree])(
+      interfaces: List[Ident], jsName: Option[String], defs: List[Tree])(
       val optimizerHints: OptimizerHints)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
