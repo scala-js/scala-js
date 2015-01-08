@@ -1,0 +1,13 @@
+# The tests in this file should pass but have never passed so far
+# use scala.tools.partest.scalajs.testunknownonly to only run tests
+# which are neither in BuglistedTests.txt, WhitelistedTests.txt or
+# BlacklistedTests.txt
+
+# Filed as #1440
+pos/t8743.scala
+
+# Filed as #1441
+run/t8445.scala
+
+# Filed as #1442
+run/t9030.scala
