@@ -3014,6 +3014,7 @@ run/nothingTypeDce.scala
 run/t8680.scala
 run/t8925.scala
 run/nothingTypeNoOpt.scala
+run/t9030.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
