@@ -3,8 +3,5 @@
 # which are neither in BuglistedTests.txt, WhitelistedTests.txt or
 # BlacklistedTests.txt
 
-# Filed as #1440
-pos/t8743.scala
-
 # Filed as #1442
 run/t9030.scala

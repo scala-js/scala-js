@@ -923,6 +923,7 @@ pos/t8719
 pos/t8410.scala
 pos/patmat-suppress.scala
 pos/t8999.scala
+pos/t8743.scala
 
 neg/volatile_no_override.scala
 neg/t800.scala
