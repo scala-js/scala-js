@@ -340,7 +340,7 @@ object Build extends sbt.Build {
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js JS Envs",
           libraryDependencies ++= Seq(
-              "org.mozilla" % "rhino" % "1.7R4",
+              "io.apigee" % "rhino" % "1.7R5pre4",
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided")
@@ -967,7 +967,7 @@ object Build extends sbt.Build {
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
                 "org.scala-lang.modules" %% "scala-partest" % "1.0.1",
                 "com.google.javascript" % "closure-compiler" % "v20130603",
-                "org.mozilla" % "rhino" % "1.7R4",
+                "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1"
               )
             else Seq()
