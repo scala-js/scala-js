@@ -190,6 +190,7 @@ run/t7965.scala
 run/t8087.scala
 run/t8931.scala
 run/delambdafyLambdaClassNames
+run/t8445.scala
 
 run/reflection-repl-classes.scala
 run/t5256e.scala

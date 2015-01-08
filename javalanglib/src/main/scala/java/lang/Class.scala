@@ -74,8 +74,6 @@ final class Class[A] private (data: ScalaJSClassData[A]) extends Object {
   def getComponentType(): Class[_] =
     data.getComponentType()
 
-  def getEnclosingClass(): Class[_] = null
-
   // java.lang.reflect.Array support
 
   private[lang] def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef =
