@@ -378,6 +378,10 @@ object Serializers {
           writeTrees(defs)
           writeInt(tree.optimizerHints.bits)
 
+        case FieldDef(ident, ftpe, mutable) =>
+          writeByte(TagFieldDef)
+          writeIdent(ident); writeType(ftpe); writeBoolean(mutable)
+
         case methodDef: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = methodDef
 
@@ -643,6 +647,9 @@ object Serializers {
           val defs = readTrees()
           val optimizerHints = new OptimizerHints(readInt())
           ClassDef(name, kind, superClass, parents, jsName, defs)(optimizerHints)
+
+        case TagFieldDef =>
+          FieldDef(readIdent(), readType(), readBoolean())
 
         case TagMethodDef =>
           val optHash = readOptHash()

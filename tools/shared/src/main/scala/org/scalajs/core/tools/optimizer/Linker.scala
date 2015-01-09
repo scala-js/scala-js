@@ -165,7 +165,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
 
     val memberInfoByName = Map(info.methods.map(m => m.encodedName -> m): _*)
 
-    val fields = mutable.Buffer.empty[VarDef]
+    val fields = mutable.Buffer.empty[FieldDef]
     val staticMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val memberMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
     val abstractMethods = mutable.Buffer.empty[LinkedMember[MethodDef]]
@@ -190,7 +190,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
           staticMethods += linkedMethod(m)
 
       // Fields
-      case field @ VarDef(_, _, _, _) =>
+      case field @ FieldDef(_, _, _) =>
         if (analyzerInfo.isAnySubclassInstantiated)
           fields += field
 

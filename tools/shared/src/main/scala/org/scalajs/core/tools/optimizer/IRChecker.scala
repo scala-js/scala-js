@@ -151,14 +151,12 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkFieldDef(fieldDef: VarDef, classDef: LinkedClass): Unit = {
-    val VarDef(name, tpe, mutable, rhs) = fieldDef
+  def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
+    val FieldDef(name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
     if (tpe == NoType)
-      reportError(s"VarDef cannot have type NoType")
-    else
-      typecheckExpect(rhs, Env.empty, tpe)
+      reportError(s"FieldDef cannot have type NoType")
   }
 
   def checkMethodDef(methodDef: MethodDef, classDef: LinkedClass): Unit = {
@@ -901,8 +899,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   object CheckedClass {
-    private def checkedField(varDef: VarDef) = {
-      val VarDef(Ident(name, _), tpe, mutable, _) = varDef
+    private def checkedField(fieldDef: FieldDef) = {
+      val FieldDef(Ident(name, _), tpe, mutable) = fieldDef
       new CheckedField(name, tpe, mutable)
     }
   }

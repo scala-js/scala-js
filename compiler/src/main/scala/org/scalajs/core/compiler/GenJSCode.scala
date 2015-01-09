@@ -505,7 +505,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen definitions for the fields of a class.
      *  The fields are initialized with the zero of their types.
      */
-    def genClassFields(cd: ClassDef): List[js.VarDef] = {
+    def genClassFields(cd: ClassDef): List[js.FieldDef] = {
       // Non-method term members are fields, except for module members.
       (for {
         f <- currentClassSym.info.decls
@@ -514,8 +514,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit val pos = f.pos
         val mutable =
           suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
-        js.VarDef(encodeFieldSym(f), toIRType(f.tpe),
-            mutable, genZeroOf(f.tpe))
+        js.FieldDef(encodeFieldSym(f), toIRType(f.tpe), mutable)
       }).toList
     }
 
