@@ -436,7 +436,7 @@ final class Analyzer(semantics: Semantics,
         lookupClass(className).instantiated()
       }
 
-      for (className <- data.accessedClassData) {
+      for (className <- data.usedInstanceTests ++ data.accessedClassData) {
         if (!Definitions.PrimitiveClasses.contains(className))
           lookupClass(className).accessData()
       }

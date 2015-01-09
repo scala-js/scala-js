@@ -1516,6 +1516,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       for (cls <- funInfo.accessedModules)
         builder.addAccessedModule(cls)
 
+      for (cls <- funInfo.usedInstanceTests)
+        builder.addUsedInstanceTest(cls)
+
       for (cls <- funInfo.accessedClassData)
         builder.addAccessedClassData(cls)
     }
@@ -1720,7 +1723,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       } else {
         val refType = toReferenceType(to)
-        currentMethodInfoBuilder.addAccessedClassData(refType)
+        currentMethodInfoBuilder.addUsedInstanceTest(refType)
         js.IsInstanceOf(value, refType)
       }
     }
@@ -1731,7 +1734,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       def default: js.Tree = {
         val refType = toReferenceType(to)
-        currentMethodInfoBuilder.addAccessedClassData(refType)
+        currentMethodInfoBuilder.addUsedInstanceTest(refType)
         js.AsInstanceOf(value, refType)
       }
 
