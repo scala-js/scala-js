@@ -105,7 +105,7 @@ class ScalaJSOptimizer(semantics: Semantics,
     val linkResult = logTime(logger, "Linker") {
       linker.link(irFiles, logger,
           reachOptimizerSymbols = !cfg.disableOptimizer,
-          cfg.bypassLinkingErrors, cfg.noWarnMissing)
+          cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
     }
 
     if (cfg.checkIR) {

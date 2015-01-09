@@ -82,7 +82,7 @@ final class Analyzer(semantics: Semantics,
     def instantiateClassWith(className: String, constructor: String): ClassInfo = {
       val info = lookupClass(className)
       info.instantiated()
-      info.callMethod(constructor)
+      info.callMethod(constructor, statically = true)
       info
     }
 
@@ -110,7 +110,9 @@ final class Analyzer(semantics: Semantics,
 
     val RTLongClass = lookupClass(LongImpl.RuntimeLongClass)
     RTLongClass.instantiated()
-    for (method <- LongImpl.AllConstructors ++ LongImpl.AllMethods)
+    for (method <- LongImpl.AllConstructors)
+      RTLongClass.callMethod(method, statically = true)
+    for (method <- LongImpl.AllMethods)
       RTLongClass.callMethod(method)
 
     if (reachOptimizerSymbols) {
@@ -183,11 +185,13 @@ final class Analyzer(semantics: Semantics,
     }
 
     private[this] def linkClassesImpl(): Unit = {
-      if (data.superClass != "")
-        superClass = lookupClass(data.superClass)
+      for (superCls <- data.superClass)
+        superClass = lookupClass(superCls)
 
-      ancestors = this +: data.parents.flatMap { anc =>
-        val cls = lookupClass(anc)
+      val parents = data.superClass ++: data.interfaces
+
+      ancestors = this +: parents.flatMap { parent =>
+        val cls = lookupClass(parent)
         cls.linkClasses()
         cls.ancestors
       }.distinct
@@ -291,7 +295,7 @@ final class Analyzer(semantics: Semantics,
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
         instantiated()
-        callMethod("init___")
+        callMethod("init___", statically = true)
       }
     }
 
@@ -331,7 +335,9 @@ final class Analyzer(semantics: Semantics,
     def callMethod(methodName: String, statically: Boolean = false)(
         implicit from: From): Unit = {
       if (isConstructorName(methodName)) {
-        // constructors are always implicitly called statically
+        // constructors must always be called statically
+        assert(statically,
+            s"Trying to call dynamically the constructor $this.$methodName from $from")
         lookupMethod(methodName).reachStatic()
       } else if (statically) {
         assert(!isReflProxyName(methodName),
@@ -431,13 +437,31 @@ final class Analyzer(semantics: Semantics,
       }
 
       for (className <- data.accessedClassData) {
-        lookupClass(className).accessData()
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className).accessData()
       }
 
       for ((className, methods) <- data.methodsCalled) {
-        val classInfo = lookupClass(className)
-        for (methodName <- methods)
-          classInfo.callMethod(methodName)
+        if (className == Definitions.PseudoArrayClass) {
+          /* The pseudo Array class is not reified in our analyzer/analysis,
+           * so we need to cheat here.
+           * In the Array[T] class family, only clone__O is defined and
+           * overrides j.l.Object.clone__O. Since this method is implemented
+           * in scalajsenv.js and always kept, we can ignore it.
+           * All other methods resolve to their definition in Object, so we
+           * can model their reachability by calling them statically in the
+           * Object class.
+           */
+          val objectClass = lookupClass(Definitions.ObjectClass)
+          for (methodName <- methods) {
+            if (methodName != "clone__O")
+              objectClass.callMethod(methodName, statically = true)
+          }
+        } else {
+          val classInfo = lookupClass(className)
+          for (methodName <- methods)
+            classInfo.callMethod(methodName)
+        }
       }
 
       for ((className, methods) <- data.methodsCalledStatically) {
@@ -460,8 +484,8 @@ final class Analyzer(semantics: Semantics,
         encodedName = encodedName,
         isExported = false,
         kind = ClassKind.ModuleClass,
-        superClass = "O",
-        parents = List("O"),
+        superClass = Some("O"),
+        interfaces = Nil,
         methods = List(
             createMissingMethodInfo("init___"))
     )

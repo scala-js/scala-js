@@ -813,8 +813,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   def isSubclass(lhs: String, rhs: String)(implicit ctx: ErrorContext): Boolean = {
     tryLookupClass(lhs).fold({ info =>
-      info.parents.exists(_ == rhs) ||
-      info.parents.exists(isSubclass(_, rhs))
+      val parents = info.superClass ++: info.interfaces
+      parents.exists(_ == rhs) || parents.exists(isSubclass(_, rhs))
     }, { lhsClass =>
       lhsClass.ancestors.contains(rhs)
     })

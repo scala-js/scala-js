@@ -18,75 +18,7 @@ import ir.Position.NoPosition
  */
 object JavaLangObject {
 
-  /** Optimizer hints with `@inline` */
-  private def inlineOptimizerHints = OptimizerHints.empty.withInline(true)
-
-  val InfoAndTree = (Info, Definition)
-
-  private def Info = ClassInfo(
-    encodedName = "O",
-    kind = ClassKind.Class,
-    superClass = "",
-    parents = List(),
-    methods = List(
-      MethodInfo("init___"),
-      MethodInfo("hashCode__I",
-        methodsCalled = Map(
-          "jl_System$" -> List("identityHashCode__O__I")
-        ),
-        accessedModules = List("jl_System$")
-      ),
-      MethodInfo("equals__O__Z"),
-      MethodInfo("clone__O",
-        methodsCalled = Map(
-          "sjsr_package$" -> List("cloneObject__sjs_js_Object__sjs_js_Object"),
-          "jl_CloneNotSupportedException" -> List("init___")
-        ),
-        instantiatedClasses = List("jl_CloneNotSupportedException"),
-        accessedModules = List("sjsr_package$"),
-        accessedClassData = List("jl_Cloneable")
-      ),
-      MethodInfo("notify__V"),
-      MethodInfo("notifyAll__V"),
-      MethodInfo("toString__T",
-        methodsCalled = Map(
-          "O" -> List("hashCode__I"),
-          "jl_Class" -> List("getName__T"),
-          "jl_Integer$" -> List("toHexString__I__T")
-        ),
-        accessedModules = List("jl_Integer$")
-      ),
-      MethodInfo("finalize__V"),
-      MethodInfo("clone__",
-        methodsCalled = Map(
-          "O" -> List("clone__O")
-        )
-      ),
-      MethodInfo("notify__",
-        methodsCalled = Map(
-          "O" -> List("notify__V")
-        )
-      ),
-      MethodInfo("notifyAll__",
-        methodsCalled = Map(
-          "O" -> List("notifyAll__V")
-        )
-      ),
-      MethodInfo("finalize__",
-        methodsCalled = Map(
-          "O" -> List("finalize__V")
-        )
-      ),
-      MethodInfo("toString",
-        isExported = true,
-        methodsCalled = Map(
-          "O" -> List("toString__T")
-        )
-      )
-    )
-  )
-
-  private def Definition = {
+  val InfoAndTree = {
     implicit val DummyPos = NoPosition
 
     // ClassType(Object) is normally invalid, but not in this class def
@@ -129,7 +61,7 @@ object JavaLangObject {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")))(AnyType))
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* protected def clone(): Object =
          *   if (this.isInstanceOf[Cloneable]) <clone>(this)
@@ -149,7 +81,7 @@ object JavaLangObject {
               Throw(New(ClassType("jl_CloneNotSupportedException"),
                 Ident("init___", Some("<init>")), Nil))
             })(AnyType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def toString(): String =
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
@@ -174,76 +106,79 @@ object JavaLangObject {
                 ClassType(StringClass)))
           })(OptimizerHints.empty, None),
 
-          /* Since wait() is not supported in any way, a correct implementation
-           * of notify() and notifyAll() is to do nothing.
-           */
+        /* Since wait() is not supported in any way, a correct implementation
+         * of notify() and notifyAll() is to do nothing.
+         */
 
-          /* def notify(): Unit = () */
-          MethodDef(
-            static = false,
-            Ident("notify__V", Some("notify__V")),
-            Nil,
-            NoType,
-            Skip())(OptimizerHints.empty, None),
+        /* def notify(): Unit = () */
+        MethodDef(
+          static = false,
+          Ident("notify__V", Some("notify__V")),
+          Nil,
+          NoType,
+          Skip())(OptimizerHints.empty, None),
 
-          /* def notifyAll(): Unit = () */
-          MethodDef(
-            static = false,
-            Ident("notifyAll__V", Some("notifyAll__V")),
-            Nil,
-            NoType,
-            Skip())(OptimizerHints.empty, None),
+        /* def notifyAll(): Unit = () */
+        MethodDef(
+          static = false,
+          Ident("notifyAll__V", Some("notifyAll__V")),
+          Nil,
+          NoType,
+          Skip())(OptimizerHints.empty, None),
 
-          /* def finalize(): Unit = () */
-          MethodDef(
-            static = false,
-            Ident("finalize__V", Some("finalize__V")),
-            Nil,
-            NoType,
-            Skip())(OptimizerHints.empty, None),
+        /* def finalize(): Unit = () */
+        MethodDef(
+          static = false,
+          Ident("finalize__V", Some("finalize__V")),
+          Nil,
+          NoType,
+          Skip())(OptimizerHints.empty, None),
 
-          /* Reflective proxies
-           * Note that we do not need to proxy the following methods, since
-           * they are defined on Any in the Scala hierarchy and therefore a
-           * reflective call is never emitted:
-           * - equals
-           * - getClass
-           * - hashCode
-           * - toString
-           */
+        /* Reflective proxies
+         * Note that we do not need to proxy the following methods, since
+         * they are defined on Any in the Scala hierarchy and therefore a
+         * reflective call is never emitted:
+         * - equals
+         * - getClass
+         * - hashCode
+         * - toString
+         */
 
-          MethodDef(static = false, Ident("clone__"), Nil, AnyType,
-            Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(
-            OptimizerHints.empty, None),
+        MethodDef(static = false, Ident("clone__"), Nil, AnyType,
+          Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(
+          OptimizerHints.empty, None),
 
-          MethodDef(static = false, Ident("notify__"), Nil, AnyType, Block(
-            Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
-            Undefined()))(OptimizerHints.empty, None),
+        MethodDef(static = false, Ident("notify__"), Nil, AnyType, Block(
+          Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
+          Undefined()))(OptimizerHints.empty, None),
 
-          MethodDef(static = false, Ident("notifyAll__"), Nil, AnyType, Block(
-            Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
-            Undefined()))(OptimizerHints.empty, None),
+        MethodDef(static = false, Ident("notifyAll__"), Nil, AnyType, Block(
+          Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
+          Undefined()))(OptimizerHints.empty, None),
 
-          MethodDef(static = false, Ident("finalize__"), Nil, AnyType, Block(
-            Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
-            Undefined()))(OptimizerHints.empty, None),
+        MethodDef(static = false, Ident("finalize__"), Nil, AnyType, Block(
+          Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
+          Undefined()))(OptimizerHints.empty, None),
 
-          // Exports
+        // Exports
 
-          /* JSExport for toString(). */
-          MethodDef(
-            static = false,
-            StringLiteral("toString"),
-            Nil,
-            AnyType,
-            {
-              Apply(This()(ThisType),
-                  Ident("toString__T", Some("toString__T")),
-                  Nil)(ClassType(StringClass))
-            })(OptimizerHints.empty, None)
+        /* JSExport for toString(). */
+        MethodDef(
+          static = false,
+          StringLiteral("toString"),
+          Nil,
+          AnyType,
+          {
+            Apply(This()(ThisType),
+                Ident("toString__T", Some("toString__T")),
+                Nil)(ClassType(StringClass))
+          })(OptimizerHints.empty, None)
       ))(OptimizerHints.empty)
 
-      Hashers.hashClassDef(classDef)
+    val hashedClassedDef = Hashers.hashClassDef(classDef)
+    val info = generateClassInfo(hashedClassedDef)
+
+    (info, hashedClassedDef)
   }
 
 }

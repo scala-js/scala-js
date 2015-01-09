@@ -98,7 +98,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       }
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
-      val info = recreateInfo(m)
+      val info = Infos.generateMethodInfo(m)
 
       new LinkedMember(info, m, None)
     } catch {
@@ -3462,115 +3462,6 @@ private[optimizer] object OptimizerCore {
       case Block(init :+ last) => (init, last)
       case _                   => (Nil, tree)
     })
-  }
-
-  /** Recreates precise [[Infos.MethodInfo]] from the optimized [[MethodDef]]. */
-  private def recreateInfo(methodDef: MethodDef): Infos.MethodInfo = {
-    new RecreateInfoTraverser().recreateInfo(methodDef)
-  }
-
-  private final class RecreateInfoTraverser extends Traversers.Traverser {
-    import RecreateInfoTraverser._
-
-    private val methodsCalled = mutable.Map.empty[String, mutable.Set[String]]
-    private val methodsCalledStatically = mutable.Map.empty[String, mutable.Set[String]]
-    private val staticMethodsCalled = mutable.Map.empty[String, mutable.Set[String]]
-    private val instantiatedClasses = mutable.Set.empty[String]
-    private val accessedModules = mutable.Set.empty[String]
-    private val accessedClassData = mutable.Set.empty[String]
-
-    def recreateInfo(methodDef: MethodDef): Infos.MethodInfo = {
-      traverse(methodDef.body)
-      Infos.MethodInfo(
-          encodedName = methodDef.name.name,
-          isStatic = methodDef.static,
-          methodsCalled = methodsCalled.toMap.mapValues(_.toList),
-          methodsCalledStatically = methodsCalledStatically.toMap.mapValues(_.toList),
-          staticMethodsCalled = staticMethodsCalled.toMap.mapValues(_.toList),
-          instantiatedClasses = instantiatedClasses.toList,
-          accessedModules = accessedModules.toList,
-          accessedClassData = accessedClassData.toList)
-    }
-
-    private def addMethodCalled(container: String, methodName: String): Unit =
-      methodsCalled.getOrElseUpdate(container, mutable.Set.empty) += methodName
-
-    private def addMethodCalledStatically(container: String, methodName: String): Unit =
-      methodsCalledStatically.getOrElseUpdate(container, mutable.Set.empty) += methodName
-
-    private def addStaticMethodCalled(container: String, methodName: String): Unit =
-      staticMethodsCalled.getOrElseUpdate(container, mutable.Set.empty) += methodName
-
-    private def refTypeToClassData(tpe: ReferenceType): String = tpe match {
-      case ClassType(cls)     => cls
-      case ArrayType(base, _) => base
-    }
-
-    def addAccessedClassData(encodedName: String): Unit = {
-      if (!AlwaysPresentClassData.contains(encodedName))
-        accessedClassData += encodedName
-    }
-
-    def addAccessedClassData(tpe: ReferenceType): Unit =
-      addAccessedClassData(refTypeToClassData(tpe))
-
-    override def traverse(tree: Tree): Unit = {
-      tree match {
-        case New(ClassType(cls), ctor, _) =>
-          instantiatedClasses += cls
-          addMethodCalledStatically(cls, ctor.name)
-
-        case Apply(receiver, method, _) =>
-          receiver.tpe match {
-            case ClassType(cls) if !Definitions.HijackedClasses.contains(cls) =>
-              addMethodCalled(cls, method.name)
-            case AnyType =>
-              addMethodCalled(Definitions.ObjectClass, method.name)
-            case ArrayType(_, _) if method.name != "clone__O" =>
-              /* clone__O is overridden in the pseudo Array classes and is
-               * always kept anyway, because it is in scalajsenv.js.
-               * Other methods delegate to Object, which we can model with
-               * a static call to Object.method.
-               */
-              addMethodCalledStatically(Definitions.ObjectClass, method.name)
-            case _ =>
-              // Nothing to do
-          }
-
-        case ApplyStatically(_, ClassType(cls), method, _) =>
-          addMethodCalledStatically(cls, method.name)
-        case ApplyStatic(ClassType(cls), method, _) =>
-          addStaticMethodCalled(cls, method.name)
-
-        case LoadModule(ClassType(cls)) =>
-          accessedModules += cls
-
-        case NewArray(tpe, _) =>
-          addAccessedClassData(tpe)
-        case ArrayValue(tpe, _) =>
-          addAccessedClassData(tpe)
-        case IsInstanceOf(_, cls) =>
-          addAccessedClassData(cls)
-        case AsInstanceOf(_, cls) =>
-          addAccessedClassData(cls)
-        case ClassOf(cls) =>
-          addAccessedClassData(cls)
-
-        case _ =>
-      }
-      super.traverse(tree)
-    }
-  }
-
-  private object RecreateInfoTraverser {
-    /** Class data that are never eliminated by dce, so we don't need to
-     *  record them.
-     */
-    private val AlwaysPresentClassData = {
-      import Definitions._
-      Set("V", "Z", "C", "B", "S", "I", "J", "F", "D",
-          ObjectClass, StringClass)
-    }
   }
 
   private def exceptionMsg(myself: AbstractMethodID,

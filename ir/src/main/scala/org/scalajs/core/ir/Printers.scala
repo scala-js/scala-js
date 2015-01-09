@@ -663,17 +663,23 @@ object Printers {
   }
 
   class InfoPrinter(protected val out: Writer) extends IndentationManager {
-    def printClassInfo(classInfo: ClassInfo): Unit = {
+    def printClassInfoHeader(classInfo: ClassInfo): Unit = {
       import classInfo._
       println("encodedName: ", escapeJS(encodedName))
       println("isExported: ", isExported)
       println("kind: ", kind)
       println("superClass: ", superClass)
 
-      if (parents.nonEmpty) {
-        println("parents: ",
-            parents.map(escapeJS).mkString("[", ", ", "]"))
+      if (interfaces.nonEmpty) {
+        println("interfaces: ",
+            interfaces.map(escapeJS).mkString("[", ", ", "]"))
       }
+    }
+
+    def printClassInfo(classInfo: ClassInfo): Unit = {
+      import classInfo._
+
+      printClassInfoHeader(classInfo)
 
       print("methods:")
       indent(); println()

@@ -17,59 +17,7 @@ import ir.Position.NoPosition
  */
 object JavaLangString {
 
-  /** Optimizer hints with `@inline` */
-  private def inlineOptimizerHints = OptimizerHints.empty.withInline(true)
-
-  val InfoAndTree = (Info, Definition)
-
-  private def Info = ClassInfo(
-    encodedName = "T",
-    kind = ClassKind.HijackedClass,
-    superClass = "O",
-    parents = List(
-      "Ljava_io_Serializable", "jl_CharSequence", "jl_Comparable", "O"),
-    methods = List(
-      MethodInfo("equals__O__Z"),
-      MethodInfo("hashCode__I",
-        methodsCalled = Map(
-          "sjsr_RuntimeString$" -> List("hashCode__T__I")
-        ),
-        accessedModules = List("sjsr_RuntimeString$")
-      ),
-      MethodInfo("compareTo__T__I",
-        methodsCalled = Map(
-          "sjsr_RuntimeString$" -> List("compareTo__T__T__I")
-        ),
-        accessedModules = List("sjsr_RuntimeString$")
-      ),
-      MethodInfo("compareTo__O__I",
-        methodsCalled = Map(
-          "T" -> List("compareTo__T__I")
-        )
-      ),
-      MethodInfo("toString__T"),
-      MethodInfo("charAt__I__C",
-        methodsCalled = Map(
-          "sjsr_RuntimeString$" -> List("charAt__T__I__C")
-        ),
-        accessedModules = List("sjsr_RuntimeString$")
-      ),
-      MethodInfo("length__I",
-        methodsCalled = Map(
-          "sjsr_RuntimeString$" -> List("length__T__I")
-        ),
-        accessedModules = List("sjsr_RuntimeString$")
-      ),
-      MethodInfo("subSequence__I__I__jl_CharSequence",
-        methodsCalled = Map(
-          "sjsr_RuntimeString$" -> List("subSequence__T__I__I__jl_CharSequence")
-        ),
-        accessedModules = List("sjsr_RuntimeString$")
-      )
-    )
-  )
-
-  private def Definition = {
+  val InfoAndTree = {
     implicit val DummyPos = NoPosition
 
     val ThisType = ClassType(StringClass)
@@ -81,8 +29,7 @@ object JavaLangString {
       List(
           Ident("Ljava_io_Serializable", Some("java.io.Serializable")),
           Ident("jl_CharSequence", Some("java.lang.CharSequence")),
-          Ident("jl_Comparable", Some("java.lang.Comparable")),
-          Ident("O", Some("java.lang.Object"))
+          Ident("jl_Comparable", Some("java.lang.Comparable"))
       ),
       List(
         /* def equals(that: Object): Boolean = this eq that */
@@ -95,7 +42,7 @@ object JavaLangString {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(Ident("that", Some("that")))(AnyType))
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def hashCode(): Int = RuntimeString.hashCode(this) */
         MethodDef(
@@ -108,7 +55,7 @@ object JavaLangString {
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("hashCode__T__I", Some("hashCode__T__I")),
               List(This()(ThisType)))(IntType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def compareTo(that: String): Int = RuntimeString.compareTo(this, that) */
         MethodDef(
@@ -123,7 +70,7 @@ object JavaLangString {
               List(
                 This()(ThisType),
                 VarRef(Ident("that", Some("that")))(ThisType)))(IntType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def compareTo(that: Object): Int = compareTo(that.asInstanceOf[String]) */
         MethodDef(
@@ -138,7 +85,7 @@ object JavaLangString {
               List(AsInstanceOf(
                 VarRef(Ident("that", Some("that")))(AnyType),
                 ThisType)))(IntType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def toString(): String = this */
         MethodDef(
@@ -148,7 +95,7 @@ object JavaLangString {
           ClassType(StringClass),
           {
             This()(ThisType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def charAt(i: Int): Char = RuntimeString.charAt(this, i) */
         MethodDef(
@@ -163,7 +110,7 @@ object JavaLangString {
               List(
                 This()(ThisType),
                 VarRef(Ident("i", Some("i")))(IntType)))(IntType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def length(): Int = RuntimeString.length(this) */
         MethodDef(
@@ -176,7 +123,7 @@ object JavaLangString {
               LoadModule(ClassType("sjsr_RuntimeString$")),
               Ident("length__T__I", Some("length__T__I")),
               List(This()(ThisType)))(IntType)
-          })(inlineOptimizerHints, None),
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def subSequence(begin: Int, end: Int): CharSequence =
          *   RuntimeString.subSequence(this, begin, end)
@@ -200,10 +147,13 @@ object JavaLangString {
                 VarRef(Ident("begin", Some("begin")))(IntType),
                 VarRef(Ident("end", Some("end")))(IntType)))(
               ClassType("jl_CharSequence"))
-          })(inlineOptimizerHints, None)
+          })(OptimizerHints.empty.withInline(true), None)
       ))(OptimizerHints.empty)
 
-      Hashers.hashClassDef(classDef)
+    val hashedClassDef = Hashers.hashClassDef(classDef)
+    val info = generateClassInfo(hashedClassDef)
+
+    (info, hashedClassDef)
   }
 
 }
