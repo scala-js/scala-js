@@ -520,6 +520,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case _:Skip | _:Debugger | _:LoadModule |
           _:JSEnvInfo | _:Literal | EmptyTree =>
         tree
+
+      case _ =>
+        sys.error(s"Invalid tree in transform of class ${tree.getClass.getName}: $tree")
     }
 
     if (isStat) keepOnlySideEffects(result)
@@ -1712,7 +1715,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     implicit val pos = tree.pos
     val UnaryOp(op, arg) = tree
 
-    (op: @switch) match {
+    op match {
       case LongToInt =>
         trampoline {
           pretransformExpr(arg) { (targ) =>

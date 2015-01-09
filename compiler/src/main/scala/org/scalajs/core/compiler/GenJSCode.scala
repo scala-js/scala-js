@@ -2245,7 +2245,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val ptfm = platform.asInstanceOf[backend.JavaPlatform with ThisPlatform] // 2.10 compat
           if (ltpe <:< BoxedNumberClass.tpe) {
             if (rtpe <:< BoxedNumberClass.tpe) ptfm.externalEqualsNumNum
-            else if (rtpe <:< BoxedCharacterClass.tpe) ptfm.externalEqualsNumChar
+            else if (rtpe <:< BoxedCharacterClass.tpe) ptfm.externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
             else ptfm.externalEqualsNumObject
           } else ptfm.externalEquals
         }

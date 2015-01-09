@@ -16,8 +16,8 @@ case $BINVER in
         BASEVER="2.10.4"
         ;;
     2.11)
-        FULLVERS="2.11.0 2.11.1 2.11.2 2.11.4"
-        BASEVER="2.11.2" # Tools do not compile for 2.11.4 (see #1215)
+        FULLVERS="2.11.0 2.11.1 2.11.2 2.11.4 2.11.5"
+        BASEVER="2.11.5"
         ;;
     *)
         echo "Invalid Scala version $BINVER" >&2

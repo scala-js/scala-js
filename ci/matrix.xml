@@ -113,7 +113,7 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
-    sbt ++2.11.2 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
+    sbt ++2.11.5 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                  testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
         ++2.10.4 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal
@@ -154,20 +154,16 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.6</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.4</v>
-      <v n="java">1.7</v>
     </run>
 
     <!-- Bootstrap test tasks -->
@@ -185,11 +181,11 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="bootstrap">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
     </run>
     <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
@@ -209,14 +205,13 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
     </run>
-    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
 
     <!-- Partest compilation test tasks -->
     <run task="partestc">
@@ -224,14 +219,9 @@
       <v n="java">1.7</v>
     </run>
     <run task="partestc">
-      <v n="scala">2.11.1</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
-    <run task="partestc">
-      <v n="scala">2.11.2</v>
-      <v n="java">1.7</v>
-    </run>
-    <!-- Partest does not compile on Scala 2.11.4 (see #1215). -->
 
     <run task="sbtplugin-test" />
   </matrix>
@@ -265,8 +255,24 @@
       <v n="java">1.7</v>
     </run>
     <run task="main">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="main">
       <v n="scala">2.11.4</v>
       <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.7</v>
     </run>
     <run task="main">
       <v n="scala">2.11.4</v>
@@ -298,17 +304,26 @@
       <v n="scala">2.11.1</v>
       <v n="java">1.7</v>
     </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
 
     <run task="partest-noopt">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fastopt">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
   </matrix>
@@ -342,6 +357,18 @@
     </run>
     <run task="partest-noopt">
       <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-fastopt">
@@ -352,11 +379,22 @@
       <v n="scala">2.11.2</v>
       <v n="java">1.8</v>
     </run>
+    <!-- Partest does not compile on Scala 2.11.4 (see #1215). -->
+    <run task="partest-noopt">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
     <!--
         Partest does sometimes not compile on JDK6 (see #1227) we
         therefore do not run any JDK6 partests.
-
-        Partest does not compile on Scala 2.11.4 (see #1215).
       -->
   </matrix>
 

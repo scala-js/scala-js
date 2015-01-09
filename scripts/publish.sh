@@ -8,8 +8,8 @@ else
     CMD="echo sbt"
 fi
 
-FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0 2.11.1 2.11.2 2.11.4"
-BIN_VERSIONS="2.10.4 2.11.2" # Tools do not compile on 2.11.4 (see #1215)
+FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.11.0 2.11.1 2.11.2 2.11.4 2.11.5"
+BIN_VERSIONS="2.10.4 2.11.5"
 SBT_VERSION="2.10.4"
 
 LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface"

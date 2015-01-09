@@ -173,7 +173,14 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   }
 
   def encodeLocalSym(sym: Symbol)(implicit pos: Position): js.Ident = {
-    require(!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule,
+    /* The isValueParameter case is necessary to work around an internal bug
+     * of scalac: for some @varargs methods, the owner of some parameters is
+     * the enclosing class rather the method, so !sym.owner.isClass fails.
+     * Go figure ...
+     * See #1440
+     */
+    require(sym.isValueParameter ||
+        (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
     js.Ident(mangleJSName(localSymbolName(sym)), Some(sym.unexpandedName.decoded))
   }

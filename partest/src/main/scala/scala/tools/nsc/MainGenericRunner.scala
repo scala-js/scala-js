@@ -123,7 +123,7 @@ class MainGenericRunner {
     val output = WritableMemVirtualJSFile("partest-fullOpt.js")
 
     fullOptimizer.optimizeCP(fastOptimizer,
-        classpath, 
+        classpath,
         Config(
           output,
           checkIR = true,
@@ -134,11 +134,11 @@ class MainGenericRunner {
 
   private def createClasspath(command: GenericRunnerCommand) = {
     // Load basic Scala.js classpath (used for running or further packaging)
-    val usefulClasspathEntries = for {
+    val usefulClasspathEntries = (for {
       url <- command.settings.classpathURLs
       f = urlToFile(url)
       if (f.isDirectory || f.getName.startsWith("scalajs-library"))
-    } yield f
+    } yield f).toList
 
     val baseClasspath = PartialClasspathBuilder.build(usefulClasspathEntries)
 
