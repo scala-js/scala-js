@@ -31,6 +31,7 @@ object JavaLangString {
           Ident("jl_CharSequence", Some("java.lang.CharSequence")),
           Ident("jl_Comparable", Some("java.lang.Comparable"))
       ),
+      None,
       List(
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(

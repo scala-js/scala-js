@@ -168,6 +168,7 @@ class MainGenericRunner {
         ClassKind.ModuleClass,
         Some(Ident("O", Some("java.lang.Object"))),
         Nil,
+        None,
         List(
           MethodDef(
             static = false,

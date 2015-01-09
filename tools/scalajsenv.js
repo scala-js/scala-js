@@ -105,6 +105,11 @@ ScalaJS.throwArrayCastException = function(instance, classArrayEncodedName, dept
 };
 //!endif
 
+ScalaJS.noIsInstance = function(instance) {
+  throw new ScalaJS.g["TypeError"](
+    "Cannot call isInstance() on a Class representing a raw JS trait/object");
+};
+
 ScalaJS.makeNativeArrayWrapper = function(arrayClassData, nativeArray) {
   return new arrayClassData.constr(nativeArray);
 };

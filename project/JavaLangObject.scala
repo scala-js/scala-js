@@ -29,6 +29,7 @@ object JavaLangObject {
       ClassKind.Class,
       None,
       Nil,
+      None,
       List(
         /* def this() = () */
         MethodDef(

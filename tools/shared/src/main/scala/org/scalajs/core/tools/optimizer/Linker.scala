@@ -240,6 +240,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
         classDef.kind,
         classDef.superClass,
         classDef.interfaces,
+        classDef.jsName,
         fields.toList,
         staticMethods.toList,
         memberMethods.toList,

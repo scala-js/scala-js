@@ -388,6 +388,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym),
+          None,
           hashedDefs)(
           optimizerHints)
 
@@ -410,10 +411,14 @@ abstract class GenJSCode extends plugins.PluginComponent
       val superClass =
         if (sym.isInterface) None
         else Some(encodeClassFullNameIdent(sym.superClass))
+      val jsName =
+        if (sym.isInterface || sym.isModuleClass) None
+        else Some(jsNameOf(sym))
 
       js.ClassDef(classIdent, ClassKind.RawJSType,
           superClass,
           genClassInterfaces(sym),
+          jsName,
           Nil)(
           OptimizerHints.empty)
     }
@@ -446,7 +451,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val interfaces = genClassInterfaces(sym)
 
-      js.ClassDef(classIdent, ClassKind.Interface, None, interfaces,
+      js.ClassDef(classIdent, ClassKind.Interface, None, interfaces, None,
           generatedMethods)(OptimizerHints.empty)
     }
 
@@ -479,7 +484,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
 
       js.ClassDef(classIdent, ClassKind.Class,
-          Some(objectClassIdent), Nil,
+          Some(objectClassIdent), Nil, None,
           generatedMethods)(OptimizerHints.empty)
     }
 

@@ -368,12 +368,13 @@ object Serializers {
           writeTrees(captureValues)
 
         case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, parents, defs) = tree
+          val ClassDef(name, kind, superClass, parents, jsName, defs) = tree
           writeByte(TagClassDef)
           writeIdent(name)
           writeByte(ClassKind.toByte(kind))
           writeOptIdent(superClass)
           writeIdents(parents)
+          writeString(jsName.getOrElse(""))
           writeTrees(defs)
           writeInt(tree.optimizerHints.bits)
 
@@ -638,9 +639,10 @@ object Serializers {
           val kind = ClassKind.fromByte(readByte())
           val superClass = readOptIdent()
           val parents = readIdents()
+          val jsName = Some(readString()).filter(_ != "")
           val defs = readTrees()
           val optimizerHints = new OptimizerHints(readInt())
-          ClassDef(name, kind, superClass, parents, defs)(optimizerHints)
+          ClassDef(name, kind, superClass, parents, jsName, defs)(optimizerHints)
 
         case TagMethodDef =>
           val optHash = readOptHash()

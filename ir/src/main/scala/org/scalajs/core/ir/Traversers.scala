@@ -171,7 +171,7 @@ object Traversers {
 
       // Classes
 
-      case ClassDef(name, kind, superClass, parents, defs) =>
+      case ClassDef(name, kind, superClass, parents, jsName, defs) =>
         defs foreach traverse
 
       case MethodDef(static, name, args, resultType, body) =>

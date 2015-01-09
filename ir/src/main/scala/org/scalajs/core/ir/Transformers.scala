@@ -182,8 +182,8 @@ object Transformers {
 
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
-      val ClassDef(name, kind, superClass, parents, defs) = tree
-      ClassDef(name, kind, superClass, parents, defs.map(transformDef))(
+      val ClassDef(name, kind, superClass, parents, jsName, defs) = tree
+      ClassDef(name, kind, superClass, parents, jsName, defs.map(transformDef))(
           tree.optimizerHints)(tree.pos)
     }
 
