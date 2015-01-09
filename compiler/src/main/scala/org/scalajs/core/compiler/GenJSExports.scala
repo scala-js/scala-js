@@ -426,7 +426,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             val optCond = typeTest match {
               case HijackedTypeTest(boxedClassName, _) =>
                 val tpe = jstpe.ClassType(boxedClassName)
-                currentMethodInfoBuilder.addAccessedClassData(tpe)
+                currentMethodInfoBuilder.addUsedInstanceTest(tpe)
                 Some(js.IsInstanceOf(param.ref, tpe))
 
               case InstanceOfTypeTest(tpe) =>

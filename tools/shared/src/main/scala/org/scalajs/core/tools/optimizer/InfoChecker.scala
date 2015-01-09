@@ -122,6 +122,7 @@ class InfoChecker(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
         !mapIncludes(info.staticMethodsCalled, expectedInfo.staticMethodsCalled) ||
         !listIncludes(info.instantiatedClasses, expectedInfo.instantiatedClasses) ||
         !listIncludes(info.accessedModules, expectedInfo.accessedModules) ||
+        !listIncludes(info.usedInstanceTests, expectedInfo.usedInstanceTests) ||
         !listIncludes(info.accessedClassData, expectedInfo.accessedClassData)) {
       _errorCount += 1
       logger.error(s"Method info mismatch for $className.${expectedInfo.encodedName}" +

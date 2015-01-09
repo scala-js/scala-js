@@ -733,6 +733,10 @@ object Printers {
         println("accessedModules: ",
             accessedModules.map(escapeJS).mkString("[", ", ", "]"))
       }
+      if (usedInstanceTests.nonEmpty) {
+        println("usedInstanceTests: ",
+            usedInstanceTests.map(escapeJS).mkString("[", ", ", "]"))
+      }
       if (accessedClassData.nonEmpty) {
         println("accessedClassData: ",
             accessedClassData.map(escapeJS).mkString("[", ", ", "]"))

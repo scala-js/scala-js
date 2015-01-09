@@ -49,6 +49,7 @@ object Infos {
       val staticMethodsCalled: Map[String, List[String]],
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
+      val usedInstanceTests: List[String],
       val accessedClassData: List[String]
   )
 
@@ -63,10 +64,12 @@ object Infos {
         staticMethodsCalled: Map[String, List[String]] = Map.empty,
         instantiatedClasses: List[String] = Nil,
         accessedModules: List[String] = Nil,
+        usedInstanceTests: List[String] = Nil,
         accessedClassData: List[String] = Nil): MethodInfo = {
       new MethodInfo(encodedName, isStatic, isAbstract, isExported,
           methodsCalled, methodsCalledStatically, staticMethodsCalled,
-          instantiatedClasses, accessedModules, accessedClassData)
+          instantiatedClasses, accessedModules, usedInstanceTests,
+          accessedClassData)
     }
   }
 
@@ -130,6 +133,7 @@ object Infos {
     private val staticMethodsCalled = mutable.Map.empty[String, mutable.Set[String]]
     private val instantiatedClasses = mutable.Set.empty[String]
     private val accessedModules = mutable.Set.empty[String]
+    private val usedInstanceTests = mutable.Set.empty[String]
     private val accessedClassData = mutable.Set.empty[String]
 
     def setEncodedName(encodedName: String): this.type = {
@@ -204,16 +208,25 @@ object Infos {
       this
     }
 
-    def addAccessedClassData(tpe: ReferenceType): this.type = {
-      addAccessedClassData(tpe match {
-        case ClassType(name)    => name
-        case ArrayType(base, _) => base
-      })
+    def addUsedInstanceTest(tpe: ReferenceType): this.type =
+      addUsedInstanceTest(baseNameOf(tpe))
+
+    def addUsedInstanceTest(cls: String): this.type = {
+      usedInstanceTests += cls
+      this
     }
+
+    def addAccessedClassData(tpe: ReferenceType): this.type =
+      addAccessedClassData(baseNameOf(tpe))
 
     def addAccessedClassData(cls: String): this.type = {
       accessedClassData += cls
       this
+    }
+
+    private def baseNameOf(tpe: ReferenceType): String = tpe match {
+      case ClassType(name)    => name
+      case ArrayType(base, _) => base
     }
 
     def result(): MethodInfo = {
@@ -227,6 +240,7 @@ object Infos {
           staticMethodsCalled = staticMethodsCalled.toMap.mapValues(_.toList),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
+          usedInstanceTests = usedInstanceTests.toList,
           accessedClassData = accessedClassData.toList
       )
     }
@@ -330,14 +344,15 @@ object Infos {
         case LoadModule(ClassType(cls)) =>
           builder.addAccessedModule(cls)
 
+        case IsInstanceOf(_, tpe) =>
+          builder.addUsedInstanceTest(tpe)
+        case AsInstanceOf(_, tpe) =>
+          builder.addUsedInstanceTest(tpe)
+
         case NewArray(tpe, _) =>
           builder.addAccessedClassData(tpe)
         case ArrayValue(tpe, _) =>
           builder.addAccessedClassData(tpe)
-        case IsInstanceOf(_, cls) =>
-          builder.addAccessedClassData(cls)
-        case AsInstanceOf(_, cls) =>
-          builder.addAccessedClassData(cls)
         case ClassOf(cls) =>
           builder.addAccessedClassData(cls)
 

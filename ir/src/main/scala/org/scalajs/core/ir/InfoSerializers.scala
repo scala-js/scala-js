@@ -77,6 +77,7 @@ object InfoSerializers {
         }
         writeStrings(instantiatedClasses)
         writeStrings(accessedModules)
+        writeStrings(usedInstanceTests)
         writeStrings(accessedClassData)
       }
 
@@ -117,10 +118,12 @@ object InfoSerializers {
         val staticMethodsCalled = readList(readUTF() -> readStrings()).toMap
         val instantiatedClasses = readStrings()
         val accessedModules = readStrings()
+        val usedInstanceTests = readStrings()
         val accessedClassData = readStrings()
         MethodInfo(encodedName, isStatic, isAbstract, isExported,
             methodsCalled, methodsCalledStatically, staticMethodsCalled,
-            instantiatedClasses, accessedModules, accessedClassData)
+            instantiatedClasses, accessedModules, usedInstanceTests,
+            accessedClassData)
       }
 
       val methods = readList(readMethod())
