@@ -2687,9 +2687,6 @@ run/macroPlugins-macroExpand
 run/t8010.scala
 run/macroPlugins-typedMacroBody
 run/t7406.scala
-run/t6253c.scala
-run/t6253a.scala
-run/t6253b.scala
 pos/t8146a.scala
 pos/t8046c.scala
 pos/t8002-nested-scope.scala
