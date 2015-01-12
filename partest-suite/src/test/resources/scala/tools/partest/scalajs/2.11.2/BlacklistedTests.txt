@@ -137,6 +137,9 @@ run/t408.scala
 run/t6584.scala
 run/t6853.scala
 run/UnrolledBuffer.scala
+run/t6253a.scala
+run/t6253b.scala
+run/t6253c.scala
 
 # Crashes Rhino
 
