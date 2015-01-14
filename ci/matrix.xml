@@ -80,7 +80,7 @@
         ++$scala javalibExTestSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala javalibExTestSuite/test &&
-    sbt ++$scala compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbt ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala partest/fetchScalaSource &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala

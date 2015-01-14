@@ -83,6 +83,30 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** are we inside the implementation of scala.Enumeration? */
     var inEnumImpl = false
 
+    /** Tests whether this is a ScalaDoc run.
+     *
+     *  There are some things we must not do in ScalaDoc runs because, because
+     *  ScalaDoc runs don't do everything we need, for example constant-folding
+     *  'final val's.
+     *
+     *  At the same time, it's no big deal to skip these things, because we
+     *  won't reach the backend.
+     *
+     *  We don't completely disable this phase under ScalaDoc mostly because
+     *  we want to keep the addition of `RawJSType` annotations, so that they
+     *  appear in the doc.
+     *
+     *  Preparing exports, however, is a pure waste of time, which we cannot
+     *  do properly anyway because of the aforementioned limitation.
+     */
+    private def forScaladoc = global.forScaladoc
+
+    /** Whether to check that we have proper literals in some crucial places. */
+    private def shouldCheckLiterals = !forScaladoc
+
+    /** Whether to check and prepare exports. */
+    private def shouldPrepareExports = !forScaladoc
+
     def jsAnyClassOnly = !inJSAnyCls && allowJSAny
     def allowImplDef   = !inJSAnyCls && !inJSAnyMod
     def allowJSAny     = !inScalaCls
@@ -197,28 +221,32 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Exporter generation
       case ddef: DefDef =>
-        // Generate exporters for this ddef if required
-        exporters.getOrElseUpdate(ddef.symbol.owner,
-            mutable.ListBuffer.empty) ++= genExportMember(ddef)
+        if (shouldPrepareExports) {
+          // Generate exporters for this ddef if required
+          exporters.getOrElseUpdate(ddef.symbol.owner,
+              mutable.ListBuffer.empty) ++= genExportMember(ddef)
+        }
 
         super.transform(tree)
 
       // Module export sanity check (export generated in JSCode phase)
       case modDef: ModuleDef =>
-        val sym = modDef.symbol
+        if (shouldPrepareExports) {
+          val sym = modDef.symbol
 
-        def condErr(msg: String) = {
-          for (exp <- jsInterop.exportsOf(sym)) {
-            reporter.error(exp.pos, msg)
+          def condErr(msg: String) = {
+            for (exp <- jsInterop.exportsOf(sym)) {
+              reporter.error(exp.pos, msg)
+            }
           }
-        }
 
-        if (!hasLegalExportVisibility(sym))
-          condErr("You may only export public and protected objects")
-        else if (sym.isLocalToBlock)
-          condErr("You may not export a local object")
-        else if (!sym.owner.hasPackageFlag)
-          condErr("You may not export a nested object")
+          if (!hasLegalExportVisibility(sym))
+            condErr("You may only export public and protected objects")
+          else if (sym.isLocalToBlock)
+            condErr("You may not export a local object")
+          else if (!sym.owner.hasPackageFlag)
+            condErr("You may not export a nested object")
+        }
 
         super.transform(modDef)
 
@@ -249,6 +277,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     } }
 
     private def postTransform(tree: Tree) = tree match {
+      case _ if !shouldPrepareExports =>
+        tree
+
       case Template(parents, self, body) =>
         val clsSym = tree.symbol.owner
         val exports = exporters.get(clsSym).toIterable.flatten
@@ -347,12 +378,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     private def transformValOrDefDefInRawJSType(tree: ValOrDefDef) = {
       val sym = tree.symbol
 
-      val exports = jsInterop.exportsOf(sym)
+      if (shouldPrepareExports) {
+        val exports = jsInterop.exportsOf(sym)
 
-      if (exports.nonEmpty) {
-        val memType = if (sym.isConstructor) "constructor" else "method"
-        reporter.error(exports.head.pos,
-            s"You may not export a $memType of a subclass of js.Any")
+        if (exports.nonEmpty) {
+          val memType = if (sym.isConstructor) "constructor" else "method"
+          reporter.error(exports.head.pos,
+              s"You may not export a $memType of a subclass of js.Any")
+        }
       }
 
       if (isNonJSScalaSetter(sym)) {
@@ -377,12 +410,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         reporter.error(tree.pos, "Methods in a js.Any may not be @native")
       }
 
-      for {
-        annot <- sym.getAnnotation(JSNameAnnotation)
-        if annot.stringArg(0).isEmpty
-      } {
-        reporter.error(annot.pos,
-          "The argument to JSName must be a literal string")
+      if (shouldCheckLiterals) {
+        for {
+          annot <- sym.getAnnotation(JSNameAnnotation)
+          if annot.stringArg(0).isEmpty
+        } {
+          reporter.error(annot.pos,
+            "The argument to JSName must be a literal string")
+        }
       }
 
       if (sym.isPrimaryConstructor || sym.isValueParameter ||
