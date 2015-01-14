@@ -9,6 +9,8 @@ package org.scalajs.testsuite.compiler
 
 import org.scalajs.jasminetest.JasmineTest
 
+import scala.scalajs.js
+
 object OptimizerTest extends JasmineTest {
 
   describe("Inlineable classes") {
@@ -23,6 +25,34 @@ object OptimizerTest extends JasmineTest {
     it("must not break code that assigns `this` to a field") {
       val foo = new InlineClassThisAlias(5)
       expect(foo.z).toEqual(5)
+    }
+
+  }
+
+  describe("Optimizer regression tests") {
+
+    it("must not break * (-1) - #1453") {
+      @noinline
+      def start0: Int = (() => 10)()
+
+      val start = start0
+      val step = -1
+      val numRangeElements = start - 1
+      val lastElement = start + (numRangeElements - 1) * step
+      expect(lastElement).toEqual(2)
+    }
+
+    it("must not break foreach on downward Range - #1453") {
+      @noinline
+      def start0: Int = (() => 10)()
+
+      val elements = js.Array[Int]()
+      for (i <- start0 to 2 by -1) {
+        if (i < 0)
+          sys.error("Going into infinite loop")
+        elements.push(i)
+      }
+      expect(elements).toEqual(js.Array(10, 9, 8, 7, 6, 5, 4, 3, 2))
     }
 
   }

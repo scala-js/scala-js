@@ -1945,7 +1945,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           case (_, IntLiteral(_))             => foldBinaryOp(Int_*, rhs, lhs)
 
           case (IntLiteral(1), _)  => rhs
-          case (IntLiteral(-1), _) => foldBinaryOp(Int_-, IntLiteral(0), lhs)
+          case (IntLiteral(-1), _) => foldBinaryOp(Int_-, IntLiteral(0), rhs)
 
           case _ => default
         }
