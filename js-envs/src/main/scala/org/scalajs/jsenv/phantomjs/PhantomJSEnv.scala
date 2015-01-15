@@ -11,7 +11,7 @@ package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.jsenv._
 
-import org.scalajs.core.ir.Utils.escapeJS
+import org.scalajs.core.ir.Utils.{escapeJS, fixFileURI}
 
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
@@ -285,7 +285,7 @@ class PhantomJSEnv(
     override protected def writeJSFile(file: VirtualJSFile, writer: Writer) = {
       file match {
         case file: FileVirtualJSFile =>
-          val fname = htmlEscape(file.file.getAbsolutePath)
+          val fname = htmlEscape(fixFileURI(file.file.toURI).toASCIIString)
           writer.write(
               s"""<script type="text/javascript" src="$fname"></script>""" + "\n")
         case _ =>
@@ -376,7 +376,7 @@ class PhantomJSEnv(
         out.write(
             s"""// Scala.js Phantom.js launcher
                |var page = require('webpage').create();
-               |var url = "${escapeJS(webF.getAbsolutePath)}";
+               |var url = "${escapeJS(fixFileURI(webF.toURI).toASCIIString)}";
                |var autoExit = $autoExit;
                |page.onConsoleMessage = function(msg) {
                |  console.log(msg);
