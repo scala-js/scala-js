@@ -216,9 +216,18 @@ trait JSGlobalAddons extends JSDefinitions
 
     def isJSProperty(sym: Symbol): Boolean = isJSGetter(sym) || isJSSetter(sym)
 
+    @inline private def enteringUncurryIfAtPhaseAfter[A](op: => A): A = {
+      if (currentRun.uncurryPhase != NoPhase &&
+          isAtPhaseAfter(currentRun.uncurryPhase)) {
+        enteringPhase(currentRun.uncurryPhase)(op)
+      } else {
+        op
+      }
+    }
+
     /** has this symbol to be translated into a JS getter (both directions)? */
     def isJSGetter(sym: Symbol): Boolean = {
-      sym.tpe.params.isEmpty && enteringPhase(currentRun.uncurryPhase) {
+      sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
         sym.tpe.isInstanceOf[NullaryMethodType]
       }
     }
@@ -227,7 +236,7 @@ trait JSGlobalAddons extends JSDefinitions
     def isJSSetter(sym: Symbol) = {
       sym.unexpandedName.decoded.endsWith("_=") &&
       sym.tpe.resultType.typeSymbol == UnitClass &&
-      enteringPhase(currentRun.uncurryPhase) {
+      enteringUncurryIfAtPhaseAfter {
         sym.tpe.paramss match {
           case List(List(arg)) => !isScalaRepeatedParamType(arg.tpe)
           case _ => false

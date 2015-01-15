@@ -51,14 +51,7 @@ trait PrepJSExports { this: PrepJSInterop =>
     else if (hasIllegalDefaultParam(baseSym))
       err(s"In an exported $memType, all parameters with defaults " +
         "must be at the end")
-    else if (currentRun.uncurryPhase == NoPhase) {
-      /* When using scaladoc, the uncurry phase does not exist. This makes
-       * our code down below blow up (see bug #323). So we do not do anything
-       * more here if the phase does not exist. It's no big deal because we do
-       * not need exports for scaladoc.
-       */
-      Nil
-    } else if (baseSym.isConstructor) {
+    else if (baseSym.isConstructor) {
       // we can generate constructors entirely in the backend, since they
       // do not need inheritance and such. But we want to check their sanity
       // here by previous tests and the following ones.
