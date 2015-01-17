@@ -87,7 +87,13 @@ class PhantomJSEnv(
 
     val mgr: WebsocketManager = loadMgr()
 
-    def onRunning(): Unit = synchronized(notifyAll())
+    protected var mgrIsRunning: Boolean = false
+
+    def onRunning(): Unit = synchronized {
+      mgrIsRunning = true
+      notifyAll()
+    }
+
     def onOpen(): Unit = synchronized(notifyAll())
     def onClose(): Unit = synchronized(notifyAll())
 
@@ -104,16 +110,6 @@ class PhantomJSEnv(
 
     mgr.start()
 
-    /** The websocket server starts asynchronously, but we need the port it is
-     *  running on. This method waits until the port is non-negative and
-     *  returns its value.
-     */
-    private def waitForPort(): Int = {
-      while (mgr.localPort < 0)
-        wait()
-      mgr.localPort
-    }
-
     private def comSetup = {
       def maybeExit(code: Int) =
         if (autoExit)
@@ -121,7 +117,18 @@ class PhantomJSEnv(
         else
           ""
 
-      val serverPort = waitForPort()
+      /* The WebSocket server starts asynchronously. We must wait for it to
+       * be fully operational before a) retrieving the port it is running on
+       * and b) feeding the connecting JS script to the VM.
+       */
+      synchronized {
+        while (!mgrIsRunning)
+          wait()
+      }
+
+      val serverPort = mgr.localPort
+      assert(serverPort > 0,
+          s"Manager running with a non-positive port number: $serverPort")
 
       val code = s"""
         |(function() {
