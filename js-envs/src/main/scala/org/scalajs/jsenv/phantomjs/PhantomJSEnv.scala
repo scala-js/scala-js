@@ -24,7 +24,7 @@ import scala.io.Source
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, TimeoutException}
 
 class PhantomJSEnv(
     phantomjsPath: String = "phantomjs",
@@ -87,7 +87,13 @@ class PhantomJSEnv(
 
     val mgr: WebsocketManager = loadMgr()
 
-    def onRunning(): Unit = synchronized(notifyAll())
+    protected var mgrIsRunning: Boolean = false
+
+    def onRunning(): Unit = synchronized {
+      mgrIsRunning = true
+      notifyAll()
+    }
+
     def onOpen(): Unit = synchronized(notifyAll())
     def onClose(): Unit = synchronized(notifyAll())
 
@@ -104,16 +110,6 @@ class PhantomJSEnv(
 
     mgr.start()
 
-    /** The websocket server starts asynchronously, but we need the port it is
-     *  running on. This method waits until the port is non-negative and
-     *  returns its value.
-     */
-    private def waitForPort(): Int = {
-      while (mgr.localPort < 0)
-        wait()
-      mgr.localPort
-    }
-
     private def comSetup = {
       def maybeExit(code: Int) =
         if (autoExit)
@@ -121,7 +117,21 @@ class PhantomJSEnv(
         else
           ""
 
-      val serverPort = waitForPort()
+      /* The WebSocket server starts asynchronously. We must wait for it to
+       * be fully operational before a) retrieving the port it is running on
+       * and b) feeding the connecting JS script to the VM.
+       */
+      synchronized {
+        while (!mgrIsRunning)
+          wait(10000)
+        if (!mgrIsRunning)
+          throw new TimeoutException(
+              "The PhantomJS WebSocket server startup timed out")
+      }
+
+      val serverPort = mgr.localPort
+      assert(serverPort > 0,
+          s"Manager running with a non-positive port number: $serverPort")
 
       val code = s"""
         |(function() {
@@ -176,6 +186,8 @@ class PhantomJSEnv(
         |      };
         |      websocket.onclose = function(evt) {
         |        websocket = null;
+        |        if (outMsgBuf !== null)
+        |          throw new Error("WebSocket closed before being opened: " + evt);
         |        ${maybeExit(0)}
         |      };
         |      websocket.onmessage = recvImpl(recvCB);
@@ -266,7 +278,10 @@ class PhantomJSEnv(
      */
     private def awaitConnection(): Boolean = {
       while (!mgr.isConnected && !mgr.isClosed && isRunning)
-        wait()
+        wait(10000)
+      if (!mgr.isConnected && !mgr.isClosed && isRunning)
+        throw new TimeoutException(
+            "The PhantomJS WebSocket client took too long to connect")
 
       mgr.isConnected
     }
