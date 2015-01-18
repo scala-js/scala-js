@@ -24,7 +24,7 @@ import scala.io.Source
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, TimeoutException}
 
 class PhantomJSEnv(
     phantomjsPath: String = "phantomjs",
@@ -123,7 +123,10 @@ class PhantomJSEnv(
        */
       synchronized {
         while (!mgrIsRunning)
-          wait()
+          wait(10000)
+        if (!mgrIsRunning)
+          throw new TimeoutException(
+              "The PhantomJS WebSocket server startup timed out")
       }
 
       val serverPort = mgr.localPort
@@ -183,6 +186,8 @@ class PhantomJSEnv(
         |      };
         |      websocket.onclose = function(evt) {
         |        websocket = null;
+        |        if (outMsgBuf !== null)
+        |          throw new Error("WebSocket closed before being opened: " + evt);
         |        ${maybeExit(0)}
         |      };
         |      websocket.onmessage = recvImpl(recvCB);
@@ -273,7 +278,10 @@ class PhantomJSEnv(
      */
     private def awaitConnection(): Boolean = {
       while (!mgr.isConnected && !mgr.isClosed && isRunning)
-        wait()
+        wait(10000)
+      if (!mgr.isConnected && !mgr.isClosed && isRunning)
+        throw new TimeoutException(
+            "The PhantomJS WebSocket client took too long to connect")
 
       mgr.isConnected
     }
