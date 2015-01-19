@@ -558,7 +558,7 @@ object Printers {
         // Classes
 
         case tree: ClassDef =>
-          val ClassDef(name, kind, superClass, parents, jsName, defs) = tree
+          val ClassDef(name, kind, superClass, interfaces, jsName, defs) = tree
           if (tree.optimizerHints != OptimizerHints.empty)
             print("@hints(", tree.optimizerHints.bits, ") ")
           kind match {
@@ -570,8 +570,8 @@ object Printers {
           }
           print(name)
           superClass.foreach(print(" extends ", _))
-          if (parents.nonEmpty)
-            printRow(parents, " parents ", ", ", "")
+          if (interfaces.nonEmpty)
+            printRow(interfaces, " implements ", ", ", "")
           jsName.foreach(print(" jsname ", _))
           print(" ")
           printColumn(defs, "{", "", "}")
