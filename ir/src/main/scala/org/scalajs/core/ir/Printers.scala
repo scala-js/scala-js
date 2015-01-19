@@ -590,7 +590,7 @@ object Printers {
             print("@hints(", tree.optimizerHints.bits, ") ")
           if (static)
             print("static ")
-          print(name)
+          print("def ", name)
           printSig(args, resultType)
           if (body == EmptyTree)
             print("<abstract>")
