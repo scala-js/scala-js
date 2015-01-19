@@ -577,6 +577,13 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
+        case FieldDef(ident, vtpe, mutable) =>
+          if (mutable)
+            print("var ")
+          else
+            print("val ")
+          print(ident, ": ", vtpe)
+
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree
           if (tree.optimizerHints != OptimizerHints.empty)
