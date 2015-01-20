@@ -5,22 +5,41 @@ import org.scalajs.jsenv._
 
 import scala.annotation.tailrec
 
+import scala.concurrent.duration._
+
 private[testadapter] object ComUtils {
 
   type Handler[+T] = PartialFunction[(String, String), T]
   type LoopHandler[+T] = Handler[Option[T]]
 
+  def receiveLoop[T](com: ComJSRunner)(handler: LoopHandler[T]): T =
+    receiveLoop(com, Duration.Inf)(handler)
+
   @tailrec
-  def receiveLoop[T](com: ComJSRunner)(handler: LoopHandler[T]): T = {
-    receiveResponse(com)(handler) match {
+  def receiveLoop[T](com: ComJSRunner, timeout: Duration)(
+      handler: LoopHandler[T]): T = {
+    receiveResponse(com, timeout)(handler) match {
       case Some(v) => v
-      case None => receiveLoop(com)(handler)
+      case None    => receiveLoop(com, timeout)(handler)
     }
   }
 
-  def receiveResponse[T](com: ComJSRunner)(handler: Handler[T]): T = {
+  @tailrec
+  def receiveLoop[T](com: ComJSRunner, deadline: Deadline)(
+      handler: LoopHandler[T]): T = {
+    receiveResponse(com, deadline.timeLeft)(handler) match {
+      case Some(v) => v
+      case None    => receiveLoop(com, deadline)(handler)
+    }
+  }
+
+  def receiveResponse[T](com: ComJSRunner)(handler: Handler[T]): T =
+    receiveResponse(com, Duration.Inf)(handler)
+
+  def receiveResponse[T](com: ComJSRunner, timeout: Duration)(
+      handler: Handler[T]): T = {
     val resp = {
-      try com.receive()
+      try com.receive(timeout)
       catch {
         case t: ComJSEnv.ComClosedException =>
           // Check if runner failed. If it did, throw that exception instead
