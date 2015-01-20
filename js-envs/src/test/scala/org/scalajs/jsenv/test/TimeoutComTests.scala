@@ -3,6 +3,7 @@ package org.scalajs.jsenv.test
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
 
 trait TimeoutComTests extends TimeoutTests with ComTests {
@@ -49,6 +50,33 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       com.send(s"Hello World: $i")
       assertEquals(s"Got: Hello World: $i", com.receive())
       assertTrue("Execution took too little time", deadline.isOverdue())
+    }
+
+    com.close()
+    com.await(DefaultTimeout)
+
+  }
+
+  @Test
+  def receiveTimeoutTest = {
+
+    val com = comRunner(s"""
+      scalajsCom.init(function(msg) {
+        setTimeout(scalajsCom.send, 2000, "Got: " + msg);
+      });
+    """)
+
+    com.start()
+
+    for (i <- 1 to 2) {
+      com.send(s"Hello World: $i")
+      try {
+        com.receive(900.millis)
+        fail("Expected TimeoutException to be thrown")
+      } catch {
+        case _: TimeoutException =>
+      }
+      assertEquals(s"Got: Hello World: $i", com.receive(3000.millis))
     }
 
     com.close()

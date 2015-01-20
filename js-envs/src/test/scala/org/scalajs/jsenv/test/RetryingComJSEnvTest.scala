@@ -9,6 +9,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.sem._
 
 import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 
 import org.junit.Test
 
@@ -50,7 +51,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
 
     private class FailingComJSRunner(baseRunner: ComJSRunner)
         extends DummyJSRunner with ComJSRunner {
-      
+
       def future = baseRunner.future
 
       def send(msg: String): Unit = {
@@ -58,12 +59,12 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
         baseRunner.send(msg)
       }
 
-      def receive(): String = {
+      def receive(timeout: Duration): String = {
         if (shouldFail) {
           failedReceive = true
           fail()
         }
-        baseRunner.receive()
+        baseRunner.receive(timeout)
       }
 
 
@@ -85,7 +86,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
       private def shouldFail = !failedReceive && fails < maxFails
 
       private def maybeFail() = {
-        if (shouldFail) 
+        if (shouldFail)
           fail()
       }
 
