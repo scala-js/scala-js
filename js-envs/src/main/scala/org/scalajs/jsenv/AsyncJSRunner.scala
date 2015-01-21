@@ -15,7 +15,17 @@ trait AsyncJSRunner {
    */
   def start(): Future[Unit]
 
-  /** Abort the associated run */
+  /** Aborts the associated run.
+   *
+   *  There is no guarantee that the runner will be effectively terminated
+   *  by the time this method returns. If necessary, this call can be followed
+   *  by a call to `await()`.
+   *
+   *  If the run has already completed, this does nothing. Similarly,
+   *  subsequent calls to `stop()` will do nothing.
+   *
+   *  This method cannot be called before `start()` has been called.
+   */
   def stop(): Unit
 
   /**
@@ -38,12 +48,31 @@ trait AsyncJSRunner {
 
   /** Await completion of the started Run for the duration specified
    *  by [[atMost]]. Strictly equivalent to:
-   * 
+   *
    *  {{{
    *  Await.result(future, atMost)
    *  }}}
-   * 
+   *
    */
   final def await(atMost: Duration): Unit = Await.result(future, atMost)
+
+  /** Awaits completion of the started Run for the duration specified by
+   *  [[atMost]], or force it to stop.
+   *
+   *  If any exception is thrown while awaiting completion (including a
+   *  [[scala.concurrent.TimeoutException TimeoutException]], forces the runner
+   *  to stop by calling `stop()` before rethrowing the exception.
+   *
+   *  Strictly equivalent to:
+   *
+   *  {{{
+   *  try await(atMost)
+   *  finally stop()
+   *  }}}
+   */
+  final def awaitOrStop(atMost: Duration): Unit = {
+    try await(atMost)
+    finally stop()
+  }
 
 }

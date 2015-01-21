@@ -10,6 +10,7 @@
 package org.scalajs.jsenv.nodejs
 
 import org.scalajs.jsenv._
+import org.scalajs.jsenv.Utils.OptDeadline
 
 import org.scalajs.core.ir.Utils.escapeJS
 
@@ -21,6 +22,8 @@ import org.scalajs.core.tools.logging._
 import java.io.{ Console => _, _ }
 import java.net._
 
+import scala.concurrent.TimeoutException
+import scala.concurrent.duration._
 import scala.io.Source
 
 class NodeJSEnv private (
@@ -174,16 +177,32 @@ class NodeJSEnv private (
       }
     }
 
-    def receive(): String = {
+    def receive(timeout: Duration): String = {
       if (!awaitConnection())
         throw new ComJSEnv.ComClosedException("Node.js isn't connected")
+
+      js2jvm.mark(Int.MaxValue)
+      val savedSoTimeout = comSocket.getSoTimeout()
       try {
+        val optDeadline = OptDeadline(timeout)
+
+        comSocket.setSoTimeout((optDeadline.millisLeft min Int.MaxValue).toInt)
         val len = js2jvm.readInt()
-        val carr = Array.fill(len)(js2jvm.readChar())
+        val carr = Array.fill(len) {
+          comSocket.setSoTimeout((optDeadline.millisLeft min Int.MaxValue).toInt)
+          js2jvm.readChar()
+        }
+
+        js2jvm.mark(0)
         String.valueOf(carr)
       } catch {
         case e: EOFException =>
           throw new ComJSEnv.ComClosedException(e)
+        case e: SocketTimeoutException =>
+          js2jvm.reset()
+          throw new TimeoutException("Timeout expired")
+      } finally {
+        comSocket.setSoTimeout(savedSoTimeout)
       }
     }
 

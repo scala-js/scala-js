@@ -12,7 +12,7 @@ import org.junit.Assert._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-/** A couple of tests that test communication for mix-in into a test suite */
+/** A couple of tests that test async runners for mix-in into a test suite */
 trait AsyncTests {
 
   protected final val DefaultTimeout: Duration = 10.seconds
@@ -35,6 +35,16 @@ trait AsyncTests {
     Await.result(fut, DefaultTimeout)
 
     assertFalse("VM should be terminated", runner.isRunning)
+  }
+
+  @Test
+  def stopAfterTerminatedTest = {
+    val runner = asyncRunner("")
+    val fut = runner.start()
+
+    Await.result(fut, DefaultTimeout)
+
+    runner.stop() // should do nothing, and not fail
   }
 
 }

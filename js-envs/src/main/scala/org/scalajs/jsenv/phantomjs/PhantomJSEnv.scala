@@ -10,6 +10,7 @@
 package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.jsenv._
+import org.scalajs.jsenv.Utils.OptDeadline
 
 import org.scalajs.core.ir.Utils.{escapeJS, fixFileURI}
 
@@ -25,6 +26,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 
 import scala.concurrent.{ExecutionContext, TimeoutException}
+import scala.concurrent.duration.Duration
 
 class PhantomJSEnv(
     phantomjsPath: String = "phantomjs",
@@ -107,6 +109,7 @@ class PhantomJSEnv(
     def log(msg: String): Unit = logger.debug(s"PhantomJS WS Jetty: $msg")
 
     private[this] val recvBuf = mutable.Queue.empty[String]
+    private[this] val fragmentsBuf = new StringBuilder
 
     mgr.start()
 
@@ -241,34 +244,52 @@ class PhantomJSEnv(
       }
     }
 
-    def receive(): String = synchronized {
+    def receive(timeout: Duration): String = synchronized {
       if (recvBuf.isEmpty && !awaitConnection())
         throw new ComJSEnv.ComClosedException("Phantom.js isn't connected")
 
-      @tailrec
-      def loop(acc: String): String = {
-        val frag = receiveFrag()
-        val newAcc = acc + frag.substring(1)
+      val deadline = OptDeadline(timeout)
 
-        if (frag(0) == '0')
-          newAcc
-        else if (frag(0) == '1')
-          loop(newAcc)
-        else
+      @tailrec
+      def loop(): String = {
+        /* The fragments are accumulated in an instance-wide buffer in case
+         * receiving a non-first fragment times out.
+         */
+        val frag = receiveFrag(deadline)
+        fragmentsBuf ++= frag.substring(1)
+
+        if (frag(0) == '0') {
+          val result = fragmentsBuf.result()
+          fragmentsBuf.clear()
+          result
+        } else if (frag(0) == '1') {
+          loop()
+        } else {
           throw new AssertionError("Bad fragmentation flag in " + frag)
+        }
       }
 
-      loop("")
+      try {
+        loop()
+      } catch {
+        case e: Throwable if !e.isInstanceOf[TimeoutException] =>
+          fragmentsBuf.clear() // the protocol is broken, so discard the buffer
+          throw e
+      }
     }
 
-    private def receiveFrag(): String = {
-      while (recvBuf.isEmpty && !mgr.isClosed)
-        wait()
+    private def receiveFrag(deadline: OptDeadline): String = {
+      while (recvBuf.isEmpty && !mgr.isClosed && !deadline.isOverdue)
+        wait(deadline.millisLeft)
 
-      if (recvBuf.isEmpty)
-        throw new ComJSEnv.ComClosedException
-      else
-        recvBuf.dequeue()
+      if (recvBuf.isEmpty) {
+        if (mgr.isClosed)
+          throw new ComJSEnv.ComClosedException
+        else
+          throw new TimeoutException("Timeout expired")
+      }
+
+      recvBuf.dequeue()
     }
 
     def close(): Unit = mgr.stop()

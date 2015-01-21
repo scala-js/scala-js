@@ -53,6 +53,8 @@ trait ComTests extends AsyncTests {
 
     com.close()
     com.await(DefaultTimeout)
+
+    com.stop() // should do nothing, and not fail
   }
 
   def comCloseJSTestCommon(timeout: Long) = {
@@ -75,6 +77,8 @@ trait ComTests extends AsyncTests {
 
     com.close()
     com.await(DefaultTimeout)
+
+    com.stop() // should do nothing, and not fail
   }
 
   @Test

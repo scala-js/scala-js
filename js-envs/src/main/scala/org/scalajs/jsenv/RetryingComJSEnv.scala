@@ -14,6 +14,7 @@ import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
 
 import scala.concurrent.{Future, Promise, ExecutionContext}
+import scala.concurrent.duration.Duration
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -21,7 +22,7 @@ import scala.util.{Try, Failure, Success}
 
 /** A RetryingComJSEnv allows to automatically retry if a call to the underlying
  *  ComJSRunner fails.
- *  
+ *
  *  While it protects the JVM side from observing state that differs inbetween
  *  runs that have been retried, it assumes that the executed JavaScript code
  *  does not have side-effects other than the ones visible through the channel
@@ -57,7 +58,7 @@ final class RetryingComJSEnv(baseEnv: ComJSEnv,
 
   private class RetryingComJSRunner(classpath: CompleteClasspath,
       code: VirtualJSFile, logger: Logger,
-      console: JSConsole) extends DummyJSRunner with ComJSRunner { 
+      console: JSConsole) extends DummyJSRunner with ComJSRunner {
 
     private[this] val promise = Promise[Unit]
 
@@ -88,12 +89,12 @@ final class RetryingComJSEnv(baseEnv: ComJSEnv,
       logAndDo(Send(msg))
     }
 
-    def receive(): String = {
+    def receive(timeout: Duration): String = {
       @tailrec
       def recLoop(): String = {
         // Need to use Try for tailrec
         Try {
-          val result = curRunner.receive()
+          val result = curRunner.receive(timeout)
           // At this point, we are sending state to the JVM, we cannot retry
           // after this.
           hasReceived = true

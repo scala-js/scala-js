@@ -10,6 +10,7 @@
 package org.scalajs.jsenv.rhino
 
 import org.scalajs.jsenv._
+import org.scalajs.jsenv.Utils.OptDeadline
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
@@ -22,7 +23,7 @@ import scala.io.Source
 
 import scala.collection.mutable
 
-import scala.concurrent.{Future, Promise, Await}
+import scala.concurrent.{Future, Promise, Await, TimeoutException}
 import scala.concurrent.duration._
 
 import scala.reflect.ClassTag
@@ -108,9 +109,9 @@ final class RhinoJSEnv private (
 
     def send(msg: String): Unit = channel.sendToJS(msg)
 
-    def receive(): String = {
+    def receive(timeout: Duration): String = {
       try {
-        channel.recvJVM()
+        channel.recvJVM(timeout)
       } catch {
         case _: ChannelClosedException =>
           throw new ComJSEnv.ComClosedException
@@ -443,19 +444,23 @@ object RhinoJSEnv {
     def sendToJS(msg: String): Unit = synchronized {
       ensureOpen(_closedJVM)
       jvm2js.enqueue(msg)
-      notify()
+      notifyAll()
     }
 
     def sendToJVM(msg: String): Unit = synchronized {
       ensureOpen(_closedJS)
       js2jvm.enqueue(msg)
-      notify()
+      notifyAll()
     }
 
-    def recvJVM(): String = synchronized {
-      while (js2jvm.isEmpty && ensureOpen(_closedJS))
-        wait()
+    def recvJVM(timeout: Duration): String = synchronized {
+      val deadline = OptDeadline(timeout)
 
+      while (js2jvm.isEmpty && ensureOpen(_closedJS) && !deadline.isOverdue)
+        wait(deadline.millisLeft)
+
+      if (js2jvm.isEmpty)
+        throw new TimeoutException("Timeout expired")
       js2jvm.dequeue()
     }
 
@@ -482,12 +487,12 @@ object RhinoJSEnv {
 
     def closeJS(): Unit = synchronized {
       _closedJS = true
-      notify()
+      notifyAll()
     }
 
     def closeJVM(): Unit = synchronized {
       _closedJVM = true
-      notify()
+      notifyAll()
     }
 
     /** Throws if the channel is closed and returns true */

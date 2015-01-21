@@ -17,6 +17,9 @@ import org.scalajs.jsenv._
 
 import scala.collection.concurrent.TrieMap
 
+import scala.concurrent.duration._
+import scala.util.{Try, Failure, Success}
+
 import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.testing._
@@ -64,17 +67,35 @@ final class ScalaJSRunner private[testadapter] (
   def done(): String = synchronized {
     ensureNotDone()
 
-    stopSlaves()
+    /* Whatever happens in here, we must close and eventually terminate all
+     * VMs. So we capture all exceptions in Try's, and we'll rethrow one of
+     * them (if any) at the end.
+     */
 
-    master.send("runnerDone")
-    val summary = ComUtils.receiveResponse(master) {
-      case ("ok", summary) => summary
+    // First we run the stopping sequence of the slaves
+    val slavesDeadline = VMTermTimeout.fromNow
+    val slavesClosing = stopSlaves(slavesDeadline)
+
+    /* Once all slaves are closing, we can schedule termination of the master.
+     * We need a fresh deadline for the master, since we can only start its
+     * scheduling when the slaves are closing.
+     * If we used the same deadline, and a slave timed out during its stopping
+     * sequence, the master would have 0 ms to stop, which is not fair.
+     */
+    val masterDeadline = VMTermTimeout.fromNow
+    val summaryTry = Try {
+      master.send("runnerDone")
+      val summary = ComUtils.receiveResponse(master, masterDeadline.timeLeft) {
+        case ("ok", summary) => summary
+      }
+      master.close()
+      summary
     }
-    master.close()
 
-    // Await all JS VMs
-    slaves.values.foreach(_.await(VMTermTimeout))
-    master.await(VMTermTimeout)
+    // Now we wait for everyone to be completely stopped
+    val slavesStopped =
+      slaves.values.toList.map(s => Try(s.awaitOrStop(slavesDeadline.timeLeft)))
+    val masterStopped = Try(master.awaitOrStop(masterDeadline.timeLeft))
 
     // Cleanup
     master = null
@@ -82,7 +103,13 @@ final class ScalaJSRunner private[testadapter] (
 
     framework.runDone()
 
-    summary
+    // At this point, rethrow any exception we captured on the way with Try's
+    slavesClosing.get
+    slavesStopped.foreach(_.get)
+    masterStopped.get
+
+    // And finally, if all went well, return the summary
+    summaryTry.get
   }
 
   // Runner Messaging
@@ -122,17 +149,34 @@ final class ScalaJSRunner private[testadapter] (
     }
   }
 
-  private def stopSlaves(): Unit = {
-    val slaves = this.slaves.values
+  /** Starts the stopping sequence of all slaves.
+   *  The returned future will be completed when all slaves are closing.
+   */
+  private def stopSlaves(deadline: Deadline): Try[Unit] = {
+    val slaves = this.slaves.values.toList // .toList to make it strict
 
-    slaves.foreach(_.send("stopSlave"))
-    slaves foreach { slave =>
-      ComUtils.receiveLoop(slave)(msgHandler(slave) orElse ComUtils.doneHandler)
+    // First launch the stopping sequence on all slaves
+    val stopMessagesSent = for (slave <- slaves) yield Try {
+      slave.send("stopSlave")
     }
-    slaves.foreach(_.close())
+
+    // Then process all their messages and close them
+    val slavesClosed = for (slave <- slaves) yield Try {
+      ComUtils.receiveLoop(slave, deadline)(
+          msgHandler(slave) orElse ComUtils.doneHandler)
+      slave.close()
+    }
+
+    // Return the first failed of all these Try's
+    (stopMessagesSent ++ slavesClosed) collectFirst {
+      case failure: Failure[Unit] => failure
+    } getOrElse Success(())
   }
 
   private def createSlave(): ComJSRunner = {
+    // We don't want to create new slaves when we're closing/closed
+    ensureNotDone()
+
     // Launch the slave
     val slave = framework.createRunner(slaveLauncher)
     slave.start()
