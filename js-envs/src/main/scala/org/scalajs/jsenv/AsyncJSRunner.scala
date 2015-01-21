@@ -15,7 +15,17 @@ trait AsyncJSRunner {
    */
   def start(): Future[Unit]
 
-  /** Abort the associated run */
+  /** Aborts the associated run.
+   *
+   *  There is no guarantee that the runner will be effectively terminated
+   *  by the time this method returns. If necessary, this call can be followed
+   *  by a call to `await()`.
+   *
+   *  If the run has already completed, this does nothing. Similarly,
+   *  subsequent calls to `stop()` will do nothing.
+   *
+   *  This method cannot be called before `start()` has been called.
+   */
   def stop(): Unit
 
   /**

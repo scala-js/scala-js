@@ -124,6 +124,28 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       case t: Throwable => // all is well
     }
 
+    async.stop() // should do nothing, and not fail
+
+  }
+
+  @Test
+  def doubleStopTest = {
+    val async = asyncRunner(s"""
+      setInterval(function() {}, 0);
+    """)
+
+    async.start()
+    async.stop()
+    async.stop() // should do nothing, and not fail
+
+    try {
+      async.await(DefaultTimeout)
+      fail("Expected await to fail")
+    } catch {
+      case t: Throwable => // all is well
+    }
+
+    async.stop() // should do nothing, and not fail
   }
 
 }

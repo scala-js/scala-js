@@ -67,7 +67,6 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
         baseRunner.receive(timeout)
       }
 
-
       def start(): Future[Unit] = {
         maybeFail()
         baseRunner.start()
