@@ -372,5 +372,41 @@ object RegressionTest extends JasmineTest {
       if (new A().plus(5, 10) < 3)
         js.debugger()
     }
+
+    it("should not cause Closure to crash with Unexpected variable 'NaN' - #1469") {
+      /* Basically we want to make sure that a specialized bridge of Function1
+       * taking and returning Double is emitted (and not dce'ed) for this
+       * class F, which actually returns Unit.
+       * This, after optimizations, causes something like
+       *   +(apply__V(x), (void 0))
+       * to be emitted (inlining the bridge returning Any into the bridge
+       * returning Double).
+       * This in turn causes Closure to constant fold +(void 0) into NaN,
+       * which used to trigger the
+       *   Internal Compiler Error: Unexpected variable NaN
+       * Note that we *cannot* actually call that bridge on F, because we would
+       * run into undefined behavior! So we have another function that actually
+       * returns a Double, and we use to make sure that
+       * Function1.apply(Double)Double is reachable, which will make it
+       * reachable also for F.
+       */
+      class F extends Function1[Any, Unit] {
+        def apply(x: Any): Unit =
+          expect(x.asInstanceOf[js.Any]).toBe(5)
+      }
+
+      // Make sure the specialized Function1.apply(Double)Double is reachable.
+      @noinline def makeFun(y: Double): Double => Double = {
+        val z = y + 1.5
+        ((x: Double) => x * z): (Double => Double)
+      }
+      val someDoubleFun = makeFun(2.0)
+      expect(someDoubleFun(42.0)).toEqual(147.0)
+
+      // Make sure F itself is reachable and not completely inlineable
+      @noinline def makeF: Any => Any = (() => new F)()
+      val f = makeF
+      f(5)
+    }
   }
 }
