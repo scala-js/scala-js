@@ -30,7 +30,7 @@ import java.io.File
  *  {{{
  *  lazy val p1 = crossProject.
  *    settings(
- *      name := "test",
+ *      name := "test", // default name would be p1
  *      libraryDependencies += "org.example" %%% "test" % "0.1"
  *    ).
  *    jvmSettings(
@@ -266,8 +266,10 @@ final class CrossProject private (
 
 object CrossProject extends CrossProjectExtra {
 
-  def apply(id: String, base: File, crossType: CrossType): CrossProject =
-    CrossProject(id + "JVM", id + "JS", base, crossType)
+  def apply(id: String, base: File, crossType: CrossType): CrossProject = {
+    CrossProject(id + "JVM", id + "JS", base, crossType).
+      settings(name := id)
+  }
 
   def apply(jvmId: String, jsId: String, base: File,
       crossType: CrossType): CrossProject = {
