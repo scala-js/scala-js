@@ -30,7 +30,7 @@ import java.io.File
  *  {{{
  *  lazy val p1 = crossProject.
  *    settings(
- *      name := "test",
+ *      name := "test", // default name would be p1
  *      libraryDependencies += "org.example" %%% "test" % "0.1"
  *    ).
  *    jvmSettings(
@@ -114,6 +114,23 @@ import java.io.File
  *        main/
  *        test/
  *  </pre>
+ *
+ *  <h2>Eclipse Support</h2>
+ *  Note that by default, the sbteclipse plugin uses sbt's project names to name
+ *  the Eclipse projects it generates. Since the CrossProject generates two
+ *  projects with the same name, this may result in a conflict when importing
+ *  the projects into Eclipse.
+ *
+ *  You can configure sbteclipse to
+ *  [https://github.com/typesafehub/sbteclipse/wiki/Using-sbteclipse#useprojectid
+ *  use the project ID] instead (which is unique in sbt as well):
+ *
+ *  {{{
+ *  EclipseKeys.useProjectId := true
+ *  }}}
+ *
+ *  Alternatively, you can of course also just import one of the two projects
+ *  into your Eclipse.
  *
  *  <h2>IntelliJ IDEA Support</h2>
  *  While CrossProject works out of the box with Eclipse and the sbt eclipse
@@ -266,8 +283,10 @@ final class CrossProject private (
 
 object CrossProject extends CrossProjectExtra {
 
-  def apply(id: String, base: File, crossType: CrossType): CrossProject =
-    CrossProject(id + "JVM", id + "JS", base, crossType)
+  def apply(id: String, base: File, crossType: CrossType): CrossProject = {
+    CrossProject(id + "JVM", id + "JS", base, crossType).
+      settings(name := id)
+  }
 
   def apply(jvmId: String, jsId: String, base: File,
       crossType: CrossType): CrossProject = {
