@@ -31,7 +31,7 @@ object OptimizerTest extends JasmineTest {
 
   describe("Optimizer regression tests") {
 
-    it("must not break * (-1) - #1453") {
+    it("must not break * (-1) for Int - #1453") {
       @noinline
       def start0: Int = (() => 10)()
 
@@ -40,6 +40,16 @@ object OptimizerTest extends JasmineTest {
       val numRangeElements = start - 1
       val lastElement = start + (numRangeElements - 1) * step
       expect(lastElement).toEqual(2)
+    }
+
+    it("must not break * (-1) for Float and Double - #1478") {
+      @noinline
+      def a: Float = (() => 5.0f)()
+      expect(a * -1.0f).toEqual(-5.0f)
+
+      @noinline
+      def b: Double = (() => 7.0)()
+      expect(b * -1.0).toEqual(-7.0)
     }
 
     it("must not break foreach on downward Range - #1453") {
