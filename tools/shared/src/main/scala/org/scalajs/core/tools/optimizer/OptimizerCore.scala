@@ -2315,7 +2315,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           case (_, FloatLiteral(_))               => foldBinaryOp(Float_*, rhs, lhs)
 
           case (FloatLiteral(1), _)  => rhs
-          case (FloatLiteral(-1), _) => foldBinaryOp(Float_-, FloatLiteral(0), lhs)
+          case (FloatLiteral(-1), _) => foldBinaryOp(Float_-, FloatLiteral(0), rhs)
 
           case _ => default
         }
@@ -2370,7 +2370,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
           case (_, NumberLiteral(_))                => foldBinaryOp(Double_*, rhs, lhs)
 
           case (NumberLiteral(1), _)  => rhs
-          case (NumberLiteral(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), lhs)
+          case (NumberLiteral(-1), _) => foldBinaryOp(Double_-, DoubleLiteral(0), rhs)
 
           case _ => default
         }
