@@ -34,8 +34,6 @@ import AssemblyKeys.{assembly, assemblyOption}
 
 object Build extends sbt.Build {
 
-  val fetchedScalaSourceDir = settingKey[File](
-    "Directory the scala source is fetched to")
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
   val shouldPartest = settingKey[Boolean](
@@ -465,7 +463,7 @@ object Build extends sbt.Build {
             "-P:scalajs:fixClassOf",
             // Link source maps to github sources of original Scalalib
             "-P:scalajs:mapSourceURI:" +
-            fetchedScalaSourceDir.value.toURI +
+            (artifactPath in fetchScalaSource).value.toURI +
             "->https://raw.githubusercontent.com/scala/scala/v" +
             scalaVersion.value + "/src/library/"
             ),
@@ -473,16 +471,14 @@ object Build extends sbt.Build {
           // Link sources in override directories to our GitHub repo
           scalaJSSourceMapSettings,
 
-          fetchedScalaSourceDir := (
-            baseDirectory.value / "fetchedSources" /
-            scalaVersion.value
-          ),
+          artifactPath in fetchScalaSource :=
+            baseDirectory.value / "fetchedSources" / scalaVersion.value,
 
           fetchScalaSource := {
             val s = streams.value
             val cacheDir = s.cacheDirectory
             val ver = scalaVersion.value
-            val trgDir = fetchedScalaSourceDir.value
+            val trgDir = (artifactPath in fetchScalaSource).value
 
             val report = updateClassifiers.value
             val scalaLibSourcesJar = report.select(
@@ -938,17 +934,15 @@ object Build extends sbt.Build {
 
           resolvers += Resolver.typesafeIvyRepo("releases"),
 
-          fetchedScalaSourceDir := (
-            baseDirectory.value / "fetchedSources" /
-            scalaVersion.value
-          ),
+          artifactPath in fetchScalaSource :=
+            baseDirectory.value / "fetchedSources" / scalaVersion.value,
 
           fetchScalaSource := {
             import org.eclipse.jgit.api._
 
             val s = streams.value
             val ver = scalaVersion.value
-            val trgDir = fetchedScalaSourceDir.value
+            val trgDir = (artifactPath in fetchScalaSource).value
 
             if (!trgDir.exists) {
               s.log.info(s"Fetching Scala source version $ver")
