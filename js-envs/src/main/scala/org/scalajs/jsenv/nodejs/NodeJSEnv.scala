@@ -144,10 +144,22 @@ class NodeJSEnv private (
             socket = net.connect(${serverSocket.getLocalPort});
             socket.on('data', onData);
             socket.on('error', function(err) {
+              // Whatever happens, this closes the Com
               socket.end();
-              // EPIPE on write is expected if the JVM closes
-              if (err.syscall !== "write" || err.code !== "EPIPE")
-                throw err;
+
+              // Expected errors:
+              // - EPIPE on write: JVM closes
+              // - ECONNREFUSED on connect: JVM closes before JS opens
+              var expected = (
+                  err.syscall === "write"   && err.code === "EPIPE" ||
+                  err.syscall === "connect" && err.code === "ECONNREFUSED"
+              );
+
+              if (!expected) {
+                console.error("Scala.js Com failed: " + err);
+                // We must terminate with an error
+                process.exit(-1);
+              }
             });
           },
           send: function(msg) {

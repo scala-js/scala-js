@@ -108,6 +108,17 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
+  def noMessageTest = {
+    val com = comRunner(s"""
+      // Make sure JVM has already closed when we init
+      setTimeout(scalajsCom.init, 1000, function(msg) {});
+    """)
+    com.start()
+    com.close()
+    com.await(DefaultTimeout)
+  }
+
+  @Test
   def stopTestTimeout = {
 
     val async = asyncRunner(s"""
