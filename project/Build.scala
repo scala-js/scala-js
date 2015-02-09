@@ -472,7 +472,7 @@ object Build extends sbt.Build {
           scalaJSSourceMapSettings,
 
           artifactPath in fetchScalaSource :=
-            baseDirectory.value / "fetchedSources" / scalaVersion.value,
+            target.value / "scalaSources" / scalaVersion.value,
 
           fetchScalaSource := {
             val s = streams.value
@@ -490,7 +490,7 @@ object Build extends sbt.Build {
 
             FileFunction.cached(cacheDir / s"fetchScalaSource-$ver",
                 FilesInfo.lastModified, FilesInfo.exists) { dependencies =>
-              s.log.info(s"Fetching Scala library sources to $trgDir...")
+              s.log.info(s"Unpacking Scala library sources to $trgDir...")
 
               if (trgDir.exists)
                 IO.delete(trgDir)
