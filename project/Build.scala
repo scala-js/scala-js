@@ -244,7 +244,7 @@ object Build extends sbt.Build {
             sys.props("scala.scalajs.compiler.test.output") =
               testOutDir.getAbsolutePath
             sys.props("scala.scalajs.compiler.test.scalajslib") =
-              (artifactPath in (library, Compile, packageBin)).value.getAbsolutePath
+              (packageBin in (library, Compile)).value.getAbsolutePath
             sys.props("scala.scalajs.compiler.test.scalalib") = {
 
               def isScalaLib(att: Attributed[File]) = {

@@ -55,11 +55,7 @@ The tests for the javalibEx are in a separate testing project:
 The compiler tests (mostly verifying expected compile error messages) can be
 run with
 
-    > package
     > compiler/test
-
-(`package` typically needs to be executed manually, because `compiler/test`
-does not depend on `package`.)
 
 The full partest suite (tests of the Scala language, ported in Scala.js) are
 run with:
