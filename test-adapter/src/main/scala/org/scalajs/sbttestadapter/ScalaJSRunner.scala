@@ -16,11 +16,13 @@ import org.scalajs.core.tools.json._
 import org.scalajs.jsenv._
 
 import scala.collection.concurrent.TrieMap
+import scala.collection.JavaConverters._
 
 import scala.concurrent.duration._
 import scala.util.{Try, Failure, Success}
 
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentLinkedQueue
 
 import sbt.testing._
 
@@ -40,14 +42,36 @@ final class ScalaJSRunner private[testadapter] (
   /** Map of ThreadId -> Slave */
   private[this] val slaves = TrieMap.empty[Long, ComJSRunner]
 
+  /** Queue of unassigned but started slaves.
+   *
+   *  The slaves in this queue have been requested to start a runner,
+   *  but the corresponding messages have not been handled yet
+   */
+  private[this] val readySlaves = new ConcurrentLinkedQueue[ComJSRunner]
+
   /** An object used as lock for the loggers. Ensures output does not get
    *  interleaved.
    */
   private[testadapter] val loggerLock = new Object
 
-  // Constructor body
+  // Constructor body, factored out to allow local vals
+  init()
+  private def init(): Unit = {
+    createMasterRunner()
 
-  createRemoteRunner()
+    // Create anticipated slaves
+    val readySlaveCount = Runtime.getRuntime().availableProcessors()
+    val slaves = List.fill(readySlaveCount)(launchNewSlave())
+
+    // Wait for master runner to come up
+    awaitMasterRunner()
+
+    // Request slaves to start runner
+    for (slave <- slaves) {
+      createSlaveRunner(slave)
+      readySlaves.add(slave)
+    }
+  }
 
   // Public API
 
@@ -74,7 +98,7 @@ final class ScalaJSRunner private[testadapter] (
 
     // First we run the stopping sequence of the slaves
     val slavesDeadline = VMTermTimeout.fromNow
-    val slavesClosing = stopSlaves(slavesDeadline)
+    val slavesClosing = closeSlaves(slavesDeadline)
 
     /* Once all slaves are closing, we can schedule termination of the master.
      * We need a fresh deadline for the master, since we can only start its
@@ -94,7 +118,7 @@ final class ScalaJSRunner private[testadapter] (
 
     // Now we wait for everyone to be completely stopped
     val slavesStopped =
-      slaves.values.toList.map(s => Try(s.awaitOrStop(slavesDeadline.timeLeft)))
+      allSlaves.map(s => Try(s.awaitOrStop(slavesDeadline.timeLeft)))
     val masterStopped = Try(master.awaitOrStop(masterDeadline.timeLeft))
 
     // Cleanup
@@ -135,13 +159,21 @@ final class ScalaJSRunner private[testadapter] (
 
   // Slave Management
 
+  /** Gets a slave for a [[ScalaJSTask]] which has already a started runner */
   private[testadapter] def getSlave(): ComJSRunner = {
     val threadId = Thread.currentThread().getId()
 
     // Note that this is thread safe, since each thread can only operate on
     // the value associated to its thread id.
     if (!slaves.contains(threadId)) {
-      val slave = createSlave()
+      val slave = {
+        Option(readySlaves.poll()).fold {
+          createSlave()
+        } { slave =>
+          awaitSlaveRunner(slave)
+          slave
+        }
+      }
       slaves.put(threadId, slave)
       slave
     } else {
@@ -149,11 +181,16 @@ final class ScalaJSRunner private[testadapter] (
     }
   }
 
-  /** Starts the stopping sequence of all slaves.
-   *  The returned future will be completed when all slaves are closing.
+  /** Starts the stopping sequence of all slaves by closing their Com channel.
+   *
+   *  Instead of throwing any exception, this method returns a [[Try]].
    */
-  private def stopSlaves(deadline: Deadline): Try[Unit] = {
-    val slaves = this.slaves.values.toList // .toList to make it strict
+  private def closeSlaves(deadline: Deadline): Try[Unit] = {
+    // Flush out messages on started, but unused slaves
+    readySlaves.iterator().asScala.foreach(awaitSlaveRunner)
+
+    // Now, work on all slaves
+    val slaves = allSlaves
 
     // First launch the stopping sequence on all slaves
     val stopMessagesSent = for (slave <- slaves) yield Try {
@@ -176,15 +213,9 @@ final class ScalaJSRunner private[testadapter] (
   private def createSlave(): ComJSRunner = {
     // We don't want to create new slaves when we're closing/closed
     ensureNotDone()
-
-    // Launch the slave
-    val slave = framework.createRunner(slaveLauncher)
-    slave.start()
-
-    // Create a runner on the slave
-    slave.send("newRunner")
-    ComUtils.receiveLoop(slave)(msgHandler(slave) orElse ComUtils.doneHandler)
-
+    val slave = launchNewSlave()
+    createSlaveRunner(slave)
+    awaitSlaveRunner(slave)
     slave
   }
 
@@ -214,7 +245,7 @@ final class ScalaJSRunner private[testadapter] (
       throw new IllegalStateException("Runner is already done")
   }
 
-  private def createRemoteRunner(): Unit = {
+  private def createMasterRunner(): Unit = {
     assert(master == null)
 
     master = framework.createRunner(masterLauncher)
@@ -228,9 +259,27 @@ final class ScalaJSRunner private[testadapter] (
     }
 
     master.send("newRunner:" + jsonToString(data))
+  }
+
+  private def awaitMasterRunner(): Unit = {
     ComUtils.receiveResponse(master) {
       case ("ok", "") =>
     }
   }
+
+  private def launchNewSlave(): ComJSRunner = {
+    val slave = framework.createRunner(slaveLauncher)
+    slave.start()
+    slave
+  }
+
+  private def createSlaveRunner(slave: ComJSRunner): Unit =
+    slave.send("newRunner")
+
+  private def awaitSlaveRunner(slave: ComJSRunner): Unit =
+    ComUtils.receiveLoop(slave)(msgHandler(slave) orElse ComUtils.doneHandler)
+
+  private def allSlaves: List[ComJSRunner] =
+    slaves.values.toList ++ readySlaves.asScala
 
 }
