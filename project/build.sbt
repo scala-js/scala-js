@@ -7,6 +7,8 @@ addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.2")
 
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.6")
+
 libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
 libraryDependencies += "io.apigee" % "rhino" % "1.7R5pre4"
@@ -36,7 +38,7 @@ unmanagedSourceDirectories in Compile ++= {
 
 // Add the ScalaJSEnvGenerator to the build (its in the build of the build)
 sources in Compile +=
-  baseDirectory.value / "project" / "ScalaJSEnvGenerator.scala" 
+  baseDirectory.value / "project" / "ScalaJSEnvGenerator.scala"
 
 sourceGenerators in Compile <+= Def.task {
   ScalaJSEnvGenerator.generateEnvHolder(

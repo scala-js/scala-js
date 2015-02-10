@@ -82,6 +82,7 @@
         ++$scala javalibExTestSuite/test &&
     sbt ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
     sbt ++$scala partest/fetchScalaSource &&
+    sbt ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ]]></task>
@@ -91,19 +92,26 @@
     sbt 'set scalaJSStage in Global := FastOptStage' \
         ++$scala toolsJS/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala toolsJS/test
+        ++$scala toolsJS/test \
+        irJS/mimaReportBinaryIssues toolsJS/mimaReportBinaryIssues
   ]]></task>
 
   <task id="tools-cli-stubs"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
     sbt ++$scala tools/package tools/test cli/assembly stubs/package \
-        jsEnvs/test
+        jsEnvs/test \
+        ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
+        jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
+        stubs/mimaReportBinaryIssues
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
     export JAVA_HOME=$HOME/apps/java-$java
     sbt ++$scala tools/package tools/test cli/assembly stubs/package \
-        sbtPlugin/package jsEnvs/test
+        sbtPlugin/package jsEnvs/test \
+        ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
+        jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
+        sbtPlugin/mimaReportBinaryIssues stubs/mimaReportBinaryIssues
   ]]></task>
 
   <task id="partestc"><![CDATA[
