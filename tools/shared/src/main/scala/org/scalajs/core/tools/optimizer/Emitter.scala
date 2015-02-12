@@ -122,7 +122,7 @@ final class Emitter(semantics: Semantics) {
           classEmitter.genTypeData(linkedClass)))
     }
 
-    if (linkedClass.hasInstances && kind.isClass)
+    if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
       addTree(classTreeCache.setTypeData.getOrElseUpdate(
           classEmitter.genSetTypeData(linkedClass)))
 

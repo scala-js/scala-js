@@ -337,6 +337,7 @@ final class Analyzer(semantics: Semantics,
       instantiatedFrom ::= from
       if (!isInstantiated && isClass) {
         isInstantiated = true
+        accessData()
         ancestors.foreach(_.subclassInstantiated())
 
         for ((methodName, from) <- delayedCalls)
@@ -348,7 +349,6 @@ final class Analyzer(semantics: Semantics,
       instantiatedFrom ::= from
       if (!isAnySubclassInstantiated && isClass) {
         isAnySubclassInstantiated = true
-        accessData()
       }
     }
 
