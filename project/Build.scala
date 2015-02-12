@@ -5,7 +5,7 @@ import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
-import com.typesafe.tools.mima.plugin.MimaKeys.previousArtifact
+import com.typesafe.tools.mima.plugin.MimaKeys.{previousArtifact, binaryIssueFilters}
 
 import java.io.{
   BufferedOutputStream,
@@ -298,7 +298,9 @@ object Build extends sbt.Build {
         ScalaJSEnvGenerator.generateEnvHolder(
           baseDirectory.value.getParentFile,
           (sourceManaged in Compile).value)
-      }
+      },
+
+      binaryIssueFilters ++= BinaryIncompatibilities.Tools
   )
 
   lazy val tools: Project = Project(
