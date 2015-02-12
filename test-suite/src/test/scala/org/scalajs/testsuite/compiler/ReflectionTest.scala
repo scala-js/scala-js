@@ -108,6 +108,16 @@ object ReflectionTest extends JasmineTest {
       expect(classOf[Int].isAssignableFrom(classOf[Double])).toBeFalsy
       expect(classOf[Long].isAssignableFrom(classOf[Int])).toBeFalsy
     }
+
+    it("getSuperclass - #1489") {
+      expect(classOf[SomeChildClass].getSuperclass == classOf[SomeParentClass]).toBeTruthy
+      expect(classOf[AnyRef].getSuperclass == null).toBeTruthy
+      expect(classOf[String].getSuperclass == classOf[AnyRef]).toBeTruthy
+      expect(classOf[Integer].getSuperclass == classOf[Number]).toBeTruthy
+
+      expect(classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName).toEqual(
+          "org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly")
+    }
   }
 
   object TestObject
@@ -118,5 +128,11 @@ object ReflectionTest extends JasmineTest {
   class ReflectionTestRawJSClass extends js.Object
 
   trait ReflectionTestRawJSTrait extends js.Object
+
+  class SomeParentClass
+  class SomeChildClass extends SomeParentClass
+
+  class ParentClassWhoseDataIsNotAccessedDirectly
+  class ChildClassWhoseDataIsAccessedDirectly extends ParentClassWhoseDataIsNotAccessedDirectly
 
 }

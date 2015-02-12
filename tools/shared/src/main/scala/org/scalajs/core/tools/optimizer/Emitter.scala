@@ -24,7 +24,7 @@ import org.scalajs.core.ir.{Trees => ir}
 final class Emitter(semantics: Semantics) {
   import Emitter._
 
-  private val classEmitter = new javascript.ScalaJSClassEmitter(semantics)
+  private var classEmitter: javascript.ScalaJSClassEmitter = _
   private val classCaches = mutable.Map.empty[String, ClassCache]
 
   private[this] var statsClassesReused: Int = 0
@@ -33,12 +33,14 @@ final class Emitter(semantics: Semantics) {
   private[this] var statsMethodsInvalidated: Int = 0
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
+    classEmitter = new javascript.ScalaJSClassEmitter(semantics, unit.globalInfo)
     startRun()
     try {
       for (classInfo <- unit.classDefs.sortWith(compareClasses))
         emitLinkedClass(classInfo, builder)
     } finally {
       endRun(logger)
+      classEmitter = null
     }
   }
 

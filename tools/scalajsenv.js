@@ -546,7 +546,7 @@ ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
 
 /** @constructor */
 ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
-                                 parentData, ancestors, isInstance, isArrayOf) {
+                                 ancestors, parentData, isInstance, isArrayOf) {
   var internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
