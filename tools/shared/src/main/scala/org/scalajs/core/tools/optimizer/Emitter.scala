@@ -17,11 +17,12 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.javascript
 import javascript.{Trees => js}
 
-import org.scalajs.core.ir.ClassKind
+import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.{Trees => ir}
 
 /** Emits a desugared JS tree to a builder */
 final class Emitter(semantics: Semantics) {
+  import Emitter._
 
   private val classEmitter = new javascript.ScalaJSClassEmitter(semantics)
   private val classCaches = mutable.Map.empty[String, ClassCache]
@@ -84,51 +85,51 @@ final class Emitter(semantics: Semantics) {
         classEmitter.genMethod(className, m.tree)))
     }
 
-    if (kind == ClassKind.Interface ||
-        kind == ClassKind.RawJSType || 
-        kind == ClassKind.HijackedClass) {
-      if (linkedClass.hasRuntimeTypeInfo) {
-        // there is only the data anyway
-        addTree(classTreeCache.typeData.getOrElseUpdate(
-            classEmitter.genClassDef(linkedClass)))
-      }
-    } else {
-      if (linkedClass.hasInstances) {
-        addTree(classTreeCache.constructor.getOrElseUpdate(
-            classEmitter.genConstructor(linkedClass)))
+    if (linkedClass.hasInstances && kind.isClass) {
+      addTree(classTreeCache.constructor.getOrElseUpdate(
+          classEmitter.genConstructor(linkedClass)))
 
-        // Normal methods
-        for (m <- linkedClass.memberMethods) {
-          val methodCache = classCache.getMethodCache(m.info.encodedName)
+      // Normal methods
+      for (m <- linkedClass.memberMethods) {
+        val methodCache = classCache.getMethodCache(m.info.encodedName)
 
-          addTree(methodCache.getOrElseUpdate(m.version,
-              classEmitter.genMethod(className, m.tree)))
-        }
-
-        // Exported Members
-        addTree(classTreeCache.exportedMembers.getOrElseUpdate(
-            classEmitter.genExportedMembers(linkedClass)))
+        addTree(methodCache.getOrElseUpdate(m.version,
+            classEmitter.genMethod(className, m.tree)))
       }
 
-      if (linkedClass.hasRuntimeTypeInfo) {
-        addTree(classTreeCache.typeData.getOrElseUpdate(js.Block(
-            classEmitter.genInstanceTests(linkedClass),
-            classEmitter.genArrayInstanceTests(linkedClass),
-            classEmitter.genTypeData(linkedClass)
-        )(linkedClass.pos)))
-      }
-
-      if (linkedClass.hasInstances)
-        addTree(classTreeCache.setTypeData.getOrElseUpdate(
-            classEmitter.genSetTypeData(linkedClass)))
-
-      if (linkedClass.kind == ClassKind.ModuleClass)
-        addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
-            classEmitter.genModuleAccessor(linkedClass)))
-
-      addTree(classTreeCache.classExports.getOrElseUpdate(
-          classEmitter.genClassExports(linkedClass)))
+      // Exported Members
+      addTree(classTreeCache.exportedMembers.getOrElseUpdate(
+          classEmitter.genExportedMembers(linkedClass)))
     }
+
+    val needInstanceTests = {
+      linkedClass.hasInstanceTests || {
+        linkedClass.hasRuntimeTypeInfo &&
+        ClassesWhoseDataReferToTheirInstanceTests.contains(linkedClass.encodedName)
+      }
+    }
+    if (needInstanceTests) {
+      addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
+          classEmitter.genInstanceTests(linkedClass),
+          classEmitter.genArrayInstanceTests(linkedClass)
+      )(linkedClass.pos)))
+    }
+
+    if (linkedClass.hasRuntimeTypeInfo) {
+      addTree(classTreeCache.typeData.getOrElseUpdate(
+          classEmitter.genTypeData(linkedClass)))
+    }
+
+    if (linkedClass.hasInstances && kind.isClass)
+      addTree(classTreeCache.setTypeData.getOrElseUpdate(
+          classEmitter.genSetTypeData(linkedClass)))
+
+    if (linkedClass.kind == ClassKind.ModuleClass)
+      addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
+          classEmitter.genModuleAccessor(linkedClass)))
+
+    addTree(classTreeCache.classExports.getOrElseUpdate(
+        classEmitter.genClassExports(linkedClass)))
   }
 
   // Helpers
@@ -202,10 +203,18 @@ final class Emitter(semantics: Semantics) {
 
     def cleanAfterRun(): Boolean = _cacheUsed
   }
+}
+
+object Emitter {
+  private val ClassesWhoseDataReferToTheirInstanceTests = {
+    Definitions.AncestorsOfHijackedClasses +
+    Definitions.ObjectClass + Definitions.StringClass
+  }
 
   private final class DesugaredClassCache {
     val constructor = new OneTimeCache[js.Tree]
     val exportedMembers = new OneTimeCache[js.Tree]
+    val instanceTests = new OneTimeCache[js.Tree]
     val typeData = new OneTimeCache[js.Tree]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]

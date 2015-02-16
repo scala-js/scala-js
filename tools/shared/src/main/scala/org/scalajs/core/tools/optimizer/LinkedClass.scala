@@ -45,6 +45,7 @@ final class LinkedClass(
     // Actual Linking info
     val ancestors: List[String],
     val hasInstances: Boolean,
+    val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
     val version: Option[String]) {
 
@@ -84,6 +85,7 @@ final class LinkedClass(
       pos: Position = this.pos,
       ancestors: List[String] = this.ancestors,
       hasInstances: Boolean = this.hasInstances,
+      hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
       version: Option[String] = this.version) = {
     new LinkedClass(
@@ -103,6 +105,7 @@ final class LinkedClass(
         pos,
         ancestors,
         hasInstances,
+        hasInstanceTests,
         hasRuntimeTypeInfo,
         version)
   }
@@ -184,6 +187,7 @@ object LinkedClass {
         classDef.pos,
         ancestors,
         hasInstances = true,
+        hasInstanceTests = true,
         hasRuntimeTypeInfo = true,
         version = None)
   }
@@ -210,6 +214,7 @@ object LinkedClass {
         pos = Position.NoPosition,
         ancestors = List(Definitions.ObjectClass, encodedName),
         hasInstances = true,
+        hasInstanceTests = true,
         hasRuntimeTypeInfo = true,
         version = version)
   }

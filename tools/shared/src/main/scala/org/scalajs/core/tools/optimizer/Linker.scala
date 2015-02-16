@@ -252,6 +252,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
         classDef.pos,
         ancestors.toList,
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
+        hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         version)
   }

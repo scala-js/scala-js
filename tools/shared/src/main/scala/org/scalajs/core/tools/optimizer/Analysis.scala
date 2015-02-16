@@ -42,6 +42,7 @@ object Analysis {
     def isInstantiated: Boolean
     def isAnySubclassInstantiated: Boolean
     def isModuleAccessed: Boolean
+    def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
     def instantiatedFrom: Seq[From]
     def isNeededAtAll: Boolean

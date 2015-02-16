@@ -209,6 +209,7 @@ final class Analyzer(semantics: Semantics,
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false
+    var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
 
     var instantiatedFrom: List[From] = Nil
@@ -216,6 +217,7 @@ final class Analyzer(semantics: Semantics,
     val delayedCalls = mutable.Map.empty[String, From]
 
     def isNeededAtAll =
+      areInstanceTestsUsed ||
       isDataAccessed ||
       isAnySubclassInstantiated ||
       isAnyStaticMethodReachable
@@ -315,6 +317,13 @@ final class Analyzer(semantics: Semantics,
       if (!isAnySubclassInstantiated && isClass) {
         isAnySubclassInstantiated = true
         accessData()
+      }
+    }
+
+    def useInstanceTests()(implicit from: From): Unit = {
+      if (!areInstanceTestsUsed) {
+        checkExistent()
+        areInstanceTestsUsed = true
       }
     }
 
@@ -436,7 +445,12 @@ final class Analyzer(semantics: Semantics,
         lookupClass(className).instantiated()
       }
 
-      for (className <- data.usedInstanceTests ++ data.accessedClassData) {
+      for (className <- data.usedInstanceTests) {
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className).useInstanceTests()
+      }
+
+      for (className <- data.accessedClassData) {
         if (!Definitions.PrimitiveClasses.contains(className))
           lookupClass(className).accessData()
       }

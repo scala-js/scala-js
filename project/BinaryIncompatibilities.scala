@@ -27,6 +27,26 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.LinkedClass.equals"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.optimizer.LinkedClass.hashCode")
+          "org.scalajs.core.tools.optimizer.LinkedClass.hashCode"),
+
+      // Breaking changes: new field in LinkedClass
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.LinkedClass.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.optimizer.LinkedClass.copy$default$18"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.LinkedClass.this"),
+
+      /* In theory, this is a problem, but no one but us is going to
+       * *implement* Analysis.ClassInfo.
+       */
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Analysis#ClassInfo.areInstanceTestsUsed"),
+
+      // Private things, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Emitter#OneTimeCache.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Emitter#DesugaredClassCache.this")
   )
 }
