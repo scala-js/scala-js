@@ -1,6 +1,14 @@
 package java.nio
 
 abstract class Buffer private[nio] (val _capacity: Int) {
+  private[nio] type ElementType
+
+  private[nio] type BufferType >: this.type <: Buffer {
+    type ElementType = Buffer.this.ElementType
+  }
+
+  // Normal implementation of Buffer
+
   private var _limit: Int = capacity
   private var _position: Int = 0
   private[nio] var _mark: Int = -1
@@ -72,7 +80,10 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   def hasArray(): Boolean
 
-  def array(): Object
+  /* Note: in the JDK, this returns Object.
+   * But Array[ElementType] erases to Object so this is binary compatible.
+   */
+  def array(): Array[ElementType]
 
   def arrayOffset(): Int
 
@@ -80,4 +91,19 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   override def toString(): String =
     s"${getClass.getName}[pos=$position lim=$limit cap=$capacity]"
+
+  /* Generic access to methods declared in subclasses.
+   * These methods allow to write generic algorithms on any kind of Buffer.
+   * The optimizer will get rid of all the overhead.
+   * We only declare the methods we need somewhere.
+   */
+
+  private[nio] def _array: Array[ElementType]
+  private[nio] def _arrayOffset: Int
+
+  private[nio] def get(): ElementType
+  private[nio] def put(e: ElementType): BufferType
+
+  private[nio] def get(dst: Array[ElementType], offset: Int, length: Int): BufferType
+  private[nio] def put(src: Array[ElementType], offset: Int, length: Int): BufferType
 }
