@@ -715,24 +715,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Labeled(ident @ Ident(label, _), tpe, body) =>
         returnable(label, tpe, body, isStat = false, usePreTransform = true)(cont)
 
-      case New(cls @ ClassType(className), ctor, args) =>
-        tryNewInlineableClass(className) match {
-          case Some(initialValue) =>
-            pretransformExprs(args) { targs =>
-              tryOrRollback { cancelFun =>
-                inlineClassConstructor(
-                    new AllocationSite(tree),
-                    cls, initialValue, ctor, targs, cancelFun)(cont)
-              } { () =>
-                cont(PreTransTree(
-                    New(cls, ctor, targs.map(finishTransformExpr)),
-                    RefinedType(cls, isExact = true, isNullable = false)))
-              }
-            }
-          case None =>
-            cont(PreTransTree(
-                New(cls, ctor, args.map(transformExpr)),
-                RefinedType(cls, isExact = true, isNullable = false)))
+      case New(cls, ctor, args) =>
+        pretransformExprs(args) { targs =>
+          pretransformNew(tree, cls, ctor, targs)(cont)
         }
 
       case tree: Select =>
@@ -907,6 +892,29 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             cont(PreTransTree(Select(newQual, item)(expectedType),
                 RefinedType(expectedType)))
         }
+    }
+  }
+
+  private def pretransformNew(tree: Tree, cls: ClassType, ctor: Ident,
+      targs: List[PreTransform])(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    tryNewInlineableClass(cls.className) match {
+      case Some(initialValue) =>
+        tryOrRollback { cancelFun =>
+          inlineClassConstructor(
+              new AllocationSite(tree),
+              cls, initialValue, ctor, targs, cancelFun)(cont)
+        } { () =>
+          cont(PreTransTree(
+              New(cls, ctor, targs.map(finishTransformExpr)),
+              RefinedType(cls, isExact = true, isNullable = false)))
+        }
+      case None =>
+        cont(PreTransTree(
+            New(cls, ctor, targs.map(finishTransformExpr)),
+            RefinedType(cls, isExact = true, isNullable = false)))
     }
   }
 
@@ -1370,7 +1378,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   private def callIntrinsic(code: Int, optTReceiver: Option[PreTransform],
       targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
       cont: PreTransCont)(
-      implicit pos: Position): TailRec[Tree] = {
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     import Intrinsics._
 
@@ -1381,6 +1389,22 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     @inline def contTree(result: Tree) = cont(PreTransTree(result))
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
+
+    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] = {
+      contTree(Apply(finishTransformExpr(optTReceiver.get),
+          Ident(methodName), newArgs)(resultType))
+    }
+
+    def cursoryArrayElemType(tpe: ArrayType): Type = {
+      if (tpe.dimensions != 1) AnyType
+      else (tpe.baseClassName match {
+        case "Z"                   => BooleanType
+        case "B" | "C" | "S" | "I" => IntType
+        case "F"                   => FloatType
+        case "D"                   => DoubleType
+        case _                     => AnyType
+      })
+    }
 
     def asRTLong(arg: Tree): Tree =
       AsInstanceOf(arg, ClassType(LongImpl.RuntimeLongClass))
@@ -1395,6 +1419,54 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         contTree(CallHelper("systemArraycopy", newArgs)(NoType))
       case IdentityHashCode =>
         contTree(CallHelper("systemIdentityHashCode", newArgs)(IntType))
+
+      // scala.runtime.ScalaRunTime object
+
+      case ArrayApply =>
+        val List(array, index) = newArgs
+        array.tpe match {
+          case arrayTpe @ ArrayType(base, depth) =>
+            val elemType = cursoryArrayElemType(arrayTpe)
+            val select = ArraySelect(array, index)(elemType)
+            if (base == "C")
+              boxChar(select)(cont)
+            else
+              contTree(select)
+
+          case _ =>
+            defaultApply("array$undapply__O__I__O", AnyType)
+        }
+
+      case ArrayUpdate =>
+        val List(tarray, tindex, tvalue) = targs
+        tarray.tpe.base match {
+          case arrayTpe @ ArrayType(base, depth) =>
+            val array = finishTransformExpr(tarray)
+            val index = finishTransformExpr(tindex)
+            val elemType = cursoryArrayElemType(arrayTpe)
+            val select = ArraySelect(array, index)(elemType)
+            val cont1: PreTransCont = { tunboxedValue =>
+              contTree(Assign(select, finishTransformExpr(tunboxedValue)))
+            }
+            base match {
+              case "Z" | "B" | "S" | "I" | "L" | "F" | "D" if depth == 1 =>
+                foldUnbox(tvalue, base.charAt(0))(cont1)
+              case "C" if depth == 1 =>
+                unboxChar(tvalue)(cont1)
+              case _ =>
+                cont1(tvalue)
+            }
+          case _ =>
+            defaultApply("array$undupdate__O__I__O__V", AnyType)
+        }
+
+      case ArrayLength =>
+        targs.head.tpe.base match {
+          case _: ArrayType =>
+            contTree(Trees.ArrayLength(newArgs.head))
+          case _ =>
+            defaultApply("array$undlength__O__I", IntType)
+        }
 
       // scala.scalajs.runtime package object
 
@@ -1451,6 +1523,26 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Float64ArrayToDoubleArray =>
         contTree(CallHelper("typedArray2DoubleArray", newArgs)(AnyType))
     }
+  }
+
+  private def boxChar(value: Tree)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    pretransformNew(value, ClassType(Definitions.BoxedCharacterClass),
+        Ident("init___C"), List(PreTransTree(value)))(cont)
+  }
+
+  private def unboxChar(tvalue: PreTransform)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    val BoxesRunTimeModuleClassName = "sr_BoxesRunTime$"
+    val treceiver = PreTransTree(LoadModule(
+        ClassType(BoxesRunTimeModuleClassName)))
+    val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
+      throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
+    }
+    inline(tvalue.tpe.allocationSite, Some(treceiver), List(tvalue), target,
+        isStat = false, usePreTransform = true)(cont)
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
@@ -3276,7 +3368,11 @@ private[optimizer] object OptimizerCore {
     final val ArrayCopy        = 1
     final val IdentityHashCode = ArrayCopy + 1
 
-    final val PropertiesOf = IdentityHashCode + 1
+    final val ArrayApply  = IdentityHashCode + 1
+    final val ArrayUpdate = ArrayApply       + 1
+    final val ArrayLength = ArrayUpdate      + 1
+
+    final val PropertiesOf = ArrayLength + 1
 
     final val LongToString   = PropertiesOf   + 1
     final val LongCompare    = LongToString   + 1
@@ -3305,6 +3401,10 @@ private[optimizer] object OptimizerCore {
     val intrinsics: Map[String, Int] = Map(
       "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
       "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+
+      "sr_ScalaRunTime$.array$undapply__O__I__O"     -> ArrayApply,
+      "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
+      "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
       "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 

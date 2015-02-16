@@ -47,6 +47,8 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.Emitter#OneTimeCache.this"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.optimizer.Emitter#DesugaredClassCache.this")
+          "org.scalajs.core.tools.optimizer.Emitter#DesugaredClassCache.this"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.OptimizerCore.org$scalajs$core$tools$optimizer$OptimizerCore$$callIntrinsic")
   )
 }
