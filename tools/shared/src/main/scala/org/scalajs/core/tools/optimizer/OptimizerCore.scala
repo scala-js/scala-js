@@ -1254,12 +1254,21 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         isLikelyOptimizable(result)
 
       case PreTransLocalDef(localDef) =>
-        localDef.replacement match {
+        (localDef.replacement match {
           case TentativeClosureReplacement(_, _, _, _, _, _) => true
           case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
           case InlineClassBeingConstructedReplacement(_, _)  => true
           case InlineClassInstanceReplacement(_, _, _)       => true
           case _                                             => false
+        }) && {
+          /* java.lang.Character is @inline so that *local* box/unbox pairs
+           * can be eliminated. But we don't want that to force inlining of
+           * a method only because we pass it a boxed Char.
+           */
+          localDef.tpe.base match {
+            case ClassType(Definitions.BoxedCharacterClass) => false
+            case _                                          => true
+          }
         }
 
       case PreTransRecordTree(_, _, _) =>

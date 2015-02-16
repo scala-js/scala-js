@@ -2,6 +2,7 @@ package java.lang
 
 import scala.scalajs.js
 
+@inline
 class Character(private val value: scala.Char) extends Comparable[Character] {
 
   def charValue(): scala.Char = value
