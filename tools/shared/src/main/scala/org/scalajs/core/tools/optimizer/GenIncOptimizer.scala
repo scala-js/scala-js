@@ -786,7 +786,7 @@ abstract class GenIncOptimizer(semantics: Semantics,
         if (changed) {
           tagBodyAskers()
 
-          val oldAttributes = (inlineable, isTraitImplForwarder)
+          val oldAttributes = (inlineable, isForwarder)
 
           optimizerHints = methodDef.optimizerHints
           originalDef = methodDef
@@ -794,7 +794,7 @@ abstract class GenIncOptimizer(semantics: Semantics,
           updateInlineable()
           tag()
 
-          val newAttributes = (inlineable, isTraitImplForwarder)
+          val newAttributes = (inlineable, isForwarder)
           newAttributes != oldAttributes
         } else {
           false

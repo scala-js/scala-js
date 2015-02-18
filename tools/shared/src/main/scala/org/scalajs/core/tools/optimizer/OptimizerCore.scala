@@ -1092,16 +1092,33 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 }
               }
             } else {
-              if (impls.forall(_.isTraitImplForwarder)) {
+              if (impls.forall(_.isForwarder)) {
                 val reference = impls.head
-                val ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =
-                  getMethodBody(reference).body
-                if (!impls.tail.forall(getMethodBody(_).body match {
-                  case ApplyStatic(ClassType(`staticCls`),
-                      Ident(`methodName`, _), _) => true
-                  case _ => false
-                })) {
-                  // Not all calling the same method in the same trait impl
+                val areAllTheSame = getMethodBody(reference).body match {
+                  // Trait impl forwarder
+                  case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
+                    impls.tail.forall(getMethodBody(_).body match {
+                      case ApplyStatic(ClassType(`staticCls`),
+                          Ident(`methodName`, _), _) => true
+                      case _ => false
+                    })
+
+                  // Bridge method
+                  case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
+                    impls.tail.forall(getMethodBody(_).body match {
+                      case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
+                        referenceArgs.zip(implArgs) forall {
+                          case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
+                            unboxID1 == unboxID2
+                        }
+                      case _ => false
+                    })
+
+                  case body =>
+                    throw new AssertionError("Invalid forwarder shape: " + body)
+                }
+                if (!areAllTheSame) {
+                  // Not all doing the same thing
                   treeNotInlined
                 } else {
                   pretransformExprs(args) { targs =>
@@ -3450,7 +3467,7 @@ private[optimizer] object OptimizerCore {
   trait AbstractMethodID {
     def inlineable: Boolean
     def shouldInline: Boolean
-    def isTraitImplForwarder: Boolean
+    def isForwarder: Boolean
   }
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
@@ -3462,12 +3479,12 @@ private[optimizer] object OptimizerCore {
 
     var inlineable: Boolean = false
     var shouldInline: Boolean = false
-    var isTraitImplForwarder: Boolean = false
+    var isForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
       val MethodDef(_, Ident(methodName, _), params, _, body) = originalDef
 
-      isTraitImplForwarder = body match {
+      isForwarder = body match {
         // Shape of forwarders to trait impls
         case ApplyStatic(impl, method, args) =>
           ((args.size == params.size + 1) &&
@@ -3478,12 +3495,21 @@ private[optimizer] object OptimizerCore {
                 case _ => false
               }))
 
+        // Shape of bridges for generic methods
+        case MaybeBox(Apply(This(), method, args), _) =>
+          (args.size == params.size) &&
+          args.zip(params).forall {
+            case (MaybeUnbox(VarRef(Ident(aname, _)), _),
+                ParamDef(Ident(pname, _), _, _)) => aname == pname
+            case _ => false
+          }
+
         case _ => false
       }
 
       inlineable = !optimizerHints.noinline
       shouldInline = inlineable && {
-        optimizerHints.inline || isTraitImplForwarder || {
+        optimizerHints.inline || isForwarder || {
           val MethodDef(_, _, params, _, body) = originalDef
           body match {
             case _:Skip | _:This | _:Literal                          => true
@@ -3505,6 +3531,30 @@ private[optimizer] object OptimizerCore {
           }
         }
       }
+    }
+  }
+
+  private object MaybeBox {
+    def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
+      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
+          Ident("boxToCharacter__C__jl_Character", _), List(arg)) =>
+        Some((arg, "C"))
+      case _ =>
+        Some((tree, ()))
+    }
+  }
+
+  private object MaybeUnbox {
+    def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
+      case AsInstanceOf(arg, tpe) =>
+        Some((arg, tpe))
+      case Unbox(arg, charCode) =>
+        Some((arg, charCode))
+      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
+          Ident("unboxToChar__O__C", _), List(arg)) =>
+        Some((arg, "C"))
+      case _ =>
+        Some((tree, ()))
     }
   }
 
