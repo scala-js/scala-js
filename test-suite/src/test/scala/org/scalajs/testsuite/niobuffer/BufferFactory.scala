@@ -79,6 +79,86 @@ object BufferFactory {
       new BufferAdapter.CharBufferAdapater(buffer)
   }
 
+  abstract class ShortBufferFactory extends BufferFactory {
+    type BufferType = ShortBuffer
+    type ElementType = Short
+
+    implicit val elemClassTag: ClassTag[ElementType] = ClassTag.Short
+
+    implicit def elemFromInt(value: Int): ElementType = value.toShort
+
+    implicit def elemToJSAny(elem: ElementType): js.Any =
+      js.Any.fromShort(elem)
+
+    implicit def bufferAdapter(
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+      new BufferAdapter.ShortBufferAdapater(buffer)
+  }
+
+  abstract class IntBufferFactory extends BufferFactory {
+    type BufferType = IntBuffer
+    type ElementType = Int
+
+    implicit val elemClassTag: ClassTag[ElementType] = ClassTag.Int
+
+    implicit def elemFromInt(value: Int): ElementType = value.toInt
+
+    implicit def elemToJSAny(elem: ElementType): js.Any =
+      js.Any.fromInt(elem)
+
+    implicit def bufferAdapter(
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+      new BufferAdapter.IntBufferAdapater(buffer)
+  }
+
+  abstract class LongBufferFactory extends BufferFactory {
+    type BufferType = LongBuffer
+    type ElementType = Long
+
+    implicit val elemClassTag: ClassTag[ElementType] = ClassTag.Long
+
+    implicit def elemFromInt(value: Int): ElementType = value.toLong
+
+    implicit def elemToJSAny(elem: ElementType): js.Any =
+      js.Any.fromDouble(elem.toDouble)
+
+    implicit def bufferAdapter(
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+      new BufferAdapter.LongBufferAdapater(buffer)
+  }
+
+  abstract class FloatBufferFactory extends BufferFactory {
+    type BufferType = FloatBuffer
+    type ElementType = Float
+
+    implicit val elemClassTag: ClassTag[ElementType] = ClassTag.Float
+
+    implicit def elemFromInt(value: Int): ElementType = value.toFloat
+
+    implicit def elemToJSAny(elem: ElementType): js.Any =
+      js.Any.fromFloat(elem)
+
+    implicit def bufferAdapter(
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+      new BufferAdapter.FloatBufferAdapater(buffer)
+  }
+
+  abstract class DoubleBufferFactory extends BufferFactory {
+    type BufferType = DoubleBuffer
+    type ElementType = Double
+
+    implicit val elemClassTag: ClassTag[ElementType] = ClassTag.Double
+
+    implicit def elemFromInt(value: Int): ElementType = value.toDouble
+
+    implicit def elemToJSAny(elem: ElementType): js.Any =
+      js.Any.fromDouble(elem)
+
+    implicit def bufferAdapter(
+        buffer: BufferType): BufferAdapter[BufferType, ElementType] =
+      new BufferAdapter.DoubleBufferAdapater(buffer)
+  }
+
   trait WrappedBufferFactory extends BufferFactory {
     protected def baseWrap(array: Array[ElementType]): BufferType
 
