@@ -26,7 +26,7 @@ abstract class ByteBuffer private[nio] (
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 
-  private var _order: ByteOrder = ByteOrder.BIG_ENDIAN
+  private var _isBigEndian: Boolean = true
 
   def slice(): ByteBuffer
 
@@ -88,56 +88,75 @@ abstract class ByteBuffer private[nio] (
   def compareTo(that: ByteBuffer): Int =
     GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
 
-  final def order(): ByteOrder = _order
+  final def order(): ByteOrder =
+    if (_isBigEndian) ByteOrder.BIG_ENDIAN
+    else              ByteOrder.LITTLE_ENDIAN
 
   final def order(bo: ByteOrder): ByteBuffer = {
     if (bo == null)
       throw new NullPointerException
-    _order = bo
+    _isBigEndian = bo == ByteOrder.BIG_ENDIAN
     this
   }
-
-  /* Not implemented:
 
   def getChar(): Char
   def putChar(value: Char): ByteBuffer
   def getChar(index: Int): Char
   def putChar(index: Int, value: Char): ByteBuffer
+
+  /* Not implemented:
   def asCharBuffer(): CharBuffer
+  */
 
   def getShort(): Short
   def putShort(value: Short): ByteBuffer
   def getShort(index: Int): Short
   def putShort(index: Int, value: Short): ByteBuffer
+
+  /* Not implemented:
   def asShortBuffer(): ShortBuffer
+  */
 
   def getInt(): Int
   def putInt(value: Int): ByteBuffer
   def getInt(index: Int): Int
   def putInt(index: Int, value: Int): ByteBuffer
+
+  /* Not implemented:
   def asIntBuffer(): IntBuffer
+  */
 
   def getLong(): Long
   def putLong(value: Long): ByteBuffer
   def getLong(index: Int): Long
   def putLong(index: Int, value: Long): ByteBuffer
+
+  /* Not implemented:
   def asLongBuffer(): LongBuffer
+  */
 
   def getFloat(): Float
   def putFloat(value: Float): ByteBuffer
   def getFloat(index: Int): Float
   def putFloat(index: Int, value: Float): ByteBuffer
+
+  /* Not implemented:
   def asFloatBuffer(): FloatBuffer
+  */
 
   def getDouble(): Double
   def putDouble(value: Double): ByteBuffer
   def getDouble(index: Int): Double
   def putDouble(index: Int, value: Double): ByteBuffer
-  def asDoubleBuffer(): DoubleBuffer
 
+  /* Not implemented:
+  def asDoubleBuffer(): DoubleBuffer
   */
 
   // Internal API
+
+  private[nio] def isBigEndian =
+    _isBigEndian
 
   private[nio] def load(index: Int): Byte
 
