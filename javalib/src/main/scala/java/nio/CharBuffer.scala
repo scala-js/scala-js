@@ -137,4 +137,20 @@ abstract class CharBuffer private[nio] (
     put(c)
 
   def order(): ByteOrder
+
+  // Internal API
+
+  private[nio] def load(index: Int): Char
+
+  private[nio] def store(index: Int, elem: Char): Unit
+
+  @inline
+  private[nio] def load(startIndex: Int,
+      dst: Array[Char], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  private[nio] def store(startIndex: Int,
+      src: Array[Char], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_store(startIndex, src, offset, length)
 }

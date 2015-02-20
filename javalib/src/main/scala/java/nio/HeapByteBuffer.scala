@@ -28,31 +28,51 @@ private[nio] final class HeapByteBuffer private (
 
   @noinline
   def get(): Byte =
-    GenHeapBuffer(this).generic_get()
+    GenBuffer(this).generic_get()
 
   @noinline
   def put(b: Byte): ByteBuffer =
-    GenHeapBuffer(this).generic_put(b)
+    GenBuffer(this).generic_put(b)
 
   @noinline
   def get(index: Int): Byte =
-    GenHeapBuffer(this).generic_get(index)
+    GenBuffer(this).generic_get(index)
 
   @noinline
   def put(index: Int, b: Byte): ByteBuffer =
-    GenHeapBuffer(this).generic_put(index, b)
+    GenBuffer(this).generic_put(index, b)
 
   @noinline
   override def get(dst: Array[Byte], offset: Int, length: Int): ByteBuffer =
-    GenHeapBuffer(this).generic_get(dst, offset, length)
+    GenBuffer(this).generic_get(dst, offset, length)
 
   @noinline
   override def put(src: Array[Byte], offset: Int, length: Int): ByteBuffer =
-    GenHeapBuffer(this).generic_put(src, offset, length)
+    GenBuffer(this).generic_put(src, offset, length)
 
   @noinline
   def compact(): ByteBuffer =
     GenHeapBuffer(this).generic_compact()
+
+  // Internal API
+
+  @inline
+  private[nio] def load(index: Int): Byte =
+    GenHeapBuffer(this).generic_load(index)
+
+  @inline
+  private[nio] def store(index: Int, elem: Byte): Unit =
+    GenHeapBuffer(this).generic_store(index, elem)
+
+  @inline
+  override private[nio] def load(startIndex: Int,
+      dst: Array[Byte], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  override private[nio] def store(startIndex: Int,
+      src: Array[Byte], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
 private[nio] object HeapByteBuffer {

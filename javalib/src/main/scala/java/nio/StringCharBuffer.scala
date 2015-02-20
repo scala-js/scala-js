@@ -33,48 +33,26 @@ private[nio] final class StringCharBuffer private (
         position + start, position + end)
   }
 
-  def get(): Char = {
-    if (!hasRemaining)
-      throw new BufferUnderflowException
-    val p = position
-    position(p + 1)
-    _csq.charAt(_csqOffset + p)
-  }
+  @noinline
+  def get(): Char =
+    GenBuffer(this).generic_get()
 
   def put(c: Char): CharBuffer =
     throw new ReadOnlyBufferException
 
-  def get(index: Int): Char = {
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _csq.charAt(_csqOffset + index)
-  }
+  @noinline
+  def get(index: Int): Char =
+    GenBuffer(this).generic_get(index)
 
-  def put(index: Int, b: Char): CharBuffer =
+  def put(index: Int, c: Char): CharBuffer =
     throw new ReadOnlyBufferException
 
-  override def get(dst: Array[Char], offset: Int, length: Int): CharBuffer = {
-    val end = offset + length
+  @noinline
+  override def get(dst: Array[Char], offset: Int, length: Int): CharBuffer =
+    GenBuffer(this).generic_get(dst, offset, length)
 
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
-
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferUnderflowException
-
-    var i = offset
-    var j = startPos + _csqOffset
-    while (i != end) {
-      dst(i) = _csq.charAt(j)
-      i += 1
-      j += 1
-    }
-    position(endPos)
-
-    this
-  }
+  override def put(src: Array[Char], offset: Int, length: Int): CharBuffer =
+    throw new ReadOnlyBufferException
 
   def compact(): CharBuffer =
     throw new ReadOnlyBufferException
@@ -85,6 +63,26 @@ private[nio] final class StringCharBuffer private (
   }
 
   def order(): ByteOrder = ByteOrder.nativeOrder()
+
+  // Internal API
+
+  @inline
+  private[nio] def load(index: Int): Char =
+    _csq.charAt(_csqOffset + index)
+
+  @inline
+  private[nio] def store(index: Int, elem: Char): Unit =
+    throw new ReadOnlyBufferException
+
+  @inline
+  override private[nio] def load(startIndex: Int,
+      dst: Array[Char], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  override private[nio] def store(startIndex: Int,
+      src: Array[Char], offset: Int, length: Int): Unit =
+    throw new ReadOnlyBufferException
 }
 
 private[nio] object StringCharBuffer {

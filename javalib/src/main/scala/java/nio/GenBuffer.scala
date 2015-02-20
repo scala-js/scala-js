@@ -9,21 +9,32 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
   import self._
 
   @inline
+  def generic_get(): ElementType =
+    load(getPosAndAdvanceRead())
+
+  @inline
+  def generic_put(elem: ElementType): B = {
+    ensureNotReadOnly()
+    store(getPosAndAdvanceWrite(), elem)
+    self
+  }
+
+  @inline
+  def generic_get(index: Int): ElementType =
+    load(validateIndex(index))
+
+  @inline
+  def generic_put(index: Int, elem: ElementType): BufferType = {
+    ensureNotReadOnly()
+    store(validateIndex(index), elem)
+    self
+  }
+
+  @inline
   def generic_get(dst: Array[ElementType],
       offset: Int, length: Int): BufferType = {
-    val end = offset + length
-
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
-    if (remaining < length)
-      throw new BufferUnderflowException
-
-    var i = offset
-    while (i != end) {
-      dst(i) = get()
-      i += 1
-    }
-
+    validateArrayIndexRange(dst, offset, length)
+    load(getPosAndAdvanceRead(length), dst, offset, length)
     self
   }
 
@@ -31,21 +42,21 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
   def generic_put(src: BufferType): BufferType = {
     if (src eq self)
       throw new IllegalArgumentException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (src.remaining > remaining)
-      throw new BufferOverflowException
+    ensureNotReadOnly()
+    val srcLimit = src.limit
+    var srcPos = src.position
+    val length = srcLimit - srcPos
+    var selfPos = getPosAndAdvanceWrite(length)
+    src.position(srcLimit)
 
-    var n = src.remaining
     val srcArray = src._array // even if read-only
     if (srcArray != null) {
-      val pos = src.position
-      put(srcArray, src._arrayOffset + pos, n)
-      src.position(pos + n)
+      store(selfPos, srcArray, src._arrayOffset + srcPos, length)
     } else {
-      while (n != 0) {
-        put(src.get())
-        n -= 1
+      while (srcPos != srcLimit) {
+        store(selfPos, src.load(srcPos))
+        srcPos += 1
+        selfPos += 1
       }
     }
 
@@ -55,21 +66,9 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
   @inline
   def generic_put(src: Array[ElementType],
       offset: Int, length: Int): BufferType = {
-    val end = offset + length
-
-    if (offset < 0 || length < 0 || end > src.length)
-      throw new IndexOutOfBoundsException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (remaining < length)
-      throw new BufferOverflowException
-
-    var i = offset
-    while (i != end) {
-      put(src(i))
-      i += 1
-    }
-
+    ensureNotReadOnly()
+    validateArrayIndexRange(src, offset, length)
+    store(getPosAndAdvanceWrite(length), src, offset, length)
     self
   }
 
@@ -105,10 +104,9 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
     var h = hashSeed
     var i = start
     while (i != end) {
-      h = mix(h, get().##)
+      h = mix(h, load(i).##)
       i += 1
     }
-    position(start)
     finalizeHash(h, end-start)
   }
 
@@ -119,25 +117,46 @@ private[nio] final class GenBuffer[B <: Buffer](val self: B) extends AnyVal {
       0
     } else {
       val thisStart = self.position
-      val thisRemaining = self.remaining
+      val thisRemaining = self.limit - thisStart
       val thatStart = that.position
-      val thatRemaining = that.remaining
+      val thatRemaining = that.limit - thatStart
       val shortestLength = Math.min(thisRemaining, thatRemaining)
 
       var i = 0
       while (i != shortestLength) {
-        val cmp = compare(self.get(), that.get())
-        if (cmp != 0) {
-          self.position(thisStart)
-          that.position(thatStart)
+        val cmp = compare(self.load(thisStart + i), that.load(thatStart + i))
+        if (cmp != 0)
           return cmp
-        }
         i += 1
       }
 
-      self.position(thisStart)
-      that.position(thatStart)
       thisRemaining.compareTo(thatRemaining)
+    }
+  }
+
+  @inline
+  def generic_load(startIndex: Int,
+      dst: Array[ElementType], offset: Int, length: Int): Unit = {
+    var selfPos = startIndex
+    val endPos = selfPos + length
+    var arrayIndex = offset
+    while (selfPos != endPos) {
+      dst(arrayIndex) = load(selfPos)
+      selfPos += 1
+      arrayIndex += 1
+    }
+  }
+
+  @inline
+  def generic_store(startIndex: Int,
+      src: Array[ElementType], offset: Int, length: Int): Unit = {
+    var selfPos = startIndex
+    val endPos = selfPos + length
+    var arrayIndex = offset
+    while (selfPos != endPos) {
+      store(selfPos, src(arrayIndex))
+      selfPos += 1
+      arrayIndex += 1
     }
   }
 

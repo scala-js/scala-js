@@ -56,87 +56,8 @@ private[nio] final class GenHeapBuffer[B <: Buffer](val self: B) extends AnyVal 
   }
 
   @inline
-  def generic_get(): ElementType = {
-    if (!hasRemaining)
-      throw new BufferUnderflowException
-    val p = position
-    position(p + 1)
-    _array(_arrayOffset + p)
-  }
-
-  @inline
-  def generic_put(elem: ElementType): B = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (!hasRemaining)
-      throw new BufferOverflowException
-    val p = position
-    _array(_arrayOffset + p) = elem
-    position(p + 1)
-    self
-  }
-
-  @inline
-  def generic_get(index: Int): ElementType = {
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index)
-  }
-
-  @inline
-  def generic_put(index: Int, elem: ElementType): BufferType = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index) = elem
-    self
-  }
-
-  @inline
-  def generic_get(dst: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
-    val end = offset + length
-
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
-
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferUnderflowException
-
-    System.arraycopy(_array, startPos + _arrayOffset, dst, offset, length)
-    position(endPos)
-
-    self
-  }
-
-  @inline
-  def generic_put(src: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
-    val end = offset + length
-
-    if (offset < 0 || length < 0 || end > src.length)
-      throw new IndexOutOfBoundsException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferOverflowException
-
-    System.arraycopy(src, offset, _array, startPos + _arrayOffset, length)
-    position(endPos)
-
-    self
-  }
-
-  @inline
   def generic_compact(): BufferType = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
+    ensureNotReadOnly()
 
     val len = remaining
     System.arraycopy(_array, _arrayOffset + position, _array, _arrayOffset, len)
@@ -145,5 +66,23 @@ private[nio] final class GenHeapBuffer[B <: Buffer](val self: B) extends AnyVal 
     position(len)
     self
   }
+
+  @inline
+  def generic_load(index: Int): ElementType =
+    _array(_arrayOffset + index)
+
+  @inline
+  def generic_store(index: Int, elem: ElementType): Unit =
+    _array(_arrayOffset + index) = elem
+
+  @inline
+  def generic_load(startIndex: Int,
+      dst: Array[ElementType], offset: Int, length: Int): Unit =
+    System.arraycopy(_array, _arrayOffset + startIndex, dst, offset, length)
+
+  @inline
+  def generic_store(startIndex: Int,
+      src: Array[ElementType], offset: Int, length: Int): Unit =
+    System.arraycopy(src, offset, _array, _arrayOffset + startIndex, length)
 
 }

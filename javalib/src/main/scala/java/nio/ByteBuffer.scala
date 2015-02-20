@@ -136,4 +136,20 @@ abstract class ByteBuffer private[nio] (
   def asDoubleBuffer(): DoubleBuffer
 
   */
+
+  // Internal API
+
+  private[nio] def load(index: Int): Byte
+
+  private[nio] def store(index: Int, elem: Byte): Unit
+
+  @inline
+  private[nio] def load(startIndex: Int,
+      dst: Array[Byte], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  private[nio] def store(startIndex: Int,
+      src: Array[Byte], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_store(startIndex, src, offset, length)
 }

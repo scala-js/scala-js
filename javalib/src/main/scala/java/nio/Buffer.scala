@@ -101,9 +101,76 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   private[nio] def _array: Array[ElementType]
   private[nio] def _arrayOffset: Int
 
-  private[nio] def get(): ElementType
-  private[nio] def put(e: ElementType): BufferType
+  /** Loads an element at the given absolute, unchecked index. */
+  private[nio] def load(index: Int): ElementType
 
-  private[nio] def get(dst: Array[ElementType], offset: Int, length: Int): BufferType
-  private[nio] def put(src: Array[ElementType], offset: Int, length: Int): BufferType
+  /** Stores an element at the given absolute, unchecked index. */
+  private[nio] def store(index: Int, elem: ElementType): Unit
+
+  /** Loads a range of elements with absolute, unchecked indices. */
+  private[nio] def load(startIndex: Int,
+      dst: Array[ElementType], offset: Int, length: Int): Unit
+
+  /** Stores a range of elements with absolute, unchecked indices. */
+  private[nio] def store(startIndex: Int,
+      src: Array[ElementType], offset: Int, length: Int): Unit
+
+  // Helpers
+
+  @inline private[nio] def ensureNotReadOnly(): Unit = {
+    if (isReadOnly)
+      throw new ReadOnlyBufferException
+  }
+
+  @inline private[nio] def validateArrayIndexRange(
+      array: Array[_], offset: Int, length: Int): Unit = {
+    if (offset < 0 || length < 0 || offset > array.length - length)
+      throw new IndexOutOfBoundsException
+  }
+
+  @inline private[nio] def getPosAndAdvanceRead(): Int = {
+    val p = _position
+    if (p == limit)
+      throw new BufferUnderflowException
+    _position = p + 1
+    p
+  }
+
+  @inline private[nio] def getPosAndAdvanceRead(length: Int): Int = {
+    val p = _position
+    val newPos = p + length
+    if (newPos > limit)
+      throw new BufferUnderflowException
+    _position = newPos
+    p
+  }
+
+  @inline private[nio] def getPosAndAdvanceWrite(): Int = {
+    val p = _position
+    if (p == limit)
+      throw new BufferOverflowException
+    _position = p + 1
+    p
+  }
+
+  @inline private[nio] def getPosAndAdvanceWrite(length: Int): Int = {
+    val p = _position
+    val newPos = p + length
+    if (newPos > limit)
+      throw new BufferOverflowException
+    _position = newPos
+    p
+  }
+
+  @inline private[nio] def validateIndex(index: Int): Int = {
+    if (index < 0 || index >= limit)
+      throw new IndexOutOfBoundsException
+    index
+  }
+
+  @inline private[nio] def validateIndex(index: Int, length: Int): Int = {
+    if (index < 0 || index + length > limit)
+      throw new IndexOutOfBoundsException
+    index
+  }
 }
