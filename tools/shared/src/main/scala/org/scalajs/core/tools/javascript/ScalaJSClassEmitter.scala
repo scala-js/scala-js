@@ -20,14 +20,19 @@ import CheckedBehavior.Unchecked
 
 import org.scalajs.core.tools.javascript.{Trees => js}
 
-import org.scalajs.core.tools.optimizer.LinkedClass
+import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
 
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
  */
-final class ScalaJSClassEmitter(semantics: Semantics) {
+final class ScalaJSClassEmitter(semantics: Semantics,
+    globalInfo: LinkingUnit.GlobalInfo) {
 
   import JSDesugaring._
+
+  @deprecated("0.6.1", "Use the constructor with additional GlobalInfo")
+  def this(semantics: Semantics) =
+    this(semantics, LinkingUnit.GlobalInfo.SafeApproximation)
 
   /** Desugar a Scala.js class into ECMAScript 5 constructs
    *
@@ -44,9 +49,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     reverseParts ::= genStaticMembers(tree)
     if (kind.isClass)
       reverseParts ::= genClass(tree)
-    if (kind.isClass || kind == ClassKind.Interface ||
-        tree.name.name == Definitions.StringClass)
-      reverseParts ::= genInstanceTests(tree)
+    reverseParts ::= genInstanceTests(tree)
     reverseParts ::= genArrayInstanceTests(tree)
     reverseParts ::= genTypeData(tree)
     if (kind.isClass)
@@ -237,67 +240,72 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
 
     implicit val pos = tree.pos
 
-    val classIdent = transformIdent(tree.name)
-    val className = classIdent.name
-    val displayName = decodeClassName(className)
+    if (tree.kind.isClass || tree.kind == ClassKind.Interface ||
+        tree.name.name == Definitions.StringClass) {
+      val classIdent = transformIdent(tree.name)
+      val className = classIdent.name
+      val displayName = decodeClassName(className)
 
-    val isAncestorOfString =
-      AncestorsOfStringClass.contains(className)
-    val isAncestorOfHijackedNumberClass =
-      AncestorsOfHijackedNumberClasses.contains(className)
-    val isAncestorOfBoxedBooleanClass =
-      AncestorsOfBoxedBooleanClass.contains(className)
+      val isAncestorOfString =
+        AncestorsOfStringClass.contains(className)
+      val isAncestorOfHijackedNumberClass =
+        AncestorsOfHijackedNumberClasses.contains(className)
+      val isAncestorOfBoxedBooleanClass =
+        AncestorsOfBoxedBooleanClass.contains(className)
 
-    val objParam = js.ParamDef(Ident("obj"))
-    val obj = objParam.ref
+      val objParam = js.ParamDef(Ident("obj"))
+      val obj = objParam.ref
 
-    val createIsStat = {
-      envField("is") DOT classIdent :=
-        js.Function(List(objParam), js.Return(className match {
-          case Definitions.ObjectClass =>
-            js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
+      val createIsStat = {
+        envField("is") DOT classIdent :=
+          js.Function(List(objParam), js.Return(className match {
+            case Definitions.ObjectClass =>
+              js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
-          case Definitions.StringClass =>
-            js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
+            case Definitions.StringClass =>
+              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
-          case _ =>
-            var test = (obj && (obj DOT "$classData") &&
-                (obj DOT "$classData" DOT "ancestors" DOT classIdent))
+            case _ =>
+              var test = (obj && (obj DOT "$classData") &&
+                  (obj DOT "$classData" DOT "ancestors" DOT classIdent))
 
-            if (isAncestorOfString)
-              test = test || (
-                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
-            if (isAncestorOfHijackedNumberClass)
-              test = test || (
-                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
-            if (isAncestorOfBoxedBooleanClass)
-              test = test || (
-                  js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
+              if (isAncestorOfString)
+                test = test || (
+                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string"))
+              if (isAncestorOfHijackedNumberClass)
+                test = test || (
+                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("number"))
+              if (isAncestorOfBoxedBooleanClass)
+                test = test || (
+                    js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("boolean"))
 
-            !(!test)
-        }))
-    }
+              !(!test)
+          }))
+      }
 
-    val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
-      js.Skip()
-    } else {
-      envField("as") DOT classIdent :=
-        js.Function(List(objParam), js.Return(className match {
-          case Definitions.ObjectClass =>
-            obj
-
-          case _ =>
-            js.If(js.Apply(envField("is") DOT classIdent, List(obj)) ||
-                (obj === js.Null()), {
+      val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
+        js.Skip()
+      } else {
+        envField("as") DOT classIdent :=
+          js.Function(List(objParam), js.Return(className match {
+            case Definitions.ObjectClass =>
               obj
-            }, {
-              genCallHelper("throwClassCastException",
-                  obj, js.StringLiteral(displayName))
-            })
-      }))
-    }
 
-    js.Block(createIsStat, createAsStat)
+            case _ =>
+              js.If(js.Apply(envField("is") DOT classIdent, List(obj)) ||
+                  (obj === js.Null()), {
+                obj
+              }, {
+                genCallHelper("throwClassCastException",
+                    obj, js.StringLiteral(displayName))
+              })
+        }))
+      }
+
+      js.Block(createIsStat, createAsStat)
+    } else {
+      js.Skip()
+    }
   }
 
   def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
@@ -388,22 +396,26 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
 
-    val parentData = tree.superClass.fold[js.Tree] {
-      if (isObjectClass) js.Null()
-      else js.Undefined()
-    } { parent =>
-      envField("d") DOT parent
+    val parentData = if (globalInfo.isParentDataAccessed) {
+      tree.superClass.fold[js.Tree] {
+        if (isObjectClass) js.Null()
+        else js.Undefined()
+      } { parent =>
+        envField("d") DOT parent
+      }
+    } else {
+      js.Undefined()
     }
 
     val ancestorsRecord = js.ObjectConstr(
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
-    val typeData = js.New(envField("ClassTypeData"), List(
+    val typeData = js.New(envField("ClassTypeData"), (List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
-        parentData,
-        ancestorsRecord
+        ancestorsRecord,
+        parentData
     ) ++ (
         // Optional parameter isInstance
         if (isObjectClass) {
@@ -440,7 +452,7 @@ final class ScalaJSClassEmitter(semantics: Semantics) {
           // For other classes, the isInstance function can be inferred.
           Nil
         }
-    ))
+    )).reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse)
 
     envField("d") DOT classIdent := typeData
   }

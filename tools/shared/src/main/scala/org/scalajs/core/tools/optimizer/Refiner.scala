@@ -69,9 +69,14 @@ final class Refiner(semantics: Semantics) {
         classDef.kind
     }
 
-    classDef.copy(fields = fields, staticMethods = staticMethods,
-        memberMethods = memberMethods, abstractMethods = abstractMethods,
-        kind = kind, hasInstances = info.isAnySubclassInstantiated,
+    classDef.copy(
+        kind = kind,
+        fields = fields,
+        staticMethods = staticMethods,
+        memberMethods = memberMethods,
+        abstractMethods = abstractMethods,
+        hasInstances = info.isAnySubclassInstantiated,
+        hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed)
   }
 

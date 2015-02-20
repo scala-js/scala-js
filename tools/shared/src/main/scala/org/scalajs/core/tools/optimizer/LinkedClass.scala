@@ -25,28 +25,29 @@ import ir.Definitions
  *  [[exportedMembers]] as they have their individual versions. (The collections
  *  themselves are not versioned).
  */
-final case class LinkedClass(
+final class LinkedClass(
     // Stuff from Tree
-    name: Ident,
-    kind: ClassKind,
-    superClass: Option[Ident],
-    interfaces: List[Ident],
-    jsName: Option[String],
-    fields: List[FieldDef],
-    staticMethods: List[LinkedMember[MethodDef]],
-    memberMethods: List[LinkedMember[MethodDef]],
-    abstractMethods: List[LinkedMember[MethodDef]],
-    exportedMembers: List[LinkedMember[Tree]],
-    classExports: List[Tree],
-    classExportInfo: Option[Infos.MethodInfo],
-    optimizerHints: OptimizerHints,
-    pos: Position,
+    val name: Ident,
+    val kind: ClassKind,
+    val superClass: Option[Ident],
+    val interfaces: List[Ident],
+    val jsName: Option[String],
+    val fields: List[FieldDef],
+    val staticMethods: List[LinkedMember[MethodDef]],
+    val memberMethods: List[LinkedMember[MethodDef]],
+    val abstractMethods: List[LinkedMember[MethodDef]],
+    val exportedMembers: List[LinkedMember[Tree]],
+    val classExports: List[Tree],
+    val classExportInfo: Option[Infos.MethodInfo],
+    val optimizerHints: OptimizerHints,
+    val pos: Position,
 
     // Actual Linking info
-    ancestors: List[String],
-    hasInstances: Boolean,
-    hasRuntimeTypeInfo: Boolean,
-    version: Option[String]) {
+    val ancestors: List[String],
+    val hasInstances: Boolean,
+    val hasInstanceTests: Boolean,
+    val hasRuntimeTypeInfo: Boolean,
+    val version: Option[String]) {
 
   // Helpers to give Info-Like access
   def encodedName: String = name.name
@@ -65,6 +66,48 @@ final case class LinkedClass(
 
     Infos.ClassInfo(encodedName, isExported, kind, superClass.map(_.name),
       interfaces.map(_.name), methodInfos)
+  }
+
+  def copy(
+      name: Ident = this.name,
+      kind: ClassKind = this.kind,
+      superClass: Option[Ident] = this.superClass,
+      interfaces: List[Ident] = this.interfaces,
+      jsName: Option[String] = this.jsName,
+      fields: List[FieldDef] = this.fields,
+      staticMethods: List[LinkedMember[MethodDef]] = this.staticMethods,
+      memberMethods: List[LinkedMember[MethodDef]] = this.memberMethods,
+      abstractMethods: List[LinkedMember[MethodDef]] = this.abstractMethods,
+      exportedMembers: List[LinkedMember[Tree]] = this.exportedMembers,
+      classExports: List[Tree] = this.classExports,
+      classExportInfo: Option[Infos.MethodInfo] = this.classExportInfo,
+      optimizerHints: OptimizerHints = this.optimizerHints,
+      pos: Position = this.pos,
+      ancestors: List[String] = this.ancestors,
+      hasInstances: Boolean = this.hasInstances,
+      hasInstanceTests: Boolean = this.hasInstanceTests,
+      hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
+      version: Option[String] = this.version) = {
+    new LinkedClass(
+        name,
+        kind,
+        superClass,
+        interfaces,
+        jsName,
+        fields,
+        staticMethods,
+        memberMethods,
+        abstractMethods,
+        exportedMembers,
+        classExports,
+        classExportInfo,
+        optimizerHints,
+        pos,
+        ancestors,
+        hasInstances,
+        hasInstanceTests,
+        hasRuntimeTypeInfo,
+        version)
   }
 }
 
@@ -144,6 +187,7 @@ object LinkedClass {
         classDef.pos,
         ancestors,
         hasInstances = true,
+        hasInstanceTests = true,
         hasRuntimeTypeInfo = true,
         version = None)
   }
@@ -170,6 +214,7 @@ object LinkedClass {
         pos = Position.NoPosition,
         ancestors = List(Definitions.ObjectClass, encodedName),
         hasInstances = true,
+        hasInstanceTests = true,
         hasRuntimeTypeInfo = true,
         version = version)
   }

@@ -22,11 +22,6 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.sem._
-
-import org.scalajs.core.tools.javascript
-import javascript.Trees.{Tree => JSTree}
-import javascript.ScalaJSClassEmitter
-
 import org.scalajs.core.tools.logging._
 
 /** Incremental optimizer.
@@ -46,8 +41,6 @@ abstract class GenIncOptimizer(semantics: Semantics,
   import GenIncOptimizer._
 
   protected val CollOps: AbsCollOps
-
-  private val classEmitter = new ScalaJSClassEmitter(semantics)
 
   private var logger: Logger = _
 

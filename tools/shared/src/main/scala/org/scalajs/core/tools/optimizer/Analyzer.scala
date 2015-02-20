@@ -62,6 +62,9 @@ final class Analyzer(semantics: Semantics,
     for (classInfo <- _classInfos.values)
       classInfo.reachExports()
 
+    // Reach additional data, based on reflection methods used
+    reachDataThroughReflection()
+
     this
   }
 
@@ -87,6 +90,7 @@ final class Analyzer(semantics: Semantics,
     }
 
     val ObjectClass = instantiateClassWith("O", "init___")
+    ObjectClass.accessData()
     ObjectClass.callMethod("toString__T")
     ObjectClass.callMethod("equals__O__Z")
 
@@ -142,6 +146,34 @@ final class Analyzer(semantics: Semantics,
     val BitsModuleClass = lookupClass("sjsr_Bits$")
     BitsModuleClass.accessModule()
     BitsModuleClass.callMethod("numberHashCode__D__I")
+  }
+
+  /** Reach additional class data based on reflection methods being used. */
+  private def reachDataThroughReflection(): Unit = {
+    val classClassInfo = _classInfos.get(Definitions.ClassClass)
+
+    /* If Class.getSuperclass() is reachable, we can reach the data of all
+     * superclasses of classes whose data we can already reach.
+     */
+    for {
+      getSuperclassMethodInfo <-
+        classClassInfo.flatMap(_.methodInfos.get("getSuperclass__jl_Class"))
+      if getSuperclassMethodInfo.isReachable
+    } {
+      // calledFrom should always be nonEmpty if isReachable, but let's be robust
+      implicit val from =
+        getSuperclassMethodInfo.calledFrom.headOption.getOrElse(FromCore)
+      for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
+        @tailrec
+        def loop(classInfo: ClassInfo): Unit = {
+          if (classInfo != null) {
+            classInfo.accessData()
+            loop(classInfo.superClass)
+          }
+        }
+        loop(classInfo)
+      }
+    }
   }
 
   private class ClassInfo(data: Infos.ClassInfo) extends Analysis.ClassInfo {
@@ -209,6 +241,7 @@ final class Analyzer(semantics: Semantics,
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
     var isModuleAccessed: Boolean = false
+    var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
 
     var instantiatedFrom: List[From] = Nil
@@ -216,6 +249,7 @@ final class Analyzer(semantics: Semantics,
     val delayedCalls = mutable.Map.empty[String, From]
 
     def isNeededAtAll =
+      areInstanceTestsUsed ||
       isDataAccessed ||
       isAnySubclassInstantiated ||
       isAnyStaticMethodReachable
@@ -303,6 +337,7 @@ final class Analyzer(semantics: Semantics,
       instantiatedFrom ::= from
       if (!isInstantiated && isClass) {
         isInstantiated = true
+        accessData()
         ancestors.foreach(_.subclassInstantiated())
 
         for ((methodName, from) <- delayedCalls)
@@ -314,7 +349,13 @@ final class Analyzer(semantics: Semantics,
       instantiatedFrom ::= from
       if (!isAnySubclassInstantiated && isClass) {
         isAnySubclassInstantiated = true
-        accessData()
+      }
+    }
+
+    def useInstanceTests()(implicit from: From): Unit = {
+      if (!areInstanceTestsUsed) {
+        checkExistent()
+        areInstanceTestsUsed = true
       }
     }
 
@@ -436,7 +477,12 @@ final class Analyzer(semantics: Semantics,
         lookupClass(className).instantiated()
       }
 
-      for (className <- data.usedInstanceTests ++ data.accessedClassData) {
+      for (className <- data.usedInstanceTests) {
+        if (!Definitions.PrimitiveClasses.contains(className))
+          lookupClass(className).useInstanceTests()
+      }
+
+      for (className <- data.accessedClassData) {
         if (!Definitions.PrimitiveClasses.contains(className))
           lookupClass(className).accessData()
       }

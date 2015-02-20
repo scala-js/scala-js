@@ -16,7 +16,7 @@ import org.mozilla.javascript.{Context, Scriptable}
 import org.scalajs.core.ir
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.optimizer.LinkedClass
+import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
 import org.scalajs.core.tools.javascript.{Printers, ScalaJSClassEmitter}
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
@@ -109,7 +109,8 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     val ancestors = ancestorStore.getOrElse(className,
         throw new AssertionError(s"$className should be loaded"))
     val linked = LinkedClass(info, classDef, ancestors)
-    val desugared = new ScalaJSClassEmitter(semantics).genClassDef(linked)
+    val desugared = new ScalaJSClassEmitter(semantics,
+        LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -175,7 +176,8 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       val ancestors = className :: strictAncestors.distinct
       val linked = LinkedClass(info, classDef, ancestors)
 
-      val desugared = new ScalaJSClassEmitter(semantics).genClassDef(linked)
+      val desugared = new ScalaJSClassEmitter(semantics,
+          LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
 
       // Write tree
       val codeWriter = new java.io.StringWriter
