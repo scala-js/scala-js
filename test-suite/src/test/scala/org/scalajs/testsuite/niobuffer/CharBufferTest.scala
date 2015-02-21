@@ -35,6 +35,15 @@ object CharBufferTest extends BaseBufferTest {
       CharBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferCharViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): CharBuffer =
+      byteBufferFactory.allocBuffer(capacity * 2).asCharBuffer()
+  }
+
   describe("Allocated CharBuffer") {
     defineTests(new AllocCharBufferFactory)
   }
@@ -45,6 +54,17 @@ object CharBufferTest extends BaseBufferTest {
 
   describe("Read-only wrapped CharBuffer") {
     defineTests(new WrappedCharBufferFactory with BufferFactory.ReadOnlyBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Char view of " + description) {
+      defineTests(new ByteBufferCharViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Char view of " + description) {
+      defineTests(new ByteBufferCharViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 
   describe("CharBuffer wrapping a CharSequence") {

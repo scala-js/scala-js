@@ -32,6 +32,15 @@ object DoubleBufferTest extends BaseBufferTest {
       DoubleBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferDoubleViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): DoubleBuffer =
+      byteBufferFactory.allocBuffer(capacity * 8).asDoubleBuffer()
+  }
+
   describe("Allocated DoubleBuffer") {
     defineTests(new AllocDoubleBufferFactory)
   }
@@ -46,5 +55,16 @@ object DoubleBufferTest extends BaseBufferTest {
 
   describe("Sliced DoubleBuffer") {
     defineTests(new AllocDoubleBufferFactory with BufferFactory.SlicedBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Double view of " + description) {
+      defineTests(new ByteBufferDoubleViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Double view of " + description) {
+      defineTests(new ByteBufferDoubleViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 }

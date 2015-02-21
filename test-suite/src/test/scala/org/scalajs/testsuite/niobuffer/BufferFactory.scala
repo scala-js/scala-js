@@ -221,4 +221,26 @@ object BufferFactory {
       buf2
     }
   }
+
+  trait ByteBufferViewFactory extends BufferFactory {
+    def baseAllocBuffer(capacity: Int): BufferType
+
+    def allocBuffer(capacity: Int): BufferType =
+      baseAllocBuffer(capacity)
+
+    override def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType = {
+      val buf = baseAllocBuffer(capacity)
+      buf.limit(limit).position(pos)
+      buf
+    }
+
+    override def withContent(pos: Int, limit: Int, capacity: Int,
+        content: ElementType*): BufferType = {
+      val buf = baseAllocBuffer(capacity)
+      buf.limit(limit).position(pos)
+      buf.put(content.toArray)
+      buf.position(pos)
+      buf
+    }
+  }
 }

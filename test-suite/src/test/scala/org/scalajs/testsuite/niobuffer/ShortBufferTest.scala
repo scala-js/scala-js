@@ -32,6 +32,15 @@ object ShortBufferTest extends BaseBufferTest {
       ShortBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferShortViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): ShortBuffer =
+      byteBufferFactory.allocBuffer(capacity * 2).asShortBuffer()
+  }
+
   describe("Allocated ShortBuffer") {
     defineTests(new AllocShortBufferFactory)
   }
@@ -46,5 +55,16 @@ object ShortBufferTest extends BaseBufferTest {
 
   describe("Sliced ShortBuffer") {
     defineTests(new AllocShortBufferFactory with BufferFactory.SlicedBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Short view of " + description) {
+      defineTests(new ByteBufferShortViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Short view of " + description) {
+      defineTests(new ByteBufferShortViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 }

@@ -32,6 +32,15 @@ object LongBufferTest extends BaseBufferTest {
       LongBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferLongViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): LongBuffer =
+      byteBufferFactory.allocBuffer(capacity * 8).asLongBuffer()
+  }
+
   describe("Allocated LongBuffer") {
     defineTests(new AllocLongBufferFactory)
   }
@@ -46,5 +55,16 @@ object LongBufferTest extends BaseBufferTest {
 
   describe("Sliced LongBuffer") {
     defineTests(new AllocLongBufferFactory with BufferFactory.SlicedBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Long view of " + description) {
+      defineTests(new ByteBufferLongViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Long view of " + description) {
+      defineTests(new ByteBufferLongViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 }

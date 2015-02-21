@@ -32,6 +32,15 @@ object IntBufferTest extends BaseBufferTest {
       IntBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferIntViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): IntBuffer =
+      byteBufferFactory.allocBuffer(capacity * 4).asIntBuffer()
+  }
+
   describe("Allocated IntBuffer") {
     defineTests(new AllocIntBufferFactory)
   }
@@ -46,5 +55,16 @@ object IntBufferTest extends BaseBufferTest {
 
   describe("Sliced IntBuffer") {
     defineTests(new AllocIntBufferFactory with BufferFactory.SlicedBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Int view of " + description) {
+      defineTests(new ByteBufferIntViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Int view of " + description) {
+      defineTests(new ByteBufferIntViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 }

@@ -115,6 +115,16 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   private[nio] def store(startIndex: Int,
       src: Array[ElementType], offset: Int, length: Int): Unit
 
+  /* Only for HeapByteBufferViews -- but that's the only place we can put it.
+   * For all other types, it will be dce'ed.
+   */
+  private[nio] def _byteArray: Array[Byte] =
+    throw new UnsupportedOperationException
+  private[nio] def _byteArrayOffset: Int =
+    throw new UnsupportedOperationException
+  private[nio] def isBigEndian: Boolean =
+    throw new UnsupportedOperationException
+
   // Helpers
 
   @inline private[nio] def ensureNotReadOnly(): Unit = {

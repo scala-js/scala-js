@@ -32,6 +32,15 @@ object FloatBufferTest extends BaseBufferTest {
       FloatBuffer.wrap(array, offset, length)
   }
 
+  class ByteBufferFloatViewFactory(
+      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      extends Factory with BufferFactory.ByteBufferViewFactory {
+    require(!byteBufferFactory.createsReadOnly)
+
+    def baseAllocBuffer(capacity: Int): FloatBuffer =
+      byteBufferFactory.allocBuffer(capacity * 4).asFloatBuffer()
+  }
+
   describe("Allocated FloatBuffer") {
     defineTests(new AllocFloatBufferFactory)
   }
@@ -46,5 +55,16 @@ object FloatBufferTest extends BaseBufferTest {
 
   describe("Sliced FloatBuffer") {
     defineTests(new AllocFloatBufferFactory with BufferFactory.SlicedBufferFactory)
+  }
+
+  for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
+    describe("Float view of " + description) {
+      defineTests(new ByteBufferFloatViewFactory(byteBufferFactory))
+    }
+
+    describe("Read-only Float view of " + description) {
+      defineTests(new ByteBufferFloatViewFactory(byteBufferFactory)
+          with BufferFactory.ReadOnlyBufferFactory)
+    }
   }
 }

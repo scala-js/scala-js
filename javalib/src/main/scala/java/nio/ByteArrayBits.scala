@@ -2,13 +2,14 @@ package java.nio
 
 private[nio] object ByteArrayBits {
   def apply(array: Array[Byte], arrayOffset: Int,
-      isBigEndian: Boolean): ByteArrayBits =
-    new ByteArrayBits(array, arrayOffset, isBigEndian)
+      isBigEndian: Boolean, indexMultiplier: Int = 1): ByteArrayBits =
+    new ByteArrayBits(array, arrayOffset, isBigEndian, indexMultiplier)
 }
 
 @inline
 private[nio] final class ByteArrayBits(
-    array: Array[Byte], arrayOffset: Int, isBigEndian: Boolean) {
+    array: Array[Byte], arrayOffset: Int, isBigEndian: Boolean,
+    indexMultiplier: Int) {
 
   /* We use tuples of bytes instead of, say, arrays, because they can be
    * completely stack-allocated.
@@ -168,34 +169,34 @@ private[nio] final class ByteArrayBits(
 
   @inline
   private def load2Bytes(index: Int): (Byte, Byte) = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     (array(idx), array(idx + 1))
   }
 
   @inline
   private def load4Bytes(index: Int): (Byte, Byte, Byte, Byte) = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     (array(idx), array(idx + 1), array(idx + 2), array(idx + 3))
   }
 
   @inline
   private def load8Bytes(
       index: Int): (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte) = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     (array(idx), array(idx + 1), array(idx + 2), array(idx + 3),
         array(idx + 4), array(idx + 5), array(idx + 6), array(idx + 7))
   }
 
   @inline
   private def store2Bytes(index: Int, bs: (Byte, Byte)): Unit = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     array(idx) = bs._1
     array(idx + 1) = bs._2
   }
 
   @inline
   private def store4Bytes(index: Int, bs: (Byte, Byte, Byte, Byte)): Unit = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     array(idx) = bs._1
     array(idx + 1) = bs._2
     array(idx + 2) = bs._3
@@ -205,7 +206,7 @@ private[nio] final class ByteArrayBits(
   @inline
   private def store8Bytes(index: Int,
       bs: (Byte, Byte, Byte, Byte, Byte, Byte, Byte, Byte)): Unit = {
-    val idx = index + arrayOffset
+    val idx = indexMultiplier*index + arrayOffset
     array(idx) = bs._1
     array(idx + 1) = bs._2
     array(idx + 2) = bs._3

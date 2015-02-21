@@ -104,58 +104,46 @@ abstract class ByteBuffer private[nio] (
   def getChar(index: Int): Char
   def putChar(index: Int, value: Char): ByteBuffer
 
-  /* Not implemented:
   def asCharBuffer(): CharBuffer
-  */
 
   def getShort(): Short
   def putShort(value: Short): ByteBuffer
   def getShort(index: Int): Short
   def putShort(index: Int, value: Short): ByteBuffer
 
-  /* Not implemented:
   def asShortBuffer(): ShortBuffer
-  */
 
   def getInt(): Int
   def putInt(value: Int): ByteBuffer
   def getInt(index: Int): Int
   def putInt(index: Int, value: Int): ByteBuffer
 
-  /* Not implemented:
   def asIntBuffer(): IntBuffer
-  */
 
   def getLong(): Long
   def putLong(value: Long): ByteBuffer
   def getLong(index: Int): Long
   def putLong(index: Int, value: Long): ByteBuffer
 
-  /* Not implemented:
   def asLongBuffer(): LongBuffer
-  */
 
   def getFloat(): Float
   def putFloat(value: Float): ByteBuffer
   def getFloat(index: Int): Float
   def putFloat(index: Int, value: Float): ByteBuffer
 
-  /* Not implemented:
   def asFloatBuffer(): FloatBuffer
-  */
 
   def getDouble(): Double
   def putDouble(value: Double): ByteBuffer
   def getDouble(index: Int): Double
   def putDouble(index: Int, value: Double): ByteBuffer
 
-  /* Not implemented:
   def asDoubleBuffer(): DoubleBuffer
-  */
 
   // Internal API
 
-  private[nio] def isBigEndian =
+  override private[nio] def isBigEndian: Boolean =
     _isBigEndian
 
   private[nio] def load(index: Int): Byte
