@@ -715,24 +715,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Labeled(ident @ Ident(label, _), tpe, body) =>
         returnable(label, tpe, body, isStat = false, usePreTransform = true)(cont)
 
-      case New(cls @ ClassType(className), ctor, args) =>
-        tryNewInlineableClass(className) match {
-          case Some(initialValue) =>
-            pretransformExprs(args) { targs =>
-              tryOrRollback { cancelFun =>
-                inlineClassConstructor(
-                    new AllocationSite(tree),
-                    cls, initialValue, ctor, targs, cancelFun)(cont)
-              } { () =>
-                cont(PreTransTree(
-                    New(cls, ctor, targs.map(finishTransformExpr)),
-                    RefinedType(cls, isExact = true, isNullable = false)))
-              }
-            }
-          case None =>
-            cont(PreTransTree(
-                New(cls, ctor, args.map(transformExpr)),
-                RefinedType(cls, isExact = true, isNullable = false)))
+      case New(cls, ctor, args) =>
+        pretransformExprs(args) { targs =>
+          pretransformNew(tree, cls, ctor, targs)(cont)
         }
 
       case tree: Select =>
@@ -910,6 +895,29 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
+  private def pretransformNew(tree: Tree, cls: ClassType, ctor: Ident,
+      targs: List[PreTransform])(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+
+    tryNewInlineableClass(cls.className) match {
+      case Some(initialValue) =>
+        tryOrRollback { cancelFun =>
+          inlineClassConstructor(
+              new AllocationSite(tree),
+              cls, initialValue, ctor, targs, cancelFun)(cont)
+        } { () =>
+          cont(PreTransTree(
+              New(cls, ctor, targs.map(finishTransformExpr)),
+              RefinedType(cls, isExact = true, isNullable = false)))
+        }
+      case None =>
+        cont(PreTransTree(
+            New(cls, ctor, targs.map(finishTransformExpr)),
+            RefinedType(cls, isExact = true, isNullable = false)))
+    }
+  }
+
   /** Resolves any LocalDef in a [[PreTransform]]. */
   private def resolveLocalDef(preTrans: PreTransform): PreTransGenTree = {
     implicit val pos = preTrans.pos
@@ -1084,16 +1092,33 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
                 }
               }
             } else {
-              if (impls.forall(_.isTraitImplForwarder)) {
+              if (impls.forall(_.isForwarder)) {
                 val reference = impls.head
-                val ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =
-                  getMethodBody(reference).body
-                if (!impls.tail.forall(getMethodBody(_).body match {
-                  case ApplyStatic(ClassType(`staticCls`),
-                      Ident(`methodName`, _), _) => true
-                  case _ => false
-                })) {
-                  // Not all calling the same method in the same trait impl
+                val areAllTheSame = getMethodBody(reference).body match {
+                  // Trait impl forwarder
+                  case ApplyStatic(ClassType(staticCls), Ident(methodName, _), _) =>
+                    impls.tail.forall(getMethodBody(_).body match {
+                      case ApplyStatic(ClassType(`staticCls`),
+                          Ident(`methodName`, _), _) => true
+                      case _ => false
+                    })
+
+                  // Bridge method
+                  case MaybeBox(Apply(This(), Ident(methodName, _), referenceArgs), boxID) =>
+                    impls.tail.forall(getMethodBody(_).body match {
+                      case MaybeBox(Apply(This(), Ident(`methodName`, _), implArgs), `boxID`) =>
+                        referenceArgs.zip(implArgs) forall {
+                          case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
+                            unboxID1 == unboxID2
+                        }
+                      case _ => false
+                    })
+
+                  case body =>
+                    throw new AssertionError("Invalid forwarder shape: " + body)
+                }
+                if (!areAllTheSame) {
+                  // Not all doing the same thing
                   treeNotInlined
                 } else {
                   pretransformExprs(args) { targs =>
@@ -1254,12 +1279,21 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         isLikelyOptimizable(result)
 
       case PreTransLocalDef(localDef) =>
-        localDef.replacement match {
+        (localDef.replacement match {
           case TentativeClosureReplacement(_, _, _, _, _, _) => true
           case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
           case InlineClassBeingConstructedReplacement(_, _)  => true
           case InlineClassInstanceReplacement(_, _, _)       => true
           case _                                             => false
+        }) && {
+          /* java.lang.Character is @inline so that *local* box/unbox pairs
+           * can be eliminated. But we don't want that to force inlining of
+           * a method only because we pass it a boxed Char.
+           */
+          localDef.tpe.base match {
+            case ClassType(Definitions.BoxedCharacterClass) => false
+            case _                                          => true
+          }
         }
 
       case PreTransRecordTree(_, _, _) =>
@@ -1361,7 +1395,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   private def callIntrinsic(code: Int, optTReceiver: Option[PreTransform],
       targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
       cont: PreTransCont)(
-      implicit pos: Position): TailRec[Tree] = {
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     import Intrinsics._
 
@@ -1372,6 +1406,22 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     @inline def contTree(result: Tree) = cont(PreTransTree(result))
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
+
+    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] = {
+      contTree(Apply(finishTransformExpr(optTReceiver.get),
+          Ident(methodName), newArgs)(resultType))
+    }
+
+    def cursoryArrayElemType(tpe: ArrayType): Type = {
+      if (tpe.dimensions != 1) AnyType
+      else (tpe.baseClassName match {
+        case "Z"                   => BooleanType
+        case "B" | "C" | "S" | "I" => IntType
+        case "F"                   => FloatType
+        case "D"                   => DoubleType
+        case _                     => AnyType
+      })
+    }
 
     def asRTLong(arg: Tree): Tree =
       AsInstanceOf(arg, ClassType(LongImpl.RuntimeLongClass))
@@ -1386,6 +1436,54 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         contTree(CallHelper("systemArraycopy", newArgs)(NoType))
       case IdentityHashCode =>
         contTree(CallHelper("systemIdentityHashCode", newArgs)(IntType))
+
+      // scala.runtime.ScalaRunTime object
+
+      case ArrayApply =>
+        val List(array, index) = newArgs
+        array.tpe match {
+          case arrayTpe @ ArrayType(base, depth) =>
+            val elemType = cursoryArrayElemType(arrayTpe)
+            val select = ArraySelect(array, index)(elemType)
+            if (base == "C")
+              boxChar(select)(cont)
+            else
+              contTree(select)
+
+          case _ =>
+            defaultApply("array$undapply__O__I__O", AnyType)
+        }
+
+      case ArrayUpdate =>
+        val List(tarray, tindex, tvalue) = targs
+        tarray.tpe.base match {
+          case arrayTpe @ ArrayType(base, depth) =>
+            val array = finishTransformExpr(tarray)
+            val index = finishTransformExpr(tindex)
+            val elemType = cursoryArrayElemType(arrayTpe)
+            val select = ArraySelect(array, index)(elemType)
+            val cont1: PreTransCont = { tunboxedValue =>
+              contTree(Assign(select, finishTransformExpr(tunboxedValue)))
+            }
+            base match {
+              case "Z" | "B" | "S" | "I" | "L" | "F" | "D" if depth == 1 =>
+                foldUnbox(tvalue, base.charAt(0))(cont1)
+              case "C" if depth == 1 =>
+                unboxChar(tvalue)(cont1)
+              case _ =>
+                cont1(tvalue)
+            }
+          case _ =>
+            defaultApply("array$undupdate__O__I__O__V", AnyType)
+        }
+
+      case ArrayLength =>
+        targs.head.tpe.base match {
+          case _: ArrayType =>
+            contTree(Trees.ArrayLength(newArgs.head))
+          case _ =>
+            defaultApply("array$undlength__O__I", IntType)
+        }
 
       // scala.scalajs.runtime package object
 
@@ -1442,6 +1540,26 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       case Float64ArrayToDoubleArray =>
         contTree(CallHelper("typedArray2DoubleArray", newArgs)(AnyType))
     }
+  }
+
+  private def boxChar(value: Tree)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    pretransformNew(value, ClassType(Definitions.BoxedCharacterClass),
+        Ident("init___C"), List(PreTransTree(value)))(cont)
+  }
+
+  private def unboxChar(tvalue: PreTransform)(
+      cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    val BoxesRunTimeModuleClassName = "sr_BoxesRunTime$"
+    val treceiver = PreTransTree(LoadModule(
+        ClassType(BoxesRunTimeModuleClassName)))
+    val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
+      throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
+    }
+    inline(tvalue.tpe.allocationSite, Some(treceiver), List(tvalue), target,
+        isStat = false, usePreTransform = true)(cont)
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,
@@ -3267,7 +3385,11 @@ private[optimizer] object OptimizerCore {
     final val ArrayCopy        = 1
     final val IdentityHashCode = ArrayCopy + 1
 
-    final val PropertiesOf = IdentityHashCode + 1
+    final val ArrayApply  = IdentityHashCode + 1
+    final val ArrayUpdate = ArrayApply       + 1
+    final val ArrayLength = ArrayUpdate      + 1
+
+    final val PropertiesOf = ArrayLength + 1
 
     final val LongToString   = PropertiesOf   + 1
     final val LongCompare    = LongToString   + 1
@@ -3296,6 +3418,10 @@ private[optimizer] object OptimizerCore {
     val intrinsics: Map[String, Int] = Map(
       "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
       "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+
+      "sr_ScalaRunTime$.array$undapply__O__I__O"     -> ArrayApply,
+      "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
+      "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
       "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 
@@ -3341,7 +3467,7 @@ private[optimizer] object OptimizerCore {
   trait AbstractMethodID {
     def inlineable: Boolean
     def shouldInline: Boolean
-    def isTraitImplForwarder: Boolean
+    def isForwarder: Boolean
   }
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
@@ -3353,12 +3479,12 @@ private[optimizer] object OptimizerCore {
 
     var inlineable: Boolean = false
     var shouldInline: Boolean = false
-    var isTraitImplForwarder: Boolean = false
+    var isForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
       val MethodDef(_, Ident(methodName, _), params, _, body) = originalDef
 
-      isTraitImplForwarder = body match {
+      isForwarder = body match {
         // Shape of forwarders to trait impls
         case ApplyStatic(impl, method, args) =>
           ((args.size == params.size + 1) &&
@@ -3369,12 +3495,21 @@ private[optimizer] object OptimizerCore {
                 case _ => false
               }))
 
+        // Shape of bridges for generic methods
+        case MaybeBox(Apply(This(), method, args), _) =>
+          (args.size == params.size) &&
+          args.zip(params).forall {
+            case (MaybeUnbox(VarRef(Ident(aname, _)), _),
+                ParamDef(Ident(pname, _), _, _)) => aname == pname
+            case _ => false
+          }
+
         case _ => false
       }
 
       inlineable = !optimizerHints.noinline
       shouldInline = inlineable && {
-        optimizerHints.inline || isTraitImplForwarder || {
+        optimizerHints.inline || isForwarder || {
           val MethodDef(_, _, params, _, body) = originalDef
           body match {
             case _:Skip | _:This | _:Literal                          => true
@@ -3396,6 +3531,30 @@ private[optimizer] object OptimizerCore {
           }
         }
       }
+    }
+  }
+
+  private object MaybeBox {
+    def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
+      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
+          Ident("boxToCharacter__C__jl_Character", _), List(arg)) =>
+        Some((arg, "C"))
+      case _ =>
+        Some((tree, ()))
+    }
+  }
+
+  private object MaybeUnbox {
+    def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
+      case AsInstanceOf(arg, tpe) =>
+        Some((arg, tpe))
+      case Unbox(arg, charCode) =>
+        Some((arg, charCode))
+      case Apply(LoadModule(ClassType("sr_BoxesRunTime$")),
+          Ident("unboxToChar__O__C", _), List(arg)) =>
+        Some((arg, "C"))
+      case _ =>
+        Some((tree, ()))
     }
   }
 
