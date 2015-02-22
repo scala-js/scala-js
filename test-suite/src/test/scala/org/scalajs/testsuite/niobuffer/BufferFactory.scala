@@ -182,6 +182,15 @@ object BufferFactory {
     }
   }
 
+  trait WrappedTypedArrayBufferFactory extends WrappedBufferFactory {
+    protected def baseWrap(array: Array[ElementType],
+        offset: Int, length: Int): BufferType = {
+      val buf = baseWrap(array)
+      buf.position(offset).limit(offset + length)
+      buf
+    }
+  }
+
   trait ReadOnlyBufferFactory extends BufferFactory {
     override val createsReadOnly = true
 

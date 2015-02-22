@@ -10,6 +10,7 @@ package org.scalajs.testsuite.typedarray
 import org.scalajs.jasminetest.JasmineTest
 
 import scala.scalajs.js.typedarray._
+import DataViewExt._
 
 object DataViewTest extends JasmineTest {
 
@@ -108,6 +109,25 @@ object DataViewTest extends JasmineTest {
       expect(view.getInt32(0, true)).toBe(0x30B3FF01)
       expect(view.getInt32(1)).toBe(0xFFB3301A) // is negative since Int
       expect(view.getInt32(1, true)).toBe(0x1A30B3FF)
+    }
+
+    it("should provide `getInt64` through DataViewExt") {
+      val view = new DataView(new ArrayBuffer(9))
+
+      view.setUint8(0, 0x01)
+      view.setUint8(1, 0xFF)
+      view.setUint8(2, 0xB3)
+      view.setUint8(3, 0x30)
+      view.setUint8(4, 0x1A)
+      view.setUint8(5, 0x74)
+      view.setUint8(6, 0x5C)
+      view.setUint8(7, 0xBD)
+      view.setUint8(8, 0xAF)
+
+      expect(view.getInt64(0) == 0x01FFB3301A745CBDL).toBeTruthy
+      expect(view.getInt64(0, true) == 0xBD5C741A30B3FF01L).toBeTruthy
+      expect(view.getInt64(1) == 0xFFB3301A745CBDAFL).toBeTruthy
+      expect(view.getInt64(1, true) == 0xAFBD5C741A30B3FFL).toBeTruthy
     }
 
     it("should provide `getUint32`") {
@@ -236,6 +256,31 @@ object DataViewTest extends JasmineTest {
       expect(view.getUint8(5)).toBe(0x10)
       expect(view.getUint8(6)).toBe(0x20)
       expect(view.getUint8(7)).toBe(0x00)
+    }
+
+    it("should provide `setInt64` through DataViewExt") {
+      val view = new DataView(new ArrayBuffer(16))
+
+      view.setInt64(0, 0x01FFB3301A745CBDL, true)
+      view.setInt64(8, 0xFCBA1020547DE1B5L)
+
+      expect(view.getUint8(0)).toBe(0xBD)
+      expect(view.getUint8(1)).toBe(0x5C)
+      expect(view.getUint8(2)).toBe(0x74)
+      expect(view.getUint8(3)).toBe(0x1A)
+      expect(view.getUint8(4)).toBe(0x30)
+      expect(view.getUint8(5)).toBe(0xB3)
+      expect(view.getUint8(6)).toBe(0xFF)
+      expect(view.getUint8(7)).toBe(0x01)
+
+      expect(view.getUint8(8)).toBe(0xFC)
+      expect(view.getUint8(9)).toBe(0xBA)
+      expect(view.getUint8(10)).toBe(0x10)
+      expect(view.getUint8(11)).toBe(0x20)
+      expect(view.getUint8(12)).toBe(0x54)
+      expect(view.getUint8(13)).toBe(0x7D)
+      expect(view.getUint8(14)).toBe(0xE1)
+      expect(view.getUint8(15)).toBe(0xB5)
     }
 
     it("should provide `setFloat32`") {

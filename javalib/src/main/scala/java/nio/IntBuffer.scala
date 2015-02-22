@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object IntBuffer {
   private final val HashSeed = 39599817 // "java.nio.IntBuffer".##
 
@@ -11,6 +13,11 @@ object IntBuffer {
 
   def wrap(array: Array[Int]): IntBuffer =
     wrap(array, 0, array.length)
+
+  // Extended API
+
+  def wrap(array: Int32Array): IntBuffer =
+    TypedArrayIntBuffer.wrap(array)
 }
 
 abstract class IntBuffer private[nio] (
@@ -20,6 +27,7 @@ abstract class IntBuffer private[nio] (
 
   private[nio] type ElementType = Int
   private[nio] type BufferType = IntBuffer
+  private[nio] type TypedArrayType = Int32Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 

@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object ByteBuffer {
   private final val HashSeed = -547316498 // "java.nio.ByteBuffer".##
 
@@ -7,13 +9,24 @@ object ByteBuffer {
     wrap(new Array[Byte](capacity))
 
   def allocateDirect(capacity: Int): ByteBuffer =
-    allocate(capacity)
+    TypedArrayByteBuffer.allocate(capacity)
 
   def wrap(array: Array[Byte], offset: Int, length: Int): ByteBuffer =
     HeapByteBuffer.wrap(array, 0, array.length, offset, length, false)
 
   def wrap(array: Array[Byte]): ByteBuffer =
     wrap(array, 0, array.length)
+
+  // Extended API
+
+  def wrap(array: ArrayBuffer): ByteBuffer =
+    TypedArrayByteBuffer.wrap(array)
+
+  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
+    TypedArrayByteBuffer.wrap(array, byteOffset, length)
+
+  def wrap(array: Int8Array): ByteBuffer =
+    TypedArrayByteBuffer.wrap(array)
 }
 
 abstract class ByteBuffer private[nio] (
@@ -23,10 +36,11 @@ abstract class ByteBuffer private[nio] (
 
   private[nio] type ElementType = Byte
   private[nio] type BufferType = ByteBuffer
+  private[nio] type TypedArrayType = Int8Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 
-  private var _isBigEndian: Boolean = true
+  private[nio] var _isBigEndian: Boolean = true
 
   def slice(): ByteBuffer
 

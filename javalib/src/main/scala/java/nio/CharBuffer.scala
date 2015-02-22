@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object CharBuffer {
   private final val HashSeed = -182887236 // "java.nio.CharBuffer".##
 
@@ -17,6 +19,11 @@ object CharBuffer {
 
   def wrap(csq: CharSequence): CharBuffer =
     wrap(csq, 0, csq.length)
+
+  // Extended API
+
+  def wrap(array: Uint16Array): CharBuffer =
+    TypedArrayCharBuffer.wrap(array)
 }
 
 abstract class CharBuffer private[nio] (
@@ -27,6 +34,7 @@ abstract class CharBuffer private[nio] (
 
   private[nio] type ElementType = Char
   private[nio] type BufferType = CharBuffer
+  private[nio] type TypedArrayType = Uint16Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 

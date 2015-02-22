@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object ShortBuffer {
   private final val HashSeed = 383731478 // "java.nio.ShortBuffer".##
 
@@ -11,6 +13,11 @@ object ShortBuffer {
 
   def wrap(array: Array[Short]): ShortBuffer =
     wrap(array, 0, array.length)
+
+  // Extended API
+
+  def wrap(array: Int16Array): ShortBuffer =
+    TypedArrayShortBuffer.wrap(array)
 }
 
 abstract class ShortBuffer private[nio] (
@@ -20,6 +27,7 @@ abstract class ShortBuffer private[nio] (
 
   private[nio] type ElementType = Short
   private[nio] type BufferType = ShortBuffer
+  private[nio] type TypedArrayType = Int16Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 

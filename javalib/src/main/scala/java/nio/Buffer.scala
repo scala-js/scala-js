@@ -1,11 +1,15 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 abstract class Buffer private[nio] (val _capacity: Int) {
   private[nio] type ElementType
 
   private[nio] type BufferType >: this.type <: Buffer {
     type ElementType = Buffer.this.ElementType
   }
+
+  private[nio] type TypedArrayType >: Null <: TypedArray[_, TypedArrayType]
 
   // Normal implementation of Buffer
 
@@ -92,6 +96,44 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   override def toString(): String =
     s"${getClass.getName}[pos=$position lim=$limit cap=$capacity]"
 
+  /* Extended API - exposed to user-space with a hacky bridge and extension
+   * methods.
+   */
+
+  def hasArrayBuffer(): Boolean =
+    _arrayBuffer != null && !isReadOnly
+
+  def arrayBuffer(): ArrayBuffer = {
+    val buffer = _arrayBuffer
+    if (buffer == null || isReadOnly)
+      throw new UnsupportedOperationException
+    buffer
+  }
+
+  def arrayBufferOffset(): Int = {
+    val offset = _arrayBufferOffset
+    if (offset == -1 || isReadOnly)
+      throw new UnsupportedOperationException
+    offset
+  }
+
+  def dataView(): DataView = {
+    val view = _dataView
+    if (view == null || isReadOnly)
+      throw new UnsupportedOperationException
+    view
+  }
+
+  def hasTypedArray(): Boolean =
+    _typedArray != null && !isReadOnly
+
+  def typedArray(): TypedArrayType = {
+    val array = _typedArray
+    if (array == null || isReadOnly)
+      throw new UnsupportedOperationException
+    array
+  }
+
   /* Generic access to methods declared in subclasses.
    * These methods allow to write generic algorithms on any kind of Buffer.
    * The optimizer will get rid of all the overhead.
@@ -100,6 +142,11 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   private[nio] def _array: Array[ElementType]
   private[nio] def _arrayOffset: Int
+
+  private[nio] def _arrayBuffer: ArrayBuffer = null
+  private[nio] def _arrayBufferOffset: Int = -1
+  private[nio] def _dataView: DataView = null
+  private[nio] def _typedArray: TypedArrayType = null
 
   /** Loads an element at the given absolute, unchecked index. */
   private[nio] def load(index: Int): ElementType

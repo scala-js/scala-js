@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object FloatBuffer {
   private final val HashSeed = 1920204022 // "java.nio.FloatBuffer".##
 
@@ -11,6 +13,11 @@ object FloatBuffer {
 
   def wrap(array: Array[Float]): FloatBuffer =
     wrap(array, 0, array.length)
+
+  // Extended API
+
+  def wrap(array: Float32Array): FloatBuffer =
+    TypedArrayFloatBuffer.wrap(array)
 }
 
 abstract class FloatBuffer private[nio] (
@@ -20,6 +27,7 @@ abstract class FloatBuffer private[nio] (
 
   private[nio] type ElementType = Float
   private[nio] type BufferType = FloatBuffer
+  private[nio] type TypedArrayType = Float32Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 

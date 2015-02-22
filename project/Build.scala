@@ -678,14 +678,26 @@ object Build extends sbt.Build {
           /* Add the .sjsir files from other lib projects
            * (but not .class files)
            */
-          mappings in packageBin ++= {
+          mappings in packageBin := {
+            /* From library, we must take everyting, except the
+             * java.nio.TypedArrayBufferBridge object, whose actual
+             * implementation is in javalib.
+             */
+            val superMappings = (mappings in packageBin).value
+            val libraryMappings = superMappings.filter(
+                _._2.replace('\\', '/') !=
+                  "scala/scalajs/js/typedarray/TypedArrayBufferBridge$.sjsir")
+
             val allProducts = (
                 (products in javalanglib).value ++
                 (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
             val filter = ("*.sjsir": NameFilter)
-            allProducts.flatMap(base => Path.selectSubpaths(base, filter))
+            val otherMappings =
+              allProducts.flatMap(base => Path.selectSubpaths(base, filter))
+
+            libraryMappings ++ otherMappings
           },
 
           patchDocSetting

@@ -10,6 +10,7 @@ package org.scalajs.testsuite.niobuffer
 import java.nio._
 
 import scala.scalajs.js
+import js.typedarray._
 import js.JSConverters._
 
 object DoubleBufferTest extends BaseBufferTest {
@@ -32,6 +33,12 @@ object DoubleBufferTest extends BaseBufferTest {
       DoubleBuffer.wrap(array, offset, length)
   }
 
+  class WrappedTypedArrayDoubleBufferFactory
+      extends Factory with BufferFactory.WrappedTypedArrayBufferFactory {
+    def baseWrap(array: Array[Double]): DoubleBuffer =
+      TypedArrayBuffer.wrap(new Float64Array(array.toJSArray))
+  }
+
   class ByteBufferDoubleViewFactory(
       byteBufferFactory: BufferFactory.ByteBufferFactory)
       extends Factory with BufferFactory.ByteBufferViewFactory {
@@ -51,6 +58,11 @@ object DoubleBufferTest extends BaseBufferTest {
 
   describe("Read-only wrapped DoubleBuffer") {
     defineTests(new WrappedDoubleBufferFactory with BufferFactory.ReadOnlyBufferFactory)
+  }
+
+  when("typedarray").
+  describe("Wrapped TypedArray DoubleBuffer") {
+    defineTests(new WrappedTypedArrayDoubleBufferFactory)
   }
 
   describe("Sliced DoubleBuffer") {

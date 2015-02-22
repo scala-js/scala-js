@@ -20,6 +20,7 @@ abstract class LongBuffer private[nio] (
 
   private[nio] type ElementType = Long
   private[nio] type BufferType = LongBuffer
+  private[nio] type TypedArrayType = Null
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 

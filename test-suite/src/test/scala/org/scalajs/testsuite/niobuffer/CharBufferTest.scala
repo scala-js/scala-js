@@ -10,6 +10,7 @@ package org.scalajs.testsuite.niobuffer
 import java.nio._
 
 import scala.scalajs.js
+import js.typedarray._
 import js.JSConverters._
 
 object CharBufferTest extends BaseBufferTest {
@@ -35,6 +36,12 @@ object CharBufferTest extends BaseBufferTest {
       CharBuffer.wrap(array, offset, length)
   }
 
+  class WrappedTypedArrayCharBufferFactory
+      extends Factory with BufferFactory.WrappedTypedArrayBufferFactory {
+    def baseWrap(array: Array[Char]): CharBuffer =
+      TypedArrayBuffer.wrap(new Uint16Array(array.map(_.toInt).toJSArray))
+  }
+
   class ByteBufferCharViewFactory(
       byteBufferFactory: BufferFactory.ByteBufferFactory)
       extends Factory with BufferFactory.ByteBufferViewFactory {
@@ -54,6 +61,11 @@ object CharBufferTest extends BaseBufferTest {
 
   describe("Read-only wrapped CharBuffer") {
     defineTests(new WrappedCharBufferFactory with BufferFactory.ReadOnlyBufferFactory)
+  }
+
+  when("typedarray").
+  describe("Wrapped TypedArray CharBuffer") {
+    defineTests(new WrappedTypedArrayCharBufferFactory)
   }
 
   for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
