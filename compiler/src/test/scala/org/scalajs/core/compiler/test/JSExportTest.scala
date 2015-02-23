@@ -292,6 +292,29 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noExportAbstractClass = {
+
+    """
+    @JSExport
+    abstract class A
+
+    abstract class B(x: Int) {
+      @JSExport
+      def this() = this(5)
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not export an abstract class
+      |    @JSExport
+      |     ^
+      |newSource1.scala:7: error: You may not export an abstract class
+      |      @JSExport
+      |       ^
+    """
+
+  }
+
+  @Test
   def noExportTrait = {
 
     """
