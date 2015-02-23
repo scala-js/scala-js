@@ -204,6 +204,8 @@ object ScalaJSPluginInternal {
 
         Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
       },
+      fullOptJS <<=
+        fullOptJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
 
       artifactPath in packageScalaJSLauncher :=
         ((crossTarget in packageScalaJSLauncher).value /
