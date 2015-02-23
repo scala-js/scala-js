@@ -58,6 +58,8 @@ trait PrepJSExports { this: PrepJSInterop =>
 
       if (!hasLegalExportVisibility(clsSym))
         err("You may only export public and protected classes")
+      else if (clsSym.isAbstractClass)
+        err("You may not export an abstract class")
       else if (clsSym.isLocalToBlock)
         err("You may not export a local class")
       else if (clsSym.isNestedClass)
