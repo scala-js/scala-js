@@ -7,6 +7,9 @@ package java.lang
  */
 class Thread private (dummy: Unit) extends Runnable {
   def run(): Unit = ()
+
+  def getStackTrace(): Array[StackTraceElement] =
+    scala.scalajs.runtime.StackTrace.getCurrentStackTrace()
 }
 
 object Thread {

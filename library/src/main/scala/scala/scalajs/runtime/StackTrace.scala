@@ -16,6 +16,13 @@ object StackTrace {
    * errors, which would be very bad if it happened.
    */
 
+  /** Returns the current stack trace.
+   *  If the stack trace cannot be analyzed in meaningful way (because we don't
+   *  know the browser), an empty array is returned.
+   */
+  def getCurrentStackTrace(): Array[StackTraceElement] =
+    extract(createException().asInstanceOf[js.Dynamic])
+
   /** Captures browser-specific state recording the current stack trace.
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
