@@ -617,6 +617,9 @@ abstract class GenIncOptimizer(semantics: Semantics,
   class StaticsNamespace(_encodedName: String) extends MethodContainer(
       _encodedName, isStatic = true) {
     def thisType: Type = NoType
+
+    override def toString(): String =
+      s"static $encodedName"
   }
 
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
