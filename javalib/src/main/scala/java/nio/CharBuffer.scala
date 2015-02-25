@@ -1,5 +1,7 @@
 package java.nio
 
+import scala.scalajs.js.typedarray._
+
 object CharBuffer {
   private final val HashSeed = -182887236 // "java.nio.CharBuffer".##
 
@@ -17,6 +19,11 @@ object CharBuffer {
 
   def wrap(csq: CharSequence): CharBuffer =
     wrap(csq, 0, csq.length)
+
+  // Extended API
+
+  def wrap(array: Uint16Array): CharBuffer =
+    TypedArrayCharBuffer.wrap(array)
 }
 
 abstract class CharBuffer private[nio] (
@@ -24,6 +31,10 @@ abstract class CharBuffer private[nio] (
     private[nio] val _arrayOffset: Int)
     extends Buffer(_capacity) with Comparable[CharBuffer]
                               with CharSequence with Appendable with Readable {
+
+  private[nio] type ElementType = Char
+  private[nio] type BufferType = CharBuffer
+  private[nio] type TypedArrayType = Uint16Array
 
   def this(_capacity: Int) = this(_capacity, null, -1)
 
@@ -56,66 +67,20 @@ abstract class CharBuffer private[nio] (
 
   def put(index: Int, c: Char): CharBuffer
 
-  def get(dst: Array[Char], offset: Int, length: Int): CharBuffer = {
-    val end = offset + length
-
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
-    if (remaining < length)
-      throw new BufferUnderflowException
-
-    var i = offset
-    while (i != end) {
-      dst(i) = get()
-      i += 1
-    }
-
-    this
-  }
+  @noinline
+  def get(dst: Array[Char], offset: Int, length: Int): CharBuffer =
+    GenBuffer(this).generic_get(dst, offset, length)
 
   def get(dst: Array[Char]): CharBuffer =
     get(dst, 0, dst.length)
 
-  def put(src: CharBuffer): CharBuffer = {
-    if (src eq this)
-      throw new IllegalArgumentException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (src.remaining > remaining)
-      throw new BufferOverflowException
+  @noinline
+  def put(src: CharBuffer): CharBuffer =
+    GenBuffer(this).generic_put(src)
 
-    var n = src.remaining
-    if (src._array != null) { // even if read-only
-      val pos = src.position
-      put(src._array, src._arrayOffset + pos, n)
-      src.position(pos + n)
-    } else {
-      while (n != 0) {
-        put(src.get())
-        n -= 1
-      }
-    }
-
-    this
-  }
-
-  def put(src: Array[Char], offset: Int, length: Int): CharBuffer = {
-    val end = offset + length
-    if (offset < 0 || length < 0 || end > src.length)
-      throw new IndexOutOfBoundsException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (remaining < length)
-      throw new BufferOverflowException
-
-    var i = offset
-    while (i != end) {
-      put(src(i))
-      i += 1
-    }
-
-    this
-  }
+  @noinline
+  def put(src: Array[Char], offset: Int, length: Int): CharBuffer =
+    GenBuffer(this).generic_put(src, offset, length)
 
   final def put(src: Array[Char]): CharBuffer =
     put(src, 0, src.length)
@@ -126,76 +91,31 @@ abstract class CharBuffer private[nio] (
   final def put(src: String): CharBuffer =
     put(src, 0, src.length)
 
-  @inline final def hasArray(): Boolean = _array != null && !isReadOnly
+  @inline final def hasArray(): Boolean =
+    GenBuffer(this).generic_hasArray()
 
-  @inline final def array(): Array[Char] = {
-    val a = _array
-    if (a == null)
-      throw new UnsupportedOperationException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    a
-  }
+  @inline final def array(): Array[Char] =
+    GenBuffer(this).generic_array()
 
-  @inline final def arrayOffset(): Int = {
-    val o = _arrayOffset
-    if (o == -1)
-      throw new UnsupportedOperationException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    o
-  }
+  @inline final def arrayOffset(): Int =
+    GenBuffer(this).generic_arrayOffset()
 
   def compact(): CharBuffer
 
-  // Not implemented:
-  //def isDirect(): Boolean
+  def isDirect(): Boolean
 
-  override def hashCode(): Int = {
-    import scala.util.hashing.MurmurHash3._
-    val start = position
-    val end = limit
-    var h = CharBuffer.HashSeed
-    var i = start
-    while (i != end) {
-      h = mix(h, get().##)
-      i += 1
-    }
-    position(start)
-    finalizeHash(h, end-start)
-  }
+  @noinline
+  override def hashCode(): Int =
+    GenBuffer(this).generic_hashCode(CharBuffer.HashSeed)
 
   override def equals(that: Any): Boolean = that match {
     case that: CharBuffer => compareTo(that) == 0
     case _                => false
   }
 
-  def compareTo(that: CharBuffer): Int = {
-    if (this eq that) {
-      0
-    } else {
-      val thisStart = this.position
-      val thisRemaining = this.remaining
-      val thatStart = that.position
-      val thatRemaining = that.remaining
-      val shortestLength = Math.min(thisRemaining, thatRemaining)
-
-      var i = 0
-      while (i != shortestLength) {
-        val cmp = this.get().compareTo(that.get())
-        if (cmp != 0) {
-          this.position(thisStart)
-          that.position(thatStart)
-          return cmp
-        }
-        i += 1
-      }
-
-      this.position(thisStart)
-      that.position(thatStart)
-      thisRemaining.compareTo(thatRemaining)
-    }
-  }
+  @noinline
+  def compareTo(that: CharBuffer): Int =
+    GenBuffer(this).generic_compareTo(that)(_.compareTo(_))
 
   override def toString(): String = {
     if (_array != null) { // even if read-only
@@ -225,4 +145,20 @@ abstract class CharBuffer private[nio] (
     put(c)
 
   def order(): ByteOrder
+
+  // Internal API
+
+  private[nio] def load(index: Int): Char
+
+  private[nio] def store(index: Int, elem: Char): Unit
+
+  @inline
+  private[nio] def load(startIndex: Int,
+      dst: Array[Char], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  private[nio] def store(startIndex: Int,
+      src: Array[Char], offset: Int, length: Int): Unit =
+    GenBuffer(this).generic_store(startIndex, src, offset, length)
 }

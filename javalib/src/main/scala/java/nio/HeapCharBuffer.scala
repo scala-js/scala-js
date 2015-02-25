@@ -8,28 +8,23 @@ private[nio] final class HeapCharBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
+  private[this] implicit def newHeapCharBuffer = HeapCharBuffer.NewHeapCharBuffer
+
   def isReadOnly(): Boolean = _readOnly
 
   def isDirect(): Boolean = false
 
-  def slice(): CharBuffer = {
-    val cap = remaining
-    new HeapCharBuffer(cap, _array, _arrayOffset + position, 0, cap, isReadOnly)
-  }
+  @noinline
+  def slice(): CharBuffer =
+    GenHeapBuffer(this).generic_slice()
 
-  def duplicate(): CharBuffer = {
-    val result = new HeapCharBuffer(capacity, _array, _arrayOffset,
-        position, limit, isReadOnly)
-    result._mark = this._mark
-    result
-  }
+  @noinline
+  def duplicate(): CharBuffer =
+    GenHeapBuffer(this).generic_duplicate()
 
-  def asReadOnlyBuffer(): CharBuffer = {
-    val result = new HeapCharBuffer(capacity, _array, _arrayOffset,
-        position, limit, true)
-    result._mark = this._mark
-    result
-  }
+  @noinline
+  def asReadOnlyBuffer(): CharBuffer =
+    GenHeapBuffer(this).generic_asReadOnlyBuffer()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
     if (start < 0 || end < start || end > remaining)
@@ -38,101 +33,73 @@ private[nio] final class HeapCharBuffer private (
         position + start, position + end, isReadOnly)
   }
 
-  def get(): Char = {
-    if (!hasRemaining)
-      throw new BufferUnderflowException
-    val p = position
-    position(p + 1)
-    _array(_arrayOffset + p)
-  }
+  @noinline
+  def get(): Char =
+    GenBuffer(this).generic_get()
 
-  def put(c: Char): CharBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (!hasRemaining)
-      throw new BufferOverflowException
-    val p = position
-    _array(_arrayOffset + p) = c
-    position(p + 1)
-    this
-  }
+  @noinline
+  def put(c: Char): CharBuffer =
+    GenBuffer(this).generic_put(c)
 
-  def get(index: Int): Char = {
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index)
-  }
+  @noinline
+  def get(index: Int): Char =
+    GenBuffer(this).generic_get(index)
 
-  def put(index: Int, b: Char): CharBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index) = b
-    this
-  }
+  @noinline
+  def put(index: Int, c: Char): CharBuffer =
+    GenBuffer(this).generic_put(index, c)
 
-  override def get(dst: Array[Char], offset: Int, length: Int): CharBuffer = {
-    val end = offset + length
+  @noinline
+  override def get(dst: Array[Char], offset: Int, length: Int): CharBuffer =
+    GenBuffer(this).generic_get(dst, offset, length)
 
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
+  @noinline
+  override def put(src: Array[Char], offset: Int, length: Int): CharBuffer =
+    GenBuffer(this).generic_put(src, offset, length)
 
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferUnderflowException
-
-    System.arraycopy(_array, startPos + _arrayOffset, dst, offset, length)
-    position(endPos)
-
-    this
-  }
-
-  override def put(src: Array[Char], offset: Int, length: Int): CharBuffer = {
-    val end = offset + length
-    if (offset < 0 || length < 0 || end > src.length)
-      throw new IndexOutOfBoundsException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferOverflowException
-
-    System.arraycopy(src, offset, _array, startPos + _arrayOffset, length)
-    position(endPos)
-
-    this
-  }
-
-  def compact(): CharBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-
-    val offset = _arrayOffset
-    val len = remaining
-    System.arraycopy(_array, offset + position, _array, offset, len)
-    _mark = -1
-    limit(capacity)
-    position(len)
-    this
-  }
+  @noinline
+  def compact(): CharBuffer =
+    GenHeapBuffer(this).generic_compact()
 
   def order(): ByteOrder = ByteOrder.nativeOrder()
+
+  // Internal API
+
+  @inline
+  private[nio] def load(index: Int): Char =
+    GenHeapBuffer(this).generic_load(index)
+
+  @inline
+  private[nio] def store(index: Int, elem: Char): Unit =
+    GenHeapBuffer(this).generic_store(index, elem)
+
+  @inline
+  override private[nio] def load(startIndex: Int,
+      dst: Array[Char], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  override private[nio] def store(startIndex: Int,
+      src: Array[Char], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
 private[nio] object HeapCharBuffer {
+  private[nio] implicit object NewHeapCharBuffer
+      extends GenHeapBuffer.NewHeapBuffer[CharBuffer, Char] {
+    def apply(capacity: Int, array: Array[Char], arrayOffset: Int,
+        initialPosition: Int, initialLimit: Int,
+        readOnly: Boolean): CharBuffer = {
+      new HeapCharBuffer(capacity, array, arrayOffset,
+          initialPosition, initialLimit, readOnly)
+    }
+  }
+
   private[nio] def wrap(array: Array[Char], arrayOffset: Int, capacity: Int,
       initialPosition: Int, initialLength: Int,
       isReadOnly: Boolean): CharBuffer = {
-    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > array.length)
-      throw new IndexOutOfBoundsException
-    val initialLimit = initialPosition + initialLength
-    if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
-      throw new IndexOutOfBoundsException
-    new HeapCharBuffer(capacity, array, arrayOffset,
-        initialPosition, initialLimit, isReadOnly)
+    GenHeapBuffer.generic_wrap(
+        array, arrayOffset, capacity,
+        initialPosition, initialLength, isReadOnly)
   }
 }

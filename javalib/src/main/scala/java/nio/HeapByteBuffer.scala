@@ -8,122 +8,167 @@ private[nio] final class HeapByteBuffer private (
   position(_initialPosition)
   limit(_initialLimit)
 
+  private[this] implicit def newHeapByteBuffer = HeapByteBuffer.NewHeapByteBuffer
+
   def isReadOnly(): Boolean = _readOnly
 
   def isDirect(): Boolean = false
 
-  def slice(): ByteBuffer = {
-    val cap = remaining
-    new HeapByteBuffer(cap, _array, _arrayOffset+position, 0, cap, isReadOnly)
-  }
+  @noinline
+  def slice(): ByteBuffer =
+    GenHeapBuffer(this).generic_slice()
 
-  def duplicate(): ByteBuffer = {
-    val result = new HeapByteBuffer(capacity, _array, _arrayOffset,
-        position, limit, isReadOnly)
-    result._mark = this._mark
-    result
-  }
+  @noinline
+  def duplicate(): ByteBuffer =
+    GenHeapBuffer(this).generic_duplicate()
 
-  def asReadOnlyBuffer(): ByteBuffer = {
-    val result = new HeapByteBuffer(capacity, _array, _arrayOffset,
-        position, limit, true)
-    result._mark = this._mark
-    result
-  }
+  @noinline
+  def asReadOnlyBuffer(): ByteBuffer =
+    GenHeapBuffer(this).generic_asReadOnlyBuffer()
 
-  def get(): Byte = {
-    if (!hasRemaining)
-      throw new BufferUnderflowException
-    val p = position
-    position(p + 1)
-    _array(_arrayOffset + p)
-  }
+  @noinline
+  def get(): Byte =
+    GenBuffer(this).generic_get()
 
-  def put(b: Byte): ByteBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (!hasRemaining)
-      throw new BufferOverflowException
-    val p = position
-    _array(_arrayOffset + p) = b
-    position(p + 1)
-    this
-  }
+  @noinline
+  def put(b: Byte): ByteBuffer =
+    GenBuffer(this).generic_put(b)
 
-  def get(index: Int): Byte = {
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index)
-  }
+  @noinline
+  def get(index: Int): Byte =
+    GenBuffer(this).generic_get(index)
 
-  def put(index: Int, b: Byte): ByteBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
-    if (index < 0 || index >= limit)
-      throw new IndexOutOfBoundsException
-    _array(_arrayOffset + index) = b
-    this
-  }
+  @noinline
+  def put(index: Int, b: Byte): ByteBuffer =
+    GenBuffer(this).generic_put(index, b)
 
-  override def get(dst: Array[Byte], offset: Int, length: Int): ByteBuffer = {
-    val end = offset + length
+  @noinline
+  override def get(dst: Array[Byte], offset: Int, length: Int): ByteBuffer =
+    GenBuffer(this).generic_get(dst, offset, length)
 
-    if (offset < 0 || length < 0 || end > dst.length)
-      throw new IndexOutOfBoundsException
+  @noinline
+  override def put(src: Array[Byte], offset: Int, length: Int): ByteBuffer =
+    GenBuffer(this).generic_put(src, offset, length)
 
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferUnderflowException
+  @noinline
+  def compact(): ByteBuffer =
+    GenHeapBuffer(this).generic_compact()
 
-    System.arraycopy(_array, startPos + _arrayOffset, dst, offset, length)
-    position(endPos)
+  // Here begins the stuff specific to ByteArrays
 
-    this
-  }
+  @inline private def arrayBits: ByteArrayBits =
+    ByteArrayBits(_array, _arrayOffset, isBigEndian)
 
-  override def put(src: Array[Byte], offset: Int, length: Int): ByteBuffer = {
-    val end = offset + length
-    if (offset < 0 || length < 0 || end > src.length)
-      throw new IndexOutOfBoundsException
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
+  @noinline def getChar(): Char =
+    arrayBits.loadChar(getPosAndAdvanceRead(2))
+  @noinline def putChar(value: Char): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeChar(getPosAndAdvanceWrite(2), value); this }
+  @noinline def getChar(index: Int): Char =
+    arrayBits.loadChar(validateIndex(index, 2))
+  @noinline def putChar(index: Int, value: Char): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeChar(validateIndex(index, 2), value); this }
 
-    val startPos = position
-    val endPos = startPos + length
-    if (endPos > limit)
-      throw new BufferOverflowException
+  def asCharBuffer(): CharBuffer =
+    HeapByteBufferCharView.fromHeapByteBuffer(this)
 
-    System.arraycopy(src, offset, _array, startPos + _arrayOffset, length)
-    position(endPos)
+  @noinline def getShort(): Short =
+    arrayBits.loadShort(getPosAndAdvanceRead(2))
+  @noinline def putShort(value: Short): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeShort(getPosAndAdvanceWrite(2), value); this }
+  @noinline def getShort(index: Int): Short =
+    arrayBits.loadShort(validateIndex(index, 2))
+  @noinline def putShort(index: Int, value: Short): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeShort(validateIndex(index, 2), value); this }
 
-    this
-  }
+  def asShortBuffer(): ShortBuffer =
+    HeapByteBufferShortView.fromHeapByteBuffer(this)
 
-  def compact(): ByteBuffer = {
-    if (isReadOnly)
-      throw new ReadOnlyBufferException
+  @noinline def getInt(): Int =
+    arrayBits.loadInt(getPosAndAdvanceRead(4))
+  @noinline def putInt(value: Int): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeInt(getPosAndAdvanceWrite(4), value); this }
+  @noinline def getInt(index: Int): Int =
+    arrayBits.loadInt(validateIndex(index, 4))
+  @noinline def putInt(index: Int, value: Int): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeInt(validateIndex(index, 4), value); this }
 
-    val offset = _arrayOffset
-    val len = remaining
-    System.arraycopy(_array, offset + position, _array, offset, len)
-    _mark = -1
-    limit(capacity)
-    position(len)
-    this
-  }
+  def asIntBuffer(): IntBuffer =
+    HeapByteBufferIntView.fromHeapByteBuffer(this)
+
+  @noinline def getLong(): Long =
+    arrayBits.loadLong(getPosAndAdvanceRead(8))
+  @noinline def putLong(value: Long): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeLong(getPosAndAdvanceWrite(8), value); this }
+  @noinline def getLong(index: Int): Long =
+    arrayBits.loadLong(validateIndex(index, 8))
+  @noinline def putLong(index: Int, value: Long): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeLong(validateIndex(index, 8), value); this }
+
+  def asLongBuffer(): LongBuffer =
+    HeapByteBufferLongView.fromHeapByteBuffer(this)
+
+  @noinline def getFloat(): Float =
+    arrayBits.loadFloat(getPosAndAdvanceRead(4))
+  @noinline def putFloat(value: Float): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeFloat(getPosAndAdvanceWrite(4), value); this }
+  @noinline def getFloat(index: Int): Float =
+    arrayBits.loadFloat(validateIndex(index, 4))
+  @noinline def putFloat(index: Int, value: Float): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeFloat(validateIndex(index, 4), value); this }
+
+  def asFloatBuffer(): FloatBuffer =
+    HeapByteBufferFloatView.fromHeapByteBuffer(this)
+
+  @noinline def getDouble(): Double =
+    arrayBits.loadDouble(getPosAndAdvanceRead(8))
+  @noinline def putDouble(value: Double): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeDouble(getPosAndAdvanceWrite(8), value); this }
+  @noinline def getDouble(index: Int): Double =
+    arrayBits.loadDouble(validateIndex(index, 8))
+  @noinline def putDouble(index: Int, value: Double): ByteBuffer =
+    { ensureNotReadOnly(); arrayBits.storeDouble(validateIndex(index, 8), value); this }
+
+  def asDoubleBuffer(): DoubleBuffer =
+    HeapByteBufferDoubleView.fromHeapByteBuffer(this)
+
+  // Internal API
+
+  @inline
+  private[nio] def load(index: Int): Byte =
+    GenHeapBuffer(this).generic_load(index)
+
+  @inline
+  private[nio] def store(index: Int, elem: Byte): Unit =
+    GenHeapBuffer(this).generic_store(index, elem)
+
+  @inline
+  override private[nio] def load(startIndex: Int,
+      dst: Array[Byte], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
+
+  @inline
+  override private[nio] def store(startIndex: Int,
+      src: Array[Byte], offset: Int, length: Int): Unit =
+    GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
 private[nio] object HeapByteBuffer {
+  private[nio] implicit object NewHeapByteBuffer
+      extends GenHeapBuffer.NewHeapBuffer[ByteBuffer, Byte] {
+    def apply(capacity: Int, array: Array[Byte], arrayOffset: Int,
+        initialPosition: Int, initialLimit: Int,
+        readOnly: Boolean): ByteBuffer = {
+      new HeapByteBuffer(capacity, array, arrayOffset,
+          initialPosition, initialLimit, readOnly)
+    }
+  }
+
+  @noinline
   private[nio] def wrap(array: Array[Byte], arrayOffset: Int, capacity: Int,
       initialPosition: Int, initialLength: Int,
       isReadOnly: Boolean): ByteBuffer = {
-    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > array.length)
-      throw new IndexOutOfBoundsException
-    val initialLimit = initialPosition + initialLength
-    if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
-      throw new IndexOutOfBoundsException
-    new HeapByteBuffer(capacity, array, arrayOffset,
-        initialPosition, initialLimit, isReadOnly)
+    GenHeapBuffer.generic_wrap(
+        array, arrayOffset, capacity,
+        initialPosition, initialLength, isReadOnly)
   }
 }
