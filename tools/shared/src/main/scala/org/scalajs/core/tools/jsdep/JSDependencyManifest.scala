@@ -13,10 +13,36 @@ final class JSDependencyManifest(
     val libDeps: List[JSDependency],
     val requiresDOM: Boolean,
     val compliantSemantics: List[String]) {
+
+  import JSDependencyManifest._
+
   def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
+
+  override def equals(that: Any): Boolean = that match {
+    case that: JSDependencyManifest =>
+      this.origin == that.origin &&
+      this.libDeps == that.libDeps &&
+      this.requiresDOM == that.requiresDOM &&
+      this.compliantSemantics == that.compliantSemantics
+    case _ =>
+      false
+  }
+
+  override def hashCode(): Int = {
+    import scala.util.hashing.MurmurHash3._
+    var acc = HashSeed
+    acc = mix(acc, origin.##)
+    acc = mix(acc, libDeps.##)
+    acc = mix(acc, requiresDOM.##)
+    acc = mixLast(acc, compliantSemantics.##)
+    finalizeHash(acc, 4)
+  }
 }
 
 object JSDependencyManifest {
+
+  // "org.scalajs.core.tools.jsdep.JSDependencyManifest".##
+  private final val HashSeed = 943487940
 
   final val ManifestFileName = "JS_DEPENDENCIES"
 
