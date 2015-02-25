@@ -451,8 +451,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val interfaces = genClassInterfaces(sym)
 
+      // Hashed definitions of the interface
+      val hashedDefs =
+        Hashers.hashDefs(generatedMethods)
+
       js.ClassDef(classIdent, ClassKind.Interface, None, interfaces, None,
-          generatedMethods)(OptimizerHints.empty)
+          hashedDefs)(OptimizerHints.empty)
     }
 
     // Generate an implementation class of a trait -----------------------------
@@ -483,9 +487,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       val classIdent = encodeClassFullNameIdent(sym)
       val objectClassIdent = encodeClassFullNameIdent(ObjectClass)
 
+      // Hashed definitions of the impl class
+      val hashedDefs =
+        Hashers.hashDefs(generatedMethods)
+
       js.ClassDef(classIdent, ClassKind.Class,
           Some(objectClassIdent), Nil, None,
-          generatedMethods)(OptimizerHints.empty)
+          hashedDefs)(OptimizerHints.empty)
     }
 
     private def genClassInterfaces(sym: Symbol)(
