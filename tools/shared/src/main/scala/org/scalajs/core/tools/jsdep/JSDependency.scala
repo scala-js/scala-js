@@ -23,6 +23,8 @@ final class JSDependency(
     val dependencies: List[String] = Nil,
     val commonJSName: Option[String] = None) {
 
+  import JSDependency._
+
   require(commonJSName.forall(isValidIdentifier),
     "commonJSName must be a valid JavaScript identifier")
 
@@ -39,9 +41,29 @@ final class JSDependency(
       commonJSName: Option[String] = this.commonJSName) = {
     new JSDependency(resourceName, dependencies, commonJSName)
   }
+
+  override def equals(that: Any): Boolean = that match {
+    case that: JSDependency =>
+      this.resourceName == that.resourceName &&
+      this.dependencies == that.dependencies &&
+      this.commonJSName == that.commonJSName
+    case _ =>
+      false
+  }
+
+  override def hashCode(): Int = {
+    import scala.util.hashing.MurmurHash3._
+    var acc = HashSeed
+    acc = mix(acc, resourceName.##)
+    acc = mix(acc, dependencies.##)
+    acc = mixLast(acc, commonJSName.##)
+    finalizeHash(acc, 3)
+  }
 }
 
 object JSDependency {
+  // "org.scalajs.core.tools.jsdep.JSDependency".##
+  private final val HashSeed = 2103455349
 
   implicit object JSDepJSONSerializer extends JSONSerializer[JSDependency] {
     def serialize(x: JSDependency): JSON = {
