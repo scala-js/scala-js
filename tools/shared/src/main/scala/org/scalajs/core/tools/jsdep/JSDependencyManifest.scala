@@ -16,6 +16,7 @@ final class JSDependencyManifest(
 
   import JSDependencyManifest._
 
+  @deprecated("flatten doesn't resolve partial paths, use your own code instead", "0.6.1")
   def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
 
   override def equals(that: Any): Boolean = that match {
@@ -69,7 +70,7 @@ object JSDependencyManifest {
       else if (coll.tail.isEmpty) coll.head :: acc
       else {
         val (selected, pending) = coll.partition { x =>
-          coll forall { y => (x eq y) || !y.dependencies.contains(x.resourceName) }
+          coll forall { y => (x eq y) || !y.dependencies.contains(x.relPath) }
         }
 
         if (selected.nonEmpty)
@@ -90,8 +91,8 @@ object JSDependencyManifest {
     def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
       x.commonJSName.isDefined &&
       y.commonJSName.isDefined &&
-      (x.resourceName == y.resourceName ^
-       x.commonJSName == y.commonJSName)
+      (x.relPath == y.relPath ^
+          x.commonJSName == y.commonJSName)
     )
 
     val conflicts = flatDeps.filter(x =>
@@ -100,9 +101,9 @@ object JSDependencyManifest {
     if (conflicts.nonEmpty)
       throw new ConflictingNameException(conflicts.toList)
 
-    flatDeps.groupBy(_.resourceName).mapValues { sameName =>
+    flatDeps.groupBy(_.relPath).mapValues { sameName =>
       new ResolutionInfo(
-        resourceName = sameName.head.resourceName,
+        relPath = sameName.head.relPath,
         dependencies = sameName.flatMap(_.dependencies).toSet,
         origins = sameName.map(_.origin).toList,
         commonJSName = sameName.flatMap(_.commonJSName).headOption

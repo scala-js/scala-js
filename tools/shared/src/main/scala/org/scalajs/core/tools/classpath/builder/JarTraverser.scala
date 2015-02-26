@@ -30,9 +30,9 @@ trait JarTraverser extends ClasspathContentHandler with FileSystem {
     finally zipStream.close()
 
     for {
-      (_, jsFile) <- jsFiles
+      (relPath, jsFile) <- jsFiles
       if jsFile.content != "" // drop if this is just a lone sourcemap
-    } handleJS(jsFile)
+    } handleJS(relPath, jsFile)
 
     getGlobalVersion(jar)
   }

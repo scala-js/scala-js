@@ -85,6 +85,56 @@ lazy val multiTest = crossProject.
 lazy val multiTestJS = multiTest.js
 lazy val multiTestJVM = multiTest.jvm
 
+lazy val jsDependenciesTest = project.settings(versionSettings: _*).
+  enablePlugins(ScalaJSPlugin).
+  settings(
+    jsDependencies ++= Seq(
+        "org.webjars" % "historyjs" % "1.8.0" / "uncompressed/history.js",
+        ProvidedJS / "some-jquery-plugin.js" dependsOn "1.10.2/jquery.js",
+        ProvidedJS / "js/foo.js" dependsOn "uncompressed/history.js",
+
+        // cause a circular dependency error if both "history.js"'s are considered equal
+        "org.webjars" % "historyjs" % "1.8.0" / "compressed/history.js" dependsOn "foo.js",
+
+        // cause a duplicate commonJSName if the following are not considered equal
+        "org.webjars" % "mustachejs" % "0.8.2" / "mustache.js" commonJSName "Mustache",
+        "org.webjars" % "mustachejs" % "0.8.2" / "0.8.2/mustache.js" commonJSName "Mustache"
+    )
+  ).
+  settings(inConfig(Compile)(Seq(
+    skip in packageJSDependencies := false,
+    packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
+      // perform verifications on the ordering and deduplications
+      val cp = scalaJSPreLinkClasspath.value
+      val relPaths = cp.jsLibs.map(_.info.relPath)
+
+      assert(relPaths.toSet == Set(
+          "META-INF/resources/webjars/mustachejs/0.8.2/mustache.js",
+          "META-INF/resources/webjars/historyjs/1.8.0/scripts/uncompressed/history.js",
+          "META-INF/resources/webjars/historyjs/1.8.0/scripts/compressed/history.js",
+          "META-INF/resources/webjars/jquery/1.10.2/jquery.js",
+          "js/foo.js",
+          "js/some-jquery-plugin.js"),
+          s"Bad set of relPathes: ${relPaths.toSet}")
+
+      val jQueryIndex = relPaths.indexWhere(_ endsWith "/jquery.js")
+      val jQueryPluginIndex = relPaths.indexWhere(_ endsWith "/some-jquery-plugin.js")
+      assert(jQueryPluginIndex > jQueryIndex,
+          "the jQuery plugin appears before jQuery")
+
+      val uncompressedHistoryIndex = relPaths.indexWhere(_ endsWith "/uncompressed/history.js")
+      val fooIndex = relPaths.indexWhere(_ endsWith "/foo.js")
+      val compressedHistoryIndex = relPaths.indexWhere(_ endsWith "/compressed/history.js")
+      assert(fooIndex > uncompressedHistoryIndex,
+          "foo.js appears before uncompressed/history.js")
+      assert(compressedHistoryIndex > fooIndex,
+          "compressed/history.js appears before foo.js")
+
+      streams.value.log.info("jsDependencies resolution test passed")
+    })
+  )): _*).
+  dependsOn(jetty9) // depends on jQuery
+
 // Test %%% macro - #1331
 val unusedSettings = Seq(
   libraryDependencies += "org.example" %%% "dummy" % "0.1"
