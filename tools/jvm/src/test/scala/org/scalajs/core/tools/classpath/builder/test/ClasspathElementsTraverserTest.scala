@@ -14,7 +14,7 @@ class ClasspathElementsTraverserTest {
   class TestElementTraverser extends ClasspathElementsTraverser with PhysicalFileSystem {
     protected def handleDepManifest(m: => JSDependencyManifest): Unit = ???
     protected def handleIR(relPath: String, ir: => VirtualScalaJSIRFile): Unit = ???
-    protected def handleJS(js: => VirtualJSFile): Unit = ???
+    protected def handleJS(relPath: String, js: => VirtualJSFile): Unit = ???
 
     def test(f: File): String = traverseClasspathElements(Seq(f))
   }

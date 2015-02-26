@@ -29,10 +29,11 @@ trait AbstractPartialClasspathBuilder extends ClasspathContentHandler
       irFiles += relPath -> ir
   }
 
-  override protected def handleJS(js: => VirtualJSFile): Unit = {
+  override protected def handleJS(relPath: String,
+      js: => VirtualJSFile): Unit = {
     val file = js
-    if (!otherJSFiles.contains(file.name))
-      otherJSFiles += file.name -> file
+    if (!otherJSFiles.contains(relPath))
+      otherJSFiles += relPath -> file
   }
 
   override protected def handleDepManifest(m: => JSDependencyManifest): Unit = {

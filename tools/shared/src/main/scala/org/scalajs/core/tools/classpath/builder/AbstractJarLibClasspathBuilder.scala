@@ -38,10 +38,11 @@ trait AbstractJarLibClasspathBuilder extends JarTraverser {
     irFiles += ir
   }
 
-  override protected def handleJS(js: => VirtualJSFile): Unit = {
+  override protected def handleJS(relPath: String,
+      js: => VirtualJSFile): Unit = {
     val file = js
-    if (!jsFiles.contains(file.name))
-      jsFiles += file.name -> file
+    if (!jsFiles.contains(relPath))
+      jsFiles += relPath -> file
   }
 
   override protected def handleDepManifest(m: => JSDependencyManifest): Unit = {

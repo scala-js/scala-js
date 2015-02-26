@@ -45,7 +45,7 @@ trait DirTraverser extends ClasspathContentHandler with FileSystem {
 
           case _ if isJSFile(file) =>
             versions += getGlobalVersion(file)
-            handleJS(toJSFile(file))
+            handleJS(path, toJSFile(file))
 
           case _ if isIRFile(file) =>
             versions += getGlobalVersion(file)
