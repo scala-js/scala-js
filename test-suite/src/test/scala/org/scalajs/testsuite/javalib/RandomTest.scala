@@ -160,16 +160,16 @@ object RandomTest extends JasmineTest {
 
     it("should correctly implement nextFloat") {
       val random = new Random(-3920005825473L)
-      expect(random.nextFloat()).toBeCloseTo(0.059591234, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.7007871, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.39173192, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.0647918, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.9029677, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.18226051, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.94444054, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.008844078, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.08891684, 7)
-      expect(random.nextFloat()).toBeCloseTo(0.06482434, 7)
+      expect(random.nextFloat()).toBe(0.059591234f)
+      expect(random.nextFloat()).toBe(0.7007871f)
+      expect(random.nextFloat()).toBe(0.39173192f)
+      expect(random.nextFloat()).toBe(0.0647918f)
+      expect(random.nextFloat()).toBe(0.9029677f)
+      expect(random.nextFloat()).toBe(0.18226051f)
+      expect(random.nextFloat()).toBe(0.94444054f)
+      expect(random.nextFloat()).toBe(0.008844078f)
+      expect(random.nextFloat()).toBe(0.08891684f)
+      expect(random.nextFloat()).toBe(0.06482434f)
     }
 
     it("should correctly implement nextBytes") {
