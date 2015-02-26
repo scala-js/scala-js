@@ -10,6 +10,7 @@
 package org.scalajs.core.tools.classpath
 
 import scala.collection.immutable.{Seq, Traversable}
+import scala.collection.mutable
 
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.io._
@@ -64,15 +65,33 @@ final class PartialClasspath(
     val flatDeps = filter(dependencies.flatMap(_.flatten))
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
-    val missingDeps = includeList.filterNot { info =>
-      availableLibs.contains(info.resourceName)
+    val resolved = List.newBuilder[ResolvedJSDependency]
+    val missingDeps = mutable.ListBuffer.empty[ResolutionInfo]
+
+    for (info <- includeList) {
+      findResourceByName(info.resourceName).fold[Unit] {
+        missingDeps += info
+      } { file =>
+        resolved += new ResolvedJSDependency(file, info)
+      }
     }
 
     if (missingDeps.nonEmpty)
-      throw new MissingJSLibException(missingDeps)
+      throw new MissingJSLibException(missingDeps.toList)
 
-    for (info <- includeList)
-      yield new ResolvedJSDependency(availableLibs(info.resourceName), info)
+    resolved.result()
+  }
+
+  private def findResourceByName(resourceName: String): Option[VirtualJSFile] = {
+    // Favor a fully-qualified relative path
+    availableLibs.get(resourceName) orElse {
+      // Otherwise, take any file whose relative path ends in the specified name
+      // (the "/" is there so we don't match partial *names*, only partial paths)
+      availableLibs collectFirst {
+        case (relPath, file) if relPath.endsWith("/" + resourceName) =>
+          file
+      }
+    }
   }
 
   protected def mergeCompliance(): Traversable[ComplianceRequirement] = {

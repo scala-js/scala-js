@@ -20,6 +20,6 @@ import scala.collection.immutable.Seq
 /** Base-trait used by traversers to handle content with callbacks */
 trait ClasspathContentHandler {
   protected def handleIR(relPath: String, ir: => VirtualScalaJSIRFile): Unit
-  protected def handleJS(js: => VirtualJSFile): Unit
+  protected def handleJS(relPath: String, js: => VirtualJSFile): Unit
   protected def handleDepManifest(m: => JSDependencyManifest): Unit
 }

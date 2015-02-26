@@ -37,6 +37,20 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.LinkedClass.this"),
 
+      /* Breaking changes: ClasspathContentHandler.handleJS takes an
+       * additional parameter.
+       */
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.builder.ClasspathContentHandler.handleJS"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.builder.AbstractJarLibClasspathBuilder.handleJS"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.builder.AbstractPartialClasspathBuilder.handleJS"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.builder.JarLibClasspathBuilder.handleJS"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.builder.PartialClasspathBuilder.handleJS"),
+
       /* In theory, this is a problem, but no one but us is going to
        * *implement* Analysis.ClassInfo.
        */
