@@ -4,8 +4,6 @@ package lang
 import scala.scalajs.js
 
 object Math {
-  private lazy val internalRandom = new java.util.Random()
-
   final val E  = 2.718281828459045
   final val PI = 3.141592653589793
 
@@ -46,7 +44,7 @@ object Math {
   @inline def atan(a: scala.Double): scala.Double = js.Math.atan(a)
   @inline def atan2(y: scala.Double, x: scala.Double): scala.Double = js.Math.atan2(y, x)
 
-  def random(): scala.Double = internalRandom.nextDouble()
+  @inline def random(): scala.Double = js.Math.random()
 
   @inline def toDegrees(a: scala.Double): scala.Double = a * 180.0 / PI
   @inline def toRadians(a: scala.Double): scala.Double = a / 180.0 * PI
