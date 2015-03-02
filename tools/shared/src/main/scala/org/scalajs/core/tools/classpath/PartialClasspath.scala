@@ -10,10 +10,13 @@
 package org.scalajs.core.tools.classpath
 
 import scala.collection.immutable.{Seq, Traversable}
+import scala.collection.mutable
 
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.corelib.CoreJSLibs
+
+import JSLibResolveException.Problem
 
 /** A partial Scala.js classpath is a collection of:
  *  - Scala.js binary files *.sjsir
@@ -56,23 +59,78 @@ final class PartialClasspath(
   }
 
   /** Constructs an ordered list of JS libraries to include. Fails if:
+   *  - Resource names do not identify a unique resource on the classpath
    *  - Dependencies have cycles
    *  - Not all dependencies are available
    */
   protected def resolveDependencies(
       filter: DependencyFilter): List[ResolvedJSDependency] = {
-    val flatDeps = filter(dependencies.flatMap(_.flatten))
-    val includeList = JSDependencyManifest.createIncludeList(flatDeps)
+    val resourceNames = collectAllResourceNames()
+    val resolvedJSLibs = resolveAllResourceNames(resourceNames)
 
-    val missingDeps = includeList.filterNot { info =>
-      availableLibs.contains(info.resourceName)
+    val allFlatDeps = for {
+      manifest <- dependencies
+      dep <- manifest.libDeps
+    } yield {
+      new FlatJSDependency(manifest.origin, resolvedJSLibs(dep.resourceName),
+          dep.dependencies.map(resolvedJSLibs), dep.commonJSName)
     }
 
-    if (missingDeps.nonEmpty)
-      throw new MissingJSLibException(missingDeps)
+    val flatDeps = filter(allFlatDeps)
+    val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
     for (info <- includeList)
-      yield new ResolvedJSDependency(availableLibs(info.resourceName), info)
+      yield new ResolvedJSDependency(availableLibs(info.relPath), info)
+  }
+
+  /** Collects all the resource names mentioned in the manifests.
+   *  @return Map from resource name to the list of origins mentioning them
+   */
+  private def collectAllResourceNames(): Map[String, List[Origin]] = {
+    val nameOriginPairs = for {
+      manifest <- dependencies.toList
+      dep <- manifest.libDeps
+      resourceName <- dep.resourceName :: dep.dependencies
+    } yield (resourceName, manifest.origin)
+
+    nameOriginPairs.groupBy(_._1).mapValues(_.map(_._2))
+  }
+
+  /** Resolves all the resource names wrt to the current classpath.
+   *  @throws JSLibResolveException if any of the resource names cannot be resolved
+   *  @return Map from resource name to relative path
+   */
+  private def resolveAllResourceNames(
+      allResourceNames: Map[String, List[Origin]]): Map[String, String] = {
+    val problems = mutable.ListBuffer.empty[Problem]
+    val resolvedLibs = Map.newBuilder[String, String]
+
+    for ((resourceName, origins) <- allResourceNames) {
+      resolveResourceName(resourceName, origins).fold[Unit](
+          problems += _,
+          resolvedLibs += resourceName -> _)
+    }
+
+    if (problems.nonEmpty)
+      throw new JSLibResolveException(problems.toList)
+    else
+      resolvedLibs.result()
+  }
+
+  /** Resolves one resource name wrt to the current classpath. */
+  private def resolveResourceName(resourceName: String,
+      origins: List[Origin]): Either[Problem, String] = {
+    val candidates = (availableLibs.keys collect {
+      case relPath if ("/" + relPath).endsWith("/" + resourceName) =>
+        relPath
+    }).toList
+
+    candidates match {
+      case relPath :: Nil =>
+        Right(relPath)
+      case _ =>
+        Left(new Problem(resourceName, candidates, origins))
+    }
   }
 
   protected def mergeCompliance(): Traversable[ComplianceRequirement] = {

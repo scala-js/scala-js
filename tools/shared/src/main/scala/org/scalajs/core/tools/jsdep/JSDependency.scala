@@ -7,13 +7,15 @@ import org.scalajs.core.ir.Trees.isValidIdentifier
 /** Expresses a dependency on a raw JS library and the JS libraries this library
  *  itself depends on.
  *
- *  Both the [[resourceName]] and each element of [[dependencies]] is the
- *  unqualified filename of the library (e.g. "jquery.js").
+ *  Both the [[resourceName]] and each element of [[dependencies]] are
+ *  potentially partial relative paths from the root of the classpath entry to
+ *  the library. Examples are "jquery.js" or "compressed/history.js".
  *
- *  @param resourceName Filename of the JavaScript file to include
- *      (e.g. "jquery.js")
- *  @param dependencies Filenames of JavaScript files that must be included
- *      before this JavaScript file.
+ *  @param resourceName Resource name, i.e., potentially partial relative path
+ *      to the .js file. Examples: "jquery.js", "compressed/history.js".
+ *  @param dependencies Potentially relative paths of the dependencies of this
+ *      resource, i.e., JavaScript files that must be included before this
+ *      JavaScript file.
  *  @param commonJSName A JavaScript variable name this dependency should be
  *      required in a commonJS environment (n.b. Node.js). Should only be set if
  *      the JavaScript library will register its exports.
@@ -32,6 +34,8 @@ final class JSDependency(
     copy(dependencies = dependencies ++ names)
   def commonJSName(name: String): JSDependency =
     copy(commonJSName = Some(name))
+
+  @deprecated("withOrigin doesn't resolve partial paths. Use your own code instead.", "0.6.1")
   def withOrigin(origin: Origin): FlatJSDependency =
     new FlatJSDependency(origin, resourceName, dependencies, commonJSName)
 

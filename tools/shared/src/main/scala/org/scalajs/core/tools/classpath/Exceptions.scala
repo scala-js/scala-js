@@ -9,17 +9,47 @@
 
 package org.scalajs.core.tools.classpath
 
-import org.scalajs.core.tools.jsdep.ResolutionInfo
+import org.scalajs.core.tools.jsdep.{Origin, ResolutionInfo}
 
+class JSLibResolveException(val problems: List[JSLibResolveException.Problem])
+    extends Exception(JSLibResolveException.mkMsg(problems))
+
+object JSLibResolveException {
+  final class Problem(val resourceName: String,
+      val possiblePaths: List[String], val origins: List[Origin]) {
+    def isMissing: Boolean = possiblePaths.isEmpty
+    def isAmbiguous: Boolean = possiblePaths.nonEmpty
+  }
+
+  private def mkMsg(problems: List[Problem]): String = {
+    val msg = new StringBuilder
+    msg.append("Some references to JS libraries could not be resolved:\n")
+    for (p <- problems) {
+      if (p.isMissing) {
+        msg.append(s"- Missing JS library: ${p.resourceName}\n")
+      } else {
+        msg.append(s"- Ambiguous reference to a JS library: ${p.resourceName}\n")
+        msg.append("  Possible paths found on the classpath:\n")
+        for (relPath <- p.possiblePaths)
+          msg.append(s"  - $relPath\n")
+      }
+      msg.append(s"  originating from: ${p.origins.mkString(", ")}\n")
+    }
+    msg.toString()
+  }
+}
+
+@deprecated("MissingJSLibException has been replaced by JSLibResolveException.", "0.6.1")
 class MissingJSLibException(val dependencies: List[ResolutionInfo])
   extends Exception(MissingJSLibException.mkMsg(dependencies))
 
+@deprecated("MissingJSLibException has been replaced by JSLibResolveException.", "0.6.1")
 object MissingJSLibException {
   private def mkMsg(deps: List[ResolutionInfo]): String = {
     val msg = new StringBuilder()
     msg.append("Missing dependencies: \n")
     for (d <- deps) {
-      msg.append(s"- ${d.resourceName}")
+      msg.append(s"- ${d.relPath}")
       msg.append(s" originating from: ${d.origins.mkString(", ")}\n")
     }
     msg.toString()

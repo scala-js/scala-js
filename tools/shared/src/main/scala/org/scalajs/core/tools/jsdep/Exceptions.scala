@@ -6,7 +6,7 @@ class MissingDependencyException(
   val originatingLib: FlatJSDependency,
   val missingLib: String
 ) extends DependencyException(
-  s"The JS dependency ${originatingLib.resourceName} declared " +
+  s"The JS dependency ${originatingLib.relPath} declared " +
   s"from ${originatingLib.origin} has an unmet transitive " +
   s"dependency $missingLib")
 
@@ -17,13 +17,13 @@ class CyclicDependencyException(
 
 object CyclicDependencyException {
   private def mkMsg(parts: List[ResolutionInfo]) = {
-    val lookup = parts.map(p => (p.resourceName, p)).toMap
+    val lookup = parts.map(p => (p.relPath, p)).toMap
 
     val msg = new StringBuilder()
     msg.append("There is a loop in the following JS dependencies:\n")
 
     def str(info: ResolutionInfo) =
-      s"${info.resourceName} from: ${info.origins.mkString(", ")}"
+      s"${info.relPath} from: ${info.origins.mkString(", ")}"
 
     for (dep <- parts) {
       msg.append(s"  ${str(dep)} which depends on\n")
@@ -44,8 +44,6 @@ class ConflictingNameException(
 
 object ConflictingNameException {
   private def mkMsg(parts: List[FlatJSDependency]) = {
-    val resName = parts.head.resourceName
-
     val msg = new StringBuilder()
     msg.append(s"Name conflicts in:\n")
 
