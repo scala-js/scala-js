@@ -111,10 +111,25 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
   }
 
-  private def withState[A, B](state: State[A])(body: => B): B = {
-    statesInUse ::= state
-    try body
-    finally statesInUse = statesInUse.tail
+  private def withState[A](state: State[A])(body: => TailRec[Tree]): TailRec[Tree] = {
+    TailCalls.done {
+      statesInUse ::= state
+      try {
+        /* We have to run a trampoline inside the try..finally, otherwise, if
+         * the body opens a new tryOrRollback, and throws a RollbackException
+         * for it, we'll jump through the finally clause in here and go the
+         * enclosing trampoline. But the enclosing trampoline doesn't know
+         * about the state being introduced here.
+         * This trampoline makes sure that a RollbackException never crosses
+         * the finally block.
+         */
+        trampoline {
+          body
+        }
+      } finally {
+        statesInUse = statesInUse.tail
+      }
+    }
   }
 
   private def freshLocalName(base: String, mutable: Boolean): String = {
@@ -3064,6 +3079,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
             usedLocalNames ++= e.savedUsedLocalNames
             usedLabelNames.clear()
             usedLabelNames ++= e.savedUsedLabelNames
+            assert(statesInUse.size == e.savedStates.size,
+                s"statesInUse.size ${statesInUse.size} != " +
+                s"${e.savedStates.size} savedStates.size")
             for ((state, backup) <- statesInUse zip e.savedStates)
               state.asInstanceOf[State[Any]].restore(backup)
 

@@ -71,6 +71,8 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.OptimizerCore#AbstractMethodID.isTraitImplForwarder"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.optimizer.OptimizerCore#AbstractMethodID.isForwarder")
+          "org.scalajs.core.tools.optimizer.OptimizerCore#AbstractMethodID.isForwarder"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.optimizer.OptimizerCore.org$scalajs$core$tools$optimizer$OptimizerCore$$withState")
   )
 }
