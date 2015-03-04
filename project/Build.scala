@@ -42,7 +42,7 @@ object Build extends sbt.Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.0"
+  val previousVersion = "0.6.1"
 
   val commonSettings = Seq(
       scalaVersion := "2.11.5",
