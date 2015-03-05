@@ -45,7 +45,7 @@ object Build extends sbt.Build {
   val previousVersion = "0.6.1"
 
   val commonSettings = Seq(
-      scalaVersion := "2.11.5",
+      scalaVersion := "2.11.6",
       organization := "org.scala-js",
       version := scalaJSVersion,
 
@@ -169,11 +169,13 @@ object Build extends sbt.Build {
         "2.10.2",
         "2.10.3",
         "2.10.4",
+        "2.10.5",
         "2.11.0",
         "2.11.1",
         "2.11.2",
         "2.11.4",
-        "2.11.5"
+        "2.11.5",
+        "2.11.6"
       ),
       // Default stage
       scalaJSStage in Global := PreLinkStage
@@ -270,9 +272,9 @@ object Build extends sbt.Build {
             }
           },
           testOptions ++= {
-            // Disable tests that crash DirectTest with Scala 2.11.5
+            // Disable tests that crash DirectTest with Scala >= 2.11.5
             // Filed as #1443
-            if (scalaVersion.value == "2.11.5") {
+            if (scalaVersion.value == "2.11.5" || scalaVersion.value == "2.11.6") {
               Seq(Tests.Filter {
                 case "scala.scalajs.compiler.test.JSExportTest"            => false
                 case "org.scalajs.core.compiler.test.JSDynamicLiteralTest" => false
@@ -394,7 +396,7 @@ object Build extends sbt.Build {
           normalizedName := "sbt-scalajs",
           name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
           sbtPlugin := true,
-          scalaVersion := "2.10.4",
+          scalaVersion := "2.10.5",
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           previousArtifact := Some(
