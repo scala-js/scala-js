@@ -100,7 +100,7 @@ object URITest extends JasmineTest {
       expectURI(new URI("docs/guide/collections/designfaq.html#28"), false, false)(
           path = "docs/guide/collections/designfaq.html",
           fragment = "28",
-          schemeSpecificPart = "docs/guide/collections/designfaq.html#28"
+          schemeSpecificPart = "docs/guide/collections/designfaq.html"
       )()
       expectURI(new URI("../../../demo/jfc/SwingSet2/src/SwingSet2.java"), false, false)(
           path = "../../../demo/jfc/SwingSet2/src/SwingSet2.java",
@@ -142,7 +142,16 @@ object URITest extends JasmineTest {
       expectURI(new URI("#foo"), false, false)(
           fragment = "foo",
           path = "",
-          schemeSpecificPart = "#foo"
+          schemeSpecificPart = ""
+          )()
+    }
+
+    it("should parse relative URIs with query and fragment") {
+      expectURI(new URI("?query=1#foo"), false, false)(
+          query = "query=1",
+          fragment = "foo",
+          path = "",
+          schemeSpecificPart = "?query=1"
           )()
     }
 

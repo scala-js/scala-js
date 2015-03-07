@@ -493,8 +493,8 @@ object URI {
     val absoluteURI = scheme+":(?:("+hier_part+")|("+opaque_part+"))" /*2CAPT*/
 
     // relativeURI   = ( net_path | abs_path | rel_path ) [ "?" query ]
-    val relativeURI = /*2CAPT*/
-      "(?:"+net_path+"|("+abs_path+")|("+rel_path+"))(?:\\?"+query+")?"
+    val relativeURI = /*3CAPT*/
+      "((?:"+net_path+"|("+abs_path+")|("+rel_path+"))(?:\\?"+query+")?)"
 
     // URI-reference = [ absoluteURI | relativeURI ] [ "#" fragment ]
     val uriRef = "^(?:"+absoluteURI+"|"+relativeURI+")(?:#"+fragment+")?$"
@@ -513,8 +513,8 @@ object URI {
     final val AbsAbsPath = AbsNetPath+1
     final val AbsQuery = AbsAbsPath+1
     final val AbsOpaquePart = AbsQuery+1
-    final val RelSchemeSpecificPart = 0 // It's the whole string
-    final val RelAuthority = AbsOpaquePart+1
+    final val RelSchemeSpecificPart = AbsOpaquePart+1 // Everything but the fragment
+    final val RelAuthority = RelSchemeSpecificPart+1
     final val RelUserInfo = RelAuthority+1
     final val RelHost = RelUserInfo+1
     final val RelPort = RelHost+1
