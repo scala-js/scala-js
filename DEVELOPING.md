@@ -18,7 +18,7 @@ Harmony project.
 Scala.js is entirely built with [sbt](http://www.scala-sbt.org/).
 To build a local version of the compiler and standard library, run
 
-    > package
+    > library/package
 
 To test your changes, run
 
