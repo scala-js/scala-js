@@ -8,10 +8,10 @@ case $FULLVER in
   2.10.2)
     VER=2.10
     ;;
-  2.11.5)
+  2.11.6)
     VER=2.11
     ;;
-  2.10.3|2.10.4|2.11.0|2.11.1|2.11.2|2.11.4)
+  2.10.3|2.10.4|2.10.5|2.11.0|2.11.1|2.11.2|2.11.4|2.11.5)
     echo "Ignoring checksizes for Scala $FULLVER"
     exit 0
     ;;
@@ -36,7 +36,7 @@ case $FULLVER in
     REVERSI_PREOPT_GZ_EXPECTEDSIZE=93000
     REVERSI_OPT_GZ_EXPECTEDSIZE=40000
     ;;
-  2.11.5)
+  2.11.6)
     REVERSI_PREOPT_EXPECTEDSIZE=714000
     REVERSI_OPT_EXPECTEDSIZE=142000
     REVERSI_PREOPT_GZ_EXPECTEDSIZE=88000

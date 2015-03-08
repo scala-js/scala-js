@@ -121,9 +121,9 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
-    sbt ++2.11.5 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
+    sbt ++2.11.6 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                  testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
-        ++2.10.4 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
+        ++2.10.5 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
                  testAdapter/publishLocal sbtPlugin/publishLocal
     # Go into standalone project and test
     cd sbt-plugin-test
@@ -163,15 +163,15 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.6</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
 
@@ -190,35 +190,34 @@
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="bootstrap">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
-    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
 
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.5</v>
       <v n="java">1.6</v>
     </run>
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
     </run>
     <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
 
@@ -228,7 +227,7 @@
       <v n="java">1.7</v>
     </run>
     <run task="partestc">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
 
@@ -245,14 +244,18 @@
     </run>
     <run task="main">
       <v n="scala">2.10.4</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.4</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
     </run>
     <run task="main">
@@ -285,6 +288,18 @@
     </run>
     <run task="main">
       <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="main">
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
     </run>
 
@@ -295,14 +310,18 @@
     </run>
     <run task="bootstrap">
       <v n="scala">2.10.4</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.10.4</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.10.4</v>
+      <v n="scala">2.10.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
@@ -317,22 +336,26 @@
       <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
     </run>
+    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
     <run task="bootstrap">
-      <v n="scala">2.11.2</v>
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
     </run>
-    <!-- Tools do not compile on Scala 2.11.4 (see #1215). -->
 
     <run task="partest-noopt">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fastopt">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
     <run task="partest-fullopt">
-      <v n="scala">2.11.5</v>
+      <v n="scala">2.11.6</v>
       <v n="java">1.7</v>
     </run>
   </matrix>
@@ -391,6 +414,18 @@
     <!-- Partest does not compile on Scala 2.11.4 (see #1215). -->
     <run task="partest-noopt">
       <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
     </run>
     <run task="partest-fastopt">
@@ -399,6 +434,18 @@
     </run>
     <run task="partest-fullopt">
       <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
     <!--
