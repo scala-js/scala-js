@@ -10,6 +10,7 @@ import complete.DefaultParsers._
 import Implicits._
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.classpath.builder._
@@ -98,10 +99,11 @@ object ScalaJSPluginInternal {
   private def scalaJSOptimizerSetting(key: TaskKey[_]): Setting[_] = (
       scalaJSOptimizer in key := {
         val semantics = (scalaJSSemantics in key).value
+        val outputMode = (scalaJSOutputMode in key).value
         if ((scalaJSOptimizerOptions in key).value.parallel)
-          new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
+          new ScalaJSOptimizer(semantics, outputMode, ParIncOptimizer.factory)
         else
-          new ScalaJSOptimizer(semantics, IncOptimizer.factory)
+          new ScalaJSOptimizer(semantics, outputMode, IncOptimizer.factory)
       }
   )
 
@@ -184,10 +186,8 @@ object ScalaJSPluginInternal {
 
         val opts = (scalaJSOptimizerOptions in fullOptJS).value
 
-        val semantics = (scalaJSSemantics in fullOptJS).value
-
         import ScalaJSClosureOptimizer._
-        val outCP = new ScalaJSClosureOptimizer(semantics).optimizeCP(
+        val outCP = new ScalaJSClosureOptimizer().optimizeCP(
             (scalaJSOptimizer in fullOptJS).value,
             (scalaJSPreLinkClasspath in fullOptJS).value,
             Config(
@@ -510,6 +510,7 @@ object ScalaJSPluginInternal {
       jsDependencyFilter := identity,
 
       scalaJSSemantics := Semantics.Defaults,
+      scalaJSOutputMode := OutputMode.ECMAScript51Isolated,
       checkScalaJSSemantics := true,
 
       scalaJSConsole := ConsoleJSConsole,

@@ -15,14 +15,18 @@ import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.javascript
-import javascript.{Trees => js}
+import javascript.{Trees => js, OutputMode}
 
 import org.scalajs.core.ir.{ClassKind, Definitions}
 import org.scalajs.core.ir.{Trees => ir}
 
 /** Emits a desugared JS tree to a builder */
-final class Emitter(semantics: Semantics) {
+final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   import Emitter._
+
+  @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
+  def this(semantics: Semantics) =
+    this(semantics, OutputMode.ECMAScript51Global)
 
   private var classEmitter: javascript.ScalaJSClassEmitter = _
   private val classCaches = mutable.Map.empty[String, ClassCache]
@@ -33,7 +37,8 @@ final class Emitter(semantics: Semantics) {
   private[this] var statsMethodsInvalidated: Int = 0
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
-    classEmitter = new javascript.ScalaJSClassEmitter(semantics, unit.globalInfo)
+    classEmitter = new javascript.ScalaJSClassEmitter(
+        semantics, outputMode, unit.globalInfo)
     startRun()
     try {
       for (classInfo <- unit.classDefs.sortWith(compareClasses))

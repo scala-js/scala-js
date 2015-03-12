@@ -12,6 +12,7 @@ package org.scalajs.cli
 import org.scalajs.core.ir.ScalaJSVersions
 
 import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.classpath._
@@ -37,6 +38,7 @@ object Scalajsld {
     output: File = null,
     jsoutput: Option[File] = None,
     semantics: Semantics = Semantics.Defaults,
+    outputMode: OutputMode = OutputMode.ECMAScript51Isolated,
     noOpt: Boolean = false,
     fullOpt: Boolean = false,
     prettyPrint: Boolean = false,
@@ -46,6 +48,14 @@ object Scalajsld {
     checkIR: Boolean = false,
     stdLib: Option[File] = None,
     logLevel: Level = Level.Info)
+
+  implicit object OutputModeRead extends scopt.Read[OutputMode] {
+    val arity = 1
+    val reads = { (s: String) =>
+      OutputMode.All.find(_.toString() == s).getOrElse(
+          throw new IllegalArgumentException(s"$s is not a valid output mode"))
+    }
+  }
 
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[Options]("scalajsld") {
@@ -84,6 +94,9 @@ object Scalajsld {
           c.semantics.withAsInstanceOfs(Compliant))
         }
         .text("Use compliant asInstanceOfs")
+      opt[OutputMode]('m', "outputMode")
+        .action { (mode, c) => c.copy(outputMode = mode) }
+        .text("Output mode " + OutputMode.All.mkString("(", ", ", ")"))
       opt[Unit]('b', "bypassLinkingErrors")
         .action { (_, c) => c.copy(bypassLinkingErrors = true) }
         .text("Only warn if there are linking errors")
@@ -148,8 +161,8 @@ object Scalajsld {
 
     val semantics = options.semantics.optimized
 
-    new ScalaJSClosureOptimizer(semantics).optimizeCP(
-        newScalaJSOptimizer(semantics), cp,
+    new ScalaJSClosureOptimizer().optimizeCP(
+        newScalaJSOptimizer(semantics, options.outputMode), cp,
         Config(
             output = output,
             wantSourceMap = options.sourceMap,
@@ -164,7 +177,7 @@ object Scalajsld {
       output: WritableVirtualJSFile, options: Options) = {
     import ScalaJSOptimizer._
 
-    newScalaJSOptimizer(options.semantics).optimizeCP(cp,
+    newScalaJSOptimizer(options.semantics, options.outputMode).optimizeCP(cp,
         Config(
             output = output,
             wantSourceMap = options.sourceMap,
@@ -178,7 +191,7 @@ object Scalajsld {
   private def newLogger(options: Options) =
     new ScalaConsoleLogger(options.logLevel)
 
-  private def newScalaJSOptimizer(semantics: Semantics) =
-    new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
+  private def newScalaJSOptimizer(semantics: Semantics, outputMode: OutputMode) =
+    new ScalaJSOptimizer(semantics, outputMode, ParIncOptimizer.factory)
 
 }

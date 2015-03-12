@@ -17,10 +17,12 @@ import org.scalajs.core.ir
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
-import org.scalajs.core.tools.javascript.{Printers, ScalaJSClassEmitter}
+import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.corelib._
+
+import OutputMode.ECMAScript51Global
 
 class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   import ScalaJSCoreLib._
@@ -42,7 +44,8 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   private val ancestorStore = mutable.Map.empty[String, List[String]]
 
   def insertInto(context: Context, scope: Scriptable) = {
-    CoreJSLibs.libs(semantics).foreach(context.evaluateFile(scope, _))
+    CoreJSLibs.libs(semantics, ECMAScript51Global).foreach(
+        context.evaluateFile(scope, _))
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded
@@ -109,7 +112,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     val ancestors = ancestorStore.getOrElse(className,
         throw new AssertionError(s"$className should be loaded"))
     val linked = LinkedClass(info, classDef, ancestors)
-    val desugared = new ScalaJSClassEmitter(semantics,
+    val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
         LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
     mapper.reverseSourceMap(desugared)
     mapper
@@ -176,7 +179,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
       val ancestors = className :: strictAncestors.distinct
       val linked = LinkedClass(info, classDef, ancestors)
 
-      val desugared = new ScalaJSClassEmitter(semantics,
+      val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
           LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
 
       // Write tree
