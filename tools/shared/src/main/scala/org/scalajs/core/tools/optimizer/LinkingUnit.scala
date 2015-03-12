@@ -11,11 +11,11 @@ final class LinkingUnit(
   import LinkingUnit._
 
   lazy val globalInfo: GlobalInfo = {
-    infos.get(Definitions.ClassClass).fold {
+    classDefs.find(_.encodedName == Definitions.ClassClass).fold {
       GlobalInfo(
           isParentDataAccessed = false)
-    } { classClassInfo =>
-      val methodNames = classClassInfo.methods.map(_.encodedName).toSet
+    } { classClassDef =>
+      val methodNames = classClassDef.memberMethods.map(_.info.encodedName).toSet
       GlobalInfo(
           isParentDataAccessed = methodNames.contains("getSuperclass__jl_Class"))
     }
