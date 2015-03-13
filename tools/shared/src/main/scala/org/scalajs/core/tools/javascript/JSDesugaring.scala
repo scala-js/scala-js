@@ -1827,7 +1827,7 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         envField(field) DOT js.Ident(subField, origName)
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         js.VarRef(js.Ident("$" + field + "_" + subField, origName))
     }
   }
@@ -1840,7 +1840,7 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.VarRef(js.Ident(ScalaJSEnvironmentName)) DOT field
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         js.VarRef(js.Ident("$" + field))
     }
   }
@@ -1860,7 +1860,7 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.Assign(globalVar, value)
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         js.VarDef(globalVar.asInstanceOf[js.VarRef].ident, value)
     }
   }

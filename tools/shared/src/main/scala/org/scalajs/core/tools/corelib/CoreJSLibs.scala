@@ -119,7 +119,7 @@ object CoreJSLibs {
       case OutputMode.ECMAScript51Global =>
         content
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         content
           .replaceAll("ScalaJS\\.d\\.", "\\$d_")
           .replaceAll("ScalaJS\\.c\\.", "\\$c_")

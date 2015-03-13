@@ -568,10 +568,15 @@ ScalaJS.typedArray2DoubleArray = function(value) {
  */
 this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 
-// Type data constructors
+// TypeData class
 
+//!if outputMode != ECMAScript6
 /** @constructor */
 ScalaJS.TypeData = function() {
+//!else
+class $TypeData {
+constructor() {
+//!endif
   // Runtime support
   this.constr = void 0;
   this.parentData = void 0;
@@ -593,7 +598,11 @@ ScalaJS.TypeData = function() {
   this["isInstance"] = void 0;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype.initPrim = function(
+//!else
+initPrim(
+//!endif
     zero, arrayEncodedName, displayName) {
   // Runtime support
   this.ancestors = {};
@@ -610,7 +619,11 @@ ScalaJS.TypeData.prototype.initPrim = function(
   return this;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype.initClass = function(
+//!else
+initClass(
+//!endif
     internalNameObj, isInterface, fullName,
     ancestors, parentData, isInstance, isArrayOf) {
   var internalName = ScalaJS.propertyName(internalNameObj);
@@ -638,7 +651,12 @@ ScalaJS.TypeData.prototype.initClass = function(
   return this;
 };
 
-ScalaJS.TypeData.prototype.initArray = function(componentData) {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.initArray = function(
+//!else
+initArray(
+//!endif
+    componentData) {
   // The constructor
 
   var componentZero = componentData.zero;
@@ -649,6 +667,7 @@ ScalaJS.TypeData.prototype.initArray = function(componentData) {
   if (componentZero == "longZero")
     componentZero = ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
 
+//!if outputMode != ECMAScript6
   /** @constructor */
   var ArrayClass = function(arg) {
     if (typeof(arg) === "number") {
@@ -663,7 +682,6 @@ ScalaJS.TypeData.prototype.initArray = function(componentData) {
   }
   ArrayClass.prototype = new ScalaJS.h.O;
   ArrayClass.prototype.constructor = ArrayClass;
-  ArrayClass.prototype.$classData = this;
 
   ArrayClass.prototype.clone__O = function() {
     if (this.u instanceof Array)
@@ -672,6 +690,32 @@ ScalaJS.TypeData.prototype.initArray = function(componentData) {
       // The underlying Array is a TypedArray
       return new ArrayClass(this.u.constructor(this.u));
   };
+//!else
+  class ArrayClass extends ScalaJS.c.O {
+    constructor(arg) {
+      super();
+      if (typeof(arg) === "number") {
+        // arg is the length of the array
+        this.u = new Array(arg);
+        for (var i = 0; i < arg; i++)
+          this.u[i] = componentZero;
+      } else {
+        // arg is a native array that we wrap
+        this.u = arg;
+      }
+    };
+
+    clone__O() {
+      if (this.u instanceof Array)
+        return new ArrayClass(this.u["slice"](0));
+      else
+        // The underlying Array is a TypedArray
+        return new ArrayClass(this.u.constructor(this.u));
+    };
+  };
+//!endif
+
+  ArrayClass.prototype.$classData = this;
 
   // Don't generate reflective call proxies. The compiler special cases
   // reflective calls to methods on scala.Array
@@ -709,13 +753,21 @@ ScalaJS.TypeData.prototype.initArray = function(componentData) {
   return this;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype.getClassOf = function() {
+//!else
+getClassOf() {
+//!endif
   if (!this._classOf)
     this._classOf = new ScalaJS.c.jl_Class().init___jl_ScalaJSClassData(this);
   return this._classOf;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype.getArrayOf = function() {
+//!else
+getArrayOf() {
+//!endif
   if (!this._arrayOf)
     this._arrayOf = new ScalaJS.TypeData().initArray(this);
   return this._arrayOf;
@@ -723,7 +775,11 @@ ScalaJS.TypeData.prototype.getArrayOf = function() {
 
 // java.lang.Class support
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype["getFakeInstance"] = function() {
+//!else
+"getFakeInstance"() {
+//!endif
   if (this === ScalaJS.d.T)
     return "some string";
   else if (this === ScalaJS.d.jl_Boolean)
@@ -742,20 +798,35 @@ ScalaJS.TypeData.prototype["getFakeInstance"] = function() {
     return {$classData: this};
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype["getSuperclass"] = function() {
+//!else
+"getSuperclass"() {
+//!endif
   return this.parentData ? this.parentData.getClassOf() : null;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype["getComponentType"] = function() {
+//!else
+"getComponentType"() {
+//!endif
   return this.componentData ? this.componentData.getClassOf() : null;
 };
 
+//!if outputMode != ECMAScript6
 ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
+//!else
+"newArrayOfThisClass"(lengths) {
+//!endif
   var arrayClassData = this;
   for (var i = 0; i < lengths.length; i++)
     arrayClassData = arrayClassData.getArrayOf();
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
+//!if outputMode == ECMAScript6
+};
+//!endif
 
 // Create primitive types
 

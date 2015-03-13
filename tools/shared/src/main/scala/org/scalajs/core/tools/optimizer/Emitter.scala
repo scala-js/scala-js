@@ -17,7 +17,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.javascript
 import javascript.{Trees => js, OutputMode}
 
-import org.scalajs.core.ir.{ClassKind, Definitions}
+import org.scalajs.core.ir.{ClassKind, Definitions, Position}
 import org.scalajs.core.ir.{Trees => ir}
 
 /** Emits a desugared JS tree to a builder */
@@ -93,20 +93,37 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
     }
 
     if (linkedClass.hasInstances && kind.isClass) {
-      addTree(classTreeCache.constructor.getOrElseUpdate(
-          classEmitter.genConstructor(linkedClass)))
+      val ctor = classTreeCache.constructor.getOrElseUpdate(
+          classEmitter.genConstructor(linkedClass))
 
       // Normal methods
-      for (m <- linkedClass.memberMethods) {
+      val memberMethods = for (m <- linkedClass.memberMethods) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
 
-        addTree(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.tree)))
+        methodCache.getOrElseUpdate(m.version,
+            classEmitter.genMethod(className, m.tree))
       }
 
       // Exported Members
-      addTree(classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass)))
+      val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
+          classEmitter.genExportedMembers(linkedClass))
+
+      outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          addTree(ctor)
+          memberMethods.foreach(addTree)
+          addTree(exportedMembers)
+
+        case OutputMode.ECMAScript6 =>
+          val allMembersBlock = js.Block(
+              ctor :: memberMethods ::: exportedMembers :: Nil)(Position.NoPosition)
+          val allMembers = allMembersBlock match {
+            case js.Block(members) => members
+            case js.Skip()         => Nil
+            case oneMember         => List(oneMember)
+          }
+          addTree(classEmitter.genES6Class(linkedClass, allMembers))
+      }
     }
 
     val needInstanceTests = {

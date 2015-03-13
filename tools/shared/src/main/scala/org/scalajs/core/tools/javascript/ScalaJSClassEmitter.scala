@@ -83,66 +83,124 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
     val exportedDefs = genExportedMembers(tree)
 
-    js.Block(typeFunctionDef +: memberDefs :+ exportedDefs)(tree.pos)
+    val allDefsBlock =
+      js.Block(typeFunctionDef +: memberDefs :+ exportedDefs)(tree.pos)
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        allDefsBlock
+
+      case OutputMode.ECMAScript6 =>
+        val allDefs = allDefsBlock match {
+          case js.Block(allDefs) => allDefs
+          case js.Skip()         => Nil
+          case oneDef            => List(oneDef)
+        }
+        genES6Class(tree, allDefs)
+    }
+  }
+
+  /** Generates an ECMAScript 6 class for a linked class. */
+  def genES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
+    require(outputMode == OutputMode.ECMAScript6)
+
+    val className = tree.name.name
+    val classIdent = encodeClassVar(className)(
+        outputMode, tree.name.pos).asInstanceOf[js.VarRef].ident
+
+    val parentVar =
+      for (parentIdent <- tree.superClass)
+        yield encodeClassVar(parentIdent.name)(outputMode, parentIdent.pos)
+
+    js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
 
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: LinkedClass): js.Tree = {
     assert(tree.kind.isClass)
+    assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
+        s"Class ${tree.name.name} is missing a parent class")
 
-    val classIdent = tree.name
-    val className = classIdent.name
-    val tpe = ClassType(className)
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        genES5Constructor(tree)
 
-    assert(tree.superClass.isDefined || className == Definitions.ObjectClass,
-        s"Class $className is missing a parent class")
+      case OutputMode.ECMAScript6 =>
+        genES6Constructor(tree)
+    }
+  }
+
+  /** Generates the JS constructor for a class, ES5 style. */
+  private def genES5Constructor(tree: LinkedClass): js.Tree = {
+    implicit val pos = tree.pos
+
+    val className = tree.name.name
 
     val ctorFun = {
       val superCtorCall = tree.superClass.fold[js.Tree] {
-        js.Skip()(tree.pos)
+        js.Skip()
       } { parentIdent =>
-        implicit val pos = tree.pos
         js.Apply(
             js.DotSelect(encodeClassVar(parentIdent.name), js.Ident("call")),
             List(js.This()))
       }
-      val fieldDefs = for {
-        field @ FieldDef(name, ftpe, mutable) <- tree.fields
-      } yield {
-        implicit val pos = field.pos
-        desugarJavaScript(
-            Assign(Select(This()(tpe), name)(ftpe), zeroOf(ftpe)),
-            semantics, outputMode)
-      }
-      js.Function(Nil,
-          js.Block(superCtorCall :: fieldDefs)(tree.pos))(tree.pos)
+      val fieldDefs = genFieldDefs(tree)
+      js.Function(Nil, js.Block(superCtorCall :: fieldDefs))
     }
 
-    {
-      implicit val pos = tree.pos
-      val typeVar = encodeClassVar(className)
-      val docComment = js.DocComment("@constructor")
-      val ctorDef = envFieldDef("c", className, ctorFun)
+    val typeVar = encodeClassVar(className)
+    val docComment = js.DocComment("@constructor")
+    val ctorDef = envFieldDef("c", className, ctorFun)
 
-      val chainProto = tree.superClass.fold[js.Tree] {
-        js.Skip()
+    val chainProto = tree.superClass.fold[js.Tree] {
+      js.Skip()
+    } { parentIdent =>
+      js.Block(
+        js.Assign(typeVar.prototype,
+            js.New(envField("h", parentIdent.name, parentIdent.originalName), Nil)),
+        genAddToPrototype(className, js.Ident("constructor"), typeVar)
+      )
+    }
+
+    val inheritableCtorDef = {
+      js.Block(
+        js.DocComment("@constructor"),
+        envFieldDef("h", className, js.Function(Nil, js.Skip())),
+        js.Assign(envField("h", className).prototype, typeVar.prototype)
+      )
+    }
+
+    js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
+  }
+
+  /** Generates the JS constructor for a class, ES6 style. */
+  private def genES6Constructor(tree: LinkedClass): js.Tree = {
+    implicit val pos = tree.pos
+
+    val fieldDefs = genFieldDefs(tree)
+    if (fieldDefs.isEmpty) {
+      js.Skip()
+    } else {
+      val superCtorCall = tree.superClass.fold[js.Tree] {
+        js.Skip()(tree.pos)
       } { parentIdent =>
-        js.Block(
-          js.Assign(typeVar.prototype,
-              js.New(envField("h", parentIdent.name, parentIdent.originalName), Nil)),
-          genAddToPrototype(className, js.Ident("constructor"), typeVar)
-        )
+        js.Apply(js.Super(), Nil)
       }
+      js.MethodDef(static = false, js.Ident("constructor"), Nil,
+          js.Block(superCtorCall :: fieldDefs))
+    }
+  }
 
-      val inheritableCtorDef = {
-        js.Block(
-          js.DocComment("@constructor"),
-          envFieldDef("h", className, js.Function(Nil, js.Skip())),
-          js.Assign(envField("h", className).prototype, typeVar.prototype)
-        )
-      }
-
-      js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
+  /** Generates the creation of fields for a class. */
+  private def genFieldDefs(tree: LinkedClass): List[js.Tree] = {
+    val tpe = ClassType(tree.encodedName)
+    for {
+      field @ FieldDef(name, ftpe, mutable) <- tree.fields
+    } yield {
+      implicit val pos = field.pos
+      desugarJavaScript(
+          Assign(Select(This()(tpe), name)(ftpe), zeroOf(ftpe)),
+          semantics, outputMode)
     }
   }
 
@@ -160,14 +218,30 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
           "s", className + "__" + methodName, origName,
           methodFun)
     } else {
-      genAddToPrototype(className, method.name, methodFun)
+      outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          genAddToPrototype(className, method.name, methodFun)
+
+        case OutputMode.ECMAScript6 =>
+          js.MethodDef(static = false, genPropertyName(method.name),
+              methodFun.args, methodFun.body)
+      }
     }
   }
 
   /** Generates a property. */
   def genProperty(className: String, property: PropertyDef): js.Tree = {
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        genPropertyES5(className, property)
+      case OutputMode.ECMAScript6 =>
+        genPropertyES6(className, property)
+    }
+  }
+
+  private def genPropertyES5(className: String,
+      property: PropertyDef): js.Tree = {
     implicit val pos = property.pos
-    val classType = ClassType(className)
 
     // defineProperty method
     val defProp =
@@ -207,7 +281,6 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       // Optionally add setter
       if (property.setterBody == EmptyTree) wget
       else {
-        val env = Env.empty.withParams(property.setterArg :: Nil)
         val fun = desugarToFunction(
             property.setterArg :: Nil, property.setterBody, isStat = true,
             semantics, outputMode)
@@ -216,6 +289,34 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     }
 
     js.Apply(defProp, proto :: name :: descriptor :: Nil)
+  }
+
+  private def genPropertyES6(className: String,
+      property: PropertyDef): js.Tree = {
+    implicit val pos = property.pos
+
+    val propName = genPropertyName(property.name)
+
+    val getter = {
+      if (property.getterBody == EmptyTree) js.Skip()
+      else {
+        val fun = desugarToFunction(Nil, property.getterBody, isStat = false,
+            semantics, outputMode)
+        js.GetterDef(static = false, propName, fun.body)
+      }
+    }
+
+    val setter = {
+      if (property.setterBody == EmptyTree) js.Skip()
+      else {
+        val fun = desugarToFunction(
+            property.setterArg :: Nil, property.setterBody, isStat = true,
+            semantics, outputMode)
+        js.SetterDef(static = false, propName, fun.args.head, fun.body)
+      }
+    }
+
+    js.Block(getter, setter)
   }
 
   /** Generate `classVar.prototype.name = value` */
@@ -232,11 +333,12 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   /** Generate `classVar.prototype.name = value` */
   def genAddToPrototype(className: String, name: PropertyName,
       value: js.Tree)(implicit pos: Position): js.Tree = {
-    val newName = name match {
-      case ident: Ident         => transformIdent(ident)
-      case StringLiteral(value) => js.StringLiteral(value)
-    }
-    genAddToPrototype(className, newName, value)
+    genAddToPrototype(className, genPropertyName(name), value)
+  }
+
+  def genPropertyName(name: PropertyName): js.PropertyName = name match {
+    case ident: Ident         => transformIdent(ident)
+    case StringLiteral(value) => js.StringLiteral(value)(name.pos)
   }
 
   def genInstanceTests(tree: LinkedClass): js.Tree = {

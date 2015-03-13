@@ -19,6 +19,7 @@ object OutputMode {
    */
   val All = List(
       ECMAScript51Isolated,
+      ECMAScript6,
       ECMAScript51Global)
 
   /** Legacy output mode where everything is stored in a global ScalaJS variable.
@@ -32,4 +33,20 @@ object OutputMode {
    *  in a dedicated scope.
    */
   case object ECMAScript51Isolated extends OutputMode
+
+  /** Experimental output mode compliant with ECMAScript 6 in a function scope.
+   *
+   *  This output mode assumes that the target platform supports ECMAScript 6,
+   *  at least for the following aspects:
+   *
+   *  * Classes
+   *  * let and const
+   *  * Rest parameters and the spread operator (...args)
+   *  * New methods in Math
+   *  * Symbols and the "well-known symbol" Symbol.iterator
+   *
+   *  The output must be enclosed in an anonymous function isolating the code
+   *  in a dedicated scope.
+   */
+  case object ECMAScript6 extends OutputMode
 }
