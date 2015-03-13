@@ -96,14 +96,11 @@ run/various-flat-classpath-types.scala
 run/java-erasure.scala
 run/t2250.scala
 
-# Uses java.math.BigDecimal / BigInteger
-run/bigDecimalCache.scala
+# Uses java.math.BigDecimal / BigInteger : but failures not due to them
 run/hashhash.scala
 run/is-valid-num.scala
-run/range.scala
 run/stringinterpolation_macro-run.scala
 run/t5356.scala
-run/t6064.scala
 
 # Documented semantic difference on numbers (float precision)
 run/interpolation.scala

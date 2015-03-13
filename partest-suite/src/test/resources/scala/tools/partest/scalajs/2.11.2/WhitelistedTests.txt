@@ -2926,6 +2926,10 @@ run/t1503.scala
 run/t4148.scala
 run/t7763.scala
 run/issue192.scala
+run/bigDecimalTest.scala
+run/bigDecimalCache.scala
+run/range.scala
+run/t6064.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
