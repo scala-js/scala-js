@@ -332,30 +332,13 @@ object JSDesugaring {
     def transformBlockStats(trees: List[Tree])(
         implicit env: Env): (List[js.Tree], Env) = {
 
-      def emptyVarDef(varIdent: Ident, tpe: Type)(implicit pos: Position) = {
-        tpe match {
-          case RecordType(fields) =>
-            for {
-              RecordType.Field(fldName, fldOrigName, tpe, _) <- fields
-            } yield {
-              val ident = makeRecordFieldIdent(varIdent, fldName, fldOrigName)
-              js.VarDef(ident, js.EmptyTree)
-            }
-        case _ =>
-            List(js.VarDef(varIdent, js.EmptyTree))
-        }
-      }
-
       @tailrec
       def transformLoop(trees: List[Tree], env: Env,
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
         case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
           val newEnv = env.withDef(ident, tpe, mutable)
-          val newTrees =
-            if (rhs == EmptyTree) emptyVarDef(ident, tpe)(tree.pos)
-            else pushLhsInto(tree, rhs)(env) :: Nil
-
-          transformLoop(ts, newEnv, newTrees reverse_::: acc)
+          val newTree = pushLhsInto(tree, rhs)(env)
+          transformLoop(ts, newEnv, newTree :: acc)
 
         case tree :: ts =>
           transformLoop(ts, env, transformStat(tree)(env) :: acc)
@@ -677,6 +660,21 @@ object JSDesugaring {
       }
     }
 
+    def doEmptyVarDef(ident: Ident, tpe: Type)(
+        implicit pos: Position, env: Env): js.Tree = {
+      tpe match {
+        case RecordType(fields) =>
+          js.Block(for {
+            RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields
+          } yield {
+            doEmptyVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe)
+          })
+
+        case _ =>
+          js.VarDef(ident, js.EmptyTree)
+      }
+    }
+
     def doAssign(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       lhs.tpe match {
@@ -717,11 +715,11 @@ object JSDesugaring {
          */
         val transformedRhs = pushLhsInto(EmptyTree, rhs)
         lhs match {
-          case VarDef(name, _, _, _) =>
+          case VarDef(name, tpe, _, _) =>
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
-            js.Block(js.VarDef(name, js.EmptyTree), transformedRhs)
+            js.Block(doEmptyVarDef(name, tpe), transformedRhs)
 
           case _ =>
             transformedRhs
