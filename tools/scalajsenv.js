@@ -543,29 +543,48 @@ this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 // Type data constructors
 
 /** @constructor */
-ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
+ScalaJS.TypeData = function() {
   // Runtime support
-  this.constr = undefined;
-  this.parentData = undefined;
+  this.constr = void 0;
+  this.parentData = void 0;
+  this.ancestors = null;
+  this.componentData = null;
+  this.arrayBase = null;
+  this.arrayDepth = 0;
+  this.zero = null;
+  this.arrayEncodedName = "";
+  this._classOf = void 0;
+  this._arrayOf = void 0;
+  this.isArrayOf = void 0;
+
+  // java.lang.Class support
+  this["name"] = "";
+  this["isPrimitive"] = false;
+  this["isInterface"] = false;
+  this["isArrayClass"] = false;
+  this["isInstance"] = void 0;
+};
+
+ScalaJS.TypeData.prototype.initPrim = function(
+    zero, arrayEncodedName, displayName) {
+  // Runtime support
   this.ancestors = {};
   this.componentData = null;
   this.zero = zero;
   this.arrayEncodedName = arrayEncodedName;
-  this._classOf = undefined;
-  this._arrayOf = undefined;
   this.isArrayOf = function(obj, depth) { return false; };
 
   // java.lang.Class support
   this["name"] = displayName;
   this["isPrimitive"] = true;
-  this["isInterface"] = false;
-  this["isArrayClass"] = false;
   this["isInstance"] = function(obj) { return false; };
+
+  return this;
 };
 
-/** @constructor */
-ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
-                                 ancestors, parentData, isInstance, isArrayOf) {
+ScalaJS.TypeData.prototype.initClass = function(
+    internalNameObj, isInterface, fullName,
+    ancestors, parentData, isInstance, isArrayOf) {
   var internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
@@ -578,26 +597,20 @@ ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
   };
 
   // Runtime support
-  this.constr = undefined;
   this.parentData = parentData;
   this.ancestors = ancestors;
-  this.componentData = null;
-  this.zero = null;
   this.arrayEncodedName = "L"+fullName+";";
-  this._classOf = undefined;
-  this._arrayOf = undefined;
   this.isArrayOf = isArrayOf;
 
   // java.lang.Class support
   this["name"] = fullName;
-  this["isPrimitive"] = false;
   this["isInterface"] = isInterface;
-  this["isArrayClass"] = false;
   this["isInstance"] = isInstance;
+
+  return this;
 };
 
-/** @constructor */
-ScalaJS.ArrayTypeData = function(componentData) {
+ScalaJS.TypeData.prototype.initArray = function(componentData) {
   // The constructor
 
   var componentZero = componentData.zero;
@@ -639,8 +652,7 @@ ScalaJS.ArrayTypeData = function(componentData) {
 
   var encodedName = "[" + componentData.arrayEncodedName;
   var componentBase = componentData.arrayBase || componentData;
-  var componentDepth = componentData.arrayDepth || 0;
-  var arrayDepth = componentDepth + 1;
+  var arrayDepth = componentData.arrayDepth + 1;
 
   var isInstance = function(obj) {
     return componentBase.isArrayOf(obj, arrayDepth);
@@ -665,23 +677,25 @@ ScalaJS.ArrayTypeData = function(componentData) {
   this["isInterface"] = false;
   this["isArrayClass"] = true;
   this["isInstance"] = isInstance;
+
+  return this;
 };
 
-ScalaJS.ClassTypeData.prototype.getClassOf = function() {
+ScalaJS.TypeData.prototype.getClassOf = function() {
   if (!this._classOf)
     this._classOf = new ScalaJS.c.jl_Class().init___jl_ScalaJSClassData(this);
   return this._classOf;
 };
 
-ScalaJS.ClassTypeData.prototype.getArrayOf = function() {
+ScalaJS.TypeData.prototype.getArrayOf = function() {
   if (!this._arrayOf)
-    this._arrayOf = new ScalaJS.ArrayTypeData(this);
+    this._arrayOf = new ScalaJS.TypeData().initArray(this);
   return this._arrayOf;
 };
 
 // java.lang.Class support
 
-ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
+ScalaJS.TypeData.prototype["getFakeInstance"] = function() {
   if (this === ScalaJS.d.T)
     return "some string";
   else if (this === ScalaJS.d.jl_Boolean)
@@ -700,35 +714,32 @@ ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
     return {$classData: this};
 };
 
-ScalaJS.ClassTypeData.prototype["getSuperclass"] = function() {
+ScalaJS.TypeData.prototype["getSuperclass"] = function() {
   return this.parentData ? this.parentData.getClassOf() : null;
 };
 
-ScalaJS.ClassTypeData.prototype["getComponentType"] = function() {
+ScalaJS.TypeData.prototype["getComponentType"] = function() {
   return this.componentData ? this.componentData.getClassOf() : null;
 };
 
-ScalaJS.ClassTypeData.prototype["newArrayOfThisClass"] = function(lengths) {
+ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
   var arrayClassData = this;
   for (var i = 0; i < lengths.length; i++)
     arrayClassData = arrayClassData.getArrayOf();
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
 
-ScalaJS.PrimitiveTypeData.prototype = ScalaJS.ClassTypeData.prototype;
-ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
-
 // Create primitive types
 
-ScalaJS.d.V = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
-ScalaJS.d.Z = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char");
-ScalaJS.d.B = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
-ScalaJS.d.S = new ScalaJS.PrimitiveTypeData(0, "S", "short");
-ScalaJS.d.I = new ScalaJS.PrimitiveTypeData(0, "I", "int");
-ScalaJS.d.J = new ScalaJS.PrimitiveTypeData("longZero", "J", "long");
-ScalaJS.d.F = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
-ScalaJS.d.D = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
+ScalaJS.d.V = new ScalaJS.TypeData().initPrim(undefined, "V", "void");
+ScalaJS.d.Z = new ScalaJS.TypeData().initPrim(false, "Z", "boolean");
+ScalaJS.d.C = new ScalaJS.TypeData().initPrim(0, "C", "char");
+ScalaJS.d.B = new ScalaJS.TypeData().initPrim(0, "B", "byte");
+ScalaJS.d.S = new ScalaJS.TypeData().initPrim(0, "S", "short");
+ScalaJS.d.I = new ScalaJS.TypeData().initPrim(0, "I", "int");
+ScalaJS.d.J = new ScalaJS.TypeData().initPrim("longZero", "J", "long");
+ScalaJS.d.F = new ScalaJS.TypeData().initPrim(0.0, "F", "float");
+ScalaJS.d.D = new ScalaJS.TypeData().initPrim(0.0, "D", "double");
 
 // Instance tests for array of primitives
 

@@ -413,7 +413,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val ancestorsRecord = js.ObjectConstr(
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
-    val typeData = js.New(envField("ClassTypeData"), (List(
+    val typeData = js.Apply(js.New(envField("TypeData"), Nil) DOT "initClass", (List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
