@@ -115,14 +115,17 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
             val length = lengthByLeading(leading & 0x7f)
             if (length == -1) {
               finalize(CoderResult.malformedForLength(1))
-            } else if (inPos + length > inEnd) {
-              finalize(CoderResult.UNDERFLOW)
             } else {
               val decoded = {
-                val b2 = inArray(inPos+1)
+                @inline
+                def inArrayOr0(offset: Int): Int =
+                  if (inPos + offset < inEnd) inArray(inPos + offset)
+                  else 0 // 0 is not a valid next byte
+
+                val b2 = inArrayOr0(1)
                 if (length == 2) decode2(leading, b2)
-                else if (length == 3) decode3(leading, b2, inArray(inPos+2))
-                else decode4(leading, b2, inArray(inPos+2), inArray(inPos+3))
+                else if (length == 3) decode3(leading, b2, inArrayOr0(2))
+                else decode4(leading, b2, inArrayOr0(2), inArrayOr0(3))
               }
 
               if (decoded.failure != null) {
@@ -180,21 +183,26 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
             val length = lengthByLeading(leading & 0x7f)
             if (length == -1) {
               finalize(1, CoderResult.malformedForLength(1))
-            } else if (in.remaining < length-1) {
-              finalize(1, CoderResult.UNDERFLOW)
             } else {
+              var bytesRead: Int = 1
+
               val decoded = {
-                if (length == 2) decode2(leading, in.get())
-                else if (length == 3) decode3(leading, in.get(), in.get())
-                else decode4(leading, in.get(), in.get(), in.get())
+                @inline
+                def getOr0(): Int =
+                  if (in.hasRemaining) { bytesRead += 1; in.get() }
+                  else 0 // 0 is not a valid next byte
+
+                if (length == 2) decode2(leading, getOr0())
+                else if (length == 3) decode3(leading, getOr0(), getOr0())
+                else decode4(leading, getOr0(), getOr0(), getOr0())
               }
 
               if (decoded.failure != null) {
-                finalize(length, decoded.failure)
+                finalize(bytesRead, decoded.failure)
               } else if (decoded.low == 0) {
                 // not a surrogate pair
                 if (!out.hasRemaining)
-                  finalize(length, CoderResult.OVERFLOW)
+                  finalize(bytesRead, CoderResult.OVERFLOW)
                 else {
                   out.put(decoded.high)
                   loop()
@@ -202,7 +210,7 @@ private[niocharset] object UTF_8 extends Charset("UTF-8", Array(
               } else {
                 // a surrogate pair
                 if (out.remaining < 2)
-                  finalize(length, CoderResult.OVERFLOW)
+                  finalize(bytesRead, CoderResult.OVERFLOW)
                 else {
                   out.put(decoded.high)
                   out.put(decoded.low)
