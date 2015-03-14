@@ -433,7 +433,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       envFieldDef("isArrayOf", className,
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
-            val dataVarDef = js.VarDef(Ident("data"), {
+            val dataVarDef = genLet(Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
             val data = dataVarDef.ref
@@ -442,7 +442,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
               js.If(!data, {
                 js.Return(js.BooleanLiteral(false))
               }, {
-                val arrayDepthVarDef = js.VarDef(Ident("arrayDepth"), {
+                val arrayDepthVarDef = genLet(Ident("arrayDepth"), mutable = false, {
                   (data DOT "arrayDepth") || js.IntLiteral(0)
                 })
                 val arrayDepth = arrayDepthVarDef.ref
@@ -586,7 +586,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
         s"genModuleAccessor called with non-module class: $className")
 
     val createModuleInstanceField = {
-      envFieldDef("n", className, js.Undefined())
+      envFieldDef("n", className, js.Undefined(), mutable = true)
     }
 
     val createAccessor = {
@@ -682,7 +682,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       createNamespace,
       js.DocComment("@constructor"),
       expCtorVar := js.Function(ctorParams, js.Block(
-        js.VarDef(thisIdent, js.New(baseCtor, Nil)),
+        genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),
         ctorBody,
         js.Return(js.VarRef(thisIdent))
       )),

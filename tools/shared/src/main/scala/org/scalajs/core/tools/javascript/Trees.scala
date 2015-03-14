@@ -57,12 +57,22 @@ object Trees {
 
   // Definitions
 
-  case class VarDef(name: Ident, rhs: Tree)(implicit val pos: Position) extends Tree {
+  sealed trait LocalDef extends Tree {
+    def name: Ident
+    def mutable: Boolean
+
     def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
-  case class ParamDef(name: Ident)(implicit val pos: Position) extends Tree {
-    def ref(implicit pos: Position): Tree = VarRef(name)
+  case class VarDef(name: Ident, rhs: Tree)(implicit val pos: Position) extends LocalDef {
+    def mutable: Boolean = true
+  }
+
+  /** ES6 let or const (depending on the mutable flag). */
+  case class Let(name: Ident, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends LocalDef
+
+  case class ParamDef(name: Ident)(implicit val pos: Position) extends LocalDef {
+    def mutable: Boolean = true
   }
 
   // Control flow constructs

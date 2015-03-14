@@ -101,6 +101,11 @@ object Printers {
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
+        case Let(ident, mutable, rhs) =>
+          print(if (mutable) "let " else "const ", ident)
+          if (rhs != EmptyTree)
+            print(" = ", rhs)
+
         case ParamDef(ident) =>
           print(ident)
 

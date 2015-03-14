@@ -34,10 +34,10 @@ ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
 ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
   // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
-  var ah = (a >>> 16) & 0xffff;
-  var al = a & 0xffff;
-  var bh = (b >>> 16) & 0xffff;
-  var bl = b & 0xffff;
+  const ah = (a >>> 16) & 0xffff;
+  const al = a & 0xffff;
+  const bh = (b >>> 16) & 0xffff;
+  const bl = b & 0xffff;
   // the shift by 0 fixes the sign on the high part
   // the final |0 converts the unsigned value into a signed value
   return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
@@ -46,7 +46,7 @@ ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
 ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
 //!if floats == Strict
   (ScalaJS.g["Float32Array"] ? (function(v) {
-    var array = new ScalaJS.g["Float32Array"](1);
+    const array = new ScalaJS.g["Float32Array"](1);
     array[0] = v;
     return array[0];
   }) : (function(v) {
@@ -72,8 +72,10 @@ ScalaJS.isArrayOf = {}; // isInstanceOfArrayOf methods
 ScalaJS.as = {};        // asInstanceOf methods
 ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
 //!endif
-//!endif
 ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
+//!else
+let $lastIDHash = 0; // last value attributed to an id hash code
+//!endif
 
 // Core mechanism
 
@@ -106,10 +108,8 @@ ScalaJS.makeAsArrayOfPrimitive = function(isInstanceOfFunction, arrayEncodedName
   * reflection.
   */
 ScalaJS.propertyName = function(obj) {
-  var result;
-  for (var prop in obj)
-    result = prop;
-  return result;
+  for (const prop in obj)
+    return prop;
 };
 
 // Runtime functions
@@ -151,13 +151,13 @@ ScalaJS.newArrayObject = function(arrayClassData, lengths) {
 };
 
 ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
-  var result = new arrayClassData.constr(lengths[lengthIndex]);
+  const result = new arrayClassData.constr(lengths[lengthIndex]);
 
   if (lengthIndex < lengths.length-1) {
-    var subArrayClassData = arrayClassData.componentData;
-    var subLengthIndex = lengthIndex+1;
-    var underlying = result.u;
-    for (var i = 0; i < underlying.length; i++) {
+    const subArrayClassData = arrayClassData.componentData;
+    const subLengthIndex = lengthIndex+1;
+    const underlying = result.u;
+    for (let i = 0; i < underlying.length; i++) {
       underlying[i] = ScalaJS.newArrayObjectInternal(
         subArrayClassData, lengths, subLengthIndex);
     }
@@ -185,8 +185,8 @@ ScalaJS.objectGetClass = function(instance) {
   switch (typeof instance) {
     case "string":
       return ScalaJS.d.T.getClassOf();
-    case "number":
-      var v = instance | 0;
+    case "number": {
+      const v = instance | 0;
       if (v === instance) { // is the value integral?
         if (ScalaJS.isByte(v))
           return ScalaJS.d.jl_Byte.getClassOf();
@@ -200,6 +200,7 @@ ScalaJS.objectGetClass = function(instance) {
         else
           return ScalaJS.d.jl_Double.getClassOf();
       }
+    }
     case "boolean":
       return ScalaJS.d.jl_Boolean.getClassOf();
     case "undefined":
@@ -376,8 +377,8 @@ ScalaJS.isInfinite = function(instance) {
 /** Instantiates a JS object with variadic arguments to the constructor. */
 ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
   // This basically emulates the ECMAScript specification for 'new'.
-  var instance = ScalaJS.g["Object"]["create"](ctor.prototype);
-  var result = ctor["apply"](instance, args);
+  const instance = ScalaJS.g["Object"]["create"](ctor.prototype);
+  const result = ctor["apply"](instance, args);
   switch (typeof result) {
     case "string": case "number": case "boolean": case "undefined": case "symbol":
       return instance;
@@ -387,27 +388,27 @@ ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
 };
 
 ScalaJS.propertiesOf = function(obj) {
-  var result = [];
-  for (var prop in obj)
+  const result = [];
+  for (const prop in obj)
     result["push"](prop);
   return result;
 };
 
 ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
-  var srcu = src.u;
-  var destu = dest.u;
+  const srcu = src.u;
+  const destu = dest.u;
   if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
-    for (var i = 0; i < length; i++)
+    for (let i = 0; i < length; i++)
       destu[destPos+i] = srcu[srcPos+i];
   } else {
-    for (var i = length-1; i >= 0; i--)
+    for (let i = length-1; i >= 0; i--)
       destu[destPos+i] = srcu[srcPos+i];
   }
 };
 
 ScalaJS.systemIdentityHashCode = function(obj) {
   if (ScalaJS.isScalaJSObject(obj)) {
-    var hash = obj["$idHashCode$0"];
+    let hash = obj["$idHashCode$0"];
     if (hash !== void 0) {
       return hash;
     } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
@@ -538,27 +539,27 @@ ScalaJS.floatArray2TypedArray = function(value) { return new Float32Array(value.
 ScalaJS.doubleArray2TypedArray = function(value) { return new Float64Array(value.u); };
 
 ScalaJS.typedArray2ByteArray = function(value) {
-  var arrayClassData = ScalaJS.d.B.getArrayOf();
+  const arrayClassData = ScalaJS.d.B.getArrayOf();
   return new arrayClassData.constr(new Int8Array(value));
 };
 ScalaJS.typedArray2ShortArray = function(value) {
-  var arrayClassData = ScalaJS.d.S.getArrayOf();
+  const arrayClassData = ScalaJS.d.S.getArrayOf();
   return new arrayClassData.constr(new Int16Array(value));
 };
 ScalaJS.typedArray2CharArray = function(value) {
-  var arrayClassData = ScalaJS.d.C.getArrayOf();
+  const arrayClassData = ScalaJS.d.C.getArrayOf();
   return new arrayClassData.constr(new Uint16Array(value));
 };
 ScalaJS.typedArray2IntArray = function(value) {
-  var arrayClassData = ScalaJS.d.I.getArrayOf();
+  const arrayClassData = ScalaJS.d.I.getArrayOf();
   return new arrayClassData.constr(new Int32Array(value));
 };
 ScalaJS.typedArray2FloatArray = function(value) {
-  var arrayClassData = ScalaJS.d.F.getArrayOf();
+  const arrayClassData = ScalaJS.d.F.getArrayOf();
   return new arrayClassData.constr(new Float32Array(value));
 };
 ScalaJS.typedArray2DoubleArray = function(value) {
-  var arrayClassData = ScalaJS.d.D.getArrayOf();
+  const arrayClassData = ScalaJS.d.D.getArrayOf();
   return new arrayClassData.constr(new Float64Array(value));
 };
 
@@ -626,7 +627,7 @@ initClass(
 //!endif
     internalNameObj, isInterface, fullName,
     ancestors, parentData, isInstance, isArrayOf) {
-  var internalName = ScalaJS.propertyName(internalNameObj);
+  const internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
     return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
@@ -659,21 +660,22 @@ initArray(
     componentData) {
   // The constructor
 
-  var componentZero = componentData.zero;
+  const componentZero0 = componentData.zero;
 
   // The zero for the Long runtime representation
   // is a special case here, since the class has not
   // been defined yet, when this file is read
-  if (componentZero == "longZero")
-    componentZero = ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
+  const componentZero = (componentZero0 == "longZero")
+    ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1
+    : componentZero0;
 
 //!if outputMode != ECMAScript6
   /** @constructor */
-  var ArrayClass = function(arg) {
+  const ArrayClass = function(arg) {
     if (typeof(arg) === "number") {
       // arg is the length of the array
       this.u = new Array(arg);
-      for (var i = 0; i < arg; i++)
+      for (let i = 0; i < arg; i++)
         this.u[i] = componentZero;
     } else {
       // arg is a native array that we wrap
@@ -697,7 +699,7 @@ initArray(
       if (typeof(arg) === "number") {
         // arg is the length of the array
         this.u = new Array(arg);
-        for (var i = 0; i < arg; i++)
+        for (let i = 0; i < arg; i++)
           this.u[i] = componentZero;
       } else {
         // arg is a native array that we wrap
@@ -722,11 +724,11 @@ initArray(
 
   // The data
 
-  var encodedName = "[" + componentData.arrayEncodedName;
-  var componentBase = componentData.arrayBase || componentData;
-  var arrayDepth = componentData.arrayDepth + 1;
+  const encodedName = "[" + componentData.arrayEncodedName;
+  const componentBase = componentData.arrayBase || componentData;
+  const arrayDepth = componentData.arrayDepth + 1;
 
-  var isInstance = function(obj) {
+  const isInstance = function(obj) {
     return componentBase.isArrayOf(obj, arrayDepth);
   }
 
@@ -819,8 +821,8 @@ ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
 //!else
 "newArrayOfThisClass"(lengths) {
 //!endif
-  var arrayClassData = this;
-  for (var i = 0; i < lengths.length; i++)
+  let arrayClassData = this;
+  for (let i = 0; i < lengths.length; i++)
     arrayClassData = arrayClassData.getArrayOf();
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };

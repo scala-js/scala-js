@@ -115,7 +115,7 @@ object CoreJSLibs {
 
     val content = lines.mkString("", "\n", "\n")
 
-    outputMode match {
+    val content1 = outputMode match {
       case OutputMode.ECMAScript51Global =>
         content
 
@@ -132,7 +132,16 @@ object CoreJSLibs {
           .replaceAll("ScalaJS\\.isArrayOf\\.", "\\$isArrayOf_")
           .replaceAll("ScalaJS\\.asArrayOf\\.", "\\$asArrayOf_")
           .replaceAll("ScalaJS\\.", "\\$")
-          .replaceAll("\n(\\$[A-Za-z0-9_]+) =", "\nvar $1 =")
+          .replaceAll("\n(\\$[A-Za-z0-9_]+) =", "\nconst $1 =")
+    }
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        content1
+          .replaceAll(raw"\b(let|const)\b", "var")
+
+      case OutputMode.ECMAScript6 =>
+        content1
     }
   }
 
