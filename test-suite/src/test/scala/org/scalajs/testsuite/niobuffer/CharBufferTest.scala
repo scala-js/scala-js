@@ -43,12 +43,13 @@ object CharBufferTest extends BaseBufferTest {
   }
 
   class ByteBufferCharViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      byteBufferFactory: BufferFactory.ByteBufferFactory,
+      order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
 
     def baseAllocBuffer(capacity: Int): CharBuffer =
-      byteBufferFactory.allocBuffer(capacity * 2).asCharBuffer()
+      byteBufferFactory.allocBuffer(capacity * 2).order(order).asCharBuffer()
   }
 
   describe("Allocated CharBuffer") {
@@ -69,13 +70,15 @@ object CharBufferTest extends BaseBufferTest {
   }
 
   for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
-    describe("Char view of " + description) {
-      defineTests(new ByteBufferCharViewFactory(byteBufferFactory))
-    }
+    for (order <- Seq(ByteOrder.BIG_ENDIAN, ByteOrder.LITTLE_ENDIAN)) {
+      describe("Char view of " + description + " - " + order) {
+        defineTests(new ByteBufferCharViewFactory(byteBufferFactory, order))
+      }
 
-    describe("Read-only Char view of " + description) {
-      defineTests(new ByteBufferCharViewFactory(byteBufferFactory)
-          with BufferFactory.ReadOnlyBufferFactory)
+      describe("Read-only Char view of " + description + " - " + order) {
+        defineTests(new ByteBufferCharViewFactory(byteBufferFactory, order)
+            with BufferFactory.ReadOnlyBufferFactory)
+      }
     }
   }
 

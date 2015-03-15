@@ -40,12 +40,13 @@ object FloatBufferTest extends BaseBufferTest {
   }
 
   class ByteBufferFloatViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      byteBufferFactory: BufferFactory.ByteBufferFactory,
+      order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
 
     def baseAllocBuffer(capacity: Int): FloatBuffer =
-      byteBufferFactory.allocBuffer(capacity * 4).asFloatBuffer()
+      byteBufferFactory.allocBuffer(capacity * 4).order(order).asFloatBuffer()
   }
 
   describe("Allocated FloatBuffer") {
@@ -70,13 +71,15 @@ object FloatBufferTest extends BaseBufferTest {
   }
 
   for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
-    describe("Float view of " + description) {
-      defineTests(new ByteBufferFloatViewFactory(byteBufferFactory))
-    }
+    for (order <- Seq(ByteOrder.BIG_ENDIAN, ByteOrder.LITTLE_ENDIAN)) {
+      describe("Float view of " + description + " - " + order) {
+        defineTests(new ByteBufferFloatViewFactory(byteBufferFactory, order))
+      }
 
-    describe("Read-only Float view of " + description) {
-      defineTests(new ByteBufferFloatViewFactory(byteBufferFactory)
-          with BufferFactory.ReadOnlyBufferFactory)
+      describe("Read-only Float view of " + description + " - " + order) {
+        defineTests(new ByteBufferFloatViewFactory(byteBufferFactory, order)
+            with BufferFactory.ReadOnlyBufferFactory)
+      }
     }
   }
 }

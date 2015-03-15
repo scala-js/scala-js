@@ -40,12 +40,13 @@ object IntBufferTest extends BaseBufferTest {
   }
 
   class ByteBufferIntViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      byteBufferFactory: BufferFactory.ByteBufferFactory,
+      order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
 
     def baseAllocBuffer(capacity: Int): IntBuffer =
-      byteBufferFactory.allocBuffer(capacity * 4).asIntBuffer()
+      byteBufferFactory.allocBuffer(capacity * 4).order(order).asIntBuffer()
   }
 
   describe("Allocated IntBuffer") {
@@ -70,13 +71,15 @@ object IntBufferTest extends BaseBufferTest {
   }
 
   for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
-    describe("Int view of " + description) {
-      defineTests(new ByteBufferIntViewFactory(byteBufferFactory))
-    }
+    for (order <- Seq(ByteOrder.BIG_ENDIAN, ByteOrder.LITTLE_ENDIAN)) {
+      describe("Int view of " + description + " - " + order) {
+        defineTests(new ByteBufferIntViewFactory(byteBufferFactory, order))
+      }
 
-    describe("Read-only Int view of " + description) {
-      defineTests(new ByteBufferIntViewFactory(byteBufferFactory)
-          with BufferFactory.ReadOnlyBufferFactory)
+      describe("Read-only Int view of " + description + " - " + order) {
+        defineTests(new ByteBufferIntViewFactory(byteBufferFactory, order)
+            with BufferFactory.ReadOnlyBufferFactory)
+      }
     }
   }
 }
