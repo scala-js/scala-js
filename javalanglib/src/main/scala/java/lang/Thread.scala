@@ -18,6 +18,8 @@ class Thread private (dummy: Unit) extends Runnable {
 
   def getStackTrace(): Array[StackTraceElement] =
     scala.scalajs.runtime.StackTrace.getCurrentStackTrace()
+
+  def getId(): scala.Long = 1
 }
 
 object Thread {

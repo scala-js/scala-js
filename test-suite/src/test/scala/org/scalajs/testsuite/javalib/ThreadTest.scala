@@ -29,6 +29,10 @@ object ThreadTest extends JasmineTest {
     it("Thread.currentThread().getStackTrace() should exist and not crash") {
       java.lang.Thread.currentThread().getStackTrace()
     }
+
+    it("getId()") {
+      expect(Thread.currentThread().getId > 0).toBeTruthy
+    }
   }
 
 }
