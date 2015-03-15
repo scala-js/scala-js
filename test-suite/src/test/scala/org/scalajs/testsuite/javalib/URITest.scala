@@ -316,6 +316,90 @@ object URITest extends JasmineTest {
         new URI("http://example.com/asdf%6A").hashCode)
     }
 
+    it("should allow non-ASCII characters") {
+      expectURI(new URI("http://cs.dbpedia.org/resource/Víno"), true, false)(
+          scheme = "http",
+          host = "cs.dbpedia.org",
+          path = "/resource/Víno",
+          authority = "cs.dbpedia.org",
+          schemeSpecificPart = "//cs.dbpedia.org/resource/Víno")()
+    }
+
+    it("should decode UTF-8") {
+      expectURI(new URI("http://cs.dbpedia.org/resource/V%C3%ADno"), true, false)(
+          scheme = "http",
+          host = "cs.dbpedia.org",
+          path = "/resource/Víno",
+          authority = "cs.dbpedia.org",
+          schemeSpecificPart = "//cs.dbpedia.org/resource/Víno")(
+          rawPath = "/resource/V%C3%ADno",
+          rawSchemeSpecificPart = "//cs.dbpedia.org/resource/V%C3%ADno")
+
+      expectURI(new URI("%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af"), false, false)(
+          path = "こaんにちは",
+          schemeSpecificPart = "こaんにちは")(
+          rawPath = "%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af",
+          rawSchemeSpecificPart = "%e3%81%93a%e3%82%93%e3%81%AB%e3%81%a1%e3%81%af")
+    }
+
+    it("should support toASCIIString") {
+      def cmp(base: String, encoded: String) =
+        expect(new URI(base).toASCIIString()).toEqual(encoded)
+
+      cmp("http://cs.dbpedia.org/resource/Víno",
+          "http://cs.dbpedia.org/resource/V%C3%ADno")
+      cmp("http://こaんにちは/",
+          "http://%E3%81%93a%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF/")
+      cmp("foo://bar/\uD800\uDCF5/",
+          "foo://bar/%F0%90%83%B5/")
+    }
+
+    it("should replace when bad surrogates are present") {
+      expectURI(new URI("http://booh/%E3a"), true, false)(
+          scheme = "http",
+          host = "booh",
+          path = "/�a",
+          authority = "booh",
+          schemeSpecificPart = "//booh/�a")(
+          rawPath = "/%E3a",
+          rawSchemeSpecificPart = "//booh/%E3a")
+
+      // lowercase e is kept
+      expectURI(new URI("http://booh/%e3a"), true, false)(
+          scheme = "http",
+          host = "booh",
+          path = "/�a",
+          authority = "booh",
+          schemeSpecificPart = "//booh/�a")(
+          rawPath = "/%e3a",
+          rawSchemeSpecificPart = "//booh/%e3a")
+
+      // %E3%81 is considered as 1 malformed
+      expectURI(new URI("http://booh/%E3%81a"), true, false)(
+          scheme = "http",
+          host = "booh",
+          path = "/�a",
+          authority = "booh",
+          schemeSpecificPart = "//booh/�a")(
+          rawPath = "/%E3%81a",
+          rawSchemeSpecificPart = "//booh/%E3%81a")
+
+      // %E3%E3 is considered as 2 malformed
+      expectURI(new URI("http://booh/%E3%E3a"), true, false)(
+          scheme = "http",
+          host = "booh",
+          path = "/��a",
+          authority = "booh",
+          schemeSpecificPart = "//booh/��a")(
+          rawPath = "/%E3%E3a",
+          rawSchemeSpecificPart = "//booh/%E3%E3a")
+    }
+
+    it("should throw on bad escape sequences") {
+      expect(() => new URI("http://booh/%E")).toThrow
+      expect(() => new URI("http://booh/%Ep")).toThrow
+    }
+
   }
 
 }
