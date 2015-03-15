@@ -40,12 +40,13 @@ object ShortBufferTest extends BaseBufferTest {
   }
 
   class ByteBufferShortViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory)
+      byteBufferFactory: BufferFactory.ByteBufferFactory,
+      order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
 
     def baseAllocBuffer(capacity: Int): ShortBuffer =
-      byteBufferFactory.allocBuffer(capacity * 2).asShortBuffer()
+      byteBufferFactory.allocBuffer(capacity * 2).order(order).asShortBuffer()
   }
 
   describe("Allocated ShortBuffer") {
@@ -70,13 +71,15 @@ object ShortBufferTest extends BaseBufferTest {
   }
 
   for ((description, byteBufferFactory) <- ByteBufferFactories.WriteableByteBufferFactories) {
-    describe("Short view of " + description) {
-      defineTests(new ByteBufferShortViewFactory(byteBufferFactory))
-    }
+    for (order <- Seq(ByteOrder.BIG_ENDIAN, ByteOrder.LITTLE_ENDIAN)) {
+      describe("Short view of " + description + " - " + order) {
+        defineTests(new ByteBufferShortViewFactory(byteBufferFactory, order))
+      }
 
-    describe("Read-only Short view of " + description) {
-      defineTests(new ByteBufferShortViewFactory(byteBufferFactory)
-          with BufferFactory.ReadOnlyBufferFactory)
+      describe("Read-only Short view of " + description + " - " + order) {
+        defineTests(new ByteBufferShortViewFactory(byteBufferFactory, order)
+            with BufferFactory.ReadOnlyBufferFactory)
+      }
     }
   }
 }
