@@ -72,13 +72,8 @@ object UTF8Test extends BaseCharsetTest(StandardCharsets.UTF_8) {
       testDecode(bb"41 80 80 42 80 43")(cb"A", Malformed(1), Malformed(1), cb"B", Malformed(1), cb"C")
 
       // Lonely start characters, separated by spaces
-      /* We add 2 spaces at the end so that the last 4-byte start does not
-       * swallow the last space as an underflow. */
-      testDecode(bb"${(0xc0 to 0xf4).flatMap(c => Seq(c, 32)) ++ Seq[Byte](32, 32)}")(
-          (0xc0 to 0xf4).flatMap(i => OutSeq(Malformed(1), cb" ")) ++ OutSeq(cb"  "): _*)
-      // Now we let it swallow the last space
-      testDecode(bb"${Seq[Byte](32) ++ (0xc0 to 0xf4).flatMap(c => Seq(c, 32))}")(
-          (0xc0 to 0xf4).flatMap(i => OutSeq(cb" ", Malformed(1))): _*)
+      testDecode(bb"${(0xc0 to 0xf4).flatMap(c => Seq(c, 32))}")(
+          (0xc0 to 0xf4).flatMap(i => OutSeq(Malformed(1), cb" ")): _*)
 
       // Sequences with some continuation bytes missing
       testDecode(bb"c2")(Malformed(1))
@@ -87,6 +82,10 @@ object UTF8Test extends BaseCharsetTest(StandardCharsets.UTF_8) {
       testDecode(bb"f0")(Malformed(1))
       testDecode(bb"f0 90")(Malformed(2))
       testDecode(bb"f0 90 80")(Malformed(3))
+      // at the end of the buffer - #1537
+      testDecode(bb"c0")(Malformed(1))
+      testDecode(bb"e1 41")(Malformed(1), cb"A")
+      testDecode(bb"e1 80 42")(Malformed(2), cb"B")
       // and all of them concatenated
       testDecode(bb"c2  e0  e0 a0  f0  f0 90  f0 90 80")(
           Seq(1, 1, 2, 1, 2, 3).map(Malformed(_)): _*)
