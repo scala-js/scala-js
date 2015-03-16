@@ -460,7 +460,7 @@ object JSDesugaring {
                 NewArray(tpe, recs(lengths))
               case ArrayValue(tpe, elems) =>
                 ArrayValue(tpe, recs(elems))
-              case JSArrayConstr(items) =>
+              case JSArrayConstr(items) if !containsAnySpread(items) =>
                 JSArrayConstr(recs(items))
               case JSObjectConstr(items) =>
                 val newValues = recs(items.map(_._2))
@@ -976,27 +976,65 @@ object JSDesugaring {
         // JavaScript expressions (if we reach here their arguments are not expressions)
 
         case JSNew(ctor, args) =>
-          unnest(ctor :: args) { (newCtorAndArgs, env) =>
-            val newCtor :: newArgs = newCtorAndArgs
-            redo(JSNew(newCtor, newArgs))(env)
+          if (containsAnySpread(args)) {
+            redo {
+              CallHelper("newJSObjectWithVarargs",
+                  List(ctor, spreadToArgArray(args)))(AnyType)
+            }
+          } else {
+            unnest(ctor :: args) { (newCtorAndArgs, env) =>
+              val newCtor :: newArgs = newCtorAndArgs
+              redo(JSNew(newCtor, newArgs))(env)
+            }
           }
 
         case JSFunctionApply(fun, args) =>
-          unnest(fun :: args) { (newFunAndArgs, env) =>
-            val newFun :: newArgs = newFunAndArgs
-            redo(JSFunctionApply(newFun, newArgs))(env)
+          if (containsAnySpread(args)) {
+            redo {
+              JSBracketMethodApply(fun, StringLiteral("apply"),
+                  List(Undefined(), spreadToArgArray(args)))
+            }
+          } else {
+            unnest(fun :: args) { (newFunAndArgs, env) =>
+              val newFun :: newArgs = newFunAndArgs
+              redo(JSFunctionApply(newFun, newArgs))(env)
+            }
           }
 
         case JSDotMethodApply(receiver, method, args) =>
-          unnest(receiver :: args) { (newReceiverAndArgs, env) =>
-            val newReceiver :: newArgs = newReceiverAndArgs
-            redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
+          if (containsAnySpread(args)) {
+            withTempVar(receiver) { (newReceiver, env0) =>
+              implicit val env = env0
+              redo {
+                JSBracketMethodApply(
+                    JSDotSelect(newReceiver, method),
+                    StringLiteral("apply"),
+                    List(newReceiver, spreadToArgArray(args)))
+              }
+            }
+          } else {
+            unnest(receiver :: args) { (newReceiverAndArgs, env) =>
+              val newReceiver :: newArgs = newReceiverAndArgs
+              redo(JSDotMethodApply(newReceiver, method, newArgs))(env)
+            }
           }
 
         case JSBracketMethodApply(receiver, method, args) =>
-          unnest(receiver :: method :: args) { (newReceiverAndArgs, env) =>
-            val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-            redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
+          if (containsAnySpread(args)) {
+            withTempVar(receiver) { (newReceiver, env0) =>
+              implicit val env = env0
+              redo {
+                JSBracketMethodApply(
+                    JSBracketSelect(newReceiver, method),
+                    StringLiteral("apply"),
+                    List(newReceiver, spreadToArgArray(args)))
+              }
+            }
+          } else {
+            unnest(receiver :: method :: args) { (newReceiverAndArgs, env) =>
+              val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
+              redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
+            }
           }
 
         case JSDotSelect(qualifier, item) =>
@@ -1038,8 +1076,14 @@ object JSDesugaring {
           }
 
         case JSArrayConstr(items) =>
-          unnest(items) { (newItems, env) =>
-            redo(JSArrayConstr(newItems))(env)
+          if (containsAnySpread(items)) {
+            redo {
+              spreadToArgArray(items)
+            }
+          } else {
+            unnest(items) { (newItems, env) =>
+              redo(JSArrayConstr(newItems))(env)
+            }
           }
 
         case JSObjectConstr(fields) =>
@@ -1078,6 +1122,61 @@ object JSDesugaring {
                 " of class " + rhs.getClass)
           }
       })
+    }
+
+    private def containsAnySpread(args: List[Tree]): Boolean =
+      args.exists(_.isInstanceOf[JSSpread])
+
+    private def spreadToArgArray(args: List[Tree])(
+        implicit env: Env, pos: Position): Tree = {
+      var reversedParts: List[Tree] = Nil
+      var reversedPartUnderConstruction: List[Tree] = Nil
+
+      def closeReversedPartUnderConstruction() = {
+        if (!reversedPartUnderConstruction.isEmpty) {
+          val part = reversedPartUnderConstruction.reverse
+          reversedParts ::= JSArrayConstr(part)(part.head.pos)
+          reversedPartUnderConstruction = Nil
+        }
+      }
+
+      for (arg <- args) {
+        arg match {
+          case JSSpread(spreadArray) =>
+            closeReversedPartUnderConstruction()
+            reversedParts ::= spreadArray
+          case _ =>
+            reversedPartUnderConstruction ::= arg
+        }
+      }
+      closeReversedPartUnderConstruction()
+
+      reversedParts match {
+        case Nil        => JSArrayConstr(Nil)
+        case List(part) => part
+        case _          =>
+          val partHead :: partTail = reversedParts.reverse
+          JSBracketMethodApply(
+              partHead, StringLiteral("concat"), partTail)
+      }
+    }
+
+    /** Evaluates `expr` and stores the result in a temp, then evaluates the
+     *  result of `makeTree(temp)`.
+     */
+    private def withTempVar(expr: Tree)(makeTree: (Tree, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      expr match {
+        case VarRef(ident) if !env.isLocalMutable(ident) =>
+          makeTree(expr, env)
+        case _ =>
+          implicit val pos = expr.pos
+          val temp = newSyntheticVar()
+          val newEnv = env.withDef(temp, expr.tpe, false)
+          val computeTemp = pushLhsInto(
+              VarDef(temp, expr.tpe, mutable = false, EmptyTree), expr)
+          js.Block(computeTemp, makeTree(VarRef(temp)(expr.tpe), newEnv))
+      }
     }
 
     // Desugar Scala operations to JavaScript operations -----------------------

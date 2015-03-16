@@ -434,6 +434,9 @@ object Printers {
           print(receiver, "[", method, "]")
           printArgs(args)
 
+        case JSSpread(items) =>
+          print("...", items)
+
         case JSDelete(prop) =>
           print("delete ", prop)
 

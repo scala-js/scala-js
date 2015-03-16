@@ -285,6 +285,10 @@ object Serializers {
           writeByte(TagJSBracketMethodApply)
           writeTree(receiver); writeTree(method); writeTrees(args)
 
+        case JSSpread(items) =>
+          writeByte(TagJSSpread)
+          writeTree(items)
+
         case JSDelete(prop) =>
           writeByte(TagJSDelete)
           writeTree(prop)
@@ -614,6 +618,7 @@ object Serializers {
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
+        case TagJSSpread             => JSSpread(readTree())
         case TagJSDelete             => JSDelete(readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())

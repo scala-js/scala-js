@@ -43,6 +43,8 @@ object Build extends sbt.Build {
     "Whether we should partest the current scala version (and fail if we can't)")
 
   val previousVersion = "0.6.2"
+  val previousSJSBinaryVersion =
+    ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
 
   val commonSettings = Seq(
       scalaVersion := "2.11.6",
@@ -231,7 +233,7 @@ object Build extends sbt.Build {
           unmanagedSourceDirectories in Compile +=
             (scalaSource in Compile in irProject).value,
           previousArtifact := Some(
-              "org.scala-js" % s"scalajs-ir_sjs${scalaJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
+              "org.scala-js" % s"scalajs-ir_sjs${previousSJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
       )
   ).dependsOn(compiler % "plugin", javalibEx)
 
@@ -358,7 +360,7 @@ object Build extends sbt.Build {
         }
       } ++ Seq(
           previousArtifact := Some(
-              "org.scala-js" % s"scalajs-tools_sjs${scalaJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
+              "org.scala-js" % s"scalajs-tools_sjs${previousSJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
       )
   ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test", irProjectJS)
 

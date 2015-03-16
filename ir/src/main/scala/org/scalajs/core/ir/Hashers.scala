@@ -309,6 +309,10 @@ object Hashers {
           mixTree(method)
           mixTrees(args)
 
+        case JSSpread(items) =>
+          mixTag(TagJSSpread)
+          mixTree(items)
+
         case JSDelete(prop) =>
           mixTag(TagJSDelete)
           mixTree(prop)

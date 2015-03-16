@@ -345,6 +345,19 @@ ScalaJS.isInfinite = function(instance) {
   return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
 };
 
+/** Instantiates a JS object with variadic arguments to the constructor. */
+ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
+  // This basically emulates the ECMAScript specification for 'new'.
+  var instance = ScalaJS.g["Object"]["create"](ctor.prototype);
+  var result = ctor["apply"](instance, args);
+  switch (typeof result) {
+    case "string": case "number": case "boolean": case "undefined": case "symbol":
+      return instance;
+    default:
+      return result === null ? instance : result;
+  }
+};
+
 ScalaJS.propertiesOf = function(obj) {
   var result = [];
   for (var prop in obj)

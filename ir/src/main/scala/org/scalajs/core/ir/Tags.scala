@@ -88,6 +88,9 @@ private[ir] object Tags {
   final val TagConstructorExportDef = TagPropertyDef + 1
   final val TagModuleExportDef = TagConstructorExportDef + 1
 
+  // TODO Reorganize these when we can break binary compatibility
+  final val TagJSSpread = TagModuleExportDef + 1
+
   // Tags for Types
 
   final val TagAnyType = 1

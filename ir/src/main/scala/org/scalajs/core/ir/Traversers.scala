@@ -147,6 +147,9 @@ object Traversers {
         traverse(method)
         args foreach traverse
 
+      case JSSpread(items) =>
+        traverse(items)
+
       case JSDelete(prop) =>
         traverse(prop)
 

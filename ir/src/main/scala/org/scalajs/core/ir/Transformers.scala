@@ -145,6 +145,9 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
+        case JSSpread(items) =>
+          JSSpread(transformExpr(items))
+
         case JSDelete(prop) =>
           JSDelete(transformExpr(prop))
 

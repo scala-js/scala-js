@@ -401,6 +401,17 @@ object Trees {
     val tpe = AnyType
   }
 
+  /** `...items`, the "spread" operator of ECMAScript 6.
+   *
+   *  It is only valid in the `args`/`items` of a [[JSNew]], [[JSFunctionApply]],
+   *  [[JSDotMethodApply]], [[JSBracketMethodApply]], or [[JSArrayConstr]].
+   *
+   *  @param items An Array whose items will be spread (not an arbitrary iterable)
+   */
+  case class JSSpread(items: Tree)(implicit val pos: Position) extends Tree {
+    val tpe = NoType // there is no reasonable type for this tree
+  }
+
   case class JSDelete(prop: Tree)(implicit val pos: Position) extends Tree {
     require(prop match {
       case _:JSDotSelect | _:JSBracketSelect => true
