@@ -169,7 +169,7 @@ class NodeJSEnv private (
             var buf = new Buffer(4 + len * 2);
             buf.writeInt32BE(len, 0);
             for (var i = 0; i < len; ++i)
-              buf.writeInt16BE(msg.charCodeAt(i), 4 + i * 2);
+              buf.writeUInt16BE(msg.charCodeAt(i), 4 + i * 2);
             socket.write(buf);
           },
           close: function() {

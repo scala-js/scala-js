@@ -178,6 +178,23 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
+  def highCharTest = { // #1536
+    val com = comRunner("""
+      scalajsCom.init(scalajsCom.send);
+    """)
+
+    com.start()
+
+    val msg = "\uC421\u8F10\u0112\uFF32"
+
+    com.send(msg)
+    assertEquals(msg, com.receive())
+
+    com.close()
+    com.await(DefaultTimeout)
+  }
+
+  @Test
   def noInitTest = {
     val com = comRunner("")
 
