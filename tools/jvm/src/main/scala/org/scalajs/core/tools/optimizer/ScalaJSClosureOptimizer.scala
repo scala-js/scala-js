@@ -14,6 +14,7 @@ import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.corelib.CoreJSLibs
+import org.scalajs.core.tools.javascript.OutputMode
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -27,8 +28,12 @@ import scala.collection.immutable.{Seq, Traversable}
 import java.net.URI
 
 /** Scala.js Closure optimizer: does advanced optimizations with Closure. */
-class ScalaJSClosureOptimizer(semantics: Semantics) {
+class ScalaJSClosureOptimizer {
   import ScalaJSClosureOptimizer._
+
+  @deprecated("The `semantics` parameter is ignored. Use the overload without parameter.", "0.6.2")
+  def this(semantics: Semantics) =
+    this()
 
   private def toClosureSource(file: VirtualJSFile) =
     ClosureSource.fromReader(file.toURI.toString(), file.reader)
@@ -63,7 +68,7 @@ class ScalaJSClosureOptimizer(semantics: Semantics) {
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    for (lib <- CoreJSLibs.libs(semantics))
+    for (lib <- CoreJSLibs.libs(optimizer.semantics, optimizer.outputMode))
       module.add(toClosureInput(lib))
 
     val ast = builder.closureAST

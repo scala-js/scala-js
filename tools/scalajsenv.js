@@ -7,7 +7,9 @@
  * The top-level Scala.js environment *
  * ---------------------------------- */
 
+//!if outputMode == ECMAScript51Global
 var ScalaJS = {};
+//!endif
 
 // Get the environment info
 ScalaJS.env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv : {};
@@ -29,6 +31,7 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
 // Other fields
+//!if outputMode == ECMAScript51Global
 ScalaJS.d = {};         // Data for types
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
@@ -40,6 +43,7 @@ ScalaJS.isArrayOf = {}; // isInstanceOfArrayOf methods
 //!if asInstanceOfs != Unchecked
 ScalaJS.as = {};        // asInstanceOf methods
 ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
+//!endif
 //!endif
 ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
 

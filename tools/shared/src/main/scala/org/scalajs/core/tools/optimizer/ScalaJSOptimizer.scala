@@ -29,10 +29,10 @@ import org.scalajs.core.tools.corelib._
 import org.scalajs.core.tools.sem.Semantics
 
 import org.scalajs.core.tools.javascript
-import javascript.{Trees => js}
+import javascript.{Trees => js, OutputMode}
 
 /** Scala.js optimizer: does type-aware global dce. */
-class ScalaJSOptimizer(semantics: Semantics,
+class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     optimizerFactory: ScalaJSOptimizer.OptimizerFactory) {
   import ScalaJSOptimizer._
 
@@ -44,6 +44,15 @@ class ScalaJSOptimizer(semantics: Semantics,
 
   clean()
 
+  def this(semantics: Semantics, mode: OutputMode) =
+    this(semantics, mode, IncOptimizer.factory)
+
+  @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
+  def this(semantics: Semantics,
+      optimizerFactory: ScalaJSOptimizer.OptimizerFactory) =
+    this(semantics, OutputMode.ECMAScript51Global, optimizerFactory)
+
+  @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
   def this(semantics: Semantics) = this(semantics, IncOptimizer.factory)
 
   /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
@@ -83,10 +92,22 @@ class ScalaJSOptimizer(semantics: Semantics,
         new JSFileBuilder(output.name, output.contentWriter)
     }
 
+    outputMode match {
+      case OutputMode.ECMAScript51Isolated =>
+        builder.addLine("(function(){")
+      case _ =>
+    }
+
     builder.addLine("'use strict';")
-    CoreJSLibs.libs(semantics).foreach(builder.addFile _)
+    CoreJSLibs.libs(semantics, outputMode).foreach(builder.addFile _)
 
     optimizeIR(irFiles, cfg, builder, logger)
+
+    outputMode match {
+      case OutputMode.ECMAScript51Isolated =>
+        builder.addLine("}).call(this);")
+      case _ =>
+    }
 
     builder.complete()
     builder.closeWriters()
@@ -154,7 +175,7 @@ class ScalaJSOptimizer(semantics: Semantics,
   private def resetStateFromOptimizer(): Unit = {
     optimizer = optimizerFactory(semantics, withSourceMap)
     refiner = new Refiner(semantics)
-    emitter = new Emitter(semantics)
+    emitter = new Emitter(semantics, outputMode)
   }
 }
 

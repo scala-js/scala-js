@@ -12,6 +12,7 @@ package org.scalajs.core.tools.classpath
 import scala.collection.immutable.{Seq, Traversable}
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
@@ -32,7 +33,10 @@ final class IRClasspath(
    *
    *  Consider using [[ScalaJSOptimizer]] for a canonical way to do so. It
    *  allows to persist the resulting file and create a source map, as well as
-   *  using non-default [[Semantics]].
+   *  using non-default [[Semantics]] and [[OutputMode]].
+   *
+   *  The [[OutputMode]] is not specified, but it is compliant with
+   *  ECMAScript 5.1.
    */
   override lazy val scalaJSCode: VirtualJSFile = {
     import ScalaJSOptimizer._
@@ -42,8 +46,8 @@ final class IRClasspath(
     if (scalaJSIR.nonEmpty) {
       val semantics = Semantics.compliantTo(requiredCompliance.map(_.semantics))
       val output = WritableMemVirtualJSFile(outName)
-      new ScalaJSOptimizer(semantics).optimizeCP(this,
-          Config(output), NullLogger)
+      new ScalaJSOptimizer(semantics, OutputMode.ECMAScript51Isolated).optimizeCP(
+          this, Config(output), NullLogger)
       output
     } else {
       // We cannot run the optimizer without IR, because it will complain about

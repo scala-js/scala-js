@@ -12,6 +12,7 @@ package org.scalajs.sbtplugin
 import sbt._
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.io.VirtualJSFile
 import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
@@ -155,6 +156,9 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSSemantics = SettingKey[Semantics]("scalaJSSemantics",
         "Configurable semantics of Scala.js.", BPlusSetting)
+
+    val scalaJSOutputMode = SettingKey[OutputMode]("scalaJSOutputMode",
+        "Output mode of Scala.js.", BPlusSetting)
 
     val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)

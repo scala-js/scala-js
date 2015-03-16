@@ -27,7 +27,10 @@ import org.scalajs.core.tools.javascript.{Trees => js}
 
 import java.io.StringWriter
 
-/** Desugaring of the IR to regular ES5 JavaScript.
+/** Desugaring of the IR to JavaScript.
+ *
+ *  The general shape and compliance to standards is chosen with an
+ *  [[OutputMode]].
  *
  *  The major difference between the IR and JS is that most constructs can be
  *  used in expression position. The main work of the desugaring is to
@@ -104,14 +107,28 @@ object JSDesugaring {
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** Desugars a statement of the IR into ES5 JavaScript. */
+  @deprecated("Use an overload with an explicit OutputMode.", "0.6.2")
   def desugarJavaScript(tree: Tree, semantics: Semantics): js.Tree =
-    desugarJavaScript(tree, semantics, Env.empty)
+    desugarJavaScript(tree, semantics, OutputMode.ECMAScript51Global)
+
+  /** Desugars a statement of the IR into a given mode of JavaScript. */
+  def desugarJavaScript(tree: Tree, semantics: Semantics,
+      outputMode: OutputMode): js.Tree =
+    desugarJavaScript(tree, semantics, outputMode, Env.empty)
 
   /** Desugars a statement of the IR into ES5 JavaScript under a
    *  given environment.
    */
-  def desugarJavaScript(tree: Tree, semantics: Semantics, env: Env): js.Tree = {
-    val desugar = new JSDesugar(semantics)
+  @deprecated("Use an overload with an explicit OutputMode.", "0.6.2")
+  def desugarJavaScript(tree: Tree, semantics: Semantics, env: Env): js.Tree =
+    desugarJavaScript(tree, semantics, OutputMode.ECMAScript51Global, env)
+
+  /** Desugars a statement of the IR into a given mode of JavaScript under a
+   *  given environment.
+   */
+  def desugarJavaScript(tree: Tree, semantics: Semantics,
+      outputMode: OutputMode, env: Env): js.Tree = {
+    val desugar = new JSDesugar(semantics, outputMode)
     try {
       desugar.transformStat(tree)(env)
     } catch {
@@ -126,7 +143,9 @@ object JSDesugaring {
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name)(paramDef.pos)
 
-  private class JSDesugar(semantics: Semantics) {
+  private class JSDesugar(semantics: Semantics, outputMode: OutputMode) {
+
+    private implicit def implicitOutputMode: OutputMode = outputMode
 
     // Synthetic variables
 
@@ -241,7 +260,7 @@ object JSDesugaring {
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
             js.Assign(
-                js.DotSelect(envField("n"), Ident(cls.className)),
+                envField("n", cls.className),
                 transformExpr(newValue))
           }
 
@@ -332,30 +351,13 @@ object JSDesugaring {
     def transformBlockStats(trees: List[Tree])(
         implicit env: Env): (List[js.Tree], Env) = {
 
-      def emptyVarDef(varIdent: Ident, tpe: Type)(implicit pos: Position) = {
-        tpe match {
-          case RecordType(fields) =>
-            for {
-              RecordType.Field(fldName, fldOrigName, tpe, _) <- fields
-            } yield {
-              val ident = makeRecordFieldIdent(varIdent, fldName, fldOrigName)
-              js.VarDef(ident, js.EmptyTree)
-            }
-        case _ =>
-            List(js.VarDef(varIdent, js.EmptyTree))
-        }
-      }
-
       @tailrec
       def transformLoop(trees: List[Tree], env: Env,
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
         case (tree @ VarDef(ident, tpe, mutable, rhs)) :: ts =>
           val newEnv = env.withDef(ident, tpe, mutable)
-          val newTrees =
-            if (rhs == EmptyTree) emptyVarDef(ident, tpe)(tree.pos)
-            else pushLhsInto(tree, rhs)(env) :: Nil
-
-          transformLoop(ts, newEnv, newTrees reverse_::: acc)
+          val newTree = pushLhsInto(tree, rhs)(env)
+          transformLoop(ts, newEnv, newTree :: acc)
 
         case tree :: ts =>
           transformLoop(ts, env, transformStat(tree)(env) :: acc)
@@ -677,6 +679,21 @@ object JSDesugaring {
       }
     }
 
+    def doEmptyVarDef(ident: Ident, tpe: Type)(
+        implicit pos: Position, env: Env): js.Tree = {
+      tpe match {
+        case RecordType(fields) =>
+          js.Block(for {
+            RecordType.Field(fName, fOrigName, fTpe, fMutable) <- fields
+          } yield {
+            doEmptyVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe)
+          })
+
+        case _ =>
+          js.VarDef(ident, js.EmptyTree)
+      }
+    }
+
     def doAssign(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       lhs.tpe match {
@@ -717,11 +734,11 @@ object JSDesugaring {
          */
         val transformedRhs = pushLhsInto(EmptyTree, rhs)
         lhs match {
-          case VarDef(name, _, _, _) =>
+          case VarDef(name, tpe, _, _) =>
             /* We still need to declare the var, in case it is used somewhere
              * else in the function, where we can't dce it.
              */
-            js.Block(js.VarDef(name, js.EmptyTree), transformedRhs)
+            js.Block(doEmptyVarDef(name, tpe), transformedRhs)
 
           case _ =>
             transformedRhs
@@ -1123,8 +1140,7 @@ object JSDesugaring {
         case ApplyStatic(cls, method, args) =>
           val Ident(methodName, origName) = method
           val fullName = cls.className + "__" + methodName
-          val methodIdent = js.Ident(fullName, origName)
-          js.Apply(envField("s") DOT methodIdent, args map transformExpr)
+          js.Apply(envField("s", fullName, origName), args map transformExpr)
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
@@ -1472,9 +1488,9 @@ object JSDesugaring {
     def genClassDataOf(cls: ReferenceType)(implicit pos: Position): js.Tree = {
       cls match {
         case ClassType(className) =>
-          encodeClassField("d", className)
+          envField("d", className)
         case ArrayType(base, dims) =>
-          (1 to dims).foldLeft(encodeClassField("d", base)) { (prev, _) =>
+          (1 to dims).foldLeft(envField("d", base)) { (prev, _) =>
             js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
           }
       }
@@ -1509,7 +1525,7 @@ object JSDesugaring {
     private def genLoadModule(moduleClass: String)(
         implicit pos: Position): js.Tree = {
       import TreeDSL._
-      js.Apply(envField("m") DOT moduleClass, Nil)
+      js.Apply(envField("m", moduleClass), Nil)
     }
 
     private implicit class RecordAwareEnv(env: Env) {
@@ -1556,15 +1572,15 @@ object JSDesugaring {
   // Helpers
 
   private[javascript] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit pos: Position): js.Tree =
+      implicit outputMode: OutputMode, pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = true)
 
   private def genAsInstanceOf(expr: js.Tree, cls: ReferenceType)(
-      implicit pos: Position): js.Tree =
+      implicit outputMode: OutputMode, pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = false)
 
   private def genIsAsInstanceOf(expr: js.Tree, cls: ReferenceType, test: Boolean)(
-      implicit pos: Position): js.Tree = {
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
     import Definitions._
     import TreeDSL._
 
@@ -1598,31 +1614,71 @@ object JSDesugaring {
           }
         } else {
           js.Apply(
-              envField(if (test) "is" else "as") DOT js.Ident(className),
+              envField(if (test) "is" else "as", className),
               List(expr))
         }
 
       case ArrayType(base, depth) =>
         js.Apply(
-            envField(if (test) "isArrayOf" else "asArrayOf") DOT js.Ident(base),
+            envField(if (test) "isArrayOf" else "asArrayOf", base),
             List(expr, js.IntLiteral(depth)))
     }
   }
 
   private[javascript] def genCallHelper(helperName: String, args: js.Tree*)(
-      implicit pos: Position): js.Tree =
+      implicit outputMode: OutputMode, pos: Position): js.Tree =
     js.Apply(envField(helperName), args.toList)
 
   private[javascript] def encodeClassVar(className: String)(
-      implicit pos: Position): js.Tree =
-    encodeClassField("c", className)
+      implicit outputMode: OutputMode, pos: Position): js.Tree =
+    envField("c", className)
 
-  private[javascript] def encodeClassField(field: String, className: String)(
-      implicit pos: Position): js.Tree =
-    js.DotSelect(envField(field), js.Ident(className))
+  private[javascript] def envField(field: String, subField: String,
+      origName: Option[String] = None)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
 
-  private[javascript] def envField(field: String)(implicit pos: Position): js.Tree =
-    js.DotSelect(js.VarRef(js.Ident(ScalaJSEnvironmentName)), js.Ident(field))
+    outputMode match {
+      case OutputMode.ECMAScript51Global =>
+        envField(field) DOT js.Ident(subField, origName)
+
+      case OutputMode.ECMAScript51Isolated =>
+        js.VarRef(js.Ident("$" + field + "_" + subField, origName))
+    }
+  }
+
+  private[javascript] def envField(field: String)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    import TreeDSL._
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global =>
+        js.VarRef(js.Ident(ScalaJSEnvironmentName)) DOT field
+
+      case OutputMode.ECMAScript51Isolated =>
+        js.VarRef(js.Ident("$" + field))
+    }
+  }
+
+  private[javascript] def envFieldDef(field: String, subField: String,
+      value: js.Tree)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envFieldDef(field, subField, origName = None, value)
+  }
+
+  private[javascript] def envFieldDef(field: String, subField: String,
+      origName: Option[String], value: js.Tree)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    val globalVar = envField(field, subField, origName)
+
+    outputMode match {
+      case OutputMode.ECMAScript51Global =>
+        js.Assign(globalVar, value)
+
+      case OutputMode.ECMAScript51Isolated =>
+        js.VarDef(globalVar.asInstanceOf[js.VarRef].ident, value)
+    }
+  }
 
   private[javascript] implicit class MyTreeOps(val self: js.Tree) {
     def prototype(implicit pos: Position): js.Tree =
