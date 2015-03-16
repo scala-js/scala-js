@@ -94,7 +94,7 @@ class NodeJSEnv private (
        with ComJSRunner {
 
     /** Retry-timeout to wait for the JS VM to connect */
-    private final val acceptTimeout = 1000
+    private final val acceptTimeout = 5000
 
     private[this] val serverSocket =
       new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
