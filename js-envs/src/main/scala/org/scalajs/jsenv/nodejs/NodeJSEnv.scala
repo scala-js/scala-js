@@ -63,6 +63,9 @@ class NodeJSEnv private (
   protected def vmName: String = "node.js"
   protected def executable: String = nodejsPath
 
+  /** Retry-timeout to wait for the JS VM to connect */
+  protected val acceptTimeout = 5000
+
   override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
       logger: Logger, console: JSConsole): JSRunner = {
     new NodeRunner(classpath, code, logger, console)
@@ -92,9 +95,6 @@ class NodeJSEnv private (
       code: VirtualJSFile, logger: Logger, console: JSConsole
   ) extends AsyncNodeRunner(classpath, code, logger, console)
        with ComJSRunner {
-
-    /** Retry-timeout to wait for the JS VM to connect */
-    private final val acceptTimeout = 5000
 
     private[this] val serverSocket =
       new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
