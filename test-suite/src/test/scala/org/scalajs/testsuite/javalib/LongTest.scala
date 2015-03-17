@@ -174,5 +174,26 @@ object LongTest extends JasmineTest {
       expect(JLong.numberOfTrailingZeros(0x0000000000080000L)).toEqual(19)
     }
 
+    it("should implement signum") {
+      //check a few ints
+      expect(JLong.signum(-11)).toEqual(-1)
+      expect(JLong.signum(-1)).toEqual(-1)
+      expect(JLong.signum(0)).toEqual(0)
+      expect(JLong.signum(1)).toEqual(1)
+      expect(JLong.signum(11)).toEqual(1)
+
+      //check a few longs
+      expect(JLong.signum(Long.MinValue)).toEqual(-1)
+      expect(JLong.signum(-98765432158845L)).toEqual(-1)
+      expect(JLong.signum(-49575304457780L)).toEqual(-1)
+      expect(JLong.signum(-11L)).toEqual(-1)
+      expect(JLong.signum(-1L)).toEqual(-1)
+      expect(JLong.signum(0L)).toEqual(0)
+      expect(JLong.signum(1L)).toEqual(1)
+      expect(JLong.signum(11L)).toEqual(1)
+      expect(JLong.signum(49575304457780L)).toEqual(1)
+      expect(JLong.signum(98765432158845L)).toEqual(1)
+      expect(JLong.signum(Long.MaxValue)).toEqual(1)
+    }
   }
 }

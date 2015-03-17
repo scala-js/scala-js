@@ -135,8 +135,8 @@ object Long {
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
     (i >>> distance) | (i << -distance)
 
-  def signum(i: scala.Long): scala.Long =
-    if (i < 0L) -1L else if (i == 0L) 0L else 1L
+  def signum(i: scala.Long): Int =
+    if (i < 0L) -1 else if (i == 0L) 0 else 1
 
   def numberOfLeadingZeros(l: scala.Long): Int = {
     val hi = (l >>> 32).toInt
