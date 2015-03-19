@@ -2776,19 +2776,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       def receiver = genExpr(receiver0)
-      val genArgArray = genPrimitiveJSArgs(tree.symbol, args)
-
-      lazy val js.JSArrayConstr(genArgs) = genArgArray
+      val genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
       if (code == DYNNEW) {
         // js.Dynamic.newInstance(clazz)(actualArgs:_*)
-        val (jsClass, actualArgArray) = extractFirstArg(genArgArray)
-        actualArgArray match {
-          case js.JSArrayConstr(actualArgs) =>
-            js.JSNew(jsClass, actualArgs)
-          case _ =>
-            genNewJSWithVarargs(jsClass, actualArgArray)
-        }
+        val (jsClass, actualArgs) = extractFirstArg(genArgs)
+        js.JSNew(jsClass, actualArgs)
       } else if (code == DYNLIT) {
         /* We have a call of the form:
          *   js.Dynamic.literal(name1 = arg1, name2 = arg2, ...)
@@ -2808,14 +2801,13 @@ abstract class GenJSCode extends plugins.PluginComponent
          */
 
         // Extract first arg to future proof against varargs
-        extractFirstArg(genArgArray) match {
+        extractFirstArg(genArgs) match {
           // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
-          case (js.StringLiteral("apply"),
-                js.JSArrayConstr(jse.LitNamed(pairs))) =>
+          case (js.StringLiteral("apply"), jse.LitNamed(pairs)) =>
             js.JSObjectConstr(pairs)
 
           // case js.Dynamic.literal(x, y)
-          case (js.StringLiteral("apply"), js.JSArrayConstr(tups)) =>
+          case (js.StringLiteral("apply"), tups) =>
             // Create tmp variable
             val resIdent = freshLocalIdent("obj")
             val resVarDef = js.VarDef(resIdent, jstpe.AnyType, mutable = false,
@@ -2857,7 +2849,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements: _*)
-        genArgArray
+        js.JSArrayConstr(genArgs)
       } else (genArgs match {
         case Nil =>
           code match {
@@ -2982,11 +2974,10 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(receiver0, _), args0) = tree
 
       val receiver = genExpr(receiver0)
-      val argArray = genPrimitiveJSArgs(sym, args0)
+      val args = genPrimitiveJSArgs(sym, args0)
 
-      // valid only for methods that don't have any varargs
-      lazy val js.JSArrayConstr(args) = argArray
-      lazy val argc = args.length
+      def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
+      val argc = args.size // meaningful only for methods that don't have varargs
 
       def hasExplicitJSEncoding =
         sym.hasAnnotation(JSNameAnnotation) ||
@@ -3004,13 +2995,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
 
         case nme.apply if !hasExplicitJSEncoding =>
-          argArray match {
-            case js.JSArrayConstr(args) =>
-              js.JSFunctionApply(receiver, args)
-            case _ =>
-              js.JSBracketMethodApply(
-                receiver, js.StringLiteral("apply"), List(js.Null(), argArray))
-          }
+          js.JSFunctionApply(receiver, args)
 
         case _ =>
           def jsFunName = jsNameOf(sym)
@@ -3018,16 +3003,16 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
             js.UndefinedParam()(toIRType(sym.tpe.resultType))
           } else if (jsInterop.isJSGetter(sym)) {
-            assert(argc == 0)
+            assert(noSpread && argc == 0)
             js.JSBracketSelect(receiver, js.StringLiteral(jsFunName))
           } else if (jsInterop.isJSSetter(sym)) {
-            assert(argc == 1)
+            assert(noSpread && argc == 1)
             js.Assign(
                 js.JSBracketSelect(receiver,
                     js.StringLiteral(jsFunName.stripSuffix("_="))),
                 args.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
-            assert(argArray.isInstanceOf[js.JSArrayConstr] && (argc == 1 || argc == 2),
+            assert(noSpread && (argc == 1 || argc == 2),
                 s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
             args match {
               case List(keyArg) =>
@@ -3038,22 +3023,10 @@ abstract class GenJSCode extends plugins.PluginComponent
                     valueArg)
             }
           } else if (jsInterop.isJSBracketCall(sym)) {
-            val (methodName, actualArgArray) = extractFirstArg(argArray)
-            actualArgArray match {
-              case js.JSArrayConstr(actualArgs) =>
-                js.JSBracketMethodApply(receiver, methodName, actualArgs)
-              case _ =>
-                genApplyJSMethodWithVarargs(receiver, methodName, actualArgArray)
-            }
+            val (methodName, actualArgs) = extractFirstArg(args)
+            js.JSBracketMethodApply(receiver, methodName, actualArgs)
           } else {
-            argArray match {
-              case js.JSArrayConstr(args) =>
-                js.JSBracketMethodApply(
-                    receiver, js.StringLiteral(jsFunName), args)
-              case _ =>
-                genApplyJSMethodWithVarargs(receiver,
-                    js.StringLiteral(jsFunName), argArray)
-            }
+            js.JSBracketMethodApply(receiver, js.StringLiteral(jsFunName), args)
           }
       }
 
@@ -3108,41 +3081,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         map.get(name)
     }
 
-    /** Extract the first argument to a primitive JS call. */
-    private def extractFirstArg(argArray: js.Tree): (js.Tree, js.Tree) = {
-      implicit val pos = argArray.pos
-      (argArray: @unchecked) match {
-        case js.JSArrayConstr(firstArg :: otherArgs) =>
-          (firstArg, js.JSArrayConstr(otherArgs))
-        case js.JSBracketMethodApply(
-            js.JSArrayConstr(firstArg :: firstPart), concat, otherParts) =>
-          (firstArg, js.JSBracketMethodApply(
-              js.JSArrayConstr(firstPart), concat, otherParts))
-      }
-    }
-
-    /** Gen JS code to call a primitive JS method with variadic parameters. */
-    private def genApplyJSMethodWithVarargs(receiver: js.Tree,
-        methodName: js.Tree, argArray: js.Tree)(
-        implicit pos: Position): js.Tree = {
-      // We need to evaluate `receiver` only once
-      val receiverValDef =
-        js.VarDef(freshLocalIdent(), receiver.tpe, mutable = false, receiver)
-      js.Block(
-          receiverValDef,
-          js.JSBracketMethodApply(
-              js.JSBracketSelect(receiverValDef.ref, methodName),
-              js.StringLiteral("apply"),
-              List(receiverValDef.ref, argArray)))
-    }
-
-    /** Gen JS code to instantiate a JS class with variadic parameters. */
-    private def genNewJSWithVarargs(jsClass: js.Tree, argArray: js.Tree)(
-        implicit pos: Position): js.Tree = {
-      genApplyMethod(
-          genLoadModule(RuntimePackageModule),
-          Runtime_newJSObjectWithVarargs,
-          List(jsClass, argArray))
+    /** Extract the first argument to a primitive JS call.
+     *  This is nothing else than decomposing into head and tail, except that
+     *  we assert that the first element is not a JSSpread.
+     */
+    private def extractFirstArg(args: List[js.Tree]): (js.Tree, List[js.Tree]) = {
+      assert(args.nonEmpty,
+          "Trying to extract the first argument of an empty argument list")
+      val firstArg = args.head
+      assert(!firstArg.isInstanceOf[js.JSSpread],
+          "Trying to extract the first argument of an argument list starting " +
+          "with a Spread argument: " + firstArg)
+      (firstArg, args.tail)
     }
 
     /** Gen JS code for new java.lang.String(...)
@@ -3212,14 +3162,11 @@ abstract class GenJSCode extends plugins.PluginComponent
       val cls = tpt.tpe.typeSymbol
       val ctor = fun.symbol
 
-      genPrimitiveJSArgs(ctor, args0) match {
-        case js.JSArrayConstr(args) =>
-          if (cls == JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
-          else if (cls == JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
-          else js.JSNew(genPrimitiveJSClass(cls), args)
-        case argArray =>
-          genNewJSWithVarargs(genPrimitiveJSClass(cls), argArray)
-      }
+      val args = genPrimitiveJSArgs(ctor, args0)
+
+      if (cls == JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
+      else if (cls == JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
+      else js.JSNew(genPrimitiveJSClass(cls), args)
     }
 
     /** Gen JS code representing a JS class (subclass of js.Any) */
@@ -3246,7 +3193,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen actual actual arguments to Scala method call.
      *  Returns a list of the transformed arguments.
      *
-     *  This tries to optimized repeated arguments (varargs) by turning them
+     *  This tries to optimize repeated arguments (varargs) by turning them
      *  into js.WrappedArray instead of Scala wrapped arrays.
      */
     private def genActualArgs(sym: Symbol, args: List[Tree])(
@@ -3267,8 +3214,9 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (wasRepeated) {
             tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
               genExpr(arg)
-            } { argArray =>
-              genNew(WrappedArrayClass, WrappedArray_ctor, List(argArray))
+            } { genArgs =>
+              genNew(WrappedArrayClass, WrappedArray_ctor,
+                  List(js.JSArrayConstr(genArgs)))
             }
           } else {
             genExpr(arg)
@@ -3277,16 +3225,18 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen actual actual arguments to a primitive JS call
-     *  This handles repeated arguments (varargs) by turning them into
-     *  JS varargs, i.e., by expanding them into normal arguments.
+    /** Gen actual actual arguments to a primitive JS call.
      *
-     *  Returns an only tree which is a JS array of the arguments. In most
-     *  cases, it will be a js.JSArrayConstr with the expanded arguments. It will
-     *  not if a Seq is passed to a varargs argument with the syntax seq: _*.
+     *  * Repeated arguments (varargs) are expanded
+     *  * Default arguments are omitted or replaced by undefined
+     *  * All arguments are boxed
+     *
+     *  Repeated arguments that cannot be expanded at compile time (i.e., if a
+     *  Seq is passed to a varargs parameter with the syntax `seq: _*`) will be
+     *  wrapped in a [[js.JSSpread]] node to be expanded at runtime.
      */
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
-        implicit pos: Position): js.Tree = {
+        implicit pos: Position): List[js.Tree] = {
       val wereRepeated = exitingPhase(currentRun.typerPhase) {
         for {
           params <- sym.tpe.paramss
@@ -3294,104 +3244,75 @@ abstract class GenJSCode extends plugins.PluginComponent
         } yield isScalaRepeatedParamType(param.tpe)
       }
 
-      var reversedParts: List[js.Tree] = Nil
-      var reversedPartUnderConstruction: List[js.Tree] = Nil
-
-      def closeReversedPartUnderConstruction() = {
-        if (!reversedPartUnderConstruction.isEmpty) {
-          val part = reversedPartUnderConstruction.reverse
-          reversedParts ::= js.JSArrayConstr(part)
-          reversedPartUnderConstruction = Nil
-        }
-      }
-
       val paramTpes = enteringPhase(currentRun.posterasurePhase) {
         for (param <- sym.tpe.params)
           yield param.tpe
       }
 
+      var reversedArgs: List[js.Tree] = Nil
+
       for (((arg, wasRepeated), tpe) <- (args zip wereRepeated) zip paramTpes) {
         if (wasRepeated) {
-          genPrimitiveJSRepeatedParam(arg) match {
-            case js.JSArrayConstr(jsArgs) =>
-              reversedPartUnderConstruction =
-                jsArgs reverse_::: reversedPartUnderConstruction
-            case jsArgArray =>
-              closeReversedPartUnderConstruction()
-              reversedParts ::= jsArgArray
-          }
+          reversedArgs =
+            genPrimitiveJSRepeatedParam(arg) reverse_::: reversedArgs
         } else {
           val unboxedArg = genExpr(arg)
           val boxedArg = unboxedArg match {
             case js.UndefinedParam() => unboxedArg
             case _                   => ensureBoxed(unboxedArg, tpe)
           }
-          reversedPartUnderConstruction ::= boxedArg
+          reversedArgs ::= boxedArg
         }
       }
-      closeReversedPartUnderConstruction()
 
-      // Find js.UndefinedParam at the end of the argument list. No check is
-      // performed whether they may be there, since they will only be placed
-      // where default arguments can be anyway
-      reversedParts = reversedParts match {
-        case Nil => Nil
-        case js.JSArrayConstr(params) :: others =>
-          val nparams =
-            params.reverse.dropWhile(_.isInstanceOf[js.UndefinedParam]).reverse
-          js.JSArrayConstr(nparams) :: others
-        case parts => parts
-      }
+      /* Remove all consecutive js.UndefinedParam's at the end of the argument
+       * list. No check is performed whether they may be there, since they will
+       * only be placed where default arguments can be anyway.
+       */
+      reversedArgs = reversedArgs.dropWhile(_.isInstanceOf[js.UndefinedParam])
 
       // Find remaining js.UndefinedParam and replace by js.Undefined. This can
       // happen with named arguments or when multiple argument lists are present
-      reversedParts = reversedParts map {
-        case js.JSArrayConstr(params) =>
-          val nparams = params map {
-            case js.UndefinedParam() => js.Undefined()
-            case param => param
-          }
-          js.JSArrayConstr(nparams)
-        case part => part
+      reversedArgs = reversedArgs map {
+        case js.UndefinedParam() => js.Undefined()
+        case arg                 => arg
       }
 
-      reversedParts match {
-        case Nil => js.JSArrayConstr(Nil)
-        case List(part) => part
-        case _ =>
-          val partHead :: partTail = reversedParts.reverse
-          js.JSBracketMethodApply(
-              partHead, js.StringLiteral("concat"), partTail)
-      }
+      reversedArgs.reverse
     }
 
     /** Gen JS code for a repeated param of a primitive JS method
      *  In this case `arg` has type Seq[T] for some T, but the result should
-     *  have type js.Array[T]. So this method takes care of the conversion.
+     *  be an expanded list of the elements in the sequence. So this method
+     *  takes care of the conversion.
      *  It is specialized for the shapes of tree generated by the desugaring
-     *  of repeated params in Scala, so that these produce a js.JSArrayConstr.
+     *  of repeated params in Scala, so that these are actually expanded at
+     *  compile-time.
+     *  Otherwise, it returns a JSSpread with the Seq converted to a js.Array.
      */
-    private def genPrimitiveJSRepeatedParam(arg: Tree): js.Tree = {
+    private def genPrimitiveJSRepeatedParam(arg: Tree): List[js.Tree] = {
       tryGenRepeatedParamAsJSArray(arg, handleNil = true) getOrElse {
         /* Fall back to calling runtime.genTraversableOnce2jsArray
-         * to perform the conversion.
+         * to perform the conversion to js.Array, then wrap in a Spread
+         * operator.
          */
         implicit val pos = arg.pos
-        genApplyMethod(
+        val jsArrayArg = genApplyMethod(
             genLoadModule(RuntimePackageModule),
             Runtime_genTraversableOnce2jsArray,
             List(genExpr(arg)))
+        List(js.JSSpread(jsArrayArg))
       }
     }
 
-    /** Try and gen a js.Array for a repeated param (xs: T*).
-     *  It is specialized for the shapes of tree generated by the desugaring
-     *  of repeated params in Scala, so that these produce a js.JSArrayConstr.
+    /** Try and expand a repeated param (xs: T*) at compile-time.
+     *  This method recognizes the shapes of tree generated by the desugaring
+     *  of repeated params in Scala, and expands them.
      *  If `arg` does not have the shape of a generated repeated param, this
      *  method returns `None`.
      */
     private def tryGenRepeatedParamAsJSArray(arg: Tree,
-        handleNil: Boolean): Option[js.Tree] = {
+        handleNil: Boolean): Option[List[js.Tree]] = {
       implicit val pos = arg.pos
 
       // Given a method `def foo(args: T*)`
@@ -3403,11 +3324,11 @@ abstract class GenJSCode extends plugins.PluginComponent
            * the type before erasure.
            */
           val elemTpe = tpt.tpe
-          Some(js.JSArrayConstr(elems.map(e => ensureBoxed(genExpr(e), elemTpe))))
+          Some(elems.map(e => ensureBoxed(genExpr(e), elemTpe)))
 
         // foo()
         case Select(_, _) if handleNil && arg.symbol == NilModule =>
-          Some(js.JSArrayConstr(Nil))
+          Some(Nil)
 
         // foo(argSeq:_*) - cannot be optimized
         case _ =>

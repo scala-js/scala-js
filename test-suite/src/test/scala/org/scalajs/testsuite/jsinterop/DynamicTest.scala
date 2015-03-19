@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
+import js.JSConverters._
 import org.scalajs.jasminetest.JasmineTest
 
 import js.annotation.JSExport
@@ -83,6 +84,14 @@ object DynamicTest extends JasmineTest {
       expect(obj3.elem0).toEqual("Scala.js")
       expect(obj3.elem1).toEqual(42)
       expect(obj3.elem2).toEqual(true)
+
+      // Check backward binary compatibility with the 0.6.{0,1,2} codegen output
+      val obj4 = scala.scalajs.runtime.newJSObjectWithVarargs(
+          DynamicTestClassVarArgs, obj3Args.toJSArray).asInstanceOf[js.Dynamic]
+      expect(obj4.count).toEqual(3)
+      expect(obj4.elem0).toEqual("Scala.js")
+      expect(obj4.elem1).toEqual(42)
+      expect(obj4.elem2).toEqual(true)
     }
 
     it("should provide an object literal construction") {

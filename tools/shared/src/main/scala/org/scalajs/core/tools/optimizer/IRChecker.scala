@@ -416,6 +416,16 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     typecheck(tree, env)
   }
 
+  private def typecheckExprOrSpread(tree: Tree, env: Env): Type = {
+    tree match {
+      case JSSpread(items) =>
+        typecheckExpr(items, env)
+        AnyType
+      case _ =>
+        typecheckExpr(tree, env)
+    }
+  }
+
   def typecheck(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
 
@@ -628,7 +638,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       case JSNew(ctor, args) =>
         typecheckExpr(ctor, env)
         for (arg <- args)
-          typecheckExpr(arg, env)
+          typecheckExprOrSpread(arg, env)
 
       case JSDotSelect(qualifier, item) =>
         typecheckExpr(qualifier, env)
@@ -640,18 +650,18 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       case JSFunctionApply(fun, args) =>
         typecheckExpr(fun, env)
         for (arg <- args)
-          typecheckExpr(arg, env)
+          typecheckExprOrSpread(arg, env)
 
       case JSDotMethodApply(receiver, method, args) =>
         typecheckExpr(receiver, env)
         for (arg <- args)
-          typecheckExpr(arg, env)
+          typecheckExprOrSpread(arg, env)
 
       case JSBracketMethodApply(receiver, method, args) =>
         typecheckExpr(receiver, env)
         typecheckExpr(method, env)
         for (arg <- args)
-          typecheckExpr(arg, env)
+          typecheckExprOrSpread(arg, env)
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
@@ -662,7 +672,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case JSArrayConstr(items) =>
         for (item <- items)
-          typecheckExpr(item, env)
+          typecheckExprOrSpread(item, env)
 
       case JSObjectConstr(fields) =>
         for ((_, value) <- fields)

@@ -209,6 +209,16 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
   private def transformExpr(tree: Tree)(implicit scope: Scope): Tree =
     transform(tree, isStat = false)
 
+  /** Transforms an expression or a JSSpread. */
+  private def transformExprOrSpread(tree: Tree)(implicit scope: Scope): Tree = {
+    tree match {
+      case JSSpread(items) =>
+        JSSpread(transformExpr(items))(tree.pos)
+      case _ =>
+        transformExpr(tree)
+    }
+  }
+
   /** Transforms a tree. */
   private def transform(tree: Tree, isStat: Boolean)(
       implicit scope: Scope): Tree = {
@@ -477,7 +487,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
-        JSNew(transformExpr(ctor), args map transformExpr)
+        JSNew(transformExpr(ctor), args map transformExprOrSpread)
 
       case JSDotSelect(qualifier, item) =>
         JSDotSelect(transformExpr(qualifier), item)
@@ -493,11 +503,11 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
 
       case JSDotMethodApply(receiver, method, args) =>
         JSDotMethodApply(transformExpr(receiver), method,
-            args map transformExpr)
+            args map transformExprOrSpread)
 
       case JSBracketMethodApply(receiver, method, args) =>
         JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
-            args map transformExpr)
+            args map transformExprOrSpread)
 
       case JSDelete(JSDotSelect(obj, prop)) =>
         JSDelete(JSDotSelect(transformExpr(obj), prop))
@@ -512,7 +522,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         JSBinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
       case JSArrayConstr(items) =>
-        JSArrayConstr(items map transformExpr)
+        JSArrayConstr(items map transformExprOrSpread)
 
       case JSObjectConstr(fields) =>
         JSObjectConstr(fields map {
@@ -1265,24 +1275,29 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     val JSFunctionApply(fun, args) = tree
     implicit val pos = tree.pos
 
-    pretransformExpr(fun) { tfun =>
-      tfun match {
-        case PreTransLocalDef(LocalDef(_, false,
-            closure @ TentativeClosureReplacement(
-                captureParams, params, body, captureLocalDefs,
-                alreadyUsed, cancelFun))) if !alreadyUsed.value =>
-          alreadyUsed.value = true
-          pretransformExprs(args) { targs =>
-            inlineBody(
-                Some(PreTransTree(Undefined())), // `this` is `undefined`
-                captureParams ++ params, AnyType, body,
-                captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
-                usePreTransform)(cont)
-          }
+    if (args.exists(_.isInstanceOf[JSSpread])) {
+      cont(PreTransTree(
+          JSFunctionApply(transformExpr(fun), args.map(transformExprOrSpread))))
+    } else {
+      pretransformExpr(fun) { tfun =>
+        tfun match {
+          case PreTransLocalDef(LocalDef(_, false,
+              closure @ TentativeClosureReplacement(
+                  captureParams, params, body, captureLocalDefs,
+                  alreadyUsed, cancelFun))) if !alreadyUsed.value =>
+            alreadyUsed.value = true
+            pretransformExprs(args) { targs =>
+              inlineBody(
+                  Some(PreTransTree(Undefined())), // `this` is `undefined`
+                  captureParams ++ params, AnyType, body,
+                  captureLocalDefs.map(PreTransLocalDef(_)) ++ targs, isStat,
+                  usePreTransform)(cont)
+            }
 
-        case _ =>
-          cont(PreTransTree(
-              JSFunctionApply(finishTransformExpr(tfun), args.map(transformExpr))))
+          case _ =>
+            cont(PreTransTree(
+                JSFunctionApply(finishTransformExpr(tfun), args.map(transformExpr))))
+        }
       }
     }
   }

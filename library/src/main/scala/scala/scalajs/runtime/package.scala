@@ -37,20 +37,18 @@ package object runtime {
     }
   }
 
-  /** Instantiates a JS object with variadic arguments to the constructor. */
-  def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any = {
-    // Not really "possible" in JavaScript, so we emulate what it would be.
-    val c = ((() => ()): js.Function).asInstanceOf[js.Dynamic]
-    c.prototype = ctor.prototype
-    val instance = js.Dynamic.newInstance(c)()
-    val result = ctor.applyDynamic("apply")(instance, args)
-    (result: Any) match {
-      case _:Double | _:Boolean | _:String | () | null =>
-        instance
-      case _ =>
-        result
-    }
-  }
+  /** Instantiates a JS object with variadic arguments to the constructor.
+   *
+   *  This method was needed by the codegen of 0.6.0 through 0.6.2. It is not
+   *  needed anymore, and should not be used directly.
+   *
+   *  It is kept for backward binary compatibility with 0.6.{0,1,2}, but will
+   *  be removed in the next major version.
+   */
+  @deprecated("Use js.Dynamic.newInstance instead.", "0.6.3")
+  @inline
+  def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any =
+    js.Dynamic.newInstance(ctor)(args.asInstanceOf[js.Array[js.Any]]: _*)
 
   /** Returns an array of the enumerable properties in an object's prototype
    *  chain.
