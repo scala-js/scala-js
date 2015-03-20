@@ -15,6 +15,7 @@ import org.scalajs.core.tools.optimizer.LinkedClass
 
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
+    val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
     val runtimeClassName: Semantics.RuntimeClassNameFunction) {
 
@@ -22,6 +23,9 @@ final class Semantics private (
 
   def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
     copy(asInstanceOfs = behavior)
+
+  def withModuleInit(moduleInit: CheckedBehavior): Semantics =
+    copy(moduleInit = moduleInit)
 
   def withStrictFloats(strictFloats: Boolean): Semantics =
     copy(strictFloats = strictFloats)
@@ -35,6 +39,7 @@ final class Semantics private (
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
       this.asInstanceOfs == that.asInstanceOfs &&
+      this.moduleInit    == that.moduleInit &&
       this.strictFloats  == that.strictFloats
     case _ =>
       false
@@ -44,13 +49,15 @@ final class Semantics private (
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
     acc = mix(acc, asInstanceOfs.hashCode)
+    acc = mix(acc, moduleInit.hashCode)
     acc = mixLast(acc, strictFloats.##)
-    finalizeHash(acc, 1)
+    finalizeHash(acc, 3)
   }
 
   override def toString(): String = {
     s"""Semantics(
        |  asInstanceOfs = $asInstanceOfs,
+       |  moduleInit    = $moduleInit,
        |  strictFloats  = $strictFloats
        |)""".stripMargin
   }
@@ -58,6 +65,7 @@ final class Semantics private (
   /** Checks whether the given semantics setting is Java compliant */
   def isCompliant(name: String): Boolean = name match {
     case "asInstanceOfs" => asInstanceOfs == CheckedBehavior.Compliant
+    case "moduleInit"    => moduleInit == CheckedBehavior.Compliant
     case "strictFloats"  => strictFloats
     case _               => false
   }
@@ -67,15 +75,18 @@ final class Semantics private (
     def cl(name: String, cond: Boolean) = if (cond) List(name) else Nil
 
     cl("asInstanceOfs", asInstanceOfs == CheckedBehavior.Compliant) ++
+    cl("moduleInit",    moduleInit == CheckedBehavior.Compliant) ++
     cl("strictFloats",  strictFloats)
   }
 
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
+      moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
       runtimeClassName: RuntimeClassNameFunction = this.runtimeClassName): Semantics = {
     new Semantics(
         asInstanceOfs    = asInstanceOfs,
+        moduleInit       = moduleInit,
         strictFloats     = strictFloats,
         runtimeClassName = runtimeClassName)
   }
@@ -89,6 +100,7 @@ object Semantics {
 
   val Defaults: Semantics = new Semantics(
       asInstanceOfs    = CheckedBehavior.Fatal,
+      moduleInit       = CheckedBehavior.Unchecked,
       strictFloats     = false,
       runtimeClassName = _.fullName)
 
@@ -103,6 +115,7 @@ object Semantics {
 
     new Semantics(
         asInstanceOfs    = sw("asInstanceOfs", Compliant, asInstanceOfs),
+        moduleInit       = sw("moduleInit",    Compliant, moduleInit),
         strictFloats     = sw("strictFloats",  true,      strictFloats),
         runtimeClassName = Defaults.runtimeClassName)
   }
