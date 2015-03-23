@@ -1,8 +1,7 @@
-package scala.scalajs.compiler.test
+package org.scalajs.core.compiler.test
 
 import org.scalajs.core.compiler.test.util._
 import org.junit.Test
-import org.junit.Ignore
 
 class JSExportTest extends DirectTest with TestHelpers {
 

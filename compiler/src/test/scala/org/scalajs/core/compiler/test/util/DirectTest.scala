@@ -61,7 +61,12 @@ abstract class DirectTest {
   def compileString(sourceCode: String): Boolean =
     compileString(defaultGlobal)(sourceCode)
 
-  lazy val defaultGlobal = newScalaJSCompiler()
+  // Cannot reuse global, otherwise compiler crashes with Scala >= 2.11.5
+  // on following tests:
+  // - org.scalajs.core.compiler.test.JSExportTest
+  // - org.scalajs.core.compiler.test.JSDynamicLiteralTest
+  // Filed as #1443
+  def defaultGlobal = newScalaJSCompiler()
 
   def testOutputPath = sys.props("scala.scalajs.compiler.test.output")
   def scalaJSLibPath = sys.props("scala.scalajs.compiler.test.scalajslib")
