@@ -373,7 +373,8 @@ object Build extends sbt.Build {
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
           previousArtifact := Some(
-              "org.scala-js" % s"scalajs-sbt-test-adapter_${scalaBinaryVersion.value}" % previousVersion)
+              "org.scala-js" % s"scalajs-sbt-test-adapter_${scalaBinaryVersion.value}" % previousVersion),
+          binaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
       )
   ).dependsOn(jsEnvs)
 
