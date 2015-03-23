@@ -47,10 +47,12 @@ def fetchTask(taskName, runElem) {
   out.println("Found task: $fullTaskName")
 
   buildDefs.add({
-    build("scalajs-task-worker",
-      refspec: params.refspec,
-      sha1: params.sha1,
-      taskCommand: taskStr)
+    retry(2) {
+      build("scalajs-task-worker",
+        refspec: params.refspec,
+        sha1: params.sha1,
+        taskCommand: taskStr)
+    }
   })
 }
 
