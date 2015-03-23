@@ -43,7 +43,7 @@ class StringReader(s: String) extends Reader {
         i += 1
       }
       pos += count
-      count
+      if (count == 0) -1 else count
     }
   }
 
