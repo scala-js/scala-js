@@ -273,19 +273,6 @@ object Build extends sbt.Build {
               }
             }
           },
-          testOptions ++= {
-            // Disable tests that crash DirectTest with Scala >= 2.11.5
-            // Filed as #1443
-            if (scalaVersion.value == "2.11.5" || scalaVersion.value == "2.11.6") {
-              Seq(Tests.Filter {
-                case "scala.scalajs.compiler.test.JSExportTest"            => false
-                case "org.scalajs.core.compiler.test.JSDynamicLiteralTest" => false
-                case _ => true
-              })
-            } else {
-              Seq()
-            }
-          },
           exportJars := true
       )
   )
