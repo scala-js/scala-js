@@ -40,6 +40,7 @@ object ReadersTest extends JasmineTest {
       expect(r.read(buf, 2, 8)).toBe(4)
       expect(buf.map(_.toInt).toJSArray).toEqual(
         js.Array[Int](0,0,'a','s','d','f',0,0,0,0))
+      expect(r.read(buf, 2, 8)).toBe(-1) // #1560
     }
 
     it("should provide read(java.nio.CharBuffer)") {
