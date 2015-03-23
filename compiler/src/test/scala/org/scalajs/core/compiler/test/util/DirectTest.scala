@@ -63,7 +63,7 @@ abstract class DirectTest {
 
   // Cannot reuse global, otherwise compiler crashes with Scala >= 2.11.5
   // on following tests:
-  // - scala.scalajs.compiler.test.JSExportTest
+  // - org.scalajs.core.compiler.test.JSExportTest
   // - org.scalajs.core.compiler.test.JSDynamicLiteralTest
   // Filed as #1443
   def defaultGlobal = newScalaJSCompiler()
