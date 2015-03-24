@@ -487,12 +487,43 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
     val createAccessor = {
       val moduleInstanceVar = envField("n", className)
+
+      val assignModule = {
+        moduleInstanceVar :=
+          js.Apply(js.New(encodeClassVar(className), Nil) DOT js.Ident("init___"), Nil)
+      }
+
+      val initBlock = semantics.moduleInit match {
+        case CheckedBehavior.Unchecked =>
+          js.If(!(moduleInstanceVar), assignModule, js.Skip())
+        case CheckedBehavior.Compliant =>
+          js.If(moduleInstanceVar === js.Undefined(),
+            js.Block(
+                moduleInstanceVar := js.Null(),
+                assignModule
+            ),
+            js.Skip())
+        case CheckedBehavior.Fatal =>
+          js.If(moduleInstanceVar === js.Undefined(), {
+            js.Block(
+                moduleInstanceVar := js.Null(),
+                assignModule
+            )
+          }, js.If(moduleInstanceVar === js.Null(), {
+            // throw new UndefinedBehaviorError(
+            //     "Initializer of $className called before completion of its" +
+            //     "super constructor")
+            val decodedName = Definitions.decodeClassName(className).stripSuffix("$")
+            val msg = s"Initializer of $decodedName called before completion " +
+              "of its super constructor"
+            val obj = js.New(encodeClassVar("sjsr_UndefinedBehaviorError"), Nil)
+            val ctor = obj DOT js.Ident("init___T")
+            js.Throw(js.Apply(ctor, js.StringLiteral(msg) :: Nil))
+          }, js.Skip()))
+      }
+
       envFieldDef("m", className, js.Function(Nil, js.Block(
-        js.If(!(moduleInstanceVar), {
-          moduleInstanceVar :=
-            js.Apply(js.New(encodeClassVar(className), Nil) DOT js.Ident("init___"), Nil)
-        }, js.Skip()),
-        js.Return(moduleInstanceVar)
+        initBlock, js.Return(moduleInstanceVar)
       )))
     }
 

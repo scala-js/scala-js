@@ -860,6 +860,11 @@ object Build extends sbt.Build {
             else
               Seq()
         ) ++ (
+            if (sems.moduleInit == CheckedBehavior.Compliant)
+              Seq(Tests.Argument("-tcompliant-moduleinit"))
+            else
+              Seq()
+        ) ++ (
             if (sems.strictFloats) Seq(Tests.Argument("-tstrict-floats"))
             else Seq()
         )

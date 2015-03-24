@@ -102,6 +102,9 @@ final class Analyzer(semantics: Semantics,
     if (asInstanceOfs == Fatal)
       instantiateClassWith("sjsr_UndefinedBehaviorError", "init___jl_Throwable")
 
+    if (moduleInit == Fatal)
+      instantiateClassWith("sjsr_UndefinedBehaviorError", "init___T")
+
     instantiateClassWith("jl_Class", "init___jl_ScalaJSClassData")
 
     val DoubleModuleClass = lookupClass("jl_Double$")

@@ -52,14 +52,22 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+    sbt 'set scalaJSSemantics in testSuite ~= {
+           _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
+            .withModuleInit(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
+            .withStrictFloats(true)
+         }' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in testSuite ~= { _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant).withStrictFloats(true) }' \
+    sbt 'set scalaJSSemantics in testSuite ~= {
+           _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
+            .withModuleInit(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
+            .withStrictFloats(true)
+         }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
