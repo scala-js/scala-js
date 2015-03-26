@@ -166,5 +166,32 @@ object IntegerTest extends JasmineTest {
       expect(Integer.highestOneBit(0x88)).toEqual(0x80)
       expect(Integer.highestOneBit(Integer.MAX_VALUE)).toEqual(0x40000000)
     }
+
+    it("should provide `toString` without radix") {
+      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      expect(new Integer(12345).toString).toEqual("12345")
+      expect(new Integer("-12345").toString).toEqual("-12345")
+      expect(Integer.toString(-80765)).toEqual("-80765")
+      expect(Integer.toString(Integer.MAX_VALUE)).toEqual("2147483647")
+      expect(Integer.toString(-Integer.MAX_VALUE)).toEqual("-2147483647")
+      expect(Integer.toString(Integer.MIN_VALUE)).toEqual("-2147483648")
+      expect(Integer.toString(0)).toEqual("0")
+    }
+
+    it("should provide `toString` with radix") {
+      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      expect(Integer.toString(2147483647, 8)).toEqual("17777777777")
+      expect(Integer.toString(2147483647, 16)).toEqual("7fffffff")
+      expect(Integer.toString(2147483647, 2)).toEqual("1111111111111111111111111111111")
+      expect(Integer.toString(2147483647, 10)).toEqual("2147483647")
+      expect(Integer.toString(-2147483647, 8)).toEqual("-17777777777")
+      expect(Integer.toString(-2147483647, 16)).toEqual("-7fffffff")
+      expect(Integer.toString(-2147483647, 2)).toEqual("-1111111111111111111111111111111")
+      expect(Integer.toString(-2147483647, 10)).toEqual("-2147483647")
+      expect(Integer.toString(-2147483648, 8)).toEqual("-20000000000")
+      expect(Integer.toString(-2147483648, 16)).toEqual("-80000000")
+      expect(Integer.toString(-2147483648, 2)).toEqual("-10000000000000000000000000000000")
+      expect(Integer.toString(-2147483648, 10)).toEqual("-2147483648")
+    }
   }
 }

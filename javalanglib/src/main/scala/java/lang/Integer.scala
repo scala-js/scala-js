@@ -144,6 +144,15 @@ object Integer {
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
 
+  def toString(i: Int, radix: Int): String = {
+    if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
+      Integer.toString(i)
+    } else {
+      import js.JSNumberOps.enableJSNumberOps
+      i.toString(radix)
+    }
+  }
+
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps._
     i.toUint.toString(base)
