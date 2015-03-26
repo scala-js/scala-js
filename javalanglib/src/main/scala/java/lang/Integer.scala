@@ -103,6 +103,11 @@ object Integer {
     ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
+  def highestOneBit(i: Int): Int = {
+    if (i == 0) 0
+    else (1 << 31) >>> Integer.numberOfLeadingZeros(i)
+  }
+
   def reverseBytes(i: scala.Int): scala.Int = {
     val byte3 = i >>> 24
     val byte2 = (i >>> 8) & 0xFF00

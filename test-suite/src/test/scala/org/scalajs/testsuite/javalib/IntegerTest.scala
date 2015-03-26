@@ -157,5 +157,14 @@ object IntegerTest extends JasmineTest {
       test("-90000", -0x90000)
     }
 
+    it("should provide `highestOneBit`") {
+      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      expect(Integer.highestOneBit(0)).toEqual(0)
+      expect(Integer.highestOneBit(-1)).toEqual(Integer.MIN_VALUE)
+      expect(Integer.highestOneBit(-256)).toEqual(Integer.MIN_VALUE)
+      expect(Integer.highestOneBit(1)).toEqual(1)
+      expect(Integer.highestOneBit(0x88)).toEqual(0x80)
+      expect(Integer.highestOneBit(Integer.MAX_VALUE)).toEqual(0x40000000)
+    }
   }
 }
