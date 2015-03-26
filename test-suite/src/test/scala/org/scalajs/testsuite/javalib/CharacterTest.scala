@@ -34,7 +34,15 @@ object CharacterTest extends JasmineTest {
       expect(Character.digit('Z', 36)).toEqual(35)
       expect(Character.digit('\uFF22', 20)).toEqual(11)
     }
-    
+
+    it("should provide `forDigit`") {
+      // Ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/CharacterTest.java
+      for (i <- 0 until 36) {
+        expect(Character.digit(Character.forDigit(i, 36), 36)).toEqual(i)
+      }
+      expect(Character.forDigit(9, 10) == '9').toBeTruthy
+    }
+
     it("should provide isDigit") {
       expect(Character.isDigit('a')).toBeFalsy
       expect(Character.isDigit('0')).toBeTruthy

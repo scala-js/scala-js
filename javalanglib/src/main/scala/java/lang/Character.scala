@@ -213,6 +213,17 @@ object Character {
     else -1
   }
 
+  // ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/Character.java
+  def forDigit(digit: Int, radix: Int): Char = {
+    if (radix < MIN_RADIX || radix > MAX_RADIX || digit < 0 || digit >= radix) {
+      0
+    } else {
+      val overBaseTen = digit - 10
+      val result = if (overBaseTen < 0) '0' + digit else 'a' + overBaseTen
+      result.toChar
+    }
+  }
+
   def isISOControl(c: scala.Char): scala.Boolean = isISOControl(c.toInt)
   def isISOControl(codePoint: scala.Int): scala.Boolean = {
     (0x00 <= codePoint && codePoint <= 0x1F) || (0x7F <= codePoint && codePoint <= 0x9F)
