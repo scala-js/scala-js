@@ -248,5 +248,49 @@ object StringTest extends JasmineTest {
               -94, 22, -41))
     }
 
+    it("should respond to `regionMatches`") {
+      // Ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/StringTest.java
+      val test = "abcdef"
+
+      expect(test.regionMatches(1, "bcd", 0, 3)).toBeTruthy()
+      expect(test.regionMatches(1, "bcdx", 0, 3)).toBeTruthy()
+      expect(test.regionMatches(1, "bcdx", 0, 4)).toBeFalsy()
+      expect(test.regionMatches(1, "bcdx", 1, 3)).toBeFalsy()
+      expect(test.regionMatches(true, 0, "XAbCd", 1, 4)).toBeTruthy()
+      expect(test.regionMatches(true, 1, "BcD", 0, 3)).toBeTruthy()
+      expect(test.regionMatches(true, 1, "bCdx", 0, 3)).toBeTruthy()
+      expect(test.regionMatches(true, 1, "bCdx", 0, 4)).toBeFalsy()
+      expect(test.regionMatches(true, 1, "bCdx", 1, 3)).toBeFalsy()
+      expect(test.regionMatches(true, 0, "xaBcd", 1, 4)).toBeTruthy()
+
+      val testU = test.toUpperCase()
+      expect(testU.regionMatches(true, 0, "XAbCd", 1, 4)).toBeTruthy()
+      expect(testU.regionMatches(true, 1, "BcD", 0, 3)).toBeTruthy()
+      expect(testU.regionMatches(true, 1, "bCdx", 0, 3)).toBeTruthy()
+      expect(testU.regionMatches(true, 1, "bCdx", 0, 4)).toBeFalsy()
+      expect(testU.regionMatches(true, 1, "bCdx", 1, 3)).toBeFalsy()
+      expect(testU.regionMatches(true, 0, "xaBcd", 1, 4)).toBeTruthy()
+
+      expect(() => test.regionMatches(-1, null, -1, -1)).toThrow()
+      expect(() => test.regionMatches(true, -1, null, -1, -1)).toThrow()
+
+      // If len is negative, you must return true in some cases.
+      // see http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-
+
+      // four cases that are false, irrelevant of sign of len nor the value of the other string
+      expect(test.regionMatches(-1, test, 0, -4)).toBeFalsy
+      expect(test.regionMatches(0, test, -1, -4)).toBeFalsy
+      expect(test.regionMatches(100, test, 0, -4)).toBeFalsy
+      expect(test.regionMatches(0, test, 100, -4)).toBeFalsy
+
+      // the strange cases that are true
+      expect(test.regionMatches(0, test, 0, -4)).toBeTruthy
+      expect(test.regionMatches(1, "bcdx", 0, -4)).toBeTruthy
+      expect(test.regionMatches(1, "bcdx", 1, -3)).toBeTruthy
+      expect(test.regionMatches(true, 1, "bCdx", 0, -4)).toBeTruthy
+      expect(test.regionMatches(true, 1, "bCdx", 1, -3)).toBeTruthy
+      expect(testU.regionMatches(true, 1, "bCdx", 0, -4)).toBeTruthy
+      expect(testU.regionMatches(true, 1, "bCdx", 1, -3)).toBeTruthy
+    }
   }
 }
