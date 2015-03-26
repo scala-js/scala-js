@@ -612,7 +612,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
    * Construct a call to Enumeration.Value
    * @param thisSym  ClassSymbol of enclosing class
    * @param nameOrig Symbol of ValDef where this call will be placed
-   * 			       (determines the string passed to Value)
+   *                 (determines the string passed to Value)
    * @param intParam Optional tree with Int passed to Value
    * @return Typed tree with appropriate call to Value
    */

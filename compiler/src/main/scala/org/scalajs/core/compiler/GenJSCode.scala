@@ -674,7 +674,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         rhs match {
           // Shape of a constructor that only calls super
-          case Block(List(Apply(fun @ Select(_:Super, _), args)), Literal(_)) =>
+          case Block(List(Apply(fun @ Select(_: Super, _), args)), Literal(_)) =>
             val callee = fun.symbol
             implicit val dummyPos = NoPosition
 

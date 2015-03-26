@@ -222,7 +222,7 @@ final class RhinoJSEnv private (
     val ordering = Ordering.by[TimedTask, Deadline](_.deadline).reverse
     val taskQ = mutable.PriorityQueue.empty(ordering)
 
-    def ensure[T : ClassTag](v: AnyRef, errMsg: String) = v match {
+    def ensure[T: ClassTag](v: AnyRef, errMsg: String) = v match {
       case v: T => v
       case _    => sys.error(errMsg)
     }

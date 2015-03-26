@@ -20,8 +20,7 @@ import scala.language.implicitConversions
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
-trait ThisFunction extends Function {
-}
+trait ThisFunction extends Function
 
 object ThisFunction {
   implicit def fromFunction1[T1, R](f: scala.Function1[T1, R]): ThisFunction0[T1, R] = sys.error("stub")

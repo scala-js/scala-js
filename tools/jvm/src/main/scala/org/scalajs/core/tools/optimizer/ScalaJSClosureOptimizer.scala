@@ -57,7 +57,7 @@ class ScalaJSClosureOptimizer {
   }
 
   def optimizeIR(optimizer: ScalaJSOptimizer,
-      irFiles:Traversable[VirtualScalaJSIRFile], cfg: Config,
+      irFiles: Traversable[VirtualScalaJSIRFile], cfg: Config,
       logger: Logger): Unit = {
 
     // Build Closure IR via ScalaJSOptimizer

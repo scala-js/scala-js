@@ -41,7 +41,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap
-    var fixClassOf:   Boolean     = false
+    var fixClassOf: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
