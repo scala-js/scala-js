@@ -12,8 +12,11 @@ val baseSettings = versionSettings ++ Seq(
     "org.scala-js" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test"
 )
 
+lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJS")
+lazy val referencedCrossProjectJVM = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJVM")
+ 
 lazy val root = project.in(file(".")).
-  aggregate(noDOM, withDOM, multiTestJS, multiTestJVM)
+  aggregate(noDOM, withDOM, multiTestJS, multiTestJVM, referencedCrossProjectJS, referencedCrossProjectJVM)
 
 lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
