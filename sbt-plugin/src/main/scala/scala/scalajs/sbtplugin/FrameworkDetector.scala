@@ -14,6 +14,8 @@ import scala.collection.mutable
 
 final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
 
+  import FrameworkDetector._
+
   /**
    *  Detects which of the test frameworks in [[frameworks]] exists on
    *  the classpath.
@@ -47,23 +49,29 @@ final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
         var gotOne = false;
         for (var j = 0; j < data[i].length; ++j) {
           if (frameworkExists(data[i][j])) {
-            console.log(data[i][j]);
+            console.log("$ConsoleFrameworkPrefix" + data[i][j]);
             gotOne = true;
             break;
           }
         }
-        if (!gotOne)
-          console.log(""); // print an empty line to zip afterwards
+        if (!gotOne) {
+          // print an empty line with prefix to zip afterwards
+          console.log("$ConsoleFrameworkPrefix");
+        }
       }
     """
 
     val vf = new MemVirtualJSFile("frameworkDetector.js").withContent(code)
-    val console = new FrameworkDetector.StoreConsole
+    val console = new StoreConsole
 
     val runner = jsEnv.jsRunner(classpath, vf, NullLogger, console)
     runner.run()
 
-    val results = console.buf.toList
+    // Filter jsDependencies unexpected output
+    val results = console.buf collect {
+      case s if s.startsWith(ConsoleFrameworkPrefix) =>
+        s.stripPrefix(ConsoleFrameworkPrefix)
+    }
 
     assert(results.size == frameworks.size)
 
@@ -77,4 +85,6 @@ object FrameworkDetector {
     val buf = mutable.Buffer.empty[String]
     def log(msg: Any): Unit = buf += msg.toString
   }
+
+  private val ConsoleFrameworkPrefix = "@scalajs-test-framework-detector:"
 }

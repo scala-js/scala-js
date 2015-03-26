@@ -72,7 +72,9 @@ lazy val multiTest = crossProject.
   ).
   jsSettings(baseSettings: _*).
   jsSettings(
-    name := "Multi test framework test JS"
+    name := "Multi test framework test JS",
+    // Make FrameworkDetector resilient to other output - #1572
+    jsDependencies in Test += ProvidedJS / "consoleWriter.js"
   ).
   jvmSettings(versionSettings: _*).
   jvmSettings(
