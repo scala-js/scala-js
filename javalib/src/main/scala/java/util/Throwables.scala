@@ -9,7 +9,7 @@ class ConcurrentModificationException(s: String) extends RuntimeException(s) {
 }
 
 class DuplicateFormatFlagsException private() extends IllegalFormatException {
-  private var flags: String = null 
+  private var flags: String = null
   def this(f: String) {
     this()
     if (f == null)
@@ -23,7 +23,7 @@ class DuplicateFormatFlagsException private() extends IllegalFormatException {
 class EmptyStackException extends RuntimeException
 
 class FormatFlagsConversionMismatchException private(private val c: Char) extends IllegalFormatException {
-  private var f: String = null 
+  private var f: String = null
   def this(f: String, c: Char) {
     this(c)
     if (f == null)
@@ -80,7 +80,7 @@ class IllegalFormatWidthException(private val w: Int) extends IllegalFormatExcep
 }
 
 class IllformedLocaleException(s: String, errorIndex: Int)
-  extends RuntimeException(s + (if(errorIndex < 0) "" else " [at index " + errorIndex + "]")) {
+  extends RuntimeException(s + (if (errorIndex < 0) "" else " [at index " + errorIndex + "]")) {
   def this() = this(null, -1)
   def this(s: String) = this(s, -1)
   def getErrorIndex(): Int = errorIndex
@@ -92,12 +92,12 @@ class InputMismatchException(s: String) extends NoSuchElementException(s) {
 
 class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s) {
   def this(e: Throwable) {
-    this(if(e == null) null.asInstanceOf[String] else e.toString())
+    this(if (e == null) null.asInstanceOf[String] else e.toString())
     this.initCause(e)
   }
   // private def writeObject(out: java.io.ObjectOutputStream) =
   //   throw new java.io.NotSerializableException("Not serializable.")
-  // private def readObject(in: java.io.ObjectInputStream) = 
+  // private def readObject(in: java.io.ObjectInputStream) =
   //   throw new java.io.NotSerializableException("Not serializable.")
 }
 

@@ -686,8 +686,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           case (InstanceOfTypeTest(t1), InstanceOfTypeTest(t2)) =>
             t1 <:< t2
 
-          case (_:HijackedTypeTest, _:InstanceOfTypeTest) => true
-          case (_:InstanceOfTypeTest, _:HijackedTypeTest) => false
+          case (_: HijackedTypeTest, _: InstanceOfTypeTest) => true
+          case (_: InstanceOfTypeTest, _: HijackedTypeTest) => false
         }
       }
 
