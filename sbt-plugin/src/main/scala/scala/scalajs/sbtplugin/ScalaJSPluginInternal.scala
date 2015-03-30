@@ -109,7 +109,7 @@ object ScalaJSPluginInternal {
 
         IO.createDirectory(output.getParentFile)
 
-        val outFile = WritableFileVirtualTextFile(output)
+        val outFile = AtomicWritableFileVirtualJSFile(output)
         CacheUtils.cached(cp.version, outFile, Some(taskCache)) {
           toolsIO.concatFiles(outFile, cp.jsLibs.map(getLib))
         }
@@ -170,7 +170,7 @@ object ScalaJSPluginInternal {
         val outCP = (scalaJSOptimizer in fastOptJS).value.optimizeCP(
             (scalaJSPreLinkClasspath in fastOptJS).value,
             Config(
-                output = WritableFileVirtualJSFile(output),
+                output = AtomicWritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
                 wantSourceMap = (emitSourceMaps in fastOptJS).value,
                 relativizeSourceMapBase = relSourceMapBase,
@@ -214,7 +214,7 @@ object ScalaJSPluginInternal {
             (scalaJSOptimizer in fullOptJS).value,
             (scalaJSPreLinkClasspath in fullOptJS).value,
             Config(
-                output = WritableFileVirtualJSFile(output),
+                output = AtomicWritableFileVirtualJSFile(output),
                 cache = Some(taskCache),
                 wantSourceMap = (emitSourceMaps in fullOptJS).value,
                 relativizeSourceMapBase = relSourceMapBase,
