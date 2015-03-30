@@ -1,7 +1,5 @@
 package org.scalajs.core.tools.io
 
-import scala.annotation.tailrec
-
 import java.io._
 import java.net.URI
 
