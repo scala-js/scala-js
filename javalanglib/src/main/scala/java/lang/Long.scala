@@ -114,6 +114,42 @@ object Long {
     }
   }
 
+  // Ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/Long.java
+  def toString(value: scala.Long, intRadix: Int): String = {
+    if (intRadix == 10 || intRadix < Character.MIN_RADIX || intRadix > Character.MAX_RADIX) {
+      toString(value)
+    } else if (Integer.MIN_VALUE <= value && (value <= Integer.MAX_VALUE)) {
+      Integer.toString(value.toInt, intRadix)
+    } else {
+      // Character.forDigit checks the digit range which is not the requirement here - hence the apparent duplication
+      def forDigit(digit: Int): Char = {
+        val overBaseTen = digit - 10
+        val result = if (overBaseTen < 0) '0' + digit else 'a' + overBaseTen
+        result.toChar
+      }
+
+      // If the value is zero or positive, we can reduce code by negating the value for the string conversion
+      // but not adding a '-' at the end
+
+      var _value: scala.Long = if (value >= 0) -value else value
+      var res = ""
+      var radix: scala.Long = intRadix
+      val negRadix: scala.Long = -radix
+
+      while (_value <= negRadix) {
+        res = forDigit(-(_value % radix).toInt) + res
+        _value /= radix
+      }
+      res = forDigit(-(_value % radix).toInt) + res
+
+      // But real negative values do need the '-' sign
+      if (value < 0) {
+        res = '-' + res
+      }
+      res
+    }
+  }
+
   @inline def compare(x: scala.Long, y: scala.Long): scala.Int =
     if (x == y) 0 else if (x < y) -1 else 1
 

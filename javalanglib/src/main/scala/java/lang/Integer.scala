@@ -103,6 +103,11 @@ object Integer {
     ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
+  def highestOneBit(i: Int): Int = {
+    if (i == 0) 0
+    else (1 << 31) >>> Integer.numberOfLeadingZeros(i)
+  }
+
   def reverseBytes(i: scala.Int): scala.Int = {
     val byte3 = i >>> 24
     val byte2 = (i >>> 8) & 0xFF00
@@ -138,6 +143,15 @@ object Integer {
   def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
+
+  def toString(i: Int, radix: Int): String = {
+    if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
+      Integer.toString(i)
+    } else {
+      import js.JSNumberOps.enableJSNumberOps
+      i.toString(radix)
+    }
+  }
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps._

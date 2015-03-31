@@ -116,12 +116,37 @@ object LongTest extends JasmineTest {
       test("-90000", -0x90000L)
     }
 
-    it("should implement toString") {
+    it("should implement toString without radix") {
       expect(Int.MaxValue.toLong.toString).toEqual("2147483647")
       expect((-50L).toString).toEqual("-50")
       expect((-1000000000L).toString).toEqual("-1000000000")
       expect((Int.MaxValue.toLong+1L).toString).toEqual("2147483648")
       expect(Int.MinValue.toLong.toString).toEqual("-2147483648")
+
+      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      expect(new JLong(89000000005L).toString).toEqual("89000000005")
+      expect(new JLong(JLong.MIN_VALUE).toString).toEqual("-9223372036854775808")
+      expect(new JLong(JLong.MAX_VALUE).toString).toEqual("9223372036854775807")
+      expect(JLong.toString(-80765L)).toEqual("-80765")
+      expect(JLong.toString(80765L)).toEqual("80765")
+      expect(JLong.toString(Integer.MIN_VALUE.toLong)).toEqual("-2147483648")
+      expect(JLong.toString(Integer.MAX_VALUE.toLong)).toEqual("2147483647")
+      expect(JLong.toString(-89000000005L)).toEqual("-89000000005")
+      expect(JLong.toString(89000000005L)).toEqual("89000000005")
+      expect(JLong.toString(JLong.MIN_VALUE)).toEqual("-9223372036854775808")
+      expect(JLong.toString(JLong.MAX_VALUE)).toEqual("9223372036854775807")
+    }
+
+    it("should implement toString with radix") {
+      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      expect(JLong.toString(100000000L, 10)).toEqual("100000000")
+      expect(JLong.toString(8589934591L, 8)).toEqual("77777777777")
+      expect(JLong.toString(68719476735L, 16)).toEqual("fffffffff")
+      expect(JLong.toString(8796093022207L, 2)).toEqual("1111111111111111111111111111111111111111111")
+      expect(JLong.toString(0x8000000000000000L, 10)).toEqual("-9223372036854775808")
+      expect(JLong.toString(0x7fffffffffffffffL, 10)).toEqual("9223372036854775807")
+      expect(JLong.toString(0x8000000000000000L, 16)).toEqual("-8000000000000000")
+      expect(JLong.toString(0x7fffffffffffffffL, 16)).toEqual("7fffffffffffffff")
     }
 
     it("should implement toBinaryString") {

@@ -166,6 +166,29 @@ private[runtime] object RuntimeString {
     Pattern.matches(regex, thiz)
   }
 
+  // Both regionMatches ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
+  def regionMatches(thiz: String, ignoreCase: Boolean,
+      toffset: Int, other: String, ooffset: Int, len: Int): Boolean = {
+    checkNull(thiz)
+    if (other == null) {
+      throw new NullPointerException()
+    } else if (toffset < 0 || ooffset < 0 || toffset + len > thiz.length || ooffset + len > other.length) {
+      false
+    } else if (len <= 0) {
+      true
+    } else {
+      val left = thiz.substring(toffset, toffset + len)
+      val right = other.substring(ooffset, ooffset + len)
+      if (ignoreCase) left.equalsIgnoreCase(right) else left == right
+    }
+  }
+
+  @inline
+  def regionMatches(thiz: String, toffset: Int,
+      other: String, ooffset: Int, len: Int): Boolean = {
+    regionMatches(thiz, false, toffset, other, ooffset, len)
+  }
+
   @inline
   def replace(thiz: String, oldChar: Char, newChar: Char): String =
     thiz.replace(oldChar.toString, newChar.toString)
