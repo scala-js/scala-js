@@ -40,25 +40,23 @@ object CrossType {
 
   object Full extends CrossType {
     def projectDir(crossBase: File, projectType: String): File =
-      crossBase.getAbsoluteFile / projectType
+      crossBase / projectType
 
-    def sharedSrcDir(projectBase: File, conf: String): Option[File] = {
-      val absBase = projectBase.getAbsoluteFile
-      Some(absBase / ".." / "shared" / "src" / conf / "scala")
-    }
+    def sharedSrcDir(projectBase: File, conf: String): Option[File] =
+      Some(projectBase / ".." / "shared" / "src" / conf / "scala")
   }
 
   object Pure extends CrossType {
     def projectDir(crossBase: File, projectType: String): File =
-      crossBase.getAbsoluteFile / ("." + projectType)
+      crossBase / ("." + projectType)
 
     def sharedSrcDir(projectBase: File, conf: String): Option[File] =
-      Some(projectBase.getAbsoluteFile / ".." / "src" / conf / "scala")
+      Some(projectBase / ".." / "src" / conf / "scala")
   }
 
   object Dummy extends CrossType {
     def projectDir(crossBase: File, projectType: String): File =
-      crossBase.getAbsoluteFile / projectType
+      crossBase / projectType
 
     def sharedSrcDir(projectBase: File, conf: String): Option[File] = None
   }
