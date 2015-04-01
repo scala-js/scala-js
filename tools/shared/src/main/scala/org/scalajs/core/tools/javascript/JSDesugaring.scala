@@ -137,6 +137,16 @@ object JSDesugaring {
     }
   }
 
+  /** Desugars parameters and body to a JS function.
+   */
+  private[javascript] def desugarToFunction(
+      params: List[ParamDef], body: Tree, isStat: Boolean,
+      semantics: Semantics, outputMode: OutputMode)(
+      implicit pos: Position): js.Tree = {
+    new JSDesugar(semantics, outputMode).desugarToFunction(
+        params, body, isStat)
+  }
+
   private[javascript] implicit def transformIdent(ident: Ident): js.Ident =
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
@@ -190,6 +200,75 @@ object JSDesugaring {
     var labeledExprLHSes: Map[Ident, Tree] = Map.empty
 
     // Now the work
+
+    /** Desugars parameters and body to a JS function.
+     */
+    def desugarToFunction(
+        params: List[ParamDef], body: Tree, isStat: Boolean,
+        env0: Env = Env.empty)(
+        implicit pos: Position): js.Function = {
+
+      val env = env0.withParams(params)
+
+      val withReturn =
+        if (isStat) body
+        else Return(body)
+
+      val hasRestParam = params.nonEmpty && params.last.rest
+      val extractRestParam =
+        if (hasRestParam) makeExtractRestParam(params)
+        else js.Skip()
+
+      val newParams =
+        (if (hasRestParam) params.init else params).map(transformParamDef)
+
+      val newBody = transformStat(withReturn)(env) match {
+        case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
+        case other                                        => other
+      }
+
+      js.Function(newParams, js.Block(extractRestParam, newBody))
+    }
+
+    private def makeExtractRestParam(params: List[ParamDef])(
+        implicit pos: Position): js.Tree = {
+      val offset = params.size - 1
+      val restParamDef = params.last
+
+      val lenIdent = newSyntheticVar()
+      val len = js.VarRef(lenIdent)
+
+      val counterIdent = newSyntheticVar()
+      val counter = js.VarRef(counterIdent)
+
+      val restParamIdent = restParamDef.name
+      val restParam = js.VarRef(restParamIdent)
+
+      val arguments = js.VarRef(js.Ident("arguments"))
+
+      def or0(tree: js.Tree): js.Tree =
+        js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0)(tree.pos))(tree.pos)
+
+      js.Block(
+        // var len = arguments.length | 0
+        js.VarDef(lenIdent,
+            or0(js.BracketSelect(arguments, js.StringLiteral("length")))),
+        // var i = <offset>
+        js.VarDef(counterIdent, js.IntLiteral(offset)),
+        // var restParam = []
+        js.VarDef(restParamIdent, js.ArrayConstr(Nil)),
+        // while (i < len)
+        js.While(js.BinaryOp(JSBinaryOp.<, counter, len), js.Block(
+          // restParam.push(arguments[i]);
+          js.Apply(
+              js.BracketSelect(restParam, js.StringLiteral("push")), List(
+              js.BracketSelect(arguments, counter))),
+          // i = (i + 1) | 0
+          js.Assign(counter, or0(js.BinaryOp(JSBinaryOp.+,
+              counter, js.IntLiteral(1))))
+        ))
+      )
+    }
 
     /** Desugar a statement of the IR into ES5 JS */
     def transformStat(tree: Tree)(implicit env: Env): js.Tree = {
@@ -1507,17 +1586,9 @@ object JSDesugaring {
           js.This()
 
         case Closure(captureParams, params, body, captureValues) =>
-          val transformedBody = {
-            val env = Env.empty.withParams(captureParams ++ params)
-            val withReturn = Return(body, None)
-            (transformStat(withReturn)(env)) match {
-              case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
-              case other                                        => other
-            }
-          }
-
           val innerFunction =
-            js.Function(params.map(transformParamDef), transformedBody)
+            desugarToFunction(params, body, isStat = false,
+                Env.empty.withParams(captureParams ++ params))
 
           if (captureParams.isEmpty) {
             innerFunction
@@ -1653,7 +1724,7 @@ object JSDesugaring {
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
-        case (env, ParamDef(name, tpe, mutable)) =>
+        case (env, ParamDef(name, tpe, mutable, _)) =>
           // ParamDefs may not contain record types
           env.withDef(name, mutable)
       }

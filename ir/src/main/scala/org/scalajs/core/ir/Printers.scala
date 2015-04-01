@@ -136,9 +136,11 @@ object Printers {
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
-        case ParamDef(ident, ptpe, mutable) =>
+        case ParamDef(ident, ptpe, mutable, rest) =>
           if (mutable)
             print("var ")
+          if (rest)
+            print("...")
           print(ident, ": ", ptpe)
 
         // Control flow constructs

@@ -123,7 +123,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val trgSym = fun.symbol
 
       val inArg =
-        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType, mutable = false)
+        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
+            mutable = false, rest = false)
       val inArgRef = inArg.ref
 
       val methodIdent = encodeMethodSym(sym)
@@ -776,8 +777,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private def genFormalArgs(count: Int)(implicit pos: Position): List[js.ParamDef] =
     (1 to count map genFormalArg).toList
 
-  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = false)
+  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType,
+        mutable = false, rest = false)
+  }
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {

@@ -163,9 +163,12 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    for (ParamDef(name, tpe, _) <- params)
+    for (ParamDef(name, tpe, _, rest) <- params) {
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
+      if (rest)
+        reportError(s"Rest parameter $name is illegal in a Scala method")
+    }
 
     val isConstructor = isConstructorName(name)
     val resultTypeForSig =
@@ -215,12 +218,19 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (name.contains("__") && name != Definitions.ExportedConstructorsName)
       reportError("Exported method def name cannot contain __")
 
-    for (ParamDef(name, tpe, _) <- params) {
+    for (ParamDef(name, tpe, _, _) <- params) {
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
       else if (tpe != AnyType)
         reportError(s"Parameter $name of exported method def has type $tpe, "+
             "but must be Any")
+    }
+
+    if (params.nonEmpty) {
+      for (ParamDef(name, _, _, rest) <- params.init) {
+        if (rest)
+          reportError(s"Non-last rest parameter $name is illegal")
+      }
     }
 
     if (resultType != AnyType) {
@@ -230,7 +240,6 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     val thisType = ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, resultType)
-      .withArgumentsVar(methodDef.pos)
     typecheckExpect(body, bodyEnv, resultType)
   }
 
@@ -255,6 +264,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (setterArg.ptpe != AnyType)
         reportError("Setter argument of exported property def has type "+
             s"${setterArg.ptpe}, but must be Any")
+      if (setterArg.rest)
+        reportError(s"Rest parameter ${setterArg.name} is illegal in setter")
 
       val setterBodyEnv = Env.fromSignature(thisType, List(setterArg), NoType)
       typecheckStat(setterBody, setterBodyEnv)
@@ -271,7 +282,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       return
     }
 
-    for (ParamDef(name, tpe, _) <- params) {
+    for (ParamDef(name, tpe, _, _) <- params) {
       if (tpe == NoType)
         reportError(s"Parameter $name has type NoType")
       else if (tpe != AnyType)
@@ -279,9 +290,15 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
             s"$tpe, but must be Any")
     }
 
+    if (params.nonEmpty) {
+      for (ParamDef(name, _, _, rest) <- params.init) {
+        if (rest)
+          reportError(s"Non-last rest parameter $name is illegal")
+      }
+    }
+
     val thisType = ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, NoType)
-      .withArgumentsVar(ctorDef.pos)
     typecheckStat(body, bodyEnv)
   }
 
@@ -704,20 +721,24 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError("Mismatched size for captures: "+
               s"${captureParams.size} params vs ${captureValues.size} values")
 
-        for ((ParamDef(name, ctpe, mutable), value) <- captureParams zip captureValues) {
+        for ((ParamDef(name, ctpe, mutable, rest), value) <- captureParams zip captureValues) {
           if (mutable)
             reportError(s"Capture parameter $name cannot be mutable")
+          if (rest)
+            reportError(s"Capture parameter $name cannot be a rest parameter")
           if (ctpe == NoType)
             reportError(s"Parameter $name has type NoType")
           else
             typecheckExpect(value, env, ctpe)
         }
 
-        for (ParamDef(name, ptpe, mutable) <- params) {
+        for (ParamDef(name, ptpe, mutable, rest) <- params) {
           if (ptpe == NoType)
             reportError(s"Parameter $name has type NoType")
           else if (ptpe != AnyType)
             reportError(s"Closure parameter $name has type $ptpe instead of any")
+          if (rest)
+            reportError(s"Closure parameter $name cannot be a rest parameter")
         }
 
         val bodyEnv = Env.fromSignature(
@@ -861,9 +882,6 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       new Env(this.thisTpe, this.locals,
           returnTypes + (Some(label) -> returnType), this.inConstructor)
 
-    def withArgumentsVar(pos: Position): Env =
-      withLocal(LocalDef("arguments", AnyType, mutable = false)(pos))
-
     def withInConstructor(inConstructor: Boolean): Env =
       new Env(this.thisTpe, this.locals, this.returnTypes, inConstructor)
   }
@@ -874,7 +892,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     def fromSignature(thisType: Type, params: List[ParamDef],
         resultType: Type, isConstructor: Boolean = false): Env = {
       val paramLocalDefs =
-        for (p @ ParamDef(name, tpe, mutable) <- params) yield
+        for (p @ ParamDef(name, tpe, mutable, _) <- params) yield
           name.name -> LocalDef(name.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap,
           Map(None -> (if (resultType == NoType) AnyType else resultType)),
