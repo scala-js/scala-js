@@ -646,7 +646,7 @@ object Serializers {
 
         case TagVarRef =>
           val result = VarRef(readIdent())(readType())
-          if (true /*useHacks060*/ && result.ident.name == "arguments")
+          if (useHacks060 && result.ident.name == "arguments")
             foundArguments = true
           result
 
