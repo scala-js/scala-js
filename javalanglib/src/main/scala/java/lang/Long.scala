@@ -44,6 +44,13 @@ object Long {
   final val MAX_VALUE = 9223372036854775807L
   final val SIZE = 64
 
+  /** Maximal number digits for each radix, so that a number of
+   *  that radix can be converted to an Int.
+   */
+  private lazy val DigitFitInInt = Array(
+    -1, -1, 30, 19, 15, 13, 11, 11, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 7,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5)
+
   @inline def valueOf(longValue: scala.Long): Long = new Long(longValue)
   @inline def valueOf(s: String): Long = valueOf(parseLong(s))
 
@@ -58,7 +65,7 @@ object Long {
 
     def fail() = throw new NumberFormatException(s"""For input string: "$s"""")
 
-    if (s.isEmpty) {
+    if (s.isEmpty || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
       fail()
     } else if (s.charAt(0) == '-') {
       -parseLong(s.substring(1), radix)
@@ -70,10 +77,11 @@ object Long {
         else if (exp % 2 == 0) fastPow(base*base, exp/2, acc)
         else fastPow(base, exp-1, acc*base)
 
+      val MaxLen = DigitFitInInt(radix)
+
       @inline
       @tailrec
       def loop(str0: String, acc: scala.Long): scala.Long = if (str0.length > 0) {
-        val MaxLen = 9
         val cur = str0.jsSubstring(0, MaxLen)
         val macc = acc * fastPow(radix, cur.length)
         val cval = Integer.parseInt(cur, radix).toLong

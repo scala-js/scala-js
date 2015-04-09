@@ -114,6 +114,38 @@ object LongTest extends JasmineTest {
       test("-24", -0x24L)
       test("30000", 0x30000L)
       test("-90000", -0x90000L)
+      test("bfc94973", 3217639795L)
+      test("bfc949733", 51482236723L)
+    }
+
+    it("should parse strings in bases 2 to 36") {
+      def test(radix: Int, s: String, v: Long): Unit = {
+        expect(JLong.parseLong(s, radix)).toEqual(v)
+        expect(JLong.valueOf(s, radix).longValue()).toEqual(v)
+      }
+
+      def genTestValue(i: Int): Long = {
+        val result = Long.MaxValue / (1L << i)
+        if (i > 63) -result
+        else result
+      }
+
+      for {
+        radix <- 2 to 36
+        i <- 0 until 128
+      } {
+        val n = genTestValue(i)
+        test(radix, JLong.toString(n, radix), n)
+      }
+    }
+
+    it("should reject parsing strings when base < 2 || base > 36") {
+      def test(s: String, radix: Int): Unit = {
+        expect(() => JLong.parseLong(s, radix)).toThrow()
+        expect(() => JLong.valueOf(s, radix).longValue()).toThrow()
+      }
+
+      List[Int](-10, -5, 0, 1, 37, 38, 50, 100).foreach(test("5", _))
     }
 
     it("should implement toString without radix") {
