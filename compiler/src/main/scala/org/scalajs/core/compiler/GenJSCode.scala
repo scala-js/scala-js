@@ -1894,15 +1894,15 @@ abstract class GenJSCode extends plugins.PluginComponent
       for (caze @ CaseDef(pat, guard, body) <- cases) {
         assert(guard == EmptyTree)
 
-        def genBody() = body match {
+        def genBody(body: Tree): js.Tree = body match {
           // Yes, this will duplicate the default body in the output
-          case If(cond, thenp, app @ Apply(_, Nil))
-              if app.symbol == defaultLabelSym =>
-            js.If(genExpr(cond), genStatOrExpr(thenp, isStat), genDefaultBody)(
-                resultType)(body.pos)
-          case If(cond, thenp, Block(List(app @ Apply(_, Nil)), _))
-              if app.symbol == defaultLabelSym =>
-            js.If(genExpr(cond), genStatOrExpr(thenp, isStat), genDefaultBody)(
+          case app @ Apply(_, Nil) if app.symbol == defaultLabelSym =>
+            genDefaultBody
+          case Block(List(app @ Apply(_, Nil)), _) if app.symbol == defaultLabelSym =>
+            genDefaultBody
+
+          case If(cond, thenp, elsep) =>
+            js.If(genExpr(cond), genBody(thenp), genBody(elsep))(
                 resultType)(body.pos)
 
           case _ =>
@@ -1914,7 +1914,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         pat match {
           case lit: Literal =>
-            clauses = (List(genLiteral(lit)), genBody()) :: clauses
+            clauses = (List(genLiteral(lit)), genBody(body)) :: clauses
           case Ident(nme.WILDCARD) =>
             elseClause = genDefaultBody
           case Alternative(alts) =>
@@ -1926,7 +1926,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                       tree + " at: " + tree.pos)
               }
             }
-            clauses = (genAlts, genBody()) :: clauses
+            clauses = (genAlts, genBody(body)) :: clauses
           case _ =>
             abort("Invalid case statement in switch-like pattern match: " +
                 tree + " at: " + (tree.pos))
