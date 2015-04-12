@@ -408,5 +408,17 @@ object RegressionTest extends JasmineTest {
       val f = makeF
       f(5)
     }
+
+    it("switch-match with 2 guards for the same value - #1589") {
+      @noinline def genB() = 0xE1
+      val b = genB()
+      val x = b >> 4 match {
+        case 0xE if b == 0xE0 =>
+          4
+        case 0xE if b == 0xE1 =>
+          5
+      }
+      expect(x).toEqual(5)
+    }
   }
 }
