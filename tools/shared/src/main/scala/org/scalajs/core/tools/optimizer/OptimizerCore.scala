@@ -783,9 +783,10 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         pretransformExprs(captureValues) { tcaptureValues =>
           tryOrRollback { cancelFun =>
             val captureBindings = for {
-              (ParamDef(Ident(name, origName), tpe, mutable), value) <-
+              (ParamDef(Ident(name, origName), tpe, mutable, rest), value) <-
                 captureParams zip tcaptureValues
             } yield {
+              assert(!rest, s"Found a rest capture parameter at $pos")
               Binding(name, origName, tpe, mutable, value)
             }
             withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
@@ -1411,8 +1412,9 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
     }
 
     val argsBindings = for {
-      (ParamDef(Ident(name, originalName), tpe, mutable), arg) <- formals zip args
+      (ParamDef(Ident(name, originalName), tpe, mutable, rest), arg) <- formals zip args
     } yield {
+      assert(!rest, s"Trying to inline a body with a rest parameter at $pos")
       Binding(name, originalName, tpe, mutable, arg)
     }
 
@@ -1643,7 +1645,7 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       getMethodBody(target)
 
     val argsBindings = for {
-      (ParamDef(Ident(name, originalName), tpe, mutable), arg) <- formals zip args
+      (ParamDef(Ident(name, originalName), tpe, mutable, _), arg) <- formals zip args
     } yield {
       Binding(name, originalName, tpe, mutable, arg)
     }
@@ -2711,14 +2713,14 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
       thisType: Type, params: List[ParamDef], resultType: Type,
       body: Tree): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
-      p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable) <- params
+      p @ ParamDef(ident @ Ident(name, originalName), ptpe, mutable, rest) <- params
     } yield {
       val newName = freshLocalName(name, mutable)
       val newOriginalName = originalName.orElse(Some(newName))
       val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
       val newParamDef = ParamDef(
-          Ident(newName, newOriginalName)(ident.pos), ptpe, mutable)(p.pos)
+          Ident(newName, newOriginalName)(ident.pos), ptpe, mutable, rest)(p.pos)
       ((name -> localDef), newParamDef)
     }).unzip
 
@@ -3524,7 +3526,7 @@ private[optimizer] object OptimizerCore {
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
                 case (VarRef(Ident(aname, _)),
-                    ParamDef(Ident(pname, _), _, _)) => aname == pname
+                    ParamDef(Ident(pname, _), _, _, _)) => aname == pname
                 case _ => false
               }))
 
@@ -3533,7 +3535,7 @@ private[optimizer] object OptimizerCore {
           (args.size == params.size) &&
           args.zip(params).forall {
             case (MaybeUnbox(VarRef(Ident(aname, _)), _),
-                ParamDef(Ident(pname, _), _, _)) => aname == pname
+                ParamDef(Ident(pname, _), _, _, _)) => aname == pname
             case _ => false
           }
 

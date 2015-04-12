@@ -150,9 +150,9 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   def genMethod(className: String, method: MethodDef): js.Tree = {
     implicit val pos = method.pos
 
-    val paramEnv = Env.empty.withParams(method.args)
-    val methodFun = js.Function(method.args.map(transformParamDef),
-        desugarBody(method.body, method.resultType == NoType, paramEnv))
+    val methodFun = desugarToFunction(
+        method.args, method.body, method.resultType == NoType,
+        semantics, outputMode)
 
     if (method.static) {
       val Ident(methodName, origName) = method.name
@@ -198,8 +198,9 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       val wget = {
         if (property.getterBody == EmptyTree) base
         else {
-          val body = desugarBody(property.getterBody, isStat = false, Env.empty)
-          js.StringLiteral("get") -> js.Function(Nil, body) :: base
+          val fun = desugarToFunction(Nil, property.getterBody, isStat = false,
+              semantics, outputMode)
+          js.StringLiteral("get") -> fun :: base
         }
       }
 
@@ -207,9 +208,10 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       if (property.setterBody == EmptyTree) wget
       else {
         val env = Env.empty.withParams(property.setterArg :: Nil)
-        val body = desugarBody(property.setterBody, isStat = true, env)
-        js.StringLiteral("set") -> js.Function(
-            transformParamDef(property.setterArg) :: Nil, body) :: wget
+        val fun = desugarToFunction(
+            property.setterArg :: Nil, property.setterBody, isStat = true,
+            semantics, outputMode)
+        js.StringLiteral("set") -> fun :: wget
       }
     }
 
@@ -568,12 +570,15 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
     val (createNamespace, expCtorVar) = genCreateNamespaceInExports(fullName)
 
+    val js.Function(ctorParams, ctorBody) =
+      desugarToFunction(args, body, isStat = true, semantics, outputMode)
+
     js.Block(
       createNamespace,
       js.DocComment("@constructor"),
-      expCtorVar := js.Function(args.map(transformParamDef), js.Block(
+      expCtorVar := js.Function(ctorParams, js.Block(
         js.Apply(js.DotSelect(baseCtor, js.Ident("call")), List(js.This())),
-        desugarBody(body, isStat = true, Env.empty.withParams(args))
+        ctorBody
       )),
       expCtorVar DOT "prototype" := baseCtor DOT "prototype"
     )
@@ -596,18 +601,6 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   }
 
   // Helpers
-
-  /** Desugars a function body of the IR into ES5 JavaScript. */
-  private def desugarBody(tree: Tree, isStat: Boolean, env: Env): js.Tree = {
-    implicit val pos = tree.pos
-    val withReturn =
-      if (isStat) tree
-      else Return(tree)
-    desugarJavaScript(withReturn, semantics, outputMode, env) match {
-      case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
-      case other                                        => other
-    }
-  }
 
   /** Gen JS code for assigning an rhs to a qualified name in the exports scope.
    *  For example, given the qualified name "foo.bar.Something", generates:

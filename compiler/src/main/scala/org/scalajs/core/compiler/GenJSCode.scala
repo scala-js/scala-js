@@ -584,7 +584,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         def jsParams = for (param <- params) yield {
           implicit val pos = param.pos
           js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-              mutable = false)
+              mutable = false, rest = false)
         }
 
         if (scalaPrimitives.isPrimitive(sym)) {
@@ -707,9 +707,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val js.MethodDef(static, methodName, params, resultType, body) = methodDef
       val newParams = for {
-        p @ js.ParamDef(name, ptpe, mutable) <- params
+        p @ js.ParamDef(name, ptpe, mutable, rest) <- params
       } yield {
-        js.ParamDef(name, ptpe, newMutable(name.name, mutable))(p.pos)
+        js.ParamDef(name, ptpe, newMutable(name.name, mutable), rest)(p.pos)
       }
       val transformer = new ir.Transformers.Transformer {
         override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
@@ -827,7 +827,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           val jsParams = for (param <- sym.tpe.params) yield {
             implicit val pos = param.pos
             js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-                mutable = false)
+                mutable = false, rest = false)
           }
 
           val call = genApplyMethod(genThis(), sym, jsParams.map(_.ref))
@@ -859,7 +859,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val jsParams = for (param <- paramsSyms) yield {
         implicit val pos = param.pos
-        js.ParamDef(encodeLocalSym(param), toIRType(param.tpe), mutable = false)
+        js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+            mutable = false, rest = false)
       }
 
       val bodyIsStat = resultIRType == jstpe.NoType
@@ -2881,13 +2882,13 @@ abstract class GenJSCode extends plugins.PluginComponent
               ps.head.forall(_.tpe.typeSymbol == ObjectClass)
             }
             val fCaptureParam = js.ParamDef(js.Ident("f"), inputIRType,
-                mutable = false)
+                mutable = false, rest = false)
             val jsArity =
               if (isThisFunction) arity - 1
               else arity
             val jsParams = (1 to jsArity).toList map {
               x => js.ParamDef(js.Ident("arg"+x), jstpe.AnyType,
-                  mutable = false)
+                  mutable = false, rest = false)
             }
             js.Closure(
                 List(fCaptureParam),
@@ -3592,7 +3593,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val ctorParamDefs = usedCtorParams map { p =>
           // in the apply method's context
           js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe),
-              mutable = false)(p.pos)
+              mutable = false, rest = false)(p.pos)
         }
 
         // Third step: emit the body of the apply method def
@@ -3687,7 +3688,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val formalArgs = params map { p =>
         js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe),
-            mutable = false)(p.pos)
+            mutable = false, rest = false)(p.pos)
       }
 
       val isInImplClass = target.owner.isImplClass
@@ -3695,7 +3696,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def makeCaptures(actualCaptures: List[js.Tree]) = {
         (actualCaptures map { c => (c: @unchecked) match {
           case js.VarRef(ident) =>
-            (js.ParamDef(ident, c.tpe, mutable = false)(c.pos),
+            (js.ParamDef(ident, c.tpe, mutable = false, rest = false)(c.pos),
                 js.VarRef(ident)(c.tpe)(c.pos))
         }}).unzip
       }
@@ -3704,7 +3705,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val thisActualCapture = genExpr(receiver)
         val thisFormalCapture = js.ParamDef(
             freshLocalIdent("this")(receiver.pos),
-            thisActualCapture.tpe, mutable = false)(receiver.pos)
+            thisActualCapture.tpe, mutable = false, rest = false)(receiver.pos)
         val thisCaptureArg = thisFormalCapture.ref
         val (actualArgs, actualCaptures) = allArgs.splitAt(formalArgs.size)
         val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
@@ -3750,7 +3751,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val newOrigName = origName.getOrElse(name)
         val newNameIdent = freshLocalIdent(newOrigName)(paramName.pos)
         val patchedParam = js.ParamDef(newNameIdent, jstpe.AnyType,
-            mutable = false)(param.pos)
+            mutable = false, rest = param.rest)(param.pos)
         val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
             fromAny(patchedParam.ref, paramTpe))
         (patchedParam, paramLocal)

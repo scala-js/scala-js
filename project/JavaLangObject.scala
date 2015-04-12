@@ -56,7 +56,8 @@ object JavaLangObject {
         MethodDef(
           static = false,
           Ident("equals__O__Z", Some("equals__O__Z")),
-          List(ParamDef(Ident("that", Some("that")), AnyType, mutable = false)),
+          List(ParamDef(Ident("that", Some("that")), AnyType,
+            mutable = false, rest = false)),
           BooleanType,
           {
             BinaryOp(BinaryOp.===,

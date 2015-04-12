@@ -123,7 +123,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val trgSym = fun.symbol
 
       val inArg =
-        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType, mutable = false)
+        js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
+            mutable = false, rest = false)
       val inArgRef = inArg.ref
 
       val methodIdent = encodeMethodSym(sym)
@@ -223,11 +224,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val getTree =
         if (getter.isEmpty) js.EmptyTree
-        else genApplyForSym(getter.head)
+        else genApplyForSym(0, getter.head)
 
       val setTree =
         if (setters.isEmpty) js.EmptyTree
-        else genExportSameArgc(setters.map(ExportedSymbol), 0) // we only have 1 argument
+        else genExportSameArgc(1, setters.map(ExportedSymbol), 0) // we only have 1 argument
 
       js.PropertyDef(js.StringLiteral(jsName), getTree, genFormalArg(1), setTree)
     }
@@ -261,8 +262,6 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           normalMeths.map(_.params.size)
       ).max
 
-      val formalArgs = genFormalArgs(maxArgc)
-
       // Calculates possible arg counts for normal method
       def argCounts(ex: Exported) = ex match {
         case ExportedSymbol(sym) =>
@@ -294,6 +293,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       val methodByArgCount =
         methodArgCounts.groupBy(_._1).mapValues(_.map(_._2).toSet)
 
+      // Minimum number of arguments that must be given
+      val minArgc = methodByArgCount.keys.min
+
+      val hasVarArg = varArgMeths.nonEmpty
+
+      // List of formal parameters
+      val needsRestParam = maxArgc != minArgc || hasVarArg
+      val formalArgs = genFormalArgs(minArgc, needsRestParam)
+
       // Create tuples: (methods, argCounts). This will be the cases we generate
       val caseDefinitions =
         methodByArgCount.groupBy(_._2).mapValues(_.keySet)
@@ -315,19 +323,17 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         // body of case to disambiguates methods with current count
         caseBody =
-          genExportSameArgc(methods.toList, 0, Some(argcs.min))
+          genExportSameArgc(minArgc, methods.toList, 0, Some(argcs.min))
 
         // argc in reverse order
         argcList = argcs.toList.sortBy(- _)
-      } yield (argcList.map(js.IntLiteral(_)), caseBody)
-
-      val hasVarArg = varArgMeths.nonEmpty
+      } yield (argcList.map(argc => js.IntLiteral(argc - minArgc)), caseBody)
 
       def defaultCase = {
         if (!hasVarArg)
           genThrowTypeError()
         else
-          genExportSameArgc(varArgMeths, 0)
+          genExportSameArgc(minArgc, varArgMeths, 0)
       }
 
       val body = {
@@ -336,9 +342,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         else if (cases.size == 1 && !hasVarArg)
           cases.head._2
         else {
+          assert(needsRestParam,
+              "Trying to read rest param length but needsRestParam is false")
           js.Match(
               js.Unbox(js.JSBracketSelect(
-                  js.VarRef(js.Ident("arguments"))(jstpe.AnyType),
+                  genRestArgRef(),
                   js.StringLiteral("length")),
                   'I'),
               cases.toList, defaultCase)(jstpe.AnyType)
@@ -352,17 +360,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     /**
      * Resolve method calls to [[alts]] while assuming they have the same
      * parameter count.
+     * @param minArgc The minimum number of arguments that must be given
      * @param alts Alternative methods
      * @param paramIndex Index where to start disambiguation
      * @param maxArgc only use that many arguments
      */
-    private def genExportSameArgc(alts: List[Exported],
+    private def genExportSameArgc(minArgc: Int, alts: List[Exported],
         paramIndex: Int, maxArgc: Option[Int] = None): js.Tree = {
 
       implicit val pos = alts.head.pos
 
       if (alts.size == 1)
-        alts.head.body
+        alts.head.genBody(minArgc)
       else if (maxArgc.exists(_ <= paramIndex) ||
         !alts.exists(_.params.size > paramIndex)) {
         // We reach here in three cases:
@@ -399,7 +408,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         if (altsByTypeTest.size == 1) {
           // Testing this parameter is not doing any us good
-          genExportSameArgc(alts, paramIndex+1, maxArgc)
+          genExportSameArgc(minArgc, alts, paramIndex+1, maxArgc)
         } else {
           // Sort them so that, e.g., isInstanceOf[String]
           // comes before isInstanceOf[Object]
@@ -412,8 +421,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             val (typeTest, subAlts) = elem
             implicit val pos = subAlts.head.pos
 
-            val param = genFormalArg(paramIndex+1)
-            val genSubAlts = genExportSameArgc(subAlts, paramIndex+1, maxArgc)
+            val paramRef = genFormalArgRef(paramIndex+1, minArgc)
+            val genSubAlts = genExportSameArgc(minArgc,
+                subAlts, paramIndex+1, maxArgc)
 
             def hasDefaultParam = subAlts.exists {
               case ExportedSymbol(p) =>
@@ -427,10 +437,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
               case HijackedTypeTest(boxedClassName, _) =>
                 val tpe = jstpe.ClassType(boxedClassName)
                 currentMethodInfoBuilder.addUsedInstanceTest(tpe)
-                Some(js.IsInstanceOf(param.ref, tpe))
+                Some(js.IsInstanceOf(paramRef, tpe))
 
               case InstanceOfTypeTest(tpe) =>
-                Some(genIsInstanceOf(param.ref, tpe))
+                Some(genIsInstanceOf(paramRef, tpe))
 
               case NoTypeTest =>
                 None
@@ -441,7 +451,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
             } { cond =>
               val condOrUndef = if (!hasDefaultParam) cond else {
                 js.If(cond, js.BooleanLiteral(true),
-                    js.BinaryOp(js.BinaryOp.===, param.ref, js.Undefined()))(
+                    js.BinaryOp(js.BinaryOp.===, paramRef, js.Undefined()))(
                     jstpe.BooleanType)
               }
               js.If(condOrUndef, genSubAlts, elsep)(jstpe.AnyType)
@@ -456,7 +466,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
      * and potentially the argument array. Also inserts default parameters if
      * required.
      */
-    private def genApplyForSym(sym: Symbol): js.Tree = {
+    private def genApplyForSym(minArgc: Int, sym: Symbol): js.Tree = {
       implicit val pos = sym.pos
 
       // the (single) type of the repeated parameter if any
@@ -472,56 +482,14 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       // optional repeated parameter list
       val jsVarArg = repeatedTpe map { tpe =>
-        // Copy arguments that go to vararg into an array, put it in a wrapper
-
-        val countIdent = freshLocalIdent("count")
-        val count = js.VarRef(countIdent)(jstpe.IntType)
-
-        val counterIdent = freshLocalIdent("i")
-        val counter = js.VarRef(counterIdent)(jstpe.IntType)
-
-        val arrayIdent = freshLocalIdent("varargs")
-        val array = js.VarRef(arrayIdent)(jstpe.AnyType)
-
-        val arguments = js.VarRef(js.Ident("arguments"))(jstpe.AnyType)
-        val argLen = js.Unbox(
-            js.JSBracketSelect(arguments, js.StringLiteral("length")), 'I')
-        val argOffset = js.IntLiteral(normalArgc)
-
-        val jsArrayCtor =
-          js.JSBracketSelect(
-              js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global")),
-              js.StringLiteral("Array"))
-
-        js.Block(
-            // var i = 0
-            js.VarDef(counterIdent, jstpe.IntType, mutable = true,
-                rhs = js.IntLiteral(0)),
-            // val count = arguments.length - <normalArgc>
-            js.VarDef(countIdent, jstpe.IntType, mutable = false,
-                rhs = js.BinaryOp(js.BinaryOp.Int_-, argLen, argOffset)),
-            // val varargs = new Array(count)
-            js.VarDef(arrayIdent, jstpe.AnyType, mutable = false,
-                rhs = js.JSNew(jsArrayCtor, List(count))),
-            // while (i < count)
-            js.While(js.BinaryOp(js.BinaryOp.Num_<, counter, count), js.Block(
-                // varargs[i] = arguments[<normalArgc> + i];
-                js.Assign(
-                    js.JSBracketSelect(array, counter),
-                    js.JSBracketSelect(arguments,
-                        js.BinaryOp(js.BinaryOp.Int_+, argOffset, counter))),
-                // i = i + 1 (++i won't work, desugar eliminates it)
-                js.Assign(counter, js.BinaryOp(js.BinaryOp.Int_+,
-                    counter, js.IntLiteral(1)))
-            )),
-            // new WrappedArray(varargs)
-            genNew(WrappedArrayClass, WrappedArray_ctor, List(array))
-        )
+        // new WrappedArray(varargs)
+        genNew(WrappedArrayClass, WrappedArray_ctor, List(
+            genVarargRef(normalArgc, minArgc)))
       }
 
       // normal arguments
-      val jsArgs = genFormalArgs(normalArgc)
-      val jsArgRefs = jsArgs.map(_.ref)
+      val jsArgRefs = (1 to normalArgc).toList.map(
+          i => genFormalArgRef(i, minArgc))
 
       // Generate JS code to prepare arguments (default getters and unboxes)
       val jsArgPrep = genPrepareArgs(jsArgRefs, sym)
@@ -533,7 +501,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     /** Generate the necessary JavaScript code to prepare the arguments of an
      *  exported method (unboxing and default parameter handling)
      */
-    private def genPrepareArgs(jsArgs: List[js.VarRef], sym: Symbol)(
+    private def genPrepareArgs(jsArgs: List[js.Tree], sym: Symbol)(
         implicit pos: Position): List[js.VarDef] = {
 
       val result = new mutable.ListBuffer[js.VarDef]
@@ -595,7 +563,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         }
 
         result +=
-          js.VarDef(js.Ident("prep"+jsArg.ident.name, jsArg.ident.originalName),
+          js.VarDef(js.Ident("prep"+i),
               verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
       }
 
@@ -624,7 +592,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     private sealed abstract class Exported {
       def pos: Position
       def params: List[Type]
-      def body: js.Tree
+      def genBody(minArgc: Int): js.Tree
       def name: String
       def typeInfo: String
       def hasRepeatedParam: Boolean
@@ -633,14 +601,15 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     private case class ExportedSymbol(sym: Symbol) extends Exported {
       def pos: Position = sym.pos
       def params: List[Type] = sym.tpe.params.map(_.tpe)
-      def body: js.Tree = genApplyForSym(sym)
+      def genBody(minArgc: Int): js.Tree = genApplyForSym(minArgc, sym)
       def name: String = sym.name.toString
       def typeInfo: String = sym.tpe.toString
       def hasRepeatedParam: Boolean = GenJSExports.this.hasRepeatedParam(sym)
     }
 
     private case class ExportedBody(params: List[Type], body: js.Tree,
-      name: String, pos: Position) extends Exported {
+        name: String, pos: Position) extends Exported {
+      def genBody(minArgc: Int): js.Tree = body
       def typeInfo: String = params.mkString("(", ", ", ")")
       val hasRepeatedParam: Boolean = false
     }
@@ -773,11 +742,44 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
     js.Throw(js.StringLiteral(msg))
   }
 
-  private def genFormalArgs(count: Int)(implicit pos: Position): List[js.ParamDef] =
-    (1 to count map genFormalArg).toList
+  private def genFormalArgs(minArgc: Int, needsRestParam: Boolean)(
+      implicit pos: Position): List[js.ParamDef] = {
+    val fixedParams = (1 to minArgc map genFormalArg).toList
+    if (needsRestParam) fixedParams :+ genRestFormalArg()
+    else fixedParams
+  }
 
-  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef =
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType, mutable = false)
+  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
+    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType,
+        mutable = false, rest = false)
+  }
+
+  private def genRestFormalArg()(implicit pos: Position): js.ParamDef = {
+    js.ParamDef(js.Ident("arg$rest"), jstpe.AnyType,
+        mutable = false, rest = true)
+  }
+
+  private def genFormalArgRef(index: Int, minArgc: Int)(
+      implicit pos: Position): js.Tree = {
+    if (index <= minArgc)
+      js.VarRef(js.Ident("arg$" + index))(jstpe.AnyType)
+    else
+      js.JSBracketSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
+  }
+
+  private def genVarargRef(fixedParamCount: Int, minArgc: Int)(
+      implicit pos: Position): js.Tree = {
+    val restParam = genRestArgRef()
+    assert(fixedParamCount >= minArgc)
+    if (fixedParamCount == minArgc) restParam
+    else {
+      js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(
+          js.IntLiteral(fixedParamCount - minArgc)))
+    }
+  }
+
+  private def genRestArgRef()(implicit pos: Position): js.Tree =
+    js.VarRef(js.Ident("arg$rest"))(jstpe.AnyType)
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {

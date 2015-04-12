@@ -213,7 +213,9 @@ object Build extends sbt.Build {
   val commonIrProjectSettings = (
       commonSettings ++ publishSettings
   ) ++ Seq(
-      name := "Scala.js IR"
+      name := "Scala.js IR",
+
+      binaryIssueFilters ++= BinaryIncompatibilities.IR
   )
 
   lazy val irProject: Project = Project(

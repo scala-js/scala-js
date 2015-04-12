@@ -117,9 +117,9 @@ object Serializers {
           writeByte(TagVarDef)
           writeIdent(ident); writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
 
-        case ParamDef(ident, ptpe, mutable) =>
+        case ParamDef(ident, ptpe, mutable, rest) =>
           writeByte(TagParamDef)
-          writeIdent(ident); writeType(ptpe); writeBoolean(mutable)
+          writeIdent(ident); writeType(ptpe); writeBoolean(mutable); writeBoolean(rest)
 
         case Skip() =>
           writeByte(TagSkip)
@@ -551,6 +551,8 @@ object Serializers {
   }
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
+    private[this] val useHacks060 = sourceVersion == "0.6.0"
+
     private[this] val input = new DataInputStream(stream)
 
     private[this] val files =
@@ -560,6 +562,8 @@ object Serializers {
       Array.fill(input.readInt())(input.readUTF())
 
     private[this] var lastPosition: Position = Position.NoPosition
+
+    private[this] var foundArguments: Boolean = false
 
     def deserialize(): Tree = {
       readTree()
@@ -572,8 +576,10 @@ object Serializers {
       val result = (tag: @switch) match {
         case TagEmptyTree => EmptyTree
 
-        case TagVarDef     => VarDef(readIdent(), readType(), readBoolean(), readTree())
-        case TagParamDef   => ParamDef(readIdent(), readType(), readBoolean())
+        case TagVarDef   => VarDef(readIdent(), readType(), readBoolean(), readTree())
+        case TagParamDef =>
+          ParamDef(readIdent(), readType(), readBoolean(),
+              rest = if (useHacks060) false else readBoolean())
 
         case TagSkip     => Skip()
         case TagBlock    => Block(readTrees())
@@ -638,7 +644,12 @@ object Serializers {
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readReferenceType())
 
-        case TagVarRef  => VarRef(readIdent())(readType())
+        case TagVarRef =>
+          val result = VarRef(readIdent())(readType())
+          if (useHacks060 && result.ident.name == "arguments")
+            foundArguments = true
+          result
+
         case TagThis    => This()(readType())
         case TagClosure =>
           Closure(readParamDefs(), readParamDefs(), readTree(), readTrees())
@@ -661,14 +672,26 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(readBoolean(), readPropertyName(),
+          val result = MethodDef(readBoolean(), readPropertyName(),
               readParamDefs(), readType(), readTree())(
               new OptimizerHints(readInt()), optHash)
+          if (foundArguments) {
+            foundArguments = false
+            new RewriteArgumentsTransformer().transformMethodDef(result)
+          } else {
+            result
+          }
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),
               readTree().asInstanceOf[ParamDef], readTree())
         case TagConstructorExportDef =>
-          ConstructorExportDef(readString(), readParamDefs(), readTree())
+          val result = ConstructorExportDef(readString(), readParamDefs(), readTree())
+          if (foundArguments) {
+            foundArguments = false
+            new RewriteArgumentsTransformer().transformConstructorExportDef(result)
+          } else {
+            result
+          }
         case TagModuleExportDef =>
           ModuleExportDef(readString())
       }
@@ -807,5 +830,59 @@ object Serializers {
     def readString(): String = {
       strings(input.readInt())
     }
+  }
+
+  private class RewriteArgumentsTransformer extends Transformers.Transformer {
+    import RewriteArgumentsTransformer._
+
+    private[this] var paramToIndex: Map[String, Int] = _
+
+    def transformMethodDef(tree: MethodDef): MethodDef = {
+      /* Ideally, we would re-hash the new MethodDef here, but we cannot do
+       * that because it prevents the JS version of the tools to link.
+       * Since the hashes of exported methods are not used by our pipeline
+       * anyway, we simply put None.
+       */
+      val MethodDef(static, name, args, resultType, body) = tree
+      setupParamToIndex(args)
+      MethodDef(static, name, List(argumentsParamDef(tree.pos)),
+          resultType, transform(body, isStat = resultType == NoType))(
+          tree.optimizerHints, None)(tree.pos)
+    }
+
+    def transformConstructorExportDef(
+        tree: ConstructorExportDef): ConstructorExportDef = {
+      val ConstructorExportDef(name, args, body) = tree
+      setupParamToIndex(args)
+      ConstructorExportDef(name, List(argumentsParamDef(tree.pos)),
+          transformStat(body))(tree.pos)
+    }
+
+    private def setupParamToIndex(params: List[ParamDef]): Unit =
+      paramToIndex = params.map(_.name.name).zipWithIndex.toMap
+
+    private def argumentsParamDef(implicit pos: Position): ParamDef =
+      ParamDef(Ident(ArgumentsName), AnyType, mutable = false, rest = true)
+
+    private def argumentsRef(implicit pos: Position): VarRef =
+      VarRef(Ident(ArgumentsName))(AnyType)
+
+    override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+      case VarRef(Ident(name, origName)) =>
+        implicit val pos = tree.pos
+        paramToIndex.get(name).fold {
+          if (name == "arguments") argumentsRef
+          else tree
+        } { paramIndex =>
+          JSBracketSelect(argumentsRef, IntLiteral(paramIndex))
+        }
+
+      case _ =>
+        super.transform(tree, isStat)
+    }
+  }
+
+  private object RewriteArgumentsTransformer {
+    private final val ArgumentsName = "$arguments"
   }
 }
