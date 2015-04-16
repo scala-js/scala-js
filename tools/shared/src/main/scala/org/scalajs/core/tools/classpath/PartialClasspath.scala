@@ -35,7 +35,7 @@ final class PartialClasspath(
     val scalaJSIR: Traversable[VirtualScalaJSIRFile],
     val version: Option[String]
 ) {
-  import PartialClasspath.DependencyFilter
+  import PartialClasspath.{DependencyFilter, ManifestFilter}
 
   /** Merges another [[PartialClasspath]] with this one. This means:
    *  - Concatenate/merge dependencies
@@ -53,8 +53,16 @@ final class PartialClasspath(
   /** Construct a [[IRClasspath]] out of this [[PartialClasspath]] by
    *  resolving library dependencies (and failing if they are not met)
    */
-  def resolve(filter: DependencyFilter = identity): IRClasspath = {
-    new IRClasspath(resolveDependencies(filter), mergeCompliance(), scalaJSIR,
+  @deprecated("Use the version with manifestFilter instead", "0.6.3")
+  def resolve(filter: DependencyFilter): IRClasspath = resolve(filter, identity)
+
+  /** Construct a [[IRClasspath]] out of this [[PartialClasspath]] by
+   *  resolving library dependencies (and failing if they are not met)
+   */
+  def resolve(dependencyFilter: DependencyFilter = identity,
+      manifestFilter: ManifestFilter = identity): IRClasspath = {
+    val jsLibs = resolveDependencies(dependencyFilter, manifestFilter)
+    new IRClasspath(jsLibs, mergeCompliance(), scalaJSIR,
         dependencies.exists(_.requiresDOM), version)
   }
 
@@ -63,20 +71,23 @@ final class PartialClasspath(
    *  - Dependencies have cycles
    *  - Not all dependencies are available
    */
-  protected def resolveDependencies(
-      filter: DependencyFilter): List[ResolvedJSDependency] = {
-    val resourceNames = collectAllResourceNames()
+  private def resolveDependencies(
+      dependencyFilter: DependencyFilter,
+      manifestFilter: ManifestFilter): List[ResolvedJSDependency] = {
+
+    val filteredManifests = manifestFilter(dependencies)
+    val resourceNames = collectAllResourceNames(filteredManifests)
     val resolvedJSLibs = resolveAllResourceNames(resourceNames)
 
     val allFlatDeps = for {
-      manifest <- dependencies
+      manifest <- filteredManifests
       dep <- manifest.libDeps
     } yield {
       new FlatJSDependency(manifest.origin, resolvedJSLibs(dep.resourceName),
           dep.dependencies.map(resolvedJSLibs), dep.commonJSName)
     }
 
-    val flatDeps = filter(allFlatDeps)
+    val flatDeps = dependencyFilter(allFlatDeps)
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
     for (info <- includeList)
@@ -84,11 +95,13 @@ final class PartialClasspath(
   }
 
   /** Collects all the resource names mentioned in the manifests.
+   *  @param manifests to collect from
    *  @return Map from resource name to the list of origins mentioning them
    */
-  private def collectAllResourceNames(): Map[String, List[Origin]] = {
+  private def collectAllResourceNames(
+      manifests: Traversable[JSDependencyManifest]): Map[String, List[Origin]] = {
     val nameOriginPairs = for {
-      manifest <- dependencies.toList
+      manifest <- manifests.toList
       dep <- manifest.libDeps
       resourceName <- dep.resourceName :: dep.dependencies
     } yield (resourceName, manifest.origin)
@@ -150,6 +163,8 @@ object PartialClasspath {
 
   type DependencyFilter =
     Traversable[FlatJSDependency] => Traversable[FlatJSDependency]
+
+  type ManifestFilter = ManifestFilters.ManifestFilter
 
   /** Creates an empty PartialClasspath */
   def empty: PartialClasspath =

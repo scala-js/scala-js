@@ -163,6 +163,9 @@ object ScalaJSPlugin extends AutoPlugin {
     val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)
 
+    val jsManifestFilter = SettingKey[PartialClasspath.ManifestFilter]("jsManifestFilter",
+        "The filter applied to JS dependency manifests before resolution", CSetting)
+
     val checkScalaJSSemantics = SettingKey[Boolean]("checkScalaJSSemantics",
         "Whether to check that the current semantics meet compliance " +
         "requirements of dependencies.", CSetting)
