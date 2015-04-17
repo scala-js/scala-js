@@ -1,5 +1,7 @@
 package java.net
 
+import java.io.IOException
+
 class URISyntaxException(
   private val input: String,
   private val reason: String,
@@ -12,4 +14,8 @@ class URISyntaxException(
   def getInput(): String = input
   def getReason(): String = reason
 
+}
+
+class MalformedURLException(message: String) extends IOException(message) {
+  def this() = this(null)
 }
