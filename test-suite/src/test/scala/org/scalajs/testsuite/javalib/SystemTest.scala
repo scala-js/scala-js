@@ -21,6 +21,39 @@ object SystemTest extends JasmineTest {
 
   describe("java.lang.System") {
 
+    it("setIn") {
+      val savedIn = System.in
+      try {
+        val testIn = new java.io.ByteArrayInputStream(Array[Byte]())
+        System.setIn(testIn)
+        expect(System.in eq testIn).toBeTruthy
+      } finally {
+        System.setIn(savedIn)
+      }
+    }
+
+    it("setOut") {
+      val savedOut = System.out
+      try {
+        val testOut = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
+        System.setOut(testOut)
+        expect(System.out eq testOut).toBeTruthy
+      } finally {
+        System.setOut(savedOut)
+      }
+    }
+
+    it("setErr") {
+      val savedErr = System.err
+      try {
+        val testErr = new java.io.PrintStream(new java.io.ByteArrayOutputStream)
+        System.setErr(testErr)
+        expect(System.err eq testErr).toBeTruthy
+      } finally {
+        System.setErr(savedErr)
+      }
+    }
+
     it("should respond to `arraycopy`") {
       val object0 = Array[Any]("[", "b", "c", "d", "e", "f", "]")
       val object1 = Array[Any](() => true, 1, "2", '3', 4.0, true, object0)

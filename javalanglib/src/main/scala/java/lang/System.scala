@@ -10,6 +10,15 @@ object System {
   var err: PrintStream = new JSConsoleBasedPrintStream(isErr = true)
   var in: InputStream = null
 
+  def setIn(in: InputStream): Unit =
+    this.in = in
+
+  def setOut(out: PrintStream): Unit =
+    this.out = out
+
+  def setErr(err: PrintStream): Unit =
+    this.err = err
+
   def currentTimeMillis(): scala.Long = {
     (new js.Date).getTime().toLong
   }
