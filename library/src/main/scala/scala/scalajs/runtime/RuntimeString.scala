@@ -235,8 +235,10 @@ private[runtime] object RuntimeString {
     thiz.startsWith(prefix, 0)
 
   @inline
-  def startsWith(thiz: String, prefix: String, toffset: Int): Boolean =
-    thiz.jsSubstring(toffset, prefix.length) == prefix
+  def startsWith(thiz: String, prefix: String, toffset: Int): Boolean = {
+    (toffset <= thiz.length && toffset >= 0 &&
+        thiz.jsSubstring(toffset, toffset + prefix.length) == prefix)
+  }
 
   @inline
   def subSequence(thiz: String, beginIndex: Int, endIndex: Int): CharSequence =

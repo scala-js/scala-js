@@ -203,6 +203,23 @@ object StringTest extends JasmineTest {
       }
     }
 
+    it("startsWith(prefix, toffset) - #1603") {
+      expect("Scala.js".startsWith("ala", 2)).toBeTruthy
+      expect("Scala.js".startsWith("Scal", 0)).toBeTruthy
+
+      expect("Scala.js".startsWith("", 3)).toBeTruthy
+      expect("Scala.js".startsWith("", 0)).toBeTruthy
+      expect("Scala.js".startsWith("", 8)).toBeTruthy
+
+      expect("Scala.js".startsWith("ala", 0)).toBeFalsy
+      expect("Scala.js".startsWith("Scal", 2)).toBeFalsy
+
+      expect("Scala.js".startsWith("Sc", -1)).toBeFalsy
+      expect("Scala.js".startsWith(".js", 10)).toBeFalsy
+      expect("Scala.js".startsWith("", -1)).toBeFalsy
+      expect("Scala.js".startsWith("", 9)).toBeFalsy
+    }
+
     it("should respond to `toCharArray`") {
       expect("Scala.js".toCharArray()(5)).toEqual('.')
     }
