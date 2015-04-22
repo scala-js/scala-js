@@ -149,6 +149,27 @@ object StringTest extends JasmineTest {
       expect("\uDF06abc".codePointAt(0)).toEqual(0xDF06)
     }
 
+    it("codePointCount") {
+      val s = "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06"
+      expect(s.codePointCount(0, s.length)).toEqual(18)
+      expect(s.codePointCount(3, 5)).toEqual(1)
+      expect(s.codePointCount(2, 3)).toEqual(1)
+      expect(s.codePointCount(2, 4)).toEqual(2)
+      expect(s.codePointCount(2, 5)).toEqual(2)
+      expect(s.codePointCount(2, 6)).toEqual(3)
+      expect(s.codePointCount(12, 17)).toEqual(5)
+      expect(s.codePointCount(8, 10)).toEqual(2)
+      expect(s.codePointCount(7, 10)).toEqual(2)
+      expect(s.codePointCount(7, 7)).toEqual(0)
+      expect(s.codePointCount(s.length - 1, s.length)).toEqual(1)
+      expect(s.codePointCount(s.length - 1, s.length - 1)).toEqual(0)
+      expect(s.codePointCount(s.length, s.length)).toEqual(0)
+
+      expect(() => s.codePointCount(-3, 4)).toThrow
+      expect(() => s.codePointCount(6, 2)).toThrow
+      expect(() => s.codePointCount(10, 30)).toThrow
+    }
+
     it("should respond to `subSequence`") {
       expect("Scala.js".subSequence(0, 5)).toBe("Scala")
       expect("Scala.js".subSequence(6, 8)).toBe("js")
