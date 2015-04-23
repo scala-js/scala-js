@@ -49,6 +49,12 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.jsdep.ConflictingNameException.org$scalajs$core$tools$jsdep$ConflictingNameException$$mkMsg")
   )
 
+  val SbtPlugin = Seq(
+      // Additonal method in sealed trait, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.JSModuleID.minified")
+  )
+
   val TestAdapter = Seq(
       // Private things, not an issue
       ProblemFilters.exclude[MissingMethodProblem](

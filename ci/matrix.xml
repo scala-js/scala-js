@@ -138,7 +138,8 @@
     sbt noDOM/run withDOM/run test \
         'set scalaJSStage in Global := FastOptStage' \
         jetty9/run test \
-        jsDependenciesTest/packageJSDependencies
+        jsDependenciesTest/packageJSDependencies \
+        jsDependenciesTest/packageMinifiedJSDependencies
   ]]></task>
 
   <task id="partest-noopt"><![CDATA[

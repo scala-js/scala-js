@@ -55,3 +55,22 @@ object ConflictingNameException {
     msg.toString()
   }
 }
+
+class ConflictingMinifiedJSException(
+  val participants: List[FlatJSDependency]
+) extends DependencyException(
+  ConflictingMinifiedJSException.mkMsg(participants))
+
+object ConflictingMinifiedJSException {
+  private def mkMsg(parts: List[FlatJSDependency]) = {
+    val msg = new StringBuilder()
+    msg.append(s"Minified JS conflicts in:\n")
+
+    for (p <- parts) {
+      msg.append(p)
+      msg.append('\n')
+    }
+
+    msg.toString()
+  }
+}

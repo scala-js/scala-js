@@ -96,6 +96,29 @@ object ScalaJSPluginInternal {
     incOptions.withNewClassfileManager(newClassfileManager)
   }
 
+  private def packageJSDependenciesSetting(taskKey: TaskKey[File], cacheName: String,
+      getLib: ResolvedJSDependency => VirtualJSFile): Setting[Task[File]] = {
+    taskKey <<= Def.taskDyn {
+      if ((skip in taskKey).value)
+        Def.task((artifactPath in taskKey).value)
+      else Def.task {
+        val cp = scalaJSPreLinkClasspath.value
+        val output = (artifactPath in taskKey).value
+        val taskCache = WritableFileVirtualTextFile(
+            streams.value.cacheDirectory / cacheName)
+
+        IO.createDirectory(output.getParentFile)
+
+        val outFile = WritableFileVirtualTextFile(output)
+        CacheUtils.cached(cp.version, outFile, Some(taskCache)) {
+          toolsIO.concatFiles(outFile, cp.jsLibs.map(getLib))
+        }
+
+        output
+      }
+    }
+  }
+
   private def scalaJSOptimizerSetting(key: TaskKey[_]): Setting[_] = (
       scalaJSOptimizer in key := {
         val semantics = (scalaJSSemantics in key).value
@@ -205,7 +228,8 @@ object ScalaJSPluginInternal {
         Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
       },
       fullOptJS <<=
-        fullOptJS.dependsOn(packageJSDependencies, packageScalaJSLauncher),
+        fullOptJS.dependsOn(packageJSDependencies, packageMinifiedJSDependencies,
+            packageScalaJSLauncher),
 
       artifactPath in packageScalaJSLauncher :=
         ((crossTarget in packageScalaJSLauncher).value /
@@ -233,25 +257,14 @@ object ScalaJSPluginInternal {
         ((crossTarget in packageJSDependencies).value /
             ((moduleName in packageJSDependencies).value + "-jsdeps.js")),
 
-      packageJSDependencies <<= Def.taskDyn {
-        if ((skip in packageJSDependencies).value)
-          Def.task((artifactPath in packageJSDependencies).value)
-        else Def.task {
-          val cp = scalaJSPreLinkClasspath.value
-          val output = (artifactPath in packageJSDependencies).value
-          val taskCache = WritableFileVirtualTextFile(
-              streams.value.cacheDirectory / "package-js-deps")
+      packageJSDependenciesSetting(packageJSDependencies, "package-js-deps", _.lib),
 
-          IO.createDirectory(output.getParentFile)
+      artifactPath in packageMinifiedJSDependencies :=
+        ((crossTarget in packageJSDependencies).value /
+            ((moduleName in packageJSDependencies).value + "-jsdeps.min.js")),
 
-          val outFile = WritableFileVirtualTextFile(output)
-          CacheUtils.cached(cp.version, outFile, Some(taskCache)) {
-            toolsIO.concatFiles(outFile, cp.jsLibs.map(_.lib))
-          }
-
-          output
-        }
-      },
+      packageJSDependenciesSetting(packageMinifiedJSDependencies,
+          "package-min-js-deps", dep => dep.minifiedLib.getOrElse(dep.lib)),
 
       jsDependencyManifest := {
         val myModule = thisProject.value.id
