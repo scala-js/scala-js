@@ -114,7 +114,7 @@ object ScalaJSPluginInternal {
       scalaJSPreLinkClasspath := {
         val cp = fullClasspath.value
         val pcp = PartialClasspathBuilder.build(Attributed.data(cp).toList)
-        val ccp = pcp.resolve(jsDependencyFilter.value)
+        val ccp = pcp.resolve(jsDependencyFilter.value, jsManifestFilter.value)
 
         if (checkScalaJSSemantics.value)
           ccp.checkCompliance(scalaJSSemantics.value)
@@ -508,6 +508,7 @@ object ScalaJSPluginInternal {
 
       jsDependencies := Seq(),
       jsDependencyFilter := identity,
+      jsManifestFilter := identity,
 
       scalaJSSemantics := Semantics.Defaults,
       scalaJSOutputMode := OutputMode.ECMAScript51Isolated,

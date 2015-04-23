@@ -1,3 +1,5 @@
+import org.scalajs.core.tools.jsdep.ManifestFilters
+
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
@@ -40,6 +42,8 @@ lazy val jetty9 = project.settings(baseSettings: _*).
     name := "Scala.js sbt test with jetty9 on classpath",
     jsDependencies ++= Seq(
         RuntimeDOM,
+        // The jsDependenciesTest relies on this jQuery dependency
+        // If you change it, make sure we still test properly
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
     // A test for packageJSDependencies, although we don't use it
@@ -103,8 +107,13 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
 
         // cause a duplicate commonJSName if the following are not considered equal
         "org.webjars" % "mustachejs" % "0.8.2" / "mustache.js" commonJSName "Mustache",
-        "org.webjars" % "mustachejs" % "0.8.2" / "0.8.2/mustache.js" commonJSName "Mustache"
-    )
+        "org.webjars" % "mustachejs" % "0.8.2" / "0.8.2/mustache.js" commonJSName "Mustache",
+
+        // cause an ambiguity with jQuery dependency from jetty9 project (if we don't filter)
+        ProvidedJS / "js/customJQuery/jquery.js" dependsOn "1.10.2/jquery.js"
+    ),
+    jsManifestFilter := ManifestFilters.reinterpretResourceNames("jetty9")(
+        "jquery.js" -> "1.10.2/jquery.js")
   ).
   settings(inConfig(Compile)(Seq(
     skip in packageJSDependencies := false,
@@ -119,10 +128,11 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
           "META-INF/resources/webjars/historyjs/1.8.0/scripts/compressed/history.js",
           "META-INF/resources/webjars/jquery/1.10.2/jquery.js",
           "js/foo.js",
-          "js/some-jquery-plugin.js"),
+          "js/some-jquery-plugin.js",
+          "js/customJQuery/jquery.js"),
           s"Bad set of relPathes: ${relPaths.toSet}")
 
-      val jQueryIndex = relPaths.indexWhere(_ endsWith "/jquery.js")
+      val jQueryIndex = relPaths.indexWhere(_ endsWith "1.10.2/jquery.js")
       val jQueryPluginIndex = relPaths.indexWhere(_ endsWith "/some-jquery-plugin.js")
       assert(jQueryPluginIndex > jQueryIndex,
           "the jQuery plugin appears before jQuery")

@@ -13,6 +13,10 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Protected, but in final class. Made private
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.classpath.PartialClasspath.resolveDependencies"),
+
       // Private, not an issue
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.sem.Semantics.this"),
