@@ -48,6 +48,20 @@ private[runtime] object RuntimeString {
     }
   }
 
+  def codePointCount(thiz: String, beginIndex: Int, endIndex: Int): Int = {
+    if (endIndex > thiz.length || beginIndex < 0 || endIndex < beginIndex)
+      throw new IndexOutOfBoundsException
+    var res = endIndex - beginIndex
+    var i = beginIndex
+    val end = endIndex - 1
+    while (i < end) {
+      if (Character.isSurrogatePair(thiz.charAt(i), thiz.charAt(i + 1)))
+        res -= 1
+      i += 1
+    }
+    res
+  }
+
   def hashCode(thiz: String): Int = {
     var res = 0
     var mul = 1 // holds pow(31, length-i-1)
@@ -221,8 +235,10 @@ private[runtime] object RuntimeString {
     thiz.startsWith(prefix, 0)
 
   @inline
-  def startsWith(thiz: String, prefix: String, toffset: Int): Boolean =
-    thiz.jsSubstring(toffset, prefix.length) == prefix
+  def startsWith(thiz: String, prefix: String, toffset: Int): Boolean = {
+    (toffset <= thiz.length && toffset >= 0 &&
+        thiz.jsSubstring(toffset, toffset + prefix.length) == prefix)
+  }
 
   @inline
   def subSequence(thiz: String, beginIndex: Int, endIndex: Int): CharSequence =
