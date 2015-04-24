@@ -831,8 +831,18 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
 
           val call = genApplyMethod(genThis(), sym, jsParams.map(_.ref))
-          val body = ensureBoxed(call,
-              enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
+          val resTpeEnteringPosterasure = enteringPhase(currentRun.posterasurePhase) {
+            sym.tpe match {
+              case _: ExistentialType =>
+                /* We should not see an ExistentialType here. This is a
+                 * scalac 2.10 bug. We assume no boxing is required. See #1581.
+                 */
+                ObjectTpe
+              case symTpe =>
+                symTpe.resultType
+            }
+          }
+          val body = ensureBoxed(call, resTpeEnteringPosterasure)
 
           currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
 
