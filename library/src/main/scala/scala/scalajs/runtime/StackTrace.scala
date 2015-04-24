@@ -153,9 +153,9 @@ object StackTrace {
    *  display the function name.
    */
   private def extractClassMethod(functionName: String): (String, String) = {
-    val PatC = """^ScalaJS\.c\.([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatI = """^(?:Object\.)?ScalaJS\.i\.((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatM = """^(?:Object\.)?ScalaJS\.m\.([^.\.]+)$""".re
+    val PatC = """^(?:ScalaJS\.c\.|\$c_)([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatI = """^(?:Object\.)?(?:ScalaJS\.s\.|\$s_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatM = """^(?:Object\.)?(?:ScalaJS\.m\.|\$m_)([^.\.]+)$""".re
 
     var isModule = false
     var mtch = PatC.exec(functionName)
@@ -168,7 +168,7 @@ object StackTrace {
     }
 
     if (mtch ne null) {
-      val className = decodeClassName(mtch(1).get + (if (isModule) "$" else ""))
+      val className = decodeClassName(mtch(1).get)
       val methodName = if (isModule)
         "<clinit>" // that's how it would be reported on the JVM
       else

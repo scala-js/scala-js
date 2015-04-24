@@ -5,11 +5,15 @@ import scala.concurrent.ExecutionContextExecutor
 private[concurrent] object RunNowExecutionContext
     extends ExecutionContextExecutor {
 
-  def execute(runnable: Runnable) =
-    try   { runnable.run() }
-    catch { case t: Throwable => reportFailure(t) }
+  def execute(runnable: Runnable): Unit = {
+    try {
+      runnable.run()
+    } catch {
+      case t: Throwable => reportFailure(t)
+    }
+  }
 
-  def reportFailure(t: Throwable) =
-    Console.err.println("Failure in async execution: " + t)
+  def reportFailure(t: Throwable): Unit =
+    t.printStackTrace()
 
 }
