@@ -45,7 +45,7 @@ class ConflictingNameException(
 object ConflictingNameException {
   private def mkMsg(parts: List[FlatJSDependency]) = {
     val msg = new StringBuilder()
-    msg.append(s"Name conflicts in:\n")
+    msg.append(s"CommonJSName conflicts in:\n")
 
     for (p <- parts) {
       msg.append(p)
