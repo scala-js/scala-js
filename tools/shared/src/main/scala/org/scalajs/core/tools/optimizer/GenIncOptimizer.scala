@@ -16,6 +16,8 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.{GenMap, GenTraversableOnce, GenIterable, GenIterableLike}
 import scala.collection.mutable
 
+import java.util.Random
+
 import org.scalajs.core.ir._
 import Definitions.isConstructorName
 import Trees._
@@ -53,6 +55,13 @@ abstract class GenIncOptimizer(semantics: Semantics,
   private var objectClass: Class = _
   private val classes = CollOps.emptyMap[String, Class]
   private val statics = CollOps.emptyParMap[String, StaticsNamespace]
+
+  /* Random instances are thread-safe, but having one per thread causes
+   * less contention.
+   */
+  private val randomByThread = new ThreadLocal[Random] {
+    override def initialValue(): Random = new Random
+  }
 
   protected def getInterface(encodedName: String): InterfaceType
 
@@ -696,7 +705,7 @@ abstract class GenIncOptimizer(semantics: Semantics,
     private[this] var _deleted: Boolean = false
 
     var lastInVersion: Option[String] = None
-    var lastOutVersion: Int = 0
+    var lastOutVersion: Int = randomByThread.get.nextInt()
 
     var optimizerHints: OptimizerHints = OptimizerHints.empty
     var originalDef: MethodDef = _
