@@ -871,7 +871,13 @@ object Build extends sbt.Build {
             else Seq()
         )
 
-        envTags ++ semTags
+        val stageTag = Tests.Argument((scalaJSStage in Test).value match {
+          case PreLinkStage => "-tprelink-stage"
+          case FastOptStage => "-tfastopt-stage"
+          case FullOptStage => "-tfullopt-stage"
+        })
+
+        envTags ++ semTags :+ stageTag
       }
   )
 
