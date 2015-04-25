@@ -30,8 +30,12 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
-// Polyfills
+// Snapshots of builtins and polyfills
 
+//!if outputMode == ECMAScript6
+ScalaJS.imul = ScalaJS.g["Math"]["imul"];
+ScalaJS.fround = ScalaJS.g["Math"]["fround"];
+//!else
 ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
   // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
   const ah = (a >>> 16) & 0xffff;
@@ -56,6 +60,7 @@ ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
   (function(v) {
     return +v;
   });
+//!endif
 //!endif
 
 // Other fields

@@ -1,16 +1,22 @@
 package org.scalajs.core.tools.optimizer
 
 import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.ir.ClassKind
 
 /** Does a dead code elimination pass on [[LinkedClass]]es */
-final class Refiner(semantics: Semantics) {
+final class Refiner(semantics: Semantics, outputMode: OutputMode) {
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics) =
+    this(semantics, OutputMode.ECMAScript51Isolated)
 
   def refine(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     val analysis = logTime(logger, "Refiner: Compute reachability") {
-      val analyzer = new Analyzer(semantics, reachOptimizerSymbols = false)
+      val analyzer = new Analyzer(semantics, outputMode,
+          reachOptimizerSymbols = false)
       analyzer.computeReachability(unit.infos.values.toList)
     }
 

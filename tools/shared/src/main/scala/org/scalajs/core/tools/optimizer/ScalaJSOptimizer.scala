@@ -168,13 +168,13 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   def clean(): Unit = resetState()
 
   private def resetState(): Unit = {
-    linker = new Linker(semantics, withSourceMap)
+    linker = new Linker(semantics, outputMode, withSourceMap)
     resetStateFromOptimizer()
   }
 
   private def resetStateFromOptimizer(): Unit = {
     optimizer = optimizerFactory(semantics, withSourceMap)
-    refiner = new Refiner(semantics)
+    refiner = new Refiner(semantics, outputMode)
     emitter = new Emitter(semantics, outputMode)
   }
 }
