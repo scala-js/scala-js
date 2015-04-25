@@ -6,6 +6,37 @@ import scala.collection.GenTraversableOnce
 
 package object runtime {
 
+  /** Returns true if we are assuming that the target platform supports
+   *  ECMAScript 6, false otherwise.
+   *
+   *  Even though, in the Scala code, this is always false, it can be
+   *  overridden by the linker to be always true. Constant-folding, inlining,
+   *  and other local optimizations can be leveraged with this "constant" to
+   *  write polyfills that can be dead-code-eliminated.
+   *
+   *  A typical usage of this method is:
+   *  {{{
+   *  if (assumingES6 || featureTest())
+   *    useES6Feature()
+   *  else
+   *    usePolyfill()
+   *  }}}
+   *
+   *  At link-time, `assumingES6` will either be a constant false, in which
+   *  case the above snippet folds into
+   *  {{{
+   *  if (featureTest())
+   *    useES6Feature()
+   *  else
+   *    usePolyfill()
+   *  }}}
+   *  or a constant true, in which case it folds into
+   *  {{{
+   *  useES6Feature()
+   *  }}}
+   */
+  def assumingES6: Boolean = false // Do NOT make this a 'val' or a 'final val'
+
   def wrapJavaScriptException(e: Any): Throwable = e match {
     case e: Throwable => e
     case _            => js.JavaScriptException(e)

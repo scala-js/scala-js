@@ -16,11 +16,17 @@ import scala.collection.parallel.mutable.{ParTrieMap, ParArray}
 import java.util.concurrent.atomic._
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.javascript.OutputMode
 
 import ConcurrencyUtils._
 
-class ParIncOptimizer(semantics: Semantics, considerPositions: Boolean)
-     extends GenIncOptimizer(semantics, considerPositions) {
+class ParIncOptimizer(semantics: Semantics, outputMode: OutputMode,
+    considerPositions: Boolean)
+    extends GenIncOptimizer(semantics, outputMode, considerPositions) {
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics, considerPositions: Boolean) =
+    this(semantics, OutputMode.ECMAScript51Isolated, considerPositions)
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
@@ -199,5 +205,5 @@ class ParIncOptimizer(semantics: Semantics, considerPositions: Boolean)
 }
 
 object ParIncOptimizer {
-  val factory: ScalaJSOptimizer.OptimizerFactory = new ParIncOptimizer(_, _)
+  val factory: ScalaJSOptimizer.OptimizerFactory = new ParIncOptimizer(_, _, _)
 }

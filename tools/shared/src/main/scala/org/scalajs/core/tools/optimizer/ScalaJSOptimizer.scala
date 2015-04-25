@@ -173,7 +173,7 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   }
 
   private def resetStateFromOptimizer(): Unit = {
-    optimizer = optimizerFactory(semantics, withSourceMap)
+    optimizer = optimizerFactory(semantics, outputMode, withSourceMap)
     refiner = new Refiner(semantics, outputMode)
     emitter = new Emitter(semantics, outputMode)
   }
@@ -191,7 +191,7 @@ object ScalaJSOptimizer {
         extends NoWarnMissing
   }
 
-  type OptimizerFactory = (Semantics, Boolean) => GenIncOptimizer
+  type OptimizerFactory = (Semantics, OutputMode, Boolean) => GenIncOptimizer
 
   /** Configurations relevant to the optimizer */
   trait OptimizerConfig {

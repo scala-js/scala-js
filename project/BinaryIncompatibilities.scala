@@ -21,6 +21,15 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.javascript.Trees#ParamDef.this"),
 
+      // Breaking: Optimizer factories take an additional OutputMode parameter
+      // We favored source compatibility over binary compatibility
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.optimizer.ScalaJSOptimizer.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.optimizer.ParIncOptimizer.factory"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.optimizer.IncOptimizer.factory"),
+
       // Protected, but in final class. Made private
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.classpath.PartialClasspath.resolveDependencies"),
@@ -30,6 +39,8 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.sem.Semantics.this"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.IRChecker#Env.withArgumentsVar"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.OptimizerCore.this"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.this"),
       ProblemFilters.exclude[MissingMethodProblem](

@@ -24,7 +24,7 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.LongImpl
+import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
 import org.scalajs.core.tools.logging._
 
 /** Optimizer core.
@@ -33,7 +33,8 @@ import org.scalajs.core.tools.logging._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
+private[optimizer] abstract class OptimizerCore(
+    semantics: Semantics, outputMode: OutputMode) {
   import OptimizerCore._
 
   type MethodID <: AbstractMethodID
@@ -1518,6 +1519,15 @@ private[optimizer] abstract class OptimizerCore(semantics: Semantics) {
         }
 
       // scala.scalajs.runtime package object
+
+      case AssumingES6 =>
+        val assumingES6 = outputMode match {
+          case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+            false
+          case OutputMode.ECMAScript6 =>
+            true
+        }
+        contTree(BooleanLiteral(assumingES6))
 
       case PropertiesOf =>
         contTree(CallHelper("propertiesOf", newArgs)(AnyType))
@@ -3424,7 +3434,8 @@ private[optimizer] object OptimizerCore {
     final val ArrayUpdate = ArrayApply       + 1
     final val ArrayLength = ArrayUpdate      + 1
 
-    final val PropertiesOf = ArrayLength + 1
+    final val AssumingES6  = ArrayLength + 1
+    final val PropertiesOf = AssumingES6 + 1
 
     final val LongToString   = PropertiesOf   + 1
     final val LongCompare    = LongToString   + 1
@@ -3458,6 +3469,7 @@ private[optimizer] object OptimizerCore {
       "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
       "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
+      "sjsr_package$.assumingES6__Z" -> AssumingES6,
       "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 
       "jl_Long$.toString__J__T"              -> LongToString,

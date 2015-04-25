@@ -13,9 +13,15 @@ import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
 import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.javascript.OutputMode
 
-class IncOptimizer(semantics: Semantics, considerPositions: Boolean)
-    extends GenIncOptimizer(semantics, considerPositions) {
+class IncOptimizer(semantics: Semantics, outputMode: OutputMode,
+    considerPositions: Boolean)
+    extends GenIncOptimizer(semantics, outputMode, considerPositions) {
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics, considerPositions: Boolean) =
+    this(semantics, OutputMode.ECMAScript51Isolated, considerPositions)
 
   protected object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
@@ -167,5 +173,5 @@ class IncOptimizer(semantics: Semantics, considerPositions: Boolean)
 }
 
 object IncOptimizer {
-  val factory: ScalaJSOptimizer.OptimizerFactory = new IncOptimizer(_, _)
+  val factory: ScalaJSOptimizer.OptimizerFactory = new IncOptimizer(_, _, _)
 }
