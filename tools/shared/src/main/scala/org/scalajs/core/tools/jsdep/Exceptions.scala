@@ -52,6 +52,6 @@ object ConflictingNameException {
       msg.append('\n')
     }
 
-    sys.error(msg.toString())
+    msg.toString()
   }
 }
