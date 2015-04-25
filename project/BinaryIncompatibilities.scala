@@ -13,6 +13,14 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Breaking: js.ParamDef has an additinal `rest` parameter
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#ParamDef.apply"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#ParamDef.copy"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.Trees#ParamDef.this"),
+
       // Protected, but in final class. Made private
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.classpath.PartialClasspath.resolveDependencies"),

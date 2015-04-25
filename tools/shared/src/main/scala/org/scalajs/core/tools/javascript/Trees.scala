@@ -71,7 +71,7 @@ object Trees {
   /** ES6 let or const (depending on the mutable flag). */
   case class Let(name: Ident, mutable: Boolean, rhs: Tree)(implicit val pos: Position) extends LocalDef
 
-  case class ParamDef(name: Ident)(implicit val pos: Position) extends LocalDef {
+  case class ParamDef(name: Ident, rest: Boolean)(implicit val pos: Position) extends LocalDef {
     def mutable: Boolean = true
   }
 

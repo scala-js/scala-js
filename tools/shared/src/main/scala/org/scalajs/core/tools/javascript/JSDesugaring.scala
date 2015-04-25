@@ -166,7 +166,7 @@ object JSDesugaring {
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
-    js.ParamDef(paramDef.name)(paramDef.pos)
+    js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
   private class JSDesugar(thisIdent: Option[js.Ident],
       semantics: Semantics, outputMode: OutputMode) {
@@ -230,13 +230,19 @@ object JSDesugaring {
         if (isStat) body
         else Return(body)
 
-      val hasRestParam = params.nonEmpty && params.last.rest
+      val translateRestParam = outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          params.nonEmpty && params.last.rest
+        case _ =>
+          false
+      }
+
       val extractRestParam =
-        if (hasRestParam) makeExtractRestParam(params)
+        if (translateRestParam) makeExtractRestParam(params)
         else js.Skip()
 
       val newParams =
-        (if (hasRestParam) params.init else params).map(transformParamDef)
+        (if (translateRestParam) params.init else params).map(transformParamDef)
 
       val newBody = transformStat(withReturn)(env) match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)

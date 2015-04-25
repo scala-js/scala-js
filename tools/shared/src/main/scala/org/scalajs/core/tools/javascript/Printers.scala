@@ -106,7 +106,9 @@ object Printers {
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
-        case ParamDef(ident) =>
+        case ParamDef(ident, rest) =>
+          if (rest)
+            print("...")
           print(ident)
 
         // Control flow constructs

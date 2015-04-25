@@ -359,7 +359,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       val isAncestorOfBoxedBooleanClass =
         AncestorsOfBoxedBooleanClass.contains(className)
 
-      val objParam = js.ParamDef(Ident("obj"))
+      val objParam = js.ParamDef(Ident("obj"), rest = false)
       val obj = objParam.ref
 
       val createIsStat = {
@@ -423,10 +423,10 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val className = tree.name.name
     val displayName = decodeClassName(className)
 
-    val objParam = js.ParamDef(Ident("obj"))
+    val objParam = js.ParamDef(Ident("obj"), rest = false)
     val obj = objParam.ref
 
-    val depthParam = js.ParamDef(Ident("depth"))
+    val depthParam = js.ParamDef(Ident("depth"), rest = false)
     val depth = depthParam.ref
 
     val createIsArrayOfStat = {
@@ -530,7 +530,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
             envField("isArrayOf", className))
         } else if (isHijackedBoxedClass) {
           /* Hijacked boxed classes have a special isInstanceOf test. */
-          val xParam = js.ParamDef(Ident("x"))
+          val xParam = js.ParamDef(Ident("x"), rest = false)
           List(js.Function(List(xParam), js.Return {
             genIsInstanceOf(xParam.ref, ClassType(className))
           }))
@@ -549,7 +549,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
             val jsCtor = jsName.split("\\.").foldLeft(envField("g")) {
               (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
             }
-            List(js.Function(List(js.ParamDef(Ident("x"))), js.Return {
+            List(js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
               js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
             }))
           }
