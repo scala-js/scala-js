@@ -30,6 +30,34 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
+// Polyfills
+
+ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
+  // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
+  var ah = (a >>> 16) & 0xffff;
+  var al = a & 0xffff;
+  var bh = (b >>> 16) & 0xffff;
+  var bl = b & 0xffff;
+  // the shift by 0 fixes the sign on the high part
+  // the final |0 converts the unsigned value into a signed value
+  return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
+});
+
+ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
+//!if floats == Strict
+  (ScalaJS.g["Float32Array"] ? (function(v) {
+    var array = new ScalaJS.g["Float32Array"](1);
+    array[0] = v;
+    return array[0];
+  }) : (function(v) {
+    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
+  }));
+//!else
+  (function(v) {
+    return +v;
+  });
+//!endif
+
 // Other fields
 //!if outputMode == ECMAScript51Global
 ScalaJS.d = {};         // Data for types
@@ -777,32 +805,4 @@ ScalaJS.asArrayOf.I = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.I, "I");
 ScalaJS.asArrayOf.J = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.J, "J");
 ScalaJS.asArrayOf.F = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.F, "F");
 ScalaJS.asArrayOf.D = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.D, "D");
-//!endif
-
-// Polyfills
-
-ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
-  // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
-  var ah = (a >>> 16) & 0xffff;
-  var al = a & 0xffff;
-  var bh = (b >>> 16) & 0xffff;
-  var bl = b & 0xffff;
-  // the shift by 0 fixes the sign on the high part
-  // the final |0 converts the unsigned value into a signed value
-  return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
-});
-
-ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
-//!if floats == Strict
-  (ScalaJS.g["Float32Array"] ? (function(v) {
-    var array = new ScalaJS.g["Float32Array"](1);
-    array[0] = v;
-    return array[0];
-  }) : (function(v) {
-    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
-  }));
-//!else
-  (function(v) {
-    return +v;
-  });
 //!endif
