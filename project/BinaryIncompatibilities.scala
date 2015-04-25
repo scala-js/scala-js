@@ -21,7 +21,9 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.sem.Semantics.this"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.optimizer.IRChecker#Env.withArgumentsVar")
+          "org.scalajs.core.tools.optimizer.IRChecker#Env.withArgumentsVar"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.this")
   )
 
   val TestAdapter = Seq(

@@ -570,15 +570,19 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
     val (createNamespace, expCtorVar) = genCreateNamespaceInExports(fullName)
 
+    val thisIdent = js.Ident("$thiz")
+
     val js.Function(ctorParams, ctorBody) =
-      desugarToFunction(args, body, isStat = true, semantics, outputMode)
+      desugarToFunction(Some(thisIdent), args, body, isStat = true,
+          semantics, outputMode)
 
     js.Block(
       createNamespace,
       js.DocComment("@constructor"),
       expCtorVar := js.Function(ctorParams, js.Block(
-        js.Apply(js.DotSelect(baseCtor, js.Ident("call")), List(js.This())),
-        ctorBody
+        js.VarDef(thisIdent, js.New(baseCtor, Nil)),
+        ctorBody,
+        js.Return(js.VarRef(thisIdent))
       )),
       expCtorVar DOT "prototype" := baseCtor DOT "prototype"
     )

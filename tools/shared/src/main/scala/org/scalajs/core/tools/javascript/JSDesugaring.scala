@@ -128,7 +128,7 @@ object JSDesugaring {
    */
   def desugarJavaScript(tree: Tree, semantics: Semantics,
       outputMode: OutputMode, env: Env): js.Tree = {
-    val desugar = new JSDesugar(semantics, outputMode)
+    val desugar = new JSDesugar(None, semantics, outputMode)
     try {
       desugar.transformStat(tree)(env)
     } catch {
@@ -142,8 +142,18 @@ object JSDesugaring {
   private[javascript] def desugarToFunction(
       params: List[ParamDef], body: Tree, isStat: Boolean,
       semantics: Semantics, outputMode: OutputMode)(
-      implicit pos: Position): js.Tree = {
-    new JSDesugar(semantics, outputMode).desugarToFunction(
+      implicit pos: Position): js.Function = {
+    desugarToFunction(None, params, body, isStat, semantics, outputMode)
+  }
+
+  /** Desugars parameters and body to a JS function.
+   */
+  private[javascript] def desugarToFunction(
+      thisIdent: Option[js.Ident], params: List[ParamDef],
+      body: Tree, isStat: Boolean,
+      semantics: Semantics, outputMode: OutputMode)(
+      implicit pos: Position): js.Function = {
+    new JSDesugar(thisIdent, semantics, outputMode).desugarToFunction(
         params, body, isStat)
   }
 
@@ -153,7 +163,8 @@ object JSDesugaring {
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name)(paramDef.pos)
 
-  private class JSDesugar(semantics: Semantics, outputMode: OutputMode) {
+  private class JSDesugar(thisIdent: Option[js.Ident],
+      semantics: Semantics, outputMode: OutputMode) {
 
     private implicit def implicitOutputMode: OutputMode = outputMode
 
@@ -1583,7 +1594,11 @@ object JSDesugaring {
           js.VarRef(name)
 
         case This() =>
-          js.This()
+          thisIdent.fold[js.Tree] {
+            js.This()
+          } { ident =>
+            js.VarRef(ident)
+          }
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =
