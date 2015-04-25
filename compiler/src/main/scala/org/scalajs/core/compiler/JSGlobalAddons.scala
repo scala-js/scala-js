@@ -41,7 +41,11 @@ trait JSGlobalAddons extends JSDefinitions
     private val methodExportPrefix = exportPrefix + "meth$"
     private val propExportPrefix = exportPrefix + "prop$"
 
-    case class ExportInfo(jsName: String, pos: Position, isNamed: Boolean)
+    trait ExportInfo {
+      val jsName: String
+      val pos: Position
+      val isNamed: Boolean
+    }
 
     private def assertValidForRegistration(sym: Symbol): Unit = {
       assert(sym.isConstructor || sym.isModuleClass,

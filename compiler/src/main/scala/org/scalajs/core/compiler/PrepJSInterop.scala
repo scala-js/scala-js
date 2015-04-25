@@ -150,8 +150,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = cldef.symbol
         if (shouldPrepareExports && sym.isTrait) {
           // Check that interface/trait is not exported
-          for (exp <- exportsOf(sym))
-            reporter.error(exp.pos, "You may not export a trait")
+          for {
+            exp <- exportsOf(sym)
+            if !exp.ignoreInvalid
+          } reporter.error(exp.pos, "You may not export a trait")
         }
 
         enterScalaCls { super.transform(cldef) }
@@ -284,7 +286,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = memDef.symbol
         if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
           // We exclude case class apply (and unapply) to work around SI-8826
-          for (exp <- exportsOf(sym)) {
+          for {
+            exp <- exportsOf(sym)
+            if !exp.ignoreInvalid
+          } {
             val msg = {
               val base = "You may not export a local definition"
               if (sym.owner.isPrimaryConstructor)
@@ -364,8 +369,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       if (shouldPrepareExports) {
         // Check that RawJS type is not exported
-        for (exp <- exportsOf(sym))
-          reporter.error(exp.pos, "You may not export a class extending js.Any")
+        for {
+          exp <- exportsOf(sym)
+          if !exp.ignoreInvalid
+        } reporter.error(exp.pos, "You may not export a class extending js.Any")
       }
 
       if (implDef.isInstanceOf[ModuleDef])
@@ -379,11 +386,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val sym = tree.symbol
 
       if (shouldPrepareExports) {
-        val exports = exportsOf(sym)
+        lazy val memType = if (sym.isConstructor) "constructor" else "method"
 
-        if (exports.nonEmpty) {
-          val memType = if (sym.isConstructor) "constructor" else "method"
-          reporter.error(exports.head.pos,
+        for {
+          exp <- exportsOf(sym)
+          if !exp.ignoreInvalid
+        } {
+          reporter.error(exp.pos,
               s"You may not export a $memType of a subclass of js.Any")
         }
       }

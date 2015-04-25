@@ -15,6 +15,15 @@ package scala.scalajs.js.annotation
  *  The constructors exported this way are exported under their fully
  *  qualified name.
  *
+ *  @param ignoreInvalidDescendants If true, descendants that cannot be exported
+ *      are silently ignored.
  *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
-class JSExportDescendentClasses extends scala.annotation.StaticAnnotation
+class JSExportDescendentClasses(ignoreInvalidDescendants: Boolean)
+    extends scala.annotation.StaticAnnotation {
+  /** Constructor that makes invalid descendants fail.
+   *
+   *  same as setting ingoreInvalidDescendants to false
+   */
+  def this() = this(false)
+}

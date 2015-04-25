@@ -21,6 +21,13 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   import scala.reflect.internal.Flags
 
+  case class ExportInfo(
+      jsName: String,
+      pos: Position,
+      isNamed: Boolean,
+      ignoreInvalid: Boolean
+  ) extends jsInterop.ExportInfo
+
   /** Generate the exporter for the given DefDef
    *
    *  If this DefDef is a constructor, it is registered to be exported by
@@ -31,9 +38,15 @@ trait PrepJSExports { this: PrepJSInterop =>
     val clsSym = baseSym.owner
 
     val exports = exportsOf(baseSym)
+    val ignoreInvalid = exports.forall(_.ignoreInvalid)
 
     // Helper function for errors
-    def err(msg: String) = { reporter.error(exports.head.pos, msg); Nil }
+    def err(msg: String) = {
+      if (!ignoreInvalid)
+        reporter.error(exports.head.pos, msg)
+      Nil
+    }
+
     def memType = if (baseSym.isConstructor) "constructor" else "method"
 
     if (exports.isEmpty)
@@ -89,9 +102,13 @@ trait PrepJSExports { this: PrepJSInterop =>
     assert(sym.isModuleClass, "Expected module class")
 
     val exports = exportsOf(sym)
+    val ignoreInvalid = exports.forall(_.ignoreInvalid)
 
     if (exports.nonEmpty) {
-      def err(msg: String) = reporter.error(exports.head.pos, msg)
+      def err(msg: String) = {
+        if (!ignoreInvalid)
+          reporter.error(exports.head.pos, msg)
+      }
 
       if (!hasLegalExportVisibility(sym))
         err("You may only export public and protected objects")
@@ -102,8 +119,10 @@ trait PrepJSExports { this: PrepJSInterop =>
       else {
         val (named, normal) = exports.partition(_.isNamed)
 
-        for (exp <- named)
-          reporter.error(exp.pos, "You may not use @JSNamedExport on an object")
+        for {
+          exp <- named
+          if !exp.ignoreInvalid
+        } reporter.error(exp.pos, "You may not use @JSNamedExport on an object")
 
         jsInterop.registerForExport(sym, normal)
       }
@@ -115,24 +134,19 @@ trait PrepJSExports { this: PrepJSInterop =>
    *  Note that for accessor symbols, the annotations of the accessed symbol
    *  are used, rather than the annotations of the accessor itself.
    */
-  def exportsOf(sym: Symbol): List[jsInterop.ExportInfo] = {
+  def exportsOf(sym: Symbol): List[ExportInfo] = {
     val exports = directExportsOf(sym) ++ inheritedExportsOf(sym)
 
     // Calculate the distinct exports for this symbol (eliminate double
     // occurrences of (name, isNamed) pairs).
-    val buf = new mutable.ListBuffer[jsInterop.ExportInfo]
-    val seen = new mutable.HashSet[(String, Boolean)]
-    for (exp <- exports) {
-      if (!seen.contains((exp.jsName, exp.isNamed))) {
-        buf += exp
-        seen += ((exp.jsName, exp.isNamed))
-      }
-    }
+    val grouped = exports.groupBy(exp => (exp.jsName, exp.isNamed))
 
-    buf.toList
+    for (((jsName, isNamed), exps) <- grouped.toList)
+      // Make sure that we are strict if necessary
+      yield exps.find(!_.ignoreInvalid).getOrElse(exps.head)
   }
 
-  private def directExportsOf(sym: Symbol): List[jsInterop.ExportInfo] = {
+  private def directExportsOf(sym: Symbol): List[ExportInfo] = {
     val trgSym = {
       // For accessors, look on the val/var def
       if (sym.isAccessor) sym.accessed
@@ -207,11 +221,11 @@ trait PrepJSExports { this: PrepJSInterop =>
             "You may not export a getter or a setter as a named export")
       }
 
-      jsInterop.ExportInfo(name, annot.pos, named)
+      ExportInfo(name, annot.pos, named, ignoreInvalid = false)
     }
   }
 
-  private def inheritedExportsOf(sym: Symbol): List[jsInterop.ExportInfo] = {
+  private def inheritedExportsOf(sym: Symbol): List[ExportInfo] = {
     // The symbol from which we (potentially) inherit exports. It also
     // gives the exports their name
     val trgSym = {
@@ -230,22 +244,40 @@ trait PrepJSExports { this: PrepJSInterop =>
         if (sym.isModuleClass) JSExportDescendentObjectsAnnotation
         else JSExportDescendentClassesAnnotation
 
-      val forcingSym =
-        trgSym.ancestors.find(_.annotations.exists(_.symbol == trgAnnot))
+      val forcingSymInfos = for {
+        forcingSym <- trgSym.ancestors
+        annot      <- forcingSym.annotations
+        if annot.symbol == trgAnnot
+      } yield {
+        val ignoreInvalid = annot.constantAtIndex(0).fold(false)(_.booleanValue)
+        (forcingSym, ignoreInvalid)
+      }
+
+      // The dominating forcing symbol, is the first that does not ignore
+      // or the first otherwise
+      val forcingSymInfo =
+        forcingSymInfos.find(!_._2).orElse(forcingSymInfos.headOption)
 
       val name = decodedFullName(trgSym)
+      val nameValid = !name.contains("__")
 
-      forcingSym.map { fs =>
+      val optExport = for {
+        (forcingSym, ignoreInvalid) <- forcingSymInfo
+        if nameValid || !ignoreInvalid
+      } yield {
         // Enfore no __ in name
-        if (name.contains("__")) {
+        if (!nameValid) {
           // Get all annotation positions for error message
           reporter.error(sym.pos,
-              s"""${trgSym.name} may not have a double underscore (`__`) in its fully qualified
-                 |name, since it is forced to be exported by a @${trgAnnot.name} on ${fs}""".stripMargin)
+              s"${trgSym.name} may not have a double underscore (`__`) in " +
+              "its fully qualified name, since it is forced to be exported by " +
+              s"a @${trgAnnot.name} on $forcingSym")
         }
 
-        jsInterop.ExportInfo(name, sym.pos, false)
-      }.toList
+        ExportInfo(name, sym.pos, false, ignoreInvalid)
+      }
+
+      optExport.toList
     }
   }
 
