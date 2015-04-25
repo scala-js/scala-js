@@ -13,14 +13,16 @@ import org.scalajs.jasminetest.JasmineTest
 
 object StackTraceElementTest extends JasmineTest {
 
+  import scala.scalajs.runtime.StackTrace.Implicits._
+
   describe("java.lang.StackTraceElement") {
-    it("should use the magic columnNumber field in its toString") {
+    it("should use the additional columnNumber field in its toString") {
       val st = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
-      st.asInstanceOf[js.Dynamic].columnNumber = 5
+      st.setColumnNumber(5)
       expect(st.toString).toEqual("MyClass.myMethod(myFile.scala:1:5)")
     }
 
-    it("should leave toString unmodified without magic columnNumber") {
+    it("should leave toString unmodified if columnNumber is not specified") {
       val st = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
       expect(st.toString).toEqual("MyClass.myMethod(myFile.scala:1)")
     }

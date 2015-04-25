@@ -16,6 +16,8 @@ object StackTrace {
    * errors, which would be very bad if it happened.
    */
 
+  import Implicits._
+
   /** Returns the current stack trace.
    *  If the stack trace cannot be analyzed in meaningful way (because we don't
    *  know the browser), an empty array is returned.
@@ -128,12 +130,7 @@ object StackTrace {
       val jsSte = mappedTrace(i)
       val ste = new StackTraceElement(jsSte.declaringClass, jsSte.methodName,
           jsSte.fileName, jsSte.lineNumber)
-
-      jsSte.columnNumber foreach { cn =>
-        // Store column in magic field
-        ste.asInstanceOf[js.Dynamic].columnNumber = cn
-      }
-
+      jsSte.columnNumber.foreach(ste.setColumnNumber)
       result(i) = ste
       i += 1
     }
@@ -516,10 +513,25 @@ object StackTrace {
   /**
    *  Implicit class to access magic column element created in STE
    */
+  @deprecated("Use Implicits.StackTraceElementOps instead.", "0.6.3")
   implicit class ColumnStackTraceElement(ste: StackTraceElement) {
-    def getColumnNumber: Int = {
-      ste.asInstanceOf[js.Dynamic].columnNumber
-        .asInstanceOf[js.UndefOr[Int]].getOrElse(-1)
+    def getColumnNumber: Int =
+      new Implicits.StackTraceElementOps(ste).getColumnNumber()
+  }
+
+  object Implicits {
+    /** Access to the additional methods `getColumnNumber` and `setColumnNumber`
+     *  of [[StackTraceElement]].
+     */
+    implicit class StackTraceElementOps(
+        val ste: StackTraceElement) extends AnyVal {
+      @inline
+      def getColumnNumber(): Int =
+        ste.asInstanceOf[js.Dynamic].getColumnNumber().asInstanceOf[Int]
+
+      @inline
+      def setColumnNumber(columnNumber: Int): Unit =
+        ste.asInstanceOf[js.Dynamic].setColumnNumber(columnNumber)
     }
   }
 

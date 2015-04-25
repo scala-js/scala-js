@@ -1,15 +1,25 @@
 package java.lang
 
 import scala.scalajs.js
+import js.annotation.JSExport
 
 final class StackTraceElement(declaringClass: String, methodName: String,
     fileName: String, lineNumber: Int) extends AnyRef with java.io.Serializable {
+
+  private[this] var columnNumber: Int = -1
 
   def getFileName(): String = fileName
   def getLineNumber(): Int = lineNumber
   def getClassName(): String = declaringClass
   def getMethodName(): String = methodName
   def isNativeMethod(): scala.Boolean = false
+
+  @JSExport
+  def getColumnNumber(): Int = columnNumber
+
+  @JSExport
+  def setColumnNumber(columnNumber: Int): Unit =
+    this.columnNumber = columnNumber
 
   override def equals(that: Any): scala.Boolean = that match {
     case that: StackTraceElement =>
@@ -45,10 +55,5 @@ final class StackTraceElement(declaringClass: String, methodName: String,
 
   override def hashCode(): Int = {
     declaringClass.hashCode() ^ methodName.hashCode()
-  }
-
-  private def columnNumber: Int = {
-    this.asInstanceOf[js.Dynamic].columnNumber
-      .asInstanceOf[js.UndefOr[Int]].getOrElse(-1)
   }
 }
