@@ -158,11 +158,22 @@ object System {
         } else {
           val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
           if (!js.isUndefined(hash)) {
+            /* Note that this can work even if x is sealed, if
+             * identityHashCode() was called for the first time before x was
+             * sealed.
+             */
             hash.asInstanceOf[Int]
-          } else {
+          } else if (!js.Object.isSealed(x.asInstanceOf[js.Object])) {
+            /* If x is not sealed, we can (almost) safely create an additional
+             * field with a bizarre and relatively long name, even though it is
+             * technically undefined behavior.
+             */
             val newHash = IDHashCode.nextIDHashCode()
             x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash)
             newHash
+          } else {
+            // Otherwise, we unfortunately have to return a constant.
+            42
           }
         }
     }

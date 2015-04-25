@@ -382,11 +382,13 @@ ScalaJS.systemIdentityHashCode = function(obj) {
     var hash = obj["$idHashCode$0"];
     if (hash !== void 0) {
       return hash;
-    } else {
+    } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
       hash = (ScalaJS.lastIDHash + 1) | 0;
       ScalaJS.lastIDHash = hash;
       obj["$idHashCode$0"] = hash;
       return hash;
+    } else {
+      return 42;
     }
   } else if (obj === null) {
     return 0;
@@ -485,7 +487,7 @@ ScalaJS.uJ = function(value) {
 };
 ScalaJS.uF = function(value) {
   /* Here, it is fine to use + instead of fround, because asFloat already
-   * ensures that the result is either null or a float. 
+   * ensures that the result is either null or a float.
    */
   return +ScalaJS.asFloat(value);
 };

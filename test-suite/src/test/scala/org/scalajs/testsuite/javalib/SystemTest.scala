@@ -124,6 +124,25 @@ object SystemTest extends JasmineTest {
       expect(System.identityHashCode(x2)).toEqual(x2.hashCode())
     }
 
+    it("identityHashCode should survive if an object is sealed") {
+      /* This is mostly forward-checking that, should we have an implementation
+       * that seals Scala.js objects, identityHashCode() survives.
+       */
+      class HasIDHashCodeToBeSealed
+
+      // Seal before the first call to hashCode()
+      val x1 = new HasIDHashCodeToBeSealed
+      js.Object.seal(x1.asInstanceOf[js.Object])
+      val x1FirstHash = x1.hashCode()
+      expect(x1.hashCode()).toEqual(x1FirstHash)
+
+      // Seal after the first call to hashCode()
+      val x2 = new HasIDHashCodeToBeSealed
+      val x2FirstHash = x2.hashCode()
+      js.Object.seal(x2.asInstanceOf[js.Object])
+      expect(x2.hashCode()).toEqual(x2FirstHash)
+    }
+
     it("identityHashCode should by-pass .hashCode()") {
       val list1 = List(1, 3, 5)
       val list2 = List(1, 3, 5)
