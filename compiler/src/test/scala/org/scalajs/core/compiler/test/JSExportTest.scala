@@ -465,12 +465,30 @@ class JSExportTest extends DirectTest with TestHelpers {
     import scala.scalajs.js
 
     @JSExport
-    class A extends js.Object
+    trait A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a constructor of a subclass of js.Any
+      |newSource1.scala:5: error: You may not export a class extending js.Any
       |    @JSExport
       |     ^
+    """
+
+    """
+    import scala.scalajs.js
+
+    @JSExport
+    class A extends js.Object {
+      @JSExport
+      def this(x: Int) = this()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: You may not export a class extending js.Any
+      |    @JSExport
+      |     ^
+      |newSource1.scala:7: error: You may not export a constructor of a subclass of js.Any
+      |      @JSExport
+      |       ^
     """
 
   }
