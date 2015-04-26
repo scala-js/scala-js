@@ -4,6 +4,7 @@ import java.io._
 
 import scala.scalajs.js
 import js.Dynamic.global
+import scala.scalajs.runtime.assumingES6
 
 object System {
   var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
@@ -152,7 +153,18 @@ object System {
       case _:scala.Boolean | _:scala.Double | _:String | () =>
         x.hashCode()
       case _ =>
-        if (x.getClass == null) {
+        import IDHashCode._
+        if (assumingES6 || idHashCodeMap != null) {
+          // Use the global WeakMap of attributed id hash codes
+          val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
+          if (!js.isUndefined(hash)) {
+            hash.asInstanceOf[Int]
+          } else {
+            val newHash = nextIDHashCode()
+            idHashCodeMap.set(x.asInstanceOf[js.Any], newHash)
+            newHash
+          }
+        } else if (x.getClass == null) {
           // This is not a Scala.js object
           42
         } else {
@@ -168,7 +180,7 @@ object System {
              * field with a bizarre and relatively long name, even though it is
              * technically undefined behavior.
              */
-            val newHash = IDHashCode.nextIDHashCode()
+            val newHash = nextIDHashCode()
             x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(newHash)
             newHash
           } else {
@@ -181,6 +193,12 @@ object System {
 
   private object IDHashCode {
     private var lastIDHashCode: Int = 0
+
+    val idHashCodeMap =
+      if (assumingES6 || !js.isUndefined(global.WeakMap))
+        js.Dynamic.newInstance(global.WeakMap)()
+      else
+        null
 
     def nextIDHashCode(): Int = {
       val r = lastIDHashCode + 1

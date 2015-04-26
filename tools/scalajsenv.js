@@ -78,8 +78,14 @@ ScalaJS.as = {};        // asInstanceOf methods
 ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
 //!endif
 ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
+ScalaJS.idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
 //!else
 let $lastIDHash = 0; // last value attributed to an id hash code
+//!if outputMode == ECMAScript6
+const $idHashCodeMap = new ScalaJS.g["WeakMap"]();
+//!else
+const $idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
+//!endif
 //!endif
 
 // Core mechanism
@@ -279,8 +285,12 @@ ScalaJS.objectHashCode = function(instance) {
     default:
       if (ScalaJS.isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
+//!if outputMode != ECMAScript6
+      else if (ScalaJS.idHashCodeMap === null)
+        return 42;
+//!endif
       else
-        return 42; // TODO?
+        return ScalaJS.systemIdentityHashCode(instance);
   }
 };
 
@@ -411,25 +421,49 @@ ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
   }
 };
 
-ScalaJS.systemIdentityHashCode = function(obj) {
-  if (ScalaJS.isScalaJSObject(obj)) {
-    let hash = obj["$idHashCode$0"];
-    if (hash !== void 0) {
-      return hash;
-    } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
-      hash = (ScalaJS.lastIDHash + 1) | 0;
-      ScalaJS.lastIDHash = hash;
-      obj["$idHashCode$0"] = hash;
-      return hash;
-    } else {
-      return 42;
+ScalaJS.systemIdentityHashCode =
+//!if outputMode != ECMAScript6
+  (ScalaJS.idHashCodeMap !== null) ?
+//!endif
+  (function(obj) {
+    switch (typeof obj) {
+      case "string": case "number": case "boolean": case "undefined":
+        return ScalaJS.objectHashCode(obj);
+      default:
+        if (obj === null) {
+          return 0;
+        } else {
+          let hash = ScalaJS.idHashCodeMap["get"](obj);
+          if (hash === void 0) {
+            hash = (ScalaJS.lastIDHash + 1) | 0;
+            ScalaJS.lastIDHash = hash;
+            ScalaJS.idHashCodeMap["set"](obj, hash);
+          }
+          return hash;
+        }
     }
-  } else if (obj === null) {
-    return 0;
-  } else {
-    return ScalaJS.objectHashCode(obj);
-  }
-};
+//!if outputMode != ECMAScript6
+  }) :
+  (function(obj) {
+    if (ScalaJS.isScalaJSObject(obj)) {
+      let hash = obj["$idHashCode$0"];
+      if (hash !== void 0) {
+        return hash;
+      } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
+        hash = (ScalaJS.lastIDHash + 1) | 0;
+        ScalaJS.lastIDHash = hash;
+        obj["$idHashCode$0"] = hash;
+        return hash;
+      } else {
+        return 42;
+      }
+    } else if (obj === null) {
+      return 0;
+    } else {
+      return ScalaJS.objectHashCode(obj);
+    }
+//!endif
+  });
 
 // is/as for hijacked boxed classes (the non-trivial ones)
 
