@@ -24,6 +24,14 @@ import ir.Definitions
  *  [[staticMethods]], [[memberMethods]], [[abstractMethods]] and
  *  [[exportedMembers]] as they have their individual versions. (The collections
  *  themselves are not versioned).
+ *
+ *  Moreover, the [[version]] is relative to the identity of a LinkedClass.
+ *  The definition of identity varies as linked classes progress through the
+ *  linking pipeline, but it only gets stronger, i.e., if two linked classes
+ *  are id-different at phase P, then they must also be id-different at phase
+ *  P+1. The converse is not true. This guarantees that versions can be used
+ *  reliably to determine at phase P+1 whether a linked class coming from phase
+ *  P must be reprocessed.
  */
 final class LinkedClass(
     // Stuff from Tree
