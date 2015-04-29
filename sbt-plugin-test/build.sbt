@@ -40,14 +40,13 @@ lazy val jetty9 = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
   settings(
     name := "Scala.js sbt test with jetty9 on classpath",
+    // This project also tests packageJSDependencies, although we don't use it
     jsDependencies ++= Seq(
         RuntimeDOM,
         // The jsDependenciesTest relies on this jQuery dependency
         // If you change it, make sure we still test properly
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
-    // A test for packageJSDependencies, although we don't use it
-    skip in packageJSDependencies := false,
     // Use PhantomJS, allow cross domain requests
     postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
@@ -116,7 +115,6 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
         "jquery.js" -> "1.10.2/jquery.js")
   ).
   settings(inConfig(Compile)(Seq(
-    skip in packageJSDependencies := false,
     packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
       // perform verifications on the ordering and deduplications
       val cp = scalaJSPreLinkClasspath.value

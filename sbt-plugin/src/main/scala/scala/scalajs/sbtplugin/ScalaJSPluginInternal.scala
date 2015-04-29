@@ -500,8 +500,6 @@ object ScalaJSPluginInternal {
       relativeSourceMaps   := false,
       persistLauncher      := false,
 
-      skip in packageJSDependencies := true,
-
       emitSourceMaps := true,
 
       scalaJSOptimizerOptions := OptimizerOptions(),
