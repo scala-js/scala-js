@@ -1,0 +1,83 @@
+package java.util
+
+import scala.collection.mutable
+import scala.collection.JavaConversions._
+
+class HashSet[E] extends AbstractSet[E] with Set[E]
+                                        with Cloneable
+                                        with Serializable { self =>
+  def this(initialCapacity: Int, loadFactor: Float) =
+    this()
+
+  def this(initialCapacity: Int) =
+    this()
+
+  def this(c: Collection[_ <: E]) = {
+    this()
+    addAll(c)
+  }
+
+  protected val inner: mutable.Set[Box[E]] =
+    new mutable.HashSet[Box[E]]()
+
+  override def contains(o: Any): Boolean =
+    inner.contains(Box(o.asInstanceOf[E]))
+
+  override def remove(o: Any): Boolean =
+    inner.remove(Box(o.asInstanceOf[E]))
+
+  override def containsAll(c: Collection[_]): Boolean =
+    c.iterator.forall(e => contains(e))
+
+  override def removeAll(c: Collection[_]): Boolean = {
+    val iter = c.iterator
+    var changed = false
+    while (iter.hasNext)
+      changed = remove(iter.next()) || changed
+    changed
+  }
+
+  override def retainAll(c: Collection[_]): Boolean = {
+    val iter = iterator
+    var changed = false
+    while (iter.hasNext) {
+      val value = iter.next
+      if (!c.contains(value))
+        changed = remove(value) || changed
+    }
+    changed
+  }
+
+  override def add(e: E): Boolean = 
+    inner.add(Box(e))
+
+  override def addAll(c: Collection[_ <: E]): Boolean = {
+    val iter = c.iterator()
+    var changed = false
+    while (iter.hasNext)
+      changed = add(iter.next()) || changed
+    changed
+  }
+
+  override def clear(): Unit = inner.clear()
+
+  override def size(): Int = inner.size
+
+  def iterator(): Iterator[E] = {
+    new Iterator[E] {
+      private val iter = inner.iterator
+
+      var actual: Option[E] = None
+
+      def hasNext(): Boolean = iter.hasNext
+
+      def next(): E = {
+        actual = Some(iter.next().inner)
+        actual.get
+      }
+
+      def remove(): Unit = actual.map(self.remove(_))
+    }
+  }
+
+}
