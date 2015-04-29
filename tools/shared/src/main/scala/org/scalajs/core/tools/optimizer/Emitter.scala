@@ -29,7 +29,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
     this(semantics, OutputMode.ECMAScript51Global)
 
   private var classEmitter: javascript.ScalaJSClassEmitter = _
-  private val classCaches = mutable.Map.empty[String, ClassCache]
+  private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -80,7 +80,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
     def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
 
     val className = linkedClass.encodedName
-    val classCache = getClassCache(className)
+    val classCache = getClassCache(linkedClass.ancestors)
     val classTreeCache = classCache.getCache(linkedClass.version)
     val kind = linkedClass.kind
 
@@ -141,8 +141,8 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
   // Helpers
 
-  private def getClassCache(encodedName: String) =
-    classCaches.getOrElseUpdate(encodedName, new ClassCache)
+  private def getClassCache(ancestors: List[String]) =
+    classCaches.getOrElseUpdate(ancestors, new ClassCache)
 
   // Caching
 
