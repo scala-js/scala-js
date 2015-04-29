@@ -669,8 +669,9 @@ object JSDesugaring {
           allowUnpure && test(array) && test(index)
         case JSArrayConstr(items) =>
           allowUnpure && (items forall test)
-        case JSObjectConstr(items) =>
-          allowUnpure && (items forall (item => test(item._2)))
+        case tree @ JSObjectConstr(items) =>
+          allowUnpure && (items forall (item => test(item._2))) &&
+          !doesObjectConstrRequireDesugaring(tree)
         case Closure(captureParams, params, body, captureValues) =>
           allowUnpure && (captureValues forall test)
 
@@ -800,7 +801,7 @@ object JSDesugaring {
      *  Return
      */
     def pushLhsInto(lhs: Tree, rhs: Tree)(implicit env: Env): js.Tree = {
-      implicit val rhsPos = rhs.pos
+      implicit val pos = rhs.pos
 
       /** Push the current lhs further into a deeper rhs. */
       @inline def redo(newRhs: Tree)(implicit env: Env) =
@@ -1165,11 +1166,36 @@ object JSDesugaring {
             }
           }
 
-        case JSObjectConstr(fields) =>
-          val names = fields map (_._1)
-          val items = fields map (_._2)
-          unnest(items) { (newItems, env) =>
-            redo(JSObjectConstr(names.zip(newItems)))(env)
+        case rhs @ JSObjectConstr(fields) =>
+          if (doesObjectConstrRequireDesugaring(rhs)) {
+            val objVarDef = VarDef(newSyntheticVar(), AnyType, mutable = false,
+                JSObjectConstr(Nil))
+            val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
+              case ((prop, value), (namesSeen, statsAcc)) =>
+                implicit val pos = value.pos
+                val name = prop.name
+                val stat = prop match {
+                  case _ if namesSeen.contains(name) =>
+                    /* Important: do not emit the assignment, otherwise
+                     * Closure recreates a literal with the duplicate field!
+                     */
+                    value
+                  case prop: Ident =>
+                    Assign(JSDotSelect(objVarDef.ref, prop), value)
+                  case prop: StringLiteral =>
+                    Assign(JSBracketSelect(objVarDef.ref, prop), value)
+                }
+                (namesSeen + name, stat :: statsAcc)
+            }._2
+            redo {
+              Block(objVarDef :: assignFields ::: objVarDef.ref :: Nil)
+            }
+          } else {
+            val names = fields map (_._1)
+            val items = fields map (_._2)
+            unnest(items) { (newItems, env) =>
+              redo(JSObjectConstr(names.zip(newItems)))(env)
+            }
           }
 
         // Closures
@@ -1238,6 +1264,13 @@ object JSDesugaring {
           JSBracketMethodApply(
               partHead, StringLiteral("concat"), partTail)
       }
+    }
+
+    /** Tests whether a [[JSObjectConstr]] must be desugared. */
+    private def doesObjectConstrRequireDesugaring(
+        tree: JSObjectConstr): Boolean = {
+      val names = tree.fields.map(_._1.name)
+      names.toSet.size != names.size // i.e., there is at least one duplicate
     }
 
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
