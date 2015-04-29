@@ -55,7 +55,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       // Generate exports from constructors and their annotations
       val ctorExports = for {
         ctor <- constructors
-        exp  <- jsInterop.exportsOf(ctor)
+        exp  <- jsInterop.registeredExportsOf(ctor)
       } yield (exp, ctor)
 
       if (ctorExports.isEmpty) {
@@ -102,13 +102,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     def genModuleAccessorExports(classSym: Symbol): List[js.ModuleExportDef] = {
       for {
-        exp <- jsInterop.exportsOf(classSym)
+        exp <- jsInterop.registeredExportsOf(classSym)
       } yield {
         implicit val pos = exp.pos
-
-        if (exp.isNamed)
-          reporter.error(pos, "You may not use @JSNamedExport on an object")
-
+        assert(!exp.isNamed, "Module cannot be exported named")
         js.ModuleExportDef(exp.jsName)
       }
     }

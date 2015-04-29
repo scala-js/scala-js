@@ -47,6 +47,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     override def description = "Prepare ASTs for JavaScript interop"
     override def run(): Unit = {
       jsPrimitives.initPrepJSPrimitives()
+      jsInterop.clearRegisteredExports()
       super.run()
     }
   }
@@ -146,6 +147,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
+        val sym = cldef.symbol
+        if (shouldPrepareExports && sym.isTrait) {
+          // Check that interface/trait is not exported
+          for {
+            exp <- exportsOf(sym)
+            if !exp.ignoreInvalid
+          } reporter.error(exp.pos, "You may not export a trait")
+        }
+
         enterScalaCls { super.transform(cldef) }
 
       // Catch ValorDefDef in js.Any
@@ -231,22 +241,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Module export sanity check (export generated in JSCode phase)
       case modDef: ModuleDef =>
-        if (shouldPrepareExports) {
-          val sym = modDef.symbol
-
-          def condErr(msg: String) = {
-            for (exp <- jsInterop.exportsOf(sym)) {
-              reporter.error(exp.pos, msg)
-            }
-          }
-
-          if (!hasLegalExportVisibility(sym))
-            condErr("You may only export public and protected objects")
-          else if (sym.isLocalToBlock)
-            condErr("You may not export a local object")
-          else if (!sym.owner.hasPackageFlag)
-            condErr("You may not export a nested object")
-        }
+        if (shouldPrepareExports)
+          registerModuleExports(modDef.symbol.moduleClass)
 
         super.transform(modDef)
 
@@ -290,7 +286,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         val sym = memDef.symbol
         if (sym.isLocalToBlock && !sym.owner.isCaseApplyOrUnapply) {
           // We exclude case class apply (and unapply) to work around SI-8826
-          for (exp <- jsInterop.exportsOf(sym)) {
+          for {
+            exp <- exportsOf(sym)
+            if !exp.ignoreInvalid
+          } {
             val msg = {
               val base = "You may not export a local definition"
               if (sym.owner.isPrimaryConstructor)
@@ -368,6 +367,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       }
 
+      if (shouldPrepareExports) {
+        // Check that RawJS type is not exported
+        for {
+          exp <- exportsOf(sym)
+          if !exp.ignoreInvalid
+        } reporter.error(exp.pos, "You may not export a class extending js.Any")
+      }
+
       if (implDef.isInstanceOf[ModuleDef])
         enterJSAnyMod { super.transform(implDef) }
       else
@@ -379,11 +386,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       val sym = tree.symbol
 
       if (shouldPrepareExports) {
-        val exports = jsInterop.exportsOf(sym)
+        lazy val memType = if (sym.isConstructor) "constructor" else "method"
 
-        if (exports.nonEmpty) {
-          val memType = if (sym.isConstructor) "constructor" else "method"
-          reporter.error(exports.head.pos,
+        for {
+          exp <- exportsOf(sym)
+          if !exp.ignoreInvalid
+        } {
+          reporter.error(exp.pos,
               s"You may not export a $memType of a subclass of js.Any")
         }
       }

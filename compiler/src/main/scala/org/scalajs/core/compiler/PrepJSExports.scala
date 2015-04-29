@@ -5,9 +5,7 @@
 
 package org.scalajs.core.compiler
 
-import scala.annotation.tailrec
-
-import scala.tools.nsc.NoPhase
+import scala.collection.mutable
 
 /**
  *  Prepare export generation
@@ -23,18 +21,32 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   import scala.reflect.internal.Flags
 
-  /** Whether the given symbol has a visibility that allows exporting */
-  def hasLegalExportVisibility(sym: Symbol): Boolean =
-    sym.isPublic || sym.isProtected && !sym.isProtectedLocal
+  case class ExportInfo(
+      jsName: String,
+      pos: Position,
+      isNamed: Boolean,
+      ignoreInvalid: Boolean
+  ) extends jsInterop.ExportInfo
 
+  /** Generate the exporter for the given DefDef
+   *
+   *  If this DefDef is a constructor, it is registered to be exported by
+   *  GenJSCode instead and no trees are returned.
+   */
   def genExportMember(ddef: DefDef): List[Tree] = {
     val baseSym = ddef.symbol
     val clsSym = baseSym.owner
 
-    val exports = jsInterop.exportsOf(baseSym)
+    val exports = exportsOf(baseSym)
+    val ignoreInvalid = exports.forall(_.ignoreInvalid)
 
     // Helper function for errors
-    def err(msg: String) = { reporter.error(exports.head.pos, msg); Nil }
+    def err(msg: String) = {
+      if (!ignoreInvalid)
+        reporter.error(exports.head.pos, msg)
+      Nil
+    }
+
     def memType = if (baseSym.isConstructor) "constructor" else "method"
 
     if (exports.isEmpty)
@@ -65,8 +77,10 @@ trait PrepJSExports { this: PrepJSInterop =>
       else if (clsSym.isNestedClass)
         err("You may not export a nested class. Create an exported factory " +
             "method in the outer class to work around this limitation.")
-      else Nil
-
+      else {
+        jsInterop.registerForExport(baseSym, exports)
+        Nil
+      }
     } else {
       assert(!baseSym.isBridge)
 
@@ -81,6 +95,197 @@ trait PrepJSExports { this: PrepJSInterop =>
           genExportDefs(baseSym, exp.jsName, exp.pos)
       }
     }
+  }
+
+  /** Checks and registers module exports on the symbol */
+  def registerModuleExports(sym: Symbol): Unit = {
+    assert(sym.isModuleClass, "Expected module class")
+
+    val exports = exportsOf(sym)
+    val ignoreInvalid = exports.forall(_.ignoreInvalid)
+
+    if (exports.nonEmpty) {
+      def err(msg: String) = {
+        if (!ignoreInvalid)
+          reporter.error(exports.head.pos, msg)
+      }
+
+      if (!hasLegalExportVisibility(sym))
+        err("You may only export public and protected objects")
+      else if (sym.isLocalToBlock)
+        err("You may not export a local object")
+      else if (!sym.owner.hasPackageFlag)
+        err("You may not export a nested object")
+      else {
+        val (named, normal) = exports.partition(_.isNamed)
+
+        for {
+          exp <- named
+          if !exp.ignoreInvalid
+        } reporter.error(exp.pos, "You may not use @JSNamedExport on an object")
+
+        jsInterop.registerForExport(sym, normal)
+      }
+    }
+  }
+
+  /** retrieves the names a sym should be exported to from its annotations
+   *
+   *  Note that for accessor symbols, the annotations of the accessed symbol
+   *  are used, rather than the annotations of the accessor itself.
+   */
+  def exportsOf(sym: Symbol): List[ExportInfo] = {
+    val exports = directExportsOf(sym) ++ inheritedExportsOf(sym)
+
+    // Calculate the distinct exports for this symbol (eliminate double
+    // occurrences of (name, isNamed) pairs).
+    val grouped = exports.groupBy(exp => (exp.jsName, exp.isNamed))
+
+    for (((jsName, isNamed), exps) <- grouped.toList)
+      // Make sure that we are strict if necessary
+      yield exps.find(!_.ignoreInvalid).getOrElse(exps.head)
+  }
+
+  private def directExportsOf(sym: Symbol): List[ExportInfo] = {
+    val trgSym = {
+      // For accessors, look on the val/var def
+      if (sym.isAccessor) sym.accessed
+      // For primary class constructors, look on the class itself
+      else if (sym.isPrimaryConstructor && !sym.owner.isModuleClass) sym.owner
+      else sym
+    }
+
+    // Annotations that are directly on the member
+    val directAnnots = for {
+      annot <- trgSym.annotations
+      if annot.symbol == JSExportAnnotation ||
+         annot.symbol == JSExportNamedAnnotation
+    } yield annot
+
+    // Annotations for this member on the whole unit
+    val unitAnnots = {
+      if (sym.isMethod && sym.isPublic &&
+          !sym.isConstructor && !sym.isSynthetic)
+        sym.owner.annotations.filter(_.symbol == JSExportAllAnnotation)
+      else
+        Nil
+    }
+
+    for {
+      annot <- directAnnots ++ unitAnnots
+    } yield {
+      // Is this a named export or a normal one?
+      val named = annot.symbol == JSExportNamedAnnotation
+
+      def explicitName = annot.stringArg(0).getOrElse {
+        reporter.error(annot.pos,
+            s"The argument to ${annot.symbol.name} must be a literal string")
+        "dummy"
+      }
+
+      val name =
+        if (annot.args.nonEmpty) explicitName
+        else if (sym.isConstructor) decodedFullName(sym.owner)
+        else if (sym.isModuleClass) decodedFullName(sym)
+        else sym.unexpandedName.decoded.stripSuffix("_=")
+
+      // Enforce that methods ending with _= are exported as setters
+      if (sym.isMethod && !sym.isConstructor &&
+        sym.name.decoded.endsWith("_=") && !jsInterop.isJSSetter(sym)) {
+        reporter.error(annot.pos, "A method ending in _= will be exported " +
+            s"as setter. But ${sym.name.decoded} does not have the right " +
+            "signature to do so (single argument, unit return type).")
+      }
+
+      // Enforce no __ in name
+      if (name.contains("__")) {
+        // Get position for error message
+        val pos = if (annot.stringArg(0).isDefined)
+          annot.args.head.pos
+        else trgSym.pos
+
+        reporter.error(pos,
+            "An exported name may not contain a double underscore (`__`)")
+      }
+
+      // Make sure we do not override the default export of toString
+      if (!sym.isConstructor && name == "toString" && !named &&
+          sym.name != nme.toString_ && sym.tpe.params.isEmpty &&
+          !jsInterop.isJSGetter(sym)) {
+        reporter.error(annot.pos, "You may not export a zero-argument " +
+            "method named other than 'toString' under the name 'toString'")
+      }
+
+      if (named && jsInterop.isJSProperty(sym)) {
+        reporter.error(annot.pos,
+            "You may not export a getter or a setter as a named export")
+      }
+
+      ExportInfo(name, annot.pos, named, ignoreInvalid = false)
+    }
+  }
+
+  private def inheritedExportsOf(sym: Symbol): List[ExportInfo] = {
+    // The symbol from which we (potentially) inherit exports. It also
+    // gives the exports their name
+    val trgSym = {
+      if (sym.isModuleClass)
+        sym
+      else if (sym.isConstructor && sym.isPublic &&
+          sym.owner.isConcreteClass && !sym.owner.isModuleClass)
+        sym.owner
+      else NoSymbol
+    }
+
+    if (trgSym == NoSymbol) {
+      Nil
+    } else {
+      val trgAnnot =
+        if (sym.isModuleClass) JSExportDescendentObjectsAnnotation
+        else JSExportDescendentClassesAnnotation
+
+      val forcingSymInfos = for {
+        forcingSym <- trgSym.ancestors
+        annot      <- forcingSym.annotations
+        if annot.symbol == trgAnnot
+      } yield {
+        val ignoreInvalid = annot.constantAtIndex(0).fold(false)(_.booleanValue)
+        (forcingSym, ignoreInvalid)
+      }
+
+      // The dominating forcing symbol, is the first that does not ignore
+      // or the first otherwise
+      val forcingSymInfo =
+        forcingSymInfos.find(!_._2).orElse(forcingSymInfos.headOption)
+
+      val name = decodedFullName(trgSym)
+      val nameValid = !name.contains("__")
+
+      val optExport = for {
+        (forcingSym, ignoreInvalid) <- forcingSymInfo
+        if nameValid || !ignoreInvalid
+      } yield {
+        // Enfore no __ in name
+        if (!nameValid) {
+          // Get all annotation positions for error message
+          reporter.error(sym.pos,
+              s"${trgSym.name} may not have a double underscore (`__`) in " +
+              "its fully qualified name, since it is forced to be exported by " +
+              s"a @${trgAnnot.name} on $forcingSym")
+        }
+
+        ExportInfo(name, sym.pos, false, ignoreInvalid)
+      }
+
+      optExport.toList
+    }
+  }
+
+  /** Just like sym.fullName, but does not encode components */
+  private def decodedFullName(sym: Symbol): String = {
+    if (sym.isRoot || sym.isRootPackage || sym == NoSymbol) sym.name.decoded
+    else if (sym.owner.isEffectiveRoot) sym.name.decoded
+    else decodedFullName(sym.effectiveOwner.enclClass) + '.' + sym.name.decoded
   }
 
   /** generate an exporter for a DefDef including default parameter methods */
@@ -226,6 +431,10 @@ trait PrepJSExports { this: PrepJSInterop =>
     case PolyType(tparams, result)  => PolyType(tparams, retToAny(result))
     case _                          => AnyClass.tpe
   }
+
+  /** Whether the given symbol has a visibility that allows exporting */
+  private def hasLegalExportVisibility(sym: Symbol): Boolean =
+    sym.isPublic || sym.isProtected && !sym.isProtectedLocal
 
   /** checks whether this type has a repeated parameter elsewhere than at the end
     * of all the params

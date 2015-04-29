@@ -935,6 +935,42 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(AutoExportedClassObject.asInstanceOf[js.Any])
     }
 
+    it("should offer auto exports for objects extending a trait with ignoreInvalidDescendants") {
+      val accessor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(AutoExportIgnoreTraitObject.asInstanceOf[js.Any])
+    }
+
+    it("should offer auto exports for objects extending a class with ignoreInvalidDescendants") {
+      val accessor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(AutoExportIgnoreClassObject.asInstanceOf[js.Any])
+    }
+
+    it("should ignore invalid descendants") {
+      // This is just to check that everything here compiles
+      object A extends AutoExportIgnoreTrait { var x = 1 }
+      object B extends AutoExportIgnoreClass { var x = 2 }
+
+      // Check that the objects are usable
+      expect(A.x).toEqual(1)
+      expect(B.x).toEqual(2)
+
+      A.x = 3
+      B.x = 4
+
+      expect(A.x).toEqual(3)
+      expect(B.x).toEqual(4)
+    }
+
   }
 
   describe("@JSExportDescendentClasses") {
@@ -967,6 +1003,57 @@ object ExportsTest extends JasmineTest {
       val obj2 = js.Dynamic.newInstance(ctor)(100)
       expect(obj2).toBeDefined
       expect(obj2.x).toBe(100)
+    }
+
+    it("should offer auto exports for classes extending a trait with ignoreInvalidDescendants") {
+      val ctor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj1 = js.Dynamic.newInstance(ctor)()
+      expect(obj1).toBeDefined
+      expect(obj1.x).toBe(5)
+
+      val obj2 = js.Dynamic.newInstance(ctor)(100)
+      expect(obj2).toBeDefined
+      expect(obj2.x).toBe(100)
+    }
+
+    it("should offer auto exports for classes extending a class with ignoreInvalidDescendants") {
+      val ctor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreClassClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj1 = js.Dynamic.newInstance(ctor)()
+      expect(obj1).toBeDefined
+      expect(obj1.x).toBe(5)
+
+      val obj2 = js.Dynamic.newInstance(ctor)(100)
+      expect(obj2).toBeDefined
+      expect(obj2.x).toBe(100)
+    }
+
+    it("should ignore invalid descendants") {
+      trait HasBar { def bar: Int }
+
+      // This is just to check that everything here compiles
+      class A extends AutoExportIgnoreTrait { def foo = 1 }
+      class B extends AutoExportIgnoreClass { def foo = 2 }
+
+      val a = new A { override def foo = 3 }
+      val b = new B { override def foo = 4 }
+      val c = new AutoExportIgnoreClass with HasBar { def bar = 1 }
+      val d = new AutoExportIgnoreTrait with HasBar { def bar = 1 }
+
+      // Check the classes are usable
+      expect((new A).foo).toEqual(1)
+      expect((new B).foo).toEqual(2)
+      expect(a.foo).toEqual(3)
+      expect(b.foo).toEqual(4)
+      expect(c.bar).toEqual(1)
+      expect(d.bar).toEqual(1)
     }
 
   }
@@ -1049,6 +1136,28 @@ class AutoExportClass
 
 object AutoExportedClassObject extends AutoExportClass
 class AutoExportedClassClass(_x: Int) extends AutoExportTrait {
+  def this() = this(5)
+  @JSExport
+  def x: Int = _x
+}
+
+@JSExportDescendentClasses(ignoreInvalidDescendants = true)
+@JSExportDescendentObjects(ignoreInvalidDescendants = true)
+trait AutoExportIgnoreTrait
+
+object AutoExportIgnoreTraitObject extends AutoExportIgnoreTrait
+class AutoExportIgnoreTraitClass(_x: Int) extends AutoExportIgnoreTrait {
+  def this() = this(5)
+  @JSExport
+  def x: Int = _x
+}
+
+@JSExportDescendentClasses(ignoreInvalidDescendants = true)
+@JSExportDescendentObjects(ignoreInvalidDescendants = true)
+class AutoExportIgnoreClass
+
+object AutoExportIgnoreClassObject extends AutoExportIgnoreClass
+class AutoExportIgnoreClassClass(_x: Int) extends AutoExportIgnoreTrait {
   def this() = this(5)
   @JSExport
   def x: Int = _x

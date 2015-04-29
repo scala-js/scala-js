@@ -403,10 +403,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      // Check that RawJS type is not exported
-      for (exp <- jsInterop.exportsOf(sym))
-        reporter.error(exp.pos, "You may not export a class extending js.Any")
-
       val classIdent = encodeClassFullNameIdent(sym)
       val superClass =
         if (sym.isInterface) None
@@ -444,11 +440,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
       }
       val generatedMethods = gen(cd.impl)
-
-      // Check that interface/trait is not exported
-      for (exp <- jsInterop.exportsOf(sym))
-        reporter.error(exp.pos, "You may not export a trait")
-
       val interfaces = genClassInterfaces(sym)
 
       // Hashed definitions of the interface
