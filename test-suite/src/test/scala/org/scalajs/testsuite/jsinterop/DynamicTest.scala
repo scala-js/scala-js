@@ -180,6 +180,22 @@ object DynamicTest extends JasmineTest {
       }
     }
 
+    it("should allow object literals to have duplicate keys - #1595") {
+      import js.Dynamic.{literal => obj}
+
+      // Basic functionality
+      val a = obj(foo = 4, bar = 5, foo = 6)
+      expect(a.foo).toEqual(6) // last wins
+      expect(a.bar).toEqual(5)
+
+      // Side-effects of overwritten properties are kept
+      var counter = 0
+      val b = obj(foo = { counter += 1; "foo" }, bar = "bar", foo = "foobar")
+      expect(counter).toEqual(1)
+      expect(b.foo).toEqual("foobar")
+      expect(b.bar).toEqual("bar")
+    }
+
     it("should return subclasses of js.Object in literal construction - #783") {
       import js.Dynamic.{ literal => obj }
 
