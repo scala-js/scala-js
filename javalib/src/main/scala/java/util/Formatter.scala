@@ -114,6 +114,25 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             result
           }
 
+          def formatThousands(value: String, decimalSep: Char = '.', thousandsGrouping: String = ","): String = {
+            val parts = value.split(decimalSep).toList
+            val integer = parts.head
+            val decimal = parts.tail
+            val headMod = integer.length % 3
+            val (headStr, tailStr) =
+              if (integer.length > 3 && headMod > 0)
+                (Some(integer.take(headMod)), integer.drop(headMod))
+              else (None, integer)
+
+            val intStr = headStr.map { hs => 
+              (hs :: tailStr.grouped(3).toList).mkString(thousandsGrouping)
+            }.getOrElse(
+              (tailStr.grouped(3).toList).mkString(thousandsGrouping)
+            )
+
+            (intStr :: decimal).mkString(decimalSep.toString)
+          }
+
           def with_+(s: String, preventZero: scala.Boolean = false) = {
             if (s.charAt(0) != '-') {
               if (hasFlag("+"))
@@ -132,11 +151,15 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
 
           def pad(argStr: String, prefix: String = "",
                   preventZero: Boolean = false) = {
-            val prePadLen = argStr.length + prefix.length
+            val s = 
+              if (hasFlag(","))
+                formatThousands(argStr)
+              else argStr
+            val prePadLen = s.length + prefix.length
 
             val padStr = {
               if (width <= prePadLen) {
-                prefix + argStr
+                prefix + s
               } else {
                 val padRight = hasFlag("-")
                 val padZero = hasFlag("0") && !preventZero
@@ -146,9 +169,9 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
 
                 if (padZero && padRight)
                   throw new java.util.IllegalFormatFlagsException(flags)
-                else if (padRight) prefix + argStr  + padding
-                else if (padZero)  prefix + padding + argStr
-                else padding + prefix + argStr
+                else if (padRight) prefix + s + padding
+                else if (padZero)  prefix + padding + s
+                else padding + prefix + s
               }
             }
 

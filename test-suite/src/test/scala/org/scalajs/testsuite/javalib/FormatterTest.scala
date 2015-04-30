@@ -116,7 +116,7 @@ object FormatterTest extends JasmineTest {
       expectF("%5d",  new Integer(-10)).toEqual("  -10")
       expectF("%05d", new Integer(-10)).toEqual("-0010")
     }
-
+    
     it("should provide 'o' conversion") {
       expectF("%o",   new JInteger(8)).toEqual("10")
       expectF("%05o", new JInteger(16)).toEqual("00020")
@@ -188,6 +188,18 @@ object FormatterTest extends JasmineTest {
       expectF("%f",      new JFloat(3e10f)).toEqual("30000001024.000000")
       expectF("%f",      new JDouble(3e10)).toEqual("30000000000.000000")
       expectF("%04f",    new JDouble(Double.NaN)).toEqual(" NaN")
+    }
+    
+    it("should support ',' flag") {
+      expectF("%,d",   new Integer(0)).toEqual("0")
+      expectF("%,d",   new Integer(5)).toEqual("5")
+      expectF("%,d",   new Integer(50)).toEqual("50")
+      expectF("%,d",   new Integer(500)).toEqual("500")
+      expectF("%,.2f",   new JFloat(500)).toEqual("500.00")
+      
+      expectF("%,d",   new Integer(5000)).toEqual("5,000")
+      expectF("%,d",   new Integer(500000)).toEqual("500,000")
+      expectF("%,.2f",   new JFloat(5000)).toEqual("5,000.00")
     }
 
     it("should support '%%'") {
