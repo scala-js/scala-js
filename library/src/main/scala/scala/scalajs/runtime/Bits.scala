@@ -16,9 +16,25 @@ import js.typedarray
 /** Low-level stuff. */
 object Bits {
 
-  val areTypedArraysSupported = js.DynamicImplicits.truthValue(
-      global.ArrayBuffer && global.Int32Array &&
-      global.Float32Array && global.Float64Array)
+  private[this] val _areTypedArraysSupported = {
+    // Here we use `assumingES6` to dce the 4 subsequent tests
+    assumingES6 || js.DynamicImplicits.truthValue(
+        global.ArrayBuffer && global.Int32Array &&
+        global.Float32Array && global.Float64Array)
+  }
+
+  @inline
+  def areTypedArraysSupported: Boolean = {
+    /* We have a forwarder to the internal `val _areTypedArraysSupported` to
+     * be able to inline it. This achieves the following:
+     * * If we emit ES6, dce `|| _areTypedArraysSupported` and replace
+     *   `areTypedArraysSupported` by `true` in the calling code, allowing
+     *   polyfills in the calling code to be dce'ed in turn.
+     * * If we emit ES5, replace `areTypedArraysSupported` by
+     *   `_areTypedArraysSupported` so we do not calculate it multiple times.
+     */
+    assumingES6 || _areTypedArraysSupported
+  }
 
   private val arrayBuffer =
     if (areTypedArraysSupported) new typedarray.ArrayBuffer(8)

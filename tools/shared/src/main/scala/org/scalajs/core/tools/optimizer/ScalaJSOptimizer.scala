@@ -93,9 +93,9 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     }
 
     outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Global =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         builder.addLine("(function(){")
-      case _ =>
     }
 
     builder.addLine("'use strict';")
@@ -104,9 +104,9 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     optimizeIR(irFiles, cfg, builder, logger)
 
     outputMode match {
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Global =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         builder.addLine("}).call(this);")
-      case _ =>
     }
 
     builder.complete()
@@ -168,13 +168,13 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   def clean(): Unit = resetState()
 
   private def resetState(): Unit = {
-    linker = new Linker(semantics, withSourceMap)
+    linker = new Linker(semantics, outputMode, withSourceMap)
     resetStateFromOptimizer()
   }
 
   private def resetStateFromOptimizer(): Unit = {
-    optimizer = optimizerFactory(semantics, withSourceMap)
-    refiner = new Refiner(semantics)
+    optimizer = optimizerFactory(semantics, outputMode, withSourceMap)
+    refiner = new Refiner(semantics, outputMode)
     emitter = new Emitter(semantics, outputMode)
   }
 }
@@ -191,7 +191,7 @@ object ScalaJSOptimizer {
         extends NoWarnMissing
   }
 
-  type OptimizerFactory = (Semantics, Boolean) => GenIncOptimizer
+  type OptimizerFactory = (Semantics, OutputMode, Boolean) => GenIncOptimizer
 
   /** Configurations relevant to the optimizer */
   trait OptimizerConfig {

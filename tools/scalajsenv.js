@@ -30,6 +30,39 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
+// Snapshots of builtins and polyfills
+
+//!if outputMode == ECMAScript6
+ScalaJS.imul = ScalaJS.g["Math"]["imul"];
+ScalaJS.fround = ScalaJS.g["Math"]["fround"];
+//!else
+ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
+  // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
+  const ah = (a >>> 16) & 0xffff;
+  const al = a & 0xffff;
+  const bh = (b >>> 16) & 0xffff;
+  const bl = b & 0xffff;
+  // the shift by 0 fixes the sign on the high part
+  // the final |0 converts the unsigned value into a signed value
+  return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
+});
+
+ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
+//!if floats == Strict
+  (ScalaJS.g["Float32Array"] ? (function(v) {
+    const array = new ScalaJS.g["Float32Array"](1);
+    array[0] = v;
+    return array[0];
+  }) : (function(v) {
+    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
+  }));
+//!else
+  (function(v) {
+    return +v;
+  });
+//!endif
+//!endif
+
 // Other fields
 //!if outputMode == ECMAScript51Global
 ScalaJS.d = {};         // Data for types
@@ -44,8 +77,16 @@ ScalaJS.isArrayOf = {}; // isInstanceOfArrayOf methods
 ScalaJS.as = {};        // asInstanceOf methods
 ScalaJS.asArrayOf = {}; // asInstanceOfArrayOf methods
 //!endif
-//!endif
 ScalaJS.lastIDHash = 0; // last value attributed to an id hash code
+ScalaJS.idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
+//!else
+let $lastIDHash = 0; // last value attributed to an id hash code
+//!if outputMode == ECMAScript6
+const $idHashCodeMap = new ScalaJS.g["WeakMap"]();
+//!else
+const $idHashCodeMap = ScalaJS.g["WeakMap"] ? new ScalaJS.g["WeakMap"]() : null;
+//!endif
+//!endif
 
 // Core mechanism
 
@@ -78,10 +119,8 @@ ScalaJS.makeAsArrayOfPrimitive = function(isInstanceOfFunction, arrayEncodedName
   * reflection.
   */
 ScalaJS.propertyName = function(obj) {
-  var result;
-  for (var prop in obj)
-    result = prop;
-  return result;
+  for (const prop in obj)
+    return prop;
 };
 
 // Runtime functions
@@ -123,13 +162,13 @@ ScalaJS.newArrayObject = function(arrayClassData, lengths) {
 };
 
 ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) {
-  var result = new arrayClassData.constr(lengths[lengthIndex]);
+  const result = new arrayClassData.constr(lengths[lengthIndex]);
 
   if (lengthIndex < lengths.length-1) {
-    var subArrayClassData = arrayClassData.componentData;
-    var subLengthIndex = lengthIndex+1;
-    var underlying = result.u;
-    for (var i = 0; i < underlying.length; i++) {
+    const subArrayClassData = arrayClassData.componentData;
+    const subLengthIndex = lengthIndex+1;
+    const underlying = result.u;
+    for (let i = 0; i < underlying.length; i++) {
       underlying[i] = ScalaJS.newArrayObjectInternal(
         subArrayClassData, lengths, subLengthIndex);
     }
@@ -157,8 +196,8 @@ ScalaJS.objectGetClass = function(instance) {
   switch (typeof instance) {
     case "string":
       return ScalaJS.d.T.getClassOf();
-    case "number":
-      var v = instance | 0;
+    case "number": {
+      const v = instance | 0;
       if (v === instance) { // is the value integral?
         if (ScalaJS.isByte(v))
           return ScalaJS.d.jl_Byte.getClassOf();
@@ -172,6 +211,7 @@ ScalaJS.objectGetClass = function(instance) {
         else
           return ScalaJS.d.jl_Double.getClassOf();
       }
+    }
     case "boolean":
       return ScalaJS.d.jl_Boolean.getClassOf();
     case "undefined":
@@ -245,8 +285,12 @@ ScalaJS.objectHashCode = function(instance) {
     default:
       if (ScalaJS.isScalaJSObject(instance) || instance === null)
         return instance.hashCode__I();
+//!if outputMode != ECMAScript6
+      else if (ScalaJS.idHashCodeMap === null)
+        return 42;
+//!endif
       else
-        return 42; // TODO?
+        return ScalaJS.systemIdentityHashCode(instance);
   }
 };
 
@@ -348,8 +392,8 @@ ScalaJS.isInfinite = function(instance) {
 /** Instantiates a JS object with variadic arguments to the constructor. */
 ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
   // This basically emulates the ECMAScript specification for 'new'.
-  var instance = ScalaJS.g["Object"]["create"](ctor.prototype);
-  var result = ctor["apply"](instance, args);
+  const instance = ScalaJS.g["Object"]["create"](ctor.prototype);
+  const result = ctor["apply"](instance, args);
   switch (typeof result) {
     case "string": case "number": case "boolean": case "undefined": case "symbol":
       return instance;
@@ -359,43 +403,67 @@ ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
 };
 
 ScalaJS.propertiesOf = function(obj) {
-  var result = [];
-  for (var prop in obj)
+  const result = [];
+  for (const prop in obj)
     result["push"](prop);
   return result;
 };
 
 ScalaJS.systemArraycopy = function(src, srcPos, dest, destPos, length) {
-  var srcu = src.u;
-  var destu = dest.u;
+  const srcu = src.u;
+  const destu = dest.u;
   if (srcu !== destu || destPos < srcPos || srcPos + length < destPos) {
-    for (var i = 0; i < length; i++)
+    for (let i = 0; i < length; i++)
       destu[destPos+i] = srcu[srcPos+i];
   } else {
-    for (var i = length-1; i >= 0; i--)
+    for (let i = length-1; i >= 0; i--)
       destu[destPos+i] = srcu[srcPos+i];
   }
 };
 
-ScalaJS.systemIdentityHashCode = function(obj) {
-  if (ScalaJS.isScalaJSObject(obj)) {
-    var hash = obj["$idHashCode$0"];
-    if (hash !== void 0) {
-      return hash;
-    } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
-      hash = (ScalaJS.lastIDHash + 1) | 0;
-      ScalaJS.lastIDHash = hash;
-      obj["$idHashCode$0"] = hash;
-      return hash;
-    } else {
-      return 42;
+ScalaJS.systemIdentityHashCode =
+//!if outputMode != ECMAScript6
+  (ScalaJS.idHashCodeMap !== null) ?
+//!endif
+  (function(obj) {
+    switch (typeof obj) {
+      case "string": case "number": case "boolean": case "undefined":
+        return ScalaJS.objectHashCode(obj);
+      default:
+        if (obj === null) {
+          return 0;
+        } else {
+          let hash = ScalaJS.idHashCodeMap["get"](obj);
+          if (hash === void 0) {
+            hash = (ScalaJS.lastIDHash + 1) | 0;
+            ScalaJS.lastIDHash = hash;
+            ScalaJS.idHashCodeMap["set"](obj, hash);
+          }
+          return hash;
+        }
     }
-  } else if (obj === null) {
-    return 0;
-  } else {
-    return ScalaJS.objectHashCode(obj);
-  }
-};
+//!if outputMode != ECMAScript6
+  }) :
+  (function(obj) {
+    if (ScalaJS.isScalaJSObject(obj)) {
+      let hash = obj["$idHashCode$0"];
+      if (hash !== void 0) {
+        return hash;
+      } else if (!ScalaJS.g["Object"]["isSealed"](obj)) {
+        hash = (ScalaJS.lastIDHash + 1) | 0;
+        ScalaJS.lastIDHash = hash;
+        obj["$idHashCode$0"] = hash;
+        return hash;
+      } else {
+        return 42;
+      }
+    } else if (obj === null) {
+      return 0;
+    } else {
+      return ScalaJS.objectHashCode(obj);
+    }
+//!endif
+  });
 
 // is/as for hijacked boxed classes (the non-trivial ones)
 
@@ -510,27 +578,27 @@ ScalaJS.floatArray2TypedArray = function(value) { return new Float32Array(value.
 ScalaJS.doubleArray2TypedArray = function(value) { return new Float64Array(value.u); };
 
 ScalaJS.typedArray2ByteArray = function(value) {
-  var arrayClassData = ScalaJS.d.B.getArrayOf();
+  const arrayClassData = ScalaJS.d.B.getArrayOf();
   return new arrayClassData.constr(new Int8Array(value));
 };
 ScalaJS.typedArray2ShortArray = function(value) {
-  var arrayClassData = ScalaJS.d.S.getArrayOf();
+  const arrayClassData = ScalaJS.d.S.getArrayOf();
   return new arrayClassData.constr(new Int16Array(value));
 };
 ScalaJS.typedArray2CharArray = function(value) {
-  var arrayClassData = ScalaJS.d.C.getArrayOf();
+  const arrayClassData = ScalaJS.d.C.getArrayOf();
   return new arrayClassData.constr(new Uint16Array(value));
 };
 ScalaJS.typedArray2IntArray = function(value) {
-  var arrayClassData = ScalaJS.d.I.getArrayOf();
+  const arrayClassData = ScalaJS.d.I.getArrayOf();
   return new arrayClassData.constr(new Int32Array(value));
 };
 ScalaJS.typedArray2FloatArray = function(value) {
-  var arrayClassData = ScalaJS.d.F.getArrayOf();
+  const arrayClassData = ScalaJS.d.F.getArrayOf();
   return new arrayClassData.constr(new Float32Array(value));
 };
 ScalaJS.typedArray2DoubleArray = function(value) {
-  var arrayClassData = ScalaJS.d.D.getArrayOf();
+  const arrayClassData = ScalaJS.d.D.getArrayOf();
   return new arrayClassData.constr(new Float64Array(value));
 };
 
@@ -540,33 +608,65 @@ ScalaJS.typedArray2DoubleArray = function(value) {
  */
 this["__ScalaJSExportsNamespace"] = ScalaJS.e;
 
-// Type data constructors
+// TypeData class
 
+//!if outputMode != ECMAScript6
 /** @constructor */
-ScalaJS.PrimitiveTypeData = function(zero, arrayEncodedName, displayName) {
+ScalaJS.TypeData = function() {
+//!else
+class $TypeData {
+constructor() {
+//!endif
   // Runtime support
-  this.constr = undefined;
-  this.parentData = undefined;
+  this.constr = void 0;
+  this.parentData = void 0;
+  this.ancestors = null;
+  this.componentData = null;
+  this.arrayBase = null;
+  this.arrayDepth = 0;
+  this.zero = null;
+  this.arrayEncodedName = "";
+  this._classOf = void 0;
+  this._arrayOf = void 0;
+  this.isArrayOf = void 0;
+
+  // java.lang.Class support
+  this["name"] = "";
+  this["isPrimitive"] = false;
+  this["isInterface"] = false;
+  this["isArrayClass"] = false;
+  this["isInstance"] = void 0;
+};
+
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.initPrim = function(
+//!else
+initPrim(
+//!endif
+    zero, arrayEncodedName, displayName) {
+  // Runtime support
   this.ancestors = {};
   this.componentData = null;
   this.zero = zero;
   this.arrayEncodedName = arrayEncodedName;
-  this._classOf = undefined;
-  this._arrayOf = undefined;
   this.isArrayOf = function(obj, depth) { return false; };
 
   // java.lang.Class support
   this["name"] = displayName;
   this["isPrimitive"] = true;
-  this["isInterface"] = false;
-  this["isArrayClass"] = false;
   this["isInstance"] = function(obj) { return false; };
+
+  return this;
 };
 
-/** @constructor */
-ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
-                                 ancestors, parentData, isInstance, isArrayOf) {
-  var internalName = ScalaJS.propertyName(internalNameObj);
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.initClass = function(
+//!else
+initClass(
+//!endif
+    internalNameObj, isInterface, fullName,
+    ancestors, parentData, isInstance, isArrayOf) {
+  const internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
     return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
@@ -578,42 +678,43 @@ ScalaJS.ClassTypeData = function(internalNameObj, isInterface, fullName,
   };
 
   // Runtime support
-  this.constr = undefined;
   this.parentData = parentData;
   this.ancestors = ancestors;
-  this.componentData = null;
-  this.zero = null;
   this.arrayEncodedName = "L"+fullName+";";
-  this._classOf = undefined;
-  this._arrayOf = undefined;
   this.isArrayOf = isArrayOf;
 
   // java.lang.Class support
   this["name"] = fullName;
-  this["isPrimitive"] = false;
   this["isInterface"] = isInterface;
-  this["isArrayClass"] = false;
   this["isInstance"] = isInstance;
+
+  return this;
 };
 
-/** @constructor */
-ScalaJS.ArrayTypeData = function(componentData) {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.initArray = function(
+//!else
+initArray(
+//!endif
+    componentData) {
   // The constructor
 
-  var componentZero = componentData.zero;
+  const componentZero0 = componentData.zero;
 
   // The zero for the Long runtime representation
   // is a special case here, since the class has not
   // been defined yet, when this file is read
-  if (componentZero == "longZero")
-    componentZero = ScalaJS.m.sjsr_RuntimeLong$().Zero$1;
+  const componentZero = (componentZero0 == "longZero")
+    ? ScalaJS.m.sjsr_RuntimeLong$().Zero$1
+    : componentZero0;
 
+//!if outputMode != ECMAScript6
   /** @constructor */
-  var ArrayClass = function(arg) {
+  const ArrayClass = function(arg) {
     if (typeof(arg) === "number") {
       // arg is the length of the array
       this.u = new Array(arg);
-      for (var i = 0; i < arg; i++)
+      for (let i = 0; i < arg; i++)
         this.u[i] = componentZero;
     } else {
       // arg is a native array that we wrap
@@ -622,7 +723,6 @@ ScalaJS.ArrayTypeData = function(componentData) {
   }
   ArrayClass.prototype = new ScalaJS.h.O;
   ArrayClass.prototype.constructor = ArrayClass;
-  ArrayClass.prototype.$classData = this;
 
   ArrayClass.prototype.clone__O = function() {
     if (this.u instanceof Array)
@@ -631,18 +731,43 @@ ScalaJS.ArrayTypeData = function(componentData) {
       // The underlying Array is a TypedArray
       return new ArrayClass(this.u.constructor(this.u));
   };
+//!else
+  class ArrayClass extends ScalaJS.c.O {
+    constructor(arg) {
+      super();
+      if (typeof(arg) === "number") {
+        // arg is the length of the array
+        this.u = new Array(arg);
+        for (let i = 0; i < arg; i++)
+          this.u[i] = componentZero;
+      } else {
+        // arg is a native array that we wrap
+        this.u = arg;
+      }
+    };
+
+    clone__O() {
+      if (this.u instanceof Array)
+        return new ArrayClass(this.u["slice"](0));
+      else
+        // The underlying Array is a TypedArray
+        return new ArrayClass(this.u.constructor(this.u));
+    };
+  };
+//!endif
+
+  ArrayClass.prototype.$classData = this;
 
   // Don't generate reflective call proxies. The compiler special cases
   // reflective calls to methods on scala.Array
 
   // The data
 
-  var encodedName = "[" + componentData.arrayEncodedName;
-  var componentBase = componentData.arrayBase || componentData;
-  var componentDepth = componentData.arrayDepth || 0;
-  var arrayDepth = componentDepth + 1;
+  const encodedName = "[" + componentData.arrayEncodedName;
+  const componentBase = componentData.arrayBase || componentData;
+  const arrayDepth = componentData.arrayDepth + 1;
 
-  var isInstance = function(obj) {
+  const isInstance = function(obj) {
     return componentBase.isArrayOf(obj, arrayDepth);
   }
 
@@ -665,23 +790,37 @@ ScalaJS.ArrayTypeData = function(componentData) {
   this["isInterface"] = false;
   this["isArrayClass"] = true;
   this["isInstance"] = isInstance;
+
+  return this;
 };
 
-ScalaJS.ClassTypeData.prototype.getClassOf = function() {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.getClassOf = function() {
+//!else
+getClassOf() {
+//!endif
   if (!this._classOf)
     this._classOf = new ScalaJS.c.jl_Class().init___jl_ScalaJSClassData(this);
   return this._classOf;
 };
 
-ScalaJS.ClassTypeData.prototype.getArrayOf = function() {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype.getArrayOf = function() {
+//!else
+getArrayOf() {
+//!endif
   if (!this._arrayOf)
-    this._arrayOf = new ScalaJS.ArrayTypeData(this);
+    this._arrayOf = new ScalaJS.TypeData().initArray(this);
   return this._arrayOf;
 };
 
 // java.lang.Class support
 
-ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype["getFakeInstance"] = function() {
+//!else
+"getFakeInstance"() {
+//!endif
   if (this === ScalaJS.d.T)
     return "some string";
   else if (this === ScalaJS.d.jl_Boolean)
@@ -700,35 +839,47 @@ ScalaJS.ClassTypeData.prototype["getFakeInstance"] = function() {
     return {$classData: this};
 };
 
-ScalaJS.ClassTypeData.prototype["getSuperclass"] = function() {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype["getSuperclass"] = function() {
+//!else
+"getSuperclass"() {
+//!endif
   return this.parentData ? this.parentData.getClassOf() : null;
 };
 
-ScalaJS.ClassTypeData.prototype["getComponentType"] = function() {
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype["getComponentType"] = function() {
+//!else
+"getComponentType"() {
+//!endif
   return this.componentData ? this.componentData.getClassOf() : null;
 };
 
-ScalaJS.ClassTypeData.prototype["newArrayOfThisClass"] = function(lengths) {
-  var arrayClassData = this;
-  for (var i = 0; i < lengths.length; i++)
+//!if outputMode != ECMAScript6
+ScalaJS.TypeData.prototype["newArrayOfThisClass"] = function(lengths) {
+//!else
+"newArrayOfThisClass"(lengths) {
+//!endif
+  let arrayClassData = this;
+  for (let i = 0; i < lengths.length; i++)
     arrayClassData = arrayClassData.getArrayOf();
   return ScalaJS.newArrayObject(arrayClassData, lengths);
 };
-
-ScalaJS.PrimitiveTypeData.prototype = ScalaJS.ClassTypeData.prototype;
-ScalaJS.ArrayTypeData.prototype = ScalaJS.ClassTypeData.prototype;
+//!if outputMode == ECMAScript6
+};
+//!endif
 
 // Create primitive types
 
-ScalaJS.d.V = new ScalaJS.PrimitiveTypeData(undefined, "V", "void");
-ScalaJS.d.Z = new ScalaJS.PrimitiveTypeData(false, "Z", "boolean");
-ScalaJS.d.C = new ScalaJS.PrimitiveTypeData(0, "C", "char");
-ScalaJS.d.B = new ScalaJS.PrimitiveTypeData(0, "B", "byte");
-ScalaJS.d.S = new ScalaJS.PrimitiveTypeData(0, "S", "short");
-ScalaJS.d.I = new ScalaJS.PrimitiveTypeData(0, "I", "int");
-ScalaJS.d.J = new ScalaJS.PrimitiveTypeData("longZero", "J", "long");
-ScalaJS.d.F = new ScalaJS.PrimitiveTypeData(0.0, "F", "float");
-ScalaJS.d.D = new ScalaJS.PrimitiveTypeData(0.0, "D", "double");
+ScalaJS.d.V = new ScalaJS.TypeData().initPrim(undefined, "V", "void");
+ScalaJS.d.Z = new ScalaJS.TypeData().initPrim(false, "Z", "boolean");
+ScalaJS.d.C = new ScalaJS.TypeData().initPrim(0, "C", "char");
+ScalaJS.d.B = new ScalaJS.TypeData().initPrim(0, "B", "byte");
+ScalaJS.d.S = new ScalaJS.TypeData().initPrim(0, "S", "short");
+ScalaJS.d.I = new ScalaJS.TypeData().initPrim(0, "I", "int");
+ScalaJS.d.J = new ScalaJS.TypeData().initPrim("longZero", "J", "long");
+ScalaJS.d.F = new ScalaJS.TypeData().initPrim(0.0, "F", "float");
+ScalaJS.d.D = new ScalaJS.TypeData().initPrim(0.0, "D", "double");
 
 // Instance tests for array of primitives
 
@@ -766,32 +917,4 @@ ScalaJS.asArrayOf.I = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.I, "I");
 ScalaJS.asArrayOf.J = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.J, "J");
 ScalaJS.asArrayOf.F = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.F, "F");
 ScalaJS.asArrayOf.D = ScalaJS.makeAsArrayOfPrimitive(ScalaJS.isArrayOf.D, "D");
-//!endif
-
-// Polyfills
-
-ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
-  // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
-  var ah = (a >>> 16) & 0xffff;
-  var al = a & 0xffff;
-  var bh = (b >>> 16) & 0xffff;
-  var bl = b & 0xffff;
-  // the shift by 0 fixes the sign on the high part
-  // the final |0 converts the unsigned value into a signed value
-  return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
-});
-
-ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
-//!if floats == Strict
-  (ScalaJS.g["Float32Array"] ? (function(v) {
-    var array = new ScalaJS.g["Float32Array"](1);
-    array[0] = v;
-    return array[0];
-  }) : (function(v) {
-    return ScalaJS.m.sjsr_package$().froundPolyfill__D__D(+v);
-  }));
-//!else
-  (function(v) {
-    return +v;
-  });
 //!endif

@@ -13,6 +13,7 @@ import scala.collection.mutable
 import scala.collection.immutable.{Seq, Traversable}
 
 import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
 
@@ -30,7 +31,12 @@ import Analysis._
 /** Links the information from [[VirtualScalaJSIRFile]]s into
  *  [[LinkedClassDef]]s. Does a dead code elimination pass.
  */
-final class Linker(semantics: Semantics, considerPositions: Boolean) {
+final class Linker(semantics: Semantics, outputMode: OutputMode,
+    considerPositions: Boolean) {
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics, considerPositions: Boolean) =
+    this(semantics, OutputMode.ECMAScript51Isolated, considerPositions)
 
   private[this] val files = mutable.Map.empty[String, PersistentIRFile]
 
@@ -79,7 +85,7 @@ final class Linker(semantics: Semantics, considerPositions: Boolean) {
     }
 
     val analysis = logTime(logger, "Linker: Compute reachability") {
-      val analyzer = new Analyzer(semantics, reachOptimizerSymbols)
+      val analyzer = new Analyzer(semantics, outputMode, reachOptimizerSymbols)
       analyzer.computeReachability(infoInput)
     }
 

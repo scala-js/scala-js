@@ -11,6 +11,7 @@ import language.implicitConversions
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
+import scala.scalajs.runtime.assumingES6
 
 import org.scalajs.jasminetest.JasmineTest
 
@@ -164,6 +165,31 @@ object SystemTest extends JasmineTest {
 
       expect(System.identityHashCode(5)).toEqual(5.hashCode())
       expect(System.identityHashCode(789456)).toEqual(789456.hashCode())
+
+      expect(System.identityHashCode(())).toEqual(().hashCode())
+    }
+
+    if (assumingES6 || !js.isUndefined(js.Dynamic.global.WeakMap)) {
+      it("identityHashCode for JS objects -- with WeakMap, strong guarantees") {
+        /* This test is more restrictive than the spec, but we know our
+         * implementation will always pass the test.
+         */
+        val x1 = new js.Object
+        val x2 = new js.Object
+        val x1FirstHash = x1.hashCode()
+        expect(x1.hashCode()).toEqual(x1FirstHash)
+        expect(x1.hashCode()).not.toEqual(x2.hashCode())
+        expect(x1.hashCode()).toEqual(x1FirstHash)
+
+        expect(System.identityHashCode(x1)).toEqual(x1FirstHash)
+        expect(System.identityHashCode(x2)).toEqual(x2.hashCode())
+      }
+    } else {
+      it("identityHashCode for JS objects -- without WeakMap, weak guarantees") {
+        val x1 = new js.Object
+        val x1FirstHash = x1.hashCode()
+        expect(x1.hashCode()).toEqual(x1FirstHash)
+      }
     }
 
   }

@@ -18,14 +18,18 @@ import ir.{ClassKind, Definitions, Infos}
 import Definitions.{isConstructorName, isReflProxyName}
 
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.LongImpl
+import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
 
 import ScalaJSOptimizer._
 
-final class Analyzer(semantics: Semantics,
+final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     reachOptimizerSymbols: Boolean) extends Analysis {
   import Analyzer._
   import Analysis._
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics, reachOptimizerSymbols: Boolean) =
+    this(semantics, OutputMode.ECMAScript51Isolated, reachOptimizerSymbols)
 
   private[this] var _allAvailable: Boolean = true
   private[this] val _classInfos = mutable.Map.empty[String, ClassInfo]
@@ -141,9 +145,14 @@ final class Analyzer(semantics: Semantics,
     }
 
     if (semantics.strictFloats) {
-      val RuntimePackage = lookupClass("sjsr_package$")
-      RuntimePackage.accessModule()
-      RuntimePackage.callMethod("froundPolyfill__D__D")
+      outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          val RuntimePackage = lookupClass("sjsr_package$")
+          RuntimePackage.accessModule()
+          RuntimePackage.callMethod("froundPolyfill__D__D")
+        case OutputMode.ECMAScript6 =>
+          // nothing to do
+      }
     }
 
     val BitsModuleClass = lookupClass("sjsr_Bits$")

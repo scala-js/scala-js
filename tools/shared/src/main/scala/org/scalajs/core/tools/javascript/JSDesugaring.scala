@@ -48,11 +48,16 @@ import java.io.StringWriter
  *     When an rhs is a complex construct, push the lhs inside the complex
  *     construct. Are considered lhs:
  *     * Assign, i.e., `x =`
- *     * VarDef, i.e., `var x =`
+ *     * VarDef, i.e., `val x =` or `var x =`
  *     * Return, i.e., `return`
  *     * (EmptyTree is also used as a trick for code reuse)
  *     In fact, think that, in this context, LHS means: what to do with the
  *     result of evaluating the RHS.
+ *
+ *  When VarDefs are emitted as Lets (i.e., in ES 6 mode), they cannot be
+ *  pushed in all complex constructs, since that would alter their scope.
+ *  In those cases, they are first declared without an initial value, then
+ *  an Assign is pushed instead.
  *
  *  --------------------------------------------------------------------------
  *
@@ -128,7 +133,7 @@ object JSDesugaring {
    */
   def desugarJavaScript(tree: Tree, semantics: Semantics,
       outputMode: OutputMode, env: Env): js.Tree = {
-    val desugar = new JSDesugar(semantics, outputMode)
+    val desugar = new JSDesugar(None, semantics, outputMode)
     try {
       desugar.transformStat(tree)(env)
     } catch {
@@ -142,8 +147,18 @@ object JSDesugaring {
   private[javascript] def desugarToFunction(
       params: List[ParamDef], body: Tree, isStat: Boolean,
       semantics: Semantics, outputMode: OutputMode)(
-      implicit pos: Position): js.Tree = {
-    new JSDesugar(semantics, outputMode).desugarToFunction(
+      implicit pos: Position): js.Function = {
+    desugarToFunction(None, params, body, isStat, semantics, outputMode)
+  }
+
+  /** Desugars parameters and body to a JS function.
+   */
+  private[javascript] def desugarToFunction(
+      thisIdent: Option[js.Ident], params: List[ParamDef],
+      body: Tree, isStat: Boolean,
+      semantics: Semantics, outputMode: OutputMode)(
+      implicit pos: Position): js.Function = {
+    new JSDesugar(thisIdent, semantics, outputMode).desugarToFunction(
         params, body, isStat)
   }
 
@@ -151,9 +166,10 @@ object JSDesugaring {
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
-    js.ParamDef(paramDef.name)(paramDef.pos)
+    js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
-  private class JSDesugar(semantics: Semantics, outputMode: OutputMode) {
+  private class JSDesugar(thisIdent: Option[js.Ident],
+      semantics: Semantics, outputMode: OutputMode) {
 
     private implicit def implicitOutputMode: OutputMode = outputMode
 
@@ -214,13 +230,19 @@ object JSDesugaring {
         if (isStat) body
         else Return(body)
 
-      val hasRestParam = params.nonEmpty && params.last.rest
+      val translateRestParam = outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          params.nonEmpty && params.last.rest
+        case _ =>
+          false
+      }
+
       val extractRestParam =
-        if (hasRestParam) makeExtractRestParam(params)
+        if (translateRestParam) makeExtractRestParam(params)
         else js.Skip()
 
       val newParams =
-        (if (hasRestParam) params.init else params).map(transformParamDef)
+        (if (translateRestParam) params.init else params).map(transformParamDef)
 
       val newBody = transformStat(withReturn)(env) match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
@@ -250,13 +272,13 @@ object JSDesugaring {
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0)(tree.pos))(tree.pos)
 
       js.Block(
-        // var len = arguments.length | 0
-        js.VarDef(lenIdent,
+        // const len = arguments.length | 0
+        genLet(lenIdent, mutable = false,
             or0(js.BracketSelect(arguments, js.StringLiteral("length")))),
-        // var i = <offset>
-        js.VarDef(counterIdent, js.IntLiteral(offset)),
-        // var restParam = []
-        js.VarDef(restParamIdent, js.ArrayConstr(Nil)),
+        // let i = <offset>
+        genLet(counterIdent, mutable = true, js.IntLiteral(offset)),
+        // const restParam = []
+        genLet(restParamIdent, mutable = false, js.ArrayConstr(Nil)),
         // while (i < len)
         js.While(js.BinaryOp(JSBinaryOp.<, counter, len), js.Block(
           // restParam.push(arguments[i]);
@@ -735,8 +757,8 @@ object JSDesugaring {
     def isPureExpression(tree: Tree)(implicit env: Env): Boolean =
       isExpressionInternal(tree, allowUnpure = false, allowSideEffects = false)
 
-    def doVarDef(ident: Ident, tpe: Type,
-        rhs: Tree)(implicit env: Env): js.Tree = {
+    def doVarDef(ident: Ident, tpe: Type, mutable: Boolean, rhs: Tree)(
+        implicit env: Env): js.Tree = {
       implicit val pos = rhs.pos
       tpe match {
         case RecordType(fields) =>
@@ -751,11 +773,12 @@ object JSDesugaring {
             (RecordType.Field(fName, fOrigName, fTpe, fMutable),
                 fRhs) <- fields zip elems
           } yield {
-            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe, fRhs)
+            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe,
+                mutable || fMutable, fRhs)
           })
 
         case _ =>
-          js.VarDef(ident, transformExpr(rhs))
+          genLet(ident, mutable, transformExpr(rhs))
       }
     }
 
@@ -770,7 +793,7 @@ object JSDesugaring {
           })
 
         case _ =>
-          js.VarDef(ident, js.EmptyTree)
+          genLet(ident, mutable = true, js.EmptyTree)
       }
     }
 
@@ -807,6 +830,26 @@ object JSDesugaring {
       @inline def redo(newRhs: Tree)(implicit env: Env) =
         pushLhsInto(lhs, newRhs)
 
+      /** Extract a definition of the lhs if it is a VarDef, to avoid changing
+       *  its scope.
+       *  This only matters in ECMAScript 6, because we emit Lets.
+       */
+      def extractLet(inner: Tree => js.Tree): js.Tree = {
+        outputMode match {
+          case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+            inner(lhs)
+          case OutputMode.ECMAScript6 =>
+            lhs match {
+              case VarDef(name, tpe, mutable, oldRhs) =>
+                js.Block(
+                    doEmptyVarDef(name, tpe),
+                    inner(Assign(VarRef(name)(tpe), oldRhs)))
+              case _ =>
+                inner(lhs)
+            }
+        }
+      }
+
       if (rhs.tpe == NothingType && lhs != EmptyTree) {
         /* A touch of peephole dead code elimination.
          * Actually necessary to handle pushing an lhs into an infinite loop,
@@ -838,8 +881,8 @@ object JSDesugaring {
             case EmptyTree =>
               if (isSideEffectFreeExpression(rhs)) js.Skip()
               else transformExpr(rhs)
-            case VarDef(name, tpe, _, _) =>
-              doVarDef(name, tpe, rhs)
+            case VarDef(name, tpe, mutable, _) =>
+              doVarDef(name, tpe, mutable, rhs)
             case Assign(lhs, _) =>
               doAssign(lhs, rhs)
             case Return(_, None) =>
@@ -861,16 +904,17 @@ object JSDesugaring {
             case EmptyTree =>
               val (newStat, _) = transformBlockStats(elems)
               js.Block(newStat)
-            case VarDef(name, tpe, _, _) =>
+            case VarDef(name, tpe, mutable, _) =>
               unnest(elems) { (newElems, env) =>
-                doVarDef(name, tpe, RecordValue(recTpe, newElems))(env)
+                doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))(env)
               }
             case Assign(lhs, _) =>
               unnest(elems) { (newElems, env0) =>
                 implicit val env = env0
                 val temp = newSyntheticVar()
                 js.Block(
-                    doVarDef(temp, recTpe, RecordValue(recTpe, newElems)),
+                    doVarDef(temp, recTpe, mutable = false,
+                        RecordValue(recTpe, newElems)),
                     doAssign(lhs, VarRef(temp)(recTpe)))
               }
             case Return(_, label @ Some(l)) =>
@@ -882,15 +926,17 @@ object JSDesugaring {
         // Control flow constructs
 
         case Labeled(label, tpe, body) =>
-          val savedMap = labeledExprLHSes
-          labeledExprLHSes = labeledExprLHSes + (label -> lhs)
-          try {
-            lhs match {
-              case Return(_, _) => redo(body)
-              case _            => js.Labeled(label, redo(body))
+          extractLet { newLhs =>
+            val savedMap = labeledExprLHSes
+            labeledExprLHSes = labeledExprLHSes + (label -> newLhs)
+            try {
+              newLhs match {
+                case Return(_, _) => redo(body)
+                case _            => js.Labeled(label, pushLhsInto(newLhs, body))
+              }
+            } finally {
+              labeledExprLHSes = savedMap
             }
-          } finally {
-            labeledExprLHSes = savedMap
           }
 
         case Return(expr, _) =>
@@ -902,32 +948,40 @@ object JSDesugaring {
         case If(cond, thenp, elsep) =>
           unnest(cond) { (newCond, env0) =>
             implicit val env = env0
-            js.If(transformExpr(newCond), redo(thenp), redo(elsep))
+            extractLet { newLhs =>
+              js.If(transformExpr(newCond),
+                  pushLhsInto(newLhs, thenp), pushLhsInto(newLhs, elsep))
+            }
           }
 
         case Try(block, errVar, handler, finalizer) =>
-          val newHandler =
-            if (handler == EmptyTree) js.EmptyTree else redo(handler)
-          val newFinalizer =
-            if (finalizer == EmptyTree) js.EmptyTree else transformStat(finalizer)
+          extractLet { newLhs =>
+            val newBlock =
+              pushLhsInto(newLhs, block)
+            val newHandler =
+              if (handler == EmptyTree) js.EmptyTree else pushLhsInto(newLhs, handler)
+            val newFinalizer =
+              if (finalizer == EmptyTree) js.EmptyTree else transformStat(finalizer)
 
-          if (newHandler != js.EmptyTree && newFinalizer != js.EmptyTree) {
-            /* The Google Closure Compiler wrongly eliminates finally blocks, if
-             * the catch block throws an exception.
-             * Issues: #563, google/closure-compiler#186
-             *
-             * Therefore, we desugar
-             *
-             *   try { ... } catch { ... } finally { ... }
-             *
-             * into
-             *
-             *   try { try { ... } catch { ... } } finally { ... }
-             */
-            js.Try(js.Try(redo(block), errVar, newHandler, js.EmptyTree),
-                errVar, js.EmptyTree, newFinalizer)
-          } else
-            js.Try(redo(block), errVar, newHandler, newFinalizer)
+            if (newHandler != js.EmptyTree && newFinalizer != js.EmptyTree) {
+              /* The Google Closure Compiler wrongly eliminates finally blocks, if
+               * the catch block throws an exception.
+               * Issues: #563, google/closure-compiler#186
+               *
+               * Therefore, we desugar
+               *
+               *   try { ... } catch { ... } finally { ... }
+               *
+               * into
+               *
+               *   try { try { ... } catch { ... } } finally { ... }
+               */
+              js.Try(js.Try(newBlock, errVar, newHandler, js.EmptyTree),
+                  errVar, js.EmptyTree, newFinalizer)
+            } else {
+              js.Try(newBlock, errVar, newHandler, newFinalizer)
+            }
+          }
 
         // TODO Treat throw as an LHS?
         case Throw(expr) =>
@@ -949,22 +1003,24 @@ object JSDesugaring {
         case Match(selector, cases, default) =>
           unnest(selector) { (newSelector, env0) =>
             implicit val env = env0
-            val newCases = {
-              for {
-                (values, body) <- cases
-                newValues = (values map transformExpr)
-                // add the break statement
-                newBody = js.Block(redo(body), js.Break())
-                // desugar alternatives into several cases falling through
-                caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
-              } yield {
-                caze
+            extractLet { newLhs =>
+              val newCases = {
+                for {
+                  (values, body) <- cases
+                  newValues = (values map transformExpr)
+                  // add the break statement
+                  newBody = js.Block(pushLhsInto(newLhs, body), js.Break())
+                  // desugar alternatives into several cases falling through
+                  caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
+                } yield {
+                  caze
+                }
               }
+              val newDefault =
+                if (default == EmptyTree) js.EmptyTree
+                else pushLhsInto(newLhs, default)
+              js.Switch(transformExpr(newSelector), newCases, newDefault)
             }
-            val newDefault =
-              if (default == EmptyTree) js.EmptyTree
-              else redo(default)
-            js.Switch(transformExpr(newSelector), newCases, newDefault)
           }
 
         // Scala expressions (if we reach here their arguments are not expressions)
@@ -1616,7 +1672,11 @@ object JSDesugaring {
           js.VarRef(name)
 
         case This() =>
-          js.This()
+          thisIdent.fold[js.Tree] {
+            js.This()
+          } { ident =>
+            js.VarRef(ident)
+          }
 
         case Closure(captureParams, params, body, captureValues) =>
           val innerFunction =
@@ -1774,6 +1834,16 @@ object JSDesugaring {
 
   // Helpers
 
+  private[javascript] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
+      implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
+    outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        js.VarDef(name, rhs)
+      case OutputMode.ECMAScript6 =>
+        js.Let(name, mutable, rhs)
+    }
+  }
+
   private[javascript] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = true)
@@ -1845,7 +1915,7 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         envField(field) DOT js.Ident(subField, origName)
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         js.VarRef(js.Ident("$" + field + "_" + subField, origName))
     }
   }
@@ -1858,7 +1928,7 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.VarRef(js.Ident(ScalaJSEnvironmentName)) DOT field
 
-      case OutputMode.ECMAScript51Isolated =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         js.VarRef(js.Ident("$" + field))
     }
   }
@@ -1866,11 +1936,23 @@ object JSDesugaring {
   private[javascript] def envFieldDef(field: String, subField: String,
       value: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
-    envFieldDef(field, subField, origName = None, value)
+    envFieldDef(field, subField, value, mutable = false)
+  }
+
+  private[javascript] def envFieldDef(field: String, subField: String,
+      value: js.Tree, mutable: Boolean)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envFieldDef(field, subField, origName = None, value, mutable)
   }
 
   private[javascript] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    envFieldDef(field, subField, origName, value, mutable = false)
+  }
+
+  private[javascript] def envFieldDef(field: String, subField: String,
+      origName: Option[String], value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
 
@@ -1878,8 +1960,8 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.Assign(globalVar, value)
 
-      case OutputMode.ECMAScript51Isolated =>
-        js.VarDef(globalVar.asInstanceOf[js.VarRef].ident, value)
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
+        genLet(globalVar.asInstanceOf[js.VarRef].ident, mutable, value)
     }
   }
 

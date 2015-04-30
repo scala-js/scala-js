@@ -22,6 +22,7 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.logging._
 
 /** Incremental optimizer.
@@ -33,12 +34,17 @@ import org.scalajs.core.tools.logging._
  *  and keeping optimized results from previous runs for the rest.
  *
  *  @param semantics Required Scala.js Semantics
+ *  @param outputMode Output mode
  *  @param considerPositions Should positions be considered when comparing tree
  *                           hashes
  */
-abstract class GenIncOptimizer(semantics: Semantics,
+abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     considerPositions: Boolean) {
   import GenIncOptimizer._
+
+  @deprecated("Use the overload with an explicit output mode", "0.6.3")
+  def this(semantics: Semantics, considerPositions: Boolean) =
+    this(semantics, OutputMode.ECMAScript51Isolated, considerPositions)
 
   protected val CollOps: AbsCollOps
 
@@ -835,7 +841,7 @@ abstract class GenIncOptimizer(semantics: Semantics,
     }
 
     /** All methods are PROCESS PASS ONLY */
-    private class Optimizer extends OptimizerCore(semantics) {
+    private class Optimizer extends OptimizerCore(semantics, outputMode) {
       type MethodID = MethodImpl
 
       val myself: MethodImpl.this.type = MethodImpl.this

@@ -101,7 +101,14 @@ object Printers {
           if (rhs != EmptyTree)
             print(" = ", rhs)
 
-        case ParamDef(ident) =>
+        case Let(ident, mutable, rhs) =>
+          print(if (mutable) "let " else "const ", ident)
+          if (rhs != EmptyTree)
+            print(" = ", rhs)
+
+        case ParamDef(ident, rest) =>
+          if (rest)
+            print("...")
           print(ident)
 
         // Control flow constructs
@@ -328,6 +335,45 @@ object Printers {
           printSig(args)
           printBlock(body)
           print(")")
+
+        // ECMAScript 6 classes
+
+        case ClassDef(optClassName, optParentClass, members) =>
+          print("class")
+          for (className <- optClassName)
+            print(" ", className)
+          for (parentClass <- optParentClass)
+            print(" extends ", parentClass)
+          print(" {"); indent
+          for (member <- members) {
+            println()
+            print(member, ";")
+          }
+          undent; println(); print("}")
+
+        case MethodDef(static, name, params, body) =>
+          if (static)
+            print("static ")
+          print(name)
+          printSig(params)
+          printBlock(body)
+
+        case GetterDef(static, name, body) =>
+          if (static)
+            print("static ")
+          print("get ", name)
+          printSig(Nil)
+          printBlock(body)
+
+        case SetterDef(static, name, param, body) =>
+          if (static)
+            print("static ")
+          print("set ", name)
+          printSig(List(param))
+          printBlock(body)
+
+        case Super() =>
+          print("super")
 
         case _ =>
           print(s"<error, elem of class ${tree.getClass()}>")
