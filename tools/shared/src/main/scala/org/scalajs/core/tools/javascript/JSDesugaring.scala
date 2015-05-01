@@ -563,7 +563,8 @@ object JSDesugaring {
                 ArrayValue(tpe, recs(elems))
               case JSArrayConstr(items) if !containsAnySpread(items) =>
                 JSArrayConstr(recs(items))
-              case JSObjectConstr(items) =>
+              case arg @ JSObjectConstr(items)
+                  if !doesObjectConstrRequireDesugaring(arg) =>
                 val newValues = recs(items.map(_._2))
                 JSObjectConstr(items.map(_._1) zip newValues)
               case Closure(captureParams, params, body, captureValues) =>

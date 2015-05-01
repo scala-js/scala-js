@@ -111,6 +111,13 @@ object DynamicTest extends JasmineTest {
       expect(obj().anything).toBeUndefined()
     }
 
+    it("object literal in statement position - #1627") {
+      // Just make sure it does not cause a SyntaxError
+      js.Dynamic.literal(foo = "bar")
+      // and also test the case without param (different code path in Printers)
+      js.Dynamic.literal()
+    }
+
     it("should provide object literal construction with dynamic naming") {
       import js.Dynamic.{ literal => obj }
       val x = obj("foo" -> 3, "bar" -> "foobar")
@@ -194,6 +201,14 @@ object DynamicTest extends JasmineTest {
       expect(counter).toEqual(1)
       expect(b.foo).toEqual("foobar")
       expect(b.bar).toEqual("bar")
+
+      // In a position where unnesting is required - #1628
+      @noinline
+      def test(x: js.Dynamic): Unit = {
+        expect(x.foo).toEqual(6) // last wins
+        expect(x.bar).toEqual(5)
+      }
+      test(obj(foo = 4, bar = 5, foo = 6))
     }
 
     it("should return subclasses of js.Object in literal construction - #783") {

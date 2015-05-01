@@ -282,9 +282,14 @@ object Printers {
           printRow(items, "[", ", ", "]")
 
         case ObjectConstr(Nil) =>
-          print("{}")
+          if (isStat)
+            print("({})") // force expression position for the object literal
+          else
+            print("{}")
 
         case ObjectConstr(fields) =>
+          if (isStat)
+            print("(") // force expression position for the object literal
           print("{"); indent; println()
           printSeq(fields) {
             case (name, value) => print(name, ": ", value)
@@ -293,6 +298,8 @@ object Printers {
             println()
           }
           undent; println(); print("}")
+          if (isStat)
+            print(")")
 
         // Literals
 
