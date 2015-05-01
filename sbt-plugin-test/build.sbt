@@ -40,14 +40,13 @@ lazy val jetty9 = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
   settings(
     name := "Scala.js sbt test with jetty9 on classpath",
+    // This project also tests packageJSDependencies, although we don't use it
     jsDependencies ++= Seq(
         RuntimeDOM,
         // The jsDependenciesTest relies on this jQuery dependency
         // If you change it, make sure we still test properly
         "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
     ),
-    // A test for packageJSDependencies, although we don't use it
-    skip in packageJSDependencies := false,
     // Use PhantomJS, allow cross domain requests
     postLinkJSEnv := PhantomJSEnv(args = Seq("--web-security=no")).value,
     Jetty9Test.runSetting
@@ -110,13 +109,15 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
         "org.webjars" % "mustachejs" % "0.8.2" / "0.8.2/mustache.js" commonJSName "Mustache",
 
         // cause an ambiguity with jQuery dependency from jetty9 project (if we don't filter)
-        ProvidedJS / "js/customJQuery/jquery.js" dependsOn "1.10.2/jquery.js"
+        ProvidedJS / "js/customJQuery/jquery.js" dependsOn "1.10.2/jquery.js",
+
+        // Test minified dependencies
+        "org.webjars" % "immutable" % "3.4.0" / "immutable.js" minified "immutable.min.js"
     ),
     jsManifestFilter := ManifestFilters.reinterpretResourceNames("jetty9")(
         "jquery.js" -> "1.10.2/jquery.js")
   ).
   settings(inConfig(Compile)(Seq(
-    skip in packageJSDependencies := false,
     packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
       // perform verifications on the ordering and deduplications
       val cp = scalaJSPreLinkClasspath.value
@@ -127,10 +128,17 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
           "META-INF/resources/webjars/historyjs/1.8.0/scripts/uncompressed/history.js",
           "META-INF/resources/webjars/historyjs/1.8.0/scripts/compressed/history.js",
           "META-INF/resources/webjars/jquery/1.10.2/jquery.js",
+          "META-INF/resources/webjars/immutable/3.4.0/immutable.js",
           "js/foo.js",
           "js/some-jquery-plugin.js",
           "js/customJQuery/jquery.js"),
           s"Bad set of relPathes: ${relPaths.toSet}")
+
+      val minifiedRelPaths = cp.jsLibs.flatMap(_.info.relPathMinified)
+
+      assert(minifiedRelPaths.toSet == Set(
+          "META-INF/resources/webjars/immutable/3.4.0/immutable.min.js"),
+          s"Bad set of minifiedRelPathes: ${minifiedRelPaths.toSet}")
 
       val jQueryIndex = relPaths.indexWhere(_ endsWith "1.10.2/jquery.js")
       val jQueryPluginIndex = relPaths.indexWhere(_ endsWith "/some-jquery-plugin.js")

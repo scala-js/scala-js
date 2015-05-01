@@ -83,15 +83,20 @@ final class PartialClasspath(
       manifest <- filteredManifests
       dep <- manifest.libDeps
     } yield {
-      new FlatJSDependency(manifest.origin, resolvedJSLibs(dep.resourceName),
-          dep.dependencies.map(resolvedJSLibs), dep.commonJSName)
+      new FlatJSDependency(
+          manifest.origin,
+          resolvedJSLibs(dep.resourceName),
+          dep.dependencies.map(resolvedJSLibs),
+          dep.commonJSName,
+          dep.minifiedResourceName.map(resolvedJSLibs))
     }
 
     val flatDeps = dependencyFilter(allFlatDeps)
     val includeList = JSDependencyManifest.createIncludeList(flatDeps)
 
     for (info <- includeList)
-      yield new ResolvedJSDependency(availableLibs(info.relPath), info)
+      yield new ResolvedJSDependency(availableLibs(info.relPath),
+          info.relPathMinified.map(availableLibs), info)
   }
 
   /** Collects all the resource names mentioned in the manifests.
@@ -100,10 +105,14 @@ final class PartialClasspath(
    */
   private def collectAllResourceNames(
       manifests: Traversable[JSDependencyManifest]): Map[String, List[Origin]] = {
+
+    def allResources(dep: JSDependency) =
+      dep.resourceName :: dep.dependencies ::: dep.minifiedResourceName.toList
+
     val nameOriginPairs = for {
       manifest <- manifests.toList
       dep <- manifest.libDeps
-      resourceName <- dep.resourceName :: dep.dependencies
+      resourceName <- allResources(dep)
     } yield (resourceName, manifest.origin)
 
     nameOriginPairs.groupBy(_._1).mapValues(_.map(_._2))

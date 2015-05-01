@@ -14,7 +14,15 @@ final class ResolutionInfo(
     val relPath: String,
     val dependencies: Set[String],
     val origins: List[Origin],
-    val commonJSName: Option[String]) {
+    val commonJSName: Option[String],
+    val relPathMinified: Option[String]) {
+
+  @deprecated("Use the five argument version instead", "0.6.3")
+  def this(@deprecatedName('resourceName) relPath: String,
+      dependencies: Set[String], origins: List[Origin],
+      commonJSName: Option[String]) = {
+    this(relPath, dependencies, origins, commonJSName, None)
+  }
 
   require(commonJSName.forall(isValidIdentifier),
     "commonJSName must be a valid JavaScript identifier")

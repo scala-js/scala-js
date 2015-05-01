@@ -116,8 +116,11 @@ object ScalaJSPlugin extends AutoPlugin {
         "Writes the persistent launcher file. Fails if the mainClass is ambigous", CTask)
 
     val packageJSDependencies = TaskKey[File]("packageJSDependencies",
-        "Packages all dependencies of the preLink classpath in a single file. " +
-        "Set skip in packageJSDependencies := false to run automatically", AMinusTask)
+        "Packages all dependencies of the preLink classpath in a single file.", AMinusTask)
+
+    val packageMinifiedJSDependencies = TaskKey[File]("packageMinifiedJSDependencies",
+        "Packages minified version (if available) of dependencies of the preLink " +
+        "classpath in a single file.", AMinusTask)
 
     val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
         "Writes the JS_DEPENDENCIES file.", DTask)

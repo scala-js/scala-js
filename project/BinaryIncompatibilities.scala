@@ -44,7 +44,15 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.this"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.doVarDef")
+          "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.doVarDef"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.tools.jsdep.ConflictingNameException.org$scalajs$core$tools$jsdep$ConflictingNameException$$mkMsg")
+  )
+
+  val SbtPlugin = Seq(
+      // Additonal method in sealed trait, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.JSModuleID.minified")
   )
 
   val TestAdapter = Seq(

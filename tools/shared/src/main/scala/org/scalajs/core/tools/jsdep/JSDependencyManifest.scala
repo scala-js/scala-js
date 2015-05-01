@@ -87,28 +87,57 @@ object JSDependencyManifest {
    *  resourceName -> ResolutionInfo
    */
   private def mergeManifests(flatDeps: Traversable[FlatJSDependency]) = {
-    @inline
-    def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
-      x.commonJSName.isDefined &&
-      y.commonJSName.isDefined &&
-      (x.relPath == y.relPath ^
-          x.commonJSName == y.commonJSName)
-    )
+    checkCommonJSNameConflicts(flatDeps)
 
-    val conflicts = flatDeps.filter(x =>
-      flatDeps.exists(y => hasConflict(x,y)))
+    val byRelPath = flatDeps.groupBy(_.relPath)
 
-    if (conflicts.nonEmpty)
-      throw new ConflictingNameException(conflicts.toList)
+    checkMinifiedJSConflicts(byRelPath)
 
-    flatDeps.groupBy(_.relPath).mapValues { sameName =>
+    byRelPath.mapValues { sameName =>
       new ResolutionInfo(
         relPath = sameName.head.relPath,
         dependencies = sameName.flatMap(_.dependencies).toSet,
         origins = sameName.map(_.origin).toList,
-        commonJSName = sameName.flatMap(_.commonJSName).headOption
+        commonJSName = sameName.flatMap(_.commonJSName).headOption,
+        relPathMinified = sameName.flatMap(_.relPathMinified).headOption
       )
     }
+  }
+
+  private def checkCommonJSNameConflicts(flatDeps: Traversable[FlatJSDependency]) = {
+    @inline
+    def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
+        x.commonJSName.isDefined &&
+        y.commonJSName.isDefined &&
+        (x.relPath == y.relPath ^ x.commonJSName == y.commonJSName)
+    )
+
+    val conflicts = for {
+      dep <- flatDeps
+      if flatDeps.exists(hasConflict(dep, _))
+    } yield dep
+
+    if (conflicts.nonEmpty)
+      throw new ConflictingNameException(conflicts.toList)
+  }
+
+  private def checkMinifiedJSConflicts(
+      byRelPath: Map[String, Traversable[FlatJSDependency]]) = {
+
+    @inline
+    def hasConflict(x: FlatJSDependency, y: FlatJSDependency) = (
+        x.relPathMinified.isDefined &&
+        y.relPathMinified.isDefined &&
+        x.relPathMinified != y.relPathMinified
+    )
+
+    val conflicts = for {
+      (_, deps) <- byRelPath
+      x <- deps if deps.exists(y => hasConflict(x, y))
+    } yield x
+
+    if (conflicts.nonEmpty)
+      throw new ConflictingMinifiedJSException(conflicts.toList)
   }
 
   implicit object JSDepManJSONSerializer extends JSONSerializer[JSDependencyManifest] {

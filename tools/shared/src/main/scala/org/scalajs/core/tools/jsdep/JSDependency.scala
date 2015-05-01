@@ -19,11 +19,19 @@ import org.scalajs.core.ir.Trees.isValidIdentifier
  *  @param commonJSName A JavaScript variable name this dependency should be
  *      required in a commonJS environment (n.b. Node.js). Should only be set if
  *      the JavaScript library will register its exports.
+ *  @param minifiedResourceName Resource name for the minified version
  */
 final class JSDependency(
     val resourceName: String,
     val dependencies: List[String] = Nil,
-    val commonJSName: Option[String] = None) {
+    val commonJSName: Option[String] = None,
+    val minifiedResourceName: Option[String] = None) {
+
+  // Binary compatibility
+  def this(resourceName: String, dependencies: List[String],
+      commonJSName: Option[String]) = {
+    this(resourceName, dependencies, commonJSName, None)
+  }
 
   import JSDependency._
 
@@ -34,23 +42,30 @@ final class JSDependency(
     copy(dependencies = dependencies ++ names)
   def commonJSName(name: String): JSDependency =
     copy(commonJSName = Some(name))
+  def minified(name: String): JSDependency =
+    copy(minifiedResourceName = Some(name))
 
   @deprecated("withOrigin doesn't resolve partial paths. Use your own code instead.", "0.6.1")
-  def withOrigin(origin: Origin): FlatJSDependency =
-    new FlatJSDependency(origin, resourceName, dependencies, commonJSName)
+  def withOrigin(origin: Origin): FlatJSDependency = {
+    new FlatJSDependency(origin, resourceName, dependencies,
+        commonJSName, minifiedResourceName)
+  }
 
   private def copy(
       resourceName: String = this.resourceName,
       dependencies: List[String] = this.dependencies,
-      commonJSName: Option[String] = this.commonJSName) = {
-    new JSDependency(resourceName, dependencies, commonJSName)
+      commonJSName: Option[String] = this.commonJSName,
+      minifiedResourceName: Option[String] = this.minifiedResourceName) = {
+    new JSDependency(resourceName, dependencies,
+        commonJSName, minifiedResourceName)
   }
 
   override def equals(that: Any): Boolean = that match {
     case that: JSDependency =>
-      this.resourceName == that.resourceName &&
-      this.dependencies == that.dependencies &&
-      this.commonJSName == that.commonJSName
+      this.resourceName         == that.resourceName &&
+      this.dependencies         == that.dependencies &&
+      this.commonJSName         == that.commonJSName &&
+      this.minifiedResourceName == that.minifiedResourceName
     case _ =>
       false
   }
@@ -60,8 +75,9 @@ final class JSDependency(
     var acc = HashSeed
     acc = mix(acc, resourceName.##)
     acc = mix(acc, dependencies.##)
-    acc = mixLast(acc, commonJSName.##)
-    finalizeHash(acc, 3)
+    acc = mix(acc, commonJSName.##)
+    acc = mixLast(acc, minifiedResourceName.##)
+    finalizeHash(acc, 4)
   }
 }
 
@@ -76,6 +92,7 @@ object JSDependency {
         .opt("dependencies",
             if (x.dependencies.nonEmpty) Some(x.dependencies) else None)
         .opt("commonJSName", x.commonJSName)
+        .opt("minifiedResourceName", x.minifiedResourceName)
         .toJSON
     }
   }
@@ -86,7 +103,8 @@ object JSDependency {
       new JSDependency(
           obj.fld[String]      ("resourceName"),
           obj.opt[List[String]]("dependencies").getOrElse(Nil),
-          obj.opt[String]      ("commonJSName"))
+          obj.opt[String]      ("commonJSName"),
+          obj.opt[String]      ("minifiedResourceName"))
     }
   }
 }

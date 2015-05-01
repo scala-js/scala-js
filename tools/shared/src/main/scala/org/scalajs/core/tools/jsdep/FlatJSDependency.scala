@@ -11,13 +11,22 @@ import org.scalajs.core.ir.Trees.isValidIdentifier
  *  @param relPath Path of the JavaScript file, relative to the classpath entry
  *  @param dependencies Relative paths of files this dependency depends on
  *  @param commonJSName Variable name in commonJS environments
+ *  @param relPathMinified Path of the minified JavaScript file, relative to
+ *      the classpath entry
  */
 final class FlatJSDependency(
     val origin: Origin,
     @deprecatedName('resourceName)
     val relPath: String,
     val dependencies: List[String] = Nil,
-    val commonJSName: Option[String] = None) {
+    val commonJSName: Option[String] = None,
+    val relPathMinified: Option[String] = None) {
+
+  // Binary compatibility
+  def this(origin: Origin, @deprecatedName('resourceName) relPath: String,
+      dependencies: List[String], commonJSName: Option[String]) = {
+    this(origin, relPath, dependencies, commonJSName, None)
+  }
 
   require(commonJSName.forall(isValidIdentifier),
     "commonJSName must be a valid JavaScript identifier")

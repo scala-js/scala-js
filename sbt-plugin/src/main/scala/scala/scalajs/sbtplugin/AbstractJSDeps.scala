@@ -34,6 +34,9 @@ sealed trait JSModuleID extends AbstractJSDep {
 
   def dependsOn(names: String*): JSModuleID =
     withJSDep(jsDep = jsDep.dependsOn(names: _*))
+
+  def minified(name: String): JSModuleID =
+    withJSDep(jsDep = jsDep.minified(name))
 }
 
 /** A JavaScript module that resides inside a jar (probably webjar) */

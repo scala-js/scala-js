@@ -393,7 +393,8 @@ object Build extends sbt.Build {
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           previousArtifact := Some(
               Defaults.sbtPluginExtra("org.scala-js" % s"sbt-scalajs" % previousVersion,
-                  sbtBinaryVersion.value, scalaBinaryVersion.value))
+                  sbtBinaryVersion.value, scalaBinaryVersion.value)),
+          binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin
       )
   ).dependsOn(tools, jsEnvs, testAdapter)
 
