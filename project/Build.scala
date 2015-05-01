@@ -364,7 +364,8 @@ object Build extends sbt.Build {
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifact := Some(
-              "org.scala-js" % s"scalajs-js-envs_${scalaBinaryVersion.value}" % previousVersion)
+              "org.scala-js" % s"scalajs-js-envs_${scalaBinaryVersion.value}" % previousVersion),
+          binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
 

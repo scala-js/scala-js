@@ -22,12 +22,19 @@ abstract class ExternalJSEnv(
   /** Command to execute (on shell) for this VM */
   protected def executable: String
 
+  /** Custom initialization scripts. */
+  protected def customInitFiles(): Seq[VirtualJSFile] = Nil
+
   protected class AbstractExtRunner(protected val classpath: CompleteClasspath,
       protected val code: VirtualJSFile, protected val logger: Logger,
       protected val console: JSConsole) {
 
     /** JS files used to setup VM */
     protected def initFiles(): Seq[VirtualJSFile] = Nil
+
+    /** Custom initialization scripts, defined by the environment. */
+    final protected def customInitFiles(): Seq[VirtualJSFile] =
+      ExternalJSEnv.this.customInitFiles()
 
     /** Sends required data to VM Stdin (can throw) */
     protected def sendVMStdin(out: OutputStream): Unit = {}
@@ -46,7 +53,7 @@ abstract class ExternalJSEnv(
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      initFiles() ++ classpath.allCode
+      initFiles() ++ customInitFiles() ++ classpath.allCode
 
     /** Get all files that are passed to VM (libraries and code) */
     protected def getJSFiles(): Seq[VirtualJSFile] =
