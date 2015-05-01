@@ -111,6 +111,13 @@ object DynamicTest extends JasmineTest {
       expect(obj().anything).toBeUndefined()
     }
 
+    it("object literal in statement position - #1627") {
+      // Just make sure it does not cause a SyntaxError
+      js.Dynamic.literal(foo = "bar")
+      // and also test the case without param (different code path in Printers)
+      js.Dynamic.literal()
+    }
+
     it("should provide object literal construction with dynamic naming") {
       import js.Dynamic.{ literal => obj }
       val x = obj("foo" -> 3, "bar" -> "foobar")
