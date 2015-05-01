@@ -201,6 +201,14 @@ object DynamicTest extends JasmineTest {
       expect(counter).toEqual(1)
       expect(b.foo).toEqual("foobar")
       expect(b.bar).toEqual("bar")
+
+      // In a position where unnesting is required - #1628
+      @noinline
+      def test(x: js.Dynamic): Unit = {
+        expect(x.foo).toEqual(6) // last wins
+        expect(x.bar).toEqual(5)
+      }
+      test(obj(foo = 4, bar = 5, foo = 6))
     }
 
     it("should return subclasses of js.Object in literal construction - #783") {
