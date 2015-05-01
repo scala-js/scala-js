@@ -49,6 +49,12 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.jsdep.ConflictingNameException.org$scalajs$core$tools$jsdep$ConflictingNameException$$mkMsg")
   )
 
+  val JSEnvs = Seq(
+      // Breaking? Additional synthetic super accessor in AbstractNodeRunner
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.nodejs.NodeJSEnv#AbstractNodeRunner.org$scalajs$jsenv$nodejs$NodeJSEnv$AbstractNodeRunner$$super$customInitFiles")
+  )
+
   val SbtPlugin = Seq(
       // Additonal method in sealed trait, not an issue
       ProblemFilters.exclude[MissingMethodProblem](

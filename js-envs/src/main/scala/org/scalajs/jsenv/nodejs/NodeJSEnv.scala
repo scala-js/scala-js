@@ -317,6 +317,7 @@ class NodeJSEnv private (
     /** Libraries are loaded via require in Node.js */
     override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
       initFiles() ++
+      customInitFiles() ++
       classpath.jsLibs.map(requireLibrary) :+
       classpath.scalaJSCode
     }
