@@ -1524,7 +1524,7 @@ private[optimizer] abstract class OptimizerCore(
         val assumingES6 = outputMode match {
           case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
             false
-          case OutputMode.ECMAScript6 =>
+          case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
             true
         }
         contTree(BooleanLiteral(assumingES6))

@@ -46,7 +46,9 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.doVarDef"),
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.core.tools.jsdep.ConflictingNameException.org$scalajs$core$tools$jsdep$ConflictingNameException$$mkMsg")
+          "org.scalajs.core.tools.jsdep.ConflictingNameException.org$scalajs$core$tools$jsdep$ConflictingNameException$$mkMsg"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.ScalaJSClosureOptimizer.org$scalajs$core$tools$optimizer$ScalaJSClosureOptimizer$$toClosureInput")
   )
 
   val JSEnvs = Seq(

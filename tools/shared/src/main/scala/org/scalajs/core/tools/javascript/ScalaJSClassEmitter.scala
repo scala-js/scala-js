@@ -40,6 +40,19 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
+  def genDeclareTypeData(tree: LinkedClass): js.Tree = {
+    implicit val pos = tree.pos
+    envFieldDef("d", tree.encodedName, js.Null(), mutable = true)
+  }
+
+  def genDeclareModule(tree: LinkedClass): js.Tree = {
+    implicit val pos = tree.pos
+    if (tree.kind == ClassKind.ModuleClass)
+      envFieldDef("n", tree.encodedName, js.Undefined(), mutable = true)
+    else
+      js.Skip()
+  }
+
   /** Desugar a Scala.js class into ECMAScript 5 constructs
    *
    *  @param tree The IR tree to emit to raw JavaScript
@@ -90,7 +103,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         allDefsBlock
 
-      case OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         val allDefs = allDefsBlock match {
           case js.Block(allDefs) => allDefs
           case js.Skip()         => Nil
@@ -102,7 +115,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
   /** Generates an ECMAScript 6 class for a linked class. */
   def genES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
-    require(outputMode == OutputMode.ECMAScript6)
+    require(outputMode == OutputMode.ECMAScript6 ||
+        outputMode == OutputMode.ECMAScript6StrongMode)
 
     val className = tree.name.name
     val classIdent = encodeClassVar(className)(
@@ -115,6 +129,27 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
 
+  /** Generates an ECMAScript 6 class for a linked class containing only static
+   *  methods.
+   *
+   *  This is used for classes that do not have instances, as well as
+   *  non-classes, such as interfaces. These linked classes must not have a
+   *  parent nor a constructor.
+   *
+   *  This method can only be used when emitting to Strong Mode. In ES6
+   *  non-strong (as well as ES5 modes), static methods are emitted as
+   *  top-level functions instead.
+   */
+  def genStaticsES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
+    require(outputMode == OutputMode.ECMAScript6StrongMode)
+
+    val className = tree.name.name
+    val classIdent = encodeClassVar(className)(
+        outputMode, tree.name.pos).asInstanceOf[js.VarRef].ident
+
+    js.ClassDef(Some(classIdent), None, members)(tree.pos)
+  }
+
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: LinkedClass): js.Tree = {
     assert(tree.kind.isClass)
@@ -125,7 +160,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         genES5Constructor(tree)
 
-      case OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         genES6Constructor(tree)
     }
   }
@@ -178,7 +213,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     implicit val pos = tree.pos
 
     val fieldDefs = genFieldDefs(tree)
-    if (fieldDefs.isEmpty) {
+    if (fieldDefs.isEmpty && outputMode == OutputMode.ECMAScript6) {
       js.Skip()
     } else {
       val superCtorCall = tree.superClass.fold[js.Tree] {
@@ -186,8 +221,15 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       } { parentIdent =>
         js.Apply(js.Super(), Nil)
       }
+      val initClassData = outputMode match {
+        case OutputMode.ECMAScript6StrongMode =>
+          js.Assign(js.DotSelect(js.This(), js.Ident("$classData")),
+              envField("d", tree.name.name))
+        case _ =>
+          js.Skip()
+      }
       js.MethodDef(static = false, js.Ident("constructor"), Nil,
-          js.Block(superCtorCall :: fieldDefs))
+          js.Block(superCtorCall :: initClassData :: fieldDefs))
     }
   }
 
@@ -212,20 +254,23 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
         method.args, method.body, method.resultType == NoType,
         semantics, outputMode)
 
-    if (method.static) {
-      val Ident(methodName, origName) = method.name
-      envFieldDef(
-          "s", className + "__" + methodName, origName,
-          methodFun)
-    } else {
-      outputMode match {
-        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-          genAddToPrototype(className, method.name, methodFun)
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        js.MethodDef(static = method.static, genPropertyName(method.name),
+            methodFun.args, methodFun.body)
 
-        case OutputMode.ECMAScript6 =>
-          js.MethodDef(static = false, genPropertyName(method.name),
-              methodFun.args, methodFun.body)
-      }
+      case _ if method.static =>
+        val Ident(methodName, origName) = method.name
+        envFieldDef(
+            "s", className + "__" + methodName, origName,
+            methodFun)
+
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        genAddToPrototype(className, method.name, methodFun)
+
+      case OutputMode.ECMAScript6 =>
+        js.MethodDef(static = false, genPropertyName(method.name),
+            methodFun.args, methodFun.body)
     }
   }
 
@@ -234,7 +279,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         genPropertyES5(className, property)
-      case OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         genPropertyES6(className, property)
     }
   }
@@ -372,7 +417,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
               js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
             case _ =>
-              var test = (obj && (obj DOT "$classData") &&
+              var test = (genIsScalaJSObject(obj) &&
                   (obj DOT "$classData" DOT "ancestors" DOT className))
 
               if (isAncestorOfString)
@@ -433,13 +478,14 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       envFieldDef("isArrayOf", className,
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
+            val isStrongMode = outputMode == OutputMode.ECMAScript6StrongMode
             val dataVarDef = genLet(Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
             val data = dataVarDef.ref
             js.Block(
-              dataVarDef,
-              js.If(!data, {
+              if (isStrongMode) js.Skip() else dataVarDef,
+              js.If(!(if (isStrongMode) genIsScalaJSObject(obj) else data), {
                 js.Return(js.BooleanLiteral(false))
               }, {
                 val arrayDepthVarDef = genLet(Ident("arrayDepth"), mutable = false, {
@@ -447,6 +493,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
                 })
                 val arrayDepth = arrayDepthVarDef.ref
                 js.Block(
+                  if (isStrongMode) dataVarDef else js.Skip(),
                   arrayDepthVarDef,
                   js.Return {
                     // Array[A] </: Array[Array[A]]
@@ -460,7 +507,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
               }))
 
           case _ =>
-            js.Return(!(!(obj && (obj DOT "$classData") &&
+            js.Return(!(!(genIsScalaJSObject(obj) &&
                 ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
                 (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT className))))
         }))
@@ -482,6 +529,16 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     }
 
     js.Block(createIsArrayOfStat, createAsArrayOfStat)
+  }
+
+  private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
+    import TreeDSL._
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        js.Apply(js.VarRef(js.Ident("$isScalaJSObject")), List(obj))
+      case _ =>
+        obj && (obj DOT "$classData")
+    }
   }
 
   def genTypeData(tree: LinkedClass): js.Tree = {
@@ -515,51 +572,67 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val ancestorsRecord = js.ObjectConstr(
         tree.ancestors.map(ancestor => (js.Ident(ancestor), js.IntLiteral(1))))
 
-    val typeData = js.Apply(js.New(envField("TypeData"), Nil) DOT "initClass", (List(
+    val (isInstanceFun, isArrayOfFun) = {
+      if (isObjectClass) {
+        /* Object has special ScalaJS.is.O *and* ScalaJS.isArrayOf.O. */
+        (envField("is", className), envField("isArrayOf", className))
+      } else if (isHijackedBoxedClass) {
+        /* Hijacked boxed classes have a special isInstanceOf test. */
+        val xParam = js.ParamDef(Ident("x"), rest = false)
+        (js.Function(List(xParam), js.Return {
+          genIsInstanceOf(xParam.ref, ClassType(className))
+        }), js.Undefined())
+      } else if (isAncestorOfHijackedClass || className == StringClass) {
+        /* java.lang.String and ancestors of hijacked classes have a normal
+         * ScalaJS.is.pack_Class test but with a non-standard behavior. */
+        (envField("is", className), js.Undefined())
+      } else if (tree.kind == ClassKind.RawJSType) {
+        /* Raw JS types have an instanceof operator-based isInstanceOf test
+         * dictated by their jsName. If there is no jsName, the test cannot
+         * be performed and must throw.
+         */
+        tree.jsName.fold[(js.Tree, js.Tree)] {
+          (envField("noIsInstance"), js.Undefined())
+        } { jsName =>
+          val jsCtor = jsName.split("\\.").foldLeft(envField("g")) {
+            (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
+          }
+          (js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
+            js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
+          }), js.Undefined())
+        }
+      } else {
+        // For other classes, the isInstance function can be inferred.
+        (js.Undefined(), js.Undefined())
+      }
+    }
+
+    val allParams = List(
         js.ObjectConstr(List(classIdent -> js.IntLiteral(0))),
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
         ancestorsRecord,
-        parentData
-    ) ++ (
-        // Optional parameter isInstance
-        if (isObjectClass) {
-          /* Object has special ScalaJS.is.O *and* ScalaJS.isArrayOf.O. */
-          List(
-            envField("is", className),
-            envField("isArrayOf", className))
-        } else if (isHijackedBoxedClass) {
-          /* Hijacked boxed classes have a special isInstanceOf test. */
-          val xParam = js.ParamDef(Ident("x"), rest = false)
-          List(js.Function(List(xParam), js.Return {
-            genIsInstanceOf(xParam.ref, ClassType(className))
-          }))
-        } else if (isAncestorOfHijackedClass || className == StringClass) {
-          /* java.lang.String and ancestors of hijacked classes have a normal
-           * ScalaJS.is.pack_Class test but with a non-standard behavior. */
-          List(envField("is", className))
-        } else if (tree.kind == ClassKind.RawJSType) {
-          /* Raw JS types have an instanceof operator-based isInstanceOf test
-           * dictated by their jsName. If there is no jsName, the test cannot
-           * be performed and must throw.
-           */
-          tree.jsName.fold[List[js.Tree]] {
-            List(envField("noIsInstance"))
-          } { jsName =>
-            val jsCtor = jsName.split("\\.").foldLeft(envField("g")) {
-              (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
-            }
-            List(js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
-              js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
-            }))
-          }
-        } else {
-          // For other classes, the isInstance function can be inferred.
-          Nil
-        }
-    )).reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse)
+        parentData,
+        isInstanceFun,
+        isArrayOfFun
+    )
 
-    envFieldDef("d", className, typeData)
+    val prunedParams = outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        allParams
+      case _ =>
+        allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
+    }
+
+    val typeData = js.Apply(js.New(envField("TypeData"), Nil) DOT "initClass",
+        prunedParams)
+
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        js.Assign(envField("d", className), typeData)
+      case _ =>
+        envFieldDef("d", className, typeData)
+    }
   }
 
   def genSetTypeData(tree: LinkedClass): js.Tree = {
@@ -585,8 +658,11 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     require(tree.kind == ClassKind.ModuleClass,
         s"genModuleAccessor called with non-module class: $className")
 
-    val createModuleInstanceField = {
-      envFieldDef("n", className, js.Undefined(), mutable = true)
+    val createModuleInstanceField = outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        js.Skip()
+      case _ =>
+        envFieldDef("n", className, js.Undefined(), mutable = true)
     }
 
     val createAccessor = {
@@ -626,9 +702,14 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
           }, js.Skip()))
       }
 
-      envFieldDef("m", className, js.Function(Nil, js.Block(
-        initBlock, js.Return(moduleInstanceVar)
-      )))
+      val body = js.Block(initBlock, js.Return(moduleInstanceVar))
+
+      outputMode match {
+        case OutputMode.ECMAScript6StrongMode =>
+          js.MethodDef(static = true, js.Ident("__M"), Nil, body)
+        case _ =>
+          envFieldDef("m", className, js.Function(Nil, body))
+      }
     }
 
     js.Block(createModuleInstanceField, createAccessor)
@@ -670,7 +751,6 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val ConstructorExportDef(fullName, args, body) = tree
 
     val baseCtor = envField("c", cd.name.name, cd.name.originalName)
-    val (createNamespace, expCtorVar) = genCreateNamespaceInExports(fullName)
 
     val thisIdent = js.Ident("$thiz")
 
@@ -678,16 +758,28 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       desugarToFunction(Some(thisIdent), args, body, isStat = true,
           semantics, outputMode)
 
-    js.Block(
-      createNamespace,
-      js.DocComment("@constructor"),
-      expCtorVar := js.Function(ctorParams, js.Block(
-        genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),
-        ctorBody,
-        js.Return(js.VarRef(thisIdent))
-      )),
-      expCtorVar DOT "prototype" := baseCtor DOT "prototype"
-    )
+    val exportedCtor = js.Function(ctorParams, js.Block(
+      genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),
+      ctorBody,
+      js.Return(js.VarRef(thisIdent))
+    ))
+
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        val (nsParts, name) = genStrongModeNamespaceInfo(fullName)
+        js.Apply(js.VarRef(js.Ident("$exportCtor")), List(
+            nsParts, name, exportedCtor, baseCtor DOT "prototype"))
+
+      case _ =>
+        val (createNamespace, expCtorVar) =
+          genCreateNamespaceInExports(fullName)
+        js.Block(
+          createNamespace,
+          js.DocComment("@constructor"),
+          expCtorVar := exportedCtor,
+          expCtorVar DOT "prototype" := baseCtor DOT "prototype"
+        )
+    }
   }
 
   def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
@@ -695,15 +787,28 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
     implicit val pos = tree.pos
 
-    val baseAccessor =
-      envField("m", cd.name.name)
-    val (createNamespace, expAccessorVar) =
-      genCreateNamespaceInExports(tree.fullName)
+    val baseAccessor = outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        js.DotSelect(envField("c", cd.name.name), js.Ident("__M"))
+      case _ =>
+        envField("m", cd.name.name)
+    }
 
-    js.Block(
-      createNamespace,
-      expAccessorVar := baseAccessor
-    )
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        val (nsParts, name) = genStrongModeNamespaceInfo(tree.fullName)
+        js.Apply(js.VarRef(js.Ident("$export")), List(
+            nsParts, name, baseAccessor))
+
+      case _ =>
+        val (createNamespace, expAccessorVar) =
+          genCreateNamespaceInExports(tree.fullName)
+
+        js.Block(
+          createNamespace,
+          expAccessorVar := baseAccessor
+        )
+    }
   }
 
   // Helpers
@@ -729,6 +834,12 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     }
     val lhs = js.BracketSelect(namespace, js.StringLiteral(parts.last))
     (js.Block(statements.result()), lhs)
+  }
+
+  private def genStrongModeNamespaceInfo(qualName: String)(
+      implicit pos: Position): (js.Tree, js.Tree) = {
+    val parts = qualName.split("\\.").toList.map(js.StringLiteral(_))
+    (js.ArrayConstr(parts.init), parts.last)
   }
 
 }

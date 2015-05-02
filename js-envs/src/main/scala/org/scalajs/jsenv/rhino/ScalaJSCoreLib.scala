@@ -44,8 +44,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   private val ancestorStore = mutable.Map.empty[String, List[String]]
 
   def insertInto(context: Context, scope: Scriptable) = {
-    CoreJSLibs.libs(semantics, ECMAScript51Global).foreach(
-        context.evaluateFile(scope, _))
+    context.evaluateFile(scope, CoreJSLibs.lib(semantics, ECMAScript51Global))
     lazifyScalaJSFields(scope)
 
     // Make sure exported symbols are loaded

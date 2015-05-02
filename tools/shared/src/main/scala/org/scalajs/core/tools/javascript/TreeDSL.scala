@@ -33,6 +33,9 @@ private[javascript] object TreeDSL {
     def ===(that: String)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.===, self, StringLiteral(that))
 
+    def !==(that: Tree)(implicit pos: Position): Tree =
+      BinaryOp(ir.Trees.JSBinaryOp.!==, self, that)
+
     def unary_!()(implicit pos: Position): Tree =
       UnaryOp(ir.Trees.JSUnaryOp.!, self)
     def &&(that: Tree)(implicit pos: Position): Tree =
