@@ -139,25 +139,37 @@ object StackTrace {
   }
 
   /** Tries and extract the class name and method from the JS function name.
+   *
    *  The recognized patterns are
+   *  {{{
+   *    \$c_<encoded class name>.prototype.<encoded method name>
+   *    \$c_<encoded class name>.<encoded method name>
+   *    \$s_<encoded class name>__<encoded method name>
+   *    \$m_<encoded module name>
+   *  }}}
+   *  and their ECMAScript51Global equivalents:
+   *  {{{
    *    ScalaJS.c.<encoded class name>.prototype.<encoded method name>
    *    ScalaJS.c.<encoded class name>.<encoded method name>
-   *    ScalaJS.i.<encoded trait impl name>__<encoded method name>
+   *    ScalaJS.s.<encoded class name>__<encoded method name>
    *    ScalaJS.m.<encoded module name>
+   *  }}}
+   *  all of them optionally prefixed by `Object.` or `[object Object].`.
+   *
    *  When the function name is none of those, the pair
-   *    ("<jscode>", functionName)
-   *  is returned, which will instruct StackTraceElement.toString() to only
+   *    `("<jscode>", functionName)`
+   *  is returned, which will instruct [[StackTraceElement.toString()]] to only
    *  display the function name.
    */
   private def extractClassMethod(functionName: String): (String, String) = {
-    val PatC = """^(?:ScalaJS\.c\.|\$c_)([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatI = """^(?:Object\.)?(?:ScalaJS\.s\.|\$s_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatM = """^(?:Object\.)?(?:ScalaJS\.m\.|\$m_)([^.\.]+)$""".re
+    val PatC = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.c\.|\$c_)([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.s\.|\$s_)((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatM = """^(?:Object\.|\[object Object\]\.)?(?:ScalaJS\.m\.|\$m_)([^\.]+)$""".re
 
     var isModule = false
     var mtch = PatC.exec(functionName)
     if (mtch eq null) {
-      mtch = PatI.exec(functionName)
+      mtch = PatS.exec(functionName)
       if (mtch eq null) {
         mtch = PatM.exec(functionName)
         isModule = true
