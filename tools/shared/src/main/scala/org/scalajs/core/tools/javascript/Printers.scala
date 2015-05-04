@@ -190,17 +190,16 @@ object Printers {
           print("{"); indent
           for ((value, body) <- cases) {
             println()
-            print("case ", value, ":"); indent; println()
-            printStat(body)
-            print(";")
-            undent
+            print("case ", value, ":")
+            if (!body.isInstanceOf[Skip]) {
+              print(" ")
+              printBlock(body)
+            }
           }
           if (default != EmptyTree) {
             println()
-            print("default:"); indent; println()
-            printStat(default)
-            print(";")
-            undent
+            print("default: ")
+            printBlock(default)
           }
           undent; println(); print("}")
 
