@@ -47,9 +47,8 @@ object ReflectionTest extends JasmineTest {
     }
 
     it("isInstance for raw JS class") {
-      js.Dynamic.global.ReflectionTestRawJSClass = { (_: js.Dynamic) =>
-        // no-op
-      }: js.ThisFunction
+      js.Dynamic.global.ReflectionTestRawJSClass =
+        js.eval("""(function() {})""")
 
       val obj = new ReflectionTestRawJSClass
       expect(obj.isInstanceOf[ReflectionTestRawJSClass]).toBeTruthy
