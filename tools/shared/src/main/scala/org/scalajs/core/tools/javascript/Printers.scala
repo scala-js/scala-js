@@ -45,7 +45,7 @@ object Printers {
     }
 
     protected def shouldPrintSepAfterTree(tree: Tree): Boolean =
-      !tree.isInstanceOf[DocComment]
+      !tree.isInstanceOf[DocComment] && !tree.isInstanceOf[ClassDef]
 
     protected def printBlock(tree: Tree): Unit = {
       val trees = tree match {
