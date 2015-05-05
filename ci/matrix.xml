@@ -72,7 +72,8 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+    sbt 'set inScope(ThisScope in testSuite)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+        'set parallelExecution in (testSuite, Test) := false' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
