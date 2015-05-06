@@ -31,8 +31,8 @@ import scala.util.{Try, Failure, Success}
  *
  *  No retrying is performed for synchronous, or normal asynchronous runs.
  */
-final class RetryingComJSEnv(baseEnv: ComJSEnv,
-    maxRetries: Int) extends ComJSEnv {
+final class RetryingComJSEnv(val baseEnv: ComJSEnv,
+    val maxRetries: Int) extends ComJSEnv {
 
   def this(baseEnv: ComJSEnv) = this(baseEnv, 5)
 

@@ -1,6 +1,8 @@
 import sbt._
 import Keys._
 
+import scala.annotation.tailrec
+
 import bintray.Plugin.bintrayPublishSettings
 import bintray.Keys.{repository, bintrayOrganization, bintray}
 
@@ -21,6 +23,7 @@ import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.sbtplugin._
+import org.scalajs.jsenv.{JSEnv, RetryingComJSEnv}
 import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
@@ -823,7 +826,8 @@ object Build extends sbt.Build {
 
   val testTagSettings = Seq(
       testOptions in Test ++= {
-        val envTags = (jsEnv in Test).value match {
+        @tailrec
+        def envTagsFor(env: JSEnv): Seq[Tests.Argument] = env match {
           case env: RhinoJSEnv =>
             val baseArgs = Seq("-trhino")
             val args =
@@ -853,9 +857,17 @@ object Build extends sbt.Build {
 
           case _: PhantomJSEnv =>
             Seq(Tests.Argument("-tphantomjs"))
+
+          case env: RetryingComJSEnv =>
+            envTagsFor(env.baseEnv)
+
           case _ =>
-            Seq()
+            throw new AssertionError(
+                s"Unknown JSEnv of class ${env.getClass.getName}: " +
+                "don't know what tags to specify for the test suite")
         }
+
+        val envTags = envTagsFor((jsEnv in Test).value)
 
         val sems = (scalaJSSemantics in Test).value
         val semTags = (
