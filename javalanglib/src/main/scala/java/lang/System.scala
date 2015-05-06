@@ -154,7 +154,10 @@ object System {
         x.hashCode()
       case _ =>
         import IDHashCode._
-        if (assumingES6 || idHashCodeMap != null) {
+        if (x.getClass == null) {
+          // This is not a Scala.js object: delegate to x.hashCode()
+          x.hashCode()
+        } else if (assumingES6 || idHashCodeMap != null) {
           // Use the global WeakMap of attributed id hash codes
           val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
           if (!js.isUndefined(hash)) {
@@ -164,9 +167,6 @@ object System {
             idHashCodeMap.set(x.asInstanceOf[js.Any], newHash)
             newHash
           }
-        } else if (x.getClass == null) {
-          // This is not a Scala.js object
-          42
         } else {
           val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
           if (!js.isUndefined(hash)) {

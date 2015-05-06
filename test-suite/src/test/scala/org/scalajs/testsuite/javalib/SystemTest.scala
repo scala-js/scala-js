@@ -189,6 +189,7 @@ object SystemTest extends JasmineTest {
         val x1 = new js.Object
         val x1FirstHash = x1.hashCode()
         expect(x1.hashCode()).toEqual(x1FirstHash)
+        expect(System.identityHashCode(x1)).toEqual(x1FirstHash)
       }
     }
 
