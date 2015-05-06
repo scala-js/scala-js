@@ -99,6 +99,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     ObjectClass.callMethod("equals__O__Z")
 
     instantiateClassWith("jl_NullPointerException", "init___")
+    instantiateClassWith("jl_CloneNotSupportedException", "init___")
 
     if (asInstanceOfs != Unchecked)
       instantiateClassWith("jl_ClassCastException", "init___T")
@@ -120,6 +121,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     RTStringModuleClass.callMethod("hashCode__T__I")
 
     val RTLongClass = lookupClass(LongImpl.RuntimeLongClass)
+    RTLongClass.useInstanceTests()
     RTLongClass.instantiated()
     for (method <- LongImpl.AllConstructors)
       RTLongClass.callMethod(method, statically = true)
