@@ -14,23 +14,46 @@ import org.scalajs.core.ir.Types._
 object JSTreeExtractors {
 
   object jse {
+
+    /**
+     *  A partially literally named sequence (like in a call to applyDynamicNamed)
+     *  Where some parameters are expected to be literally named.
+     *
+     *  Example (Scala): method(("name1", x), (a, y), z)
+     */
+    object LitNamedExtractor {
+      def extractFrom(exprs: List[Tree]): List[(StringLiteral, Tree)] = {
+        // Note that with 'failIfNonLit = false'
+        // genNameLitExtract will never return None
+        genNamedLitExtract(exprs, Nil, false).getOrElse(Nil)
+      }
+
+      @tailrec
+      private[jse] final def genNamedLitExtract(
+          exprs: List[Tree],
+          acc: List[(StringLiteral, Tree)],
+          failIfNonLit: Boolean
+        ): Option[List[(StringLiteral, Tree)]] = exprs match {
+        case Tuple2(name: StringLiteral, value) :: xs =>
+          genNamedLitExtract(xs, (name, value) :: acc, failIfNonLit)
+        case _ :: xs =>
+          if (failIfNonLit)
+            None
+          else
+            genNamedLitExtract(xs, acc, failIfNonLit)
+        case Nil => Some(acc.reverse)
+      }
+    }
+
     /**
      *  A literally named sequence (like in a call to applyDynamicNamed)
+     *  Where all parameters are expected to be literally named.
      *
      *  Example (Scala): method(("name1", x), ("name2", y))
      */
     object LitNamed {
-      def unapply(exprs: List[Tree]) = unapply0(exprs, Nil)
-
-      @tailrec
-      private def unapply0(
-          exprs: List[Tree],
-          acc: List[(StringLiteral, Tree)]
-        ): Option[List[(StringLiteral, Tree)]] = exprs match {
-        case Tuple2(name: StringLiteral, value) :: xs =>
-          unapply0(xs, (name, value) :: acc)
-        case Nil => Some(acc.reverse)
-        case _   => None
+      def unapply(exprs: List[Tree]): Option[List[(StringLiteral, Tree)]] = {
+        LitNamedExtractor.genNamedLitExtract(exprs, Nil, true)
       }
     }
 
@@ -53,7 +76,7 @@ object JSTreeExtractors {
             List(
               Apply(
                 LoadModule(ClassType("s_Predef$")),
-                Ident("any2ArrowAssoc__O__O", _),
+                Ident("any2ArrowAssoc__O__O" | "ArrowAssoc__O__O", _),
                 List(_1)),
               _2)) =>
           Some((_1, _2))
