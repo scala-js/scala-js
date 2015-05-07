@@ -160,7 +160,8 @@ private[runtime] object RuntimeString {
     thiz.lastIndexOf(fromCodePoint(ch))
 
   def lastIndexOf(thiz: String, ch: Int, fromIndex: Int): Int =
-    thiz.lastIndexOf(fromCodePoint(ch), fromIndex)
+    if (fromIndex < 0) -1
+    else thiz.lastIndexOf(fromCodePoint(ch), fromIndex)
 
   @inline
   def lastIndexOf(thiz: String, str: String): Int =
@@ -168,7 +169,8 @@ private[runtime] object RuntimeString {
 
   @inline
   def lastIndexOf(thiz: String, str: String, fromIndex: Int): Int =
-    thiz.jsLastIndexOf(str, fromIndex)
+    if (fromIndex < 0) -1
+    else thiz.jsLastIndexOf(str, fromIndex)
 
   @inline
   def length(thiz: String): Int =
