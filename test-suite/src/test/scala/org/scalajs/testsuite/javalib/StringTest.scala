@@ -98,6 +98,7 @@ object StringTest extends JasmineTest {
       expect("Scala.js".lastIndexOf("Scala.js")).toBe(0)
       expect("ananas".lastIndexOf("na")).toBe(3)
       expect("Scala.js".lastIndexOf("Java")).toBe(-1)
+      expect("Negative index".lastIndexOf("N", -5)).toBe(-1)
     }
 
     it("should respond to `lastIndexOf(int)`") {
@@ -106,6 +107,7 @@ object StringTest extends JasmineTest {
       expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xD834)).toEqual(8)
       expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xDF06)).toEqual(9)
       expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64)).toEqual(10)
+      expect("abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x64, -1)).toEqual(-1)
     }
 
     it("should respond to `toUpperCase`") {
