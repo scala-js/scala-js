@@ -15,19 +15,31 @@ object TestDetector {
   @JSExport
   def loadDetectedTests(): Unit = detectTestsInternal().foreach(_._1())
 
-  private def detectTestsInternal() = {
+  private def detectTestsInternal(): List[(js.Dynamic, String)] = {
+    def isExportedModule(item: js.Dynamic): Boolean = {
+      /* We make sure to use only select exported modules (not classes) by
+       * checking .prototype of the exporters.
+       */
+      (js.typeOf(item) == "function") &&
+      (js.Object.getPrototypeOf(item.prototype.asInstanceOf[js.Object]) eq
+          js.Object.asInstanceOf[js.Dynamic].prototype)
+    }
+
+    def rec(item: js.Dynamic, fullName: String): List[(js.Dynamic, String)] = {
+      if (js.typeOf(item) == "object") {
+        js.Object.properties(item).toList flatMap { prop =>
+          rec(item.selectDynamic(prop), s"$fullName.$prop")
+        }
+      } else if (isExportedModule(item)) {
+        List((item, fullName))
+      } else {
+        Nil
+      }
+    }
+
     val parts = basePackage.split('.')
     val base = parts.foldLeft(js.Dynamic.global)(_.selectDynamic(_))
-
-    // We make sure to use only exported modules (not classes) by checking
-    // .prototype of the exporters.
-    for {
-      pName    <- js.Object.properties(base)
-      testName <- js.Object.properties(base.selectDynamic(pName))
-      test      = base.selectDynamic(pName).selectDynamic(testName)
-      if js.Object.getPrototypeOf(test.prototype.asInstanceOf[js.Object]) eq
-         js.Object.asInstanceOf[js.Dynamic].prototype
-    } yield (test, s"$basePackage.$pName.$testName")
+    rec(base, basePackage)
   }
 
 }
