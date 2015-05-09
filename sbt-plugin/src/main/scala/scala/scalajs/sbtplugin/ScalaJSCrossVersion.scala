@@ -39,7 +39,7 @@ object ScalaJSCrossVersion {
       CrossVersion.fullMapped(cross.remapVersion andThen scalaJSVersionMap)
   }
 
-  def binary: CrossVersion = scalaJSMapped(CrossVersion.binary)
+  val binary: CrossVersion = scalaJSMapped(CrossVersion.binary)
 
-  def full: CrossVersion = scalaJSMapped(CrossVersion.full)
+  val full: CrossVersion = scalaJSMapped(CrossVersion.full)
 }
