@@ -80,10 +80,10 @@ package object scala {
   // Numeric types which were moved into scala.math.*
 
   type BigDecimal = scala.math.BigDecimal
-  val BigDecimal = scala.math.BigDecimal
+  lazy val BigDecimal = scala.math.BigDecimal
 
   type BigInt = scala.math.BigInt
-  val BigInt = scala.math.BigInt
+  lazy val BigInt = scala.math.BigInt
 
   type Equiv[T] = scala.math.Equiv[T]
   val Equiv = scala.math.Equiv

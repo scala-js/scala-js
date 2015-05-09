@@ -51,20 +51,28 @@ object Build extends sbt.Build {
   val previousBinaryCrossVersion =
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
+  val newScalaBinaryVersionsInThisRelease: Set[String] =
+    Set("2.12.0-M1")
+
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
-      val thisProjectID = projectID.value
-      val previousCrossVersion = thisProjectID.crossVersion match {
-        case ScalaJSCrossVersion.binary => previousBinaryCrossVersion
-        case crossVersion               => crossVersion
+      if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
+        // New in this release, no binary compatibility to comply to
+        None
+      } else {
+        val thisProjectID = projectID.value
+        val previousCrossVersion = thisProjectID.crossVersion match {
+          case ScalaJSCrossVersion.binary => previousBinaryCrossVersion
+          case crossVersion               => crossVersion
+        }
+        val prevProjectID =
+          (thisProjectID.organization % thisProjectID.name % previousVersion)
+            .cross(previousCrossVersion)
+            .extra(thisProjectID.extraAttributes.toSeq: _*)
+        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID))
       }
-      val prevProjectID =
-        (thisProjectID.organization % thisProjectID.name % previousVersion)
-          .cross(previousCrossVersion)
-          .extra(thisProjectID.extraAttributes.toSeq: _*)
-      Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID))
     }
   }
 
@@ -199,7 +207,8 @@ object Build extends sbt.Build {
         "2.11.2",
         "2.11.4",
         "2.11.5",
-        "2.11.6"
+        "2.11.6",
+        "2.12.0-M1"
       ),
       // Default stage
       scalaJSStage in Global := PreLinkStage

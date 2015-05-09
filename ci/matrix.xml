@@ -274,6 +274,10 @@
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
+    <run task="main">
+      <v n="scala">2.12.0-M1</v>
+      <v n="java">1.8</v>
+    </run>
 
     <!-- Bootstrap test tasks -->
     <run task="bootstrap">
@@ -295,6 +299,10 @@
     </run>
     <run task="bootstrap">
       <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="bootstrap">
+      <v n="scala">2.12.0-M1</v>
       <v n="java">1.8</v>
     </run>
 
