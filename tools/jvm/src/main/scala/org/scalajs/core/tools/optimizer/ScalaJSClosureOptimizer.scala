@@ -59,6 +59,18 @@ class ScalaJSClosureOptimizer {
   def optimizeIR(optimizer: ScalaJSOptimizer,
       irFiles: Traversable[VirtualScalaJSIRFile], cfg: Config,
       logger: Logger): Unit = {
+    optimizer.outputMode match {
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+        optimizeIRUsingClosure(optimizer, irFiles, cfg, logger)
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+        optimizer.optimizeIRInternal(irFiles, cfg, cfg.output,
+            cfg.relativizeSourceMapBase, logger)
+    }
+  }
+
+  private def optimizeIRUsingClosure(optimizer: ScalaJSOptimizer,
+      irFiles: Traversable[VirtualScalaJSIRFile], cfg: Config,
+      logger: Logger): Unit = {
 
     // Build Closure IR via ScalaJSOptimizer
     val builder = new ClosureAstBuilder(cfg.relativizeSourceMapBase)
