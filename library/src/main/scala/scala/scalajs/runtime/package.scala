@@ -48,12 +48,13 @@ package object runtime {
   }
 
   def cloneObject(from: js.Object): js.Object = {
-    val ctor = ({ (self: js.Dictionary[js.Any], from: js.Dictionary[js.Any]) =>
-      for (key <- from.keys)
-        self(key) = from(key)
-    }: js.ThisFunction).asInstanceOf[js.Dynamic]
-    ctor.prototype = js.Object.getPrototypeOf(from)
-    js.Dynamic.newInstance(ctor)(from)
+    val fromDyn = from.asInstanceOf[js.Dynamic]
+    val result = js.Dynamic.newInstance(fromDyn.constructor)()
+    val fromDict = from.asInstanceOf[js.Dictionary[js.Any]]
+    val resultDict = result.asInstanceOf[js.Dictionary[js.Any]]
+    for (key <- fromDict.keys)
+      resultDict(key) = fromDict(key)
+    result
   }
 
   @inline final def genTraversableOnce2jsArray[A](

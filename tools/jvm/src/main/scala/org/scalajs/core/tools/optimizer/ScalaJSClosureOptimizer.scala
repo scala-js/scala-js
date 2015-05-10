@@ -68,8 +68,8 @@ class ScalaJSClosureOptimizer {
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    for (lib <- CoreJSLibs.libs(optimizer.semantics, optimizer.outputMode))
-      module.add(toClosureInput(lib))
+    module.add(toClosureInput(
+        CoreJSLibs.lib(optimizer.semantics, optimizer.outputMode)))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))

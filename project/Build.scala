@@ -891,7 +891,14 @@ object Build extends sbt.Build {
           case FullOptStage => "-tfullopt-stage"
         })
 
-        envTags ++ semTags :+ stageTag
+        val modeTags = (scalaJSOutputMode in Test).value match {
+          case org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode =>
+            Seq(Tests.Argument("-tstrong-mode"))
+          case _ =>
+            Seq()
+        }
+
+        envTags ++ semTags ++ (stageTag +: modeTags)
       }
   )
 

@@ -9,11 +9,15 @@
 
 package org.scalajs.core.tools.optimizer
 
+import scala.annotation.tailrec
+
 import scala.collection.mutable
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.sourcemap.JSFileBuilder
 
+import org.scalajs.core.tools.corelib.CoreJSLibs
 import org.scalajs.core.tools.javascript
 import javascript.{Trees => js, OutputMode}
 
@@ -41,8 +45,20 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
         semantics, outputMode, unit.globalInfo)
     startRun()
     try {
-      for (classInfo <- unit.classDefs.sortWith(compareClasses))
-        emitLinkedClass(classInfo, builder)
+      val orderedClasses = unit.classDefs.sortWith(compareClasses)
+      outputMode match {
+        case OutputMode.ECMAScript6StrongMode =>
+          builder match {
+            case builder: JSFileBuilder =>
+              emitStrongMode(orderedClasses, builder)
+            case _ =>
+              throw new IllegalArgumentException(
+                  "Emitting to Strong Mode requires a JSFileBuilder")
+          }
+        case _ =>
+          for (classInfo <- orderedClasses)
+            emitLinkedClass(classInfo, builder)
+      }
     } finally {
       endRun(logger)
       classEmitter = null
@@ -114,7 +130,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
           memberMethods.foreach(addTree)
           addTree(exportedMembers)
 
-        case OutputMode.ECMAScript6 =>
+        case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
           val allMembersBlock = js.Block(
               ctor :: memberMethods ::: exportedMembers :: Nil)(Position.NoPosition)
           val allMembers = allMembersBlock match {
@@ -156,7 +172,133 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
         classEmitter.genClassExports(linkedClass)))
   }
 
+  private def emitStrongMode(orderedClasses: List[LinkedClass],
+      builder: JSFileBuilder): Unit = {
+
+    assert(outputMode == OutputMode.ECMAScript6StrongMode)
+
+    def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
+
+    var remainingFromLib =
+      CoreJSLibs.lib(semantics, outputMode).content.split('\n').toList
+
+    @tailrec
+    def emitFromLibUntil(marker: String): Unit = {
+      remainingFromLib match {
+        case `marker` :: rest =>
+          remainingFromLib = rest
+        case head :: rest =>
+          builder.addLine(head)
+          remainingFromLib = rest
+          emitFromLibUntil(marker)
+        case Nil =>
+      }
+    }
+
+    emitFromLibUntil("///INSERT DECLARE TYPE DATA HERE///")
+    for (linkedClass <- orderedClasses) {
+      builder.addJSTree(classEmitter.genDeclareTypeData(linkedClass))
+    }
+
+    emitFromLibUntil("///INSERT DECLARE MODULES HERE///")
+    for (linkedClass <- orderedClasses) {
+      if (linkedClass.kind == ClassKind.ModuleClass)
+        builder.addJSTree(classEmitter.genDeclareModule(linkedClass))
+    }
+
+    emitFromLibUntil("///INSERT IS AND AS FUNCTIONS HERE///")
+    for (linkedClass <- orderedClasses) {
+      val needInstanceTests = {
+        linkedClass.hasInstanceTests || {
+          linkedClass.hasRuntimeTypeInfo &&
+          ClassesWhoseDataReferToTheirInstanceTests.contains(linkedClass.encodedName)
+        }
+      }
+      if (needInstanceTests) {
+        val classTreeCache = getClassTreeCache(linkedClass)
+        addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
+            classEmitter.genInstanceTests(linkedClass),
+            classEmitter.genArrayInstanceTests(linkedClass)
+        )(linkedClass.pos)))
+      }
+    }
+
+    emitFromLibUntil("///INSERT CLASSES HERE///")
+    for (linkedClass <- orderedClasses) {
+      val className = linkedClass.encodedName
+      val classCache = getClassCache(linkedClass.ancestors)
+      val classTreeCache = classCache.getCache(linkedClass.version)
+      val kind = linkedClass.kind
+
+      // Statics
+      val staticMethods = for (m <- linkedClass.staticMethods) yield {
+        val methodCache = classCache.getStaticCache(m.info.encodedName)
+        methodCache.getOrElseUpdate(m.version,
+            classEmitter.genMethod(className, m.tree))
+      }
+
+      if (linkedClass.hasInstances && kind.isClass) {
+        val ctor = classTreeCache.constructor.getOrElseUpdate(
+            classEmitter.genConstructor(linkedClass))
+
+        // Normal methods
+        val memberMethods = for (m <- linkedClass.memberMethods) yield {
+          val methodCache = classCache.getMethodCache(m.info.encodedName)
+          methodCache.getOrElseUpdate(m.version,
+              classEmitter.genMethod(className, m.tree))
+        }
+
+        // Exported Members
+        val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
+            classEmitter.genExportedMembers(linkedClass))
+
+        // Module accessor
+        val moduleAccessor = {
+          if (linkedClass.kind == ClassKind.ModuleClass) {
+            classTreeCache.moduleAccessor.getOrElseUpdate(
+                classEmitter.genModuleAccessor(linkedClass))
+          } else {
+            js.Skip()(linkedClass.pos)
+          }
+        }
+
+        val allMembersBlock = js.Block(
+            ctor :: memberMethods ::: exportedMembers ::
+            moduleAccessor :: staticMethods)(Position.NoPosition)
+        val allMembers = allMembersBlock match {
+          case js.Block(members) => members
+          case js.Skip()         => Nil
+          case oneMember         => List(oneMember)
+        }
+        addTree(classEmitter.genES6Class(linkedClass, allMembers))
+      } else if (staticMethods.nonEmpty) {
+        addTree(classEmitter.genStaticsES6Class(linkedClass, staticMethods))
+      }
+    }
+
+    emitFromLibUntil("///INSERT CREATE TYPE DATA HERE///")
+    for (linkedClass <- orderedClasses) {
+      if (linkedClass.hasRuntimeTypeInfo) {
+        val classTreeCache = getClassTreeCache(linkedClass)
+        addTree(classTreeCache.typeData.getOrElseUpdate(
+            classEmitter.genTypeData(linkedClass)))
+      }
+    }
+
+    emitFromLibUntil("///INSERT EXPORTS HERE///")
+    for (linkedClass <- orderedClasses) {
+      val classTreeCache = getClassTreeCache(linkedClass)
+      addTree(classTreeCache.classExports.getOrElseUpdate(
+          classEmitter.genClassExports(linkedClass)))
+    }
+
+    emitFromLibUntil("///THE END///")
+  }
+
   // Helpers
+
+  private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
+    getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
 
   private def getClassCache(ancestors: List[String]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)

@@ -67,7 +67,7 @@ object StackTraceTest extends JasmineTest {
   describe("scala.scalajs.runtime.StackTrace") {
 
     when("nodejs").
-    unless("fullopt-stage").
+    unlessAny("fullopt-stage", "strong-mode").
     it("decode class name and method name") {
       verifyClassMethodNames("Foo" -> "f") {
         new Foo().f(25)

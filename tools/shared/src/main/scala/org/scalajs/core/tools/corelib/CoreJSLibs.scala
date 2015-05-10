@@ -30,6 +30,9 @@ object CoreJSLibs {
   private val ScalaJSEnvLines =
     ScalaJSEnvHolder.scalajsenv.split("\n|\r\n?")
 
+  private val StrongModeEnvLines =
+    ScalaJSEnvHolder.strongmodeenv.split("\n|\r\n?")
+
   private val gitHubBaseURI =
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
 
@@ -38,12 +41,16 @@ object CoreJSLibs {
     """((typeof global === "object" && global &&
          global["Object"] === Object) ? global : this)"""
 
-  def libs(semantics: Semantics, outputMode: OutputMode): Seq[VirtualJSFile] = {
+  def lib(semantics: Semantics, outputMode: OutputMode): VirtualJSFile = {
     synchronized {
-      Seq(cachedLibByConfig.getOrElseUpdate(
-          (semantics, outputMode), makeLib(semantics, outputMode)))
+      cachedLibByConfig.getOrElseUpdate(
+          (semantics, outputMode), makeLib(semantics, outputMode))
     }
   }
+
+  @deprecated("Use lib() instead.", "0.6.3")
+  def libs(semantics: Semantics, outputMode: OutputMode): Seq[VirtualJSFile] =
+    Seq(lib(semantics, outputMode))
 
   @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
   def libs(semantics: Semantics): Seq[VirtualJSFile] =
@@ -68,9 +75,14 @@ object CoreJSLibs {
         outputMode.toString()
     }
 
+    val originalLines = outputMode match {
+      case OutputMode.ECMAScript6StrongMode => StrongModeEnvLines
+      case _                                => ScalaJSEnvLines
+    }
+
     var skipping = false
     var skipDepth = 0
-    val lines = for (line <- ScalaJSEnvLines) yield {
+    val lines = for (line <- originalLines) yield {
       val includeThisLine = if (skipping) {
         if (line == "//!else" && skipDepth == 1) {
           skipping = false
@@ -116,7 +128,7 @@ object CoreJSLibs {
     val content = lines.mkString("", "\n", "\n")
 
     val content1 = outputMode match {
-      case OutputMode.ECMAScript51Global =>
+      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript6StrongMode =>
         content
 
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
@@ -140,7 +152,7 @@ object CoreJSLibs {
         content1
           .replaceAll(raw"\b(let|const)\b", "var")
 
-      case OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         content1
     }
   }

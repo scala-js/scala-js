@@ -173,6 +173,8 @@ object JSDesugaring {
 
     private implicit def implicitOutputMode: OutputMode = outputMode
 
+    private val isStrongMode = outputMode == OutputMode.ECMAScript6StrongMode
+
     // Synthetic variables
 
     var syntheticVarCounter: Int = 0
@@ -336,19 +338,31 @@ object JSDesugaring {
         case Assign(select @ JSDotSelect(qualifier, item), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
-            js.Assign(
-                js.DotSelect(transformExpr(newQualifier), item)(select.pos),
-                transformExpr(newRhs))
+            if (isStrongMode) {
+              js.Apply(js.VarRef(js.Ident("$jsAssign")), List(
+                  transformExpr(newQualifier), js.StringLiteral(item.name),
+                  transformExpr(newRhs)))
+            } else {
+              js.Assign(
+                  js.DotSelect(transformExpr(newQualifier), item)(select.pos),
+                  transformExpr(newRhs))
+            }
           }
 
         case Assign(select @ JSBracketSelect(qualifier, item), rhs) =>
           unnest(List(qualifier, item, rhs)) {
             case (List(newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
-              js.Assign(
-                  js.BracketSelect(transformExpr(newQualifier),
-                      transformExpr(newItem))(select.pos),
-                  transformExpr(newRhs))
+              if (isStrongMode) {
+                js.Apply(js.VarRef(js.Ident("$jsAssign")), List(
+                    transformExpr(newQualifier), transformExpr(newItem),
+                    transformExpr(newRhs)))
+              } else {
+                js.Assign(
+                    js.BracketSelect(transformExpr(newQualifier),
+                        transformExpr(newItem))(select.pos),
+                    transformExpr(newRhs))
+              }
           }
 
         case Assign(_ : VarRef, rhs) =>
@@ -409,14 +423,24 @@ object JSDesugaring {
         case JSDelete(JSDotSelect(obj, prop)) =>
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
-            js.Delete(js.DotSelect(transformExpr(newObj), prop))
+            if (isStrongMode) {
+              js.Apply(js.VarRef(js.Ident("$jsDelete")), List(
+                  transformExpr(newObj), js.StringLiteral(prop.name)))
+            } else {
+              js.Delete(js.DotSelect(transformExpr(newObj), prop))
+            }
           }
 
         case JSDelete(JSBracketSelect(obj, prop)) =>
           unnest(obj, prop) { (newObj, newProp, env0) =>
             implicit val env = env0
-            js.Delete(js.BracketSelect(
-                transformExpr(newObj), transformExpr(newProp)))
+            if (isStrongMode) {
+              js.Apply(js.VarRef(js.Ident("$jsDelete")), List(
+                  transformExpr(newObj), transformExpr(newProp)))
+            } else {
+              js.Delete(js.BracketSelect(
+                  transformExpr(newObj), transformExpr(newProp)))
+            }
           }
 
         // Treat 'return' as an LHS
@@ -839,7 +863,7 @@ object JSDesugaring {
         outputMode match {
           case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
             inner(lhs)
-          case OutputMode.ECMAScript6 =>
+          case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
             lhs match {
               case VarDef(name, tpe, mutable, oldRhs) =>
                 js.Block(
@@ -1225,8 +1249,20 @@ object JSDesugaring {
 
         case rhs @ JSObjectConstr(fields) =>
           if (doesObjectConstrRequireDesugaring(rhs)) {
+            val emptyObj = if (isStrongMode) {
+              /* In strong mode we need to emit `new Object()` instead of `{}`
+               * to create a weak object.
+               */
+              JSNew(JSBracketSelect(JSBracketSelect(
+                  JSEnvInfo(),
+                  StringLiteral("global")),
+                  StringLiteral("Object")),
+                  Nil)
+            } else {
+              JSObjectConstr(Nil)
+            }
             val objVarDef = VarDef(newSyntheticVar(), AnyType, mutable = false,
-                JSObjectConstr(Nil))
+                emptyObj)
             val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
               case ((prop, value), (namesSeen, statsAcc)) =>
                 implicit val pos = value.pos
@@ -1326,8 +1362,10 @@ object JSDesugaring {
     /** Tests whether a [[JSObjectConstr]] must be desugared. */
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
-      val names = tree.fields.map(_._1.name)
-      names.toSet.size != names.size // i.e., there is at least one duplicate
+      isStrongMode || {
+        val names = tree.fields.map(_._1.name)
+        names.toSet.size != names.size // i.e., there is at least one duplicate
+      }
     }
 
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
@@ -1406,9 +1444,14 @@ object JSDesugaring {
           js.Apply(fun DOT "call", (receiver :: args) map transformExpr)
 
         case ApplyStatic(cls, method, args) =>
-          val Ident(methodName, origName) = method
-          val fullName = cls.className + "__" + methodName
-          js.Apply(envField("s", fullName, origName), args map transformExpr)
+          if (isStrongMode) {
+            js.Apply(js.DotSelect(envField("c", cls.className), method),
+                args map transformExpr)
+          } else {
+            val Ident(methodName, origName) = method
+            val fullName = cls.className + "__" + methodName
+            js.Apply(envField("s", fullName, origName), args map transformExpr)
+          }
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
@@ -1454,11 +1497,19 @@ object JSDesugaring {
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>
-              if (lhs.tpe == StringType || rhs.tpe == StringType)
-                js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
-              else
-                js.BinaryOp(JSBinaryOp.+, js.BinaryOp(JSBinaryOp.+,
-                    js.StringLiteral(""), newLhs), newRhs)
+              if (isStrongMode) {
+                def toStr(tree: js.Tree, tpe: Type): js.Tree =
+                  if (tpe == StringType) tree
+                  else genCallHelper("toString", tree)
+                js.BinaryOp(JSBinaryOp.+,
+                    toStr(newLhs, lhs.tpe), toStr(newRhs, rhs.tpe))
+              } else {
+                if (lhs.tpe == StringType || rhs.tpe == StringType)
+                  js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
+                else
+                  js.BinaryOp(JSBinaryOp.+, js.BinaryOp(JSBinaryOp.+,
+                      js.StringLiteral(""), newLhs), newRhs)
+              }
 
             case Int_+ => or0(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Int_- =>
@@ -1566,13 +1617,28 @@ object JSDesugaring {
           val newExpr = transformExpr(expr)
 
           if (semantics.asInstanceOfs == Unchecked) {
+            @inline def boolOr0(tree: js.Tree): js.Tree =
+              if (isStrongMode) js.BinaryOp(JSBinaryOp.||, tree, js.IntLiteral(0))
+              else tree
+
             (charCode: @switch) match {
               case 'Z'             => !(!newExpr)
-              case 'B' | 'S' | 'I' =>
-                js.BinaryOp(JSBinaryOp.|, newExpr, js.IntLiteral(0))
-              case 'J'             => genCallHelper("uJ", newExpr)
-              case 'F'             => genFround(newExpr)
-              case 'D'             => js.UnaryOp(JSUnaryOp.+, newExpr)
+              case 'B' | 'S' | 'I' => or0(boolOr0(newExpr))
+              case 'J' =>
+                if (isStrongMode)
+                  js.BinaryOp(JSBinaryOp.||, newExpr, js.VarRef(js.Ident("$longZero")))
+                else
+                  genCallHelper("uJ", newExpr)
+              case 'F' =>
+                if (isStrongMode)
+                  genCallHelper("uF", newExpr)
+                else
+                  genFround(newExpr)
+              case 'D' =>
+                if (isStrongMode)
+                  genCallHelper("uD", newExpr)
+                else
+                  js.UnaryOp(JSUnaryOp.+, newExpr)
             }
           } else {
             genCallHelper("u"+charCode, newExpr)
@@ -1594,10 +1660,20 @@ object JSDesugaring {
           js.New(transformExpr(constr), args map transformExpr)
 
         case JSDotSelect(qualifier, item) =>
-          js.DotSelect(transformExpr(qualifier), item)
+          if (isStrongMode) {
+            js.Apply(js.VarRef(js.Ident("$jsSelect")), List(
+                transformExpr(qualifier), js.StringLiteral(item.name)))
+          } else {
+            js.DotSelect(transformExpr(qualifier), item)
+          }
 
         case JSBracketSelect(qualifier, item) =>
-          js.BracketSelect(transformExpr(qualifier), transformExpr(item))
+          if (isStrongMode) {
+            js.Apply(js.VarRef(js.Ident("$jsSelect")), List(
+                transformExpr(qualifier), transformExpr(item)))
+          } else {
+            js.BracketSelect(transformExpr(qualifier), transformExpr(item))
+          }
 
         case JSFunctionApply(fun, args) =>
           /* Protect the fun so that if it is, e.g.,
@@ -1637,6 +1713,8 @@ object JSDesugaring {
           js.ArrayConstr(items map transformExpr)
 
         case JSObjectConstr(fields) =>
+          assert(!isStrongMode,
+              s"JSObjectConstr should have been desugared in strong mode at $pos")
           js.ObjectConstr(fields map {
             case (name: Ident, value) =>
               (transformIdent(name), transformExpr(value))
@@ -1789,7 +1867,10 @@ object JSDesugaring {
     private def genLoadModule(moduleClass: String)(
         implicit pos: Position): js.Tree = {
       import TreeDSL._
-      js.Apply(envField("m", moduleClass), Nil)
+      if (isStrongMode)
+        js.Apply(js.DotSelect(envField("c", moduleClass), js.Ident("__M")), Nil)
+      else
+        js.Apply(envField("m", moduleClass), Nil)
     }
 
     private implicit class RecordAwareEnv(env: Env) {
@@ -1840,7 +1921,7 @@ object JSDesugaring {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         js.VarDef(name, rhs)
-      case OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         js.Let(name, mutable, rhs)
     }
   }
@@ -1900,8 +1981,57 @@ object JSDesugaring {
   }
 
   private[javascript] def genCallHelper(helperName: String, args: js.Tree*)(
-      implicit outputMode: OutputMode, pos: Position): js.Tree =
-    js.Apply(envField(helperName), args.toList)
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    val fun = if (outputMode == OutputMode.ECMAScript6StrongMode &&
+        HelpersInDollarClass.contains(helperName))
+      js.DotSelect(js.VarRef(js.Ident("$")), js.Ident(helperName))
+    else
+      envField(helperName)
+    js.Apply(fun, args.toList)
+  }
+
+  private val HelpersInDollarClass = Set(
+      "makeNativeArrayWrapper",
+      "newArrayObject",
+      "checkNonNull",
+      "throwNullPointerException",
+      "objectToString",
+      "objectGetClass",
+      "objectClone",
+      "objectNotify",
+      "objectNotifyAll",
+      "objectFinalize",
+      "objectEquals",
+      "numberEquals",
+      "objectHashCode",
+      "comparableCompareTo",
+      "charSequenceLength",
+      "charSequenceCharAt",
+      "charSequenceSubSequence",
+      "booleanBooleanValue",
+      "numberByteValue",
+      "numberShortValue",
+      "numberIntValue",
+      "numberLongValue",
+      "numberFloatValue",
+      "numberDoubleValue",
+      "isNaN",
+      "isInfinite",
+      "systemArraycopy",
+      "systemIdentityHashCode",
+      "byteArray2TypedArray",
+      "shortArray2TypedArray",
+      "charArray2TypedArray",
+      "intArray2TypedArray",
+      "floatArray2TypedArray",
+      "doubleArray2TypedArray",
+      "typedArray2ByteArray",
+      "typedArray2ShortArray",
+      "typedArray2CharArray",
+      "typedArray2IntArray",
+      "typedArray2FloatArray",
+      "typedArray2DoubleArray"
+  )
 
   private[javascript] def encodeClassVar(className: String)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
@@ -1916,7 +2046,8 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         envField(field) DOT js.Ident(subField, origName)
 
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 |
+          OutputMode.ECMAScript6StrongMode =>
         js.VarRef(js.Ident("$" + field + "_" + subField, origName))
     }
   }
@@ -1929,7 +2060,8 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.VarRef(js.Ident(ScalaJSEnvironmentName)) DOT field
 
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 |
+          OutputMode.ECMAScript6StrongMode =>
         js.VarRef(js.Ident("$" + field))
     }
   }
@@ -1961,7 +2093,8 @@ object JSDesugaring {
       case OutputMode.ECMAScript51Global =>
         js.Assign(globalVar, value)
 
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
+      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 |
+          OutputMode.ECMAScript6StrongMode =>
         genLet(globalVar.asInstanceOf[js.VarRef].ident, mutable, value)
     }
   }
