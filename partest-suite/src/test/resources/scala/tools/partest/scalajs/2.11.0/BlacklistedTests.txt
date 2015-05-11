@@ -63,7 +63,6 @@ run/lazy-concurrent.scala
 run/t5880.scala
 run/mapConserve.scala
 run/t3667.scala
-run/bigDecimalTest.scala
 run/t3038d.scala
 run/numbereq.scala
 run/shutdownhooks.scala
