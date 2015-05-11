@@ -570,36 +570,36 @@ ScalaJS.uJ = function(value) {
 
 // TypeArray conversions
 
-ScalaJS.byteArray2TypedArray = function(value) { return new Int8Array(value.u); };
-ScalaJS.shortArray2TypedArray = function(value) { return new Int16Array(value.u); };
-ScalaJS.charArray2TypedArray = function(value) { return new Uint16Array(value.u); };
-ScalaJS.intArray2TypedArray = function(value) { return new Int32Array(value.u); };
-ScalaJS.floatArray2TypedArray = function(value) { return new Float32Array(value.u); };
-ScalaJS.doubleArray2TypedArray = function(value) { return new Float64Array(value.u); };
+ScalaJS.byteArray2TypedArray = function(value) { return new ScalaJS.g["Int8Array"](value.u); };
+ScalaJS.shortArray2TypedArray = function(value) { return new ScalaJS.g["Int16Array"](value.u); };
+ScalaJS.charArray2TypedArray = function(value) { return new ScalaJS.g["Uint16Array"](value.u); };
+ScalaJS.intArray2TypedArray = function(value) { return new ScalaJS.g["Int32Array"](value.u); };
+ScalaJS.floatArray2TypedArray = function(value) { return new ScalaJS.g["Float32Array"](value.u); };
+ScalaJS.doubleArray2TypedArray = function(value) { return new ScalaJS.g["Float64Array"](value.u); };
 
 ScalaJS.typedArray2ByteArray = function(value) {
   const arrayClassData = ScalaJS.d.B.getArrayOf();
-  return new arrayClassData.constr(new Int8Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Int8Array"](value));
 };
 ScalaJS.typedArray2ShortArray = function(value) {
   const arrayClassData = ScalaJS.d.S.getArrayOf();
-  return new arrayClassData.constr(new Int16Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Int16Array"](value));
 };
 ScalaJS.typedArray2CharArray = function(value) {
   const arrayClassData = ScalaJS.d.C.getArrayOf();
-  return new arrayClassData.constr(new Uint16Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Uint16Array"](value));
 };
 ScalaJS.typedArray2IntArray = function(value) {
   const arrayClassData = ScalaJS.d.I.getArrayOf();
-  return new arrayClassData.constr(new Int32Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Int32Array"](value));
 };
 ScalaJS.typedArray2FloatArray = function(value) {
   const arrayClassData = ScalaJS.d.F.getArrayOf();
-  return new arrayClassData.constr(new Float32Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Float32Array"](value));
 };
 ScalaJS.typedArray2DoubleArray = function(value) {
   const arrayClassData = ScalaJS.d.D.getArrayOf();
-  return new arrayClassData.constr(new Float64Array(value));
+  return new arrayClassData.constr(new ScalaJS.g["Float64Array"](value));
 };
 
 /* We have to force a non-elidable *read* of ScalaJS.e, otherwise Closure will
