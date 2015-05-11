@@ -2802,14 +2802,34 @@ abstract class GenJSCode extends plugins.PluginComponent
          *   {name1: arg1, name2: arg2, ... }
          */
 
+        def warnIfDuplicatedKey(pairs: List[(js.StringLiteral, js.Tree)]): Unit = {
+          val allKeys = pairs.collect { case (js.StringLiteral(keyName), _) => keyName }
+          val keyCounts = allKeys.distinct.map(key => key -> allKeys.count(_ == key))
+          val duplicateKeyCounts = keyCounts.filter(1 < _._2)
+          if (duplicateKeyCounts.nonEmpty) {
+            reporter.warning(pos,
+                "Duplicate keys in object literal: " +
+                duplicateKeyCounts.map {
+                  case (keyName, count) => s""""$keyName" defined $count times"""
+                }.mkString(", ") +
+                ". Only the last occurrence is assigned."
+            )
+          }
+        }
+
         // Extract first arg to future proof against varargs
         extractFirstArg(genArgs) match {
           // case js.Dynamic.literal("name1" -> ..., "name2" -> ...)
           case (js.StringLiteral("apply"), jse.LitNamed(pairs)) =>
+            warnIfDuplicatedKey(pairs)
             js.JSObjectConstr(pairs)
 
           // case js.Dynamic.literal(x, y)
           case (js.StringLiteral("apply"), tups) =>
+            // Check for duplicated explicit keys
+            val pairs = jse.LitNamedExtractor.extractFrom(tups)
+            warnIfDuplicatedKey(pairs)
+
             // Create tmp variable
             val resIdent = freshLocalIdent("obj")
             val resVarDef = js.VarDef(resIdent, jstpe.AnyType, mutable = false,
