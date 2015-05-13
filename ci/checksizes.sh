@@ -26,8 +26,8 @@ REVERSI_OPT="$BASEDIR/examples/reversi/target/scala-$VER/reversi-opt.js"
 REVERSI_PREOPT_SIZE=$(stat '-c%s' "$REVERSI_PREOPT")
 REVERSI_OPT_SIZE=$(stat '-c%s' "$REVERSI_OPT")
 
-gzip -fk "$REVERSI_PREOPT"
-gzip -fk "$REVERSI_OPT"
+gzip -c "$REVERSI_PREOPT" > "$REVERSI_PREOPT.gz"
+gzip -c "$REVERSI_OPT" > "$REVERSI_OPT.gz"
 
 REVERSI_PREOPT_GZ_SIZE=$(stat '-c%s' "$REVERSI_PREOPT.gz")
 REVERSI_OPT_GZ_SIZE=$(stat '-c%s' "$REVERSI_OPT.gz")
