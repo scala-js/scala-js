@@ -140,7 +140,7 @@ object LongTest extends JasmineTest {
       expect(dyn.isInstanceOf[Int]).toBeFalsy
     }
 
-    when("compliant-asinstanceof").
+    when("compliant-asinstanceofs").
     it("should correctly implement asInstanceOf Longs (negative)") {
       val dyn: Any = 5L
 

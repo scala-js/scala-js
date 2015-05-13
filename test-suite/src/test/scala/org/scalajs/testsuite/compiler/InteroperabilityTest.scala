@@ -349,11 +349,11 @@ object InteroperabilityTest extends JasmineTest {
         obj;
       """).asInstanceOf[InteroperabilityTestNoUnboxResultInStatement]
       obj.test() // in statement position, should not throw
-      if (TestSuiteContext.hasTag("compliant-asinstanceof"))
+      if (TestSuiteContext.hasTag("compliant-asinstanceofs"))
         expect(() => obj.test()).toThrow // in expression position, should throw
     }
 
-    when("compliant-asinstanceof").
+    when("compliant-asinstanceofs").
     it("should asInstanceOf values received from calling a JS interop method") {
       val obj = js.eval("""
         var obj = {

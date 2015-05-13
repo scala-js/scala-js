@@ -16,7 +16,7 @@ object RuntimeTypesTest extends JasmineTest {
 
   describe("scala.Nothing") {
 
-    when("compliant-asinstanceof").
+    when("compliant-asinstanceofs").
     it("casts to scala.Nothing should fail") {
       val msg = Try("a".asInstanceOf[Nothing]) match {
         case Failure(thr: ClassCastException) => thr.getMessage
@@ -41,7 +41,7 @@ object RuntimeTypesTest extends JasmineTest {
 
   describe("scala.Null") {
 
-    when("compliant-asinstanceof").
+    when("compliant-asinstanceofs").
     it("casts to scala.Null should fail for everything else but null") {
       val msg = Try("a".asInstanceOf[Null]) match {
         case Failure(thr: ClassCastException) => thr.getMessage
