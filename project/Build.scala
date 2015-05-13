@@ -48,6 +48,33 @@ object Build extends sbt.Build {
   val previousVersion = "0.6.3"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
+  val previousBinaryCrossVersion =
+    CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
+
+  val newScalaBinaryVersionsInThisRelease: Set[String] =
+    Set("2.12.0-M1")
+
+  val previousArtifactSetting: Setting[_] = {
+    previousArtifact := {
+      val scalaV = scalaVersion.value
+      val scalaBinaryV = scalaBinaryVersion.value
+      if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
+        // New in this release, no binary compatibility to comply to
+        None
+      } else {
+        val thisProjectID = projectID.value
+        val previousCrossVersion = thisProjectID.crossVersion match {
+          case ScalaJSCrossVersion.binary => previousBinaryCrossVersion
+          case crossVersion               => crossVersion
+        }
+        val prevProjectID =
+          (thisProjectID.organization % thisProjectID.name % previousVersion)
+            .cross(previousCrossVersion)
+            .extra(thisProjectID.extraAttributes.toSeq: _*)
+        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID))
+      }
+    }
+  }
 
   val commonSettings = Seq(
       scalaVersion := "2.11.6",
@@ -180,7 +207,8 @@ object Build extends sbt.Build {
         "2.11.2",
         "2.11.4",
         "2.11.5",
-        "2.11.6"
+        "2.11.6",
+        "2.12.0-M1"
       ),
       // Default stage
       scalaJSStage in Global := PreLinkStage
@@ -218,16 +246,14 @@ object Build extends sbt.Build {
   ) ++ Seq(
       name := "Scala.js IR",
 
+      previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.IR
   )
 
   lazy val irProject: Project = Project(
       id = "ir",
       base = file("ir"),
-      settings = commonIrProjectSettings ++ Seq(
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-ir_${scalaBinaryVersion.value}" % previousVersion)
-      )
+      settings = commonIrProjectSettings
   )
 
   lazy val irProjectJS: Project = Project(
@@ -236,9 +262,7 @@ object Build extends sbt.Build {
       settings = commonIrProjectSettings ++ myScalaJSSettings ++ Seq(
           crossVersion := ScalaJSCrossVersion.binary,
           unmanagedSourceDirectories in Compile +=
-            (scalaSource in Compile in irProject).value,
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-ir_sjs${previousSJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
+            (scalaSource in Compile in irProject).value
       )
   ).dependsOn(compiler % "plugin", javalibEx)
 
@@ -296,6 +320,7 @@ object Build extends sbt.Build {
           (sourceManaged in Compile).value)
       },
 
+      previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.Tools
   )
 
@@ -307,9 +332,7 @@ object Build extends sbt.Build {
               "com.google.javascript" % "closure-compiler" % "v20130603",
               "com.googlecode.json-simple" % "json-simple" % "1.1.1",
               "com.novocode" % "junit-interface" % "0.9" % "test"
-          ),
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-tools_${scalaBinaryVersion.value}" % previousVersion)
+          )
       )
   ).dependsOn(irProject)
 
@@ -350,10 +373,7 @@ object Build extends sbt.Build {
 
           runner.run()
         }
-      } ++ Seq(
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-tools_sjs${previousSJSBinaryVersion}_${scalaBinaryVersion.value}" % previousVersion)
-      )
+      }
   ).dependsOn(compiler % "plugin", javalibEx, testSuite % "test->test", irProjectJS)
 
   lazy val jsEnvs: Project = Project(
@@ -366,8 +386,7 @@ object Build extends sbt.Build {
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-js-envs_${scalaBinaryVersion.value}" % previousVersion),
+          previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
@@ -378,8 +397,7 @@ object Build extends sbt.Build {
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-sbt-test-adapter_${scalaBinaryVersion.value}" % previousVersion),
+          previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.TestAdapter
       )
   ).dependsOn(jsEnvs)
@@ -395,9 +413,7 @@ object Build extends sbt.Build {
           scalaVersion := "2.10.5",
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
-          previousArtifact := Some(
-              Defaults.sbtPluginExtra("org.scala-js" % s"sbt-scalajs" % previousVersion,
-                  sbtBinaryVersion.value, scalaBinaryVersion.value)),
+          previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin
       )
   ).dependsOn(tools, jsEnvs, testAdapter)
@@ -669,8 +685,7 @@ object Build extends sbt.Build {
           scalaJSSourceMapSettings,
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := true,
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-library_${scalaBinaryVersion.value}" % previousVersion)
+          previousArtifactSetting
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -726,8 +741,7 @@ object Build extends sbt.Build {
       settings = commonSettings ++ publishSettings ++ Seq(
           name := "Scala.js Stubs",
           libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-stubs_${scalaBinaryVersion.value}" % previousVersion)
+          previousArtifactSetting
       )
   )
 
@@ -757,8 +771,7 @@ object Build extends sbt.Build {
           name := "Scala.js test interface",
           delambdafySetting,
           scalaJSSourceMapSettings,
-          previousArtifact := Some(
-              "org.scala-js" % s"scalajs-test-interface_${scalaBinaryVersion.value}" % previousVersion)
+          previousArtifactSetting
       )
   ).dependsOn(compiler % "plugin", library)
 
