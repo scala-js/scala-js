@@ -18,4 +18,13 @@ class PhantomJSTest extends JSEnvTest with ComTests {
 
   }
 
+  @Test
+  def syntaxErrorTest = {
+
+    """
+    {
+    """.fails()
+
+  }
+
 }
