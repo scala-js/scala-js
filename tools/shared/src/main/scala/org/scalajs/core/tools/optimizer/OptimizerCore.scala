@@ -2050,6 +2050,7 @@ private[optimizer] abstract class OptimizerCore(
       case (LongLiteral(l), LongLiteral(r))       => l == r
       case (BooleanLiteral(l), BooleanLiteral(r)) => l == r
       case (StringLiteral(l), StringLiteral(r))   => l == r
+      case (ClassOf(l), ClassOf(r))               => l == r
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
       case _                                      => false

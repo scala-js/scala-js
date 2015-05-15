@@ -65,6 +65,20 @@ object OptimizerTest extends JasmineTest {
       expect(elements).toEqual(js.Array(10, 9, 8, 7, 6, 5, 4, 3, 2))
     }
 
+    it("must not break classOf[T] == classOf[U] - #1658") {
+      expect(classOf[String] == classOf[String]).toBeTruthy
+      expect(classOf[Int] == classOf[Int]).toBeTruthy
+      expect(classOf[Array[Int]] == classOf[Array[Int]]).toBeTruthy
+      expect(classOf[Array[String]] == classOf[Array[String]]).toBeTruthy
+
+      expect(classOf[String] == classOf[Int]).toBeFalsy
+      expect(classOf[Seq[_]] == classOf[List[_]]).toBeFalsy
+      expect(classOf[Array[Int]] == classOf[Array[Integer]]).toBeFalsy
+      expect(classOf[Array[Object]] == classOf[Array[Integer]]).toBeFalsy
+      expect(classOf[String] == classOf[Array[String]]).toBeFalsy
+      expect(classOf[Array[Array[Object]]] == classOf[Array[Object]]).toBeFalsy
+    }
+
   }
 
   @inline
