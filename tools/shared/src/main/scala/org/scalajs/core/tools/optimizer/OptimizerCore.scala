@@ -1047,9 +1047,8 @@ private[optimizer] abstract class OptimizerCore(
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
-    case Select(LoadModule(ClassType(moduleClassName)), _) =>
-      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
-      else stat
+    case Select(qualifier, _) =>
+      keepOnlySideEffects(qualifier)
     case Closure(_, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
