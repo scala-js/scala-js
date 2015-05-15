@@ -334,6 +334,12 @@ class ReflectiveOperationException(s: String, e: Throwable) extends Exception(s,
   def this() = this(null, null)
 }
 
+class RejectedExecutionException(s: String, e: Throwable) extends RuntimeException(s, e) {
+  def this(e: Throwable) = this(null, e)
+  def this(s: String) = this(s, null)
+  def this() = this(null, null)
+}
+
 class RuntimeException(s: String, e: Throwable) extends Exception(s, e) {
   def this(e: Throwable) = this(null, e)
   def this(s: String) = this(s, null)
