@@ -814,7 +814,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case _ =>
         val result = transformExpr(tree)
-        cont(PreTransTree(result, RefinedType(result.tpe)))
+        cont(PreTransTree(result))
     }
   }
 
@@ -3383,8 +3383,17 @@ private[optimizer] object OptimizerCore {
   }
 
   private object PreTransTree {
-    def apply(tree: Tree): PreTransTree =
-      PreTransTree(tree, RefinedType(tree.tpe))
+    def apply(tree: Tree): PreTransTree = {
+      val refinedTpe: RefinedType = tree match {
+        case BlockOrAlone(_,
+            _:LoadModule | _:NewArray | _:ArrayValue | _:GetClass |
+            _:ClassOf) =>
+          RefinedType(tree.tpe, isExact = true, isNullable = false)
+        case _ =>
+          RefinedType(tree.tpe)
+      }
+      PreTransTree(tree, refinedTpe)
+    }
   }
 
   private final case class Binding(name: String, originalName: Option[String],
