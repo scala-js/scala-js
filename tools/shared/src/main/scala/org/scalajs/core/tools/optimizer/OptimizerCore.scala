@@ -483,7 +483,18 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case GetClass(expr) =>
-        GetClass(transformExpr(expr))
+        trampoline {
+          pretransformExpr(expr) { texpr =>
+            texpr.tpe match {
+              case RefinedType(base: ReferenceType, true, false) =>
+                TailCalls.done(Block(
+                    finishTransformStat(texpr),
+                    ClassOf(base)))
+              case _ =>
+                TailCalls.done(GetClass(finishTransformExpr(texpr)))
+            }
+          }
+        }
 
       // JavaScript expressions
 
@@ -1047,6 +1058,8 @@ private[optimizer] abstract class OptimizerCore(
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
+    case NewArray(_, lengths) =>
+      Block(lengths.map(keepOnlySideEffects))(stat.pos)
     case Select(qualifier, _) =>
       keepOnlySideEffects(qualifier)
     case Closure(_, _, _, captureValues) =>
@@ -1433,16 +1446,15 @@ private[optimizer] abstract class OptimizerCore(
 
     implicit def string2ident(s: String): Ident = Ident(s, None)
 
+    lazy val newReceiver = finishTransformExpr(optTReceiver.get)
     lazy val newArgs = targs.map(finishTransformExpr)
 
     @inline def contTree(result: Tree) = cont(PreTransTree(result))
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
 
-    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] = {
-      contTree(Apply(finishTransformExpr(optTReceiver.get),
-          Ident(methodName), newArgs)(resultType))
-    }
+    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] =
+      contTree(Apply(newReceiver, Ident(methodName), newArgs)(resultType))
 
     def cursoryArrayElemType(tpe: ArrayType): Type = {
       if (tpe.dimensions != 1) AnyType
@@ -1552,6 +1564,31 @@ private[optimizer] abstract class OptimizerCore(
         contTree(Apply(firstArgAsRTLong, LongImpl.toHexString, Nil)(StringClassType))
       case LongToOctalStr =>
         contTree(Apply(firstArgAsRTLong, LongImpl.toOctalString, Nil)(StringClassType))
+
+      // java.lang.Class
+
+      case ClassGetComponentType =>
+        newReceiver match {
+          case ClassOf(ArrayType(base, depth)) =>
+            contTree(ClassOf(
+                if (depth == 1) ClassType(base)
+                else ArrayType(base, depth - 1)))
+          case ClassOf(ClassType(_)) =>
+            contTree(Null())
+          case receiver =>
+            defaultApply("getComponentType__jl_Class",
+                ClassType(Definitions.ClassClass))
+        }
+
+      // java.lang.reflect.Array
+
+      case ArrayNewInstance =>
+        newArgs.head match {
+          case ClassOf(elementTpe) =>
+            contTree(NewArray(ArrayType(elementTpe), List(newArgs.tail.head)))
+          case _ =>
+            defaultApply("newInstance__jl_Class__I__O", AnyType)
+        }
 
       // TypedArray conversions
 
@@ -3461,7 +3498,11 @@ private[optimizer] object OptimizerCore {
     final val LongToHexStr   = LongToBinStr   + 1
     final val LongToOctalStr = LongToHexStr   + 1
 
-    final val ByteArrayToInt8Array      = LongToOctalStr           + 1
+    final val ClassGetComponentType = LongToOctalStr + 1
+
+    final val ArrayNewInstance = ClassGetComponentType + 1
+
+    final val ByteArrayToInt8Array      = ArrayNewInstance         + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
     final val CharArrayToUint16Array    = ShortArrayToInt16Array   + 1
     final val IntArrayToInt32Array      = CharArrayToUint16Array   + 1
@@ -3495,6 +3536,10 @@ private[optimizer] object OptimizerCore {
       "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
       "jl_Long$.toHexString__J__T"           -> LongToHexStr,
       "jl_Long$.toOctalString__J__T"         -> LongToOctalStr,
+
+      "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
+
+      "jl_reflect_Array$.newInstance__jl_Class__I__O" -> ArrayNewInstance,
 
       "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
       "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,
