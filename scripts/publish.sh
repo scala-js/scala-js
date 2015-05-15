@@ -15,11 +15,10 @@ SBT_VERSION="2.10.5"
 LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface"
 
 # Publish compiler
-ARGS=""
 for v in $FULL_VERSIONS; do
-    ARGS="$ARGS ++$v compiler/publishSigned"
+    ARGS="++$v compiler/publishSigned"
+    $CMD $ARGS
 done
-$CMD $ARGS
 
 # Package libraries
 for v in $BIN_VERSIONS; do
