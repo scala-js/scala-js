@@ -2833,6 +2833,11 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Tries and optimizes the remainings of a pattern match as if/elses.
+   *
+   *  !!! There is quite of bit of code duplication with
+   *      GenJSCode.genOptimizedLabeled.
+   */
   def tryOptimizePatternMatch(oldLabelName: String, refinedType: Type,
       returnCount: Int, newBody: Tree): Option[Tree] = {
     if (!oldLabelName.startsWith("matchEnd")) None

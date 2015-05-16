@@ -15,6 +15,13 @@ object JSTreeExtractors {
 
   object jse {
 
+    object BlockOrAlone {
+      def unapply(tree: Tree): Some[(List[Tree], Tree)] = Some(tree match {
+        case Block(trees) => (trees.init, trees.last)
+        case _            => (Nil, tree)
+      })
+    }
+
     /**
      *  A partially literally named sequence (like in a call to applyDynamicNamed)
      *  Where some parameters are expected to be literally named.

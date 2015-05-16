@@ -139,6 +139,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     var isModuleInitialized: Boolean = false // see genApply for super calls
 
+    val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
+
     def currentClassType = encodeClassType(currentClassSym)
 
     val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
@@ -273,6 +275,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
         undefinedDefaultParams.clear()
+        countsOfReturnsToMatchEnd.clear()
         pos2irPosCache.clear()
       }
     }
@@ -1553,6 +1556,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          * position). We simply `return` the argument as the result of the
          * labeled block surrounding the match.
          */
+        countsOfReturnsToMatchEnd(sym) += 1
         js.Return(genExpr(args.head), Some(encodeLabelSym(sym)))
       } else {
         /* No other label apply should ever happen. If it does, then we
@@ -2017,6 +2021,9 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
 
+      val matchEndSym = matchEnd.symbol
+      countsOfReturnsToMatchEnd(matchEndSym) = 0
+
       val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 
       val translatedCases = for {
@@ -2043,8 +2050,70 @@ abstract class GenJSCode extends plugins.PluginComponent
         genCaseBody(rhs)
       }
 
-      js.Labeled(encodeLabelSym(matchEnd.symbol), toIRType(matchEnd.tpe),
-          js.Block(translatedCases))
+      val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
+
+      genOptimizedLabeled(encodeLabelSym(matchEndSym), toIRType(matchEnd.tpe),
+          translatedCases, returnCount)
+    }
+
+    /** Gen JS code for a Labeled block from a pattern match, while trying
+     *  to optimize it away as an If chain.
+     *
+     *  It is important to do so at compile-time because, when successful, the
+     *  resulting IR can be much better optimized by the optimizer.
+     *
+     *  The optimizer also does something similar, but *after* it has processed
+     *  the body of the Labeled block, at which point it has already lost any
+     *  information about stack-allocated values.
+     *
+     *  !!! There is quite of bit of code duplication with
+     *      OptimizerCore.tryOptimizePatternMatch.
+     */
+    def genOptimizedLabeled(label: js.Ident, tpe: jstpe.Type,
+        translatedCases: List[js.Tree], returnCount: Int)(
+        implicit pos: Position): js.Tree = {
+      def default =
+        js.Labeled(label, tpe, js.Block(translatedCases))
+
+      @tailrec
+      def createRevAlts(xs: List[js.Tree],
+          acc: List[(js.Tree, js.Tree)]): List[(js.Tree, js.Tree)] = xs match {
+        case js.If(cond, body, js.Skip()) :: xr =>
+          createRevAlts(xr, (cond, body) :: acc)
+        case remaining =>
+          (js.EmptyTree, js.Block(remaining)(remaining.head.pos)) :: acc
+      }
+      val revAlts = createRevAlts(translatedCases, Nil)
+
+      if (revAlts.size == returnCount) {
+        @tailrec
+        def constructOptimized(revAlts: List[(js.Tree, js.Tree)],
+            elsep: js.Tree): js.Tree = {
+          revAlts match {
+            case (cond, body) :: revAltsRest =>
+              body match {
+                case jse.BlockOrAlone(prep,
+                    js.Return(result, Some(`label`))) =>
+                  val prepAndResult = js.Block(prep :+ result)(body.pos)
+                  if (cond == js.EmptyTree) {
+                    assert(elsep == js.EmptyTree)
+                    constructOptimized(revAltsRest, prepAndResult)
+                  } else {
+                    assert(elsep != js.EmptyTree)
+                    constructOptimized(revAltsRest,
+                        js.If(cond, prepAndResult, elsep)(tpe)(cond.pos))
+                  }
+                case _ =>
+                  default
+              }
+            case Nil =>
+              elsep
+          }
+        }
+        constructOptimized(revAlts, js.EmptyTree)
+      } else {
+        default
+      }
     }
 
     /** Gen JS code for a primitive method call */
