@@ -1086,12 +1086,10 @@ private[optimizer] abstract class OptimizerCore(
     val Apply(receiver, methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
-    pretransformExpr(receiver) { treceiver =>
-      def treeNotInlined0(transformedArgs: List[Tree]) =
+    pretransformExprs(receiver, args) { (treceiver, targs) =>
+      def treeNotInlined =
         cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-            transformedArgs)(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
-
-      def treeNotInlined = treeNotInlined0(args.map(transformExpr))
+            targs.map(finishTransformExpr))(tree.tpe), RefinedType(tree.tpe)))
 
       treceiver.tpe.base match {
         case NothingType =>
@@ -1109,26 +1107,25 @@ private[optimizer] abstract class OptimizerCore(
             val impls =
               if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
               else dynamicCall(cls, methodName)
-            val allocationSite = treceiver.tpe.allocationSite
+            val allocationSites =
+              (treceiver :: targs).map(_.tpe.allocationSite)
             if (impls.isEmpty || impls.exists(impl =>
-                scope.implsBeingInlined((allocationSite, impl)))) {
+                scope.implsBeingInlined((allocationSites, impl)))) {
               // isEmpty could happen, have to leave it as is for the TypeError
               treeNotInlined
             } else if (impls.size == 1) {
               val target = impls.head
-              pretransformExprs(args) { targs =>
-                val intrinsicCode = getIntrinsicCode(target)
-                if (intrinsicCode >= 0) {
-                  callIntrinsic(intrinsicCode, Some(treceiver), targs,
-                      isStat, usePreTransform)(cont)
-                } else if (target.inlineable && (
-                    target.shouldInline ||
-                    shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
-                  inline(allocationSite, Some(treceiver), targs, target,
-                      isStat, usePreTransform)(cont)
-                } else {
-                  treeNotInlined0(targs.map(finishTransformExpr))
-                }
+              val intrinsicCode = getIntrinsicCode(target)
+              if (intrinsicCode >= 0) {
+                callIntrinsic(intrinsicCode, Some(treceiver), targs,
+                    isStat, usePreTransform)(cont)
+              } else if (target.inlineable && (
+                  target.shouldInline ||
+                  shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
+                inline(allocationSites, Some(treceiver), targs, target,
+                    isStat, usePreTransform)(cont)
+              } else {
+                treeNotInlined
               }
             } else {
               if (impls.forall(_.isForwarder)) {
@@ -1160,10 +1157,8 @@ private[optimizer] abstract class OptimizerCore(
                   // Not all doing the same thing
                   treeNotInlined
                 } else {
-                  pretransformExprs(args) { targs =>
-                    inline(allocationSite, Some(treceiver), targs, reference,
-                        isStat, usePreTransform)(cont)
-                  }
+                  inline(allocationSites, Some(treceiver), targs, reference,
+                      isStat, usePreTransform)(cont)
                 }
               } else {
                 // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
@@ -1222,12 +1217,13 @@ private[optimizer] abstract class OptimizerCore(
             val shouldInline = target.inlineable && (
                 target.shouldInline ||
                 shouldInlineBecauseOfArgs(target, treceiver :: targs))
-            val allocationSite = treceiver.tpe.allocationSite
+            val allocationSites =
+              (treceiver :: targs).map(_.tpe.allocationSite)
             val beingInlined =
-              scope.implsBeingInlined((allocationSite, target))
+              scope.implsBeingInlined((allocationSites, target))
 
             if (shouldInline && !beingInlined) {
-              inline(allocationSite, Some(treceiver), targs, target,
+              inline(allocationSites, Some(treceiver), targs, target,
                   isStat, usePreTransform)(cont)
             } else {
               treeNotInlined0(finishTransformExpr(treceiver),
@@ -1267,12 +1263,12 @@ private[optimizer] abstract class OptimizerCore(
         } else {
           val shouldInline = target.inlineable && (
               target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
-          val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
+          val allocationSites = targs.map(_.tpe.allocationSite)
           val beingInlined =
-            scope.implsBeingInlined((allocationSite, target))
+            scope.implsBeingInlined((allocationSites, target))
 
           if (shouldInline && !beingInlined) {
-            inline(allocationSite, None, targs, target,
+            inline(allocationSites, None, targs, target,
                 isStat, usePreTransform)(cont)
           } else {
             treeNotInlined0(targs.map(finishTransformExpr))
@@ -1384,7 +1380,7 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def inline(allocationSite: Option[AllocationSite],
+  private def inline(allocationSites: List[Option[AllocationSite]],
       optReceiver: Option[PreTransform],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -1437,7 +1433,7 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case _ =>
-        val targetID = (allocationSite, target)
+        val targetID = (allocationSites, target)
         inlineBody(optReceiver, formals, resultType, body, args, isStat,
             usePreTransform)(cont)(scope.inlining(targetID), pos)
     }
@@ -1697,7 +1693,8 @@ private[optimizer] abstract class OptimizerCore(
     val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
       throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
     }
-    inline(tvalue.tpe.allocationSite, Some(treceiver), List(tvalue), target,
+    val allocationSites = List(treceiver, tvalue).map(_.tpe.allocationSite)
+    inline(allocationSites, Some(treceiver), List(tvalue), target,
         isStat = false, usePreTransform = true)(cont)
   }
 
@@ -1744,7 +1741,7 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
     val target = staticCall(ctorClass.className, ctor.name).getOrElse(cancelFun())
-    val targetID = (Some(allocationSite), target)
+    val targetID = (Some(allocationSite) :: args.map(_.tpe.allocationSite), target)
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
@@ -2842,8 +2839,9 @@ private[optimizer] abstract class OptimizerCore(
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
+    val allocationSites = List.fill(allLocalDefs.size)(None)
     val scope0 = optTarget.fold(Scope.Empty)(
-        target => Scope.Empty.inlining((None, target)))
+        target => Scope.Empty.inlining((allocationSites, target)))
     val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
     val newBody =
       transform(body, resultType == NoType)(scope)
@@ -3389,11 +3387,12 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[(Option[AllocationSite], AbstractMethodID)]) {
+      val implsBeingInlined: Set[(List[Option[AllocationSite]], AbstractMethodID)]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: (Option[AllocationSite], AbstractMethodID)): Scope = {
+    def inlining(impl: (List[Option[AllocationSite]],
+        AbstractMethodID)): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }
