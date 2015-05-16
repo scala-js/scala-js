@@ -1595,6 +1595,37 @@ private[optimizer] abstract class OptimizerCore(
       case LongToOctalStr =>
         contTree(Apply(firstArgAsRTLong, LongImpl.toOctalString, Nil)(StringClassType))
 
+      // scala.collection.mutable.ArrayBuilder
+
+      case GenericArrayBuilderResult =>
+        val List(runtimeClass, array) = newArgs
+        val (resultType, isExact) = runtimeClass match {
+          case ClassOf(elemType) => (ArrayType(elemType), true)
+          case _                 => (AnyType, false)
+        }
+        cont(PreTransTree(CallHelper("makeNativeArrayWrapper",
+            CallHelper("arrayDataOf",
+                CallHelper("classDataOf", runtimeClass)(AnyType))(AnyType),
+            array)(resultType),
+            RefinedType(resultType, isExact = isExact, isNullable = false)))
+
+      case ArrayBuilderZeroOf =>
+        contTree(finishTransformExpr(targs.head) match {
+          case ClassOf(ClassType(cls)) =>
+            cls match {
+              case "B" | "S" | "C" | "I" | "D" => IntLiteral(0)
+              case "L"                         => LongLiteral(0L)
+              case "F"                         => FloatLiteral(0.0f)
+              case "Z"                         => BooleanLiteral(false)
+              case "V"                         => Undefined()
+              case _                           => Null()
+            }
+          case ClassOf(_) =>
+            Null()
+          case runtimeClass =>
+            CallHelper("zeroOf", runtimeClass)(AnyType)
+        })
+
       // java.lang.Class
 
       case ClassGetComponentType =>
@@ -3528,7 +3559,10 @@ private[optimizer] object OptimizerCore {
     final val LongToHexStr   = LongToBinStr   + 1
     final val LongToOctalStr = LongToHexStr   + 1
 
-    final val ClassGetComponentType = LongToOctalStr + 1
+    final val ArrayBuilderZeroOf = LongToOctalStr + 1
+    final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
+
+    final val ClassGetComponentType = GenericArrayBuilderResult + 1
 
     final val ArrayNewInstance = ClassGetComponentType + 1
 
@@ -3566,6 +3600,9 @@ private[optimizer] object OptimizerCore {
       "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
       "jl_Long$.toHexString__J__T"           -> LongToHexStr,
       "jl_Long$.toOctalString__J__T"         -> LongToOctalStr,
+
+      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
+      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,
 
       "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
 

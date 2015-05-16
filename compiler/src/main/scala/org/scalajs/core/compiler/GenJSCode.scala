@@ -663,6 +663,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private val adHocInlineMethods = Set(
+        "scala.collection.mutable.ArrayOps$ofRef.newBuilder$extension",
         "scala.runtime.ScalaRunTime.arrayClass",
         "scala.runtime.ScalaRunTime.arrayElementClass"
     )
