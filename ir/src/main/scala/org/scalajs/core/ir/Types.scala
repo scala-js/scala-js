@@ -184,7 +184,11 @@ object Types {
             if (isPrimitiveClass(lhsBase) || isPrimitiveClass(rhsBase)) {
               lhsBase == rhsBase
             } else {
-              isSubclass(lhsBase, rhsBase)
+              /* All things must be considered subclasses of Object for this
+               * purpose, even raw JS types and interfaces, which do not have
+               * Object in their ancestors.
+               */
+              rhsBase == ObjectClass || isSubclass(lhsBase, rhsBase)
             }
           }
 
