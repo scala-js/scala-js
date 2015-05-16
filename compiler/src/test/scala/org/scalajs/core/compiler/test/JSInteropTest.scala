@@ -348,6 +348,29 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |       ^
     """
 
+    // #1664
+    """
+    import js.annotation.JSName
+
+    object A {
+      val a = "Hello"
+    }
+
+    @JSName(A.a)
+    object B extends js.Object
+
+    @JSName(A.a)
+    class C extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: The argument to JSName must be a literal string
+      |    @JSName(A.a)
+      |     ^
+      |newSource1.scala:12: error: The argument to JSName must be a literal string
+      |    @JSName(A.a)
+      |     ^
+    """
+
   }
 
 }
