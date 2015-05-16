@@ -1123,7 +1123,7 @@ private[optimizer] abstract class OptimizerCore(
                       isStat, usePreTransform)(cont)
                 } else if (target.inlineable && (
                     target.shouldInline ||
-                    shouldInlineBecauseOfArgs(treceiver :: targs))) {
+                    shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
                   inline(allocationSite, Some(treceiver), targs, target,
                       isStat, usePreTransform)(cont)
                 } else {
@@ -1221,7 +1221,7 @@ private[optimizer] abstract class OptimizerCore(
           } else {
             val shouldInline = target.inlineable && (
                 target.shouldInline ||
-                shouldInlineBecauseOfArgs(treceiver :: targs))
+                shouldInlineBecauseOfArgs(target, treceiver :: targs))
             val allocationSite = treceiver.tpe.allocationSite
             val beingInlined =
               scope.implsBeingInlined((allocationSite, target))
@@ -1266,7 +1266,7 @@ private[optimizer] abstract class OptimizerCore(
               isStat, usePreTransform)(cont)
         } else {
           val shouldInline = target.inlineable && (
-              target.shouldInline || shouldInlineBecauseOfArgs(targs))
+              target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
           val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
           val beingInlined =
             scope.implsBeingInlined((allocationSite, target))
@@ -1316,8 +1316,35 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def shouldInlineBecauseOfArgs(
+  private val ClassNamesThatShouldBeInlined = Set(
+      "s_Predef$$less$colon$less",
+      "s_Predef$$eq$colon$eq",
+
+      "s_reflect_ManifestFactory$ByteManifest$",
+      "s_reflect_ManifestFactory$ShortManifest$",
+      "s_reflect_ManifestFactory$CharManifest$",
+      "s_reflect_ManifestFactory$IntManifest$",
+      "s_reflect_ManifestFactory$LongManifest$",
+      "s_reflect_ManifestFactory$FloatManifest$",
+      "s_reflect_ManifestFactory$DoubleManifest$",
+      "s_reflect_ManifestFactory$BooleanManifest$",
+      "s_reflect_ManifestFactory$UnitManifest$",
+      "s_reflect_ManifestFactory$AnyManifest$",
+      "s_reflect_ManifestFactory$ObjectManifest$",
+      "s_reflect_ManifestFactory$AnyValManifest$",
+      "s_reflect_ManifestFactory$NullManifest$",
+      "s_reflect_ManifestFactory$NothingManifest$"
+  )
+
+  private def shouldInlineBecauseOfArgs(target: MethodID,
       receiverAndArgs: List[PreTransform]): Boolean = {
+    def isTypeLikelyOptimizable(tpe: RefinedType): Boolean = tpe.base match {
+      case ClassType(className) =>
+        ClassNamesThatShouldBeInlined.contains(className)
+      case _ =>
+        false
+    }
+
     def isLikelyOptimizable(arg: PreTransform): Boolean = arg match {
       case PreTransBlock(_, result) =>
         isLikelyOptimizable(result)
@@ -1328,7 +1355,8 @@ private[optimizer] abstract class OptimizerCore(
           case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
           case InlineClassBeingConstructedReplacement(_, _)  => true
           case InlineClassInstanceReplacement(_, _, _)       => true
-          case _                                             => false
+          case _ =>
+            isTypeLikelyOptimizable(localDef.tpe)
         }) && {
           /* java.lang.Character is @inline so that *local* box/unbox pairs
            * can be eliminated. But we don't want that to force inlining of
@@ -1344,14 +1372,16 @@ private[optimizer] abstract class OptimizerCore(
         true
 
       case _ =>
-        arg.tpe.base match {
-          case ClassType("s_Predef$$less$colon$less" | "s_Predef$$eq$colon$eq") =>
-            true
-          case _ =>
-            false
-        }
+        isTypeLikelyOptimizable(arg.tpe)
     }
-    receiverAndArgs.exists(isLikelyOptimizable)
+
+    receiverAndArgs.exists(isLikelyOptimizable) || {
+      target.toString == "s_reflect_ClassTag$.apply__jl_Class__s_reflect_ClassTag" &&
+      (receiverAndArgs.tail.head match {
+        case PreTransTree(ClassOf(_), _) => true
+        case _                           => false
+      })
+    }
   }
 
   private def inline(allocationSite: Option[AllocationSite],

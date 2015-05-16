@@ -6,6 +6,9 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Private things, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.OptimizerCore.org$scalajs$core$tools$optimizer$OptimizerCore$$shouldInlineBecauseOfArgs")
   )
 
   val JSEnvs = Seq(
