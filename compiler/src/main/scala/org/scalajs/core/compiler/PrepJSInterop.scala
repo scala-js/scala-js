@@ -375,6 +375,9 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         } reporter.error(exp.pos, "You may not export a class extending js.Any")
       }
 
+      if (shouldCheckLiterals)
+        checkJSNameLiteral(sym)
+
       if (implDef.isInstanceOf[ModuleDef])
         enterJSAnyMod { super.transform(implDef) }
       else
@@ -419,15 +422,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         reporter.error(tree.pos, "Methods in a js.Any may not be @native")
       }
 
-      if (shouldCheckLiterals) {
-        for {
-          annot <- sym.getAnnotation(JSNameAnnotation)
-          if annot.stringArg(0).isEmpty
-        } {
-          reporter.error(annot.pos,
-            "The argument to JSName must be a literal string")
-        }
-      }
+      if (shouldCheckLiterals)
+        checkJSNameLiteral(sym)
 
       if (sym.isPrimaryConstructor || sym.isValueParameter ||
           sym.isParamWithDefault || sym.isAccessor && !sym.isDeferred ||
@@ -556,6 +552,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         !isScalaRepeatedParamType(arg.tpe) &&
         sym.tpe.resultType.typeSymbol != UnitClass
       case _ => false
+    }
+  }
+
+  /** Checks that argument to @JSName on [[sym]] is a literal.
+   *  Reports an error on each annotation where this is not the case.
+   */
+  private def checkJSNameLiteral(sym: Symbol): Unit = {
+    for {
+      annot <- sym.getAnnotation(JSNameAnnotation)
+      if annot.stringArg(0).isEmpty
+    } {
+      reporter.error(annot.pos,
+        "The argument to JSName must be a literal string")
     }
   }
 
