@@ -73,24 +73,24 @@ object JavaConversions extends WrapAsScala with WrapAsJava {
   @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") type SeqWrapper[A]               = Wrappers.SeqWrapper[A]
   @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") type SetWrapper[A]               = Wrappers.SetWrapper[A]
   @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") type ToIteratorWrapper[A]        = Wrappers.ToIteratorWrapper[A]
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val DictionaryWrapper            = Wrappers.DictionaryWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val IterableWrapper              = Wrappers.IterableWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val IteratorWrapper              = Wrappers.IteratorWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JCollectionWrapper           = Wrappers.JCollectionWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JConcurrentMapWrapper        = Wrappers.JConcurrentMapWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JDictionaryWrapper           = Wrappers.JDictionaryWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JEnumerationWrapper          = Wrappers.JEnumerationWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JIterableWrapper             = Wrappers.JIterableWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JIteratorWrapper             = Wrappers.JIteratorWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JListWrapper                 = Wrappers.JListWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JMapWrapper                  = Wrappers.JMapWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JPropertiesWrapper           = Wrappers.JPropertiesWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val JSetWrapper                  = Wrappers.JSetWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val MutableBufferWrapper         = Wrappers.MutableBufferWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val MutableMapWrapper            = Wrappers.MutableMapWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val MutableSeqWrapper            = Wrappers.MutableSeqWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val MutableSetWrapper            = Wrappers.MutableSetWrapper
-  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") val SeqWrapper                   = Wrappers.SeqWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def DictionaryWrapper            = Wrappers.DictionaryWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def IterableWrapper              = Wrappers.IterableWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def IteratorWrapper              = Wrappers.IteratorWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JCollectionWrapper           = Wrappers.JCollectionWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JConcurrentMapWrapper        = Wrappers.JConcurrentMapWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JDictionaryWrapper           = Wrappers.JDictionaryWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JEnumerationWrapper          = Wrappers.JEnumerationWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JIterableWrapper             = Wrappers.JIterableWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JIteratorWrapper             = Wrappers.JIteratorWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JListWrapper                 = Wrappers.JListWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JMapWrapper                  = Wrappers.JMapWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JPropertiesWrapper           = Wrappers.JPropertiesWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def JSetWrapper                  = Wrappers.JSetWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def MutableBufferWrapper         = Wrappers.MutableBufferWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def MutableMapWrapper            = Wrappers.MutableMapWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def MutableSeqWrapper            = Wrappers.MutableSeqWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def MutableSetWrapper            = Wrappers.MutableSetWrapper
+  @deprecated("Use a member of scala.collection.convert.Wrappers", "2.10.0") def SeqWrapper                   = Wrappers.SeqWrapper
 
   // Note to implementors: the cavalcade of deprecated methods herein should
   // serve as a warning to any who follow: don't overload implicit methods.
