@@ -697,6 +697,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case JSEnvInfo() =>
 
+      case JSLinkingInfo() =>
+
       // Literals
 
       case _: Literal =>

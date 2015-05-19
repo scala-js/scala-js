@@ -23,7 +23,7 @@ import Definitions.{ObjectClass, isConstructorName, isReflProxyName}
 import Trees._
 import Types._
 
-import org.scalajs.core.tools.sem.Semantics
+import org.scalajs.core.tools.sem.{CheckedBehavior, Semantics}
 import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
 import org.scalajs.core.tools.logging._
 
@@ -505,7 +505,7 @@ private[optimizer] abstract class OptimizerCore(
         JSDotSelect(transformExpr(qualifier), item)
 
       case JSBracketSelect(qualifier, item) =>
-        JSBracketSelect(transformExpr(qualifier), transformExpr(item))
+        foldJSBracketSelect(transformExpr(qualifier), transformExpr(item))
 
       case tree: JSFunctionApply =>
         trampoline {
@@ -555,7 +555,7 @@ private[optimizer] abstract class OptimizerCore(
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule |
-          _:JSEnvInfo | _:Literal | EmptyTree =>
+          _:JSEnvInfo | _:JSLinkingInfo | _:Literal | EmptyTree =>
         tree
 
       case _ =>
@@ -1556,15 +1556,6 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       // scala.scalajs.runtime package object
-
-      case AssumingES6 =>
-        val assumingES6 = outputMode match {
-          case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-            false
-          case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
-            true
-        }
-        contTree(BooleanLiteral(assumingES6))
 
       case PropertiesOf =>
         contTree(CallHelper("propertiesOf", newArgs)(AnyType))
@@ -2804,6 +2795,47 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  private def foldJSBracketSelect(qualifier: Tree, item: Tree)(
+      implicit pos: Position): Tree = {
+    // !!! Must be in sync with scala.scalajs.runtime.LinkingInfo
+
+    @inline def default =
+      JSBracketSelect(qualifier, item)
+
+    (qualifier, item) match {
+      case (JSBracketSelect(JSLinkingInfo(), StringLiteral("semantics")),
+          StringLiteral(semanticsStr)) =>
+        def behavior2IntLiteral(behavior: CheckedBehavior) = {
+          IntLiteral(behavior match {
+            case CheckedBehavior.Compliant => 0
+            case CheckedBehavior.Fatal     => 1
+            case CheckedBehavior.Unchecked => 2
+          })
+        }
+        semanticsStr match {
+          case "asInstanceOfs" =>
+            behavior2IntLiteral(semantics.asInstanceOfs)
+          case "moduleInit" =>
+            behavior2IntLiteral(semantics.moduleInit)
+          case "strictFloats" =>
+            BooleanLiteral(semantics.strictFloats)
+          case _ =>
+            default
+        }
+
+      case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
+        BooleanLiteral(outputMode match {
+          case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+            false
+          case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+            true
+        })
+
+      case _ =>
+        default
+    }
+  }
+
   private def finishTransformCheckNull(preTrans: PreTransform)(
       implicit pos: Position): Tree = {
     if (preTrans.tpe.isNullable) {
@@ -3545,8 +3577,7 @@ private[optimizer] object OptimizerCore {
     final val ArrayUpdate = ArrayApply       + 1
     final val ArrayLength = ArrayUpdate      + 1
 
-    final val AssumingES6  = ArrayLength + 1
-    final val PropertiesOf = AssumingES6 + 1
+    final val PropertiesOf = ArrayLength + 1
 
     final val LongToString   = PropertiesOf   + 1
     final val LongCompare    = LongToString   + 1
@@ -3587,7 +3618,6 @@ private[optimizer] object OptimizerCore {
       "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
       "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
-      "sjsr_package$.assumingES6__Z" -> AssumingES6,
       "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
 
       "jl_Long$.toString__J__T"              -> LongToString,

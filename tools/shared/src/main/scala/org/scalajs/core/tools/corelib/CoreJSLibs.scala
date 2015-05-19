@@ -68,6 +68,8 @@ object CoreJSLibs {
     def getOption(name: String): String = name match {
       case "asInstanceOfs" =>
         semantics.asInstanceOfs.toString()
+      case "moduleInit" =>
+        semantics.moduleInit.toString()
       case "floats" =>
         if (semantics.strictFloats) "Strict"
         else "Loose"

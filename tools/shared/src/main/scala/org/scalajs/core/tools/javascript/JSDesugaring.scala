@@ -685,9 +685,10 @@ object JSDesugaring {
 
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
-        case _: Literal   => true
-        case _: This      => true
-        case _: JSEnvInfo => true
+        case _: Literal       => true
+        case _: This          => true
+        case _: JSEnvInfo     => true
+        case _: JSLinkingInfo => true
 
         // Vars (side-effect free, pure if immutable)
         case VarRef(name) =>
@@ -1741,6 +1742,9 @@ object JSDesugaring {
 
         case JSEnvInfo() =>
           envField("env")
+
+        case JSLinkingInfo() =>
+          envField("linkingInfo")
 
         // Literals
 

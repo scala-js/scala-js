@@ -2951,12 +2951,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case GETCLASS  => js.GetClass(receiver)
-            case ENV_INFO  => js.JSEnvInfo()
-            case DEBUGGER  => js.Debugger()
-            case UNITVAL   => js.Undefined()
-            case UNITTYPE  => genClassConstant(UnitTpe)
-            case JS_NATIVE =>
+            case GETCLASS     => js.GetClass(receiver)
+            case ENV_INFO     => js.JSEnvInfo()
+            case LINKING_INFO => js.JSLinkingInfo()
+            case DEBUGGER     => js.Debugger()
+            case UNITVAL      => js.Undefined()
+            case UNITTYPE     => genClassConstant(UnitTpe)
+            case JS_NATIVE    =>
               reporter.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()
           }

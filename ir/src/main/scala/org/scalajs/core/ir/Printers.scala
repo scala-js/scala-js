@@ -503,6 +503,9 @@ object Printers {
         case JSEnvInfo() =>
           print("<envinfo>")
 
+        case JSLinkingInfo() =>
+          print("<linkinginfo>")
+
         // Literals
 
         case Undefined() =>

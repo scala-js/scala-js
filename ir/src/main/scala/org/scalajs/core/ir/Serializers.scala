@@ -315,6 +315,9 @@ object Serializers {
         case JSEnvInfo() =>
           writeByte(TagJSEnvInfo)
 
+        case JSLinkingInfo() =>
+          writeByte(TagJSLinkingInfo)
+
         // Literals
 
         case Undefined() =>
@@ -632,6 +635,7 @@ object Serializers {
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
         case TagJSEnvInfo            => JSEnvInfo()
+        case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagUndefined      => Undefined()
         case TagUndefinedParam => UndefinedParam()(readType())

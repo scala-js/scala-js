@@ -349,6 +349,9 @@ object Hashers {
         case JSEnvInfo() =>
           mixTag(TagJSEnvInfo)
 
+        case JSLinkingInfo() =>
+          mixTag(TagJSLinkingInfo)
+
         case Undefined() =>
           mixTag(TagUndefined)
 

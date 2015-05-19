@@ -26,8 +26,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSPackage_debugger = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
       lazy val JSPackage_native   = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
 
-    lazy val ScalaJSJSPrimPackage = getPackage(newTermNameCached("scala.scalajs.js.prim")) // compat 2.10/2.11
-
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")
@@ -101,6 +99,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
       lazy val Runtime_newJSObjectWithVarargs     = getMemberMethod(RuntimePackageModule, newTermName("newJSObjectWithVarargs"))
       lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
+      lazy val Runtime_environmentInfo            = getMemberMethod(RuntimePackageModule, newTermName("environmentInfo"))
+      lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")
       lazy val WrappedArray_ctor = WrappedArrayClass.primaryConstructor

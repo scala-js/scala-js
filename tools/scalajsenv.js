@@ -30,6 +30,42 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
+// Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
+ScalaJS.linkingInfo = {
+  "semantics": {
+//!if asInstanceOfs == Compliant
+    "asInstanceOfs": 0,
+//!else
+//!if asInstanceOfs == Fatal
+    "asInstanceOfs": 1,
+//!else
+    "asInstanceOfs": 2,
+//!endif
+//!endif
+//!if moduleInit == Compliant
+    "moduleInit": 0,
+//!else
+//!if moduleInit == Fatal
+    "moduleInit": 1,
+//!else
+    "moduleInit": 2,
+//!endif
+//!endif
+//!if floats == Strict
+    "strictFloats": true
+//!else
+    "strictFloats": false
+//!endif
+  },
+//!if outputMode == ECMAScript6
+  "assumingES6": true
+//!else
+  "assumingES6": false
+//!endif
+};
+ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo);
+ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);
+
 // Snapshots of builtins and polyfills
 
 //!if outputMode == ECMAScript6
