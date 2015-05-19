@@ -681,6 +681,7 @@ class $TypeData {
     this["isPrimitive"] = false;
     this["isInterface"] = false;
     this["isArrayClass"] = false;
+    this["isRawJSType"] = false;
     this["isInstance"] = void 0;
   };
 
@@ -701,7 +702,7 @@ class $TypeData {
   };
 
   initClass(internalNameObj, isInterface, fullName,
-      ancestors, parentData, isInstance, isArrayOf) { // TODO Default params
+      ancestors, isRawJSType, parentData, isInstance, isArrayOf) { // TODO Default params
     const internalName = $propertyName(internalNameObj);
 
     isInstance = isInstance || function(obj) {
@@ -722,6 +723,7 @@ class $TypeData {
     // java.lang.Class support
     this["name"] = fullName;
     this["isInterface"] = isInterface;
+    this["isRawJSType"] = !!isRawJSType;
     this["isInstance"] = isInstance;
 
     return this;

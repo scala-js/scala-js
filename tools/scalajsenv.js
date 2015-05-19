@@ -671,6 +671,7 @@ constructor() {
   this["isPrimitive"] = false;
   this["isInterface"] = false;
   this["isArrayClass"] = false;
+  this["isRawJSType"] = false;
   this["isInstance"] = void 0;
 };
 
@@ -701,7 +702,7 @@ ScalaJS.TypeData.prototype.initClass = function(
 initClass(
 //!endif
     internalNameObj, isInterface, fullName,
-    ancestors, parentData, isInstance, isArrayOf) {
+    ancestors, isRawJSType, parentData, isInstance, isArrayOf) {
   const internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
@@ -722,6 +723,7 @@ initClass(
   // java.lang.Class support
   this["name"] = fullName;
   this["isInterface"] = isInterface;
+  this["isRawJSType"] = !!isRawJSType;
   this["isInstance"] = isInstance;
 
   return this;
