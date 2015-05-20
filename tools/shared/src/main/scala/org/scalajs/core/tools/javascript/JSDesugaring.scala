@@ -1459,7 +1459,7 @@ object JSDesugaring {
           val newLhs = transformExpr(lhs)
           (op: @switch) match {
             case Boolean_!   => js.UnaryOp(JSUnaryOp.!, newLhs)
-            case DoubleToInt => js.BinaryOp(JSBinaryOp.|, newLhs, js.IntLiteral(0))
+            case DoubleToInt => genCallHelper("doubleToInt", newLhs)
 
             case LongToInt    => genLongMethodApply(newLhs, LongImpl.toInt)
             case LongToDouble => genLongMethodApply(newLhs, LongImpl.toDouble)
@@ -2038,6 +2038,7 @@ object JSDesugaring {
       "numberDoubleValue",
       "isNaN",
       "isInfinite",
+      "doubleToInt",
       "systemArraycopy",
       "systemIdentityHashCode",
       "byteArray2TypedArray",

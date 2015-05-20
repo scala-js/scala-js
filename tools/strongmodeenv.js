@@ -593,6 +593,10 @@ class $ {
     return !$g["isFinite"](instance) && !$.isNaN(instance);
   };
 
+  static doubleToInt(x) {
+    return (x > 2147483647) ? (2147483647) : ((x < -2147483648) ? -2147483648 : (x | 0));
+  };
+
   static systemArraycopy(src, srcPos, dest, destPos, length) {
     const srcu = src.u;
     const destu = dest.u;
