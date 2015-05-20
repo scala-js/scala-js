@@ -3749,9 +3749,12 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Anonymous functions survive until the backend only under
      *  -Ydelambdafy:method
      *  and when they do, their body is always of the form
-     *  EnclosingClass.this.someMethod(arg1, ..., argN, capture1, ..., captureM)
-     *  where argI are the formal arguments of the lambda, and captureI are
-     *  local variables or the enclosing def.
+     *  EnclosingClass.this.someMethod(args)
+     *  where the args are either formal parameters of the lambda, or local
+     *  variables or the enclosing def. The latter must be captured.
+     *
+     *  We identify the captures using the same method as the `delambdafy`
+     *  phase. We have an additional hack for `this`.
      *
      *  We translate them by instantiating scala.scalajs.runtime.AnonFunctionN
      *  with a JS closure:
@@ -3771,25 +3774,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Function(paramTrees, Apply(
           targetTree @ Select(receiver, _), allArgs0)) = originalFunction
 
+      val captureSyms =
+        global.delambdafy.FreeVarTraverser.freeVarsOf(originalFunction)
       val target = targetTree.symbol
       val params = paramTrees.map(_.symbol)
 
       val allArgs = allArgs0 map genExpr
 
+      val formalCaptures = captureSyms.toList map { sym =>
+        // Use the anonymous function pos
+        js.ParamDef(encodeLocalSym(sym)(pos), toIRType(sym.tpe),
+            mutable = false, rest = false)(pos)
+      }
+      val actualCaptures = formalCaptures.map(_.ref)
+
       val formalArgs = params map { p =>
+        // Use the param pos
         js.ParamDef(encodeLocalSym(p)(p.pos), toIRType(p.tpe),
             mutable = false, rest = false)(p.pos)
       }
 
       val isInImplClass = target.owner.isImplClass
-
-      def makeCaptures(actualCaptures: List[js.Tree]) = {
-        (actualCaptures map { c => (c: @unchecked) match {
-          case js.VarRef(ident) =>
-            (js.ParamDef(ident, c.tpe, mutable = false, rest = false)(c.pos),
-                js.VarRef(ident)(c.tpe)(c.pos))
-        }}).unzip
-      }
 
       val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
         val thisActualCapture = genExpr(receiver)
@@ -3797,23 +3802,14 @@ abstract class GenJSCode extends plugins.PluginComponent
             freshLocalIdent("this")(receiver.pos),
             thisActualCapture.tpe, mutable = false, rest = false)(receiver.pos)
         val thisCaptureArg = thisFormalCapture.ref
-        val (actualArgs, actualCaptures) = allArgs.splitAt(formalArgs.size)
-        val (formalCaptures, captureArgs) = makeCaptures(actualCaptures)
-        val body = genApplyMethod(thisCaptureArg, target,
-            actualArgs ::: captureArgs)
+        val body = genApplyMethod(thisCaptureArg, target, allArgs)
 
         (thisFormalCapture :: formalCaptures,
             body, thisActualCapture :: actualCaptures)
       } else {
-        val (thisActualCapture :: actualArgs, actualCaptures) =
-          allArgs.splitAt(formalArgs.size+1)
-        val (thisFormalCapture :: formalCaptures, thisCaptureArg :: captureArgs) =
-          makeCaptures(thisActualCapture :: actualCaptures)
-        val body = genTraitImplApply(target,
-            thisCaptureArg :: actualArgs ::: captureArgs)
+        val body = genTraitImplApply(target, allArgs)
 
-        (thisFormalCapture :: formalCaptures,
-            body, thisActualCapture :: actualCaptures)
+        (formalCaptures, body, actualCaptures)
       }
 
       val (patchedFormalArgs, patchedBody) =

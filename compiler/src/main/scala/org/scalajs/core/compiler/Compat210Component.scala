@@ -5,6 +5,8 @@
 
 package org.scalajs.core.compiler
 
+import scala.collection.mutable
+
 import scala.tools.nsc._
 
 /** Hacks to have our source code compatible with 2.10 and 2.11.
@@ -37,7 +39,7 @@ trait Compat210Component {
     global.exitingPhase(ph)(op)
   }
 
-  private implicit final class GlobalCompat(
+  implicit final class GlobalCompat(
       self: Compat210Component.this.global.type) {
 
     def enteringPhase[T](ph: Phase)(op: => T): T = self.beforePhase(ph)(op)
@@ -45,6 +47,15 @@ trait Compat210Component {
 
     def exitingPhase[T](ph: Phase)(op: => T): T = self.afterPhase(ph)(op)
     def afterPhase[T](ph: Phase)(op: => T): T = sys.error("infinite loop in Compat")
+
+    def delambdafy: DelambdafyCompat.type = DelambdafyCompat
+  }
+
+  object DelambdafyCompat {
+    object FreeVarTraverser {
+      def freeVarsOf(function: Function): mutable.LinkedHashSet[Symbol] =
+        sys.error("FreeVarTraverser should not be called on 2.10")
+    }
   }
 
   // ErasedValueType has a different encoding
