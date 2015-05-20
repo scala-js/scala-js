@@ -483,7 +483,18 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case GetClass(expr) =>
-        GetClass(transformExpr(expr))
+        trampoline {
+          pretransformExpr(expr) { texpr =>
+            texpr.tpe match {
+              case RefinedType(base: ReferenceType, true, false) =>
+                TailCalls.done(Block(
+                    finishTransformStat(texpr),
+                    ClassOf(base)))
+              case _ =>
+                TailCalls.done(GetClass(finishTransformExpr(texpr)))
+            }
+          }
+        }
 
       // JavaScript expressions
 
@@ -814,7 +825,7 @@ private[optimizer] abstract class OptimizerCore(
 
       case _ =>
         val result = transformExpr(tree)
-        cont(PreTransTree(result, RefinedType(result.tpe)))
+        cont(PreTransTree(result))
     }
   }
 
@@ -1047,9 +1058,10 @@ private[optimizer] abstract class OptimizerCore(
     case LoadModule(ClassType(moduleClassName)) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
-    case Select(LoadModule(ClassType(moduleClassName)), _) =>
-      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
-      else stat
+    case NewArray(_, lengths) =>
+      Block(lengths.map(keepOnlySideEffects))(stat.pos)
+    case Select(qualifier, _) =>
+      keepOnlySideEffects(qualifier)
     case Closure(_, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
@@ -1074,12 +1086,10 @@ private[optimizer] abstract class OptimizerCore(
     val Apply(receiver, methodIdent @ Ident(methodName, _), args) = tree
     implicit val pos = tree.pos
 
-    pretransformExpr(receiver) { treceiver =>
-      def treeNotInlined0(transformedArgs: List[Tree]) =
+    pretransformExprs(receiver, args) { (treceiver, targs) =>
+      def treeNotInlined =
         cont(PreTransTree(Apply(finishTransformExpr(treceiver), methodIdent,
-            transformedArgs)(tree.tpe)(tree.pos), RefinedType(tree.tpe)))
-
-      def treeNotInlined = treeNotInlined0(args.map(transformExpr))
+            targs.map(finishTransformExpr))(tree.tpe), RefinedType(tree.tpe)))
 
       treceiver.tpe.base match {
         case NothingType =>
@@ -1097,26 +1107,25 @@ private[optimizer] abstract class OptimizerCore(
             val impls =
               if (treceiver.tpe.isExact) staticCall(cls, methodName).toList
               else dynamicCall(cls, methodName)
-            val allocationSite = treceiver.tpe.allocationSite
+            val allocationSites =
+              (treceiver :: targs).map(_.tpe.allocationSite)
             if (impls.isEmpty || impls.exists(impl =>
-                scope.implsBeingInlined((allocationSite, impl)))) {
+                scope.implsBeingInlined((allocationSites, impl)))) {
               // isEmpty could happen, have to leave it as is for the TypeError
               treeNotInlined
             } else if (impls.size == 1) {
               val target = impls.head
-              pretransformExprs(args) { targs =>
-                val intrinsicCode = getIntrinsicCode(target)
-                if (intrinsicCode >= 0) {
-                  callIntrinsic(intrinsicCode, Some(treceiver), targs,
-                      isStat, usePreTransform)(cont)
-                } else if (target.inlineable && (
-                    target.shouldInline ||
-                    shouldInlineBecauseOfArgs(treceiver :: targs))) {
-                  inline(allocationSite, Some(treceiver), targs, target,
-                      isStat, usePreTransform)(cont)
-                } else {
-                  treeNotInlined0(targs.map(finishTransformExpr))
-                }
+              val intrinsicCode = getIntrinsicCode(target)
+              if (intrinsicCode >= 0) {
+                callIntrinsic(intrinsicCode, Some(treceiver), targs,
+                    isStat, usePreTransform)(cont)
+              } else if (target.inlineable && (
+                  target.shouldInline ||
+                  shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
+                inline(allocationSites, Some(treceiver), targs, target,
+                    isStat, usePreTransform)(cont)
+              } else {
+                treeNotInlined
               }
             } else {
               if (impls.forall(_.isForwarder)) {
@@ -1148,10 +1157,8 @@ private[optimizer] abstract class OptimizerCore(
                   // Not all doing the same thing
                   treeNotInlined
                 } else {
-                  pretransformExprs(args) { targs =>
-                    inline(allocationSite, Some(treceiver), targs, reference,
-                        isStat, usePreTransform)(cont)
-                  }
+                  inline(allocationSites, Some(treceiver), targs, reference,
+                      isStat, usePreTransform)(cont)
                 }
               } else {
                 // TODO? Inline multiple non-trait-impl-forwarder with the exact same body?
@@ -1209,13 +1216,14 @@ private[optimizer] abstract class OptimizerCore(
           } else {
             val shouldInline = target.inlineable && (
                 target.shouldInline ||
-                shouldInlineBecauseOfArgs(treceiver :: targs))
-            val allocationSite = treceiver.tpe.allocationSite
+                shouldInlineBecauseOfArgs(target, treceiver :: targs))
+            val allocationSites =
+              (treceiver :: targs).map(_.tpe.allocationSite)
             val beingInlined =
-              scope.implsBeingInlined((allocationSite, target))
+              scope.implsBeingInlined((allocationSites, target))
 
             if (shouldInline && !beingInlined) {
-              inline(allocationSite, Some(treceiver), targs, target,
+              inline(allocationSites, Some(treceiver), targs, target,
                   isStat, usePreTransform)(cont)
             } else {
               treeNotInlined0(finishTransformExpr(treceiver),
@@ -1254,13 +1262,13 @@ private[optimizer] abstract class OptimizerCore(
               isStat, usePreTransform)(cont)
         } else {
           val shouldInline = target.inlineable && (
-              target.shouldInline || shouldInlineBecauseOfArgs(targs))
-          val allocationSite = targs.headOption.flatMap(_.tpe.allocationSite)
+              target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
+          val allocationSites = targs.map(_.tpe.allocationSite)
           val beingInlined =
-            scope.implsBeingInlined((allocationSite, target))
+            scope.implsBeingInlined((allocationSites, target))
 
           if (shouldInline && !beingInlined) {
-            inline(allocationSite, None, targs, target,
+            inline(allocationSites, None, targs, target,
                 isStat, usePreTransform)(cont)
           } else {
             treeNotInlined0(targs.map(finishTransformExpr))
@@ -1304,8 +1312,35 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def shouldInlineBecauseOfArgs(
+  private val ClassNamesThatShouldBeInlined = Set(
+      "s_Predef$$less$colon$less",
+      "s_Predef$$eq$colon$eq",
+
+      "s_reflect_ManifestFactory$ByteManifest$",
+      "s_reflect_ManifestFactory$ShortManifest$",
+      "s_reflect_ManifestFactory$CharManifest$",
+      "s_reflect_ManifestFactory$IntManifest$",
+      "s_reflect_ManifestFactory$LongManifest$",
+      "s_reflect_ManifestFactory$FloatManifest$",
+      "s_reflect_ManifestFactory$DoubleManifest$",
+      "s_reflect_ManifestFactory$BooleanManifest$",
+      "s_reflect_ManifestFactory$UnitManifest$",
+      "s_reflect_ManifestFactory$AnyManifest$",
+      "s_reflect_ManifestFactory$ObjectManifest$",
+      "s_reflect_ManifestFactory$AnyValManifest$",
+      "s_reflect_ManifestFactory$NullManifest$",
+      "s_reflect_ManifestFactory$NothingManifest$"
+  )
+
+  private def shouldInlineBecauseOfArgs(target: MethodID,
       receiverAndArgs: List[PreTransform]): Boolean = {
+    def isTypeLikelyOptimizable(tpe: RefinedType): Boolean = tpe.base match {
+      case ClassType(className) =>
+        ClassNamesThatShouldBeInlined.contains(className)
+      case _ =>
+        false
+    }
+
     def isLikelyOptimizable(arg: PreTransform): Boolean = arg match {
       case PreTransBlock(_, result) =>
         isLikelyOptimizable(result)
@@ -1316,7 +1351,8 @@ private[optimizer] abstract class OptimizerCore(
           case ReplaceWithRecordVarRef(_, _, _, _, _)        => true
           case InlineClassBeingConstructedReplacement(_, _)  => true
           case InlineClassInstanceReplacement(_, _, _)       => true
-          case _                                             => false
+          case _ =>
+            isTypeLikelyOptimizable(localDef.tpe)
         }) && {
           /* java.lang.Character is @inline so that *local* box/unbox pairs
            * can be eliminated. But we don't want that to force inlining of
@@ -1332,17 +1368,19 @@ private[optimizer] abstract class OptimizerCore(
         true
 
       case _ =>
-        arg.tpe.base match {
-          case ClassType("s_Predef$$less$colon$less" | "s_Predef$$eq$colon$eq") =>
-            true
-          case _ =>
-            false
-        }
+        isTypeLikelyOptimizable(arg.tpe)
     }
-    receiverAndArgs.exists(isLikelyOptimizable)
+
+    receiverAndArgs.exists(isLikelyOptimizable) || {
+      target.toString == "s_reflect_ClassTag$.apply__jl_Class__s_reflect_ClassTag" &&
+      (receiverAndArgs.tail.head match {
+        case PreTransTree(ClassOf(_), _) => true
+        case _                           => false
+      })
+    }
   }
 
-  private def inline(allocationSite: Option[AllocationSite],
+  private def inline(allocationSites: List[Option[AllocationSite]],
       optReceiver: Option[PreTransform],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -1395,7 +1433,7 @@ private[optimizer] abstract class OptimizerCore(
         }
 
       case _ =>
-        val targetID = (allocationSite, target)
+        val targetID = (allocationSites, target)
         inlineBody(optReceiver, formals, resultType, body, args, isStat,
             usePreTransform)(cont)(scope.inlining(targetID), pos)
     }
@@ -1434,16 +1472,15 @@ private[optimizer] abstract class OptimizerCore(
 
     implicit def string2ident(s: String): Ident = Ident(s, None)
 
+    lazy val newReceiver = finishTransformExpr(optTReceiver.get)
     lazy val newArgs = targs.map(finishTransformExpr)
 
     @inline def contTree(result: Tree) = cont(PreTransTree(result))
 
     @inline def StringClassType = ClassType(Definitions.StringClass)
 
-    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] = {
-      contTree(Apply(finishTransformExpr(optTReceiver.get),
-          Ident(methodName), newArgs)(resultType))
-    }
+    def defaultApply(methodName: String, resultType: Type): TailRec[Tree] =
+      contTree(Apply(newReceiver, Ident(methodName), newArgs)(resultType))
 
     def cursoryArrayElemType(tpe: ArrayType): Type = {
       if (tpe.dimensions != 1) AnyType
@@ -1554,6 +1591,62 @@ private[optimizer] abstract class OptimizerCore(
       case LongToOctalStr =>
         contTree(Apply(firstArgAsRTLong, LongImpl.toOctalString, Nil)(StringClassType))
 
+      // scala.collection.mutable.ArrayBuilder
+
+      case GenericArrayBuilderResult =>
+        val List(runtimeClass, array) = newArgs
+        val (resultType, isExact) = runtimeClass match {
+          case ClassOf(elemType) => (ArrayType(elemType), true)
+          case _                 => (AnyType, false)
+        }
+        cont(PreTransTree(CallHelper("makeNativeArrayWrapper",
+            CallHelper("arrayDataOf",
+                CallHelper("classDataOf", runtimeClass)(AnyType))(AnyType),
+            array)(resultType),
+            RefinedType(resultType, isExact = isExact, isNullable = false)))
+
+      case ArrayBuilderZeroOf =>
+        contTree(finishTransformExpr(targs.head) match {
+          case ClassOf(ClassType(cls)) =>
+            cls match {
+              case "B" | "S" | "C" | "I" | "D" => IntLiteral(0)
+              case "L"                         => LongLiteral(0L)
+              case "F"                         => FloatLiteral(0.0f)
+              case "Z"                         => BooleanLiteral(false)
+              case "V"                         => Undefined()
+              case _                           => Null()
+            }
+          case ClassOf(_) =>
+            Null()
+          case runtimeClass =>
+            CallHelper("zeroOf", runtimeClass)(AnyType)
+        })
+
+      // java.lang.Class
+
+      case ClassGetComponentType =>
+        newReceiver match {
+          case ClassOf(ArrayType(base, depth)) =>
+            contTree(ClassOf(
+                if (depth == 1) ClassType(base)
+                else ArrayType(base, depth - 1)))
+          case ClassOf(ClassType(_)) =>
+            contTree(Null())
+          case receiver =>
+            defaultApply("getComponentType__jl_Class",
+                ClassType(Definitions.ClassClass))
+        }
+
+      // java.lang.reflect.Array
+
+      case ArrayNewInstance =>
+        newArgs.head match {
+          case ClassOf(elementTpe) =>
+            contTree(NewArray(ArrayType(elementTpe), List(newArgs.tail.head)))
+          case _ =>
+            defaultApply("newInstance__jl_Class__I__O", AnyType)
+        }
+
       // TypedArray conversions
 
       case ByteArrayToInt8Array =>
@@ -1600,7 +1693,8 @@ private[optimizer] abstract class OptimizerCore(
     val target = staticCall(BoxesRunTimeModuleClassName, "unboxToChar__O__C").getOrElse {
       throw new AssertionError("Cannot find method sr_BoxesRunTime$.unboxToChar__O__C")
     }
-    inline(tvalue.tpe.allocationSite, Some(treceiver), List(tvalue), target,
+    val allocationSites = List(treceiver, tvalue).map(_.tpe.allocationSite)
+    inline(allocationSites, Some(treceiver), List(tvalue), target,
         isStat = false, usePreTransform = true)(cont)
   }
 
@@ -1647,7 +1741,7 @@ private[optimizer] abstract class OptimizerCore(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
     val target = staticCall(ctorClass.className, ctor.name).getOrElse(cancelFun())
-    val targetID = (Some(allocationSite), target)
+    val targetID = (Some(allocationSite) :: args.map(_.tpe.allocationSite), target)
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
@@ -2745,8 +2839,9 @@ private[optimizer] abstract class OptimizerCore(
 
     val allLocalDefs = thisLocalDef ++: paramLocalDefs
 
+    val allocationSites = List.fill(allLocalDefs.size)(None)
     val scope0 = optTarget.fold(Scope.Empty)(
-        target => Scope.Empty.inlining((None, target)))
+        target => Scope.Empty.inlining((allocationSites, target)))
     val scope = scope0.withEnv(OptEnv.Empty.withLocalDefs(allLocalDefs))
     val newBody =
       transform(body, resultType == NoType)(scope)
@@ -3292,11 +3387,12 @@ private[optimizer] object OptimizerCore {
   }
 
   private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[(Option[AllocationSite], AbstractMethodID)]) {
+      val implsBeingInlined: Set[(List[Option[AllocationSite]], AbstractMethodID)]) {
     def withEnv(env: OptEnv): Scope =
       new Scope(env, implsBeingInlined)
 
-    def inlining(impl: (Option[AllocationSite], AbstractMethodID)): Scope = {
+    def inlining(impl: (List[Option[AllocationSite]],
+        AbstractMethodID)): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
       new Scope(env, implsBeingInlined + impl)
     }
@@ -3384,8 +3480,17 @@ private[optimizer] object OptimizerCore {
   }
 
   private object PreTransTree {
-    def apply(tree: Tree): PreTransTree =
-      PreTransTree(tree, RefinedType(tree.tpe))
+    def apply(tree: Tree): PreTransTree = {
+      val refinedTpe: RefinedType = tree match {
+        case BlockOrAlone(_,
+            _:LoadModule | _:NewArray | _:ArrayValue | _:GetClass |
+            _:ClassOf) =>
+          RefinedType(tree.tpe, isExact = true, isNullable = false)
+        case _ =>
+          RefinedType(tree.tpe)
+      }
+      PreTransTree(tree, refinedTpe)
+    }
   }
 
   private final case class Binding(name: String, originalName: Option[String],
@@ -3453,7 +3558,14 @@ private[optimizer] object OptimizerCore {
     final val LongToHexStr   = LongToBinStr   + 1
     final val LongToOctalStr = LongToHexStr   + 1
 
-    final val ByteArrayToInt8Array      = LongToOctalStr           + 1
+    final val ArrayBuilderZeroOf = LongToOctalStr + 1
+    final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
+
+    final val ClassGetComponentType = GenericArrayBuilderResult + 1
+
+    final val ArrayNewInstance = ClassGetComponentType + 1
+
+    final val ByteArrayToInt8Array      = ArrayNewInstance         + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
     final val CharArrayToUint16Array    = ShortArrayToInt16Array   + 1
     final val IntArrayToInt32Array      = CharArrayToUint16Array   + 1
@@ -3487,6 +3599,13 @@ private[optimizer] object OptimizerCore {
       "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
       "jl_Long$.toHexString__J__T"           -> LongToHexStr,
       "jl_Long$.toOctalString__J__T"         -> LongToOctalStr,
+
+      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
+      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,
+
+      "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
+
+      "jl_reflect_Array$.newInstance__jl_Class__I__O" -> ArrayNewInstance,
 
       "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
       "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,

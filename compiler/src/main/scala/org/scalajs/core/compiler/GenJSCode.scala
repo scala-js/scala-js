@@ -609,7 +609,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val shouldMarkInline = {
               sym.hasAnnotation(InlineAnnotationClass) ||
-              sym.name.startsWith(nme.ANON_FUN_NAME)
+              sym.name.startsWith(nme.ANON_FUN_NAME) ||
+              adHocInlineMethods.contains(sym.fullName)
             }
 
             val shouldMarkNoinline = {
@@ -660,6 +661,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       result
     }
+
+    private val adHocInlineMethods = Set(
+        "scala.collection.mutable.ArrayOps$ofRef.newBuilder$extension",
+        "scala.runtime.ScalaRunTime.arrayClass",
+        "scala.runtime.ScalaRunTime.arrayElementClass"
+    )
 
     private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
         rhs: Tree): Boolean = {

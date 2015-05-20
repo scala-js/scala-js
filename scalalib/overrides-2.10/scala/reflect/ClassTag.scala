@@ -28,7 +28,7 @@ import scala.runtime.ScalaRunTime.{ arrayClass, arrayElementClass }
  *   scala> mkArray("Japan","Brazil","Germany")
  *   res1: Array[String] = Array(Japan, Brazil, Germany)
  * }}}
- * 
+ *
  * See [[scala.reflect.api.TypeTags]] for more examples, or the
  * [[http://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
  * for more details.
@@ -107,25 +107,21 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
  * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
  */
 object ClassTag {
-  private val ObjectTYPE = classOf[java.lang.Object]
-  private val NothingTYPE = classOf[scala.runtime.Nothing$]
-  private val NullTYPE = classOf[scala.runtime.Null$]
-
-  val Byte    : ClassTag[scala.Byte]       = Manifest.Byte
-  val Short   : ClassTag[scala.Short]      = Manifest.Short
-  val Char    : ClassTag[scala.Char]       = Manifest.Char
-  val Int     : ClassTag[scala.Int]        = Manifest.Int
-  val Long    : ClassTag[scala.Long]       = Manifest.Long
-  val Float   : ClassTag[scala.Float]      = Manifest.Float
-  val Double  : ClassTag[scala.Double]     = Manifest.Double
-  val Boolean : ClassTag[scala.Boolean]    = Manifest.Boolean
-  val Unit    : ClassTag[scala.Unit]       = Manifest.Unit
-  val Any     : ClassTag[scala.Any]        = Manifest.Any
-  val Object  : ClassTag[java.lang.Object] = Manifest.Object
-  val AnyVal  : ClassTag[scala.AnyVal]     = Manifest.AnyVal
-  val AnyRef  : ClassTag[scala.AnyRef]     = Manifest.AnyRef
-  val Nothing : ClassTag[scala.Nothing]    = Manifest.Nothing
-  val Null    : ClassTag[scala.Null]       = Manifest.Null
+  def Byte    : ClassTag[scala.Byte]       = ManifestFactory.Byte
+  def Short   : ClassTag[scala.Short]      = ManifestFactory.Short
+  def Char    : ClassTag[scala.Char]       = ManifestFactory.Char
+  def Int     : ClassTag[scala.Int]        = ManifestFactory.Int
+  def Long    : ClassTag[scala.Long]       = ManifestFactory.Long
+  def Float   : ClassTag[scala.Float]      = ManifestFactory.Float
+  def Double  : ClassTag[scala.Double]     = ManifestFactory.Double
+  def Boolean : ClassTag[scala.Boolean]    = ManifestFactory.Boolean
+  def Unit    : ClassTag[scala.Unit]       = ManifestFactory.Unit
+  def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
+  def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
+  def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
+  def AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
+  def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
+  def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
   def apply[T](runtimeClass1: jClass[_]): ClassTag[T] =
     runtimeClass1 match {
@@ -138,11 +134,20 @@ object ClassTag {
       case java.lang.Double.TYPE    => ClassTag.Double.asInstanceOf[ClassTag[T]]
       case java.lang.Boolean.TYPE   => ClassTag.Boolean.asInstanceOf[ClassTag[T]]
       case java.lang.Void.TYPE      => ClassTag.Unit.asInstanceOf[ClassTag[T]]
-      case ObjectTYPE               => ClassTag.Object.asInstanceOf[ClassTag[T]]
-      case NothingTYPE              => ClassTag.Nothing.asInstanceOf[ClassTag[T]]
-      case NullTYPE                 => ClassTag.Null.asInstanceOf[ClassTag[T]]
-      case _                        => new ClassTag[T]{ def runtimeClass = runtimeClass1 }
+      case _                        =>
+        if (classOf[java.lang.Object] == runtimeClass1)
+          ClassTag.Object.asInstanceOf[ClassTag[T]]
+        else if (classOf[scala.runtime.Nothing$] == runtimeClass1)
+          ClassTag.Nothing.asInstanceOf[ClassTag[T]]
+        else if (classOf[scala.runtime.Null$] == runtimeClass1)
+          ClassTag.Null.asInstanceOf[ClassTag[T]]
+        else
+          new ClassClassTag[T](runtimeClass1)
     }
+
+  @inline
+  private final class ClassClassTag[T](
+      val runtimeClass: Class[_]) extends ClassTag[T]
 
   def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
 }

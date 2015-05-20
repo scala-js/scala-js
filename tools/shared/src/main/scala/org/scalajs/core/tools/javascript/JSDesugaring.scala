@@ -1648,7 +1648,24 @@ object JSDesugaring {
           genCallHelper("objectGetClass", transformExpr(expr))
 
         case CallHelper(helper, args) =>
-          genCallHelper(helper, args map transformExpr: _*)
+          helper match {
+            case "classDataOf" =>
+              args.head match {
+                case ClassOf(tpe) =>
+                  genClassDataOf(tpe)
+                case jlClass =>
+                  js.DotSelect(transformExpr(jlClass), js.Ident("data$1"))
+              }
+            case "arrayDataOf" =>
+              js.Apply(js.DotSelect(transformExpr(args.head),
+                  js.Ident("getArrayOf")), Nil)
+            case "zeroOf" =>
+              js.DotSelect(
+                  js.DotSelect(transformExpr(args.head), js.Ident("data$1")),
+                  js.Ident("zero"))
+            case _ =>
+              genCallHelper(helper, args map transformExpr: _*)
+          }
 
         // JavaScript expressions
 

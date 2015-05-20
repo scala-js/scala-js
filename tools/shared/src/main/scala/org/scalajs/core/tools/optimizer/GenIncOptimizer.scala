@@ -125,6 +125,9 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     val neededClasses = CollOps.emptyParMap[String, LinkedClass]
     val neededStatics = CollOps.emptyParMap[String, LinkedClass]
     for (linkedClass <- linkedClasses) {
+      // Update the list of ancestors for all linked classes
+      getInterface(linkedClass.encodedName).ancestors = linkedClass.ancestors
+
       if (linkedClass.hasInstances &&
           linkedClass.kind != ClassKind.RawJSType &&
           linkedClass.kind != ClassKind.Interface)
@@ -254,9 +257,6 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(linkedClass: LinkedClass):
         (Set[String], Set[String], Set[String]) = {
-
-      if (!isStatic)
-        myInterface.ancestors = linkedClass.ancestors
 
       val addedMethods = Set.newBuilder[String]
       val changedMethods = Set.newBuilder[String]
