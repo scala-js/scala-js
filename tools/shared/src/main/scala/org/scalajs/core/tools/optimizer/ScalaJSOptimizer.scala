@@ -92,39 +92,9 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
         new JSFileBuilder(output.name, output.contentWriter)
     }
 
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        builder.addLine("(function(){")
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("(function(__this, __ScalaJSEnv, __global, " +
-            "$jsSelect, $jsAssign, $jsDelete, $propertiesOf, $weakFun) {")
-    }
-
-    builder.addLine("'use strict';")
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("'use strong';")
-      case _ =>
-        builder.addFile(CoreJSLibs.lib(semantics, outputMode))
-    }
-
+    emitter.emitPrelude(builder, logger)
     optimizeIR(irFiles, cfg, builder, logger)
-
-    outputMode match {
-      case OutputMode.ECMAScript51Global =>
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
-        builder.addLine("}).call(this);")
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("})(this,")
-        builder.addLine("  (typeof __ScalaJSEnv !== 'undefined') ? __ScalaJSEnv : void 0,")
-        builder.addLine("  (typeof global !== 'undefined') ? global : void 0,")
-        builder.addLine("  function(x, p) { 'use strict'; return x[p]; },")
-        builder.addLine("  function(x, p, v) { 'use strict'; x[p] = v; },")
-        builder.addLine("  function(x, p) { 'use strict'; delete x[p]; },")
-        builder.addLine("  function(x) { 'use strict'; const r = []; for (const p in x) r['push'](p); return r; },")
-        builder.addLine("  function(f) { 'use strict'; return function(...args) { return f['apply'](void 0, args); } });")
-    }
+    emitter.emitPostlude(builder, logger)
 
     builder.complete()
     builder.closeWriters()
