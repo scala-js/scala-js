@@ -425,6 +425,10 @@ ScalaJS.isInfinite = function(instance) {
   return !ScalaJS.g["isFinite"](instance) && !ScalaJS.isNaN(instance);
 };
 
+ScalaJS.doubleToInt = function(x) {
+  return (x > 2147483647) ? (2147483647) : ((x < -2147483648) ? -2147483648 : (x | 0));
+};
+
 /** Instantiates a JS object with variadic arguments to the constructor. */
 ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
   // This basically emulates the ECMAScript specification for 'new'.

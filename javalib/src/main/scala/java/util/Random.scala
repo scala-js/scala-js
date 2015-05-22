@@ -35,10 +35,14 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
      */
 
     @inline
-    def _24msbOf(x: Double): Int = (x / (1 << 24).toDouble).toInt
+    def rawToInt(x: Double): Int =
+      (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
 
     @inline
-    def _24lsbOf(x: Double): Int = x.toInt & ((1 << 24) - 1)
+    def _24msbOf(x: Double): Int = rawToInt(x / (1 << 24).toDouble)
+
+    @inline
+    def _24lsbOf(x: Double): Int = rawToInt(x) & ((1 << 24) - 1)
 
     // seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
 
