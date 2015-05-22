@@ -117,6 +117,19 @@ object ReflectionTest extends JasmineTest {
       expect(classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName).toEqual(
           "org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly")
     }
+
+    it("cast(), positive") {
+      expect(classOf[String].cast(null)).toBeNull
+      expect(classOf[String].cast("hello")).toEqual("hello")
+      expect(classOf[Seq[_]].cast(List(1, 2)) == List(1, 2)).toBeTruthy
+      expect(() => classOf[Object].cast(js.Array(3, 4))).not.toThrow
+    }
+
+    when("compliant-asinstanceofs").
+    it("cast(), negative") {
+      expect(() => classOf[String].cast(5)).toThrow
+      expect(() => classOf[Seq[_]].cast(Some("foo"))).toThrow
+    }
   }
 
   object TestObject

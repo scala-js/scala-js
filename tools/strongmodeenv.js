@@ -17,6 +17,38 @@ $env["exportsNamespace"] = $e;
 // Freeze the environment info
 $g["Object"]["freeze"]($env);
 
+// Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
+const $linkingInfo = {
+  "semantics": {
+//!if asInstanceOfs == Compliant
+    "asInstanceOfs": 0,
+//!else
+//!if asInstanceOfs == Fatal
+    "asInstanceOfs": 1,
+//!else
+    "asInstanceOfs": 2,
+//!endif
+//!endif
+//!if moduleInit == Compliant
+    "moduleInit": 0,
+//!else
+//!if moduleInit == Fatal
+    "moduleInit": 1,
+//!else
+    "moduleInit": 2,
+//!endif
+//!endif
+//!if floats == Strict
+    "strictFloats": true
+//!else
+    "strictFloats": false
+//!endif
+  },
+  "assumingES6": true
+};
+$g["Object"]["freeze"]($linkingInfo);
+$g["Object"]["freeze"]($linkingInfo["semantics"]);
+
 // Snapshots of builtins
 
 const $imul = $g["Math"]["imul"];
@@ -649,6 +681,7 @@ class $TypeData {
     this["isPrimitive"] = false;
     this["isInterface"] = false;
     this["isArrayClass"] = false;
+    this["isRawJSType"] = false;
     this["isInstance"] = void 0;
   };
 
@@ -669,7 +702,7 @@ class $TypeData {
   };
 
   initClass(internalNameObj, isInterface, fullName,
-      ancestors, parentData, isInstance, isArrayOf) { // TODO Default params
+      ancestors, isRawJSType, parentData, isInstance, isArrayOf) { // TODO Default params
     const internalName = $propertyName(internalNameObj);
 
     isInstance = isInstance || function(obj) {
@@ -690,6 +723,7 @@ class $TypeData {
     // java.lang.Class support
     this["name"] = fullName;
     this["isInterface"] = isInterface;
+    this["isRawJSType"] = !!isRawJSType;
     this["isInstance"] = isInstance;
 
     return this;

@@ -558,6 +558,10 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
 
+    val isRawJSType =
+      if (kind == ClassKind.RawJSType) js.BooleanLiteral(true)
+      else js.Undefined()
+
     val parentData = if (globalInfo.isParentDataAccessed) {
       tree.superClass.fold[js.Tree] {
         if (isObjectClass) js.Null()
@@ -612,6 +616,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
         ancestorsRecord,
+        isRawJSType,
         parentData,
         isInstanceFun,
         isArrayOfFun

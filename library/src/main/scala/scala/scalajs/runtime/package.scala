@@ -9,10 +9,10 @@ package object runtime {
   /** Returns true if we are assuming that the target platform supports
    *  ECMAScript 6, false otherwise.
    *
-   *  Even though, in the Scala code, this is always false, it can be
-   *  overridden by the linker to be always true. Constant-folding, inlining,
-   *  and other local optimizations can be leveraged with this "constant" to
-   *  write polyfills that can be dead-code-eliminated.
+   *  This ends up being constant-folded to a constant at link-time. So
+   *  constant-folding, inlining, and other local optimizations can be
+   *  leveraged with this "constant" to write polyfills that can be
+   *  dead-code-eliminated.
    *
    *  A typical usage of this method is:
    *  {{{
@@ -35,7 +35,9 @@ package object runtime {
    *  useES6Feature()
    *  }}}
    */
-  def assumingES6: Boolean = false // Do NOT make this a 'val' or a 'final val'
+  @inline
+  def assumingES6: Boolean =
+    linkingInfo.assumingES6
 
   def wrapJavaScriptException(e: Any): Throwable = e match {
     case e: Throwable => e
@@ -135,6 +137,12 @@ package object runtime {
    *  See [[EnvironmentInfo]] for details.
    */
   def environmentInfo: EnvironmentInfo = sys.error("stub")
+
+  /** Information known at link-time, given the output configuration.
+   *
+   *  See [[LinkingInfo]] for details.
+   */
+  def linkingInfo: LinkingInfo = sys.error("stub")
 
   /** Polyfill for fround in case we use strict Floats and even Typed Arrays
    *  are not available.

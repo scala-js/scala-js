@@ -30,6 +30,42 @@ ScalaJS.env["exportsNamespace"] = ScalaJS.e;
 // Freeze the environment info
 ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
+// Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
+ScalaJS.linkingInfo = {
+  "semantics": {
+//!if asInstanceOfs == Compliant
+    "asInstanceOfs": 0,
+//!else
+//!if asInstanceOfs == Fatal
+    "asInstanceOfs": 1,
+//!else
+    "asInstanceOfs": 2,
+//!endif
+//!endif
+//!if moduleInit == Compliant
+    "moduleInit": 0,
+//!else
+//!if moduleInit == Fatal
+    "moduleInit": 1,
+//!else
+    "moduleInit": 2,
+//!endif
+//!endif
+//!if floats == Strict
+    "strictFloats": true
+//!else
+    "strictFloats": false
+//!endif
+  },
+//!if outputMode == ECMAScript6
+  "assumingES6": true
+//!else
+  "assumingES6": false
+//!endif
+};
+ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo);
+ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);
+
 // Snapshots of builtins and polyfills
 
 //!if outputMode == ECMAScript6
@@ -635,6 +671,7 @@ constructor() {
   this["isPrimitive"] = false;
   this["isInterface"] = false;
   this["isArrayClass"] = false;
+  this["isRawJSType"] = false;
   this["isInstance"] = void 0;
 };
 
@@ -665,7 +702,7 @@ ScalaJS.TypeData.prototype.initClass = function(
 initClass(
 //!endif
     internalNameObj, isInterface, fullName,
-    ancestors, parentData, isInstance, isArrayOf) {
+    ancestors, isRawJSType, parentData, isInstance, isArrayOf) {
   const internalName = ScalaJS.propertyName(internalNameObj);
 
   isInstance = isInstance || function(obj) {
@@ -686,6 +723,7 @@ initClass(
   // java.lang.Class support
   this["name"] = fullName;
   this["isInterface"] = isInterface;
+  this["isRawJSType"] = !!isRawJSType;
   this["isInstance"] = isInstance;
 
   return this;
