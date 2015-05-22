@@ -116,17 +116,6 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
           cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
     }
 
-    if (cfg.checkIR) {
-      logTime(logger, "Check IR") {
-        if (linkResult.isComplete) {
-          val checker = new IRChecker(linkResult, logger)
-          if (!checker.check())
-            sys.error(s"There were ${checker.errorCount} IR checking errors.")
-        } else if (cfg.noWarnMissing.isEmpty)
-          sys.error("Could not check IR because there where linking errors.")
-      }
-    }
-
     val useOptimizer = linkResult.isComplete && !cfg.disableOptimizer
 
     if (cfg.batchMode)
