@@ -16,6 +16,8 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.optimizer._
+import org.scalajs.core.tools.javascript.OutputMode
 
 import scala.annotation.tailrec
 
@@ -304,7 +306,8 @@ final class RhinoJSEnv private (
     case cp: IRClasspath =>
       // Setup lazy loading classpath and source mapper
       val optLoader = if (cp.scalaJSIR.nonEmpty) {
-        val loader = new ScalaJSCoreLib(semantics, cp)
+        val linkingUnit = linkIRClasspath(cp, semantics)
+        val loader = new ScalaJSCoreLib(semantics, linkingUnit)
 
         // Setup sourceMapper
         if (sourceMap) {
@@ -433,6 +436,16 @@ final class RhinoJSEnv private (
 }
 
 object RhinoJSEnv {
+
+  private[rhino] def linkIRClasspath(cp: IRClasspath,
+      semantics: Semantics): LinkingUnit = {
+    val logger = new ScalaConsoleLogger(Level.Error)
+    val linker = new Linker(semantics, OutputMode.ECMAScript51Global,
+        considerPositions = true)
+    linker.link(cp.scalaJSIR, logger,
+        reachOptimizerSymbols = false,
+        bypassLinkingErrors = true, noWarnMissing = Nil, checkIR = false)
+  }
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {

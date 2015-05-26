@@ -25,11 +25,17 @@ import org.mozilla.javascript.{Scriptable, Context}
  *  It is immensely useful, because it allows to load lazily only the scripts
  *  that are actually needed.
  */
-class LazyScalaJSScope(
+class LazyScalaJSScope private[rhino] (
     coreLib: ScalaJSCoreLib,
     globalScope: Scriptable,
     base: Scriptable,
-    isStatics: Boolean = false) extends Scriptable {
+    isStatics: Boolean,
+    dummy: Int) extends Scriptable {
+
+  @deprecated("LazyScalaJSScope will be made private.", "0.6.4")
+  def this(coreLib: ScalaJSCoreLib, globalScope: Scriptable, base: Scriptable,
+      isStatics: Boolean = false) =
+    this(coreLib, globalScope, base, isStatics, dummy = 0)
 
   private val fields = mutable.HashMap.empty[String, Any]
   private var prototype: Scriptable = _
@@ -56,18 +62,29 @@ class LazyScalaJSScope(
   override def getClassName() = "LazyScalaJSScope"
 
   override def get(name: String, start: Scriptable) = {
-    fields.getOrElse(name, {
-      try {
-        load(name)
-        fields.getOrElse(name, Scriptable.NOT_FOUND)
-      } catch {
-        // We need to re-throw the exception if `load` fails, otherwise the
-        // JavaScript runtime will not catch it.
-        case t: ScalaJSCoreLib.ClassNotFoundException =>
-          throw Context.throwAsScriptRuntimeEx(t)
-      }
-    }).asInstanceOf[AnyRef]
+    if (name == "__noSuchMethod__") {
+      /* Automatically called by Rhino when trying to call a method fails.
+       * We don't want to throw a ClassNotFoundException for this case, but
+       * rather return a proper NOT_FOUND sentinel. Otherwise, this exception
+       * would "shadow" the real one containing the class name that could not
+       * be found on the classpath.
+       */
+      Scriptable.NOT_FOUND
+    } else {
+      fields.getOrElse(name, {
+        try {
+          load(name)
+          fields.getOrElse(name, Scriptable.NOT_FOUND)
+        } catch {
+          // We need to re-throw the exception if `load` fails, otherwise the
+          // JavaScript runtime will not catch it.
+          case t: ScalaJSCoreLib.ClassNotFoundException =>
+            throw Context.throwAsScriptRuntimeEx(t)
+        }
+      }).asInstanceOf[AnyRef]
+    }
   }
+
   override def get(index: Int, start: Scriptable) =
     get(index.toString, start)
 
