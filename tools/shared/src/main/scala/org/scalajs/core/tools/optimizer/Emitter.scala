@@ -40,6 +40,13 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   private[this] var statsMethodsReused: Int = 0
   private[this] var statsMethodsInvalidated: Int = 0
 
+  def emitAll(unit: LinkingUnit, builder: JSFileBuilder,
+      logger: Logger): Unit = {
+    emitPrelude(builder, logger)
+    emit(unit, builder, logger)
+    emitPostlude(builder, logger)
+  }
+
   def emitPrelude(builder: JSFileBuilder, logger: Logger): Unit = {
     outputMode match {
       case OutputMode.ECMAScript51Global =>

@@ -303,36 +303,44 @@ final class RhinoJSEnv private (
   /** Loads the classpath. Either through lazy loading or by simply inserting */
   private def loadClasspath(context: Context, scope: Scriptable,
       classpath: CompleteClasspath): Unit = classpath match {
-    case cp: IRClasspath =>
-      // Setup lazy loading classpath and source mapper
-      val optLoader = if (cp.scalaJSIR.nonEmpty) {
-        val linkingUnit = linkIRClasspath(cp, semantics)
-        val loader = new ScalaJSCoreLib(semantics, linkingUnit)
+    case cp: LinkingUnitClasspath =>
+      loadLinkingUnitClasspath(context, scope, cp)
 
-        // Setup sourceMapper
-        if (sourceMap) {
-          val scalaJSenv = context.newObject(scope)
-
-          scalaJSenv.addFunction("sourceMapper", args => {
-            val trace = Context.toObject(args(0), scope)
-            loader.mapStackTrace(trace, context, scope)
-          })
-
-          ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
-        }
-
-        Some(loader)
-      } else {
-        None
-      }
-
-      // Load JS libraries
-      cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
-
-      optLoader.foreach(_.insertInto(context, scope))
+    // Deprecated, auto-linking
+    case cp: IRClasspath if cp.scalaJSIR.nonEmpty =>
+      val linkingUnit = linkIRClasspath(cp, semantics)
+      val linkingUnitCP = new LinkingUnitClasspath(cp.jsLibs, linkingUnit,
+          cp.requiresDOM, None)
+      loadLinkingUnitClasspath(context, scope, linkingUnitCP)
 
     case cp =>
       cp.allCode.foreach(context.evaluateFile(scope, _))
+  }
+
+  /** Loads a [[LinkingUnitClasspath]] with lazy loading of classes and
+   *  source mapping.
+   */
+  private def loadLinkingUnitClasspath(context: Context, scope: Scriptable,
+      classpath: LinkingUnitClasspath): Unit = {
+
+    val loader = new ScalaJSCoreLib(semantics, classpath.linkingUnit)
+
+    // Setup sourceMapper
+    if (sourceMap) {
+      val scalaJSenv = context.newObject(scope)
+
+      scalaJSenv.addFunction("sourceMapper", args => {
+        val trace = Context.toObject(args(0), scope)
+        loader.mapStackTrace(trace, context, scope)
+      })
+
+      ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+    }
+
+    // Load JS libraries
+    classpath.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
+
+    loader.insertInto(context, scope)
   }
 
   private def basicEventLoop(taskQ: TaskQueue): Unit =

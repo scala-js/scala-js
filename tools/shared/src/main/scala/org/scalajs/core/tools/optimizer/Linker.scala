@@ -46,6 +46,14 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
   type TreeProvider = String => (ClassDef, Option[String])
 
+  /** Cleans the cache. */
+  def clean(): Unit = {
+    files.clear()
+    statsReused = 0
+    statsInvalidated = 0
+    statsTreesRead = 0
+  }
+
   def link(irInput: Traversable[VirtualScalaJSIRFile], logger: Logger,
       reachOptimizerSymbols: Boolean, bypassLinkingErrors: Boolean,
       noWarnMissing: Seq[NoWarnMissing],
