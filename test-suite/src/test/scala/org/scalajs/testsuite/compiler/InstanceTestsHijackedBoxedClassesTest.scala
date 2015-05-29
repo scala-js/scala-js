@@ -10,6 +10,8 @@ package org.scalajs.testsuite.compiler
 import org.scalajs.jasminetest.JasmineTest
 import scala.scalajs.js
 
+// scalastyle:off disallow.space.before.token
+
 object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
 
   describe("Instance tests for hijacked boxed classes") {
@@ -32,7 +34,7 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect((5.0 : Any).isInstanceOf[Int]   ).toBeTruthy
       expect((5.0 : Any).isInstanceOf[Float] ).toBeTruthy
 
-      expect((0.0 : Any).isInstanceOf[Int]).toBeTruthy
+      expect((0.0 : Any).isInstanceOf[Int]  ).toBeTruthy
       expect((0.0 : Any).isInstanceOf[Float]).toBeTruthy
       expect((-0.0: Any).isInstanceOf[Float]).toBeTruthy
     }
@@ -53,15 +55,15 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
 
     it("should support asInstanceOf (positive)") {
       def swallow(x: Any): Unit = ()
-      swallow((()         : Any).asInstanceOf[Unit]   )
+      swallow((()         : Any).asInstanceOf[Unit])
       swallow((false      : Any).asInstanceOf[Boolean])
-      swallow(('a'        : Any).asInstanceOf[Char]   )
-      swallow((65.toByte  : Any).asInstanceOf[Byte]   )
-      swallow((654.toShort: Any).asInstanceOf[Short]  )
-      swallow((-4321      : Any).asInstanceOf[Int]    )
-      swallow((684321L    : Any).asInstanceOf[Long]   )
-      swallow((3.14f      : Any).asInstanceOf[Float]  )
-      swallow((3.14       : Any).asInstanceOf[Double] )
+      swallow(('a'        : Any).asInstanceOf[Char])
+      swallow((65.toByte  : Any).asInstanceOf[Byte])
+      swallow((654.toShort: Any).asInstanceOf[Short])
+      swallow((-4321      : Any).asInstanceOf[Int])
+      swallow((684321L    : Any).asInstanceOf[Long])
+      swallow((3.14f      : Any).asInstanceOf[Float])
+      swallow((3.14       : Any).asInstanceOf[Double])
     }
 
     when("compliant-asinstanceofs").

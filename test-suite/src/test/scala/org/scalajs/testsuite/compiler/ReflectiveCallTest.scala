@@ -56,6 +56,7 @@ object ReflectiveCallTest extends JasmineTest {
     }
 
     it("should work with unary methods on primitive types") {
+      // scalastyle:off disallow.space.before.token
       def fInt(x: Any { def unary_- : Int }): Int = -x
       expect(fInt(1.toByte)).toEqual(-1)
       expect(fInt(1.toShort)).toEqual(-1)
@@ -74,6 +75,7 @@ object ReflectiveCallTest extends JasmineTest {
       def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
       expect(fBoolean(false)).toBeTruthy
       expect(fBoolean(true)).toBeFalsy
+      // scalastyle:on disallow.space.before.token
     }
 
     it("should work with binary operators on primitive types") {
@@ -102,7 +104,7 @@ object ReflectiveCallTest extends JasmineTest {
       def fDouble(x: Any { def /(x: Double): Double }): Double = x / 1.4
       expect(fDouble(-1.5)).toEqual(-1.0714285714285714)
 
-      def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true
+      def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true // scalastyle:ignore
       expect(fBoolean(false)).toBeFalsy
       expect(fBoolean(true)).toBeTruthy
     }
@@ -123,7 +125,7 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fNum(5.6f)).toBeFalsy
       expect(fNum(5.0)).toBeTruthy
       expect(fNum(7.9)).toBeFalsy
-      def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false
+      def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false // scalastyle:ignore
       expect(fBool(true)).toBeFalsy
       expect(fBool(false)).toBeTruthy
 
@@ -142,7 +144,7 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fNumN(5.6f)).toBeTruthy
       expect(fNumN(5.0)).toBeFalsy
       expect(fNumN(7.9)).toBeTruthy
-      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false
+      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false // scalastyle:ignore
       expect(fBoolN(true)).toBeTruthy
       expect(fBoolN(false)).toBeFalsy
 
@@ -293,7 +295,7 @@ object ReflectiveCallTest extends JasmineTest {
     }
 
     it("should work with default arguments - #390") {
-      def pimpIt(a: Int) = new {
+      def pimpIt(a: Int) = new { // scalastyle:ignore
         def foo(b: Int, c: Int = 1): Int = a + b + c
       }
 

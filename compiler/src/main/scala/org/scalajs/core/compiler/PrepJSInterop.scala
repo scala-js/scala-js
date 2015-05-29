@@ -56,7 +56,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new JSInteropTransformer(unit)
 
-  private object jsnme {
+  private object jsnme { // scalastyle:ignore
     val hasNext  = newTermName("hasNext")
     val next     = newTermName("next")
     val nextName = newTermName("nextName")
@@ -65,7 +65,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val Val      = newTermName("Val")
   }
 
-  private object jstpnme {
+  private object jstpnme { // scalastyle:ignore
     val scala_ = newTypeName("scala") // not defined in 2.10's tpnme
   }
 

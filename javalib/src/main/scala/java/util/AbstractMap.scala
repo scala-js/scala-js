@@ -97,6 +97,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] { self
     throw new UnsupportedOperationException()
 
   def remove(key: Any): V = {
+    // scalastyle:off return
     val iter = entrySet.iterator
     while (iter.hasNext) {
       val item = iter.next()
@@ -106,6 +107,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] { self
       }
     }
     null.asInstanceOf[V]
+    // scalastyle:on return
   }
 
   def putAll[K2 <: K, V2 <: V](m: Map[K2, V2]): Unit =

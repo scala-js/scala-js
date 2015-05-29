@@ -1,5 +1,7 @@
 package java.util.zip
 
+// scalastyle:off equals.hash.code
+
 /** Pure Scala implementation of ZipEntry */
 class ZipEntry(private[this] val _name: String) extends Cloneable {
 

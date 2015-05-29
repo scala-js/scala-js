@@ -121,6 +121,7 @@ private[math] object Primality {
    *                   Cryptography, Chapter 4".
    */
   def isProbablePrime(n: BigInteger, certainty: Int): Boolean = {
+    // scalastyle:off return
     // PRE: n >= 0
     if (certainty <= 0 || (n.numberLength == 1 && n.digits(0) == 2)) {
       true
@@ -147,6 +148,7 @@ private[math] object Primality {
       val newCertainty = Math.min(i, 1 + ((certainty - 1) >> 1))
       millerRabin(n, newCertainty)
     }
+    // scalastyle:on return
   }
 
   /** Returns the next, probable prime number.
@@ -160,6 +162,7 @@ private[math] object Primality {
    *  @see #millerRabin(BigInteger, int)
    */
   def nextProbablePrime(n: BigInteger): BigInteger = {
+    // scalastyle:off return
     // PRE: n >= 0
     val gapSize = 1024 // for searching of the next probable prime number
     val modules = new Array[Int](Primes.length)
@@ -225,6 +228,7 @@ private[math] object Primality {
       Elementary.inplaceAdd(startPoint, gapSize)
     }
     throw new AssertionError("Primality.nextProbablePrime: Should not get here")
+    // scalastyle:on return
   }
 
   /** The Miller-Rabin primality test.
@@ -237,6 +241,7 @@ private[math] object Primality {
    *                   4.5.4., Algorithm P"
    */
   private def millerRabin(n: BigInteger, t: Int): Boolean = {
+    // scalastyle:off return
     // PRE: n >= 0, t >= 0
     var x: BigInteger = null
     var y: BigInteger = null
@@ -274,5 +279,6 @@ private[math] object Primality {
       }
     }
     true
+    // scalastyle:on return
   }
 }

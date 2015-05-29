@@ -622,6 +622,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
   private final case class HijackedTypeTest(
       boxedClassName: String, rank: Int) extends RTTypeTest
 
+  // scalastyle:off equals.hash.code
   private final case class InstanceOfTypeTest(tpe: Type) extends RTTypeTest {
     override def equals(that: Any): Boolean = {
       that match {
@@ -630,6 +631,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
   }
+  // scalastyle:on equals.hash.code
 
   private case object NoTypeTest extends RTTypeTest
 

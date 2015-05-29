@@ -112,7 +112,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
-  private object jsnme {
+  private object jsnme { // scalastyle:ignore
     val arg_outer = newTermName("arg$outer")
     val newString = newTermName("newString")
   }
@@ -149,6 +149,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Rewriting of anonymous function classes ---------------------------------
 
+    // scalastyle:off disallow.space.after.token
     private val translatedAnonFunctions =
       mutable.Map.empty[Symbol,
         (/*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree, MethodInfo)]
@@ -156,6 +157,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       mutable.Set.empty[Symbol]
     private val undefinedDefaultParams =
       mutable.Set.empty[Symbol]
+    // scalastyle:on disallow.space.after.token
 
     // Top-level apply ---------------------------------------------------------
 
@@ -1712,6 +1714,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       def float0 = js.FloatLiteral(0.0f)
       def float1 = js.FloatLiteral(1.0f)
 
+      // scalastyle:off disallow.space.before.token
       (from, to) match {
         case (INT(_),   BOOL) => js.BinaryOp(js.BinaryOp.Num_!=,  value, int0)
         case (LONG,     BOOL) => js.BinaryOp(js.BinaryOp.Long_!=, value, long0)
@@ -1723,6 +1726,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         case _ => value
       }
+      // scalastyle:on disallow.space.before.token
     }
 
     /** Gen JS code for an isInstanceOf test (for reference types only) */
@@ -2360,12 +2364,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (mustUseAnyComparator) {
         val equalsMethod: Symbol = {
+          // scalastyle:off line.size.limit
           val ptfm = platform.asInstanceOf[backend.JavaPlatform with ThisPlatform] // 2.10 compat
           if (ltpe <:< BoxedNumberClass.tpe) {
             if (rtpe <:< BoxedNumberClass.tpe) ptfm.externalEqualsNumNum
             else if (rtpe <:< BoxedCharacterClass.tpe) ptfm.externalEqualsNumObject // will be externalEqualsNumChar in 2.12, SI-9030
             else ptfm.externalEqualsNumObject
           } else ptfm.externalEquals
+          // scalastyle:on line.size.limit
         }
         val moduleClass = equalsMethod.owner
         val instance = genLoadModule(moduleClass)
@@ -3507,6 +3513,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  Trickier things apply when the function is specialized.
      */
     private def tryGenAndRecordAnonFunctionClass(cd: ClassDef): Boolean = {
+      // scalastyle:off return
       implicit val pos = cd.pos
       val sym = cd.symbol
       assert(sym.isAnonymousFunction,
@@ -3526,6 +3533,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         translatedAnonFunctions += sym -> (functionMaker, functionInfo)
       }
       true
+      // scalastyle:on return
     }
 
     /** Constructor and extractor object for a tree that converts a JavaScript

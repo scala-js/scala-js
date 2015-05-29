@@ -3,6 +3,8 @@ package org.scalajs.core.compiler.test
 import org.scalajs.core.compiler.test.util._
 import org.junit.Test
 
+// scalastyle:off line.size.limit
+
 class JSDynamicLiteralTest extends DirectTest with TestHelpers {
 
   override def preamble: String =

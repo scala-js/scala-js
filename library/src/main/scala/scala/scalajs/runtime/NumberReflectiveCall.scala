@@ -37,8 +37,10 @@ class NumberReflectiveCall(value: Double) {
   def toFloat: scala.Float   = value.toFloat
   def toDouble: scala.Double = value
 
+  // scalastyle:off disallow.space.before.token
   def unary_+ : scala.Double = value
   def unary_- : scala.Double = -value
+  // scalastyle:on disallow.space.before.token
 
   def +(x: String): String = value + x
 
@@ -132,7 +134,9 @@ class NumberReflectiveCall(value: Double) {
 
   // Methods of scala.Int that are not defined on scala.Double
 
+  // scalastyle:off disallow.space.before.token
   def unary_~ : scala.Int = ~value.toInt
+  // scalastyle:on disallow.space.before.token
 
   def <<(x: scala.Int): scala.Int = value.toInt << x
   def <<(x: scala.Long): scala.Int = value.toInt << x

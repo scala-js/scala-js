@@ -316,9 +316,11 @@ object StringTest extends JasmineTest {
       expect(() => test.regionMatches(-1, null, -1, -1)).toThrow()
       expect(() => test.regionMatches(true, -1, null, -1, -1)).toThrow()
 
+      // scalastyle:off line.size.limit
       /* If len is negative, you must return true in some cases. See
        * http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-
        */
+      // scalastyle:on line.size.limit
 
       // four cases that are false, irrelevant of sign of len nor the value of the other string
       expect(test.regionMatches(-1, test, 0, -4)).toBeFalsy

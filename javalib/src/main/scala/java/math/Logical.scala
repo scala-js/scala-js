@@ -41,6 +41,7 @@ private[math] object Logical {
 
   /** @see BigInteger#not() */
   def not(bi: BigInteger): BigInteger = {
+    // scalastyle:off return
     if (bi.sign == 0) {
       BigInteger.MINUS_ONE
     } else if (bi == BigInteger.MINUS_ONE) {
@@ -80,6 +81,7 @@ private[math] object Logical {
       }
       new BigInteger(-bi.sign, i, resDigits)
     }
+    // scalastyle:on return
   }
 
   /** @see BigInteger#and(BigInteger) */
@@ -165,6 +167,7 @@ private[math] object Logical {
 
   /** @return sign = -1, magnitude = -(-longer.magnitude & -shorter.magnitude) */
   def andNegative(longer: BigInteger, shorter: BigInteger): BigInteger = {
+    // scalastyle:off return
     // PRE: longer and shorter are negative
     // PRE: longer has at least as many digits as shorter
     val iLonger = longer.getFirstNonzeroDigit
@@ -223,6 +226,7 @@ private[math] object Logical {
       }
       new BigInteger(-1, resLength, resDigits)
     }
+    // scalastyle:on return
   }
 
   /** @see BigInteger#andNot(BigInteger) */
@@ -300,6 +304,7 @@ private[math] object Logical {
 
   /** @return sign = -1, magnitude = -(-negative.magnitude & ~positive.magnitude) */
   def andNotNegativePositive(negative: BigInteger, positive: BigInteger): BigInteger = {
+    // scalastyle:off return
     // PRE: negative < 0 && positive > 0
     var limit: Int = 0
     var digit: Int = 0
@@ -384,6 +389,7 @@ private[math] object Logical {
       }
       new BigInteger(-1, resLength, resDigits)
     }
+    // scalastyle:on return
   }
 
   /** @return sign = 1, magnitude = -val.magnitude & ~(-that.magnitude) */
@@ -682,6 +688,7 @@ private[math] object Logical {
 
   /** @return sign = 1, magnitude = -(positive.magnitude ^ -negative.magnitude) */
   def xorDiffSigns(positive: BigInteger, negative: BigInteger): BigInteger = {
+    // scalastyle:off return
     val resLength = Math.max(negative.numberLength, positive.numberLength)
     val resDigits: Array[Int] = new Array[Int](resLength)
     val iNeg = negative.getFirstNonzeroDigit
@@ -787,5 +794,6 @@ private[math] object Logical {
     val result = new BigInteger(-1, resLength, resDigits)
     result.cutOffLeadingZeroes()
     result
+    // scalastyle:on return
   }
 }

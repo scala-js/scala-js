@@ -588,7 +588,7 @@ private[math] object Division {
       throw new ArithmeticException("BigInteger not invertible.")
 
     if (!p.testBit(0)) // montgomery inverse require even modulo
-      return modInverseLorencz(a, p)
+      return modInverseLorencz(a, p) // scalastyle:ignore
 
     val m = p.numberLength * 32
     val u: BigInteger = p.copy()

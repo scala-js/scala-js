@@ -107,6 +107,8 @@ object RegressionTest extends JasmineTest {
     }
 
     it("should correctly mangle JavaScript reserved identifiers - #153") {
+      // scalastyle:off class.name
+
       // Class name
       class break {
         // class variable
@@ -127,9 +129,13 @@ object RegressionTest extends JasmineTest {
       expect(x.continue).toEqual(1)
       expect(x.switch).toEqual(2)
       expect(x.function).toEqual(3)
+
+      // scalastyle:on class.name
     }
 
     it("should correctly mangle identifiers starting with a digit - #153") {
+      // scalastyle:off class.name
+
       // Class name
       class `0` {
         // class variable
@@ -150,6 +156,8 @@ object RegressionTest extends JasmineTest {
       expect(x.`1`).toEqual(1)
       expect(x.`2`).toEqual(2)
       expect(x.`3`).toEqual(3)
+
+      // scalastyle:on class.name
     }
 
     it("should reserve `eval` and `arguments` - #743") {
@@ -175,9 +183,11 @@ object RegressionTest extends JasmineTest {
     }
 
     it("should not call equals when comparing with a literal null - #362") {
+      // scalastyle:off equals.hash.code
       class A {
         override def equals(x: Any): Boolean = !(this == null)
       }
+      // scalastyle:on equals.hash.code
 
       val x = new A
       val y = new A
@@ -200,7 +210,7 @@ object RegressionTest extends JasmineTest {
 
       val bool = zero[Boolean]
       expect((bool: Any).isInstanceOf[Boolean]).toBeTruthy
-      expect(bool == false).toBeTruthy
+      expect(bool == false).toBeTruthy // scalastyle:ignore
 
       val char = zero[Char]
       expect((char: Any).isInstanceOf[Char]).toBeTruthy

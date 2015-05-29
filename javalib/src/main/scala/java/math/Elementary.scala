@@ -60,6 +60,7 @@ private[math] object Elementary {
    *  @return the sum.
    */
   def add(op1: BigInteger, op2: BigInteger): BigInteger = {
+    // scalastyle:off return
     var resDigits: Array[Int] = null
     var resSign: Int = 0
     val op1Sign = op1.sign
@@ -116,6 +117,7 @@ private[math] object Elementary {
       res.cutOffLeadingZeroes()
       res
     }
+    // scalastyle:on return
   }
 
   def compareArrays(a: Array[Int], b: Array[Int], size: Int): Int = {
@@ -137,6 +139,7 @@ private[math] object Elementary {
    *  @param op2 any number
    */
   def completeInPlaceAdd(op1: BigInteger, op2: BigInteger): Unit = {
+    // scalastyle:off return
     if (op1.sign == 0) {
       System.arraycopy(op2.digits, 0, op1.digits, 0, op2.numberLength)
     } else if (op2.sign == 0) {
@@ -156,6 +159,7 @@ private[math] object Elementary {
     op1.numberLength = Math.max(op1.numberLength, op2.numberLength) + 1
     op1.cutOffLeadingZeroes()
     op1.unCache()
+    // scalastyle:on return
   }
 
   /** In place subtract of positive or negative {@link BigInteger}.
@@ -257,6 +261,7 @@ private[math] object Elementary {
    *  @return
    */
   def subtract(op1: BigInteger, op2: BigInteger): BigInteger = {
+    // scalastyle:off return
     var resSign = 0
     var resDigits: Array[Int] = null
     val op1Sign = op1.sign
@@ -306,6 +311,7 @@ private[math] object Elementary {
       res.cutOffLeadingZeroes()
       res
     }
+    // scalastyle:on return
   }
 
   /**  Adds the value represented by {@code b} to the value represented by {@code a}.

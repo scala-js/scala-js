@@ -14,6 +14,8 @@ import scala.tools.nsc._
 trait JSDefinitions { self: JSGlobalAddons =>
   import global._
 
+  // scalastyle:off line.size.limit
+
   object jsDefinitions extends JSDefinitionsClass
 
   import definitions._
@@ -113,4 +115,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
   }
+
+  // scalastyle:on line.size.limit
 }

@@ -11,6 +11,8 @@ import org.scalajs.jasminetest.JasmineTest
 
 import scala.scalajs.js
 
+// scalastyle:off disallow.space.before.token
+
 object ObjectTest extends JasmineTest {
 
   describe("java.lang.Object") {

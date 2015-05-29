@@ -9,19 +9,19 @@ package org.scalajs.testsuite.jsinterop
 
 import org.scalajs.jasminetest.JasmineTest
 
-object `1_TestName` extends JasmineTest {
+object `1_TestName` extends JasmineTest { // scalastyle:ignore
   describe("a test with name 1_TestName") {
     it("should run") {}
   }
 }
 
-object eval extends JasmineTest {
+object eval extends JasmineTest { // scalastyle:ignore
   describe("a test with name eval") {
     it("should run") {}
   }
 }
 
-object `\u1f4a7` extends JasmineTest {
+object `\u1f4a7` extends JasmineTest { // scalastyle:ignore
   describe("a test with name \u1f4a9") {
     it("should run") {}
   }

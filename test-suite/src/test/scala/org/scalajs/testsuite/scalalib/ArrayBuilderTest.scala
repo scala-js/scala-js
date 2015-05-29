@@ -162,7 +162,7 @@ object ArrayBuilderTest extends JasmineTest {
       expect(a.getClass).toBe(classOf[Array[Boolean]])
       expect(a.length).toEqual(3)
       expect(erase(a(0)).isInstanceOf[Boolean]).toBeTruthy
-      expect(erase(a(0)) == false).toBeTruthy
+      expect(erase(a(0)) == false).toBeTruthy // scalastyle:ignore
     }
 
     it("Boolean, zeros noinline") {
@@ -170,7 +170,7 @@ object ArrayBuilderTest extends JasmineTest {
       expect(a.getClass).toBe(classOf[Array[Boolean]])
       expect(a.length).toEqual(3)
       expect(erase(a(0)).isInstanceOf[Boolean]).toBeTruthy
-      expect(erase(a(0)) == false).toBeTruthy
+      expect(erase(a(0)) == false).toBeTruthy // scalastyle:ignore
     }
 
     it("Unit, normal case inline") {

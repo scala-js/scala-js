@@ -573,6 +573,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def add(augend: BigDecimal, mc: MathContext): BigDecimal = {
+    // scalastyle:off return
     if (augend.isZero || this.isZero || mc.precision == 0) {
       add(augend).round(mc)
     } else {
@@ -601,6 +602,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       val result = new BigDecimal(tempBI, larger._scale + 1)
       result.round(mc)
     }
+    // scalastyle:on return
   }
 
   def subtract(subtrahend: BigDecimal): BigDecimal = {
@@ -810,7 +812,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
     // In special cases it reduces the problem to call the dual method
     if (mc.precision == 0 || this.isZero || divisor.isZero)
-      return this.divide(divisor)
+      return this.divide(divisor) // scalastyle:ignore
 
     val diffScale: Long = _scale.toLong - divisor._scale
     val trailingZeros = mc.precision + 2L + divisor.approxPrecision() - approxPrecision()
@@ -909,6 +911,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def divideToIntegralValue(divisor: BigDecimal, mc: MathContext): BigDecimal = {
+    // scalastyle:off return
     val mcPrecision = mc.precision
     val diffPrecision = this.precision() - divisor.precision()
     val lastPow = BigTenPows.length - 1
@@ -993,6 +996,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     integralValue._scale = safeLongToInt(finalScale)
     integralValue.setUnscaledValue(strippedBI)
     integralValue
+    // scalastyle:on return
   }
 
   def remainder(divisor: BigDecimal): BigDecimal =

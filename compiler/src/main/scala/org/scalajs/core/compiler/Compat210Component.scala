@@ -108,7 +108,7 @@ object Compat210Component {
   }
 
   private implicit final class AnalyzerCompat(self: scala.tools.nsc.typechecker.Analyzer) {
-    def FUNmode = {
+    def FUNmode = { // scalastyle:ignore
       import Compat210Component.LowPriorityMode._
       {
         import scala.reflect.internal._

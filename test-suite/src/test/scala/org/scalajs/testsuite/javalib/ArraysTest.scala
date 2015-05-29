@@ -721,12 +721,14 @@ trait ArraysTest extends JasmineTest {
     }
 
     it("should respond to `equals` for AnyRefs") {
+      // scalastyle:off equals.hash.code
       class A(private val x: Int) {
         override def equals(that: Any): Boolean = that match {
           case that: A => this.x == that.x
           case _ => false
         }
       }
+      // scalastyle:on equals.hash.code
 
       def A(x: Int): A = new A(x)
 

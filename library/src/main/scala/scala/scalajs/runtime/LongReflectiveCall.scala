@@ -32,9 +32,11 @@ class LongReflectiveCall(value: Long) {
   def toFloat: Float = value.toFloat
   def toDouble: Double = value.toDouble
 
+  // scalastyle:off disallow.space.before.token
   def unary_~ : Long = ~value
   def unary_+ : Long = value
   def unary_- : Long = -value
+  // scalastyle:on disallow.space.before.token
 
   def <<(y: Int): Long = value << y
   def <<(y: Long): Long = value << y

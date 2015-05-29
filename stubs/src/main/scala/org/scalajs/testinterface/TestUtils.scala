@@ -4,7 +4,7 @@ import language.experimental.macros
 
 /** Dummy object to get the right shadowing for 2.10 / 2.11 cross compilation */
 private object Compat210 {
-  object blackbox {
+  object blackbox { // scalastyle:ignore
     type Context = scala.reflect.macros.Context
   }
 }

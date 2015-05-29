@@ -5,6 +5,8 @@ import org.scalajs.core.compiler.test.util._
 import org.junit.Test
 import org.junit.Ignore
 
+// scalastyle:off line.size.limit
+
 class JSInteropTest extends DirectTest with TestHelpers {
 
   override def preamble: String =
