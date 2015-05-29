@@ -1,5 +1,6 @@
 package java.util
 
+import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 
 import java.lang.{reflect => jlr}
@@ -33,14 +34,18 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
     throw new UnsupportedOperationException()
 
   def remove(o: Any): Boolean = {
-    val iter = iterator()
-    while (iter.hasNext) {
-      if (iter.next().equals(o)) {
-        iter.remove()
-        return true // scalastyle:ignore
-      }
+    @tailrec
+    def findAndRemove(iter: Iterator[E]): Boolean = {
+      if (iter.hasNext) {
+        if (iter.next() === o) {
+          iter.remove()
+          true
+        } else
+          findAndRemove(iter)
+      } else
+        false
     }
-    false
+    findAndRemove(iterator())
   }
 
   def containsAll(c: Collection[_]): Boolean =
