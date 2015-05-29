@@ -45,7 +45,7 @@ class ScalaJSCoreLib private[rhino] (semantics: Semantics,
     (providers, exportedSymbols)
   }
 
-  def insertInto(context: Context, scope: Scriptable) = {
+  def insertInto(context: Context, scope: Scriptable): Unit = {
     context.evaluateFile(scope, CoreJSLibs.lib(semantics, ECMAScript51Global))
     lazifyScalaJSFields(scope)
 

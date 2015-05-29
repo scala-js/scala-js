@@ -1,17 +1,18 @@
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Elementary.java
- *  Original license copied below:
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Elementary.java
+ * Original license copied below:
  */
 
 /*
  * Copyright 2009 Google Inc.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
@@ -26,15 +27,15 @@
  * licenses this file to You under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
- * 
+ *
  * INCLUDES MODIFICATIONS BY RICHARD ZSCHECH AS WELL AS GOOGLE.
  */
 package java.math
@@ -48,9 +49,9 @@ package java.math
  *  provided.
  */
 private[math] object Elementary {
- 
+
   private final val UINT_MAX = 0xffffffffL
-  
+
   /** Adds two {@link BigInteger}.
    *
    *  @see BigInteger#add(BigInteger) .
@@ -73,7 +74,7 @@ private[math] object Elementary {
     } else if (op1Len + op2Len == 2) {
       val a: Long = op1.digits(0) & UINT_MAX
       val b: Long = op2.digits(0) & UINT_MAX
-      var res: Long = 0l
+      var res: Long = 0L
       var valueLo: Int = 0
       var valueHi: Int = 0
       if (op1Sign == op2Sign) {

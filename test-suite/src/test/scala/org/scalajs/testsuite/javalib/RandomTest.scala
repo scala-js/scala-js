@@ -175,7 +175,7 @@ object RandomTest extends JasmineTest {
     it("should correctly implement nextBytes") {
       val random = new Random(7399572013373333L)
 
-      def test(exps: Int*) = {
+      def test(exps: Int*): Unit = {
         val exp = js.Array(exps.map(_.toByte): _*)
         val buf = new Array[Byte](exp.length)
         random.nextBytes(buf)

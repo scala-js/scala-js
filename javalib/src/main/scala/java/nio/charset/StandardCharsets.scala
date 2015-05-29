@@ -1,6 +1,6 @@
 package java.nio.charset
 
-final class StandardCharsets private {}
+final class StandardCharsets private ()
 
 object StandardCharsets {
   import scala.scalajs.niocharset.{StandardCharsets => SC}

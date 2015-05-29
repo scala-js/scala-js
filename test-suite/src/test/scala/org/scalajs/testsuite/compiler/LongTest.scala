@@ -150,7 +150,7 @@ object LongTest extends JasmineTest {
     it("should correctly compare to other numeric types") {
       expect(5L == 5).toBeTruthy
       expect(5 == 5L).toBeTruthy
-      expect(4 == 5l).toBeFalsy
+      expect(4 == 5L).toBeFalsy
       expect('A' == 65L).toBeTruthy
     }
   }

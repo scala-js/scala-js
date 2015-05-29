@@ -1,6 +1,7 @@
 /*
- *  Ported by Alistair Johnson from  https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/BigInteger.java
- *  Original license copied below:
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/BigInteger.java
+ * Original license copied below:
  */
 
 /*
@@ -172,7 +173,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     this.cutOffLeadingZeroes()
   }
 
-  def this(signum: Int, magnitude: Array[Byte]) {
+  def this(signum: Int, magnitude: Array[Byte]) = {
     this()
     checkNotNull(magnitude)
     if ((signum < -1) || (signum > 1))
@@ -191,7 +192,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     }
   }
 
-  def this(bitLength: Int, certainty: Int, rnd: Random) {
+  def this(bitLength: Int, certainty: Int, rnd: Random) = {
     this()
     if (bitLength < 2)
       throw new ArithmeticException("bitLength < 2")
@@ -202,7 +203,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     digits = me.digits
   }
 
-  def this(numBits: Int, rnd: Random) {
+  def this(numBits: Int, rnd: Random) = {
     this()
     checkCriticalArgument(numBits >= 0, "numBits must be non-negative")
     if (numBits == 0) {
@@ -221,7 +222,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     }
   }
 
-  def this(s: String, radix: Int) {
+  def this(s: String, radix: Int) = {
     this()
     checkNotNull(s)
     if ((radix < java.lang.Character.MIN_RADIX) || (radix > java.lang.Character.MAX_RADIX))
@@ -232,7 +233,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     this.setFromString(s, radix)
   }
 
-  def this(s: String) {
+  def this(s: String) = {
     this(s, 10)
   }
 
@@ -241,13 +242,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *  @param sign the sign of the number
    *  @param value the only one digit of array
    */
-  private[math] def this(sign: Int, value: Int) {
+  private[math] def this(sign: Int, value: Int) = {
     this()
     this.sign = sign
     numberLength = 1
     digits = Array(value)
   }
-  
+
   /** Creates a new {@code BigInteger} with the given sign and magnitude.
    *
    *  This constructor does not create a copy, so any changes to the reference will
@@ -256,7 +257,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *  @param signum The sign of the number represented by {@code digits}
    *  @param digits The magnitude of the number
    */
-  private[math] def this(signum: Int, digits: Array[Int]) {
+  private[math] def this(signum: Int, digits: Array[Int]) = {
     this()
     if (digits.length == 0) {
       this.sign = 0
@@ -279,7 +280,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *  @param numberLength the length of the internal array
    *  @param digits a reference of some array created before
    */
-  private[math] def this(sign: Int, numberLength: Int, digits: Array[Int]) {
+  private[math] def this(sign: Int, numberLength: Int, digits: Array[Int]) = {
     this()
     this.sign = sign
     this.numberLength = numberLength
@@ -291,7 +292,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
    *  @param sign the sign of the number
    *  @param lVal the value of the new {@code BigInteger}.
    */
-  private[math] def this(sign: Int, lVal: Long) {
+  private[math] def this(sign: Int, lVal: Long) = {
     this()
     this.sign = sign
     val hi = (lVal >>> 32).toInt

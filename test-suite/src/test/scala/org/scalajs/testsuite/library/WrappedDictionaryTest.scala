@@ -57,7 +57,7 @@ object WrappedDictionaryTest extends JasmineTest {
     // Some arbitrary methods to test the builders
 
     it("should implement map") {
-      def ct[A : ClassTag](x: A) = implicitly[ClassTag[A]]
+      def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
       val dict = js.Dictionary[Int]()
       dict ++= Seq("one" -> 1, "two" -> 2, "three" -> 3)
 
@@ -74,7 +74,7 @@ object WrappedDictionaryTest extends JasmineTest {
     it("should implement withFilter") {
       val dict = js.Dictionary[Int]()
       val flt = dict.withFilter { case (k,v) => v > 5 || k == "a" }
-      def size = flt.map(x => x).size
+      def size: Int = flt.map(x => x).size
 
       expect(size).toBe(0)
       dict += "a" -> 1

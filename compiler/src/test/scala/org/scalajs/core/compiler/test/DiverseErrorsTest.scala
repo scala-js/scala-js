@@ -5,12 +5,12 @@ import org.junit.Test
 
 class DiverseErrorsTest extends DirectTest with TestHelpers  {
 
-  override def preamble =
+  override def preamble: String =
     """import scala.scalajs.js
     """
 
   @Test
-  def noIsInstanceOnJSRaw = {
+  def noIsInstanceOnJSRaw: Unit = {
 
     """
     trait JSRaw extends js.Object

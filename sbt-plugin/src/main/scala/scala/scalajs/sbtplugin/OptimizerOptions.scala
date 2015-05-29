@@ -75,5 +75,5 @@ final class OptimizerOptions private (
 }
 
 object OptimizerOptions {
-  def apply() = new OptimizerOptions()
+  def apply(): OptimizerOptions = new OptimizerOptions()
 }

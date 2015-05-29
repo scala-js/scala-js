@@ -9,7 +9,7 @@ import scala.scalajs.js.JSConverters._
 
 object DataInputStreamTest extends JasmineTest {
 
-  def tests(name: String)(inFromBytes: Seq[Byte] => InputStream) {
+  def tests(name: String)(inFromBytes: Seq[Byte] => InputStream): Unit = {
     def newStream(data: Int*) =
       new DataInputStream(inFromBytes(data.map(_.toByte)))
 

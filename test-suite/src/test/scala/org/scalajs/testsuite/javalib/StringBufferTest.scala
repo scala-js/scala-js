@@ -13,7 +13,7 @@ import org.scalajs.jasminetest.JasmineTest
 
 object StringBufferTest extends JasmineTest {
 
-  def shouldThrow[T : ClassTag](fn: => Unit) =
+  def shouldThrow[T: ClassTag](fn: => Unit): Unit = {
     try {
       fn
       expect("exception").toBe("thrown")
@@ -21,11 +21,15 @@ object StringBufferTest extends JasmineTest {
       case e: T =>
       case x: Throwable => expect(x.toString).toBe(classTag[T].runtimeClass.getSimpleName)
     }
+  }
 
   describe("java.lang.StringBuffer") {
 
-    def newBuf = new java.lang.StringBuffer
-    def initBuf(str: String) = new java.lang.StringBuffer(str)
+    def newBuf: java.lang.StringBuffer =
+      new java.lang.StringBuffer
+
+    def initBuf(str: String): java.lang.StringBuffer =
+      new java.lang.StringBuffer(str)
 
     it("should respond to `append`") {
       expect(newBuf.append("asdf").toString).toEqual("asdf")
@@ -119,8 +123,11 @@ object StringBufferTest extends JasmineTest {
 
   describe("java.lang.StringBuilder") {
 
-    def newBuilder = new java.lang.StringBuilder
-    def initBuilder(str: String) = new java.lang.StringBuilder(str)
+    def newBuilder: java.lang.StringBuilder =
+      new java.lang.StringBuilder
+
+    def initBuilder(str: String): java.lang.StringBuilder =
+      new java.lang.StringBuilder(str)
 
     it("should respond to `append`") {
       expect(newBuilder.append("asdf").toString).toEqual("asdf")

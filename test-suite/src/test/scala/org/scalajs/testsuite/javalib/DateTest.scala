@@ -63,7 +63,7 @@ object DateTest extends JasmineTest {
     }
 
     it("should provide clone") {
-      def testClone(date: Date) = {
+      def testClone(date: Date): Boolean = {
         val cloned = date.clone()
         date == cloned
       }
@@ -74,7 +74,7 @@ object DateTest extends JasmineTest {
     }
 
     it("should respond to getYear") {
-      def testYear(year: Int) = {
+      def testYear(year: Int): Unit = {
         val date = new Date()
         date.setYear(year)
         expect(date.getYear).toEqual(year)

@@ -16,75 +16,75 @@ object BigIntegerTest extends JasmineTest {
   describe("java.lang.Math.BigInteger Constructors") {
 
     it("should accept 3 as a Byte Array") {
-      val bi:BigInteger = new BigInteger(Array[Byte](3))
-      expect( bi.intValue()).toEqual(3)
+      val bi = new BigInteger(Array[Byte](3))
+      expect(bi.intValue()).toEqual(3)
     }
 
     it("should accept 127 as a Byte Array") {
-      val bi:BigInteger = new BigInteger(Array[Byte](127))
-      expect( bi.intValue()).toEqual(127)
+      val bi = new BigInteger(Array[Byte](127))
+      expect(bi.intValue()).toEqual(127)
     }
 
     it("should accept 3 as aLong") {
-      val bi:BigInteger = BigInteger.valueOf(3L)
-      expect( bi.intValue()).toEqual(3)
-      expect( bi.longValue()).toEqual(3L)
+      val bi = BigInteger.valueOf(3L)
+      expect(bi.intValue()).toEqual(3)
+      expect(bi.longValue()).toEqual(3L)
     }
 
     it("should accept 999999999 as aLong") {
-      val bi:BigInteger = BigInteger.valueOf(999999999L)
-      expect( bi.intValue()).toEqual(999999999)
-      expect( bi.longValue()).toEqual(999999999L)
+      val bi = BigInteger.valueOf(999999999L)
+      expect(bi.intValue()).toEqual(999999999)
+      expect(bi.longValue()).toEqual(999999999L)
     }
 
     it("should accept 9999999999 as aLong") {
-      val bi:BigInteger = BigInteger.valueOf(9999999999L)
-      expect( bi.longValue()).toEqual(9999999999L)
+      val bi = BigInteger.valueOf(9999999999L)
+      expect(bi.longValue()).toEqual(9999999999L)
     }
 
     it("should accept -999999999 as aLong") {
-      val bi:BigInteger = BigInteger.valueOf(-999999999L)
-      expect( bi.intValue()).toEqual(-999999999)
-      expect( bi.longValue()).toEqual(-999999999L)
+      val bi = BigInteger.valueOf(-999999999L)
+      expect(bi.intValue()).toEqual(-999999999)
+      expect(bi.longValue()).toEqual(-999999999L)
     }
 
     it("should accept -9999999999 as aLong") {
-      val bi:BigInteger = BigInteger.valueOf(-9999999999L)
-      expect( bi.longValue()).toEqual(-9999999999L)
+      val bi = BigInteger.valueOf(-9999999999L)
+      expect(bi.longValue()).toEqual(-9999999999L)
     }
 
     it("should accept 99 as a string") {
-      val bi:BigInteger = new BigInteger("99")
-      expect( bi.intValue()).toEqual(99)
-      expect( bi.longValue()).toEqual(99L)
+      val bi = new BigInteger("99")
+      expect(bi.intValue()).toEqual(99)
+      expect(bi.longValue()).toEqual(99L)
     }
 
     it("should accept 999999999 as sting") {
-      val bi:BigInteger = new BigInteger("999999999")
-      expect( bi.intValue()).toEqual(999999999)
-      expect( bi.longValue()).toEqual(999999999L)
+      val bi = new BigInteger("999999999")
+      expect(bi.intValue()).toEqual(999999999)
+      expect(bi.longValue()).toEqual(999999999L)
     }
 
     it("should accept 9999999999 as a string") {
-      val bi:BigInteger = new BigInteger("9999999999")
-      expect( bi.longValue()).toEqual(9999999999L)
+      val bi = new BigInteger("9999999999")
+      expect(bi.longValue()).toEqual(9999999999L)
     }
 
     it("should accept -99 as a string") {
-      val bi:BigInteger = new BigInteger("-99")
-      expect( bi.intValue()).toEqual(-99)
-      expect( bi.longValue()).toEqual(-99L)
+      val bi = new BigInteger("-99")
+      expect(bi.intValue()).toEqual(-99)
+      expect(bi.longValue()).toEqual(-99L)
     }
 
     it("should accept -999999999 as sting") {
-      val bi:BigInteger = new BigInteger("-999999999")
-      expect( bi.intValue()).toEqual(-999999999)
-      expect( bi.longValue()).toEqual(-999999999L)
+      val bi = new BigInteger("-999999999")
+      expect(bi.intValue()).toEqual(-999999999)
+      expect(bi.longValue()).toEqual(-999999999L)
     }
 
     it("should accept -9999999999 as a string") {
-      val bi:BigInteger = new BigInteger("-9999999999")
-      expect( bi.longValue()).toEqual(-9999999999L)
+      val bi = new BigInteger("-9999999999")
+      expect(bi.longValue()).toEqual(-9999999999L)
     }
 
     it("should intialise from byte array of Pos two's complement") {

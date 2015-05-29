@@ -140,7 +140,7 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   /** Returns false if the option is $none, true otherwise.
    *  @note   Implemented here to avoid the implicit conversion to Iterable.
    */
-  final def nonEmpty = isDefined
+  final def nonEmpty: Boolean = isDefined
 
   /** Necessary to keep $option from being implicitly converted to
    *  [[scala.collection.Iterable]] in `for` comprehensions.

@@ -70,13 +70,13 @@ trait Compat210Component {
 
   // repeatedToSingle
 
-  @inline final def repeatedToSingle(t: Type) =
+  @inline final def repeatedToSingle(t: Type): Type =
     global.definitions.repeatedToSingle(t)
 
   private implicit final class DefinitionsCompat(
-    self: Compat210Component.this.global.definitions.type) {
+      self: Compat210Component.this.global.definitions.type) {
 
-    def repeatedToSingle(t: Type) = t match {
+    def repeatedToSingle(t: Type): Type = t match {
       case TypeRef(_, self.RepeatedParamClass, arg :: Nil) => arg
       case _ => t
     }
@@ -103,7 +103,7 @@ trait Compat210Component {
 object Compat210Component {
   private object LowPriorityMode {
     object Mode {
-      def FUNmode = sys.error("infinite loop in Compat")
+      def FUNmode: Nothing = sys.error("infinite loop in Compat")
     }
   }
 

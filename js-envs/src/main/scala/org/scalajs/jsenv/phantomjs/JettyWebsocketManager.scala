@@ -118,7 +118,7 @@ final class JettyWebsocketManager(
 
   def localPort: Int = connector.getLocalPort()
 
-  def sendMessage(msg: String) = synchronized {
+  def sendMessage(msg: String): Unit = synchronized {
     if (webSocketConn != null)
       webSocketConn.sendMessage(msg)
   }

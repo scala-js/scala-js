@@ -59,9 +59,9 @@ class LazyScalaJSScope private[rhino] (
     else name
   }
 
-  override def getClassName() = "LazyScalaJSScope"
+  override def getClassName(): String = "LazyScalaJSScope"
 
-  override def get(name: String, start: Scriptable) = {
+  override def get(name: String, start: Scriptable): AnyRef = {
     if (name == "__noSuchMethod__") {
       /* Automatically called by Rhino when trying to call a method fails.
        * We don't want to throw a ClassNotFoundException for this case, but
@@ -85,34 +85,33 @@ class LazyScalaJSScope private[rhino] (
     }
   }
 
-  override def get(index: Int, start: Scriptable) =
+  override def get(index: Int, start: Scriptable): AnyRef =
     get(index.toString, start)
 
-  override def has(name: String, start: Scriptable) =
+  override def has(name: String, start: Scriptable): Boolean =
     fields.contains(name)
-  override def has(index: Int, start: Scriptable) =
+  override def has(index: Int, start: Scriptable): Boolean =
     has(index.toString, start)
 
-  override def put(name: String, start: Scriptable, value: Any) = {
+  override def put(name: String, start: Scriptable, value: Any): Unit =
     fields(name) = value
-  }
-  override def put(index: Int, start: Scriptable, value: Any) =
+  override def put(index: Int, start: Scriptable, value: Any): Unit =
     put(index.toString, start, value)
 
-  override def delete(name: String) = ()
-  override def delete(index: Int) = ()
+  override def delete(name: String): Unit = ()
+  override def delete(index: Int): Unit = ()
 
-  override def getPrototype() = prototype
-  override def setPrototype(value: Scriptable) = prototype = value
+  override def getPrototype(): Scriptable = prototype
+  override def setPrototype(value: Scriptable): Unit = prototype = value
 
-  override def getParentScope() = parentScope
-  override def setParentScope(value: Scriptable) = parentScope = value
+  override def getParentScope(): Scriptable = parentScope
+  override def setParentScope(value: Scriptable): Unit = parentScope = value
 
-  override def getIds() = fields.keys.toArray
+  override def getIds(): Array[AnyRef] = fields.keys.toArray
 
-  override def getDefaultValue(hint: java.lang.Class[_]) = {
+  override def getDefaultValue(hint: java.lang.Class[_]): AnyRef = {
     base.getDefaultValue(hint)
   }
 
-  override def hasInstance(instance: Scriptable) = false
+  override def hasInstance(instance: Scriptable): Boolean = false
 }

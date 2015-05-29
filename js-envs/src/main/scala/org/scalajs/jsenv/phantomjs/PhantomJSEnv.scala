@@ -422,7 +422,8 @@ class PhantomJSEnv(
                |  if (trace && trace.length) {
                |    console.error('');
                |    trace.forEach(function(t) {
-               |      console.error('  ' + t.file + ':' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
+               |      console.error('  ' + t.file + ':' + t.line +
+               |        (t.function ? ' (in function "' + t.function +'")' : ''));
                |    });
                |  }
                |

@@ -154,7 +154,7 @@ final class RuntimeLong(
     case _ => false
   }
 
-  def notEquals(that: RuntimeLong) = !equals(that)
+  def notEquals(that: RuntimeLong): Boolean = !equals(that)
 
   override def hashCode(): Int = {
     (this ^ (this >>> 32)).toInt
@@ -384,19 +384,21 @@ final class RuntimeLong(
   def signum: RuntimeLong =
     if (isNegative) MinusOne else if (isZero) Zero else One
 
-  def numberOfLeadingZeros: Int =
+  def numberOfLeadingZeros: Int = {
     if (h != 0)      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
     else if (m != 0) Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
     else             Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
+  }
 
-  def numberOfTrailingZeros: Int =
-    if      (l != 0) Integer.numberOfTrailingZeros(l)
+  def numberOfTrailingZeros: Int = {
+    if (l != 0)      Integer.numberOfTrailingZeros(l)
     else if (m != 0) Integer.numberOfTrailingZeros(m) + BITS
     else             Integer.numberOfTrailingZeros(h) + BITS01
+  }
 
   /** return log_2(x) if power of 2 or -1 otherwise */
-  private def powerOfTwo =
-    if      (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
+  private def powerOfTwo = {
+    if (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
       Integer.numberOfTrailingZeros(l)
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
       Integer.numberOfTrailingZeros(m) + BITS
@@ -404,6 +406,7 @@ final class RuntimeLong(
       Integer.numberOfTrailingZeros(h) + BITS01
     else
       -1
+  }
 
   private def setBit(bit: Int) =
     if (bit < BITS)

@@ -7,7 +7,7 @@ import org.junit.Ignore
 
 class JSInteropTest extends DirectTest with TestHelpers {
 
-  override def preamble =
+  override def preamble: String =
     """import scala.scalajs.js
     """
 
@@ -35,7 +35,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noBadSetters = {
+  def noBadSetters: Unit = {
 
     """
     class A extends js.Object {
@@ -51,7 +51,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noBadBracketCall = {
+  def noBadBracketCall: Unit = {
 
     """
     class A extends js.Object {
@@ -68,7 +68,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def onlyJSRawTraits = {
+  def onlyJSRawTraits: Unit = {
 
     """
     trait A
@@ -93,7 +93,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noAnonymousClass = {
+  def noAnonymousClass: Unit = {
 
     """
     class A {
@@ -111,7 +111,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noCaseClassObject = {
+  def noCaseClassObject: Unit = {
 
     """
     case class A(x: Int) extends js.Object
@@ -161,7 +161,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noGlobalScopeClass = {
+  def noGlobalScopeClass: Unit = {
 
     """
     class A extends js.GlobalScope
@@ -184,7 +184,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noLocalClass = {
+  def noLocalClass: Unit = {
 
     """
     object A {
@@ -202,7 +202,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noLocalObject = {
+  def noLocalObject: Unit = {
 
     """
     object A {
@@ -220,7 +220,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNativeInJSAny = {
+  def noNativeInJSAny: Unit = {
 
     """
     class A extends js.Object {
@@ -237,7 +237,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnJSAnyBody = {
+  def warnJSAnyBody: Unit = {
 
     """
     class A extends js.Object {
@@ -272,7 +272,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noCallSecondaryCtor = {
+  def noCallSecondaryCtor: Unit = {
 
     """
     class A(x: Int, y: Int) extends js.Object {
@@ -289,7 +289,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noUseJsNative = {
+  def noUseJsNative: Unit = {
 
     """
     class A {
@@ -305,7 +305,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnNothingRaw = {
+  def warnNothingRaw: Unit = {
 
     """
     class A extends js.Object {
@@ -325,7 +325,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNonLiteralJSName = {
+  def noNonLiteralJSName: Unit = {
 
     """
     import js.annotation.JSName

@@ -23,7 +23,7 @@ package object rhino {
   }
 
   implicit class ScriptableObjectOps(val self: Scriptable) {
-    def addFunction(name: String, function: Array[AnyRef] => Any) = {
+    def addFunction(name: String, function: Array[AnyRef] => Any): Unit = {
       val rhinoFunction =
         new BaseFunction {
           ScriptRuntime.setFunctionProtoAndParent(this, self)

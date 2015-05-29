@@ -20,7 +20,7 @@ object DynamicTest extends JasmineTest {
     it("should workaround Scala 2.10 issue with implicit conversion for dynamic fields named x - #8") {
       class Point(val x: Int, val y: Int)
 
-      def jsonToPoint(json: js.Dynamic) = {
+      def jsonToPoint(json: js.Dynamic): Point = {
         new Point(json.x.toString.toInt, json.y.toString.toInt)
       }
 
@@ -33,12 +33,12 @@ object DynamicTest extends JasmineTest {
 
     it("should allow to call functions with arguments named x") {
       class A {
-        def a = 1
+        def a: Int = 1
       }
 
       class B extends A {
         @JSExport
-        def x(par: Int) = a + par // make sure `this` is bound correctly in JS
+        def x(par: Int): Int = a + par // make sure `this` is bound correctly in JS
       }
 
       val b = (new B).asInstanceOf[js.Dynamic]

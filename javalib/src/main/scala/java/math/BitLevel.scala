@@ -1,7 +1,8 @@
 /*
-*  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/BitLevel.java
-*  Original license copied below:
-*/
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/BitLevel.java
+ * Original license copied below:
+ */
 
 /*
  * Copyright 2009 Google Inc.
@@ -156,7 +157,7 @@ private[math] object BitLevel {
     result.cutOffLeadingZeroes()
     result
   }
-  
+
   /** Performs {@code val <<= count}. */
   def inplaceShiftLeft(bi: BigInteger, count: Int): Unit = {
     val intCount = count >> 5

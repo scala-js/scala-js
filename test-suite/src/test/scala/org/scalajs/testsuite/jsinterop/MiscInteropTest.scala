@@ -39,11 +39,11 @@ object MiscInteropTest extends JasmineTest {
     it("should respect evaluation order for `hasProperty`") {
       import js.Object.{ hasProperty => hasProp }
       var indicator = 3
-      def o() = {
+      def o(): js.Object = {
         indicator += 4
         js.Dynamic.literal(x = 5).asInstanceOf[js.Object]
       }
-      def p() = {
+      def p(): String = {
         indicator *= 2
         "x"
       }

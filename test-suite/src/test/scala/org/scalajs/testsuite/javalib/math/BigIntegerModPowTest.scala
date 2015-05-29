@@ -1,5 +1,6 @@
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerModPowTest.java
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerModPowTest.java
  */
 
 package org.scalajs.testsuite.javalib.math
@@ -11,7 +12,7 @@ import org.scalajs.jasminetest.JasmineTest
 object BigIntegerModPowTest extends JasmineTest {
 
   describe("BigIntegerModPowTest") {
-    
+
     it("testGcdBothZeros") {
       val rBytes = Array[Byte](0)
       val aNumber = new BigInteger("0")

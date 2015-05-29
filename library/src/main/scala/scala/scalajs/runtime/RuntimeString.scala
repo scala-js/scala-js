@@ -182,7 +182,9 @@ private[runtime] object RuntimeString {
     Pattern.matches(regex, thiz)
   }
 
-  // Both regionMatches ported from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
+  /* Both regionMatches ported from
+   * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
+   */
   def regionMatches(thiz: String, ignoreCase: Boolean,
       toffset: Int, other: String, ooffset: Int, len: Int): Boolean = {
     checkNull(thiz)

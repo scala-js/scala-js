@@ -43,5 +43,5 @@ class Runtime private {
 object Runtime {
   private val currentRuntime = new Runtime
 
-  def getRuntime() = currentRuntime
+  def getRuntime(): Runtime = currentRuntime
 }

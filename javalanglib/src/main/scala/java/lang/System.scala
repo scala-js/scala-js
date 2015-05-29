@@ -216,8 +216,8 @@ object System {
   //def getenv(): java.util.Map[String,String]
   //def getenv(name: String): String
 
-  def exit(status: scala.Int) = Runtime.getRuntime().exit(status)
-  def gc() = Runtime.getRuntime().gc()
+  def exit(status: scala.Int): Unit = Runtime.getRuntime().exit(status)
+  def gc(): Unit = Runtime.getRuntime().gc()
 }
 
 private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)

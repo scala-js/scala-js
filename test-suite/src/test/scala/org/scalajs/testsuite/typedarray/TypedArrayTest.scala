@@ -31,7 +31,7 @@ object TypedArrayTest extends JasmineTest {
       hasType: Any => Boolean,
       expectV: V => JasmineExpectation,
       intToV: Int => V
-  ) = {
+  ): Unit = {
 
     when("typedarray").
     describe(name) {

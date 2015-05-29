@@ -6,10 +6,10 @@ import org.junit.Test
 
 class PhantomJSTest extends JSEnvTest with ComTests {
 
-  protected def newJSEnv = new PhantomJSEnv
+  protected def newJSEnv: PhantomJSEnv = new PhantomJSEnv
 
   @Test
-  def failureTest = {
+  def failureTest: Unit = {
 
     """
     var a = {};
@@ -19,7 +19,7 @@ class PhantomJSTest extends JSEnvTest with ComTests {
   }
 
   @Test
-  def syntaxErrorTest = {
+  def syntaxErrorTest: Unit = {
 
     """
     {

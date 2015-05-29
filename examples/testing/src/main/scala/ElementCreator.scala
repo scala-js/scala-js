@@ -1,7 +1,8 @@
-import scala.scalajs.js.Dynamic.global
+import scala.scalajs.js
+import js.Dynamic.global
 
 object ElementCreator {
   val jQ = global.jQuery
 
-  def create() = jQ("body").append(jQ("<h1>Test</h1>"))
+  def create(): js.Dynamic = jQ("body").append(jQ("<h1>Test</h1>"))
 }

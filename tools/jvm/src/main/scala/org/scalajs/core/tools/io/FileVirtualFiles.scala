@@ -7,9 +7,9 @@ import java.net.URI
 class FileVirtualFile(val file: File) extends VirtualFile {
   import FileVirtualFile._
 
-  override def path = file.getPath
+  override def path: String = file.getPath
 
-  override def name = file.getName
+  override def name: String = file.getName
 
   override def version: Option[String] = {
     if (!file.isFile) None

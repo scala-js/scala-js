@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 trait TimeoutTests extends JSEnvTest {
 
   @Test
-  def basicTimeoutTest = {
+  def basicTimeoutTest: Unit = {
 
     val deadline = 300.millis.fromNow
 
@@ -29,7 +29,7 @@ trait TimeoutTests extends JSEnvTest {
   }
 
   @Test
-  def clearTimeoutTest = {
+  def clearTimeoutTest: Unit = {
 
     val deadline = 300.millis.fromNow
 
@@ -52,7 +52,7 @@ trait TimeoutTests extends JSEnvTest {
   }
 
   @Test
-  def timeoutArgTest = {
+  def timeoutArgTest: Unit = {
 
     val deadline = 300.millis.fromNow
 
@@ -73,7 +73,7 @@ trait TimeoutTests extends JSEnvTest {
   }
 
   @Test
-  def intervalTest = {
+  def intervalTest: Unit = {
 
     val deadline = 1.second.fromNow
 
@@ -109,7 +109,7 @@ trait TimeoutTests extends JSEnvTest {
   }
 
   @Test
-  def intervalSelfClearTest = {
+  def intervalSelfClearTest: Unit = {
 
     val deadline = 100.millis.fromNow
 

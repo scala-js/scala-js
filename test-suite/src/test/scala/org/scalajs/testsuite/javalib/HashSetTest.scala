@@ -187,14 +187,14 @@ object HashSetTest extends JasmineTest {
 
   describe("java.util.HashSet") {
     genHashSetTests(new HashSetGen {
-      def apply[T]() = new HashSet[T]()
+      def apply[T](): HashSet[T] = new HashSet[T]()
     })
   }
 
   describe("java.util.LinkedHashSet") {
 
     genHashSetTests(new HashSetGen {
-      def apply[T]() = new LinkedHashSet[T]()
+      def apply[T](): HashSet[T] = new LinkedHashSet[T]()
     })
 
     it("should iterate over elements in an ordered manner") {

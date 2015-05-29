@@ -12,12 +12,11 @@ package org.scalajs.jasminetest
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExportDescendentObjects
 
-import org.scalajs.jasmine.Jasmine
-import org.scalajs.jasmine.JasmineExpectation
+import org.scalajs.jasmine._
 
 @JSExportDescendentObjects
 class JasmineTest extends TestSuiteContext {
-  def jasmine = Jasmine.jasmine
+  def jasmine: JasmineEnv = Jasmine.jasmine
   def describe(name: String)(suite: => Unit): Unit = Jasmine.describe(name, suite _)
   def it(title: String)(test: => Unit): Unit = Jasmine.it(title, test _)
   def xdescribe(name: String)(suite: => Unit): Unit = Jasmine.xdescribe(name, suite _)

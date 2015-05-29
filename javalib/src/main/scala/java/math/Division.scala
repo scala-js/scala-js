@@ -1,6 +1,7 @@
 /*
- *  Ported by Alistair Johnson from  https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Division.java
- *  Original license copied below:
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Division.java
+ * Original license copied below:
  */
 
 /*
@@ -60,7 +61,7 @@ import BigInteger.QuotAndRem
 private[math] object Division {
 
   private final val UINT_MAX = 0xffffffffL
-  
+
   /** Divides an array by another array.
    *
    *  Divides the array 'a' by the array 'b' and gets the quotient and the
@@ -171,10 +172,11 @@ private[math] object Division {
     if (divisorShift != 0) {
       // reuse normB
       BitLevel.shiftRight(normB, normBLength, normA, 0, divisorShift)
-      return normB
+      normB
+    } else {
+      System.arraycopy(normA, 0, normB, 0, bLength)
+      normA
     }
-    System.arraycopy(normA, 0, normB, 0, bLength)
-    normA
   }
 
   /** Computes the quotient and the remainder after a division by an {@code Int}.
@@ -229,7 +231,7 @@ private[math] object Division {
     var i = srcLength - 1
     while (i >= 0) {
       val temp: Long = (rem << 32) | (src(i) & UINT_MAX)
-      var quot: Long = 0l
+      var quot: Long = 0L
       if (temp >= 0) {
         quot = temp / bLong
         rem = temp % bLong

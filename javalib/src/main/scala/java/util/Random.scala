@@ -131,30 +131,30 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
     if (haveNextNextGaussian) {
       haveNextNextGaussian = false
-      return nextNextGaussian
+      nextNextGaussian
+    } else {
+      var x, y, rds: Double = 0
+
+      /* Get two random numbers from -1 to 1.
+       * If the radius is zero or greater than 1, throw them out and pick two
+       * new ones.
+       * Rejection sampling throws away about 20% of the pairs.
+       */
+      do {
+        x = nextDouble()*2-1
+        y = nextDouble()*2-1
+        rds = x*x + y*y
+      } while (rds == 0 || rds > 1)
+
+      val c = Math.sqrt(-2 * Math.log(rds) / rds)
+
+      // Save y*c for next time
+      nextNextGaussian = y*c
+      haveNextNextGaussian = true
+
+      // And return x*c
+      x*c
     }
-
-    var x, y, rds: Double = 0
-
-    /* Get two random numbers from -1 to 1.
-     * If the radius is zero or greater than 1, throw them out and pick two new
-     * ones.
-     * Rejection sampling throws away about 20% of the pairs.
-     */
-    do {
-      x = nextDouble()*2-1
-      y = nextDouble()*2-1
-      rds = x*x + y*y
-    } while (rds == 0 || rds > 1)
-
-    val c = Math.sqrt(-2 * Math.log(rds) / rds)
-
-    // Save y*c for next time
-    nextNextGaussian = y*c
-    haveNextNextGaussian = true
-
-    // And return x*c
-    x*c
   }
 }
 

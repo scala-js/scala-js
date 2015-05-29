@@ -91,9 +91,9 @@ object DictionaryTest extends JasmineTest {
     }
 
     it("should desugar arguments to delete statements - #908") {
-      val kh = js.Dynamic.literal( key = "a" ).asInstanceOf[KeyHolder]
+      val kh = js.Dynamic.literal(key = "a").asInstanceOf[KeyHolder]
       val dict = js.Dictionary[String]("a" -> "A")
-      def a[T](foo: String) = dict.asInstanceOf[T]
+      def a[T](foo: String): T = dict.asInstanceOf[T]
       a[js.Dictionary[String]]("foo").delete(kh.key)
     }
 

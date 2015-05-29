@@ -7,11 +7,11 @@ import org.junit.Assert._
 
 class NodeJSTest extends TimeoutComTests {
 
-  protected def newJSEnv = new NodeJSEnv
+  protected def newJSEnv: NodeJSEnv = new NodeJSEnv
 
   /** Node.js strips double percentage signs - #500 */
   @Test
-  def percentageTest = {
+  def percentageTest: Unit = {
     val counts = 1 to 15
     val argcs  = 1 to 3
     val strings = counts.map("%" * _)
@@ -35,7 +35,7 @@ class NodeJSTest extends TimeoutComTests {
 
   /** Node.js console.log hack didn't allow to log non-Strings - #561 */
   @Test
-  def nonStringTest = {
+  def nonStringTest: Unit = {
 
     """
     console.log(1);
@@ -53,7 +53,7 @@ class NodeJSTest extends TimeoutComTests {
   }
 
   @Test
-  def slowJSEnvTest = {
+  def slowJSEnvTest: Unit = {
     val com = comRunner("""
       setTimeout(function() {
         scalajsCom.init(function(msg) {

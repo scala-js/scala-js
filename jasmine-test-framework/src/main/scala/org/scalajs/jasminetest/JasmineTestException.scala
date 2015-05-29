@@ -14,5 +14,5 @@ class JasmineTestException(
   message: String,
   stackTrace: Array[StackTraceElement]
 ) extends Exception(message) {
-  override def getStackTrace = stackTrace
+  override def getStackTrace(): Array[StackTraceElement] = stackTrace
 }

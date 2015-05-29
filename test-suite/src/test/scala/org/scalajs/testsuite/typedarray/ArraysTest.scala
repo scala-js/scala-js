@@ -18,7 +18,7 @@ import org.scalajs.testsuite.javalib
 
 object ArraysTest extends javalib.ArraysTest {
 
-  override def Array[T : ClassTag](v: T*): scala.Array[T] = classTag[T] match {
+  override def Array[T: ClassTag](v: T*): scala.Array[T] = classTag[T] match {
     case ClassTag.Byte =>
       new Int8Array(v.asInstanceOf[Seq[Byte]].toJSArray)
       .toArray.asInstanceOf[scala.Array[T]]
@@ -37,7 +37,7 @@ object ArraysTest extends javalib.ArraysTest {
     case _ => scala.Array(v: _*)
   }
 
-  override def testBody(suite: => Unit) = {
+  override def testBody(suite: => Unit): Unit = {
     when("typedarray").
     describe("java.util.Arrays backed with TypedArrays")(suite)
   }

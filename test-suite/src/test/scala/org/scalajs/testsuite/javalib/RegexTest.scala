@@ -152,16 +152,16 @@ object RegexTest extends JasmineTest {
     it("should respond to `start`, `end`, `group`, and `toMatchResult`") {
       val matcher = Pattern.compile("\\s(([A-Za-z]{5}(hum)?).js)\\s").matcher("Write Scala.js everyday!")
 
-      def checkGroup0(start: Int, end: Int, group: String) =
+      def checkGroup0(start: Int, end: Int, group: String): Unit =
         checkGroup(start, 5, end, 15, group, " Scala.js ")
 
-      def checkGroup1(start: Int, end: Int, group: String) =
+      def checkGroup1(start: Int, end: Int, group: String): Unit =
         checkGroup(start, 6, end, 14, group, "Scala.js")
 
-      def checkGroup2(start: Int, end: Int, group: String) =
+      def checkGroup2(start: Int, end: Int, group: String): Unit =
         checkGroup(start, 6, end, 11, group, "Scala")
 
-      def checkGroup3(start: Int, end: Int, group: String) =
+      def checkGroup3(start: Int, end: Int, group: String): Unit =
         checkGroup(start, -1, end, -1, group, null)
 
       def checkGroup(start: Int, startExpected: Int, end: Int, endExpected: Int,

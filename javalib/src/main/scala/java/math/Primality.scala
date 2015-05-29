@@ -1,6 +1,7 @@
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Primality.java
- *  Original license copied below:
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/math/Primality.java
+ * Original license copied below:
  */
 
 /*

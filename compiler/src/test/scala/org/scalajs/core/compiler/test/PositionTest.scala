@@ -12,7 +12,7 @@ import org.scalajs.core.ir.{Trees => js}
 class PositionTest extends JSASTTest {
 
   @Test
-  def virtualFilePosition = {
+  def virtualFilePosition: Unit = {
 
     val name = "<foo with illegal URI chars: %%>"
     val source = new BatchSourceFile(name,

@@ -110,7 +110,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Materialize implicitly an ir.Position from an implicit nsc Position. */
   implicit def implicitPos2irPos(implicit pos: Position): ir.Position = pos
 
-  override def newPhase(p: Phase) = new JSCodePhase(p)
+  override def newPhase(p: Phase): StdPhase = new JSCodePhase(p)
 
   private object jsnme {
     val arg_outer = newTermName("arg$outer")
@@ -119,9 +119,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
 
-    override def name = phaseName
-    override def description = "Generate JavaScript code from ASTs"
-    override def erasedTypes = true
+    override def name: String = phaseName
+    override def description: String = "Generate JavaScript code from ASTs"
+    override def erasedTypes: Boolean = true
 
     // Some state --------------------------------------------------------------
 
@@ -141,7 +141,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
 
-    def currentClassType = encodeClassType(currentClassSym)
+    private def currentClassType = encodeClassType(currentClassSym)
 
     val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
     class CancelGenMethodAsJSFunction(message: String)
@@ -159,7 +159,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Top-level apply ---------------------------------------------------------
 
-    override def run() {
+    override def run(): Unit = {
       scalaPrimitives.init()
       jsPrimitives.init()
       super.run()
@@ -185,7 +185,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  * Implementation class    -> `genImplClass()`
      *  * Normal class            -> `genClass()`
      */
-    override def apply(cunit: CompilationUnit) {
+    override def apply(cunit: CompilationUnit): Unit = {
       try {
         val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef, ClassInfo)]
 

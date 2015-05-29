@@ -10,7 +10,7 @@ class ConcurrentModificationException(s: String) extends RuntimeException(s) {
 
 class DuplicateFormatFlagsException private() extends IllegalFormatException {
   private var flags: String = null
-  def this(f: String) {
+  def this(f: String) = {
     this()
     if (f == null)
       throw new NullPointerException()
@@ -24,7 +24,7 @@ class EmptyStackException extends RuntimeException
 
 class FormatFlagsConversionMismatchException private(private val c: Char) extends IllegalFormatException {
   private var f: String = null
-  def this(f: String, c: Char) {
+  def this(f: String, c: Char) = {
     this(c)
     if (f == null)
       throw new NullPointerException()
@@ -44,7 +44,7 @@ class IllegalFormatCodePointException(private val c: Int) extends IllegalFormatE
 
 class IllegalFormatConversionException private(private val c: Char) extends IllegalFormatException {
   private var arg: Class[_] = null
-  def this(c: Char, arg: Class[_]) {
+  def this(c: Char, arg: Class[_]) = {
     this(c)
     if (arg == null)
       throw new NullPointerException()
@@ -59,7 +59,7 @@ class IllegalFormatException private[util] () extends IllegalArgumentException
 
 class IllegalFormatFlagsException private() extends IllegalFormatException {
   private var flags: String = null
-  def this(f: String) {
+  def this(f: String) = {
     this()
     if (f == null)
       throw new NullPointerException()
@@ -91,7 +91,7 @@ class InputMismatchException(s: String) extends NoSuchElementException(s) {
 }
 
 class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s) {
-  def this(e: Throwable) {
+  def this(e: Throwable) = {
     this(if (e == null) null.asInstanceOf[String] else e.toString())
     this.initCause(e)
   }
@@ -103,7 +103,7 @@ class InvalidPropertiesFormatException(s: String) extends java.io.IOException(s)
 
 class MissingFormatArgumentException private() extends IllegalFormatException {
   private var s: String = null
-  def this(s: String) {
+  def this(s: String) = {
     this()
     if (s == null)
       throw new NullPointerException()
@@ -115,7 +115,7 @@ class MissingFormatArgumentException private() extends IllegalFormatException {
 
 class MissingFormatWidthException private() extends IllegalFormatException {
   private var s: String = null
-  def this(s: String) {
+  def this(s: String) = {
     this()
     if (s == null)
       throw new NullPointerException()
@@ -143,7 +143,7 @@ class TooManyListenersException(s: String) extends Exception(s) {
 
 class UnknownFormatConversionException private () extends IllegalFormatException {
   private var s: String = null
-  def this(s: String) {
+  def this(s: String) = {
     this()
     if (s == null)
       throw new NullPointerException()
@@ -155,7 +155,7 @@ class UnknownFormatConversionException private () extends IllegalFormatException
 
 class UnknownFormatFlagsException private() extends IllegalFormatException {
   private var flags: String = null
-  def this(f: String) {
+  def this(f: String) = {
     this()
     if (f == null)
       throw new NullPointerException()

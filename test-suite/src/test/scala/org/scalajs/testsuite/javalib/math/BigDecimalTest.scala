@@ -20,7 +20,7 @@ object BigDecimalTest extends JasmineTest  {
       expect(bd.intValue()).toEqual(3)
       expect(bd.longValue == 3L).toBeTruthy()
     }
-    
+
     it("should accept 999999999 as aLong") {
       val bd = BigDecimal.valueOf(999999999L)
       expect(bd.intValue()).toEqual(999999999)

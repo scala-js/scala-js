@@ -14,7 +14,7 @@ import scala.annotation.switch
 sealed abstract class ClassKind {
   import ClassKind._
 
-  def isClass = this match {
+  def isClass: Boolean = this match {
     case Class | ModuleClass => true
     case _                   => false
   }

@@ -114,7 +114,7 @@ final class ScalaJSTask private (
 object ScalaJSTask {
   private final class LogElement[T](index: Int,
       log: Logger => (T => Unit), data: T) {
-    def call(arr: Array[Logger]) = log(arr(index))(data)
+    def call(arr: Array[Logger]): Unit = log(arr(index))(data)
   }
 
   private[testadapter] def fromInfo(runner: ScalaJSRunner,

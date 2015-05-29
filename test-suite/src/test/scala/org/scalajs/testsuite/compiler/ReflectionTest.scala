@@ -77,7 +77,7 @@ object ReflectionTest extends JasmineTest {
 
     it("getClass() for normal types") {
       class Foo {
-        def bar() = super.getClass()
+        def bar(): Class[_] = super.getClass()
       }
       val foo = new Foo
       expect(foo.getClass() eq classOf[Foo]).toBeTruthy

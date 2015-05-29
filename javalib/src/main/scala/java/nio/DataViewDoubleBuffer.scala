@@ -93,7 +93,7 @@ private[nio] final class DataViewDoubleBuffer private (
 private[nio] object DataViewDoubleBuffer {
   private[nio] implicit object NewDataViewDoubleBuffer
       extends GenDataViewBuffer.NewDataViewBuffer[DoubleBuffer] {
-    def bytesPerElem = 8
+    def bytesPerElem: Int = 8
 
     def apply(dataView: DataView,
         initialPosition: Int, initialLimit: Int,

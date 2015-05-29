@@ -16,10 +16,10 @@ object ObjectTest extends JasmineTest {
   describe("java.lang.Object") {
 
     it("should provide `equals`") {
-      case class xy(x: Int, y: Int)
+      case class XY(x: Int, y: Int)
 
-      val l = List(xy(1, 2), xy(2, 1))
-      val xy12 = xy(1, 2)
+      val l = List(XY(1, 2), XY(2, 1))
+      val xy12 = XY(1, 2)
 
       expect(l.contains(xy12)).toBeTruthy
       expect(l.exists(_ == xy12)).toBeTruthy // the workaround

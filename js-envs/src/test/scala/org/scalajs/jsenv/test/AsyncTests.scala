@@ -28,7 +28,7 @@ trait AsyncTests {
   }
 
   @Test
-  def futureTest = {
+  def futureTest: Unit = {
     val runner = asyncRunner("")
     val fut = runner.start()
 
@@ -38,7 +38,7 @@ trait AsyncTests {
   }
 
   @Test
-  def stopAfterTerminatedTest = {
+  def stopAfterTerminatedTest: Unit = {
     val runner = asyncRunner("")
     val fut = runner.start()
 

@@ -155,7 +155,9 @@ object LongTest extends JasmineTest {
       expect((Int.MaxValue.toLong+1L).toString).toEqual("2147483648")
       expect(Int.MinValue.toLong.toString).toEqual("-2147483648")
 
-      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      /* Ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+       */
       expect(new JLong(89000000005L).toString).toEqual("89000000005")
       expect(new JLong(JLong.MIN_VALUE).toString).toEqual("-9223372036854775808")
       expect(new JLong(JLong.MAX_VALUE).toString).toEqual("9223372036854775807")
@@ -170,7 +172,9 @@ object LongTest extends JasmineTest {
     }
 
     it("should implement toString with radix") {
-      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      /* Ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+       */
       expect(JLong.toString(100000000L, 10)).toEqual("100000000")
       expect(JLong.toString(8589934591L, 8)).toEqual("77777777777")
       expect(JLong.toString(68719476735L, 16)).toEqual("fffffffff")

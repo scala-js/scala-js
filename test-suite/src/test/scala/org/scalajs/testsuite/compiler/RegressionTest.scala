@@ -30,7 +30,7 @@ object RegressionTest extends JasmineTest {
 
     it("Abort with some pattern match guards - #22") {
       object PatternMatchGuards {
-        def go(f: Int => Int) = f(1)
+        def go(f: Int => Int): Int = f(1)
         def main(): Unit = {
           go {
             case x if false => x
@@ -86,8 +86,8 @@ object RegressionTest extends JasmineTest {
     }
 
     it("should resolve overloads on scala.Function.apply when converting to js.Function - #125") {
-      class Fct extends Function1[Int,Any] {
-        def apply(n: Int) = n
+      class Fct extends Function1[Int, Any] {
+        def apply(n: Int): Int = n
       }
 
       val scalaFunction = new Fct
@@ -97,11 +97,11 @@ object RegressionTest extends JasmineTest {
 
     it("should correctly dispatch calls on private functions - #165") {
       class A {
-        private def x = 1
-        def value = x
+        private def x: Int = 1
+        def value: Int = x
       }
       class B extends A {
-        private def x = 2
+        private def x: Int = 2
       }
       expect(new B().value).toEqual(1)
     }
@@ -110,9 +110,9 @@ object RegressionTest extends JasmineTest {
       // Class name
       class break {
         // class variable
-        var continue = 1
+        var continue: Int = 1
         // method name
-        def switch = {
+        def switch: Int = {
           // local name
           val default = 2
           default
@@ -120,7 +120,7 @@ object RegressionTest extends JasmineTest {
       }
       trait Foo {
         // static member (through mixin)
-        def function = 3
+        def function: Int = 3
       }
 
       val x = new break with Foo
@@ -133,9 +133,9 @@ object RegressionTest extends JasmineTest {
       // Class name
       class `0` {
         // class variable
-        var `1` = 1
+        var `1`: Int = 1
         // method name
-        def `2` = {
+        def `2`: Int = {
           // local name
           val `22` = 2
           `22`
@@ -143,7 +143,7 @@ object RegressionTest extends JasmineTest {
       }
       trait Foo {
         // static member (through mixin)
-        def `3` = 3
+        def `3`: Int = 3
       }
 
       val x = new `0` with Foo
@@ -175,7 +175,9 @@ object RegressionTest extends JasmineTest {
     }
 
     it("should not call equals when comparing with a literal null - #362") {
-      class A { override def equals(x: Any) = !(this == null) }
+      class A {
+        override def equals(x: Any): Boolean = !(this == null)
+      }
 
       val x = new A
       val y = new A
@@ -250,7 +252,7 @@ object RegressionTest extends JasmineTest {
 
     it("x.synchronized should preserve side-effects of x") {
       var c = 0
-      def x = { c += 1; this }
+      def x: RegressionTest.this.type = { c += 1; this }
       expect(x.synchronized(5)).toEqual(5)
       expect(c).toEqual(1)
     }
@@ -324,7 +326,7 @@ object RegressionTest extends JasmineTest {
       // We need a true class for @noinline to work
       class Test {
         @noinline
-        def concat(x: Any, y: Any) = x.toString + y.toString
+        def concat(x: Any, y: Any): String = x.toString + y.toString
 
         @noinline
         def fct: Function1[Any, String] = { (v: Any) => // parameter under test
@@ -355,7 +357,7 @@ object RegressionTest extends JasmineTest {
         var y: Int = _
 
         @noinline
-        def plus(x0: Int, y0: Int) = {
+        def plus(x0: Int, y0: Int): Int = {
           x = x0
           y = y0
           var res = 0
@@ -410,7 +412,7 @@ object RegressionTest extends JasmineTest {
     }
 
     it("switch-match with 2 guards for the same value - #1589") {
-      @noinline def genB() = 0xE1
+      @noinline def genB(): Int = 0xE1
       val b = genB()
       val x = b >> 4 match {
         case 0xE if b == 0xE0 =>

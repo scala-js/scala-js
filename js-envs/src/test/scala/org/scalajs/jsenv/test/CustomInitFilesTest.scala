@@ -18,7 +18,7 @@ abstract class CustomInitFilesTest extends JSEnvTest {
   }
 
   @Test
-  def customInitFilesTest = {
+  def customInitFilesTest: Unit = {
     """
     customPrint("hello");
     """ hasOutput
@@ -28,13 +28,13 @@ abstract class CustomInitFilesTest extends JSEnvTest {
 }
 
 class NodeJSWithCustomInitFilesTest extends CustomInitFilesTest {
-  protected def newJSEnv = new NodeJSEnv {
+  protected def newJSEnv: NodeJSEnv = new NodeJSEnv {
     override def customInitFiles() = makeCustomInitFiles()
   }
 }
 
 class PhantomJSWithCustomInitFilesTest extends CustomInitFilesTest {
-  protected def newJSEnv = new PhantomJSEnv {
+  protected def newJSEnv: PhantomJSEnv = new PhantomJSEnv {
     override def customInitFiles() = makeCustomInitFiles()
   }
 }

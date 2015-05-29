@@ -130,7 +130,8 @@ object UTF16LETest extends BaseUTF16Test(StandardCharsets.UTF_16LE) {
 }
 
 object UTF16Test extends BaseUTF16Test(StandardCharsets.UTF_16) {
-  def BigEndianBOM = ByteBuffer.wrap(Array(0xfe.toByte, 0xff.toByte))
+  def BigEndianBOM: ByteBuffer =
+    ByteBuffer.wrap(Array(0xfe.toByte, 0xff.toByte))
 
   override protected def testDecode(in: ByteBuffer)(
       outParts: OutPart[CharBuffer]*): Unit = {

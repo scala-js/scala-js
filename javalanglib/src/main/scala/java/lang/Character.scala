@@ -7,7 +7,7 @@ class Character(private val value: scala.Char) extends Comparable[Character] {
 
   def charValue(): scala.Char = value
 
-  override def equals(that: Any) =
+  override def equals(that: Any): scala.Boolean =
     that.isInstanceOf[Character] && (value == that.asInstanceOf[Character].charValue)
 
   override def compareTo(that: Character): Int =
@@ -160,7 +160,7 @@ object Character {
   final val MAX_VALUE = '\uffff'
   final val SIZE = 16
 
-  def valueOf(charValue: scala.Char) = new Character(charValue)
+  def valueOf(charValue: scala.Char): Character = new Character(charValue)
 
   /* These are supposed to be final vals of type Byte, but that's not possible.
    * So we implement them as def's, which are binary compatible with final vals.

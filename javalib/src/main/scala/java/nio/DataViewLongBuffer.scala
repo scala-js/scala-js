@@ -94,7 +94,7 @@ private[nio] final class DataViewLongBuffer private (
 private[nio] object DataViewLongBuffer {
   private[nio] implicit object NewDataViewLongBuffer
       extends GenDataViewBuffer.NewDataViewBuffer[LongBuffer] {
-    def bytesPerElem = 8
+    def bytesPerElem: Int = 8
 
     def apply(dataView: DataView,
         initialPosition: Int, initialLimit: Int,

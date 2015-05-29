@@ -1,5 +1,6 @@
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerNotTest.java
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerNotTest.java
  */
 
 package org.scalajs.testsuite.javalib.math

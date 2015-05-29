@@ -158,7 +158,9 @@ object IntegerTest extends JasmineTest {
     }
 
     it("should provide `highestOneBit`") {
-      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      /* Spec ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+       */
       expect(Integer.highestOneBit(0)).toEqual(0)
       expect(Integer.highestOneBit(-1)).toEqual(Integer.MIN_VALUE)
       expect(Integer.highestOneBit(-256)).toEqual(Integer.MIN_VALUE)
@@ -168,7 +170,9 @@ object IntegerTest extends JasmineTest {
     }
 
     it("should provide `toString` without radix") {
-      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      /* Spec ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+       */
       expect(new Integer(12345).toString).toEqual("12345")
       expect(new Integer("-12345").toString).toEqual("-12345")
       expect(Integer.toString(-80765)).toEqual("-80765")
@@ -179,7 +183,9 @@ object IntegerTest extends JasmineTest {
     }
 
     it("should provide `toString` with radix") {
-      //Spec ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+      /* Spec ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
+       */
       expect(Integer.toString(2147483647, 8)).toEqual("17777777777")
       expect(Integer.toString(2147483647, 16)).toEqual("7fffffff")
       expect(Integer.toString(2147483647, 2)).toEqual("1111111111111111111111111111111")
