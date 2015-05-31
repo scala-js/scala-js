@@ -15,12 +15,7 @@ import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.classpath.builder._
 import org.scalajs.core.tools.jsdep._
-import org.scalajs.core.tools.optimizer.{
-  ScalaJSOptimizer,
-  ScalaJSClosureOptimizer,
-  IncOptimizer,
-  ParIncOptimizer
-}
+import org.scalajs.core.tools.optimizer._
 import org.scalajs.core.tools.corelib.CoreJSLibs
 
 import org.scalajs.jsenv._
@@ -49,9 +44,17 @@ object ScalaJSPluginInternal {
   val scalaJSEnsureUnforked = SettingKey[Boolean]("ensureUnforked",
       "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
 
+  /** Dummy setting to persist a Scala.js linker. */
+  val scalaJSLinker = SettingKey[Linker]("scalaJSLinker",
+      "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
+
   /** Dummy setting to persist Scala.js optimizer */
   val scalaJSOptimizer = SettingKey[ScalaJSOptimizer]("scalaJSOptimizer",
       "Scala.js internal: Setting to persist the optimizer", KeyRanks.Invisible)
+
+  /** Internal task to compute the LinkingUnitClasspath for Rhino. */
+  val scalaJSLinkingUnitClasspath = TaskKey[LinkingUnitClasspath]("scalaJSLinkingUnitClasspath",
+      "Resolved classpath represented as a LinkedUnit", KeyRanks.Invisible)
 
   /** Internal task to calculate whether a project requests the DOM
    *  (through jsDependencies or requiresDOM) */
@@ -143,6 +146,32 @@ object ScalaJSPluginInternal {
           ccp.checkCompliance(scalaJSSemantics.value)
 
         ccp
+      },
+
+      scalaJSLinker in scalaJSLinkingUnitClasspath := {
+        val semantics = scalaJSSemantics.value
+        val outputMode = scalaJSOutputMode.value
+        new Linker(semantics, outputMode, considerPositions = true)
+      },
+
+      scalaJSLinkingUnitClasspath := {
+        val s = streams.value
+        val cp = scalaJSPreLinkClasspath.value
+        val opts = scalaJSOptimizerOptions.value
+
+        val linker = (scalaJSLinker in scalaJSLinkingUnitClasspath).value
+        if (opts.batchMode)
+          linker.clean()
+
+        val linkingUnit = linker.link(
+            cp.scalaJSIR,
+            s.log,
+            reachOptimizerSymbols = true, // better be safe than sorry here
+            bypassLinkingErrors = opts.bypassLinkingErrors,
+            noWarnMissing = Nil,
+            checkIR = opts.checkScalaJSIR)
+        new LinkingUnitClasspath(cp.jsLibs, linkingUnit, cp.requiresDOM,
+            cp.version)
       },
 
       artifactPath in fastOptJS :=
@@ -352,7 +381,7 @@ object ScalaJSPluginInternal {
       scalaJSExecClasspath <<= Def.taskDyn {
         scalaJSStage.value match {
           case Stage.PreLink =>
-            Def.task { scalaJSPreLinkClasspath.value }
+            Def.task { scalaJSLinkingUnitClasspath.value }
           case Stage.FastOpt =>
             Def.task { fastOptJS.value.get(scalaJSCompleteClasspath).get }
           case Stage.FullOpt =>
@@ -529,8 +558,12 @@ object ScalaJSPluginInternal {
 
       clean <<= clean.dependsOn(Def.task {
         // have clean reset incremental optimizer state
+        (scalaJSLinker in (Compile, scalaJSLinkingUnitClasspath)).value.clean()
+        (scalaJSLinker in (Test, scalaJSLinkingUnitClasspath)).value.clean()
         (scalaJSOptimizer in (Compile, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Test, fastOptJS)).value.clean()
+        (scalaJSOptimizer in (Compile, fullOptJS)).value.clean()
+        (scalaJSOptimizer in (Test, fullOptJS)).value.clean()
       }),
 
       /* Depend on jetty artifacts in dummy configuration to be able to inject

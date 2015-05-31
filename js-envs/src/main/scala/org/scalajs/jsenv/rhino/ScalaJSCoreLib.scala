@@ -24,24 +24,26 @@ import org.scalajs.core.tools.corelib._
 
 import OutputMode.ECMAScript51Global
 
-class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
+class ScalaJSCoreLib private[rhino] (semantics: Semantics,
+    linkingUnit: LinkingUnit) {
   import ScalaJSCoreLib._
 
+  @deprecated("ScalaJSCoreLib will be made private.", "0.6.4")
+  def this(semantics: Semantics, classpath: IRClasspath) =
+    this(semantics, RhinoJSEnv.linkIRClasspath(classpath, semantics))
+
   private val (providers, exportedSymbols) = {
-    val providers = mutable.Map.empty[String, VirtualScalaJSIRFile]
+    val providers = mutable.Map.empty[String, LinkedClass]
     val exportedSymbols = mutable.ListBuffer.empty[String]
 
-    for (irFile <- classpath.scalaJSIR) {
-      val info = irFile.info
-      providers += info.encodedName -> irFile
-      if (info.isExported)
-        exportedSymbols += info.encodedName
+    for (linkedClass <- linkingUnit.classDefs) {
+      providers += linkedClass.encodedName -> linkedClass
+      if (linkedClass.isExported)
+        exportedSymbols += linkedClass.encodedName
     }
 
     (providers, exportedSymbols)
   }
-
-  private val ancestorStore = mutable.Map.empty[String, List[String]]
 
   def insertInto(context: Context, scope: Scriptable) = {
     context.evaluateFile(scope, CoreJSLibs.lib(semantics, ECMAScript51Global))
@@ -104,15 +106,10 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
   }
 
   private def getSourceMapper(fileName: String, untilLine: Int) = {
-    val irFile = providers(fileName.stripSuffix(PseudoFileSuffix))
+    val linked = providers(fileName.stripSuffix(PseudoFileSuffix))
     val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
-    val (info, classDef) = irFile.infoAndTree
-    val className = classDef.name.name
-    val ancestors = ancestorStore.getOrElse(className,
-        throw new AssertionError(s"$className should be loaded"))
-    val linked = LinkedClass(info, classDef, ancestors)
     val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
-        LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
+        linkingUnit.globalInfo).genClassDef(linked)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -148,7 +145,7 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
 
     def makeLazyScalaJSScope(base: Scriptable, isStatics: Boolean) =
-      new LazyScalaJSScope(this, scope, base, isStatics)
+      new LazyScalaJSScope(this, scope, base, isStatics, dummy = 0)
 
     for (Info(name, isStatics) <- scalaJSLazyFields) {
       val base = ScalaJS.get(name, ScalaJS).asInstanceOf[Scriptable]
@@ -157,49 +154,27 @@ class ScalaJSCoreLib(semantics: Semantics, classpath: IRClasspath) {
     }
   }
 
-  private[rhino] def load(scope: Scriptable, encodedName: String): Unit =
-    loadAncestors(scope, encodedName)
-
-  private def loadAncestors(scope: Scriptable,
-      encodedName: String): List[String] = {
-    ancestorStore.getOrElseUpdate(encodedName, {
-      val irFile = providers.getOrElse(encodedName,
+  private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
+    val linkedClass = providers.getOrElse(encodedName,
         throw new ClassNotFoundException(encodedName))
 
-      // Desugar tree
-      val (info, classDef) = irFile.infoAndTree
-      val className = classDef.name.name
+    val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
+        linkingUnit.globalInfo).genClassDef(linkedClass)
 
-      val strictAncestors = for {
-        parent   <- classDef.superClass ++: classDef.interfaces
-        ancestor <- loadAncestors(scope, parent.name)
-      } yield ancestor
-
-      val ancestors = className :: strictAncestors.distinct
-      val linked = LinkedClass(info, classDef, ancestors)
-
-      val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
-          LinkingUnit.GlobalInfo.SafeApproximation).genClassDef(linked)
-
-      // Write tree
-      val codeWriter = new java.io.StringWriter
-      val printer = new Printers.JSTreePrinter(codeWriter)
-      printer.printTopLevelTree(desugared)
-      printer.complete()
-      val ctx = Context.getCurrentContext()
-      val fakeFileName = encodedName + PseudoFileSuffix
-      ctx.evaluateString(scope, codeWriter.toString(),
-          fakeFileName, 1, null)
-
-      ancestors
-    })
+    // Write tree
+    val codeWriter = new java.io.StringWriter
+    val printer = new Printers.JSTreePrinter(codeWriter)
+    printer.printTopLevelTree(desugared)
+    printer.complete()
+    val ctx = Context.getCurrentContext()
+    val fakeFileName = encodedName + PseudoFileSuffix
+    ctx.evaluateString(scope, codeWriter.toString(),
+        fakeFileName, 1, null)
   }
 }
 
 object ScalaJSCoreLib {
   private case class Info(name: String, isStatics: Boolean = false)
-
-  private val EncodedNameLine = raw""""encodedName": *"([^"]+)"""".r.unanchored
 
   private final val PseudoFileSuffix = ".sjsir"
 

@@ -16,6 +16,8 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.optimizer._
+import org.scalajs.core.tools.javascript.OutputMode
 
 import scala.annotation.tailrec
 
@@ -301,35 +303,44 @@ final class RhinoJSEnv private (
   /** Loads the classpath. Either through lazy loading or by simply inserting */
   private def loadClasspath(context: Context, scope: Scriptable,
       classpath: CompleteClasspath): Unit = classpath match {
-    case cp: IRClasspath =>
-      // Setup lazy loading classpath and source mapper
-      val optLoader = if (cp.scalaJSIR.nonEmpty) {
-        val loader = new ScalaJSCoreLib(semantics, cp)
+    case cp: LinkingUnitClasspath =>
+      loadLinkingUnitClasspath(context, scope, cp)
 
-        // Setup sourceMapper
-        if (sourceMap) {
-          val scalaJSenv = context.newObject(scope)
-
-          scalaJSenv.addFunction("sourceMapper", args => {
-            val trace = Context.toObject(args(0), scope)
-            loader.mapStackTrace(trace, context, scope)
-          })
-
-          ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
-        }
-
-        Some(loader)
-      } else {
-        None
-      }
-
-      // Load JS libraries
-      cp.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
-
-      optLoader.foreach(_.insertInto(context, scope))
+    // Deprecated, auto-linking
+    case cp: IRClasspath if cp.scalaJSIR.nonEmpty =>
+      val linkingUnit = linkIRClasspath(cp, semantics)
+      val linkingUnitCP = new LinkingUnitClasspath(cp.jsLibs, linkingUnit,
+          cp.requiresDOM, None)
+      loadLinkingUnitClasspath(context, scope, linkingUnitCP)
 
     case cp =>
       cp.allCode.foreach(context.evaluateFile(scope, _))
+  }
+
+  /** Loads a [[LinkingUnitClasspath]] with lazy loading of classes and
+   *  source mapping.
+   */
+  private def loadLinkingUnitClasspath(context: Context, scope: Scriptable,
+      classpath: LinkingUnitClasspath): Unit = {
+
+    val loader = new ScalaJSCoreLib(semantics, classpath.linkingUnit)
+
+    // Setup sourceMapper
+    if (sourceMap) {
+      val scalaJSenv = context.newObject(scope)
+
+      scalaJSenv.addFunction("sourceMapper", args => {
+        val trace = Context.toObject(args(0), scope)
+        loader.mapStackTrace(trace, context, scope)
+      })
+
+      ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
+    }
+
+    // Load JS libraries
+    classpath.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
+
+    loader.insertInto(context, scope)
   }
 
   private def basicEventLoop(taskQ: TaskQueue): Unit =
@@ -433,6 +444,16 @@ final class RhinoJSEnv private (
 }
 
 object RhinoJSEnv {
+
+  private[rhino] def linkIRClasspath(cp: IRClasspath,
+      semantics: Semantics): LinkingUnit = {
+    val logger = new ScalaConsoleLogger(Level.Error)
+    val linker = new Linker(semantics, OutputMode.ECMAScript51Global,
+        considerPositions = true)
+    linker.link(cp.scalaJSIR, logger,
+        reachOptimizerSymbols = false,
+        bypassLinkingErrors = true, noWarnMissing = Nil, checkIR = false)
+  }
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {

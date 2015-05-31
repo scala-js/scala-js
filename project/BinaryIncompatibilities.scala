@@ -18,6 +18,9 @@ object BinaryIncompatibilities {
   )
 
   val JSEnvs = Seq(
+      // Private things, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.jsenv.rhino.ScalaJSCoreLib.org$scalajs$jsenv$rhino$ScalaJSCoreLib$$loadAncestors")
   )
 
   val SbtPlugin = Seq(

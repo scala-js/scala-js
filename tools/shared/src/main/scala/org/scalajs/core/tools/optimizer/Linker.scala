@@ -46,9 +46,18 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
   type TreeProvider = String => (ClassDef, Option[String])
 
+  /** Cleans the cache. */
+  def clean(): Unit = {
+    files.clear()
+    statsReused = 0
+    statsInvalidated = 0
+    statsTreesRead = 0
+  }
+
   def link(irInput: Traversable[VirtualScalaJSIRFile], logger: Logger,
       reachOptimizerSymbols: Boolean, bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing], checkInfos: Boolean): LinkingUnit = {
+      noWarnMissing: Seq[NoWarnMissing],
+      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
     startRun()
 
     val encodedNameToPersistentFile =
@@ -63,7 +72,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
     try {
       link(infos, getTree, logger, reachOptimizerSymbols,
-          bypassLinkingErrors, noWarnMissing, checkInfos)
+          bypassLinkingErrors, noWarnMissing, checkIR)
     } finally {
       endRun(logger)
     }
@@ -72,9 +81,10 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
   def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
       logger: Logger, reachOptimizerSymbols: Boolean,
       bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing], checkInfos: Boolean): LinkingUnit = {
+      noWarnMissing: Seq[NoWarnMissing],
+      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
 
-    if (checkInfos) {
+    if (checkIR) {
       logTime(logger, "Linker: Check Infos") {
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
@@ -97,9 +107,22 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     if (analysis.errors.nonEmpty && !bypass)
       sys.error("There were linking errors")
 
-    logTime(logger, "Linker: Assemble LinkedClasses") {
+    val linkResult = logTime(logger, "Linker: Assemble LinkedClasses") {
       assemble(infoInput, getTree, analysis)
     }
+
+    if (checkIR) {
+      logTime(logger, "Linker: Check IR") {
+        if (linkResult.isComplete) {
+          val checker = new IRChecker(linkResult, logger)
+          if (!checker.check())
+            sys.error(s"There were ${checker.errorCount} IR checking errors.")
+        } else if (noWarnMissing.isEmpty)
+          sys.error("Could not check IR because there where linking errors.")
+      }
+    }
+
+    linkResult
   }
 
   private def filterErrors(errors: scala.collection.Seq[Error],
