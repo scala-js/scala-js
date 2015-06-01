@@ -41,10 +41,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
   val phaseName = "jsinterop"
 
-  override def newPhase(p: nsc.Phase) = new JSInteropPhase(p)
+  override def newPhase(p: nsc.Phase): StdPhase = new JSInteropPhase(p)
+
   class JSInteropPhase(prev: nsc.Phase) extends Phase(prev) {
-    override def name = phaseName
-    override def description = "Prepare ASTs for JavaScript interop"
+    override def name: String = phaseName
+    override def description: String = "Prepare ASTs for JavaScript interop"
     override def run(): Unit = {
       jsPrimitives.initPrepJSPrimitives()
       jsInterop.clearRegisteredExports()
@@ -52,10 +53,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  override protected def newTransformer(unit: CompilationUnit) =
+  override protected def newTransformer(unit: CompilationUnit): Transformer =
     new JSInteropTransformer(unit)
 
-  private object jsnme {
+  private object jsnme { // scalastyle:ignore
     val hasNext  = newTermName("hasNext")
     val next     = newTermName("next")
     val nextName = newTermName("nextName")
@@ -64,7 +65,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     val Val      = newTermName("Val")
   }
 
-  private object jstpnme {
+  private object jstpnme { // scalastyle:ignore
     val scala_ = newTypeName("scala") // not defined in 2.10's tpnme
   }
 
@@ -76,13 +77,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     // have access to it in JSCode.
     JSDynamicLiteral
 
-    var inJSAnyMod = false
-    var inJSAnyCls = false
-    var inScalaCls = false
+    private var inJSAnyMod = false
+    private var inJSAnyCls = false
+    private var inScalaCls = false
     /** are we inside a subclass of scala.Enumeration */
-    var inScalaEnum = false
+    private var inScalaEnum = false
     /** are we inside the implementation of scala.Enumeration? */
-    var inEnumImpl = false
+    private var inEnumImpl = false
 
     /** Tests whether this is a ScalaDoc run.
      *
@@ -108,13 +109,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** Whether to check and prepare exports. */
     private def shouldPrepareExports = !forScaladoc
 
-    def jsAnyClassOnly = !inJSAnyCls && allowJSAny
-    def allowImplDef   = !inJSAnyCls && !inJSAnyMod
-    def allowJSAny     = !inScalaCls
-    def inJSAny        = inJSAnyMod || inJSAnyCls
+    private def jsAnyClassOnly = !inJSAnyCls && allowJSAny
+    private def allowImplDef   = !inJSAnyCls && !inJSAnyMod
+    private def allowJSAny     = !inScalaCls
+    private def inJSAny        = inJSAnyMod || inJSAnyCls
 
     /** DefDefs in class templates that export methods to JavaScript */
-    val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
+    private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
     override def transform(tree: Tree): Tree = postTransform { tree match {
       // Catch special case of ClassDef in ModuleDef
@@ -568,7 +569,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
   }
 
-  trait ScalaEnumFctExtractors {
+  private trait ScalaEnumFctExtractors {
     protected val methSym: Symbol
 
     protected def resolve(ptpes: Symbol*) = {
@@ -593,7 +594,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
      * - Apply(meth, List(param)) where meth.symbol is targeted symbol (i: Int)
      */
     object NoName {
-      def unapply(t: Tree) = t match {
+      def unapply(t: Tree): Option[Option[Tree]] = t match {
         case sel: Select if sel.symbol == noArg =>
           Some(None)
         case Apply(meth, List(param)) if meth.symbol == intArg =>
@@ -604,7 +605,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     }
 
     object NullName {
-      def unapply(tree: Tree) = tree match {
+      def unapply(tree: Tree): Boolean = tree match {
         case Apply(meth, List(Literal(Constant(null)))) =>
           meth.symbol == nameArg
         case Apply(meth, List(_, Literal(Constant(null)))) =>

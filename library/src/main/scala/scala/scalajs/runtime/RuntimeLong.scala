@@ -61,6 +61,7 @@ final class RuntimeLong(
   def compareTo(that: java.lang.Long): Int =
     compareTo(that.asInstanceOf[RuntimeLong])
 
+  // scalastyle:off disallow.space.before.token
   def unary_~ : RuntimeLong = masked(~x.l, ~x.m, ~x.h)
   def unary_+ : RuntimeLong = x
   def unary_- : RuntimeLong = {
@@ -69,6 +70,7 @@ final class RuntimeLong(
     val neg2 = (~x.h + (if (neg0 == 0 && neg1 == 0) 1 else 0)) & MASK_2
     new RuntimeLong(neg0, neg1, neg2)
   }
+  // scalastyle:on disallow.space.before.token
 
   def +(y: String): String = x.toString + y
 
@@ -154,7 +156,7 @@ final class RuntimeLong(
     case _ => false
   }
 
-  def notEquals(that: RuntimeLong) = !equals(that)
+  def notEquals(that: RuntimeLong): Boolean = !equals(that)
 
   override def hashCode(): Int = {
     (this ^ (this >>> 32)).toInt
@@ -384,19 +386,21 @@ final class RuntimeLong(
   def signum: RuntimeLong =
     if (isNegative) MinusOne else if (isZero) Zero else One
 
-  def numberOfLeadingZeros: Int =
+  def numberOfLeadingZeros: Int = {
     if (h != 0)      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
     else if (m != 0) Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
     else             Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
+  }
 
-  def numberOfTrailingZeros: Int =
-    if      (l != 0) Integer.numberOfTrailingZeros(l)
+  def numberOfTrailingZeros: Int = {
+    if (l != 0)      Integer.numberOfTrailingZeros(l)
     else if (m != 0) Integer.numberOfTrailingZeros(m) + BITS
     else             Integer.numberOfTrailingZeros(h) + BITS01
+  }
 
   /** return log_2(x) if power of 2 or -1 otherwise */
-  private def powerOfTwo =
-    if      (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
+  private def powerOfTwo = {
+    if (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
       Integer.numberOfTrailingZeros(l)
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
       Integer.numberOfTrailingZeros(m) + BITS
@@ -404,6 +408,7 @@ final class RuntimeLong(
       Integer.numberOfTrailingZeros(h) + BITS01
     else
       -1
+  }
 
   private def setBit(bit: Int) =
     if (bit < BITS)
@@ -414,6 +419,7 @@ final class RuntimeLong(
       new RuntimeLong(l, m, h | (1 << (bit - BITS01)))
 
   private def divMod(y: RuntimeLong): scala.scalajs.js.Array[RuntimeLong] = {
+    // scalastyle:off return
     import scala.scalajs.js
     if (y.isZero) throw new ArithmeticException("/ by zero")
     else if (x.isZero) js.Array(Zero, Zero)
@@ -459,6 +465,7 @@ final class RuntimeLong(
         divModHelper(newX, absY, xNegative, yNegative, xMinValue)
       }
     }
+    // scalastyle:on return
   }
 
   @inline
@@ -536,6 +543,7 @@ object RuntimeLong {
   private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
   private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
 
+  // scalastyle:off disallow.space.after.token
   // Cache the instances for some "literals" used in this implementation
   val Zero     = new RuntimeLong(      0,       0,      0) // 0L
   val One      = new RuntimeLong(      1,       0,      0) // 1L
@@ -543,6 +551,7 @@ object RuntimeLong {
   val MinValue = new RuntimeLong(      0,       0, 524288) // Long.MinValue
   val MaxValue = new RuntimeLong(4194303, 4194303, 524287) // Long.MaxValue
   val TenPow9  = new RuntimeLong(1755648,     238,      0) // 1000000000L with 9 zeros
+  // scalastyle:on disallow.space.after.token
 
   def fromDouble(value: Double): RuntimeLong = {
     if (java.lang.Double.isNaN(value)) Zero

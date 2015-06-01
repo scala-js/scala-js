@@ -114,7 +114,7 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     /** has this symbol to be translated into a JS setter (both directions)? */
-    def isJSSetter(sym: Symbol) = {
+    def isJSSetter(sym: Symbol): Boolean = {
       sym.unexpandedName.decoded.endsWith("_=") &&
       sym.tpe.resultType.typeSymbol == UnitClass &&
       enteringUncurryIfAtPhaseAfter {
@@ -126,11 +126,11 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
-    def isJSBracketAccess(sym: Symbol) =
+    def isJSBracketAccess(sym: Symbol): Boolean =
       sym.hasAnnotation(JSBracketAccessAnnotation)
 
     /** has this symbol to be translated into a JS bracket call (JS to Scala) */
-    def isJSBracketCall(sym: Symbol) =
+    def isJSBracketCall(sym: Symbol): Boolean =
       sym.hasAnnotation(JSBracketCallAnnotation)
 
   }

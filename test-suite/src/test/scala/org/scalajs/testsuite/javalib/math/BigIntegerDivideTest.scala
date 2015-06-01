@@ -1,6 +1,9 @@
+// scalastyle:off line.size.limit
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerDivideTest.java
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerDivideTest.java
  */
+// scalastyle:on line.size.limit
 
 package org.scalajs.testsuite.javalib.math
 
@@ -105,7 +108,7 @@ object BigIntegerDivideTest extends JasmineTest {
       val bSign = 0
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(() => aNumber.remainder(bNumber) ).toThrow()
+      expect(() => aNumber.remainder(bNumber)).toThrow()
     }
 
     it("testCase16") {

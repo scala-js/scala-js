@@ -1,7 +1,8 @@
 /*
-*  Ported by Alistair Johnson from https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/BigDecimal.java
-*  Original license copied below:
-*/
+ * Ported by Alistair Johnson from
+ * https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/BigDecimal.java
+ * Original license copied below:
+ */
 
 /*
  *  Licensed to the Apache Software Foundation (ASF) under one or more
@@ -330,21 +331,21 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
    */
   private var _precision: Int = 0
 
-  private def this(smallValue: Long, scale: Int) {
+  private def this(smallValue: Long, scale: Int) = {
     this()
     _smallValue = smallValue
     _scale = scale
     _bitLength = bitLength(smallValue)
   }
 
-  private def this(smallValue: Int, scale: Int) {
+  private def this(smallValue: Int, scale: Int) = {
     this()
     _smallValue = smallValue
     _scale = scale
     _bitLength = bitLength(smallValue)
   }
 
-  def this(in: Array[Char], offset: Int, len: Int) {
+  def this(in: Array[Char], offset: Int, len: Int) = {
     this()
 
     val last = offset + len - 1 // last index to be copied
@@ -432,30 +433,30 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
   }
 
-  def this(in: Array[Char], offset: Int, len: Int, mc: MathContext) {
+  def this(in: Array[Char], offset: Int, len: Int, mc: MathContext) = {
     this(in, offset, len)
     inplaceRound(mc)
   }
 
-  def this(in: Array[Char]) {
+  def this(in: Array[Char]) = {
     this(in, 0, in.length)
   }
 
-  def this(in: Array[Char], mc: MathContext) {
+  def this(in: Array[Char], mc: MathContext) = {
     this(in, 0, in.length)
     inplaceRound(mc)
   }
 
-  def this(sVal: String) {
+  def this(sVal: String) = {
     this(sVal.toCharArray(), 0, sVal.length)
   }
 
-  def this(sVal: String, mc: MathContext) {
+  def this(sVal: String, mc: MathContext) = {
     this(sVal.toCharArray(), 0, sVal.length)
     inplaceRound(mc)
   }
 
-  def this(dVal: Double) {
+  def this(dVal: Double) = {
     this()
     if (dVal.isInfinite || dVal.isNaN)
       throw new NumberFormatException("Infinity or NaN: " + dVal)
@@ -490,7 +491,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       if (_bitLength < 64)
         _smallValue = mantissa3 << (-_scale)
       else
-        _intVal = new BigInteger(1, mantissa3 ).shiftLeft(-_scale)
+        _intVal = new BigInteger(1, mantissa3).shiftLeft(-_scale)
       _scale = 0
     } else if (_scale > 0) {
       val mSum = mantissaBits + LongFivePowsBitLength(_scale)
@@ -506,12 +507,12 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
   }
 
-  def this(dVal: Double, mc: MathContext) {
+  def this(dVal: Double, mc: MathContext) = {
     this(dVal)
     inplaceRound(mc)
   }
 
-  def this(unscaledVal: BigInteger, scale: Int) {
+  def this(unscaledVal: BigInteger, scale: Int) = {
     this()
     if (unscaledVal == null)
       throw new NullPointerException("unscaledVal == null")
@@ -520,34 +521,34 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     setUnscaledValue(unscaledVal)
   }
 
-  def this(bi: BigInteger) {
+  def this(bi: BigInteger) = {
     this(bi, 0)
   }
 
-  def this(bi: BigInteger, mc: MathContext) {
+  def this(bi: BigInteger, mc: MathContext) = {
     this(bi)
     inplaceRound(mc)
   }
 
-  def this(unscaledVal: BigInteger, scale: Int, mc: MathContext) {
+  def this(unscaledVal: BigInteger, scale: Int, mc: MathContext) = {
     this(unscaledVal, scale)
     inplaceRound(mc)
   }
 
-  def this(iVal: Int) {
+  def this(iVal: Int) = {
     this(iVal, 0)
   }
 
-  def this(iVal: Int, mc: MathContext) {
+  def this(iVal: Int, mc: MathContext) = {
     this(iVal, 0)
     inplaceRound(mc)
   }
 
-  def this(lVal: Long) {
+  def this(lVal: Long) = {
     this(lVal, 0)
   }
 
-  def this(lVal: Long, mc: MathContext) {
+  def this(lVal: Long, mc: MathContext) = {
     this(lVal)
     inplaceRound(mc)
   }
@@ -572,6 +573,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def add(augend: BigDecimal, mc: MathContext): BigDecimal = {
+    // scalastyle:off return
     if (augend.isZero || this.isZero || mc.precision == 0) {
       add(augend).round(mc)
     } else {
@@ -600,6 +602,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       val result = new BigDecimal(tempBI, larger._scale + 1)
       result.round(mc)
     }
+    // scalastyle:on return
   }
 
   def subtract(subtrahend: BigDecimal): BigDecimal = {
@@ -809,7 +812,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
     // In special cases it reduces the problem to call the dual method
     if (mc.precision == 0 || this.isZero || divisor.isZero)
-      return this.divide(divisor)
+      return this.divide(divisor) // scalastyle:ignore
 
     val diffScale: Long = _scale.toLong - divisor._scale
     val trailingZeros = mc.precision + 2L + divisor.approxPrecision() - approxPrecision()
@@ -908,6 +911,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def divideToIntegralValue(divisor: BigDecimal, mc: MathContext): BigDecimal = {
+    // scalastyle:off return
     val mcPrecision = mc.precision
     val diffPrecision = this.precision() - divisor.precision()
     val lastPow = BigTenPows.length - 1
@@ -967,7 +971,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     @inline
     @tailrec
     def loop(i: Int, ns: Long, q: BigInteger, prec: Int): (Long, BigInteger, Int) = {
-      if(!q.testBit(0)) {
+      if (!q.testBit(0)) {
         val qr = q.divideAndRemainderImpl(BigTenPows(i))
         val cond1 = {
           (qr.rem.signum() == 0) &&
@@ -992,6 +996,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     integralValue._scale = safeLongToInt(finalScale)
     integralValue.setUnscaledValue(strippedBI)
     integralValue
+    // scalastyle:on return
   }
 
   def remainder(divisor: BigDecimal): BigDecimal =
@@ -1094,22 +1099,20 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   }
 
   def precision(): Int = {
-    // Return the cached value if we have one.
-    if (_precision != 0)
-      return _precision
-
-    _precision = {
-      if (_bitLength == 0) {
-        1
-      } else if (_bitLength < 64) {
-        decimalDigitsInLong(_smallValue)
-      } else {
-        val decimalDigits = 1 + ((_bitLength - 1) * Log2).toInt
-        // If after division the number isn't zero, there exists an additional digit
-        if (getUnscaledValue.divide(powerOf10(decimalDigits)).signum() != 0)
-          decimalDigits + 1
-        else
-          decimalDigits
+    if (_precision == 0) {
+      _precision = {
+        if (_bitLength == 0) {
+          1
+        } else if (_bitLength < 64) {
+          decimalDigitsInLong(_smallValue)
+        } else {
+          val decimalDigits = 1 + ((_bitLength - 1) * Log2).toInt
+          // If after division the number isn't zero, there exists an additional digit
+          if (getUnscaledValue.divide(powerOf10(decimalDigits)).signum() != 0)
+            decimalDigits + 1
+          else
+            decimalDigits
+        }
       }
     }
     _precision

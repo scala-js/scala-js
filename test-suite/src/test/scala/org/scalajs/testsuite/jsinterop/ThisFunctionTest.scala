@@ -17,7 +17,7 @@ object ThisFunctionTest extends JasmineTest {
     it("should provide an implicit conversion from Scala function to js.ThisFunction") {
       val g = js.eval("""
           var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
-      """).asInstanceOf[js.Function2[js.ThisFunction2[
+      """).asInstanceOf[js.Function2[js.ThisFunction2[ // scalastyle:ignore
           js.Dynamic, Int, String, String], js.Dynamic, String]]
 
       val f = { (thiz: js.Dynamic, v: Int, u: String) =>
@@ -34,7 +34,7 @@ object ThisFunctionTest extends JasmineTest {
     it("should accept a lambda where a js.ThisFunction is expected") {
       val g = js.eval("""
           var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
-      """).asInstanceOf[js.Function2[js.ThisFunction2[
+      """).asInstanceOf[js.Function2[js.ThisFunction2[ // scalastyle:ignore
           js.Dynamic, Int, String, String], js.Dynamic, String]]
 
       val obj = js.Object().asInstanceOf[js.Dynamic]

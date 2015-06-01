@@ -211,6 +211,15 @@
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues stubs/mimaReportBinaryIssues
+    sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
+        javalibEx/scalastyle ir/scalastyle compiler/scalastyle \
+        compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
+        jsEnvs/scalastyle jsEnvs/test:scalastyle testAdapter/scalastyle \
+        sbtPlugin/scalastyle testInterface/scalastyle \
+        jasmineTestFramework/scalastyle testSuite/test:scalastyle \
+        javalibExTestSuite/test:scalastyle helloworld/scalastyle \
+        reversi/scalastyle testingExample/scalastyle \
+        testingExample/test:scalastyle
   ]]></task>
 
   <task id="partestc"><![CDATA[

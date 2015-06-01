@@ -62,7 +62,7 @@ class JarBuilderTest {
   class TestJARBuilder extends AbstractJarLibClasspathBuilder with TrivialFS
 
   @Test
-  def readInMemoryJarClasspath {
+  def readInMemoryJarClasspath: Unit = {
     val builder = new TestJARBuilder
     val cp = builder.build(Seq(()))
 

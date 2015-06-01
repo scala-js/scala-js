@@ -19,7 +19,10 @@ class BooleanReflectiveCall(value: Boolean) {
 
   // Methods of scala.Boolean
 
+  // scalastyle:off disallow.space.before.token
   def unary_! : Boolean = !value
+  // scalastyle:on disallow.space.before.token
+
   def ==(x: Boolean): Boolean = value == x
   def !=(x: Boolean): Boolean = value != x
   def ||(x: Boolean): Boolean = value || x

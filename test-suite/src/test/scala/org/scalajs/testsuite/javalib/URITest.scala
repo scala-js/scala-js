@@ -227,53 +227,53 @@ object URITest extends JasmineTest {
 
     it("should provide resolve - RFC2396 examples") {
       val base = new URI("http://a/b/c/d;p?q")
-      def resTest(ref: String, trg: String) =
+      def resTest(ref: String, trg: String): Unit =
         expect(base.resolve(ref).toString).toEqual(trg)
 
       // Normal examples
-      resTest("g:h"    , "g:h")
-      resTest("g"      , "http://a/b/c/g")
-      resTest("./g"    , "http://a/b/c/g")
-      resTest("g/"     , "http://a/b/c/g/")
-      resTest("/g"     , "http://a/g")
-      resTest("//g"    , "http://g")
-      resTest("?y"     , "http://a/b/c/?y")
-      resTest("g?y"    , "http://a/b/c/g?y")
-      resTest("#s"     , "http://a/b/c/d;p?q#s")
-      resTest("g#s"    , "http://a/b/c/g#s")
-      resTest("g?y#s"  , "http://a/b/c/g?y#s")
-      resTest(";x"     , "http://a/b/c/;x")
-      resTest("g;x"    , "http://a/b/c/g;x")
+      resTest("g:h",     "g:h")
+      resTest("g",       "http://a/b/c/g")
+      resTest("./g",     "http://a/b/c/g")
+      resTest("g/",      "http://a/b/c/g/")
+      resTest("/g",      "http://a/g")
+      resTest("//g",     "http://g")
+      resTest("?y",      "http://a/b/c/?y")
+      resTest("g?y",     "http://a/b/c/g?y")
+      resTest("#s",      "http://a/b/c/d;p?q#s")
+      resTest("g#s",     "http://a/b/c/g#s")
+      resTest("g?y#s",   "http://a/b/c/g?y#s")
+      resTest(";x",      "http://a/b/c/;x")
+      resTest("g;x",     "http://a/b/c/g;x")
       resTest("g;x?y#s", "http://a/b/c/g;x?y#s")
-      resTest("."      , "http://a/b/c/")
-      resTest("./"     , "http://a/b/c/")
-      resTest(".."     , "http://a/b/")
-      resTest("../"    , "http://a/b/")
-      resTest("../g"   , "http://a/b/g")
-      resTest("../.."  , "http://a/")
-      resTest("../../" , "http://a/")
+      resTest(".",       "http://a/b/c/")
+      resTest("./",      "http://a/b/c/")
+      resTest("..",      "http://a/b/")
+      resTest("../",     "http://a/b/")
+      resTest("../g",    "http://a/b/g")
+      resTest("../..",   "http://a/")
+      resTest("../../",  "http://a/")
       resTest("../../g", "http://a/g")
 
       // Abnormal examples
-      resTest("../../../g"   , "http://a/../g")
+      resTest("../../../g",    "http://a/../g")
       resTest("../../../../g", "http://a/../../g")
-      resTest("/./g"         , "http://a/./g")
-      resTest("/../g"        , "http://a/../g")
-      resTest("g."           , "http://a/b/c/g.")
-      resTest(".g"           , "http://a/b/c/.g")
-      resTest("g.."          , "http://a/b/c/g..")
-      resTest("..g"          , "http://a/b/c/..g")
-      resTest("./../g"       , "http://a/b/g")
-      resTest("./g/."        , "http://a/b/c/g/")
-      resTest("g/./h"        , "http://a/b/c/g/h")
-      resTest("g/../h"       , "http://a/b/c/h")
-      resTest("g;x=1/./y"    , "http://a/b/c/g;x=1/y")
-      resTest("g;x=1/../y"   , "http://a/b/c/y")
-      resTest("g?y/./x"      , "http://a/b/c/g?y/./x")
-      resTest("g?y/../x"     , "http://a/b/c/g?y/../x")
-      resTest("g#s/./x"      , "http://a/b/c/g#s/./x")
-      resTest("g#s/../x"     , "http://a/b/c/g#s/../x")
-      resTest("http:g"       , "http:g")
+      resTest("/./g",          "http://a/./g")
+      resTest("/../g",         "http://a/../g")
+      resTest("g.",            "http://a/b/c/g.")
+      resTest(".g",            "http://a/b/c/.g")
+      resTest("g..",           "http://a/b/c/g..")
+      resTest("..g",           "http://a/b/c/..g")
+      resTest("./../g",        "http://a/b/g")
+      resTest("./g/.",         "http://a/b/c/g/")
+      resTest("g/./h",         "http://a/b/c/g/h")
+      resTest("g/../h",        "http://a/b/c/h")
+      resTest("g;x=1/./y",     "http://a/b/c/g;x=1/y")
+      resTest("g;x=1/../y",    "http://a/b/c/y")
+      resTest("g?y/./x",       "http://a/b/c/g?y/./x")
+      resTest("g?y/../x",      "http://a/b/c/g?y/../x")
+      resTest("g#s/./x",       "http://a/b/c/g#s/./x")
+      resTest("g#s/../x",      "http://a/b/c/g#s/../x")
+      resTest("http:g",        "http:g")
     }
 
     it("should provide normalize - examples derived from RFC relativize") {
@@ -299,7 +299,7 @@ object URITest extends JasmineTest {
       expect(x.relativize(y) eq y).toBeTruthy
       expect(x.relativize(z).toString()).toEqual("b/")
 
-      def relTest(base: String, trg: String, exp: String) =
+      def relTest(base: String, trg: String, exp: String): Unit =
         expect(new URI(base).relativize(new URI(trg)).toString()).toEqual(exp)
 
       relTest("http://a.ch/a", "http://a.ch/a/b", "b")
@@ -343,7 +343,7 @@ object URITest extends JasmineTest {
     }
 
     it("should support toASCIIString") {
-      def cmp(base: String, encoded: String) =
+      def cmp(base: String, encoded: String): Unit =
         expect(new URI(base).toASCIIString()).toEqual(encoded)
 
       cmp("http://cs.dbpedia.org/resource/Víno",

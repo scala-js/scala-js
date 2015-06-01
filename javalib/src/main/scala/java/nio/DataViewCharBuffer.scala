@@ -100,7 +100,7 @@ private[nio] final class DataViewCharBuffer private (
 private[nio] object DataViewCharBuffer {
   private[nio] implicit object NewDataViewCharBuffer
       extends GenDataViewBuffer.NewDataViewBuffer[CharBuffer] {
-    def bytesPerElem = 2
+    def bytesPerElem: Int = 2
 
     def apply(dataView: DataView,
         initialPosition: Int, initialLimit: Int,

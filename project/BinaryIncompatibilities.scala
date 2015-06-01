@@ -24,6 +24,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // Potentially breaking, but no one calls this method except through polymorphism
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.sbtplugin.ScalaJSPlugin.requires")
   )
 
   val TestAdapter = Seq(

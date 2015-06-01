@@ -14,6 +14,8 @@ import scala.tools.nsc._
 trait JSDefinitions { self: JSGlobalAddons =>
   import global._
 
+  // scalastyle:off line.size.limit
+
   object jsDefinitions extends JSDefinitionsClass
 
   import definitions._
@@ -65,7 +67,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSFunctionTpes = JSFunctionClasses.map(_.toTypeConstructor)
 
     lazy val JSAnyModule = JSAnyClass.companionModule
-      def JSAny_fromFunction(arity: Int) = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
+      def JSAny_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSAnyModule, newTermName("fromFunction"+arity))
 
     lazy val JSDynamicModule = JSDynamicClass.companionModule
       lazy val JSDynamic_newInstance = getMemberMethod(JSDynamicModule, newTermName("newInstance"))
@@ -81,7 +83,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSArray_create = getMemberMethod(JSArrayModule, newTermName("apply"))
 
     lazy val JSThisFunctionModule = JSThisFunctionClass.companionModule
-      def JSThisFunction_fromFunction(arity: Int) = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
+      def JSThisFunction_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
 
     lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
 
@@ -107,10 +109,12 @@ trait JSDefinitions { self: JSGlobalAddons =>
 
     // This is a def, since similar symbols (arrayUpdateMethod, etc.) are in runDefinitions
     // (rather than definitions) and we weren't sure if it is safe to make this a lazy val
-    def ScalaRunTime_isArray = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
+    def ScalaRunTime_isArray: Symbol = getMemberMethod(ScalaRunTimeModule, newTermName("isArray")).suchThat(_.tpe.params.size == 2)
 
     lazy val BoxesRunTime_boxToCharacter = getMemberMethod(BoxesRunTimeModule, newTermName("boxToCharacter"))
     lazy val BoxesRunTime_unboxToChar    = getMemberMethod(BoxesRunTimeModule, newTermName("unboxToChar"))
 
   }
+
+  // scalastyle:on line.size.limit
 }

@@ -1,8 +1,12 @@
+// scalastyle:off line.size.limit
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerToStringTest.java
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigIntegerToStringTest.java
  */
+// scalastyle:on line.size.limit
 
 package org.scalajs.testsuite.javalib.math
+
 import java.math.BigInteger
 import org.scalajs.jasminetest.JasmineTest
 

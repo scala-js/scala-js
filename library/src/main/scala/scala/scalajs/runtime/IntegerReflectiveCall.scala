@@ -12,8 +12,10 @@ class IntegerReflectiveCall(value: Int) {
 
   // Methods of scala.Int whose result type is different than in scala.Double
 
+  // scalastyle:off disallow.space.before.token
   def unary_+ : scala.Int = value
   def unary_- : scala.Int = -value
+  // scalastyle:on disallow.space.before.token
 
   def +(x: scala.Byte): scala.Int = value + x
   def +(x: scala.Short): scala.Int = value + x
@@ -57,7 +59,9 @@ class IntegerReflectiveCall(value: Int) {
 
   // Methods of scala.Int that are not defined on scala.Double
 
+  // scalastyle:off disallow.space.before.token
   def unary_~ : scala.Int = ~value
+  // scalastyle:on disallow.space.before.token
 
   def <<(x: scala.Int): scala.Int = value << x
   def <<(x: scala.Long): scala.Int = value << x

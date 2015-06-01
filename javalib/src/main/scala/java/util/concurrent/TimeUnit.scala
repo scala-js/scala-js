@@ -24,7 +24,7 @@ abstract class TimeUnit private (_index: Int,
   //def timedJoin(arg1: Thread, arg2: Long): Unit
   //def sleep(arg1: Long): Unit
 
-  override def toString() = name()
+  override def toString(): String = name()
 }
 
 object TimeUnit {

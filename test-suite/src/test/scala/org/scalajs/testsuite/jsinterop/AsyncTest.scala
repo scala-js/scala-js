@@ -21,7 +21,7 @@ import org.scalajs.jasmine.JasmineExpectation
 
 object AsyncTest extends JasmineTest {
 
-  def asyncTest(implicit executor: ExecutionContext) = {
+  def asyncTest(implicit executor: ExecutionContext): ArrayBuffer[String] = {
     val steps = new ArrayBuffer[String]
 
     steps += "prep-future"
@@ -50,7 +50,7 @@ object AsyncTest extends JasmineTest {
   def expect(abuf: ArrayBuffer[String]): JasmineExpectation =
     expect(abuf.toJSArray)
 
-  def queueExecOrderTests(implicit executor: ExecutionContext) = {
+  def queueExecOrderTests(implicit executor: ExecutionContext): Unit = {
     it("should correctly order future calls") {
       val res = asyncTest
 

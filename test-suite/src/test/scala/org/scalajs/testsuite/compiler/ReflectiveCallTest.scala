@@ -18,25 +18,25 @@ object ReflectiveCallTest extends JasmineTest {
 
   describe("Reflective Calls") {
     it("should allow subtyping in return types") {
-      class A { def x = 1 }
-      class B extends A { override def x = 2 }
+      class A { def x: Int = 1 }
+      class B extends A { override def x: Int = 2 }
 
       object Generator {
         def generate(): B = new B
       }
 
-      def f(x: { def generate(): A }) = x.generate
+      def f(x: { def generate(): A }): A = x.generate
 
       expect(f(Generator).x).toEqual(2)
     }
 
     it("should allow this.type in return types") {
-      type valueType = { def value: this.type }
-      def f(x: valueType) = x.value
+      type ValueType = { def value: this.type }
+      def f(x: ValueType): ValueType = x.value
 
       class StringValue(x: String) {
         def value: this.type = this
-        override def toString = s"StringValue($x)"
+        override def toString(): String = s"StringValue($x)"
       }
 
       expect(f(new StringValue("foo")).toString).toEqual("StringValue(foo)")
@@ -46,69 +46,71 @@ object ReflectiveCallTest extends JasmineTest {
       case class Tata(name: String)
 
       object Rec {
-        def e(x: Tata) = new Tata("iei")
+        def e(x: Tata): Tata = new Tata("iei")
       }
 
-      def m[T](r: Object { def e(x: Tata): T}) =
+      def m[T](r: Object { def e(x: Tata): T}): T =
         r.e(new Tata("foo"))
 
       expect(m[Tata](Rec).toString).toEqual("Tata(iei)")
     }
 
     it("should work with unary methods on primitive types") {
-      def fInt(x: Any { def unary_- :Int }) = -x
+      // scalastyle:off disallow.space.before.token
+      def fInt(x: Any { def unary_- : Int }): Int = -x
       expect(fInt(1.toByte)).toEqual(-1)
       expect(fInt(1.toShort)).toEqual(-1)
       expect(fInt(1.toChar)).toEqual(-1)
       expect(fInt(1)).toEqual(-1)
 
-      def fLong(x: Any { def unary_- :Long }) = -x
-      expect(fLong(1L)).toEqual(-1L)
+      def fLong(x: Any { def unary_- : Long }): Long = -x
+      expect(fLong(1L) == -1L).toBeTruthy
 
-      def fFloat(x: Any { def unary_- :Float}) = -x
+      def fFloat(x: Any { def unary_- : Float}): Float = -x
       expect(fFloat(1.5f)).toEqual(-1.5f)
 
-      def fDouble(x: Any { def unary_- :Double }) = -x
+      def fDouble(x: Any { def unary_- : Double }): Double = -x
       expect(fDouble(1.5)).toEqual(-1.5)
 
-      def fBoolean(x: Any { def unary_! :Boolean }) = !x
+      def fBoolean(x: Any { def unary_! : Boolean }): Boolean = !x
       expect(fBoolean(false)).toBeTruthy
       expect(fBoolean(true)).toBeFalsy
+      // scalastyle:on disallow.space.before.token
     }
 
     it("should work with binary operators on primitive types") {
-      def fLong(x: Any { def +(x: Long): Long }) = x + 5L
-      expect(fLong(5.toByte)).toEqual(10L)
-      expect(fLong(10.toShort)).toEqual(15L)
-      expect(fLong(10.toChar)).toEqual(15L)
-      expect(fLong(-1)).toEqual(4L)
-      expect(fLong(17L)).toEqual(22L)
+      def fLong(x: Any { def +(x: Long): Long }): Long = x + 5L
+      expect(fLong(5.toByte) == 10L).toBeTruthy
+      expect(fLong(10.toShort) == 15L).toBeTruthy
+      expect(fLong(10.toChar) == 15L).toBeTruthy
+      expect(fLong(-1) == 4L).toBeTruthy
+      expect(fLong(17L) == 22L).toBeTruthy
 
-      def fInt(x: Any { def /(x: Int): Int }) = x / 7
+      def fInt(x: Any { def /(x: Int): Int }): Int = x / 7
       expect(fInt(65.toByte)).toEqual(9)
       expect(fInt(15.toShort)).toEqual(2)
       expect(fInt(25.toChar)).toEqual(3)
       expect(fInt(-40)).toEqual(-5)
 
-      def fShort(x: Any { def +(x: Short): Int }) = x + 6.toShort
+      def fShort(x: Any { def +(x: Short): Int }): Int = x + 6.toShort
       expect(fShort(65.toByte)).toEqual(71)
       expect(fShort(15.toShort)).toEqual(21)
       expect(fShort(25.toChar)).toEqual(31)
       expect(fShort(-40)).toEqual(-34)
 
-      def fFloat(x: Any { def %(x: Float): Float}) = x % 3.4f
+      def fFloat(x: Any { def %(x: Float): Float}): Float = x % 3.4f
       expect(fFloat(5.5f)).toEqual(2.1f)
 
-      def fDouble(x: Any { def /(x: Double): Double }) = x / 1.4
+      def fDouble(x: Any { def /(x: Double): Double }): Double = x / 1.4
       expect(fDouble(-1.5)).toEqual(-1.0714285714285714)
 
-      def fBoolean(x: Any { def &&(x: Boolean): Boolean }) = x && true
+      def fBoolean(x: Any { def &&(x: Boolean): Boolean }): Boolean = x && true // scalastyle:ignore
       expect(fBoolean(false)).toBeFalsy
       expect(fBoolean(true)).toBeTruthy
     }
 
     it("should work with equality operators on primitive types") {
-      def fNum(obj: Any { def ==(x: Int): Boolean }) = obj == 5
+      def fNum(obj: Any { def ==(x: Int): Boolean }): Boolean = obj == 5
       expect(fNum(5.toByte)).toBeTruthy
       expect(fNum(6.toByte)).toBeFalsy
       expect(fNum(5.toShort)).toBeTruthy
@@ -123,11 +125,11 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fNum(5.6f)).toBeFalsy
       expect(fNum(5.0)).toBeTruthy
       expect(fNum(7.9)).toBeFalsy
-      def fBool(obj: Any { def ==(x: Boolean): Boolean }) = obj == false
+      def fBool(obj: Any { def ==(x: Boolean): Boolean }): Boolean = obj == false // scalastyle:ignore
       expect(fBool(true)).toBeFalsy
       expect(fBool(false)).toBeTruthy
 
-      def fNumN(obj: Any { def !=(x: Int): Boolean }) = obj != 5
+      def fNumN(obj: Any { def !=(x: Int): Boolean }): Boolean = obj != 5
       expect(fNumN(5.toByte)).toBeFalsy
       expect(fNumN(6.toByte)).toBeTruthy
       expect(fNumN(5.toShort)).toBeFalsy
@@ -142,7 +144,7 @@ object ReflectiveCallTest extends JasmineTest {
       expect(fNumN(5.6f)).toBeTruthy
       expect(fNumN(5.0)).toBeFalsy
       expect(fNumN(7.9)).toBeTruthy
-      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }) = obj != false
+      def fBoolN(obj: Any { def !=(x: Boolean): Boolean }): Boolean = obj != false // scalastyle:ignore
       expect(fBoolN(true)).toBeTruthy
       expect(fBoolN(false)).toBeFalsy
 
@@ -153,10 +155,11 @@ object ReflectiveCallTest extends JasmineTest {
       type APL = { def apply(i: Int): String }
       type LEN = { def length: Int }
       type CLONE = Any { def clone(): Object }
-      def upd(obj: UPD, i: Int, x: String) = obj.update(i,x)
-      def apl(obj: APL, i: Int) = obj.apply(i)
-      def len(obj: LEN) = obj.length
-      def clone(obj: CLONE) = obj.clone
+
+      def upd(obj: UPD, i: Int, x: String): Unit = obj.update(i,x)
+      def apl(obj: APL, i: Int): String = obj.apply(i)
+      def len(obj: LEN): Int = obj.length
+      def clone(obj: CLONE): Object = obj.clone
 
       val x = Array("asdf","foo","bar")
       val y = clone(x).asInstanceOf[Array[String]]
@@ -173,10 +176,11 @@ object ReflectiveCallTest extends JasmineTest {
       type APL = { def apply(i: Int): Int}
       type LEN = { def length: Int }
       type CLONE = Any { def clone(): Object }
-      def upd(obj: UPD, i: Int, x: Int) = obj.update(i,x)
-      def apl(obj: APL, i: Int) = obj.apply(i)
-      def len(obj: LEN) = obj.length
-      def clone(obj: CLONE) = obj.clone
+
+      def upd(obj: UPD, i: Int, x: Int): Unit = obj.update(i,x)
+      def apl(obj: APL, i: Int): Int = obj.apply(i)
+      def len(obj: LEN): Int = obj.length
+      def clone(obj: CLONE): Object = obj.clone
 
       val x = Array(5,2,8)
       val y = clone(x).asInstanceOf[Array[Int]]
@@ -189,15 +193,15 @@ object ReflectiveCallTest extends JasmineTest {
     }
 
     it("should work with Strings") {
-      def get(obj: { def codePointAt(str: Int): Int }) =
+      def get(obj: { def codePointAt(str: Int): Int }): Int =
         obj.codePointAt(1)
       expect(get("Hi")).toEqual('i'.toInt)
 
-      def sub(x: { def substring(x: Int): AnyRef }) = x.substring(5)
+      def sub(x: { def substring(x: Int): AnyRef }): AnyRef = x.substring(5)
       expect(sub("asdfasdfasdf") == "sdfasdf").toBeTruthy
 
       type LEN_A = { def length: Any }
-      def lenA(x: LEN_A) = x.length
+      def lenA(x: LEN_A): Any = x.length
       expect(lenA("asdf") == 4).toBeTruthy
     }
 
@@ -209,10 +213,10 @@ object ReflectiveCallTest extends JasmineTest {
       abstract class B extends A
 
       class C extends B {
-        def foo = 1
+        def foo: Int = 1
       }
 
-      def call(x: { def foo: Int }) = x.foo
+      def call(x: { def foo: Int }): Int = x.foo
 
       expect(call(new C)).toEqual(1)
     }
@@ -222,7 +226,7 @@ object ReflectiveCallTest extends JasmineTest {
         def notify(): Unit
         def notifyAll(): Unit
       }
-      def objNotifyTest(obj: ObjNotifyLike) = {
+      def objNotifyTest(obj: ObjNotifyLike): Int = {
         obj.notify()
         obj.notifyAll()
         1
@@ -235,10 +239,10 @@ object ReflectiveCallTest extends JasmineTest {
 
     it("should work on java.lang.Object.clone - #303") {
       type ObjCloneLike = Any { def clone(): AnyRef }
-      def objCloneTest(obj: ObjCloneLike) = obj.clone()
+      def objCloneTest(obj: ObjCloneLike): AnyRef = obj.clone()
 
       class B(val x: Int) extends Cloneable {
-        override def clone() = super.clone
+        override def clone(): AnyRef = super.clone()
       }
 
       val b = new B(1)
@@ -253,8 +257,8 @@ object ReflectiveCallTest extends JasmineTest {
         def eq(that: AnyRef): Boolean
         def ne(that: AnyRef): Boolean
       }
-      def objEqTest(obj: ObjEqLike, that: AnyRef) = obj eq that
-      def objNeTest(obj: ObjEqLike, that: AnyRef) = obj ne that
+      def objEqTest(obj: ObjEqLike, that: AnyRef): Boolean = obj eq that
+      def objNeTest(obj: ObjEqLike, that: AnyRef): Boolean = obj ne that
 
       class A
 
@@ -274,7 +278,7 @@ object ReflectiveCallTest extends JasmineTest {
         def isInfinite(): Boolean
       }
       def test(x: FloatingNumberLike, isNaN: Boolean,
-          isInfinite: Boolean) = {
+          isInfinite: Boolean): Unit = {
         expect(x.isNaN()).toEqual(isNaN)
         expect(x.isInfinite()).toEqual(isInfinite)
       }
@@ -291,7 +295,7 @@ object ReflectiveCallTest extends JasmineTest {
     }
 
     it("should work with default arguments - #390") {
-      def pimpIt(a: Int) = new {
+      def pimpIt(a: Int) = new { // scalastyle:ignore
         def foo(b: Int, c: Int = 1): Int = a + b + c
       }
 

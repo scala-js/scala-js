@@ -1,6 +1,9 @@
+// scalastyle:off line.size.limit
 /*
- *  Ported by Alistair Johnson from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigDecimalScaleOperationsTest.java
+ * Ported by Alistair Johnson from
+ * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/math/BigDecimalScaleOperationsTest.java
  */
+// scalastyle:on line.size.limit
 
 package org.scalajs.testsuite.javalib.math
 
@@ -73,7 +76,7 @@ object  BigDecimalScaleOperationsTest extends JasmineTest {
       val aNumber = new BigDecimal(new BigInteger(a), aScale)
       val bNumber = aNumber.setScale(newScale)
       expect(bNumber.scale() == newScale).toBeTruthy
-      expect( 0).toEqual(bNumber.compareTo(aNumber))
+      expect(0).toEqual(bNumber.compareTo(aNumber))
     }
 
     it("testSetScaleLess") {
@@ -110,7 +113,7 @@ object  BigDecimalScaleOperationsTest extends JasmineTest {
       val newScale = 18
       val aNumber = new BigDecimal(new BigInteger(a), aScale)
       val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_UP)
-      expect(bNumber.scale()).toEqual( newScale)
+      expect(bNumber.scale()).toEqual(newScale)
       expect(bNumber.unscaledValue().toString).toEqual(b)
     }
 
@@ -244,7 +247,7 @@ object  BigDecimalScaleOperationsTest extends JasmineTest {
       val resScale = 46
       val aNumber = new BigDecimal(new BigInteger(a), aScale)
       val bNumber = aNumber.movePointRight(shift)
-      expect(bNumber.scale()).toEqual( resScale)
+      expect(bNumber.scale()).toEqual(resScale)
       expect(bNumber.unscaledValue().toString).toEqual(a)
     }
 

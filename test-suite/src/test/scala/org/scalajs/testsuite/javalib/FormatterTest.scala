@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.javalib
 
 import scala.scalajs.js
+import org.scalajs.jasmine.JasmineExpectation
 import org.scalajs.jasminetest.JasmineTest
 
 import java.util.{ Formatter, Formattable, FormattableFlags }
@@ -33,7 +34,8 @@ object FormatterTest extends JasmineTest {
     var width: Int = _
     var precision: Int = _
     var calls = 0
-    def formatTo(frm: Formatter, flags: Int, width: Int, precision: Int) = {
+
+    def formatTo(frm: Formatter, flags: Int, width: Int, precision: Int): Unit = {
       this.calls += 1
       this.flags = flags
       this.width = width
@@ -41,7 +43,7 @@ object FormatterTest extends JasmineTest {
       frm.out().append("foobar")
     }
 
-    def expectCalled(times: Int, flags: Int, width: Int, precision: Int) = {
+    def expectCalled(times: Int, flags: Int, width: Int, precision: Int): Unit = {
       expect(this.calls).toEqual(times)
       expect(this.flags).toEqual(flags)
       expect(this.width).toEqual(width)
@@ -50,21 +52,22 @@ object FormatterTest extends JasmineTest {
 
   }
 
-  def expectF(format: String, args: AnyRef*) = {
+  def expectF(format: String, args: AnyRef*): JasmineExpectation = {
     val fmt = new Formatter()
     val res = fmt.format(format, args:_*).toString()
     fmt.close()
     expect(res)
   }
 
-  def expectFC(format: String, flags: Int, width: Int, precision: Int) = {
+  def expectFC(format: String, flags: Int, width: Int,
+      precision: Int): JasmineExpectation = {
     val fc = new FormattableClass
     val exp = expectF(format, fc)
     fc.expectCalled(1, flags, width, precision)
     exp
   }
 
-  def expectThrow(format: String, args: AnyRef*) = {
+  def expectThrow(format: String, args: AnyRef*): Unit = {
     val fmt = new Formatter()
     expect(() => fmt.format(format, args:_*)).toThrow
   }

@@ -19,7 +19,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
 
   override protected def logger: Logger = NullLogger
 
-  protected def newJSEnv = {
+  protected def newJSEnv: RetryingComJSEnv = {
     val baseEnv = new RhinoJSEnv(Semantics.Defaults)
     new RetryingComJSEnv(new FailingEnv(baseEnv), maxFails)
   }
@@ -52,7 +52,7 @@ class RetryingComJSEnvTest extends JSEnvTest with ComTests {
     private class FailingComJSRunner(baseRunner: ComJSRunner)
         extends DummyJSRunner with ComJSRunner {
 
-      def future = baseRunner.future
+      def future: Future[Unit] = baseRunner.future
 
       def send(msg: String): Unit = {
         maybeFail()

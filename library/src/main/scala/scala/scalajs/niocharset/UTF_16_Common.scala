@@ -128,7 +128,7 @@ private[niocharset] abstract class UTF_16_Common protected (
     def encodeLoop(in: CharBuffer, out: ByteBuffer): CoderResult = {
       if (needToWriteBOM) {
         if (out.remaining < 2) {
-          return CoderResult.OVERFLOW
+          return CoderResult.OVERFLOW // scalastyle:ignore
         } else {
           // Always encode in big endian
           out.put(0xfe.toByte)

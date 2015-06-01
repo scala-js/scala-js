@@ -36,7 +36,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def comCloseJVMTest = {
+  def comCloseJVMTest: Unit = {
     val com = comRunner(s"""
       scalajsCom.init(function(msg) { scalajsCom.send("received: " + msg); });
       scalajsCom.send("Hello World");
@@ -57,7 +57,7 @@ trait ComTests extends AsyncTests {
     com.stop() // should do nothing, and not fail
   }
 
-  def comCloseJSTestCommon(timeout: Long) = {
+  def comCloseJSTestCommon(timeout: Long): Unit = {
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {});
       for (var i = 0; i < 10; ++i)
@@ -82,13 +82,13 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def comCloseJSTest = comCloseJSTestCommon(0)
+  def comCloseJSTest: Unit = comCloseJSTestCommon(0)
 
   @Test
-  def comCloseJSTestDelayed = comCloseJSTestCommon(1000)
+  def comCloseJSTestDelayed: Unit = comCloseJSTestCommon(1000)
 
   @Test
-  def doubleCloseTest = {
+  def doubleCloseTest: Unit = {
     val n = 10
     val com = pingPongRunner(n)
 
@@ -104,7 +104,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def multiEnvTest = {
+  def multiEnvTest: Unit = {
     val n = 10
     val envs = List.fill(5)(pingPongRunner(10))
 
@@ -137,7 +137,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def largeMessageTest = {
+  def largeMessageTest: Unit = {
     // 1KB data
     val baseMsg = new String(Array.tabulate(512)(_.toChar))
     val baseLen = baseMsg.length
@@ -178,7 +178,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def highCharTest = { // #1536
+  def highCharTest: Unit = { // #1536
     val com = comRunner("""
       scalajsCom.init(scalajsCom.send);
     """)
@@ -195,7 +195,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def noInitTest = {
+  def noInitTest: Unit = {
     val com = comRunner("")
 
     com.start()
@@ -205,7 +205,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def stopTestCom = {
+  def stopTestCom: Unit = {
     val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
 
     com.start()
@@ -227,7 +227,7 @@ trait ComTests extends AsyncTests {
   }
 
   @Test
-  def futureStopTest = {
+  def futureStopTest: Unit = {
     val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
 
     val fut = com.start()

@@ -111,7 +111,7 @@ class Throwable(s: String, private var e: Throwable) extends Object with java.io
     }
   }
 
-  override def toString() = {
+  override def toString(): String = {
     val className = getClass.getName
     val message = getMessage()
     if (message eq null) className
@@ -258,12 +258,10 @@ class CloneNotSupportedException(s: String) extends Exception(s) {
   def this() = this(null)
 }
 
-import scala.language.existentials
-class EnumConstantNotPresentException(
-    e: Class[_ <: Enum[T] forSome { type T <: Enum[T] }], c: String)
+class EnumConstantNotPresentException(e: Class[_ <: Enum[_]], c: String)
     extends RuntimeException(e.getName() + "." + c) {
-  def enumType() = e
-  def constantName() = c
+  def enumType(): Class[_ <: Enum[_]] = e
+  def constantName(): String = c
 }
 
 class Exception(s: String, e: Throwable) extends Throwable(s, e) {

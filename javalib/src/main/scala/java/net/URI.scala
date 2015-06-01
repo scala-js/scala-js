@@ -352,6 +352,8 @@ object URI {
     "::"+lelem+"{1,5}"+ipv4+               // ::2:3:4:5:10.0.0.1    ::5:10.0.0.1         ::10.0.0.1
     ")(?:%[0-9a-z]+)?"
 
+    // scalastyle:off line.size.limit
+
     // This was part of the original regex, but is too specific to
     // IPv6 details.
     // fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|     # fe80::7:8%eth0   fe80::7:8%1     (link-local IPv6 addresses with zone index)
@@ -361,6 +363,8 @@ object URI {
     // ([0-9a-fA-F]{1,4}:){1,4}:
     // ((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]).){3,3}
     // (25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])           # 2001:db8:3:4::192.0.2.33  64:ff9b::192.0.2.33 (IPv4-Embedded IPv6 Address)
+
+    // scalastyle:on line.size.limit
   }
 
   private val ipv6Re = new RegExp("^"+ipv6address+"$", "i")

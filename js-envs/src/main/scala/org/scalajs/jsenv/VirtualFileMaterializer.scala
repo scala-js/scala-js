@@ -58,9 +58,11 @@ final class VirtualFileMaterializer(singleDir: Boolean = false) {
     cacheDir.delete()
   }
 
-  /** Taken from Guava:
-   *  https://github.com/google/guava/blob/1c285fc8d289c43b46aa55e7f90ec0359be5b69a/guava/src/com/google/common/io/Files.java#L413-L426
+  // scalastyle:off line.size.limit
+  /* Taken from Guava:
+   * https://github.com/google/guava/blob/1c285fc8d289c43b46aa55e7f90ec0359be5b69a/guava/src/com/google/common/io/Files.java#L413-L426
    */
+  // scalastyle:on line.size.limit
   private def createTempDir(): File = {
     val baseDir = new File(System.getProperty("java.io.tmpdir"))
     val baseName = System.currentTimeMillis() + "-"

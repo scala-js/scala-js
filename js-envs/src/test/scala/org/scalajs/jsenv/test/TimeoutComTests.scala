@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 trait TimeoutComTests extends TimeoutTests with ComTests {
 
   @Test
-  def delayedInitTest = {
+  def delayedInitTest: Unit = {
 
     val com = comRunner(s"""
       setTimeout(function() {
@@ -35,7 +35,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def delayedReplyTest = {
+  def delayedReplyTest: Unit = {
 
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {
@@ -58,7 +58,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def receiveTimeoutTest = {
+  def receiveTimeoutTest: Unit = {
 
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {
@@ -85,7 +85,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def intervalSendTest = {
+  def intervalSendTest: Unit = {
 
     val com = comRunner(s"""
       scalajsCom.init(function(msg) {});
@@ -108,7 +108,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def noMessageTest = {
+  def noMessageTest: Unit = {
     val com = comRunner(s"""
       // Make sure JVM has already closed when we init
       setTimeout(scalajsCom.init, 1000, function(msg) {});
@@ -119,7 +119,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def stopTestTimeout = {
+  def stopTestTimeout: Unit = {
 
     val async = asyncRunner(s"""
       setInterval(function() {}, 0);
@@ -140,7 +140,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
   }
 
   @Test
-  def doubleStopTest = {
+  def doubleStopTest: Unit = {
     val async = asyncRunner(s"""
       setInterval(function() {}, 0);
     """)

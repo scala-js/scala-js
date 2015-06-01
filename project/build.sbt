@@ -9,6 +9,8 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.6")
 
+addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.7.0")
+
 libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
 libraryDependencies += "io.apigee" % "rhino" % "1.7R5pre4"

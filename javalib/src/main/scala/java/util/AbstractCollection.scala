@@ -37,7 +37,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
     while (iter.hasNext) {
       if (iter.next().equals(o)) {
         iter.remove()
-        return true
+        return true // scalastyle:ignore
       }
     }
     false

@@ -93,7 +93,7 @@ private[nio] final class DataViewFloatBuffer private (
 private[nio] object DataViewFloatBuffer {
   private[nio] implicit object NewDataViewFloatBuffer
       extends GenDataViewBuffer.NewDataViewBuffer[FloatBuffer] {
-    def bytesPerElem = 4
+    def bytesPerElem: Int = 4
 
     def apply(dataView: DataView,
         initialPosition: Int, initialLimit: Int,

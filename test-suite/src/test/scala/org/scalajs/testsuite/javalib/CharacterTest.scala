@@ -15,7 +15,8 @@ object CharacterTest extends JasmineTest {
   describe("java.lang.Character") {
 
     it("should provide `isISOControl`") {
-      val isoControlChars = (('\u0000' to '\u001F') ++ ('\u007F' to '\u009F')).map(_.toInt).toSet
+      val isoControlChars = (('\u0000' to '\u001F') ++
+          ('\u007F' to '\u009F')).map(_.toInt).toSet
       isoControlChars foreach { c =>
         expect(Character.isISOControl(c)).toEqual(true)
       }
@@ -36,7 +37,9 @@ object CharacterTest extends JasmineTest {
     }
 
     it("should provide `forDigit`") {
-      // Ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/CharacterTest.java
+      /* Ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/CharacterTest.java
+       */
       for (i <- 0 until 36) {
         expect(Character.digit(Character.forDigit(i, 36), 36)).toEqual(i)
       }

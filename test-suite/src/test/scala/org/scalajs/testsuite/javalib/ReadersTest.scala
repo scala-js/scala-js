@@ -21,7 +21,7 @@ object ReadersTest extends JasmineTest {
 
   describe("java.io.StringReader") {
     val str = "asdf"
-    def newReader = new StringReader(str)
+    def newReader: StringReader = new StringReader(str)
 
     it("should provide read()") {
       val r = newReader
@@ -111,7 +111,7 @@ object ReadersTest extends JasmineTest {
 
   describe("java.io.BufferedReader") {
     val str = "line1\nline2\r\n\nline4\rline5"
-    def newReader = new BufferedReader(new StringReader(str), 3)
+    def newReader: BufferedReader = new BufferedReader(new StringReader(str), 3)
 
     it("should provide read()") {
       val r = newReader
@@ -218,7 +218,7 @@ object ReadersTest extends JasmineTest {
 
       val r = new InputStreamReader(new ByteArrayInputStream(buf))
 
-      def expectRead(str: String) = {
+      def expectRead(str: String): Unit = {
         val buf = new Array[Char](str.length)
         @tailrec
         def readAll(readSoFar: Int): Int = {

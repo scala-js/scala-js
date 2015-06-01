@@ -17,8 +17,10 @@ object TypedArrayConversionTest extends JasmineTest {
   when("typedarray").
   describe("TypedArray to scala.Array conversions") {
 
-    def data(factor: Double) = js.Array(-1,1,2,3,4,5,6,7,8).map((_: Int) * factor)
-    def sum(factor: Double) = (8 * 9 / 2 - 1) * factor
+    def data(factor: Double): js.Array[Double] =
+      js.Array(-1, 1, 2, 3, 4, 5, 6, 7, 8).map((_: Int) * factor)
+
+    def sum(factor: Double): Double = (8 * 9 / 2 - 1) * factor
 
     it("should convert an Int8Array to a scala.Array[Byte]") {
       val x = new Int8Array(data(1))

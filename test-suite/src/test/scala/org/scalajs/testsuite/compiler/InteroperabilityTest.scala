@@ -112,7 +112,7 @@ object InteroperabilityTest extends JasmineTest {
               return parseInt(value);
             }
           };
-    	}
+      }
       """)
 
       // Use alias for convenience: see end of file for definition
@@ -263,7 +263,7 @@ object InteroperabilityTest extends JasmineTest {
 
       trait Foo {
         @JSExport
-        def theValue = 1
+        def theValue: Int = 1
       }
       class Bar extends Foo
 

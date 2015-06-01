@@ -134,7 +134,7 @@ object UndefOrTest extends JasmineTest {
 
     it("collect should call guard at most once") {
       var witness = 0
-      def guard(x: String) = {
+      def guard(x: String): Boolean = {
         witness += 1
         true
       }

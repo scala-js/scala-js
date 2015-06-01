@@ -48,7 +48,7 @@ class HashSet[E] extends AbstractSet[E] with Set[E]
     changed
   }
 
-  override def add(e: E): Boolean = 
+  override def add(e: E): Boolean =
     inner.add(Box(e))
 
   override def addAll(c: Collection[_ <: E]): Boolean = {

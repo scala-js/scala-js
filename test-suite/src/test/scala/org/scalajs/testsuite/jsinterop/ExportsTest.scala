@@ -189,7 +189,7 @@ object ExportsTest extends JasmineTest {
 
       class Bar extends Foo {
         val x = 1
-        def method(x: Int) = 2 * x
+        def method(x: Int): Int = 2 * x
       }
 
       val bar = (new Bar).asInstanceOf[js.Dynamic]
@@ -201,12 +201,12 @@ object ExportsTest extends JasmineTest {
     it("should offer overloading with inherited exports") {
       class A {
         @JSExport
-        def foo(x: Int) = 2*x
+        def foo(x: Int): Int = 2*x
       }
 
       class B extends A{
         @JSExport("foo")
-        def bar(x: String) = s"Hello $x"
+        def bar(x: String): String = s"Hello $x"
       }
 
       val b = (new B).asInstanceOf[js.Dynamic]
@@ -218,7 +218,7 @@ object ExportsTest extends JasmineTest {
     it("should offer exports for generic methods") {
       class Foo {
         @JSExport
-        def gen[T <: AnyRef](x: T) = x
+        def gen[T <: AnyRef](x: T): T = x
       }
 
       val x = (new Object).asInstanceOf[js.Any]
@@ -231,7 +231,7 @@ object ExportsTest extends JasmineTest {
     it("should offer exports for lambda return types") {
       class Foo {
         @JSExport
-        def lambda(x: Int) = (y: Int) => x + y
+        def lambda(x: Int): Int => Int = (y: Int) => x + y
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -256,7 +256,7 @@ object ExportsTest extends JasmineTest {
     it("should offer exports for default arguments") {
       class Foo {
         @JSExport
-        def defArg(x: Int = 1) = x
+        def defArg(x: Int = 1): Int = x
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -268,7 +268,7 @@ object ExportsTest extends JasmineTest {
       class UhOh {
         // Something no one should export
         @JSExport
-        def ahem[T : Comparable](x: T)(implicit y: Int) = ???
+        def ahem[T: Comparable](x: T)(implicit y: Int): Nothing = ???
       }
 
       val x = (new UhOh).asInstanceOf[js.Dynamic]
@@ -278,7 +278,7 @@ object ExportsTest extends JasmineTest {
     it("should offer exports with value class return types") {
       class Foo {
         @JSExport
-        def vc(x: Int) = new SomeValueClass(x)
+        def vc(x: Int): SomeValueClass = new SomeValueClass(x)
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -307,7 +307,7 @@ object ExportsTest extends JasmineTest {
     it("should accept boxed value classes as parameter") {
       class Foo {
         @JSExport
-        def vc(x: SomeValueClass) = x.i
+        def vc(x: SomeValueClass): Int = x.i
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -351,7 +351,7 @@ object ExportsTest extends JasmineTest {
     it("should offer exports for variable argument methods - #393") {
       class A {
         @JSExport
-        def foo(i: String*) = i.mkString("|")
+        def foo(i: String*): String = i.mkString("|")
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]
@@ -364,13 +364,13 @@ object ExportsTest extends JasmineTest {
     it("should correctly overload in view of difficult repeated parameter lists") {
       class A {
         @JSExport
-        def foo(a: String, b: String, i: Int, c: String) = 1
+        def foo(a: String, b: String, i: Int, c: String): Int = 1
 
         @JSExport
-        def foo(a: String*) = 2
+        def foo(a: String*): Int = 2
 
         @JSExport
-        def foo(x: Int)(a: Int*) = x * 100000 + a.sum
+        def foo(x: Int)(a: Int*): Int = x * 100000 + a.sum
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]
@@ -388,12 +388,12 @@ object ExportsTest extends JasmineTest {
     it("should offer exports with default arguments") {
       class A {
         var oneCount: Int = 0
-        def one = {
+        def one: Int = {
           oneCount += 1
           1
         }
         @JSExport
-        def foo(a: Int = one)(b: Int = a + one)(c: Int = b + one) =
+        def foo(a: Int = one)(b: Int = a + one)(c: Int = b + one): Int =
           a + b + c
       }
 
@@ -422,13 +422,13 @@ object ExportsTest extends JasmineTest {
     it("should correctly overload methods in presence of default parameters") {
       class A {
         @JSExport
-        def foo(a: Int)(b: Int = 5)(c: Int = 7) = 1000 + a + b + c
+        def foo(a: Int)(b: Int = 5)(c: Int = 7): Int = 1000 + a + b + c
 
         @JSExport
-        def foo(a: Int, b: String) = 2
+        def foo(a: Int, b: String): Int = 2
 
         @JSExport
-        def foo(a: Int, b: Int, c: String) = 3
+        def foo(a: Int, b: Int, c: String): Int = 3
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]
@@ -444,10 +444,10 @@ object ExportsTest extends JasmineTest {
     it("should prefer overloads taking a Unit over methods with default parameters") {
       class A {
         @JSExport
-        def foo(a: Int)(b: String = "asdf") = s"$a $b"
+        def foo(a: Int)(b: String = "asdf"): String = s"$a $b"
 
         @JSExport
-        def foo(a: Int, b: Unit) = "woot"
+        def foo(a: Int, b: Unit): String = "woot"
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]
@@ -461,9 +461,9 @@ object ExportsTest extends JasmineTest {
     it("should correctly overload methods in presence of default parameters and repeated parameters") {
       class A {
         @JSExport
-        def foo(x: Int, y: Int = 1) = x + y
+        def foo(x: Int, y: Int = 1): Int = x + y
         @JSExport
-        def foo(x: String*) = x.mkString("|")
+        def foo(x: String*): String = x.mkString("|")
       }
 
       val a = (new A).asInstanceOf[js.Dynamic]
@@ -501,7 +501,7 @@ object ExportsTest extends JasmineTest {
     it("should correctly box repeated parameter lists with value classes") {
       class A {
         @JSExport
-        def foo(vcs: SomeValueClass*) = vcs.map(_.i).sum
+        def foo(vcs: SomeValueClass*): Int = vcs.map(_.i).sum
       }
 
       val vc1 = new SomeValueClass(1)
@@ -621,9 +621,9 @@ object ExportsTest extends JasmineTest {
 
       class Foo {
         @JSExport
-        def foo(x: Int) = 1
+        def foo(x: Int): Int = 1
         @JSExport
-        def foo(x: Long) = 2
+        def foo(x: Long): Int = 2
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -632,7 +632,7 @@ object ExportsTest extends JasmineTest {
       // long which is typed as a js.Any
       object LongFactory {
         @JSExport
-        def aLong = 1L
+        def aLong: Long = 1L
       }
       val trueJsLong = LongFactory.asInstanceOf[js.Dynamic].aLong
 
@@ -720,7 +720,7 @@ object ExportsTest extends JasmineTest {
         val a = 1
 
         @JSExport // double annotation allowed
-        def b = 2
+        def b: Int = 2
 
         lazy val c = 3
 
@@ -750,7 +750,7 @@ object ExportsTest extends JasmineTest {
         @JSExport("a")
         @JSExport
         @JSExport("a")
-        def b = 1
+        def b: Int = 1
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -763,11 +763,11 @@ object ExportsTest extends JasmineTest {
 
       class FooNamed {
         @JSExportNamed("bar1")
-        def bar(x: Int, y: Int) = x + y
+        def bar(x: Int, y: Int): Int = x + y
 
         @JSExportNamed("bar2")
         @JSExport
-        def bar(x: Int = 1)(y: Int = x)(z: Int = y) = x + y + z
+        def bar(x: Int = 1)(y: Int = x)(z: Int = y): Int = x + y + z
       }
 
       val foo = (new FooNamed).asInstanceOf[js.Dynamic]
@@ -803,23 +803,23 @@ object ExportsTest extends JasmineTest {
     it("should reject bad values for arguments of primitive value type") {
       class Foo {
         @JSExport
-        def doBool(x: Boolean) = x
+        def doBool(x: Boolean): Boolean = x
         @JSExport
-        def doChar(x: Char) = x
+        def doChar(x: Char): Char = x
         @JSExport
-        def doByte(x: Byte) = x
+        def doByte(x: Byte): Byte = x
         @JSExport
-        def doShort(x: Short) = x
+        def doShort(x: Short): Short = x
         @JSExport
-        def doInt(x: Int) = x
+        def doInt(x: Int): Int = x
         @JSExport
-        def doLong(x: Long) = x
+        def doLong(x: Long): Long = x
         @JSExport
-        def doFloat(x: Float) = x
+        def doFloat(x: Float): Float = x
         @JSExport
-        def doDouble(x: Double) = x
+        def doDouble(x: Double): Double = x
         @JSExport
-        def doUnit(x: Unit) = x
+        def doUnit(x: Unit): Unit = x
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -873,7 +873,7 @@ object ExportsTest extends JasmineTest {
     it("should reject bad values for arguments of value class type - #613") {
       class Foo {
         @JSExport
-        def doVC(x: SomeValueClass) = x
+        def doVC(x: SomeValueClass): SomeValueClass = x
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -891,7 +891,7 @@ object ExportsTest extends JasmineTest {
 
       class Foo {
         @JSExport
-        def doA(x: A) = x
+        def doA(x: A): A = x
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -1039,13 +1039,13 @@ object ExportsTest extends JasmineTest {
       trait HasBar { def bar: Int }
 
       // This is just to check that everything here compiles
-      class A extends AutoExportIgnoreTrait { def foo = 1 }
-      class B extends AutoExportIgnoreClass { def foo = 2 }
+      class A extends AutoExportIgnoreTrait { def foo: Int = 1 }
+      class B extends AutoExportIgnoreClass { def foo: Int = 2 }
 
-      val a = new A { override def foo = 3 }
-      val b = new B { override def foo = 4 }
-      val c = new AutoExportIgnoreClass with HasBar { def bar = 1 }
-      val d = new AutoExportIgnoreTrait with HasBar { def bar = 1 }
+      val a = new A { override def foo: Int = 3 }
+      val b = new B { override def foo: Int = 4 }
+      val c = new AutoExportIgnoreClass with HasBar { def bar: Int = 1 }
+      val d = new AutoExportIgnoreTrait with HasBar { def bar: Int = 1 }
 
       // Check the classes are usable
       expect((new A).foo).toEqual(1)
@@ -1103,7 +1103,7 @@ class ExportedVarArgClass(x: String*) {
   def this(x: Int, y: String) = this(s"Number: <$x>", y)
 
   @JSExport
-  def result = x.mkString("|")
+  def result: String = x.mkString("|")
 }
 
 @JSExport
@@ -1113,7 +1113,7 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
   def this(x: Int, y: Int = 5) = this(x, y, 100)
 
   @JSExport
-  def result = x + y + z
+  def result: Int = x + y + z
 }
 
 @JSExport("org.ExportedUnderOrgObject")

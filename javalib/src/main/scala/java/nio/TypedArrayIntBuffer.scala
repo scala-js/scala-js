@@ -96,7 +96,7 @@ private[nio] final class TypedArrayIntBuffer private (
 private[nio] object TypedArrayIntBuffer {
   private[nio] implicit object NewTypedArrayIntBuffer
       extends GenTypedArrayBuffer.NewTypedArrayBuffer[IntBuffer] {
-    def bytesPerElem = 4
+    def bytesPerElem: Int = 4
 
     def apply(typedArray: Int32Array,
         initialPosition: Int, initialLimit: Int,

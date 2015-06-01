@@ -337,6 +337,7 @@ class PhantomJSEnv(
      * https://github.com/ariya/phantomjs/issues/10522
      */
     override protected def initFiles(): Seq[VirtualJSFile] = Seq(
+        // scalastyle:off line.size.limit
         new MemVirtualJSFile("bindPolyfill.js").withContent(
             """
             |// Polyfill for Function.bind from Facebook react:
@@ -391,6 +392,7 @@ class PhantomJSEnv(
             |};
             """.stripMargin
         )
+        // scalastyle:on line.size.limit
     )
 
     protected def writeWebpageLauncher(out: Writer): Unit = {
@@ -422,7 +424,8 @@ class PhantomJSEnv(
                |  if (trace && trace.length) {
                |    console.error('');
                |    trace.forEach(function(t) {
-               |      console.error('  ' + t.file + ':' + t.line + (t.function ? ' (in function "' + t.function +'")' : ''));
+               |      console.error('  ' + t.file + ':' + t.line +
+               |        (t.function ? ' (in function "' + t.function +'")' : ''));
                |    });
                |  }
                |

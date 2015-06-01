@@ -52,9 +52,9 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
    *  reference to the Symbols.
    */
   sealed abstract class TypeKind {
-    def isReferenceType = false
-    def isArrayType = false
-    def isValueType = false
+    def isReferenceType: Boolean = false
+    def isArrayType: Boolean = false
+    def isValueType: Boolean = false
 
     def toIRType: Types.Type
     def toReferenceType: Types.ReferenceType
@@ -69,12 +69,12 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
   /** The void, for trees that can only appear in statement position. */
   case object VOID extends TypeKindButArray {
-    protected def typeSymbol = UnitClass
+    protected def typeSymbol: Symbol = UnitClass
     def toIRType: Types.NoType.type = Types.NoType
   }
 
   sealed abstract class ValueTypeKind extends TypeKindButArray {
-    override def isValueType = true
+    override def isValueType: Boolean = true
 
     val primitiveCharCode: Char = typeSymbol match {
       case BooleanClass  => 'Z'
@@ -115,7 +115,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
   /** Nothing */
   case object NOTHING extends TypeKindButArray {
-    protected def typeSymbol = definitions.NothingClass
+    protected def typeSymbol: Symbol = definitions.NothingClass
     def toIRType: Types.NothingType.type = Types.NothingType
     override def toReferenceType: Types.ClassType =
       Types.ClassType(Definitions.RuntimeNothingClass)
@@ -123,7 +123,7 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
 
   /** Null */
   case object NULL extends TypeKindButArray {
-    protected def typeSymbol = definitions.NullClass
+    protected def typeSymbol: Symbol = definitions.NullClass
     def toIRType: Types.NullType.type = Types.NullType
     override def toReferenceType: Types.ClassType =
       Types.ClassType(Definitions.RuntimeNullClass)
@@ -132,15 +132,15 @@ trait TypeKinds extends SubComponent { this: GenJSCode =>
   /** An object */
   case class REFERENCE private[TypeKinds] (typeSymbol: Symbol) extends TypeKindButArray {
     override def toString(): String = "REFERENCE(" + typeSymbol.fullName + ")"
-    override def isReferenceType = true
+    override def isReferenceType: Boolean = true
 
     def toIRType: Types.Type = encodeClassType(typeSymbol)
   }
 
   /** An array */
   case class ARRAY private[TypeKinds] (elem: TypeKind) extends TypeKind {
-    override def toString = "ARRAY[" + elem + "]"
-    override def isArrayType = true
+    override def toString(): String = "ARRAY[" + elem + "]"
+    override def isArrayType: Boolean = true
 
     def dimensions: Int = elem match {
       case a: ARRAY => a.dimensions + 1

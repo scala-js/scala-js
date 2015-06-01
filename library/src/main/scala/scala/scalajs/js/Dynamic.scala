@@ -86,7 +86,7 @@ object Dynamic {
    *  returns the JavaScript object
    *    {foo: 3, bar: "foobar"}
    */
-  object literal extends scala.Dynamic {
+  object literal extends scala.Dynamic { // scalastyle:ignore
     /** literal creation like this:
      *  js.Dynamic.literal(name1 = "value", name2 = "value")
      */

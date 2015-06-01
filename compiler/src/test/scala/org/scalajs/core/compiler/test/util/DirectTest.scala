@@ -15,7 +15,7 @@ abstract class DirectTest {
   def extraArgs: List[String] = Nil
 
   /** create settings objects for test from arg string */
-  def newSettings(args: List[String]) = {
+  def newSettings(args: List[String]): Settings = {
     val s = new Settings
     s processArguments (args, true)
     s
@@ -39,9 +39,9 @@ abstract class DirectTest {
   def newScalaJSPlugin(global: Global): ScalaJSPlugin =
     new ScalaJSPlugin(global)
 
-  def newReporter(settings: Settings) = new ConsoleReporter(settings)
+  def newReporter(settings: Settings): Reporter = new ConsoleReporter(settings)
 
-  def newSources(codes: String*) = codes.toList.zipWithIndex map {
+  private def newSources(codes: String*) = codes.toList.zipWithIndex map {
     case (src, idx) => new BatchSourceFile(s"newSource${idx + 1}.scala", src)
   }
 
@@ -66,10 +66,10 @@ abstract class DirectTest {
   // - org.scalajs.core.compiler.test.JSExportTest
   // - org.scalajs.core.compiler.test.JSDynamicLiteralTest
   // Filed as #1443
-  def defaultGlobal = newScalaJSCompiler()
+  def defaultGlobal: Global = newScalaJSCompiler()
 
-  def testOutputPath = sys.props("scala.scalajs.compiler.test.output")
-  def scalaJSLibPath = sys.props("scala.scalajs.compiler.test.scalajslib")
-  def scalaLibPath   = sys.props("scala.scalajs.compiler.test.scalalib")
+  def testOutputPath: String = sys.props("scala.scalajs.compiler.test.output")
+  def scalaJSLibPath: String = sys.props("scala.scalajs.compiler.test.scalajslib")
+  def scalaLibPath: String   = sys.props("scala.scalajs.compiler.test.scalalib")
 
 }

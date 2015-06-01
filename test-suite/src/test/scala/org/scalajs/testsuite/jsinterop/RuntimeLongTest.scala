@@ -27,6 +27,8 @@ object RuntimeLongTest extends JasmineTest {
 
   describe("scala.scalajs.runtime.RuntimeLong") {
 
+    // scalastyle:off disallow.space.before.token disallow.space.after.token
+
     def fromInt(x: Int): RuntimeLong = new RuntimeLong(x)
 
     val maxInt  = fromInt(Int.MaxValue)
@@ -132,6 +134,8 @@ object RuntimeLongTest extends JasmineTest {
       expect(`3632147899696541255L`.hashCode()).toEqual(1735398658)
       expect(`7632147899696541255L`.hashCode()).toEqual(-1689438124)
     }
+
+    // scalastyle:on disallow.space.before.token disallow.space.after.token
 
   }
 

@@ -22,10 +22,10 @@ abstract class CrossType {
   def projectDir(crossBase: File, projectType: String): File
 
   /** The base directory for the JVM project */
-  final def jvmDir(crossBase: File) = projectDir(crossBase, "jvm")
+  final def jvmDir(crossBase: File): File = projectDir(crossBase, "jvm")
 
   /** The base directory for the JS project */
-  final def jsDir(crossBase: File) = projectDir(crossBase, "js")
+  final def jsDir(crossBase: File): File = projectDir(crossBase, "js")
 
   /** The location of a shared source directory (if it exists)
    *  @param projectBase the base directory of a (true sbt) Project

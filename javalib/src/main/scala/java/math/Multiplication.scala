@@ -1,5 +1,6 @@
 /*
- *  Ported by Alistair Johnson from https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/Multiplication.java
+ * Ported by Alistair Johnson from
+ * https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/Multiplication.java
  */
 
 /*
@@ -161,8 +162,10 @@ private[math] object Multiplication {
    *              u = u<sub>1</sub> * B + u<sub>0</sub><br>
    *              v = v<sub>1</sub> * B + v<sub>0</sub><br>
    *
-   *   u*v = (u<sub>1</sub> * v<sub>1</sub>) * B<sub>2</sub> + ((u<sub>1</sub> - u<sub>0</sub>) * (v<sub>0</sub> - v<sub>1</sub>) + u<sub>1</sub> * v<sub>1</sub> +
-   *   u<sub>0</sub> * v<sub>0</sub> ) * B + u<sub>0</sub> * v<sub>0</sub><br>
+   *   u*v = (u<sub>1</sub> * v<sub>1</sub>) * B<sub>2</sub> +
+   *     ((u<sub>1</sub> - u<sub>0</sub>) * (v<sub>0</sub> - v<sub>1</sub>) +
+   *       u<sub>1</sub> * v<sub>1</sub> + u<sub>0</sub> * v<sub>0</sub>) * B +
+   *     u<sub>0</sub> * v<sub>0</sub><br>
    *  </tt>
    *
    *  @param op1 first factor of the product
@@ -348,9 +351,9 @@ private[math] object Multiplication {
       }
     }
 
-    loop(exponent, BigInteger.ONE , base)
+    loop(exponent, BigInteger.ONE, base)
   }
-  
+
   /** Calculates a power of ten, which exponent could be out of 32-bit range.
    *
    *  Note that internally this method will be used in the worst case with

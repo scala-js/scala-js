@@ -1,6 +1,7 @@
 /*
- *  Ported by Alistair Johnson from  https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/Conversion.java
- *  Original license copied below:
+ * Ported by Alistair Johnson from
+ * https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/java/math/Conversion.java
+ * Original license copied below:
  */
 
 /*
@@ -240,7 +241,7 @@ private[math] object Conversion {
         loop()
         result = result.dropWhile(_ == '0')
       }
-      if ( sign < 0) '-' + result
+      if (sign < 0) '-' + result
       else result
     }
   }
@@ -354,7 +355,7 @@ private[math] object Conversion {
         else -Double.MaxValue
       } else {
         val droppedBits = BitLevel.nonZeroDroppedBits(delta, bi.digits)
-        if (((mantissa & 1) == 1) && (((mantissa & 2) == 2) || droppedBits ))
+        if (((mantissa & 1) == 1) && (((mantissa & 2) == 2) || droppedBits))
           mantissa += 2
 
         mantissa >>= 1

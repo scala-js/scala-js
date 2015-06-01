@@ -27,23 +27,23 @@ object ArrayBuilderTest extends JasmineTest {
   def erase(x: Any): Any = x
 
   @inline
-  def makeNoInline[T : ClassTag](): ArrayBuilder[T] = {
+  def makeNoInline[T: ClassTag](): ArrayBuilder[T] = {
     @noinline def ct = implicitly[ClassTag[T]]
     ArrayBuilder.make[T]()(ct)
   }
 
   @inline
-  def zerosInline[T : ClassTag](length: Int): Array[T] =
+  def zerosInline[T: ClassTag](length: Int): Array[T] =
     Array.fill(length)(null.asInstanceOf[T])
 
   @noinline
-  def zerosNoInline[T : ClassTag](length: Int): Array[T] =
+  def zerosNoInline[T: ClassTag](length: Int): Array[T] =
     Array.fill(length)(null.asInstanceOf[T])
 
-  @noinline def someInt = 53
-  @noinline def someChar = 'S'
-  @noinline def someBoolean = false
-  @noinline def someString = "world"
+  @noinline def someInt: Int = 53
+  @noinline def someChar: Char = 'S'
+  @noinline def someBoolean: Boolean = false
+  @noinline def someString: String = "world"
 
   describe("scala.collection.mutable.ArrayBuilder") {
 
@@ -162,7 +162,7 @@ object ArrayBuilderTest extends JasmineTest {
       expect(a.getClass).toBe(classOf[Array[Boolean]])
       expect(a.length).toEqual(3)
       expect(erase(a(0)).isInstanceOf[Boolean]).toBeTruthy
-      expect(erase(a(0)) == false).toBeTruthy
+      expect(erase(a(0)) == false).toBeTruthy // scalastyle:ignore
     }
 
     it("Boolean, zeros noinline") {
@@ -170,7 +170,7 @@ object ArrayBuilderTest extends JasmineTest {
       expect(a.getClass).toBe(classOf[Array[Boolean]])
       expect(a.length).toEqual(3)
       expect(erase(a(0)).isInstanceOf[Boolean]).toBeTruthy
-      expect(erase(a(0)) == false).toBeTruthy
+      expect(erase(a(0)) == false).toBeTruthy // scalastyle:ignore
     }
 
     it("Unit, normal case inline") {

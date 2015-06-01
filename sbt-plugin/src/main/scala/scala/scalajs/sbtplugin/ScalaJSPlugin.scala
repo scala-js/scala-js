@@ -24,7 +24,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
 
 object ScalaJSPlugin extends AutoPlugin {
-  override def requires = plugins.JvmPlugin
+  override def requires: Plugins = plugins.JvmPlugin
 
   /* The following module-case double definition is a workaround for a bug
    * somewhere in the sbt dependency macro - scala macro pipeline that affects

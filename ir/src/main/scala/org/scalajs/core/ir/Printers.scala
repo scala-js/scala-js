@@ -87,7 +87,7 @@ object Printers {
   }
 
   class IRTreePrinter(protected val out: Writer) extends IndentationManager {
-    def printTopLevelTree(tree: Tree) {
+    def printTopLevelTree(tree: Tree): Unit = {
       tree match {
         case Skip() =>
           // do not print anything

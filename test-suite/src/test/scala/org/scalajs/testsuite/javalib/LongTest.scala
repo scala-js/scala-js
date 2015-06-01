@@ -155,7 +155,9 @@ object LongTest extends JasmineTest {
       expect((Int.MaxValue.toLong+1L).toString).toEqual("2147483648")
       expect(Int.MinValue.toLong.toString).toEqual("-2147483648")
 
-      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      /* Ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+       */
       expect(new JLong(89000000005L).toString).toEqual("89000000005")
       expect(new JLong(JLong.MIN_VALUE).toString).toEqual("-9223372036854775808")
       expect(new JLong(JLong.MAX_VALUE).toString).toEqual("9223372036854775807")
@@ -170,7 +172,9 @@ object LongTest extends JasmineTest {
     }
 
     it("should implement toString with radix") {
-      // ported from https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+      /* Ported from
+       * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
+       */
       expect(JLong.toString(100000000L, 10)).toEqual("100000000")
       expect(JLong.toString(8589934591L, 8)).toEqual("77777777777")
       expect(JLong.toString(68719476735L, 16)).toEqual("fffffffff")
@@ -182,6 +186,7 @@ object LongTest extends JasmineTest {
     }
 
     it("should implement toBinaryString") {
+      // scalastyle:off disallow.space.before.token disallow.space.after.token line.size.limit
       expect(JLong.toBinaryString(              0L)).toEqual("0")
       expect(JLong.toBinaryString(             -1L)).toEqual("1111111111111111111111111111111111111111111111111111111111111111")
       expect(JLong.toBinaryString(      456324454L)).toEqual("11011001100101111010101100110")
@@ -190,9 +195,11 @@ object LongTest extends JasmineTest {
       expect(JLong.toBinaryString(-49575304457780L)).toEqual("1111111111111111110100101110100101011001100101101001000111001100")
       expect(JLong.toBinaryString(Long.MinValue   )).toEqual("1000000000000000000000000000000000000000000000000000000000000000")
       expect(JLong.toBinaryString(Long.MaxValue   )).toEqual("111111111111111111111111111111111111111111111111111111111111111")
+      // scalastyle:on disallow.space.before.token disallow.space.after.token line.size.limit
     }
 
     it("should implement toHexString") {
+      // scalastyle:off disallow.space.before.token disallow.space.after.token
       expect(JLong.toHexString(              0L)).toEqual("0")
       expect(JLong.toHexString(             -1L)).toEqual("ffffffffffffffff")
       expect(JLong.toHexString(      456324454L)).toEqual("1b32f566")
@@ -201,9 +208,11 @@ object LongTest extends JasmineTest {
       expect(JLong.toHexString(-49575304457780L)).toEqual("ffffd2e9599691cc")
       expect(JLong.toHexString(Long.MinValue   )).toEqual("8000000000000000")
       expect(JLong.toHexString(Long.MaxValue   )).toEqual("7fffffffffffffff")
+      // scalastyle:on disallow.space.before.token disallow.space.after.token
     }
 
     it("should implement toOctalString") {
+      // scalastyle:off disallow.space.before.token disallow.space.after.token
       expect(JLong.toOctalString(              0L)).toEqual("0")
       expect(JLong.toOctalString(             -1L)).toEqual("1777777777777777777777")
       expect(JLong.toOctalString(      456324454L)).toEqual("3314572546")
@@ -212,6 +221,7 @@ object LongTest extends JasmineTest {
       expect(JLong.toOctalString(-49575304457780L)).toEqual("1777776456453145510714")
       expect(JLong.toOctalString(Long.MinValue   )).toEqual("1000000000000000000000")
       expect(JLong.toOctalString(Long.MaxValue   )).toEqual("777777777777777777777")
+      // scalastyle:on disallow.space.before.token disallow.space.after.token
     }
 
     it("should correctly compute trailing zeros") {

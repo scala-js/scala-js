@@ -29,17 +29,17 @@ trait ArraysTest extends JasmineTest {
   implicit def array2jsArray[T](arr: Array[T]): js.Array[T] = arr.toJSArray
 
   /** Overridden by typedarray tests */
-  def Array[T : ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)
+  def Array[T: ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)
 
   /** Overridden by typedarray tests */
-  def testBody(suite: => Unit) = describe("java.util.Arrays")(suite)
+  def testBody(suite: => Unit): Unit = describe("java.util.Arrays")(suite)
 
   val stringComparator = new Comparator[String]() {
-    def compare(s1: String, s2: String) = s1.compareTo(s2)
+    def compare(s1: String, s2: String): Int = s1.compareTo(s2)
   }
 
   val intComparator = new Comparator[Int]() {
-    def compare(i1: Int, i2: Int) = i1 - i2
+    def compare(i1: Int, i2: Int): Int = i1 - i2
   }
 
   testBody {
@@ -721,14 +721,16 @@ trait ArraysTest extends JasmineTest {
     }
 
     it("should respond to `equals` for AnyRefs") {
+      // scalastyle:off equals.hash.code
       class A(private val x: Int) {
-        override def equals(that: Any) = that match {
+        override def equals(that: Any): Boolean = that match {
           case that: A => this.x == that.x
           case _ => false
         }
       }
+      // scalastyle:on equals.hash.code
 
-      def A(x: Int) = new A(x)
+      def A(x: Int): A = new A(x)
 
       val a1 = Array[AnyRef](A(1), A(-7), A(10))
 

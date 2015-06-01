@@ -3,14 +3,16 @@ package org.scalajs.core.compiler.test
 import org.scalajs.core.compiler.test.util._
 import org.junit.Test
 
+// scalastyle:off line.size.limit
+
 class JSDynamicLiteralTest extends DirectTest with TestHelpers {
 
-  override def preamble =
+  override def preamble: String =
     """import scala.scalajs.js.Dynamic.{ literal => lit }
     """
 
   @Test
-  def callApplyOnly = {
+  def callApplyOnly: Unit = {
 
     // selectDynamic (with any name)
     expr"""
@@ -40,7 +42,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def goodTypesOnly = {
+  def goodTypesOnly: Unit = {
 
     // Bad value type (applyDynamic)
     """
@@ -69,7 +71,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNonLiteralMethodName = {
+  def noNonLiteralMethodName: Unit = {
 
     // applyDynamicNamed
     """
@@ -100,7 +102,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def keyDuplicationWarning = {
+  def keyDuplicationWarning: Unit = {
 
     // detects duplicate named keys
     expr"""
