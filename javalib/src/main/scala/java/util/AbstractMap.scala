@@ -1,5 +1,6 @@
 package java.util
 
+import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 
 object AbstractMap {
@@ -23,8 +24,8 @@ object AbstractMap {
     keyHash ^ valueHash
   }
 
-  class SimpleEntry[K, V](private var key: K,
-      private var value: V) extends Map.Entry[K, V] with Serializable {
+  class SimpleEntry[K, V](private var key: K, private var value: V)
+      extends Map.Entry[K, V] with Serializable {
 
     def this(entry: Map.Entry[_ <: K, _ <: V]) =
       this(entry.getKey, entry.getValue)
@@ -49,8 +50,8 @@ object AbstractMap {
       getKey + "=" + getValue
   }
 
-  class SimpleImmutableEntry[K, V](key: K,
-      value: V) extends Map.Entry[K, V] with Serializable {
+  class SimpleImmutableEntry[K, V](key: K, value: V)
+      extends Map.Entry[K, V] with Serializable {
 
     def this(entry: Map.Entry[_ <: K, _ <: V]) =
       this(entry.getKey, entry.getValue)
@@ -73,7 +74,8 @@ object AbstractMap {
   }
 }
 
-abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] { self =>
+abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
+  self =>
 
   def size(): Int = entrySet.size
 
@@ -97,17 +99,19 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] { self
     throw new UnsupportedOperationException()
 
   def remove(key: Any): V = {
-    // scalastyle:off return
-    val iter = entrySet.iterator
-    while (iter.hasNext) {
-      val item = iter.next()
-      if (key === item.getKey) {
-        iter.remove()
-        return item.getValue
-      }
+    @tailrec
+    def findAndRemove(iter: Iterator[Map.Entry[K, V]]): V = {
+      if (iter.hasNext) {
+        val item = iter.next()
+        if (key === item.getKey) {
+          iter.remove()
+          item.getValue
+        } else
+          findAndRemove(iter)
+      } else
+        null.asInstanceOf[V]
     }
-    null.asInstanceOf[V]
-    // scalastyle:on return
+    findAndRemove(entrySet.iterator)
   }
 
   def putAll[K2 <: K, V2 <: V](m: Map[K2, V2]): Unit =
@@ -171,6 +175,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] { self
 
   override def toString(): String = {
     entrySet.iterator.map(
-        e => e.getKey + "=" + e.getValue).mkString("{", ", ", "}")
+        e => s"${e.getKey}=${e.getValue}"
+    ).mkString("{", ", ", "}")
   }
 }

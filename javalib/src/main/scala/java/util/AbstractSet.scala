@@ -1,7 +1,6 @@
 package java.util
 
 import scala.annotation.tailrec
-
 import scala.collection.JavaConversions._
 
 abstract class AbstractSet[E] protected () extends AbstractCollection[E]
@@ -20,21 +19,21 @@ abstract class AbstractSet[E] protected () extends AbstractCollection[E]
     asScalaIterator(iterator).foldLeft(0)((prev, item) => item.hashCode + prev)
 
   override def removeAll(c: Collection[_]): Boolean = {
-    @tailrec
-    def remAll(iter: Iterator[_], comp: Collection[_],
-        remFun: (Iterator[_], Any) => Unit, res: Boolean = false): Boolean = {
-      if (iter.hasNext) {
-        val elem = iter.next()
-        if (comp.contains(elem)) {
-          remFun(iter, elem)
-          remAll(iter, comp, remFun, true)
-        } else remAll(iter, comp, remFun, res)
-      } else res
-    }
-
     if (size > c.size)
-      remAll(c.iterator, this, (i, _) => i.remove())
-    else
-      remAll(iterator, c, (_, e) => remove(e))
+      c.foldLeft(false)((prev, elem) => this.remove(elem) || prev)
+    else {
+      @tailrec
+      def removeAll(iter: Iterator[E], modified: Boolean): Boolean = {
+        if (iter.hasNext) {
+          if (c.contains(iter.next())) {
+            iter.remove()
+            removeAll(iter, true)
+          } else
+            removeAll(iter, modified)
+        } else
+          modified
+      }
+      removeAll(this.iterator, false)
+    }
   }
 }
