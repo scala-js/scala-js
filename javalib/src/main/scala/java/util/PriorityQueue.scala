@@ -39,19 +39,16 @@ class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Compa
   }
 
   private implicit object BoxOrdering extends Ordering[Box[E]] {
-    def compare(a: Box[E], b:Box[E]): Int = ordering.compare(a.inner, b.inner)
+    def compare(a: Box[E], b:Box[E]): Int = ordering.compare(b.inner, a.inner)
   }
 
-  private var inner: mutable.PriorityQueue[Box[E]] = new mutable.PriorityQueue[Box[E]]()
+  private val inner: mutable.PriorityQueue[Box[E]] = new mutable.PriorityQueue[Box[E]]()
 
   override def add(e: E): Boolean = {
     if (e == null) throw new NullPointerException()
     else {
-      val boxed = Box(e)
-      if (!inner.exists(_ === boxed)) false else {
-        inner += Box(e)
-        true
-      }
+      inner += Box(e)
+      true
     }
   }
 
@@ -61,13 +58,31 @@ class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Compa
     inner.headOption.map(_.inner).getOrElse(null.asInstanceOf[E])
 
   override def remove(o: Any): Boolean = {
-    val actual = inner.size
     val boxed = Box(o)
-    val filtered = inner.filterNot(_ === boxed)
-    if (filtered.size != actual) {
-      inner = filtered
-      true
-    } else false
+    val left = new mutable.PriorityQueue[Box[E]]()
+    var last: Box[E] = 
+      if (inner.isEmpty) null
+      else inner.dequeue
+    
+    while (last != null) {
+      if (last === boxed){
+        inner ++= left
+        return true
+      } else if (inner.isEmpty) {
+        inner ++= left
+        return false
+      } else {
+        val next = inner.dequeue
+        if (BoxOrdering.compare(last, next) < 0) {
+          left += last
+          last = next
+        } else {
+          inner ++= left
+          return false
+        }
+      }
+    }
+    false
   }
 
   override def contains(o: Any): Boolean =
@@ -77,16 +92,16 @@ class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Compa
     new Iterator[E] {
       private val iter = inner.iterator
 
-      var actual: Option[E] = None
+      var last: Option[E] = None
 
       def hasNext(): Boolean = iter.hasNext
 
       def next(): E = {
-        actual = Some(iter.next().inner)
-        actual.get
+        last = Some(iter.next().inner)
+        last.get
       }
 
-      def remove(): Unit = actual.map(self.remove(_))
+      def remove(): Unit = last.map(self.remove(_))
     }
   }
 
