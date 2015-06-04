@@ -4,9 +4,9 @@ import java.lang.Comparable
 import scala.math.Ordering
 import scala.collection.mutable
 
-abstract class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Comparator[_ >: E])
+class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Comparator[_ >: E])
     extends AbstractQueue[E]
-    with Serializable {
+    with Serializable { self =>
 
   def this(initialCapacity: Int) = {
     this(defaultOrdering[E], null.asInstanceOf[Comparator[_ >: E]])
@@ -42,13 +42,13 @@ abstract class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparat
     def compare(a: Box[E], b:Box[E]): Int = ordering.compare(a.inner, b.inner)
   }
 
-  private val inner: mutable.Queue[Box[E]] = new mutable.Queue[Box[E]]()
+  private var inner: mutable.PriorityQueue[Box[E]] = new mutable.PriorityQueue[Box[E]]()
 
   override def add(e: E): Boolean = {
     if (e == null) throw new NullPointerException()
     else {
       val boxed = Box(e)
-      if (!inner.contains(boxed)) false else {
+      if (!inner.exists(_ === boxed)) false else {
         inner += Box(e)
         true
       }
@@ -56,6 +56,48 @@ abstract class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparat
   }
 
   def offer(e: E): Boolean = add(e)
+
+  def peek(): E =
+    inner.headOption.map(_.inner).getOrElse(null.asInstanceOf[E])
+
+  override def remove(o: Any): Boolean = {
+    val actual = inner.size
+    val boxed = Box(o)
+    val filtered = inner.filterNot(_ === boxed)
+    if (filtered.size != actual) {
+      inner = filtered
+      true
+    } else false
+  }
+
+  override def contains(o: Any): Boolean =
+    inner.exists(_ === Box(o))
+
+  def iterator(): Iterator[E] = {
+    new Iterator[E] {
+      private val iter = inner.iterator
+
+      var actual: Option[E] = None
+
+      def hasNext(): Boolean = iter.hasNext
+
+      def next(): E = {
+        actual = Some(iter.next().inner)
+        actual.get
+      }
+
+      def remove(): Unit = actual.map(self.remove(_))
+    }
+  }
+
+  def size(): Int = inner.size
+
+  override def clear(): Unit =
+    inner.dequeueAll
+
+  def poll(): E =
+    if (inner.isEmpty) null.asInstanceOf[E]
+    else inner.dequeue().inner
 
   def comparator(): Comparator[_ >: E] = _comparator
 }
