@@ -38,10 +38,24 @@ abstract class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparat
     addAll(sortedSet)
   }
 
-  private val inner: mutable.Queue[E] = new mutable.Queue[E]()
+  private implicit object BoxOrdering extends Ordering[Box[E]] {
+    def compare(a: Box[E], b:Box[E]): Int = ordering.compare(a.inner, b.inner)
+  }
 
-  override def add(e: E): Boolean =
-    inner.add(e)
+  private val inner: mutable.Queue[Box[E]] = new mutable.Queue[Box[E]]()
+
+  override def add(e: E): Boolean = {
+    if (e == null) throw new NullPointerException()
+    else {
+      val boxed = Box(e)
+      if (!inner.contains(boxed)) false else {
+        inner += Box(e)
+        true
+      }
+    }
+  }
+
+  def offer(e: E): Boolean = add(e)
 
   def comparator(): Comparator[_ >: E] = _comparator
 }
