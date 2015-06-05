@@ -1,5 +1,7 @@
 package java
 
+import scala.math.Ordering
+
 package object util {
 
   implicit private[util] class CompareNullablesOps(val self: Any) extends AnyVal {
@@ -22,6 +24,13 @@ package object util {
     override def hashCode(): Int =
       if (inner == null) 0
       else inner.hashCode
+  }
+
+  private[util] def defaultOrdering[E]: Ordering[E] = {
+    new Ordering[E] {
+      def compare(a: E, b: E): Int =
+        a.asInstanceOf[Comparable[E]].compareTo(b)
+    }
   }
 
 }

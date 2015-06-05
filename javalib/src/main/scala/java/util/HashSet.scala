@@ -65,18 +65,25 @@ class HashSet[E] extends AbstractSet[E] with Set[E]
 
   def iterator(): Iterator[E] = {
     new Iterator[E] {
-      private val iter = inner.iterator
+      private val iter = inner.clone.iterator
 
-      var actual: Option[E] = None
+      private var last: Option[E] = None
 
       def hasNext(): Boolean = iter.hasNext
 
       def next(): E = {
-        actual = Some(iter.next().inner)
-        actual.get
+        last = Some(iter.next().inner)
+        last.get
       }
 
-      def remove(): Unit = actual.map(self.remove(_))
+      def remove(): Unit = {
+        if (last.isEmpty) {
+          throw new IllegalStateException()
+        } else {
+          last.foreach(self.remove(_))
+          last = None
+        }
+      }
     }
   }
 
