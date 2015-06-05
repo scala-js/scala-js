@@ -3,6 +3,7 @@ package java.util
 import java.lang.Comparable
 import scala.math.Ordering
 import scala.collection.mutable
+import scala.annotation.tailrec
 
 class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Comparator[_ >: E])
     extends AbstractQueue[E]
@@ -58,31 +59,23 @@ class PriorityQueue[E] protected (ordering: Ordering[_ >: E], _comparator: Compa
     inner.headOption.map(_.inner).getOrElse(null.asInstanceOf[E])
 
   override def remove(o: Any): Boolean = {
-    val boxed = Box(o)
-    val left = new mutable.PriorityQueue[Box[E]]()
-    var last: Box[E] = 
-      if (inner.isEmpty) null
-      else inner.dequeue
-    
-    while (last != null) {
-      if (last === boxed){
-        inner ++= left
-        return true
-      } else if (inner.isEmpty) {
-        inner ++= left
-        return false
-      } else {
+    val boxed = Box(o.asInstanceOf[E])
+    val initialSize = inner.size
+
+    @tailrec
+    def takeLeft(part: mutable.PriorityQueue[Box[E]]): mutable.PriorityQueue[Box[E]] = {
+      if (inner.isEmpty) part
+      else {
         val next = inner.dequeue
-        if (BoxOrdering.compare(last, next) < 0) {
-          left += last
-          last = next
-        } else {
-          inner ++= left
-          return false
-        }
+        if (BoxOrdering.compare(boxed, next) >= 0) part
+        else takeLeft(part += next)
       }
     }
-    false
+
+    val left = takeLeft(new mutable.PriorityQueue[Box[E]]())
+    inner ++= left
+
+    (inner.size != initialSize)
   }
 
   override def contains(o: Any): Boolean =
