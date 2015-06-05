@@ -14,18 +14,18 @@ class ConcurrentSkipListSet[E] protected (ordering: Ordering[_ >: E], _comparato
     with Serializable { self =>
 
   def this() =
-    this(ConcurrentSkipListSet.defaultOrdering[E], null.asInstanceOf[Comparator[_ >: E]])
+    this(defaultOrdering[E], null.asInstanceOf[Comparator[_ >: E]])
 
-  def this(comparator: Comparator[_ >: E])  =
+  def this(comparator: Comparator[_ >: E]) =
     this(Ordering.comparatorToOrdering(comparator), null.asInstanceOf[Comparator[E]])
 
-  def this(collection: java.util.Collection[_ <: E]) = {
-    this(ConcurrentSkipListSet.defaultOrdering[E], null.asInstanceOf[Comparator[E]])
+  def this(collection: Collection[_ <: E]) = {
+    this(defaultOrdering[E], null.asInstanceOf[Comparator[E]])
     addAll(collection)
   }
 
   def this(sortedSet: SortedSet[E]) = {
-    this(Ordering.comparatorToOrdering(sortedSet.comparator()).asInstanceOf[Ordering[E]],
+    this(Ordering.comparatorToOrdering(sortedSet.comparator()),
         sortedSet.comparator())
     addAll(sortedSet)
   }
@@ -223,13 +223,6 @@ class ConcurrentSkipListSet[E] protected (ordering: Ordering[_ >: E], _comparato
 }
 
 object ConcurrentSkipListSet {
-
-  private def defaultOrdering[E]: Ordering[E] = {
-    new Ordering[E] {
-      def compare(a: E, b: E): Int =
-        a.asInstanceOf[Comparable[E]].compareTo(b)
-    }
-  }
 
   private class NavigableView[E](original: NavigableSet[E], inner: () => mutable.SortedSet[Box[E]])
       extends AbstractCollection[E] with NavigableSet[E] with SortedSet[E] {
