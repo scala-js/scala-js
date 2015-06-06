@@ -420,11 +420,11 @@ class PhantomJSEnv(
                |  console.log(msg);
                |};
                |page.onError = function(msg, trace) {
-               |  console.error(msg);
+               |  console.log(msg);
                |  if (trace && trace.length) {
-               |    console.error('');
+               |    console.log('');
                |    trace.forEach(function(t) {
-               |      console.error('  ' + t.file + ':' + t.line +
+               |      console.log('  ' + t.file + ':' + t.line +
                |        (t.function ? ' (in function "' + t.function +'")' : ''));
                |    });
                |  }
@@ -433,7 +433,7 @@ class PhantomJSEnv(
                |};
                |page.onCallback = function(data) {
                |  if (!data.action) {
-               |    console.error('Called callback without action');
+               |    console.log('Called callback without action');
                |    phantom.exit(3);
                |  } else if (data.action === 'exit') {
                |    phantom.exit(data.returnValue || 0);
@@ -443,7 +443,7 @@ class PhantomJSEnv(
                |    else
                |      autoExit = true;
                |  } else {
-               |    console.error('Unknown callback action ' + data.action);
+               |    console.log('Unknown callback action ' + data.action);
                |    phantom.exit(4);
                |  }
                |};
