@@ -114,7 +114,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     findAndRemove(entrySet.iterator)
   }
 
-  def putAll[K2 <: K, V2 <: V](m: Map[K2, V2]): Unit =
+  def putAll(m: Map[_ <: K, _ <: V]): Unit =
     m.entrySet.iterator.foreach(e => put(e.getKey, e.getValue))
 
   def clear(): Unit =
