@@ -52,7 +52,7 @@ class ConcurrentHashMap[K >: Null, V >: Null]
       throw new NullPointerException()
   }
 
-  override def putAll[K1 <: K, V1 <: V](m: Map[K1, V1]): Unit = {
+  override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
     for (e <- m.entrySet())
       put(e.getKey, e.getValue)
   }

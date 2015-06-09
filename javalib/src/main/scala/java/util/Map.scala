@@ -8,7 +8,7 @@ trait Map[K, V] {
   def get(key: Any): V
   def put(key: K, value: V): V
   def remove(key: Any): V
-  def putAll[K2 <: K, V2 <: V](m: Map[K2, V2]): Unit
+  def putAll(m: Map[_ <: K, _ <: V]): Unit
   def clear(): Unit
   def keySet(): Set[K]
   def values(): Collection[V]
