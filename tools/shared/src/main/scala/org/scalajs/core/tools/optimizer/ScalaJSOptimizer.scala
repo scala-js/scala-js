@@ -80,6 +80,25 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
 
   def optimizeIR(irFiles: Traversable[VirtualScalaJSIRFile],
       cfg: Config, logger: Logger): Unit = {
+    optimizeIRInternal(irFiles, cfg, cfg.output,
+        cfg.relativizeSourceMapBase, logger)
+  }
+
+  /** Factorization of optimizeIR and ClosureOptimizer.optimizeIR for the
+   *  ES6 cases.
+   *
+   *  Yes, this is a virtually nonsensical factorization, which highlights a
+   *  deeper design issue with the responsibilities of writing the prelude
+   *  and postlude. This responsibility needs to be moved to [[Emitter]].
+   *  In 0.6.3 we make this factorization just good enough to avoid code
+   *  duplication, in a binary compatible way.
+   *
+   *  TODO Fix this technical debt
+   */
+  private[optimizer] def optimizeIRInternal(
+      irFiles: Traversable[VirtualScalaJSIRFile],
+      cfg: OptimizerConfig, output: WritableVirtualJSFile,
+      relativizeSourceMapBase: Option[URI], logger: Logger): Unit = {
 
     val builder = {
       import cfg._
