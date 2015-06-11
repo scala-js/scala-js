@@ -114,16 +114,8 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     /** has this symbol to be translated into a JS setter (both directions)? */
-    def isJSSetter(sym: Symbol): Boolean = {
-      sym.unexpandedName.decoded.endsWith("_=") &&
-      sym.tpe.resultType.typeSymbol == UnitClass &&
-      enteringUncurryIfAtPhaseAfter {
-        sym.tpe.paramss match {
-          case List(List(arg)) => !isScalaRepeatedParamType(arg.tpe)
-          case _ => false
-        }
-      }
-    }
+    def isJSSetter(sym: Symbol): Boolean =
+      nme.isSetterName(sym.name) && sym.isMethod && !sym.isConstructor
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
     def isJSBracketAccess(sym: Symbol): Boolean =

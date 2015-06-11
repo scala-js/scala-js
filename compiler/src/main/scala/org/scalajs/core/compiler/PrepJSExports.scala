@@ -189,13 +189,9 @@ trait PrepJSExports { this: PrepJSInterop =>
         else if (sym.isModuleClass) decodedFullName(sym)
         else sym.unexpandedName.decoded.stripSuffix("_=")
 
-      // Enforce that methods ending with _= are exported as setters
-      if (sym.isMethod && !sym.isConstructor &&
-        sym.name.decoded.endsWith("_=") && !jsInterop.isJSSetter(sym)) {
-        reporter.error(annot.pos, "A method ending in _= will be exported " +
-            s"as setter. But ${sym.name.decoded} does not have the right " +
-            "signature to do so (single argument, unit return type).")
-      }
+      // Enforce proper setter signature
+      if (jsInterop.isJSSetter(sym))
+        checkSetterSignature(sym, annot.pos, exported = true)
 
       // Enforce no __ in name
       if (name.contains("__")) {

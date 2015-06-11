@@ -42,11 +42,23 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     class A extends js.Object {
       def foo_=(x: Int): Int = js.native
+      def bar_=(x: Int, y: Int): Unit = js.native
+      def goo_=(x: Int*): Unit = js.native
+      def hoo_=(x: Int = 1): Unit = js.native
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Setters that do not return Unit are not allowed in types extending js.Any
+      |newSource1.scala:4: error: Raw JS setters must return Unit
       |      def foo_=(x: Int): Int = js.native
+      |          ^
+      |newSource1.scala:5: error: Raw JS setters must have exactly one argument
+      |      def bar_=(x: Int, y: Int): Unit = js.native
+      |          ^
+      |newSource1.scala:6: error: Raw JS setters may not have repeated params
+      |      def goo_=(x: Int*): Unit = js.native
+      |          ^
+      |newSource1.scala:7: error: Raw JS setters may not have default params
+      |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
     """
 

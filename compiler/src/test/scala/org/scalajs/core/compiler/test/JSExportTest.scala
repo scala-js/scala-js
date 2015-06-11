@@ -522,7 +522,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: A method ending in _= will be exported as setter. But foo_= does not have the right signature to do so (single argument, unit return type).
+      |newSource1.scala:4: error: Exported setters must have exactly one argument
       |      @JSExport
       |       ^
     """
@@ -535,7 +535,33 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: A method ending in _= will be exported as setter. But foo_= does not have the right signature to do so (single argument, unit return type).
+      |newSource1.scala:4: error: Exported setters must return Unit
+      |      @JSExport
+      |       ^
+    """
+
+    // Varargs
+    """
+    class A {
+      @JSExport
+      def foo_=(x: Int*) = ()
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: Exported setters may not have repeated params
+      |      @JSExport
+      |       ^
+    """
+
+    // Default arguments
+    """
+    class A {
+      @JSExport
+      def foo_=(x: Int = 1) = ()
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: Exported setters may not have default params. This will be enforced in 1.0.
       |      @JSExport
       |       ^
     """
@@ -573,7 +599,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: An exported name may not contain a double underscore (`__`)
       |      val __f = 1
       |          ^
-      |newSource1.scala:3: error: A method ending in _= will be exported as setter. But a_= does not have the right signature to do so (single argument, unit return type).
+      |newSource1.scala:3: error: Exported setters must return Unit
       |    @JSExportAll
       |     ^
     """

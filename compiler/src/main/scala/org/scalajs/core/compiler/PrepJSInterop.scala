@@ -401,11 +401,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
-      if (isNonJSScalaSetter(sym)) {
-        // Forbid setters with non-unit return type
-        reporter.error(tree.pos, "Setters that do not return Unit are " +
-            "not allowed in types extending js.Any")
-      }
+      if (jsInterop.isJSSetter(sym))
+        checkSetterSignature(sym, tree.pos, exported = false)
 
       if (jsInterop.isJSBracketCall(sym)) {
         // JS bracket calls must have at least one non-repeated parameter
@@ -528,6 +525,38 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   def isJSAny(sym: Symbol): Boolean =
     sym.tpe.typeSymbol isSubClass JSAnyClass
 
+  /** Checks that a setter has the right signature.
+   *
+   *  Reports error messages otherwise.
+   */
+  def checkSetterSignature(sym: Symbol, pos: Position, exported: Boolean): Unit = {
+    val typeStr = if (exported) "Exported" else "Raw JS"
+
+    // Forbid setters with non-unit return type
+    if (sym.tpe.resultType.typeSymbol != UnitClass) {
+      reporter.error(pos, s"$typeStr setters must return Unit")
+    }
+
+    // Forbid setters with more than one argument
+    sym.tpe.paramss match {
+      case List(List(arg)) =>
+        // Arg list is OK. Do additional checks.
+        if (isScalaRepeatedParamType(arg.tpe))
+          reporter.error(pos, s"$typeStr setters may not have repeated params")
+
+        if (arg.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
+          val msg = s"$typeStr setters may not have default params"
+          if (exported)
+            reporter.warning(pos, msg + ". This will be enforced in 1.0.")
+          else
+            reporter.error(pos, msg)
+        }
+
+      case _ =>
+        reporter.error(pos, s"$typeStr setters must have exactly one argument")
+    }
+  }
+
   private def isJSAny(implDef: ImplDef): Boolean = isJSAny(implDef.symbol)
 
   private def isJSGlobalScope(implDef: ImplDef) =
@@ -540,21 +569,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
 
   private def isJSDynamic(tree: Tree) = tree.tpe.typeSymbol == JSDynamicClass
-
-  /**
-   * is this symbol a setter that has a non-unit return type
-   *
-   * these setters don't make sense in JS (in JS, assignment returns
-   * the assigned value) and are therefore not allowed in facade types
-   */
-  private def isNonJSScalaSetter(sym: Symbol) = nme.isSetterName(sym.name) && {
-    sym.tpe.paramss match {
-      case List(List(arg)) =>
-        !isScalaRepeatedParamType(arg.tpe) &&
-        sym.tpe.resultType.typeSymbol != UnitClass
-      case _ => false
-    }
-  }
 
   /** Checks that argument to @JSName on [[sym]] is a literal.
    *  Reports an error on each annotation where this is not the case.
