@@ -11,19 +11,16 @@ import java.{util => ju}
 
 object AbstractListTest extends AbstractListTest(new AbstractListFactory)
 
-abstract class AbstractListTest[F <: AbstractListFactory](val listFactory: F)
-    extends ListTest[F] {
+abstract class AbstractListTest[F <: AbstractListFactory](listFactory: F)
+    extends AbstractCollectionTest(listFactory) with ListTest[F] {
 
-  describe(listFactory.implementationName) {
-    testApi()
-  }
-
-  def testApi(): Unit = {
+  override def testApi(): Unit = {
+    super.testApi()
     testListApi()
   }
 }
 
-class AbstractListFactory extends ListFactory {
+class AbstractListFactory extends AbstractCollectionFactory with ListFactory {
 
   override def implementationName: String =
     "java.util.AbstractList"
