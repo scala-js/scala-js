@@ -111,8 +111,7 @@ class ConcurrentSkipListSet[E] protected (ordering: Ordering[_ >: E], _comparato
     val iter = c.iterator()
     var changed = false
     while (iter.hasNext)
-      changed = inner.remove(iter.next) || changed
-
+      changed = inner.remove(Box(iter.next).asInstanceOf[Box[E]]) || changed
     changed
   }
 
@@ -274,7 +273,6 @@ object ConcurrentSkipListSet {
       var changed = false
       while (iter.hasNext)
           changed = remove(iter.next) || changed
-
       changed
     }
 
