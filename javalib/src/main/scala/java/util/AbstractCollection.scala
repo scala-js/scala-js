@@ -52,7 +52,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
     c.iterator.forall(this.contains(_))
 
   def addAll(c: Collection[_ <: E]): Boolean =
-    throw new UnsupportedOperationException()
+    c.foldLeft(false)((prev, elem) => add(elem) || prev)
 
   def removeAll(c: Collection[_]): Boolean =
     removeWhere(c.contains(_))

@@ -7,11 +7,7 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib
 
-import org.scalajs.jasminetest.JasmineTest
-
-trait ListTest[F <: ListFactory] extends JasmineTest {
-
-  def listFactory: F
+trait ListTest[F <: ListFactory] extends CollectionTest[F] {
 
   def expectIndexOutOfBoundsException[T](f: => T): Unit = {
     expect({
@@ -26,7 +22,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
 
   def testListApi(): Unit = {
     it("should store strings") {
-      val lst = listFactory.empty[String]
+      val lst = factory.empty[String]
 
       expect(lst.size()).toEqual(0)
       lst.add("one")
@@ -42,7 +38,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should store integers") {
-      val lst = listFactory.empty[Int]
+      val lst = factory.empty[Int]
 
       lst.add(1)
       expect(lst.size()).toEqual(1)
@@ -57,7 +53,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should store doubles") {
-      val lst = listFactory.empty[Double]
+      val lst = factory.empty[Double]
 
       lst.add(1.234)
       expect(lst.size()).toEqual(1)
@@ -83,7 +79,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     it("should store custom objects") {
       case class TestObj(num: Int)
 
-      val lst = listFactory.empty[TestObj]
+      val lst = factory.empty[TestObj]
 
       lst.add(TestObj(100))
       expect(lst.size()).toEqual(1)
@@ -94,7 +90,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should remove stored elements") {
-      val lst = listFactory.empty[String]
+      val lst = factory.empty[String]
 
       lst.add("one")
       lst.add("two")
@@ -113,7 +109,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should remove stored elements on double corner cases") {
-      val al = listFactory.empty[Double]
+      val al = factory.empty[Double]
 
       al.add(1.234)
       al.add(2.345)
@@ -141,7 +137,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should be cleared with one operation") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
 
       al.add("one")
       al.add("two")
@@ -151,7 +147,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should check contained presence") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
 
       al.add("one")
       expect(al.contains("one")).toBeTruthy
@@ -160,7 +156,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should check contained presence for double corner cases") {
-      val al = listFactory.empty[Double]
+      val al = factory.empty[Double]
 
       al.add(-0.0)
       expect(al.contains(-0.0)).toBeTruthy
@@ -174,7 +170,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give a proper set operation") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
       al.add("one")
       al.add("two")
       al.add("three")
@@ -189,7 +185,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give proper iterator over elements") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
       al.add("one")
       al.add("two")
       al.add("three")
@@ -205,7 +201,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give proper list iterator over elements") {
-      val lst = listFactory.empty[String]
+      val lst = factory.empty[String]
       lst.add("one")
       lst.add("two")
       lst.add("three")
@@ -228,7 +224,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should add elements at a given index") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
       al.add(0, "one") // ("one")
       al.add(0, "two") // ("two", "one")
       al.add(1, "three") // ("two", "three", "one")
@@ -242,7 +238,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give the first index of an element") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
       al.add("one")
       al.add("two")
       al.add("three")
@@ -257,7 +253,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give the last index of an element") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
       al.add("one")
       al.add("two")
       al.add("three")
@@ -272,7 +268,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give the first/last index of an element for double corner cases") {
-      val al = listFactory.empty[Double]
+      val al = factory.empty[Double]
 
       al.add(-0.0)
       al.add(+0.0)
@@ -291,7 +287,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
     }
 
     it("should give a sublist backed up by the original list") {
-      val al = listFactory.empty[String]
+      val al = factory.empty[String]
 
       al.add("one")
       al.add("two")
@@ -337,7 +333,7 @@ trait ListTest[F <: ListFactory] extends JasmineTest {
   }
 }
 
-trait ListFactory {
+trait ListFactory extends CollectionFactory {
   def implementationName: String
   def empty[E]: java.util.List[E]
 }
