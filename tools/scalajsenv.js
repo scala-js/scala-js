@@ -525,7 +525,7 @@ ScalaJS.isFloat = function(v) {
 
 //!if asInstanceOfs != Unchecked
 ScalaJS.asUnit = function(v) {
-  if (v === void 0)
+  if (v === void 0 || v === null)
     return v;
   else
     ScalaJS.throwClassCastException(v, "scala.runtime.BoxedUnit");

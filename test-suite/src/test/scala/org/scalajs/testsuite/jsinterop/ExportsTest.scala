@@ -833,7 +833,9 @@ object ExportsTest extends JasmineTest {
       expect(() => foo.doLong(null)).toThrow
       expect(() => foo.doFloat(null)).toThrow
       expect(() => foo.doDouble(null)).toThrow
-      expect(() => foo.doUnit(null)).toThrow
+
+      // Due to the nature of BoxedUnit, null is valid for a Unit parameter
+      expect(() => foo.doUnit(null)).not.toThrow
 
       // Class type
       expect(() => foo.doBool(foo)).toThrow
