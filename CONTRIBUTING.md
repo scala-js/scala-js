@@ -5,6 +5,13 @@
 If you haven't read it, ***read the very important notice about the Javalib
 in the [Developer documentation](./DEVELOPING.md)***.
 
+## Coding style
+
+The Scala.js project has a strict policy regarding coding style.
+This is one of the cornerstones that has allowed Scala.js to maintain a clean, consistent and maintainable codebase.
+
+Please consult and follow our [coding style guide](./CODINGSTYLE.md).
+
 ## General workflow
 
 This the general workflow for contributing to Scala.js.
@@ -30,9 +37,11 @@ This the general workflow for contributing to Scala.js.
 In order for a Pull Request to be considered, it has to meet these requirements:
 
 1.  Live up to the current code standard:
+    - Follow the [coding style](./CODINGSTYLE.md)
     - Not violate [DRY](http://programmer.97things.oreilly.com/wiki/index.php/Don%27t_Repeat_Yourself).
     - [Boy Scout Rule](http://programmer.97things.oreilly.com/wiki/index.php/The_Boy_Scout_Rule) should be applied.
 2.  Be accompanied by appropriate tests.
+3.  Be issued from a branch *other than master* (PRs coming from master will not be accepted, as we've had trouble in the past with such PRs)
 
 If not *all* of these requirements are met then the code should **not** be
 merged into the distribution, and need not even be reviewed.
