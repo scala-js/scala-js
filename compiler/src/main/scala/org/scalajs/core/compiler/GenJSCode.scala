@@ -3113,8 +3113,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           } else if (jsInterop.isJSSetter(sym)) {
             assert(noSpread && argc == 1)
             js.Assign(
-                js.JSBracketSelect(receiver,
-                    js.StringLiteral(jsFunName.stripSuffix("_="))),
+                js.JSBracketSelect(receiver, js.StringLiteral(jsFunName)),
                 args.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(noSpread && (argc == 1 || argc == 2),
@@ -4036,7 +4035,7 @@ abstract class GenJSCode extends plugins.PluginComponent
    *  infers a default from the Scala name. */
   def jsNameOf(sym: Symbol): String =
     sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
-        sym.unexpandedName.decoded)
+        sym.unexpandedName.decoded.stripSuffix("_="))
 
   def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted
