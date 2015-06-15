@@ -41,6 +41,13 @@ trait TestHelpers extends DirectTest {
           expected.stripMargin.trim, reps.trim)
     }
 
+    def hasNoWarns(): Unit = {
+      val reps = repResult {
+        assertTrue("snippet should compile", compileString(preamble + code))
+      }
+      assertTrue("should not have warnings", reps.isEmpty)
+    }
+
     def fails(): Unit =
       assertFalse("snippet shouldn't compile", compileString(preamble + code))
 

@@ -829,4 +829,65 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test
+  def noExportImplicitApply: Unit = {
+
+    """
+    class A {
+      @JSExport
+      def apply(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:4: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |      @JSExport
+      |       ^
+    """
+
+    """
+    @JSExportAll
+    class A {
+      def apply(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:5: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |      def apply(): Int = 1
+      |          ^
+    """
+
+    """
+    @JSExportAll
+    class A {
+      @JSExportNamed("apply")
+      @JSExport("foo")
+      def apply(): Int = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:7: warning: Member cannot be exported to function application. It is available under the name apply instead. Add @JSExport("apply") to silence this warning. This will be enforced in 1.0.
+      |      def apply(): Int = 1
+      |          ^
+    """
+
+    """
+    @JSExportAll
+    class A {
+      @JSExport("apply")
+      def apply(): Int = 1
+    }
+    """.hasNoWarns
+
+  }
+
+  @Test
+  def exportObjectAsToString: Unit = {
+
+    """
+    @JSExport("toString")
+    object ExportAsToString
+    """.succeeds
+
+  }
+
 }
