@@ -799,43 +799,49 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(ExportedUnderOrgObject.asInstanceOf[js.Any])
     }
 
-    when("compliant-asinstanceofs").
-    it("should reject bad values for arguments of primitive value type") {
+    it("should accept null for arguments of primitive value type - #1719") {
+      @JSExportAll
       class Foo {
-        @JSExport
-        def doBool(x: Boolean): Boolean = x
-        @JSExport
-        def doChar(x: Char): Char = x
-        @JSExport
-        def doByte(x: Byte): Byte = x
-        @JSExport
-        def doShort(x: Short): Short = x
-        @JSExport
-        def doInt(x: Int): Int = x
-        @JSExport
-        def doLong(x: Long): Long = x
-        @JSExport
-        def doFloat(x: Float): Float = x
-        @JSExport
-        def doDouble(x: Double): Double = x
-        @JSExport
-        def doUnit(x: Unit): Unit = x
+        def doBool(x: Boolean): Unit = expect((x: Any) == false).toBeTruthy // scalastyle:ignore
+        def doChar(x: Char): Unit = expect(x.equals('\0')).toBeTruthy
+        def doByte(x: Byte): Unit = expect(x).toEqual(0)
+        def doShort(x: Short): Unit = expect(x).toEqual(0)
+        def doInt(x: Int): Unit = expect(x).toEqual(0)
+        def doLong(x: Long): Unit = expect(x.equals(0L)).toBeTruthy
+        def doFloat(x: Float): Unit = expect(x).toEqual(0.0f)
+        def doDouble(x: Double): Unit = expect(x).toEqual(0.0)
+        def doUnit(x: Unit): Unit = expect((x: Any) == null).toBeTruthy
       }
 
       val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-      // Nulls
-      expect(() => foo.doBool(null)).toThrow
-      expect(() => foo.doChar(null)).toThrow
-      expect(() => foo.doByte(null)).toThrow
-      expect(() => foo.doShort(null)).toThrow
-      expect(() => foo.doInt(null)).toThrow
-      expect(() => foo.doLong(null)).toThrow
-      expect(() => foo.doFloat(null)).toThrow
-      expect(() => foo.doDouble(null)).toThrow
+      foo.doBool(null)
+      foo.doChar(null)
+      foo.doByte(null)
+      foo.doShort(null)
+      foo.doInt(null)
+      foo.doLong(null)
+      foo.doFloat(null)
+      foo.doDouble(null)
+      foo.doUnit(null)
+    }
 
-      // Due to the nature of BoxedUnit, null is valid for a Unit parameter
-      expect(() => foo.doUnit(null)).not.toThrow
+    when("compliant-asinstanceofs").
+    it("should reject bad values for arguments of primitive value type") {
+      @JSExportAll
+      class Foo {
+        def doBool(x: Boolean): Boolean = x
+        def doChar(x: Char): Char = x
+        def doByte(x: Byte): Byte = x
+        def doShort(x: Short): Short = x
+        def doInt(x: Int): Int = x
+        def doLong(x: Long): Long = x
+        def doFloat(x: Float): Float = x
+        def doDouble(x: Double): Double = x
+        def doUnit(x: Unit): Unit = x
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
 
       // Class type
       expect(() => foo.doBool(foo)).toThrow
