@@ -145,7 +145,7 @@ function $isFloat(v) {
 
 //!if asInstanceOfs != Unchecked
 function $asUnit(v) {
-  if (v === void 0)
+  if (v === void 0 || v === null)
     return v;
   else
     $throwClassCastException(v, "scala.runtime.BoxedUnit");

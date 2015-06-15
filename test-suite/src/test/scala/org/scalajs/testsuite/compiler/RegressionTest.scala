@@ -432,5 +432,11 @@ object RegressionTest extends JasmineTest {
       }
       expect(x).toEqual(5)
     }
+
+    it("null.asInstanceOf[Unit] should succeed - #1691") {
+      def getNull(): Any = null
+      val x = getNull().asInstanceOf[Unit]: Any
+      expect(x.asInstanceOf[js.Any]).toBeNull
+    }
   }
 }
