@@ -36,7 +36,6 @@ abstract class AbstractSequentialList[E] protected ()
     val changed = citer.hasNext()
     while (citer.hasNext()) {
       iter.add(citer.next())
-      iter.next()
     }
     changed
   }

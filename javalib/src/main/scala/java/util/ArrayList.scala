@@ -1,10 +1,6 @@
 package java.util
 
-import java.util
-
 import scala.scalajs._
-import scala.collection.JavaConversions._
-import scala.util
 
 class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
     extends AbstractList[E] with RandomAccess with Cloneable with Serializable {

@@ -4,15 +4,15 @@ import java.{util => ju}
 
 object AbstractCollectionTest extends AbstractCollectionTest(new AbstractCollectionFactory)
 
-abstract class AbstractCollectionTest[F <: AbstractCollectionFactory](val factory: F)
-    extends CollectionTest[F] {
+abstract class AbstractCollectionTest[F <: AbstractCollectionFactory](factory: F)
+    extends CollectionTest {
 
   describe(factory.implementationName) {
     testApi()
   }
 
   def testApi(): Unit = {
-    testCollectionApi()
+    testCollectionApi(factory)
   }
 }
 

@@ -46,7 +46,8 @@ class ConcurrentSkipListSet[E] protected (ordering: Ordering[_ >: E], _comparato
     inner.isEmpty
 
   override def contains(o: Any): Boolean =
-    inner.contains(Box(o.asInstanceOf[E]))
+    if (o == null) false
+    else inner.contains(Box(o.asInstanceOf[E]))
 
   override def add(e: E): Boolean =
     if (e == null) throw new NullPointerException()

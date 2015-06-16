@@ -12,11 +12,11 @@ import java.{util => ju}
 object AbstractListTest extends AbstractListTest(new AbstractListFactory)
 
 abstract class AbstractListTest[F <: AbstractListFactory](listFactory: F)
-    extends AbstractCollectionTest(listFactory) with ListTest[F] {
+    extends AbstractCollectionTest(listFactory) with ListTest {
 
   override def testApi(): Unit = {
     super.testApi()
-    testListApi()
+    testListApi(listFactory)
   }
 }
 

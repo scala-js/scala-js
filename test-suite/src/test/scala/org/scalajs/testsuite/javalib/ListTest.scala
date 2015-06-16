@@ -9,20 +9,11 @@ package org.scalajs.testsuite.javalib
 
 import java.{util => ju}
 
-trait ListTest[F <: ListFactory] extends CollectionTest[F] {
+trait ListTest extends CollectionTest {
 
-  def expectIndexOutOfBoundsException[T](f: => T): Unit = {
-    expect({
-      try {
-        f
-        false
-      } catch {
-        case err: IndexOutOfBoundsException => true
-      }
-    }).toBeTruthy
-  }
+  def testListApi(factory: ListFactory): Unit = {
+    testCollectionApi(factory)
 
-  def testListApi(): Unit = {
     it("should store strings") {
       val lst = factory.empty[String]
 
@@ -35,8 +26,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(lst.get(0)).toEqual("one")
       expect(lst.get(1)).toEqual("two")
 
-      expectIndexOutOfBoundsException(lst.get(-1))
-      expectIndexOutOfBoundsException(lst.get(lst.size))
+      expectThrows[IndexOutOfBoundsException](lst.get(-1))
+      expectThrows[IndexOutOfBoundsException](lst.get(lst.size))
     }
 
     it("should store integers") {
@@ -50,8 +41,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(lst.get(0)).toEqual(1)
       expect(lst.get(1)).toEqual(2)
 
-      expectIndexOutOfBoundsException(lst.get(-1))
-      expectIndexOutOfBoundsException(lst.get(lst.size))
+      expectThrows[IndexOutOfBoundsException](lst.get(-1))
+      expectThrows[IndexOutOfBoundsException](lst.get(lst.size))
     }
 
     it("should store doubles") {
@@ -74,8 +65,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(lst.get(3).equals(+0.0)).toBeTruthy
       expect(lst.get(4).equals(-0.0)).toBeTruthy
 
-      expectIndexOutOfBoundsException(lst.get(-1))
-      expectIndexOutOfBoundsException(lst.get(lst.size))
+      expectThrows[IndexOutOfBoundsException](lst.get(-1))
+      expectThrows[IndexOutOfBoundsException](lst.get(lst.size))
     }
 
     it("should store custom objects") {
@@ -87,8 +78,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(lst.size()).toEqual(1)
       expect(lst.get(0) == TestObj(100)).toBeTruthy
 
-      expectIndexOutOfBoundsException(lst.get(-1))
-      expectIndexOutOfBoundsException(lst.get(lst.size))
+      expectThrows[IndexOutOfBoundsException](lst.get(-1))
+      expectThrows[IndexOutOfBoundsException](lst.get(lst.size))
     }
 
     it("should remove stored elements") {
@@ -106,8 +97,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(lst.size()).toEqual(1)
       expect(lst.get(0)).toEqual("three")
 
-      expectIndexOutOfBoundsException(lst.remove(-1))
-      expectIndexOutOfBoundsException(lst.remove(lst.size))
+      expectThrows[IndexOutOfBoundsException](lst.remove(-1))
+      expectThrows[IndexOutOfBoundsException](lst.remove(lst.size))
     }
 
     it("should remove stored elements on double corner cases") {
@@ -182,8 +173,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(al.get(1)).toEqual("four")
       expect(al.get(2)).toEqual("three")
 
-      expectIndexOutOfBoundsException(al.set(-1, ""))
-      expectIndexOutOfBoundsException(al.set(al.size, ""))
+      expectThrows[IndexOutOfBoundsException](al.set(-1, ""))
+      expectThrows[IndexOutOfBoundsException](al.set(al.size, ""))
     }
 
     it("should give proper iterator over elements") {
@@ -235,8 +226,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(al.get(1)).toEqual("three")
       expect(al.get(2)).toEqual("one")
 
-      expectIndexOutOfBoundsException(al.add(-1, ""))
-      expectIndexOutOfBoundsException(al.add(al.size + 1, ""))
+      expectThrows[IndexOutOfBoundsException](al.add(-1, ""))
+      expectThrows[IndexOutOfBoundsException](al.add(al.size + 1, ""))
     }
 
     it("should give the first index of an element") {
@@ -427,7 +418,11 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
   }
 }
 
+object ListFactory {
+  def allFactories: Iterator[ListFactory] =
+    Iterator(new ArrayListFactory, new LinkedListFactory, new AbstractListFactory)
+}
+
 trait ListFactory extends CollectionFactory {
-  def implementationName: String
   def empty[E]: ju.List[E]
 }

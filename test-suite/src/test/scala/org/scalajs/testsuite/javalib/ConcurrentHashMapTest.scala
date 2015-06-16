@@ -11,20 +11,15 @@ import scala.language.implicitConversions
 
 import scala.collection.JavaConversions._
 
-import java.util.{concurrent => juc}
-
+import java.{util => ju}
 
 object ConcurrentHashMapTest extends ConcurrentHashMapTest(new ConcurrentHashMapFactory)
 
-class ConcurrentHashMapTest[F <: ConcurrentHashMapFactory](mapFactory: F)
-  extends AbstractMapTest[F](mapFactory) {
+class ConcurrentHashMapTest[F <: ConcurrentHashMapFactory](protected val mapFactory: F)
+  extends MapTest {
 
-  final protected def allowsNullKeys: Boolean = false
-  final protected def allowsNullValues: Boolean = false
-
-  override def testApi(): Unit = {
-
-    super.testApi()
+  def testApi(): Unit = {
+    testMapApi(mapFactory)
 
     it("should give proper Enumerator over elements") {
       val chm = mapFactory.empty[String, String]
@@ -41,14 +36,14 @@ class ConcurrentHashMapTest[F <: ConcurrentHashMapFactory](mapFactory: F)
 
       chm.put("ONE", "one")
       expect(chm.replace("ONE", "two")).toEqual("one")
-      expectNullPointerException(chm.replace("ONE", null))
-      expectNullPointerException(chm.replace(null, "one"))
+      expectThrows[NullPointerException](chm.replace("ONE", null))
+      expectThrows[NullPointerException](chm.replace(null, "one"))
       expect(chm.get("ONE")).toEqual("two")
 
       expect(chm.replace("ONE", "one", "two")).toBeFalsy
-      expectNullPointerException(chm.replace(null, "two", "one"))
-      expectNullPointerException(chm.replace("ONE", null, "one"))
-      expectNullPointerException(chm.replace("ONE", "two", null))
+      expectThrows[NullPointerException](chm.replace(null, "two", "one"))
+      expectThrows[NullPointerException](chm.replace("ONE", null, "one"))
+      expectThrows[NullPointerException](chm.replace("ONE", "two", null))
 
       expect(chm.replace("ONE", "two", "one")).toBeTruthy
       expect(chm.get("ONE")).toEqual("one")
@@ -58,12 +53,21 @@ class ConcurrentHashMapTest[F <: ConcurrentHashMapFactory](mapFactory: F)
 
 }
 
-class ConcurrentHashMapFactory extends AbstractMapFactory {
 
-  override def implementationName: String =
+object ConcurrentHashMapFactory extends ConcurrentHashMapFactory {
+  def allFactories: Iterator[ConcurrentHashMapFactory] =
+    Iterator(ConcurrentHashMapFactory)
+}
+
+class ConcurrentHashMapFactory extends ConcurrentMapFactory {
+  def implementationName: String =
     "java.util.concurrent.ConcurrentHashMap"
 
-  override def empty[K, V]: juc.ConcurrentHashMap[K, V] =
-    new juc.ConcurrentHashMap[K, V]
 
+  override def empty[K, V]: ju.concurrent.ConcurrentHashMap[K, V] =
+    new ju.concurrent.ConcurrentHashMap[K, V]
+
+  def allowsNullKeys: Boolean = false
+
+  def allowsNullValues: Boolean = false
 }

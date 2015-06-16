@@ -14,14 +14,9 @@ import org.scalajs.jasminetest.JasmineTest
 import scala.collection.JavaConversions._
 import scala.collection.{mutable => mu}
 
-trait MapTest[F <: MapFactory] extends JasmineTest {
+trait MapTest extends JasmineTest with ExpectExceptions {
 
-  protected def mapFactory: F
-
-  protected def allowsNullKeys: Boolean
-  protected def allowsNullValues: Boolean
-
-  protected def testMapApi(): Unit = {
+  def testMapApi(mapFactory: MapFactory): Unit = {
 
     it("should store strings") {
       val mp = mapFactory.empty[String, String]
@@ -122,7 +117,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(mp.isEmpty).toBeTruthy
     }
 
-    if (allowsNullKeys) {
+    if (mapFactory.allowsNullKeys) {
       it("should put null keys") {
         val mp = mapFactory.empty[String, String]
         mp.put(null, "one")
@@ -131,11 +126,11 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
     } else {
       it("should not put null keys") {
         val mp = mapFactory.empty[String, String]
-        expectNullPointerException(mp.put(null, "one"))
+        expectThrows[NullPointerException](mp.put(null, "one"))
       }
     }
 
-    if (allowsNullValues) {
+    if (mapFactory.allowsNullValues) {
       it("should put null values") {
         val mp = mapFactory.empty[String, String]
         mp.put("one", null)
@@ -144,7 +139,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
     } else {
       it("should not put null values") {
         val mp = mapFactory.empty[String, String]
-        expectNullPointerException(mp.put("one", null))
+        expectThrows[NullPointerException](mp.put("one", null))
       }
     }
 
@@ -231,29 +226,25 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
         (null: String) -> "y",
         "X" -> "y")
 
-      if (allowsNullKeys) {
+      if (mapFactory.allowsNullKeys) {
         mp.putAll(mutableMapAsJavaMap(nullMap))
         expect(mp.get(null)).toEqual("y")
         expect(mp.get("X")).toEqual("y")
       } else {
-        expectNullPointerException(mp.putAll(mutableMapAsJavaMap(nullMap)))
+        expectThrows[NullPointerException](mp.putAll(mutableMapAsJavaMap(nullMap)))
       }
     }
 
-  }
-
-  class SimpleQueryableMap[K, V](inner: mu.HashMap[K, V])
-      extends ju.AbstractMap[K, V] {
-    def entrySet(): java.util.Set[java.util.Map.Entry[K, V]] = {
-      setAsJavaSet(inner.map {
-        case (k, v) => new ju.AbstractMap.SimpleImmutableEntry(k, v)
-      }.toSet)
+    class SimpleQueryableMap[K, V](inner: mu.HashMap[K, V])
+        extends ju.AbstractMap[K, V] {
+      def entrySet(): java.util.Set[java.util.Map.Entry[K, V]] = {
+        setAsJavaSet(inner.map {
+          case (k, v) => new ju.AbstractMap.SimpleImmutableEntry(k, v)
+        }.toSet)
+      }
     }
-  }
 
-  describe(s"${mapFactory.implementationName}.values") {
-
-    it("should mirror the related map size") {
+    it("values should mirror the related map size") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -297,7 +288,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(new SimpleQueryableMap(hm4).values.size).toEqual(2)
     }
 
-    it("should check single and multiple objects presence") {
+    it("values should check single and multiple objects presence") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -359,7 +350,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(new SimpleQueryableMap(hm3).values.contains(null)).toBeTruthy
     }
 
-    it("should side effect clear/remove/retain on the related map") {
+    it("values should side effect clear/remove/retain on the related map") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -411,11 +402,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(mp.containsKey("THREE")).toBeFalsy
     }
 
-  }
-
-  describe(s"${mapFactory.implementationName}.keySet") {
-
-    it("should mirror the related map size") {
+    it("keySet should mirror the related map size") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -459,7 +446,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(new SimpleQueryableMap(hm4).keySet.size).toEqual(2)
     }
 
-    it("should check single and multiple objects presence") {
+    it("keySet should check single and multiple objects presence") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -524,7 +511,7 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
       expect(new SimpleQueryableMap(hm3).keySet.contains(null)).toBeTruthy
     }
 
-    it("should side effect clear/remove/retain on the related map") {
+    it("keySet should side effect clear/remove/retain on the related map") {
       val mp = mapFactory.empty[String, String]
 
       mp.put("ONE", "one")
@@ -578,22 +565,19 @@ trait MapTest[F <: MapFactory] extends JasmineTest {
     }
 
   }
+}
 
-  protected def expectNullPointerException(f: => Unit): Unit = {
-    expect({
-      try {
-        f
-        false
-      } catch {
-        case err: NullPointerException => true
-      }
-    }).toBeTruthy
-  }
-
+object MapFactory {
+  def allFactories: Iterator[MapFactory] =
+    HashMapFactory.allFactories ++ SortedMapFactory.allFactories ++ ConcurrentMapFactory.allFactories
 }
 
 trait MapFactory {
   def implementationName: String
 
   def empty[K, V]: ju.Map[K, V]
+
+  def allowsNullKeys: Boolean
+
+  def allowsNullValues: Boolean
 }

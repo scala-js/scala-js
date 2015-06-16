@@ -211,6 +211,13 @@ class LinkedHashMapTest[F <: LinkedHashMapFactory](mapFactory: F)
 
 }
 
+object LinkedHashMapFactory {
+  def allFactories: Iterator[MapFactory] = {
+    Iterator(new LinkedHashMapFactory(true, true), new LinkedHashMapFactory(true, false),
+      new LinkedHashMapFactory(false, true), new LinkedHashMapFactory(false, false))
+  }
+}
+
 class LinkedHashMapFactory(val accessOrder: Boolean, val withSizeLimit: Boolean) extends HashMapFactory {
   def orderName: String =
     if (accessOrder) "access-order"
