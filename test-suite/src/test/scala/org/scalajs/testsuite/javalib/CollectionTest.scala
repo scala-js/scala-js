@@ -204,4 +204,5 @@ object CollectionFactory {
 trait CollectionFactory {
   def implementationName: String
   def empty[E]: ju.Collection[E]
+  def allowsMutationThroughIterator: Boolean = true
 }

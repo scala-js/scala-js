@@ -5,7 +5,7 @@ import scala.collection.JavaConversions._
 import scala.annotation.tailrec
 
 abstract class AbstractList[E] protected () extends AbstractCollection[E]
-                                               with List[E] {
+    with List[E] {
   self =>
 
   override def add(element: E): Boolean = {
@@ -172,18 +172,6 @@ private abstract class AbstractListView[E](protected val list: List[E],
     toIndex += delta
 }
 
-private trait SizeChangeEvent {
-  protected var end: Int
-
-  @inline
-  protected final def changeSize(delta: Int): Unit = {
-    end += delta
-    onSizeChanged(delta)
-  }
-
-  protected def onSizeChanged(delta: Int): Unit = () // override if needed
-}
-
 /* BackedUpListIterator implementation assumes that the underling list is not
  * necessarily on a RandomAccess list. Hence it wraps the underling list
  * iterator and assumes that this one is more efficient than accessing
@@ -228,56 +216,18 @@ private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex:
 /* RandomAccessListIterator implementation assumes that the has an efficient
  * .get(index) implementation.
  */
-private class RandomAccessListIterator[E](list: List[E], private var i: Int,
-    start: Int, override protected var end: Int) extends ListIterator[E] with SizeChangeEvent {
+private class RandomAccessListIterator[E](list: List[E], i: Int, start: Int, end: Int)
+    extends AbstractRandomAccessListIterator[E](i, start, end) {
 
-  private var last = -1
+  protected def get(index: Int): E =
+    list.get(index)
 
-  def hasNext(): Boolean =
-    i < end
+  protected def set(index: Int, e: E): Unit =
+    list.set(index, e)
 
-  def next(): E = {
-    last = i
-    i += 1
-    list.get(last)
-  }
+  protected def remove(index: Int): Unit =
+    list.remove(index)
 
-  def hasPrevious(): Boolean =
-    start < i
-
-  def previous(): E = {
-    i -= 1
-    last = i
-    list.get(last)
-  }
-
-  def nextIndex(): Int = i
-
-  def previousIndex(): Int = i - 1
-
-  def remove(): Unit = {
-    checkThatHasLast()
-    list.remove(last)
-    if (last < i)
-      i -= 1
-    last = -1
-    changeSize(-1)
-  }
-
-  def set(e: E): Unit = {
-    checkThatHasLast()
-    list.set(last, e)
-  }
-
-  def add(e: E): Unit = {
-    list.add(i, e)
-    changeSize(1)
-    last = -1
-    i += 1
-  }
-
-  private def checkThatHasLast(): Unit = {
-    if (last == -1)
-      throw new IllegalStateException
-  }
+  protected def add(index: Int, e: E): Unit =
+    list.add(index, e)
 }

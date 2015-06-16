@@ -218,9 +218,9 @@ trait ListTest extends CollectionTest {
 
     it("should add elements at a given index") {
       val al = factory.empty[String]
-      al.add(0, "one") // ("one")
-      al.add(0, "two") // ("two", "one")
-      al.add(1, "three") // ("two", "three", "one")
+      al.add(0, "one") // ["one"]
+      al.add(0, "two") // ["two", "one"]
+      al.add(1, "three") // ["two", "three", "one"]
 
       expect(al.get(0)).toEqual("two")
       expect(al.get(1)).toEqual("three")
@@ -349,71 +349,75 @@ trait ListTest extends CollectionTest {
       testListIterator(al, Seq("one", "two", "ten", "six"))
       testListIterator(al1, Seq("ten"))
 
-      val iter = al1.listIterator
-      iter.add("three")
-      iter.next()
-      iter.add("zero")
+      if (factory.allowsMutationThroughIterator) {
+        val iter = al1.listIterator
+        iter.add("three")
+        iter.next()
+        iter.add("zero")
 
-      testListIterator(al, Seq("one", "two", "three", "ten", "zero", "six"))
-      testListIterator(al1, Seq("three", "ten", "zero"))
+        testListIterator(al, Seq("one", "two", "three", "ten", "zero", "six"))
+        testListIterator(al1, Seq("three", "ten", "zero"))
+      }
     }
 
-    it("should iterate and modify elements with a listIterator") {
-      val s = Seq("one", "two", "three")
-      val ll = factory.empty[String]
+    if (factory.allowsMutationThroughIterator) {
+      it("should iterate and modify elements with a listIterator") {
+        val s = Seq("one", "two", "three")
+        val ll = factory.empty[String]
 
-      for (e <- s)
-        ll.add(e)
+        for (e <- s)
+          ll.add(e)
 
-      val iter = ll.listIterator(1)
+        val iter = ll.listIterator(1)
 
-      expect(iter.hasNext()).toBeTruthy
-      expect(iter.hasPrevious()).toBeTruthy
+        expect(iter.hasNext()).toBeTruthy
+        expect(iter.hasPrevious()).toBeTruthy
 
-      expect(iter.previous()).toEqual("one")
+        expect(iter.previous()).toEqual("one")
 
-      expect(iter.hasNext()).toBeTruthy
-      expect(iter.hasPrevious()).toBeFalsy
+        expect(iter.hasNext()).toBeTruthy
+        expect(iter.hasPrevious()).toBeFalsy
 
-      expect(iter.next()).toEqual("one")
+        expect(iter.next()).toEqual("one")
 
-      expect(iter.next()).toEqual("two")
-      expect(iter.next()).toEqual("three")
+        expect(iter.next()).toEqual("two")
+        expect(iter.next()).toEqual("three")
 
-      expect(iter.hasNext()).toBeFalsy
-      expect(iter.hasPrevious()).toBeTruthy
+        expect(iter.hasNext()).toBeFalsy
+        expect(iter.hasPrevious()).toBeTruthy
 
-      iter.add("four")
+        iter.add("four")
 
-      expect(iter.hasNext()).toBeFalsy
-      expect(iter.hasPrevious()).toBeTruthy
+        expect(iter.hasNext()).toBeFalsy
+        expect(iter.hasPrevious()).toBeTruthy
 
-      expect(iter.previous()).toEqual("four")
+        expect(iter.previous()).toEqual("four")
 
-      iter.remove()
+        iter.remove()
 
-      expect(iter.hasNext()).toBeFalsy
-      expect(iter.hasPrevious()).toBeTruthy
-      expect(iter.previous()).toEqual("three")
-      iter.set("THREE")
-      expect(iter.previous()).toEqual("two")
-      iter.set("TWO")
-      expect(iter.previous()).toEqual("one")
-      iter.set("ONE")
-      expect(iter.hasNext()).toBeTruthy
-      expect(iter.hasPrevious()).toBeFalsy
+        expect(iter.hasNext()).toBeFalsy
+        expect(iter.hasPrevious()).toBeTruthy
+        expect(iter.previous()).toEqual("three")
+        iter.set("THREE")
+        expect(iter.previous()).toEqual("two")
+        iter.set("TWO")
+        expect(iter.previous()).toEqual("one")
+        iter.set("ONE")
+        expect(iter.hasNext()).toBeTruthy
+        expect(iter.hasPrevious()).toBeFalsy
 
-      expect(iter.next()).toEqual("ONE")
-      iter.remove()
-      expect(iter.next()).toEqual("TWO")
-      iter.remove()
-      expect(iter.next()).toEqual("THREE")
-      iter.remove()
+        expect(iter.next()).toEqual("ONE")
+        iter.remove()
+        expect(iter.next()).toEqual("TWO")
+        iter.remove()
+        expect(iter.next()).toEqual("THREE")
+        iter.remove()
 
-      expect(iter.hasNext()).toBeFalsy
-      expect(iter.hasPrevious()).toBeFalsy
+        expect(iter.hasNext()).toBeFalsy
+        expect(iter.hasPrevious()).toBeFalsy
 
-      expect(ll.isEmpty()).toBeTruthy
+        expect(ll.isEmpty()).toBeTruthy
+      }
     }
   }
 }

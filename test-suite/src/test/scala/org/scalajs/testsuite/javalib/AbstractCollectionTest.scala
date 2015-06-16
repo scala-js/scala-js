@@ -2,7 +2,8 @@ package org.scalajs.testsuite.javalib
 
 import java.{util => ju}
 
-object AbstractCollectionTest extends AbstractCollectionTest(new AbstractCollectionFactory)
+object AbstractCollectionTest
+    extends AbstractCollectionTest(new AbstractCollectionFactory)
 
 abstract class AbstractCollectionTest[F <: AbstractCollectionFactory](factory: F)
     extends CollectionTest {
