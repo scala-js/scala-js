@@ -131,6 +131,9 @@ final class RhinoJSEnv private (
     try {
       val scope = context.initStandardObjects()
 
+      // Rhino has trouble optimizing some big things, e.g., env.js or ScalaTest
+      context.setOptimizationLevel(-1)
+
       if (withDOM)
         setupDOM(context, scope)
 
@@ -183,9 +186,6 @@ final class RhinoJSEnv private (
     val path = "/META-INF/resources/webjars/envjs/1.2/" + name
     val resource = getClass.getResource(path)
     assert(resource != null, s"need $name as resource")
-
-    // Rhino can't optimize envjs
-    context.setOptimizationLevel(-1)
 
     // Don't print envjs header
     scope.addFunction("print", args => ())
