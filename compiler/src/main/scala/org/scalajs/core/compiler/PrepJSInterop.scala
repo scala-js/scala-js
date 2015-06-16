@@ -408,6 +408,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (sym.isAccessor)
         sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
 
+      if (jsInterop.isJSGetter(sym) && sym.name == nme.apply &&
+          !sym.hasAnnotation(JSNameAnnotation)) {
+        reporter.error(sym.pos, s"A member named apply represents function " +
+            "application in JavaScript. A parameterless member should be " +
+            "exported as a property. You must add @JSName(\"apply\")")
+      }
+
       if (jsInterop.isJSSetter(sym))
         checkSetterSignature(sym, tree.pos, exported = false)
 
