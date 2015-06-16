@@ -7,6 +7,8 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib
 
+import java.{util => ju}
+
 trait ListTest[F <: ListFactory] extends CollectionTest[F] {
 
   def expectIndexOutOfBoundsException[T](f: => T): Unit = {
@@ -287,6 +289,21 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
     }
 
     it("should give a sublist backed up by the original list") {
+      def testListIterator(list: ju.List[String], expected: Seq[String]): Unit = {
+        val iter = list.listIterator
+        for (elem <- expected) {
+          expect(iter.hasNext).toBeTruthy
+          expect(iter.next()).toEqual(elem)
+        }
+        expect(iter.hasNext).toBeFalsy
+
+        for (elem <- expected.reverse) {
+          expect(iter.hasPrevious).toBeTruthy
+          expect(iter.previous()).toEqual(elem)
+        }
+        expect(iter.hasPrevious).toBeFalsy
+      }
+
       val al = factory.empty[String]
 
       al.add("one")
@@ -295,6 +312,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       al.add("four")
       al.add("five")
       al.add("six")
+
+      testListIterator(al, Seq("one", "two", "three", "four", "five", "six"))
 
       val al0 = al.subList(0, al.size)
       expect(al0.size).toEqual(6)
@@ -305,6 +324,8 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(al0.get(3)).toEqual("zero")
       for (i <- 0 until al.size)
         expect(al0.get(i)).toEqual(al.get(i))
+      testListIterator(al, Seq("one", "two", "three", "zero", "five", "six"))
+      testListIterator(al0, Seq("one", "two", "three", "zero", "five", "six"))
 
       val al1 = al.subList(2, 5)
       expect(al1.size).toEqual(3)
@@ -320,20 +341,35 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       expect(al1.get(1)).toEqual("zero")
       expect(al1.get(2)).toEqual("five")
 
+      testListIterator(al, Seq("one", "two", "nine", "zero", "five", "six"))
+      testListIterator(al1, Seq("nine", "zero", "five"))
+
       al1.clear()
 
       expect(al.get(0)).toEqual("one")
       expect(al.get(1)).toEqual("two")
       expect(al.get(2)).toEqual("six")
-
       expect(al.size).toEqual(3)
       expect(al1.size).toEqual(0)
-    }
+      testListIterator(al, Seq("one", "two", "six"))
+      testListIterator(al1, Seq.empty)
 
+      expect(al1.add("ten")).toBeTruthy
+      testListIterator(al, Seq("one", "two", "ten", "six"))
+      testListIterator(al1, Seq("ten"))
+
+      val iter = al1.listIterator
+      iter.add("three")
+      iter.next()
+      iter.add("zero")
+
+      testListIterator(al, Seq("one", "two", "three", "ten", "zero", "six"))
+      testListIterator(al1, Seq("three", "ten", "zero"))
+    }
   }
 }
 
 trait ListFactory extends CollectionFactory {
   def implementationName: String
-  def empty[E]: java.util.List[E]
+  def empty[E]: ju.List[E]
 }
