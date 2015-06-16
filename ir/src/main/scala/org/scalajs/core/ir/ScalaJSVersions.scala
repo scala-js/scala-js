@@ -2,19 +2,26 @@ package org.scalajs.core.ir
 
 object ScalaJSVersions {
 
-  /** the Scala.js version of this build */
-  final val current = "0.6.4-SNAPSHOT"
+  /* DO NOT MAKE THESE 'final val's!
+   * When referring to these "constants" from separate libraries, if it is a
+   * 'final val', the value will be copied in the binaries of those libraries.
+   * If they are then linked to a different version of the IR artifact, their
+   * copy of these constants will not be updated.
+   */
 
-  /** true iff the Scala.js version of this build is a snapshot version. */
-  final val currentIsSnapshot = current endsWith "-SNAPSHOT"
+  /** Scala.js version. */
+  val current: String = "0.6.4-SNAPSHOT"
 
-  /** Version of binary IR this Scala.js version emits
+  /** true iff the Scala.js version is a snapshot version. */
+  val currentIsSnapshot: Boolean = current endsWith "-SNAPSHOT"
+
+  /** Version of binary IR emitted by this version of Scala.js.
    *
    *  This should be either of:
    *  - a prior release version (i.e. "0.5.0", *not* "0.5.0-SNAPSHOT")
    *  - `current`
    */
-  final val binaryEmitted = current
+  val binaryEmitted: String = current
 
   /** Versions whose binary files we can support (used by deserializer) */
   val binarySupported: Set[String] = Set("0.6.0", "0.6.3", binaryEmitted)
