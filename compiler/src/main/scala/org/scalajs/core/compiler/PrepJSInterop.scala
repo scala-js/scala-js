@@ -401,6 +401,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         }
       }
 
+      /* If this is an accessor, copy a potential @JSName annotation from
+       * the field since otherwise it will get lost for traits (since they
+       * have no fields).
+       */
+      if (sym.isAccessor)
+        sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
+
       if (jsInterop.isJSSetter(sym))
         checkSetterSignature(sym, tree.pos, exported = false)
 
