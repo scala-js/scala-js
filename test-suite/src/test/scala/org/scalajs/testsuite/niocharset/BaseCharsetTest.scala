@@ -34,17 +34,20 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
       outParts: OutPart[CharBuffer]*): Unit = {
 
     def testOneConfig(malformedAction: CodingErrorAction,
-        unmappableAction: CodingErrorAction): Unit = {
+        unmappableAction: CodingErrorAction, readOnly: Boolean): Unit = {
 
       val decoder = charset.newDecoder()
       decoder.onMalformedInput(malformedAction)
       decoder.onUnmappableCharacter(unmappableAction)
 
+      val inBuf =
+        if (readOnly) in.asReadOnlyBuffer()
+        else in.duplicate()
+      assert(inBuf.isReadOnly == readOnly)
+      assert(inBuf.hasArray != readOnly)
+
       val actualTry = Try {
-        in.mark()
-        val buf =
-          try decoder.decode(in)
-          finally in.reset()
+        val buf = decoder.decode(inBuf)
         val actualChars = new Array[Char](buf.remaining())
         buf.get(actualChars)
         actualChars
@@ -105,8 +108,9 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
     for {
       malformedAction  <- if (hasAnyMalformed)  AllErrorActions else ReportActions
       unmappableAction <- if (hasAnyUnmappable) AllErrorActions else ReportActions
+      readOnly         <- List(false, true)
     } {
-      testOneConfig(malformedAction, unmappableAction)
+      testOneConfig(malformedAction, unmappableAction, readOnly)
     }
   }
 
@@ -114,17 +118,20 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
       outParts: OutPart[ByteBuffer]*): Unit = {
 
     def testOneConfig(malformedAction: CodingErrorAction,
-        unmappableAction: CodingErrorAction): Unit = {
+        unmappableAction: CodingErrorAction, readOnly: Boolean): Unit = {
 
       val encoder = charset.newEncoder()
       encoder.onMalformedInput(malformedAction)
       encoder.onUnmappableCharacter(unmappableAction)
 
+      val inBuf =
+        if (readOnly) in.asReadOnlyBuffer()
+        else in.duplicate()
+      assert(inBuf.isReadOnly == readOnly)
+      assert(inBuf.hasArray != readOnly)
+
       val actualTry = Try {
-        in.mark()
-        val buf =
-          try encoder.encode(in)
-          finally in.reset()
+        val buf = encoder.encode(inBuf)
         val actualBytes = new Array[Byte](buf.remaining())
         buf.get(actualBytes)
         actualBytes
@@ -184,8 +191,9 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
     for {
       malformedAction  <- if (hasAnyMalformed)  AllErrorActions else ReportActions
       unmappableAction <- if (hasAnyUnmappable) AllErrorActions else ReportActions
+      readOnly         <- List(false, true)
     } {
-      testOneConfig(malformedAction, unmappableAction)
+      testOneConfig(malformedAction, unmappableAction, readOnly)
     }
   }
 }
@@ -229,6 +237,6 @@ object BaseCharsetTest {
     }
 
     def cb(args: Any*): CharBuffer =
-      CharBuffer.wrap(sc.s(args: _*))
+      CharBuffer.wrap(sc.s(args: _*).toCharArray)
   }
 }

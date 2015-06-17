@@ -66,13 +66,10 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
           in.position(inPos - inOffset)
           out.position(outPos - outOffset)
         } else {
-          /* Here, it's fine to read all the remaining bytes from the input,
-           * because we will *always* use all of them.
-           */
           var i = 0
           while (i != rem) {
             // Apparently ignoring the bit 7 in US_ASCII is the expected behavior
-            out.put((in.get(i).toInt & maxValue).toChar)
+            out.put((in.get().toInt & maxValue).toChar)
             i += 1
           }
         }
