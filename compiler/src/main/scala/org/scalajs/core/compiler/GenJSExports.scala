@@ -507,26 +507,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       for {
         (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
       } yield {
-        // Code to verify the type of the argument (if it is defined)
-        val verifiedArg = {
-          val tpePosterasure =
-            enteringPhase(currentRun.posterasurePhase)(param.tpe)
-          tpePosterasure match {
-            case tpe if isPrimitiveValueType(tpe) =>
-              val unboxed = makePrimitiveUnbox(jsArg, tpe)
-              // Ensure we don't convert null to a primitive value type
-              js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Null()),
-                genThrowTypeError(s"Found null, expected $tpe"),
-                unboxed)(unboxed.tpe)
-            case tpe: ErasedValueType =>
-              val boxedClass = tpe.valueClazz
-              val unboxMethod = boxedClass.derivedValueClassUnbox
-              genApplyMethod(
-                  genAsInstanceOf(jsArg, tpe), unboxMethod, Nil)
-            case tpe =>
-              genAsInstanceOf(jsArg, tpe)
-          }
-        }
+        // Unboxed argument (if it is defined)
+        val unboxedArg = fromAny(jsArg,
+            enteringPhase(currentRun.posterasurePhase)(param.tpe))
 
         // If argument is undefined and there is a default getter, call it
         val verifiedOrDefault = if (param.hasFlag(Flags.DEFAULTPARAM)) {
@@ -552,11 +535,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                 result.take(defaultGetter.tpe.params.size).toList.map(_.ref))
           }, {
             // Otherwise, unbox the argument
-            verifiedArg
-          })(verifiedArg.tpe)
+            unboxedArg
+          })(unboxedArg.tpe)
         } else {
           // Otherwise, it is always the unboxed argument
-          verifiedArg
+          unboxedArg
         }
 
         result +=
