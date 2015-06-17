@@ -103,15 +103,6 @@ object MiscInteropTest extends JasmineTest {
       expect(f.bar(5)).toEqual(7)
     }
 
-    it("should allow names ending in _=") {
-      val d = js.Dynamic.literal("a_=" -> 1)
-      val f = d.asInstanceOf[UndEqNamed]
-
-      expect(f.a).toEqual(1)
-      f.a = 2
-      expect(d.selectDynamic("a_=")).toEqual(2)
-      expect(f.a).toEqual(2)
-    }
   }
 
   trait DirectSubtraitOfJSAny extends js.Any {
@@ -120,14 +111,6 @@ object MiscInteropTest extends JasmineTest {
 
   class DirectSubclassOfJSAny extends js.Any {
     def bar(x: Int): Int = js.native
-  }
-
-  trait UndEqNamed extends js.Any {
-    @JSName("a_=")
-    def a: Int = js.native
-
-    @JSName("a_=")
-    def a_=(x: Int): Unit = js.native
   }
 
 }

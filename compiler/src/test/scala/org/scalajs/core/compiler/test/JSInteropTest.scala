@@ -387,4 +387,75 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def noApplyProperty: Unit = {
+
+    // def apply
+
+    """
+    trait A extends js.Object {
+      def apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |      def apply: Int = js.native
+      |          ^
+    """
+
+    """
+    import js.annotation.JSName
+
+    trait A extends js.Object {
+      @JSName("apply")
+      def apply: Int = js.native
+    }
+    """.succeeds
+
+    // val apply
+
+    """
+    trait A extends js.Object {
+      val apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |      val apply: Int = js.native
+      |          ^
+    """
+
+    """
+    import js.annotation.JSName
+
+    trait A extends js.Object {
+      @JSName("apply")
+      val apply: Int = js.native
+    }
+    """.succeeds
+
+    // var apply
+
+    """
+    trait A extends js.Object {
+      var apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |      var apply: Int = js.native
+      |          ^
+    """
+
+    """
+    import js.annotation.JSName
+
+    trait A extends js.Object {
+      @JSName("apply")
+      var apply: Int = js.native
+    }
+    """.succeeds
+
+  }
+
 }
