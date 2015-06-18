@@ -3,8 +3,9 @@ package org.scalajs.sbtplugin
 import sbt._
 import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
-import sbinary.DefaultProtocol.StringFormat
+import sbinary.DefaultProtocol._
 import Cache.seqFormat
+import complete.Parser
 import complete.DefaultParsers._
 
 import Implicits._
@@ -23,8 +24,10 @@ import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 
+import org.scalajs.core.ir
 import org.scalajs.core.ir.Utils.escapeJS
 import org.scalajs.core.ir.ScalaJSVersions
+import org.scalajs.core.ir.Printers.{InfoPrinter, IRTreePrinter}
 
 import org.scalajs.testadapter.ScalaJSFramework
 
@@ -69,6 +72,11 @@ object ScalaJSPluginInternal {
   /** Lookup key for CompleteClasspath in attribute maps */
   val scalaJSCompleteClasspath =
       AttributeKey[CompleteClasspath]("scalaJSCompleteClasspath")
+
+  /** All .sjsir files on the fullClasspath, used by scalajsp. */
+  val sjsirFilesOnClasspath = TaskKey[List[String]]("sjsirFilesOnClasspath",
+      "All .sjsir files on the fullClasspath, used by scalajsp",
+      KeyRanks.Invisible)
 
   /** Patches the IncOptions so that .sjsir files are pruned as needed.
    *
@@ -133,8 +141,77 @@ object ScalaJSPluginInternal {
       }
   )
 
+  private def scalajspSettings: Seq[Setting[_]] = {
+    case class Options(
+        infos: Boolean = false,
+        showReflProxy: Boolean = false
+    )
+
+    val optionsParser: Parser[Options] = {
+      token(OptSpace ~> (
+          (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true))
+        | (literal("-p") | "--reflProxies") ^^^ ((_: Options).copy(showReflProxy = true))
+      )).* map {
+        fns => Function.chain(fns)(Options())
+      }
+    }
+
+    def sjsirFileOnClasspathParser(
+        relPaths: List[String]): Parser[String] = {
+      OptSpace ~> StringBasic
+        .examples(ScalajspUtils.relPathsExamples(relPaths))
+    }
+
+    def scalajspParser(state: State, relPaths: List[String]) =
+      optionsParser ~ sjsirFileOnClasspathParser(relPaths)
+
+    val parser = loadForParser(sjsirFilesOnClasspath) { (state, relPaths) =>
+      scalajspParser(state, relPaths.getOrElse(Nil))
+    }
+
+    Seq(
+        sjsirFilesOnClasspath <<= Def.task {
+          val cp = Attributed.data(fullClasspath.value)
+          ScalajspUtils.listSjsirFilesOnClasspath(cp)
+        } storeAs(sjsirFilesOnClasspath) triggeredBy(fullClasspath),
+
+        scalajsp := {
+          val (options, relPath) = parser.parsed
+
+          val cp = Attributed.data(fullClasspath.value)
+          val vfile = ScalajspUtils.loadIRFile(cp, relPath)
+
+          val stdout = new java.io.PrintWriter(System.out)
+          if (options.infos) {
+            new InfoPrinter(stdout).printClassInfo(vfile.info)
+          } else {
+            val (info, tree) = vfile.infoAndTree
+            val outTree = {
+              if (options.showReflProxy) tree
+              else filterOutReflProxies(tree)
+            }
+            new IRTreePrinter(stdout).printTopLevelTree(outTree)
+          }
+          stdout.flush()
+        }
+    )
+  }
+
+  // !!! CODE DUPLICATION with Scalajsp.filterOutReflProxies
+  private def filterOutReflProxies(tree: ir.Trees.ClassDef): ir.Trees.ClassDef = {
+    import ir.Trees._
+    import ir.Definitions.isReflProxyName
+    val newDefs = tree.defs.filter {
+      case MethodDef(_, Ident(name, _), _, _, _) => !isReflProxyName(name)
+      case _ => true
+    }
+    tree.copy(defs = newDefs)(tree.optimizerHints)(tree.pos)
+  }
+
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
+  ) ++ (
+      scalajspSettings
   ) ++ Seq(
 
       scalaJSPreLinkClasspath := {

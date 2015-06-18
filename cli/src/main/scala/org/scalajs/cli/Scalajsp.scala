@@ -153,6 +153,7 @@ object Scalajsp {
   private val stdout =
     new BufferedWriter(new OutputStreamWriter(Console.out, "UTF-8"))
 
+  // !!! CODE DUPLICATION with ScalaJSPluginInternal.filterOutReflProxies
   private def filterOutReflProxies(tree: ClassDef): ClassDef = {
     import ir.Trees._
     import ir.Definitions.isReflProxyName
