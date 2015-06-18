@@ -74,7 +74,7 @@ trait JarTraverser extends ClasspathContentHandler with FileSystem {
       getOrCreateJSFile(relPath, fullPath, shortName)
         .withSourceMap(Some(entryContent))
     } else if (longName.endsWith(".sjsir")) {
-      val vf = new MemVirtualSerializedScalaJSIRFile(fullPath) {
+      def vf = new MemVirtualSerializedScalaJSIRFile(fullPath) {
         override val name = shortName
       }.withContent(entryBinaryContent)
        .withVersion(entryVersion)
