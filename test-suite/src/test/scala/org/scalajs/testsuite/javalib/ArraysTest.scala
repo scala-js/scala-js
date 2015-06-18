@@ -38,29 +38,64 @@ trait ArraysTest extends JasmineTest {
     def compare(s1: String, s2: String): Int = s1.compareTo(s2)
   }
 
-  val intComparator = new Comparator[Int]() {
-    def compare(i1: Int, i2: Int): Int = i1 - i2
-  }
-
   testBody {
 
-    it("should respond to `sort` for Int") {
-      val scalaInts = Array(5, 3, 6, 1, 2, 4)
-      val ints = new Array[Object](scalaInts.length)
-      for (i <- 0 until scalaInts.length)
-        ints(i) = scalaInts(i).asInstanceOf[Object]
-      val sorted = Array(1, 2, 3, 4, 5, 6)
+    def testSort[T](typeName: String,  elem: Int => T, newArray: Int => Array[T],
+          sort: Array[T] => Unit, sort2: (Array[T], Int, Int) => Unit): Unit = {
+      it(s"should respond to `sort` for $typeName") {
+        val values = Array(5, 3, 6, 1, 2, 4).map(elem)
+        val arr = newArray(values.length)
 
-      Arrays.sort(ints, intComparator.asInstanceOf[Comparator[Object]])
-      expect(ints).toEqual(Array(1, 2, 3, 4, 5, 6))
+        for (i <- 0 until values.length)
+          arr(i) = values(i)
+        sort(arr)
+        for ((e, i) <- Array(1, 2, 3, 4, 5, 6).map(elem).zipWithIndex)
+          expect(arr(i) == e).toBeTruthy
+
+        for (i <- 0 until values.length)
+          arr(i) = values(i)
+        sort2(arr, 0, 3)
+        for ((e, i) <- Array(3, 5, 6, 1, 2, 4).map(elem).zipWithIndex)
+          expect(arr(i) == e).toBeTruthy
+
+        sort2(arr, 2, 5)
+        for ((e, i) <- Array(3, 5, 1, 2, 6, 4).map(elem).zipWithIndex)
+          expect(arr(i) == e).toBeTruthy
+
+        sort2(arr, 0, 6)
+        for ((e, i) <- Array(1, 2, 3, 4, 5, 6).map(elem).zipWithIndex)
+          expect(arr(i) == e).toBeTruthy
+      }
+    }
+    testSort[Int]("Int", _.toInt, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Long]("Long", _.toLong, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Short]("Short", _.toShort, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Byte]("Byte", _.toByte, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Char]("Char", _.toChar, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Float]("Float", _.toFloat, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[Double]("Double", _.toDouble, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+    testSort[AnyRef]("String", _.toString, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
+
+    it("should respond to `sort` with comparator") {
+      val scalajs: Array[String] = Array("S", "c", "a", "l", "a", ".", "j", "s")
+      val sorted = Array[String](".", "S", "a", "a", "c", "j", "l", "s")
+
+      Arrays.sort(scalajs, stringComparator)
+      expect(scalajs).toEqual(sorted)
     }
 
-    it("should respond to `sort` for String") {
-      val scalajs: Array[Object] = Array("S", "c", "a", "l", "a", ".", "j", "s")
-      val sorted = Array(".", "S", "a", "a", "c", "j", "l", "s")
+    it("should have a `sort` that is stable") {
+      case class A(n: Int)
+      val cmp = new Comparator[A]() {
+        def compare(a1: A, a2: A): Int = a1.n.compareTo(a2.n)
+      }
+      val scalajs: Array[A] = Array(A(1), A(2), A(2), A(3), A(1), A(2), A(3))
+      val sorted = Array[A](scalajs(0), scalajs(4), scalajs(1), scalajs(2),
+          scalajs(5), scalajs(3), scalajs(6))
 
-      Arrays.sort(scalajs, stringComparator.asInstanceOf[Comparator[Object]])
+      Arrays.sort(scalajs, cmp)
       expect(scalajs).toEqual(sorted)
+      scalajs.zip(sorted).forall(pair => pair ._1 eq pair._2)
     }
 
     it("should respond to `fill` for Boolean") {
@@ -510,6 +545,16 @@ trait ArraysTest extends JasmineTest {
       expect(sequencescopy).toEqual(Array[CharSequence]("a", "b"))
     }
 
+    it("should respond to `copyOf` with key for AnyRef with change of type") {
+      class A
+      case class B(x: Int) extends A
+
+      val bs: Array[AnyRef] = Array(B(1), B(2), B(3))
+      val bscopyAsA = Arrays.copyOf(bs, 5, classOf[Array[A]])
+      expect(bscopyAsA.getClass() == classOf[Array[A]]).toBeTruthy
+      expect(bscopyAsA).toEqual(Array[A](B(1), B(2), B(3), null, null))
+    }
+
     it("should respond to `copyOfRange` for AnyRef") {
       val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
       val anyrefscopy = Arrays.copyOfRange(anyrefs, 2, 4)
@@ -520,6 +565,15 @@ trait ArraysTest extends JasmineTest {
       val sequencescopy = Arrays.copyOfRange(sequences, 1, 5)
       expect(sequencescopy.getClass() == classOf[Array[CharSequence]])
       expect(sequencescopy).toEqual(Array[CharSequence]("b", "c", "d", "e"))
+    }
+
+    it("should respond to `copyOfRange` for AnyRef with change of type") {
+      class A
+      case class B(x: Int) extends A
+      val bs: Array[B] = Array(B(1), B(2), B(3), B(4), B(5))
+      val bscopyAsA = Arrays.copyOfRange(bs, 2, 4, classOf[Array[A]])
+      expect(bscopyAsA.getClass() == classOf[Array[A]]).toBeTruthy
+      expect(bscopyAsA).toEqual(Array[A](B(3), B(4)))
     }
 
     it("should respond to `hashCode` for Boolean") {
@@ -600,6 +654,21 @@ trait ArraysTest extends JasmineTest {
       expect(Arrays.hashCode(Array[AnyRef](null, null))).toEqual(961)
       expect(Arrays.hashCode(Array[AnyRef]("a", "b", null))).toEqual(126046)
       expect(Arrays.hashCode(Array[AnyRef](null, "a", "b", null, "fooooo"))).toEqual(-1237252983)
+    }
+
+    it("should respond to `deepHashCode`") {
+      expect(Arrays.deepHashCode(null: Array[AnyRef])).toEqual(0)
+      expect(Arrays.deepHashCode(Array[AnyRef]())).toEqual(1)
+      expect(Arrays.deepHashCode(Array[AnyRef](null, null))).toEqual(961)
+      expect(Arrays.deepHashCode(Array[AnyRef]("a", "b", null))).toEqual(126046)
+      expect(Arrays.deepHashCode(Array[AnyRef](null, "a", "b", null, "fooooo"))).toEqual(-1237252983)
+      expect(Arrays.deepHashCode(Array[AnyRef](null, Array[AnyRef]()))).toEqual(962)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](), Array[AnyRef]()))).toEqual(993)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef]())))).toEqual(63)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int]())))).toEqual(63)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Double]())))).toEqual(63)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int](1))))).toEqual(94)
+      expect(Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))))).toEqual(94)
     }
 
     it("should respond to `equals` for Booleans") {
@@ -746,6 +815,187 @@ trait ArraysTest extends JasmineTest {
       expect(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(11), A(20)))).toBeFalsy
     }
 
-  }
+    it("should respond to `deepEquals`") {
+      expect(Arrays.deepEquals(
+          null: Array[AnyRef],
+          null: Array[AnyRef])).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](),
+          Array[AnyRef]())).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, null),
+          Array[AnyRef](null, null))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef]("a", "b", null),
+          Array[AnyRef]("a", "b", null))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, "a", "b", null, "fooooo"),
+          Array[AnyRef](null, "a", "b", null, "fooooo"))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, Array[AnyRef]()),
+          Array[AnyRef](null, Array[AnyRef]()))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
+          Array[AnyRef](Array[AnyRef](), Array[AnyRef]()))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
+          Array[AnyRef](Array[AnyRef](Array[AnyRef]())))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Int]())),
+          Array[AnyRef](Array[AnyRef](Array[Int]())))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Double]())),
+          Array[AnyRef](Array[AnyRef](Array[Double]())))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Int](1))),
+          Array[AnyRef](Array[AnyRef](Array[Int](1))))).toBeTruthy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
+          Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))))).toBeTruthy
 
+      expect(Arrays.deepEquals(
+          null: Array[AnyRef],
+          Array[AnyRef]())).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](),
+          null: Array[AnyRef])).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](), null),
+          Array[AnyRef](null, null))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, Array[AnyRef]()),
+          Array[AnyRef](null, null))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef]("a", "b", null),
+          Array[AnyRef]("a", "c", null))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, "a", "b", null, "fooooo"),
+          Array[AnyRef](null, "a", "b", "c", "fooooo"))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](null, Array[AnyRef]()),
+          Array[AnyRef](null, Array[AnyRef](null)))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
+          Array[AnyRef](Array[AnyRef](), Array[AnyRef](null)))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
+          Array[AnyRef](Array[AnyRef](Array[AnyRef](null))))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Int]())),
+          Array[AnyRef](Array[AnyRef](Array[Int](1))))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Double]())),
+          Array[AnyRef](Array[AnyRef](Array[Double](1.0))))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[Int](1))),
+          Array[AnyRef](Array[AnyRef](Array[Int](2))))).toBeFalsy
+      expect(Arrays.deepEquals(
+          Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
+          Array[AnyRef](Array[AnyRef](Array[AnyRef](2.asInstanceOf[AnyRef]))))).toBeFalsy
+    }
+
+    it("should respond to `toString` for Long") {
+      expect(Arrays.toString(null: Array[Long])).toEqual("null")
+      expect(Arrays.toString(Array[Long]())).toEqual("[]")
+      expect(Arrays.toString(Array[Long](0L))).toEqual("[0]")
+      expect(Arrays.toString(Array[Long](1L))).toEqual("[1]")
+      expect(Arrays.toString(Array[Long](2L, 3))).toEqual("[2, 3]")
+      expect(Arrays.toString(Array[Long](1L, 2L, 3L, 4L, 5L))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Long](1L, -2L, 3L, Long.MaxValue))).toEqual("[1, -2, 3, 9223372036854775807]")
+    }
+
+    it("should respond to `toString` for Int") {
+      expect(Arrays.toString(null: Array[Int])).toEqual("null")
+      expect(Arrays.toString(Array[Int]())).toEqual("[]")
+      expect(Arrays.toString(Array[Int](0))).toEqual("[0]")
+      expect(Arrays.toString(Array[Int](1))).toEqual("[1]")
+      expect(Arrays.toString(Array[Int](2, 3))).toEqual("[2, 3]")
+      expect(Arrays.toString(Array[Int](1, 2, 3, 4, 5))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Int](1, -2, 3, Int.MaxValue))).toEqual("[1, -2, 3, 2147483647]")
+    }
+
+    it("should respond to `toString` for Short") {
+      expect(Arrays.toString(null: Array[Short])).toEqual("null")
+      expect(Arrays.toString(Array[Short]())).toEqual("[]")
+      expect(Arrays.toString(Array[Short](0))).toEqual("[0]")
+      expect(Arrays.toString(Array[Short](1))).toEqual("[1]")
+      expect(Arrays.toString(Array[Short](2, 3))).toEqual("[2, 3]")
+      expect(Arrays.toString(Array[Short](1, 2, 3, 4, 5))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Short](1, -2, 3, Short.MaxValue))).toEqual("[1, -2, 3, 32767]")
+    }
+
+    it("should respond to `toString` for Byte") {
+      expect(Arrays.toString(null: Array[Byte])).toEqual("null")
+      expect(Arrays.toString(Array[Byte]())).toEqual("[]")
+      expect(Arrays.toString(Array[Byte](0))).toEqual("[0]")
+      expect(Arrays.toString(Array[Byte](1))).toEqual("[1]")
+      expect(Arrays.toString(Array[Byte](2, 3))).toEqual("[2, 3]")
+      expect(Arrays.toString(Array[Byte](1, 2, 3, 4, 5))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Byte](1, -2, 3, Byte.MaxValue))).toEqual("[1, -2, 3, 127]")
+    }
+
+    it("should respond to `toString` for Boolean") {
+      expect(Arrays.toString(null: Array[Boolean])).toEqual("null")
+      expect(Arrays.toString(Array[Boolean]())).toEqual("[]")
+      expect(Arrays.toString(Array[Boolean](true))).toEqual("[true]")
+      expect(Arrays.toString(Array[Boolean](false))).toEqual("[false]")
+      expect(Arrays.toString(Array[Boolean](true, false))).toEqual("[true, false]")
+      expect(Arrays.toString(Array[Boolean](true, true, false, false))).toEqual("[true, true, false, false]")
+    }
+
+    it("should respond to `toString` for Float") {
+      expect(Arrays.toString(null: Array[Float])).toEqual("null")
+      expect(Arrays.toString(Array[Float]())).toEqual("[]")
+      expect(Arrays.toString(Array[Float](0.0f))).toEqual("[0]")
+      expect(Arrays.toString(Array[Float](1.1f))).toEqual("[1.100000023841858]")
+      expect(Arrays.toString(Array[Float](2.2f, 3f))).toEqual("[2.200000047683716, 3]")
+      expect(Arrays.toString(Array[Float](1f, 2f, 3f, 4f, 5f))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Float](1f, -2f, 3f, Float.MaxValue))).toEqual("[1, -2, 3, 3.4028234663852886e+38]")
+    }
+
+    it("should respond to `toString` for Double") {
+      expect(Arrays.toString(null: Array[Double])).toEqual("null")
+      expect(Arrays.toString(Array[Double]())).toEqual("[]")
+      expect(Arrays.toString(Array[Double](0.0d))).toEqual("[0]")
+      expect(Arrays.toString(Array[Double](1.1d))).toEqual("[1.1]")
+      expect(Arrays.toString(Array[Double](2.2d, 3d))).toEqual("[2.2, 3]")
+      expect(Arrays.toString(Array[Double](1d, 2d, 3d, 4d, 5d))).toEqual("[1, 2, 3, 4, 5]")
+      expect(Arrays.toString(Array[Double](1d, -2d, 3d, Double.MaxValue))).toEqual(
+          "[1, -2, 3, 1.7976931348623157e+308]")
+    }
+
+    it("should respond to `toString` for AnyRef") {
+      class C(num: Int) {
+        override def toString: String = s"C($num)"
+      }
+      expect(Arrays.toString(null: Array[AnyRef])).toEqual("null")
+      expect(Arrays.toString(Array[AnyRef]())).toEqual("[]")
+      expect(Arrays.toString(Array[AnyRef]("abc"))).toEqual("[abc]")
+      expect(Arrays.toString(Array[AnyRef]("a", "b", "c"))).toEqual("[a, b, c]")
+      expect(Arrays.toString(Array[AnyRef](new C(1)))).toEqual("[C(1)]")
+      expect(Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null))).toEqual("[C(1), abc, 1, null]")
+    }
+
+    it("should respond to `deepToString`") {
+      expect(Arrays.deepToString(null: Array[AnyRef])).toEqual("null")
+      expect(Arrays.deepToString(Array[AnyRef]("abc"))).toEqual("[abc]")
+      expect(Arrays.deepToString(Array[AnyRef]("a", "b", "c"))).toEqual("[a, b, c]")
+      expect(Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3)))).toEqual("[[1, 2, 3]]")
+      expect(Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3),
+          Array[Int](4, 5, 6)))).toEqual("[[1, 2, 3], [4, 5, 6]]")
+      expect(Arrays.deepToString(Array[AnyRef](Array[AnyRef]()))).toEqual("[[]]")
+      expect(Arrays.deepToString(Array[AnyRef](Array[AnyRef](Array[AnyRef]())))).toEqual("[[[]]]")
+      expect(Arrays.deepToString(Array[AnyRef](Array[AnyRef](Array[AnyRef](Array[Int](1, 2, 3))),
+          Array[Int](4, 5, 6)))).toEqual("[[[[1, 2, 3]]], [4, 5, 6]]")
+
+      val recArr = Array[AnyRef](null, null)
+      recArr(0) = recArr
+      expect(Arrays.deepToString(recArr)).toEqual("[[...], null]")
+      expect(Arrays.deepToString(Array[AnyRef](recArr))).toEqual("[[[...], null]]")
+      expect(Arrays.deepToString(Array[AnyRef](recArr))).toEqual("[[[...], null]]")
+      recArr(1) = Array[AnyRef](null, Array[AnyRef](null, recArr, Array[AnyRef](recArr)))
+      expect(Arrays.deepToString(recArr)).toEqual("[[...], [null, [null, [...], [[...]]]]]")
+    }
+
+  }
 }
