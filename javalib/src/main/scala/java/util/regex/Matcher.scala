@@ -16,7 +16,7 @@ final class Matcher private[regex] (
   def pattern(): Pattern = pattern0
 
   // Configuration (updated manually)
-  private var regexp = new js.RegExp(pattern0.jspattern, pattern0.jsflags)
+  private var regexp = pattern0.newJSRegExp()
   private var inputstr = input0.subSequence(regionStart0, regionEnd0).toString
 
   // Match result (updated by successful matches)
@@ -155,7 +155,7 @@ final class Matcher private[regex] (
   def usePattern(pattern: Pattern): Matcher = {
     val prevLastIndex = regexp.lastIndex
     pattern0 = pattern
-    regexp = new js.RegExp(pattern.jspattern, pattern.jsflags)
+    regexp = pattern.newJSRegExp()
     regexp.lastIndex = prevLastIndex
     lastMatch = null
     this
