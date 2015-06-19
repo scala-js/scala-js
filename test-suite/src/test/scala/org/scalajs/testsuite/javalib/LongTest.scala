@@ -185,6 +185,28 @@ object LongTest extends JasmineTest {
       expect(JLong.toString(0x7fffffffffffffffL, 16)).toEqual("7fffffffffffffff")
     }
 
+    it("should provide `highestOneBit`") {
+      expect(JLong.highestOneBit(0L) == 0L).toBeTruthy
+      expect(JLong.highestOneBit(-1L) == Long.MinValue).toBeTruthy
+      expect(JLong.highestOneBit(-256L) == Long.MinValue).toBeTruthy
+      expect(JLong.highestOneBit(1L) == 1L).toBeTruthy
+      expect(JLong.highestOneBit(0x88L) == 0x80L).toBeTruthy
+      expect(JLong.highestOneBit(Long.MaxValue) == 0x4000000000000000L).toBeTruthy
+      expect(JLong.highestOneBit(Long.MinValue) == Long.MinValue).toBeTruthy
+      expect(JLong.highestOneBit(0x32100012300L) == 0x20000000000L).toBeTruthy
+    }
+
+    it("should provide `lowestOneBit`") {
+      expect(JLong.lowestOneBit(0L) == 0L).toBeTruthy
+      expect(JLong.lowestOneBit(-1L) == 1L).toBeTruthy
+      expect(JLong.lowestOneBit(-256L) == 256L).toBeTruthy
+      expect(JLong.lowestOneBit(12L) == 4L).toBeTruthy
+      expect(JLong.lowestOneBit(0x88L) == 0x8L).toBeTruthy
+      expect(JLong.lowestOneBit(Long.MaxValue) == 1L).toBeTruthy
+      expect(JLong.lowestOneBit(Long.MinValue) == Long.MinValue).toBeTruthy
+      expect(JLong.lowestOneBit(0x32100012300L) == 0x100L).toBeTruthy
+    }
+
     it("should implement toBinaryString") {
       // scalastyle:off disallow.space.before.token disallow.space.after.token line.size.limit
       expect(JLong.toBinaryString(              0L)).toEqual("0")

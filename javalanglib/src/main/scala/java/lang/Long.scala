@@ -161,6 +161,18 @@ object Long {
   @inline def compare(x: scala.Long, y: scala.Long): scala.Int =
     if (x == y) 0 else if (x < y) -1 else 1
 
+  def highestOneBit(i: scala.Long): scala.Long = {
+    val hi = (i >>> 32).toInt
+    if (hi != 0) Integer.highestOneBit(hi).toLong << 32
+    else Integer.highestOneBit(i.toInt).toLong & 0xffffffffL
+  }
+
+  def lowestOneBit(i: scala.Long): scala.Long = {
+    val lo = i.toInt
+    if (lo != 0) Integer.lowestOneBit(lo).toLong & 0xffffffffL
+    else Integer.lowestOneBit((i >>> 32).toInt).toLong << 32
+  }
+
   def bitCount(i: scala.Long): scala.Int = {
     val lo = i.toInt
     val hi = (i >>> 32).toInt
