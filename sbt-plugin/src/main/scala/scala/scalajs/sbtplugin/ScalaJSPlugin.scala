@@ -185,6 +185,11 @@ object ScalaJSPlugin extends AutoPlugin {
         "Private class loader to load jetty8 without polluting classpath. Only use this " +
         "as the `jettyClassLoader` argument of the PhantomJSEnv",
         KeyRanks.Invisible)
+
+    /** Prints the content of a .sjsir file in human readable form. */
+    val scalajsp = InputKey[Unit]("scalajsp",
+        "Prints the content of a .sjsir file in human readable form.",
+        CTask)
   }
 
   import autoImport._

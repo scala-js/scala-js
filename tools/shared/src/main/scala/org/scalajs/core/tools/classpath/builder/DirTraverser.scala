@@ -39,9 +39,11 @@ trait DirTraverser extends ClasspathContentHandler with FileSystem {
         path match {
           case JSDependencyManifest.ManifestFileName =>
             versions += getGlobalVersion(file)
-            val reader = toReader(file)
-            try handleDepManifest(JSDependencyManifest.read(reader))
-            finally reader.close()
+            handleDepManifest({
+              val reader = toReader(file)
+              try JSDependencyManifest.read(reader)
+              finally reader.close()
+            })
 
           case _ if isJSFile(file) =>
             versions += getGlobalVersion(file)
