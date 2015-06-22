@@ -108,6 +108,9 @@ object Integer {
     else (1 << 31) >>> Integer.numberOfLeadingZeros(i)
   }
 
+  @inline def lowestOneBit(i: Int): Int =
+    i & -i
+
   def reverseBytes(i: scala.Int): scala.Int = {
     val byte3 = i >>> 24
     val byte2 = (i >>> 8) & 0xFF00

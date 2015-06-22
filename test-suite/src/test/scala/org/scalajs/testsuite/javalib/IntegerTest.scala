@@ -166,7 +166,18 @@ object IntegerTest extends JasmineTest {
       expect(Integer.highestOneBit(-256)).toEqual(Integer.MIN_VALUE)
       expect(Integer.highestOneBit(1)).toEqual(1)
       expect(Integer.highestOneBit(0x88)).toEqual(0x80)
-      expect(Integer.highestOneBit(Integer.MAX_VALUE)).toEqual(0x40000000)
+      expect(Integer.highestOneBit(Int.MaxValue)).toEqual(0x40000000)
+      expect(Integer.highestOneBit(Int.MinValue)).toEqual(Int.MinValue)
+    }
+
+    it("should provide `lowestOneBit`") {
+      expect(Integer.lowestOneBit(0)).toEqual(0)
+      expect(Integer.lowestOneBit(-1)).toEqual(1)
+      expect(Integer.lowestOneBit(-256)).toEqual(256)
+      expect(Integer.lowestOneBit(12)).toEqual(4)
+      expect(Integer.lowestOneBit(0x88)).toEqual(0x8)
+      expect(Integer.lowestOneBit(Int.MaxValue)).toEqual(1)
+      expect(Integer.lowestOneBit(Int.MinValue)).toEqual(Int.MinValue)
     }
 
     it("should provide `toString` without radix") {
