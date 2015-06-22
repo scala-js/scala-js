@@ -162,10 +162,12 @@ trait PrepJSExports { this: PrepJSInterop =>
          annot.symbol == JSExportNamedAnnotation
     } yield annot
 
+    // Is this a member export (i.e. not a class or module export)?
+    val isMember = sym.isMethod && !sym.isConstructor
+
     // Annotations for this member on the whole unit
     val unitAnnots = {
-      if (sym.isMethod && sym.isPublic &&
-          !sym.isConstructor && !sym.isSynthetic)
+      if (isMember && sym.isPublic && !sym.isSynthetic)
         sym.owner.annotations.filter(_.symbol == JSExportAllAnnotation)
       else
         Nil
@@ -174,8 +176,9 @@ trait PrepJSExports { this: PrepJSInterop =>
     for {
       annot <- directAnnots ++ unitAnnots
     } yield {
-      // Is this a named export or a normal one?
-      val named = annot.symbol == JSExportNamedAnnotation
+      val isNamedExport = annot.symbol == JSExportNamedAnnotation
+      val isExportAll = annot.symbol == JSExportAllAnnotation
+      val hasExplicitName = annot.args.nonEmpty
 
       def explicitName = annot.stringArg(0).getOrElse {
         reporter.error(annot.pos,
@@ -183,11 +186,12 @@ trait PrepJSExports { this: PrepJSInterop =>
         "dummy"
       }
 
-      val name =
-        if (annot.args.nonEmpty) explicitName
+      val name = {
+        if (hasExplicitName) explicitName
         else if (sym.isConstructor) decodedFullName(sym.owner)
         else if (sym.isModuleClass) decodedFullName(sym)
         else sym.unexpandedName.decoded.stripSuffix("_=")
+      }
 
       // Enforce proper setter signature
       if (jsInterop.isJSSetter(sym))
@@ -196,28 +200,50 @@ trait PrepJSExports { this: PrepJSInterop =>
       // Enforce no __ in name
       if (name.contains("__")) {
         // Get position for error message
-        val pos = if (annot.stringArg(0).isDefined)
-          annot.args.head.pos
-        else trgSym.pos
+        val pos = if (hasExplicitName) annot.args.head.pos else trgSym.pos
 
         reporter.error(pos,
             "An exported name may not contain a double underscore (`__`)")
       }
 
       // Make sure we do not override the default export of toString
-      if (!sym.isConstructor && name == "toString" && !named &&
-          sym.name != nme.toString_ && sym.tpe.params.isEmpty &&
-          !jsInterop.isJSGetter(sym)) {
+      def isIllegalToString = {
+        isMember && !isNamedExport &&
+        name == "toString" && sym.name != nme.toString_ &&
+        sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
+      }
+
+      if (isIllegalToString) {
         reporter.error(annot.pos, "You may not export a zero-argument " +
             "method named other than 'toString' under the name 'toString'")
       }
 
-      if (named && jsInterop.isJSProperty(sym)) {
+      def isIllegalApplyExport = {
+        isMember && !hasExplicitName &&
+        sym.name == nme.apply &&
+        !(isExportAll && directAnnots.exists(annot =>
+            annot.symbol == JSExportAnnotation &&
+            annot.args.nonEmpty &&
+            annot.stringArg(0) == Some("apply")))
+      }
+
+      // Don't allow apply without explicit name
+      if (isIllegalApplyExport) {
+        // Get position for error message
+        val pos = if (isExportAll) trgSym.pos else annot.pos
+
+        reporter.warning(pos, "Member cannot be exported to function " +
+            "application. It is available under the name apply instead. " +
+            "Add @JSExport(\"apply\") to silence this warning. " +
+            "This will be enforced in 1.0.")
+      }
+
+      if (isNamedExport && jsInterop.isJSProperty(sym)) {
         reporter.error(annot.pos,
             "You may not export a getter or a setter as a named export")
       }
 
-      ExportInfo(name, annot.pos, named, ignoreInvalid = false)
+      ExportInfo(name, annot.pos, isNamedExport, ignoreInvalid = false)
     }
   }
 
