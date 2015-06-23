@@ -21,6 +21,9 @@ package scala.scalajs.js
  * MDN
  */
 class RegExp(pattern: String, flags: String = "") extends Object {
+  /** Creates a new RegExp with the same pattern and flags as the given one. */
+  def this(pattern: RegExp) = this("", "")
+
   /**
    * The source property returns a String containing the text of the pattern,
    * excluding the forward slashes. It is a read-only property of an individual

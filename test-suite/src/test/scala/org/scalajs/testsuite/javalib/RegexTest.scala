@@ -135,6 +135,10 @@ object RegexTest extends JasmineTest {
       expect(splitNoQuote.mkString).toEqual("Scala$1&$2.js")
     }
 
+    it("Pattern.compile should throw for invalid patterns - #1718") {
+      expect(() => Pattern.compile("*")).toThrow
+    }
+
   }
 
   describe("java.util.regex.Matcher") {
@@ -194,6 +198,18 @@ object RegexTest extends JasmineTest {
 
       expect(matcher0.matches()).toBeTruthy
       expect(matcher1.matches()).toBeFalsy
+    }
+
+    it("Several matches from the same pattern should be independent") {
+      val pattern = Pattern.compile("S[a-z]+")
+      val matcher0 = pattern.matcher("Scalable")
+      val matcher1 = pattern.matcher("Scalable")
+
+      expect(matcher0.find()).toBeTruthy
+      expect(matcher0.find()).toBeFalsy
+
+      expect(matcher1.find()).toBeTruthy
+      expect(matcher1.find()).toBeFalsy
     }
 
     it("should respond to `reset`") {
