@@ -187,6 +187,26 @@ object DynamicTest extends JasmineTest {
       }
     }
 
+    it("should accept : _* arguments for literal construction - #1743") {
+      import js.Dynamic.literal
+
+      val fields = Seq[(String, js.Any)]("foo" -> 42, "bar" -> "foobar")
+
+      /* Note: we cannot write
+       * literal(fields: _*)
+       * because scalac does not like it. But we still have to support the
+       * expanded notation.
+       */
+
+      val x = literal.applyDynamic("apply")(fields: _*)
+      expect(x.foo).toEqual(42)
+      expect(x.bar).toEqual("foobar")
+
+      val y = literal.applyDynamicNamed("apply")(fields: _*)
+      expect(y.foo).toEqual(42)
+      expect(y.bar).toEqual("foobar")
+    }
+
     it("should allow object literals to have duplicate keys - #1595") {
       import js.Dynamic.{literal => obj}
 
