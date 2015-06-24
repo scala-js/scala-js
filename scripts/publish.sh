@@ -12,7 +12,7 @@ FULL_VERSIONS="2.10.2 2.10.3 2.10.4 2.10.5 2.11.0 2.11.1 2.11.2 2.11.4 2.11.5 2.
 BIN_VERSIONS="2.10.5 2.11.6 2.12.0-M1"
 SBT_VERSION="2.10.5"
 
-LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface"
+LIBS="library javalibEx ir irJS tools toolsJS jsEnvs testAdapter stubs testInterface cli"
 
 # Publish compiler
 for v in $FULL_VERSIONS; do

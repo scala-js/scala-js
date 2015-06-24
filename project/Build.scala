@@ -749,11 +749,14 @@ object Build extends sbt.Build {
   lazy val cli: Project = Project(
       id = "cli",
       base = file("cli"),
-      settings = commonSettings ++ assemblySettings ++ Seq(
+      settings = commonSettings ++ publishSettings ++ assemblySettings ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
               "com.github.scopt" %% "scopt" % "3.2.0"
           ),
+
+          // TODO Enable this when going towards 0.6.5:
+          //previousArtifactSetting,
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
