@@ -28,6 +28,7 @@ import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
 final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     globalInfo: LinkingUnit.GlobalInfo) {
 
+  import ScalaJSClassEmitter._
   import JSDesugaring._
 
   @deprecated("Use the constructor with an explicit output mode", "0.6.2")
@@ -66,12 +67,15 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     var reverseParts: List[js.Tree] = Nil
 
     reverseParts ::= genStaticMembers(tree)
-    if (kind.isClass)
+    if (kind.isClass && tree.hasInstances)
       reverseParts ::= genClass(tree)
-    reverseParts ::= genInstanceTests(tree)
-    reverseParts ::= genArrayInstanceTests(tree)
-    reverseParts ::= genTypeData(tree)
-    if (kind.isClass)
+    if (needInstanceTests(tree)) {
+      reverseParts ::= genInstanceTests(tree)
+      reverseParts ::= genArrayInstanceTests(tree)
+    }
+    if (tree.hasRuntimeTypeInfo)
+      reverseParts ::= genTypeData(tree)
+    if (kind.isClass && tree.hasInstances && tree.hasRuntimeTypeInfo)
       reverseParts ::= genSetTypeData(tree)
     if (kind == ClassKind.ModuleClass)
       reverseParts ::= genModuleAccessor(tree)
@@ -384,6 +388,13 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   def genPropertyName(name: PropertyName): js.PropertyName = name match {
     case ident: Ident         => transformIdent(ident)
     case StringLiteral(value) => js.StringLiteral(value)(name.pos)
+  }
+
+  private[tools] def needInstanceTests(tree: LinkedClass): Boolean = {
+    tree.hasInstanceTests || {
+      tree.hasRuntimeTypeInfo &&
+      ClassesWhoseDataReferToTheirInstanceTests.contains(tree.encodedName)
+    }
   }
 
   def genInstanceTests(tree: LinkedClass): js.Tree = {
@@ -847,4 +858,11 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     (js.ArrayConstr(parts.init), parts.last)
   }
 
+}
+
+object ScalaJSClassEmitter {
+  private val ClassesWhoseDataReferToTheirInstanceTests = {
+    Definitions.AncestorsOfHijackedClasses +
+    Definitions.ObjectClass + Definitions.StringClass
+  }
 }

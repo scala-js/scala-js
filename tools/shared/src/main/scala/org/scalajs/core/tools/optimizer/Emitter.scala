@@ -185,13 +185,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
       }
     }
 
-    val needInstanceTests = {
-      linkedClass.hasInstanceTests || {
-        linkedClass.hasRuntimeTypeInfo &&
-        ClassesWhoseDataReferToTheirInstanceTests.contains(linkedClass.encodedName)
-      }
-    }
-    if (needInstanceTests) {
+    if (classEmitter.needInstanceTests(linkedClass)) {
       addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
           classEmitter.genInstanceTests(linkedClass),
           classEmitter.genArrayInstanceTests(linkedClass)
@@ -251,13 +245,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
     emitFromLibUntil("///INSERT IS AND AS FUNCTIONS HERE///")
     for (linkedClass <- orderedClasses) {
-      val needInstanceTests = {
-        linkedClass.hasInstanceTests || {
-          linkedClass.hasRuntimeTypeInfo &&
-          ClassesWhoseDataReferToTheirInstanceTests.contains(linkedClass.encodedName)
-        }
-      }
-      if (needInstanceTests) {
+      if (classEmitter.needInstanceTests(linkedClass)) {
         val classTreeCache = getClassTreeCache(linkedClass)
         addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
             classEmitter.genInstanceTests(linkedClass),
@@ -415,11 +403,6 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 }
 
 object Emitter {
-  private val ClassesWhoseDataReferToTheirInstanceTests = {
-    Definitions.AncestorsOfHijackedClasses +
-    Definitions.ObjectClass + Definitions.StringClass
-  }
-
   private final class DesugaredClassCache {
     val constructor = new OneTimeCache[js.Tree]
     val exportedMembers = new OneTimeCache[js.Tree]
