@@ -130,6 +130,11 @@ object Build extends sbt.Build {
               <name>Tobias Schlatter</name>
               <url>https://github.com/gzm0/</url>
             </developer>
+            <developer>
+              <id>nicolasstucki</id>
+              <name>Nicolas Stucki</name>
+              <url>https://github.com/nicolasstucki/</url>
+            </developer>
           </developers>
       ),
       pomIncludeRepository := { _ => false }
