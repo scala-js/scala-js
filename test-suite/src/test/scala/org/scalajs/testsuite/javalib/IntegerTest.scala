@@ -15,8 +15,8 @@ object IntegerTest extends JasmineTest {
   describe("java.lang.Integer") {
 
     // Explicitly define these as `var`'s to avoid any compile-time constant folding
-    var MaxValue: Int = Int.MaxValue
-    var MinValue: Int = Int.MinValue
+    val MaxValue: Int = Int.MaxValue
+    val MinValue: Int = Int.MinValue
 
     it("should provide `reverseBytes` used by scala.Enumeration") {
       expect(Integer.reverseBytes(0xdeadbeef)).toEqual(0xefbeadde)
