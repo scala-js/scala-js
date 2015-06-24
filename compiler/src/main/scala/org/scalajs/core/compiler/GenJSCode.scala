@@ -2906,6 +2906,23 @@ abstract class GenJSCode extends plugins.PluginComponent
             warnIfDuplicatedKey(pairs)
             js.JSObjectConstr(pairs)
 
+          /* case js.Dynamic.literal(x: _*)
+           * Even though scalac does not support this notation, it is still
+           * possible to write its expansion by hand:
+           * js.Dynamic.literal.applyDynamic("apply")(x: _*)
+           */
+          case (js.StringLiteral("apply"), tups)
+              if tups.exists(_.isInstanceOf[js.JSSpread]) =>
+            // Delegate to a runtime method
+            val tupsArray = tups match {
+              case List(js.JSSpread(tupsArray)) => tupsArray
+              case _                            => js.JSArrayConstr(tups)
+            }
+            genApplyMethod(
+                genLoadModule(RuntimePackageModule),
+                Runtime_jsTupleArray2jsObject,
+                List(tupsArray))
+
           // case js.Dynamic.literal(x, y)
           case (js.StringLiteral("apply"), tups) =>
             // Check for duplicated explicit keys
@@ -2934,12 +2951,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             }
 
             js.Block(resVarDef +: assigns :+ res: _*)
-
-          /* Here we would need the case where the varargs are passed in
-           * as non-literal list:
-           *   js.Dynamic.literal(x: _*)
-           * However, Scala does not currently support this
-           */
 
           // case where another method is called
           case (js.StringLiteral(name), _) if name != "apply" =>

@@ -71,6 +71,14 @@ package object runtime {
     }
   }
 
+  final def jsTupleArray2jsObject(
+      tuples: js.Array[(String, js.Any)]): js.Object with js.Dynamic = {
+    val result = js.Dynamic.literal()
+    for ((name, value) <- tuples)
+      result.updateDynamic(name)(value)
+    result
+  }
+
   /** Instantiates a JS object with variadic arguments to the constructor.
    *
    *  This method was needed by the codegen of 0.6.0 through 0.6.2. It is not
