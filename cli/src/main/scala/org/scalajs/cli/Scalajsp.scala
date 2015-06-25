@@ -29,7 +29,7 @@ import java.util.zip.{ZipFile, ZipEntry}
 
 object Scalajsp {
 
-  case class Options(
+  private case class Options(
     infos: Boolean = false,
     desugar: Boolean = false,
     showReflProxy: Boolean = false,
@@ -84,14 +84,15 @@ object Scalajsp {
     }
   }
 
-  def printSupported(): Unit = {
+  private def printSupported(): Unit = {
     import ScalaJSVersions._
     println(s"Emitted Scala.js IR version is: $binaryEmitted")
     println("Supported Scala.js IR versions are")
     binarySupported.foreach(v => println(s"* $v"))
   }
 
-  def displayFileContent(vfile: VirtualScalaJSIRFile, opts: Options): Unit = {
+  private def displayFileContent(vfile: VirtualScalaJSIRFile,
+      opts: Options): Unit = {
     if (opts.infos)
       new InfoPrinter(stdout).printClassInfo(vfile.info)
     else {

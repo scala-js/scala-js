@@ -33,7 +33,7 @@ import java.net.URI
 
 object Scalajsld {
 
-  case class Options(
+  private case class Options(
     cp: Seq[File] = Seq.empty,
     output: File = null,
     jsoutput: Option[File] = None,
@@ -49,7 +49,7 @@ object Scalajsld {
     stdLib: Option[File] = None,
     logLevel: Level = Level.Info)
 
-  implicit object OutputModeRead extends scopt.Read[OutputMode] {
+  private implicit object OutputModeRead extends scopt.Read[OutputMode] {
     val arity = 1
     val reads = { (s: String) =>
       OutputMode.All.find(_.toString() == s).getOrElse(
