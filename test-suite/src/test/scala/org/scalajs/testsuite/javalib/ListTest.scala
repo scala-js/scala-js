@@ -366,6 +366,64 @@ trait ListTest[F <: ListFactory] extends CollectionTest[F] {
       testListIterator(al, Seq("one", "two", "three", "ten", "zero", "six"))
       testListIterator(al1, Seq("three", "ten", "zero"))
     }
+
+    it("should iterate and modify elements with a listIterator") {
+      val s = Seq("one", "two", "three")
+      val ll = factory.empty[String]
+
+      for (e <- s)
+        ll.add(e)
+
+      val iter = ll.listIterator(1)
+
+      expect(iter.hasNext()).toBeTruthy
+      expect(iter.hasPrevious()).toBeTruthy
+
+      expect(iter.previous()).toEqual("one")
+
+      expect(iter.hasNext()).toBeTruthy
+      expect(iter.hasPrevious()).toBeFalsy
+
+      expect(iter.next()).toEqual("one")
+
+      expect(iter.next()).toEqual("two")
+      expect(iter.next()).toEqual("three")
+
+      expect(iter.hasNext()).toBeFalsy
+      expect(iter.hasPrevious()).toBeTruthy
+
+      iter.add("four")
+
+      expect(iter.hasNext()).toBeFalsy
+      expect(iter.hasPrevious()).toBeTruthy
+
+      expect(iter.previous()).toEqual("four")
+
+      iter.remove()
+
+      expect(iter.hasNext()).toBeFalsy
+      expect(iter.hasPrevious()).toBeTruthy
+      expect(iter.previous()).toEqual("three")
+      iter.set("THREE")
+      expect(iter.previous()).toEqual("two")
+      iter.set("TWO")
+      expect(iter.previous()).toEqual("one")
+      iter.set("ONE")
+      expect(iter.hasNext()).toBeTruthy
+      expect(iter.hasPrevious()).toBeFalsy
+
+      expect(iter.next()).toEqual("ONE")
+      iter.remove()
+      expect(iter.next()).toEqual("TWO")
+      iter.remove()
+      expect(iter.next()).toEqual("THREE")
+      iter.remove()
+
+      expect(iter.hasNext()).toBeFalsy
+      expect(iter.hasPrevious()).toBeFalsy
+
+      expect(ll.isEmpty()).toBeTruthy
+    }
   }
 }
 
