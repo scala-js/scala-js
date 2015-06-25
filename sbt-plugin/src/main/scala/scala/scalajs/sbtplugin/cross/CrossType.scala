@@ -43,7 +43,7 @@ object CrossType {
       crossBase / projectType
 
     def sharedSrcDir(projectBase: File, conf: String): Option[File] =
-      Some(projectBase / ".." / "shared" / "src" / conf / "scala")
+      Some(projectBase.getParentFile / "shared" / "src" / conf / "scala")
   }
 
   object Pure extends CrossType {
@@ -51,7 +51,7 @@ object CrossType {
       crossBase / ("." + projectType)
 
     def sharedSrcDir(projectBase: File, conf: String): Option[File] =
-      Some(projectBase / ".." / "src" / conf / "scala")
+      Some(projectBase.getParentFile / "src" / conf / "scala")
   }
 
   object Dummy extends CrossType {
