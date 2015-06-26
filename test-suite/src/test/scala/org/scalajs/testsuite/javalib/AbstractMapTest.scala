@@ -12,7 +12,7 @@ import java.{util => ju}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-abstract class AbstractMapTest[F <: AbstractMapFactory](protected val mapFactory: F) extends MapTest[F] {
+abstract class AbstractMapTest[F <: AbstractMapFactory](protected val mapFactory: F) extends MapTest {
 
   describe(mapFactory.implementationName) {
     testApi()
@@ -20,7 +20,7 @@ abstract class AbstractMapTest[F <: AbstractMapFactory](protected val mapFactory
 
   protected def testApi(): Unit = {
 
-    testMapApi()
+    testMapApi(mapFactory)
 
     case class SimpleQueryableMap[K, V](inner: mutable.HashMap[K, V])
         extends ju.AbstractMap[K, V] {

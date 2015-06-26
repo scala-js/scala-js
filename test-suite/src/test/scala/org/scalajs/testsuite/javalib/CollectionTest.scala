@@ -7,16 +7,14 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib
 
-import java.{util => ju}
+import java.{util => ju, lang => jl}
 
 import org.scalajs.jasminetest.JasmineTest
 import scala.collection.JavaConversions._
 
-trait CollectionTest[F <: CollectionFactory] extends JasmineTest {
+trait CollectionTest extends JasmineTest with ExpectExceptions {
 
-  def factory: F
-
-  def testCollectionApi(): Unit = {
+  def testCollectionApi(factory: CollectionFactory): Unit = {
     it("should store strings") {
       val coll = factory.empty[String]
 
@@ -93,7 +91,10 @@ trait CollectionTest[F <: CollectionFactory] extends JasmineTest {
     }
 
     it("should store custom objects") {
-      case class TestObj(num: Int)
+      case class TestObj(num: Int) extends jl.Comparable[TestObj] {
+        def compareTo(o: TestObj): Int =
+          o.num.compareTo(num)
+      }
 
       val coll = factory.empty[TestObj]
 
@@ -193,6 +194,11 @@ trait CollectionTest[F <: CollectionFactory] extends JasmineTest {
     }
 
   }
+}
+
+object CollectionFactory {
+  def allFactories: Iterator[CollectionFactory] =
+    ListFactory.allFactories ++ SetFactory.allFactories
 }
 
 trait CollectionFactory {

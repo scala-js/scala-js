@@ -940,12 +940,14 @@ object Build extends sbt.Build {
           })),
 
           sources in Test ++= {
-            if (!scalaVersion.value.startsWith("2.10") &&
-                scalacOptions.value.contains("-Xexperimental")) {
-              (((sourceDirectory in Test).value / "require-sam") ** "*.scala").get
-            } else {
-              Nil
-            }
+            def listAllScalaFilesIf(testDir: String, condition: Boolean): Seq[File] =
+              if (condition) (((sourceDirectory in Test).value / testDir) ** "*.scala").get
+              else Nil
+            val javaVersion = System.getProperty("java.version")
+            listAllScalaFilesIf("require-jdk7", javaVersion.matches("1\\.[78].*")) ++
+              listAllScalaFilesIf("require-jdk8", javaVersion.startsWith("1.8")) ++
+              listAllScalaFilesIf("require-sam",
+                !scalaVersion.value.startsWith("2.10") && scalacOptions.value.contains("-Xexperimental"))
           },
 
           /* Generate a scala source file that throws exceptions in

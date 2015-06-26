@@ -7,6 +7,8 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib
 
+import java.util
+
 import scala.language.implicitConversions
 
 import scala.collection.JavaConversions._
@@ -16,8 +18,8 @@ import org.scalajs.jasminetest.JasmineTest
 
 import scala.scalajs.runtime.UndefinedBehaviorError
 
-import java.util.concurrent.ConcurrentSkipListSet
-import java.util.Comparator
+import java.{util => ju}
+import ju.concurrent.ConcurrentSkipListSet
 
 object ConcurrentSkipListSetTest extends JasmineTest {
 
@@ -96,7 +98,7 @@ object ConcurrentSkipListSetTest extends JasmineTest {
     it("should store objects with custom comparables") {
       case class Rect(x: Int, y: Int)
 
-      val areaComp = new Comparator[Rect] {
+      val areaComp = new ju.Comparator[Rect] {
         def compare(a: Rect, b: Rect): Int = (a.x*a.y) - (b.x*b.y)
       }
 
@@ -416,4 +418,19 @@ object ConcurrentSkipListSetTest extends JasmineTest {
 
   }
 
+}
+
+object ConcurrentSkipListSetFactory extends ConcurrentSkipListSetFactory {
+  def allFactories: Iterator[ConcurrentSkipListSetFactory] =
+    Iterator(new ConcurrentSkipListSetFactory)
+}
+
+class ConcurrentSkipListSetFactory extends NavigableSetFactory {
+  def implementationName: String =
+    "java.util.concurrent.ConcurrentSkipListSet"
+
+  def empty[E]: ju.concurrent.ConcurrentSkipListSet[E] =
+    new ConcurrentSkipListSet[E]
+
+  override def allowsNullElement: Boolean = false
 }

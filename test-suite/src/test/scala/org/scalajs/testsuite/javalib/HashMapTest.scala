@@ -12,13 +12,11 @@ import java.{util => ju}
 object HashMapTest extends HashMapTest(new HashMapFactory)
 
 class HashMapTest[F <: HashMapFactory](mapFactory: F)
-    extends AbstractMapTest[F](mapFactory) {
+    extends AbstractMapTest[F](mapFactory)
 
-  final protected def allowsNullKeys: Boolean = true
-  final protected def allowsNullValues: Boolean = true
-
-  // testApi() not overridden because all tests from the HashMap
-  // are covered by AbstractMapTest
+object HashMapFactory {
+  def allFactories: Iterator[MapFactory] =
+    Iterator(new HashMapFactory) ++ LinkedHashMapFactory.allFactories
 }
 
 class HashMapFactory extends AbstractMapFactory {
@@ -27,4 +25,7 @@ class HashMapFactory extends AbstractMapFactory {
 
   override def empty[K, V]: ju.HashMap[K, V] =
     new ju.HashMap[K, V]
+
+  def allowsNullKeys: Boolean = true
+  def allowsNullValues: Boolean = true
 }
