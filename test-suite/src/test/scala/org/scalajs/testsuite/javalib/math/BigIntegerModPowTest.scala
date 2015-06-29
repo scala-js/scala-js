@@ -196,6 +196,16 @@ object BigIntegerModPowTest extends JasmineTest {
       expect(result.signum()).toEqual(1)
     }
 
+    it("testmodInverse - #1764") {
+      def test(a: BigInt, b: BigInt, expexted: BigInt): Unit =
+        expect(a.modInverse(b) == expexted).toBeTruthy
+
+      // Cases that failed due to the bug
+      test(BigInt(1795804389L), BigInt(2957870813L), BigInt(2849476504L))
+      test(BigInt(53389L), BigInt(29578713L), BigInt(4631629L))
+      test(BigInt(175389L), BigInt(2954378713L), BigInt(2628921865L))
+    }
+
     it("testModPowException") {
       val aBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7)
       val eBytes = Array[Byte](1, 2, 3, 4, 5)

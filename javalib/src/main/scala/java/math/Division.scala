@@ -294,7 +294,7 @@ private[math] object Division {
       rem = aPos % bPos
       // double the remainder and add 1 if a is odd
       rem = (rem << 1) + (a & 1)
-      if ((b & 1) != 0) {  // the divisor is odd
+      if ((b & 1) != 0) { // the divisor is odd
         if (quot <= rem) {
           rem -= quot
         } else {
@@ -584,7 +584,7 @@ private[math] object Division {
    *  Modular Inverse - Revised".
    */
   def modInverseMontgomery(a: BigInteger, p: BigInteger): BigInteger = {
-    if (a.sign == 0)  // ZERO hasn't inverse
+    if (a.sign == 0) // ZERO hasn't inverse
       throw new ArithmeticException("BigInteger not invertible.")
 
     if (!p.testBit(0)) // montgomery inverse require even modulo
@@ -597,12 +597,11 @@ private[math] object Division {
 
     val r: BigInteger = new BigInteger(1, 1, new Array[Int](max + 1))
     val s: BigInteger = new BigInteger(1, 1, new Array[Int](max + 1))
-    r.sign = 1
     s.digits(0) = 1
+
     var k = 0
     val lsbu = u.getLowestSetBit
     val lsbv = v.getLowestSetBit
-    var toShift: Int = 0
     if (lsbu > lsbv) {
       BitLevel.inplaceShiftRight(u, lsbu)
       BitLevel.inplaceShiftRight(v, lsbv)
@@ -615,10 +614,11 @@ private[math] object Division {
       k += lsbv - lsbu
     }
 
+    r.sign = 1
     while (v.signum() > 0) {
       while (u.compareTo(v) > BigInteger.EQUALS) {
         Elementary.inplaceSubtract(u, v)
-        toShift = u.getLowestSetBit
+        val toShift = u.getLowestSetBit
         BitLevel.inplaceShiftRight(u, toShift)
         Elementary.inplaceAdd(r, s)
         BitLevel.inplaceShiftLeft(s, toShift)
@@ -631,7 +631,7 @@ private[math] object Division {
         if (u.compareTo(v) <= BigInteger.EQUALS) {
           Elementary.inplaceSubtract(v, u)
           if (v.signum() != 0) {
-            toShift = v.getLowestSetBit
+            val toShift = v.getLowestSetBit
             BitLevel.inplaceShiftRight(v, toShift)
             Elementary.inplaceAdd(s, r)
             BitLevel.inplaceShiftLeft(r, toShift)
@@ -651,7 +651,7 @@ private[math] object Division {
     val n1 = calcN(p)
     if (k > m) {
       val r2 = monPro(p.subtract(r), BigInteger.ONE, p, n1)
-      monPro(r2, BigInteger.getPowerOfTwo(k), p, n1)
+      monPro(r2, BigInteger.getPowerOfTwo(2*m - k), p, n1)
     } else {
       monPro(p.subtract(r), BigInteger.getPowerOfTwo(m - k), p, n1)
     }
@@ -932,7 +932,7 @@ private[math] object Division {
   private def isPowerOfTwo(bi: BigInteger, exp: Int): Boolean = {
     val cond1 = (exp >> 5) == (bi.numberLength - 1)
     val cond2 = bi.digits(bi.numberLength - 1) == (1 << (exp & 31))
-    var result =  cond1 && cond2
+    var result = cond1 && cond2
 
     if (result) {
       var i = 0
