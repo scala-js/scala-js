@@ -793,7 +793,7 @@ initArray(
         return new ArrayClass(this.u["slice"](0));
       else
         // The underlying Array is a TypedArray
-        return new ArrayClass(this.u.constructor(this.u));
+        return new ArrayClass(new this.u.constructor(this.u));
     };
   };
 //!endif
