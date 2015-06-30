@@ -53,6 +53,7 @@ object Integer {
   final val MIN_VALUE = -2147483648
   final val MAX_VALUE = 2147483647
   final val SIZE = 32
+  final val BYTES = 4
 
   @inline def valueOf(intValue: scala.Int): Integer = new Integer(intValue)
   @inline def valueOf(s: String): Integer = valueOf(parseInt(s))
@@ -62,7 +63,17 @@ object Integer {
 
   @inline def parseInt(s: String): scala.Int = parseInt(s, 10)
 
-  def parseInt(s: String, radix: scala.Int): scala.Int = {
+  @noinline def parseInt(s: String, radix: scala.Int): scala.Int =
+    parseIntImpl(s, radix, signed = true)
+
+  @inline def parseUnsignedInt(s: String): scala.Int = parseUnsignedInt(s, 10)
+
+  @noinline def parseUnsignedInt(s: String, radix: scala.Int): scala.Int =
+    parseIntImpl(s, radix, signed = false)
+
+  @inline
+  private def parseIntImpl(s: String, radix: scala.Int,
+      signed: scala.Boolean): scala.Int = {
     def fail = throw new NumberFormatException(s"""For input string: "$s"""")
 
     if (s == null || s.size == 0 ||
@@ -70,7 +81,7 @@ object Integer {
         radix > Character.MAX_RADIX)
       fail
     else {
-      var i = if (s(0) == '-' || s(0) == '+') 1 else 0
+      var i = if ((signed && s(0) == '-') || s(0) == '+') 1 else 0
       // JavaDoc says: We need at least one digit
       if (s.size <= i) fail
       else {
@@ -81,19 +92,39 @@ object Integer {
         }
         val res = js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
 
-        if (res.isNaN || res > MAX_VALUE || res < MIN_VALUE)
+        @inline def isOutOfBounds: scala.Boolean = {
+          if (signed) res > MAX_VALUE || res < MIN_VALUE
+          else res > 0xFFFFFFFFL || res < 0
+        }
+
+        if (res.isNaN || isOutOfBounds) {
           fail
-        else
+        } else if (signed) {
           res.toInt
+        } else {
+          asInt(res)
+        }
       }
     }
   }
 
-  @inline def toString(i: scala.Int): String =
-    "" + i
+  @inline def toString(i: scala.Int): String = "" + i
+
+  @inline def toUnsignedString(i: Int, radix: Int): String =
+    toStringBase(i, radix)
 
   @inline def compare(x: scala.Int, y: scala.Int): scala.Int =
     if (x == y) 0 else if (x < y) -1 else 1
+
+  @inline def compareUnsigned(x: scala.Int, y: scala.Int): scala.Int = {
+    import js.JSNumberOps._
+    if (x == y) 0
+    else if (x.toUint > y.toUint) 1
+    else -1
+  }
+
+  @inline def toUnsignedLong(x: Int): scala.Long =
+    x.toLong & 0xffffffffL
 
   def bitCount(i: scala.Int): scala.Int = {
     // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -101,6 +132,16 @@ object Integer {
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
     ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+  }
+
+  def divideUnsigned(dividend: Int, divisor: Int): Int = {
+    import js.JSNumberOps._
+    asInt(dividend.toUint / divisor.toUint)
+  }
+
+  def remainderUnsigned(dividend: Int, divisor: Int): Int = {
+    import js.JSNumberOps._
+    asInt(dividend.toUint % divisor.toUint)
   }
 
   def highestOneBit(i: Int): Int = {
@@ -115,7 +156,7 @@ object Integer {
     val byte3 = i >>> 24
     val byte2 = (i >>> 8) & 0xFF00
     val byte1 = (i << 8) & 0xFF0000
-    val byte0 = (i << 24)
+    val byte0 = i << 24
     byte0 | byte1 | byte2 | byte3
   }
 
@@ -156,8 +197,19 @@ object Integer {
     }
   }
 
+  @inline def toUnsignedString(i: scala.Int): String = toUnsignedString(i, 10)
+
+  @inline def hashCode(value: Int): Int = value.hashCode
+
+  @inline def sum(a: Int, b: Int): Int = a + b
+  @inline def max(a: Int, b: Int): Int = Math.max(a, b)
+  @inline def min(a: Int, b: Int): Int = Math.min(a, b)
+
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
     import js.JSNumberOps._
     i.toUint.toString(base)
   }
+
+  @inline private def asInt(n: scala.Double): scala.Int =
+    (n.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
 }
