@@ -318,14 +318,8 @@ object Serializers {
         case JSLinkingInfo() =>
           writeByte(TagJSLinkingInfo)
 
-        // Literals
-
         case Undefined() =>
           writeByte(TagUndefined)
-
-        case UndefinedParam() =>
-          writeByte(TagUndefinedParam)
-          writeType(tree.tpe)
 
         case Null() =>
           writeByte(TagNull)
@@ -357,6 +351,10 @@ object Serializers {
         case ClassOf(cls) =>
           writeByte(TagClassOf)
           writeReferenceType(cls)
+
+        case UndefinedParam() =>
+          writeByte(TagUndefinedParam)
+          writeType(tree.tpe)
 
         case VarRef(ident) =>
           writeByte(TagVarRef)
@@ -638,7 +636,6 @@ object Serializers {
         case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagUndefined      => Undefined()
-        case TagUndefinedParam => UndefinedParam()(readType())
         case TagNull           => Null()
         case TagBooleanLiteral => BooleanLiteral(readBoolean())
         case TagIntLiteral     => IntLiteral(readInt())
@@ -647,6 +644,8 @@ object Serializers {
         case TagDoubleLiteral  => DoubleLiteral(readDouble())
         case TagStringLiteral  => StringLiteral(readString())
         case TagClassOf        => ClassOf(readReferenceType())
+
+        case TagUndefinedParam => UndefinedParam()(readType())
 
         case TagVarRef =>
           val result = VarRef(readIdent())(readType())

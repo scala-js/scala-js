@@ -67,7 +67,7 @@ private[ir] object Tags {
   final val TagJSEnvInfo = TagJSObjectConstr + 1
 
   final val TagUndefined = TagJSEnvInfo + 1
-  final val TagUndefinedParam = TagUndefined + 1
+  final val TagUndefinedParam = TagUndefined + 1 // TODO Move this
   final val TagNull = TagUndefinedParam + 1
   final val TagBooleanLiteral = TagNull + 1
   final val TagIntLiteral = TagBooleanLiteral + 1

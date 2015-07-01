@@ -110,10 +110,16 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
       resetState()
     }
 
-    val linkResult = logTime(logger, "Linker") {
-      linker.link(irFiles, logger,
-          reachOptimizerSymbols = !cfg.disableOptimizer,
-          cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
+    val linkResult = try {
+      logTime(logger, "Linker") {
+        linker.link(irFiles, logger,
+            reachOptimizerSymbols = !cfg.disableOptimizer,
+            cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
+      }
+    } catch {
+      case th: Throwable =>
+        resetState()
+        throw th
     }
 
     val useOptimizer = linkResult.isComplete && !cfg.disableOptimizer
@@ -121,22 +127,28 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     if (cfg.batchMode)
       resetStateFromOptimizer()
 
-    val finalResult = if (useOptimizer) {
-      val rawOptimized = logTime(logger, "Inc. optimizer") {
-        optimizer.update(linkResult, logger)
+    try {
+      val finalResult = if (useOptimizer) {
+        val rawOptimized = logTime(logger, "Inc. optimizer") {
+          optimizer.update(linkResult, logger)
+        }
+
+        logTime(logger, "Refiner") {
+          refiner.refine(rawOptimized, logger)
+        }
+      } else {
+        if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
+          logger.warn("Not running the optimizer because there where linking errors.")
+        linkResult
       }
 
-      logTime(logger, "Refiner") {
-        refiner.refine(rawOptimized, logger)
+      logTime(logger, "Emitter (write output)") {
+        emitter.emit(finalResult, builder, logger)
       }
-    } else {
-      if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
-        logger.warn("Not running the optimizer because there where linking errors.")
-      linkResult
-    }
-
-    logTime(logger, "Emitter (write output)") {
-      emitter.emit(finalResult, builder, logger)
+    } catch {
+      case th: Throwable =>
+        resetStateFromOptimizer()
+        throw th
     }
   }
 

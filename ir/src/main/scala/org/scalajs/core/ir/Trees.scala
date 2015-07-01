@@ -547,9 +547,6 @@ object Trees {
     val tpe = UndefType
   }
 
-  case class UndefinedParam()(val tpe: Type)(
-      implicit val pos: Position) extends Literal
-
   case class Null()(implicit val pos: Position) extends Literal {
     val tpe = NullType
   }
@@ -589,6 +586,11 @@ object Trees {
       implicit val pos: Position) extends Literal {
     val tpe = ClassType(Definitions.ClassClass)
   }
+
+  // Specials
+
+  case class UndefinedParam()(val tpe: Type)(
+      implicit val pos: Position) extends Tree
 
   // Atomic expressions
 

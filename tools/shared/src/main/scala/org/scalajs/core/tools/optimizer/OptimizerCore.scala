@@ -107,7 +107,8 @@ private[optimizer] abstract class OptimizerCore(
         throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
       case e: Throwable =>
         // This is a fatal exception. Don't wrap, just output debug info error
-        Console.err.println(exceptionMsg(myself, attemptedInlining.distinct.toList))
+        Console.err.println(exceptionMsg(
+            myself, attemptedInlining.distinct.toList, e))
         throw e
     }
   }
@@ -3826,10 +3827,11 @@ private[optimizer] object OptimizerCore {
   }
 
   private def exceptionMsg(myself: AbstractMethodID,
-      attemptedInlining: List[AbstractMethodID]) = {
+      attemptedInlining: List[AbstractMethodID], cause: Throwable) = {
     val buf = new StringBuilder()
 
-    buf.append("The Scala.js optimizer crashed while optimizing " + myself)
+    buf.append("The Scala.js optimizer crashed while optimizing " + myself +
+        ": " + cause.toString)
 
     buf.append("\nMethods attempted to inline:\n")
 
@@ -3850,6 +3852,6 @@ private[optimizer] object OptimizerCore {
 
   class OptimizeException(val myself: AbstractMethodID,
       val attemptedInlining: List[AbstractMethodID], cause: Throwable
-  ) extends Exception(exceptionMsg(myself, attemptedInlining), cause)
+  ) extends Exception(exceptionMsg(myself, attemptedInlining, cause), cause)
 
 }
