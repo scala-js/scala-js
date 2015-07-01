@@ -211,16 +211,20 @@ class LinkedList[E]() extends AbstractSequentialList[E]
   }
 
   def peekFirst(): E =
-    head.value
+    if (head eq null) null.asInstanceOf[E]
+    else head.value
 
   def peekLast(): E =
-    peekFirst()
+    if (last eq null) null.asInstanceOf[E]
+    else last.value
 
   def pollFirst(): E =
-    removeFirst()
+    if (isEmpty()) null.asInstanceOf[E]
+    else removeFirst()
 
   def pollLast(): E =
-    removeLast()
+    if (isEmpty) null.asInstanceOf[E]
+    else removeLast()
 
   def push(e: E): Unit =
     addFirst(e)
