@@ -19,6 +19,8 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.core.tools.optimizer.OptimizerCore.org$scalajs$core$tools$optimizer$OptimizerCore$$inline"),
       ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.OptimizerCore.org$scalajs$core$tools$optimizer$OptimizerCore$$exceptionMsg"),
+      ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.Emitter.org$scalajs$core$tools$optimizer$Emitter$$ClassesWhoseDataReferToTheirInstanceTests")
   )
 
