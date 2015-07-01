@@ -910,6 +910,9 @@ object CollectionsTest extends JasmineTest with ListTest with SortedSetTest
 
           def empty[E]: ju.List[E] =
             ju.Collections.synchronizedList(factory.empty[E])
+
+          override def allowsMutationThroughIterator: Boolean =
+            factory.allowsMutationThroughIterator
         }
       )
     }
