@@ -511,9 +511,6 @@ object Printers {
         case Undefined() =>
           print("(void 0)")
 
-        case UndefinedParam() =>
-          print("<undefined param>")
-
         case Null() =>
           print("null")
 
@@ -547,6 +544,11 @@ object Printers {
 
         case ClassOf(cls) =>
           print("classOf[", cls, "]")
+
+        // Specials
+
+        case UndefinedParam() =>
+          print("<undefined param>")
 
         // Atomic expressions
 

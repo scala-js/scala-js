@@ -3,6 +3,9 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking: UndefinedParam does not inherit from Literal anymore
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.core.ir.Trees$UndefinedParam")
   )
 
   val Tools = Seq(
