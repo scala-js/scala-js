@@ -26,6 +26,9 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
+    sbt 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
+        ++$scala helloworld/run \
+        helloworld/clean &&
     sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \

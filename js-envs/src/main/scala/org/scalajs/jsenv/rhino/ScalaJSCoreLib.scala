@@ -148,9 +148,13 @@ class ScalaJSCoreLib private[rhino] (semantics: Semantics,
       new LazyScalaJSScope(this, scope, base, isStatics, dummy = 0)
 
     for (Info(name, isStatics) <- scalaJSLazyFields) {
-      val base = ScalaJS.get(name, ScalaJS).asInstanceOf[Scriptable]
-      val lazified = makeLazyScalaJSScope(base, isStatics)
-      ScalaJS.put(name, ScalaJS, lazified)
+      val base = ScalaJS.get(name, ScalaJS)
+      // Depending on the Semantics, some fields could be entirely absent
+      if (base != Scriptable.NOT_FOUND) {
+        val lazified = makeLazyScalaJSScope(
+            base.asInstanceOf[Scriptable], isStatics)
+        ScalaJS.put(name, ScalaJS, lazified)
+      }
     }
   }
 
