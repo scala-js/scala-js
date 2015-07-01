@@ -77,7 +77,7 @@ object Build extends sbt.Build {
   }
 
   val commonSettings = Seq(
-      scalaVersion := "2.11.6",
+      scalaVersion := "2.11.7",
       organization := "org.scala-js",
       version := scalaJSVersion,
 
@@ -213,6 +213,7 @@ object Build extends sbt.Build {
         "2.11.4",
         "2.11.5",
         "2.11.6",
+        "2.11.7",
         "2.12.0-M1"
       ),
       // Default stage

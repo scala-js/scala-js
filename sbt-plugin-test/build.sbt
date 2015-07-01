@@ -6,7 +6,7 @@ version := scalaJSVersion
 
 val versionSettings = Seq(
   version := scalaJSVersion,
-  scalaVersion := "2.11.6"
+  scalaVersion := "2.11.7"
 )
 
 val baseSettings = versionSettings ++ Seq(
@@ -16,7 +16,7 @@ val baseSettings = versionSettings ++ Seq(
 
 lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJS")
 lazy val referencedCrossProjectJVM = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJVM")
- 
+
 lazy val root = project.in(file(".")).
   aggregate(noDOM, withDOM, multiTestJS, multiTestJVM, referencedCrossProjectJS, referencedCrossProjectJVM)
 
