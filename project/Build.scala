@@ -45,7 +45,7 @@ object Build extends sbt.Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.3"
+  val previousVersion = "0.6.4"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -761,8 +761,7 @@ object Build extends sbt.Build {
               "com.github.scopt" %% "scopt" % "3.2.0"
           ),
 
-          // TODO Enable this when going towards 0.6.5:
-          //previousArtifactSetting,
+          previousArtifactSetting,
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
