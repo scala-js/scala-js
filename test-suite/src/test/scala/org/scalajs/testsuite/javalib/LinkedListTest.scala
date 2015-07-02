@@ -35,6 +35,8 @@ abstract class LinkedListTest[F <: LinkedListFactory](listFactory: F) extends Ab
       ll.addLast(2)
       expect(ll.peekFirst()).toEqual(2)
 
+      ll.clear()
+
       ll.addFirst(1)
       ll.removeLast()
       ll.addFirst(2)
@@ -122,6 +124,29 @@ abstract class LinkedListTest[F <: LinkedListFactory](listFactory: F) extends Ab
       expect(llDouble.pop()).toEqual(-0.987)
       expect(llDouble.pop()).toEqual(+10000.987)
       expect(llString.isEmpty()).toBeTruthy
+    }
+
+    it("should poll and peek elements") {
+      val pq = new LinkedList[String]()
+
+      expect(pq.add("one")).toBeTruthy
+      expect(pq.add("two")).toBeTruthy
+      expect(pq.add("three")).toBeTruthy
+
+      expect(pq.peek.equals("one")).toBeTruthy
+      expect(pq.poll.equals("one")).toBeTruthy
+
+      expect(pq.peekFirst.equals("two")).toBeTruthy
+      expect(pq.pollFirst.equals("two")).toBeTruthy
+
+      expect(pq.peekLast.equals("three")).toBeTruthy
+      expect(pq.pollLast.equals("three")).toBeTruthy
+
+      expect(pq.peekFirst).toBeNull
+      expect(pq.pollFirst).toBeNull
+
+      expect(pq.peekLast).toBeNull
+      expect(pq.pollLast).toBeNull
     }
 
     it("should remove occurrences of provided elements") {
