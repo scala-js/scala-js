@@ -16,17 +16,22 @@ class LinkedList[E]() extends AbstractSequentialList[E]
   private var head: Node[E] = null
   private var last: Node[E] = null
 
-  private var _size = 0
+  /* Inner size is represented with a Double to satisfy Collection
+   * size method requirement:
+   * If this collection contains more than Integer.MAX_VALUE elements,
+   * returns Integer.MAX_VALUE.
+   */
+  private var _size: Double = 0
 
   def getFirst(): E = {
-    if (_size <= 0)
+    if (isEmpty())
       throw new NoSuchElementException()
     else
       peekFirst()
   }
 
   def getLast(): E = {
-    if (_size <= 0)
+    if (isEmpty())
       throw new NoSuchElementException()
     else
       peekLast()
@@ -94,7 +99,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
     iterator().exists(_ === o)
 
   override def size(): Int =
-    _size
+    _size.toInt
 
   override def add(e: E): Boolean = {
     addLast(e)
@@ -254,8 +259,8 @@ class LinkedList[E]() extends AbstractSequentialList[E]
     checkIndexOnBounds(index)
     new ListIterator[E] {
 
-      private var last = -1
-      private var i = index
+      private var last: Double = -1
+      private var i: Double = index
 
       private var currentNode: Node[E] =
         if (index == size) null else
@@ -301,9 +306,9 @@ class LinkedList[E]() extends AbstractSequentialList[E]
         lastNode.value
       }
 
-      def nextIndex(): Int = i
+      def nextIndex(): Int = i.toInt
 
-      def previousIndex(): Int = i - 1
+      def previousIndex(): Int = (i - 1).toInt
 
       def remove(): Unit = {
         checkThatHasLast()
@@ -348,17 +353,34 @@ class LinkedList[E]() extends AbstractSequentialList[E]
 
   def descendingIterator(): Iterator[E] = {
     new Iterator[E] {
-      private val iter = listIterator(_size)
+
+      private var removeEnabled = false
+      private var nextNode: Node[E] =
+        LinkedList.this.last
 
       def hasNext(): Boolean =
-        iter.hasPrevious()
+        nextNode ne null
 
-      def next(): E =
-        iter.previous()
+      def next(): E = {
+        if (!hasNext())
+          throw new NoSuchElementException()
 
-      def remove(): Unit =
-        iter.remove()
+        removeEnabled = true
+        val ret = nextNode
+        nextNode = nextNode.prev
+        ret.value
+      }
 
+      def remove(): Unit = {
+        if (!removeEnabled)
+          throw new IllegalStateException()
+
+        removeEnabled = false
+        if (nextNode eq null)
+          removeFirst()
+        else
+          removeNode(nextNode.next)
+      }
     }
   }
 
