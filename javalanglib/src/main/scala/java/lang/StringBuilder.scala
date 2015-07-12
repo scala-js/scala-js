@@ -45,6 +45,9 @@ class StringBuilder(private var content: String) extends CharSequence
     else append(csq.subSequence(start, end).toString())
   }
 
+  def appendCodePoint(codePoint: Int): StringBuilder =
+    append(Character.toChars(codePoint))
+
   override def toString(): String = content
 
   def length(): Int = content.length()

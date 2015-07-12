@@ -119,6 +119,17 @@ object StringBufferTest extends JasmineTest {
       expect({ buf.setLength(6); buf.toString }).toEqual("foo\u0000\u0000\u0000")
     }
 
+    it("should respond to `appendCodePoint`") {
+      val buf = newBuf
+      buf.appendCodePoint(0x61)
+      expect(buf.toString).toEqual("a")
+      buf.appendCodePoint(0x10000)
+      expect(buf.toString).toEqual("a\uD800\uDC00")
+      buf.append("fixture")
+      buf.appendCodePoint(0x00010FFFF)
+      expect(buf.toString).toEqual("a\uD800\uDC00fixture\uDBFF\uDFFF")
+    }
+
   }
 
   describe("java.lang.StringBuilder") {
@@ -222,5 +233,15 @@ object StringBufferTest extends JasmineTest {
       expect({ b.setLength(6); b.toString }).toEqual("foo\u0000\u0000\u0000")
     }
 
+    it("should respond to `appendCodePoint`") {
+      val b = newBuilder
+      b.appendCodePoint(0x61)
+      expect(b.toString).toEqual("a")
+      b.appendCodePoint(0x10000)
+      expect(b.toString).toEqual("a\uD800\uDC00")
+      b.append("fixture")
+      b.appendCodePoint(0x00010FFFF)
+      expect(b.toString).toEqual("a\uD800\uDC00fixture\uDBFF\uDFFF")
+    }
   }
 }

@@ -46,6 +46,16 @@ object CharacterTest extends JasmineTest {
       expect(Character.forDigit(9, 10) == '9').toBeTruthy
     }
 
+    it("should provide `toChars`") {
+      expect(Character.toChars(0x61) sameElements Array('a')).toBeTruthy
+      expect(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00')).toBeTruthy
+      expect(Character.toChars(0x10001) sameElements Array('\uD800', '\uDC01')).toBeTruthy
+      expect(Character.toChars(0x10401) sameElements Array('\uD801', '\uDC01')).toBeTruthy
+      expect(Character.toChars(0x10FFFF) sameElements Array('\uDBFF', '\uDFFF')).toBeTruthy
+
+      expect(() => Character.toChars(Integer.MAX_VALUE)).toThrow
+    }
+
     it("should provide isDigit") {
       expect(Character.isDigit('a')).toBeFalsy
       expect(Character.isDigit('0')).toBeTruthy
