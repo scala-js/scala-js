@@ -438,5 +438,10 @@ object RegressionTest extends JasmineTest {
       val x = getNull().asInstanceOf[Unit]: Any
       expect(x.asInstanceOf[js.Any]).toBeNull
     }
+
+    it("lambda parameter with a dash - #1790") {
+      val f = (`a-b`: Int) => `a-b` + 1
+      expect(f(5)).toEqual(6)
+    }
   }
 }

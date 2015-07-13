@@ -3861,7 +3861,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val paramName = param.name
         val js.Ident(name, origName) = paramName
         val newOrigName = origName.getOrElse(name)
-        val newNameIdent = freshLocalIdent(newOrigName)(paramName.pos)
+        val newNameIdent = freshLocalIdent(name)(paramName.pos)
         val patchedParam = js.ParamDef(newNameIdent, jstpe.AnyType,
             mutable = false, rest = param.rest)(param.pos)
         val paramLocal = js.VarDef(paramName, param.ptpe, mutable = false,
