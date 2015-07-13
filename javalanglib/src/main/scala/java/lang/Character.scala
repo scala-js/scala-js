@@ -276,6 +276,12 @@ object Character {
   def isUpperCase(c: scala.Char): scala.Boolean =
     reIsUpper.test(c.toString)
 
+  @inline def isValidCodePoint(codePoint: Int): scala.Boolean =
+    codePoint >= MIN_CODE_POINT && codePoint <= MAX_CODE_POINT
+
+  @inline def isSupplementaryCodePoint(codePoint: Int): scala.Boolean =
+    codePoint >= MIN_SUPPLEMENTARY_CODE_POINT && codePoint <= MAX_CODE_POINT
+
   //def isTitleCase(c: scala.Char): scala.Boolean
   //def isJavaIdentifierPart(c: scala.Char): scala.Boolean
 
@@ -289,6 +295,20 @@ object Character {
 
   /* Misc */
   //def reverseBytes(ch: scala.Char): scala.Char
+
+  def toChars(codePoint: Int): Array[Char] = {
+    if (!isValidCodePoint(codePoint))
+      throw new IllegalArgumentException()
+
+    if (isSupplementaryCodePoint(codePoint)) {
+      val cpPrime = codePoint - 0x10000
+      val high = 0xD800 | ((cpPrime >> 10) & 0x3FF)
+      val low = 0xDC00 | (cpPrime & 0x3FF)
+      Array(high.toChar, low.toChar)
+    } else {
+      Array(codePoint.toChar)
+    }
+  }
 
   @inline def toString(c: scala.Char): String =
     js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
