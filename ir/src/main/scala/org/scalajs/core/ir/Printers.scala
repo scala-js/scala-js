@@ -587,12 +587,12 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
-        case FieldDef(ident, vtpe, mutable) =>
+        case FieldDef(name, vtpe, mutable) =>
           if (mutable)
             print("var ")
           else
             print("val ")
-          print(ident, ": ", vtpe)
+          print(name, ": ", vtpe)
 
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree

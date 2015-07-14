@@ -383,9 +383,19 @@ object Serializers {
           writeTrees(defs)
           writeInt(tree.optimizerHints.bits)
 
-        case FieldDef(ident, ftpe, mutable) =>
-          writeByte(TagFieldDef)
-          writeIdent(ident); writeType(ftpe); writeBoolean(mutable)
+        case FieldDef(name, ftpe, mutable) =>
+          /* TODO Simply use `writePropertyName` when we can break binary
+           * compatibility.
+           */
+          name match {
+            case name: Ident =>
+              writeByte(TagFieldDef)
+              writeIdent(name)
+            case name: StringLiteral =>
+              writeByte(TagStringLitFieldDef)
+              writeTree(name)
+          }
+          writeType(ftpe); writeBoolean(mutable)
 
         case methodDef: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = methodDef
@@ -669,6 +679,11 @@ object Serializers {
 
         case TagFieldDef =>
           FieldDef(readIdent(), readType(), readBoolean())
+        case TagStringLitFieldDef =>
+          /* TODO Merge this into TagFieldDef and use readPropertyName()
+           * when we can break binary compatibility.
+           */
+          FieldDef(readTree().asInstanceOf[StringLiteral], readType(), readBoolean())
 
         case TagMethodDef =>
           val optHash = readOptHash()

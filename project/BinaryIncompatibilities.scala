@@ -3,6 +3,17 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking: Trees.FieldDef has a PropertyName instead of an Ident
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#FieldDef.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#FieldDef.name"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#FieldDef.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.core.ir.Trees#FieldDef.copy$default$1"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.ir.Trees#FieldDef.apply")
   )
 
   val Tools = Seq(

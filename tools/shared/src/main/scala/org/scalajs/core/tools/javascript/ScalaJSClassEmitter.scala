@@ -244,8 +244,11 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       field @ FieldDef(name, ftpe, mutable) <- tree.fields
     } yield {
       implicit val pos = field.pos
+      val selectField = (name: @unchecked) match {
+        case name: Ident => Select(This()(tpe), name)(ftpe)
+      }
       desugarJavaScript(
-          Assign(Select(This()(tpe), name)(ftpe), zeroOf(ftpe)),
+          Assign(selectField, zeroOf(ftpe)),
           semantics, outputMode)
     }
   }

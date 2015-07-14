@@ -155,6 +155,13 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val FieldDef(name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
+    name match {
+      case _: Ident =>
+        // ok
+      case _: StringLiteral =>
+        reportError(s"FieldDef '$name' cannot have a string literal name")
+    }
+
     if (tpe == NoType)
       reportError(s"FieldDef cannot have type NoType")
   }
