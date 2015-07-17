@@ -35,11 +35,11 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   def generatedJSAST(clDefs: List[Trees.Tree]): Unit = {}
 
   /** Addons for JavaScript platform */
-  object jsAddons extends {
+  object jsAddons extends { // scalastyle:ignore
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
   } with JSGlobalAddons with Compat210Component
 
-  object scalaJSOpts extends ScalaJSOptions {
+  object scalaJSOpts extends ScalaJSOptions { // scalastyle:ignore
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {

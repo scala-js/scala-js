@@ -67,7 +67,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
   }
 
-  private[this] object pos2irPosCache {
+  private[this] object pos2irPosCache { // scalastyle:ignore
     import scala.reflect.internal.util._
 
     private[this] var lastNscSource: SourceFile = null
