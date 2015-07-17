@@ -51,14 +51,19 @@ object Build extends sbt.Build {
   val previousBinaryCrossVersion =
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
+  val scalaVersionsUsedForPublishing: Set[String] =
+    Set("2.10.5", "2.11.7", "2.12.0-M1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
-    Set("2.12.0-M1")
+    Set()
 
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
-      if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
+      if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
+        // This artifact will not be published. Binary compatibility is irrelevant.
+        None
+      } else if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
         // New in this release, no binary compatibility to comply to
         None
       } else {
