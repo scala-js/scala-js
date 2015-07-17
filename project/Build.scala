@@ -691,7 +691,9 @@ object Build extends sbt.Build {
           scalaJSSourceMapSettings,
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := true,
-          previousArtifactSetting
+          previousArtifactSetting,
+          libraryDependencies +=
+            "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
       ) ++ (
           scalaJSExternalCompileSettings
       ) ++ inConfig(Compile)(Seq(
@@ -931,6 +933,10 @@ object Build extends sbt.Build {
           publishArtifact in Compile := false,
 
           scalacOptions ~= (_.filter(_ != "-deprecation")),
+
+          // Need reflect for typechecking macros
+          libraryDependencies +=
+            "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
           scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
             case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
