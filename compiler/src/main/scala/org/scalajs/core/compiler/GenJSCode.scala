@@ -129,7 +129,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val currentClassInfoBuilder  = new ScopedVar[ClassInfoBuilder]
     val currentMethodSym         = new ScopedVar[Symbol]
     val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
-    val methodTailJumpThisSym    = new ScopedVar[Symbol](NoSymbol)
+    val thisLocalVarIdent        = new ScopedVar[Option[js.Ident]](None)
     val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
     val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
     val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
@@ -561,7 +561,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val result = withScopedVars(
           currentMethodSym        := sym,
-          methodTailJumpThisSym   := NoSymbol,
+          thisLocalVarIdent       := None,
           fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
           enclosingLabelDefParams := Map.empty
       ) {
@@ -883,31 +883,40 @@ abstract class GenJSCode extends plugins.PluginComponent
             (thisDef @ ValDef(_, nme.THIS, _, initialThis)) :: otherStats,
             rhs) =>
           // This method has tail jumps
-          withScopedVars(
-            (initialThis match {
-              case This(_)  =>
-                Seq(methodTailJumpThisSym := thisDef.symbol,
-                    fakeTailJumpParamRepl := (NoSymbol, NoSymbol))
-              case Ident(_) =>
-                Seq(methodTailJumpThisSym := NoSymbol,
-                    fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol))
-            }): _*
-          ) {
-            val innerBody = js.Block(otherStats.map(genStat) :+ (
+
+          // To be called from within withScopedVars
+          def genInnerBody() = {
+            js.Block(otherStats.map(genStat) :+ (
                 if (bodyIsStat) genStat(rhs)
                 else            genExpr(rhs)))
+          }
 
-            if (methodTailJumpThisSym.get == NoSymbol) {
-              innerBody
-            } else {
-              if (methodTailJumpThisSym.isMutable)
-                mutableLocalVars += methodTailJumpThisSym
-              js.Block(
-                  js.VarDef(encodeLocalSym(methodTailJumpThisSym),
-                      currentClassType, methodTailJumpThisSym.isMutable,
-                      js.This()(currentClassType)),
-                  innerBody)
-            }
+          initialThis match {
+            case This(_) =>
+              val thisSym = thisDef.symbol
+              if (thisSym.isMutable)
+                mutableLocalVars += thisSym
+
+              val thisLocalIdent = encodeLocalSym(thisSym)
+              val thisLocalVarDef = js.VarDef(thisLocalIdent,
+                  currentClassType, thisSym.isMutable, genThis())
+
+              val innerBody = {
+                withScopedVars(
+                  thisLocalVarIdent := Some(thisLocalIdent)
+                ) {
+                  genInnerBody()
+                }
+              }
+
+              js.Block(thisLocalVarDef, innerBody)
+
+            case Ident(_) =>
+              withScopedVars(
+                fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
+              ) {
+                genInnerBody()
+              }
           }
 
         case _ =>
@@ -1142,13 +1151,14 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      if (methodTailJumpThisSym.get != NoSymbol) {
-        js.VarRef(encodeLocalSym(methodTailJumpThisSym))(currentClassType)
-      } else {
-        if (tryingToGenMethodAsJSFunction)
+      thisLocalVarIdent.fold[js.Tree] {
+        if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
+        }
         js.This()(currentClassType)
+      } { thisLocalIdent =>
+        js.VarRef(thisLocalIdent)(currentClassType)
       }
     }
 
