@@ -52,7 +52,7 @@ object Build extends sbt.Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val newScalaBinaryVersionsInThisRelease: Set[String] =
-    Set("2.12.0-M1")
+    Set()
 
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
