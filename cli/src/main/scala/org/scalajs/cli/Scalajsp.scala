@@ -31,7 +31,6 @@ object Scalajsp {
 
   private case class Options(
     infos: Boolean = false,
-    desugar: Boolean = false,
     showReflProxy: Boolean = false,
     jar: Option[File] = None,
     fileNames: Seq[String] = Seq.empty)
@@ -47,10 +46,6 @@ object Scalajsp {
         .valueName("<jar>")
         .action { (x, c) => c.copy(jar = Some(x)) }
         .text("Read *.sjsir file(s) from the given JAR.")
-      opt[Unit]('d', "desugar")
-        .action { (_, c) => c.copy(desugar = true) }
-        .text("Desugar JS trees. Generates ECMAScript5 code. However, " +
-            "the generated runtime type information will be wrong.")
       opt[Unit]('i', "infos")
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
@@ -102,15 +97,7 @@ object Scalajsp {
         else filterOutReflProxies(tree)
       }
 
-      if (opts.desugar) {
-        val pseudoLinked = LinkedClass(info, outTree, ancestors = Nil)
-        val printer = new JSTreePrinter(stdout)
-        val emitter = new ScalaJSClassEmitter(Semantics.Defaults,
-            OutputMode.ECMAScript51Isolated,
-            LinkingUnit.GlobalInfo.SafeApproximation)
-        printer.printTopLevelTree(emitter.genClassDef(pseudoLinked))
-      } else
-        new IRTreePrinter(stdout).printTopLevelTree(outTree)
+      new IRTreePrinter(stdout).printTopLevelTree(outTree)
     }
 
     stdout.flush()

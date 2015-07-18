@@ -769,6 +769,7 @@ object Build extends sbt.Build {
           ),
 
           previousArtifactSetting,
+          binaryIssueFilters ++= BinaryIncompatibilities.CLI,
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
