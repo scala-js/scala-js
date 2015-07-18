@@ -28,12 +28,12 @@
 
   <check level="error" enabled="true" class="org.scalastyle.scalariform.ClassNamesChecker">
     <parameters>
-      <parameter name="regex"><![CDATA[[A-Z][A-Za-z0-9]*]]></parameter>
+      <parameter name="regex"><![CDATA[^[A-Z][A-Za-z0-9]*$]]></parameter>
     </parameters>
   </check>
   <check level="error" enabled="true" class="org.scalastyle.scalariform.ObjectNamesChecker">
     <parameters>
-      <parameter name="regex"><![CDATA[[A-Z][A-Za-z0-9]*]]></parameter>
+      <parameter name="regex"><![CDATA[^[A-Z][A-Za-z0-9]*$]]></parameter>
     </parameters>
   </check>
   <check level="error" enabled="true" class="org.scalastyle.scalariform.PackageObjectNamesChecker">

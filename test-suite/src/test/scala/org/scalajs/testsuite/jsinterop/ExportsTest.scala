@@ -1180,13 +1180,13 @@ class ExportedNamedArgClass(x: Int = 1)(y: String = x.toString)(z: Boolean = y !
 }
 
 @JSExport
-class ExportClassSetterNamed_= {
+class ExportClassSetterNamed_= { // scalastyle:ignore
   @JSExport
   val x = 1
 }
 
 @JSExport
-object ExportObjSetterNamed_= {
+object ExportObjSetterNamed_= { // scalastyle:ignore
   @JSExport
   val x = 1
 }
