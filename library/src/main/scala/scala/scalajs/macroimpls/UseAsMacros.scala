@@ -47,6 +47,8 @@ private[scalajs] object UseAsMacros {
      */
     private val JSObjectAncestors = typeOf[js.Object].baseClasses.toSet
 
+    type JSMemberSet = Map[JSMemberSelection, List[JSMember]]
+
     def as[A: WeakTypeTag, B <: js.Any: WeakTypeTag]: Expr[B] = {
       val trgTpe = verifyTargetType(weakTypeOf[B])
       val srcTpe = weakTypeOf[A]
@@ -67,43 +69,79 @@ private[scalajs] object UseAsMacros {
      *  Checks if [[srcTpe]] conforms to [[trgTpe]]. Reports errors otherwise.
      */
     private def check(srcTpe: Type, trgTpe: Type): Unit = {
-      val rawMembers = rawJSMembers(trgTpe)
-      val exports = exportedMembers(srcTpe)
+      val requiredMembers = rawJSMembers(trgTpe)
+      val isRawJSType = srcTpe <:< typeOf[js.Any]
 
-      for ((jsMemberSelection, jsMember) <- rawMembers) {
-        jsMemberSelection match {
-          case JSNamedMember(name) =>
-            exports.get(name).fold {
-              val msg = s"$srcTpe does not export a member named $name"
-              c.error(c.enclosingPosition, msg)
-            } { candidates =>
-              if (!candidates.exists(_.conformsTo(jsMember))) {
-                val msg = s"$srcTpe does not export " + jsMember.displayStr(name)
-                c.error(c.enclosingPosition, msg)
-              }
-            }
+      val definedMembers =
+        if (isRawJSType) rawJSMembers(srcTpe)
+        else exportedMembers(srcTpe)
 
-          case JSMemberCall =>
-            c.abort(c.enclosingPosition, s"$trgTpe defines an apply method. " +
-                "This cannot be implemented by any Scala exported type, since " +
-                "it would need to chain Function's prototype.")
+      for {
+        (jsMemberSelection, jsMembers) <- requiredMembers
+        jsMember <- jsMembers
+      } {
+        // Fail for required polymorphic methods
+        jsMember match {
+          case PolyMethod(sym) =>
+            c.error(c.enclosingPosition, "Polymorphic methods are currently " +
+              s"not supported. Offending method: ${sym.fullName}")
+          case _ =>
+        }
 
-          case JSMemberBracketAccess =>
-            c.abort(c.enclosingPosition, s"$trgTpe defines a " +
-                "@JSMemberBracketAccess method. Existence of such a method " +
-                "cannot be statically checked for any Scala exported type.")
+        val hasConformingMember = {
+          val overloads = definedMembers.getOrElse(jsMemberSelection, Nil)
+          overloads.exists(_.conformsTo(jsMember))
+        }
 
-          case JSMemberBracketCall =>
-            c.abort(c.enclosingPosition, s"$trgTpe defines a " +
-                "@JSMemberBracketCall method. Existence of such a method " +
-                "cannot be statically checked for any Scala exported type.")
+        if (!hasConformingMember) {
+          // Error: A member is missing. Construct an informative error message
+
+          def noSuchMember(memberName: String) = {
+            val membershipStr = if (isRawJSType) "have" else "export"
+            val memberStr = jsMember.displayStr(memberName)
+            s"$srcTpe does not $membershipStr a $memberStr."
+          }
+
+          val errMsg = jsMemberSelection match {
+            case JSNamedMember(name) =>
+              noSuchMember(name)
+
+            case JSMemberCall if !isRawJSType =>
+              s"$trgTpe defines an apply method. This cannot be implemented " +
+                  "by any Scala exported type, since it would need to chain " +
+                  "Function's prototype."
+
+            case JSMemberBracketAccess if !isRawJSType =>
+              s"$trgTpe defines a @JSMemberBracketAccess method. Existence " +
+                  "of such a method cannot be statically checked for any " +
+                  "Scala exported type."
+
+            case JSMemberBracketCall if !isRawJSType =>
+              s"$trgTpe defines a @JSMemberBracketCall method. Existence of " +
+                  "such a method cannot be statically checked for any Scala " +
+                  "exported type."
+
+            case JSMemberCall =>
+              noSuchMember("<apply>") + " (type is not callable)"
+
+            case JSMemberBracketAccess =>
+              noSuchMember("<bracketaccess>") + " (type doesn't support " +
+                  "member selection via []). Add @JSBracketAccess to use a " +
+                  "method for member selection."
+
+            case JSMemberBracketCall =>
+              noSuchMember("<bracketcall>") + " (type doesn't support " +
+                  "dynamically calling methods). Add @JSBracketCall to use a " +
+                  "method for dynamic calls."
+          }
+
+          c.error(c.enclosingPosition, errMsg)
         }
       }
     }
 
     /** Members that a facade type defines */
-    private def rawJSMembers(
-        tpe: Type): Iterable[(JSMemberSelection, JSMember)] = {
+    private def rawJSMembers(tpe: Type): JSMemberSet = {
 
       def isAPIMember(member: Symbol) = {
         !JSObjectAncestors(member.owner) &&
@@ -112,9 +150,19 @@ private[scalajs] object UseAsMacros {
         !member.asTerm.isParamWithDefault
       }
 
-      for (member <- tpe.members if isAPIMember(member)) yield {
+      val tups = for {
+        member <- tpe.members
+        if isAPIMember(member)
+      } yield {
         val memberMethod = member.asMethod
         (jsMemberSelection(memberMethod), jsMemberFor(tpe, memberMethod))
+      }
+
+      // Group by member selection
+      for {
+        (selection, members) <- tups.groupBy(_._1)
+      } yield {
+        (selection, members.map(_._2).toList)
       }
     }
 
@@ -141,14 +189,14 @@ private[scalajs] object UseAsMacros {
     }
 
     /** Returns all exported members of a type */
-    private def exportedMembers(tpe: Type): Map[String, List[JSMember]] = {
+    private def exportedMembers(tpe: Type): JSMemberSet = {
       val exports = tpe.baseClasses.flatMap(exportedDecls(tpe, _))
 
       // Group exports by name
       for {
         (name, elems) <- exports.groupBy(_._1)
       } yield {
-        (name, elems.map(_._2).toList)
+        (JSNamedMember(name), elems.map(_._2))
       }
     }
 
@@ -196,8 +244,7 @@ private[scalajs] object UseAsMacros {
           flatParams(info, Nil)
 
         case PolyType(_, _) =>
-          c.abort(c.enclosingPosition, "Polymorphic methods are currently " +
-              s"not supported. Offending method: ${sym.fullName}")
+          PolyMethod(sym)
 
         case tpe =>
           sys.error(s"Unexpected method type: $tpe for $sym. Report this as a bug.")

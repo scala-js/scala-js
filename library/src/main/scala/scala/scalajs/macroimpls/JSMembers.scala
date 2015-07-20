@@ -85,4 +85,9 @@ private[macroimpls] trait JSMembers {
     def displayStr(name: String): String = s"setter $name: $tpe"
   }
 
+  /** Place holder for Poly methods. Can only be ignored or fail */
+  case class PolyMethod(sym: Symbol) extends JSMember {
+    def conformsTo(that: JSMember): Boolean = false
+    def displayStr(name: String): String = s"poly $name ($sym)"
+  }
 }

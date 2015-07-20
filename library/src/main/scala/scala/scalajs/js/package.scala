@@ -106,8 +106,7 @@ package object js {
       "because you tried to run Scala.js binaries on the JVM. Make sure you " +
       "are using the JVM version of the libraries.")
 
-  /** Allows to cast an instance of a Scala class to facade trait in a type-safe
-   *  way.
+  /** Allows to cast a value to a facade trait in a type-safe way.
    *
    *  Use as follows:
    *  {{{
@@ -117,6 +116,9 @@ package object js {
    *  Note that the method calls are only syntactic sugar. There is no overhead
    *  at runtime for such an operation. Using `use(x).as[T]` is strictly
    *  equivalent to `x.asInstanceOf[T]` if the compile time check does not fail.
+   *
+   *  This method supports both Scala classes with exports and facade types
+   *  which are structurally equivalent.
    *
    *  == Examples ==
    *  Given the following facade type:
@@ -184,6 +186,19 @@ package object js {
    *
    *  val x4 = new MyClass4
    *  js.use(x4).as[MyFacade] // Fails, foo is missing
+   *  }}}
+   *
+   *  Other facade types can also be used
+   *
+   *  {{{
+   *  trait MyOtherFacade extends js.Object {
+   *    def foo(x: Any): String = js.native
+   *    val bar: Int = js.native
+   *    def otherMethod(): Unit = js.native
+   *  }
+   *
+   *  val x5: MyOtherFacade = // ...
+   *  js.use(x5).as[MyFacade] // OK
    *  }}}
    *
    *  == Restrictions ==
