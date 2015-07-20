@@ -198,9 +198,10 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     val kind = data.kind
     val isStaticModule = data.kind == ClassKind.ModuleClass
     val isInterface = data.kind == ClassKind.Interface
-    val isRawJSType = data.kind == ClassKind.RawJSType
-    val isHijackedClass = data.kind == ClassKind.HijackedClass
-    val isClass = !isInterface && !isRawJSType
+    val isScalaClass = data.kind.isClass || data.kind == ClassKind.HijackedClass
+    val isJSClass = data.kind == ClassKind.JSClass
+    val isAnyRawJSType = isJSClass || data.kind == ClassKind.RawJSType
+    val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
 
     var superClass: ClassInfo = _
@@ -250,7 +251,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
       if (superClass == null) 0
       else superClass.ancestorCount + 1
 
-    lazy val descendentClasses = descendants.filter(_.isClass)
+    lazy val descendentClasses = descendants.filter(_.isScalaClass)
 
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
@@ -289,8 +290,8 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     }
 
     def tryLookupMethod(methodName: String): Option[MethodInfo] = {
-      assert(isClass,
-          s"Cannot call lookupMethod($methodName) on non-class $this")
+      assert(isScalaClass,
+          s"Cannot call lookupMethod($methodName) on non Scala class $this")
       @tailrec
       def loop(ancestorInfo: ClassInfo): Option[MethodInfo] = {
         if (ancestorInfo ne null) {
@@ -331,9 +332,11 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
       }
 
       // My methods
-      for (methodInfo <- methodInfos.values) {
-        if (methodInfo.isExported)
-          callMethod(methodInfo.encodedName)
+      if (!isJSClass) {
+        for (methodInfo <- methodInfos.values) {
+          if (methodInfo.isExported)
+            callMethod(methodInfo.encodedName)
+        }
       }
     }
 
@@ -349,19 +352,34 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
 
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
-      if (!isInstantiated && isClass) {
+      if (!isInstantiated && (isScalaClass || isAnyRawJSType)) {
         isInstantiated = true
-        accessData()
-        ancestors.foreach(_.subclassInstantiated())
 
-        for ((methodName, from) <- delayedCalls)
-          delayedCallMethod(methodName)(from)
+        if (isScalaClass) {
+          accessData()
+          ancestors.foreach(_.subclassInstantiated())
+
+          for ((methodName, from) <- delayedCalls)
+            delayedCallMethod(methodName)(from)
+        } else {
+          assert(isAnyRawJSType)
+
+          subclassInstantiated()
+
+          if (isJSClass)
+            superClass.instantiated()
+
+          for (methodInfo <- methodInfos.values) {
+            if (methodInfo.isExported)
+              methodInfo.reach(this)(FromExports)
+          }
+        }
       }
     }
 
     private def subclassInstantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
-      if (!isAnySubclassInstantiated && isClass) {
+      if (!isAnySubclassInstantiated && (isScalaClass || isAnyRawJSType)) {
         isAnySubclassInstantiated = true
       }
     }
@@ -457,7 +475,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
           s"Trying to dynamically reach the static method $this")
       assert(!isAbstract,
           s"Trying to dynamically reach the abstract method $this")
-      assert(owner.isClass,
+      assert(owner.isAnyClass,
           s"Trying to dynamically reach the non-class method $this")
       assert(!isConstructorName(encodedName),
           s"Trying to dynamically reach the constructor $this")

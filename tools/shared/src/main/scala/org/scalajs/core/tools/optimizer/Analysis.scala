@@ -39,6 +39,10 @@ object Analysis {
     def nonExistent: Boolean
     def ancestorCount: Int
     def descendentClasses: Seq[ClassInfo]
+    /** For a Scala class, it is instantiated with a `New`; for a JS class,
+     *  its constructor is accessed with a `JSLoadConstructor` or because it
+     *  is needed for a subclass.
+     */
     def isInstantiated: Boolean
     def isAnySubclassInstantiated: Boolean
     def isModuleAccessed: Boolean

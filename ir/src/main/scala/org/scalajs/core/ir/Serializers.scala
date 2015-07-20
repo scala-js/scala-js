@@ -285,6 +285,22 @@ object Serializers {
           writeByte(TagJSBracketMethodApply)
           writeTree(receiver); writeTree(method); writeTrees(args)
 
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          writeByte(TagJSSuperBracketSelect)
+          writeClassType(cls); writeTree(qualifier); writeTree(item)
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          writeByte(TagJSSuperBracketCall)
+          writeClassType(cls); writeTree(receiver); writeTree(method); writeTrees(args)
+
+        case JSSuperConstructorCall(args) =>
+          writeByte(TagJSSuperConstructorCall)
+          writeTrees(args)
+
+        case JSLoadConstructor(cls) =>
+          writeByte(TagJSLoadConstructor)
+          writeClassType(cls)
+
         case JSSpread(items) =>
           writeByte(TagJSSpread)
           writeTree(items)
@@ -635,6 +651,11 @@ object Serializers {
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTrees())
         case TagJSDotMethodApply     => JSDotMethodApply(readTree(), readIdent(), readTrees())
         case TagJSBracketMethodApply => JSBracketMethodApply(readTree(), readTree(), readTrees())
+        case TagJSSuperBracketSelect => JSSuperBracketSelect(readClassType(), readTree(), readTree())
+        case TagJSSuperBracketCall   =>
+          JSSuperBracketCall(readClassType(), readTree(), readTree(), readTrees())
+        case TagJSSuperConstructorCall => JSSuperConstructorCall(readTrees())
+        case TagJSLoadConstructor    => JSLoadConstructor(readClassType())
         case TagJSSpread             => JSSpread(readTree())
         case TagJSDelete             => JSDelete(readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())

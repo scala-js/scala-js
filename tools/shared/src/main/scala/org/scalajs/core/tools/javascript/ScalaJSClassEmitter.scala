@@ -25,19 +25,46 @@ import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
  */
-final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
+final class ScalaJSClassEmitter private (
+    private[javascript] val semantics: Semantics,
+    private[javascript] val outputMode: OutputMode,
+    linkingUnit: LinkingUnit, // null if coming from a deprecated constructor
     globalInfo: LinkingUnit.GlobalInfo) {
 
   import ScalaJSClassEmitter._
   import JSDesugaring._
 
-  @deprecated("Use the constructor with an explicit output mode", "0.6.2")
+  def this(semantics: Semantics, outputMode: OutputMode,
+      linkingUnit: LinkingUnit) = {
+    this(semantics, outputMode, linkingUnit, linkingUnit.globalInfo)
+  }
+
+  @deprecated(
+      "This constructor creates an emitter that cannot handle JS classes. " +
+      "Use the constructor with a LinkingUnit instead.", "0.6.5")
+  def this(semantics: Semantics, outputMode: OutputMode,
+      globalInfo: LinkingUnit.GlobalInfo) =
+    this(semantics, OutputMode.ECMAScript51Global, null, globalInfo)
+
+  @deprecated(
+      "This constructor creates an emitter that cannot handle JS classes. " +
+      "Use the constructor with a LinkingUnit instead.", "0.6.2")
   def this(semantics: Semantics, globalInfo: LinkingUnit.GlobalInfo) =
     this(semantics, OutputMode.ECMAScript51Global, globalInfo)
 
-  @deprecated("Use the constructor with an explicit output mode and additional GlobalInfo", "0.6.1")
+  @deprecated(
+      "This constructor creates an emitter that cannot handle JS classes. " +
+      "Use the constructor with a LinkingUnit instead.", "0.6.1")
   def this(semantics: Semantics) =
     this(semantics, LinkingUnit.GlobalInfo.SafeApproximation)
+
+  private[javascript] lazy val linkedClassByName: Map[String, LinkedClass] = {
+    if (linkingUnit == null) {
+      throw new IllegalArgumentException(
+          "A class emitter created without a LinkingUnit cannot emit JS classes")
+    }
+    linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
+  }
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
@@ -67,7 +94,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     var reverseParts: List[js.Tree] = Nil
 
     reverseParts ::= genStaticMembers(tree)
-    if (kind.isClass && tree.hasInstances)
+    if (kind.isAnyScalaJSDefinedClass && tree.hasInstances)
       reverseParts ::= genClass(tree)
     if (needInstanceTests(tree)) {
       reverseParts ::= genInstanceTests(tree)
@@ -126,9 +153,13 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val classIdent = encodeClassVar(className)(
         outputMode, tree.name.pos).asInstanceOf[js.VarRef].ident
 
-    val parentVar =
-      for (parentIdent <- tree.superClass)
-        yield encodeClassVar(parentIdent.name)(outputMode, parentIdent.pos)
+    val parentVar = for (parentIdent <- tree.superClass) yield {
+      implicit val pos = parentIdent.pos
+      if (tree.kind != ClassKind.JSClass)
+        encodeClassVar(parentIdent.name)
+      else
+        genRawJSClassConstructor(linkedClassByName(parentIdent.name))
+    }
 
     js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
@@ -156,7 +187,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
 
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: LinkedClass): js.Tree = {
-    assert(tree.kind.isClass)
+    assert(tree.kind.isAnyScalaJSDefinedClass)
     assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
 
@@ -174,8 +205,17 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     implicit val pos = tree.pos
 
     val className = tree.name.name
+    val isJSClass = tree.kind == ClassKind.JSClass
 
-    val ctorFun = {
+    def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
+      js.Block(
+        js.DocComment("@constructor"),
+        envFieldDef("h", className, js.Function(Nil, js.Skip())),
+        js.Assign(envField("h", className).prototype, ctorToMimic.prototype)
+      )
+    }
+
+    val ctorFun = if (!isJSClass) {
       val superCtorCall = tree.superClass.fold[js.Tree] {
         js.Skip()
       } { parentIdent =>
@@ -185,6 +225,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       }
       val fieldDefs = genFieldDefs(tree)
       js.Function(Nil, js.Block(superCtorCall :: fieldDefs))
+    } else {
+      genConstructorFunForJSClass(tree)
     }
 
     val typeVar = encodeClassVar(className)
@@ -194,20 +236,23 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val chainProto = tree.superClass.fold[js.Tree] {
       js.Skip()
     } { parentIdent =>
+      val (inheritedCtorDef, inheritedCtorRef) = if (!isJSClass) {
+        (js.Skip(), envField("h", parentIdent.name))
+      } else {
+        val superCtor = genRawJSClassConstructor(
+            linkedClassByName(parentIdent.name))
+        (makeInheritableCtorDef(superCtor), envField("h", className))
+      }
       js.Block(
-        js.Assign(typeVar.prototype,
-            js.New(envField("h", parentIdent.name, parentIdent.originalName), Nil)),
-        genAddToPrototype(className, js.Ident("constructor"), typeVar)
+          inheritedCtorDef,
+          js.Assign(typeVar.prototype, js.New(inheritedCtorRef, Nil)),
+          genAddToPrototype(className, js.Ident("constructor"), typeVar)
       )
     }
 
-    val inheritableCtorDef = {
-      js.Block(
-        js.DocComment("@constructor"),
-        envFieldDef("h", className, js.Function(Nil, js.Skip())),
-        js.Assign(envField("h", className).prototype, typeVar.prototype)
-      )
-    }
+    val inheritableCtorDef =
+      if (isJSClass) js.Skip()
+      else makeInheritableCtorDef(typeVar)
 
     js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
   }
@@ -216,24 +261,44 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   private def genES6Constructor(tree: LinkedClass): js.Tree = {
     implicit val pos = tree.pos
 
-    val fieldDefs = genFieldDefs(tree)
-    if (fieldDefs.isEmpty && outputMode == OutputMode.ECMAScript6) {
-      js.Skip()
+    if (tree.kind == ClassKind.JSClass) {
+      val js.Function(params, body) = genConstructorFunForJSClass(tree)
+      js.MethodDef(static = false, js.Ident("constructor"), params, body)
     } else {
-      val superCtorCall = tree.superClass.fold[js.Tree] {
-        js.Skip()(tree.pos)
-      } { parentIdent =>
-        js.Apply(js.Super(), Nil)
+      val fieldDefs = genFieldDefs(tree)
+      if (fieldDefs.isEmpty && outputMode == OutputMode.ECMAScript6) {
+        js.Skip()
+      } else {
+        val superCtorCall = tree.superClass.fold[js.Tree] {
+          js.Skip()(tree.pos)
+        } { parentIdent =>
+          js.Apply(js.Super(), Nil)
+        }
+        val initClassData = outputMode match {
+          case OutputMode.ECMAScript6StrongMode =>
+            js.Assign(js.DotSelect(js.This(), js.Ident("$classData")),
+                envField("d", tree.name.name))
+          case _ =>
+            js.Skip()
+        }
+        js.MethodDef(static = false, js.Ident("constructor"), Nil,
+            js.Block(superCtorCall :: initClassData :: fieldDefs))
       }
-      val initClassData = outputMode match {
-        case OutputMode.ECMAScript6StrongMode =>
-          js.Assign(js.DotSelect(js.This(), js.Ident("$classData")),
-              envField("d", tree.name.name))
-        case _ =>
-          js.Skip()
-      }
-      js.MethodDef(static = false, js.Ident("constructor"), Nil,
-          js.Block(superCtorCall :: initClassData :: fieldDefs))
+    }
+  }
+
+  private def genConstructorFunForJSClass(tree: LinkedClass): js.Function = {
+    implicit val pos = tree.pos
+
+    require(tree.kind == ClassKind.JSClass)
+
+    tree.exportedMembers.map(_.tree) collectFirst {
+      case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
+        desugarToFunction(this, tree.encodedName,
+            params, body, isStat = true)
+    } getOrElse {
+      throw new IllegalArgumentException(
+          s"${tree.encodedName} does not have an exported constructor")
     }
   }
 
@@ -247,9 +312,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       val selectField = (name: @unchecked) match {
         case name: Ident => Select(This()(tpe), name)(ftpe)
       }
-      desugarJavaScript(
-          Assign(selectField, zeroOf(ftpe)),
-          semantics, outputMode)
+      desugarTree(this, tree.encodedName,
+          Assign(selectField, zeroOf(ftpe)), isStat = true)
     }
   }
 
@@ -257,9 +321,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   def genMethod(className: String, method: MethodDef): js.Tree = {
     implicit val pos = method.pos
 
-    val methodFun = desugarToFunction(
-        method.args, method.body, method.resultType == NoType,
-        semantics, outputMode)
+    val methodFun = desugarToFunction(this, className,
+        method.args, method.body, method.resultType == NoType)
 
     outputMode match {
       case OutputMode.ECMAScript6StrongMode =>
@@ -324,8 +387,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       val wget = {
         if (property.getterBody == EmptyTree) base
         else {
-          val fun = desugarToFunction(Nil, property.getterBody, isStat = false,
-              semantics, outputMode)
+          val fun = desugarToFunction(this, className,
+              Nil, property.getterBody, isStat = false)
           js.StringLiteral("get") -> fun :: base
         }
       }
@@ -333,9 +396,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       // Optionally add setter
       if (property.setterBody == EmptyTree) wget
       else {
-        val fun = desugarToFunction(
-            property.setterArg :: Nil, property.setterBody, isStat = true,
-            semantics, outputMode)
+        val fun = desugarToFunction(this, className,
+            property.setterArg :: Nil, property.setterBody, isStat = true)
         js.StringLiteral("set") -> fun :: wget
       }
     }
@@ -352,8 +414,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val getter = {
       if (property.getterBody == EmptyTree) js.Skip()
       else {
-        val fun = desugarToFunction(Nil, property.getterBody, isStat = false,
-            semantics, outputMode)
+        val fun = desugarToFunction(this, className,
+            Nil, property.getterBody, isStat = false)
         js.GetterDef(static = false, propName, fun.body)
       }
     }
@@ -361,9 +423,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val setter = {
       if (property.setterBody == EmptyTree) js.Skip()
       else {
-        val fun = desugarToFunction(
-            property.setterArg :: Nil, property.setterBody, isStat = true,
-            semantics, outputMode)
+        val fun = desugarToFunction(this, className,
+            property.setterArg :: Nil, property.setterBody, isStat = true)
         js.SetterDef(static = false, propName, fun.args.head, fun.body)
       }
     }
@@ -571,9 +632,11 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
       HijackedBoxedClasses.contains(className)
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
-
     val isRawJSType =
-      if (kind == ClassKind.RawJSType) js.BooleanLiteral(true)
+      kind == ClassKind.RawJSType || kind == ClassKind.JSClass
+
+    val isRawJSTypeParam =
+      if (isRawJSType) js.BooleanLiteral(true)
       else js.Undefined()
 
     val parentData = if (globalInfo.isParentDataAccessed) {
@@ -604,17 +667,16 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
         /* java.lang.String and ancestors of hijacked classes have a normal
          * ScalaJS.is.pack_Class test but with a non-standard behavior. */
         (envField("is", className), js.Undefined())
-      } else if (tree.kind == ClassKind.RawJSType) {
+      } else if (isRawJSType) {
         /* Raw JS types have an instanceof operator-based isInstanceOf test
          * dictated by their jsName. If there is no jsName, the test cannot
          * be performed and must throw.
+         * JS classes have something similar, based on their constructor.
          */
-        tree.jsName.fold[(js.Tree, js.Tree)] {
+        if (tree.jsName.isEmpty && kind != ClassKind.JSClass) {
           (envField("noIsInstance"), js.Undefined())
-        } { jsName =>
-          val jsCtor = jsName.split("\\.").foldLeft(envField("g")) {
-            (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
-          }
+        } else {
+          val jsCtor = genRawJSClassConstructor(tree)
           (js.Function(List(js.ParamDef(Ident("x"), rest = false)), js.Return {
             js.BinaryOp(JSBinaryOp.instanceof, js.VarRef(Ident("x")), jsCtor)
           }), js.Undefined())
@@ -630,7 +692,7 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
         js.BooleanLiteral(kind == ClassKind.Interface),
         js.StringLiteral(semantics.runtimeClassName(tree)),
         ancestorsRecord,
-        isRawJSType,
+        isRawJSTypeParam,
         parentData,
         isInstanceFun,
         isArrayOfFun
@@ -737,6 +799,9 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
   def genExportedMembers(tree: LinkedClass): js.Tree = {
     val exports = tree.exportedMembers map { member =>
       member.tree match {
+        case MethodDef(false, StringLiteral("constructor"), _, _, _)
+            if tree.kind == ClassKind.JSClass =>
+          js.Skip()(member.tree.pos)
         case m: MethodDef =>
           genMethod(tree.encodedName, m)
         case p: PropertyDef =>
@@ -774,8 +839,8 @@ final class ScalaJSClassEmitter(semantics: Semantics, outputMode: OutputMode,
     val thisIdent = js.Ident("$thiz")
 
     val js.Function(ctorParams, ctorBody) =
-      desugarToFunction(Some(thisIdent), args, body, isStat = true,
-          semantics, outputMode)
+      desugarToFunction(this, cd.encodedName,
+          Some(thisIdent), args, body, isStat = true)
 
     val exportedCtor = js.Function(ctorParams, js.Block(
       genLet(thisIdent, mutable = false, js.New(baseCtor, Nil)),

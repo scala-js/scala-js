@@ -130,7 +130,8 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
 
       if (linkedClass.hasInstances &&
           linkedClass.kind != ClassKind.RawJSType &&
-          linkedClass.kind != ClassKind.Interface)
+          linkedClass.kind != ClassKind.Interface &&
+          linkedClass.kind != ClassKind.JSClass)
         CollOps.put(neededClasses, linkedClass.encodedName, linkedClass)
       if (linkedClass.staticMethods.nonEmpty)
         CollOps.put(neededStatics, linkedClass.encodedName, linkedClass)

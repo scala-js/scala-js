@@ -442,6 +442,45 @@ ScalaJS.newJSObjectWithVarargs = function(ctor, args) {
   }
 };
 
+ScalaJS.resolveSuperRef = function(initialProto, propName) {
+  const getPrototypeOf = ScalaJS.g["Object"]["getPrototypeOf"];
+  const getOwnPropertyDescriptor = ScalaJS.g["Object"]["getOwnPropertyDescriptor"];
+
+  let superProto = getPrototypeOf(initialProto);
+  while (superProto !== null) {
+    const desc = getOwnPropertyDescriptor(superProto, propName);
+    if (desc !== void 0)
+      return desc;
+    superProto = getPrototypeOf(superProto);
+  }
+
+  return void 0;
+};
+
+ScalaJS.superGet = function(initialProto, self, propName) {
+  const desc = ScalaJS.resolveSuperRef(initialProto, propName);
+  if (desc !== void 0) {
+    const getter = desc["get"];
+    if (getter !== void 0)
+      return getter["call"](self);
+    else
+      return desc["value"];
+  }
+  return void 0;
+};
+
+ScalaJS.superSet = function(initialProto, self, propName, value) {
+  const desc = ScalaJS.resolveSuperRef(initialProto, propName);
+  if (desc !== void 0) {
+    const setter = desc["set"];
+    if (setter !== void 0) {
+      setter["call"](self, value);
+      return void 0;
+    }
+  }
+  throw new ScalaJS.g["TypeError"]("super has no setter '" + propName + "'.");
+};
+
 ScalaJS.propertiesOf = function(obj) {
   const result = [];
   for (const prop in obj)

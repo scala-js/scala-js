@@ -147,6 +147,18 @@ object Traversers {
         traverse(method)
         args foreach traverse
 
+      case JSSuperBracketSelect(cls, qualifier, item) =>
+        traverse(qualifier)
+        traverse(item)
+
+      case JSSuperBracketCall(cls, receiver, method, args) =>
+        traverse(receiver)
+        traverse(method)
+        args foreach traverse
+
+      case JSSuperConstructorCall(args) =>
+        args foreach traverse
+
       case JSSpread(items) =>
         traverse(items)
 
@@ -189,9 +201,10 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:JSEnvInfo |
-          _:JSLinkingInfo | _:Literal | _:UndefinedParam | _:VarRef | _:This |
-          _:FieldDef | _:ModuleExportDef | EmptyTree =>
+      case _:Skip | _:Continue | _:Debugger | _:LoadModule |
+          _:JSLoadConstructor | _:JSEnvInfo | _:JSLinkingInfo | _:Literal |
+          _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
+          _:ModuleExportDef | EmptyTree =>
 
       case _ =>
         sys.error(s"Invalid tree in traverse() of class ${tree.getClass}")

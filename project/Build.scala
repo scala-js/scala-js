@@ -947,6 +947,8 @@ object Build extends sbt.Build {
           libraryDependencies +=
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
+          jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
+
           scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
             case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
               "renamed.test.Class"

@@ -145,6 +145,17 @@ object Transformers {
           JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
               args map transformExpr)
 
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          JSSuperBracketSelect(cls, transformExpr(qualifier),
+              transformExpr(item))
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          JSSuperBracketCall(cls, transformExpr(receiver),
+              transformExpr(method), args map transformExpr)
+
+        case JSSuperConstructorCall(args) =>
+          JSSuperConstructorCall(args map transformExpr)
+
         case JSSpread(items) =>
           JSSpread(transformExpr(items))
 
@@ -173,9 +184,9 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Continue | _:Debugger | _:LoadModule | _:JSEnvInfo |
-            _:JSLinkingInfo | _:Literal | _:UndefinedParam | _:VarRef | _:This |
-            EmptyTree =>
+        case _:Skip | _:Continue | _:Debugger | _:LoadModule |
+            _:JSLoadConstructor | _:JSEnvInfo | _:JSLinkingInfo | _:Literal |
+            _:UndefinedParam | _:VarRef | _:This | EmptyTree =>
           tree
 
         case _ =>

@@ -17,6 +17,24 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // Breaking: JSDesugar.desugarJavaScript has been brutally removed
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.JSDesugaring.desugarJavaScript"),
+
+      // Private things, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Analyzer#ClassInfo.isRawJSType"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Analyzer#ClassInfo.isClass"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.optimizer.Analyzer#ClassInfo.isHijackedClass"),
+
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.org$scalajs$core$tools$javascript$JSDesugaring$JSDesugar$$implicitOutputMode"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.javascript.JSDesugaring.desugarToFunction")
   )
 
   val JSEnvs = Seq(

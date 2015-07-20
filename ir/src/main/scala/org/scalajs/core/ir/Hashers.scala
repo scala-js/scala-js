@@ -319,6 +319,27 @@ object Hashers {
           mixTree(method)
           mixTrees(args)
 
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          mixTag(TagJSSuperBracketSelect)
+          mixType(cls)
+          mixTree(qualifier)
+          mixTree(item)
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          mixTag(TagJSSuperBracketCall)
+          mixType(cls)
+          mixTree(receiver)
+          mixTree(method)
+          mixTrees(args)
+
+        case JSSuperConstructorCall(args) =>
+          mixTag(TagJSSuperConstructorCall)
+          mixTrees(args)
+
+        case JSLoadConstructor(cls) =>
+          mixTag(TagJSLoadConstructor)
+          mixType(cls)
+
         case JSSpread(items) =>
           mixTag(TagJSSpread)
           mixTree(items)

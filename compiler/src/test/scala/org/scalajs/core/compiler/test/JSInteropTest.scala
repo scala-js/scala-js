@@ -28,7 +28,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:4: error: Traits, classes and objects extending js.Any may not have inner traits, classes or objects
+        |newSource1.scala:4: error: Native JS traits, classes and objects may not have inner traits, classes or objects
         |        $inner A
         |         ${" " * inner.length}^
       """
@@ -107,24 +107,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noAnonymousClass: Unit = {
-
-    """
-    class A {
-      val x = new js.Object {
-        def a: Int = js.native
-      }
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:4: error: Anonymous classes may not extend js.Any
-      |      val x = new js.Object {
-      |                  ^
-    """
-
-  }
-
-  @Test
   def noCaseClassObject: Unit = {
 
     """
@@ -158,7 +140,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       inner <- inners
     } yield {
 
-      val errTrg = if (inner == "object") "Objects" else "Classes"
+      val errTrg = if (inner == "object") "objects" else "classes"
 
       s"""
       $outer A {
@@ -166,7 +148,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:4: error: $errTrg extending js.Any may not be defined inside a class or trait
+        |newSource1.scala:4: error: Native JS $errTrg may not be defined inside a class or trait
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
       """
@@ -208,7 +190,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Local classes and objects may not extend js.Any
+      |newSource1.scala:5: error: Local native JS classes and objects are not allowed
       |        class B extends js.Object
       |              ^
     """
@@ -226,7 +208,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Local classes and objects may not extend js.Any
+      |newSource1.scala:5: error: Local native JS classes and objects are not allowed
       |        object B extends js.Object
       |               ^
     """

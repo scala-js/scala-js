@@ -141,7 +141,7 @@ object Trees {
       implicit val pos: Position) extends Tree {
     require(lhs match {
       case _:VarRef | _:Select | _:ArraySelect |
-           _:JSDotSelect | _:JSBracketSelect => true
+           _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect => true
       case _ => false
     }, s"Invalid lhs for Assign: $lhs")
 
@@ -433,6 +433,159 @@ object Trees {
 
   case class JSBracketMethodApply(receiver: Tree, method: Tree,
       args: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
+  /** Selects a property inherited from the parent class of `cls` on `receiver`.
+   *
+   *  `cls` must be a Scala.js-defined JS class.
+   *
+   *  Given the Scala.js-defined JS class
+   *
+   *  {{{
+   *  @ScalaJSDefined
+   *  class Foo extends Bar
+   *  }}}
+   *
+   *  The node
+   *
+   *  {{{
+   *  JSSuperBrackerSelect(ClassType(Foo), qualifier, item)
+   *  }}}
+   *
+   *  which is printed as
+   *
+   *  {{{
+   *  qualifier.Foo::super[item]
+   *  }}}
+   *
+   *  has the semantics of an ES6 super reference
+   *
+   *  {{{
+   *  super[item]
+   *  }}}
+   *
+   *  as if it were in an instance method of `Foo` with `qualifier` as the
+   *  `this` value.
+   */
+  case class JSSuperBracketSelect(cls: ClassType, receiver: Tree, item: Tree)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
+  /** Calls a method inherited from the parent class of `cls` on `receiver`.
+   *
+   *  `cls` must be a Scala.js-defined JS class.
+   *
+   *  Given the Scala.js-defined JS class
+   *
+   *  {{{
+   *  @ScalaJSDefined
+   *  class Foo extends Bar
+   *  }}}
+   *
+   *  The node
+   *
+   *  {{{
+   *  JSSuperBrackerCall(ClassType(Foo), receiver, method, args)
+   *  }}}
+   *
+   *  which is printed as
+   *
+   *  {{{
+   *  receiver.Foo::super[method](...args)
+   *  }}}
+   *
+   *  has the following semantics:
+   *
+   *  {{{
+   *  Bar.prototype[method].call(receiver, ...args)
+   *  }}}
+   *
+   *  If this happens to be located in an instance method of `Foo`, *and*
+   *  `receiver` happens to be `This()`, this is equivalent to the ES6
+   *  statement
+   *
+   *  {{{
+   *  super[method](...args)
+   *  }}}
+   */
+  case class JSSuperBracketCall(cls: ClassType, receiver: Tree, method: Tree,
+      args: List[Tree])(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
+  /** Super constructor call in the constructor of a Scala.js-defined JS class.
+   *
+   *  Exactly one such node must appear in the constructor of a
+   *  Scala.js-defined JS class, at the top-level (possibly as a direct child
+   *  of a top-level `Block`). Any other use of this node is invalid.
+   *
+   *  Statements before this node, as well as the `args`, cannot contain any
+   *  `This()` node. Statements after this node can use `This()`.
+   *
+   *  After the execution of this node, it is guaranteed that all fields
+   *  declared in the current class have been created and initialized. Up to
+   *  that point, accessing any field declared in this class (e.g., through an
+   *  overridden method called from the super constructor) is undefined
+   *  behavior.
+   *
+   *  All in all, the shape of a constructor is therefore:
+   *
+   *  {{{
+   *  {
+   *    statementsNotUsingThis();
+   *    JSSuperConstructorCall(...argsNotUsingThis);
+   *    statementsThatMayUseThis()
+   *  }
+   *  }}}
+   *
+   *  which currently translates to something of the following shape:
+   *
+   *  {{{
+   *  {
+   *    statementsNotUsingThis();
+   *    super(...argsNotUsingThis);
+   *    this.privateField1 = 0;
+   *    this["publicField2"] = false;
+   *    statementsThatMayUseThis()
+   *  }
+   *  }}}
+   */
+  case class JSSuperConstructorCall(args: List[Tree])(
+      implicit val pos: Position) extends Tree {
+    val tpe = NoType
+  }
+
+  /** Loads the constructor of a JS class (native or not).
+   *
+   *  `cls` must represent a non-trait JS class (native or not).
+   *
+   *  This is used typically to instantiate a JS class, and most importantly
+   *  if it is a Scala.js-defined JS class. Given the class
+   *
+   *  {{{
+   *  @ScalaJSDefined
+   *  class Foo(x: Int) extends js.Object
+   *  }}}
+   *
+   *  The instantiation `new Foo(1)` would be represented as
+   *
+   *  {{{
+   *  JSNew(JSLoadConstructor(ClassType("Foo")), List(IntLiteral(1)))
+   *  }}}
+   *
+   *  This node is also useful to encode `o.isInstanceOf[Foo]`:
+   *
+   *  {{{
+   *  JSBinaryOp(instanceof, o, JSLoadConstructor(ClassType("Foo")))
+   *  }}}
+   *
+   *  If `Foo` is Scala.js-defined, the presence of this node makes it
+   *  instantiable, and therefore reachable.
+   */
+  case class JSLoadConstructor(cls: ClassType)(
+      implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
