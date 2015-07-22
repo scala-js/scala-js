@@ -27,6 +27,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                                 with PrepJSExports
                                 with transform.Transform
                                 with Compat210Component {
+  import PrepJSInterop._
+
   val jsAddons: JSGlobalAddons {
     val global: PrepJSInterop.this.global.type
   }
@@ -77,13 +79,34 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     // have access to it in JSCode.
     JSDynamicLiteral
 
-    private var inJSAnyMod = false
-    private var inJSAnyCls = false
-    private var inScalaCls = false
-    /** are we inside a subclass of scala.Enumeration */
-    private var inScalaEnum = false
-    /** are we inside the implementation of scala.Enumeration? */
-    private var inEnumImpl = false
+    /** Kind of the directly enclosing (most nested) owner. */
+    private var enclosingOwner: OwnerKind = OwnerKind.None
+
+    /** Cumulative kinds of all enclosing owners. */
+    private var allEnclosingOwners: OwnerKind = OwnerKind.None
+
+    /** Nicer syntax for `allEnclosingOwners is kind`. */
+    private def anyEnclosingOwner: OwnerKind = allEnclosingOwners
+
+    /** Nicer syntax for `allEnclosingOwners isnt kind`. */
+    private object noEnclosingOwner { // scalastyle:ignore
+      @inline def is(kind: OwnerKind): Boolean =
+        allEnclosingOwners isnt kind
+    }
+
+    private def enterOwner[A](kind: OwnerKind)(body: => A): A = {
+      require(kind.isBaseKind, kind)
+      val oldEnclosingOwner = enclosingOwner
+      val oldAllEnclosingOwners = allEnclosingOwners
+      enclosingOwner = kind
+      allEnclosingOwners |= kind
+      try {
+        body
+      } finally {
+        enclosingOwner = oldEnclosingOwner
+        allEnclosingOwners = oldAllEnclosingOwners
+      }
+    }
 
     /** Tests whether this is a ScalaDoc run.
      *
@@ -109,17 +132,26 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** Whether to check and prepare exports. */
     private def shouldPrepareExports = !forScaladoc
 
-    private def jsAnyClassOnly = !inJSAnyCls && allowJSAny
-    private def allowImplDef   = !inJSAnyCls && !inJSAnyMod
-    private def allowJSAny     = !inScalaCls
-    private def inJSAny        = inJSAnyMod || inJSAnyCls
+    /** Whether we can define entities extending js.Any in the current scope. */
+    private def allowJSAny =
+      noEnclosingOwner is OwnerKind.AnyClass
+
+    /** Whether we can define classes extending js.Any in the current scope. */
+    private def allowJSAnyClass =
+      noEnclosingOwner is OwnerKind.AnyClass
+
+    /** Whether we can define any class/trait/method in the current scope.
+     *
+     *  This is overridden by [[allowJSAnyClass]] if the latter is true.
+     */
+    private def allowImplDef = noEnclosingOwner is OwnerKind.RawJSType
 
     /** DefDefs in class templates that export methods to JavaScript */
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
     override def transform(tree: Tree): Tree = postTransform { tree match {
       // Catch special case of ClassDef in ModuleDef
-      case cldef: ClassDef if jsAnyClassOnly && isJSAny(cldef) =>
+      case cldef: ClassDef if allowJSAnyClass && isJSAny(cldef) =>
         transformJSAny(cldef)
 
       // Catch forbidden implDefs
@@ -134,17 +166,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Catch the definition of scala.Enumeration itself
       case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
-        enterEnumImpl { super.transform(cldef) }
+        enterOwner(OwnerKind.EnumImpl) { super.transform(cldef) }
 
       // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
-      case cldef: ClassDef if isScalaEnum(cldef) =>
-        enterScalaCls {
-          enterScalaEnum {
-            super.transform(cldef)
-          }
-        }
       case idef: ImplDef if isScalaEnum(idef) =>
-        enterScalaEnum { super.transform(idef) }
+        val kind =
+          if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
+          else OwnerKind.EnumClass
+        enterOwner(kind) { super.transform(idef) }
 
       // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
@@ -157,45 +186,62 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           } reporter.error(exp.pos, "You may not export a trait")
         }
 
-        enterScalaCls { super.transform(cldef) }
+        enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
 
-      // Catch ValorDefDef in js.Any
-      case vddef: ValOrDefDef if inJSAny =>
+      // Module export sanity check (export generated in JSCode phase)
+      case modDef: ModuleDef =>
+        if (shouldPrepareExports)
+          registerModuleExports(modDef.symbol.moduleClass)
+
+        enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
+
+      // Catch ValOrDefDef in js.Any
+      case vddef: ValOrDefDef if enclosingOwner is OwnerKind.RawJSType =>
         transformValOrDefDefInRawJSType(vddef)
 
+      // Exporter generation
+      case ddef: DefDef =>
+        if (shouldPrepareExports) {
+          // Generate exporters for this ddef if required
+          exporters.getOrElseUpdate(ddef.symbol.owner,
+              mutable.ListBuffer.empty) ++= genExportMember(ddef)
+        }
+        super.transform(tree)
+
       // Catch ValDefs in enumerations with simple calls to Value
-      case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar)) if inScalaEnum =>
+      case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
+          if anyEnclosingOwner is OwnerKind.Enum =>
         val nrhs = ScalaEnumValName(tree.symbol.owner, tree.symbol, optPar)
         treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
 
       // Catch Select on Enumeration.Value we couldn't transform but need to
       // we ignore the implementation of scala.Enumeration itself
-      case ScalaEnumValue.NoName(_) if !inEnumImpl =>
+      case ScalaEnumValue.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
         reporter.warning(tree.pos,
-                     """Couldn't transform call to Enumeration.Value.
-                       |The resulting program is unlikely to function properly as this
-                       |operation requires reflection.""".stripMargin)
+            """Couldn't transform call to Enumeration.Value.
+              |The resulting program is unlikely to function properly as this
+              |operation requires reflection.""".stripMargin)
         super.transform(tree)
 
-      case ScalaEnumValue.NullName() if !inEnumImpl =>
+      case ScalaEnumValue.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
         reporter.warning(tree.pos,
-                     """Passing null as name to Enumeration.Value
-                       |requires reflection at runtime. The resulting
-                       |program is unlikely to function properly.""".stripMargin)
+            """Passing null as name to Enumeration.Value
+              |requires reflection at runtime. The resulting
+              |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
-      case ScalaEnumVal.NoName(_) if !inEnumImpl =>
+      case ScalaEnumVal.NoName(_) if noEnclosingOwner is OwnerKind.EnumImpl =>
         reporter.warning(tree.pos,
-                     """Calls to the non-string constructors of Enumeration.Val
-                       |require reflection at runtime. The resulting
-                       |program is unlikely to function properly.""".stripMargin)
+            """Calls to the non-string constructors of Enumeration.Val
+              |require reflection at runtime. The resulting
+              |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
-      case ScalaEnumVal.NullName() if !inEnumImpl =>
+      case ScalaEnumVal.NullName() if noEnclosingOwner is OwnerKind.EnumImpl =>
         reporter.warning(tree.pos,
-                     """Passing null as name to a constructor of Enumeration.Val
-                       |requires reflection at runtime. The resulting
-                       |program is unlikely to function properly.""".stripMargin)
+            """Passing null as name to a constructor of Enumeration.Val
+              |requires reflection at runtime. The resulting
+              |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
       // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
@@ -229,23 +275,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
                 |by passing the fixClassOf option to the plugin.""".stripMargin)
           EmptyTree
         }
-
-      // Exporter generation
-      case ddef: DefDef =>
-        if (shouldPrepareExports) {
-          // Generate exporters for this ddef if required
-          exporters.getOrElseUpdate(ddef.symbol.owner,
-              mutable.ListBuffer.empty) ++= genExportMember(ddef)
-        }
-
-        super.transform(tree)
-
-      // Module export sanity check (export generated in JSCode phase)
-      case modDef: ModuleDef =>
-        if (shouldPrepareExports)
-          registerModuleExports(modDef.symbol.moduleClass)
-
-        super.transform(modDef)
 
       // Fix for issue with calls to js.Dynamic.x()
       // Rewrite (obj: js.Dynamic).x(...) to obj.applyDynamic("x")(...)
@@ -341,8 +370,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               "extend js.Any")
 
         // Check if we may have a js.Any here
-        case cldef: ClassDef if !allowJSAny && !jsAnyClassOnly &&
-          !isJSLambda(sym) =>
+        case cldef: ClassDef
+            if !allowJSAny && !allowJSAnyClass && !isJSLambda(sym) =>
           reporter.error(implDef.pos, "Classes extending js.Any may not be " +
               "defined inside a class or trait")
 
@@ -356,7 +385,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         // Check that this is not a class extending js.GlobalScope
         case _: ClassDef if isJSGlobalScope(implDef) &&
-          implDef.symbol != JSGlobalScopeClass =>
+            implDef.symbol != JSGlobalScopeClass =>
           reporter.error(implDef.pos, "Only objects may extend js.GlobalScope")
 
         case _ =>
@@ -365,7 +394,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           val tSym = sym.tpe.typeSymbol
 
           tSym.setAnnotations(rawJSAnnot :: sym.annotations)
-
       }
 
       if (shouldPrepareExports) {
@@ -379,10 +407,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldCheckLiterals)
         checkJSNameLiteral(sym)
 
-      if (implDef.isInstanceOf[ModuleDef])
-        enterJSAnyMod { super.transform(implDef) }
-      else
-        enterJSAnyCls { super.transform(implDef) }
+      val kind =
+        if (implDef.isInstanceOf[ModuleDef]) OwnerKind.JSNativeMod
+        else OwnerKind.JSNativeClass
+      enterOwner(kind) { super.transform(implDef) }
     }
 
     /** Verify a ValOrDefDef inside a js.Any */
@@ -492,46 +520,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       super.transform(tree)
-    }
-
-    private def enterJSAnyCls[T](body: =>T) = {
-      val old = inJSAnyCls
-      inJSAnyCls = true
-      val res = body
-      inJSAnyCls = old
-      res
-    }
-
-    private def enterJSAnyMod[T](body: =>T) = {
-      val old = inJSAnyMod
-      inJSAnyMod = true
-      val res = body
-      inJSAnyMod = old
-      res
-    }
-
-    private def enterScalaCls[T](body: =>T) = {
-      val old = inScalaCls
-      inScalaCls = true
-      val res = body
-      inScalaCls = old
-      res
-    }
-
-    private def enterScalaEnum[T](body: =>T) = {
-      val old = inScalaEnum
-      inScalaEnum = true
-      val res = body
-      inScalaEnum = old
-      res
-    }
-
-    private def enterEnumImpl[T](body: =>T) = {
-      val old = inEnumImpl
-      inEnumImpl = true
-      val res = body
-      inEnumImpl = old
-      res
     }
 
   }
@@ -712,4 +700,62 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
     }
 
+}
+
+object PrepJSInterop {
+  private final class OwnerKind(val baseKinds: Int) extends AnyVal {
+    import OwnerKind._
+
+    @inline def isBaseKind: Boolean =
+      Integer.lowestOneBit(baseKinds) == baseKinds && baseKinds != 0 // exactly 1 bit on
+
+    @inline def |(that: OwnerKind): OwnerKind =
+      new OwnerKind(this.baseKinds | that.baseKinds)
+
+    @inline def is(that: OwnerKind): Boolean =
+      (this.baseKinds & that.baseKinds) != 0
+
+    @inline def isnt(that: OwnerKind): Boolean =
+      !this.is(that)
+  }
+
+  private object OwnerKind {
+    /** No owner, i.e., we are at the top-level. */
+    val None = new OwnerKind(0x00)
+
+    // Base kinds - those form a partition of all possible enclosing owners
+
+    /** A Scala class/trait that does not extend Enumeration. */
+    val NonEnumScalaClass = new OwnerKind(0x01)
+    /** A Scala object that does not extend Enumeration. */
+    val NonEnumScalaMod = new OwnerKind(0x02)
+    /** A native JS class/trait, which extends js.Any. */
+    val JSNativeClass = new OwnerKind(0x04)
+    /** A native JS object, which extends js.Any. */
+    val JSNativeMod = new OwnerKind(0x08)
+    /** A Scala class/trait that extends Enumeration. */
+    val EnumClass = new OwnerKind(0x10)
+    /** A Scala object that extends Enumeration. */
+    val EnumMod = new OwnerKind(0x20)
+    /** The Enumeration class itself. */
+    val EnumImpl = new OwnerKind(0x40)
+
+    // Compound kinds
+
+    /** A Scala class/trait, possibly Enumeration-related. */
+    val ScalaClass = NonEnumScalaClass | EnumClass | EnumImpl
+    /** A Scala object, possibly Enumeration-related. */
+    val ScalaMod = NonEnumScalaMod | EnumMod
+    /** A Scala class, trait or object, i.e., anything not extending js.Any. */
+    val ScalaThing = ScalaClass | ScalaMod
+
+    /** A Scala class/trait/object extending Enumeration, but not Enumeration itself. */
+    val Enum = EnumClass | EnumMod
+
+    /** A raw JS type, i.e., something extending js.Any. */
+    val RawJSType = JSNativeClass | JSNativeMod
+
+    /** Any kind of class/trait, i.e., a Scala or raw JS class/trait. */
+    val AnyClass = ScalaClass | JSNativeClass
+  }
 }
