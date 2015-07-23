@@ -32,6 +32,11 @@ object ScalaJSDefinedTest extends JasmineTest {
   }
 
   @ScalaJSDefined
+  trait SimpleTrait extends js.Any {
+    def foo(x: Int): Int
+  }
+
+  @ScalaJSDefined
   class Minimal extends js.Object
 
   @ScalaJSDefined
@@ -864,6 +869,89 @@ object ScalaJSDefinedTest extends JasmineTest {
       val dyn = foo.asInstanceOf[js.Dynamic]
       expect(dyn.foo("hello")).toEqual("hello3")
       expect(dyn.foo("hello", 4)).toEqual("hello3 4")
+    }
+
+    it("implement a simple trait") {
+      @ScalaJSDefined
+      class ImplementSimpleTrait extends js.Object with SimpleTrait {
+        def foo(x: Int): Int = x + 1
+      }
+
+      val foo = new ImplementSimpleTrait
+      expect(foo.foo(3)).toEqual(4)
+
+      val fooTrait: SimpleTrait = foo
+      expect(fooTrait.foo(5)).toEqual(6)
+    }
+
+    it("implement a simple trait under separate compilation") {
+      @ScalaJSDefined
+      class ImplementSimpleTraitSepRun extends js.Object with SepRun.SimpleTrait {
+        def foo(x: Int): Int = x + 1
+      }
+
+      val foo = new ImplementSimpleTraitSepRun
+      expect(foo.foo(3)).toEqual(4)
+
+      val fooTrait: SepRun.SimpleTrait = foo
+      expect(fooTrait.foo(5)).toEqual(6)
+    }
+
+    it("implement a trait with a val") {
+      @ScalaJSDefined
+      trait TraitWithVal extends js.Object {
+        val x: Int
+      }
+
+      @ScalaJSDefined
+      class ImplWithVal extends TraitWithVal {
+        val x: Int = 3
+      }
+
+      val foo = new ImplWithVal
+      expect(foo.x).toEqual(3)
+
+      val fooTrait: TraitWithVal = foo
+      expect(fooTrait.x).toEqual(3)
+    }
+
+    it("implement a trait with a var") {
+      @ScalaJSDefined
+      trait TraitWithVar extends js.Object {
+        var x: Int
+      }
+
+      @ScalaJSDefined
+      class ImplWithVar extends TraitWithVar {
+        var x: Int = 3
+      }
+
+      val foo = new ImplWithVar
+      expect(foo.x).toEqual(3)
+
+      val fooTrait: TraitWithVar = foo
+      expect(fooTrait.x).toEqual(3)
+
+      foo.x = 5
+      expect(fooTrait.x).toEqual(5)
+      fooTrait.x = 19
+      expect(foo.x).toEqual(19)
+    }
+
+    it("implement a trait extending a native JS class") {
+      @ScalaJSDefined
+      trait TraitExtendsJSClass extends NativeParentClass {
+        def foobar(x: Int): Int
+      }
+
+      @ScalaJSDefined
+      class ImplExtendsJSClassAndTrait
+          extends NativeParentClass(5) with TraitExtendsJSClass {
+        def foobar(x: Int): Int = x * 3
+      }
+
+      val foo = new ImplExtendsJSClassAndTrait
+      expect(foo.foobar(6)).toEqual(18)
     }
 
   }

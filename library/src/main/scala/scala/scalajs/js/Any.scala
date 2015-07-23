@@ -19,6 +19,8 @@ import scala.language.implicitConversions
 import scala.collection.mutable
 import scala.collection.generic.CanBuildFrom
 
+import annotation.ScalaJSDefined
+
 /** Supertype of all JavaScript values.
  *
  *  Subtypes of [[Any js.Any]] are facade types to APIs implemented in
@@ -37,6 +39,7 @@ import scala.collection.generic.CanBuildFrom
  *  See the [[http://www.scala-js.org/doc/js-interoperability.html JavaScript
  *  interoperability guide]] of Scala.js for more details.
  */
+@ScalaJSDefined
 trait Any extends scala.AnyRef
 
 /** Provides implicit conversions from Scala values to JavaScript values. */

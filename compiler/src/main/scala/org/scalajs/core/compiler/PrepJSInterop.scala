@@ -379,21 +379,23 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
               "which does not extend js.Any.")
 
-        // Check that @ScalaJSDefined is not used on a trait or object
-        case _ if !isJSNative && (sym.isTrait || !sym.isClass) =>
+        // Check that @ScalaJSDefined is not used on an object
+        case _ if !isJSNative && !sym.isClass =>
           reporter.error(implDef.pos,
-              "Only classes can be Scala.js-defined")
+              "Objects cannot be Scala.js-defined")
 
-        // Check that we do not inherit directly from AnyRef
-        case _ if !isJSNative && sym.info.parents.exists(_ =:= AnyRefClass.tpe) =>
+        // Check that a non-native JS class does not inherit directly from AnyRef
+        case _ if !isJSNative && !sym.isTrait &&
+            sym.info.parents.exists(_ =:= AnyRefClass.tpe) =>
           reporter.error(implDef.pos,
               "A Scala.js-defined JS class cannot directly extend AnyRef. " +
               "It must extend a JS class (native or not).")
 
         // Check that we do not inherit directly from a native JS trait
         case _ if !isJSNative && sym.info.parents.exists(isNativeJSTraitType) =>
+          val obj = if (sym.isTrait) "trait" else "class"
           reporter.error(implDef.pos,
-              "A Scala.js-defined JS class cannot directly extend a native " +
+              s"A Scala.js-defined JS $obj cannot directly extend a native " +
               "JS trait.")
 
         // Check if we may have a JS native here
@@ -565,6 +567,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           reporter.error(tree.pos,
               "Qualified private members in Scala.js-defined JS classes " +
               "must be final")
+        }
+
+        // Traits must be pure interfaces
+        if (sym.owner.isTrait && sym.isTerm && !sym.isConstructor) {
+          if (!sym.isDeferred) {
+            reporter.error(tree.pos,
+                "A Scala.js-defined JS trait can only contain abstract members")
+          } else if (isPrivateMaybeWithin(sym)) {
+            reporter.error(tree.pos,
+                "A Scala.js-defined JS trait cannot contain private members")
+          }
         }
       }
 
@@ -843,7 +856,7 @@ object PrepJSInterop {
     val JSNativeClass = new OwnerKind(0x04)
     /** A native JS object, which extends js.Any. */
     val JSNativeMod = new OwnerKind(0x08)
-    /** A Scala.js-defined JS class. */
+    /** A Scala.js-defined JS class/trait. */
     val JSClass = new OwnerKind(0x10)
     /** A Scala class/trait that extends Enumeration. */
     val EnumClass = new OwnerKind(0x20)

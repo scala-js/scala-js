@@ -25,4 +25,9 @@ object ScalaJSDefinedTestSeparateRun {
     override def foo(x: Int): Int = x + 3
   }
 
+  @ScalaJSDefined
+  trait SimpleTrait extends js.Any {
+    def foo(x: Int): Int
+  }
+
 }

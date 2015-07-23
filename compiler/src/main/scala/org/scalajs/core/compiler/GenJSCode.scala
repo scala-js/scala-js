@@ -248,7 +248,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
                     s"Raw JS function def should have been recorded: $cd")
-                if (isScalaJSDefinedJSClass(sym))
+                if (!sym.isInterface && isScalaJSDefinedJSClass(sym))
                   genScalaJSDefinedJSClass(cd)
                 else
                   genRawJSClassData(cd)
@@ -4342,7 +4342,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Tests whether the given class is a Scala.js-defined JS class. */
   def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
-    sym.hasAnnotation(ScalaJSDefinedAnnotation)
+    !sym.isTrait && sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a Scala.js-defined JS class.
