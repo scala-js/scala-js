@@ -31,6 +31,18 @@ object ScalaJSDefinedTest extends JasmineTest {
     def bar: Int = x * 2
   }
 
+  trait NativeTraitWithDeferred extends js.Object {
+    val x: Int
+  }
+
+  // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
+  @JSName("ScalaJSDefinedTestNativeParentClassWithDeferred")
+  abstract class NativeParentClassWithDeferred extends NativeTraitWithDeferred {
+    def foo(y: Int): Int = js.native // = bar(y + 4) + x
+
+    def bar(y: Int): Int
+  }
+
   @ScalaJSDefined
   trait SimpleTrait extends js.Any {
     def foo(x: Int): Int
@@ -952,6 +964,33 @@ object ScalaJSDefinedTest extends JasmineTest {
 
       val foo = new ImplExtendsJSClassAndTrait
       expect(foo.foobar(6)).toEqual(18)
+    }
+
+    it("implement abstract members coming from a native JS class") {
+      @ScalaJSDefined
+      class ImplDeferredMembersFromJSParent
+          extends NativeParentClassWithDeferred {
+        val x: Int = 43
+
+        def bar(y: Int): Int = y * 2
+      }
+
+      val FooResult = (12 + 4) * 2 + 43
+
+      val foo = new ImplDeferredMembersFromJSParent
+      expect(foo.x).toEqual(43)
+      expect(foo.bar(32)).toEqual(64)
+      expect(foo.foo(12)).toEqual(FooResult)
+
+      val fooParent: NativeParentClassWithDeferred = foo
+      expect(fooParent.x).toEqual(43)
+      expect(fooParent.bar(32)).toEqual(64)
+      expect(fooParent.foo(12)).toEqual(FooResult)
+
+      val dyn = foo.asInstanceOf[js.Dynamic]
+      expect(dyn.x).toEqual(43)
+      expect(dyn.bar(32)).toEqual(64)
+      expect(dyn.foo(12)).toEqual(FooResult)
     }
 
   }

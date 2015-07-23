@@ -582,15 +582,16 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (sym.isPrimaryConstructor || sym.isValueParameter ||
-          sym.isParamWithDefault || sym.isAccessor && !sym.isDeferred ||
-          sym.isParamAccessor || sym.isSynthetic ||
+          sym.isParamWithDefault || sym.isAccessor ||
+          sym.isParamAccessor || sym.isDeferred || sym.isSynthetic ||
           AllJSFunctionClasses.contains(sym.owner) ||
           (enclosingOwner is OwnerKind.JSClass)) {
         /* Ignore (i.e. allow) primary ctor, parameters, default parameter
-         * getters, accessors, param accessors, synthetic methods (to avoid
-         * double errors with case classes, e.g. generated copy method),
-         * js.Functions and js.ThisFunctions (they need abstract methods for
-         * SAM treatment), and any member of a Scala.js-defined class.
+         * getters, accessors, param accessors, abstract members, synthetic
+         * methods (to avoid double errors with case classes, e.g. generated
+         * copy method), js.Functions and js.ThisFunctions (they need abstract
+         * methods for SAM treatment), and any member of a Scala.js-defined
+         * JS class/trait.
          */
       } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
         // Force rhs of a primitive to be `sys.error("stub")` except for the

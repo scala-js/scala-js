@@ -250,20 +250,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |                   ^
     """
 
+  }
+
+  @Test
+  def noWarnJSAnyDeferred: Unit = {
+
+    """
+    abstract class A extends js.Object {
+      def value: Int
+      val x: Int
+    }
+    """.hasNoWarns
+
     """
     trait A extends js.Object {
       def value: Int
       val x: Int
     }
-    """ hasWarns
-    """
-      |newSource1.scala:4: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
-      |      def value: Int
-      |          ^
-      |newSource1.scala:5: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
-      |      val x: Int
-      |          ^
-    """
+    """.hasNoWarns
 
   }
 

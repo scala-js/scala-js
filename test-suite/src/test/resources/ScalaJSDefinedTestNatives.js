@@ -17,4 +17,17 @@
     }
   });
   $g.ScalaJSDefinedTestNativeParentClass = ScalaJSDefinedTestNativeParentClass;
+
+  /* Deferred members:
+   * val x: Int
+   * def bar(y: Int): Int
+   */
+  var ScalaJSDefinedTestNativeParentClassWithDeferred = function() {
+    $g.Object.call(this);
+  };
+  ScalaJSDefinedTestNativeParentClassWithDeferred.prototype.foo = function(y) {
+    return (this.bar((y + 4) | 0) + this.x) | 0;
+  };
+  $g.ScalaJSDefinedTestNativeParentClassWithDeferred =
+    ScalaJSDefinedTestNativeParentClassWithDeferred;
 }).call(this);
