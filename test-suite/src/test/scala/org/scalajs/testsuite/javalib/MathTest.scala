@@ -24,6 +24,50 @@ object MathTest extends JasmineTest {
       expect(Math.cbrt(-65890311319.0E24)).toEqual(-4039.0E8)
     }
 
+    unless("rhino"). // js.Math.round() is buggy on Rhino
+    it("rint(Double)") {
+      import Math.rint
+
+      def isPosZero(x: Double): Boolean =
+        x == 0.0 && (1.0 / x) == Double.PositiveInfinity
+
+      def isNegZero(x: Double): Boolean =
+        x == 0.0 && (1.0 / x) == Double.NegativeInfinity
+
+      // Specials
+      expect(isPosZero(rint(+0.0))).toBeTruthy
+      expect(isNegZero(rint(-0.0))).toBeTruthy
+      expect(rint(Double.PositiveInfinity)).toBe(Double.PositiveInfinity)
+      expect(rint(Double.NegativeInfinity)).toBe(Double.NegativeInfinity)
+      expect(rint(Double.NaN).isNaN).toBeTruthy
+
+      // Positive values
+      expect(isPosZero(rint(0.1))).toBeTruthy
+      expect(isPosZero(rint(0.5))).toBeTruthy
+      expect(rint(0.5000000000000001)).toBe(1.0)
+      expect(rint(0.999)).toBe(1.0)
+      expect(rint(1.4999999999999998)).toBe(1.0)
+      expect(rint(1.5)).toBe(2.0)
+      expect(rint(2.0)).toBe(2.0)
+      expect(rint(2.1)).toBe(2.0)
+      expect(rint(2.5)).toBe(2.0)
+      expect(rint(Double.MaxValue)).toBe(Double.MaxValue)
+      expect(rint(4503599627370495.5)).toBe(4503599627370496.0) // MaxSafeInt / 2
+
+      // Negative values
+      expect(isNegZero(rint(-0.1))).toBeTruthy
+      expect(isNegZero(rint(-0.5))).toBeTruthy
+      expect(rint(-0.5000000000000001)).toBe(-1.0)
+      expect(rint(-0.999)).toBe(-1.0)
+      expect(rint(-1.4999999999999998)).toBe(-1.0)
+      expect(rint(-1.5)).toBe(-2.0)
+      expect(rint(-2.0)).toBe(-2.0)
+      expect(rint(-2.1)).toBe(-2.0)
+      expect(rint(-2.5)).toBe(-2.0)
+      expect(rint(Double.MinValue)).toBe(Double.MinValue)
+      expect(rint(-4503599627370495.5)).toBe(-4503599627370496.0) // -MaxSafeInt / 2
+    }
+
     it("should respond to `log1p`") {
       expect(Math.log1p(-2.0).isNaN).toBeTruthy
       expect(Math.log1p(Double.NaN).isNaN).toBeTruthy
