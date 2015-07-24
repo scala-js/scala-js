@@ -141,7 +141,7 @@ object UUID {
     import Integer.parseInt
 
     def fail(): Nothing =
-      throw new IllegalArgumentException("Illegal UUID string: "+name)
+      throw new IllegalArgumentException("Invalid UUID string: "+name)
 
     @inline def parseHex8(his: String, los: String): Int =
       (parseInt(his, 16) << 16) | parseInt(los, 16)
