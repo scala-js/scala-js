@@ -289,7 +289,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
-      <v n="scala">2.12.0-M1</v>
+      <v n="scala">2.12.0-M2</v>
       <v n="java">1.8</v>
     </run>
 
@@ -316,7 +316,7 @@
       <v n="java">1.8</v>
     </run>
     <run task="bootstrap">
-      <v n="scala">2.12.0-M1</v>
+      <v n="scala">2.12.0-M2</v>
       <v n="java">1.8</v>
     </run>
 
@@ -499,6 +499,18 @@
     <run task="partest-fullopt">
       <v n="scala">2.11.7</v>
       <v n="java">1.7</v>
+    </run>
+    <run task="partest-noopt">
+      <v n="scala">2.12.0-M2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fastopt">
+      <v n="scala">2.12.0-M2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="partest-fullopt">
+      <v n="scala">2.12.0-M2</v>
+      <v n="java">1.8</v>
     </run>
   </matrix>
 
