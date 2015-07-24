@@ -520,7 +520,11 @@ ScalaJS.isInt = function(v) {
 };
 
 ScalaJS.isFloat = function(v) {
+//!if floats == Strict
   return v !== v || ScalaJS.fround(v) === v;
+//!else
+  return typeof v === "number";
+//!endif
 };
 
 //!if asInstanceOfs != Unchecked

@@ -53,6 +53,22 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect((-0.0: Any).isInstanceOf[Int]).toBeFalsy
     }
 
+    when("strict-floats").
+    it("isInstanceOf[Float] with strict-floats") {
+      expect((1.2: Any).isInstanceOf[Float]).toBeFalsy
+    }
+
+    unless("strict-floats").
+    it("isInstanceOf[Float] with non-strict-floats") {
+      expect((1.2: Any).isInstanceOf[Float]).toBeTruthy
+
+      // from the bug report
+      def test(x: Any): String = x match {
+        case f: Float => "ok"
+      }
+      expect(test(0.2)).toEqual("ok")
+    }
+
     it("should support asInstanceOf (positive)") {
       def swallow(x: Any): Unit = ()
       swallow((()         : Any).asInstanceOf[Unit])
@@ -79,6 +95,16 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       expect(() => ('g'  : Any).asInstanceOf[Double] ).toThrow
 
       expect(() => (-0.0: Any).asInstanceOf[Int]).toThrow
+    }
+
+    whenAll("strict-floats", "compliant-asinstanceofs").
+    it("asInstanceOf[Float] with strict-floats") {
+      expect(() => (1.2: Any).asInstanceOf[Float]).toThrow
+    }
+
+    unless("strict-floats").
+    it("asInstanceOf[Float] with non-strict-floats") {
+      expect((1.2: Any).asInstanceOf[Float]).toBe(1.2)
     }
 
     it("should support isInstanceOf via java.lang.Class (positive)") {
@@ -115,6 +141,16 @@ object InstanceTestsHijackedBoxedClassesTest extends JasmineTest {
       test('f',   classOf[java.lang.Double])
 
       test(-0.0, classOf[java.lang.Integer])
+    }
+
+    when("strict-floats").
+    it("classOf[Float].isInstance() with strict-floats") {
+      expect(classOf[java.lang.Float].isInstance(1.2)).toBeFalsy
+    }
+
+    unless("strict-floats").
+    it("classOf[Float].isInstance() with non-strict-floats") {
+      expect(classOf[java.lang.Float].isInstance(1.2)).toBeTruthy
     }
 
   }
