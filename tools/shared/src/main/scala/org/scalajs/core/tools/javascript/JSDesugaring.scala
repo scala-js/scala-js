@@ -1633,8 +1633,10 @@ object JSDesugaring {
               case 'F' =>
                 if (isStrongMode)
                   genCallHelper("uF", newExpr)
-                else
+                else if (semantics.strictFloats)
                   genFround(newExpr)
+                else
+                  js.UnaryOp(JSUnaryOp.+, newExpr)
               case 'D' =>
                 if (isStrongMode)
                   genCallHelper("uD", newExpr)

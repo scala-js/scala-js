@@ -140,7 +140,11 @@ function $isInt(v) {
 }
 
 function $isFloat(v) {
+//!if floats == Strict
   return (typeof v === "number") && (v !== v || $fround(v) === v);
+//!else
+  return typeof v === "number";
+//!endif
 }
 
 //!if asInstanceOfs != Unchecked
@@ -328,7 +332,11 @@ function $uD(value) {
 }
 //!else
 function $uF(value) {
+//!if floats == Strict
   return value === null ? 0 : $fround(value);
+//!else
+  return value === null ? 0 : +value;
+//!endif
 }
 function $uD(value) {
   return value === null ? 0 : +value;
