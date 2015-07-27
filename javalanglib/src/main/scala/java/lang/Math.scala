@@ -25,6 +25,19 @@ object Math {
   @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
   @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
 
+  def rint(a: scala.Double): scala.Double = {
+    val rounded = js.Math.round(a)
+    val mod = a % 1.0
+    // The following test is also false for specials (0's, Infinities and NaN)
+    if (mod == 0.5 || mod == -0.5) {
+      // js.Math.round(a) rounds up but we have to round to even
+      if (rounded % 2.0 == 0.0) rounded
+      else rounded - 1.0
+    } else {
+      rounded
+    }
+  }
+
   @inline def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
   @inline def round(a: scala.Double): scala.Long = js.Math.round(a).toLong
 
