@@ -574,7 +574,11 @@ object ScalaJSPluginInternal {
         detector.detect(testFrameworks.value) map { case (tf, name) =>
           (tf, new ScalaJSFramework(name, env, classpath, logger, console))
         }
-      }
+      },
+      // Override default to avoid triggering a test:fastOptJS in a test:compile
+      // without loosing autocompetion.
+      definedTestNames <<= definedTests map (_.map(_.name).distinct)
+        storeAs definedTestNames triggeredBy scalaJSExecClasspath
   )
 
   val scalaJSTestBuildSettings = (
