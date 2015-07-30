@@ -146,7 +146,7 @@ object InfoSerializers {
       val version = input.readUTF()
       val supported = ScalaJSVersions.binarySupported
       if (!supported.contains(version)) {
-        throw new IOException(
+        throw new IRVersionNotSupportedException(version, supported,
             s"This version ($version) of Scala.js IR is not supported. " +
             s"Supported versions are: ${supported.mkString(", ")}")
       }

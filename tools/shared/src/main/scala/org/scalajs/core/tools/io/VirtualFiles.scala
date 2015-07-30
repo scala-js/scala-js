@@ -131,6 +131,11 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
     try {
       ir.InfoSerializers.deserialize(stream)
     } catch {
+      case e: ir.IRVersionNotSupportedException =>
+        throw new ir.IRVersionNotSupportedException(e.version, e.supported,
+            s"Failed to deserialize info of file compiled with Scala.js ${e.version}" +
+            s" (supported: ${e.supported.mkString(", ")}): $path", e)
+
       case e: IOException =>
         throw new IOException(s"Failed to deserialize info of $path", e)
     } finally {
