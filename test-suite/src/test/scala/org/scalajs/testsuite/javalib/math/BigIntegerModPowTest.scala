@@ -15,6 +15,24 @@ object BigIntegerModPowTest extends JasmineTest {
 
   describe("BigIntegerModPowTest") {
 
+    it("testsGcdFirstOne") {
+      val aBytes = Array[Byte](1, 0, 0, 0, 0)
+      val big = new BigInteger(1, aBytes)
+      expect(BigInteger.ONE.gcd(big).intValue).toEqual(1)
+      expect(BigInteger.ONE.gcd(BigInteger.ZERO).intValue).toEqual(1)
+    }
+
+    it("testsGcdSecondOne") {
+      val aBytes = Array[Byte](1, 0, 0, 0, 0)
+      val big = new BigInteger(1, aBytes)
+      expect(big.gcd(BigInteger.ONE).intValue).toEqual(1)
+      expect(BigInteger.ZERO.gcd(BigInteger.ONE).intValue).toEqual(1)
+    }
+
+    it("testsGcdBothOne") {
+      expect(BigInteger.ONE.gcd(BigInteger.ONE).intValue).toEqual(1)
+    }
+
     it("testGcdBothZeros") {
       val rBytes = Array[Byte](0)
       val aNumber = new BigInteger("0")
