@@ -21,6 +21,23 @@ import scala.scalajs.js.annotation._
 /** Operations on JavaScript numbers. */
 trait JSNumberOps extends Any {
 
+  /**
+   * The toLocaleString() method returns a string with a language sensitive 
+   * representation of this number.
+   * 
+   * <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   * 
+   * The new locales and options arguments let applications specify the 
+   * language whose formatting conventions should be used and customize the  
+   * behavior of the function. In older implementations, which ignore the 
+   * locales and options * arguments, the locale used and the form of the 
+   * string returned are entirely implementation dependent. 
+   * 
+   * MDN
+   */
+  def toLocaleString(locales: Array[String]): String = native
+  def toLocaleString(locales: Array[String], options: Dictionary[Any]): String = native
+
   def toString(radix: Int): String = native
 
   /**
