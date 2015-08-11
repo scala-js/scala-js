@@ -1,7 +1,5 @@
 package java
 
-import scala.math.Ordering
-
 package object util {
 
   implicit private[util] class CompareNullablesOps(val self: Any) extends AnyVal {
@@ -32,5 +30,4 @@ package object util {
         a.asInstanceOf[Comparable[E]].compareTo(b)
     }
   }
-
 }

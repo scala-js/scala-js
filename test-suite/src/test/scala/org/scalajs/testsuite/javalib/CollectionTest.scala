@@ -165,7 +165,10 @@ trait CollectionTest extends JasmineTest with ExpectExceptions {
       coll.add("one")
       expect(coll.contains("one")).toBeTruthy
       expect(coll.contains("two")).toBeFalsy
-      expect(coll.contains(null)).toBeFalsy
+      if (factory.allowsNullElementQuery)
+        expect(coll.contains(null)).toBeFalsy
+      else
+        expectThrows[Exception](coll.contains(null))
     }
 
     it("should check contained presence for double corner cases") {
@@ -205,4 +208,5 @@ trait CollectionFactory {
   def implementationName: String
   def empty[E]: ju.Collection[E]
   def allowsMutationThroughIterator: Boolean = true
+  def allowsNullElementQuery: Boolean = true
 }

@@ -150,7 +150,7 @@ trait SetTest extends CollectionTest with ExpectExceptions {
         expect(hs.add(null)).toBeTruthy
         expect(hs.contains(null)).toBeTruthy
       } else {
-        expectThrows[NullPointerException](hs.add(null))
+        expectThrows[Exception](hs.add(null))
       }
     }
 
@@ -165,7 +165,7 @@ trait SetTest extends CollectionTest with ExpectExceptions {
         expect(hs.contains("TWO")).toBeTruthy
         expect(hs.contains(null)).toBeTruthy
       } else {
-        expectThrows[NullPointerException] {
+        expectThrows[Exception] {
           val l = List[String]("ONE", "TWO", (null: String))
           hs.addAll(asJavaCollection(l))
         }
