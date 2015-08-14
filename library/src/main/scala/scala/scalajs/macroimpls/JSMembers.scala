@@ -85,9 +85,13 @@ private[macroimpls] trait JSMembers {
     def displayStr(name: String): String = s"setter $name: $tpe"
   }
 
-  /** Place holder for Poly methods. Can only be ignored or fail */
-  case class PolyMethod(sym: Symbol) extends JSMember {
+  /** Place holder for unsupported members.
+   *
+   *  In source type position, these members can be ignored.
+   *  In target type position, these members will trigger errors.
+   */
+  case class UnsupportedMember(sym: Symbol, tpe: Type) extends JSMember {
     def conformsTo(that: JSMember): Boolean = false
-    def displayStr(name: String): String = s"poly $name ($sym)"
+    def displayStr(name: String): String = s"unsupported $name ($sym)"
   }
 }
