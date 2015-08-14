@@ -339,6 +339,14 @@ object UseAsTest extends JasmineTest {
           "class. Cannot be used with as.")
     }
 
+    it("fails gracefully with existential types - #1841") {
+      typeErrorWithMsg(
+          "js.use(null: JSTypeMember).as[JSTypeMember]",
+          "Methods with existential types are not supported. Offending " +
+          "method: org.scalajs.testsuite.library.UseAsTest.JSTypeMember.foo. " +
+          "This is likely caused by an abstract type in the method signature")
+    }
+
   }
 
   describe("js.use(x).as[T] - Scala Types - failure cases") {

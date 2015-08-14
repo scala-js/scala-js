@@ -80,11 +80,28 @@ private[scalajs] object UseAsMacros {
         (jsMemberSelection, jsMembers) <- requiredMembers
         jsMember <- jsMembers
       } {
-        // Fail for required polymorphic methods
+        // Fail for required unsupported members
         jsMember match {
-          case PolyMethod(sym) =>
-            c.error(c.enclosingPosition, "Polymorphic methods are currently " +
-              s"not supported. Offending method: ${sym.fullName}")
+          case UnsupportedMember(sym, tpe) =>
+            val msg = tpe match {
+              case _: PolyType =>
+                "Polymorphic methods are currently " +
+                s"not supported. Offending method: ${sym.fullName}"
+
+              case _: ExistentialType =>
+                "Methods with existential types are " +
+                s"not supported. Offending method: ${sym.fullName}. This is " +
+                "likely caused by an abstract type in the method signature"
+
+              case _ =>
+                sys.error("Unknown type in unsupported member. " +
+                    "Report this as a bug.\n" +
+                     s"Offending method: ${sym.fullName}\n" +
+                     s"Offending type: ${showRaw(tpe)}")
+            }
+
+            c.error(c.enclosingPosition, msg)
+
           case _ =>
         }
 
@@ -243,11 +260,8 @@ private[scalajs] object UseAsMacros {
 
           flatParams(info, Nil)
 
-        case PolyType(_, _) =>
-          PolyMethod(sym)
-
         case tpe =>
-          sys.error(s"Unexpected method type: $tpe for $sym. Report this as a bug.")
+          UnsupportedMember(sym, tpe)
       }
     }
 
