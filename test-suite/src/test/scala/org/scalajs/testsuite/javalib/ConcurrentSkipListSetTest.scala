@@ -81,8 +81,6 @@ object ConcurrentSkipListSetTest extends JasmineTest {
       val csls = new ConcurrentSkipListSet[TestObj]()
 
       expect(csls.size()).toEqual(0)
-      expect(csls.add(TestObj(222))).toBeTruthy
-      expect(csls.size()).toEqual(1)
       expect {
         try {
           csls.add(TestObj(111))
