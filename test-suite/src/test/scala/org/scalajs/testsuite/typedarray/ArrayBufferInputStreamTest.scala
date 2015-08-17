@@ -9,7 +9,7 @@ package org.scalajs.testsuite.typedarray
 
 import scala.scalajs.js.typedarray._
 
-import org.scalajs.testsuite.javalib.CommonStreamsTests
+import org.scalajs.testsuite.javalib.io.CommonStreamsTests
 
 import org.scalajs.jasminetest.JasmineTest
 
