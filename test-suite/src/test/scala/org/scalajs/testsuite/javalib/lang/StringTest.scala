@@ -337,5 +337,18 @@ object StringTest extends JasmineTest {
       expect(testU.regionMatches(true, 1, "bCdx", 0, -4)).toBeTruthy
       expect(testU.regionMatches(true, 1, "bCdx", 1, -3)).toBeTruthy
     }
+
+    it("should respond to `String.CASE_INSENSITIVE_ORDERING`") {
+      def compare(s1: String, s2: String): Int =
+        String.CASE_INSENSITIVE_ORDER.compare(s1, s2)
+
+      expect(compare("a", "a")).toBe(0)
+      expect(compare("a", "A")).toBe(0)
+      expect(compare("A", "a")).toBe(0)
+      expect(compare("Scala.JS", "Scala.js")).toBe(0)
+      expect(compare("Scala.JS", "scala")).toBeGreaterThan(0)
+      expect(compare("åløb", "ÅLØB")).toBe(0)
+      expect(compare("Java", "Scala")).toBeLessThan(0)
+    }
   }
 }
