@@ -17,3 +17,7 @@ class UTFDataFormatException(s: String) extends IOException(s) {
 class UnsupportedEncodingException(s: String) extends IOException(s) {
   def this() = this(null)
 }
+
+abstract class ObjectStreamException protected (s: String) extends IOException(s) {
+  protected def this() = this(null)
+}
