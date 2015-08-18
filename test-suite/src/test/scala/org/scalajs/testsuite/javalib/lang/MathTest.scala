@@ -15,6 +15,51 @@ object MathTest extends JasmineTest {
 
   describe("java.lang.Math") {
 
+    it("should respond to `abs`") {
+      expect(Math.abs(0)).toBe(0)
+      expect(Math.abs(42)).toBe(42)
+      expect(Math.abs(-42)).toBe(42)
+      expect(Math.abs(0.0).equals(0.0)).toBeTruthy
+      expect(Math.abs(-0.0).equals(0.0)).toBeTruthy
+      expect(Math.abs(42.0)).toBe(42.0)
+      expect(Math.abs(-42.0)).toBe(42.0)
+      expect(Math.abs(Double.PositiveInfinity)).toBe(Double.PositiveInfinity)
+      expect(Math.abs(Double.NegativeInfinity)).toBe(Double.PositiveInfinity)
+      expect(Math.abs(Double.NaN).isNaN).toBeTruthy
+    }
+
+    it("should respond to `max`") {
+      expect(Math.max(0, 0)).toBe(0)
+      expect(Math.max(0, 2)).toBe(2)
+      expect(Math.max(2, 0)).toBe(2)
+      expect(Math.max(0.0, 2.0)).toBe(2.0)
+      expect(Math.max(2.0, 0.0)).toBe(2.0)
+      expect(Math.max(0.0, 0.0).equals(0.0)).toBeTruthy
+      expect(Math.max(-0.0, 0.0).equals(0.0)).toBeTruthy
+      expect(Math.max(0.0, -0.0).equals(0.0)).toBeTruthy
+      expect(Math.max(-0.0, -0.0).equals(-0.0)).toBeTruthy
+      expect(Math.max(Double.PositiveInfinity, 0.0)).toBe(Double.PositiveInfinity)
+      expect(Math.max(Double.NegativeInfinity, 0.0)).toBe(0.0)
+      expect(Math.max(Double.NaN, 0.0).isNaN).toBeTruthy
+      expect(Math.max(0.0, Double.NaN).isNaN).toBeTruthy
+    }
+
+    it("should respond to `min`") {
+      expect(Math.min(0, 0)).toBe(0)
+      expect(Math.min(0, 2)).toBe(0)
+      expect(Math.min(2, 0)).toBe(0)
+      expect(Math.min(0.0, 2.0)).toBe(0.0)
+      expect(Math.min(2.0, 0.0)).toBe(0.0)
+      expect(Math.min(0.0, 0.0).equals(0.0)).toBeTruthy
+      expect(Math.min(-0.0, 0.0).equals(-0.0)).toBeTruthy
+      expect(Math.min(0.0, -0.0).equals(-0.0)).toBeTruthy
+      expect(Math.min(-0.0, -0.0).equals(-0.0)).toBeTruthy
+      expect(Math.min(Double.PositiveInfinity, 0.0)).toBe(0.0)
+      expect(Math.min(Double.NegativeInfinity, 0.0)).toBe(Double.NegativeInfinity)
+      expect(Math.min(Double.NaN, 0.0).isNaN).toBeTruthy
+      expect(Math.min(0.0, Double.NaN).isNaN).toBeTruthy
+    }
+
     it("should respond to `cbrt`") {
       expect(1 / Math.cbrt(-0.0) < 0).toBeTruthy
       expect(Math.cbrt(27.0)).toEqual(3.0)
