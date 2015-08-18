@@ -16,7 +16,7 @@ import org.scalajs.jasminetest.JasmineTest
 
 import org.scalajs.testsuite.javalib
 
-object ArraysTest extends javalib.ArraysTest {
+object ArraysTest extends javalib.util.ArraysTest {
 
   override def Array[T: ClassTag](v: T*): scala.Array[T] = classTag[T] match {
     case ClassTag.Byte =>
