@@ -1,5 +1,7 @@
 package scala.scalajs.runtime
 
+import java.util.Comparator
+
 import scala.scalajs.js
 import js.JSStringOps._
 
@@ -34,6 +36,12 @@ private[runtime] object RuntimeString {
   @inline
   def charAt(thiz: String, index: Int): Char =
     specialJSStringOps(thiz).charCodeAt(index).toChar
+
+  final lazy val CASE_INSENSITIVE_ORDER: Comparator[String] = {
+    new Comparator[String] with Serializable {
+      def compare(o1: String, o2: String): Int = o1.compareToIgnoreCase(o2)
+    }
+  }
 
   def codePointAt(thiz: String, index: Int): Int = {
     val high = thiz.charAt(index)
