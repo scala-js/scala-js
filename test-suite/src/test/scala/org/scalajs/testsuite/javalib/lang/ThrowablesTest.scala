@@ -10,9 +10,9 @@ package org.scalajs.testsuite.javalib.lang
 import org.scalajs.jasminetest.JasmineTest
 
 object ThrowablesTest extends JasmineTest {
-  describe("java.lang.Throwables, java.util.Throwables") {
+  describe("java.lang.Throwables") {
 
-    it("should define all java.lang and java.util Errors/Exceptions") {
+    it("should define all java.lang Errors/Exceptions") {
       new ArithmeticException()
       new ArrayIndexOutOfBoundsException()
       new ArrayStoreException()
@@ -62,29 +62,6 @@ object ThrowablesTest extends JasmineTest {
       new UnsupportedClassVersionError()
       new VerifyError()
       new VirtualMachineError() {}
-
-      import java.util._
-      new ServiceConfigurationError("")
-      new ConcurrentModificationException()
-      new DuplicateFormatFlagsException("")
-      new EmptyStackException()
-      new FormatFlagsConversionMismatchException("", '\u0000')
-      new FormatterClosedException()
-      new IllegalFormatCodePointException(0)
-      new IllegalFormatConversionException('\u0000', new Object().getClass)
-      new IllegalFormatFlagsException("")
-      new IllegalFormatPrecisionException(0)
-      new IllegalFormatWidthException(0)
-      new InputMismatchException()
-      // Needs java.io.IOException.
-      // new InvalidPropertiesFormatException("")
-      new MissingFormatArgumentException("")
-      new MissingFormatWidthException("")
-      new MissingResourceException(null, null, null)
-      new NoSuchElementException()
-      new TooManyListenersException()
-      new UnknownFormatConversionException("")
-      new UnknownFormatFlagsException("")
     }
   }
 }

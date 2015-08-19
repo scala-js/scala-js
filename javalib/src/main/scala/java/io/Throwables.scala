@@ -21,3 +21,7 @@ class UnsupportedEncodingException(s: String) extends IOException(s) {
 abstract class ObjectStreamException protected (s: String) extends IOException(s) {
   protected def this() = this(null)
 }
+
+class NotSerializableException(s: String) extends ObjectStreamException(s) {
+  def this() = this(null)
+}
