@@ -79,6 +79,19 @@ final class JSDependency(
     acc = mixLast(acc, minifiedResourceName.##)
     finalizeHash(acc, 4)
   }
+
+  override def toString(): String = {
+    val b = new StringBuilder
+    b ++= s"JSDependency($resourceName"
+    if (commonJSName.nonEmpty)
+      b ++= s", commonJSName=$dependencies"
+    if (minifiedResourceName.nonEmpty)
+      b ++= s", minifiedResourceName=$minifiedResourceName"
+    if (dependencies.nonEmpty)
+      b ++= s", dependencies=$dependencies"
+    b ++= ")"
+    b.result()
+  }
 }
 
 object JSDependency {
