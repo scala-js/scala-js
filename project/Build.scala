@@ -52,7 +52,7 @@ object Build extends sbt.Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.5", "2.11.7", "2.12.0-M1")
+    Set("2.10.5", "2.11.7", "2.12.0-M2")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -76,7 +76,7 @@ object Build extends sbt.Build {
           (thisProjectID.organization % thisProjectID.name % previousVersion)
             .cross(previousCrossVersion)
             .extra(thisProjectID.extraAttributes.toSeq: _*)
-        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID))
+        Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
       }
     }
   }
@@ -219,7 +219,7 @@ object Build extends sbt.Build {
         "2.11.5",
         "2.11.6",
         "2.11.7",
-        "2.12.0-M1"
+        "2.12.0-M2"
       ),
       // Default stage
       scalaJSStage in Global := PreLinkStage
@@ -1072,7 +1072,7 @@ object Build extends sbt.Build {
             if (shouldPartest.value)
               Seq(
                 "org.scala-sbt" % "sbt" % sbtVersion.value,
-                "org.scala-lang.modules" %% "scala-partest" % "1.0.1",
+                "org.scala-lang.modules" %% "scala-partest" % "1.0.9",
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "io.apigee" % "rhino" % "1.7R5pre4",
                 "com.googlecode.json-simple" % "json-simple" % "1.1.1"
