@@ -14,48 +14,69 @@
 <ci>
 
   <task id="main"><![CDATA[
+    sbtretry() {
+      local TIMEOUT=25m
+      echo "RUNNING timeout -k 5 $TIMEOUT sbt" "$@"
+      timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"
+      local CODE=$?
+      if [ "$CODE" -eq 124 ]; then
+        echo "TIMEOUT after" $TIMEOUT
+      fi
+      if [ "$CODE" -ne 0 ]; then
+        echo "RETRYING timeout -k 5 $TIMEOUT sbt" "$@"
+        timeout -k 5 $TIMEOUT sbt $SBT_OPTS "$@"
+        CODE=$?
+        if [ "$CODE" -eq 124 ]; then
+          echo "TIMEOUT after" $TIMEOUT
+        fi
+        if [ "$CODE" -ne 0 ]; then
+          echo "FAILED TWICE"
+          return $CODE
+        fi
+      fi
+    }
     export JAVA_HOME=$HOME/apps/java-$java
-    sbt ++$scala package packageDoc &&
-    sbt ++$scala helloworld/run \
+    sbtretry ++$scala package packageDoc &&
+    sbtretry ++$scala helloworld/run \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
+    sbtretry 'set scalaJSSemantics in helloworld ~= (_.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Unchecked))' \
         ++$scala helloworld/run \
         helloworld/clean &&
-    sbt 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+    sbtretry 'set inScope(ThisScope in helloworld)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run &&
-    sbt 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+    sbtretry 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         ++$scala testingExample/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample/test \
         testingExample/clean &&
-    sbt 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+    sbtretry 'set inScope(ThisScope in testingExample)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
-    sbt ++$scala testSuite/test noIrCheckTest/test \
+    sbtretry ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
         testSuite/clean noIrCheckTest/clean &&
-    sbt 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
+    sbtretry 'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in testSuite ~= {
+    sbtretry 'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
             .withModuleInit(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
             .withStrictFloats(true)
@@ -66,7 +87,7 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSSemantics in testSuite ~= {
+    sbtretry 'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
             .withModuleInit(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
             .withStrictFloats(true)
@@ -75,31 +96,31 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set inScope(ThisScope in testSuite)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
+    sbtretry 'set inScope(ThisScope in testSuite)(postLinkJSEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         'set parallelExecution in (testSuite, Test) := false' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalacOptions in testSuite += "-Xexperimental"' \
+    sbtretry 'set scalacOptions in testSuite += "-Xexperimental"' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuite/test &&
-    sbt 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6)' \
+    sbtretry 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6)' \
         'set Seq(testSuite, noIrCheckTest).map(pr => postLinkJSEnv in pr := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
         testSuite/clean noIrCheckTest/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false)' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
@@ -109,7 +130,7 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
@@ -120,31 +141,31 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode)' \
+    sbtretry 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode)' \
         'set Seq(testSuite, noIrCheckTest).map(pr => postLinkJSEnv in pr := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
         testSuite/clean noIrCheckTest/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false)' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
@@ -154,7 +175,7 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= {
            _.withAsInstanceOfs(org.scalajs.core.tools.sem.CheckedBehavior.Compliant)
@@ -165,26 +186,26 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
         'set postLinkJSEnv in testSuite := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbt 'set scalaJSStage in Global := FastOptStage' \
+    sbtretry 'set scalaJSStage in Global := FastOptStage' \
         ++$scala javalibExTestSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala javalibExTestSuite/test &&
-    sbt ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbt ++$scala partest/fetchScalaSource &&
-    sbt ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
+    sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbtretry ++$scala partest/fetchScalaSource &&
+    sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ]]></task>
