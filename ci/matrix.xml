@@ -287,19 +287,11 @@
     <!-- Main test tasks -->
     <run task="main">
       <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.7</v>
-      <v n="java">1.6</v>
     </run>
     <run task="main">
       <v n="scala">2.11.7</v>
@@ -317,17 +309,12 @@
     <!-- Bootstrap test tasks -->
     <run task="bootstrap">
       <v n="scala">2.10.2</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.10.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="bootstrap">
       <v n="scala">2.10.2</v>
       <v n="java">1.8</v>
     </run>
-    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="bootstrap">
       <v n="scala">2.11.7</v>
       <v n="java">1.7</v>
@@ -344,17 +331,12 @@
     <!-- Tools / CLI / Stubs / sbtPlugin test tasks -->
     <run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.5</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="tools-cli-stubs-sbtplugin">
-      <v n="scala">2.10.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="tools-cli-stubs-sbtplugin">
       <v n="scala">2.10.5</v>
       <v n="java">1.8</v>
     </run>
-    <!-- Tools do not compile on JDK6, Scala 2.11.x (see #1235) -->
     <run task="tools-cli-stubs">
       <v n="scala">2.11.7</v>
       <v n="java">1.7</v>
@@ -391,10 +373,6 @@
     </run>
     <run task="main">
       <v n="scala">2.10.5</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.10.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
@@ -411,10 +389,6 @@
     </run>
     <run task="main">
       <v n="scala">2.11.2</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.2</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
@@ -423,10 +397,6 @@
     </run>
     <run task="main">
       <v n="scala">2.11.4</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.4</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
@@ -435,19 +405,11 @@
     </run>
     <run task="main">
       <v n="scala">2.11.5</v>
-      <v n="java">1.6</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.5</v>
       <v n="java">1.7</v>
     </run>
     <run task="main">
       <v n="scala">2.11.5</v>
       <v n="java">1.8</v>
-    </run>
-    <run task="main">
-      <v n="scala">2.11.6</v>
-      <v n="java">1.6</v>
     </run>
     <run task="main">
       <v n="scala">2.11.6</v>
@@ -466,10 +428,6 @@
     <run task="bootstrap">
       <v n="scala">2.10.4</v>
       <v n="java">1.7</v>
-    </run>
-    <run task="bootstrap">
-      <v n="scala">2.10.5</v>
-      <v n="java">1.6</v>
     </run>
     <run task="bootstrap">
       <v n="scala">2.10.5</v>
@@ -647,10 +605,6 @@
       <v n="scala">2.11.7</v>
       <v n="java">1.8</v>
     </run>
-    <!--
-        Partest does sometimes not compile on JDK6 (see #1227) we
-        therefore do not run any JDK6 partests.
-      -->
   </matrix>
 
 </ci>
