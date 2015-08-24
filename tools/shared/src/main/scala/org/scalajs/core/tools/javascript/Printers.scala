@@ -44,8 +44,10 @@ object Printers {
       }
     }
 
-    protected def shouldPrintSepAfterTree(tree: Tree): Boolean =
-      !tree.isInstanceOf[DocComment] && !tree.isInstanceOf[ClassDef]
+    protected def shouldPrintSepAfterTree(tree: Tree): Boolean = tree match {
+      case _:DocComment | _:FunctionDef | _:ClassDef => false
+      case _                                         => true
+    }
 
     protected def printBlock(tree: Tree): Unit = {
       val trees = tree match {
@@ -341,6 +343,13 @@ object Printers {
           printSig(args)
           printBlock(body)
           print(")")
+
+        // Named function definition
+
+        case FunctionDef(name, args, body) =>
+          print("function ", name)
+          printSig(args)
+          printBlock(body)
 
         // ECMAScript 6 classes
 

@@ -118,6 +118,13 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
 
       case Debugger() =>
         new Node(Token.DEBUGGER)
+
+      case FunctionDef(name, args, body) =>
+        val node = transformName(name)
+        val rhs = genFunction(name.name, args, body)
+        node.addChildToFront(rhs)
+        new Node(Token.VAR, node)
+
       case _ =>
         // We just assume it is an expression
         new Node(Token.EXPR_RESULT, transformExpr(tree))
@@ -202,18 +209,21 @@ class ClosureAstTransformer(val relativizeBaseURI: Option[URI] = None) {
         new Node(Token.THIS)
 
       case Function(args, body) =>
-        // Note that a Function may also be a statement (when it is named),
-        // but Scala.js does not have such an IR node
-        val paramList = new Node(Token.PARAM_LIST)
-        args.foreach(arg => paramList.addChildToBack(transformParam(arg)))
-
-        val emptyName = setNodePosition(Node.newString(Token.NAME, ""), pos)
-
-        new Node(Token.FUNCTION, emptyName, paramList, transformBlock(body))
+        genFunction("", args, body)
 
       case _ =>
         throw new TransformException(s"Unknown tree of class ${tree.getClass()}")
     }
+  }
+
+  private def genFunction(name: String, args: List[ParamDef], body: Tree)(
+      implicit pos: Position): Node = {
+    val paramList = new Node(Token.PARAM_LIST)
+    args.foreach(arg => paramList.addChildToBack(transformParam(arg)))
+
+    val nameNode = setNodePosition(Node.newString(Token.NAME, name), pos)
+
+    new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
   def transformParam(param: ParamDef)(implicit parentPos: Position): Node =

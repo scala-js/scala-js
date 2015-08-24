@@ -2244,14 +2244,23 @@ private[javascript] object JSDesugaring {
       origName: Option[String], value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
+    def globalVarIdent = globalVar.asInstanceOf[js.VarRef].ident
 
     outputMode match {
       case OutputMode.ECMAScript51Global =>
         js.Assign(globalVar, value)
 
-      case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 |
-          OutputMode.ECMAScript6StrongMode =>
-        genLet(globalVar.asInstanceOf[js.VarRef].ident, mutable, value)
+      case OutputMode.ECMAScript51Isolated =>
+        value match {
+          case js.Function(args, body) =>
+            // Make sure the function has a meaningful `name` property
+            js.FunctionDef(globalVarIdent, args, body)
+          case _ =>
+            js.VarDef(globalVarIdent, value)
+        }
+
+      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+        genLet(globalVarIdent, mutable, value)
     }
   }
 
