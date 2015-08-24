@@ -91,6 +91,11 @@ private[ir] object Tags {
   // TODO Reorganize these when we can break binary compatibility
   final val TagJSSpread = TagModuleExportDef + 1
   final val TagJSLinkingInfo = TagJSSpread + 1
+  final val TagStringLitFieldDef = TagJSLinkingInfo + 1
+  final val TagJSSuperBracketSelect = TagStringLitFieldDef + 1
+  final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
+  final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
+  final val TagJSLoadConstructor = TagJSSuperConstructorCall + 1
 
   // Tags for Types
 

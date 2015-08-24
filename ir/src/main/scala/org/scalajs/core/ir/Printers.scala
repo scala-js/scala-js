@@ -436,6 +436,20 @@ object Printers {
           print(receiver, "[", method, "]")
           printArgs(args)
 
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          print(qualifier, ".", cls, "::super[", item, "]")
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          print(receiver, ".", cls, "::super[", method, "]")
+          printArgs(args)
+
+        case JSSuperConstructorCall(args) =>
+          print("super")
+          printArgs(args)
+
+        case JSLoadConstructor(cls) =>
+          print("constructorOf[", cls, "]")
+
         case JSSpread(items) =>
           print("...", items)
 
@@ -577,6 +591,7 @@ object Printers {
             case ClassKind.Interface     => print("interface ")
             case ClassKind.RawJSType     => print("jstype ")
             case ClassKind.HijackedClass => print("hijacked class ")
+            case ClassKind.JSClass       => print("js class ")
           }
           print(name)
           superClass.foreach(print(" extends ", _))
@@ -587,12 +602,12 @@ object Printers {
           printColumn(defs, "{", "", "}")
           println()
 
-        case FieldDef(ident, vtpe, mutable) =>
+        case FieldDef(name, vtpe, mutable) =>
           if (mutable)
             print("var ")
           else
             print("val ")
-          print(ident, ": ", vtpe)
+          print(name, ": ", vtpe)
 
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree

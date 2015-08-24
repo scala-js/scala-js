@@ -58,6 +58,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSExportDescendentClassesAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSExportDescendentClasses")
     lazy val JSExportAllAnnotation     = getRequiredClass("scala.scalajs.js.annotation.JSExportAll")
     lazy val JSExportNamedAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSExportNamed")
+    lazy val ScalaJSDefinedAnnotation  = getRequiredClass("scala.scalajs.js.annotation.ScalaJSDefined")
 
     lazy val JSAnyTpe    = JSAnyClass.toTypeConstructor
     lazy val JSObjectTpe = JSObjectClass.toTypeConstructor
@@ -85,7 +86,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSThisFunctionModule = JSThisFunctionClass.companionModule
       def JSThisFunction_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
 
-    lazy val RawJSTypeAnnot = getClassIfDefined("scala.scalajs.js.annotation.RawJSType")
+    lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
+    lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
 
     lazy val RuntimeStringModule = getRequiredModule("scala.scalajs.runtime.RuntimeString")
     lazy val RuntimeStringModuleClass = RuntimeStringModule.moduleClass

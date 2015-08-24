@@ -155,6 +155,14 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val FieldDef(name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
+    name match {
+      case _: Ident =>
+        // ok
+      case _: StringLiteral =>
+        if (classDef.kind != ClassKind.JSClass)
+          reportError(s"FieldDef '$name' cannot have a string literal name")
+    }
+
     if (tpe == NoType)
       reportError(s"FieldDef cannot have type NoType")
   }
@@ -162,6 +170,11 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
   def checkMethodDef(methodDef: MethodDef, classDef: LinkedClass): Unit = {
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
+
+    if (classDef.kind == ClassKind.JSClass && !static) {
+      reportError(s"Non exported instance method $name is illegal in JS class")
+      return // things would go too badly otherwise
+    }
 
     for (ParamDef(name, tpe, _, rest) <- params) {
       if (tpe == NoType)
@@ -207,7 +220,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (!classDef.kind.isClass) {
+    if (!classDef.kind.isAnyScalaJSDefinedClass) {
       reportError(s"Exported method def can only appear in a class")
       return
     }
@@ -233,14 +246,63 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
 
-    if (resultType != AnyType) {
-      reportError(s"Result type of exported method def is $resultType, "+
-          "but must be Any")
+    if (classDef.kind == ClassKind.JSClass && name == "constructor") {
+      checkJSClassConstructor(methodDef, classDef)
+    } else {
+      if (resultType != AnyType) {
+        reportError(s"Result type of exported method def is $resultType, "+
+            "but must be Any")
+      }
+
+      val thisType =
+        if (classDef.kind == ClassKind.JSClass) AnyType
+        else ClassType(classDef.name.name)
+
+      val bodyEnv = Env.fromSignature(thisType, params, resultType)
+      typecheckExpect(body, bodyEnv, resultType)
+    }
+  }
+
+  def checkJSClassConstructor(methodDef: MethodDef,
+      classDef: LinkedClass): Unit = {
+    val MethodDef(static, _, params, resultType, body) = methodDef
+    implicit val ctx = ErrorContext(methodDef)
+
+    if (resultType != NoType) {
+      reportError(s"Result type of JS class constructor is $resultType, "+
+          "but must be NoType")
     }
 
-    val thisType = ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, params, resultType)
-    typecheckExpect(body, bodyEnv, resultType)
+    val bodyStats = body match {
+      case Block(stats) => stats
+      case _            => body :: Nil
+    }
+
+    val (prepStats, superCallAndRest) =
+      bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
+
+    val (superCall, restStats) = superCallAndRest match {
+      case (superCall: JSSuperConstructorCall) :: restStats =>
+        (superCall, restStats)
+      case _ =>
+        reportError(
+            "A JS class constructor must contain one super constructor call " +
+            "at the top-level")
+        (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
+    }
+
+    val initialEnv = Env.fromSignature(NoType, params, NoType,
+        isConstructor = true)
+
+    val preparedEnv = (initialEnv /: prepStats) { (prevEnv, stat) =>
+      typecheckStat(stat, prevEnv)
+    }
+
+    for (arg <- superCall.args)
+      typecheckExprOrSpread(arg, preparedEnv)
+
+    val restEnv = preparedEnv.withThis(AnyType)
+    typecheckStat(Block(restStats)(methodDef.pos), restEnv)
   }
 
   def checkExportedPropertyDef(propDef: PropertyDef,
@@ -248,12 +310,14 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
-    if (!classDef.kind.isClass) {
+    if (!classDef.kind.isAnyScalaJSDefinedClass) {
       reportError(s"Exported property def can only appear in a class")
       return
     }
 
-    val thisType = ClassType(classDef.name.name)
+    val thisType =
+      if (classDef.kind == ClassKind.JSClass) AnyType
+      else ClassType(classDef.name.name)
 
     if (getterBody != EmptyTree) {
       val getterBodyEnv = Env.fromSignature(thisType, Nil, AnyType)
@@ -341,8 +405,10 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
         }
         val lhsTpe = typecheckExpr(select, env)
         val expectedRhsTpe = select match {
-          case _:JSDotSelect | _:JSBracketSelect => AnyType
-          case _                                 => lhsTpe
+          case _:JSDotSelect | _:JSBracketSelect | _:JSSuperBracketSelect =>
+            AnyType
+          case _ =>
+            lhsTpe
         }
         typecheckExpect(rhs, env, expectedRhsTpe)
         env
@@ -680,6 +746,30 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
+      case JSSuperBracketSelect(cls, qualifier, item) =>
+        if (lookupClass(cls).kind != ClassKind.JSClass)
+          reportError(s"JS class type expected but $cls found")
+        typecheckExpr(qualifier, env)
+        typecheckExpr(item, env)
+
+      case JSSuperBracketCall(cls, receiver, method, args) =>
+        if (lookupClass(cls).kind != ClassKind.JSClass)
+          reportError(s"JS class type expected but $cls found")
+        typecheckExpr(receiver, env)
+        typecheckExpr(method, env)
+        for (arg <- args)
+          typecheckExprOrSpread(arg, env)
+
+      case JSLoadConstructor(cls) =>
+        val clazz = lookupClass(cls)
+        val valid = clazz.kind match {
+          case ClassKind.JSClass   => true
+          case ClassKind.RawJSType => clazz.jsName.isDefined
+          case _                   => false
+        }
+        if (!valid)
+          reportError(s"JS class type expected but $cls found")
+
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
 
@@ -803,7 +893,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       NullType
     } else {
       val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
-      if (kind == ClassKind.RawJSType) AnyType
+      if (kind == ClassKind.RawJSType || kind == ClassKind.JSClass) AnyType
       else ClassType(encodedName)
     }
   }
@@ -835,7 +925,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
       new CheckedClass(className, ClassKind.Class,
-          Some(ObjectClass), Set(ObjectClass))
+          Some(ObjectClass), Set(ObjectClass), None, Nil)
     })
   }
 
@@ -907,7 +997,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       val kind: ClassKind,
       val superClassName: Option[String],
       val ancestors: Set[String],
-      _fields: TraversableOnce[CheckedField] = Nil)(
+      val jsName: Option[String],
+      _fields: TraversableOnce[CheckedField])(
       implicit ctx: ErrorContext) {
 
     val fields = _fields.map(f => f.name -> f).toMap
@@ -918,7 +1009,17 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       this(classDef.name.name, classDef.kind,
           classDef.superClass.map(_.name),
           classDef.ancestors.toSet,
-          classDef.fields.map(CheckedClass.checkedField))
+          classDef.jsName,
+          if (classDef.kind == ClassKind.JSClass) Nil
+          else classDef.fields.map(CheckedClass.checkedField))
+    }
+
+    // TODO In fact everything in IRChecker should be private
+    @deprecated("Use the constructor with jsName", "0.6.5")
+    def this(name: String, kind: ClassKind, superClassName: Option[String],
+        ancestors: Set[String], fields: TraversableOnce[CheckedField] = Nil)(
+        implicit ctx: ErrorContext) = {
+      this(name, kind, superClassName, ancestors, None, fields)
     }
 
     def isAncestorOfHijackedClass: Boolean =

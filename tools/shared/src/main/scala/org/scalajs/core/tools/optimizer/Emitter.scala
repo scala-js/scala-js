@@ -68,7 +68,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
     classEmitter = new javascript.ScalaJSClassEmitter(
-        semantics, outputMode, unit.globalInfo)
+        semantics, outputMode, unit)
     startRun()
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
@@ -151,7 +151,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
         classEmitter.genMethod(className, m.tree)))
     }
 
-    if (linkedClass.hasInstances && kind.isClass) {
+    if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
       val ctor = classTreeCache.constructor.getOrElseUpdate(
           classEmitter.genConstructor(linkedClass))
 
@@ -268,7 +268,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
             classEmitter.genMethod(className, m.tree))
       }
 
-      if (linkedClass.hasInstances && kind.isClass) {
+      if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
         val ctor = classTreeCache.constructor.getOrElseUpdate(
             classEmitter.genConstructor(linkedClass))
 

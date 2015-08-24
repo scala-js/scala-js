@@ -23,6 +23,8 @@ import ir.Types._
 import org.scalajs.core.tools.sem._
 import CheckedBehavior._
 
+import org.scalajs.core.tools.optimizer.LinkedClass
+
 import org.scalajs.core.tools.javascript.{Trees => js}
 
 import java.io.StringWriter
@@ -107,59 +109,40 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-object JSDesugaring {
+private[javascript] object JSDesugaring {
 
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
-  /** Desugars a statement of the IR into ES5 JavaScript. */
-  @deprecated("Use an overload with an explicit OutputMode.", "0.6.2")
-  def desugarJavaScript(tree: Tree, semantics: Semantics): js.Tree =
-    desugarJavaScript(tree, semantics, OutputMode.ECMAScript51Global)
-
-  /** Desugars a statement of the IR into a given mode of JavaScript. */
-  def desugarJavaScript(tree: Tree, semantics: Semantics,
-      outputMode: OutputMode): js.Tree =
-    desugarJavaScript(tree, semantics, outputMode, Env.empty)
-
-  /** Desugars a statement of the IR into ES5 JavaScript under a
-   *  given environment.
-   */
-  @deprecated("Use an overload with an explicit OutputMode.", "0.6.2")
-  def desugarJavaScript(tree: Tree, semantics: Semantics, env: Env): js.Tree =
-    desugarJavaScript(tree, semantics, OutputMode.ECMAScript51Global, env)
-
-  /** Desugars a statement of the IR into a given mode of JavaScript under a
-   *  given environment.
-   */
-  def desugarJavaScript(tree: Tree, semantics: Semantics,
-      outputMode: OutputMode, env: Env): js.Tree = {
-    val desugar = new JSDesugar(None, semantics, outputMode)
-    try {
-      desugar.transformStat(tree)(env)
-    } catch {
-      case cause: Throwable =>
-        throw new DesugarException(tree, cause)
-    }
-  }
-
   /** Desugars parameters and body to a JS function.
    */
   private[javascript] def desugarToFunction(
-      params: List[ParamDef], body: Tree, isStat: Boolean,
-      semantics: Semantics, outputMode: OutputMode)(
+      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      params: List[ParamDef], body: Tree, isStat: Boolean)(
       implicit pos: Position): js.Function = {
-    desugarToFunction(None, params, body, isStat, semantics, outputMode)
+    desugarToFunction(classEmitter, enclosingClassName,
+        None, params, body, isStat)
   }
 
   /** Desugars parameters and body to a JS function.
    */
   private[javascript] def desugarToFunction(
+      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       thisIdent: Option[js.Ident], params: List[ParamDef],
-      body: Tree, isStat: Boolean,
-      semantics: Semantics, outputMode: OutputMode)(
+      body: Tree, isStat: Boolean)(
       implicit pos: Position): js.Function = {
-    new JSDesugar(thisIdent, semantics, outputMode).desugarToFunction(
-        params, body, isStat)
+    new JSDesugar(classEmitter, enclosingClassName,
+        thisIdent).desugarToFunction(params, body, isStat)
+  }
+
+  /** Desugars a statement or an expression. */
+  private[javascript] def desugarTree(
+      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      tree: Tree, isStat: Boolean): js.Tree = {
+    val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
+    if (isStat)
+      desugar.transformStat(tree)(Env.empty)
+    else
+      desugar.transformExpr(tree)(Env.empty)
   }
 
   private[javascript] implicit def transformIdent(ident: Ident): js.Ident =
@@ -168,10 +151,12 @@ object JSDesugaring {
   private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
-  private class JSDesugar(thisIdent: Option[js.Ident],
-      semantics: Semantics, outputMode: OutputMode) {
+  private class JSDesugar(
+      classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
+      thisIdent: Option[js.Ident]) {
 
-    private implicit def implicitOutputMode: OutputMode = outputMode
+    private val semantics = classEmitter.semantics
+    private implicit val outputMode: OutputMode = classEmitter.outputMode
 
     private val isStrongMode = outputMode == OutputMode.ECMAScript6StrongMode
 
@@ -296,6 +281,8 @@ object JSDesugaring {
 
     /** Desugar a statement of the IR into ES5 JS */
     def transformStat(tree: Tree)(implicit env: Env): js.Tree = {
+      import TreeDSL._
+
       implicit val pos = tree.pos
 
       tree match {
@@ -365,6 +352,17 @@ object JSDesugaring {
               }
           }
 
+        case Assign(select @ JSSuperBracketSelect(cls, qualifier, item), rhs) =>
+          unnest(List(qualifier, item, rhs)) {
+            case (List(newQualifier, newItem, newRhs), env0) =>
+              implicit val env = env0
+              val linkedClass = classEmitter.linkedClassByName(cls.className)
+              val ctor = genRawJSClassConstructor(linkedClass)
+              genCallHelper("superSet", ctor DOT "prototype",
+                  transformExpr(newQualifier), transformExpr(item),
+                  transformExpr(rhs))
+          }
+
         case Assign(_ : VarRef, rhs) =>
           pushLhsInto(tree, rhs)
 
@@ -419,6 +417,82 @@ object JSDesugaring {
 
         case Debugger() =>
           js.Debugger()
+
+        case JSSuperConstructorCall(args) =>
+          assert(!containsAnySpread(args),
+              s"Implementation restriction at $pos: cannot call super JS " +
+              "constructor with spread arguments.")
+
+          unnest(args) { (newArgs, env0) =>
+            implicit val env = env0
+
+            val linkedClass = classEmitter.linkedClassByName(enclosingClassName)
+
+            val superCtorCall = {
+              val transformedArgs = args.map(transformExpr)
+
+              outputMode match {
+                case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+                  val superCtor = genRawJSClassConstructor(
+                      getSuperClassOfJSClass(linkedClass))
+                  js.Apply(
+                      js.BracketSelect(superCtor, js.StringLiteral("call")),
+                      js.This() :: transformedArgs)
+
+                case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+                  js.Apply(js.Super(), transformedArgs)
+              }
+            }
+
+            val fieldDefs = for {
+              field @ FieldDef(name, ftpe, mutable) <- linkedClass.fields
+            } yield {
+              implicit val pos = field.pos
+              /* Here, a naive translation would emit something like this:
+               *
+               *   this["field"] = 0;
+               *
+               * However, this won't work if we override a getter from the
+               * superclass with a val in this class, because the assignment
+               * would try to set the property which has a getter but no
+               * setter.
+               * Instead, we must force the creation of a field on the object,
+               * irrespective of the presence of a getter/setter in the
+               * prototype chain. This is why we use `defineProperties`:
+               *
+               *   Object.defineProperties(this, { "field": {
+               *     "configurable": true,
+               *     "enumerable": true,
+               *     "writable": true,
+               *     "value": 0
+               *   } });
+               *
+               * which has all the same semantics as the assignment, except
+               * it disregards the prototype chain.
+               */
+              val defineProperties = {
+                js.BracketSelect(js.BracketSelect(
+                    envField("g"),
+                    js.StringLiteral("Object")),
+                    js.StringLiteral("defineProperties"))
+              }
+              val transformedName = name match {
+                case name: Ident      => transformIdent(name)
+                case StringLiteral(s) => js.StringLiteral(s)
+              }
+              val descriptor = js.ObjectConstr(List(
+                  js.StringLiteral("configurable") -> js.BooleanLiteral(true),
+                  js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
+                  js.StringLiteral("writable") -> js.BooleanLiteral(true),
+                  js.StringLiteral("value") -> transformExpr(zeroOf(ftpe))
+              ))
+              val descriptors = js.ObjectConstr(List(
+                  transformedName -> descriptor))
+              js.Apply(defineProperties, List(js.This(), descriptors))
+            }
+
+            js.Block(superCtorCall :: fieldDefs)
+          }
 
         case JSDelete(JSDotSelect(obj, prop)) =>
           unnest(obj) { (newObj, env0) =>
@@ -761,6 +835,15 @@ object JSDesugaring {
           allowSideEffects && test(receiver) && (args forall test)
         case JSBracketMethodApply(receiver, method, args) =>
           allowSideEffects && test(receiver) && test(method) && (args forall test)
+        case JSSuperBracketSelect(_, qualifier, item) =>
+          allowSideEffects && test(qualifier) && test(item)
+
+        // JSLoadConstructor is pure only for Scala.js-defined JS classes
+        case JSLoadConstructor(cls) =>
+          allowUnpure || {
+            val linkedClass = classEmitter.linkedClassByName(cls.className)
+            linkedClass.kind == ClassKind.JSClass
+          }
 
         // Non-expressions
         case _ => false
@@ -1197,6 +1280,26 @@ object JSDesugaring {
               val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
               redo(JSBracketMethodApply(newReceiver, newMethod, newArgs))(env)
             }
+          }
+
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          unnest(qualifier, item) { (newQualifier, newItem, env) =>
+            redo(JSSuperBracketSelect(cls, newQualifier, newItem))(env)
+          }
+
+        case JSSuperBracketCall(cls, receiver, method, args) =>
+          val superClass = getSuperClassOfJSClass(
+              classEmitter.linkedClassByName(cls.className))
+          val superCtor =
+            JSLoadConstructor(ClassType(superClass.encodedName))
+
+          redo {
+            JSBracketMethodApply(
+                JSBracketSelect(
+                    JSBracketSelect(superCtor, StringLiteral("prototype")),
+                    method),
+                StringLiteral("call"),
+                receiver :: args)
           }
 
         case JSDotSelect(qualifier, item) =>
@@ -1723,6 +1826,16 @@ object JSDesugaring {
           js.Apply(js.BracketSelect(transformExpr(receiver),
               transformExpr(method)), args map transformExpr)
 
+        case JSSuperBracketSelect(cls, qualifier, item) =>
+          val linkedClass = classEmitter.linkedClassByName(cls.className)
+          val ctor = genRawJSClassConstructor(linkedClass)
+          genCallHelper("superGet", ctor DOT "prototype",
+              transformExpr(qualifier), transformExpr(item))
+
+        case JSLoadConstructor(cls) =>
+          val linkedClass = classEmitter.linkedClassByName(cls.className)
+          genRawJSClassConstructor(linkedClass)
+
         case JSUnaryOp(op, lhs) =>
           js.UnaryOp(op, transformExpr(lhs))
 
@@ -1859,6 +1972,13 @@ object JSDesugaring {
             js.Apply(js.DotSelect(prev, js.Ident("getArrayOf")), Nil)
           }
       }
+    }
+
+    private def getSuperClassOfJSClass(linkedClass: LinkedClass)(
+        implicit pos: Position): LinkedClass = {
+      require(linkedClass.kind == ClassKind.JSClass)
+      assert(linkedClass.superClass.isDefined, linkedClass.encodedName)
+      classEmitter.linkedClassByName(linkedClass.superClass.get.name)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
@@ -2060,6 +2180,18 @@ object JSDesugaring {
   private[javascript] def encodeClassVar(className: String)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     envField("c", className)
+
+  private[javascript] def genRawJSClassConstructor(linkedClass: LinkedClass)(
+      implicit outputMode: OutputMode, pos: Position): js.Tree = {
+    if (linkedClass.kind == ClassKind.JSClass) {
+      encodeClassVar(linkedClass.encodedName)
+    } else {
+      require(linkedClass.jsName.isDefined)
+      linkedClass.jsName.get.split("\\.").foldLeft(envField("g")) {
+        (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
+      }
+    }
+  }
 
   private[javascript] def envField(field: String, subField: String,
       origName: Option[String] = None)(

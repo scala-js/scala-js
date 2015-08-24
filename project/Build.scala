@@ -66,6 +66,9 @@ object Build extends sbt.Build {
       } else if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
         // New in this release, no binary compatibility to comply to
         None
+      } else if (scalaBinaryV == "2.12.0-M2") {
+        // See #1865: MiMa is much too noisy with 2.12.0-M2 to be useful
+        None
       } else {
         val thisProjectID = projectID.value
         val previousCrossVersion = thisProjectID.crossVersion match {
@@ -769,6 +772,7 @@ object Build extends sbt.Build {
           ),
 
           previousArtifactSetting,
+          binaryIssueFilters ++= BinaryIncompatibilities.CLI,
 
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
@@ -942,6 +946,8 @@ object Build extends sbt.Build {
           // Need reflect for typechecking macros
           libraryDependencies +=
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+
+          jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
 
           scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
             case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>

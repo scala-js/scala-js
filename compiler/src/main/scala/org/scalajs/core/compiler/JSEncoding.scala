@@ -44,8 +44,8 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
 
   private val usedLocalNames = new ScopedVar[mutable.Set[String]]
   private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, String]]
-  private val isKeywordOrReserved =
-    js.isKeyword ++ Seq("arguments", "eval", ScalaJSEnvironmentName)
+  private val isReserved =
+    Set("arguments", "eval", ScalaJSEnvironmentName)
 
   def withNewLocalNameScope[A](body: => A): A =
     withScopedVars(
@@ -56,12 +56,12 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def freshName(base: String = "x"): String = {
     var suffix = 1
     var longName = base
-    while (usedLocalNames(longName) || isKeywordOrReserved(longName)) {
+    while (usedLocalNames(longName) || isReserved(longName)) {
       suffix += 1
       longName = base+"$"+suffix
     }
     usedLocalNames += longName
-    longName
+    mangleJSName(longName)
   }
 
   def freshLocalIdent()(implicit pos: ir.Position): js.Ident =
@@ -182,7 +182,7 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
     require(sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.Ident(mangleJSName(localSymbolName(sym)), Some(sym.unexpandedName.decoded))
+    js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
   def foreignIsImplClass(sym: Symbol): Boolean =
@@ -218,18 +218,22 @@ trait JSEncoding extends SubComponent { self: GenJSCode =>
   private def makeParamsString(sym: Symbol, reflProxy: Boolean,
       inRTClass: Boolean): String = {
     val tpe = sym.tpe
-    val paramTypeNames = tpe.params map (p => internalName(p.tpe))
+
+    val paramTypeNames0 = tpe.params map (p => internalName(p.tpe))
+
+    val hasExplicitThisParameter =
+      inRTClass || isScalaJSDefinedJSClass(sym.owner)
+    val paramTypeNames =
+      if (!hasExplicitThisParameter) paramTypeNames0
+      else internalName(sym.owner.toTypeConstructor) :: paramTypeNames0
+
     val paramAndResultTypeNames = {
       if (sym.isClassConstructor)
         paramTypeNames
       else if (reflProxy)
         paramTypeNames :+ ""
-      else {
-        val paramAndResultTypeNames0 =
-          paramTypeNames :+ internalName(tpe.resultType)
-        if (!inRTClass) paramAndResultTypeNames0
-        else internalName(sym.owner.toTypeConstructor) +: paramAndResultTypeNames0
-      }
+      else
+        paramTypeNames :+ internalName(tpe.resultType)
     }
     makeParamsString(paramAndResultTypeNames)
   }

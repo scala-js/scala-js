@@ -129,7 +129,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val currentClassInfoBuilder  = new ScopedVar[ClassInfoBuilder]
     val currentMethodSym         = new ScopedVar[Symbol]
     val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
-    val methodTailJumpThisSym    = new ScopedVar[Symbol](NoSymbol)
+    val thisLocalVarIdent        = new ScopedVar[Option[js.Ident]](None)
     val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
     val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
     val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
@@ -182,10 +182,11 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  function in the method that instantiates it.
      *
      *  Other ClassDefs are emitted according to their nature:
-     *  * Raw JS type (<: js.Any) -> `genRawJSClassData()`
-     *  * Interface               -> `genInterface()`
-     *  * Implementation class    -> `genImplClass()`
-     *  * Normal class            -> `genClass()`
+     *  * Scala.js-defined JS class     -> `genScalaJSDefinedJSClass()`
+     *  * Other raw JS type (<: js.Any) -> `genRawJSClassData()`
+     *  * Interface                     -> `genInterface()`
+     *  * Implementation class          -> `genImplClass()`
+     *  * Normal class                  -> `genClass()`
      */
     override def apply(cunit: CompilationUnit): Unit = {
       try {
@@ -247,7 +248,10 @@ abstract class GenJSCode extends plugins.PluginComponent
               val tree = if (isRawJSType(sym.tpe)) {
                 assert(!isRawJSFunctionDef(sym),
                     s"Raw JS function def should have been recorded: $cd")
-                genRawJSClassData(cd)
+                if (!sym.isInterface && isScalaJSDefinedJSClass(sym))
+                  genScalaJSDefinedJSClass(cd)
+                else
+                  genRawJSClassData(cd)
               } else if (sym.isInterface) {
                 genInterface(cd)
               } else if (sym.isImplClass) {
@@ -400,6 +404,85 @@ abstract class GenJSCode extends plugins.PluginComponent
       classDefinition
     }
 
+    /** Gen the IR ClassDef for a Scala.js-defined JS class. */
+    def genScalaJSDefinedJSClass(cd: ClassDef): js.ClassDef = {
+      val sym = cd.symbol
+      implicit val pos = sym.pos
+
+      assert(isScalaJSDefinedJSClass(sym),
+          "genScalaJSDefinedJSClass() must be called only for " +
+          s"Scala.js-defined JS classes: $sym")
+      assert(sym.superClass != NoSymbol, sym)
+
+      val classIdent = encodeClassFullNameIdent(sym)
+
+      // Generate members (constructor + methods)
+
+      val constructorTrees = new ListBuffer[DefDef]
+      val generatedMethods = new ListBuffer[js.MethodDef]
+      val dispatchMethodNames = new ListBuffer[String]
+
+      def gen(tree: Tree): Unit = {
+        tree match {
+          case EmptyTree => ()
+          case Template(_, _, body) => body foreach gen
+
+          case ValDef(mods, name, tpt, rhs) =>
+            () // fields are added via genClassFields()
+
+          case dd: DefDef =>
+            val sym = dd.symbol
+            val exposed = isExposed(sym)
+
+            if (sym.isClassConstructor) {
+              constructorTrees += dd
+            } else if (exposed && sym.isAccessor) {
+              /* Exposed accessors must not be emitted, since the field they
+               * access is enough.
+               */
+            } else {
+              generatedMethods ++= genMethod(dd)
+
+              // Collect the names of the dispatchers we have to create
+              if (exposed && !sym.isDeferred) {
+                /* We add symbols that we have to expose here. This way we also
+                 * get inherited stuff that is implemented in this class.
+                 */
+                dispatchMethodNames += jsNameOf(sym)
+              }
+            }
+
+          case _ => abort("Illegal tree in gen of genClass(): " + tree)
+        }
+      }
+
+      gen(cd.impl)
+
+      // Generate fields (and add to methods + ctors)
+      val generatedMembers = {
+        genClassFields(cd) :::
+        genJSClassConstructor(sym, constructorTrees.toList) ::
+        genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
+        generatedMethods.toList
+      }
+
+      // Hashed definitions of the class
+      val hashedDefs =
+        Hashers.hashDefs(generatedMembers)
+
+      // The complete class definition
+      val classDefinition = js.ClassDef(
+          classIdent,
+          ClassKind.JSClass,
+          Some(encodeClassFullNameIdent(sym.superClass)),
+          genClassInterfaces(sym),
+          None,
+          hashedDefs)(
+          OptimizerHints.empty)
+
+      classDefinition
+    }
+
     // Generate the class data of a raw JS class -------------------------------
 
     /** Gen the IR ClassDef for a raw JS class or trait.
@@ -510,16 +593,78 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  The fields are initialized with the zero of their types.
      */
     def genClassFields(cd: ClassDef): List[js.FieldDef] = {
+      val classSym = cd.symbol
+      assert(currentClassSym.get == classSym,
+          "genClassFields called with a ClassDef other than the current one")
+
       // Non-method term members are fields, except for module members.
       (for {
-        f <- currentClassSym.info.decls
+        f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
       } yield {
         implicit val pos = f.pos
+
         val mutable =
           suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
-        js.FieldDef(encodeFieldSym(f), toIRType(f.tpe), mutable)
+        val name =
+          if (isExposed(f)) js.StringLiteral(jsNameOf(f))
+          else encodeFieldSym(f)
+
+        val irTpe = if (!isScalaJSDefinedJSClass(classSym)) {
+          toIRType(f.tpe)
+        } else {
+          val tpeEnteringPosterasure =
+            enteringPhase(currentRun.posterasurePhase)(f.tpe)
+          tpeEnteringPosterasure match {
+            case tpe: ErasedValueType =>
+              /* Here, we must store the field as the boxed representation of
+               * the value class. The default value of that field, as
+               * initialized at the time the instance is created, will
+               * therefore be null. This will not match the behavior we would
+               * get in a Scala class. To match the behavior, we would need to
+               * initialized to an instance of the boxed representation, with
+               * an underlying value set to the zero of its type. However we
+               * cannot implement that, so we live with the discrepancy.
+               * Anyway, scalac also has problems with uninitialized value
+               * class values, if they come from a generic context.
+               */
+              jstpe.ClassType(encodeClassFullName(tpe.valueClazz))
+
+            case _ if f.tpe.typeSymbol == CharClass =>
+              /* Will be initialized to null, which will unbox to '\0' when
+               * read.
+               */
+              jstpe.ClassType(ir.Definitions.BoxedCharacterClass)
+
+            case _ =>
+              /* Other types are not boxed, so we can initialized them to
+               * their true zero.
+               */
+              toIRType(f.tpe)
+          }
+        }
+
+        js.FieldDef(name, irTpe, mutable)
       }).toList
+    }
+
+    // Constructor of a Scala.js-defined JS class ------------------------------
+
+    def genJSClassConstructor(classSym: Symbol,
+        constructorTrees: List[DefDef]): js.Tree = {
+      implicit val pos = classSym.pos
+
+      val (primaryCtorTree :: Nil, secondaryCtorTrees) =
+        constructorTrees.partition(_.symbol.isPrimaryConstructor)
+
+      // Implementation restriction
+      for (tree <- secondaryCtorTrees) {
+        reporter.error(tree.pos,
+            "Implementation restriction: Scala.js-defined JS classes cannot " +
+            "have secondary constructors")
+      }
+
+      genMethod(primaryCtorTree).get
     }
 
     // Generate a method -------------------------------------------------------
@@ -559,9 +704,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       isModuleInitialized = false
 
-      val result = withScopedVars(
+      withScopedVars(
           currentMethodSym        := sym,
-          methodTailJumpThisSym   := NoSymbol,
+          thisLocalVarIdent       := None,
           fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
           enclosingLabelDefParams := Map.empty
       ) {
@@ -569,11 +714,16 @@ abstract class GenJSCode extends plugins.PluginComponent
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
-        val methodIdent = encodeMethodSym(sym)
+        val isJSClassConstructor =
+          sym.isClassConstructor && isScalaJSDefinedJSClass(currentClassSym)
+
+        val methodName: js.PropertyName =
+          if (isJSClassConstructor) js.StringLiteral("constructor")
+          else encodeMethodSym(sym)
 
         def createInfoBuilder() = {
           new MethodInfoBuilder()
-            .setEncodedName(methodIdent.name)
+            .setEncodedName(methodName.name)
             .setIsStatic(sym.owner.isImplClass)
         }
 
@@ -588,7 +738,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         } else if (sym.isDeferred || sym.owner.isInterface) {
           val infoBuilder = createInfoBuilder().setIsAbstract(true)
           Some((
-              js.MethodDef(static = false, methodIdent,
+              js.MethodDef(static = false, methodName,
                   jsParams, currentClassType, js.EmptyTree)(
                   OptimizerHints.empty, None)),
               infoBuilder)
@@ -627,13 +777,22 @@ abstract class GenJSCode extends plugins.PluginComponent
                 withNoinline(shouldMarkNoinline)
 
             val methodDef = {
-              if (sym.isClassConstructor) {
-                js.MethodDef(static = false, methodIdent,
+              if (isJSClassConstructor) {
+                currentMethodInfoBuilder.setIsExported(true)
+                val body0 = genStat(rhs)
+                val body1 = moveAllStatementsAfterSuperConstructorCall(body0)
+                val (patchedParams, patchedBody) =
+                  patchFunBodyWithBoxes(sym, jsParams, body1)
+                js.MethodDef(static = false, methodName,
+                    patchedParams, jstpe.NoType, patchedBody)(
+                    optimizerHints, None)
+              } else if (sym.isClassConstructor) {
+                js.MethodDef(static = false, methodName,
                     jsParams, currentClassType,
                     js.Block(genStat(rhs), genThis()))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
-                genMethodDef(static = sym.owner.isImplClass, methodIdent,
+                genMethodDef(static = sym.owner.isImplClass, methodName,
                     params, resultIRType, rhs, optimizerHints)
               }
             }
@@ -660,8 +819,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           }
         }
       }
-
-      result
     }
 
     private val adHocInlineMethods = Set(
@@ -672,7 +829,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
         rhs: Tree): Boolean = {
-      if (!sym.isClassConstructor) {
+      if (!sym.isClassConstructor || isScalaJSDefinedJSClass(sym.owner)) {
         false
       } else {
         rhs match {
@@ -731,6 +888,37 @@ abstract class GenJSCode extends plugins.PluginComponent
         transformer.transform(body, isStat = resultType == jstpe.NoType)
       js.MethodDef(static, methodName, newParams, resultType,
           newBody)(methodDef.optimizerHints, None)(methodDef.pos)
+    }
+
+    /** Moves all statements after the super constructor call.
+     *
+     *  This is used for the primary constructor of a Scala.js-defined JS
+     *  class, because those cannot access `this` before the super constructor
+     *  call.
+     *
+     *  scalac inserts statements before the super constructor call for early
+     *  initializers and param accessor initializers (including val's and var's
+     *  declared in the params). We move those after the super constructor
+     *  call, and are therefore executed later than for a Scala class.
+     */
+    private def moveAllStatementsAfterSuperConstructorCall(
+        body: js.Tree): js.Tree = {
+      val bodyStats = body match {
+        case js.Block(stats) => stats
+        case _               => body :: Nil
+      }
+
+      val (beforeSuper, superCall :: afterSuper) =
+        bodyStats.span(!_.isInstanceOf[js.JSSuperConstructorCall])
+
+      assert(!beforeSuper.exists(_.isInstanceOf[js.VarDef]),
+          "Trying to move a local VarDef after the super constructor call " +
+          "of a Scala.js-defined JS class at ${body.pos}")
+
+      js.Block(
+          superCall ::
+          beforeSuper :::
+          afterSuper)(body.pos)
     }
 
     /**
@@ -865,7 +1053,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  a peculiarity of recursive tail calls: the local ValDef that replaces
      *  `this`.
      */
-    def genMethodDef(static: Boolean, methodIdent: js.Ident,
+    def genMethodDef(static: Boolean, methodName: js.PropertyName,
         paramsSyms: List[Symbol], resultIRType: jstpe.Type,
         tree: Tree, optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
@@ -878,36 +1066,45 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val bodyIsStat = resultIRType == jstpe.NoType
 
-      val body = tree match {
+      def genBody() = tree match {
         case Block(
             (thisDef @ ValDef(_, nme.THIS, _, initialThis)) :: otherStats,
             rhs) =>
           // This method has tail jumps
-          withScopedVars(
-            (initialThis match {
-              case This(_)  =>
-                Seq(methodTailJumpThisSym := thisDef.symbol,
-                    fakeTailJumpParamRepl := (NoSymbol, NoSymbol))
-              case Ident(_) =>
-                Seq(methodTailJumpThisSym := NoSymbol,
-                    fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol))
-            }): _*
-          ) {
-            val innerBody = js.Block(otherStats.map(genStat) :+ (
+
+          // To be called from within withScopedVars
+          def genInnerBody() = {
+            js.Block(otherStats.map(genStat) :+ (
                 if (bodyIsStat) genStat(rhs)
                 else            genExpr(rhs)))
+          }
 
-            if (methodTailJumpThisSym.get == NoSymbol) {
-              innerBody
-            } else {
-              if (methodTailJumpThisSym.isMutable)
-                mutableLocalVars += methodTailJumpThisSym
-              js.Block(
-                  js.VarDef(encodeLocalSym(methodTailJumpThisSym),
-                      currentClassType, methodTailJumpThisSym.isMutable,
-                      js.This()(currentClassType)),
-                  innerBody)
-            }
+          initialThis match {
+            case This(_) =>
+              val thisSym = thisDef.symbol
+              if (thisSym.isMutable)
+                mutableLocalVars += thisSym
+
+              val thisLocalIdent = encodeLocalSym(thisSym)
+              val thisLocalVarDef = js.VarDef(thisLocalIdent,
+                  currentClassType, thisSym.isMutable, genThis())
+
+              val innerBody = {
+                withScopedVars(
+                  thisLocalVarIdent := Some(thisLocalIdent)
+                ) {
+                  genInnerBody()
+                }
+              }
+
+              js.Block(thisLocalVarDef, innerBody)
+
+            case Ident(_) =>
+              withScopedVars(
+                fakeTailJumpParamRepl := (thisDef.symbol, initialThis.symbol)
+              ) {
+                genInnerBody()
+              }
           }
 
         case _ =>
@@ -915,8 +1112,24 @@ abstract class GenJSCode extends plugins.PluginComponent
           else            genExpr(tree)
       }
 
-      js.MethodDef(static, methodIdent, jsParams, resultIRType, body)(
-          optimizerHints, None)
+      if (!isScalaJSDefinedJSClass(currentClassSym)) {
+        js.MethodDef(static, methodName, jsParams, resultIRType, genBody())(
+            optimizerHints, None)
+      } else {
+        assert(!static, tree.pos)
+        currentMethodInfoBuilder.setIsStatic(true)
+
+        withScopedVars(
+          thisLocalVarIdent := Some(freshLocalIdent("this"))
+        ) {
+          val thisParamDef = js.ParamDef(thisLocalVarIdent.get.get,
+              jstpe.AnyType, mutable = false, rest = false)
+
+          js.MethodDef(static = true, methodName, thisParamDef :: jsParams,
+              resultIRType, genBody())(
+              optimizerHints, None)
+        }
+      }
     }
 
     /** Gen JS code for a tree in statement position (in the IR).
@@ -1039,6 +1252,14 @@ abstract class GenJSCode extends plugins.PluginComponent
             genStaticMember(sym)
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
+          } else if (isScalaJSDefinedJSClass(sym.owner)) {
+            val genQual = genExpr(qualifier)
+            val boxed = if (isExposed(sym))
+              js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+            else
+              js.JSDotSelect(genQual, encodeFieldSym(sym))
+            fromAny(boxed,
+                enteringPhase(currentRun.posterasurePhase)(sym.tpe))
           } else {
             js.Select(genExpr(qualifier),
                 encodeFieldSym(sym))(toIRType(sym.tpe))
@@ -1098,7 +1319,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           val sym = lhs.symbol
           if (sym.isStaticMember)
             abort(s"Assignment to static member ${sym.fullName} not supported")
-          val genLhs = lhs match {
+          val genRhs = genExpr(rhs)
+          lhs match {
             case Select(qualifier, _) =>
               val ctorAssignment = (
                   currentMethodSym.isClassConstructor &&
@@ -1107,13 +1329,29 @@ abstract class GenJSCode extends plugins.PluginComponent
               )
               if (!ctorAssignment && !suspectFieldMutable(sym))
                 unexpectedMutatedFields += sym
-              js.Select(genExpr(qualifier),
-                  encodeFieldSym(sym))(toIRType(sym.tpe))
+
+              val genQual = genExpr(qualifier)
+
+              if (isScalaJSDefinedJSClass(sym.owner)) {
+                val genLhs = if (isExposed(sym))
+                  js.JSBracketSelect(genQual, js.StringLiteral(jsNameOf(sym)))
+                else
+                  js.JSDotSelect(genQual, encodeFieldSym(sym))
+                val boxedRhs =
+                  ensureBoxed(genRhs,
+                      enteringPhase(currentRun.posterasurePhase)(rhs.tpe))
+                js.Assign(genLhs, boxedRhs)
+              } else {
+                js.Assign(
+                    js.Select(genQual, encodeFieldSym(sym))(toIRType(sym.tpe)),
+                    genRhs)
+              }
             case _ =>
               mutatedLocalVars += sym
-              js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
+              js.Assign(
+                  js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe)),
+                  genRhs)
           }
-          js.Assign(genLhs, genExpr(rhs))
 
         /** Array constructor */
         case av: ArrayValue =>
@@ -1142,13 +1380,14 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  is one.
      */
     private def genThis()(implicit pos: Position): js.Tree = {
-      if (methodTailJumpThisSym.get != NoSymbol) {
-        js.VarRef(encodeLocalSym(methodTailJumpThisSym))(currentClassType)
-      } else {
-        if (tryingToGenMethodAsJSFunction)
+      thisLocalVarIdent.fold[js.Tree] {
+        if (tryingToGenMethodAsJSFunction) {
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
+        }
         js.This()(currentClassType)
+      } { thisLocalIdent =>
+        js.VarRef(thisLocalIdent)(currentClassType)
       }
     }
 
@@ -1361,20 +1600,27 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genApply(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun, args) = tree
+      val sym = fun.symbol
+
+      def isRawJSDefaultParam: Boolean = {
+        sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
+        (isRawJSType(sym.owner.tpe) || isRawJSCtorDefaultParam(sym))
+      }
 
       fun match {
         case TypeApply(_, _) =>
           genApplyTypeApply(tree)
 
+        case _ if isRawJSDefaultParam =>
+          js.UndefinedParam()(toIRType(sym.tpe.resultType))
+
         case Select(Super(_, _), _) =>
-          genSuperCall(tree)
+          genSuperCall(tree, isStat)
 
         case Select(New(_), nme.CONSTRUCTOR) =>
           genApplyNew(tree)
 
         case _ =>
-          val sym = fun.symbol
-
           if (sym.isLabel) {
             genLabelApply(tree)
           } else if (scalaPrimitives.isPrimitive(sym)) {
@@ -1449,7 +1695,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  two classes above the current one is invalid, the `mix` item is
      *  irrelevant.
      */
-    private def genSuperCall(tree: Apply): js.Tree = {
+    private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
       val sym = fun.symbol
@@ -1457,6 +1703,8 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym == Object_getClass) {
         // The only primitive that is also callable as super call
         js.GetClass(genThis())
+      } else if (isScalaJSDefinedJSClass(currentClassSym)) {
+        genJSSuperCall(tree, isStat)
       } else {
         val superCall = genApplyMethodStatically(
             genThis()(sup.pos), sym, genActualArgs(sym, args))
@@ -1664,11 +1912,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       if (sym.owner == StringClass && !isStringMethodFromObject) {
         genStringCall(tree)
       } else if (isRawJSType(receiver.tpe) && sym.owner != ObjectClass) {
-        genPrimitiveJSCall(tree, isStat)
+        if (!isScalaJSDefinedJSClass(sym.owner) || isExposed(sym))
+          genPrimitiveJSCall(tree, isStat)
+        else
+          genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
       } else if (foreignIsImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
-      } else if (isRawJSCtorDefaultParam(sym)) {
-        js.UndefinedParam()(toIRType(sym.tpe.resultType))
       } else if (sym.isClassConstructor) {
         /* See #66: we have to emit a statically linked call to avoid calling a
          * constructor with the same signature in a subclass. */
@@ -1690,17 +1939,27 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      val implName = encodeClassFullName(method.owner)
+      genApplyStatic(method, arguments)
+    }
+
+    def genApplyJSClassMethod(receiver: js.Tree, method: Symbol,
+        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
+      genApplyStatic(method, receiver :: arguments)
+    }
+
+    def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+      val cls = encodeClassFullName(method.owner)
       val methodIdent = encodeMethodSym(method)
-      genTraitImplApply(implName, methodIdent, arguments,
+      genApplyStatic(cls, methodIdent, arguments,
           toIRType(method.tpe.resultType))
     }
 
-    def genTraitImplApply(implName: String, methodIdent: js.Ident,
+    def genApplyStatic(cls: String, methodIdent: js.Ident,
         arguments: List[js.Tree], resultType: jstpe.Type)(
         implicit pos: Position): js.Tree = {
-      currentMethodInfoBuilder.addStaticMethodCalled(implName, methodIdent.name)
-      js.ApplyStatic(jstpe.ClassType(implName), methodIdent,
+      currentMethodInfoBuilder.addStaticMethodCalled(cls, methodIdent.name)
+      js.ApplyStatic(jstpe.ClassType(cls), methodIdent,
           arguments)(resultType)
     }
 
@@ -1744,7 +2003,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           js.BooleanLiteral(true)
         } else {
           js.Unbox(js.JSBinaryOp(
-              js.JSBinaryOp.instanceof, value, genGlobalJSObject(sym)), 'Z')
+              js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
         }
       } else {
         val refType = toReferenceType(to)
@@ -3092,8 +3351,54 @@ abstract class GenJSCode extends plugins.PluginComponent
       val receiver = genExpr(receiver0)
       val args = genPrimitiveJSArgs(sym, args0)
 
+      genJSCallGeneric(sym, receiver, args, isStat)
+    }
+
+    private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
+      implicit val pos = tree.pos
+      val Apply(fun @ Select(sup @ Super(_, _), _), args) = tree
+      val sym = fun.symbol
+
+      val genReceiver = genThis()(sup.pos)
+      lazy val genScalaArgs = genActualArgs(sym, args)
+      lazy val genJSArgs = genPrimitiveJSArgs(sym, args)
+
+      if (sym.owner == ObjectClass) {
+        // Normal call anyway
+        assert(!sym.isClassConstructor,
+            "Trying to call the super constructor of Object in a " +
+            s"Scala.js-defined JS class at $pos")
+        genApplyMethod(genReceiver, sym, genScalaArgs)
+      } else if (sym.isClassConstructor) {
+        // Implementation restriction
+        if (genJSArgs.exists(_.isInstanceOf[js.JSSpread])) {
+          reporter.error(pos,
+              "Implementation restriction: cannot call the super " +
+              "constructor of a Scala.js-defined JS class with :_*")
+        }
+
+        js.JSSuperConstructorCall(genJSArgs)
+      } else if (isScalaJSDefinedJSClass(sym.owner) && !isExposed(sym)) {
+        // Reroute to the static method
+        genApplyJSClassMethod(genReceiver, sym, genScalaArgs)
+      } else {
+        genJSCallGeneric(sym, genReceiver, genJSArgs, isStat,
+            superIn = Some(currentClassSym))
+      }
+    }
+
+    private def genJSCallGeneric(sym: Symbol, receiver: js.Tree,
+        args: List[js.Tree], isStat: Boolean, superIn: Option[Symbol] = None)(
+        implicit pos: Position): js.Tree = {
       def noSpread = !args.exists(_.isInstanceOf[js.JSSpread])
       val argc = args.size // meaningful only for methods that don't have varargs
+
+      def requireNotSuper(): Unit = {
+        if (superIn.isDefined) {
+          reporter.error(pos,
+              "Illegal super call in Scala.js-defined JS class")
+        }
+      }
 
       def hasExplicitJSEncoding =
         sym.hasAnnotation(JSNameAnnotation) ||
@@ -3102,51 +3407,76 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val boxedResult = sym.name match {
         case JSUnaryOpMethodName(code) if argc == 0 =>
+          requireNotSuper()
           js.JSUnaryOp(code, receiver)
 
         case JSBinaryOpMethodName(code) if argc == 1 =>
+          requireNotSuper()
           js.JSBinaryOp(code, receiver, args.head)
 
-        case nme.apply if receiver0.tpe.typeSymbol.isSubClass(JSThisFunctionClass) =>
+        case nme.apply if sym.owner.isSubClass(JSThisFunctionClass) =>
+          requireNotSuper()
           js.JSBracketMethodApply(receiver, js.StringLiteral("call"), args)
 
         case nme.apply if !hasExplicitJSEncoding =>
+          requireNotSuper()
           js.JSFunctionApply(receiver, args)
 
         case _ =>
-          def jsFunName = jsNameOf(sym)
+          def jsFunName = js.StringLiteral(jsNameOf(sym))
 
-          if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
-            js.UndefinedParam()(toIRType(sym.tpe.resultType))
-          } else if (jsInterop.isJSGetter(sym)) {
+          def genSuperReference(propName: js.Tree): js.Tree = {
+            superIn.fold[js.Tree] {
+              js.JSBracketSelect(receiver, propName)
+            } { superInSym =>
+              js.JSSuperBracketSelect(
+                  jstpe.ClassType(encodeClassFullName(superInSym)),
+                  receiver, propName)
+            }
+          }
+
+          def genSelectGet(propName: js.Tree): js.Tree =
+            genSuperReference(propName)
+
+          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
+            js.Assign(genSuperReference(propName), value)
+
+          def genCall(methodName: js.Tree, args: List[js.Tree]): js.Tree = {
+            superIn.fold[js.Tree] {
+              js.JSBracketMethodApply(
+                  receiver, methodName, args)
+            } { superInSym =>
+              js.JSSuperBracketCall(
+                  jstpe.ClassType(encodeClassFullName(superInSym)),
+                  receiver, methodName, args)
+            }
+          }
+
+          if (jsInterop.isJSGetter(sym)) {
             assert(noSpread && argc == 0)
-            js.JSBracketSelect(receiver, js.StringLiteral(jsFunName))
+            genSelectGet(jsFunName)
           } else if (jsInterop.isJSSetter(sym)) {
             assert(noSpread && argc == 1)
-            js.Assign(
-                js.JSBracketSelect(receiver, js.StringLiteral(jsFunName)),
-                args.head)
+            genSelectSet(jsFunName, args.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(noSpread && (argc == 1 || argc == 2),
                 s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
             args match {
               case List(keyArg) =>
-                js.JSBracketSelect(receiver, keyArg)
+                genSelectGet(keyArg)
               case List(keyArg, valueArg) =>
-                js.Assign(
-                    js.JSBracketSelect(receiver, keyArg),
-                    valueArg)
+                genSelectSet(keyArg, valueArg)
             }
           } else if (jsInterop.isJSBracketCall(sym)) {
             val (methodName, actualArgs) = extractFirstArg(args)
-            js.JSBracketMethodApply(receiver, methodName, actualArgs)
+            genCall(methodName, actualArgs)
           } else {
-            js.JSBracketMethodApply(receiver, js.StringLiteral(jsFunName), args)
+            genCall(jsFunName, args)
           }
       }
 
       boxedResult match {
-        case js.UndefinedParam() | js.Assign(_, _) =>
+        case js.Assign(_, _) =>
           boxedResult
         case _ if isStat =>
           boxedResult
@@ -3287,19 +3617,18 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code representing a JS class (subclass of js.Any) */
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      genGlobalJSObject(sym)
+      assert(!sym.isModuleClass && !sym.isInterface,
+          s"genPrimitiveJSClass called with non-class $sym")
+      val classFullName = encodeClassFullName(sym)
+      currentMethodInfoBuilder.addInstantiatedClass(classFullName)
+      js.JSLoadConstructor(jstpe.ClassType(classFullName))
     }
 
     /** Gen JS code representing a JS module (var of the global scope) */
     private def genPrimitiveJSModule(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      genGlobalJSObject(sym)
-    }
-
-    /** Gen JS code representing a JS object (class or module) in global scope
-     */
-    private def genGlobalJSObject(sym: Symbol)(
-        implicit pos: Position): js.Tree = {
+      assert(sym.isModuleClass,
+          s"genPrimitiveJSModule called with non-module $sym")
       jsNameOf(sym).split('.').foldLeft(genLoadGlobal()) { (memo, chunk) =>
         js.JSBracketSelect(memo, js.StringLiteral(chunk))
       }
@@ -3352,29 +3681,55 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     private def genPrimitiveJSArgs(sym: Symbol, args: List[Tree])(
         implicit pos: Position): List[js.Tree] = {
+
+      /* lambdalift might have to introduce some parameters when transforming
+       * nested Scala.js-defined JS classes. Hence, the list of parameters
+       * exiting typer and entering posterasure might not be compatible with
+       * the list of actual arguments we receive now.
+       *
+       * We therefore need to establish of list of formal parameters based on
+       * the current signature of `sym`, but have to look back in time to see
+       * whether they were repeated and what was their type (for those that
+       * were already present at the time).
+       *
+       * Unfortunately, for some reason lambdalift creates new symbol *even
+       * for parameters originally in the signature* when doing so! That is
+       * why we use the *names* of the parameters as a link through time,
+       * rather than the symbols.
+       *
+       * This is pretty fragile, but fortunately we have a huge test suite to
+       * back us up should scalac alter its behavior.
+       */
+
       val wereRepeated = exitingPhase(currentRun.typerPhase) {
         for {
           params <- sym.tpe.paramss
           param <- params
-        } yield isScalaRepeatedParamType(param.tpe)
-      }
+        } yield {
+          param.name -> isScalaRepeatedParamType(param.tpe)
+        }
+      }.toMap
 
       val paramTpes = enteringPhase(currentRun.posterasurePhase) {
         for (param <- sym.tpe.params)
-          yield param.tpe
-      }
+          yield param.name -> param.tpe
+      }.toMap
 
       var reversedArgs: List[js.Tree] = Nil
 
-      for (((arg, wasRepeated), tpe) <- (args zip wereRepeated) zip paramTpes) {
+      for ((arg, paramSym) <- args zip sym.tpe.params) {
+        val wasRepeated = wereRepeated.getOrElse(paramSym.name, false)
         if (wasRepeated) {
           reversedArgs =
             genPrimitiveJSRepeatedParam(arg) reverse_::: reversedArgs
         } else {
           val unboxedArg = genExpr(arg)
           val boxedArg = unboxedArg match {
-            case js.UndefinedParam() => unboxedArg
-            case _                   => ensureBoxed(unboxedArg, tpe)
+            case js.UndefinedParam() =>
+              unboxedArg
+            case _ =>
+              val tpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
+              ensureBoxed(unboxedArg, tpe)
           }
           reversedArgs ::= boxedArg
         }
@@ -3838,8 +4193,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         (formalCaptures, body, actualCaptures)
       }
 
-      val (patchedFormalArgs, patchedBody) =
-        patchFunBodyWithBoxes(target, formalArgs, body)
+      val (patchedFormalArgs, patchedBody) = {
+        patchFunBodyWithBoxes(target, formalArgs, body,
+            useParamsBeforeLambdaLift = true)
+      }
+
       val closure = js.Closure(
           allFormalCaptures,
           patchedFormalArgs,
@@ -3850,14 +4208,37 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     private def patchFunBodyWithBoxes(methodSym: Symbol,
-        params: List[js.ParamDef], body: js.Tree)(
+        params: List[js.ParamDef], body: js.Tree,
+        useParamsBeforeLambdaLift: Boolean = false)(
         implicit pos: Position): (List[js.ParamDef], js.Tree) = {
       val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
 
+      // See the comment in genPrimitiveJSArgs for a rationale about this
+      val paramTpes = enteringPhase(currentRun.posterasurePhase) {
+        for (param <- methodType.params)
+          yield param.name -> param.tpe
+      }.toMap
+
+      /* Normally, we should work with the list of parameters as seen right
+       * now. But when generating an anonymous function from a Function node,
+       * the `methodSym` we use is the *target* of the inner call, not the
+       * enclosing method for which we're patching the params and body. This
+       * is a hack which we have to do because there is no such enclosing
+       * method in that case. When we use the target, the list of symbols for
+       * formal parameters that we want to see is that before lambdalift, not
+       * the one we see right now.
+       */
+      val paramSyms = {
+        if (useParamsBeforeLambdaLift)
+          enteringPhase(currentRun.phaseNamed("lambdalift"))(methodSym.tpe.params)
+        else
+          methodSym.tpe.params
+      }
+
       val (patchedParams, paramsLocal) = (for {
-        (param, paramSym) <- params zip methodType.params
+        (param, paramSym) <- params zip paramSyms
       } yield {
-        val paramTpe = enteringPhase(currentRun.posterasurePhase)(paramSym.tpe)
+        val paramTpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
         val paramName = param.name
         val js.Ident(name, origName) = paramName
         val newOrigName = origName.getOrElse(name)
@@ -3869,8 +4250,12 @@ abstract class GenJSCode extends plugins.PluginComponent
         (patchedParam, paramLocal)
       }).unzip
 
-      val patchedBody = js.Block(
-          paramsLocal :+ ensureBoxed(body, methodType.resultType))
+      assert(methodSym.isClassConstructor == isScalaJSDefinedJSClass(methodSym.owner))
+      val patchedResult =
+        if (methodSym.isClassConstructor) body
+        else ensureBoxed(body, methodType.resultType)
+
+      val patchedBody = js.Block(paramsLocal :+ patchedResult)
 
       (patchedParams, patchedBody)
     }
@@ -3954,6 +4339,16 @@ abstract class GenJSCode extends plugins.PluginComponent
    */
   def isRawJSType(tpe: Type): Boolean =
     tpe.typeSymbol.annotations.find(_.tpe =:= RawJSTypeAnnot.tpe).isDefined
+
+  /** Tests whether the given class is a Scala.js-defined JS class. */
+  def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
+    !sym.isTrait && sym.hasAnnotation(ScalaJSDefinedAnnotation)
+
+  /** Tests whether the given member is exposed, i.e., whether it was
+   *  originally a public or protected member of a Scala.js-defined JS class.
+   */
+  private def isExposed(sym: Symbol): Boolean =
+    sym.hasAnnotation(ExposedJSMemberAnnot)
 
   /** Test whether `sym` is the symbol of a raw JS function definition */
   private def isRawJSFunctionDef(sym: Symbol): Boolean =
@@ -4044,9 +4439,13 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   /** Get JS name of Symbol if it was specified with JSName annotation, or
    *  infers a default from the Scala name. */
-  def jsNameOf(sym: Symbol): String =
-    sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)).getOrElse(
-        sym.unexpandedName.decoded.stripSuffix("_="))
+  def jsNameOf(sym: Symbol): String = {
+    sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
+      val base = sym.unexpandedName.decoded.stripSuffix("_=")
+      if (!sym.isMethod) base.stripSuffix(" ")
+      else base
+    }
+  }
 
   def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted

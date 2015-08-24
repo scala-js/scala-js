@@ -47,6 +47,9 @@ object Infos {
       val methodsCalled: Map[String, List[String]],
       val methodsCalledStatically: Map[String, List[String]],
       val staticMethodsCalled: Map[String, List[String]],
+      /** For a Scala class, it is instantiated with a `New`; for a JS class,
+       *  its constructor is accessed with a `JSLoadConstructor`.
+       */
       val instantiatedClasses: List[String],
       val accessedModules: List[String],
       val usedInstanceTests: List[String],
@@ -355,6 +358,9 @@ object Infos {
           builder.addAccessedClassData(tpe)
         case ClassOf(cls) =>
           builder.addAccessedClassData(cls)
+
+        case JSLoadConstructor(cls) =>
+          builder.addInstantiatedClass(cls.className)
 
         case _ =>
       }

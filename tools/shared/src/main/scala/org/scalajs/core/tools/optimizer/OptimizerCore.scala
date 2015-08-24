@@ -522,6 +522,16 @@ private[optimizer] abstract class OptimizerCore(
         JSBracketMethodApply(transformExpr(receiver), transformExpr(method),
             args map transformExprOrSpread)
 
+      case JSSuperBracketSelect(cls, qualifier, item) =>
+        JSSuperBracketSelect(cls, transformExpr(qualifier), transformExpr(item))
+
+      case JSSuperBracketCall(cls, receiver, method, args) =>
+        JSSuperBracketCall(cls, transformExpr(receiver), transformExpr(method),
+            args map transformExprOrSpread)
+
+      case JSSuperConstructorCall(args) =>
+        JSSuperConstructorCall(args map transformExprOrSpread)
+
       case JSDelete(JSDotSelect(obj, prop)) =>
         JSDelete(JSDotSelect(transformExpr(obj), prop))
 
@@ -555,7 +565,7 @@ private[optimizer] abstract class OptimizerCore(
 
       // Trees that need not be transformed
 
-      case _:Skip | _:Debugger | _:LoadModule |
+      case _:Skip | _:Debugger | _:LoadModule | _:JSLoadConstructor |
           _:JSEnvInfo | _:JSLinkingInfo | _:Literal | EmptyTree =>
         tree
 

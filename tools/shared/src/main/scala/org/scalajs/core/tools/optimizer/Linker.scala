@@ -224,18 +224,15 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
           fields += field
 
       // Normal methods
-      case m: MethodDef if m.name.isInstanceOf[Ident] =>
-        if (analyzerInfo.isAnySubclassInstantiated &&
-            analyzerInfo.methodInfos(m.name.name).isReachable) {
-          if (m.body == EmptyTree)
+      case m: MethodDef =>
+        if (analyzerInfo.methodInfos(m.name.name).isReachable) {
+          if (m.name.isInstanceOf[StringLiteral])
+            exportedMembers += linkedMethod(m)
+          else if (m.body == EmptyTree)
             abstractMethods += linkedMethod(m)
           else
             memberMethods += linkedMethod(m)
         }
-
-      case m: MethodDef if m.name.isInstanceOf[StringLiteral] =>
-        if (analyzerInfo.isAnySubclassInstantiated)
-          exportedMembers += linkedMethod(m)
 
       case m: PropertyDef =>
         if (analyzerInfo.isAnySubclassInstantiated)

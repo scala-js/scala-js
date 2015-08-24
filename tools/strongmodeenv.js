@@ -96,6 +96,45 @@ function $newJSObjectWithVarargs(ctor, args) {
   }
 }
 
+function $resolveSuperRef(initialProto, propName) {
+  const getPrototypeOf = $g["Object"]["getPrototypeOf"];
+  const getOwnPropertyDescriptor = $g["Object"]["getOwnPropertyDescriptor"];
+
+  let superProto = getPrototypeOf(initialProto);
+  while (superProto !== null) {
+    const desc = getOwnPropertyDescriptor(superProto, propName);
+    if (desc !== void 0)
+      return desc;
+    superProto = getPrototypeOf(superProto);
+  }
+
+  return void 0;
+};
+
+function $superGet(initialProto, self, propName) {
+  const desc = $resolveSuperRef(initialProto, propName);
+  if (desc !== void 0) {
+    const getter = $jsSelect(desc, "get");
+    if (getter !== void 0)
+      return getter["call"](self);
+    else
+      return $jsSelect(desc, "value");
+  }
+  return void 0;
+};
+
+function $superSet(initialProto, self, propName, value) {
+  const desc = $resolveSuperRef(initialProto, propName);
+  if (desc !== void 0) {
+    const setter = $jsSelect(desc, "set");
+    if (setter !== void 0) {
+      setter["call"](self, value);
+      return void 0;
+    }
+  }
+  throw new $g["TypeError"]("super has no setter '" + propName + "'.");
+};
+
 /** Converts a value to a string for concatenation. */
 function $toString(x) {
   return `${x}`;
