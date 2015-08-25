@@ -232,6 +232,9 @@ object Printers {
           print(fun)
           printArgs(args)
 
+        case Spread(items) =>
+          print("...", items)
+
         case Delete(prop) =>
           print("delete ", prop)
 

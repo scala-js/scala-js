@@ -3398,13 +3398,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             s"Scala.js-defined JS class at $pos")
         genApplyMethod(genReceiver, sym, genScalaArgs)
       } else if (sym.isClassConstructor) {
-        // Implementation restriction
-        if (genJSArgs.exists(_.isInstanceOf[js.JSSpread])) {
-          reporter.error(pos,
-              "Implementation restriction: cannot call the super " +
-              "constructor of a Scala.js-defined JS class with :_*")
-        }
-
         js.JSSuperConstructorCall(genJSArgs)
       } else if (isScalaJSDefinedJSClass(sym.owner) && !isExposed(sym)) {
         // Reroute to the static method

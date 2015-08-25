@@ -147,6 +147,15 @@ object Trees {
    */
   case class Apply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree
 
+  /** `...items`, the "spread" operator of ECMAScript 6.
+   *
+   *  It is only valid in ECMAScript 6, in the `args`/`items` of a [[New]],
+   *  [[Apply]], or [[ArrayConstr]].
+   *
+   *  @param items An iterable whose items will be spread
+   */
+  case class Spread(items: Tree)(implicit val pos: Position) extends Tree
+
   case class Delete(prop: Tree)(implicit val pos: Position) extends Tree {
     require(prop match {
       case _:DotSelect | _:BracketSelect => true

@@ -419,28 +419,30 @@ private[javascript] object JSDesugaring {
           js.Debugger()
 
         case JSSuperConstructorCall(args) =>
-          assert(!containsAnySpread(args),
-              s"Implementation restriction at $pos: cannot call super JS " +
-              "constructor with spread arguments.")
-
-          unnest(args) { (newArgs, env0) =>
+          unnestOrSpread(args) { (newArgs, env0) =>
             implicit val env = env0
 
             val linkedClass = classEmitter.linkedClassByName(enclosingClassName)
 
             val superCtorCall = {
-              val transformedArgs = args.map(transformExpr)
-
               outputMode match {
                 case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
                   val superCtor = genRawJSClassConstructor(
                       getSuperClassOfJSClass(linkedClass))
-                  js.Apply(
-                      js.BracketSelect(superCtor, js.StringLiteral("call")),
-                      js.This() :: transformedArgs)
+
+                  if (containsAnySpread(newArgs)) {
+                    val argArray = spreadToArgArray(newArgs)
+                    js.Apply(
+                        js.BracketSelect(superCtor, js.StringLiteral("apply")),
+                        List(js.This(), transformExpr(argArray)))
+                  } else {
+                    js.Apply(
+                        js.BracketSelect(superCtor, js.StringLiteral("call")),
+                        js.This() :: newArgs.map(transformExpr))
+                  }
 
                 case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
-                  js.Apply(js.Super(), transformedArgs)
+                  js.Apply(js.Super(), newArgs.map(transformExpr))
               }
             }
 
@@ -579,6 +581,25 @@ private[javascript] object JSDesugaring {
               Some(VarRef(makeRecordFieldIdent(recIdent, fieldIdent))(tree.tpe))
           }
         }
+      }
+    }
+
+    /** Same as `unnest`, but allows (and preserves) [[JSSpread]]s at the
+     *  top-level.
+     */
+    def unnestOrSpread(args: List[Tree])(makeStat: (List[Tree], Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      val (argsNoSpread, argsWereSpread) = args.map {
+        case JSSpread(items) => (items, true)
+        case arg             => (arg, false)
+      }.unzip
+
+      unnest(argsNoSpread) { (newArgsNoSpread, env) =>
+        val newArgs = newArgsNoSpread.zip(argsWereSpread).map {
+          case (newItems, true) => JSSpread(newItems)(newItems.pos)
+          case (newArg, false)  => newArg
+        }
+        makeStat(newArgs, env)
       }
     }
 
@@ -1841,6 +1862,11 @@ private[javascript] object JSDesugaring {
 
         case LoadJSModule(cls) =>
           genLoadModule(cls.className)
+
+        case JSSpread(items) =>
+          assert(outputMode == OutputMode.ECMAScript6 ||
+              outputMode == OutputMode.ECMAScript6StrongMode)
+          js.Spread(transformExpr(items))
 
         case JSUnaryOp(op, lhs) =>
           js.UnaryOp(op, transformExpr(lhs))

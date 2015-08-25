@@ -30,4 +30,14 @@
   };
   $g.ScalaJSDefinedTestNativeParentClassWithDeferred =
     ScalaJSDefinedTestNativeParentClassWithDeferred;
+
+  var ScalaJSDefinedTestNativeParentClassWithVarargs = function(x) {
+    $g.Object.call(this);
+    this.x = x;
+    this.args = [];
+    for (var i = 1; i != arguments.length; ++i)
+      this.args.push(arguments[i]);
+  };
+  $g.ScalaJSDefinedTestNativeParentClassWithVarargs =
+    ScalaJSDefinedTestNativeParentClassWithVarargs;
 }).call(this);

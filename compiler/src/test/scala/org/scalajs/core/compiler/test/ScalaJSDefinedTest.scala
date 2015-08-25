@@ -421,16 +421,6 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noSuperConstructorCallWithSpread: Unit = {
-    """
-    class A(args: Int*) extends js.Object
-
-    @ScalaJSDefined
-    class B(x: Int, y: Int) extends A(Seq(x, y): _*)
-    """.fails
-  }
-
-  @Test
   def noUseJsNative: Unit = {
     """
     @ScalaJSDefined
