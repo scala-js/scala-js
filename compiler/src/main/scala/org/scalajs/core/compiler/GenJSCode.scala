@@ -674,6 +674,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         constructorTrees.partition(_.symbol.isPrimaryConstructor)
 
       // Implementation restriction
+      val sym = primaryCtorTree.symbol
+      val hasBadParam = enteringPhase(currentRun.uncurryPhase) {
+        sym.paramss.flatten.exists(p => p.hasDefault || isRepeated(p))
+      }
+      if (hasBadParam) {
+        reporter.error(pos,
+            "Implementation restriction: the constructor of a " +
+            "Scala.js-defined JS classes cannot have default parameters nor " +
+            "repeated parameters.")
+      }
+
+      // Implementation restriction
       for (tree <- secondaryCtorTrees) {
         reporter.error(tree.pos,
             "Implementation restriction: Scala.js-defined JS classes cannot " +
