@@ -458,12 +458,24 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       gen(cd.impl)
 
+      // Generate exported module accessors
+      val exports = {
+        // Generate exported constructors or accessors
+        val exportedAccessors =
+          if (isStaticModule(sym)) genModuleAccessorExports(sym)
+          else Nil
+        if (exportedAccessors.nonEmpty)
+          currentClassInfoBuilder.setIsExported(true)
+        exportedAccessors
+      }
+
       // Generate fields (and add to methods + ctors)
       val generatedMembers = {
         genClassFields(cd) :::
         genJSClassConstructor(sym, constructorTrees.toList) ::
         genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
-        generatedMethods.toList
+        generatedMethods.toList :::
+        exports
       }
 
       // Hashed definitions of the class
@@ -471,9 +483,13 @@ abstract class GenJSCode extends plugins.PluginComponent
         Hashers.hashDefs(generatedMembers)
 
       // The complete class definition
+      val kind =
+        if (isStaticModule(sym)) ClassKind.JSModuleClass
+        else ClassKind.JSClass
+
       val classDefinition = js.ClassDef(
           classIdent,
-          ClassKind.JSClass,
+          kind,
           Some(encodeClassFullNameIdent(sym.superClass)),
           genClassInterfaces(sym),
           None,
@@ -3617,11 +3633,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     /** Gen JS code representing a JS class (subclass of js.Any) */
     private def genPrimitiveJSClass(sym: Symbol)(
         implicit pos: Position): js.Tree = {
-      assert(!sym.isModuleClass && !sym.isInterface,
+      assert(!isStaticModule(sym) && !sym.isInterface,
           s"genPrimitiveJSClass called with non-class $sym")
       val classFullName = encodeClassFullName(sym)
       currentMethodInfoBuilder.addInstantiatedClass(classFullName)
-      js.JSLoadConstructor(jstpe.ClassType(classFullName))
+      js.LoadJSConstructor(jstpe.ClassType(classFullName))
     }
 
     /** Gen JS code representing a JS module (var of the global scope) */
@@ -4286,13 +4302,18 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val isGlobalScope = sym.tpe.typeSymbol isSubClass JSGlobalScopeClass
 
-      if (isGlobalScope) genLoadGlobal()
-      else if (isRawJSType(sym.tpe)) genPrimitiveJSModule(sym)
-      else {
+      if (isGlobalScope) {
+        genLoadGlobal()
+      } else if (isRawJSType(sym.tpe) && !isScalaJSDefinedJSClass(sym)) {
+        genPrimitiveJSModule(sym)
+      } else {
         val moduleClassName = encodeClassFullName(sym)
         if (!foreignIsImplClass(sym))
           currentMethodInfoBuilder.addAccessedModule(moduleClassName)
-        js.LoadModule(jstpe.ClassType(moduleClassName))
+
+        val cls = jstpe.ClassType(moduleClassName)
+        if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
+        else js.LoadModule(cls)
       }
     }
 

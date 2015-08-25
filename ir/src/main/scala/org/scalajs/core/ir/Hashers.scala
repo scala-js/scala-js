@@ -336,8 +336,12 @@ object Hashers {
           mixTag(TagJSSuperConstructorCall)
           mixTrees(args)
 
-        case JSLoadConstructor(cls) =>
-          mixTag(TagJSLoadConstructor)
+        case LoadJSConstructor(cls) =>
+          mixTag(TagLoadJSConstructor)
+          mixType(cls)
+
+        case LoadJSModule(cls) =>
+          mixTag(TagLoadJSModule)
           mixType(cls)
 
         case JSSpread(items) =>

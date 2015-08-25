@@ -159,7 +159,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       case _: Ident =>
         // ok
       case _: StringLiteral =>
-        if (classDef.kind != ClassKind.JSClass)
+        if (!classDef.kind.isJSClass)
           reportError(s"FieldDef '$name' cannot have a string literal name")
     }
 
@@ -171,7 +171,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
-    if (classDef.kind == ClassKind.JSClass && !static) {
+    if (classDef.kind.isJSClass && !static) {
       reportError(s"Non exported instance method $name is illegal in JS class")
       return // things would go too badly otherwise
     }
@@ -246,7 +246,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
     }
 
-    if (classDef.kind == ClassKind.JSClass && name == "constructor") {
+    if (classDef.kind.isJSClass && name == "constructor") {
       checkJSClassConstructor(methodDef, classDef)
     } else {
       if (resultType != AnyType) {
@@ -255,7 +255,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
 
       val thisType =
-        if (classDef.kind == ClassKind.JSClass) AnyType
+        if (classDef.kind.isJSClass) AnyType
         else ClassType(classDef.name.name)
 
       val bodyEnv = Env.fromSignature(thisType, params, resultType)
@@ -316,7 +316,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val thisType =
-      if (classDef.kind == ClassKind.JSClass) AnyType
+      if (classDef.kind.isJSClass) AnyType
       else ClassType(classDef.name.name)
 
     if (getterBody != EmptyTree) {
@@ -370,7 +370,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(moduleDef)
 
-    if (classDef.kind != ClassKind.ModuleClass)
+    if (!classDef.kind.hasModuleAccessor)
       reportError(s"Exported module def can only appear in a module class")
   }
 
@@ -414,9 +414,13 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
         env
 
       case StoreModule(cls, value) =>
-        if (!cls.className.endsWith("$"))
+        val clazz = lookupClass(cls)
+        if (!clazz.kind.hasModuleAccessor)
           reportError("StoreModule of non-module class $cls")
-        typecheckExpect(value, env, ClassType(cls.className))
+        val expectedType =
+          if (clazz.kind == ClassKind.JSModuleClass) AnyType
+          else ClassType(cls.className)
+        typecheckExpect(value, env, expectedType)
         env
 
       case Block(stats) =>
@@ -747,28 +751,34 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           typecheckExprOrSpread(arg, env)
 
       case JSSuperBracketSelect(cls, qualifier, item) =>
-        if (lookupClass(cls).kind != ClassKind.JSClass)
+        if (!lookupClass(cls).kind.isJSClass)
           reportError(s"JS class type expected but $cls found")
         typecheckExpr(qualifier, env)
         typecheckExpr(item, env)
 
       case JSSuperBracketCall(cls, receiver, method, args) =>
-        if (lookupClass(cls).kind != ClassKind.JSClass)
+        if (!lookupClass(cls).kind.isJSClass)
           reportError(s"JS class type expected but $cls found")
         typecheckExpr(receiver, env)
         typecheckExpr(method, env)
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSLoadConstructor(cls) =>
+      case LoadJSConstructor(cls) =>
         val clazz = lookupClass(cls)
         val valid = clazz.kind match {
-          case ClassKind.JSClass   => true
-          case ClassKind.RawJSType => clazz.jsName.isDefined
-          case _                   => false
+          case ClassKind.JSClass       => true
+          case ClassKind.JSModuleClass => true
+          case ClassKind.RawJSType     => clazz.jsName.isDefined
+          case _                       => false
         }
         if (!valid)
           reportError(s"JS class type expected but $cls found")
+
+      case LoadJSModule(cls) =>
+        val clazz = lookupClass(cls)
+        if (clazz.kind != ClassKind.JSModuleClass)
+          reportError(s"JS module class type expected but $cls found")
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
@@ -893,7 +903,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       NullType
     } else {
       val kind = tryLookupClass(encodedName).fold(_.kind, _.kind)
-      if (kind == ClassKind.RawJSType || kind == ClassKind.JSClass) AnyType
+      if (kind == ClassKind.RawJSType || kind.isJSClass) AnyType
       else ClassType(encodedName)
     }
   }
@@ -1010,7 +1020,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           classDef.superClass.map(_.name),
           classDef.ancestors.toSet,
           classDef.jsName,
-          if (classDef.kind == ClassKind.JSClass) Nil
+          if (classDef.kind.isJSClass) Nil
           else classDef.fields.map(CheckedClass.checkedField))
     }
 

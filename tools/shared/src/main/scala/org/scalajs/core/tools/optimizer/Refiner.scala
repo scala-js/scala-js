@@ -68,12 +68,9 @@ final class Refiner(semantics: Semantics, outputMode: OutputMode) {
       info.methodInfos(m.info.encodedName).isReachable
     }
 
-    val kind = {
-      if (classDef.kind == ClassKind.ModuleClass && !info.isModuleAccessed)
-        ClassKind.Class
-      else
-        classDef.kind
-    }
+    val kind =
+      if (info.isModuleAccessed) classDef.kind
+      else classDef.kind.withoutModuleAccessor
 
     classDef.copy(
         kind = kind,

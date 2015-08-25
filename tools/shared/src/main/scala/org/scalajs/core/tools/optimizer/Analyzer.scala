@@ -196,10 +196,10 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
 
     val encodedName = data.encodedName
     val kind = data.kind
-    val isStaticModule = data.kind == ClassKind.ModuleClass
+    val isStaticModule = data.kind.hasModuleAccessor
     val isInterface = data.kind == ClassKind.Interface
     val isScalaClass = data.kind.isClass || data.kind == ClassKind.HijackedClass
-    val isJSClass = data.kind == ClassKind.JSClass
+    val isJSClass = data.kind.isJSClass
     val isAnyRawJSType = isJSClass || data.kind == ClassKind.RawJSType
     val isAnyClass = isScalaClass || isJSClass
     val isExported = data.isExported
@@ -346,7 +346,8 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
         instantiated()
-        callMethod("init___", statically = true)
+        if (isScalaClass)
+          callMethod("init___", statically = true)
       }
     }
 

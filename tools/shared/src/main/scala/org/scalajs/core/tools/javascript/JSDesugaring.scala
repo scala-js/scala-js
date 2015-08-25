@@ -837,9 +837,11 @@ private[javascript] object JSDesugaring {
           allowSideEffects && test(receiver) && test(method) && (args forall test)
         case JSSuperBracketSelect(_, qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
+        case LoadJSModule(_) =>
+          allowSideEffects
 
-        // JSLoadConstructor is pure only for Scala.js-defined JS classes
-        case JSLoadConstructor(cls) =>
+        // LoadJSConstructor is pure only for Scala.js-defined JS classes
+        case LoadJSConstructor(cls) =>
           allowUnpure || {
             val linkedClass = classEmitter.linkedClassByName(cls.className)
             linkedClass.kind == ClassKind.JSClass
@@ -1291,7 +1293,7 @@ private[javascript] object JSDesugaring {
           val superClass = getSuperClassOfJSClass(
               classEmitter.linkedClassByName(cls.className))
           val superCtor =
-            JSLoadConstructor(ClassType(superClass.encodedName))
+            LoadJSConstructor(ClassType(superClass.encodedName))
 
           redo {
             JSBracketMethodApply(
@@ -1411,7 +1413,8 @@ private[javascript] object JSDesugaring {
              */
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
-                  _:Debugger | _:JSDelete | _:StoreModule | _:ClassDef =>
+                  _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
+                  _:StoreModule | _:ClassDef =>
                 transformStat(rhs)
               case _ =>
                 sys.error("Illegal tree in JSDesugar.pushLhsInto():\n" +
@@ -1832,9 +1835,12 @@ private[javascript] object JSDesugaring {
           genCallHelper("superGet", ctor DOT "prototype",
               transformExpr(qualifier), transformExpr(item))
 
-        case JSLoadConstructor(cls) =>
+        case LoadJSConstructor(cls) =>
           val linkedClass = classEmitter.linkedClassByName(cls.className)
           genRawJSClassConstructor(linkedClass)
+
+        case LoadJSModule(cls) =>
+          genLoadModule(cls.className)
 
         case JSUnaryOp(op, lhs) =>
           js.UnaryOp(op, transformExpr(lhs))
@@ -1976,7 +1982,7 @@ private[javascript] object JSDesugaring {
 
     private def getSuperClassOfJSClass(linkedClass: LinkedClass)(
         implicit pos: Position): LinkedClass = {
-      require(linkedClass.kind == ClassKind.JSClass)
+      require(linkedClass.kind.isJSClass)
       assert(linkedClass.superClass.isDefined, linkedClass.encodedName)
       classEmitter.linkedClassByName(linkedClass.superClass.get.name)
     }

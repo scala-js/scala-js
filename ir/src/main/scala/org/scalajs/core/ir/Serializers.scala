@@ -297,8 +297,12 @@ object Serializers {
           writeByte(TagJSSuperConstructorCall)
           writeTrees(args)
 
-        case JSLoadConstructor(cls) =>
-          writeByte(TagJSLoadConstructor)
+        case LoadJSConstructor(cls) =>
+          writeByte(TagLoadJSConstructor)
+          writeClassType(cls)
+
+        case LoadJSModule(cls) =>
+          writeByte(TagLoadJSModule)
           writeClassType(cls)
 
         case JSSpread(items) =>
@@ -655,7 +659,8 @@ object Serializers {
         case TagJSSuperBracketCall   =>
           JSSuperBracketCall(readClassType(), readTree(), readTree(), readTrees())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTrees())
-        case TagJSLoadConstructor    => JSLoadConstructor(readClassType())
+        case TagLoadJSConstructor    => LoadJSConstructor(readClassType())
+        case TagLoadJSModule         => LoadJSModule(readClassType())
         case TagJSSpread             => JSSpread(readTree())
         case TagJSDelete             => JSDelete(readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())

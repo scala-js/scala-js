@@ -75,7 +75,7 @@ final class ScalaJSClassEmitter private (
 
   def genDeclareModule(tree: LinkedClass): js.Tree = {
     implicit val pos = tree.pos
-    if (tree.kind == ClassKind.ModuleClass)
+    if (tree.kind.hasModuleAccessor)
       envFieldDef("n", tree.encodedName, js.Undefined(), mutable = true)
     else
       js.Skip()
@@ -104,10 +104,9 @@ final class ScalaJSClassEmitter private (
       reverseParts ::= genTypeData(tree)
     if (kind.isClass && tree.hasInstances && tree.hasRuntimeTypeInfo)
       reverseParts ::= genSetTypeData(tree)
-    if (kind == ClassKind.ModuleClass)
+    if (kind.hasModuleAccessor)
       reverseParts ::= genModuleAccessor(tree)
-    if (kind.isClass)
-      reverseParts ::= genClassExports(tree)
+    reverseParts ::= genClassExports(tree)
 
     js.Block(reverseParts.reverse)
   }
@@ -155,7 +154,7 @@ final class ScalaJSClassEmitter private (
 
     val parentVar = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
-      if (tree.kind != ClassKind.JSClass)
+      if (!tree.kind.isJSClass)
         encodeClassVar(parentIdent.name)
       else
         genRawJSClassConstructor(linkedClassByName(parentIdent.name))
@@ -205,7 +204,7 @@ final class ScalaJSClassEmitter private (
     implicit val pos = tree.pos
 
     val className = tree.name.name
-    val isJSClass = tree.kind == ClassKind.JSClass
+    val isJSClass = tree.kind.isJSClass
 
     def makeInheritableCtorDef(ctorToMimic: js.Tree) = {
       js.Block(
@@ -261,7 +260,7 @@ final class ScalaJSClassEmitter private (
   private def genES6Constructor(tree: LinkedClass): js.Tree = {
     implicit val pos = tree.pos
 
-    if (tree.kind == ClassKind.JSClass) {
+    if (tree.kind.isJSClass) {
       val js.Function(params, body) = genConstructorFunForJSClass(tree)
       js.MethodDef(static = false, js.Ident("constructor"), params, body)
     } else {
@@ -290,7 +289,7 @@ final class ScalaJSClassEmitter private (
   private def genConstructorFunForJSClass(tree: LinkedClass): js.Function = {
     implicit val pos = tree.pos
 
-    require(tree.kind == ClassKind.JSClass)
+    require(tree.kind.isJSClass)
 
     tree.exportedMembers.map(_.tree) collectFirst {
       case MethodDef(false, StringLiteral("constructor"), params, _, body) =>
@@ -633,7 +632,7 @@ final class ScalaJSClassEmitter private (
     val isAncestorOfHijackedClass =
       AncestorsOfHijackedClasses.contains(className)
     val isRawJSType =
-      kind == ClassKind.RawJSType || kind == ClassKind.JSClass
+      kind == ClassKind.RawJSType || kind.isJSClass
 
     val isRawJSTypeParam =
       if (isRawJSType) js.BooleanLiteral(true)
@@ -736,7 +735,7 @@ final class ScalaJSClassEmitter private (
     val className = classIdent.name
     val tpe = ClassType(className)
 
-    require(tree.kind == ClassKind.ModuleClass,
+    require(tree.kind.hasModuleAccessor,
         s"genModuleAccessor called with non-module class: $className")
 
     val createModuleInstanceField = outputMode match {
@@ -750,8 +749,11 @@ final class ScalaJSClassEmitter private (
       val moduleInstanceVar = envField("n", className)
 
       val assignModule = {
-        moduleInstanceVar :=
-          js.Apply(js.New(encodeClassVar(className), Nil) DOT js.Ident("init___"), Nil)
+        val jsNew = js.New(encodeClassVar(className), Nil)
+        val instantiateModule =
+          if (tree.kind == ClassKind.JSModuleClass) jsNew
+          else js.Apply(jsNew DOT js.Ident("init___"), Nil)
+        moduleInstanceVar := instantiateModule
       }
 
       val initBlock = semantics.moduleInit match {
@@ -800,7 +802,7 @@ final class ScalaJSClassEmitter private (
     val exports = tree.exportedMembers map { member =>
       member.tree match {
         case MethodDef(false, StringLiteral("constructor"), _, _, _)
-            if tree.kind == ClassKind.JSClass =>
+            if tree.kind.isJSClass =>
           js.Skip()(member.tree.pos)
         case m: MethodDef =>
           genMethod(tree.encodedName, m)

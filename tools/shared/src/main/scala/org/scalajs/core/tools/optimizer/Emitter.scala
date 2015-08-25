@@ -201,7 +201,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
       addTree(classTreeCache.setTypeData.getOrElseUpdate(
           classEmitter.genSetTypeData(linkedClass)))
 
-    if (linkedClass.kind == ClassKind.ModuleClass)
+    if (linkedClass.kind.hasModuleAccessor)
       addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(linkedClass)))
 
@@ -239,7 +239,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
     emitFromLibUntil("///INSERT DECLARE MODULES HERE///")
     for (linkedClass <- orderedClasses) {
-      if (linkedClass.kind == ClassKind.ModuleClass)
+      if (linkedClass.kind.hasModuleAccessor)
         builder.addJSTree(classEmitter.genDeclareModule(linkedClass))
     }
 
@@ -285,7 +285,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
         // Module accessor
         val moduleAccessor = {
-          if (linkedClass.kind == ClassKind.ModuleClass) {
+          if (linkedClass.kind.hasModuleAccessor) {
             classTreeCache.moduleAccessor.getOrElseUpdate(
                 classEmitter.genModuleAccessor(linkedClass))
           } else {

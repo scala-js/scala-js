@@ -202,8 +202,8 @@ object Traversers {
       // Trees that need not be traversed
 
       case _:Skip | _:Continue | _:Debugger | _:LoadModule |
-          _:JSLoadConstructor | _:JSEnvInfo | _:JSLinkingInfo | _:Literal |
-          _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
+          _:LoadJSConstructor | _:LoadJSModule | _:JSEnvInfo | _:JSLinkingInfo |
+          _:Literal | _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
           _:ModuleExportDef | EmptyTree =>
 
       case _ =>

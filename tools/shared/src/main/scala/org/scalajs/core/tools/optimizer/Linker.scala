@@ -251,19 +251,15 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     val classExportInfo =
       memberInfoByName.get(Definitions.ExportedConstructorsName)
 
-    val kind = {
-      if (classDef.kind == ClassKind.ModuleClass &&
-          !analyzerInfo.isModuleAccessed)
-        ClassKind.Class
-      else
-        classDef.kind
-    }
+    val kind =
+      if (analyzerInfo.isModuleAccessed) classDef.kind
+      else classDef.kind.withoutModuleAccessor
 
     val ancestors = analyzerInfo.ancestors.map(_.encodedName)
 
     new LinkedClass(
         classDef.name,
-        classDef.kind,
+        kind,
         classDef.superClass,
         classDef.interfaces,
         classDef.jsName,

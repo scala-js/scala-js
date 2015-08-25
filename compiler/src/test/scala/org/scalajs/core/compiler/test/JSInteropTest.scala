@@ -10,7 +10,9 @@ import org.junit.Ignore
 class JSInteropTest extends DirectTest with TestHelpers {
 
   override def preamble: String =
-    """import scala.scalajs.js
+    """
+    import scala.scalajs.js
+    import scala.scalajs.js.annotation._
     """
 
   @Test
@@ -21,16 +23,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     for {
       outer <- objs
       inner <- objs
+      innerSJSDefined <- Seq(false, true)
     } yield {
+      val innerLine =
+        if (innerSJSDefined) s"@ScalaJSDefined $inner A extends js.Object"
+        else s"$inner A"
       s"""
       $outer A extends js.Object {
-        $inner A
+        $innerLine
       }
       """ hasErrors
       s"""
-        |newSource1.scala:4: error: Native JS traits, classes and objects may not have inner traits, classes or objects
-        |        $inner A
-        |         ${" " * inner.length}^
+        |newSource1.scala:6: error: Native JS traits, classes and objects may not have inner traits, classes or objects
+        |        $innerLine
+        |        ${" " * innerLine.indexOf('A')}^
       """
     }
 
@@ -48,16 +54,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Raw JS setters must return Unit
+      |newSource1.scala:6: error: Raw JS setters must return Unit
       |      def foo_=(x: Int): Int = js.native
       |          ^
-      |newSource1.scala:5: error: Raw JS setters must have exactly one argument
+      |newSource1.scala:7: error: Raw JS setters must have exactly one argument
       |      def bar_=(x: Int, y: Int): Unit = js.native
       |          ^
-      |newSource1.scala:6: error: Raw JS setters may not have repeated params
+      |newSource1.scala:8: error: Raw JS setters may not have repeated params
       |      def goo_=(x: Int*): Unit = js.native
       |          ^
-      |newSource1.scala:7: error: Raw JS setters may not have default params
+      |newSource1.scala:9: error: Raw JS setters may not have default params
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
     """
@@ -74,7 +80,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: @JSBracketCall methods must have at least one non-repeated parameter
+      |newSource1.scala:7: error: @JSBracketCall methods must have at least one non-repeated parameter
       |      def foo(): Int = js.native
       |          ^
     """
@@ -89,7 +95,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends js.Object with A
     """ hasErrors
     """
-      |newSource1.scala:4: error: B extends A which does not extend js.Any.
+      |newSource1.scala:6: error: B extends A which does not extend js.Any.
       |    class B extends js.Object with A
       |          ^
     """
@@ -99,7 +105,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends js.Object with Serializable
     """ hasErrors
     """
-      |newSource1.scala:4: error: B extends scala.Serializable which does not extend js.Any.
+      |newSource1.scala:6: error: B extends scala.Serializable which does not extend js.Any.
       |    class B extends js.Object with Serializable
       |          ^
     """
@@ -113,7 +119,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     case class A(x: Int) extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:3: error: Classes and objects extending js.Any may not have a case modifier
+      |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
       |    case class A(x: Int) extends js.Object
       |               ^
     """
@@ -122,7 +128,27 @@ class JSInteropTest extends DirectTest with TestHelpers {
     case object B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:3: error: Classes and objects extending js.Any may not have a case modifier
+      |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
+      |    case object B extends js.Object
+      |                ^
+    """
+
+    """
+    @ScalaJSDefined
+    case class A(x: Int) extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Classes and objects extending js.Any may not have a case modifier
+      |    case class A(x: Int) extends js.Object
+      |               ^
+    """
+
+    """
+    @ScalaJSDefined
+    case object B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Classes and objects extending js.Any may not have a case modifier
       |    case object B extends js.Object
       |                ^
     """
@@ -148,7 +174,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:4: error: Native JS $errTrg may not be defined inside a class or trait
+        |newSource1.scala:6: error: Native JS $errTrg may not be defined inside a class or trait
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
       """
@@ -163,7 +189,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A extends js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:3: error: Only objects may extend js.GlobalScope
+      |newSource1.scala:5: error: Only native objects may extend js.GlobalScope
       |    class A extends js.GlobalScope
       |          ^
     """
@@ -172,9 +198,39 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.GlobalScope
     """ hasErrors
     """
-      |newSource1.scala:3: error: Only objects may extend js.GlobalScope
+      |newSource1.scala:5: error: Only native objects may extend js.GlobalScope
       |    trait A extends js.GlobalScope
       |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object with js.GlobalScope
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
+      |    class A extends js.Object with js.GlobalScope
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    trait A extends js.Object with js.GlobalScope
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A Scala.js-defined JS trait cannot directly extend a native JS trait.
+      |    trait A extends js.Object with js.GlobalScope
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    object A extends js.Object with js.GlobalScope
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A Scala.js-defined JS object cannot directly extend a native JS trait.
+      |    object A extends js.Object with js.GlobalScope
+      |           ^
     """
 
   }
@@ -190,7 +246,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Local native JS classes and objects are not allowed
+      |newSource1.scala:7: error: Local native JS classes and objects are not allowed
       |        class B extends js.Object
       |              ^
     """
@@ -208,7 +264,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Local native JS classes and objects are not allowed
+      |newSource1.scala:7: error: Local native JS classes and objects are not allowed
       |        object B extends js.Object
       |               ^
     """
@@ -225,7 +281,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Methods in a js.Any may not be @native
+      |newSource1.scala:7: error: Methods in a js.Any may not be @native
       |      def value: Int = js.native
       |          ^
     """
@@ -242,10 +298,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasWarns
     """
-      |newSource1.scala:4: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |newSource1.scala:6: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
       |      def value: Int = ???
       |                       ^
-      |newSource1.scala:5: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
+      |newSource1.scala:7: warning: Members of traits, classes and objects extending js.Any may only contain members that call js.native. This will be enforced in 1.0.
       |      val x: Int = ???
       |                   ^
     """
@@ -281,7 +337,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: A secondary constructor of a class extending js.Any may only call the primary constructor
+      |newSource1.scala:7: error: A secondary constructor of a class extending js.Any may only call the primary constructor
       |      def this() = this(7)
       |          ^
     """
@@ -297,7 +353,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: js.native may only be used as stub implementation in facade types
+      |newSource1.scala:6: error: js.native may only be used as stub implementation in facade types
       |      def foo = js.native
       |                   ^
     """
@@ -314,10 +370,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasWarns
     """
-      |newSource1.scala:4: warning: The type of foo got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
+      |newSource1.scala:6: warning: The type of foo got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
       |      def foo = js.native
       |          ^
-      |newSource1.scala:5: warning: The type of bar got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
+      |newSource1.scala:7: warning: The type of bar got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
       |      val bar = js.native
       |          ^
     """
@@ -343,7 +399,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:11: error: The argument to JSName must be a literal string
+      |newSource1.scala:13: error: The argument to JSName must be a literal string
       |      @JSName(A.a)
       |       ^
     """
@@ -363,10 +419,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:9: error: The argument to JSName must be a literal string
+      |newSource1.scala:11: error: The argument to JSName must be a literal string
       |    @JSName(A.a)
       |     ^
-      |newSource1.scala:12: error: The argument to JSName must be a literal string
+      |newSource1.scala:14: error: The argument to JSName must be a literal string
       |    @JSName(A.a)
       |     ^
     """
@@ -384,7 +440,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      def apply: Int = js.native
       |          ^
     """
@@ -406,7 +462,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      val apply: Int = js.native
       |          ^
     """
@@ -428,7 +484,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+      |newSource1.scala:6: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      var apply: Int = js.native
       |          ^
     """

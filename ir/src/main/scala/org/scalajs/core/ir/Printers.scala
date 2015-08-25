@@ -447,8 +447,11 @@ object Printers {
           print("super")
           printArgs(args)
 
-        case JSLoadConstructor(cls) =>
+        case LoadJSConstructor(cls) =>
           print("constructorOf[", cls, "]")
+
+        case LoadJSModule(cls) =>
+          print("mod:", cls)
 
         case JSSpread(items) =>
           print("...", items)
@@ -592,6 +595,7 @@ object Printers {
             case ClassKind.RawJSType     => print("jstype ")
             case ClassKind.HijackedClass => print("hijacked class ")
             case ClassKind.JSClass       => print("js class ")
+            case ClassKind.JSModuleClass => print("js module class ")
           }
           print(name)
           superClass.foreach(print(" extends ", _))

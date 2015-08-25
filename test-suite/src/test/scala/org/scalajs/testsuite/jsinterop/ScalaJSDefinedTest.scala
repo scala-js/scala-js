@@ -51,6 +51,13 @@ object ScalaJSDefinedTest extends JasmineTest {
   @ScalaJSDefined
   class Minimal extends js.Object
 
+  private var staticNonNativeObjectInitCount: Int = _
+
+  @ScalaJSDefined
+  object StaticNonNativeObject extends js.Object {
+    staticNonNativeObjectInitCount += 1
+  }
+
   @ScalaJSDefined
   class SimpleMethod extends js.Object {
     def foo(x: Int): Int = x + 3
@@ -58,7 +65,21 @@ object ScalaJSDefinedTest extends JasmineTest {
   }
 
   @ScalaJSDefined
+  object StaticObjectSimpleMethod extends js.Object {
+    def foo(x: Int): Int = x + 3
+    def bar(s: String, i: Int): String = s + i
+  }
+
+  @ScalaJSDefined
   class SimpleField extends js.Object {
+    val x = 5
+    var y = 10
+
+    def sum(): Int = x + y
+  }
+
+  @ScalaJSDefined
+  object StaticObjectSimpleField extends js.Object {
     val x = 5
     var y = 10
 
@@ -120,6 +141,23 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect((obj: Any).isInstanceOf[js.Error]).toBeFalsy
     }
 
+    it("minimal static object with lazy initialization") {
+      expect(staticNonNativeObjectInitCount).toEqual(0)
+      val obj = StaticNonNativeObject
+      expect(staticNonNativeObjectInitCount).toEqual(1)
+      expect(StaticNonNativeObject).toBe(obj)
+      expect(staticNonNativeObjectInitCount).toEqual(1)
+
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(js.Object.keys(obj)).toEqual(js.Array[String]())
+      expect(obj.toString()).toEqual("[object Object]")
+      expect(obj.getClass().asInstanceOf[js.Any]).toBeNull
+
+      expect((obj: Any).isInstanceOf[Minimal]).toBeFalsy
+      expect((obj: Any).isInstanceOf[js.Object]).toBeTruthy
+      expect((obj: Any).isInstanceOf[js.Error]).toBeFalsy
+    }
+
     it("simple method") {
       val obj = new SimpleMethod
       expect(obj.foo(5)).toEqual(8)
@@ -130,8 +168,40 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(dyn.bar("hello", 42)).toEqual("hello42")
     }
 
+    it("static object with simple method") {
+      val obj = StaticObjectSimpleMethod
+      expect(obj.foo(5)).toEqual(8)
+      expect(obj.bar("hello", 42)).toEqual("hello42")
+
+      val dyn = obj.asInstanceOf[js.Dynamic]
+      expect(dyn.foo(5)).toEqual(8)
+      expect(dyn.bar("hello", 42)).toEqual("hello42")
+    }
+
     it("simple field") {
       val obj = new SimpleField
+      expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
+      expect(obj.x).toEqual(5)
+      expect(obj.y).toEqual(10)
+      expect(obj.sum()).toEqual(15)
+
+      obj.y = 3
+      expect(obj.y).toEqual(3)
+      expect(obj.sum()).toEqual(8)
+
+      val dyn = obj.asInstanceOf[js.Dynamic]
+      expect(dyn.x).toEqual(5)
+      expect(dyn.y).toEqual(3)
+      expect(dyn.sum()).toEqual(8)
+
+      dyn.y = 89
+      expect(dyn.y).toEqual(89)
+      expect(obj.y).toEqual(89)
+      expect(dyn.sum()).toEqual(94)
+    }
+
+    it("static object with simple field") {
+      val obj = StaticObjectSimpleField
       expect(js.Object.keys(obj)).toEqual(js.Array("x", "y"))
       expect(obj.x).toEqual(5)
       expect(obj.y).toEqual(10)
@@ -332,6 +402,67 @@ object ScalaJSDefinedTest extends JasmineTest {
       val dyn = obj.asInstanceOf[js.Dynamic]
       expect(dyn.y).toEqual(10)
       expect(dyn.sum(11)).toEqual(26)
+    }
+
+    it("local object is lazy") {
+      var initCount: Int = 0
+
+      @ScalaJSDefined
+      object Obj extends js.Object {
+        initCount += 1
+      }
+
+      expect(initCount).toEqual(0)
+      val obj = Obj
+      expect(obj).toBeTruthy
+      expect(initCount).toEqual(1)
+      expect(Obj).toBe(obj)
+      expect(initCount).toEqual(1)
+    }
+
+    it("local object with captures") {
+      val x = (() => 5)()
+
+      @ScalaJSDefined
+      object Obj extends js.Object {
+        val y = 10
+        def sum(z: Int): Int = x + y + z
+      }
+
+      expect(Obj.y).toEqual(10)
+      expect(Obj.sum(11)).toEqual(26)
+
+      val dyn = Obj.asInstanceOf[js.Dynamic]
+      expect(dyn.y).toEqual(10)
+      expect(dyn.sum(11)).toEqual(26)
+    }
+
+    it("object in Scala.js-defined JS class") {
+      @ScalaJSDefined
+      class Foo extends js.Object {
+        var innerInitCount: Int = _
+
+        @ScalaJSDefined
+        object Inner extends js.Object {
+          innerInitCount += 1
+        }
+      }
+
+      val foo = new Foo
+      expect(foo.innerInitCount).toEqual(0)
+      val inner1 = foo.Inner
+      expect(foo.innerInitCount).toEqual(1)
+      expect(foo.Inner).toBe(inner1)
+      expect(foo.innerInitCount).toEqual(1)
+
+      val dyn = (new Foo).asInstanceOf[js.Dynamic]
+      expect(dyn.innerInitCount).toEqual(0)
+      val inner2 = dyn.Inner
+      expect(dyn.innerInitCount).toEqual(1)
+      expect(dyn.Inner).toBe(inner2)
+      expect(dyn.innerInitCount).toEqual(1)
+
+      expect(inner2).not.toBe(inner1)
     }
 
     it("methods with explicit name") {
