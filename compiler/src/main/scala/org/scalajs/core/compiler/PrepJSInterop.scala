@@ -338,6 +338,17 @@ abstract class PrepJSInterop extends plugins.PluginComponent
             reporter.error(exp.pos, msg)
           }
         }
+
+        // Expose objects (modules) members of Scala.js-defined JS classes
+        if (sym.isModule && (enclosingOwner is OwnerKind.JSClass)) {
+          def shouldBeExposed: Boolean = {
+            !sym.isSynthetic &&
+            !isPrivateMaybeWithin(sym)
+          }
+          if (shouldBeExposed)
+            sym.addAnnotation(ExposedJSMemberAnnot)
+        }
+
         memDef
 
       case _ => tree

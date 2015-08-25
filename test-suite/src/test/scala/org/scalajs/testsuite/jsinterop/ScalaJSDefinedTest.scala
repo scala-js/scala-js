@@ -295,6 +295,33 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(obj.sum(11)).toEqual(20)
     }
 
+    it("Scala object nested inside a Scala.js-defined JS class") {
+      @ScalaJSDefined
+      class Foo extends js.Object {
+        var innerInitCount: Int = _
+
+        object Inner {
+          innerInitCount += 1
+        }
+      }
+
+      val foo = new Foo
+      expect(foo.innerInitCount).toEqual(0)
+      val inner1 = foo.Inner
+      expect(foo.innerInitCount).toEqual(1)
+      expect((foo.Inner: AnyRef) eq inner1).toBeTruthy
+      expect(foo.innerInitCount).toEqual(1)
+
+      val dyn = (new Foo).asInstanceOf[js.Dynamic]
+      expect(dyn.innerInitCount).toEqual(0)
+      val inner2 = dyn.Inner
+      expect(dyn.innerInitCount).toEqual(1)
+      expect((dyn.Inner: AnyRef) eq inner2).toBeTruthy
+      expect(dyn.innerInitCount).toEqual(1)
+
+      expect((inner2: AnyRef) eq inner1).toBeFalsy
+    }
+
     it("anonymous class with captures") {
       val x = (() => 5)()
       val obj = new js.Object {
