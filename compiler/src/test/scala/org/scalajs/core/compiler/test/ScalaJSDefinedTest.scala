@@ -322,6 +322,19 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     """
     object Enclosing {
       @ScalaJSDefined
+      class A private () extends js.Object
+
+      @ScalaJSDefined
+      class B private[this] () extends js.Object
+
+      @ScalaJSDefined
+      class C private[Enclosing] () extends js.Object
+    }
+    """.succeeds
+
+    """
+    object Enclosing {
+      @ScalaJSDefined
       class A extends js.Object {
         final private[Enclosing] def foo(i: Int): Int = i
       }

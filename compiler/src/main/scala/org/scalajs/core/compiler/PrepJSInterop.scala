@@ -637,7 +637,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         // private[Scope] methods must be final
         if (sym.isMethod && (sym.hasAccessBoundary && !sym.isProtected) &&
-            !sym.isFinal) {
+            !sym.isFinal && !sym.isClassConstructor) {
           reporter.error(tree.pos,
               "Qualified private members in Scala.js-defined JS classes " +
               "must be final")
