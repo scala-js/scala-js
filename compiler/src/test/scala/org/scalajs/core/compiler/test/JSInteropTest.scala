@@ -18,11 +18,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def noInnerClassTraitObject: Unit = {
 
-    val objs = List("class", "trait", "object")
-
     for {
-      outer <- objs
-      inner <- objs
+      outer <- Seq("class", "trait")
+      inner <- Seq("class", "trait", "object")
       innerSJSDefined <- Seq(false, true)
     } yield {
       val innerLine =
@@ -34,9 +32,49 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Native JS traits, classes and objects may not have inner traits, classes or objects
+        |newSource1.scala:6: error: Native JS traits and classes may not have inner traits, classes or objects
         |        $innerLine
         |        ${" " * innerLine.indexOf('A')}^
+      """
+    }
+
+  }
+
+  @Test
+  def noScalaStuffInsideNativeJSObject: Unit = {
+
+    for {
+      inner <- Seq("class", "trait", "object")
+    } yield {
+      s"""
+      object A extends js.Object {
+        $inner A
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:6: error: Native JS objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
+        |        $inner A
+        |        ${" " * inner.length} ^
+      """
+    }
+
+  }
+
+  @Test
+  def noScalaJSDefinedClassObjectInsideNativeJSObject: Unit = {
+
+    for {
+      inner <- Seq("class", "object")
+    } yield {
+      s"""
+      object A extends js.Object {
+        @ScalaJSDefined $inner A extends js.Object
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:6: error: Native JS objects cannot contain inner Scala.js-defined JS classes or objects
+        |        @ScalaJSDefined $inner A extends js.Object
+        |                        ${" " * inner.length} ^
       """
     }
 
@@ -164,17 +202,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     for {
       outer <- outers
       inner <- inners
+      outerSJSDefined <- Seq(false, true)
     } yield {
+      val outerLine =
+        if (outerSJSDefined) s"@ScalaJSDefined $outer A extends js.Object"
+        else s"$outer A"
 
       val errTrg = if (inner == "object") "objects" else "classes"
 
       s"""
-      $outer A {
+      $outerLine {
         $inner Inner extends js.Object
       }
       """ hasErrors
       s"""
-        |newSource1.scala:6: error: Native JS $errTrg may not be defined inside a class or trait
+        |newSource1.scala:6: error: Traits and classes may not have inner native JS traits, classes or objects
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
       """
@@ -377,6 +419,77 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |      val bar = js.native
       |          ^
     """
+
+  }
+
+  @Test
+  def noNativeClassObjectWithoutJSNameInsideScalaObject: Unit = {
+
+    """
+    object A {
+      class B extends js.Object
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Native JS classes inside non-native objects should have an @JSName annotation. This will be enforced in 1.0.
+      |      class B extends js.Object
+      |            ^
+    """
+
+    """
+    object A {
+      object B extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS objects inside non-native objects must have an @JSName annotation
+      |      object B extends js.Object
+      |             ^
+    """
+
+    """
+    object A {
+      @JSName("InnerB")
+      class B extends js.Object
+      @JSName("InnerC")
+      object C extends js.Object
+    }
+    """.hasNoWarns
+
+    """
+    object A {
+      trait B extends js.Object
+    }
+    """.hasNoWarns
+
+    """
+    object A extends js.Object {
+      class B extends js.Object
+      trait C extends js.Object
+      object D extends js.Object
+    }
+    """.hasNoWarns
+
+  }
+
+  @Test
+  def noNativeClassObjectInsideScalaJSDefinedObject: Unit = {
+
+    for {
+      inner <- Seq("class", "object")
+    } {
+      s"""
+      @ScalaJSDefined
+      object A extends js.Object {
+        $inner B extends js.Object
+      }
+      """ hasErrors
+      s"""
+        |newSource1.scala:7: error: Scala.js-defined JS objects may not have inner native JS classes or objects
+        |        $inner B extends js.Object
+        |        ${" " * inner.length} ^
+      """
+    }
 
   }
 

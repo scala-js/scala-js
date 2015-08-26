@@ -46,6 +46,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   import rootMirror._
   import definitions._
   import jsDefinitions._
+  import jsInterop.{jsNameOf, fullJSNameOf}
   import JSTreeExtractors._
 
   import treeInfo.hasSynthCaseSymbol
@@ -513,7 +514,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         else Some(encodeClassFullNameIdent(sym.superClass))
       val jsName =
         if (sym.isInterface || sym.isModuleClass) None
-        else Some(jsNameOf(sym))
+        else Some(fullJSNameOf(sym))
 
       js.ClassDef(classIdent, ClassKind.RawJSType,
           superClass,
@@ -3645,7 +3646,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       assert(sym.isModuleClass,
           s"genPrimitiveJSModule called with non-module $sym")
-      jsNameOf(sym).split('.').foldLeft(genLoadGlobal()) { (memo, chunk) =>
+      fullJSNameOf(sym).split('.').foldLeft(genLoadGlobal()) { (memo, chunk) =>
         js.JSBracketSelect(memo, js.StringLiteral(chunk))
       }
     }
@@ -4457,16 +4458,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   private def isMaybeJavaScriptException(tpe: Type) =
     JavaScriptExceptionClass isSubClass tpe.typeSymbol
-
-  /** Get JS name of Symbol if it was specified with JSName annotation, or
-   *  infers a default from the Scala name. */
-  def jsNameOf(sym: Symbol): String = {
-    sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
-      val base = sym.unexpandedName.decoded.stripSuffix("_=")
-      if (!sym.isMethod) base.stripSuffix(" ")
-      else base
-    }
-  }
 
   def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted

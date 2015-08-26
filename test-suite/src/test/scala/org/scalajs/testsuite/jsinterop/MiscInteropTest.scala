@@ -109,6 +109,7 @@ object MiscInteropTest extends JasmineTest {
     def foo(x: Int): Int = js.native
   }
 
+  @JSName("DirectSubclassOfJSAny")
   class DirectSubclassOfJSAny extends js.Any {
     def bar(x: Int): Int = js.native
   }

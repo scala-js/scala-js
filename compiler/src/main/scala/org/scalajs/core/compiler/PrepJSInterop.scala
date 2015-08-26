@@ -132,38 +132,25 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** Whether to check and prepare exports. */
     private def shouldPrepareExports = !forScaladoc
 
-    /** Whether we can define JS native entities in the current scope. */
-    private def allowJSNative =
-      noEnclosingOwner is OwnerKind.AnyClass
-
-    /** Whether we can define JS native classes in the current scope. */
-    private def allowJSNativeClass =
-      noEnclosingOwner is OwnerKind.AnyClass
-
-    /** Whether we can define any class/trait/method in the current scope.
-     *
-     *  This is overridden by [[allowJSNativeClass]] if the latter is true.
-     */
-    private def allowImplDef = noEnclosingOwner is OwnerKind.JSNative
-
     /** DefDefs in class templates that export methods to JavaScript */
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
     override def transform(tree: Tree): Tree = postTransform { tree match {
-      // Catch special case of ClassDef in ModuleDef
-      case cldef: ClassDef if allowJSNativeClass && isJSAny(cldef) &&
-          !cldef.symbol.hasAnnotation(ScalaJSDefinedAnnotation) =>
-        transformJSAny(cldef)
-
-      // Catch forbidden implDefs
-      case idef: ImplDef if !allowImplDef =>
-        reporter.error(idef.pos, "Native JS traits, classes and objects " +
+      // Nothing is allowed in native JS classes and traits
+      case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeClass =>
+        reporter.error(idef.pos, "Native JS traits and classes " +
             "may not have inner traits, classes or objects")
         super.transform(tree)
 
       // Handle js.Anys
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
+
+      // In native JS objects, only js.Any stuff is allowed
+      case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeMod =>
+        reporter.error(idef.pos, "Native JS objects cannot contain inner " +
+            "Scala traits, classes or objects (i.e., not extending js.Any)")
+        super.transform(tree)
 
       // @ScalaJSDefined is only valid on a js.Any
       case idef: ImplDef if idef.symbol.hasAnnotation(ScalaJSDefinedAnnotation) =>
@@ -377,7 +364,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         sym.isTrait && !sym.hasAnnotation(ScalaJSDefinedAnnotation)
       }
 
-      if (sym.isAnonymousClass && !isJSLambda(sym))
+      val isJSAnonFun = isJSLambda(sym)
+
+      sym.addAnnotation(RawJSTypeAnnot)
+      if (sym.isAnonymousClass && !isJSAnonFun)
         sym.addAnnotation(ScalaJSDefinedAnnotation)
 
       val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
@@ -387,54 +377,85 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         else if (sym.isModuleClass) "object"
         else "class"
 
-      implDef match {
-        // Check that we do not have a case modifier
-        case _ if implDef.mods.hasFlag(Flag.CASE) =>
-          reporter.error(implDef.pos, "Classes and objects extending " +
-              "js.Any may not have a case modifier")
+      // Check that we do not have a case modifier
+      if (implDef.mods.hasFlag(Flag.CASE)) {
+        reporter.error(implDef.pos, "Classes and objects extending " +
+            "js.Any may not have a case modifier")
+      }
 
-        // Check that we do not extends a trait that does not extends js.Any
-        case _ if badParent.isDefined && !isJSLambda(sym) =>
-          val badName = badParent.get.typeSymbol.fullName
-          reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
-              "which does not extend js.Any.")
+      // Check that we do not extend a trait that does not extends js.Any
+      if (!isJSAnonFun && badParent.isDefined) {
+        val badName = badParent.get.typeSymbol.fullName
+        reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
+            "which does not extend js.Any.")
+      }
 
-        // Check that a non-native JS class does not inherit directly from AnyRef
-        case _ if !isJSNative && !sym.isTrait &&
-            sym.info.parents.exists(_ =:= AnyRefClass.tpe) =>
+      // Checks for Scala.js-defined JS stuff
+      if (!isJSNative) {
+        // Unless it is a trait, it cannot be in a native JS object
+        if (!sym.isTrait && (enclosingOwner is OwnerKind.JSNativeMod)) {
+          reporter.error(implDef.pos,
+              "Native JS objects cannot contain inner Scala.js-defined JS " +
+              "classes or objects")
+        }
+
+        // Unless it is a trait, it cannot inherit directly from AnyRef
+        if (!sym.isTrait && sym.info.parents.exists(_ =:= AnyRefClass.tpe)) {
           reporter.error(implDef.pos,
               s"A Scala.js-defined JS $strKind cannot directly extend AnyRef. " +
               "It must extend a JS class (native or not).")
+        }
 
         // Check that we do not inherit directly from a native JS trait
-        case _ if !isJSNative && sym.info.parents.exists(isNativeJSTraitType) =>
+        if (sym.info.parents.exists(isNativeJSTraitType)) {
           reporter.error(implDef.pos,
               s"A Scala.js-defined JS $strKind cannot directly extend a "+
               "native JS trait.")
+        }
+      }
 
+      // Checks for native JS stuff, excluding JS anon functions
+      if (isJSNative && !isJSAnonFun) {
         // Check if we may have a JS native here
-        case cldef: ClassDef
-            if isJSNative && !allowJSNative && !allowJSNativeClass && !isJSLambda(sym) =>
-          reporter.error(implDef.pos, "Native JS classes may not be " +
-              "defined inside a class or trait")
-
-        case _: ModuleDef if isJSNative && !allowJSNative =>
-          reporter.error(implDef.pos, "Native JS objects may not be " +
-              "defined inside a class or trait")
-
-        case _ if isJSNative && sym.isLocalToBlock && !isJSLambda(sym) =>
-          reporter.error(implDef.pos, "Local native JS classes and objects " +
-              "are not allowed")
-
-        // Check that only native objects extend js.GlobalScope
-        case _ if isJSGlobalScope(implDef) &&
-            implDef.symbol != JSGlobalScopeClass &&
-            (!sym.isModuleClass || !isJSNative) =>
+        if (sym.isLocalToBlock) {
           reporter.error(implDef.pos,
-              "Only native objects may extend js.GlobalScope")
+              "Local native JS classes and objects are not allowed")
+        } else if (anyEnclosingOwner is OwnerKind.AnyClass) {
+          reporter.error(implDef.pos, "Traits and classes " +
+              "may not have inner native JS traits, classes or objects")
+        } else if (enclosingOwner is OwnerKind.JSMod) {
+          reporter.error(implDef.pos, "Scala.js-defined JS objects " +
+              "may not have inner native JS classes or objects")
+        } else if (!sym.isTrait && (enclosingOwner is OwnerKind.JSNativeMod)) {
+          /* Store the fully qualified JS name in an explicit @JSFullName
+           * annotation, before `flatten` destroys the name and (in 2.10) the
+           * original owner chain.
+           */
+          val ownerFullJSName = jsInterop.fullJSNameOf(sym.owner)
+          val jsName = jsInterop.jsNameOf(sym)
+          val fullJSName = ownerFullJSName + "." + jsName
+          sym.addAnnotation(JSFullNameAnnotation,
+              typer.typed(Literal(Constant(fullJSName))))
+        } else if (!sym.isTrait && !sym.hasAnnotation(JSNameAnnotation)) {
+          if (enclosingOwner is OwnerKind.ScalaMod) {
+            if (sym.isModuleClass) {
+              reporter.error(implDef.pos, "Native JS objects inside " +
+                  "non-native objects must have an @JSName annotation")
+            } else {
+              // This should be an error, but we erroneously allowed that before
+              reporter.warning(implDef.pos, "Native JS classes inside " +
+                  "non-native objects should have an @JSName annotation. " +
+                  "This will be enforced in 1.0.")
+            }
+          }
+        }
+      }
 
-        case _ =>
-          sym.setAnnotations(rawJSAnnot :: sym.annotations)
+      // Check that only native objects extend js.GlobalScope
+      if (isJSGlobalScope(implDef) && implDef.symbol != JSGlobalScopeClass &&
+          (!sym.isModuleClass || !isJSNative)) {
+        reporter.error(implDef.pos,
+            "Only native objects may extend js.GlobalScope")
       }
 
       if (shouldPrepareExports) {
@@ -825,9 +846,6 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       Apply(Select(This(thisSym), jsnme.Value), params)
     }
   }
-
-  private def rawJSAnnot =
-    Annotation(RawJSTypeAnnot.tpe, List.empty, ListMap.empty)
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
 

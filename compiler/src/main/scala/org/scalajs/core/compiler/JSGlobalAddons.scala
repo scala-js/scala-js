@@ -125,6 +125,31 @@ trait JSGlobalAddons extends JSDefinitions
     def isJSBracketCall(sym: Symbol): Boolean =
       sym.hasAnnotation(JSBracketCallAnnotation)
 
+    /** Gets the unqualified JS name of a symbol.
+     *
+     *  If it is not explicitly specified with an `@JSName` annotation, the
+     *  JS name is inferred from the Scala name.
+     */
+    def jsNameOf(sym: Symbol): String = {
+      sym.getAnnotation(JSNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
+        val base = sym.unexpandedName.decoded.stripSuffix("_=")
+        if (!sym.isMethod) base.stripSuffix(" ")
+        else base
+      }
+    }
+
+    /** Gets the fully qualified JS name of a static class of module Symbol.
+     *
+     *  This is the JS name of the symbol qualified by the fully qualified JS
+     *  name of its original owner if the latter is a native JS object.
+     */
+    def fullJSNameOf(sym: Symbol): String = {
+      assert(sym.isClass, s"fullJSNameOf called for non-class symbol $sym")
+      sym.getAnnotation(JSFullNameAnnotation).flatMap(_.stringArg(0)) getOrElse {
+        jsNameOf(sym)
+      }
+    }
+
   }
 
 }
