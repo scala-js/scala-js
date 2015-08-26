@@ -95,7 +95,8 @@ private[ir] object Tags {
   final val TagJSSuperBracketSelect = TagStringLitFieldDef + 1
   final val TagJSSuperBracketCall = TagJSSuperBracketSelect + 1
   final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
-  final val TagJSLoadConstructor = TagJSSuperConstructorCall + 1
+  final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
+  final val TagLoadJSModule = TagLoadJSConstructor + 1
 
   // Tags for Types
 

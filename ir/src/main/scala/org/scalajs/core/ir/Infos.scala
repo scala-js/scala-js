@@ -359,8 +359,11 @@ object Infos {
         case ClassOf(cls) =>
           builder.addAccessedClassData(cls)
 
-        case JSLoadConstructor(cls) =>
+        case LoadJSConstructor(cls) =>
           builder.addInstantiatedClass(cls.className)
+
+        case LoadJSModule(ClassType(cls)) =>
+          builder.addAccessedModule(cls)
 
         case _ =>
       }

@@ -572,19 +572,25 @@ object Trees {
    *  The instantiation `new Foo(1)` would be represented as
    *
    *  {{{
-   *  JSNew(JSLoadConstructor(ClassType("Foo")), List(IntLiteral(1)))
+   *  JSNew(LoadJSConstructor(ClassType("Foo")), List(IntLiteral(1)))
    *  }}}
    *
    *  This node is also useful to encode `o.isInstanceOf[Foo]`:
    *
    *  {{{
-   *  JSBinaryOp(instanceof, o, JSLoadConstructor(ClassType("Foo")))
+   *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassType("Foo")))
    *  }}}
    *
    *  If `Foo` is Scala.js-defined, the presence of this node makes it
    *  instantiable, and therefore reachable.
    */
-  case class JSLoadConstructor(cls: ClassType)(
+  case class LoadJSConstructor(cls: ClassType)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
+  /** Like [[LoadModule]] but for a JS module class. */
+  case class LoadJSModule(cls: ClassType)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

@@ -521,8 +521,28 @@ object ExportsTest extends JasmineTest {
       expect(obj.witness).toEqual("witness")
     }
 
+    it("should offer exports for Scala.js-defined JS objects with implicit name") {
+      val accessor = jsPackage.SJSDefinedExportedObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(obj.witness).toEqual("witness")
+    }
+
     it("should offer exports for objects with explicit name") {
       val accessor = js.Dynamic.global.TheExportedObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(js.typeOf(obj)).toEqual("object")
+      expect(obj.witness).toEqual("witness")
+    }
+
+    it("should offer exports for Scala.js-defined JS objects with explicit name") {
+      val accessor = js.Dynamic.global.TheSJSDefinedExportedObject
       expect(accessor).toBeDefined
       expect(js.typeOf(accessor)).toEqual("function")
       val obj = accessor()
@@ -1080,6 +1100,13 @@ object ExportNameHolder {
 @JSExport(ExportNameHolder.objectName)
 object ExportedObject {
   @JSExport
+  def witness: String = "witness"
+}
+
+@JSExport
+@JSExport("TheSJSDefinedExportedObject")
+@ScalaJSDefined
+object SJSDefinedExportedObject extends js.Object {
   def witness: String = "witness"
 }
 

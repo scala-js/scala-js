@@ -185,8 +185,9 @@ object Transformers {
         // Trees that need not be transformed
 
         case _:Skip | _:Continue | _:Debugger | _:LoadModule |
-            _:JSLoadConstructor | _:JSEnvInfo | _:JSLinkingInfo | _:Literal |
-            _:UndefinedParam | _:VarRef | _:This | EmptyTree =>
+            _:LoadJSConstructor | _:LoadJSModule | _:JSEnvInfo |
+            _:JSLinkingInfo | _:Literal | _:UndefinedParam | _:VarRef | _:This |
+            EmptyTree =>
           tree
 
         case _ =>
