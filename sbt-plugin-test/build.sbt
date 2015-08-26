@@ -23,7 +23,10 @@ lazy val root = project.in(file(".")).
 lazy val noDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).
   settings(
-    name := "Scala.js sbt test w/o DOM"
+    name := "Scala.js sbt test w/o DOM",
+    scalaJSOutputWrapper := (
+        "// Scala.js - noDOM sbt test\n//\n// Compiled with Scala.js\n",
+        "// End of Scala.js generated script")
   )
 
 lazy val withDOM = project.settings(baseSettings: _*).
@@ -32,8 +35,10 @@ lazy val withDOM = project.settings(baseSettings: _*).
     name := "Scala.js sbt test w/ DOM",
     jsDependencies ++= Seq(
         RuntimeDOM,
-        "org.webjars" % "jquery" % "1.10.2" / "jquery.js"
-    )
+        "org.webjars" % "jquery" % "1.10.2" / "jquery.js"),
+    scalaJSOutputWrapper := (
+        "// Scala.js - withDOM sbt test\n//\n// Compiled with Scala.js\n",
+        "// End of Scala.js generated script")
   )
 
 lazy val jetty9 = project.settings(baseSettings: _*).

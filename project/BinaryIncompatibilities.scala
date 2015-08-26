@@ -28,6 +28,8 @@ object BinaryIncompatibilities {
           "org.scalajs.core.tools.optimizer.Analyzer#ClassInfo.isClass"),
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.optimizer.Analyzer#ClassInfo.isHijackedClass"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.core.tools.optimizer.ScalaJSClosureOptimizer.org$scalajs$core$tools$optimizer$ScalaJSClosureOptimizer$$writeResult"),
 
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.core.tools.javascript.JSDesugaring#JSDesugar.org$scalajs$core$tools$javascript$JSDesugaring$JSDesugar$$implicitOutputMode"),

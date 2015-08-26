@@ -154,6 +154,9 @@ object ScalaJSPlugin extends AutoPlugin {
     val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
         "Whether package and optimize stages should emit source maps at all", BPlusSetting)
 
+    val scalaJSOutputWrapper = TaskKey[(String, String)]("scalaJSOutputWrapper",
+      "Custom wrapper for the generated .js files. Formatted as tuple (header, footer).", BPlusTask)
+
     val jsDependencies = SettingKey[Seq[AbstractJSDep]]("jsDependencies",
         "JavaScript libraries this project depends upon. Also used to depend on the DOM.", APlusSetting)
 

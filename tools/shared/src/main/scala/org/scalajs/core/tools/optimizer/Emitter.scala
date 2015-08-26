@@ -47,6 +47,9 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
     emitPostlude(builder, logger)
   }
 
+  def emitCustomHeader(customHeader: String, builder: JSFileBuilder): Unit =
+    emitLines(customHeader, builder)
+
   def emitPrelude(builder: JSFileBuilder, logger: Logger): Unit = {
     outputMode match {
       case OutputMode.ECMAScript51Global =>
@@ -107,6 +110,9 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
         builder.addLine("  function(f) { 'use strict'; return function(...args) { return f['apply'](void 0, args); } });")
     }
   }
+
+  def emitCustomFooter(customFooter: String, builder: JSFileBuilder): Unit =
+    emitLines(customFooter, builder)
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
     val lhsAC = lhs.ancestors.size
@@ -333,6 +339,20 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
   private def getClassCache(ancestors: List[String]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)
+
+  private def emitLines(str: String, builder: JSFileBuilder): Unit = {
+    @tailrec def emitNextLine(index: Int): Unit = {
+      val endOfLine = str.indexOf('\n', index)
+      if (endOfLine != -1) {
+        builder.addLine(str.substring(index, endOfLine))
+        emitNextLine(endOfLine + 1)
+      } else {
+        builder.addLine(str.substring(index, str.length))
+      }
+    }
+    if (str != "")
+      emitNextLine(0)
+  }
 
   // Caching
 
