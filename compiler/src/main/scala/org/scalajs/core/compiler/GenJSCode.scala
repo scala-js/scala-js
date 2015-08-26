@@ -674,6 +674,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         constructorTrees.partition(_.symbol.isPrimaryConstructor)
 
       // Implementation restriction
+      val sym = primaryCtorTree.symbol
+      val hasBadParam = enteringPhase(currentRun.uncurryPhase) {
+        sym.paramss.flatten.exists(p => p.hasDefault || isRepeated(p))
+      }
+      if (hasBadParam) {
+        reporter.error(pos,
+            "Implementation restriction: the constructor of a " +
+            "Scala.js-defined JS classes cannot have default parameters nor " +
+            "repeated parameters.")
+      }
+
+      // Implementation restriction
       for (tree <- secondaryCtorTrees) {
         reporter.error(tree.pos,
             "Implementation restriction: Scala.js-defined JS classes cannot " +
@@ -3386,13 +3398,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             s"Scala.js-defined JS class at $pos")
         genApplyMethod(genReceiver, sym, genScalaArgs)
       } else if (sym.isClassConstructor) {
-        // Implementation restriction
-        if (genJSArgs.exists(_.isInstanceOf[js.JSSpread])) {
-          reporter.error(pos,
-              "Implementation restriction: cannot call the super " +
-              "constructor of a Scala.js-defined JS class with :_*")
-        }
-
         js.JSSuperConstructorCall(genJSArgs)
       } else if (isScalaJSDefinedJSClass(sym.owner) && !isExposed(sym)) {
         // Reroute to the static method

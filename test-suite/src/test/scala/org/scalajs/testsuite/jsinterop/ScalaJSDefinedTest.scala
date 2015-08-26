@@ -43,6 +43,14 @@ object ScalaJSDefinedTest extends JasmineTest {
     def bar(y: Int): Int
   }
 
+  // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
+  @JSName("ScalaJSDefinedTestNativeParentClassWithVarargs")
+  class NativeParentClassWithVarargs(
+      _x: Int, _args: Int*) extends js.Object {
+    val x: Int = js.native
+    val args: js.Array[Int] = js.native
+  }
+
   @ScalaJSDefined
   trait SimpleTrait extends js.Any {
     def foo(x: Int): Int
@@ -709,6 +717,23 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(dyn.dependent(4, 8)).toEqual(-4)
       expect(dyn.dependent(8)).toEqual(-1)
     }
+
+    /* TODO This is disabled because the ECMAScript 6 output cannot be parsed
+     * by io.js at the moment.
+    it("call super constructor with : _*") {
+      @ScalaJSDefined
+      class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
+          extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
+
+      val foo = new CallSuperCtorWithSpread(4, 8, 23)
+      expect(foo.x).toEqual(4)
+      expect(foo.args).toEqual(js.Array(8, 23))
+
+      val dyn = foo.asInstanceOf[js.Dynamic]
+      expect(dyn.x).toEqual(4)
+      expect(dyn.args).toEqual(js.Array(8, 23))
+    }
+    */
 
     it("override native method") {
       @ScalaJSDefined
