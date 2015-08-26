@@ -10,6 +10,18 @@ object TestDetector {
 
   private final val basePackage = "org.scalajs.testsuite"
 
+  /** Exported Scala.js-defined JS classes cannot be distinguished from
+   *  module accessors, so we explicitly blacklist them.
+   */
+  private val isBlacklisted = Set(
+      "SJSDefinedExportedClass",
+      "SJSDefinedAutoExportedTraitClass",
+      "SJSDefinedAutoExportClass",
+      "SJSDefinedAutoExportedClassClass",
+      "SJSDefinedAutoExportIgnoreClass",
+      "SJSDefinedAutoExportedIgnoreClassClass"
+  ).map(basePackage + ".jsinterop." + _)
+
   def detectTestNames(): List[String] = detectTestsInternal().map(_._2).toList
 
   @JSExport
@@ -26,7 +38,9 @@ object TestDetector {
     }
 
     def rec(item: js.Dynamic, fullName: String): List[(js.Dynamic, String)] = {
-      if (js.typeOf(item) == "object") {
+      if (isBlacklisted(fullName)) {
+        Nil
+      } else if (js.typeOf(item) == "object") {
         js.Object.properties(item).toList flatMap { prop =>
           rec(item.selectDynamic(prop), s"$fullName.$prop")
         }

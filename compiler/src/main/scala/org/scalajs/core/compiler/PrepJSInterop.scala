@@ -491,7 +491,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       }
 
       if (shouldPrepareExports) {
-        if (isJSNative) {
+        if (sym.isTrait) {
+          // Check that interface/trait is not exported
+          for {
+            exp <- exportsOf(sym)
+            if !exp.ignoreInvalid
+          } {
+            reporter.error(exp.pos, "You may not export a trait")
+          }
+        } else if (isJSNative) {
           // Check that a JS native type is not exported
           for {
             exp <- exportsOf(sym)
@@ -503,6 +511,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         } else {
           if (sym.isModuleClass)
             registerModuleExports(sym)
+          else if (!sym.isTrait)
+            registerClassExports(sym)
         }
       }
 
@@ -525,27 +535,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     private def transformValOrDefDefInRawJSType(tree: ValOrDefDef) = {
       val sym = tree.symbol
 
-      // Exports are only valid on constructors of Scala.js-defined classes
       if (shouldPrepareExports) {
-        if (sym.isClassConstructor && (enclosingOwner is OwnerKind.JSClass)) {
-          // Implementation restriction
-          for (exp <- exportsOf(sym)) {
-            // Also report ignore-invalids, since they will become valid later!
-            reporter.error(exp.pos,
-                "Implementation restriction: exporting a Scala.js-defined " +
-                "JS class is not supported")
-          }
-        } else {
-          // Anything else is illegal
-          lazy val memType = if (sym.isConstructor) "constructor" else "method"
-
-          for {
-            exp <- exportsOf(sym)
-            if !exp.ignoreInvalid
-          } {
-            reporter.error(exp.pos,
-                s"You may not export a $memType of a subclass of js.Any")
-          }
+        // Exports are never valid on members of JS types
+        lazy val memType = if (sym.isConstructor) "constructor" else "method"
+        for {
+          exp <- exportsOf(sym)
+          if !exp.ignoreInvalid
+        } {
+          reporter.error(exp.pos,
+              s"You may not export a $memType of a subclass of js.Any")
         }
 
         /* Add the @ExposedJSMember annotation to exposed symbols in
@@ -767,7 +765,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   /** Tests whether the symbol has `private` in any form, either `private`,
    *  `private[this]` or `private[Enclosing]`.
    */
-  private def isPrivateMaybeWithin(sym: Symbol): Boolean =
+  def isPrivateMaybeWithin(sym: Symbol): Boolean =
     sym.isPrivate || (sym.hasAccessBoundary && !sym.isProtected)
 
   /** Checks that argument to @JSName on [[sym]] is a literal.

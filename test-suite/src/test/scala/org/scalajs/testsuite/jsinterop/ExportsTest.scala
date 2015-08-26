@@ -589,6 +589,15 @@ object ExportsTest extends JasmineTest {
       expect(obj.x).toEqual(5)
     }
 
+    it("should offer exports for Scala.js-defined JS classes with implicit name") {
+      val constr = jsPackage.SJSDefinedExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect((obj: Any).isInstanceOf[SJSDefinedExportedClass]).toBeTruthy
+      expect(obj.x).toEqual(5)
+    }
+
     it("should offer exports for classes with explicit name") {
       val constr = js.Dynamic.global.TheExportedClass
       expect(constr).toBeDefined
@@ -597,11 +606,29 @@ object ExportsTest extends JasmineTest {
       expect(obj.x).toEqual(5)
     }
 
+    it("should offer exports for Scala.js-defined JS classes with explicit name") {
+      val constr = js.Dynamic.global.TheSJSDefinedExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect((obj: Any).isInstanceOf[SJSDefinedExportedClass]).toBeTruthy
+      expect(obj.x).toEqual(5)
+    }
+
     it("should offer exports for classes with qualified name") {
       val constr = js.Dynamic.global.qualified.testclass.ExportedClass
       expect(constr).toBeDefined
       expect(js.typeOf(constr)).toEqual("function")
       val obj = js.Dynamic.newInstance(constr)(5)
+      expect(obj.x).toEqual(5)
+    }
+
+    it("should offer exports for classes with qualified name") {
+      val constr = js.Dynamic.global.qualified.testclass.SJSDefinedExportedClass
+      expect(constr).toBeDefined
+      expect(js.typeOf(constr)).toEqual("function")
+      val obj = js.Dynamic.newInstance(constr)(5)
+      expect((obj: Any).isInstanceOf[SJSDefinedExportedClass]).toBeTruthy
       expect(obj.x).toEqual(5)
     }
 
@@ -963,6 +990,26 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(AutoExportedClassObject.asInstanceOf[js.Any])
     }
 
+    it("should offer auto exports for Scala.js-defined JS objects extending a trait") {
+      val accessor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(SJSDefinedAutoExportedTraitObject)
+    }
+
+    it("should offer auto exports for Scala.js-defined JS objects extending a class") {
+      val accessor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(SJSDefinedAutoExportedClassObject)
+    }
+
     it("should offer auto exports for objects extending a trait with ignoreInvalidDescendants") {
       val accessor =
         js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitObject
@@ -983,20 +1030,37 @@ object ExportsTest extends JasmineTest {
       expect(obj).toBe(AutoExportIgnoreClassObject.asInstanceOf[js.Any])
     }
 
+    it("should offer auto exports for Scala.js-defined JS objects extending " +
+        "a class with ignoreInvalidDescendants") {
+      val accessor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassObject
+      expect(accessor).toBeDefined
+      expect(js.typeOf(accessor)).toEqual("function")
+      val obj = accessor()
+      expect(obj).toBeDefined
+      expect(obj).toBe(SJSDefinedAutoExportedIgnoreClassObject)
+    }
+
     it("should ignore invalid descendants") {
       // This is just to check that everything here compiles
       object A extends AutoExportIgnoreTrait { var x = 1 }
       object B extends AutoExportIgnoreClass { var x = 2 }
 
+      @ScalaJSDefined
+      object C extends SJSDefinedAutoExportIgnoreClass { var x = 3 }
+
       // Check that the objects are usable
       expect(A.x).toEqual(1)
       expect(B.x).toEqual(2)
+      expect(C.x).toEqual(3)
 
       A.x = 3
       B.x = 4
+      C.x = 2
 
       expect(A.x).toEqual(3)
       expect(B.x).toEqual(4)
+      expect(C.x).toEqual(2)
     }
 
   }
@@ -1033,6 +1097,30 @@ object ExportsTest extends JasmineTest {
       expect(obj2.x).toBe(100)
     }
 
+    it("should offer auto exports for Scala.js-defined JS classes extending a trait") {
+      val ctor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedTraitClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj = js.Dynamic.newInstance(ctor)(100)
+      expect((obj: Any).isInstanceOf[SJSDefinedAutoExportedTraitClass]).toBeTruthy
+      expect(obj).toBeDefined
+      expect(obj.x).toBe(100)
+    }
+
+    it("should offer auto exports for Scala.js-defined JS classes extending a class") {
+      val ctor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedClassClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj = js.Dynamic.newInstance(ctor)(100)
+      expect((obj: Any).isInstanceOf[SJSDefinedAutoExportedClassClass]).toBeTruthy
+      expect(obj).toBeDefined
+      expect(obj.x).toBe(100)
+    }
+
     it("should offer auto exports for classes extending a trait with ignoreInvalidDescendants") {
       val ctor =
         js.Dynamic.global.org.scalajs.testsuite.jsinterop.AutoExportIgnoreTraitClass
@@ -1063,25 +1151,49 @@ object ExportsTest extends JasmineTest {
       expect(obj2.x).toBe(100)
     }
 
+    it("should offer auto exports for Scala.js-defined JS classes extending " +
+        "a class with ignoreInvalidDescendants") {
+      val ctor =
+        js.Dynamic.global.org.scalajs.testsuite.jsinterop.SJSDefinedAutoExportedIgnoreClassClass
+      expect(ctor).toBeDefined
+      expect(js.typeOf(ctor)).toEqual("function")
+
+      val obj = js.Dynamic.newInstance(ctor)(100)
+      expect((obj: Any).isInstanceOf[SJSDefinedAutoExportedIgnoreClassClass]).toBeTruthy
+      expect(obj).toBeDefined
+      expect(obj.x).toBe(100)
+    }
+
     it("should ignore invalid descendants") {
       trait HasBar { def bar: Int }
+
+      @ScalaJSDefined
+      trait SJSDefinedHasBar extends js.Any { def bar: Int }
 
       // This is just to check that everything here compiles
       class A extends AutoExportIgnoreTrait { def foo: Int = 1 }
       class B extends AutoExportIgnoreClass { def foo: Int = 2 }
 
+      @ScalaJSDefined
+      class C extends SJSDefinedAutoExportIgnoreClass { def foo: Int = 3 }
+
       val a = new A { override def foo: Int = 3 }
       val b = new B { override def foo: Int = 4 }
-      val c = new AutoExportIgnoreClass with HasBar { def bar: Int = 1 }
-      val d = new AutoExportIgnoreTrait with HasBar { def bar: Int = 1 }
+      val c = new C { override def foo: Int = 5 }
+      val d = new AutoExportIgnoreClass with HasBar { def bar: Int = 1 }
+      val e = new AutoExportIgnoreTrait with HasBar { def bar: Int = 1 }
+      val f = new SJSDefinedAutoExportIgnoreClass with SJSDefinedHasBar { def bar: Int = 1 }
 
       // Check the classes are usable
       expect((new A).foo).toEqual(1)
       expect((new B).foo).toEqual(2)
+      expect((new C).foo).toEqual(3)
       expect(a.foo).toEqual(3)
       expect(b.foo).toEqual(4)
-      expect(c.bar).toEqual(1)
+      expect(c.foo).toEqual(5)
       expect(d.bar).toEqual(1)
+      expect(e.bar).toEqual(1)
+      expect(f.bar).toEqual(1)
     }
 
   }
@@ -1124,6 +1236,12 @@ class ExportedClass(_x: Int) {
   @JSExport
   val x = _x
 }
+
+@JSExport
+@JSExport("TheSJSDefinedExportedClass")
+@JSExport("qualified.testclass.SJSDefinedExportedClass")
+@ScalaJSDefined
+class SJSDefinedExportedClass(val x: Int) extends js.Object
 
 @JSExport
 protected class ProtectedExportedClass(_x: Int) {
@@ -1176,6 +1294,26 @@ class AutoExportedClassClass(_x: Int) extends AutoExportTrait {
   def x: Int = _x
 }
 
+@JSExportDescendentClasses
+@JSExportDescendentObjects
+@ScalaJSDefined
+trait SJSDefinedAutoExportTrait extends js.Object
+
+@ScalaJSDefined
+object SJSDefinedAutoExportedTraitObject extends SJSDefinedAutoExportTrait
+@ScalaJSDefined
+class SJSDefinedAutoExportedTraitClass(val x: Int) extends SJSDefinedAutoExportTrait
+
+@JSExportDescendentClasses
+@JSExportDescendentObjects
+@ScalaJSDefined
+class SJSDefinedAutoExportClass extends js.Object
+
+@ScalaJSDefined
+object SJSDefinedAutoExportedClassObject extends SJSDefinedAutoExportClass
+@ScalaJSDefined
+class SJSDefinedAutoExportedClassClass(val x: Int) extends SJSDefinedAutoExportClass
+
 @JSExportDescendentClasses(ignoreInvalidDescendants = true)
 @JSExportDescendentObjects(ignoreInvalidDescendants = true)
 trait AutoExportIgnoreTrait
@@ -1197,6 +1335,21 @@ class AutoExportIgnoreClassClass(_x: Int) extends AutoExportIgnoreTrait {
   @JSExport
   def x: Int = _x
 }
+
+@JSExportDescendentClasses(ignoreInvalidDescendants = true)
+@JSExportDescendentObjects(ignoreInvalidDescendants = true)
+@ScalaJSDefined
+class SJSDefinedAutoExportIgnoreClass extends js.Object
+
+@ScalaJSDefined
+object SJSDefinedAutoExportedIgnoreClassObject extends SJSDefinedAutoExportIgnoreClass
+@ScalaJSDefined
+class SJSDefinedAutoExportedIgnoreClassClass(val x: Int) extends SJSDefinedAutoExportIgnoreClass
+
+object NativeInvalidExportObject extends SJSDefinedAutoExportIgnoreClass
+class NativeInvalidExportClass extends SJSDefinedAutoExportIgnoreClass
+@ScalaJSDefined
+class SJSDefinedInvalidExportClass private () extends SJSDefinedAutoExportIgnoreClass
 
 class SomeValueClass(val i: Int) extends AnyVal
 

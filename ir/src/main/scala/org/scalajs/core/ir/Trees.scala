@@ -799,6 +799,11 @@ object Trees {
     val tpe = NoType
   }
 
+  case class JSClassExportDef(fullName: String)(
+      implicit val pos: Position) extends Tree {
+    val tpe = NoType
+  }
+
   case class ModuleExportDef(fullName: String)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType

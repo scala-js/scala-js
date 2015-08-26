@@ -267,7 +267,7 @@ object Infos {
       case constructorDef: ConstructorExportDef =>
         builder.setIsExported(true)
         exportedConstructors ::= constructorDef
-      case _: ModuleExportDef =>
+      case _:JSClassExportDef | _:ModuleExportDef =>
         builder.setIsExported(true)
       case _ =>
     }

@@ -445,6 +445,10 @@ object Serializers {
           writeByte(TagConstructorExportDef)
           writeString(fullName); writeTrees(args); writeTree(body)
 
+        case JSClassExportDef(fullName) =>
+          writeByte(TagJSClassExportDef)
+          writeString(fullName)
+
         case ModuleExportDef(fullName) =>
           writeByte(TagModuleExportDef)
           writeString(fullName)
@@ -736,6 +740,8 @@ object Serializers {
           } else {
             result
           }
+        case TagJSClassExportDef =>
+          JSClassExportDef(readString())
         case TagModuleExportDef =>
           ModuleExportDef(readString())
       }

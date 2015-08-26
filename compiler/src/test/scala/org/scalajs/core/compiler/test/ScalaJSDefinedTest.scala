@@ -586,14 +586,38 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportClass: Unit = {
+  def noExportClassWithOnlyPrivateCtors: Unit = {
     """
     @ScalaJSDefined
     @JSExport
-    class A extends js.Object
+    class A private () extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Implementation restriction: exporting a Scala.js-defined JS class is not supported
+      |newSource1.scala:6: error: You may not export a class that has only private constructors
+      |    @JSExport
+      |     ^
+    """
+
+    """
+    @ScalaJSDefined
+    @JSExport
+    class A private[this] () extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: You may not export a class that has only private constructors
+      |    @JSExport
+      |     ^
+    """
+
+    """
+    @ScalaJSDefined
+    @JSExport
+    class A private[A] () extends js.Object
+
+    object A
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: You may not export a class that has only private constructors
       |    @JSExport
       |     ^
     """

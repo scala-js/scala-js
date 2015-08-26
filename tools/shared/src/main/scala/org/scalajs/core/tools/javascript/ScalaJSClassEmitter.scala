@@ -821,6 +821,8 @@ final class ScalaJSClassEmitter private (
     val exports = tree.classExports collect {
       case e: ConstructorExportDef =>
         genConstructorExportDef(tree, e)
+      case e: JSClassExportDef =>
+        genJSClassExportDef(tree, e)
       case e: ModuleExportDef =>
         genModuleExportDef(tree, e)
     }
@@ -868,6 +870,15 @@ final class ScalaJSClassEmitter private (
     }
   }
 
+  def genJSClassExportDef(cd: LinkedClass, tree: JSClassExportDef): js.Tree = {
+    import TreeDSL._
+
+    implicit val pos = tree.pos
+
+    val classVar = envField("c", cd.name.name)
+    genClassOrModuleExportDef(cd, tree.fullName, classVar)
+  }
+
   def genModuleExportDef(cd: LinkedClass, tree: ModuleExportDef): js.Tree = {
     import TreeDSL._
 
@@ -880,19 +891,25 @@ final class ScalaJSClassEmitter private (
         envField("m", cd.name.name)
     }
 
+    genClassOrModuleExportDef(cd, tree.fullName, baseAccessor)
+  }
+
+  private def genClassOrModuleExportDef(cd: LinkedClass, exportFullName: String,
+      exportedValue: js.Tree)(implicit pos: Position): js.Tree = {
+    import TreeDSL._
+
     outputMode match {
       case OutputMode.ECMAScript6StrongMode =>
-        val (nsParts, name) = genStrongModeNamespaceInfo(tree.fullName)
+        val (nsParts, name) = genStrongModeNamespaceInfo(exportFullName)
         js.Apply(js.VarRef(js.Ident("$export")), List(
-            nsParts, name, baseAccessor))
+            nsParts, name, exportedValue))
 
       case _ =>
         val (createNamespace, expAccessorVar) =
-          genCreateNamespaceInExports(tree.fullName)
-
+          genCreateNamespaceInExports(exportFullName)
         js.Block(
           createNamespace,
-          expAccessorVar := baseAccessor
+          expAccessorVar := exportedValue
         )
     }
   }

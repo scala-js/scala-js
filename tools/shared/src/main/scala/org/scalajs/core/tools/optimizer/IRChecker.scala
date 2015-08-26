@@ -120,6 +120,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
         tree match {
           case member @ ConstructorExportDef(_, _, _) =>
             checkConstructorExportDef(member, classDef)
+          case member @ JSClassExportDef(_) =>
+            checkJSClassExportDef(member, classDef)
           case member @ ModuleExportDef(_) =>
             checkModuleExportDef(member, classDef)
           // Anything else is illegal
@@ -364,6 +366,14 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     val thisType = ClassType(classDef.name.name)
     val bodyEnv = Env.fromSignature(thisType, params, NoType)
     typecheckStat(body, bodyEnv)
+  }
+
+  def checkJSClassExportDef(classExportDef: JSClassExportDef,
+      classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(classExportDef)
+
+    if (classDef.kind != ClassKind.JSClass)
+      reportError(s"Exported JS class def can only appear in a JS class")
   }
 
   def checkModuleExportDef(moduleDef: ModuleExportDef,
