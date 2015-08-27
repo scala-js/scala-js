@@ -51,6 +51,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 
     lazy val JSNameAnnotation          = getRequiredClass("scala.scalajs.js.annotation.JSName")
+    lazy val JSFullNameAnnotation      = getRequiredClass("scala.scalajs.js.annotation.JSFullName")
     lazy val JSBracketAccessAnnotation = getRequiredClass("scala.scalajs.js.annotation.JSBracketAccess")
     lazy val JSBracketCallAnnotation   = getRequiredClass("scala.scalajs.js.annotation.JSBracketCall")
     lazy val JSExportAnnotation        = getRequiredClass("scala.scalajs.js.annotation.JSExport")

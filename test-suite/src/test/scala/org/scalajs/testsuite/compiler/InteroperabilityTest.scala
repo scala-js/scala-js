@@ -123,6 +123,74 @@ object InteroperabilityTest extends JasmineTest {
       expect(obj.valueAsInt).toEqual(7357)
     }
 
+    it("should access native JS classes and objects nested in JS objects") {
+      js.eval("""
+        var InteroperabilityTestContainerObject = {
+          ContainedClass: function(x) {
+            this.x = x;
+          },
+          ContainedObject: {
+            x: 42
+          },
+          ContainedClassRenamed: function(x) {
+            this.x = x * 2;
+          },
+          ContainedObjectRenamed: {
+            x: 4242
+          }
+        };
+      """)
+
+      // Use alias for convenience: see end of file for definition
+      val TopLevel = InteroperabilityTestContainerObject
+
+      val obj1 = new TopLevel.ContainedClass(34)
+      expect(obj1.x).toEqual(34)
+
+      val obj2 = TopLevel.ContainedObject
+      expect(obj2.x).toEqual(42)
+
+      val obj3 = new TopLevel.ContainedClassWithJSName(65)
+      expect(obj3.x).toEqual(130)
+
+      val obj4 = TopLevel.ContainedObjectWithJSName
+      expect(obj4.x).toEqual(4242)
+    }
+
+    it("should access native JS classes and objects nested in @JSName'd JS objects") {
+      js.eval("""
+        var InteroperabilityTestContainerObjectRenamed = {
+          ContainedClass: function(x) {
+            this.x = x;
+          },
+          ContainedObject: {
+            x: 42
+          },
+          ContainedClassRenamed: function(x) {
+            this.x = x * 2;
+          },
+          ContainedObjectRenamed: {
+            x: 4242
+          }
+        };
+      """)
+
+      // Use alias for convenience: see end of file for definition
+      val TopLevel = InteroperabilityTestContainerObjectWithJSName
+
+      val obj1 = new TopLevel.ContainedClass(34)
+      expect(obj1.x).toEqual(34)
+
+      val obj2 = TopLevel.ContainedObject
+      expect(obj2.x).toEqual(42)
+
+      val obj3 = new TopLevel.ContainedClassWithJSName(65)
+      expect(obj3.x).toEqual(130)
+
+      val obj4 = TopLevel.ContainedObjectWithJSName
+      expect(obj4.x).toEqual(4242)
+    }
+
     it("should allow to call JS methods with variadic parameters") {
       val obj = js.eval("""
         var obj = {
@@ -463,7 +531,9 @@ object InteroperabilityTest extends JasmineTest {
 }
 
 /*
- * Helper classes, traits and objects defined here since they cannot be nested.
+ * Helper classes, traits and objects defined here since they cannot be nested
+ * without requiring explicit @JSName's, which would defeat the purpose of
+ * their tests.
  */
 
 @JSName("InteroperabilityTestInherit.Pattern")
@@ -482,6 +552,47 @@ trait InteroperabilityTestTopLevel extends js.Object {
 @JSName("InteroperabilityTestTopLevelObject")
 object InteroperabilityTestTopLevel extends js.Object {
   def apply(value: String): InteroperabilityTestTopLevel = js.native
+}
+
+object InteroperabilityTestContainerObject extends js.Object {
+  class ContainedClass(_x: Int) extends js.Object {
+    val x: Int = js.native
+  }
+
+  object ContainedObject extends js.Object {
+    val x: Int = js.native
+  }
+
+  @JSName("ContainedClassRenamed")
+  class ContainedClassWithJSName(_x: Int) extends js.Object {
+    val x: Int = js.native
+  }
+
+  @JSName("ContainedObjectRenamed")
+  object ContainedObjectWithJSName extends js.Object {
+    val x: Int = js.native
+  }
+}
+
+@JSName("InteroperabilityTestContainerObjectRenamed")
+object InteroperabilityTestContainerObjectWithJSName extends js.Object {
+  class ContainedClass(_x: Int) extends js.Object {
+    val x: Int = js.native
+  }
+
+  object ContainedObject extends js.Object {
+    val x: Int = js.native
+  }
+
+  @JSName("ContainedClassRenamed")
+  class ContainedClassWithJSName(_x: Int) extends js.Object {
+    val x: Int = js.native
+  }
+
+  @JSName("ContainedObjectRenamed")
+  object ContainedObjectWithJSName extends js.Object {
+    val x: Int = js.native
+  }
 }
 
 trait InteroperabilityTestVariadicMethod extends js.Object {

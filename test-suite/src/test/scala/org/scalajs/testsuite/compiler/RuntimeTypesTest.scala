@@ -8,6 +8,7 @@
 package org.scalajs.testsuite.compiler
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation.JSName
 import org.scalajs.jasminetest.JasmineTest
 
 import scala.util.{ Try, Failure }
@@ -105,6 +106,7 @@ object RuntimeTypesTest extends JasmineTest {
 
   trait SomeJSInterface extends ParentJSType
 
+  @JSName("SomeJSClass")
   class SomeJSClass extends ParentJSType
 
 }
