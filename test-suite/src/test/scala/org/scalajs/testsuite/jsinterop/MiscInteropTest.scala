@@ -26,6 +26,30 @@ object MiscInteropTest extends JasmineTest {
       expect(typeOf(())).toEqual("undefined")
       expect(typeOf(() => 42)).toEqual("function")
     }
+
+    it("js.constructorOf[T] for native classes") {
+      expect(js.constructorOf[js.RegExp]).toBe(js.Dynamic.global.RegExp)
+      expect(js.constructorOf[js.Array[_]]).toBe(js.Dynamic.global.Array)
+      expect(js.constructorOf[js.Array[Int]]).toBe(js.Dynamic.global.Array)
+    }
+
+    it("js.constructorOf[T] for Scala.js-defined JS classes") {
+      val concreteCtor = (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
+      val concreteProto = concreteCtor.prototype.asInstanceOf[js.Object]
+      val abstractProto = js.Object.getPrototypeOf(concreteProto)
+      val abstractCtor = abstractProto.asInstanceOf[js.Dynamic].constructor
+
+      expect(js.constructorOf[ConcreteJSClass]).toBe(concreteCtor)
+      expect(js.constructorOf[AbstractJSClass]).toBe(abstractCtor)
+
+      val concreteInstance = js.Dynamic.newInstance(js.constructorOf[ConcreteJSClass])()
+      expect((concreteInstance: Any).isInstanceOf[ConcreteJSClass]).toBeTruthy
+
+      val instance = js.Dynamic.newInstance(
+          js.constructorOf[OtherwiseUnreferencedJSClass])(35)
+      expect(instance.x).toEqual(35)
+    }
+
   }
 
   describe("scala.scalajs.js.Object") {
@@ -117,6 +141,15 @@ object MiscInteropTest extends JasmineTest {
     }
 
   }
+
+  @ScalaJSDefined
+  abstract class AbstractJSClass extends js.Object
+
+  @ScalaJSDefined
+  class ConcreteJSClass extends AbstractJSClass
+
+  @ScalaJSDefined
+  class OtherwiseUnreferencedJSClass(val x: Int) extends js.Object
 
   trait DirectSubtraitOfJSAny extends js.Any {
     def foo(x: Int): Int = js.native

@@ -251,6 +251,38 @@ abstract class PrepJSInterop extends plugins.PluginComponent
               |program is unlikely to function properly.""".stripMargin)
         super.transform(tree)
 
+      // Rewrite js.constructorOf[T] into runtime.constructorOf(classOf[T])
+      case TypeApply(ctorOfTree, List(tpeArg))
+          if ctorOfTree.symbol == JSPackage_constructorOf =>
+        val classValue = try {
+          typer.typedClassOf(tree, tpeArg)
+        } catch {
+          case typeError: TypeError =>
+            reporter.error(typeError.pos, typeError.msg)
+            EmptyTree
+        }
+
+        if (classValue != EmptyTree) {
+          val Literal(classConstant) = classValue
+          val tpe = classConstant.typeValue.dealiasWiden
+          val typeSym = tpe.typeSymbol
+          if (!typeSym.isTrait && !typeSym.isModuleClass) {
+            typer.typed {
+              atPos(tree.pos) {
+                Apply(
+                    Select(Ident(RuntimePackageModule), newTermName("constructorOf")),
+                    List(classValue))
+              }
+            }
+          } else {
+            reporter.error(tpeArg.pos,
+                s"non-trait class required but $tpe found")
+            EmptyTree
+          }
+        } else {
+          EmptyTree
+        }
+
       // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
       // but unfortunately do. In normal cases, the typer phase replaces these
       // calls by a literal constant of the given type. However, when we compile

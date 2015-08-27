@@ -92,6 +92,17 @@ package object runtime {
   def newJSObjectWithVarargs(ctor: js.Dynamic, args: js.Array[_]): js.Any =
     js.Dynamic.newInstance(ctor)(args.asInstanceOf[js.Array[js.Any]]: _*)
 
+  /** Dummy method used to preserve the type parameter of
+   *  `js.constructorOf[T]` through erasure.
+   *
+   *  An early phase of the compiler reroutes calls to `js.constructorOf[T]`
+   *  into `runtime.constructorOf(classOf[T])`.
+   *
+   *  The `clazz` parameter must be a literal `classOf[T]` constant such that
+   *  `T` represents a class extending `js.Any` (not a trait nor an object).
+   */
+  def constructorOf(clazz: Class[_ <: js.Any]): js.Dynamic = sys.error("stub")
+
   /** Returns an array of the enumerable properties in an object's prototype
    *  chain.
    *

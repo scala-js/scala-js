@@ -77,6 +77,14 @@ package object js {
   /** Returns the type of `x` as identified by `typeof x` in JavaScript. */
   def typeOf(x: Any): String = sys.error("stub")
 
+  /** Returns the constructor function of a JavaScript class.
+   *
+   *  The specified type parameter `T` must be a class type (i.e., valid for
+   *  `classOf[T]`) and represent a class extending `js.Any` (not a trait nor
+   *  an object).
+   */
+  def constructorOf[T <: js.Any]: js.Dynamic = sys.error("stub")
+
   /** Invokes any available debugging functionality.
    *  If no debugging functionality is available, this statement has no effect.
    *
