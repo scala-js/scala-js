@@ -3148,7 +3148,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       implicit val pos = tree.pos
 
       def receiver = genExpr(receiver0)
-      val genArgs = genPrimitiveJSArgs(tree.symbol, args)
+      def genArgs = genPrimitiveJSArgs(tree.symbol, args)
 
       if (code == DYNNEW) {
         // js.Dynamic.newInstance(clazz)(actualArgs:_*)
@@ -3253,6 +3253,27 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (code == ARR_CREATE) {
         // js.Array.create(elements: _*)
         js.JSArrayConstr(genArgs)
+      } else if (code == CONSTRUCTOROF) {
+        def fail() = {
+          reporter.error(pos,
+              "runtime.constructorOf() must be called with a constant " +
+              "classOf[T] representing a class extending js.Any " +
+              "(not a trait nor an object)")
+          js.Undefined()
+        }
+        args match {
+          case List(Literal(value)) if value.tag == ClazzTag =>
+            val kind = toTypeKind(value.typeValue)
+            kind match {
+              case REFERENCE(classSym) if isRawJSType(classSym.tpe) &&
+                  !classSym.isTrait && !classSym.isModuleClass =>
+                genPrimitiveJSClass(classSym)
+              case _ =>
+                fail()
+            }
+          case _ =>
+            fail()
+        }
       } else (genArgs match {
         case Nil =>
           code match {

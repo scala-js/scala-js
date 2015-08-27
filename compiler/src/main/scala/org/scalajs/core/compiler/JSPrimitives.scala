@@ -51,8 +51,9 @@ abstract class JSPrimitives {
   val UNITVAL = 349  // () value, which is undefined
   val UNITTYPE = 350 // BoxedUnit.TYPE (== classOf[Unit])
 
-  val ENV_INFO = 353     // __ScalaJSEnv via helper
-  val LINKING_INFO = 354 // $linkingInfo
+  val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
+  val ENV_INFO = 353      // __ScalaJSEnv via helper
+  val LINKING_INFO = 354  // $linkingInfo
 
   /** Initialize the map of primitive methods (for GenJSCode) */
   def init(): Unit = initWithPrimitives(addPrimitive)
@@ -88,8 +89,6 @@ abstract class JSPrimitives {
 
     addPrimitive(JSArray_create, ARR_CREATE)
 
-    val ntModule = getRequiredModule("scala.reflect.NameTransformer")
-
     addPrimitive(JSPackage_typeOf, TYPEOF)
     addPrimitive(JSPackage_debugger, DEBUGGER)
     addPrimitive(JSPackage_native, JS_NATIVE)
@@ -100,6 +99,7 @@ abstract class JSPrimitives {
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
     addPrimitive(BoxedUnit_TYPE, UNITTYPE)
 
+    addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_environmentInfo, ENV_INFO)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
   }
