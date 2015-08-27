@@ -8,7 +8,7 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSName
+import scala.scalajs.js.annotation._
 
 import org.scalajs.jasminetest.JasmineTest
 
@@ -105,6 +105,19 @@ object MiscInteropTest extends JasmineTest {
 
   }
 
+  describe("Emitted classes") {
+
+    unlessAny("rhino", "fullopt-stage").
+    it("should have a meaningful `name` property") {
+      def nameOf(obj: Any): js.Any =
+        obj.asInstanceOf[js.Dynamic].constructor.name
+
+      expect(nameOf(new SomeScalaClass)).toContain("SomeScalaClass")
+      expect(nameOf(new SomeJSClass)).toContain("SomeJSClass")
+    }
+
+  }
+
   trait DirectSubtraitOfJSAny extends js.Any {
     def foo(x: Int): Int = js.native
   }
@@ -112,5 +125,10 @@ object MiscInteropTest extends JasmineTest {
   class DirectSubclassOfJSAny extends js.Any {
     def bar(x: Int): Int = js.native
   }
+
+  class SomeScalaClass
+
+  @ScalaJSDefined
+  class SomeJSClass extends js.Object
 
 }

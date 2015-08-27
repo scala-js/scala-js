@@ -219,6 +219,11 @@ object Trees {
 
   case class Function(args: List[ParamDef], body: Tree)(implicit val pos: Position) extends Tree
 
+  // Named function definition
+
+  case class FunctionDef(name: Ident, args: List[ParamDef], body: Tree)(
+      implicit val pos: Position) extends Tree
+
   // ECMAScript 6 classes
 
   case class ClassDef(className: Option[Ident], parentClass: Option[Tree],
