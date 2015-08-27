@@ -15,6 +15,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
   def noIsInstanceOnJSRaw: Unit = {
 
     """
+    @js.native
     trait JSRaw extends js.Object
 
     class A {
@@ -23,7 +24,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: isInstanceOf[JSRaw] not supported because it is a raw JS trait
+      |newSource1.scala:8: error: isInstanceOf[JSRaw] not supported because it is a raw JS trait
       |      def x = a.isInstanceOf[JSRaw]
       |                            ^
     """
@@ -57,9 +58,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     """
 
     """
-    class NativeJSClass extends js.Object
-    trait NativeJSTrait extends js.Object
-    object NativeJSObject extends js.Object
+    @js.native class NativeJSClass extends js.Object
+    @js.native trait NativeJSTrait extends js.Object
+    @js.native object NativeJSObject extends js.Object
 
     @ScalaJSDefined class JSClass extends js.Object
     @ScalaJSDefined trait JSTrait extends js.Object
@@ -124,7 +125,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     import scala.scalajs.runtime
 
     object ScalaObject
-    object NativeJSObject extends js.Object
+    @js.native object NativeJSObject extends js.Object
     @ScalaJSDefined object JSObject extends js.Object
 
     object A {
@@ -151,9 +152,9 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     class ScalaClass
     trait ScalaTrait
 
-    class NativeJSClass extends js.Object
-    trait NativeJSTrait extends js.Object
-    object NativeJSObject extends js.Object
+    @js.native class NativeJSClass extends js.Object
+    @js.native trait NativeJSTrait extends js.Object
+    @js.native object NativeJSObject extends js.Object
 
     @ScalaJSDefined class JSClass extends js.Object
     @ScalaJSDefined trait JSTrait extends js.Object

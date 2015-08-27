@@ -27,6 +27,7 @@ import scala.scalajs.js.annotation._
  *  To enable the use of these functions on js.[[Array]]s, import the implicit
  *  conversion [[JSArrayOps.jsArrayOps]].
  */
+@native
 trait JSArrayOps[A] extends Object {
 
   /**

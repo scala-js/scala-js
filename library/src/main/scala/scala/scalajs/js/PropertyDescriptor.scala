@@ -10,6 +10,7 @@
 
 package scala.scalajs.js
 
+@native
 trait PropertyDescriptor extends Object {
   var configurable: Boolean = native
   var enumerable: Boolean = native

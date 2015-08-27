@@ -5,6 +5,7 @@ import scala.scalajs.js
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A [[TypedArray]] of signed 8-bit integers
  */
+@js.native
 class Int8Array private extends TypedArray[Byte, Int8Array] {
 
   /** Constructs a Int8Array with the given length. Initialized to all 0 */
@@ -27,4 +28,5 @@ class Int8Array private extends TypedArray[Byte, Int8Array] {
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  [[Int8Array]] companion
  */
+@js.native
 object Int8Array extends TypedArrayStatic

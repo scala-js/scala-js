@@ -2,6 +2,7 @@ package org.scalajs.jasmine
 
 import scala.scalajs.js
 
+@js.native
 trait JasmineExpectation extends js.Object {
   def toBe(exp: js.Any): Unit = js.native
   def toEqual(exp: js.Any): Unit = js.native

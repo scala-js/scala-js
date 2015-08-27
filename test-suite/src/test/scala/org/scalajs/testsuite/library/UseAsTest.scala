@@ -504,15 +504,18 @@ object UseAsTest extends JasmineTest {
 
   }
 
+  @js.native
   trait JSBasic extends js.Object {
     def m(a: Int, b: String): js.Object = js.native
   }
 
+  @js.native
   trait JSBasicJSName extends js.Object {
     @JSName("m")
     def foo(a: Int, b: String): js.Object = js.native
   }
 
+  @js.native
   trait JSNamedApply extends js.Object {
     @JSName("apply")
     def apply(x: Int): Int = js.native
@@ -520,28 +523,34 @@ object UseAsTest extends JasmineTest {
     def bar(x: Int): Int = js.native
   }
 
+  @js.native
   trait JSGeneric[T] extends js.Object {
     def arr: js.Array[T] = js.native
   }
 
+  @js.native
   trait JSGenericInt extends JSGeneric[Int]
 
+  @js.native
   trait JSTypeMember extends js.Object {
     type R
     def foo(x: R): Int = js.native
   }
 
+  @js.native
   trait JSOverload extends JSBasic {
     def m(b: String): Int = js.native
     def m(a: Int): js.Object = js.native
   }
 
+  @js.native
   trait JSGetters extends js.Object {
     def a: Int = js.native
     val b: String = js.native
     def c: js.Object = js.native
   }
 
+  @js.native
   trait JSSetters extends js.Object {
     def a_=(x: Int): Unit = js.native
 
@@ -552,6 +561,7 @@ object UseAsTest extends JasmineTest {
     def barJS_=(x: js.Array[Int]): Unit = js.native
   }
 
+  @js.native
   trait JSVars extends js.Object {
     var a: Int = js.native
     def b: String = js.native
@@ -561,54 +571,66 @@ object UseAsTest extends JasmineTest {
     var fooJS: js.Object = js.native
   }
 
+  @js.native
   trait JSDefaultArgs extends js.Object {
     def sum4(a: Int, b: Int = ???, c: Int = ???, d: Int = ???): Int = js.native
     def sum2(a: Int, b: Int = ???): Int = js.native
   }
 
+  @js.native
   trait JSRepeated extends js.Object {
     def rep(a: Int, b: String*): Unit = js.native
     def rep(a: Int*): Unit = js.native
   }
 
+  @js.native
   trait JSMulti extends js.Object {
     def multi(a: Int)(b: String): Int = js.native
   }
 
+  @js.native
   trait JSPolyMethod extends js.Object {
     def poly[T](a: T): js.Array[T] = js.native
   }
 
+  @js.native
   trait JSWithApply extends js.Object {
     def apply(a: String): Int = js.native
   }
 
+  @js.native
   trait JSWithBracketAccess extends js.Object {
     @JSBracketAccess
     def foo(a: String): Int = js.native
   }
 
+  @js.native
   trait JSWithBracketCall extends js.Object {
     @JSBracketCall
     def foo(name: String, b: String): Int = js.native
   }
 
+  @js.native
   trait JSNonClassParent extends js.Date
 
+  @js.native
   trait JSApplyString extends js.Object {
     def apply(): String = js.native
   }
 
+  @js.native
   trait JSBracketAccessInt extends js.Object {
     @JSBracketAccess
     def apply(x: Int): Int = js.native
   }
 
+  @js.native
   trait JSBracketCallInt1 extends js.Object {
     @JSBracketCall
     def foo(method: String): Int = js.native
   }
 
+  @js.native
   trait JSBracketCallInt2 extends js.Object {
     @JSBracketCall
     def bar(method: String): Int = js.native

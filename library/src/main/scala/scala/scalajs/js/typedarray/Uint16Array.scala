@@ -5,6 +5,7 @@ import scala.scalajs.js
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A [[TypedArray]] of unsigned 16-bit integers
  */
+@js.native
 class Uint16Array private extends TypedArray[Int, Uint16Array] {
 
   /** Constructs a Uint16Array with the given length. Initialized to all 0 */
@@ -27,4 +28,5 @@ class Uint16Array private extends TypedArray[Int, Uint16Array] {
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  [[Uint16Array]] companion
  */
+@js.native
 object Uint16Array extends TypedArrayStatic

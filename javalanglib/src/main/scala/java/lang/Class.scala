@@ -2,6 +2,7 @@ package java.lang
 
 import scala.scalajs.js
 
+@js.native
 private trait ScalaJSClassData[A] extends js.Object {
   val name: String = js.native
   val isPrimitive: scala.Boolean = js.native

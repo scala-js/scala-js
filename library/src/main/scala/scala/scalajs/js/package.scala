@@ -101,6 +101,21 @@ package object js {
   @inline def eval(x: String): Any =
     js.Dynamic.global.eval(x)
 
+  /** Marks the annotated class, trait or object as a native JS entity.
+   *
+   *  Native JS entities are not implemented in Scala.js. They are facade types
+   *  for native JS libraries.
+   *
+   *  In Scala.js 0.6.x, all types extending [[Any js.Any]] are native by
+   *  default (unless they are annotated with [[annotation.ScalaJSDefined]]),
+   *  but this will not be the case in the next major version anymore.
+   *
+   *  Only types extending [[Any js.Any]] can be annotated with `@js.native`.
+   *  The body of all concrete members in a native JS class, trait or object
+   *  must be `= js.native`.
+   */
+  class native extends scala.annotation.StaticAnnotation // scalastyle:ignore
+
   /** Denotes a method body as native JavaScript. For use in facade types:
    *
    *  {{{

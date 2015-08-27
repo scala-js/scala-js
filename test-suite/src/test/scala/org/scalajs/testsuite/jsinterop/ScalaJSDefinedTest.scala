@@ -18,6 +18,7 @@ object ScalaJSDefinedTest extends JasmineTest {
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
   @JSName("ScalaJSDefinedTestNativeParentClass")
+  @js.native
   class NativeParentClass(val x: Int) extends js.Object {
     def foo(s: String): String = js.native
 
@@ -31,12 +32,14 @@ object ScalaJSDefinedTest extends JasmineTest {
     def bar: Int = x * 2
   }
 
+  @js.native
   trait NativeTraitWithDeferred extends js.Object {
     val x: Int
   }
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
   @JSName("ScalaJSDefinedTestNativeParentClassWithDeferred")
+  @js.native
   abstract class NativeParentClassWithDeferred extends NativeTraitWithDeferred {
     def foo(y: Int): Int = js.native // = bar(y + 4) + x
 
@@ -45,6 +48,7 @@ object ScalaJSDefinedTest extends JasmineTest {
 
   // Defined in test-suite/src/test/resources/ScalaJSDefinedTestNatives.js
   @JSName("ScalaJSDefinedTestNativeParentClassWithVarargs")
+  @js.native
   class NativeParentClassWithVarargs(
       _x: Int, _args: Int*) extends js.Object {
     val x: Int = js.native

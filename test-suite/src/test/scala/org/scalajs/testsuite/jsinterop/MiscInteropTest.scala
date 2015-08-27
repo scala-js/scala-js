@@ -151,11 +151,13 @@ object MiscInteropTest extends JasmineTest {
   @ScalaJSDefined
   class OtherwiseUnreferencedJSClass(val x: Int) extends js.Object
 
+  @js.native
   trait DirectSubtraitOfJSAny extends js.Any {
     def foo(x: Int): Int = js.native
   }
 
   @JSName("DirectSubclassOfJSAny")
+  @js.native
   class DirectSubclassOfJSAny extends js.Any {
     def bar(x: Int): Int = js.native
   }

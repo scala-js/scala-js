@@ -18,4 +18,5 @@ package scala.scalajs.js
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
+@native
 trait GlobalScope extends Any

@@ -19,6 +19,7 @@ import scala.language.implicitConversions
 import scala.scalajs.js.annotation._
 
 /** Operations on JavaScript numbers. */
+@native
 trait JSNumberOps extends Any {
 
   def toString(radix: Int): String = native
