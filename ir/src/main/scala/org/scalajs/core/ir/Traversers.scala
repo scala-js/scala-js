@@ -204,7 +204,7 @@ object Traversers {
       case _:Skip | _:Continue | _:Debugger | _:LoadModule |
           _:LoadJSConstructor | _:LoadJSModule | _:JSEnvInfo | _:JSLinkingInfo |
           _:Literal | _:UndefinedParam | _:VarRef | _:This | _:FieldDef |
-          _:ModuleExportDef | EmptyTree =>
+          _:JSClassExportDef | _:ModuleExportDef | EmptyTree =>
 
       case _ =>
         sys.error(s"Invalid tree in traverse() of class ${tree.getClass}")

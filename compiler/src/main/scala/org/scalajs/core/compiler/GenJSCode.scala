@@ -459,16 +459,12 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       gen(cd.impl)
 
-      // Generate exported module accessors
-      val exports = {
-        // Generate exported constructors or accessors
-        val exportedAccessors =
-          if (isStaticModule(sym)) genModuleAccessorExports(sym)
-          else Nil
-        if (exportedAccessors.nonEmpty)
-          currentClassInfoBuilder.setIsExported(true)
-        exportedAccessors
-      }
+      // Generate class-level exporters
+      val exports =
+        if (isStaticModule(sym)) genModuleAccessorExports(sym)
+        else genJSClassExports(sym)
+      if (exports.nonEmpty)
+        currentClassInfoBuilder.setIsExported(true)
 
       // Generate fields (and add to methods + ctors)
       val generatedMembers = {

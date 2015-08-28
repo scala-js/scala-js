@@ -8,7 +8,7 @@ import org.junit.Test
 class JSExportTest extends DirectTest with TestHelpers {
 
   override def preamble: String =
-    """import scala.scalajs.js.annotation._
+    """import scala.scalajs.js, js.annotation._
     """
 
   @Test
@@ -25,6 +25,9 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     class B__
+
+    @JSExport
+    @ScalaJSDefined class C__ extends js.Object
     """ hasErrors
     """
       |newSource1.scala:4: error: An exported name may not contain a double underscore (`__`)
@@ -36,6 +39,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:12: error: An exported name may not contain a double underscore (`__`)
       |    class B__
       |          ^
+      |newSource1.scala:15: error: An exported name may not contain a double underscore (`__`)
+      |    @ScalaJSDefined class C__ extends js.Object
+      |                          ^
     """
 
     // Inherited exports (objects)
@@ -51,6 +57,20 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
       |      object B extends A
       |             ^
+    """
+
+    """
+    @JSExportDescendentObjects
+    @ScalaJSDefined trait A extends js.Object
+
+    package fo__o {
+      @ScalaJSDefined object B extends A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentObjects on trait A
+      |      @ScalaJSDefined object B extends A
+      |                             ^
     """
 
     // Inherited exports (classes)
@@ -72,6 +92,20 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:8: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
       |        def this() = this(1)
       |            ^
+    """
+
+    """
+    @JSExportDescendentClasses
+    @ScalaJSDefined trait A extends js.Object
+
+    package fo__o {
+      @ScalaJSDefined class B(x: Int) extends A
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: B may not have a double underscore (`__`) in its fully qualified name, since it is forced to be exported by a @JSExportDescendentClasses on trait A
+      |      @ScalaJSDefined class B(x: Int) extends A
+      |                            ^
     """
   }
 
@@ -170,11 +204,17 @@ class JSExportTest extends DirectTest with TestHelpers {
       def method = {
         @JSExport
         class A
+
+        @JSExport
+        @ScalaJSDefined class B extends js.Object
       }
     }
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a local class
+      |        @JSExport
+      |         ^
+      |newSource1.scala:8: error: You may not export a local class
       |        @JSExport
       |         ^
     """
@@ -185,11 +225,17 @@ class JSExportTest extends DirectTest with TestHelpers {
       def method = {
         @JSExport
         object A
+
+        @JSExport
+        @ScalaJSDefined object B extends js.Object
       }
     }
     """ hasErrors
     """
       |newSource1.scala:5: error: You may not export a local object
+      |        @JSExport
+      |         ^
+      |newSource1.scala:8: error: You may not export a local object
       |        @JSExport
       |         ^
     """
@@ -300,6 +346,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport
       def this() = this(5)
     }
+
+    @JSExport
+    @ScalaJSDefined abstract class C extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may not export an abstract class
@@ -308,6 +357,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: You may not export an abstract class
       |      @JSExport
       |       ^
+      |newSource1.scala:11: error: You may not export an abstract class
+      |    @JSExport
+      |     ^
     """
 
   }
@@ -318,9 +370,21 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     @JSExport
     trait Test
+
+    @JSExport
+    @ScalaJSDefined trait Test2 extends js.Object
+
+    @JSExport
+    trait Test3 extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may not export a trait
+      |    @JSExport
+      |     ^
+      |newSource1.scala:6: error: You may not export a trait
+      |    @JSExport
+      |     ^
+      |newSource1.scala:9: error: You may not export a trait
       |    @JSExport
       |     ^
     """
@@ -336,12 +400,24 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     protected[this] class B
+
+    @JSExport
+    @ScalaJSDefined private class C extends js.Object
+
+    @JSExport
+    @ScalaJSDefined protected[this] class D extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may only export public and protected classes
       |    @JSExport
       |     ^
       |newSource1.scala:6: error: You may only export public and protected classes
+      |    @JSExport
+      |     ^
+      |newSource1.scala:9: error: You may only export public and protected classes
+      |    @JSExport
+      |     ^
+      |newSource1.scala:12: error: You may only export public and protected classes
       |    @JSExport
       |     ^
     """
@@ -352,12 +428,24 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExport
     protected[this] object B
+
+    @JSExport
+    @ScalaJSDefined private object C extends js.Object
+
+    @JSExport
+    @ScalaJSDefined protected[this] object D extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may only export public and protected objects
       |    @JSExport
       |     ^
       |newSource1.scala:6: error: You may only export public and protected objects
+      |    @JSExport
+      |     ^
+      |newSource1.scala:9: error: You may only export public and protected objects
+      |    @JSExport
+      |     ^
+      |newSource1.scala:12: error: You may only export public and protected objects
       |    @JSExport
       |     ^
     """
@@ -394,10 +482,16 @@ class JSExportTest extends DirectTest with TestHelpers {
     class A {
       @JSExport
       class Nested
+
+      @JSExport
+      @ScalaJSDefined class Nested2 extends js.Object
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |      @JSExport
+      |       ^
+      |newSource1.scala:7: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExport
       |       ^
     """
@@ -406,10 +500,16 @@ class JSExportTest extends DirectTest with TestHelpers {
     object A {
       @JSExport
       class Nested
+
+      @JSExport
+      @ScalaJSDefined class Nested2 extends js.Object
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
+      |      @JSExport
+      |       ^
+      |newSource1.scala:7: error: You may not export a nested class. Create an exported factory method in the outer class to work around this limitation.
       |      @JSExport
       |       ^
     """
@@ -423,10 +523,16 @@ class JSExportTest extends DirectTest with TestHelpers {
     class A {
       @JSExport
       object Nested
+
+      @JSExport
+      @ScalaJSDefined object Nested2 extends js.Object
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: You may not export a nested object
+      |      @JSExport
+      |       ^
+      |newSource1.scala:7: error: You may not export a nested object
       |      @JSExport
       |       ^
     """
@@ -435,10 +541,16 @@ class JSExportTest extends DirectTest with TestHelpers {
     object A {
       @JSExport
       object Nested
+
+      @JSExport
+      @ScalaJSDefined object Nested2 extends js.Object
     }
     """ hasErrors
     """
       |newSource1.scala:4: error: You may not export a nested object
+      |      @JSExport
+      |       ^
+      |newSource1.scala:7: error: You may not export a nested object
       |      @JSExport
       |       ^
     """
@@ -467,7 +579,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     trait A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: You may not export a native JS class or object
+      |newSource1.scala:5: error: You may not export a trait
       |    @JSExport
       |     ^
     """
@@ -725,9 +837,30 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     @JSExportNamed
     object A
+
+    @JSExportNamed
+    @ScalaJSDefined object B extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may not use @JSNamedExport on an object
+      |    @JSExportNamed
+      |     ^
+      |newSource1.scala:6: error: You may not use @JSNamedExport on an object
+      |    @JSExportNamed
+      |     ^
+    """
+
+  }
+
+  @Test
+  def noNamedExportSJSDefinedClass: Unit = {
+
+    """
+    @JSExportNamed
+    @ScalaJSDefined class A extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:3: error: You may not use @JSNamedExport on a Scala.js-defined JS class
       |    @JSExportNamed
       |     ^
     """

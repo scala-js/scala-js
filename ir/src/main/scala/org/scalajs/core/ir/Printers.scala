@@ -635,8 +635,11 @@ object Printers {
           printSig(args, NoType) // NoType as trick not to display a type
           printBlock(body)
 
+        case JSClassExportDef(fullName) =>
+          print("export class \"", escapeJS(fullName), "\"")
+
         case ModuleExportDef(fullName) =>
-          print("export \"", escapeJS(fullName), "\"")
+          print("export module \"", escapeJS(fullName), "\"")
 
         case _ =>
           print(s"<error, elem of class ${tree.getClass()}>")

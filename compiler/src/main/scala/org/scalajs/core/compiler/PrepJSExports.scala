@@ -75,8 +75,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       else if (clsSym.isLocalToBlock)
         err("You may not export a local class")
       else if (clsSym.isNestedClass)
-        err("You may not export a nested class. Create an exported factory " +
-            "method in the outer class to work around this limitation.")
+        err(s"You may not export a nested class. $createFactoryInOuterClassHint")
       else {
         jsInterop.registerForExport(baseSym, exports)
         Nil
@@ -100,6 +99,18 @@ trait PrepJSExports { this: PrepJSInterop =>
   /** Checks and registers module exports on the symbol */
   def registerModuleExports(sym: Symbol): Unit = {
     assert(sym.isModuleClass, "Expected module class")
+    registerClassOrModuleExportsInternal(sym)
+  }
+
+  /** Checks and registers class exports on the symbol. */
+  def registerClassExports(sym: Symbol): Unit = {
+    assert(!sym.isModuleClass && sym.hasAnnotation(ScalaJSDefinedAnnotation),
+        "Expected a Scala.js-defined JS class")
+    registerClassOrModuleExportsInternal(sym)
+  }
+
+  private def registerClassOrModuleExportsInternal(sym: Symbol): Unit = {
+    val isMod = sym.isModuleClass
 
     val exports = exportsOf(sym)
     val ignoreInvalid = exports.forall(_.ignoreInvalid)
@@ -110,23 +121,41 @@ trait PrepJSExports { this: PrepJSInterop =>
           reporter.error(exports.head.pos, msg)
       }
 
-      if (!hasLegalExportVisibility(sym))
-        err("You may only export public and protected objects")
-      else if (sym.isLocalToBlock)
-        err("You may not export a local object")
-      else if (!sym.owner.hasPackageFlag)
-        err("You may not export a nested object")
-      else {
+      def hasAnyNonPrivateCtor: Boolean =
+        sym.info.member(nme.CONSTRUCTOR).filter(!isPrivateMaybeWithin(_)).exists
+
+      if (!hasLegalExportVisibility(sym)) {
+        err("You may only export public and protected " +
+            (if (isMod) "objects" else "classes"))
+      } else if (sym.isLocalToBlock) {
+        err("You may not export a local " +
+            (if (isMod) "object" else "class"))
+      } else if (!sym.owner.hasPackageFlag) {
+        err("You may not export a nested " +
+            (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
+      } else if (sym.isAbstractClass) {
+        err("You may not export an abstract class")
+      } else if (!isMod && !hasAnyNonPrivateCtor) {
+        err("You may not export a class that has only private constructors")
+      } else {
         val (named, normal) = exports.partition(_.isNamed)
 
         for {
           exp <- named
           if !exp.ignoreInvalid
-        } reporter.error(exp.pos, "You may not use @JSNamedExport on an object")
+        } {
+          reporter.error(exp.pos, "You may not use @JSNamedExport on " +
+              (if (isMod) "an object" else "a Scala.js-defined JS class"))
+        }
 
         jsInterop.registerForExport(sym, normal)
       }
     }
+  }
+
+  private def createFactoryInOuterClassHint = {
+    "Create an exported factory method in the outer class to work " +
+    "around this limitation."
   }
 
   /** retrieves the names a sym should be exported to from its annotations
@@ -148,10 +177,12 @@ trait PrepJSExports { this: PrepJSInterop =>
 
   private def directExportsOf(sym: Symbol): List[ExportInfo] = {
     val trgSym = {
+      def isOwnerScalaClass = !sym.owner.isModuleClass && !isJSAny(sym.owner)
+
       // For accessors, look on the val/var def
       if (sym.isAccessor) sym.accessed
-      // For primary class constructors, look on the class itself
-      else if (sym.isPrimaryConstructor && !sym.owner.isModuleClass) sym.owner
+      // For primary Scala class constructors, look on the class itself
+      else if (sym.isPrimaryConstructor && isOwnerScalaClass) sym.owner
       else sym
     }
 
@@ -189,7 +220,7 @@ trait PrepJSExports { this: PrepJSInterop =>
       val name = {
         if (hasExplicitName) explicitName
         else if (sym.isConstructor) decodedFullName(sym.owner)
-        else if (sym.isModuleClass) decodedFullName(sym)
+        else if (sym.isClass) decodedFullName(sym)
         else sym.unexpandedName.decoded.stripSuffix("_=")
       }
 
@@ -251,12 +282,14 @@ trait PrepJSExports { this: PrepJSInterop =>
     // The symbol from which we (potentially) inherit exports. It also
     // gives the exports their name
     val trgSym = {
-      if (sym.isModuleClass)
+      if (sym.isModuleClass || (sym.isClass && isJSAny(sym))) {
         sym
-      else if (sym.isConstructor && sym.isPublic &&
-          sym.owner.isConcreteClass && !sym.owner.isModuleClass)
+      } else if (sym.isConstructor && sym.isPublic && !isJSAny(sym.owner) &&
+          sym.owner.isConcreteClass && !sym.owner.isModuleClass) {
         sym.owner
-      else NoSymbol
+      } else {
+        NoSymbol
+      }
     }
 
     if (trgSym == NoSymbol) {

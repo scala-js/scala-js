@@ -108,6 +108,16 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
+    def genJSClassExports(classSym: Symbol): List[js.JSClassExportDef] = {
+      for {
+        exp <- jsInterop.registeredExportsOf(classSym)
+      } yield {
+        implicit val pos = exp.pos
+        assert(!exp.isNamed, "Class cannot be exported named")
+        js.JSClassExportDef(exp.jsName)
+      }
+    }
+
     def genModuleAccessorExports(classSym: Symbol): List[js.ModuleExportDef] = {
       for {
         exp <- jsInterop.registeredExportsOf(classSym)

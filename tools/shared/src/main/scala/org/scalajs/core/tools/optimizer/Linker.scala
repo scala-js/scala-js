@@ -241,6 +241,9 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       case e: ConstructorExportDef =>
         classExports += e
 
+      case e: JSClassExportDef =>
+        classExports += e
+
       case e: ModuleExportDef =>
         classExports += e
 

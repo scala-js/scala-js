@@ -97,6 +97,7 @@ private[ir] object Tags {
   final val TagJSSuperConstructorCall = TagJSSuperBracketCall + 1
   final val TagLoadJSConstructor = TagJSSuperConstructorCall + 1
   final val TagLoadJSModule = TagLoadJSConstructor + 1
+  final val TagJSClassExportDef = TagLoadJSModule + 1
 
   // Tags for Types
 
