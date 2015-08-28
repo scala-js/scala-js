@@ -404,6 +404,18 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
+      if (isJSNative && !isJSAnonFun &&
+          !sym.hasAnnotation(JSNativeAnnotation)) {
+        reporter.warning(implDef.pos,
+            "Classes, traits and objects inheriting from js.Any should be " +
+            "annotated with @js.native, unless they have @ScalaJSDefined. " +
+            "The default will switch to Scala.js-defined in the next major " +
+            "version of Scala.js.")
+      } else if (!isJSNative && sym.hasAnnotation(JSNativeAnnotation)) {
+        reporter.error(implDef.pos,
+            "@ScalaJSDefined and @js.native cannot be used together")
+      }
+
       def strKind =
         if (sym.isTrait) "trait"
         else if (sym.isModuleClass) "object"

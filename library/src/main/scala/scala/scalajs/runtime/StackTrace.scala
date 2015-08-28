@@ -497,6 +497,7 @@ object StackTrace {
    * ---------------------------------------------------------------------------
    */
 
+  @js.native
   trait JSStackTraceElem extends js.Object {
     var declaringClass: String = js.native
     var methodName: String = js.native

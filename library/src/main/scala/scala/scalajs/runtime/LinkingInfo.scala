@@ -3,6 +3,7 @@ package scala.scalajs.runtime
 import scala.scalajs.js
 
 /** Information about link-time configuration of Scala.js. */
+@js.native
 trait LinkingInfo extends js.Object {
   /** Semantics configuration. */
   val semantics: LinkingInfo.Semantics = js.native
@@ -13,6 +14,7 @@ trait LinkingInfo extends js.Object {
 
 object LinkingInfo {
   /** Semantics configuration. */
+  @js.native
   trait Semantics extends js.Object {
     /** Compliance level of asInstanceOfs. */
     val asInstanceOfs: Int = js.native

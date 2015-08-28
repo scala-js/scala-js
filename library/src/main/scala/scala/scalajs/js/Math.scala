@@ -20,6 +20,7 @@ package scala.scalajs.js
  *
  * MDN
  */
+@native
 object Math extends Object {
   /**
    * Euler's constant and the base of natural logarithms, approximately 2.718.

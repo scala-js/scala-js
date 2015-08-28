@@ -45,21 +45,25 @@ object JSNameTest extends JasmineTest {
 
   }
 
+  @js.native
   trait PropDefFacade extends js.Any {
     @JSName("jsDef")
     def internalDef: Int = js.native
   }
 
+  @js.native
   trait PropValFacade extends js.Any {
     @JSName("jsVal")
     val internalVal: String = js.native
   }
 
+  @js.native
   trait PropVarFacade extends js.Any {
     @JSName("jsVar")
     var internalVar: Double = js.native
   }
 
+  @js.native
   trait UndEqNamed extends js.Any {
     @JSName("a_=")
     def a: Int = js.native

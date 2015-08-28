@@ -12,14 +12,13 @@ package scala.scalajs.js
 import scala.language.implicitConversions
 
 /** Value of type A or the JS undefined value.
- *  In a type system with union types, this would really be
- *  `A | js.prim.Undefined`. Since Scala does not have union types, but this
- *  particular union is crucial to many interoperability scenarios, it is
- *  provided as this trait.
  *
- *  An API similar to that of [[scala.Option]] is provided through the
- *  [[UndefOrOps]] implicit class, with the understanding that `undefined` is
- *  the None value.
+ *  `js.UndefOr[A]` is the type of a value that can be either `undefined` or
+ *  an `A`. It provides an API similar to that of [[scala.Option]] through the
+ *  [[UndefOrOps]] implicit class, where `undefined` take the role of [[None]].
+ *
+ *  By extension, this type is also suited to typing optional fields in native
+ *  JS types, i.e., fields that may not exist on the object.
  */
 @scala.scalajs.js.annotation.RawJSType // Don't do this at home!
 sealed trait UndefOr[+A]
@@ -231,7 +230,7 @@ final class UndefOrOps[A](val self: UndefOr[A]) extends AnyVal {
   @inline final def toLeft[X](right: => X): Either[A, X] =
     if (isEmpty) Right(right) else Left(this.forceGet)
 
-  /** Returns a [[scala.Some]] containing this $options's value
+  /** Returns a [[scala.Some]] containing this $option's value
    *  if this $option is nonempty, [[scala.None]] otherwise.
    */
   @inline final def toOption: Option[A] =

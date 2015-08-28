@@ -6,6 +6,7 @@ import scala.scalajs.js
  *  A DataView allows for extraction of particular data types at specific
  *  offsets.
  */
+@js.native
 class DataView(buffer: ArrayBuffer, byteOffset: Int = 0,
     byteLength: Int = ???) extends ArrayBufferView {
 

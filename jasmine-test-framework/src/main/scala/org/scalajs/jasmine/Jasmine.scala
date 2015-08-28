@@ -2,6 +2,7 @@ package org.scalajs.jasmine
 
 import scala.scalajs.js
 
+@js.native
 object Jasmine extends js.GlobalScope {
   def jasmine: JasmineEnv = js.native
   def describe(name: String, suite: js.Function0[_]): Unit = js.native

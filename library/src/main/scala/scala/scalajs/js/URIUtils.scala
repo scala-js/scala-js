@@ -11,6 +11,7 @@
 package scala.scalajs.js
 
 /** Methods related to URIs, provided by ECMAScript 5.1. */
+@native
 object URIUtils extends GlobalScope {
 
   /** Decodes a Uniform Resource Identifier (URI).

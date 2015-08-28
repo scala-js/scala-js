@@ -19,6 +19,7 @@ import scala.scalajs.js
  *  general it is more advisable to use the methods directly defined on
  *  [[timers]] as they are more Scala-like.
  */
+@js.native
 object RawTimers extends js.GlobalScope {
 
   /** Schedule [[handler]] for execution in [[interval]] milliseconds.

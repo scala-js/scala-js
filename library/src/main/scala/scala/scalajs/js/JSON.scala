@@ -20,6 +20,7 @@ package scala.scalajs.js
  *
  * MDN
  */
+@native
 object JSON extends Object {
   /**
    * Parse a string as JSON, optionally transforming the value produced by parsing.

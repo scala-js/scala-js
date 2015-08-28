@@ -375,6 +375,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     @ScalaJSDefined trait Test2 extends js.Object
 
     @JSExport
+    @js.native
     trait Test3 extends js.Object
     """ hasErrors
     """
@@ -564,6 +565,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     import scala.scalajs.js
 
     @JSExport
+    @js.native
     object A extends js.Object
     """ hasErrors
     """
@@ -576,6 +578,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     import scala.scalajs.js
 
     @JSExport
+    @js.native
     trait A extends js.Object
     """ hasErrors
     """
@@ -588,6 +591,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     import scala.scalajs.js
 
     @JSExport
+    @js.native
     class A extends js.Object {
       @JSExport
       def this(x: Int) = this()
@@ -597,7 +601,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:5: error: You may not export a native JS class or object
       |    @JSExport
       |     ^
-      |newSource1.scala:7: error: You may not export a constructor of a subclass of js.Any
+      |newSource1.scala:8: error: You may not export a constructor of a subclass of js.Any
       |      @JSExport
       |       ^
     """
@@ -610,13 +614,14 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     import scala.scalajs.js
 
+    @js.native
     class A extends js.Object {
       @JSExport
       def foo: Int = js.native
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: You may not export a method of a subclass of js.Any
+      |newSource1.scala:7: error: You may not export a method of a subclass of js.Any
       |      @JSExport
       |       ^
     """

@@ -29,6 +29,8 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val JSPackage_debugger      = getMemberMethod(ScalaJSJSPackage, newTermName("debugger"))
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackage, newTermName("native"))
 
+    lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
+
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
     lazy val JSDictionaryClass = getRequiredClass("scala.scalajs.js.Dictionary")

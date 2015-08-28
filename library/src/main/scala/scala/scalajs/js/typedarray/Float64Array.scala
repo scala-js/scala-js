@@ -5,6 +5,7 @@ import scala.scalajs.js
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A [[TypedArray]] of double precision floats
  */
+@js.native
 class Float64Array private extends TypedArray[Double, Float64Array] {
 
   /** Constructs a Float64Array with the given length. Initialized to all 0 */
@@ -27,4 +28,5 @@ class Float64Array private extends TypedArray[Double, Float64Array] {
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  [[Float64Array]] companion
  */
+@js.native
 object Float64Array extends TypedArrayStatic

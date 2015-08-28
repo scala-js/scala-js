@@ -99,6 +99,7 @@ object DictionaryTest extends JasmineTest {
 
   }
 
+  @js.native
   trait KeyHolder extends js.Object {
     def key: String = js.native
   }

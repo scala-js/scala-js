@@ -21,15 +21,28 @@ import scala.collection.generic.CanBuildFrom
 
 import annotation.ScalaJSDefined
 
-/** Supertype of all JavaScript values.
+/** Root of the hierarchy of JavaScript types.
  *
- *  Subtypes of [[Any js.Any]] are facade types to APIs implemented in
- *  JavaScript code. Their implementation is irrelevant and never emitted.
- *  As such, all members must be defined with their right-hand-side being
- *  [[native js.native]].
+ *  Subtypes of [[Any js.Any]] are JavaScript types, which have different
+ *  semantics and guarantees than Scala types (subtypes of [[AnyRef]] and
+ *  [[AnyVal]]). Operations on JavaScript types behave as the corresponding
+ *  operations in the JavaScript language.
  *
- *  In most cases, you should extend [[Object js.Object]] instead of this
- *  trait to define facade types.
+ *  By default, JavaScript types are native: they are facade types to APIs
+ *  implemented in JavaScript code. Their implementation is irrelevant and
+ *  never emitted. As such, all members must be defined with their
+ *  right-hand-side being [[native js.native]]. For forward source
+ *  compatibility with the next major version, the class/trait/object itself
+ *  should be annotated with [[native @js.native]].
+ *
+ *  In most cases, you should not directly extend this trait, but rather extend
+ *  [[Object js.Object]].
+ *
+ *  To implement a JavaScript type in Scala.js (therefore non-native), its
+ *  declaration must be annotated with
+ *  [[annotation.ScalaJSDefined @ScalaJSDefined]]. Scala.js-defined JS types
+ *  cannot directly extend native JS traits; and Scala.js-defined JS traits
+ *  cannot declare concrete term members.
  *
  *  It is not possible to define traits or classes that inherit both from this
  *  trait and a strict subtype of [[AnyRef]]. In fact, you should think of

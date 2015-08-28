@@ -137,8 +137,10 @@ object ReflectionTest extends JasmineTest {
   class RenamedTestClass
 
   @JSName("ReflectionTestRawJSClass")
+  @js.native
   class ReflectionTestRawJSClass extends js.Object
 
+  @js.native
   trait ReflectionTestRawJSTrait extends js.Object
 
   class SomeParentClass

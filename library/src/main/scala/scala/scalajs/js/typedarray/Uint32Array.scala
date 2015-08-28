@@ -5,6 +5,7 @@ import scala.scalajs.js
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  A [[TypedArray]] of unsigned 32-bit integers
  */
+@js.native
 class Uint32Array private extends TypedArray[Double, Uint32Array] {
 
   /** Constructs a Uint32Array with the given length. Initialized to all 0 */
@@ -27,4 +28,5 @@ class Uint32Array private extends TypedArray[Double, Uint32Array] {
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
  *  [[Uint32Array]] companion
  */
+@js.native
 object Uint32Array extends TypedArrayStatic

@@ -21,6 +21,7 @@ private[runtime] object RuntimeString {
   /** Operations on a primitive JS string that are shadowed by Scala methods,
    *  and that we need to implement these very Scala methods.
    */
+  @js.native
   private trait SpecialJSStringOps extends js.Any {
     def length: Int = js.native
     def charCodeAt(index: Int): Int = js.native

@@ -102,11 +102,14 @@ object RuntimeTypesTest extends JasmineTest {
 
   }
 
+  @js.native
   trait ParentJSType extends js.Object
 
+  @js.native
   trait SomeJSInterface extends ParentJSType
 
   @JSName("SomeJSClass")
+  @js.native
   class SomeJSClass extends ParentJSType
 
 }

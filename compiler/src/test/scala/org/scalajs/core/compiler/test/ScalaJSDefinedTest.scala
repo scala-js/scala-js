@@ -60,6 +60,7 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   @Test
   def noExtendNativeTrait: Unit = {
     """
+    @js.native
     trait NativeTrait extends js.Object
 
     @ScalaJSDefined
@@ -76,16 +77,16 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
+      |newSource1.scala:9: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
       |    class A extends NativeTrait
       |          ^
-      |newSource1.scala:11: error: A Scala.js-defined JS trait cannot directly extend a native JS trait.
+      |newSource1.scala:12: error: A Scala.js-defined JS trait cannot directly extend a native JS trait.
       |    trait B extends NativeTrait
       |          ^
-      |newSource1.scala:14: error: A Scala.js-defined JS object cannot directly extend a native JS trait.
+      |newSource1.scala:15: error: A Scala.js-defined JS object cannot directly extend a native JS trait.
       |    object C extends NativeTrait
       |           ^
-      |newSource1.scala:17: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
+      |newSource1.scala:18: error: A Scala.js-defined JS class cannot directly extend a native JS trait.
       |      val x = new NativeTrait {}
       |                  ^
     """
