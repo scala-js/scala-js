@@ -275,15 +275,15 @@ object ScalaJSPluginInternal {
         import ScalaJSOptimizer._
         val outCP = (scalaJSOptimizer in fastOptJS).value.optimizeCP(
             (scalaJSPreLinkClasspath in fastOptJS).value,
-            Config(
-                output = AtomicWritableFileVirtualJSFile(output),
-                cache = Some(taskCache),
-                wantSourceMap = (emitSourceMaps in fastOptJS).value,
-                relativizeSourceMapBase = relSourceMapBase,
-                bypassLinkingErrors = opts.bypassLinkingErrors,
-                checkIR = opts.checkScalaJSIR,
-                disableOptimizer = opts.disableOptimizer,
-                batchMode = opts.batchMode),
+            Config(AtomicWritableFileVirtualJSFile(output))
+              .withCache(Some(taskCache))
+              .withWantSourceMap((emitSourceMaps in fastOptJS).value)
+              .withRelativizeSourceMapBase(relSourceMapBase)
+              .withBypassLinkingErrors(opts.bypassLinkingErrors)
+              .withCheckIR(opts.checkScalaJSIR)
+              .withDisableOptimizer(opts.disableOptimizer)
+              .withBatchMode(opts.batchMode)
+              .withCustomOutputWrapper(scalaJSOutputWrapper.value),
             s.log)
 
          Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
@@ -319,16 +319,16 @@ object ScalaJSPluginInternal {
         val outCP = new ScalaJSClosureOptimizer().optimizeCP(
             (scalaJSOptimizer in fullOptJS).value,
             (scalaJSPreLinkClasspath in fullOptJS).value,
-            Config(
-                output = AtomicWritableFileVirtualJSFile(output),
-                cache = Some(taskCache),
-                wantSourceMap = (emitSourceMaps in fullOptJS).value,
-                relativizeSourceMapBase = relSourceMapBase,
-                bypassLinkingErrors = opts.bypassLinkingErrors,
-                checkIR = opts.checkScalaJSIR,
-                disableOptimizer = opts.disableOptimizer,
-                batchMode = opts.batchMode,
-                prettyPrint = opts.prettyPrintFullOptJS),
+            Config(AtomicWritableFileVirtualJSFile(output))
+              .withCache(Some(taskCache))
+              .withWantSourceMap((emitSourceMaps in fullOptJS).value)
+              .withRelativizeSourceMapBase(relSourceMapBase)
+              .withBypassLinkingErrors(opts.bypassLinkingErrors)
+              .withCheckIR(opts.checkScalaJSIR)
+              .withDisableOptimizer(opts.disableOptimizer)
+              .withBatchMode(opts.batchMode)
+              .withCustomOutputWrapper(scalaJSOutputWrapper.value)
+              .withPrettyPrint(opts.prettyPrintFullOptJS),
             s.log)
 
         Attributed.blank(output).put(scalaJSCompleteClasspath, outCP)
@@ -624,6 +624,8 @@ object ScalaJSPluginInternal {
       persistLauncher      := false,
 
       emitSourceMaps := true,
+
+      scalaJSOutputWrapper := ("", ""),
 
       scalaJSOptimizerOptions := OptimizerOptions(),
 
