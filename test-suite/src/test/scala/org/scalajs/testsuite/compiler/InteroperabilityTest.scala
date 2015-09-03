@@ -137,6 +137,9 @@ object InteroperabilityTest extends JasmineTest {
           },
           ContainedObjectRenamed: {
             x: 4242
+          },
+          ContainedClassWithDefaultParam: function(x) {
+            this.x = x || 42;
           }
         };
       """)
@@ -155,6 +158,12 @@ object InteroperabilityTest extends JasmineTest {
 
       val obj4 = TopLevel.ContainedObjectWithJSName
       expect(obj4.x).toEqual(4242)
+
+      val obj5 = new TopLevel.ContainedClassWithDefaultParam()
+      expect(obj5.x).toEqual(42)
+
+      val obj6 = new TopLevel.ContainedClassWithDefaultParam(10)
+      expect(obj6.x).toEqual(10)
     }
 
     it("should access native JS classes and objects nested in @JSName'd JS objects") {
@@ -591,6 +600,11 @@ object InteroperabilityTestContainerObject extends js.Object {
   @JSName("ContainedObjectRenamed")
   @js.native
   object ContainedObjectWithJSName extends js.Object {
+    val x: Int = js.native
+  }
+
+  @js.native
+  class ContainedClassWithDefaultParam(_x: Int = ???) extends js.Object {
     val x: Int = js.native
   }
 }

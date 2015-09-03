@@ -101,6 +101,32 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noNonSyntheticCompanionInsideNativeJSObject: Unit = {
+
+    // See #1891: The default parameter generates a synthetic companion object
+    // The synthetic companion should be allowed, but it may not be expliclit
+
+    """
+    @js.native object A extends js.Object {
+      @js.native class B(x: Int = ???) extends js.Object
+      object B
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
+      |      object B
+      |             ^
+    """
+
+    """
+    @js.native object A extends js.Object {
+      @js.native class B(x: Int = ???) extends js.Object
+    }
+    """.succeeds
+
+  }
+
+  @Test
   def noScalaJSDefinedClassObjectInsideNativeJSObject: Unit = {
 
     for {

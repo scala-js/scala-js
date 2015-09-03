@@ -146,6 +146,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case idef: ImplDef if isJSAny(idef) =>
         transformJSAny(idef)
 
+      /* In native JS objects, only js.Any stuff is allowed. However, synthetic
+       * companion objects need to be allowed as they get generated, when a
+       * native class inside a native JS object has default arguments in its
+       * constructor (see #1891).
+       */
+      case modDef: ModuleDef if (enclosingOwner is OwnerKind.JSNativeMod) &&
+          modDef.symbol.isSynthetic =>
+        super.transform(tree)
+
       // In native JS objects, only js.Any stuff is allowed
       case idef: ImplDef if enclosingOwner is OwnerKind.JSNativeMod =>
         reporter.error(idef.pos, "Native JS objects cannot contain inner " +
