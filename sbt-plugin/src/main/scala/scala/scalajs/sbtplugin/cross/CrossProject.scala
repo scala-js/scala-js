@@ -272,6 +272,18 @@ final class CrossProject private (
   def settings(ss: Def.Setting[_]*): CrossProject =
     copy(jvm.settings(ss: _*), js.settings(ss: _*))
 
+  /** Define common libraries for both JS/JVM projects.  
+   *  JS projects will automatically be converted into the SJS format. 
+   */
+  def commonLibraries(modules: Seq[ModuleID]): CrossProject = {
+    cp.jsSettings(
+      libraryDependencies ++= modules.map { _.cross(ScalaJSCrossVersion.binary) }
+    ).
+    jvmSettings(
+      libraryDependencies ++= modules
+    )
+  } 
+
   override def toString(): String = s"CrossProject(jvm = $jvm, js = $js)"
 
   // Helpers
