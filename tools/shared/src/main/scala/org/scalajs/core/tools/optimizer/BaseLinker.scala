@@ -28,10 +28,12 @@ import ir.Definitions
 import ScalaJSOptimizer.NoWarnMissing
 import Analysis._
 
-/** Links the information from [[VirtualScalaJSIRFile]]s into
- *  [[LinkedClassDef]]s. Does a dead code elimination pass.
+/** Links the information from [[VirtualScalaJSIRFile]]s into a
+ *  [[LinkingUnit]].
+ *
+ *  Makes an analysis pass.
  */
-final class Linker(semantics: Semantics, outputMode: OutputMode,
+final class BaseLinker(semantics: Semantics, outputMode: OutputMode,
     considerPositions: Boolean) {
 
   type TreeProvider = String => (ClassDef, Option[String])
@@ -69,7 +71,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {
-      logTime(logger, "Linker: Check Infos") {
+      logTime(logger, "BaseLinker: Check Infos") {
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
         val checker = new InfoChecker(infoAndTrees, logger)
@@ -78,7 +80,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       }
     }
 
-    val analysis = logTime(logger, "Linker: Compute reachability") {
+    val analysis = logTime(logger, "BaseLinker: Compute reachability") {
       val analyzer = new Analyzer(semantics, outputMode, reachOptimizerSymbols)
       analyzer.computeReachability(infoInput)
     }
@@ -91,12 +93,12 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     if (analysis.errors.nonEmpty && !bypass)
       sys.error("There were linking errors")
 
-    val linkResult = logTime(logger, "Linker: Assemble LinkedClasses") {
+    val linkResult = logTime(logger, "BaseLinker: Assemble LinkedClasses") {
       assemble(infoInput, getTree, analysis)
     }
 
     if (checkIR) {
-      logTime(logger, "Linker: Check IR") {
+      logTime(logger, "BaseLinker: Check IR") {
         if (linkResult.isComplete) {
           val checker = new IRChecker(linkResult, logger)
           if (!checker.check())

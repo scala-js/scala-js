@@ -48,7 +48,7 @@ object ScalaJSPluginInternal {
       "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
 
   /** Dummy setting to persist a Scala.js linker. */
-  val scalaJSLinker = SettingKey[Linker]("scalaJSLinker",
+  val scalaJSLinker = SettingKey[BaseLinker]("scalaJSLinker",
       "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
 
   /** Dummy setting to persist Scala.js optimizer */
@@ -228,7 +228,7 @@ object ScalaJSPluginInternal {
       scalaJSLinker in scalaJSLinkingUnitClasspath := {
         val semantics = scalaJSSemantics.value
         val outputMode = scalaJSOutputMode.value
-        new Linker(semantics, outputMode, considerPositions = true)
+        new BaseLinker(semantics, outputMode, considerPositions = true)
       },
 
       scalaJSLinkingUnitClasspath := {
