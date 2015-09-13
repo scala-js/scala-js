@@ -6,6 +6,26 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+    // Breaking changes
+
+    // Method does not do anything anymore
+    ProblemFilters.exclude[MissingMethodProblem](
+        "org.scalajs.core.tools.optimizer.Linker.clean"),
+
+    // Previously deprecated ctor
+    ProblemFilters.exclude[MissingMethodProblem](
+        "org.scalajs.core.tools.optimizer.Linker.this"),
+
+    // Binary Breaking (argument type widening)
+    // Removes deprecated name
+    ProblemFilters.exclude[IncompatibleMethTypeProblem](
+        "org.scalajs.core.tools.optimizer.Linker.link"),
+
+    // Private things, not an issue
+    ProblemFilters.exclude[MissingClassProblem](
+        "org.scalajs.core.tools.optimizer.Linker$PersistentIRFile"),
+    ProblemFilters.exclude[MissingMethodProblem](
+        "org.scalajs.core.tools.optimizer.Linker.org$scalajs$core$tools$optimizer$Linker$^dateFiles")
   )
 
   val JSEnvs = Seq(

@@ -37,6 +37,9 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   import ScalaJSOptimizer._
 
   private[this] var withSourceMap: Boolean = _
+
+  // Components
+  private[this] var cache: IRFileCache = _
   private[this] var linker: Linker = _
   private[this] var optimizer: GenIncOptimizer = _
   private[this] var refiner: Refiner = _
@@ -113,8 +116,10 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     }
 
     val linkResult = try {
+      logTime(logger, "Cache: Read info")(cache.update(irFiles))
+
       logTime(logger, "Linker") {
-        linker.link(irFiles, logger,
+        linker.link(cache.files, logger,
             reachOptimizerSymbols = !cfg.disableOptimizer,
             cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
       }
@@ -122,6 +127,10 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
       case th: Throwable =>
         resetState()
         throw th
+    } finally {
+      // End cache run
+      val stats = cache.cleanAfterUse()
+      logger.debug(stats.logLine)
     }
 
     val useOptimizer = linkResult.isComplete && !cfg.disableOptimizer
@@ -158,6 +167,7 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   def clean(): Unit = resetState()
 
   private def resetState(): Unit = {
+    cache = new IRFileCache()
     linker = new Linker(semantics, outputMode, withSourceMap)
     resetStateFromOptimizer()
   }

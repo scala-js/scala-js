@@ -232,13 +232,14 @@ object ScalaJSPluginInternal {
       },
 
       scalaJSLinkingUnitClasspath := {
+        // TODO wire this through the top-level linker
+
         val s = streams.value
         val cp = scalaJSPreLinkClasspath.value
         val opts = scalaJSOptimizerOptions.value
 
         val linker = (scalaJSLinker in scalaJSLinkingUnitClasspath).value
-        if (opts.batchMode)
-          linker.clean()
+
 
         val linkingUnit = linker.link(
             cp.scalaJSIR,
@@ -641,8 +642,6 @@ object ScalaJSPluginInternal {
 
       clean <<= clean.dependsOn(Def.task {
         // have clean reset incremental optimizer state
-        (scalaJSLinker in (Compile, scalaJSLinkingUnitClasspath)).value.clean()
-        (scalaJSLinker in (Test, scalaJSLinkingUnitClasspath)).value.clean()
         (scalaJSOptimizer in (Compile, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Test, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Compile, fullOptJS)).value.clean()

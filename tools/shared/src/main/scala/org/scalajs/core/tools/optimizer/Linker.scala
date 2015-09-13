@@ -10,7 +10,7 @@
 package org.scalajs.core.tools.optimizer
 
 import scala.collection.mutable
-import scala.collection.immutable.{Seq, Traversable}
+import scala.collection.immutable
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.OutputMode
@@ -34,55 +34,39 @@ import Analysis._
 final class Linker(semantics: Semantics, outputMode: OutputMode,
     considerPositions: Boolean) {
 
-  @deprecated("Use the overload with an explicit output mode", "0.6.3")
-  def this(semantics: Semantics, considerPositions: Boolean) =
-    this(semantics, OutputMode.ECMAScript51Isolated, considerPositions)
-
-  private[this] val files = mutable.Map.empty[String, PersistentIRFile]
-
-  private[this] var statsReused: Int = 0
-  private[this] var statsInvalidated: Int = 0
-  private[this] var statsTreesRead: Int = 0
-
   type TreeProvider = String => (ClassDef, Option[String])
-
-  /** Cleans the cache. */
-  def clean(): Unit = {
-    files.clear()
-    statsReused = 0
-    statsInvalidated = 0
-    statsTreesRead = 0
-  }
 
   def link(irInput: Traversable[VirtualScalaJSIRFile], logger: Logger,
       reachOptimizerSymbols: Boolean, bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing],
-      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
-    startRun()
+      noWarnMissing: immutable.Seq[NoWarnMissing],
+      checkIR: Boolean): LinkingUnit = {
 
-    val encodedNameToPersistentFile =
-      logTime(logger, "Linker: Read info")(updateFiles(irInput))
+    val infosBuilder = List.newBuilder[Infos.ClassInfo]
+    val encodedNameToFileBuilder = Map.newBuilder[String, VirtualScalaJSIRFile]
 
-    val infos = encodedNameToPersistentFile.values.map(_.info).toList
+    for (irFile <- irInput) {
+      val info = irFile.info
+      infosBuilder += info
+      encodedNameToFileBuilder += info.encodedName -> irFile
+    }
+
+    val infos = infosBuilder.result()
+    val encodedNameToFile = encodedNameToFileBuilder.result()
 
     val getTree: TreeProvider = { name =>
-      val pf = encodedNameToPersistentFile(name)
+      val pf = encodedNameToFile(name)
       (pf.tree, pf.version)
     }
 
-    try {
-      link(infos, getTree, logger, reachOptimizerSymbols,
-          bypassLinkingErrors, noWarnMissing, checkIR)
-    } finally {
-      endRun(logger)
-    }
+    link(infos, getTree, logger, reachOptimizerSymbols,
+        bypassLinkingErrors, noWarnMissing, checkIR)
   }
 
   def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
       logger: Logger, reachOptimizerSymbols: Boolean,
       bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing],
-      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
+      noWarnMissing: immutable.Seq[NoWarnMissing],
+      checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {
       logTime(logger, "Linker: Check Infos") {
@@ -125,8 +109,8 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     linkResult
   }
 
-  private def filterErrors(errors: scala.collection.Seq[Error],
-      noWarnMissing: Seq[NoWarnMissing]) = {
+  private def filterErrors(errors: Seq[Error],
+      noWarnMissing: immutable.Seq[NoWarnMissing]) = {
     import NoWarnMissing._
 
     val classNoWarns = mutable.Set.empty[String]
@@ -280,86 +264,6 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         version)
-  }
-
-  private def startRun(): Unit = {
-    statsReused = 0
-    statsInvalidated = 0
-    statsTreesRead = 0
-    for (file <- files.values)
-      file.startRun()
-  }
-
-  private def updateFiles(irFiles: Traversable[VirtualScalaJSIRFile]) = {
-    val tups = for (irFile <- irFiles) yield {
-      val file = files.getOrElseUpdate(irFile.path,
-        new PersistentIRFile(irFile.path))
-      file.updateFile(irFile)
-      file.info.encodedName -> file
-    }
-    tups.toMap
-  }
-
-  private def endRun(logger: Logger): Unit = {
-    logger.debug(
-        s"Linker: cache stats: reused: $statsReused -- "+
-        s"invalidated: $statsInvalidated -- "+
-        s"trees read: $statsTreesRead")
-
-    // "Garbage-collect" persisted versions of files that have disappeared
-    files.retain((_, f) => f.cleanAfterRun())
-  }
-
-  private final class PersistentIRFile(val path: String) {
-    import ir.Trees._
-
-    private[this] var existedInThisRun: Boolean = false
-
-    private[this] var _irFile: VirtualScalaJSIRFile = null
-    private[this] var _version: Option[String] = None
-    private[this] var _info: Infos.ClassInfo = null
-    private[this] var _tree: ClassDef = null
-
-    def startRun(): Unit = {
-      existedInThisRun = false
-    }
-
-    def updateFile(irFile: VirtualScalaJSIRFile): Unit = {
-      existedInThisRun = true
-      _irFile = irFile
-      if (_version.isDefined && _version == _irFile.version) {
-        // yeepeeh, nothing to do
-        statsReused += 1
-      } else {
-        _version = irFile.version
-        _info = irFile.info
-        _tree = null
-        statsInvalidated += 1
-      }
-    }
-
-    def version: Option[String] = _version
-
-    def info: Infos.ClassInfo = _info
-
-    def tree: ClassDef = {
-      if (_tree == null) {
-        statsTreesRead += 1
-        _tree = _irFile.tree
-      }
-      _tree
-    }
-
-    def treeIfChanged(lastVersion: Option[String]): Option[(ClassDef, Option[String])] = {
-      if (lastVersion.isDefined && lastVersion == version) None
-      else Some((tree, version))
-    }
-
-    /** Returns true if this file should be kept for the next run at all. */
-    def cleanAfterRun(): Boolean = {
-      _irFile = null
-      existedInThisRun
-    }
   }
 
 }
