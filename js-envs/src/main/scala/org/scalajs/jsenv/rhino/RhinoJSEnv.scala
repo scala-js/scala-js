@@ -452,7 +452,7 @@ object RhinoJSEnv {
         considerPositions = true)
     linker.link(cp.scalaJSIR, logger,
         reachOptimizerSymbols = false,
-        bypassLinkingErrors = true, noWarnMissing = Nil, checkIR = false)
+        bypassLinkingErrors = true, checkIR = false)
   }
 
   /** Communication channel between the Rhino thread and the rest of the JVM */

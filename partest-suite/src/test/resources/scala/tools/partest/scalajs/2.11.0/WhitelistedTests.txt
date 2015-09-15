@@ -1024,7 +1024,6 @@ run/Course-2002-13.scala
 run/t6337a.scala
 run/exoticnames.scala
 run/t0936.scala
-run/existentials3-old.scala
 run/runtime-richChar.scala
 run/t6272.scala
 run/t7215.scala
@@ -1047,7 +1046,6 @@ run/t889.scala
 run/QueueTest.scala
 run/t4537
 run/t3699.scala
-run/valueclasses-manifest-basic.scala
 run/t1192.scala
 run/macro-expand-tparams-bounds
 run/macro-expand-nullary-generic
@@ -1055,7 +1053,6 @@ run/t1434.scala
 run/t6443-varargs.scala
 run/macro-term-declared-in-trait
 run/t4080.scala
-run/t2236-old.scala
 run/matcharraytail.scala
 run/infiniteloop.scala
 run/t5733.scala
@@ -1083,7 +1080,6 @@ run/t5867.scala
 run/search.scala
 run/t3112.scala
 run/hashsetremove.scala
-run/interop_manifests_are_classtags.scala
 run/t6443.scala
 run/macro-expand-tparams-prefix
 run/contrib674.scala
@@ -1289,7 +1285,6 @@ run/t5907.scala
 run/t266.scala
 run/missingparams.scala
 run/t2255.scala
-run/private-inline.scala
 run/t3488.scala
 run/t3950.scala
 run/typealias_overriding.scala
@@ -1324,7 +1319,6 @@ run/enrich-gentraversable.scala
 run/macro-expand-override
 run/t4054.scala
 run/t4753.scala
-run/valueclasses-manifest-generic.scala
 run/macro-typecheck-macrosdisabled
 run/t2308a.scala
 run/duplicate-meth.scala
@@ -1568,13 +1562,11 @@ neg/cyclics.scala
 neg/t5060.scala
 neg/scopes.scala
 run/t4013.scala
-run/value-class-extractor-seq.scala
 run/macro-expand-tparams-explicit
 run/tuples.scala
 run/t5753_2
 run/t0528.scala
 run/t5105.scala
-run/t1195-old.scala
 run/t7341.scala
 run/t3670.scala
 run/t2594_tcpoly.scala
@@ -1588,7 +1580,6 @@ run/t3004.scala
 run/viewtest.scala
 run/t6481.scala
 run/t0005.scala
-run/t4110-old.scala
 run/t4766.scala
 run/t5500b.scala
 run/t7407b.scala
@@ -2379,13 +2370,10 @@ run/t3242b.scala
 run/indexedSeq-apply.scala
 run/t107.scala
 run/t2337.scala
-run/t3758-old.scala
 run/t2754.scala
-run/valueclasses-manifest-existential.scala
 run/flat-flat-flat.scala
 run/t6673.scala
 run/interpolationMultiline2.scala
-run/t3493.scala
 run/t0631.scala
 run/t2800.scala
 run/t6506.scala
