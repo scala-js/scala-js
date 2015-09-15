@@ -48,7 +48,7 @@ object ScalaJSPluginInternal {
       "Scala.js internal: Fails if fork is true.", KeyRanks.Invisible)
 
   /** Dummy setting to persist a Scala.js linker. */
-  val scalaJSLinker = SettingKey[Linker]("scalaJSLinker",
+  val scalaJSLinker = SettingKey[BaseLinker]("scalaJSLinker",
       "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
 
   /** Dummy setting to persist Scala.js optimizer */
@@ -228,24 +228,24 @@ object ScalaJSPluginInternal {
       scalaJSLinker in scalaJSLinkingUnitClasspath := {
         val semantics = scalaJSSemantics.value
         val outputMode = scalaJSOutputMode.value
-        new Linker(semantics, outputMode, considerPositions = true)
+        new BaseLinker(semantics, outputMode, considerPositions = true)
       },
 
       scalaJSLinkingUnitClasspath := {
+        // TODO wire this through the top-level linker
+
         val s = streams.value
         val cp = scalaJSPreLinkClasspath.value
         val opts = scalaJSOptimizerOptions.value
 
         val linker = (scalaJSLinker in scalaJSLinkingUnitClasspath).value
-        if (opts.batchMode)
-          linker.clean()
+
 
         val linkingUnit = linker.link(
             cp.scalaJSIR,
             s.log,
             reachOptimizerSymbols = true, // better be safe than sorry here
             bypassLinkingErrors = opts.bypassLinkingErrors,
-            noWarnMissing = Nil,
             checkIR = opts.checkScalaJSIR)
         new LinkingUnitClasspath(cp.jsLibs, linkingUnit, cp.requiresDOM,
             cp.version)
@@ -641,8 +641,6 @@ object ScalaJSPluginInternal {
 
       clean <<= clean.dependsOn(Def.task {
         // have clean reset incremental optimizer state
-        (scalaJSLinker in (Compile, scalaJSLinkingUnitClasspath)).value.clean()
-        (scalaJSLinker in (Test, scalaJSLinkingUnitClasspath)).value.clean()
         (scalaJSOptimizer in (Compile, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Test, fastOptJS)).value.clean()
         (scalaJSOptimizer in (Compile, fullOptJS)).value.clean()

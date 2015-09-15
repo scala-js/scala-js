@@ -37,7 +37,10 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   import ScalaJSOptimizer._
 
   private[this] var withSourceMap: Boolean = _
-  private[this] var linker: Linker = _
+
+  // Components
+  private[this] var cache: IRFileCache = _
+  private[this] var linker: BaseLinker = _
   private[this] var optimizer: GenIncOptimizer = _
   private[this] var refiner: Refiner = _
   private[this] var emitter: Emitter = _
@@ -113,15 +116,21 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
     }
 
     val linkResult = try {
-      logTime(logger, "Linker") {
-        linker.link(irFiles, logger,
+      logTime(logger, "Cache: Read info")(cache.update(irFiles))
+
+      logTime(logger, "Basic Linking") {
+        linker.link(cache.files, logger,
             reachOptimizerSymbols = !cfg.disableOptimizer,
-            cfg.bypassLinkingErrors, cfg.noWarnMissing, cfg.checkIR)
+            cfg.bypassLinkingErrors, cfg.checkIR)
       }
     } catch {
       case th: Throwable =>
         resetState()
         throw th
+    } finally {
+      // End cache run
+      val stats = cache.cleanAfterUse()
+      logger.debug(stats.logLine)
     }
 
     val useOptimizer = linkResult.isComplete && !cfg.disableOptimizer
@@ -139,7 +148,7 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
           refiner.refine(rawOptimized, logger)
         }
       } else {
-        if (cfg.noWarnMissing.isEmpty && !cfg.disableOptimizer)
+        if (!cfg.disableOptimizer)
           logger.warn("Not running the optimizer because there where linking errors.")
         linkResult
       }
@@ -158,7 +167,8 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   def clean(): Unit = resetState()
 
   private def resetState(): Unit = {
-    linker = new Linker(semantics, outputMode, withSourceMap)
+    cache = new IRFileCache()
+    linker = new BaseLinker(semantics, outputMode, withSourceMap)
     resetStateFromOptimizer()
   }
 
@@ -171,16 +181,6 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
 
 object ScalaJSOptimizer {
 
-  sealed abstract class NoWarnMissing {
-    def className: String
-  }
-
-  object NoWarnMissing {
-    final case class Class(className: String) extends NoWarnMissing
-    final case class Method(className: String, methodName: String)
-        extends NoWarnMissing
-  }
-
   type OptimizerFactory = (Semantics, OutputMode, Boolean) => GenIncOptimizer
 
   /** Configurations relevant to the optimizer */
@@ -189,9 +189,7 @@ object ScalaJSOptimizer {
      *  optimizer to decide whether a position change should trigger re-inlining
      */
     val wantSourceMap: Boolean
-    /** Whether to only warn if the linker has errors. Implicitly true, if
-     *  noWarnMissing is nonEmpty
-     */
+    /** Whether to only warn if the linker has errors. */
     val bypassLinkingErrors: Boolean
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean
@@ -203,8 +201,6 @@ object ScalaJSOptimizer {
     val disableOptimizer: Boolean
     /** If true, nothing is performed incrementally */
     val batchMode: Boolean
-    /** Elements we won't warn even if they don't exist */
-    val noWarnMissing: Seq[NoWarnMissing]
   }
 
   /** Configuration for the output of the Scala.js optimizer. */
@@ -217,9 +213,7 @@ object ScalaJSOptimizer {
       val wantSourceMap: Boolean,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI],
-      /** Whether to only warn if the linker has errors. Implicitly true, if
-       *  noWarnMissing is nonEmpty
-       */
+      /** Whether to only warn if the linker has errors. */
       val bypassLinkingErrors: Boolean,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
@@ -231,35 +225,9 @@ object ScalaJSOptimizer {
       val disableOptimizer: Boolean,
       /** If true, nothing is performed incrementally */
       val batchMode: Boolean,
-      /** Elements we won't warn even if they don't exist */
-      val noWarnMissing: Seq[NoWarnMissing],
       /** Custom js code that wraps the output */
       val customOutputWrapper: (String, String)
-  ) extends OptimizerConfig
-      /* for binary compatibility */ with Product with Serializable with Equals {
-
-    /* NOTE: This class was previously a case class and hence many useless
-     * methods were implemented for binary compatibility :(
-     */
-
-    // For binary compatibility
-    @deprecated("Use Config(output) and .withXYZ() methods", "0.6.5")
-    def this(
-        output: WritableVirtualJSFile,
-        cache: Option[WritableVirtualTextFile] = None,
-        wantSourceMap: Boolean = false,
-        relativizeSourceMapBase: Option[URI] = None,
-        bypassLinkingErrors: Boolean = false,
-        checkIR: Boolean = false,
-        unCache: Boolean = true,
-        disableOptimizer: Boolean = false,
-        batchMode: Boolean = false,
-        noWarnMissing: Seq[NoWarnMissing] = Nil) = {
-
-      this(output, cache, wantSourceMap, relativizeSourceMapBase,
-          bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
-          noWarnMissing, customOutputWrapper = ("", ""))
-    }
+  ) extends OptimizerConfig {
 
     def withCache(cache: Option[WritableVirtualTextFile]): Config =
       copyWith(cache = cache)
@@ -285,30 +253,8 @@ object ScalaJSOptimizer {
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copyWith(relativizeSourceMapBase = relativizeSourceMapBase)
 
-    def withNoWarnMissing(noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing]): Config =
-      copyWith(noWarnMissing = noWarnMissing)
-
     def withCustomOutputWrapper(customOutputWrapper: (String, String)): Config =
       copyWith(customOutputWrapper = customOutputWrapper)
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def copy(
-        output: WritableVirtualJSFile = this.output,
-        cache: Option[WritableVirtualTextFile] = this.cache,
-        wantSourceMap: Boolean = this.wantSourceMap,
-        relativizeSourceMapBase: Option[URI] = this.relativizeSourceMapBase,
-        bypassLinkingErrors: Boolean = this.bypassLinkingErrors,
-        checkIR: Boolean = this.checkIR,
-        unCache: Boolean = this.unCache,
-        disableOptimizer: Boolean = this.disableOptimizer,
-        batchMode: Boolean = this.batchMode,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = this.noWarnMissing): Config = {
-
-      copyWith(output, cache, wantSourceMap, relativizeSourceMapBase,
-          bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
-          noWarnMissing)
-    }
 
     private def copyWith(
         output: WritableVirtualJSFile = this.output,
@@ -320,48 +266,15 @@ object ScalaJSOptimizer {
         unCache: Boolean = this.unCache,
         disableOptimizer: Boolean = this.disableOptimizer,
         batchMode: Boolean = this.batchMode,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = this.noWarnMissing,
         customOutputWrapper: (String, String) = this.customOutputWrapper): Config = {
 
       new Config(output, cache, wantSourceMap, relativizeSourceMapBase,
           bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
-          noWarnMissing, customOutputWrapper)
+          customOutputWrapper)
     }
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def canEqual(that: Any): Boolean = true
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def productArity: Int = productArray.length
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def productElement(n: Int): Any = productArray(n)
-
-    // For binary compatibility
-    private def productArray: Array[Any] = {
-      Array[Any](output, cache, wantSourceMap, relativizeSourceMapBase,
-          bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
-          noWarnMissing, customOutputWrapper)
-    }
-
-    // For binary compatibility
-    override def equals(other: Any): Boolean = super.equals(other)
-
-    // For binary compatibility
-    override def hashCode(): Int = super.hashCode()
-
-    // For binary compatibility
-    override def toString(): String =
-      productArray.mkString("Config(", ", ", ")")
   }
 
-  object Config extends runtime.AbstractFunction10[WritableVirtualJSFile,
-      Option[WritableVirtualTextFile], Boolean, Option[URI], Boolean, Boolean,
-      Boolean, Boolean, Boolean, Seq[NoWarnMissing], Config] {
-
+  object Config {
     def apply(output: WritableVirtualJSFile): Config = {
       new Config(
           output = output,
@@ -373,39 +286,7 @@ object ScalaJSOptimizer {
           unCache = true,
           disableOptimizer = false,
           batchMode = false,
-          noWarnMissing = Nil,
           customOutputWrapper = ("", ""))
-    }
-
-    // For binary compatibility
-    @deprecated("Use Config(output) and .withXYZ() methods", "0.6.5")
-    def apply(
-        output: WritableVirtualJSFile,
-        cache: Option[WritableVirtualTextFile] = None,
-        wantSourceMap: Boolean = false,
-        relativizeSourceMapBase: Option[URI] = None,
-        bypassLinkingErrors: Boolean = false,
-        checkIR: Boolean = false,
-        unCache: Boolean = true,
-        disableOptimizer: Boolean = false,
-        batchMode: Boolean = false,
-        noWarnMissing: Seq[NoWarnMissing] = Nil): Config = {
-
-      new Config(output, cache, wantSourceMap, relativizeSourceMapBase,
-          bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
-          noWarnMissing, customOutputWrapper = ("", ""))
-    }
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def unapply(config: Config): Option[(WritableVirtualJSFile,
-        Option[WritableVirtualTextFile], Boolean, Option[URI], Boolean, Boolean,
-        Boolean, Boolean, Boolean, Seq[NoWarnMissing])] = {
-
-      Some((config.output, config.cache, config.wantSourceMap,
-          config.relativizeSourceMapBase, config.bypassLinkingErrors,
-          config.checkIR, config.unCache, config.disableOptimizer, config.batchMode,
-          config.noWarnMissing))
     }
   }
 }

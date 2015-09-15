@@ -167,8 +167,7 @@ object ScalaJSClosureOptimizer {
       val output: WritableVirtualJSFile,
       /** Cache file */
       val cache: Option[WritableVirtualTextFile],
-      /** Whether to only warn if the linker has errors. Implicitly true, if
-       *  noWarnMissing is nonEmpty */
+      /** Whether to only warn if the linker has errors. */
       val bypassLinkingErrors: Boolean,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
@@ -186,46 +185,9 @@ object ScalaJSClosureOptimizer {
       val prettyPrint: Boolean,
       /** Base path to relativize paths in the source map */
       val relativizeSourceMapBase: Option[URI],
-      /** Elements we won't warn even if they don't exist */
-      val noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing],
       /** Custom js code that wraps the output */
       val customOutputWrapper: (String, String)
-  ) extends OptimizerConfig with ScalaJSOptimizer.OptimizerConfig
-      /* for binary compatibility */ with Product with Serializable with Equals {
-
-    /* NOTE: This class was previously a case class and hence many useless
-     * methods were implemented for binary compatibility :(
-     */
-
-    // For binary compatibility
-    @deprecated("Use Config(output) and .withXYZ() methods", "0.6.5")
-    def this(
-        output: WritableVirtualJSFile,
-        cache: Option[WritableVirtualTextFile] = None,
-        bypassLinkingErrors: Boolean = false,
-        checkIR: Boolean = false,
-        unCache: Boolean = true,
-        disableOptimizer: Boolean = false,
-        batchMode: Boolean = false,
-        wantSourceMap: Boolean = false,
-        prettyPrint: Boolean = false,
-        relativizeSourceMapBase: Option[URI] = None,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = Nil) = {
-
-      this(
-          output = output,
-          cache = cache,
-          bypassLinkingErrors = bypassLinkingErrors,
-          checkIR = checkIR,
-          unCache = unCache,
-          disableOptimizer = disableOptimizer,
-          batchMode = batchMode,
-          wantSourceMap = wantSourceMap,
-          prettyPrint = prettyPrint,
-          relativizeSourceMapBase = relativizeSourceMapBase,
-          noWarnMissing = noWarnMissing,
-          customOutputWrapper = ("", ""))
-    }
+  ) extends OptimizerConfig with ScalaJSOptimizer.OptimizerConfig {
 
     def withCache(cache: Option[WritableVirtualTextFile]): Config =
       copyWith(cache = cache)
@@ -254,30 +216,8 @@ object ScalaJSClosureOptimizer {
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copyWith(relativizeSourceMapBase = relativizeSourceMapBase)
 
-    def withNoWarnMissing(noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing]): Config =
-      copyWith(noWarnMissing = noWarnMissing)
-
     def withCustomOutputWrapper(customOutputWrapper: (String, String)): Config =
       copyWith(customOutputWrapper = customOutputWrapper)
-
-    @deprecated("Not a case class anymore", "0.6.5")
-    def copy(
-        output: WritableVirtualJSFile = this.output,
-        cache: Option[WritableVirtualTextFile] = this.cache,
-        bypassLinkingErrors: Boolean = this.bypassLinkingErrors,
-        checkIR: Boolean = this.checkIR,
-        unCache: Boolean = this.unCache,
-        disableOptimizer: Boolean = this.disableOptimizer,
-        batchMode: Boolean = this.batchMode,
-        wantSourceMap: Boolean = this.wantSourceMap,
-        prettyPrint: Boolean = this.prettyPrint,
-        relativizeSourceMapBase: Option[URI] = this.relativizeSourceMapBase,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = this.noWarnMissing): Config = {
-
-      copyWith(output, cache, bypassLinkingErrors, checkIR, unCache,
-          disableOptimizer, batchMode, wantSourceMap, prettyPrint,
-          relativizeSourceMapBase, noWarnMissing)
-    }
 
     private def copyWith(
         output: WritableVirtualJSFile = this.output,
@@ -290,48 +230,15 @@ object ScalaJSClosureOptimizer {
         wantSourceMap: Boolean = this.wantSourceMap,
         prettyPrint: Boolean = this.prettyPrint,
         relativizeSourceMapBase: Option[URI] = this.relativizeSourceMapBase,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = this.noWarnMissing,
         customOutputWrapper: (String, String) = this.customOutputWrapper): Config = {
 
       new Config(output, cache, bypassLinkingErrors, checkIR, unCache,
           disableOptimizer, batchMode, wantSourceMap, prettyPrint,
-          relativizeSourceMapBase, noWarnMissing, customOutputWrapper)
+          relativizeSourceMapBase, customOutputWrapper)
     }
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def canEqual(that: Any): Boolean = true
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def productArity: Int = productArray.length
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def productElement(n: Int): Any = productArray(n)
-
-    private def productArray: Array[Any] = {
-      Array[Any](output, cache, bypassLinkingErrors, checkIR, unCache,
-          disableOptimizer, batchMode, wantSourceMap, prettyPrint,
-          relativizeSourceMapBase, noWarnMissing, customOutputWrapper)
-    }
-
-    // For binary compatibility
-    override def equals(other: Any): Boolean = super.equals(other)
-
-    // For binary compatibility
-    override def hashCode(): Int = super.hashCode()
-
-    // For binary compatibility
-    override def toString(): String =
-      productArray.mkString("Config(", ", ", ")")
   }
 
-  object Config extends runtime.AbstractFunction11[WritableVirtualJSFile,
-      Option[WritableVirtualTextFile], Boolean, Boolean, Boolean,
-      Boolean, Boolean, Boolean, Boolean, Option[URI],
-      Seq[ScalaJSOptimizer.NoWarnMissing], Config] {
-
+  object Config {
     def apply(output: WritableVirtualJSFile): Config = {
       new Config(
           output = output,
@@ -344,41 +251,7 @@ object ScalaJSClosureOptimizer {
           wantSourceMap = false,
           prettyPrint = false,
           relativizeSourceMapBase = None,
-          noWarnMissing = Nil,
           customOutputWrapper = ("", ""))
-    }
-
-    // For binary compatibility
-    @deprecated("Use Config(output) and .withXYZ() methods", "0.6.5")
-    def apply(
-        output: WritableVirtualJSFile,
-        cache: Option[WritableVirtualTextFile] = None,
-        bypassLinkingErrors: Boolean = false,
-        checkIR: Boolean = false,
-        unCache: Boolean = true,
-        disableOptimizer: Boolean = false,
-        batchMode: Boolean = false,
-        wantSourceMap: Boolean = false,
-        prettyPrint: Boolean = false,
-        relativizeSourceMapBase: Option[URI] = None,
-        noWarnMissing: Seq[ScalaJSOptimizer.NoWarnMissing] = Nil): Config = {
-
-      new Config(output, cache, bypassLinkingErrors, checkIR, unCache,
-          disableOptimizer, batchMode, wantSourceMap, prettyPrint,
-          relativizeSourceMapBase, noWarnMissing, customOutputWrapper = ("", ""))
-    }
-
-    // For binary compatibility
-    @deprecated("Not a case class anymore", "0.6.5")
-    def unapply(config: Config): Option[(WritableVirtualJSFile,
-        Option[WritableVirtualTextFile], Boolean, Boolean, Boolean,
-        Boolean, Boolean, Boolean, Boolean, Option[URI],
-        Seq[ScalaJSOptimizer.NoWarnMissing])] = {
-
-      Some((config.output, config.cache, config.bypassLinkingErrors,
-          config.checkIR, config.unCache, config.disableOptimizer,
-          config.batchMode, config.wantSourceMap, config.prettyPrint,
-          config.relativizeSourceMapBase, config.noWarnMissing))
     }
   }
 

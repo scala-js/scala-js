@@ -448,11 +448,11 @@ object RhinoJSEnv {
   private[rhino] def linkIRClasspath(cp: IRClasspath,
       semantics: Semantics): LinkingUnit = {
     val logger = new ScalaConsoleLogger(Level.Error)
-    val linker = new Linker(semantics, OutputMode.ECMAScript51Global,
+    val linker = new BaseLinker(semantics, OutputMode.ECMAScript51Global,
         considerPositions = true)
     linker.link(cp.scalaJSIR, logger,
         reachOptimizerSymbols = false,
-        bypassLinkingErrors = true, noWarnMissing = Nil, checkIR = false)
+        bypassLinkingErrors = true, checkIR = false)
   }
 
   /** Communication channel between the Rhino thread and the rest of the JVM */

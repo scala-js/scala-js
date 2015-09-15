@@ -7,6 +7,7 @@ import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.classpath.builder._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
 import org.scalajs.core.tools.optimizer.ScalaJSClosureOptimizer
 import org.scalajs.core.tools.optimizer.ParIncOptimizer
@@ -40,21 +41,6 @@ class MainGenericRunner {
   }
 
   val optMode = OptMode.fromId(sys.props("scalajs.partest.optMode"))
-
-  def noWarnMissing = {
-    import ScalaJSOptimizer._
-
-    for {
-      fname <- sys.props.get("scalajs.partest.noWarnFile").toList
-      line  <- Source.fromFile(fname).getLines
-      if !line.startsWith("#")
-    } yield line.split('.') match {
-      case Array(className) =>
-        NoWarnMissing.Class(className)
-      case Array(className, methodName) =>
-        NoWarnMissing.Method(className, methodName)
-    }
-  }
 
   def readSemantics() = {
     val opt = sys.props.get("scalajs.partest.compliantSems")
@@ -106,11 +92,9 @@ class MainGenericRunner {
 
     optimizer.optimizeCP(
         classpath,
-        Config(
-            output        = output,
-            wantSourceMap = false,
-            checkIR       = true,
-            noWarnMissing = noWarnMissing),
+        Config(output)
+          .withWantSourceMap(false)
+          .withCheckIR(true),
         logger)
   }
 
@@ -119,16 +103,14 @@ class MainGenericRunner {
     import ScalaJSClosureOptimizer._
 
     val fastOptimizer = newScalaJSOptimizer(semantics)
-    val fullOptimizer = new ScalaJSClosureOptimizer(semantics)
+    val fullOptimizer = new ScalaJSClosureOptimizer()
     val output = WritableMemVirtualJSFile("partest-fullOpt.js")
 
     fullOptimizer.optimizeCP(fastOptimizer,
         classpath,
-        Config(
-          output,
-          checkIR = true,
-          wantSourceMap = false,
-          noWarnMissing = noWarnMissing),
+        Config(output)
+          .withWantSourceMap(false)
+          .withCheckIR(true),
         logger)
   }
 
@@ -199,8 +181,10 @@ class MainGenericRunner {
     }
   }
 
-  private def newScalaJSOptimizer(semantics: Semantics) =
-    new ScalaJSOptimizer(semantics, ParIncOptimizer.factory)
+  private def newScalaJSOptimizer(semantics: Semantics) = {
+    new ScalaJSOptimizer(semantics, OutputMode.ECMAScript51Isolated,
+      ParIncOptimizer.factory)
+  }
 
   private def urlToFile(url: java.net.URL) = {
     try {
