@@ -1,8 +1,0 @@
-Ljava_math_MathContext$
-Ljava_math_BigDecimal$
-Ljava_math_BigDecimal
-Ljava_math_BigInteger$
-jl_Class$
-jl_Class.getClassLoader__jl_ClassLoader
-jl_Class.getPackage__jl_Package
-jl_Class.getInterfaces__Ajl_Class

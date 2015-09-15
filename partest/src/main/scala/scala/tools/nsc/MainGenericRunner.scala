@@ -42,21 +42,6 @@ class MainGenericRunner {
 
   val optMode = OptMode.fromId(sys.props("scalajs.partest.optMode"))
 
-  def noWarnMissing = {
-    import ScalaJSOptimizer._
-
-    for {
-      fname <- sys.props.get("scalajs.partest.noWarnFile").toList
-      line  <- Source.fromFile(fname).getLines
-      if !line.startsWith("#")
-    } yield line.split('.') match {
-      case Array(className) =>
-        NoWarnMissing.Class(className)
-      case Array(className, methodName) =>
-        NoWarnMissing.Method(className, methodName)
-    }
-  }
-
   def readSemantics() = {
     val opt = sys.props.get("scalajs.partest.compliantSems")
     opt.fold(Semantics.Defaults) { str =>
@@ -109,8 +94,7 @@ class MainGenericRunner {
         classpath,
         Config(output)
           .withWantSourceMap(false)
-          .withCheckIR(true)
-          .withNoWarnMissing(noWarnMissing),
+          .withCheckIR(true),
         logger)
   }
 
@@ -125,9 +109,8 @@ class MainGenericRunner {
     fullOptimizer.optimizeCP(fastOptimizer,
         classpath,
         Config(output)
-          .withCheckIR(true)
           .withWantSourceMap(false)
-          .withNoWarnMissing(noWarnMissing),
+          .withCheckIR(true),
         logger)
   }
 

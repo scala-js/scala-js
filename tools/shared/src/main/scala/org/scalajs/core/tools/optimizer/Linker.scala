@@ -25,7 +25,6 @@ import ir.Hashers
 import ir.Position
 import ir.Definitions
 
-import ScalaJSOptimizer.NoWarnMissing
 import Analysis._
 
 /** Links the information from [[VirtualScalaJSIRFile]]s into
@@ -56,8 +55,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
   def link(irInput: Traversable[VirtualScalaJSIRFile], logger: Logger,
       reachOptimizerSymbols: Boolean, bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing],
-      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
+      checkIR: Boolean): LinkingUnit = {
     startRun()
 
     val encodedNameToPersistentFile =
@@ -72,7 +70,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
     try {
       link(infos, getTree, logger, reachOptimizerSymbols,
-          bypassLinkingErrors, noWarnMissing, checkIR)
+          bypassLinkingErrors, checkIR)
     } finally {
       endRun(logger)
     }
@@ -80,9 +78,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
   def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
       logger: Logger, reachOptimizerSymbols: Boolean,
-      bypassLinkingErrors: Boolean,
-      noWarnMissing: Seq[NoWarnMissing],
-      @deprecatedName('checkInfos) checkIR: Boolean): LinkingUnit = {
+      bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {
       logTime(logger, "Linker: Check Infos") {
@@ -99,12 +95,10 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       analyzer.computeReachability(infoInput)
     }
 
-    val bypass = bypassLinkingErrors || noWarnMissing.nonEmpty
-    val linkingErrLevel = if (bypass) Level.Warn else Level.Error
-    val filteredErrors = filterErrors(analysis.errors, noWarnMissing)
-    filteredErrors.foreach(logError(_, logger, linkingErrLevel))
+    val linkingErrLevel = if (bypassLinkingErrors) Level.Warn else Level.Error
+    analysis.errors.foreach(logError(_, logger, linkingErrLevel))
 
-    if (analysis.errors.nonEmpty && !bypass)
+    if (analysis.errors.nonEmpty && !bypassLinkingErrors)
       sys.error("There were linking errors")
 
     val linkResult = logTime(logger, "Linker: Assemble LinkedClasses") {
@@ -117,46 +111,13 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
           val checker = new IRChecker(linkResult, logger)
           if (!checker.check())
             sys.error(s"There were ${checker.errorCount} IR checking errors.")
-        } else if (noWarnMissing.isEmpty)
+        } else {
           sys.error("Could not check IR because there where linking errors.")
+        }
       }
     }
 
     linkResult
-  }
-
-  private def filterErrors(errors: scala.collection.Seq[Error],
-      noWarnMissing: Seq[NoWarnMissing]) = {
-    import NoWarnMissing._
-
-    val classNoWarns = mutable.Set.empty[String]
-    val methodNoWarnsBuf = mutable.Buffer.empty[Method]
-
-    // Basically a type safe partition
-    noWarnMissing.foreach {
-      case Class(className) =>
-        classNoWarns += className
-      case m: Method =>
-        methodNoWarnsBuf += m
-    }
-
-    val methodNoWarns = for {
-      (className, elems) <- methodNoWarnsBuf.groupBy(_.className)
-    } yield {
-      className -> elems.map(_.methodName).toSet
-    }
-
-    errors filterNot {
-      case MissingClass(info, _) =>
-        classNoWarns.contains(info.encodedName)
-      case MissingMethod(info, _) =>
-        classNoWarns.contains(info.owner.encodedName) ||
-        methodNoWarns.get(info.owner.encodedName).exists { setf =>
-          setf(info.encodedName)
-        }
-      case _ =>
-        false
-    }
   }
 
   private def assemble(infoInput: List[Infos.ClassInfo],

@@ -33,8 +33,8 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
 }
 
 class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
-    scalaJSOverridePath: String, options: ScalaJSPartestOptions,
-    noWarnFile: File) extends nest.Runner(testFile, suiteRunner) {
+    scalaJSOverridePath: String,
+    options: ScalaJSPartestOptions) extends nest.Runner(testFile, suiteRunner) {
 
   private val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
@@ -58,7 +58,6 @@ class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
   override def extraJavaOptions = {
     super.extraJavaOptions ++ Seq(
-        s"-Dscalajs.partest.noWarnFile=${noWarnFile.getAbsolutePath}",
         s"-Dscalajs.partest.optMode=${options.optMode.id}",
         s"-Dscalajs.partest.compliantSems=${compliantSems.mkString(",")}"
     )
@@ -89,7 +88,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   override def runTest(testFile: File): TestState = {
     // Mostly copy-pasted from SuiteRunner.runTest(), unfortunately :-(
-    val runner = new ScalaJSRunner(testFile, this, listDir, options, noWarnFile)
+    val runner = new ScalaJSRunner(testFile, this, listDir, options)
 
     // when option "--failed" is provided execute test only if log
     // is present (which means it failed before)
@@ -125,12 +124,6 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   private lazy val whitelistedTestFileNames =
     readTestList(s"$listDir/WhitelistedTests.txt")
-
-  private lazy val noWarnFile: File = {
-    val url = getClass.getResource(s"$listDir/NoDCEWarn.txt")
-    assert(url != null, "Need NoDCEWarn.txt file")
-    new File(url.toURI).getAbsolutePath()
-  }
 
   private def readTestList(resourceName: String): Set[String] = {
     val source = scala.io.Source.fromURL(getClass.getResource(resourceName))
