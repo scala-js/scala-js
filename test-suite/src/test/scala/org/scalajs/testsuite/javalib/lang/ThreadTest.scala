@@ -25,11 +25,23 @@ object ThreadTest extends JasmineTest {
     }
 
     it("Thread.currentThread().getStackTrace() should exist and not crash") {
-      java.lang.Thread.currentThread().getStackTrace()
+      Thread.currentThread().getStackTrace()
     }
 
     it("getId()") {
       expect(Thread.currentThread().getId > 0).toBeTruthy
+    }
+
+    it("interrupt() exist and the status is properly reflected") {
+      val t = Thread.currentThread()
+      expect(t.isInterrupted()).toBeFalsy
+      expect(Thread.interrupted()).toBeFalsy
+      expect(t.isInterrupted()).toBeFalsy
+      t.interrupt()
+      expect(t.isInterrupted()).toBeTruthy
+      expect(Thread.interrupted()).toBeTruthy
+      expect(t.isInterrupted()).toBeFalsy
+      expect(Thread.interrupted()).toBeFalsy
     }
   }
 
