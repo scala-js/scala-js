@@ -843,7 +843,7 @@ object Build extends sbt.Build {
       )
   ).aggregate(helloworld, reversi, testingExample)
 
-  lazy val exampleSettings = commonSettings ++ myScalaJSSettings
+  lazy val exampleSettings = commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
 
   lazy val helloworld: Project = Project(
       id = "helloworld",
