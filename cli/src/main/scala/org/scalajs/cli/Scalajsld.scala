@@ -163,13 +163,12 @@ object Scalajsld {
 
     new ScalaJSClosureOptimizer().optimizeCP(
         newScalaJSOptimizer(semantics, options.outputMode), cp,
-        Config(
-            output = output,
-            wantSourceMap = options.sourceMap,
-            relativizeSourceMapBase = options.relativizeSourceMap,
-            bypassLinkingErrors = options.bypassLinkingErrors,
-            checkIR = options.checkIR,
-            prettyPrint = options.prettyPrint),
+        Config(output)
+          .withWantSourceMap(options.sourceMap)
+          .withRelativizeSourceMapBase(options.relativizeSourceMap)
+          .withBypassLinkingErrors(options.bypassLinkingErrors)
+          .withCheckIR(options.checkIR)
+          .withPrettyPrint(options.prettyPrint),
         newLogger(options))
   }
 
@@ -178,13 +177,12 @@ object Scalajsld {
     import ScalaJSOptimizer._
 
     newScalaJSOptimizer(options.semantics, options.outputMode).optimizeCP(cp,
-        Config(
-            output = output,
-            wantSourceMap = options.sourceMap,
-            bypassLinkingErrors = options.bypassLinkingErrors,
-            checkIR = options.checkIR,
-            disableOptimizer = options.noOpt,
-            relativizeSourceMapBase = options.relativizeSourceMap),
+        Config(output)
+          .withWantSourceMap(options.sourceMap)
+          .withBypassLinkingErrors(options.bypassLinkingErrors)
+          .withCheckIR(options.checkIR)
+          .withDisableOptimizer(options.noOpt)
+          .withRelativizeSourceMapBase(options.relativizeSourceMap),
         newLogger(options))
   }
 

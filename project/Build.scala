@@ -148,6 +148,10 @@ object Build extends sbt.Build {
       pomIncludeRepository := { _ => false }
   )
 
+  val fatalWarningsSettings = Seq(
+      scalacOptions += "-Xfatal-warnings"
+  )
+
   private def publishToScalaJSRepoSettings = Seq(
       publishTo := {
         Seq("PUBLISH_USER", "PUBLISH_PASS").map(Properties.envOrNone) match {
@@ -393,7 +397,9 @@ object Build extends sbt.Build {
   lazy val jsEnvs: Project = Project(
       id = "jsEnvs",
       base = file("js-envs"),
-      settings = commonSettings ++ publishSettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js JS Envs",
           libraryDependencies ++= Seq(
               "io.apigee" % "rhino" % "1.7R5pre4",
@@ -408,7 +414,9 @@ object Build extends sbt.Build {
   lazy val testAdapter = Project(
       id = "testAdapter",
       base = file("test-adapter"),
-      settings = commonSettings ++ publishSettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js sbt test adapter",
           libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
           previousArtifactSetting,
@@ -419,7 +427,9 @@ object Build extends sbt.Build {
   lazy val plugin: Project = Project(
       id = "sbtPlugin",
       base = file("sbt-plugin"),
-      settings = commonSettings ++ publishIvySettings ++ Seq(
+      settings = (
+          commonSettings ++ publishIvySettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js sbt plugin",
           normalizedName := "sbt-scalajs",
           name in bintray := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
@@ -460,7 +470,9 @@ object Build extends sbt.Build {
   lazy val javalanglib: Project = Project(
       id = "javalanglib",
       base = file("javalanglib"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "java.lang library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -483,7 +495,9 @@ object Build extends sbt.Build {
   lazy val javalib: Project = Project(
       id = "javalib",
       base = file("javalib"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Java library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -638,7 +652,9 @@ object Build extends sbt.Build {
   lazy val libraryAux: Project = Project(
       id = "libraryAux",
       base = file("library-aux"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js aux library",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -737,7 +753,9 @@ object Build extends sbt.Build {
   lazy val javalibEx: Project = Project(
       id = "javalibEx",
       base = file("javalib-ex"),
-      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
@@ -765,7 +783,9 @@ object Build extends sbt.Build {
   lazy val cli: Project = Project(
       id = "cli",
       base = file("cli"),
-      settings = commonSettings ++ publishSettings ++ assemblySettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ assemblySettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
               "com.github.scopt" %% "scopt" % "3.2.0"
@@ -786,7 +806,9 @@ object Build extends sbt.Build {
   lazy val testInterface = Project(
       id = "testInterface",
       base = file("test-interface"),
-      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js test interface",
           delambdafySetting,
           scalaJSSourceMapSettings,
@@ -797,7 +819,9 @@ object Build extends sbt.Build {
   lazy val jasmineTestFramework = Project(
       id = "jasmineTestFramework",
       base = file("jasmine-test-framework"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ myScalaJSSettings ++ fatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js jasmine test framework",
 
           jsDependencies ++= Seq(
@@ -1025,7 +1049,9 @@ object Build extends sbt.Build {
   lazy val javalibExTestSuite: Project = Project(
       id = "javalibExTestSuite",
       base = file("javalib-ex-test-suite"),
-      settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
+      settings = (
+          commonSettings ++ myScalaJSSettings ++ testTagSettings
+      ) ++ Seq(
           name := "JavaLib Ex Test Suite",
           publishArtifact in Compile := false,
 
@@ -1115,7 +1141,7 @@ object Build extends sbt.Build {
   lazy val partestSuite: Project = Project(
       id = "partestSuite",
       base = file("partest-suite"),
-      settings = commonSettings ++ Seq(
+      settings = commonSettings ++ fatalWarningsSettings ++ Seq(
           name := "Scala.js partest suite",
 
           fork in Test := true,
