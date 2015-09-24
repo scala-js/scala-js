@@ -149,7 +149,8 @@ object Build extends sbt.Build {
   )
 
   val fatalWarningsSettings = Seq(
-      scalacOptions += "-Xfatal-warnings"
+      scalacOptions += "-Xfatal-warnings",
+      scalacOptions in (Compile, doc) ~= (_.filterNot(_ == "-Xfatal-warnings"))
   )
 
   private def publishToScalaJSRepoSettings = Seq(
