@@ -816,7 +816,8 @@ object Build extends sbt.Build {
           name := "Scala.js test interface",
           delambdafySetting,
           scalaJSSourceMapSettings,
-          previousArtifactSetting
+          previousArtifactSetting,
+          binaryIssueFilters ++= BinaryIncompatibilities.TestInterface
       )
   ).dependsOn(compiler % "plugin", library)
 

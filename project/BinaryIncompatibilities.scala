@@ -19,4 +19,20 @@ object BinaryIncompatibilities {
 
   val CLI = Seq(
   )
+
+  val TestInterface = Seq(
+      // Private things, not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "sbt.testing.Status.this"),
+
+      // Inherited from parent class, not an issue
+      ProblemFilters.exclude[MissingTypesProblem](
+          "sbt.testing.Status"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "sbt.testing.Status.name"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "sbt.testing.Status.ordinal"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "sbt.testing.Status.toString")
+    )
 }
