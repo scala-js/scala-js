@@ -239,12 +239,12 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
+    # Then go into standalone project and test
     sbt ++2.11.7 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                  testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
         ++2.10.5 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal
-    # Go into standalone project and test
-    cd sbt-plugin-test
+                 testAdapter/publishLocal sbtPlugin/publishLocal &&
+    cd sbt-plugin-test &&
     sbt noDOM/run withDOM/run test \
         'set scalaJSStage in Global := FastOptStage' \
         jetty9/run test \
