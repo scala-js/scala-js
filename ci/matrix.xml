@@ -15,7 +15,6 @@
 
   <task id="main"><![CDATA[
     setJavaVersion $java
-    sbtretry ++$scala package packageDoc &&
     sbtretry ++$scala helloworld/run \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala helloworld/run \
@@ -183,6 +182,8 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala javalibExTestSuite/test &&
     sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
+        testInterface/compile:doc jasmineTestFramework/compile:doc &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
     sh ci/checksizes.sh $scala &&
@@ -204,7 +205,9 @@
         stubs/package jsEnvs/test \
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
-        stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues
+        stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues &&
+    sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
+        testAdapter/compile:doc stubs/compile:doc
   ]]></task>
 
   <task id="tools-cli-stubs-sbtplugin"><![CDATA[
@@ -215,7 +218,7 @@
         ir/mimaReportBinaryIssues tools/mimaReportBinaryIssues \
         jsEnvs/mimaReportBinaryIssues testAdapter/mimaReportBinaryIssues \
         stubs/mimaReportBinaryIssues cli/mimaReportBinaryIssues \
-        sbtPlugin/mimaReportBinaryIssues
+        sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala library/scalastyle javalanglib/scalastyle javalib/scalastyle \
         javalibEx/scalastyle ir/scalastyle compiler/scalastyle \
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
@@ -224,7 +227,9 @@
         jasmineTestFramework/scalastyle testSuite/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
-        testingExample/test:scalastyle
+        testingExample/test:scalastyle &&
+    sbt ++$scala ir/compile:doc tools/compile:doc jsEnvs/compile:doc \
+        testAdapter/compile:doc stubs/compile:doc sbtPlugin/compile:doc
   ]]></task>
 
   <task id="partestc"><![CDATA[
@@ -234,12 +239,12 @@
 
   <task id="sbtplugin-test"><![CDATA[
     # Publish Scala.js artifacts locally
+    # Then go into standalone project and test
     sbt ++2.11.7 compiler/publishLocal library/publishLocal javalibEx/publishLocal \
                  testInterface/publishLocal jasmineTestFramework/publishLocal stubs/publishLocal \
         ++2.10.5 ir/publishLocal tools/publishLocal jsEnvs/publishLocal \
-                 testAdapter/publishLocal sbtPlugin/publishLocal
-    # Go into standalone project and test
-    cd sbt-plugin-test
+                 testAdapter/publishLocal sbtPlugin/publishLocal &&
+    cd sbt-plugin-test &&
     sbt noDOM/run withDOM/run test \
         'set scalaJSStage in Global := FastOptStage' \
         jetty9/run test \
