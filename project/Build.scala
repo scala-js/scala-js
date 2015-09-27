@@ -737,17 +737,23 @@ object Build extends sbt.Build {
             val libraryMappings = superMappings.filter(
                 _._2.replace('\\', '/') !=
                   "scala/scalajs/js/typedarray/TypedArrayBufferBridge$.sjsir")
+                  
+            val filter = ("*.sjsir": NameFilter)
+            
+            val javalibProducts = (products in javalib).value
+            val javalibMappings =
+              javalibProducts.flatMap(base => Path.selectSubpaths(base, filter))
+            val javalibFilteredMappings = javalibMappings.filter(
+                _._2.replace('\\', '/') != "java/lang/MathJDK8Bridge$.sjsir")
 
-            val allProducts = (
+            val otherProducts = (
                 (products in javalanglib).value ++
-                (products in javalib).value ++
                 (products in scalalib).value ++
                 (products in libraryAux).value)
-            val filter = ("*.sjsir": NameFilter)
             val otherMappings =
-              allProducts.flatMap(base => Path.selectSubpaths(base, filter))
+              otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
-            libraryMappings ++ otherMappings
+            libraryMappings ++ otherMappings ++ javalibFilteredMappings
           },
 
           patchDocSetting
