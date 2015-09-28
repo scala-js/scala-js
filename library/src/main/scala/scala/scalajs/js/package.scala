@@ -81,6 +81,10 @@ package object js {
    */
   def constructorOf[T <: js.Any]: js.Dynamic = sys.error("stub")
 
+  /** Makes explicit an implicitly available `ConstructorTag[T]`. */
+  def constructorTag[T <: js.Any](implicit tag: ConstructorTag[T]): ConstructorTag[T] =
+    tag
+
   /** Invokes any available debugging functionality.
    *  If no debugging functionality is available, this statement has no effect.
    *
