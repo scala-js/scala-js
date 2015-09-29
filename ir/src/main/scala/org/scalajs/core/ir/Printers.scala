@@ -22,15 +22,17 @@ import Utils.escapeJS
 object Printers {
 
   /** Basically copied from scala.reflect.internal.Printers */
-  trait IndentationManager {
+  abstract class IndentationManager {
     protected val out: Writer
 
-    protected var indentMargin = 0
-    protected val indentStep = 2
-    protected var indentString = "                                        " // 40
+    private var indentMargin = 0
+    private val indentStep = 2
+    private var indentString = "                                        " // 40
 
     protected def indent(): Unit = indentMargin += indentStep
     protected def undent(): Unit = indentMargin -= indentStep
+
+    protected def getIndentMargin(): Int = indentMargin
 
     protected def println(): Unit = {
       out.write('\n')
@@ -39,51 +41,6 @@ object Printers {
       if (indentMargin > 0)
         out.write(indentString, 0, indentMargin)
     }
-
-    @tailrec
-    protected final def printSeq[A](ls: List[A])(printelem: A => Unit)(
-        printsep: A => Unit): Unit = {
-      ls match {
-        case Nil =>
-        case x :: Nil =>
-          printelem(x)
-        case x :: rest =>
-          printelem(x)
-          printsep(x)
-          printSeq(rest)(printelem)(printsep)
-      }
-    }
-
-    protected def printColumn(ts: List[Any], start: String, sep: String,
-        end: String): Unit = {
-      print(start); indent(); println()
-      printSeq(ts) { x =>
-        print(x)
-      } { _ =>
-        print(sep)
-        println()
-      }
-      undent(); println(); print(end)
-    }
-
-    protected def printRow(ts: List[Any], start: String, sep: String,
-        end: String): Unit = {
-      print(start)
-      printSeq(ts) { x =>
-        print(x)
-      } { _ =>
-        print(sep)
-      }
-      print(end)
-    }
-
-    protected def printRow(ts: List[Any], sep: String): Unit =
-      printRow(ts, "", sep, "")
-
-    protected def print(args: Any*): Unit =
-      args.foreach(printOne)
-
-    protected def printOne(arg: Any): Unit
   }
 
   class IRTreePrinter(protected val out: Writer) extends IndentationManager {
@@ -100,20 +57,55 @@ object Printers {
       }
     }
 
-    protected def printBlock(tree: Tree): Unit = {
-      val trees = tree match {
-        case Block(trees) => trees
-        case _            => List(tree)
+    protected final def printColumn(ts: List[Tree], start: String, sep: String,
+        end: String): Unit = {
+      printString(start); indent(); println()
+      var rest = ts
+      while (rest.nonEmpty) {
+        printTree(rest.head)
+        rest = rest.tail
+        if (rest.nonEmpty) {
+          printString(sep)
+          println()
+        }
       }
-      printColumn(trees, "{", ";", "}")
+      undent(); println(); printString(end)
+    }
+
+    protected final def printRow(ts: List[Any], start: String, sep: String,
+        end: String): Unit = {
+      printString(start)
+      var rest = ts
+      while (rest.nonEmpty) {
+        printOne(rest.head)
+        rest = rest.tail
+        if (rest.nonEmpty)
+          printString(sep)
+      }
+      printString(end)
+    }
+
+    protected def printBlock(tree: Tree): Unit = {
+      tree match {
+        case Block(trees) =>
+          printColumn(trees, "{", ";", "}")
+
+        case _ =>
+          print('{'); indent(); println()
+          print(tree)
+          undent(); println(); print('}')
+      }
     }
 
     protected def printSig(args: List[ParamDef], resultType: Type): Unit = {
       printRow(args, "(", ", ", ")")
-      if (resultType != NoType)
-        print(": ", resultType, " = ")
-      else
-        print(" ")
+      if (resultType != NoType) {
+        printString(": ")
+        printOne(resultType)
+        printString(" = ")
+      } else {
+        printChar(' ')
+      }
     }
 
     protected def printArgs(args: List[Tree]): Unit = {
@@ -509,11 +501,16 @@ object Printers {
 
         case JSObjectConstr(fields) =>
           print("{"); indent; println()
-          printSeq(fields) {
-            case (name, value) => print(name, ": ", value)
-          } { _ =>
-            print(",")
-            println()
+          var rest = fields
+          while (rest.nonEmpty) {
+            printOne(rest.head._1)
+            printOne(": ")
+            printOne(rest.head._2)
+            rest = rest.tail
+            if (rest.nonEmpty) {
+              printString(",")
+              println()
+            }
           }
           undent; println(); print("}")
 
@@ -628,7 +625,9 @@ object Printers {
 
         case PropertyDef(name, _, _, _) =>
           // TODO
-          print(s"<property: $name>")
+          print("<property: ")
+          print(name)
+          print('>')
 
         case ConstructorExportDef(fullName, args, body) =>
           print("export \"", escapeJS(fullName), "\"")
@@ -666,7 +665,7 @@ object Printers {
           print("[]")
 
       case RecordType(fields) =>
-        print("(")
+        print('(')
         var first = false
         for (RecordType.Field(name, _, tpe, mutable) <- fields) {
           if (first) first = false
@@ -675,7 +674,7 @@ object Printers {
             print("var ")
           print(name, ": ", tpe)
         }
-        print(")")
+        print(')')
     }
 
     protected def printIdent(ident: Ident): Unit =
@@ -692,9 +691,11 @@ object Printers {
         printString(if (arg == null) "null" else arg.toString)
     }
 
-    protected def printString(s: String): Unit = {
+    protected def printString(s: String): Unit =
       out.write(s)
-    }
+
+    protected def printChar(c: Int): Unit =
+      out.write(c)
 
     // Make it public
     override def println(): Unit = super.println()
@@ -729,7 +730,8 @@ object Printers {
 
     def printMethodInfo(methodInfo: MethodInfo): Unit = {
       import methodInfo._
-      print(escapeJS(encodedName), ":")
+      print(escapeJS(encodedName))
+      print(":")
       indent(); println()
 
       if (isStatic)
@@ -741,60 +743,90 @@ object Printers {
       if (methodsCalled.nonEmpty) {
         print("methodsCalled:")
         indent(); println()
-        printSeq(methodsCalled.toList) { case (cls, callees) =>
-          print(escapeJS(cls), ": ")
-          print(callees.map(escapeJS).mkString("[", ", ", "]"))
-        } { _ => println() }
+        val iter = methodsCalled.iterator
+        while (iter.hasNext) {
+          val (cls, callers) = iter.next()
+          print(escapeJS(cls))
+          print(": [")
+          printRow(callers, ": [", ", ", "}")
+          if (iter.hasNext)
+            println()
+        }
         undent(); println()
       }
       if (methodsCalledStatically.nonEmpty) {
         print("methodsCalledStatically:")
         indent(); println()
-        printSeq(methodsCalledStatically.toList) { case (cls, callees) =>
-          print(escapeJS(cls), ": ")
-          print(callees.map(escapeJS).mkString("[", ", ", "]"))
-        } { _ => println() }
+        val iter = methodsCalledStatically.iterator
+        while (iter.hasNext) {
+          val (cls, callers) = iter.next
+          print(escapeJS(cls))
+          printRow(callers, ": [", ", ", "}")
+          if (iter.hasNext)
+            println()
+        }
         undent(); println()
       }
       if (staticMethodsCalled.nonEmpty) {
         print("staticMethodsCalled:")
         indent(); println()
-        printSeq(staticMethodsCalled.toList) { case (cls, callees) =>
-          print(escapeJS(cls), ": ")
-          print(callees.map(escapeJS).mkString("[", ", ", "]"))
-        } { _ => println() }
+        val iter = methodsCalledStatically.iterator
+        while (iter.hasNext) {
+          val (cls, callers) = iter.next()
+          print(escapeJS(cls))
+          printRow(callers, ": [", ", ", "}")
+          if (iter.hasNext)
+            println()
+        }
         undent(); println()
       }
-      if (instantiatedClasses.nonEmpty) {
-        println("instantiatedClasses: ",
-            instantiatedClasses.map(escapeJS).mkString("[", ", ", "]"))
-      }
-      if (accessedModules.nonEmpty) {
-        println("accessedModules: ",
-            accessedModules.map(escapeJS).mkString("[", ", ", "]"))
-      }
-      if (usedInstanceTests.nonEmpty) {
-        println("usedInstanceTests: ",
-            usedInstanceTests.map(escapeJS).mkString("[", ", ", "]"))
-      }
-      if (accessedClassData.nonEmpty) {
-        println("accessedClassData: ",
-            accessedClassData.map(escapeJS).mkString("[", ", ", "]"))
-      }
+      if (instantiatedClasses.nonEmpty)
+        printRow(instantiatedClasses, "instantiatedClasses: [", ", ", "]")
+      if (accessedModules.nonEmpty)
+        printRow(accessedModules, "accessedModules: [", ", ", "]")
+      if (usedInstanceTests.nonEmpty)
+        printRow(usedInstanceTests, "usedInstanceTests: [", ", ", "]")
+      if (accessedClassData.nonEmpty)
+        printRow(accessedClassData, "accessedClassData: [", ", ", "]")
 
       undent(); println()
     }
 
-    private def println(arg1: Any, args: Any*): Unit = {
-      print((arg1 +: args): _*)
+    protected def printRow(ts: List[String], start: String, sep: String,
+        end: String): Unit = {
+      print(start)
+      var rest = ts
+      while (rest.nonEmpty) {
+        print(rest.head)
+        rest = rest.tail
+        if (rest.nonEmpty)
+          print(sep)
+      }
+      print(end)
+    }
+
+    private final def println(arg1: Any, args: Any*): Unit = {
+      printOne(arg1)
+      var i = 0
+      val len = args.length
+      while (i < len) {
+        printOne(args(i))
+        i += 1
+      }
       println()
     }
 
     protected def printOne(arg: Any): Unit = arg match {
       case classInfo: ClassInfo   => printClassInfo(classInfo)
       case methodInfo: MethodInfo => printMethodInfo(methodInfo)
-      case arg                    => out.write(arg.toString())
+      case arg                    => print(arg.toString())
     }
+
+    protected def print(s: String): Unit =
+      out.write(s)
+
+    protected def print(c: Int): Unit =
+      out.write(c)
 
     def complete(): Unit = ()
   }
