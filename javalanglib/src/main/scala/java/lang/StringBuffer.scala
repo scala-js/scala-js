@@ -81,6 +81,10 @@ class StringBuffer(private var content: String) extends CharSequence
     this
   }
 
+  def ensureCapacity(minimumCapacity: Int): Unit = {
+    // Do nothing
+  }
+
   /**
    * @param start The beginning index, inclusive.
    * @param end The ending index, exclusive.
