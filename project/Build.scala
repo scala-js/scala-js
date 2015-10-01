@@ -264,8 +264,9 @@ object Build extends sbt.Build {
       commonSettings ++ publishSettings
   ) ++ Seq(
       name := "Scala.js IR",
-
-      previousArtifactSetting,
+      /* Scala.js 0.6.6 will break binary compatibility of the IR
+       */
+      // previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.IR
   )
 
@@ -339,7 +340,9 @@ object Build extends sbt.Build {
           (sourceManaged in Compile).value)
       },
 
-      previousArtifactSetting,
+      /* Scala.js 0.6.6 will break binary compatibility of the tools
+       */
+      // previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.Tools
   )
 
