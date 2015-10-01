@@ -149,10 +149,7 @@ class SourceMapWriter(
     // New pending
     pendingColumnInGenerated = startColumn
     pendingPos = originalPos
-    pendingName =
-      if (startColumn != pendingColumnInGenerated) originalName
-      else if (pendingName != null) pendingName
-      else originalName
+    pendingName = originalName
   }
 
   private def writePendingSegment() {
