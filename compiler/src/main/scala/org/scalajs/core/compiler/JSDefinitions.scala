@@ -90,6 +90,9 @@ trait JSDefinitions { self: JSGlobalAddons =>
     lazy val JSThisFunctionModule = JSThisFunctionClass.companionModule
       def JSThisFunction_fromFunction(arity: Int): TermSymbol = getMemberMethod(JSThisFunctionModule, newTermName("fromFunction"+arity))
 
+    lazy val JSConstructorTagModule = getRequiredModule("scala.scalajs.js.ConstructorTag")
+      lazy val JSConstructorTag_materialize = getMemberMethod(JSConstructorTagModule, newTermName("materialize"))
+
     lazy val RawJSTypeAnnot = getRequiredClass("scala.scalajs.js.annotation.RawJSType")
     lazy val ExposedJSMemberAnnot = getRequiredClass("scala.scalajs.js.annotation.ExposedJSMember")
 
@@ -107,6 +110,7 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_genTraversableOnce2jsArray = getMemberMethod(RuntimePackageModule, newTermName("genTraversableOnce2jsArray"))
       lazy val Runtime_jsTupleArray2jsObject      = getMemberMethod(RuntimePackageModule, newTermName("jsTupleArray2jsObject"))
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))
+      lazy val Runtime_newConstructorTag          = getMemberMethod(RuntimePackageModule, newTermName("newConstructorTag"))
       lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
       lazy val Runtime_environmentInfo            = getMemberMethod(RuntimePackageModule, newTermName("environmentInfo"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))

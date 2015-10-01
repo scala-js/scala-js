@@ -250,33 +250,19 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       // Rewrite js.constructorOf[T] into runtime.constructorOf(classOf[T])
       case TypeApply(ctorOfTree, List(tpeArg))
           if ctorOfTree.symbol == JSPackage_constructorOf =>
-        val classValue = try {
-          typer.typedClassOf(tree, tpeArg)
-        } catch {
-          case typeError: TypeError =>
-            reporter.error(typeError.pos, typeError.msg)
-            EmptyTree
-        }
+        genConstructorOf(tree, tpeArg)
 
-        if (classValue != EmptyTree) {
-          val Literal(classConstant) = classValue
-          val tpe = classConstant.typeValue.dealiasWiden
-          val typeSym = tpe.typeSymbol
-          if (!typeSym.isTrait && !typeSym.isModuleClass) {
-            typer.typed {
-              atPos(tree.pos) {
-                Apply(
-                    Select(Ident(RuntimePackageModule), newTermName("constructorOf")),
-                    List(classValue))
-              }
-            }
-          } else {
-            reporter.error(tpeArg.pos,
-                s"non-trait class required but $tpe found")
-            EmptyTree
+      /* Rewrite js.ConstructorTag.materialize[T] into
+       * runtime.newConstructorTag[T](runtime.constructorOf(classOf[T]))
+       */
+      case TypeApply(ctorOfTree, List(tpeArg))
+          if ctorOfTree.symbol == JSConstructorTag_materialize =>
+        val ctorOf = genConstructorOf(tree, tpeArg)
+        typer.typed {
+          atPos(tree.pos) {
+            gen.mkMethodCall(Runtime_newConstructorTag,
+                List(tpeArg.tpe), List(ctorOf))
           }
-        } else {
-          EmptyTree
         }
 
       // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
@@ -336,6 +322,37 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       case _ => super.transform(tree)
     } }
+
+    private def genConstructorOf(tree: Tree, tpeArg: Tree): Tree = {
+      val classValue = try {
+        typer.typedClassOf(tree, tpeArg)
+      } catch {
+        case typeError: TypeError =>
+          reporter.error(typeError.pos, typeError.msg)
+          EmptyTree
+      }
+
+      if (classValue != EmptyTree) {
+        val Literal(classConstant) = classValue
+        val tpe = classConstant.typeValue.dealiasWiden
+        val typeSym = tpe.typeSymbol
+        if (!typeSym.isTrait && !typeSym.isModuleClass) {
+          typer.typed {
+            atPos(tree.pos) {
+              Apply(
+                  Select(Ident(RuntimePackageModule), newTermName("constructorOf")),
+                  List(classValue))
+            }
+          }
+        } else {
+          reporter.error(tpeArg.pos,
+              s"non-trait class type required but $tpe found")
+          EmptyTree
+        }
+      } else {
+        EmptyTree
+      }
+    }
 
     private def postTransform(tree: Tree) = tree match {
       case _ if !shouldPrepareExports =>

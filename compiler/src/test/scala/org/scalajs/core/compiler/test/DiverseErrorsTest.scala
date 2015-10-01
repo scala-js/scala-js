@@ -80,11 +80,11 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
       val h = js.constructorOf[JSClass { def bar: Int }]
 
       def foo[A <: js.Any] = js.constructorOf[A]
-      def bar[A <: js.Any : scala.reflect.ClassTag] = js.constructorOf[A]
+      def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorOf[A]
     }
     """ hasErrors
     """
-      |newSource1.scala:12: error: non-trait class required but NativeJSTrait found
+      |newSource1.scala:12: error: non-trait class type required but NativeJSTrait found
       |      val a = js.constructorOf[NativeJSTrait]
       |                               ^
       |newSource1.scala:13: error: class type required but NativeJSObject.type found
@@ -96,7 +96,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
       |newSource1.scala:16: error: class type required but NativeJSClass{def bar: Int} found
       |      val d = js.constructorOf[NativeJSClass { def bar: Int }]
       |                               ^
-      |newSource1.scala:18: error: non-trait class required but JSTrait found
+      |newSource1.scala:18: error: non-trait class type required but JSTrait found
       |      val e = js.constructorOf[JSTrait]
       |                               ^
       |newSource1.scala:19: error: class type required but JSObject.type found
@@ -112,8 +112,95 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
       |      def foo[A <: js.Any] = js.constructorOf[A]
       |                                              ^
       |newSource1.scala:25: error: class type required but A found
-      |      def bar[A <: js.Any : scala.reflect.ClassTag] = js.constructorOf[A]
-      |                                                                       ^
+      |      def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorOf[A]
+      |                                                                      ^
+    """
+
+  }
+
+  @Test
+  def jsConstructorTagErrors: Unit = {
+
+    """
+    class ScalaClass
+    trait ScalaTrait
+    object ScalaObject
+
+    object A {
+      val a = js.constructorTag[ScalaClass]
+      val b = js.constructorTag[ScalaTrait]
+      val c = js.constructorTag[ScalaObject.type]
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: type arguments [ScalaClass] do not conform to method constructorTag's type parameter bounds [T <: scala.scalajs.js.Any]
+      |      val a = js.constructorTag[ScalaClass]
+      |                               ^
+      |newSource1.scala:9: error: type arguments [ScalaTrait] do not conform to method constructorTag's type parameter bounds [T <: scala.scalajs.js.Any]
+      |      val b = js.constructorTag[ScalaTrait]
+      |                               ^
+      |newSource1.scala:10: error: type arguments [ScalaObject.type] do not conform to method constructorTag's type parameter bounds [T <: scala.scalajs.js.Any]
+      |      val c = js.constructorTag[ScalaObject.type]
+      |                               ^
+    """
+
+    """
+    @js.native class NativeJSClass extends js.Object
+    @js.native trait NativeJSTrait extends js.Object
+    @js.native object NativeJSObject extends js.Object
+
+    @ScalaJSDefined class JSClass extends js.Object
+    @ScalaJSDefined trait JSTrait extends js.Object
+    @ScalaJSDefined object JSObject extends js.Object
+
+    object A {
+      val a = js.constructorTag[NativeJSTrait]
+      val b = js.constructorTag[NativeJSObject.type]
+
+      val c = js.constructorTag[NativeJSClass with NativeJSTrait]
+      val d = js.constructorTag[NativeJSClass { def bar: Int }]
+
+      val e = js.constructorTag[JSTrait]
+      val f = js.constructorTag[JSObject.type]
+
+      val g = js.constructorTag[JSClass with JSTrait]
+      val h = js.constructorTag[JSClass { def bar: Int }]
+
+      def foo[A <: js.Any] = js.constructorTag[A]
+      def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorTag[A]
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:12: error: non-trait class type required but NativeJSTrait found
+      |      val a = js.constructorTag[NativeJSTrait]
+      |                               ^
+      |newSource1.scala:13: error: class type required but NativeJSObject.type found
+      |      val b = js.constructorTag[NativeJSObject.type]
+      |                               ^
+      |newSource1.scala:15: error: class type required but NativeJSClass with NativeJSTrait found
+      |      val c = js.constructorTag[NativeJSClass with NativeJSTrait]
+      |                               ^
+      |newSource1.scala:16: error: class type required but NativeJSClass{def bar: Int} found
+      |      val d = js.constructorTag[NativeJSClass { def bar: Int }]
+      |                               ^
+      |newSource1.scala:18: error: non-trait class type required but JSTrait found
+      |      val e = js.constructorTag[JSTrait]
+      |                               ^
+      |newSource1.scala:19: error: class type required but JSObject.type found
+      |      val f = js.constructorTag[JSObject.type]
+      |                               ^
+      |newSource1.scala:21: error: class type required but JSClass with JSTrait found
+      |      val g = js.constructorTag[JSClass with JSTrait]
+      |                               ^
+      |newSource1.scala:22: error: class type required but JSClass{def bar: Int} found
+      |      val h = js.constructorTag[JSClass { def bar: Int }]
+      |                               ^
+      |newSource1.scala:24: error: class type required but A found
+      |      def foo[A <: js.Any] = js.constructorTag[A]
+      |                                              ^
+      |newSource1.scala:25: error: class type required but A found
+      |      def bar[A <: js.Any: scala.reflect.ClassTag] = js.constructorTag[A]
+      |                                                                      ^
     """
 
   }

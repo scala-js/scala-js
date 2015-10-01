@@ -50,6 +50,56 @@ object MiscInteropTest extends JasmineTest {
       expect(instance.x).toEqual(35)
     }
 
+    it("js.constructorTag[T] for native classes") {
+      def test[T <: js.Any: js.ConstructorTag](expected: js.Dynamic): Unit =
+        expect(js.constructorTag[T].constructor).toBe(expected)
+
+      test[js.RegExp](js.Dynamic.global.RegExp)
+      test[js.Array[_]](js.Dynamic.global.Array)
+      test[js.Array[Int]](js.Dynamic.global.Array)
+    }
+
+    it("js.constructorTag[T] for Scala.js-defined JS classes") {
+      def test[T <: js.Any: js.ConstructorTag](expected: js.Dynamic): Unit =
+        expect(js.constructorTag[T].constructor).toBe(expected)
+
+      val concreteCtor = (new ConcreteJSClass).asInstanceOf[js.Dynamic].constructor
+      val concreteProto = concreteCtor.prototype.asInstanceOf[js.Object]
+      val abstractProto = js.Object.getPrototypeOf(concreteProto)
+      val abstractCtor = abstractProto.asInstanceOf[js.Dynamic].constructor
+
+      test[ConcreteJSClass](concreteCtor)
+      test[AbstractJSClass](abstractCtor)
+
+      /* TODO When targeting ES6, we cannot yet use indirect calls (with
+       * actual varargs) to `js.Dynamic.newInstance` because of
+       *   TypeError: Class constructors cannot be invoked without 'new'
+       * This will be fixed when we can use ...spread calls with `new`, which
+       * we can't yet do because the latest io.js does not support them yet.
+       */
+      import scala.scalajs.runtime.assumingES6
+
+      val concreteInstance = {
+        val tag = js.constructorTag[ConcreteJSClass]
+        if (assumingES6)
+          js.Dynamic.newInstance(tag.constructor)().asInstanceOf[ConcreteJSClass]
+        else
+          tag.newInstance()
+      }
+      expect((concreteInstance: Any).isInstanceOf[ConcreteJSClass]).toBeTruthy
+
+      val instance = {
+        val tag = js.constructorTag[OtherwiseUnreferencedJSClassForTag]
+        if (assumingES6) {
+          js.Dynamic.newInstance(tag.constructor)(35)
+            .asInstanceOf[OtherwiseUnreferencedJSClassForTag]
+        } else {
+          tag.newInstance(35)
+        }
+      }
+      expect(instance.x).toEqual(35)
+    }
+
   }
 
   describe("scala.scalajs.js.Object") {
@@ -150,6 +200,9 @@ object MiscInteropTest extends JasmineTest {
 
   @ScalaJSDefined
   class OtherwiseUnreferencedJSClass(val x: Int) extends js.Object
+
+  @ScalaJSDefined
+  class OtherwiseUnreferencedJSClassForTag(val x: Int) extends js.Object
 
   @js.native
   trait DirectSubtraitOfJSAny extends js.Any {

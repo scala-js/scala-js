@@ -103,6 +103,12 @@ package object runtime {
    */
   def constructorOf(clazz: Class[_ <: js.Any]): js.Dynamic = sys.error("stub")
 
+  /** Public access to `new ConstructorTag` for the codegen of
+   *  `js.ConstructorTag.materialize`.
+   */
+  def newConstructorTag[T <: js.Any](constructor: js.Dynamic): js.ConstructorTag[T] =
+    new js.ConstructorTag[T](constructor)
+
   /** Returns an array of the enumerable properties in an object's prototype
    *  chain.
    *
