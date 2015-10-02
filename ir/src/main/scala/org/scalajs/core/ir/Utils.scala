@@ -11,6 +11,8 @@ package org.scalajs.core.ir
 
 import java.net.URI
 
+import scala.annotation.switch
+
 object Utils {
 
   /** Relativize target URI w.r.t. base URI */
@@ -47,25 +49,50 @@ object Utils {
     else new URI("file", "", uri.getPath(), uri.getQuery(), uri.getFragment())
 
   def escapeJS(str: String): String = {
+    // scalastyle:off return
     /* Note that Java and JavaScript happen to use the same encoding for
      * Unicode, namely UTF-16, which means that 1 char from Java always equals
      * 1 char in JavaScript. */
-    val builder = new StringBuilder
-    str foreach {
-      case '\\'     => builder.append("\\\\")
-      case '"'      => builder.append("\\\"")
-      case '\u0007' => builder.append("\\a")
-      case '\u0008' => builder.append("\\b")
-      case '\u0009' => builder.append("\\t")
-      case '\u000A' => builder.append("\\n")
-      case '\u000B' => builder.append("\\v")
-      case '\u000C' => builder.append("\\f")
-      case '\u000D' => builder.append("\\r")
-      case c =>
-        if (c >= 32 && c <= 126) builder.append(c.toChar) // ASCII printable characters
-        else builder.append(f"\\u$c%04x")
+    val end = str.length
+    var i = 0
+    while (i != end) {
+      val c = str.charAt(i)
+      if (c >= 32 && c <= 126 && c != '\\' && c != '"')
+        i += 1
+      else
+        return createEscapeJSString(str)
     }
-    builder.result()
+    str
+    // scalastyle:on return
+  }
+
+  private def createEscapeJSString(str: String): String = {
+    val end = str.length()
+    val builder = new java.lang.StringBuilder
+    builder.ensureCapacity(end * 2)
+    var i = 0
+    while (i != end) {
+      val c = str.charAt(i)
+      if (c >= 32 && c <= 126 && c != '\\' && c != '"') {
+        builder.append(c) // ASCII printable characters
+      } else {
+        def encode(c: Char): String = f"\\u$c%04x"
+        builder.append((c: @switch) match {
+          case '\\'     => "\\\\"
+          case '"'      => "\\\""
+          case '\u0007' => "\\a"
+          case '\u0008' => "\\b"
+          case '\u0009' => "\\t"
+          case '\u000A' => "\\n"
+          case '\u000B' => "\\v"
+          case '\u000C' => "\\f"
+          case '\u000D' => "\\r"
+          case c        => encode(c)
+        })
+      }
+      i += 1
+    }
+    builder.toString()
   }
 
   /** A ByteArrayOutput stream that allows to jump back to a given

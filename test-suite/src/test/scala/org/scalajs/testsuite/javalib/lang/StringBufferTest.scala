@@ -7,21 +7,13 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
+import org.scalajs.testsuite.javalib.ExpectExceptions
+
 import scala.reflect.{classTag, ClassTag}
 import scala.scalajs.js
 import org.scalajs.jasminetest.JasmineTest
 
-object StringBufferTest extends JasmineTest {
-
-  def shouldThrow[T: ClassTag](fn: => Unit): Unit = {
-    try {
-      fn
-      expect("exception").toBe("thrown")
-    } catch {
-      case e: T =>
-      case x: Throwable => expect(x.toString).toBe(classTag[T].runtimeClass.getSimpleName)
-    }
-  }
+object StringBufferTest extends JasmineTest with ExpectExceptions {
 
   describe("java.lang.StringBuffer") {
 
@@ -71,16 +63,16 @@ object StringBufferTest extends JasmineTest {
       expect(initBuf("abef").insert(2, Array('a','b','c','d','e'), 2, 2)).toEqual("abcdef")
       expect(initBuf("abef").insert(2, initBuf("abcde"), 2, 4)).toEqual("abcdef")
 
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("abcd").insert(5, "whatever"))
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("abcd").insert(-1, "whatever"))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("abcd").insert(5, "whatever"))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("abcd").insert(-1, "whatever"))
     }
 
     it("should respond to `deleteCharAt`") {
       expect(initBuf("0123").deleteCharAt(1).toString).toEqual("023")
       expect(initBuf("0123").deleteCharAt(0).toString).toEqual("123")
       expect(initBuf("0123").deleteCharAt(3).toString).toEqual("012")
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(-1))
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(4))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(-1))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("0123").deleteCharAt(4))
     }
 
     it("should respond to `replace`") {
@@ -91,8 +83,8 @@ object StringBufferTest extends JasmineTest {
       expect(initBuf("0123").replace(0,1,"xxxx").toString).toEqual("xxxx123")
       expect(initBuf("0123").replace(1,1,"xxxx").toString).toEqual("0xxxx123")
 
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").replace(-1,3,"x"))
-      shouldThrow[StringIndexOutOfBoundsException](initBuf("0123").replace(4,5,"x"))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("0123").replace(-1,3,"x"))
+      expectThrows[StringIndexOutOfBoundsException](initBuf("0123").replace(4,5,"x"))
     }
 
     it("should respond to `setCharAt`") {
@@ -107,6 +99,11 @@ object StringBufferTest extends JasmineTest {
 
       expect(() => buf.setCharAt(-1, 'h')).toThrow
       expect(() => buf.setCharAt(6,  'h')).toThrow
+    }
+
+    it("should respond to `ensureCapacity`") {
+      // test that ensureCapacity is linking
+      expectNoException(newBuf.ensureCapacity(10))
     }
 
     it("should properly setLength") {
@@ -180,8 +177,8 @@ object StringBufferTest extends JasmineTest {
       expect(initBuilder("abef").insert(2, Array('a','b','c','d','e'), 2, 2)).toEqual("abcdef")
       expect(initBuilder("abef").insert(2, initBuilder("abcde"), 2, 4)).toEqual("abcdef")
 
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("abcd").insert(5, "whatever"))
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("abcd").insert(-1, "whatever"))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("abcd").insert(5, "whatever"))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("abcd").insert(-1, "whatever"))
     }
 
     it("should allow string interpolation to survive `null` and `undefined`") {
@@ -193,8 +190,8 @@ object StringBufferTest extends JasmineTest {
       expect(initBuilder("0123").deleteCharAt(1).toString).toEqual("023")
       expect(initBuilder("0123").deleteCharAt(0).toString).toEqual("123")
       expect(initBuilder("0123").deleteCharAt(3).toString).toEqual("012")
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(-1))
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(4))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(-1))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("0123").deleteCharAt(4))
     }
 
     it("should respond to `replace`") {
@@ -205,8 +202,8 @@ object StringBufferTest extends JasmineTest {
       expect(initBuilder("0123").replace(0,1,"xxxx").toString).toEqual("xxxx123")
       expect(initBuilder("0123").replace(1,1,"xxxx").toString).toEqual("0xxxx123")
 
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").replace(-1,3,"x"))
-      shouldThrow[StringIndexOutOfBoundsException](initBuilder("0123").replace(4,5,"x"))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("0123").replace(-1,3,"x"))
+      expectThrows[StringIndexOutOfBoundsException](initBuilder("0123").replace(4,5,"x"))
     }
 
     it("should respond to `setCharAt`") {
@@ -221,6 +218,11 @@ object StringBufferTest extends JasmineTest {
 
       expect(() => b.setCharAt(-1, 'h')).toThrow
       expect(() => b.setCharAt(6,  'h')).toThrow
+    }
+
+    it("should respond to `ensureCapacity`") {
+      // test that ensureCapacity is linking
+      expectNoException(newBuilder.ensureCapacity(10))
     }
 
     it("should properly setLength") {
