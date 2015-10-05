@@ -265,21 +265,27 @@ abstract class PrepJSInterop extends plugins.PluginComponent
           }
         }
 
-      // Catch calls to Predef.classOf[T]. These should NEVER reach this phase
-      // but unfortunately do. In normal cases, the typer phase replaces these
-      // calls by a literal constant of the given type. However, when we compile
-      // the scala library itself and Predef.scala is in the sources, this does
-      // not happen.
-      //
-      // The trees reach this phase under the form:
-      //
-      //   scala.this.Predef.classOf[T]
-      //
-      // If we encounter such a tree, depending on the plugin options, we fail
-      // here or silently fix those calls.
-      case TypeApply(
-          classOfTree @ Select(Select(This(jstpnme.scala_), nme.Predef), nme.classOf),
-          List(tpeArg)) =>
+      /* Catch calls to Predef.classOf[T]. These should NEVER reach this phase
+       * but unfortunately do. In normal cases, the typer phase replaces these
+       * calls by a literal constant of the given type. However, when we compile
+       * the scala library itself and Predef.scala is in the sources, this does
+       * not happen.
+       *
+       * The trees reach this phase under the form:
+       *
+       *   scala.this.Predef.classOf[T]
+       *
+       * or, as of Scala 2.12.0-M3, as:
+       *
+       *   scala.Predef.classOf[T]
+       *
+       * or so it seems, at least.
+       *
+       * If we encounter such a tree, depending on the plugin options, we fail
+       * here or silently fix those calls.
+       */
+      case TypeApply(classOfTree @ Select(predef, nme.classOf), List(tpeArg))
+          if predef.symbol == PredefModule =>
         if (scalaJSOpts.fixClassOf) {
           // Replace call by literal constant containing type
           if (typer.checkClassType(tpeArg)) {
