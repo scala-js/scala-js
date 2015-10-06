@@ -11,6 +11,7 @@ package org.scalajs.core.tools.sourcemap
 
 import java.io.Writer
 import java.net.URI
+import java.{util => ju}
 
 import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
@@ -34,6 +35,36 @@ object SourceMapWriter {
 
   private def jsonString(s: String) =
     "\"" + Utils.escapeJS(s) + "\""
+
+  private final class NodePosStack {
+    private var topIndex: Int = -1
+    private var posStack: Array[Position] = new Array(128)
+    private var nameStack: Array[String] = new Array(128)
+
+    def pop(): Unit =
+      topIndex -= 1
+
+    def topPos: Position =
+      posStack(topIndex)
+
+    def topName: String =
+      nameStack(topIndex)
+
+    def push(pos: Position, originalName: String): Unit = {
+      val newTopIdx = topIndex + 1
+      topIndex = newTopIdx
+      if (newTopIdx >= posStack.length)
+        growStack()
+      posStack(newTopIdx) = pos
+      nameStack(newTopIdx) = originalName
+    }
+
+    private def growStack(): Unit = {
+      val newSize = 2 * posStack.length
+      posStack = ju.Arrays.copyOf(posStack, newSize)
+      nameStack = ju.Arrays.copyOf(nameStack, newSize)
+    }
+  }
 }
 
 class SourceMapWriter(
@@ -50,8 +81,8 @@ class SourceMapWriter(
   private val _nameToIndex = new HashMap[String, Int]
 
   // Strings are nullable in this stack
-  private val nodePosStack = new Stack[(Position, String)]
-  nodePosStack.push((NoPosition, null))
+  private val nodePosStack = new SourceMapWriter.NodePosStack
+  nodePosStack.push(NoPosition, null)
 
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
@@ -113,12 +144,12 @@ class SourceMapWriter(
     lastColumnInGenerated = 0
     firstSegmentOfLine = true
     pendingColumnInGenerated = -1
-    pendingPos = nodePosStack.top._1
-    pendingName = nodePosStack.top._2
+    pendingPos = nodePosStack.topPos
+    pendingName = nodePosStack.topName
   }
 
   def startNode(column: Int, originalPos: Position): Unit = {
-    nodePosStack.push((originalPos, null))
+    nodePosStack.push(originalPos, null)
     startSegment(column, originalPos, null)
   }
 
@@ -127,13 +158,13 @@ class SourceMapWriter(
     val originalName =
       if (optOriginalName.isDefined) optOriginalName.get
       else null
-    nodePosStack.push((originalPos, originalName))
+    nodePosStack.push(originalPos, originalName)
     startSegment(column, originalPos, originalName)
   }
 
   def endNode(column: Int): Unit = {
     nodePosStack.pop()
-    startSegment(column, nodePosStack.top._1, nodePosStack.top._2)
+    startSegment(column, nodePosStack.topPos, nodePosStack.topName)
   }
 
   private def startSegment(startColumn: Int, originalPos: Position,
@@ -206,29 +237,24 @@ class SourceMapWriter(
   def complete(): Unit = {
     writePendingSegment()
 
-    out.write("\",\n")
-
-    var restSources = sources
-    out.write("\"sources\": [")
+    var restSources = sources.result()
+    out.write("\",\n\"sources\": [")
     while (restSources.nonEmpty) {
       out.write(jsonString(restSources.head))
       restSources = restSources.tail
       if (restSources.nonEmpty)
         out.write(", ")
     }
-    out.write("],\n")
 
-    var restNames = names
-    out.write("\"names\": [")
+    var restNames = names.result()
+    out.write("],\n\"names\": [")
     while (restNames.nonEmpty) {
       out.write(jsonString(restNames.head))
       restNames = restNames.tail
       if (restNames.nonEmpty)
         out.write(", ")
     }
-    out.write("],\n")
-
-    out.write("\"lineCount\": ")
+    out.write("],\n\"lineCount\": ")
     out.write(lineCountInGenerated.toString)
     out.write("\n}\n")
   }
