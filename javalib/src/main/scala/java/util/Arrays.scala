@@ -755,28 +755,9 @@ object Arrays {
   }
 
   @noinline def deepEquals(a1: Array[AnyRef], a2: Array[AnyRef]): Boolean = {
-    @inline
-    def areDeepEquals(e1: AnyRef, e2: AnyRef): Boolean = {
-      if (e1 eq e2) true
-      else if (e1 == null || e2 == null) false
-      else {
-        (e1, e2) match {
-          case (a1: Array[AnyRef], a2: Array[AnyRef])   => deepEquals(a1, a2)
-          case (a1: Array[Long], a2: Array[Long])       => equals(a1, a2)
-          case (a1: Array[Int], a2: Array[Int])         => equals(a1, a2)
-          case (a1: Array[Short], a2: Array[Short])     => equals(a1, a2)
-          case (a1: Array[Byte], a2: Array[Byte])       => equals(a1, a2)
-          case (a1: Array[Char], a2: Array[Char])       => equals(a1, a2)
-          case (a1: Array[Boolean], a2: Array[Boolean]) => equals(a1, a2)
-          case (a1: Array[Float], a2: Array[Float])     => equals(a1, a2)
-          case (a1: Array[Double], a2: Array[Double])   => equals(a1, a2)
-          case _                                        => e1 === e2
-        }
-      }
-    }
     if (a1 eq a2) true
     else if (a1 == null || a2 == null || a1.length != a2.length) false
-    else a1.indices.forall(i => areDeepEquals(a1(i), a2(i)))
+    else a1.indices.forall(i => Objects.deepEquals(a1(i), a2(i)))
   }
 
   @noinline def toString(a: Array[Long]): String =
