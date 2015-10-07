@@ -57,15 +57,14 @@ object Printers {
       case _                                         => true
     }
 
-    protected def printRow(ts: List[Tree], start: String, sep: String,
-        end: String): Unit = {
+    protected def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
       print(start)
       var rest = ts
       while (rest.nonEmpty) {
         print(rest.head)
         rest = rest.tail
         if (rest.nonEmpty)
-          print(sep)
+          print(", ")
       }
       print(end)
     }
@@ -93,12 +92,12 @@ object Printers {
     }
 
     protected def printSig(args: List[ParamDef]): Unit = {
-      printRow(args, "(", ", ", ")")
+      printRow(args, '(', ')')
       print(' ')
     }
 
     protected def printArgs(args: List[Tree]): Unit =
-      printRow(args, "(", ", ", ")")
+      printRow(args, '(', ')')
 
     def printStat(tree: Tree): Unit =
       printTree(tree, isStat = true)
@@ -165,7 +164,7 @@ object Printers {
           if (isStat)
             printBlock(tree)
           else
-            printRow(tree.stats, "(", ", ", ")")
+            printRow(tree.stats, '(', ')')
 
         case Labeled(label, body) =>
           print(label)
@@ -388,7 +387,7 @@ object Printers {
           print(')')
 
         case ArrayConstr(items) =>
-          printRow(items, "[", ", ", "]")
+          printRow(items, '[', ']')
 
         case ObjectConstr(Nil) =>
           if (isStat)
