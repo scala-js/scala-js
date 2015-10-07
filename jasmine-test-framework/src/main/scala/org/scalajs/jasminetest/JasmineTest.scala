@@ -26,6 +26,7 @@ class JasmineTest extends TestSuiteContext {
   def expect(exp: CharSequence): JasmineExpectation =
     Jasmine.expect(if (exp == null) null else exp.toString)
   def expect(exp: js.Any): JasmineExpectation = Jasmine.expect(exp)
+  def fail(message: String): Unit = Jasmine.fail(message)
   def runs(block: => Unit): Unit = Jasmine.runs(block _)
   def waits(timeout: Int): Unit = Jasmine.waits(timeout)
   def waitsFor(block: => Boolean, errorMsg: String, timeout: Int): Unit =
