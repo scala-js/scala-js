@@ -33,8 +33,11 @@ object SourceMapWriter {
   private final val VLQBaseMask = VLQBase - 1
   private final val VLQContinuationBit = VLQBase
 
-  private def jsonString(s: String) =
-    "\"" + Utils.escapeJS(s) + "\""
+  private def printJSONString(s: String, out: Writer) = {
+    out.write('\"')
+    Utils.printEscapeJS(s, out)
+    out.write('\"')
+  }
 
   private final class NodePosStack {
     private var topIndex: Int = -1
@@ -131,10 +134,9 @@ class SourceMapWriter(
   }
 
   private def writeHeader(): Unit = {
-    out.write("{\n")
-    out.write("\"version\": 3,\n")
-    out.write("\"file\": " + jsonString(generatedFile) + ",\n")
-    out.write("\"mappings\": \"")
+    out.write("{\n\"version\": 3,\n\"file\": ")
+    printJSONString(generatedFile, out)
+    out.write(",\n\"mappings\": \"")
   }
 
   def nextLine(): Unit = {
@@ -237,7 +239,7 @@ class SourceMapWriter(
     var restSources = sources.result()
     out.write("\",\n\"sources\": [")
     while (restSources.nonEmpty) {
-      out.write(jsonString(restSources.head))
+      printJSONString(restSources.head, out)
       restSources = restSources.tail
       if (restSources.nonEmpty)
         out.write(", ")
@@ -246,7 +248,7 @@ class SourceMapWriter(
     var restNames = names.result()
     out.write("],\n\"names\": [")
     while (restNames.nonEmpty) {
-      out.write(jsonString(restNames.head))
+      printJSONString(restNames.head, out)
       restNames = restNames.tail
       if (restNames.nonEmpty)
         out.write(", ")

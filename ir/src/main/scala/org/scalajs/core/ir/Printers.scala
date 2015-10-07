@@ -17,7 +17,7 @@ import Position._
 import Trees._
 import Types._
 import Infos._
-import Utils.escapeJS
+import Utils.printEscapeJS
 
 object Printers {
 
@@ -554,7 +554,9 @@ object Printers {
             print("(", value, ")")
 
         case StringLiteral(value) =>
-          print("\"", escapeJS(value), "\"")
+          print('\"')
+          printEscapeJS(value, out)
+          print('\"')
 
         case ClassOf(cls) =>
           print("classOf[", cls, "]")
@@ -630,15 +632,21 @@ object Printers {
           print('>')
 
         case ConstructorExportDef(fullName, args, body) =>
-          print("export \"", escapeJS(fullName), "\"")
+          print("export \"")
+          printEscapeJS(fullName, out)
+          print('\"')
           printSig(args, NoType) // NoType as trick not to display a type
           printBlock(body)
 
         case JSClassExportDef(fullName) =>
-          print("export class \"", escapeJS(fullName), "\"")
+          print("export class \"")
+          printEscapeJS(fullName, out)
+          print('\"')
 
         case ModuleExportDef(fullName) =>
-          print("export module \"", escapeJS(fullName), "\"")
+          print("export module \"")
+          printEscapeJS(fullName, out)
+          print('\"')
 
         case _ =>
           print(s"<error, elem of class ${tree.getClass()}>")
@@ -678,7 +686,7 @@ object Printers {
     }
 
     protected def printIdent(ident: Ident): Unit =
-      printString(escapeJS(ident.name))
+      printEscapeJS(ident.name, out)
 
     protected def printOne(arg: Any): Unit = arg match {
       case tree: Tree =>
@@ -706,14 +714,24 @@ object Printers {
   class InfoPrinter(protected val out: Writer) extends IndentationManager {
     def printClassInfoHeader(classInfo: ClassInfo): Unit = {
       import classInfo._
-      println("encodedName: ", escapeJS(encodedName))
+      print("encodedName: ")
+      printEscapeJS(encodedName, out)
+      println()
       println("isExported: ", isExported)
       println("kind: ", kind)
       println("superClass: ", superClass)
 
       if (interfaces.nonEmpty) {
-        println("interfaces: ",
-            interfaces.map(escapeJS).mkString("[", ", ", "]"))
+        print("interfaces: [")
+        var rest = interfaces
+        while (rest.nonEmpty) {
+          printEscapeJS(rest.head, out)
+          rest = rest.tail
+          if (rest.nonEmpty)
+            print(", ")
+        }
+        print(']')
+        println()
       }
     }
 
@@ -730,7 +748,7 @@ object Printers {
 
     def printMethodInfo(methodInfo: MethodInfo): Unit = {
       import methodInfo._
-      print(escapeJS(encodedName))
+      printEscapeJS(encodedName, out)
       print(":")
       indent(); println()
 
@@ -746,7 +764,7 @@ object Printers {
         val iter = methodsCalled.iterator
         while (iter.hasNext) {
           val (cls, callers) = iter.next()
-          print(escapeJS(cls))
+          printEscapeJS(cls, out)
           print(": [")
           printRow(callers, ": [", ", ", "}")
           if (iter.hasNext)
@@ -760,7 +778,7 @@ object Printers {
         val iter = methodsCalledStatically.iterator
         while (iter.hasNext) {
           val (cls, callers) = iter.next
-          print(escapeJS(cls))
+          printEscapeJS(cls, out)
           printRow(callers, ": [", ", ", "}")
           if (iter.hasNext)
             println()
@@ -773,7 +791,7 @@ object Printers {
         val iter = methodsCalledStatically.iterator
         while (iter.hasNext) {
           val (cls, callers) = iter.next()
-          print(escapeJS(cls))
+          printEscapeJS(cls, out)
           printRow(callers, ": [", ", ", "}")
           if (iter.hasNext)
             println()
