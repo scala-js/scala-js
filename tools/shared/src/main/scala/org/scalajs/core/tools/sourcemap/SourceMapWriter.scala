@@ -169,7 +169,7 @@ class SourceMapWriter(
 
     // If the position is NoPosition, stop here
     val pendingPos1 = pendingPos
-    if (!pendingPos1.isDefined)
+    if (pendingPos1.isEmpty)
       return
 
     // Extract relevant properties of pendingPos
