@@ -434,7 +434,9 @@ final class RuntimeLong(
 
       val xMinValue = x.isMinValue
 
-      val pow = y.powerOfTwo
+      val absY = y.abs
+
+      val pow = absY.powerOfTwo
       if (pow >= 0) {
         if (xMinValue) {
           val z = x >> pow
@@ -449,12 +451,18 @@ final class RuntimeLong(
           js.Array(z, rem)
         }
       } else {
-        val absY = y.abs
-
         val newX = {
-          if (xMinValue)
+          if (xMinValue) {
+            /* In theory we would need 2^31 == MaxValue + 1 here, but that
+             * overflows. Instead, we use a trick.
+             * Since absY is not 2^k for any k at this point, 2^31 cannot
+             * possibly be exactly divided by k, so
+             * 2^31 / absY == (2^31 - 1) / absY == MaxValue / absY
+             * The remainder will be off by 1, but divModHelper fixes that
+             * after the fact.
+             */
             MaxValue
-          else {
+          } else {
             val absX = x.abs
             if (absX < absY)
               return js.Array(Zero, x) // <-- ugly but fast
