@@ -1,0 +1,4 @@
+<plugin>
+  <name>scalajs-junit</name>
+  <classname>org.scalajs.junit.plugin.ScalaJSJUnitPlugin</classname>
+</plugin>

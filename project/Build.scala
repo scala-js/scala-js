@@ -383,6 +383,7 @@ object Build extends sbt.Build {
               clean in libraryAux, clean in library, clean in javalibEx,
               clean in stubs, clean in cli,
               clean in testInterface, clean in jasmineTestFramework,
+              clean in jUnitRuntime, clean in jUnitPlugin,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
               clean in testSuite, clean in noIrCheckTest,
@@ -944,6 +945,24 @@ object Build extends sbt.Build {
       )
   ).dependsOn(compiler % "plugin", library, testInterface)
 
+  lazy val jUnitRuntime = Project(
+    id = "jUnitRuntime",
+    base = file("junit-runtime"),
+    settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++
+      fatalWarningsSettings ++ Seq(name := "Scala.js JUnit test runtime")
+  ).dependsOn(compiler % "plugin", testInterface)
+
+  lazy val jUnitPlugin = Project(
+    id = "jUnitPlugin",
+    base = file("junit-plugin"),
+    settings = commonSettings ++ publishSettings ++ fatalWarningsSettings ++ Seq(
+      name := "Scala.js JUnit test plugin",
+      crossVersion := CrossVersion.full,
+      libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+      exportJars := true
+    )
+  )
+
   // Examples
 
   lazy val examples: Project = Project(
@@ -1144,9 +1163,18 @@ object Build extends sbt.Build {
             val outFile = dir / "SourceMapTest.scala"
             IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
             Seq(outFile)
-          }
+          },
+
+        testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+
+        scalacOptions in Test += {
+          val jar = (packageBin in (jUnitPlugin, Compile)).value
+          s"-Xplugin:$jar"
+        }
       )
-  ).dependsOn(compiler % "plugin", library, jasmineTestFramework % "test")
+  ).dependsOn(
+    compiler % "plugin", library, jUnitRuntime % "test", jasmineTestFramework % "test"
+  )
 
   lazy val noIrCheckTest: Project = Project(
       id = "noIrCheckTest",
