@@ -160,6 +160,9 @@ run/t6988.scala
 # Object{Output|Input}Streams
 run/t6935.scala
 run/t8188.scala
+run/t9375.scala
+run/t9365.scala
+run/inlineAddDeserializeLambda.scala
 
 # Using System.getProperties
 
@@ -491,14 +494,17 @@ run/t8549b.scala
 run/t8574.scala
 run/t8549.scala
 run/t8637.scala
-run/t8346.scala
 run/t8253.scala
 run/t9027.scala
 run/t6622.scala
+run/toolbox_expand_macro.scala
 run/toolbox-varargs
 run/t9252.scala
 run/t9182.scala
 run/t9102.scala
+run/t720.scala
+run/t9408.scala
+run/trait-default-specialize.scala
 
 run/reify_newimpl_29.scala
 run/reify_magicsymbols.scala
@@ -661,6 +667,7 @@ run/exceptions-2.scala
 run/exceptions-nest.scala
 run/t8601c.scala
 run/t8601b.scala
+run/inlineHandlers.scala
 
 # Expecting unsupported exceptions (e.g. ArrayIndexOutOfBounds)
 run/optimizer-array-load.scala
@@ -892,9 +899,13 @@ run/t8907.scala
 run/t9097.scala
 run/macroPlugins-enterStats.scala
 run/sbt-icode-interface.scala
+run/t8502b.scala
 
 # partest.CompilerTest
 run/t8852a.scala
+
+# partest.ASMConverters
+run/t9403
 
 # partest.BytecodeTest
 run/t6546
@@ -909,6 +920,7 @@ run/t8843-repl-xlat.scala
 run/t9206.scala
 run/t9170.scala
 run/t8918-unary-ids.scala
+run/t1931.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
