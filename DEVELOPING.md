@@ -124,5 +124,5 @@ following incantations.
 
     > ++SCALA_VERSION
     > ;compiler/publishLocal;library/publishLocal;javalibEx/publishLocal;testInterface/publishLocal;stubs/publishLocal
-    > ++2.10.5
+    > ++2.10.6
     > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
