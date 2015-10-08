@@ -1,7 +1,7 @@
 package java.util.concurrent
 
-abstract class TimeUnit private (_index: Int,
-    _name: String) extends java.io.Serializable {
+abstract class TimeUnit private (name: String, ordinal: Int)
+    extends Enum[TimeUnit](name, ordinal) {
 
   def convert(a: Long, u: TimeUnit): Long
 
@@ -16,19 +16,14 @@ abstract class TimeUnit private (_index: Int,
   // not used
   //private[concurrent] def excessNanos(a: Long, b: Long): Int
 
-  def name(): String = _name
-  def ordinal(): Int = _index
-
   // methods that cannot be implemented
   //def timedWait(arg1: AnyRef, arg2: Long): Unit
   //def timedJoin(arg1: Thread, arg2: Long): Unit
   //def sleep(arg1: Long): Unit
-
-  override def toString(): String = name()
 }
 
 object TimeUnit {
-  final val NANOSECONDS: TimeUnit = new TimeUnit(0, "NANOSECONDS") {
+  final val NANOSECONDS: TimeUnit = new TimeUnit("NANOSECONDS", 0) {
     def convert(a: Long, u: TimeUnit): Long = u.toNanos(a)
     def toNanos(a: Long): Long   = a
     def toMicros(a: Long): Long  = a / (C1/C0)
@@ -39,7 +34,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C0)
   }
 
-  final val MICROSECONDS: TimeUnit = new TimeUnit(1, "MICROSECONDS") {
+  final val MICROSECONDS: TimeUnit = new TimeUnit("MICROSECONDS", 1) {
     def convert(a: Long, u: TimeUnit): Long = u.toMicros(a)
     def toNanos(a: Long): Long   = x(a, C1/C0, MAX/(C1/C0))
     def toMicros(a: Long): Long  = a
@@ -50,7 +45,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C1)
   }
 
-  final val MILLISECONDS: TimeUnit = new TimeUnit(2, "MILLISECONDS") {
+  final val MILLISECONDS: TimeUnit = new TimeUnit("MILLISECONDS", 2) {
     def convert(a: Long, u: TimeUnit): Long = u.toMillis(a)
     def toNanos(a: Long): Long   = x(a, C2/C0, MAX/(C2/C0))
     def toMicros(a: Long): Long  = x(a, C2/C1, MAX/(C2/C1))
@@ -61,7 +56,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C2)
   }
 
-  final val SECONDS: TimeUnit = new TimeUnit(3, "SECONDS") {
+  final val SECONDS: TimeUnit = new TimeUnit("SECONDS", 3) {
     def convert(a: Long, u: TimeUnit): Long = u.toSeconds(a)
     def toNanos(a: Long): Long   = x(a, C3/C0, MAX/(C3/C0))
     def toMicros(a: Long): Long  = x(a, C3/C1, MAX/(C3/C1))
@@ -72,7 +67,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C3)
   }
 
-  final val MINUTES: TimeUnit = new TimeUnit(4, "MINUTES") {
+  final val MINUTES: TimeUnit = new TimeUnit("MINUTES", 4) {
     def convert(a: Long, u: TimeUnit): Long = u.toMinutes(a)
     def toNanos(a: Long): Long   = x(a, C4/C0, MAX/(C4/C0))
     def toMicros(a: Long): Long  = x(a, C4/C1, MAX/(C4/C1))
@@ -83,7 +78,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C4)
   }
 
-  final val HOURS: TimeUnit = new TimeUnit(5, "HOURS") {
+  final val HOURS: TimeUnit = new TimeUnit("HOURS", 5) {
     def convert(a: Long, u: TimeUnit): Long = u.toHours(a)
     def toNanos(a: Long): Long   = x(a, C5/C0, MAX/(C5/C0))
     def toMicros(a: Long): Long  = x(a, C5/C1, MAX/(C5/C1))
@@ -94,7 +89,7 @@ object TimeUnit {
     def toDays(a: Long): Long    = a / (C6/C5)
   }
 
-  final val DAYS: TimeUnit = new TimeUnit(6, "DAYS") {
+  final val DAYS: TimeUnit = new TimeUnit("DAYS", 6) {
     def convert(a: Long, u: TimeUnit): Long = u.toDays(a)
     def toNanos(a: Long): Long   = x(a, C6/C0, MAX/(C6/C0))
     def toMicros(a: Long): Long  = x(a, C6/C1, MAX/(C6/C1))
@@ -121,8 +116,9 @@ object TimeUnit {
   def values(): Array[TimeUnit] = _values.clone()
 
   def valueOf(name: String): TimeUnit = {
-    _values.find(_.name == name).getOrElse(
-        throw new IllegalArgumentException("No enum const TimeUnit." + name))
+    _values.find(_.name == name).getOrElse {
+      throw new IllegalArgumentException("No enum const TimeUnit." + name)
+    }
   }
 
   private def x(a: Long, b: Long, max: Long): Long = {

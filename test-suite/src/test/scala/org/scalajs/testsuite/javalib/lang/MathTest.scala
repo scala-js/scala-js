@@ -26,6 +26,8 @@ object MathTest extends JasmineTest {
       expect(Math.abs(Double.PositiveInfinity)).toBe(Double.PositiveInfinity)
       expect(Math.abs(Double.NegativeInfinity)).toBe(Double.PositiveInfinity)
       expect(Math.abs(Double.NaN).isNaN).toBeTruthy
+      expect(Math.abs(Long.MaxValue) == Long.MaxValue).toBeTruthy
+      expect(Math.abs(Long.MinValue) == Long.MinValue).toBeTruthy
     }
 
     it("should respond to `max`") {
@@ -42,6 +44,8 @@ object MathTest extends JasmineTest {
       expect(Math.max(Double.NegativeInfinity, 0.0)).toBe(0.0)
       expect(Math.max(Double.NaN, 0.0).isNaN).toBeTruthy
       expect(Math.max(0.0, Double.NaN).isNaN).toBeTruthy
+      expect(Math.max(Long.MaxValue, 0) == Long.MaxValue).toBeTruthy
+      expect(Math.max(Long.MinValue, 0) == 0).toBeTruthy
     }
 
     it("should respond to `min`") {
@@ -58,6 +62,8 @@ object MathTest extends JasmineTest {
       expect(Math.min(Double.NegativeInfinity, 0.0)).toBe(Double.NegativeInfinity)
       expect(Math.min(Double.NaN, 0.0).isNaN).toBeTruthy
       expect(Math.min(0.0, Double.NaN).isNaN).toBeTruthy
+      expect(Math.min(Long.MaxValue, 0) == 0).toBeTruthy
+      expect(Math.min(Long.MinValue, 0) == Long.MinValue).toBeTruthy
     }
 
     it("should respond to `cbrt`") {
@@ -70,7 +76,7 @@ object MathTest extends JasmineTest {
     }
 
     unless("rhino"). // js.Math.round() is buggy on Rhino
-    it("rint(Double)") {
+    it("should respond to `rint(Double)`") {
       import Math.rint
 
       def isPosZero(x: Double): Boolean =

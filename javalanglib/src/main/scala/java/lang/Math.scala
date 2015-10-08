@@ -219,5 +219,108 @@ object Math {
     }
   }
 
-  // TODO The methods not available in the JavaScript Math object
+  def addExact(a: scala.Int, b: scala.Int): scala.Int = {
+    val res = a + b
+    val resSgnBit = res < 0
+    if (resSgnBit == (a < 0) || resSgnBit == (b < 0)) res
+    else throw new ArithmeticException("Integer overflow")
+  }
+
+  def addExact(a: scala.Long, b: scala.Long): scala.Long = {
+    val res = a + b
+    val resSgnBit = res < 0
+    if (resSgnBit == (a < 0) || resSgnBit == (b < 0)) res
+    else throw new ArithmeticException("Long overflow")
+  }
+
+  def subtractExact(a: scala.Int, b: scala.Int): scala.Int = {
+    val res = a - b
+    val resSgnBit = res < 0
+    if (resSgnBit == (a < 0) || resSgnBit == (b > 0)) res
+    else throw new ArithmeticException("Integer overflow")
+  }
+
+  def subtractExact(a: scala.Long, b: scala.Long): scala.Long = {
+    val res = a - b
+    val resSgnBit = res < 0
+    if (resSgnBit == (a < 0) || resSgnBit == (b > 0)) res
+    else throw new ArithmeticException("Long overflow")
+  }
+
+  def multiplyExact(a: scala.Int, b: scala.Int): scala.Int = {
+    val overflow = {
+      if (b > 0)
+        a > Integer.MAX_VALUE / b || a < Integer.MIN_VALUE / b
+      else if (b < -1)
+        a > Integer.MIN_VALUE / b || a < Integer.MAX_VALUE / b
+      else if (b == -1)
+        a == Integer.MIN_VALUE
+      else
+        false
+    }
+    if (!overflow) a * b
+    else throw new ArithmeticException("Integer overflow")
+  }
+
+  def multiplyExact(a: scala.Long, b: scala.Long): scala.Long = {
+    val overflow = {
+      if (b > 0)
+        a > Long.MAX_VALUE / b || a < Long.MIN_VALUE / b
+      else if (b < -1)
+        a > Long.MIN_VALUE / b || a < Long.MAX_VALUE / b
+      else if (b == -1)
+        a == Long.MIN_VALUE
+      else
+        false
+    }
+    if (!overflow) a * b
+    else throw new ArithmeticException("Long overflow")
+  }
+
+  def incrementExact(a: scala.Int): scala.Int =
+    if (a != Integer.MAX_VALUE) a + 1
+    else throw new ArithmeticException("Integer overflow")
+
+  def incrementExact(a: scala.Long): scala.Long =
+    if (a != Long.MAX_VALUE) a + 1
+    else throw new ArithmeticException("Long overflow")
+
+  def decrementExact(a: scala.Int): scala.Int =
+    if (a != Integer.MIN_VALUE) a - 1
+    else throw new ArithmeticException("Integer overflow")
+
+  def decrementExact(a: scala.Long): scala.Long =
+    if (a != Long.MIN_VALUE) a - 1
+    else throw new ArithmeticException("Long overflow")
+
+  def negateExact(a: scala.Int): scala.Int =
+    if (a != Integer.MIN_VALUE) -a
+    else throw new ArithmeticException("Integer overflow")
+
+  def negateExact(a: scala.Long): scala.Long =
+    if (a != Long.MIN_VALUE) -a
+    else throw new ArithmeticException("Long overflow")
+
+  def toIntExact(a: scala.Long): scala.Int =
+    if (a >= Integer.MIN_VALUE && a <= Integer.MAX_VALUE) a.toInt
+    else throw new ArithmeticException("Integer overflow")
+
+  // TODO
+
+  // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
+  // def floorDiv(a: scala.Int, b: scala.Int): scala.Int
+  // def floorDiv(a: scala.Long, b: scala.Long): scala.Long
+  // def floorMod(a: scala.Int, b: scala.Int): scala.Int
+  // def floorMod(a: scala.Long, b: scala.Long): scala.Long
+  // def ulp(a: scala.Float): scala.Float
+  // def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double
+  // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
+  // def getExponent(a: scala.Float): scala.Int
+  // def getExponent(a: scala.Double): scala.Int
+  // def nextAfter(a: scala.Float, b: scala.Double): scala.Float
+  // def nextUp(a: scala.Float): scala.Float
+  // def nextDown(a: scala.Double): scala.Double
+  // def nextDown(a: scala.Float): scala.Float
+  // def scalb(a: scala.Double, scalaFactor: scala.Int): scala.Double
+  // def scalb(a: scala.Float, scalaFactor: scala.Int): scala.Float
 }

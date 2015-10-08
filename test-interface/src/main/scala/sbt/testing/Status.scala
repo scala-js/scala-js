@@ -28,36 +28,31 @@ package sbt.testing
  *  of failures in dependencies, which is also similar to canceled tests in
  *  ScalaTest.
  */
-class Status private (_index: Int, _name: String) {
-
-  def name(): String = _name
-  def ordinal(): Int = _index
-
-  override def toString(): String = name()
-}
+class Status private (name: String, ordinal: Int)
+    extends Enum[Status](name, ordinal)
 
 object Status {
 
   /** Indicates a test succeeded. */
-  final val Success = new Status(0, "Success")
+  final val Success = new Status("Success", 0)
 
   /** Indicates an "error" occurred. */
-  final val Error = new Status(1, "Error")
+  final val Error = new Status("Error", 1)
 
   /** Indicates a "failure" occurred. */
-  final val Failure = new Status(2, "Failure")
+  final val Failure = new Status("Failure", 2)
 
   /** Indicates a test was skipped. */
-  final val Skipped = new Status(3, "Skipped")
+  final val Skipped = new Status("Skipped", 3)
 
   /** Indicates a test was ignored. */
-  final val Ignored = new Status(4, "Ignored")
+  final val Ignored = new Status("Ignored", 4)
 
   /** Indicates a test was canceled. */
-  final val Canceled = new Status(5, "Canceled")
+  final val Canceled = new Status("Canceled", 5)
 
   /** Indicates a test was declared as pending. */
-  final val Pending = new Status(6, "Pending")
+  final val Pending = new Status("Pending", 6)
 
   private[this] val _values: Array[Status] =
     Array(Success, Error, Failure, Skipped, Ignored, Canceled, Pending)
@@ -65,7 +60,8 @@ object Status {
   def values(): Array[Status] = _values.clone()
 
   def valueOf(name: String): Status = {
-    _values.find(_.name == name).getOrElse(
-        throw new IllegalArgumentException("No enum const Status." + name))
+    _values.find(_.name == name).getOrElse {
+      throw new IllegalArgumentException("No enum const Status." + name)
+    }
   }
 }

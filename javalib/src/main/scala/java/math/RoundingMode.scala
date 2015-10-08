@@ -25,30 +25,26 @@ package java.math
 
 import scala.annotation.switch
 
-final class RoundingMode private (_index: Int, _name: String) {
-  def name(): String = _name
-  def ordinal(): Int = _index
-
-  override def toString(): String = name()
-}
+final class RoundingMode private (name: String, ordinal: Int)
+    extends Enum[RoundingMode](name, ordinal)
 
 object RoundingMode {
 
-  final val UP = new RoundingMode(BigDecimal.ROUND_UP, "UP")
+  final val UP = new RoundingMode("UP", BigDecimal.ROUND_UP)
 
-  final val DOWN = new RoundingMode(BigDecimal.ROUND_DOWN, "DOWN")
+  final val DOWN = new RoundingMode("DOWN", BigDecimal.ROUND_DOWN)
 
-  final val CEILING = new RoundingMode(BigDecimal.ROUND_CEILING, "CEILING")
+  final val CEILING = new RoundingMode("CEILING", BigDecimal.ROUND_CEILING)
 
-  final val FLOOR = new RoundingMode(BigDecimal.ROUND_FLOOR, "FLOOR")
+  final val FLOOR = new RoundingMode("FLOOR", BigDecimal.ROUND_FLOOR)
 
-  final val HALF_UP = new RoundingMode(BigDecimal.ROUND_HALF_UP, "HALF_UP")
+  final val HALF_UP = new RoundingMode("HALF_UP", BigDecimal.ROUND_HALF_UP)
 
-  final val HALF_DOWN = new RoundingMode(BigDecimal.ROUND_HALF_DOWN, "HALF_DOWN")
+  final val HALF_DOWN = new RoundingMode("HALF_DOWN", BigDecimal.ROUND_HALF_DOWN)
 
-  final val HALF_EVEN = new RoundingMode(BigDecimal.ROUND_HALF_EVEN, "HALF_EVEN")
+  final val HALF_EVEN = new RoundingMode("HALF_EVEN", BigDecimal.ROUND_HALF_EVEN)
 
-  final val UNNECESSARY = new RoundingMode(BigDecimal.ROUND_UNNECESSARY, "UNNECESSARY")
+  final val UNNECESSARY = new RoundingMode("UNNECESSARY", BigDecimal.ROUND_UNNECESSARY)
 
   private val _values: Array[RoundingMode] =
     Array(UP, DOWN, CEILING, FLOOR, HALF_UP, HALF_DOWN, HALF_EVEN, UNNECESSARY)
@@ -56,8 +52,9 @@ object RoundingMode {
   def values(): Array[RoundingMode] = _values.clone()
 
   def valueOf(name: String): RoundingMode = {
-    _values.find(_.name == name).getOrElse(
-        throw new IllegalArgumentException("No enum const RoundingMode." + name))
+    _values.find(_.name == name).getOrElse {
+      throw new IllegalArgumentException("No enum const RoundingMode." + name)
+    }
   }
 
   def valueOf(mode: Int): RoundingMode = (mode: @switch) match {
