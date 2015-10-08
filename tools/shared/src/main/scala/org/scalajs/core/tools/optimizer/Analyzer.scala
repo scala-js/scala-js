@@ -520,7 +520,12 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
           lookupClass(className).accessData()
       }
 
-      for ((className, methods) <- data.methodsCalled) {
+      /* `for` loops on maps are written with `while` loops to help the JIT
+       * compiler to inline and stack allocate tupples created by the iterators
+       */
+      val methodsCalledIterator = data.methodsCalled.iterator
+      while (methodsCalledIterator.hasNext) {
+        val (className, methods) = methodsCalledIterator.next()
         if (className == Definitions.PseudoArrayClass) {
           /* The pseudo Array class is not reified in our analyzer/analysis,
            * so we need to cheat here.
@@ -543,13 +548,17 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
         }
       }
 
-      for ((className, methods) <- data.methodsCalledStatically) {
+      val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
+      while (methodsCalledStaticallyIterator.hasNext) {
+        val (className, methods) = methodsCalledStaticallyIterator.next()
         val classInfo = lookupClass(className)
         for (methodName <- methods)
           classInfo.callMethod(methodName, statically = true)
       }
 
-      for ((className, methods) <- data.staticMethodsCalled) {
+      val staticMethodsCalledIterator = data.staticMethodsCalled.iterator
+      while (staticMethodsCalledIterator.hasNext) {
+        val (className, methods) = staticMethodsCalledIterator.next()
         val classInfo = lookupClass(className)
         for (methodName <- methods)
           classInfo.callStaticMethod(methodName)
