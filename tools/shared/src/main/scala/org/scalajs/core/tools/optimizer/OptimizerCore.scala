@@ -1572,6 +1572,14 @@ private[optimizer] abstract class OptimizerCore(
       case PropertiesOf =>
         contTree(CallHelper("propertiesOf", newArgs)(AnyType))
 
+      // java.lang.Integer
+
+      case IntegerNLZ =>
+        contTree(newArgs.head match {
+          case IntLiteral(value) => IntLiteral(Integer.numberOfLeadingZeros(value))
+          case newArg            => CallHelper("clz32", newArg)(IntType)
+        })
+
       // java.lang.Long
 
       case LongToString =>
@@ -3591,7 +3599,9 @@ private[optimizer] object OptimizerCore {
 
     final val PropertiesOf = ArrayLength + 1
 
-    final val LongToString   = PropertiesOf   + 1
+    final val IntegerNLZ = PropertiesOf + 1
+
+    final val LongToString   = IntegerNLZ     + 1
     final val LongCompare    = LongToString   + 1
     final val LongBitCount   = LongCompare    + 1
     final val LongSignum     = LongBitCount   + 1
@@ -3631,6 +3641,8 @@ private[optimizer] object OptimizerCore {
       "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
 
       "sjsr_package$.propertiesOf__sjs_js_Any__sjs_js_Array" -> PropertiesOf,
+
+      "jl_Integer$.numberOfLeadingZeros__I__I" -> IntegerNLZ,
 
       "jl_Long$.toString__J__T"              -> LongToString,
       "jl_Long$.compare__J__J__I"            -> LongCompare,

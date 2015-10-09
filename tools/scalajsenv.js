@@ -71,6 +71,7 @@ ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);
 //!if outputMode == ECMAScript6
 ScalaJS.imul = ScalaJS.g["Math"]["imul"];
 ScalaJS.fround = ScalaJS.g["Math"]["fround"];
+ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"];
 //!else
 ScalaJS.imul = ScalaJS.g["Math"]["imul"] || (function(a, b) {
   // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
@@ -97,6 +98,17 @@ ScalaJS.fround = ScalaJS.g["Math"]["fround"] ||
     return +v;
   });
 //!endif
+
+ScalaJS.clz32 = ScalaJS.g["Math"]["clz32"] || (function(i) {
+  // See Hacker's Delight, Section 5-3
+  if (i === 0) return 32;
+  let r = 1;
+  if ((i & 0xffff0000) === 0) { i <<= 16; r += 16; };
+  if ((i & 0xff000000) === 0) { i <<= 8; r += 8; };
+  if ((i & 0xf0000000) === 0) { i <<= 4; r += 4; };
+  if ((i & 0xc0000000) === 0) { i <<= 2; r += 2; };
+  return r + (i >> 31);
+});
 //!endif
 
 // Other fields

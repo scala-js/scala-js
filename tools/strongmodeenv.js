@@ -53,6 +53,7 @@ $g["Object"]["freeze"]($linkingInfo["semantics"]);
 
 const $imul = $g["Math"]["imul"];
 const $fround = $g["Math"]["fround"];
+const $clz32 = $g["Math"]["clz32"];
 
 // Other fields
 let $lastIDHash = 0; // last value attributed to an id hash code
