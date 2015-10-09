@@ -48,4 +48,12 @@ private[java] object MathJDK8Bridge {
   def negateExact(a: scala.Long): scala.Long = sys.error("stub")
 
   def toIntExact(a: scala.Long): scala.Int = sys.error("stub")
+
+  def floorDiv(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+
+  def floorDiv(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
+
+  def floorMod(a: scala.Int, b: scala.Int): scala.Int = sys.error("stub")
+
+  def floorMod(a: scala.Long, b: scala.Long): scala.Long = sys.error("stub")
 }
