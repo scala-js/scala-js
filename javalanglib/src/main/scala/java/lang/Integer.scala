@@ -147,20 +147,19 @@ object Integer {
     (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
-  def divideUnsigned(dividend: Int, divisor: Int): Int = {
+  @inline def divideUnsigned(dividend: Int, divisor: Int): Int = {
     import js.JSNumberOps._
     asInt(dividend.toUint / divisor.toUint)
   }
 
-  def remainderUnsigned(dividend: Int, divisor: Int): Int = {
+  @inline def remainderUnsigned(dividend: Int, divisor: Int): Int = {
     import js.JSNumberOps._
     asInt(dividend.toUint % divisor.toUint)
   }
 
-  def highestOneBit(i: Int): Int = {
+  @inline def highestOneBit(i: Int): Int =
     if (i == 0) 0
-    else (1 << 31) >>> Integer.numberOfLeadingZeros(i)
-  }
+    else (1 << 31) >>> numberOfLeadingZeros(i)
 
   @inline def lowestOneBit(i: Int): Int =
     i & -i
@@ -173,10 +172,10 @@ object Integer {
     byte0 | byte1 | byte2 | byte3
   }
 
-  def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
+  @inline def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
     (i << distance) | (i >>> -distance)
 
-  def rotateRight(i: scala.Int, distance: scala.Int): scala.Int =
+  @inline def rotateRight(i: scala.Int, distance: scala.Int): scala.Int =
     (i >>> distance) | (i << -distance)
 
   @inline def signum(i: scala.Int): scala.Int =
@@ -198,14 +197,15 @@ object Integer {
     }
   }
 
-  def numberOfTrailingZeros(i: scala.Int): scala.Int =
-    // See http://aggregate.org/MAGIC/#Trailing%20Zero%20Count
-    bitCount((i & -i) - 1)
+  @inline def numberOfTrailingZeros(i: scala.Int): scala.Int =
+    if (i == 0) 32
+    else 31 - numberOfLeadingZeros(i & -i)
 
   def toBinaryString(i: scala.Int): String = toStringBase(i, 2)
   def toHexString(i: scala.Int): String = toStringBase(i, 16)
   def toOctalString(i: scala.Int): String = toStringBase(i, 8)
 
+  @inline // because radix is almost certainly constant at call site
   def toString(i: Int, radix: Int): String = {
     if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
       Integer.toString(i)

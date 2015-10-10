@@ -400,12 +400,17 @@ final class RuntimeLong(
 
   /** return log_2(x) if power of 2 or -1 otherwise */
   private def powerOfTwo = {
+    /* For a power of two,
+     * log2(n) == numberOfTrailingZeros(n) == 31 - numberOfLeadingZeros(n)
+     * We use the latter because numberOfLeadingZeros is an intrinsic directly
+     * supported by Math.clz32 in JS.
+     */
     if (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
-      Integer.numberOfTrailingZeros(l)
+      (31 - Integer.numberOfLeadingZeros(l))
     else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
-      Integer.numberOfTrailingZeros(m) + BITS
+      (31 - Integer.numberOfLeadingZeros(m)) + BITS
     else if (h != 0 && m == 0 && l == 0 && (h & (h - 1)) == 0)
-      Integer.numberOfTrailingZeros(h) + BITS01
+      (31 - Integer.numberOfLeadingZeros(h)) + BITS01
     else
       -1
   }
