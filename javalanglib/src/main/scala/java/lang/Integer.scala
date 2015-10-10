@@ -127,11 +127,24 @@ object Integer {
     x.toLong & 0xffffffffL
 
   def bitCount(i: scala.Int): scala.Int = {
-    // See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    // The implicit casts to 32-bit ints due to binary ops make this work in JS too
+    /* See http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+     *
+     * The original algorithm uses *logical* shift rights. Here we use
+     * *arithmetic* shift rights instead. >> is shorter than >>>, especially
+     * since the latter needs (a >>> b) | 0 in JS. It might also be the case
+     * that >>> is a bit slower for that reason on some VMs.
+     *
+     * Using >> is valid because:
+     * * For the 2 first >>, the possible sign bit extension is &'ed away
+     * * For (t2 >> 4), t2 cannot be negative because it is at most the result
+     *   of 2 * 0x33333333, which does not overflow and is positive.
+     * * For the last >> 24, the left operand cannot be negative either.
+     *   Assume it was, that means the result of a >>> would be >= 128, but
+     *   the correct result must be <= 32. So by contradiction, it is positive.
+     */
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
-    ((t2 + (t2 >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+    (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
   }
 
   def divideUnsigned(dividend: Int, divisor: Int): Int = {
