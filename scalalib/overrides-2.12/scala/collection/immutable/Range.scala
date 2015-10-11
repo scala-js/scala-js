@@ -417,7 +417,7 @@ object Range {
   private[immutable] val MAX_PRINT = 512  // some arbitrary value
 
   private def description(start: Int, end: Int, step: Int, isInclusive: Boolean) =
-    "%d %s %d by %s".format(start, if (isInclusive) "to" else "until", end, step)
+    start + (if (isInclusive) " to " else " until ") + end + " by " + step
 
   private def fail(start: Int, end: Int, step: Int, isInclusive: Boolean) =
     throw new IllegalArgumentException(description(start, end, step, isInclusive) +
