@@ -23,7 +23,7 @@ object Trees {
     def show: String = {
       val writer = new java.io.StringWriter
       val printer = new Printers.IRTreePrinter(writer)
-      printer.printTree(this)
+      printer.print(this)
       writer.toString()
     }
   }

@@ -89,7 +89,7 @@ object Scalajsp {
   private def displayFileContent(vfile: VirtualScalaJSIRFile,
       opts: Options): Unit = {
     if (opts.infos)
-      new InfoPrinter(stdout).printClassInfo(vfile.info)
+      new InfoPrinter(stdout).print(vfile.info)
     else {
       val (info, tree) = vfile.infoAndTree
       val outTree = {

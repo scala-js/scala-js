@@ -20,7 +20,7 @@ object Types {
     def show(): String = {
       val writer = new java.io.StringWriter
       val printer = new Printers.IRTreePrinter(writer)
-      printer.printType(this)
+      printer.print(this)
       writer.toString()
     }
   }

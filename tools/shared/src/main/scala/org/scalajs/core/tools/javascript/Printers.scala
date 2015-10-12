@@ -11,6 +11,9 @@ package org.scalajs.core.tools.javascript
 
 import scala.annotation.switch
 
+// Unimport default print and println to avoid invoking them by mistake
+import scala.Predef.{print => _, println => _, _}
+
 import scala.util.control.Breaks
 
 import java.io.Writer

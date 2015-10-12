@@ -183,7 +183,7 @@ object ScalaJSPluginInternal {
 
           val stdout = new java.io.PrintWriter(System.out)
           if (options.infos) {
-            new InfoPrinter(stdout).printClassInfo(vfile.info)
+            new InfoPrinter(stdout).print(vfile.info)
           } else {
             val (info, tree) = vfile.infoAndTree
             val outTree = {
