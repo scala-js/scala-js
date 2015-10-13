@@ -1060,9 +1060,16 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 }
 
 object IRChecker {
-  private final class ErrorContext private (pos: Position, name: String) {
-    override def toString(): String =
+  private final class ErrorContext private (val treeOrLinkedClass: Any)
+      extends AnyVal {
+
+    override def toString(): String = {
+      val (pos, name) = treeOrLinkedClass match {
+        case tree: Tree               => (tree.pos, tree.getClass.getSimpleName)
+        case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
+      }
       s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
+    }
   }
 
   private object ErrorContext {
@@ -1070,10 +1077,10 @@ object IRChecker {
       ErrorContext(tree)
 
     def apply(tree: Tree): ErrorContext =
-      new ErrorContext(tree.pos, tree.getClass.getSimpleName)
+      new ErrorContext(tree)
 
     def apply(linkedClass: LinkedClass): ErrorContext =
-      new ErrorContext(linkedClass.pos, "ClassDef")
+      new ErrorContext(linkedClass)
   }
 
   private def isConstructorName(name: String): Boolean =
