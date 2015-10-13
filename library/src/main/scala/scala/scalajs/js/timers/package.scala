@@ -73,7 +73,7 @@ package object timers {
     RawTimers.setInterval(() => body, interval.toMillis.toDouble)
 
   /** Cancel an interval execution
-   *  @param handle The handle returned by [[setInterval]]
+   *  @param handle The handle returned by [[setInterval(FiniteDuration)*]]
    *  @note Uses JavaScript's non-standard `clearInterval`
    */
   def clearInterval(handle: SetIntervalHandle): Unit =
