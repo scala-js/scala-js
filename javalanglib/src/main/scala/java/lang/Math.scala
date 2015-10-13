@@ -305,13 +305,33 @@ object Math {
     if (a >= Integer.MIN_VALUE && a <= Integer.MAX_VALUE) a.toInt
     else throw new ArithmeticException("Integer overflow")
 
+  def floorDiv(a: scala.Int, b: scala.Int): scala.Int = {
+    val quot = a / b
+    if ((a < 0) == (b < 0) || quot * b == a) quot
+    else quot - 1
+  }
+
+  def floorDiv(a: scala.Long, b: scala.Long): scala.Long = {
+    val quot = a / b
+    if ((a < 0) == (b < 0) || quot * b == a) quot
+    else quot - 1
+  }
+
+  def floorMod(a: scala.Int, b: scala.Int): scala.Int = {
+    val rem = a % b
+    if ((a < 0) == (b < 0) || rem == 0) rem
+    else rem + b
+  }
+
+  def floorMod(a: scala.Long, b: scala.Long): scala.Long = {
+    val rem = a % b
+    if ((a < 0) == (b < 0) || rem == 0) rem
+    else rem + b
+  }
+
   // TODO
 
   // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
-  // def floorDiv(a: scala.Int, b: scala.Int): scala.Int
-  // def floorDiv(a: scala.Long, b: scala.Long): scala.Long
-  // def floorMod(a: scala.Int, b: scala.Int): scala.Int
-  // def floorMod(a: scala.Long, b: scala.Long): scala.Long
   // def ulp(a: scala.Float): scala.Float
   // def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double
   // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
