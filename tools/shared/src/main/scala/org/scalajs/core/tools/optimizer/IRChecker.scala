@@ -1060,6 +1060,22 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 }
 
 object IRChecker {
+  /** The context in which to report IR check errors.
+   *
+   *  The way this class is written is optimized for the happy path, where no
+   *  error occurs. In that case, `toString()` is never called, and we avoid
+   *  any kind of allocation.
+   *
+   *  The parameter is an `Any` for that reason. It should be an
+   *  `Either[Tree, LinkedClass]`, but that would also require an allocation of
+   *  the `Left` or `Right` (in fact, we'd love to type it as
+   *  `Tree | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
+   *  same reasons, again.
+   *
+   *  If `toString()` is called, we're in a bad situation anyway, because the
+   *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
+   *  we don't care.
+   */
   private final class ErrorContext private (val treeOrLinkedClass: Any)
       extends AnyVal {
 
