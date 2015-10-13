@@ -9,6 +9,7 @@
 
 package scala.scalajs.macroimpls
 
+@deprecated("Not actually deprecated, makes warnings go away", "")
 private[macroimpls] object Compat210 {
   object blackbox { // scalastyle:ignore
     type Context = scala.reflect.macros.Context
@@ -17,6 +18,7 @@ private[macroimpls] object Compat210 {
 
 import Compat210._
 
+@deprecated("Not actually deprecated, makes warnings go away", "")
 private[macroimpls] trait Compat210Component {
   // Import macros only here, otherwise we collide with the above
   import scala.reflect.macros._

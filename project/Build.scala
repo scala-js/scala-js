@@ -148,9 +148,24 @@ object Build extends sbt.Build {
       pomIncludeRepository := { _ => false }
   )
 
+  private val noDocFatalWarningsSetting =
+    scalacOptions in (Compile, doc) ~= (_.filterNot(_ == "-Xfatal-warnings"))
+
   val fatalWarningsSettings = Seq(
       scalacOptions += "-Xfatal-warnings",
-      scalacOptions in (Compile, doc) ~= (_.filterNot(_ == "-Xfatal-warnings"))
+      noDocFatalWarningsSetting
+  )
+
+  val patmatSafeFatalWarningsSettings = Seq(
+      // The pattern matcher used to exceed its analysis budget before 2.11.5
+      scalacOptions ++= {
+        scalaVersion.value.split('.') match {
+          case Array("2", "10", _)                 => Nil
+          case Array("2", "11", x) if x.toInt <= 4 => Nil
+          case _                                   => Seq("-Xfatal-warnings")
+        }
+      },
+      noDocFatalWarningsSetting
   )
 
   private def publishToScalaJSRepoSettings = Seq(
@@ -262,7 +277,7 @@ object Build extends sbt.Build {
   )
 
   val commonIrProjectSettings = (
-      commonSettings ++ publishSettings
+      commonSettings ++ publishSettings ++ patmatSafeFatalWarningsSettings
   ) ++ Seq(
       name := "Scala.js IR",
       /* Scala.js 0.6.6 will break binary compatibility of the IR
@@ -328,7 +343,7 @@ object Build extends sbt.Build {
   )
 
   val commonToolsSettings = (
-      commonSettings ++ publishSettings
+      commonSettings ++ publishSettings ++ patmatSafeFatalWarningsSettings
   ) ++ Seq(
       name := "Scala.js tools",
 
@@ -714,7 +729,10 @@ object Build extends sbt.Build {
   lazy val library: Project = Project(
       id = "library",
       base = file("library"),
-      settings = commonSettings ++ publishSettings ++ myScalaJSSettings ++ Seq(
+      settings = (
+          commonSettings ++ publishSettings ++ myScalaJSSettings ++
+          patmatSafeFatalWarningsSettings
+      ) ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
           scalaJSSourceMapSettings,
@@ -1074,7 +1092,9 @@ object Build extends sbt.Build {
   lazy val partest: Project = Project(
       id = "partest",
       base = file("partest"),
-      settings = commonSettings ++ Seq(
+      settings = (
+          commonSettings ++ patmatSafeFatalWarningsSettings
+      ) ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
 

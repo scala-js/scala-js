@@ -21,6 +21,7 @@ import Compat210._
  *
  *  @author Tobias Schlatter
  */
+@deprecated("Not actually deprecated, makes warnings go away", "")
 private[scalajs] object UseAsMacros {
   // Import macros only here, otherwise we collide with Compat210._
   import scala.reflect.macros._
