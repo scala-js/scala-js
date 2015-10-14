@@ -245,7 +245,6 @@ object ScalaJSPluginInternal {
             s.log,
             reachOptimizerSymbols = true, // better be safe than sorry here
             bypassLinkingErrors = opts.bypassLinkingErrors,
-            noWarnMissing = Nil,
             checkIR = opts.checkScalaJSIR)
         new LinkingUnitClasspath(cp.jsLibs, linkingUnit, cp.requiresDOM,
             cp.version)

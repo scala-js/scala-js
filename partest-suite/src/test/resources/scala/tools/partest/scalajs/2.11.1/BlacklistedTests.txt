@@ -893,6 +893,24 @@ run/t7791-script-linenums.scala
 # Suffers from bug in Node.js (https://github.com/joyent/node/issues/7528)
 run/range-unit.scala
 
+# Using Manifests (which use Class.getInterfaces)
+run/valueclasses-manifest-existential.scala
+run/existentials3-old.scala
+run/t2236-old.scala
+run/interop_manifests_are_classtags.scala
+run/valueclasses-manifest-generic.scala
+run/valueclasses-manifest-basic.scala
+run/t1195-old.scala
+run/t3758-old.scala
+run/t4110-old.scala
+
+# Using ScalaRunTime.stringOf
+run/value-class-extractor-seq.scala
+run/t3493.scala
+
+# Using Class.forName
+run/private-inline.scala
+
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
 run/t429.scala
