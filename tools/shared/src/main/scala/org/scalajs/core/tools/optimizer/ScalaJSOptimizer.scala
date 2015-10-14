@@ -183,10 +183,6 @@ object ScalaJSOptimizer {
     val bypassLinkingErrors: Boolean
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean
-    /** If true, the optimizer removes trees that have not been used in the
-     *  last run from the cache. Otherwise, all trees that has been used once,
-     *  are kept in memory. */
-    val unCache: Boolean
     /** If true, no optimizations are performed */
     val disableOptimizer: Boolean
     /** If true, nothing is performed incrementally */
@@ -207,10 +203,6 @@ object ScalaJSOptimizer {
       val bypassLinkingErrors: Boolean,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
-      /** If true, the optimizer removes trees that have not been used in the
-       *  last run from the cache. Otherwise, all trees that has been used once,
-       *  are kept in memory. */
-      val unCache: Boolean,
       /** If true, no optimizations are performed */
       val disableOptimizer: Boolean,
       /** If true, nothing is performed incrementally */
@@ -227,9 +219,6 @@ object ScalaJSOptimizer {
 
     def withCheckIR(checkIR: Boolean): Config =
       copyWith(checkIR = checkIR)
-
-    def withUnCache(unCache: Boolean): Config =
-      copyWith(unCache = unCache)
 
     def withDisableOptimizer(disableOptimizer: Boolean): Config =
       copyWith(disableOptimizer = disableOptimizer)
@@ -254,7 +243,6 @@ object ScalaJSOptimizer {
            |  relativizeSourceMapBase = $relativizeSourceMapBase
            |  bypassLinkingErrors     = $bypassLinkingErrors
            |  checkIR                 = $checkIR
-           |  unCache                 = $unCache
            |  disableOptimizer        = $disableOptimizer
            |  batchMode               = $batchMode
            |  customOutputWrapper     = $customOutputWrapper
@@ -268,13 +256,12 @@ object ScalaJSOptimizer {
         relativizeSourceMapBase: Option[URI] = this.relativizeSourceMapBase,
         bypassLinkingErrors: Boolean = this.bypassLinkingErrors,
         checkIR: Boolean = this.checkIR,
-        unCache: Boolean = this.unCache,
         disableOptimizer: Boolean = this.disableOptimizer,
         batchMode: Boolean = this.batchMode,
         customOutputWrapper: (String, String) = this.customOutputWrapper): Config = {
 
       new Config(output, cache, wantSourceMap, relativizeSourceMapBase,
-          bypassLinkingErrors, checkIR, unCache, disableOptimizer, batchMode,
+          bypassLinkingErrors, checkIR, disableOptimizer, batchMode,
           customOutputWrapper)
     }
   }
@@ -288,7 +275,6 @@ object ScalaJSOptimizer {
           relativizeSourceMapBase = None,
           bypassLinkingErrors = false,
           checkIR = false,
-          unCache = true,
           disableOptimizer = false,
           batchMode = false,
           customOutputWrapper = ("", ""))
