@@ -1005,7 +1005,6 @@ neg/t910.scala
 neg/parstar.scala
 neg/t4568.scala
 neg/newpat_unreachable.scala
-neg/warn-unused-imports.scala
 neg/t1181.scala
 neg/t5903c
 neg/t7294.scala
@@ -2004,7 +2003,6 @@ neg/t3987.scala
 neg/t877.scala
 neg/t0117.scala
 neg/t692.scala
-neg/t6666d.scala
 neg/t5702-neg-ugly-xbrace.scala
 neg/t7752.scala
 neg/case-collision2.scala
@@ -2836,7 +2834,6 @@ pos/macro-bundle-disambiguate-nonbundle.scala
 pos/package-ob-case
 pos/t1786-counter.scala
 pos/reflection-compat-api-universe.scala
-pos/list-optim-check.scala
 pos/existential-java-case-class
 pos/t1786-cycle.scala
 pos/reflection-compat-c.scala
@@ -3070,6 +3067,30 @@ neg/t6895b.scala
 neg/t8892.scala
 neg/t8849.scala
 neg/inlineIndyLambdaPrivate
+run/t9029.scala
+run/t7850c.scala
+run/t7850d.scala
+run/t8334.scala
+run/t9029c.scala
+run/t9029b.scala
+run/t9422.scala
+run/t9425.scala
+pos/t9475.scala
+pos/t9498.scala
+pos/t9479.scala
+pos/t9479b.scala
+pos/t9442.scala
+pos/t9369.scala
+pos/t6666d.scala
+pos/t9370
+neg/t6810.scala
+neg/t8127a.scala
+neg/t8989.scala
+neg/t9401.scala
+neg/implicit-ambiguous.scala
+neg/implicit-ambiguous-2.scala
+neg/implicit-ambiguous-invalid.scala
+neg/warn-unused-imports
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
