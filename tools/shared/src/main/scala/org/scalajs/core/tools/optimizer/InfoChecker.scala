@@ -142,7 +142,7 @@ class InfoChecker(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
   private def methodInfoString(info: MethodInfo): String = {
     val writer = new StringWriter
     val printer = new InfoPrinter(writer)
-    printer.printMethodInfo(info)
+    printer.print(info)
     writer.toString()
   }
 }
