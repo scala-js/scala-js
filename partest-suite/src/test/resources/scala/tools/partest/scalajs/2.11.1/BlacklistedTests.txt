@@ -14,13 +14,6 @@ pos/MailBox.scala
 # NEG
 #
 
-# Using the compiler API
-
-neg/t6446-additional
-neg/t6446-list
-neg/t6446-missing
-neg/t6446-show-phases.scala
-
 # Screws up, but not really our problem (error: None.get instead of
 # phase ordering error)
 neg/t7494-multi-right-after
@@ -41,9 +34,6 @@ neg/t6289
 # Relies on the exact toString() representation of Floats/Doubles
 run/t2378.scala
 
-# Relies on !box(+0.0).equals(box(-0.0))
-run/number-parsing.scala
-
 # Uses ClassTags on existentials which are broken in Scala (see #251)
 run/valueclasses-classtag-existential.scala
 
@@ -52,26 +42,15 @@ run/t5857.scala
 
 # Using parts of the javalib we don't plan to support
 
-run/t0412.scala
-run/t3518.scala
-run/t6198.scala
 run/t5018.scala
 run/t2417.scala
-run/t6197.scala
 run/t4813.scala
 run/lazy-concurrent.scala
-run/t5880.scala
-run/mapConserve.scala
 run/t3667.scala
 run/t3038d.scala
-run/numbereq.scala
 run/shutdownhooks.scala
-run/t4658.scala
-run/t4201.scala
 run/t5590.scala
-run/deeps.scala
 run/t3895b.scala
-run/t2813.2.scala
 run/t5974.scala
 run/hashset.scala
 run/t5262.scala
@@ -80,27 +59,18 @@ run/t5293-map.scala
 run/serialize-stream.scala
 run/sysprops.scala
 
-run/colltest.scala
-run/equality.scala
 run/t2849.scala
 run/t1360.scala
 run/t6114.scala
-run/t7269.scala
 run/t3199b.scala
 
 # Uses java.util.Collections
-run/java-erasure.scala
 run/t2250.scala
 
 # Uses java.math.BigDecimal / BigInteger : but failures not due to them
 run/hashhash.scala
 run/is-valid-num.scala
 run/stringinterpolation_macro-run.scala
-run/t5356.scala
-
-# Documented semantic difference on numbers (float precision)
-run/interpolation.scala
-run/interpolationMultiline1.scala
 
 # Documented semantic difference on String.split(x: Array[Char])
 run/t0325.scala
@@ -135,6 +105,8 @@ run/UnrolledBuffer.scala
 run/t6253a.scala
 run/t6253b.scala
 run/t6253c.scala
+run/numbereq.scala
+run/t4658.scala
 
 # Crashes Rhino
 
@@ -149,7 +121,6 @@ run/t6331b.scala
 
 # Using IO
 
-run/Predef.readLine.scala
 run/t6488.scala
 run/t6988.scala
 
@@ -161,10 +132,15 @@ run/t8188.scala
 
 run/t4426.scala
 
-# Using ExecutionContext.global
+# Using Await
+
 run/t7336.scala
 run/t7775.scala
 run/future-flatmap-exec-count.scala
+
+# Using detailed stack trace
+
+run/t6308.scala
 
 # Using reflection
 
@@ -381,14 +357,11 @@ run/t6175.scala
 run/t6178.scala
 run/t6199-mirror.scala
 run/t6199-toolbox.scala
-run/t6220.scala
 run/t6240-universe-code-gen.scala
 run/t6221
 run/t6260b.scala
 run/t6259.scala
 run/t6287.scala
-run/t6261.scala
-run/t6308.scala
 run/t6344.scala
 run/t6392a.scala
 run/t6591_1.scala
@@ -621,13 +594,6 @@ run/macro-reify-unreify
 
 run/enums.scala
 run/t3719.scala
-
-# Expecting some particular value of hashCode()
-
-run/MeterCaseClass.scala
-run/t5608.scala
-run/caseClassHash.scala
-run/Meter.scala
 
 # Exceptions that become JavaScriptException
 
