@@ -3016,6 +3016,24 @@ run/bigDecimalTest.scala
 run/bigDecimalCache.scala
 run/range.scala
 run/t6064.scala
+run/t7269.scala
+run/equality.scala
+run/number-parsing.scala
+run/t6220.scala
+run/mapConserve.scala
+run/colltest.scala
+run/t0412.scala
+run/t6261.scala
+run/Predef.readLine.scala
+run/java-erasure.scala
+run/t5880.scala
+run/t6197.scala
+run/t4201.scala
+run/t5608.scala
+run/t3518.scala
+run/t8346.scala
+run/t6198.scala
+run/t2813.2.scala
 
 # Adapt checkfiles for (1.0).toString == "1"
 run/Course-2002-01.scala
@@ -3034,6 +3052,12 @@ run/try-catch-unify.scala
 run/impconvtimes.scala
 run/Course-2002-10.scala
 run/Course-2002-08.scala
+run/MeterCaseClass.scala
+run/Meter.scala
+run/deeps.scala
+run/caseClassHash.scala
+run/interpolation.scala
+run/interpolationMultiline1.scala
 
 # Adapt checkfiles for ().toString == "undefined"
 run/t5680.scala
@@ -3054,6 +3078,10 @@ run/misc.scala
 # Adapt checkfiles for compiler phase list
 run/t6102.scala
 neg/t7494-no-options
+neg/t6446-list
+neg/t6446-missing
+neg/t6446-show-phases.scala
+neg/t6446-additional
 
 # Adapt checkfiles for different behavior with boxed types
 run/t5568.scala
@@ -3062,3 +3090,4 @@ run/virtpatmat_switch.scala
 run/t5629b.scala
 run/t6318_primitives.scala
 run/t8764.scala
+run/t5356.scala
