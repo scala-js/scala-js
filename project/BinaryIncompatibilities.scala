@@ -20,6 +20,40 @@ object BinaryIncompatibilities {
   val CLI = Seq(
   )
 
+  val Library = Seq(
+      // private[runtime], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_16_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_22_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_31_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_32_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_44_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_63_DBL"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TenPow9"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.SIGN_BIT"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.SIGN_BIT_VALUE"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.TWO_PWR_15_DBL"),
+
+      // Synthetic methods inside RuntimeLong, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.scala$scalajs$runtime$RuntimeLong$$isZero"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.scala$scalajs$runtime$RuntimeLong$/Mod"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.scala$scalajs$runtime$RuntimeLong$$isNegative"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.RuntimeLong.scala$scalajs$runtime$RuntimeLong$$setBit")
+  )
+
   val TestInterface = Seq(
       // Private things, not an issue
       ProblemFilters.exclude[IncompatibleMethTypeProblem](

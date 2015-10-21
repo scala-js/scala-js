@@ -246,6 +246,30 @@ object LongTest extends JasmineTest {
       // scalastyle:on disallow.space.before.token disallow.space.after.token
     }
 
+    it("should correctly compute leading zeros") {
+      expect(JLong.numberOfLeadingZeros(0x9876543210abcdefL)).toEqual(0)
+      expect(JLong.numberOfLeadingZeros(0x272d130652a160fL)).toEqual(6)
+      expect(JLong.numberOfLeadingZeros(0x4L)).toEqual(61)
+      expect(JLong.numberOfLeadingZeros(0x645d32476a42aL)).toEqual(13)
+      expect(JLong.numberOfLeadingZeros(0x19b8ed092L)).toEqual(31)
+      expect(JLong.numberOfLeadingZeros(0xdc2d80fe481e77L)).toEqual(8)
+      expect(JLong.numberOfLeadingZeros(0x3af189a5d0dfae26L)).toEqual(2)
+      expect(JLong.numberOfLeadingZeros(0x151dc269439L)).toEqual(23)
+      expect(JLong.numberOfLeadingZeros(0x60e7be653be060L)).toEqual(9)
+      expect(JLong.numberOfLeadingZeros(0xe39L)).toEqual(52)
+      expect(JLong.numberOfLeadingZeros(0x6L)).toEqual(61)
+      expect(JLong.numberOfLeadingZeros(0x7ea26e0L)).toEqual(37)
+      expect(JLong.numberOfLeadingZeros(0x882fb98ec313bL)).toEqual(12)
+      expect(JLong.numberOfLeadingZeros(0x136efd8f1beebaL)).toEqual(11)
+      expect(JLong.numberOfLeadingZeros(0x0L)).toEqual(64)
+      expect(JLong.numberOfLeadingZeros(0x3aL)).toEqual(58)
+      expect(JLong.numberOfLeadingZeros(0xc3c7ecf1e25f4b4L)).toEqual(4)
+      expect(JLong.numberOfLeadingZeros(0x48L)).toEqual(57)
+      expect(JLong.numberOfLeadingZeros(0x63c51c723a8L)).toEqual(21)
+      expect(JLong.numberOfLeadingZeros(0x2742L)).toEqual(50)
+      expect(JLong.numberOfLeadingZeros(0x10630c7L)).toEqual(39)
+    }
+
     it("should correctly compute trailing zeros") {
       expect(JLong.numberOfTrailingZeros(0xff10000000000000L)).toEqual(52)
       expect(JLong.numberOfTrailingZeros(0xff20000000000000L)).toEqual(53)
