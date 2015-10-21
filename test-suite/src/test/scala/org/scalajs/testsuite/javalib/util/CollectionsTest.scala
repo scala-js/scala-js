@@ -10,7 +10,7 @@ package org.scalajs.testsuite.javalib.util
 import java.{lang => jl, util => ju}
 import java.util.Comparator
 
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 import scala.collection.JavaConversions._
 

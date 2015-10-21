@@ -10,7 +10,7 @@ package org.scalajs.testsuite.javalib.util
 import java.{util => ju, lang => jl}
 
 import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 import scala.collection.JavaConversions._
 
 trait CollectionTest extends JasmineTest with ExpectExceptions {

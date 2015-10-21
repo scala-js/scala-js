@@ -7,7 +7,7 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 import scala.reflect.{classTag, ClassTag}
 import scala.scalajs.js

@@ -10,7 +10,7 @@ package org.scalajs.testsuite.javalib.util
 import java.{util => ju}
 
 import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
 
 import scala.collection.JavaConversions._
