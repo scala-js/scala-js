@@ -681,10 +681,19 @@ object Printers {
 
         case IntLiteral(value) =>
           if (value >= 0) {
-            print(value)
+            print(value.toString)
           } else {
             print('(')
-            print(value)
+            print(value.toString)
+            print(')')
+          }
+
+        case LongLiteral(value) =>
+          if (value >= 0) {
+            print(value.toString)
+          } else {
+            print('(')
+            print(value.toString)
             print(')')
           }
 
