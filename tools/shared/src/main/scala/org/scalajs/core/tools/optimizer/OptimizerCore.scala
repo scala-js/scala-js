@@ -2165,6 +2165,39 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
+  /** Translate literals to their Scala.js String representation. */
+  private def foldToStringForString_+(tree: Tree)(implicit pos : Position): Tree = tree match {
+    case FloatLiteral(value) =>
+      foldToStringForString_+(DoubleLiteral(value.toDouble))
+
+    case DoubleLiteral(value) => 
+      jsNumberToString(value).fold(tree)(StringLiteral(_))
+
+    case LongLiteral(value)    => StringLiteral(value.toString)
+    case IntLiteral(value)     => StringLiteral(value.toString)
+    case BooleanLiteral(value) => StringLiteral(value.toString)
+    case Null()                => StringLiteral("null")
+    case Undefined()           => StringLiteral("undefined")
+    case _                     => tree
+  }
+
+  /* Following the ECMAScript 6 specification */
+  private def jsNumberToString(value: Double): Option[String] = {
+    if (1.0.toString == "1") { 
+      // We are in a JS environment, so the host .toString() is the correct one.
+      Some(value.toString) 
+    } else {
+      value match {
+        case _ if value.isNaN       => Some("NaN")
+        case 0                      => Some("0")
+        case _ if value < 0         => jsNumberToString(-value).map("-" + _)
+        case _ if value.isInfinity  => Some("Infinity")
+        case _ if value.isValidInt  => Some(value.toInt.toString)
+        case _                      => None
+      }
+    }  
+  }
+
   private def foldBinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit pos: Position): Tree = {
     import BinaryOp._
@@ -2179,6 +2212,27 @@ private[optimizer] abstract class OptimizerCore(
           case (_: Literal, _) => foldBinaryOp(op, rhs, lhs)
           case _               => default
         }
+
+      case String_+ =>
+        val lhs1 = foldToStringForString_+(lhs)
+        val rhs1 = foldToStringForString_+(rhs)
+        @inline def stringDefault = BinaryOp(String_+, lhs1, rhs1)
+        (lhs1, rhs1) match {
+          case (StringLiteral(s1), StringLiteral(s2)) => 
+            StringLiteral(s1 + s2)
+          case (_, StringLiteral("")) =>
+            foldBinaryOp(op, rhs1, lhs1)
+          case (StringLiteral(""), _) if rhs1.tpe == StringType =>
+            rhs1
+          case (_, BinaryOp(String_+, rl, rr)) => 
+            foldBinaryOp(String_+, BinaryOp(String_+, lhs1, rl), rr)
+          case (BinaryOp(String_+, ll, StringLiteral(lr)), StringLiteral(r)) =>
+            BinaryOp(String_+, ll, StringLiteral(lr + r))
+          case (BinaryOp(String_+, StringLiteral(""), lr), _) =>
+            BinaryOp(String_+, lr, rhs1)
+          case _ =>
+            stringDefault
+      }
 
       case Int_+ =>
         (lhs, rhs) match {
