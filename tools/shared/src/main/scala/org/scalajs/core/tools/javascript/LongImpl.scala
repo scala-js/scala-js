@@ -83,11 +83,19 @@ object LongImpl {
 
   // Constructors
 
-  final val initFromParts = "init___I__I__I"
-  final val initFromInt   = "init___I"
+  final val initFromParts    = "init___I__I"
+  final val initFromPartsOld = "init___I__I__I"
+  final val initFromInt      = "init___I"
 
+  /* Note that initFromPartsOld depends on initFromParts in the new
+   * implementation of RuntimeLong, so this ensures that the new one is
+   * reachable.
+   * We do not directly refer to the new one, other we would crash on earlier
+   * versions of RuntimeLong that do not yet have the new constructor.
+   * TODO Get rid of this when we break backward binary compatibility
+   */
   val AllConstructors = Set(
-      initFromParts, initFromInt)
+      initFromPartsOld, initFromInt)
 
   // Methods on the companion
 
@@ -98,7 +106,14 @@ object LongImpl {
   val AllModuleMethods = Set(
       fromDouble, Zero)
 
-  // Boldly copied from library/scala.scalajs.runtime.RuntimeLong
+  // Extract the parts to give to the initFromParts constructor
+
+  def extractParts(value: Long): (Int, Int) =
+    (value.toInt, (value >>> 32).toInt)
+
+  /* Boldly copied from the old version of library/scala.scalajs.runtime.RuntimeLong
+   * TODO Get rid of this when we break backward binary compatibility
+   */
 
   /** Number of relevant bits in l and m each. */
   private final val BITS = 22
@@ -111,6 +126,6 @@ object LongImpl {
   /** Bitmask for h. */
   private final val MASK_2 = (1 << BITS2) - 1
 
-  def extractParts(value: Long): (Int, Int, Int) =
+  def extractPartsOld(value: Long): (Int, Int, Int) =
     (value.toInt & MASK, (value >> BITS).toInt & MASK, (value >> BITS01).toInt & MASK_2)
 }
