@@ -116,6 +116,35 @@ object ScalaJSDefinedTest extends JasmineTest {
   }
 
   @ScalaJSDefined
+  class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {
+    def this(x: Int, y: Int) = this(x + y)
+    def this(x: Int, y: Int, z: Int) = this(x + y, z)
+  }
+
+  @ScalaJSDefined
+  class OverloadedConstructorParamType(val foo: Int) extends js.Object {
+    def this(x: String) = this(x.length)
+    def this(x: Option[String]) = this(x.get)
+  }
+
+  @ScalaJSDefined
+  class OverloadedConstructorComplex(val foo: Int, var bar: Int) extends js.Object {
+    def this() = this(5, 6)
+    def this(x: Int) = this(x, x)
+    def this(x: Int, y: Int, z: Int) = {
+      this(x, y)
+      bar = z
+    }
+    def this(x: String) = this(x.length)
+    def this(x: String, y: Int) = this(x.length, y)
+    def this(x: Int, y: String) = this(x, y.length)
+    def this(w: Int, x: Int, y: Int, z: Int) = {
+      this(w + x, y, z)
+      bar = y
+    }
+  }
+
+  @ScalaJSDefined
   class SimpleConstructorAutoFields(val x: Int, var y: Int) extends js.Object {
     def sum(): Int = x + y
   }
@@ -659,6 +688,104 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(js.typeOf(dyn.foobar)).toBe("function")
       expect(dyn.foobar()).toEqual(42)
       expect(dyn.foobar(3)).toEqual(6)
+    }
+
+    it("overloaded constructors - num parameters resolution") {
+      expect(new OverloadedConstructorParamNumber(1).foo).toEqual(1)
+      expect(new OverloadedConstructorParamNumber(1, 2).foo).toEqual(3)
+    }
+
+    it("overloaded constructors - parameter type resolution") {
+      expect(new OverloadedConstructorParamType(1).foo).toEqual(1)
+      expect(new OverloadedConstructorParamType("abc").foo).toEqual(3)
+    }
+
+    it("overloaded constructors - with captured parameters") {
+      @ScalaJSDefined
+      class OverloadedConstructorWithOuterContextOnly(val x: Int) extends js.Object {
+        def this(y: String) = this(y.length)
+      }
+
+      val z = (() => 5)()
+      @ScalaJSDefined
+      class OverloadedConstructorWithValCapture(val x: Int) extends js.Object {
+        def this(y: String) = this(z)
+      }
+
+      expect(new OverloadedConstructorWithOuterContextOnly(1).x).toEqual(1)
+      expect(new OverloadedConstructorWithOuterContextOnly("abc").x).toEqual(3)
+
+      expect(new OverloadedConstructorWithValCapture(1).x).toEqual(1)
+      expect(new OverloadedConstructorWithValCapture("abc").x).toEqual(5)
+    }
+
+    it("overloaded constructors - with super class") {
+      @ScalaJSDefined
+      class OverloadedConstructorSup(val x: Int) extends js.Object {
+        def this(y: String) = this(y.length)
+      }
+      @ScalaJSDefined
+      class OverloadedConstructorSub(x: Int)
+          extends OverloadedConstructorSup(3 * x) {
+        def this(y: String) = this(2 * y.length)
+      }
+      expect(new OverloadedConstructorSup(1).x).toEqual(1)
+      expect(new OverloadedConstructorSup("abc").x).toEqual(3)
+
+      expect(new OverloadedConstructorSub(3).x).toEqual(9)
+      expect(new OverloadedConstructorSub("ab").x).toEqual(12)
+    }
+
+    it("overloaded constructors - with repeated parameters") {
+      @ScalaJSDefined
+      class OverloadedConstructorWithRepeatedParameters(xs: Int*)
+          extends js.Object {
+        def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
+        def sum: Int = xs.sum
+      }
+
+      expect(new OverloadedConstructorWithRepeatedParameters().sum).toEqual(0)
+      expect(new OverloadedConstructorWithRepeatedParameters(1).sum).toEqual(1)
+      expect(new OverloadedConstructorWithRepeatedParameters(1, 2).sum).toEqual(3)
+      expect(new OverloadedConstructorWithRepeatedParameters(1, 2, 4).sum).toEqual(7)
+
+      expect(new OverloadedConstructorWithRepeatedParameters("abc").sum).toEqual(3)
+      expect(new OverloadedConstructorWithRepeatedParameters("ab", "c").sum).toEqual(3)
+      expect(new OverloadedConstructorWithRepeatedParameters("a", "b", "c").sum).toEqual(3)
+    }
+
+    it("overloaded constructors - complex resolution") {
+      val bazPrim = new OverloadedConstructorComplex(1, 2)
+      expect(bazPrim.foo).toEqual(1)
+      expect(bazPrim.bar).toEqual(2)
+
+      val baz1 = new OverloadedConstructorComplex()
+      expect(baz1.foo).toEqual(5)
+      expect(baz1.bar).toEqual(6)
+
+      val baz2 = new OverloadedConstructorComplex(3)
+      expect(baz2.foo).toEqual(3)
+      expect(baz2.bar).toEqual(3)
+
+      val baz3 = new OverloadedConstructorComplex(7, 8, 9)
+      expect(baz3.foo).toEqual(7)
+      expect(baz3.bar).toEqual(9)
+
+      val baz4 = new OverloadedConstructorComplex("abc")
+      expect(baz4.foo).toEqual(3)
+      expect(baz4.bar).toEqual(3)
+
+      val baz5 = new OverloadedConstructorComplex("abc", 10)
+      expect(baz5.foo).toEqual(3)
+      expect(baz5.bar).toEqual(10)
+
+      val baz6 = new OverloadedConstructorComplex(11, "abc")
+      expect(baz6.foo).toEqual(11)
+      expect(baz6.bar).toEqual(3)
+
+      val baz7 = new OverloadedConstructorComplex(1, 2, 4, 8)
+      expect(baz7.foo).toEqual(3)
+      expect(baz7.bar).toEqual(4)
     }
 
     it("default parameters") {

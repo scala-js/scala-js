@@ -227,6 +227,9 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       }
     }
 
+    def genJSConstructorExport(alts: List[Symbol]): js.MethodDef =
+      genExportMethod(alts.map(ExportedSymbol), "constructor")
+
     private def genExportProperty(alts: List[Symbol], jsName: String) = {
       assert(!alts.isEmpty)
       implicit val pos = alts.head.pos
@@ -406,20 +409,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
         val altsByTypeTest = groupByWithoutHashCode(alts) {
           case ExportedSymbol(alt) =>
-            // get parameter type while resolving repeated params
-            val tpe = enteringPhase(currentRun.uncurryPhase) {
-              val ps = alt.paramss.flatten
-              if (ps.size <= paramIndex || isRepeated(ps(paramIndex))) {
-                assert(isRepeated(ps.last))
-                repeatedToSingle(ps.last.tpe)
-              } else {
-                enteringPhase(currentRun.posterasurePhase) {
-                  ps(paramIndex).tpe
-                }
-              }
-            }
-
-            typeTestForTpe(tpe)
+            typeTestForTpe(computeExportArgType(alt, paramIndex))
 
           case ex: ExportedBody =>
             typeTestForTpe(ex.params(paramIndex))
@@ -472,6 +462,54 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
                     jstpe.BooleanType)
               }
               js.If(condOrUndef, genSubAlts, elsep)(jstpe.AnyType)
+            }
+          }
+        }
+      }
+    }
+
+    private def computeExportArgType(alt: Symbol, paramIndex: Int): Type = {
+      // See the comment in genPrimitiveJSArgs for a rationale about this
+      enteringPhase(currentRun.uncurryPhase) {
+
+        lazy val paramsUncurry = alt.paramss.flatten
+        lazy val paramsTypesUncurry = paramsUncurry.map(_.tpe)
+        lazy val isRepeatedUncurry = paramsUncurry.map(isRepeated)
+
+        lazy val paramsPosterasure = enteringPhase(currentRun.posterasurePhase) {
+          alt.paramss.flatten
+        }
+        def paramTypePosterasure = enteringPhase(currentRun.posterasurePhase) {
+          paramsPosterasure.apply(paramIndex).tpe
+        }
+
+        if (!alt.isClassConstructor) {
+          // get parameter type while resolving repeated params
+          if (paramsTypesUncurry.size <= paramIndex || isRepeatedUncurry(paramIndex)) {
+            assert(isRepeatedUncurry.last)
+            repeatedToSingle(paramsTypesUncurry.last)
+          } else {
+            paramTypePosterasure
+          }
+        } else {
+          // Compute the number of captured parameters that are added to the front
+          val paramsNamesUncurry = paramsUncurry.map(_.name)
+          val numCapturesFront = enteringPhase(currentRun.posterasurePhase) {
+            if (paramsNamesUncurry.isEmpty) paramsPosterasure.size
+            else paramsPosterasure.map(_.name).indexOfSlice(paramsNamesUncurry)
+          }
+          // get parameter type while resolving repeated params
+          if (paramIndex < numCapturesFront) {
+            // Type of a parameter that represents a captured outer context
+            paramTypePosterasure
+          } else {
+            val paramIndexNoCaptures = paramIndex - numCapturesFront
+            if (paramsTypesUncurry.size <= paramIndexNoCaptures ||
+                isRepeatedUncurry(paramIndexNoCaptures)) {
+              assert(isRepeatedUncurry.last)
+              repeatedToSingle(paramsTypesUncurry.last)
+            } else {
+              paramsTypesUncurry(paramIndexNoCaptures)
             }
           }
         }
@@ -536,10 +574,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         (if (repeatedTpe.isDefined) 1 else 0)
 
       // optional repeated parameter list
-      val jsVarArg = repeatedTpe map { tpe =>
+      val jsVarArgPrep = repeatedTpe map { tpe =>
         // new WrappedArray(varargs)
-        genNew(WrappedArrayClass, WrappedArray_ctor, List(
+        val rhs = genNew(WrappedArrayClass, WrappedArray_ctor, List(
             genVarargRef(normalArgc, minArgc)))
+        js.VarDef(js.Ident("prep" + normalArgc), rhs.tpe, mutable = false, rhs)
       }
 
       // normal arguments
@@ -547,8 +586,8 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
           i => genFormalArgRef(i, minArgc))
 
       // Generate JS code to prepare arguments (default getters and unboxes)
-      val jsArgPrep = genPrepareArgs(jsArgRefs, sym)
-      val jsResult = genResult(sym, jsArgPrep.map(_.ref) ++ jsVarArg)
+      val jsArgPrep = genPrepareArgs(jsArgRefs, sym) ++ jsVarArgPrep
+      val jsResult = genResult(sym, jsArgPrep.map(_.ref))
 
       js.Block(jsArgPrep :+ jsResult)
     }
@@ -561,9 +600,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val result = new mutable.ListBuffer[js.VarDef]
 
-      val funTpe = enteringPhase(currentRun.posterasurePhase)(sym.tpe)
+      val paramsPosterasure =
+        enteringPhase(currentRun.posterasurePhase)(sym.tpe).params
+      val paramsNow = sym.tpe.params
+
+      /* The parameters that existed at posterasurePhase are taken from that
+       * phase. The parameters that where added after posterasurePhase are taken
+       * from the current parameter list.
+       */
+      val params = paramsPosterasure ++ paramsNow.drop(paramsPosterasure.size)
+
       for {
-        (jsArg, (param, i)) <- jsArgs zip funTpe.params.zipWithIndex
+        (jsArg, (param, i)) <- jsArgs zip params.zipWithIndex
       } yield {
         // Unboxed argument (if it is defined)
         val unboxedArg = fromAny(jsArg,
