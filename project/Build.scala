@@ -205,18 +205,19 @@ object Build extends sbt.Build {
       autoCompilerPlugins := true,
       scalaJSOptimizerOptions ~= (_.withCheckScalaJSIR(true)),
       testFrameworks +=
-        TestFramework("org.scalajs.jasminetest.JasmineFramework")
-  )
+        TestFramework("org.scalajs.jasminetest.JasmineFramework"),
 
-  val scalaJSSourceMapSettings = scalacOptions ++= {
-    if (scalaJSIsSnapshotVersion) Seq()
-    else Seq(
-      // Link source maps to github sources
-      "-P:scalajs:mapSourceURI:" + root.base.toURI +
-      "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
-      scalaJSVersion + "/"
-    )
-  }
+      // Link source maps
+      scalacOptions ++= {
+        if (scalaJSIsSnapshotVersion) Seq()
+        else Seq(
+          // Link source maps to github sources
+          "-P:scalajs:mapSourceURI:" + root.base.toURI +
+          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
+          scalaJSVersion + "/"
+        )
+      }
+  )
 
   /** Depend library as if (exportJars in library) was set to false */
   val compileWithLibrarySetting = {
@@ -497,7 +498,6 @@ object Build extends sbt.Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings,
           compileWithLibrarySetting,
 
           resourceGenerators in Compile <+= Def.task {
@@ -522,7 +522,6 @@ object Build extends sbt.Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings,
           compileWithLibrarySetting
       ) ++ (
           scalaJSExternalCompileSettings
@@ -554,9 +553,6 @@ object Build extends sbt.Build {
             "->https://raw.githubusercontent.com/scala/scala/v" +
             scalaVersion.value + "/src/library/"
             ),
-
-          // Link sources in override directories to our GitHub repo
-          scalaJSSourceMapSettings,
 
           artifactPath in fetchScalaSource :=
             target.value / "scalaSources" / scalaVersion.value,
@@ -679,7 +675,6 @@ object Build extends sbt.Build {
           publishArtifact in Compile := false,
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings,
           compileWithLibrarySetting
       ) ++ (
           scalaJSExternalCompileSettings
@@ -735,7 +730,6 @@ object Build extends sbt.Build {
       ) ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
-          scalaJSSourceMapSettings,
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := true,
           previousArtifactSetting,
@@ -788,7 +782,6 @@ object Build extends sbt.Build {
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
           scalacOptions += "-Yskip:cleanup,icode,jvm",
-          scalaJSSourceMapSettings,
           exportJars := true,
           jsDependencies +=
             "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip",
@@ -840,7 +833,6 @@ object Build extends sbt.Build {
       ) ++ Seq(
           name := "Scala.js test interface",
           delambdafySetting,
-          scalaJSSourceMapSettings,
           previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.TestInterface
       )
@@ -858,8 +850,7 @@ object Build extends sbt.Build {
             ProvidedJS / "jasmine-polyfills.js",
             "org.webjars" % "jasmine" % "1.3.1" /
               "jasmine.js" dependsOn "jasmine-polyfills.js"
-          ),
-          scalaJSSourceMapSettings
+          )
       )
   ).dependsOn(compiler % "plugin", library, testInterface)
 
