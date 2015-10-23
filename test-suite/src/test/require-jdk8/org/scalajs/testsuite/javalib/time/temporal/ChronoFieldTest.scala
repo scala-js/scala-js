@@ -8,6 +8,72 @@ object ChronoFieldTest extends JasmineTest {
   import ChronoField._
 
   describe("java.time.temporal.ChronoField") {
+    it("should respond to `isDateBased`") {
+      expect(NANO_OF_SECOND.isDateBased).toBeFalsy
+      expect(NANO_OF_DAY.isDateBased).toBeFalsy
+      expect(MICRO_OF_SECOND.isDateBased).toBeFalsy
+      expect(MICRO_OF_DAY.isDateBased).toBeFalsy
+      expect(MILLI_OF_SECOND.isDateBased).toBeFalsy
+      expect(MILLI_OF_DAY.isDateBased).toBeFalsy
+      expect(SECOND_OF_MINUTE.isDateBased).toBeFalsy
+      expect(SECOND_OF_DAY.isDateBased).toBeFalsy
+      expect(MINUTE_OF_HOUR.isDateBased).toBeFalsy
+      expect(MINUTE_OF_DAY.isDateBased).toBeFalsy
+      expect(HOUR_OF_AMPM.isDateBased).toBeFalsy
+      expect(CLOCK_HOUR_OF_AMPM.isDateBased).toBeFalsy
+      expect(HOUR_OF_DAY.isDateBased).toBeFalsy
+      expect(CLOCK_HOUR_OF_DAY.isDateBased).toBeFalsy
+      expect(AMPM_OF_DAY.isDateBased).toBeFalsy
+      expect(DAY_OF_WEEK.isDateBased).toBeTruthy
+      expect(ALIGNED_DAY_OF_WEEK_IN_MONTH.isDateBased).toBeTruthy
+      expect(ALIGNED_DAY_OF_WEEK_IN_YEAR.isDateBased).toBeTruthy
+      expect(DAY_OF_MONTH.isDateBased).toBeTruthy
+      expect(DAY_OF_YEAR.isDateBased).toBeTruthy
+      expect(EPOCH_DAY.isDateBased).toBeTruthy
+      expect(ALIGNED_WEEK_OF_MONTH.isDateBased).toBeTruthy
+      expect(ALIGNED_WEEK_OF_YEAR.isDateBased).toBeTruthy
+      expect(MONTH_OF_YEAR.isDateBased).toBeTruthy
+      expect(PROLEPTIC_MONTH.isDateBased).toBeTruthy
+      expect(YEAR_OF_ERA.isDateBased).toBeTruthy
+      expect(YEAR.isDateBased).toBeTruthy
+      expect(ERA.isDateBased).toBeTruthy
+      expect(INSTANT_SECONDS.isDateBased).toBeFalsy
+      expect(OFFSET_SECONDS.isDateBased).toBeFalsy
+    }
+
+    it("should respond to `isTimeBased`") {
+      expect(NANO_OF_SECOND.isTimeBased).toBeTruthy
+      expect(NANO_OF_DAY.isTimeBased).toBeTruthy
+      expect(MICRO_OF_SECOND.isTimeBased).toBeTruthy
+      expect(MICRO_OF_DAY.isTimeBased).toBeTruthy
+      expect(MILLI_OF_SECOND.isTimeBased).toBeTruthy
+      expect(MILLI_OF_DAY.isTimeBased).toBeTruthy
+      expect(SECOND_OF_MINUTE.isTimeBased).toBeTruthy
+      expect(SECOND_OF_DAY.isTimeBased).toBeTruthy
+      expect(MINUTE_OF_HOUR.isTimeBased).toBeTruthy
+      expect(MINUTE_OF_DAY.isTimeBased).toBeTruthy
+      expect(HOUR_OF_AMPM.isTimeBased).toBeTruthy
+      expect(CLOCK_HOUR_OF_AMPM.isTimeBased).toBeTruthy
+      expect(HOUR_OF_DAY.isTimeBased).toBeTruthy
+      expect(CLOCK_HOUR_OF_DAY.isTimeBased).toBeTruthy
+      expect(AMPM_OF_DAY.isTimeBased).toBeTruthy
+      expect(DAY_OF_WEEK.isTimeBased).toBeFalsy
+      expect(ALIGNED_DAY_OF_WEEK_IN_MONTH.isTimeBased).toBeFalsy
+      expect(ALIGNED_DAY_OF_WEEK_IN_YEAR.isTimeBased).toBeFalsy
+      expect(DAY_OF_MONTH.isTimeBased).toBeFalsy
+      expect(DAY_OF_YEAR.isTimeBased).toBeFalsy
+      expect(EPOCH_DAY.isTimeBased).toBeFalsy
+      expect(ALIGNED_WEEK_OF_MONTH.isTimeBased).toBeFalsy
+      expect(ALIGNED_WEEK_OF_YEAR.isTimeBased).toBeFalsy
+      expect(MONTH_OF_YEAR.isTimeBased).toBeFalsy
+      expect(PROLEPTIC_MONTH.isTimeBased).toBeFalsy
+      expect(YEAR_OF_ERA.isTimeBased).toBeFalsy
+      expect(YEAR.isTimeBased).toBeFalsy
+      expect(ERA.isTimeBased).toBeFalsy
+      expect(INSTANT_SECONDS.isTimeBased).toBeFalsy
+      expect(OFFSET_SECONDS.isTimeBased).toBeFalsy
+    }
+
     it("should respond to `values`") {
       val fields = ChronoField.values()
 
