@@ -23,20 +23,14 @@ final class LocalTime private (hour: Int, minute: Int, second: Int, nano: Int)
   requireDateTime(nano >= 0 && nano <= 999999999, s"Invalid value for nanoOfSecond $nano")
 
   def isSupported(field: TemporalField): Boolean = field match {
-    case NANO_OF_SECOND | NANO_OF_DAY | MICRO_OF_SECOND | MICRO_OF_DAY |
-        MILLI_OF_SECOND | MILLI_OF_DAY | SECOND_OF_MINUTE | SECOND_OF_DAY |
-        MINUTE_OF_HOUR | MINUTE_OF_DAY | HOUR_OF_AMPM | CLOCK_HOUR_OF_AMPM |
-        HOUR_OF_DAY | CLOCK_HOUR_OF_DAY | AMPM_OF_DAY =>
-      true
-
-    case _: ChronoField => false
+    case _: ChronoField => field.isTimeBased
+    case null           => false
     case _              => field.isSupportedBy(this)
   }
 
   def isSupported(unit: TemporalUnit): Boolean = unit match {
-    case NANOS | MICROS | MILLIS | SECONDS | MINUTES | HOURS | HALF_DAYS => true
-
-    case _: ChronoUnit => false
+    case _: ChronoUnit => unit.isTimeBased
+    case null          => false
     case _             => unit.isSupportedBy(this)
   }
 

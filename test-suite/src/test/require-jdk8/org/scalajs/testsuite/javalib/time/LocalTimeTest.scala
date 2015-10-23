@@ -1,6 +1,6 @@
 package org.scalajs.testsuite.javalib.time
 
-import java.time.temporal.{ChronoField, ChronoUnit, UnsupportedTemporalTypeException}
+import java.time.temporal._
 import java.time.{DateTimeException, LocalTime}
 
 import temporal.TemporalAccessorTest
@@ -12,6 +12,27 @@ object LocalTimeTest extends TemporalAccessorTest {
 
   describe("java.time.LocalTime") {
     testTemporalAccessorApi(MAX, MIN, NOON)
+
+    it("should respond to `isSupported`") {
+      for {
+        t <- Seq(MAX, MIN, NOON)
+        f <- ChronoField.values()
+      } {
+        expect(t.isSupported(f) == f.isTimeBased).toBeTruthy
+      }
+
+      for {
+        t <- Seq(MAX, MIN, NOON)
+        u <- ChronoUnit.values()
+      } {
+        expect(t.isSupported(u) == u.isTimeBased).toBeTruthy
+      }
+
+      for (t <- Seq(MAX, MIN, NOON)) {
+        expect(t.isSupported(null: TemporalUnit)).toBeFalsy
+        expect(t.isSupported(null: TemporalField)).toBeFalsy
+      }
+    }
 
     it("should respond to `getLong`") {
       expect(MIN.getLong(NANO_OF_SECOND) == 0).toBeTruthy
