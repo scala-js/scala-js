@@ -37,7 +37,8 @@ trait EnvironmentInfo extends js.Object {
    */
   def exportsNamespace: js.Dynamic = js.native
 
-  /** The function that is called by [[java.lang.Runtime.exit]]
+  // Can't link to java.lang.Runtime.exit - #1969
+  /** The function that is called by `java.lang.Runtime.exit`
    *
    *  @group envInfo
    */

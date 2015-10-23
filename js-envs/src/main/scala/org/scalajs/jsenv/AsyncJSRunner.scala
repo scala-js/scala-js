@@ -47,7 +47,7 @@ trait AsyncJSRunner {
   final def await(): Unit = Await.result(future, Duration.Inf)
 
   /** Await completion of the started Run for the duration specified
-   *  by [[atMost]]. Strictly equivalent to:
+   *  by `atMost`. Strictly equivalent to:
    *
    *  {{{
    *  Await.result(future, atMost)
@@ -57,7 +57,7 @@ trait AsyncJSRunner {
   final def await(atMost: Duration): Unit = Await.result(future, atMost)
 
   /** Awaits completion of the started Run for the duration specified by
-   *  [[atMost]], or force it to stop.
+   *  `atMost`, or force it to stop.
    *
    *  If any exception is thrown while awaiting completion (including a
    *  [[scala.concurrent.TimeoutException TimeoutException]], forces the runner

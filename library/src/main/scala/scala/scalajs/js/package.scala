@@ -10,6 +10,7 @@
 
 package scala.scalajs
 
+// Can't link to Null - #1969
 /** Types, methods and values for interoperability with JavaScript libraries.
  *
  *  This package is only relevant to the Scala.js compiler, and should not be
@@ -39,8 +40,8 @@ package scala.scalajs
  *    parameters)
  *  - [[ThisFunction js.ThisFunction]] and its subtraits for functions that
  *    take the JavaScript `this` as an explicit parameter
- *  - [[Dictionary js.Dictionary]], a [[Map]]-like view of the properties of a
- *    JS object
+ *  - [[Dictionary js.Dictionary]], a [[scala.collection.Map Map]]-like view
+ *    of the properties of a JS object
  *
  *  The trait [[js.Dynamic]] is a special subtrait of [[js.Any]]. It can
  *  represent any JavaScript value in a dynamically-typed way. It is possible
@@ -51,9 +52,9 @@ package scala.scalajs
  *  could expect, because the corresponding Scala types stand in their stead:
  *  - [[Boolean]] is the type of primitive JavaScript booleans
  *  - [[Double]] is the type of primitive JavaScript numbers
- *  - [[String]] is the type of primitive JavaScript strings (or `null`)
+ *  - [[java.lang.String String]] is the type of primitive JavaScript strings (or `null`)
  *  - [[Unit]] is the type of the JavaScript undefined value
- *  - [[Null]] is the type of the JavaScript null value
+ *  - `Null` is the type of the JavaScript null value
  *
  *  [[UndefOr js.UndefOr]] gives a [[scala.Option]]-like interface where the
  *  JavaScript value `undefined` takes the role of `None`.

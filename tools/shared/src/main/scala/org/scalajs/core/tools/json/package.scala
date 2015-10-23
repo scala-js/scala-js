@@ -4,8 +4,8 @@ import java.io.{Reader, Writer}
 
 /** Some type-class lightweight wrappers around simple-json.
  *
- *  They allow to write [[xyz.toJSON]] to obtain classes that can be
- *  serialized by simple-json and [[fromJSON[T](xyz)]] to get an
+ *  They allow to write `xyz.toJSON` to obtain classes that can be
+ *  serialized by simple-json and `fromJSON[T](xyz)` to get an
  *  object back.
  */
 package object json {

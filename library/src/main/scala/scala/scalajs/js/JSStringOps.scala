@@ -20,8 +20,8 @@ import scala.scalajs.js.annotation._
 
 /** Operations on JavaScript strings.
  *
- *  The methods with an equivalent signature in [[String]] but with a different
- *  meaning are prefixed by `js` in this trait.
+ *  The methods with an equivalent signature in [[java.lang.String String]] but
+ *  with a different meaning are prefixed by `js` in this trait.
  */
 @native
 trait JSStringOps extends Any {

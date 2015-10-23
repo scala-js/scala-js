@@ -45,8 +45,8 @@ trait Runner {
    *
    *  @param taskDefs the <code>TaskDef</code>s for requested tasks
    *  @return an array of <code>Task</code>s
-   *  @throws IllegalStateException if invoked after <code>done</code> has been
-   *                                invoked.
+   *  @throws java.lang.IllegalStateException if invoked after <code>done</code>
+   *      has been invoked.
    */
   def tasks(taskDefs: Array[TaskDef]): Array[Task]
 

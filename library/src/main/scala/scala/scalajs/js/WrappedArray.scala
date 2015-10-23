@@ -75,12 +75,12 @@ final class WrappedArray[A](val array: Array[A])
 
 }
 
-/** $factoryInfo
- *  @define coll wrapped array
- *  @define Coll `WrappedArray`
+/** Factory for [[WrappedArray]]. Mainly provides the relevant
+ *  [[scala.collection.generic.CanBuildFrom CanBuildFroms]]s and implicit
+ *  conversions.
  */
 object WrappedArray extends SeqFactory[WrappedArray] {
-  /** $genericCanBuildFromInfo */
+  /** Standard CBF for [[WrappedArray]] */
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, WrappedArray[A]] =
     ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]
 

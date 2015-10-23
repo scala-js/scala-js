@@ -2,12 +2,12 @@ package org.scalajs.jsenv.phantomjs
 
 import org.scalajs.core.tools.io.IO
 
-/** A special [[ClassLoader]] to load the Jetty 8 dependency of [[PhantomJSEnv]]
- *  in a private space.
+/** A special [[java.lang.ClassLoader]] to load the Jetty 8 dependency of
+ *  [[PhantomJSEnv]] in a private space.
  *
  *  It loads everything that belongs to [[JettyWebsocketManager]] itself (while
  *  retrieving the requested class file from its parent.
- *  For all other classes, it first tries to load them from [[jettyLoader]],
+ *  For all other classes, it first tries to load them from `jettyLoader`,
  *  which should only contain the Jetty 8 classpath.
  *  If this fails, it delegates to its parent.
  *

@@ -41,8 +41,9 @@ class ScalaJSClosureOptimizer {
   private def toClosureInput(file: VirtualJSFile) =
     new CompilerInput(toClosureSource(file))
 
-  /** Fully optimizes an [[IRClasspath]] by asking the ScalaJSOptimizer to
-   *  emit a closure AST and then compiling this AST directly
+  /** Fully optimizes an [[classpath.IRClasspath IRClasspath]] by asking the
+   *  [[ScalaJSOptimizer]] to emit a closure AST and then compiling this AST
+   *  directly
    */
   def optimizeCP(optimizer: ScalaJSOptimizer, classpath: IRClasspath,
       cfg: Config, logger: Logger): LinkedClasspath = {

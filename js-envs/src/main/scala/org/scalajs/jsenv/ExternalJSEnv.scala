@@ -84,7 +84,7 @@ abstract class ExternalJSEnv(
 
     /** Wait for the VM to terminate, verify exit code
      *
-     *  @throws NonZeroExitException if VM returned a non-zero code
+     *  @throws ExternalJSEnv.NonZeroExitException if VM returned a non-zero code
      */
     final protected def waitForVM(vmInst: Process): Unit = {
       // Make sure we are done.

@@ -15,8 +15,8 @@ import org.scalajs.core.tools.jsdep.ResolutionInfo
 import scala.collection.immutable.Seq
 
 /** A [[CompleteClasspath]] that is fully linked (either with the
- *  [[ScalaJSOptimizer]] or the Closure Optimizer. It contains only a single
- *  file that is scalaJSCode.
+ *  [[optimizer.ScalaJSOptimizer ScalaJSOptimizer]] or the Closure Optimizer.
+ *  It contains only a single file that is scalaJSCode.
  */
 final class LinkedClasspath(
     jsLibs: Seq[ResolvedJSDependency],

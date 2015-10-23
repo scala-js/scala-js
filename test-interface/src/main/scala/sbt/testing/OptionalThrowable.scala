@@ -32,8 +32,8 @@ final class OptionalThrowable(
    *
    * @return the contained <code>Throwable</code>, if this
    *         <code>OptionalThrowable</code> is defined
-   * @throws IllegalStateException if this <code>OptionalThrowable</code> is
-   *            not defined.
+   * @throws java.lang.IllegalStateException if this
+   *     <code>OptionalThrowable</code> is not defined.
    */
   def get(): Throwable = {
     if (exception == null)

@@ -9,15 +9,15 @@ trait ComJSRunner extends AsyncJSRunner {
 
   /** Blocks until a message is received and returns it.
    *
-   *  @throws ComClosedException if the channel is closed before a message
-   *    is received
+   *  @throws ComJSEnv.ComClosedException if the channel is closed before a
+   *    message is received
    */
   final def receive(): String = receive(Duration.Inf)
 
   /** Blocks until a message is received and returns it.
    *
-   *  @throws ComClosedException if the channel is closed before a message
-   *    is received
+   *  @throws ComJSEnv.ComClosedException if the channel is closed before a
+   *    message is received
    *  @throws scala.concurrent.TimeoutException if the timeout expires
    *    before a message is received and the channel is still open
    */

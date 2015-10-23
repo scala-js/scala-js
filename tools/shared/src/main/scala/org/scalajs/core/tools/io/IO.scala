@@ -94,7 +94,7 @@ object IO {
     finally reader.close()
   }
 
-  /** Pipes data from [[in]] to [[out]] */
+  /** Pipes data from `in` to `out` */
   def pipe(in: InputStream, out: OutputStream): Unit = {
     val buffer = newBuffer[Byte]
 
@@ -109,7 +109,7 @@ object IO {
     loop()
   }
 
-  /** Pipes data from [[in]] to [[out]] */
+  /** Pipes data from `in` to `out` */
   def pipe(in: Reader, out: Writer): Unit = {
     val buffer = newBuffer[Char]
 

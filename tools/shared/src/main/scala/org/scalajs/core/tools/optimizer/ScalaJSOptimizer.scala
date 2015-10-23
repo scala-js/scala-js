@@ -55,11 +55,13 @@ class ScalaJSOptimizer(val semantics: Semantics, val outputMode: OutputMode,
   @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
   def this(semantics: Semantics) = this(semantics, IncOptimizer.factory)
 
-  /** Applies Scala.js-specific optimizations to a CompleteIRClasspath.
+  /** Applies Scala.js-specific optimizations to an
+   *  [[classpath.IRClasspath IRClasspath]].
    *  See [[ScalaJSOptimizer.Config]] for details about the configuration
    *  for the output of this method.
-   *  Returns a [[CompleteCIClasspath]] containing the result of the
-   *  optimizations.
+   *
+   *  @return A [[classpath.LinkedClasspath LinkedClasspath]] containing the
+   *      result of the optimizations.
    *
    *  analyzes, dead code eliminates and concatenates IR content
    *  - Maintains/establishes order

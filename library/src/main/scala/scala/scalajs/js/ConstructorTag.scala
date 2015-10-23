@@ -13,7 +13,7 @@ package scala.scalajs.js
  *
  *  A `ConstructorTag[T]` holds the constructor function of a JS class, as
  *  retrieved by `js.constructorOf[T]`. Similarly to
- *  [[ClassTag scala.reflect.ClassTag]]s, `ConstructorTag`s can be implicitly
+ *  [[scala.reflect.ClassTag ClassTag]]s, `ConstructorTag`s can be implicitly
  *  materialized when `T` is statically known to be a JS class, i.e., a valid
  *  type argument to `js.constructorOf`.
  */

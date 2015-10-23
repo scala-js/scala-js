@@ -19,7 +19,8 @@ import org.scalajs.core.tools.sourcemap.JSFileBuilder
 
 import scala.collection.immutable.Seq
 
-/** A [[CompleteClasspath]] that is linked as a [[LinkingUnit]].
+/** A [[CompleteClasspath]] that is linked as a
+ *  [[optimizer.LinkingUnit LinkingUnit]].
  *
  *  It does not refer to a single JavaScript file yet.
  */
@@ -32,12 +33,13 @@ final class LinkingUnitClasspath(
 
   /** Emits the linking unit as a single JavaScript file.
    *
-   *  Consider using [[ScalaJSOptimizer]] for a canonical way to do so. It
-   *  allows to persist the resulting file and create a source map, as well as
-   *  using non-default [[Semantics]] and [[OutputMode]].
+   *  Consider using [[optimizer.ScalaJSOptimizer ScalaJSOptimizer]] for a
+   *  canonical way to do so. It allows to persist the resulting file and create
+   *  a source map, as well as using non-default [[sem.Semantics Semantics]] and
+   *  [[javascript.OutputMode OutputMode]].
    *
-   *  The [[OutputMode]] is not specified, but it is compliant with
-   *  ECMAScript 5.1.
+   *  The [[javascript.OutputMode OutputMode]] is not specified, but it is
+   *  compliant with ECMAScript 5.1.
    */
   override lazy val scalaJSCode: VirtualJSFile = {
     val outName = "scalajscode.js"
