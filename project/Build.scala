@@ -161,7 +161,8 @@ object Build extends sbt.Build {
       scalacOptions ++= {
         scalaVersion.value.split('.') match {
           case Array("2", "10", _)                 => Nil
-          case Array("2", "11", x) if x.toInt <= 4 => Nil
+          case Array("2", "11", x)
+              if x.takeWhile(_.isDigit).toInt <= 4 => Nil
           case _                                   => Seq("-Xfatal-warnings")
         }
       },
