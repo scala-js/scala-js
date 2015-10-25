@@ -8,6 +8,49 @@ object ChronoUnitTest extends JasmineTest {
   import ChronoUnit._
 
   describe("java.time.temporal.ChronoUnit") {
+    it("should respond to `isDurationEstimated`") {
+      for (u <- ChronoUnit.values())
+        expect(u.isDurationEstimated != u.isTimeBased).toBeTruthy
+    }
+
+    it("should respond to `isDateBased`") {
+      expect(NANOS.isDateBased).toBeFalsy
+      expect(MICROS.isDateBased).toBeFalsy
+      expect(MILLIS.isDateBased).toBeFalsy
+      expect(SECONDS.isDateBased).toBeFalsy
+      expect(MINUTES.isDateBased).toBeFalsy
+      expect(HOURS.isDateBased).toBeFalsy
+      expect(HALF_DAYS.isDateBased).toBeFalsy
+      expect(DAYS.isDateBased).toBeTruthy
+      expect(WEEKS.isDateBased).toBeTruthy
+      expect(MONTHS.isDateBased).toBeTruthy
+      expect(YEARS.isDateBased).toBeTruthy
+      expect(DECADES.isDateBased).toBeTruthy
+      expect(CENTURIES.isDateBased).toBeTruthy
+      expect(MILLENNIA.isDateBased).toBeTruthy
+      expect(ERAS.isDateBased).toBeTruthy
+      expect(FOREVER.isDateBased).toBeFalsy
+    }
+
+    it("should respond to `isTimeBased`") {
+      expect(NANOS.isTimeBased).toBeTruthy
+      expect(MICROS.isTimeBased).toBeTruthy
+      expect(MILLIS.isTimeBased).toBeTruthy
+      expect(SECONDS.isTimeBased).toBeTruthy
+      expect(MINUTES.isTimeBased).toBeTruthy
+      expect(HOURS.isTimeBased).toBeTruthy
+      expect(HALF_DAYS.isTimeBased).toBeTruthy
+      expect(DAYS.isTimeBased).toBeFalsy
+      expect(WEEKS.isTimeBased).toBeFalsy
+      expect(MONTHS.isTimeBased).toBeFalsy
+      expect(YEARS.isTimeBased).toBeFalsy
+      expect(DECADES.isTimeBased).toBeFalsy
+      expect(CENTURIES.isTimeBased).toBeFalsy
+      expect(MILLENNIA.isTimeBased).toBeFalsy
+      expect(ERAS.isTimeBased).toBeFalsy
+      expect(FOREVER.isTimeBased).toBeFalsy
+    }
+
     it("should respond to `values`") {
       val units = ChronoUnit.values()
 
@@ -43,7 +86,7 @@ object ChronoUnitTest extends JasmineTest {
       expect(valueOf("YEARS") == YEARS).toBeTruthy
       expect(valueOf("DECADES") == DECADES).toBeTruthy
       expect(valueOf("CENTURIES") == CENTURIES).toBeTruthy
-      expect(valueOf("MILLENIA") == MILLENNIA).toBeTruthy
+      expect(valueOf("MILLENNIA") == MILLENNIA).toBeTruthy
       expect(valueOf("ERAS") == ERAS).toBeTruthy
       expect(valueOf("FOREVER") == FOREVER).toBeTruthy
     }
