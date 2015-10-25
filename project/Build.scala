@@ -60,6 +60,8 @@ object Build extends sbt.Build {
     "The major Java SDK version that should be assumed for compatibility. " +
     "Defaults to what sbt is running with.")
 
+  val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
+
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
@@ -127,7 +129,7 @@ object Build extends sbt.Build {
       },
       autoAPIMappings := true,
 
-      // Add Java Scaladoc mapping (resulting links are broken, see #1970)
+      // Add Java Scaladoc mapping
       apiMappings += {
         val rtJar = {
           System.getProperty("sun.boot.class.path")
@@ -135,9 +137,83 @@ object Build extends sbt.Build {
             .find(_.endsWith(java.io.File.separator + "rt.jar")).get
         }
 
-        file(rtJar) -> url("http://docs.oracle.com/javase/8/docs/api/")
-      }
+        file(rtJar) -> url(javaDocBaseURL)
+      },
 
+      /* Patch the ScalaDoc we generate.
+       *
+       *  After executing the normal doc command, copy everything to the
+       *  `patched-api` directory (same internal directory structure) while
+       *  patching the following:
+       *
+       *  - Append `additional-doc-styles.css` to `lib/template.css`
+       *  - Fix external links to the JavaDoc, i.e. change
+       *    `${javaDocBaseURL}index.html#java.lang.String` to
+       *    `${javaDocBaseURL}index.html?java/lang/String.html`
+       */
+      doc in Compile := {
+        // Where to store the patched docs
+        val outDir = crossTarget.value / "patched-api"
+
+        // Find all files in the current docs
+        val docPaths = {
+          val docDir = (doc in Compile).value
+          Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
+        }
+
+        /* File with our CSS styles (needs to be canonical so that the
+         * comparison below works)
+         */
+        val additionalStylesFile =
+          (root.base / "assets/additional-doc-styles.css").getCanonicalFile
+
+        // Regex and replacement function for JavaDoc linking
+        val javadocAPIRe =
+          s"""\"(\\Q${javaDocBaseURL}index.html\\E)#([^"]*)\"""".r
+
+        val logger = streams.value.log
+        val errorsSeen = mutable.Set.empty[String]
+
+        val fixJavaDocLink = { (m: scala.util.matching.Regex.Match) =>
+          val frag = m.group(2)
+
+          // Fail when encountering links to class members
+          if (frag.contains("@") && !errorsSeen.contains(frag)) {
+            errorsSeen += frag
+            logger.error(s"Cannot fix JavaDoc link to member: $frag")
+          }
+
+          m.group(1) + "?" + frag.replace('.', '/') + ".html"
+        }
+
+        FileFunction.cached(streams.value.cacheDirectory,
+            FilesInfo.lastModified, FilesInfo.exists) { files =>
+          for {
+            file <- files
+            if file != additionalStylesFile
+          } yield {
+            val relPath = docPaths(file)
+            val outFile = outDir / relPath
+
+            if (relPath == "lib/template.css") {
+              val styles = IO.read(additionalStylesFile)
+              IO.copyFile(file, outFile)
+              IO.append(outFile, styles)
+            } else if (relPath.endsWith(".html")) {
+              val content = IO.read(file)
+              val patched = javadocAPIRe.replaceAllIn(content, fixJavaDocLink)
+              IO.write(outFile, patched)
+            } else {
+              IO.copyFile(file, outFile)
+            }
+
+            outFile
+          }
+        } (docPaths.keySet + additionalStylesFile)
+
+        if (errorsSeen.size > 0) sys.error("ScalaDoc patching had errors")
+        else outDir
+      }
   ) ++ mimaDefaultSettings
 
   val publishSettings = Seq(
@@ -738,46 +814,6 @@ object Build extends sbt.Build {
       )
   ).dependsOn(compiler % "plugin")
 
-  /** Patch the scaladoc css */
-  private val patchDocSetting = {
-    /* After executing the normal doc command, copy everything verbatim to
-     * `patched-api` (same directory structure). In addition, append our
-     * additional doc CSS to `lib/template.css` after copying.
-     */
-
-    doc in Compile := {
-      val docDir = (doc in Compile).value
-      val cacheDir = streams.value.cacheDirectory
-      val outDir = crossTarget.value / "patched-api"
-      val docPaths =
-        Path.selectSubpaths(docDir, new SimpleFileFilter(_.isFile)).toMap
-
-      val additionalStylesFile =
-        (baseDirectory in library).value / "additional-doc-styles.css"
-
-      FileFunction.cached(cacheDir,
-          FilesInfo.lastModified, FilesInfo.exists) { files =>
-        for {
-          file <- files
-          if file != additionalStylesFile
-        } yield {
-          val relPath = docPaths(file)
-          val outFile = outDir / relPath
-          IO.copyFile(file, outFile)
-
-          if (relPath == "lib/template.css") {
-            val styles = IO.read(additionalStylesFile)
-            IO.append(outFile, styles)
-          }
-
-          outFile
-        }
-      } (docPaths.keySet + additionalStylesFile)
-
-      outDir
-    }
-  }
-
   lazy val library: Project = Project(
       id = "library",
       base = file("library"),
@@ -824,9 +860,7 @@ object Build extends sbt.Build {
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
             libraryMappings ++ otherMappings ++ javalibFilteredMappings
-          },
-
-          patchDocSetting
+          }
       ))
   ).dependsOn(compiler % "plugin")
 
@@ -841,8 +875,7 @@ object Build extends sbt.Build {
           scalacOptions in (Compile, compile) += "-Yskip:cleanup,icode,jvm",
           exportJars := true,
           jsDependencies +=
-            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip",
-          patchDocSetting
+            "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip"
       ) ++ (
           scalaJSExternalCompileSettings
       )
