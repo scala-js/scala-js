@@ -689,34 +689,35 @@ object Printers {
           }
 
         case LongLiteral(value) =>
-          if (value >= 0) {
-            print(value.toString)
-          } else {
+          if (value < 0L)
             print('(')
-            print(value.toString)
+          print(value.toString)
+          print('L')
+          if (value < 0L)
             print(')')
-          }
 
         case FloatLiteral(value) =>
           if (value == 0.0f && 1.0f / value < 0.0f) {
-            print("(-0)")
-          } else if (value >= 0.0f) {
-            print(value.toString)
+            print("(-0f)")
           } else {
-            print('(')
+            if (value < 0.0f)
+              print('(')
             print(value.toString)
-            print(')')
+            print('f')
+            if (value < 0.0f)
+              print(')')
           }
 
         case DoubleLiteral(value) =>
           if (value == 0.0 && 1.0 / value < 0.0) {
-            print("(-0)")
-          } else if (value >= 0.0) {
-            print(value.toString)
+            print("(-0d)")
           } else {
-            print('(')
+            if (value < 0.0)
+              print('(')
             print(value.toString)
-            print(')')
+            print('d')
+            if (value < 0.0)
+              print(')')
           }
 
         case StringLiteral(value) =>
