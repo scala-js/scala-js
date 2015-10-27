@@ -21,10 +21,10 @@ import scala.concurrent.duration.FiniteDuration
  */
 package object timers {
 
-  /** Schedule something for execution in [[interval]] milliseconds.
+  /** Schedule something for execution in `interval` milliseconds.
    *
    *  @param interval duration in milliseconds to wait
-   *  @param body code to execute after [[interval]] has passed
+   *  @param body code to execute after `interval` has passed
    *  @return A handle that can be used to cancel the timeout by passing it
    *          to [[clearTimeout]].
    *  @note Uses JavaScript's non-standard `setTimeout`
@@ -35,7 +35,7 @@ package object timers {
   /** Schedule something for execution after a duration.
    *
    *  @param interval duration to wait
-   *  @param body code to execute after [[interval]] has passed
+   *  @param body code to execute after `interval` has passed
    *  @return A handle that can be used to cancel the timeout by passing it
    *          to [[clearTimeout]].
    *  @note Uses JavaScript's non-standard `setTimeout`
@@ -44,16 +44,17 @@ package object timers {
     RawTimers.setTimeout(() => body, interval.toMillis.toDouble)
 
   /** Cancel a timeout execution
-   *  @param handle The handle returned by [[setTimeout]]
+   *  @param handle The handle returned by
+   *         [[setTimeout(interval:scala\.concurrent\.duration\.FiniteDuration)* setTimeout]].
    *  @note Uses JavaScript's non-standard `clearTimeout`
    */
   def clearTimeout(handle: SetTimeoutHandle): Unit =
     RawTimers.clearTimeout(handle)
 
-  /** Schedule something for repeated execution every [[interval]] milliseconds.
+  /** Schedule something for repeated execution every `interval` milliseconds.
    *
    *  @param interval duration in milliseconds between executions
-   *  @param body code to execute after each [[interval]]
+   *  @param body code to execute after each `interval`
    *  @return A handle that can be used to cancel the interval by passing it
    *          to [[clearInterval]].
    *  @note Uses JavaScript's non-standard `setInterval`
@@ -64,7 +65,7 @@ package object timers {
   /** Schedule something for repeated execution every duration.
    *
    *  @param interval duration between executions
-   *  @param body code to execute after each [[interval]]
+   *  @param body code to execute after each `interval`
    *  @return A handle that can be used to cancel the interval by passing it
    *          to [[clearInterval]].
    *  @note Uses JavaScript's non-standard `setInterval`
@@ -73,7 +74,8 @@ package object timers {
     RawTimers.setInterval(() => body, interval.toMillis.toDouble)
 
   /** Cancel an interval execution
-   *  @param handle The handle returned by [[setInterval(FiniteDuration)*]]
+   *  @param handle The handle returned by
+   *         [[setInterval(interval:scala\.concurrent\.duration\.FiniteDuration)* setInterval]].
    *  @note Uses JavaScript's non-standard `clearInterval`
    */
   def clearInterval(handle: SetIntervalHandle): Unit =

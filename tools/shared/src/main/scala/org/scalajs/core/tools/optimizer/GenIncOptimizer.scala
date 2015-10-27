@@ -241,7 +241,9 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
   protected def logProcessingMethods(count: Int): Unit =
     logger.debug(s"Inc. optimizer: Optimizing $count methods.")
 
-  /** Base class for [[Class]] and [[TraitImpl]]. */
+  /** Base class for [[GenIncOptimizer.Class]] and
+   *  [[GenIncOptimizer.StaticsNamespace]].
+   */
   abstract class MethodContainer(val encodedName: String,
       val isStatic: Boolean) {
     def thisType: Type
@@ -637,7 +639,7 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
 
   /** Type of a class or interface.
    *  Types are created on demand when a method is called on a given
-   *  [[ClassType]].
+   *  [[org.scalajs.core.ir.Types.ClassType ClassType]].
    *
    *  Fully concurrency safe unless otherwise noted.
    */
@@ -690,7 +692,8 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
   }
 
   /** A method implementation.
-   *  It must be concrete, and belong either to a [[Class]] or a [[TraitImpl]].
+   *  It must be concrete, and belong either to a [[GenIncOptimizer.Class]] or a
+   *  [[GenIncOptimizer.StaticsNamespace]].
    *
    *  A single instance is **not** concurrency safe (unless otherwise noted in
    *  a method comment). However, the global state modifications are
@@ -772,7 +775,7 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     /** Returns true if the method's attributes changed.
      *  Attributes are whether it is inlineable, and whether it is a trait
      *  impl forwarder. Basically this is what is declared in
-     *  [[OptimizerCore.AbstractMethodID]].
+     *  `OptimizerCore.AbstractMethodID`.
      *  In the process, tags all the body askers if the body changes.
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */

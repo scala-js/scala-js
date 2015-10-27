@@ -534,7 +534,7 @@ object StackTrace {
 
   object Implicits {
     /** Access to the additional methods `getColumnNumber` and `setColumnNumber`
-     *  of [[StackTraceElement]].
+     *  of [[java.lang.StackTraceElement StackTraceElement]].
      */
     implicit class StackTraceElementOps(
         val ste: StackTraceElement) extends AnyVal {

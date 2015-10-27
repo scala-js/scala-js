@@ -59,17 +59,19 @@ object ScalaJSPlugin extends AutoPlugin {
     // Factory methods for JSEnvs
 
     /**
-     *  Creates a [[Def.Initialize]] for a NodeJSEnv. Use this to explicitly
-     *  specify in your build that you would like to run with Node.js:
+     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a NodeJSEnv. Use
+     *  this to explicitly specify in your build that you would like to run with Node.js:
      *
      *  {{{
      *  postLinkJSEnv := NodeJSEnv().value
      *  }}}
      *
-     *  Note that the resulting [[Setting]] is not scoped at all, but must be
-     *  scoped in a project that has the ScalaJSPlugin enabled to work properly.
+     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
+     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
+     *  to work properly.
      *  Therefore, either put the upper line in your project settings (common
-     *  case) or scope it manually, using [[Project.inScope]].
+     *  case) or scope it manually, using
+     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
     def NodeJSEnv(
         executable: String = "node",
@@ -80,17 +82,20 @@ object ScalaJSPlugin extends AutoPlugin {
     }
 
     /**
-     *  Creates a [[Def.Initialize]] for a PhantomJSEnv. Use this to explicitly
-     *  specify in your build that you would like to run with PhantomJS:
+     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a PhantomJSEnv. Use
+     *  this to explicitly specify in your build that you would like to run with
+     *  PhantomJS:
      *
      *  {{{
      *  postLinkJSEnv := PhantomJSEnv().value
      *  }}}
      *
-     *  Note that the resulting [[Setting]] is not scoped at all, but must be
-     *  scoped in a project that has the ScalaJSPlugin enabled to work properly.
+     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
+     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
+     *  to work properly.
      *  Therefore, either put the upper line in your project settings (common
-     *  case) or scope it manually, using [[Project.inScope]].
+     *  case) or scope it manually, using
+     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
      */
     def PhantomJSEnv(
         executable: String = "phantomjs",

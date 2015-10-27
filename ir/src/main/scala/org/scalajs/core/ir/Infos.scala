@@ -249,7 +249,7 @@ object Infos {
     }
   }
 
-  /** Generates the [[ClassInfo]] of a [[ClassDef]]. */
+  /** Generates the [[ClassInfo]] of a [[Trees.ClassDef]]. */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
     val builder = new ClassInfoBuilder()
       .setEncodedName(classDef.name.name)
@@ -278,15 +278,15 @@ object Infos {
     builder.result()
   }
 
-  /** Generates the [[MethodInfo]] of a [[MethodDef]]. */
+  /** Generates the [[MethodInfo]] of a [[Trees.MethodDef]]. */
   def generateMethodInfo(methodDef: MethodDef): MethodInfo =
     new GenInfoTraverser().generateMethodInfo(methodDef)
 
-  /** Generates the [[MethodInfo]] of a [[PropertyDef]]. */
+  /** Generates the [[MethodInfo]] of a [[Trees.PropertyDef]]. */
   def generatePropertyInfo(propertyDef: PropertyDef): MethodInfo =
     new GenInfoTraverser().generatePropertyInfo(propertyDef)
 
-  /** Generates the [[MethodInfo]] of a list of [[ConstructorExportDef]]s. */
+  /** Generates the [[MethodInfo]] of a list of [[Trees.ConstructorExportDef]]s. */
   def generateExportedConstructorsInfo(
       constructorDefs: List[ConstructorExportDef]): MethodInfo = {
     new GenInfoTraverser().generateExportedConstructorsInfo(constructorDefs)

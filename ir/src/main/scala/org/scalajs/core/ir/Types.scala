@@ -37,8 +37,9 @@ object Types {
    */
   case object AnyType extends Type
 
+  // Can't link to Nothing - #1969
   /** Nothing type (the bottom type of this type system).
-   *  Expressions from which one can never come back are typed as [[Nothing]].
+   *  Expressions from which one can never come back are typed as `Nothing`.
    *  For example, `throw` and `return`.
    */
   case object NothingType extends Type

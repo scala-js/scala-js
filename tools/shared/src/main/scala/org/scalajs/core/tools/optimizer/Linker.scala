@@ -27,8 +27,8 @@ import ir.Definitions
 
 import Analysis._
 
-/** Links the information from [[VirtualScalaJSIRFile]]s into
- *  [[LinkedClassDef]]s. Does a dead code elimination pass.
+/** Links the information from [[io.VirtualScalaJSIRFile]]s into
+ *  [[LinkedClass]]es. Does a dead code elimination pass.
  */
 final class Linker(semantics: Semantics, outputMode: OutputMode,
     considerPositions: Boolean) {

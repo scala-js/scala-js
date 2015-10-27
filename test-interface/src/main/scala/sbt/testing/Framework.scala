@@ -27,16 +27,16 @@ trait Framework {
    *  @param testClassLoader a class loader to use when loading test classes during the run
    *
    *  @return a <code>Runner</code> representing the newly started run.
-   *  @throws IllegalStateException if the test framework is unable to initiate
-   *             a run because it is already performing a previously initiated
-   *             run that has not yet completed.
+   *  @throws java.lang.IllegalStateException if the test framework is unable to
+   *      initiate a run because it is already performing a previously initiated
+   *      run that has not yet completed.
    */
   def runner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader): Runner
 
   /** Scala.js specific: Creates a slave runner for a given run.
    *
-   *  The slave may send a message to the master runner by calling [[send]].
+   *  The slave may send a message to the master runner by calling `send`.
    */
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader, send: String => Unit): Runner

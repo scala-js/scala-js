@@ -24,7 +24,7 @@ import JSLibResolveException.Problem
  *  - Description of dependencies on other JavaScript libraries
  *
  *  PartialClasspaths can be combined (using [[merge]]) and eventually resolved
- *  to a [[CompleteIRClasspath]]
+ *  to an [[IRClasspath]].
  */
 final class PartialClasspath(
     /** Description of JS libraries the content of this classpath depends on */

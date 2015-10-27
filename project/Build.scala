@@ -56,6 +56,10 @@ object Build extends sbt.Build {
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
+  val javaVersion = settingKey[Int](
+    "The major Java SDK version that should be assumed for compatibility. " +
+    "Defaults to what sbt is running with.")
+
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
@@ -114,7 +118,26 @@ object Build extends sbt.Build {
           "-unchecked",
           "-feature",
           "-encoding", "utf8"
-      )
+      ),
+
+      // Scaladoc linking
+      apiURL := {
+        val name = normalizedName.value
+        Some(url(s"http://www.scala-js.org/api/$name/$scalaJSVersion/"))
+      },
+      autoAPIMappings := true,
+
+      // Add Java Scaladoc mapping (resulting links are broken, see #1970)
+      apiMappings += {
+        val rtJar = {
+          System.getProperty("sun.boot.class.path")
+            .split(java.io.File.pathSeparator)
+            .find(_.endsWith(java.io.File.separator + "rt.jar")).get
+        }
+
+        file(rtJar) -> url("http://docs.oracle.com/javase/8/docs/api/")
+      }
+
   ) ++ mimaDefaultSettings
 
   val publishSettings = Seq(
@@ -148,15 +171,7 @@ object Build extends sbt.Build {
       pomIncludeRepository := { _ => false }
   )
 
-  private val noDocFatalWarningsSetting =
-    scalacOptions in (Compile, doc) ~= (_.filterNot(_ == "-Xfatal-warnings"))
-
   val fatalWarningsSettings = Seq(
-      scalacOptions += "-Xfatal-warnings",
-      noDocFatalWarningsSetting
-  )
-
-  val patmatSafeFatalWarningsSettings = Seq(
       // The pattern matcher used to exceed its analysis budget before 2.11.5
       scalacOptions ++= {
         scalaVersion.value.split('.') match {
@@ -166,7 +181,19 @@ object Build extends sbt.Build {
           case _                                   => Seq("-Xfatal-warnings")
         }
       },
-      noDocFatalWarningsSetting
+
+      scalacOptions in (Compile, doc) := {
+        val baseOptions = (scalacOptions in (Compile, doc)).value
+
+        /* - need JDK7 to link the doc to java.nio.charset.StandardCharsets
+         * - in Scala 2.10, some ScalaDoc links fail
+         */
+        val fatalInDoc =
+          javaVersion.value >= 7 && scalaBinaryVersion.value != "2.10"
+
+        if (fatalInDoc) baseOptions
+        else baseOptions.filterNot(_ == "-Xfatal-warnings")
+      }
   )
 
   private def publishToScalaJSRepoSettings = Seq(
@@ -248,7 +275,20 @@ object Build extends sbt.Build {
         "2.12.0-M3"
       ),
       // Default stage
-      scalaJSStage in Global := PreLinkStage
+      scalaJSStage in Global := PreLinkStage,
+      // JDK version we are running with
+      javaVersion in Global := {
+        val v = System.getProperty("java.version")
+        v.substring(0, 3) match {
+          case "1.8" => 8
+          case "1.7" => 7
+          case "1.6" => 6
+
+          case _ =>
+            sLog.value.warn(s"Unknown JDK version $v. Assuming max compat.")
+            Int.MaxValue
+        }
+      }
   )
 
   lazy val root: Project = Project(
@@ -279,13 +319,14 @@ object Build extends sbt.Build {
   )
 
   val commonIrProjectSettings = (
-      commonSettings ++ publishSettings ++ patmatSafeFatalWarningsSettings
+      commonSettings ++ publishSettings ++ fatalWarningsSettings
   ) ++ Seq(
       name := "Scala.js IR",
       /* Scala.js 0.6.6 will break binary compatibility of the IR
        */
       // previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.IR
+      binaryIssueFilters ++= BinaryIncompatibilities.IR,
+      exportJars := true // required so ScalaDoc linking works
   )
 
   lazy val irProject: Project = Project(
@@ -345,7 +386,7 @@ object Build extends sbt.Build {
   )
 
   val commonToolsSettings = (
-      commonSettings ++ publishSettings ++ patmatSafeFatalWarningsSettings
+      commonSettings ++ publishSettings ++ fatalWarningsSettings
   ) ++ Seq(
       name := "Scala.js tools",
 
@@ -460,7 +501,22 @@ object Build extends sbt.Build {
           scalaBinaryVersion :=
             CrossVersion.binaryScalaVersion(scalaVersion.value),
           previousArtifactSetting,
-          binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin
+          binaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
+
+          // Add API mappings for sbt (seems they don't export their API URL)
+          apiMappings ++= {
+            val deps = (externalDependencyClasspath in Compile).value
+
+            val sbtJars = deps filter { attributed =>
+              val p = attributed.data.getPath
+              p.contains("/org.scala-sbt/") && p.endsWith(".jar")
+            }
+
+            val docUrl =
+              url(s"http://www.scala-sbt.org/${sbtVersion.value}/api/")
+
+            sbtJars.map(_.data -> docUrl).toMap
+          }
       )
   ).dependsOn(tools, jsEnvs, testAdapter)
 
@@ -726,8 +782,7 @@ object Build extends sbt.Build {
       id = "library",
       base = file("library"),
       settings = (
-          commonSettings ++ publishSettings ++ myScalaJSSettings ++
-          patmatSafeFatalWarningsSettings
+          commonSettings ++ publishSettings ++ myScalaJSSettings ++ fatalWarningsSettings
       ) ++ Seq(
           name := "Scala.js library",
           delambdafySetting,
@@ -783,7 +838,7 @@ object Build extends sbt.Build {
       ) ++ Seq(
           name := "Scala.js JavaLib Ex",
           delambdafySetting,
-          scalacOptions += "-Yskip:cleanup,icode,jvm",
+          scalacOptions in (Compile, compile) += "-Yskip:cleanup,icode,jvm",
           exportJars := true,
           jsDependencies +=
             "org.webjars" % "jszip" % "2.4.0" / "jszip.min.js" commonJSName "JSZip",
@@ -1007,11 +1062,15 @@ object Build extends sbt.Build {
             def listAllScalaFilesIf(testDir: String, condition: Boolean): Seq[File] =
               if (condition) (((sourceDirectory in Test).value / testDir) ** "*.scala").get
               else Nil
-            val javaVersion = System.getProperty("java.version")
-            listAllScalaFilesIf("require-jdk7", javaVersion.matches("1\\.[78].*")) ++
-              listAllScalaFilesIf("require-jdk8", javaVersion.startsWith("1.8")) ++
-              listAllScalaFilesIf("require-sam",
-                !scalaVersion.value.startsWith("2.10") && scalacOptions.value.contains("-Xexperimental"))
+
+            val hasSAM = {
+              scalaBinaryVersion.value != "2.10" &&
+              scalacOptions.value.contains("-Xexperimental")
+            }
+
+            listAllScalaFilesIf("require-jdk7", javaVersion.value >= 7) ++
+            listAllScalaFilesIf("require-jdk8", javaVersion.value >= 8) ++
+            listAllScalaFilesIf("require-sam", hasSAM)
           },
 
           /* Generate a scala source file that throws exceptions in
@@ -1085,9 +1144,7 @@ object Build extends sbt.Build {
   lazy val partest: Project = Project(
       id = "partest",
       base = file("partest"),
-      settings = (
-          commonSettings ++ patmatSafeFatalWarningsSettings
-      ) ++ Seq(
+      settings = commonSettings ++ fatalWarningsSettings ++ Seq(
           name := "Partest for Scala.js",
           moduleName := "scalajs-partest",
 

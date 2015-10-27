@@ -57,7 +57,7 @@ object Object extends Object {
 
   /**
    * The Object.getPrototypeOf() method returns the prototype (i.e. the
-   * internal [[Prototype]]) of the specified object.
+   * internal `Prototype`) of the specified object.
    *
    * MDN
    */

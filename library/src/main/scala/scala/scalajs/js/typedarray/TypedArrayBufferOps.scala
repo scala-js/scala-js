@@ -13,12 +13,12 @@ import scala.language.implicitConversions
 
 import java.nio._
 
-/** Additional operations on a [[Buffer]] with interoperability with
- *  JavaScript Typed Arrays.
+/** Additional operations on a [[java.nio.Buffer Buffer]] with interoperability
+ *  with JavaScript Typed Arrays.
  *
- *  All Scala.js implementations of [[Buffer]] also implement this interface
- *  for some TypedArrayType, which depends on the type of elements in the
- *  buffer.
+ *  All Scala.js implementations of [[java.nio.Buffer Buffer]] also implement
+ *  this interface for some TypedArrayType, which depends on the type of
+ *  elements in the buffer.
  */
 final class TypedArrayBufferOps[ // scalastyle:ignore
     TypedArrayType <: TypedArray[_, TypedArrayType]](
@@ -49,7 +49,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
   /** [[DataView]] of the backing [[ArrayBuffer]] _(optional operation)_.
    *
    *  The [[DataView]] is sliced to the portion of the [[ArrayBuffer]] seen by
-   *  this [[Buffer]].
+   *  this [[java.nio.Buffer Buffer]].
    *
    *  @throws UnsupportedOperationException
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
@@ -74,7 +74,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
   /** [[TypedArray]] backing this direct buffer _(optional operation)_.
    *
    *  The [[TypedArray]] is sliced to the portion of the [[ArrayBuffer]] seen
-   *  by this [[Buffer]].
+   *  by this [[java.nio.Buffer Buffer]].
    *
    *  @throws UnsupportedOperationException
    *    If this buffer does not have a backing [[TypedArray]], i.e., !hasTypedArray().
@@ -83,7 +83,8 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
     TypedArrayBufferBridge.Buffer_typedArray(buffer).asInstanceOf[TypedArrayType]
 }
 
-/** Extensions to [[Buffer]]s for interoperability with JavaScript Typed Arrays.
+/** Extensions to [[java.nio.Buffer Buffer]]s for interoperability with
+ *  JavaScript Typed Arrays.
  */
 object TypedArrayBufferOps {
   implicit def bufferOps(buffer: Buffer): TypedArrayBufferOps[_ <: TypedArray[_, _]] =

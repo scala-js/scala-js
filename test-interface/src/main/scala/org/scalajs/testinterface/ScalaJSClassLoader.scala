@@ -6,9 +6,9 @@ import java.net.URL
 import java.io.InputStream
 import java.util.Enumeration
 
-/** A dummy [[ClassLoader]] that allows to store a JavaScript object against
- *  which classes are resolved. The only reason it extends [[ClassLoader]] is
- *  typing.
+/** A dummy [[java.lang.ClassLoader]] that allows to store a JavaScript object
+ *  against which classes are resolved. The only reason it extends
+ *  [[java.lang.ClassLoader]] is typing.
  */
 final class ScalaJSClassLoader(
     val namespace: js.Dynamic) extends ClassLoader(null) {

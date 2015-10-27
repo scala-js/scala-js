@@ -12,7 +12,8 @@ package scala.scalajs.js.timers
 import scala.scalajs.js
 
 /** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
- *  A handle returned from a call to [[setTimeout(FiniteDuration)*]].
+ *  A handle returned from a call to
+ * [[setTimeout(interval:scala\.concurrent\.duration\.FiniteDuration)* setTimeout]].
  *
  *  May only be used to pass to [[clearTimeout]].
  */
@@ -20,7 +21,8 @@ import scala.scalajs.js
 trait SetTimeoutHandle extends js.Any
 
 /** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
- *  A handle returned from a call to [[setInterval(FiniteDuration)*]].
+ *  A handle returned from a call to
+ *  [[setInterval(interval:scala\.concurrent\.duration\.FiniteDuration)* setInterval]].
  *
  *  May only be used to pass to [[clearInterval]].
  */
