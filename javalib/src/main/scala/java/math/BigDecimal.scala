@@ -877,8 +877,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         (getUnscaledValue.divide(divisor.getUnscaledValue), 0L)
       } else if (newScale > 0) {
         val powerOfTen = powerOf10(newScale)
-        val iv = getUnscaledValue.divide(divisor.getUnscaledValue.multiply(powerOfTen))
-        (iv.multiply(powerOfTen), 0L)
+        (getUnscaledValue.divide(divisor.getUnscaledValue.multiply(powerOfTen)), 0L)
       } else {
         // (newScale < 0)
         val powerOfTen = powerOf10(-newScale)
