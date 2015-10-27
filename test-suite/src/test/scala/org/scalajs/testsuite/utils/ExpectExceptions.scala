@@ -1,4 +1,4 @@
-package org.scalajs.testsuite.javalib
+package org.scalajs.testsuite.utils
 
 import org.scalajs.jasminetest.JasmineTest
 

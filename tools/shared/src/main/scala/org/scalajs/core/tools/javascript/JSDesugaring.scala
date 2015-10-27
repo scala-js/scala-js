@@ -160,6 +160,14 @@ private[javascript] object JSDesugaring {
 
     private val isStrongMode = outputMode == OutputMode.ECMAScript6StrongMode
 
+    // TODO Get rid of this when we break backward binary compatibility
+    private lazy val hasNewRuntimeLong = {
+      val rtLongClass = classEmitter.linkedClassByName(LongImpl.RuntimeLongClass)
+      rtLongClass.memberMethods.exists { linkedMethod =>
+        linkedMethod.tree.name.name == LongImpl.initFromParts
+      }
+    }
+
     // Synthetic variables
 
     var syntheticVarCounter: Int = 0
@@ -1906,9 +1914,15 @@ private[javascript] object JSDesugaring {
         case LongLiteral(0L) =>
           genLongModuleApply(LongImpl.Zero)
         case LongLiteral(value) =>
-          val (l, m, h) = LongImpl.extractParts(value)
-          genNewLong(LongImpl.initFromParts,
-              js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
+          if (hasNewRuntimeLong) {
+            val (lo, hi) = LongImpl.extractParts(value)
+            genNewLong(LongImpl.initFromParts,
+                js.IntLiteral(lo), js.IntLiteral(hi))
+          } else {
+            val (l, m, h) = LongImpl.extractPartsOld(value)
+            genNewLong(LongImpl.initFromPartsOld,
+                js.IntLiteral(l), js.IntLiteral(m), js.IntLiteral(h))
+          }
 
         case ClassOf(cls) =>
           js.Apply(js.DotSelect(genClassDataOf(cls), Ident("getClassOf")), Nil)

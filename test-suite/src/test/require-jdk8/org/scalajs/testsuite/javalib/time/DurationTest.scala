@@ -4,7 +4,7 @@ import java.time.temporal.{ChronoUnit, UnsupportedTemporalTypeException}
 import java.time.{LocalTime, DateTimeException, Duration}
 
 import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 object DurationTest extends JasmineTest with ExpectExceptions {
   import Duration._

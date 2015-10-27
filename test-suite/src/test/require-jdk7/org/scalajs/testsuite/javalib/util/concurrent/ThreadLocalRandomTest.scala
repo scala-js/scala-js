@@ -12,7 +12,7 @@ import java.util.concurrent.ThreadLocalRandom
 import scala.util.Random
 import scala.math.{max, min, abs}
 
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 object ThreadLocalRandomTest extends JasmineTest with ExpectExceptions {
 

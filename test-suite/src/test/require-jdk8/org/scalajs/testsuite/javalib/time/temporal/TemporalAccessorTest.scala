@@ -4,7 +4,7 @@ import java.time.DateTimeException
 import java.time.temporal.{UnsupportedTemporalTypeException, ChronoField, TemporalAccessor}
 
 import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 trait TemporalAccessorTest extends JasmineTest with ExpectExceptions {
 

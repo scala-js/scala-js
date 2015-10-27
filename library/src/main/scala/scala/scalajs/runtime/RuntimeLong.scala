@@ -2,52 +2,153 @@ package scala.scalajs.runtime
 
 import scala.annotation.tailrec
 
-/**
- * emulate a Java-Long using three integers.
- * taken from gwt LongLib:
- * com.google.gwt.lang.LongLib
+import scala.scalajs.js
+import js.|
+import js.JSNumberOps._
+import js.JSStringOps._
+
+/* IMPORTANT NOTICE about this file
  *
- * only used by runtime
+ * The code of RuntimeLong is code-size- and performance critical. The methods
+ * of this class are used for every single primitive operation on Longs, and
+ * must therefore be as fast as they can.
  *
- * holds values l, m, h (low, middle, high)
- * s.t. (x.l + ((long) x.m << 22) + ((long) x.h << 44)) is equal to
- * the original value
+ * This means that this implementation is oriented for performance over
+ * readability and idiomatic code. Some examples of idiomatic code that are
+ * avoided are:
+ *
+ * val (x, y) = something
+ *
+ *   unapply of a tuple is not optimized as well as it should be. The tuple is
+ *   stack-allocated alright, but there are more temporary variables than
+ *   necessary. Instead we use:
+ *
+ *   val t = something
+ *   val x = t._1
+ *   val y = t._2
+ *
+ * val pair = if (...) (x1, y1) else (x2, y2)
+ *
+ *   Multi-path merging of (specialized) tuples creates more code and more
+ *   temporary variables than necessary.
+ *
+ * DRY is applied as much as possible but is bounded by the performance and
+ * code size requirements. We use a lot of inline_xyz helpers meant to be used
+ * when we already have the parameters on stack, but they are generally
+ * duplicated for entry points.
+ *
+ * Also, we typically extract the lo and hi fields from the heap into local
+ * variables once, then pass them around as parameters to inlineable methods.
+ * This reduces heap accesses, and allows the JIT to know that we indeed always
+ * have the same value (it does not know that fields are immutable).
  */
-final class RuntimeLong(
-  val l: Int,
-  val m: Int,
-  val h: Int
-) extends Number with Comparable[java.lang.Long] { x =>
+
+/** Emulates a Long on the JavaScript platform. */
+final class RuntimeLong(val lo: Int, val hi: Int)
+    extends java.lang.Number with java.io.Serializable
+    with java.lang.Comparable[java.lang.Long] { a =>
 
   import RuntimeLong._
+  import Utils._
 
-  /** Construct from an Int.
-   *  This is the implementation of RuntimeLong.fromInt() in a way that does not
-   *  require to load to module RuntimeLong.
-   */
-  def this(value: Int) = this(
-      value & RuntimeLong.MASK,
-      (value >> RuntimeLong.BITS) & RuntimeLong.MASK,
-      if (value < 0) RuntimeLong.MASK_2 else 0)
+  /** Constructs a Long from an Int. */
+  def this(value: Int) = this(value, value >> 31)
 
-  /** Creates a new RuntimeLong but masks bits as follows:
-   *  l & MASK, m & MASK, h & MASK_2
-   */
-  @inline private def masked(l: Int, m: Int, h: Int) =
-    new RuntimeLong(l & MASK, m & MASK, h & MASK_2)
+  // Binary compatibility for the old (l, m, h) encoding
 
-  def toByte: Byte = toInt.toByte
-  def toShort: Short = toInt.toShort
-  def toChar: Char = toInt.toChar
-  def toInt: Int = l | (m << BITS)
-  def toLong: Long = x.asInstanceOf[Long]
+  @deprecated("Use the constructor with (lo, hi) instead.", "0.6.6")
+  def this(l: Int, m: Int, h: Int) =
+    this(l | (m << 22), (m >> 10) | (h << 12))
+
+  @deprecated("Use lo and hi instead.", "0.6.6")
+  def l: Int = lo & ((1 << 22) - 1)
+
+  @deprecated("Use lo and hi instead.", "0.6.6")
+  def m: Int = (lo >>> 22) & ((hi & ((1 << 12) - 1)) << 10)
+
+  @deprecated("Use lo and hi instead.", "0.6.6")
+  def h: Int = hi >>> 12
+
+  // Universal equality
+
+  override def equals(that: Any): Boolean = that match {
+    case b: RuntimeLong => inline_equals(b)
+    case _              => false
+  }
+
+  override def hashCode(): Int =
+    lo ^ hi
+
+  // String operations
+
+  override def toString(): String = {
+    val lo = this.lo
+    val hi = this.hi
+
+    if (isInt32(lo, hi)) {
+      lo.toString()
+    } else if (hi < 0) {
+      val (absLo, absHi) = inline_unary_-(lo, hi)
+      "-" + toUnsignedString(absLo, absHi)
+    } else {
+      toUnsignedString(lo, hi)
+    }
+  }
+
+  private def toUnsignedString(lo: Int, hi: Int): String = {
+    // This is called only if (lo, hi) is not an Int32
+
+    if (isUnsignedSafeDouble(hi)) {
+      // (lo, hi) is small enough to be a Double, use that directly
+      asUnsignedSafeDouble(lo, hi).toString
+    } else {
+      /* We divide (lo, hi) once by 10^9 and keep the remainder.
+       *
+       * The remainder must then be < 10^9, and is therefore an int32.
+       *
+       * The quotient must be <= ULong.MaxValue / 10^9, which is < 2^53, and
+       * is therefore a valid double. It must also be non-zero, since we tested
+       * previously for cases where (lo, hi) < 2^53, but 2^10 is itself < 2^53.
+       */
+      val TenPow9Lo = 1000000000L.toInt
+      val TenPow9Hi = (1000000000L >>> 32).toInt
+
+      val quotRem = unsignedDivModHelper(lo, hi, TenPow9Lo, TenPow9Hi,
+          AskBoth).asInstanceOf[js.Tuple4[Int, Int, Int, Int]]
+      val quotLo = quotRem._1
+      val quotHi = quotRem._2
+      val rem = quotRem._3 // remHi must be 0 by construction
+
+      val quot = asUnsignedSafeDouble(quotLo, quotHi)
+
+      val remStr = rem.toString
+      quot.toString + "000000000".jsSubstring(remStr.length) + remStr
+    }
+  }
+
+  // Conversions
+
+  def toByte: Byte = lo.toByte
+  def toShort: Short = lo.toShort
+  def toChar: Char = lo.toChar
+  def toInt: Int = lo
+  def toLong: Long = this.asInstanceOf[Long]
   def toFloat: Float = toDouble.toFloat
-  def toDouble: Double =
-    if (isMinValue) -9223372036854775808.0
-    else if (isNegative) -((-x).toDouble)
-    else l + m * TWO_PWR_22_DBL + h * TWO_PWR_44_DBL
+
+  def toDouble: Double = {
+    val lo = this.lo
+    val hi = this.hi
+
+    if (hi < 0) {
+      val (abslo, abshi) = inline_unary_-(lo, hi)
+      -(abshi.toUint * TwoPow32 + abslo.toUint) // abshi.toUint for MinValue
+    } else {
+      hi * TwoPow32 + lo.toUint
+    }
+  }
 
   // java.lang.Number
+
   override def byteValue(): Byte = toByte
   override def shortValue(): Short = toShort
   def intValue(): Int = toInt
@@ -55,531 +156,595 @@ final class RuntimeLong(
   def floatValue(): Float = toFloat
   def doubleValue(): Double = toDouble
 
-  // java.lang.Comparable + overload taking scala.Long
-  def compareTo(that: RuntimeLong): Int =
-    if (this equals that) 0 else if (this > that) 1 else -1
+  // Comparisons and java.lang.Comparable interface
+
+  def compareTo(b: RuntimeLong): Int = {
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) {
+      val alo = a.lo
+      val blo = b.lo
+      if (alo == blo) 0
+      else if (inlineUnsignedInt_<(alo, blo)) -1
+      else 1
+    } else {
+      if (ahi < bhi) -1
+      else 1
+    }
+  }
+
   def compareTo(that: java.lang.Long): Int =
     compareTo(that.asInstanceOf[RuntimeLong])
 
-  // scalastyle:off disallow.space.before.token
-  def unary_~ : RuntimeLong = masked(~x.l, ~x.m, ~x.h)
-  def unary_+ : RuntimeLong = x
-  def unary_- : RuntimeLong = {
-    val neg0 = (~x.l + 1) & MASK
-    val neg1 = (~x.m + (if (neg0 == 0) 1 else 0)) & MASK
-    val neg2 = (~x.h + (if (neg0 == 0 && neg1 == 0) 1 else 0)) & MASK_2
-    new RuntimeLong(neg0, neg1, neg2)
+  @inline
+  private def inline_equals(b: RuntimeLong): Boolean =
+    a.lo == b.lo && a.hi == b.hi
+
+  def equals(b: RuntimeLong): Boolean =
+    inline_equals(b)
+
+  def notEquals(b: RuntimeLong): Boolean =
+    !inline_equals(b)
+
+  def <(b: RuntimeLong): Boolean = {
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) inlineUnsignedInt_<(a.lo, b.lo)
+    else ahi < bhi
   }
-  // scalastyle:on disallow.space.before.token
 
-  def +(y: String): String = x.toString + y
+  def <=(b: RuntimeLong): Boolean = {
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) inlineUnsignedInt_<=(a.lo, b.lo)
+    else ahi < bhi
+  }
 
-  def <<(n_in: Int): RuntimeLong = {
-    /* crop MSB. Note: This will cause (2L << 65 == 2L << 1)
-     * apparently this is as specified
+  def >(b: RuntimeLong): Boolean = {
+    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
+     * 0x7fffffff > 0x80000000 is broken, so use < instead.
+     * This happens when comparing MaxValue to MinValue.
      */
-    val n = n_in & 63
-
-    if (n < BITS) {
-      val remBits = BITS - n
-      masked(x.l << n,
-             (x.m << n) | (x.l >> remBits),
-             (x.h << n) | (x.m >> remBits))
-    } else if (n < BITS01) {
-      val shfBits = n - BITS
-      val remBits = BITS01 - n
-      masked(0, x.l << shfBits, (x.m << shfBits) | (x.l >> remBits))
-    } else {
-      masked(0, 0, x.l << (n - BITS01))
-    }
-
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) inlineUnsignedInt_>(a.lo, b.lo)
+    else bhi < ahi // workaround here
   }
 
-  /**
-   * logical right shift
-   */
-  def >>>(n_in: Int): RuntimeLong = {
-    val n = n_in & 63
-    if (n < BITS) {
-      val remBits = BITS - n
-      masked((x.l >> n) | (x.m << remBits),
-             // FIXME is this really >> and not >>>??
-             (x.m >> n) | (x.h << remBits),
-             x.h >>> n)
-    } else if (n < BITS01) {
-      val shfBits = n - BITS
-      val remBits = BITS01 - n
-             // FIXME is this really >> and not >>>??
-      masked((x.m >> shfBits) | (x.h << remBits),
-             x.h >>> shfBits, 0)
-    } else {
-      masked(x.h >>> (n - BITS01), 0, 0)
-    }
+  def >=(b: RuntimeLong): Boolean = {
+    /* Work around https://code.google.com/p/v8/issues/detail?id=3304
+     * 0x7fffffff > 0x80000000 is broken, so use < instead.
+     * This happens when comparing MaxValue to MinValue.
+     */
+    val ahi = a.hi
+    val bhi = b.hi
+    if (ahi == bhi) inlineUnsignedInt_>=(a.lo, b.lo)
+    else bhi < ahi // workaround here
   }
 
-  /**
-   * arithmetic right shift
-   */
-  def >>(n_in: Int): RuntimeLong = {
-    val n = n_in & 63;
+  // Bitwise operations
 
-    // Sign extend x.h
-    val negative = (x.h & SIGN_BIT_VALUE) != 0
-    val xh = if (negative) x.h | ~MASK_2 else x.h
+  def unary_~ : RuntimeLong = // scalastyle:ignore
+    new RuntimeLong(~lo, ~hi)
 
-    if (n < BITS) {
-      val remBits = BITS - n
-      // FIXME IMHO the first two >> should be >>>
-      masked((x.l >> n) | (x.m << remBits),
-             (x.m >> n) | (xh  << remBits),
-             xh >> n)
-    } else if (n < BITS01) {
-      val shfBits = n - BITS
-      val remBits = BITS01 - n
-      // FIXME IMHO the first >> should be >>>
-      masked((x.m >> shfBits) | (xh << remBits),
-              xh  >> shfBits,
-             if (negative) MASK_2 else 0)
-    } else {
-      masked(xh >> (n - BITS01),
-             if (negative) MASK   else 0,
-             if (negative) MASK_2 else 0)
-    }
+  def |(b: RuntimeLong): RuntimeLong =
+    new RuntimeLong(a.lo | b.lo, a.hi | b.hi)
 
-  }
+  def &(b: RuntimeLong): RuntimeLong =
+    new RuntimeLong(a.lo & b.lo, a.hi & b.hi)
 
-  def equals(y: RuntimeLong): Boolean =
-    x.l == y.l && x.m == y.m && x.h == y.h
+  def ^(b: RuntimeLong): RuntimeLong =
+    new RuntimeLong(a.lo ^ b.lo, a.hi ^ b.hi)
 
-  override def equals(that: Any): Boolean = that match {
-    case y: RuntimeLong => x.equals(y)
-    case _ => false
-  }
+  // Shifts
 
-  def notEquals(that: RuntimeLong): Boolean = !equals(that)
+  /** Shift left */
+  def <<(n0: Int): RuntimeLong = {
+    val n = n0 & 63
+    val lo = this.lo
 
-  override def hashCode(): Int = {
-    (this ^ (this >>> 32)).toInt
+    if (n == 0) this
+    else if (n < 32) new RuntimeLong(lo << n, (lo >>> -n) | (hi << n))
+    else new RuntimeLong(0, lo << n)
   }
 
   @inline
-  def <(y: RuntimeLong): Boolean = y > x
+  private def inline_<<(lo: Int, hi: Int, n: Int): (Int, Int) = {
+    if (n == 0) (lo, hi)
+    else if (n < 32) (lo << n, (lo >>> -n) | (hi << n))
+    else (0, lo << n)
+  }
+
+  /** Logical shift right */
+  def >>>(n0: Int): RuntimeLong = {
+    val n = n0 & 63
+    val hi = this.hi
+
+    if (n == 0) this
+    else if (n < 32) new RuntimeLong((lo >>> n) | (hi << -n), hi >>> n)
+    else new RuntimeLong(hi >>> n, 0)
+  }
+
   @inline
-  def <=(y: RuntimeLong): Boolean = y >= x
-
-  def >(y: RuntimeLong): Boolean = {
-    if (!x.isNegative)
-      y.isNegative ||
-      x.h >  y.h ||
-      x.h == y.h && x.m >  y.m ||
-      x.h == y.h && x.m == y.m && x.l >  y.l
-    else !(
-      !y.isNegative ||
-      x.h <  y.h ||
-      x.h == y.h && x.m <  y.m ||
-      x.h == y.h && x.m == y.m && x.l <= y.l
-    )
+  private def inline_>>>(lo: Int, hi: Int, n: Int): (Int, Int) = {
+    if (n == 0) (lo, hi)
+    else if (n < 32) ((lo >>> n) | (hi << -n), hi >>> n)
+    else (hi >>> n, 0)
   }
 
-  def >=(y: RuntimeLong): Boolean = {
-    if (!x.isNegative)
-      y.isNegative ||
-      x.h >  y.h ||
-      x.h == y.h && x.m >  y.m ||
-      x.h == y.h && x.m == y.m && x.l >= y.l
-    else !(
-      !y.isNegative ||
-      x.h <  y.h ||
-      x.h == y.h && x.m <  y.m ||
-      x.h == y.h && x.m == y.m && x.l <  y.l
-    )
+  /** Arithmetic shift right */
+  def >>(n0: Int): RuntimeLong = {
+    val n = n0 & 63
+    val hi = this.hi
+
+    if (n == 0) this
+    else if (n < 32) new RuntimeLong((lo >>> n) | (hi << -n), hi >> n)
+    else new RuntimeLong(hi >> n, hi >> 31)
   }
 
-  def |(y: RuntimeLong): RuntimeLong =
-    new RuntimeLong(x.l | y.l, x.m | y.m, x.h | y.h)
-  def &(y: RuntimeLong): RuntimeLong =
-    new RuntimeLong(x.l & y.l, x.m & y.m, x.h & y.h)
-  def ^(y: RuntimeLong): RuntimeLong =
-    new RuntimeLong(x.l ^ y.l, x.m ^ y.m, x.h ^ y.h)
+  // Arithmetic operations
 
-  def +(y: RuntimeLong): RuntimeLong = {
-    val sum0 = x.l + y.l
-    val sum1 = x.m + y.m + (sum0 >> BITS)
-    val sum2 = x.h + y.h + (sum1 >> BITS)
-    masked(sum0, sum1, sum2)
+  def unary_- : RuntimeLong = // scalastyle:ignore
+    inlineLongUnary_-(lo, hi)
+
+  @inline
+  private def inline_abs(lo: Int, hi: Int): (Boolean, Int, Int) = {
+    val neg = hi < 0
+    var absLo = lo
+    var absHi = hi
+    if (neg) {
+      absLo = -lo
+      absHi = if (lo != 0) ~hi else -hi
+    }
+    (neg, absLo, absHi)
   }
 
-  /**
-   * subtraction
-   * note: gwt implements this individually
-   */
-  def -(y: RuntimeLong): RuntimeLong = x + (-y)
-
-  // This assumes that BITS == 22
-  def *(y: RuntimeLong): RuntimeLong = {
-
-    /** divides v in 13bit chunks */
-    @inline def chunk13(v: RuntimeLong) = (
-      v.l & 0x1fff,
-      (v.l >> 13) | ((v.m & 0xf) << 9),
-      (v.m >> 4) & 0x1fff,
-      (v.m >> 17) | ((v.h & 0xff) << 5),
-      (v.h & 0xfff00) >> 8
-    )
-
-    val (a0, a1, a2, a3, a4) = chunk13(x)
-    val (b0, b1, b2, b3, b4) = chunk13(y)
-
-    // Compute partial products
-    // Optimization: if b is small, avoid multiplying by parts that are 0
-    var p0 = a0 * b0; // << 0
-    var p1 = a1 * b0; // << 13
-    var p2 = a2 * b0; // << 26
-    var p3 = a3 * b0; // << 39
-    var p4 = a4 * b0; // << 52
-
-    if (b1 != 0) {
-      p1 += a0 * b1;
-      p2 += a1 * b1;
-      p3 += a2 * b1;
-      p4 += a3 * b1;
-    }
-    if (b2 != 0) {
-      p2 += a0 * b2;
-      p3 += a1 * b2;
-      p4 += a2 * b2;
-    }
-    if (b3 != 0) {
-      p3 += a0 * b3;
-      p4 += a1 * b3;
-    }
-    if (b4 != 0) {
-      p4 += a0 * b4;
-    }
-
-    // Accumulate into 22-bit chunks:
-    // .........................................c10|...................c00|
-    // |....................|..................xxxx|xxxxxxxxxxxxxxxxxxxxxx| p0
-    // |....................|......................|......................|
-    // |....................|...................c11|......c01.............|
-    // |....................|....xxxxxxxxxxxxxxxxxx|xxxxxxxxx.............| p1
-    // |....................|......................|......................|
-    // |.................c22|...............c12....|......................|
-    // |..........xxxxxxxxxx|xxxxxxxxxxxxxxxxxx....|......................| p2
-    // |....................|......................|......................|
-    // |.................c23|..c13.................|......................|
-    // |xxxxxxxxxxxxxxxxxxxx|xxxxx.................|......................| p3
-    // |....................|......................|......................|
-    // |.........c24........|......................|......................|
-    // |xxxxxxxxxxxx........|......................|......................| p4
-
-    val c00 = p0 & 0x3fffff;
-    val c01 = (p1 & 0x1ff) << 13;
-    val c0 = c00 + c01;
-
-    val c10 = p0 >> 22;
-    val c11 = p1 >> 9;
-    val c12 = (p2 & 0x3ffff) << 4;
-    val c13 = (p3 & 0x1f) << 17;
-    val c1 = c10 + c11 + c12 + c13;
-
-    val c22 = p2 >> 18;
-    val c23 = p3 >> 5;
-    val c24 = (p4 & 0xfff) << 8;
-    val c2 = c22 + c23 + c24;
-
-    // Propagate high bits from c0 -> c1, c1 -> c2
-    val c1n = c1 + (c0 >> BITS)
-
-    masked(c0, c1n, c2 + (c1n >> BITS))
+  def +(b: RuntimeLong): RuntimeLong = {
+    val result = inline_+(a.lo, a.hi, b.lo, b.hi)
+    new RuntimeLong(result._1, result._2)
   }
 
-  def /(y: RuntimeLong): RuntimeLong = (x divMod y)(0)
-  def %(y: RuntimeLong): RuntimeLong = (x divMod y)(1)
+  @inline
+  private def inline_+(alo: Int, ahi: Int, blo: Int, bhi: Int): (Int, Int) = {
+    val lo = alo + blo
+    (lo, ahi + bhi + (if (inlineUnsignedInt_<(lo, alo)) 1 else 0))
+  }
 
-  //override def getClass(): Class[Long] = null
+  def -(b: RuntimeLong): RuntimeLong = {
+    val result = inline_-(a.lo, a.hi, b.lo, b.hi)
+    new RuntimeLong(result._1, result._2)
+  }
+
+  @inline
+  private def inline_-(alo: Int, ahi: Int, blo: Int, bhi: Int): (Int, Int) = {
+    val lo = alo - blo
+    (lo, ahi - bhi + (if (inlineUnsignedInt_>(lo, alo)) -1 else 0))
+  }
+
+  def *(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val blo = b.lo
+    val bhi = b.hi
+
+    val a0 = alo & 0xffff
+    val a1 = alo >>> 16
+    val a2 = ahi & 0xffff
+    val a3 = ahi >>> 16
+    val b0 = blo & 0xffff
+    val b1 = blo >>> 16
+    val b2 = bhi & 0xffff
+    val b3 = bhi >>> 16
+
+    var c0 = a0 * b0
+
+    var c1 = c0 >>> 16
+    c1 = c1 + a1 * b0
+
+    var c2 = c1 >>> 16
+    c1 = (c1 & 0xffff) + a0 * b1
+    c2 = c2 + (c1 >>> 16)
+
+    var c3 = c2 >>> 16
+    c2 = (c2 & 0xffff) + a2 * b0
+    c3 = c3 + (c2 >>> 16)
+    c2 = (c2 & 0xffff) + a1 * b1
+    c3 = c3 + (c2 >>> 16)
+    c2 = (c2 & 0xffff) + a0 * b2
+    c3 = c3 + (c2 >>> 16)
+    c3 = c3 + a3 * b0 + a2 * b1 + a1 * b2 + a0 * b3
+
+    new RuntimeLong(
+        (c0 & 0xffff) | (c1 << 16),
+        (c2 & 0xffff) | (c3 << 16))
+  }
+
+  def /(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val blo = b.lo
+    val bhi = b.hi
+
+    if (isZero(blo, bhi))
+      throw new ArithmeticException("/ by zero")
+
+    if (isInt32(alo, ahi)) {
+      if (isInt32(blo, bhi)) {
+        if (alo == Int.MinValue && blo == -1) new RuntimeLong(Int.MinValue, 0)
+        else new RuntimeLong(alo / blo)
+      } else {
+        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
+        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) MinusOne
+        else Zero // because abs(b) > abs(a)
+      }
+    } else {
+      val (aNeg, aAbsLo, aAbsHi) = inline_abs(alo, ahi)
+      val (bNeg, bAbsLo, bAbsHi) = inline_abs(blo, bhi)
+      val absR = unsigned_/(aAbsLo, aAbsHi, bAbsLo, bAbsHi)
+      if (aNeg == bNeg) absR
+      else inlineLongUnary_-(absR.lo, absR.hi)
+    }
+  }
+
+  private def unsigned_/(alo: Int, ahi: Int, blo: Int, bhi: Int): RuntimeLong = {
+    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
+    if (isUnsignedSafeDouble(ahi)) {
+      if (isUnsignedSafeDouble(bhi)) {
+        val aDouble = asUnsignedSafeDouble(alo, ahi)
+        val bDouble = asUnsignedSafeDouble(blo, bhi)
+        val rDouble = aDouble / bDouble
+        fromUnsignedSafeDouble(rDouble)
+      } else {
+        Zero // because b > a
+      }
+    } else {
+      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
+        val pow = log2OfPowerOfTwo(blo)
+        if (pow == 0) new RuntimeLong(alo, ahi)
+        else new RuntimeLong((alo >>> pow) | (ahi << -pow), ahi >>> pow)
+      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
+        val pow = log2OfPowerOfTwo(bhi)
+        new RuntimeLong(ahi >>> pow, 0)
+      } else {
+        unsignedDivModHelper(alo, ahi, blo, bhi,
+            AskQuotient).asInstanceOf[RuntimeLong]
+      }
+    }
+  }
+
+  def %(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val blo = b.lo
+    val bhi = b.hi
+
+    if (isZero(blo, bhi))
+      throw new ArithmeticException("/ by zero")
+
+    if (isInt32(alo, ahi)) {
+      if (isInt32(blo, bhi)) {
+        if (blo != -1) new RuntimeLong(alo % blo)
+        else Zero // Work around https://github.com/ariya/phantomjs/issues/12198
+      } else {
+        // Either a == Int.MinValue && b == (Int.MaxValue + 1), or (abs(b) > abs(a))
+        if (alo == Int.MinValue && (blo == 0x80000000 && bhi == 0)) Zero
+        else a // because abs(b) > abs(a)
+      }
+    } else {
+      val (aNeg, aAbsLo, aAbsHi) = inline_abs(alo, ahi)
+      val (_, bAbsLo, bAbsHi) = inline_abs(blo, bhi)
+      val absR = unsigned_%(aAbsLo, aAbsHi, bAbsLo, bAbsHi)
+      if (aNeg) inlineLongUnary_-(absR.lo, absR.hi)
+      else absR
+    }
+  }
+
+  private def unsigned_%(alo: Int, ahi: Int, blo: Int, bhi: Int): RuntimeLong = {
+    // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
+    if (isUnsignedSafeDouble(ahi)) {
+      if (isUnsignedSafeDouble(bhi)) {
+        val aDouble = asUnsignedSafeDouble(alo, ahi)
+        val bDouble = asUnsignedSafeDouble(blo, bhi)
+        val rDouble = aDouble % bDouble
+        fromUnsignedSafeDouble(rDouble)
+      } else {
+        new RuntimeLong(alo, ahi) // because b > a
+      }
+    } else {
+      if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
+        new RuntimeLong(alo & (blo - 1), 0)
+      } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
+        new RuntimeLong(alo, ahi & (bhi - 1))
+      } else {
+        unsignedDivModHelper(alo, ahi, blo, bhi,
+            AskRemainder).asInstanceOf[RuntimeLong]
+      }
+    }
+  }
+
+  private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
+      ask: Int): RuntimeLong | js.Tuple4[Int, Int, Int, Int] = {
+
+    var shift =
+      inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)
+    val initialBShift = inline_<<(blo, bhi, shift)
+    var bShiftLo = initialBShift._1
+    var bShiftHi = initialBShift._2
+    var remLo = alo
+    var remHi = ahi
+    var quotLo = 0
+    var quotHi = 0
+
+    /* Invariants:
+     *   bShift == b << shift == b * 2^shift
+     *   quot >= 0
+     *   0 <= rem < 2 * bShift
+     *   quot * b + rem == a
+     *
+     * The loop condition should be
+     *   while (shift >= 0 && isUnsignedSafeDouble(remHi))
+     * but we manually inline isUnsignedSafeDouble because remHi is a var. If
+     * we let the optimizer inline it, it will first store remHi in a temporary
+     * val, which will explose the while condition as a while(true) + if +
+     * break, and we don't want that.
+     */
+    while (shift >= 0 && (remHi & UnsignedSafeDoubleHiMask) != 0) {
+      if (inlineUnsigned_>=(remLo, remHi, bShiftLo, bShiftHi)) {
+        val newRem = inline_-(remLo, remHi, bShiftLo, bShiftHi)
+        remLo = newRem._1
+        remHi = newRem._2
+        if (shift < 32)
+          quotLo |= (1 << shift)
+        else
+          quotHi |= (1 << shift) // == (1 << (shift - 32))
+      }
+      shift -= 1
+      val newBShift = inline_>>>(bShiftLo, bShiftHi, 1)
+      bShiftLo = newBShift._1
+      bShiftHi = newBShift._2
+    }
+
+    // Now rem < 2^53, we can finish with a double division
+    if (inlineUnsigned_>=(remLo, remHi, blo, bhi)) {
+      val remDouble = asUnsignedSafeDouble(remLo, remHi)
+      val bDouble = asUnsignedSafeDouble(blo, bhi)
+
+      if (ask != AskRemainder) {
+        val rem_div_bDouble = remDouble / bDouble
+        val newQuot = inline_+(quotLo, quotHi,
+            unsignedSafeDoubleLo(rem_div_bDouble),
+            unsignedSafeDoubleHi(rem_div_bDouble))
+        quotLo = newQuot._1
+        quotHi = newQuot._2
+      }
+
+      if (ask != AskQuotient) {
+        val rem_mod_bDouble = remDouble % bDouble
+        remLo = unsignedSafeDoubleLo(rem_mod_bDouble)
+        remHi = unsignedSafeDoubleHi(rem_mod_bDouble)
+      }
+    }
+
+    if (ask == AskQuotient) new RuntimeLong(quotLo, quotHi)
+    else if (ask == AskRemainder) new RuntimeLong(remLo, remHi)
+    else js.Tuple4(quotLo, quotHi, remLo, remHi)
+  }
+
+  // Support for intrinsics
 
   def toBinaryString: String = {
-    val zeros = "0000000000000000000000" // 22 zeros
-    @inline def padBinary22(i: Int) = {
+    val zeros = "00000000000000000000000000000000" // 32 zeros
+    @inline def padBinary32(i: Int) = {
       val s = Integer.toBinaryString(i)
       zeros.substring(s.length) + s
     }
 
-    if (h != 0) Integer.toBinaryString(h) + padBinary22(m) + padBinary22(l)
-    else if (m != 0) Integer.toBinaryString(m) + padBinary22(l)
-    else Integer.toBinaryString(l)
+    val lo = this.lo
+    val hi = this.hi
+
+    if (hi != 0) Integer.toBinaryString(hi) + padBinary32(lo)
+    else Integer.toBinaryString(lo)
   }
 
   def toHexString: String = {
-    val zeros = "000000" // 6 zeros
-    @inline def padHex(i: Int, len: Int) = {
+    val zeros = "00000000" // 8 zeros
+    @inline def padHex8(i: Int) = {
       val s = Integer.toHexString(i)
-      zeros.substring(s.length + (6-len)) + s
+      zeros.substring(s.length) + s
     }
 
-    val mp = m >> 2
-    val lp = l | ((m & 0x3) << BITS)
+    val lo = this.lo
+    val hi = this.hi
 
-    if (h != 0) Integer.toHexString(h) + padHex(mp, 5) + padHex(lp, 6)
-    else if (mp != 0) Integer.toHexString(mp) + padHex(lp, 6)
-    else Integer.toHexString(lp)
+    if (hi != 0) Integer.toHexString(hi) + padHex8(lo)
+    else Integer.toHexString(lo)
   }
 
   def toOctalString: String = {
-    val zeros = "0000000" // 7 zeros
-    @inline def padOctal7(i: Int) = {
+    val zeros = "0000000000" // 10 zeros
+    @inline def padOctal10(i: Int) = {
       val s = Integer.toOctalString(i)
       zeros.substring(s.length) + s
     }
 
-    val lp = l & (MASK >> 1)
-    val mp = ((m & (MASK >> 2)) << 1) | (l >> (BITS - 1))
-    val hp = (h << 2) | (m >> (BITS - 2))
+    val lo = this.lo
+    val hi = this.hi
 
-    if (hp != 0) Integer.toOctalString(hp) + padOctal7(mp) + padOctal7(lp)
-    else if (mp != 0) Integer.toOctalString(mp) + padOctal7(lp)
+    val lp = lo & 0x3fffffff
+    val mp = ((lo >>> 30) + (hi << 2)) & 0x3fffffff
+    val hp = hi >>> 28
+
+    if (hp != 0) Integer.toOctalString(hp) + padOctal10(mp) + padOctal10(lp)
+    else if (mp != 0) Integer.toOctalString(mp) + padOctal10(lp)
     else Integer.toOctalString(lp)
   }
 
-  // Any API //
+  def bitCount: Int =
+    Integer.bitCount(lo) + Integer.bitCount(hi)
 
-  override def toString: String = {
-    if (isZero) "0"
-    // Check for MinValue, because its not negatable
-    else if (isMinValue) "-9223372036854775808"
-    else if (isNegative) "-" + (-x).toString
-    else {
-      val tenPow9 = TenPow9 // local copy to access CachedConstants only once
-
-      @tailrec
-      @inline
-      def toString0(v: RuntimeLong, acc: String): String =
-        if (v.isZero) acc
-        else {
-          val quotRem = v.divMod(tenPow9)
-          val quot = quotRem(0)
-          val rem = quotRem(1)
-
-          val digits = rem.toInt.toString
-          val zeroPrefix =
-            if (quot.isZero) ""
-            else "000000000".substring(digits.length) // (9 - digits.length) zeros
-
-          toString0(quot, zeroPrefix + digits + acc)
-        }
-
-      toString0(x, "")
-    }
+  def signum: RuntimeLong = {
+    val hi = this.hi
+    if (hi < 0) MinusOne
+    else if (isZero(lo, hi)) Zero
+    else One
   }
 
-  def bitCount: Int =
-    Integer.bitCount(l) + Integer.bitCount(m) + Integer.bitCount(h)
-
-  // helpers //
-
-  @inline private def isZero = l == 0 && m == 0 && h == 0
-  @inline private def isMinValue = x.equals(MinValue)
-  @inline private def isNegative = (h & SIGN_BIT_VALUE) != 0
-  @inline private def abs = if (isNegative) -x else x
-
-  def signum: RuntimeLong =
-    if (isNegative) MinusOne else if (isZero) Zero else One
-
   def numberOfLeadingZeros: Int = {
-    if (h != 0)      Integer.numberOfLeadingZeros(h) - (32 - BITS2)
-    else if (m != 0) Integer.numberOfLeadingZeros(m) - (32 - BITS) + (64 - BITS01)
-    else             Integer.numberOfLeadingZeros(l) - (32 - BITS) + (64 - BITS)
+    val hi = this.hi
+    if (hi != 0) Integer.numberOfLeadingZeros(hi)
+    else Integer.numberOfLeadingZeros(lo) + 32
   }
 
   def numberOfTrailingZeros: Int = {
-    if (l != 0)      Integer.numberOfTrailingZeros(l)
-    else if (m != 0) Integer.numberOfTrailingZeros(m) + BITS
-    else             Integer.numberOfTrailingZeros(h) + BITS01
+    val lo = this.lo
+    if (lo != 0) Integer.numberOfTrailingZeros(lo)
+    else Integer.numberOfTrailingZeros(hi) + 32
   }
 
-  /** return log_2(x) if power of 2 or -1 otherwise */
-  private def powerOfTwo = {
-    /* For a power of two,
-     * log2(n) == numberOfTrailingZeros(n) == 31 - numberOfLeadingZeros(n)
-     * We use the latter because numberOfLeadingZeros is an intrinsic directly
-     * supported by Math.clz32 in JS.
-     */
-    if (h == 0 && m == 0 && l != 0 && (l & (l - 1)) == 0)
-      (31 - Integer.numberOfLeadingZeros(l))
-    else if (h == 0 && m != 0 && l == 0 && (m & (m - 1)) == 0)
-      (31 - Integer.numberOfLeadingZeros(m)) + BITS
-    else if (h != 0 && m == 0 && l == 0 && (h & (h - 1)) == 0)
-      (31 - Integer.numberOfLeadingZeros(h)) + BITS01
-    else
-      -1
-  }
+  // TODO Remove those. There are remnant of before we had LongReflectiveCall
 
-  private def setBit(bit: Int) =
-    if (bit < BITS)
-      new RuntimeLong(l | (1 << bit), m, h)
-    else if (bit < BITS01)
-      new RuntimeLong(l, m | (1 << (bit - BITS)), h)
-    else
-      new RuntimeLong(l, m, h | (1 << (bit - BITS01)))
+  @deprecated("Just use `this` instead.", "0.6.6")
+  def unary_+ : RuntimeLong = this // scalastyle:ignore
 
-  private def divMod(y: RuntimeLong): scala.scalajs.js.Array[RuntimeLong] = {
-    // scalastyle:off return
-    import scala.scalajs.js
-    if (y.isZero) throw new ArithmeticException("/ by zero")
-    else if (x.isZero) js.Array(Zero, Zero)
-    else if (y.isMinValue) {
-      // MinValue / MinValue == 1, rem = 0
-      // otherwise == 0, rem x
-      if (x.isMinValue) js.Array(One, Zero)
-      else js.Array(Zero, x)
-    } else {
-      val xNegative = x.isNegative
-      val yNegative = y.isNegative
-
-      val xMinValue = x.isMinValue
-
-      val absY = y.abs
-
-      val pow = absY.powerOfTwo
-      if (pow >= 0) {
-        if (xMinValue) {
-          val z = x >> pow
-          js.Array(if (yNegative) -z else z, Zero)
-        } else {
-          // x is not min value, so we can calculate absX
-          val absX = x.abs
-          val absZ = absX >> pow
-          val z = if (xNegative ^ yNegative) -absZ else absZ
-          val remAbs = absX.maskRight(pow)
-          val rem = if (xNegative) -remAbs else remAbs
-          js.Array(z, rem)
-        }
-      } else {
-        val newX = {
-          if (xMinValue) {
-            /* In theory we would need 2^31 == MaxValue + 1 here, but that
-             * overflows. Instead, we use a trick.
-             * Since absY is not 2^k for any k at this point, 2^31 cannot
-             * possibly be exactly divided by k, so
-             * 2^31 / absY == (2^31 - 1) / absY == MaxValue / absY
-             * The remainder will be off by 1, but divModHelper fixes that
-             * after the fact.
-             */
-            MaxValue
-          } else {
-            val absX = x.abs
-            if (absX < absY)
-              return js.Array(Zero, x) // <-- ugly but fast
-            else
-              absX
-          }
-        }
-        divModHelper(newX, absY, xNegative, yNegative, xMinValue)
-      }
-    }
-    // scalastyle:on return
-  }
-
-  @inline
-  private def maskRight(bits: Int) = {
-    if (bits <= BITS)
-      new RuntimeLong(l & ((1 << bits) - 1), 0, 0)
-    else if (bits <= BITS01)
-      new RuntimeLong(l, m & ((1 << (bits - BITS)) - 1), 0)
-    else
-      new RuntimeLong(l, m, h & ((1 << (bits - BITS01)) - 1))
-  }
-
-  /**
-   * performs division in "normal cases"
-   * @param x absolute value of the numerator
-   * @param y absolute value of the denominator
-   * @param xNegative whether numerator was negative
-   * @param yNegative whether denominator was negative
-   * @param xMinValue whether numerator was Long.minValue
-   */
-  @inline
-  private def divModHelper(x: RuntimeLong, y: RuntimeLong,
-      xNegative: Boolean, yNegative: Boolean,
-      xMinValue: Boolean): scala.scalajs.js.Array[RuntimeLong] = {
-    import scala.scalajs.js
-
-    @inline
-    @tailrec
-    def divide0(shift: Int, yShift: RuntimeLong, curX: RuntimeLong,
-        quot: RuntimeLong): (RuntimeLong, RuntimeLong) =
-      if (shift < 0 || curX.isZero) (quot, curX) else {
-        val newX = curX - yShift
-        if (!newX.isNegative)
-          divide0(shift-1, yShift >> 1, newX, quot.setBit(shift))
-        else
-          divide0(shift-1, yShift >> 1, curX, quot)
-      }
-
-    val shift = y.numberOfLeadingZeros - x.numberOfLeadingZeros
-    val yShift = y << shift
-
-    val (absQuot, absRem) = divide0(shift, yShift, x, Zero)
-
-    val quot = if (xNegative ^ yNegative) -absQuot else absQuot
-    val rem  =
-      if (xNegative && xMinValue) -absRem - One
-      else if (xNegative)         -absRem
-      else                         absRem
-
-    js.Array(quot, rem)
-  }
+  @deprecated("Use `this.toString + y` instead.", "0.6.6")
+  def +(y: String): String = this.toString + y
 
 }
 
 object RuntimeLong {
+  private final val TwoPow32 = 4294967296.0
+  private final val TwoPow53 = 9223372036854775808.0
 
-  /** number of relevant bits in each Long.l and Long.m */
-  private final val BITS   = 22
-  /** number of relevant bits in Long.l and Long.m together */
-  private final val BITS01 = 2 * BITS
-  /** number of relevant bits in Long.h */
-  private final val BITS2  = 64 - BITS01
-  /** bitmask for Long.l and Long.m */
-  private final val MASK   = (1 << BITS) - 1
-  /** bitmask for Long.h */
-  private final val MASK_2 = (1 << BITS2) - 1
+  /** The magical mask that allows to test whether an unsigned long is a safe
+   *  double.
+   *  @see Utils.isUnsignedSafeDouble
+   */
+  private final val UnsignedSafeDoubleHiMask = 0xffe00000
 
-  private[runtime] final val SIGN_BIT       = BITS2 - 1
-  private[runtime] final val SIGN_BIT_VALUE = 1 << SIGN_BIT
-  private[runtime] final val TWO_PWR_15_DBL = 0x8000   * 1.0
-  private[runtime] final val TWO_PWR_16_DBL = 0x10000  * 1.0
-  private[runtime] final val TWO_PWR_22_DBL = 0x400000 * 1.0
-  private[runtime] final val TWO_PWR_31_DBL = TWO_PWR_16_DBL * TWO_PWR_15_DBL
-  private[runtime] final val TWO_PWR_32_DBL = TWO_PWR_16_DBL * TWO_PWR_16_DBL
-  private[runtime] final val TWO_PWR_44_DBL = TWO_PWR_22_DBL * TWO_PWR_22_DBL
-  private[runtime] final val TWO_PWR_63_DBL = TWO_PWR_32_DBL * TWO_PWR_31_DBL
+  private final val AskQuotient = 0
+  private final val AskRemainder = 1
+  private final val AskBoth = 2
 
-  // scalastyle:off disallow.space.after.token
   // Cache the instances for some "literals" used in this implementation
-  val Zero     = new RuntimeLong(      0,       0,      0) // 0L
-  val One      = new RuntimeLong(      1,       0,      0) // 1L
-  val MinusOne = new RuntimeLong(   MASK,    MASK, MASK_2) // -1L
-  val MinValue = new RuntimeLong(      0,       0, 524288) // Long.MinValue
-  val MaxValue = new RuntimeLong(4194303, 4194303, 524287) // Long.MaxValue
-  val TenPow9  = new RuntimeLong(1755648,     238,      0) // 1000000000L with 9 zeros
-  // scalastyle:on disallow.space.after.token
+  val Zero = new RuntimeLong(0, 0)
+  val One = new RuntimeLong(1, 0)
+  val MinusOne = new RuntimeLong(-1, -1)
+  val MinValue = new RuntimeLong(0, 0x80000000)
+  val MaxValue = new RuntimeLong(0xffffffff, 0x7fffffff)
 
   def fromDouble(value: Double): RuntimeLong = {
-    if (java.lang.Double.isNaN(value)) Zero
-    else if (value < -TWO_PWR_63_DBL) MinValue
-    else if (value >= TWO_PWR_63_DBL) MaxValue
-    else if (value < 0) -fromDouble(-value)
-    else {
-      var acc = value
-      val a2 = if (acc >= TWO_PWR_44_DBL) (acc / TWO_PWR_44_DBL).toInt else 0
-      acc -= a2 * TWO_PWR_44_DBL
-      val a1 = if (acc >= TWO_PWR_22_DBL) (acc / TWO_PWR_22_DBL).toInt else 0
-      acc -= a1 * TWO_PWR_22_DBL
-      val a0 = acc.toInt
-      new RuntimeLong(a0, a1, a2)
+    import Utils._
+
+    if (value.isNaN) {
+      Zero
+    } else if (value < -TwoPow53) {
+      MinValue
+    } else if (value >= TwoPow53) {
+      MaxValue
+    } else {
+      val neg = value < 0
+      val absValue = if (neg) -value else value
+      val lo = rawToInt(absValue)
+      val hi = rawToInt(absValue / TwoPow32)
+      if (neg) inlineLongUnary_-(lo, hi)
+      else new RuntimeLong(lo, hi)
     }
+  }
+
+  // In a different object so they can be inlined without cost
+  private object Utils {
+    /** Tests whether the long (lo, hi) is 0. */
+    @inline def isZero(lo: Int, hi: Int): Boolean =
+      (lo | hi) == 0
+
+    /** Tests whether the long (lo, hi)'s mathematic value fits in a signed Int. */
+    @inline def isInt32(lo: Int, hi: Int): Boolean =
+      hi == (lo >> 31)
+
+    /** Tests whether an unsigned long (lo, hi) is a safe Double.
+     *  This test is in fact slightly stricter than necessary, as it tests
+     *  whether `x < 2^53`, although x == 2^53 would be a perfectly safe
+     *  Double. The reason we do this is that testing `x <= 2^53` is much
+     *  slower, as `x == 2^53` basically has to be treated specially.
+     *  Since there is virtually no gain to treating 2^53 itself as a safe
+     *  Double, compared to all numbers smaller than it, we don't bother, and
+     *  stay on the fast side.
+     */
+    @inline def isUnsignedSafeDouble(hi: Int): Boolean =
+      (hi & UnsignedSafeDoubleHiMask) == 0
+
+    /** Converts an unsigned safe double into its Double representation. */
+    @inline def asUnsignedSafeDouble(lo: Int, hi: Int): Double =
+      hi * TwoPow32 + lo.toUint
+
+    /** Converts an unsigned safe double into its RuntimeLong representation. */
+    @inline def fromUnsignedSafeDouble(x: Double): RuntimeLong =
+      new RuntimeLong(unsignedSafeDoubleLo(x), unsignedSafeDoubleHi(x))
+
+    /** Computes the lo part of a long from an unsigned safe double. */
+    @inline def unsignedSafeDoubleLo(x: Double): Int =
+      rawToInt(x)
+
+    /** Computes the hi part of a long from an unsigned safe double. */
+    @inline def unsignedSafeDoubleHi(x: Double): Int =
+      rawToInt(x / TwoPow32)
+
+    /** Performs the JavaScript operation `(x | 0)`. */
+    @inline def rawToInt(x: Double): Int =
+      (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+
+    /** Tests whether the given non-zero unsigned Int is an exact power of 2. */
+    @inline def isPowerOfTwo_IKnowItsNot0(i: Int): Boolean =
+      (i & (i - 1)) == 0
+
+    /** Returns the log2 of the given unsigned Int assuming it is an exact power of 2. */
+    @inline def log2OfPowerOfTwo(i: Int): Int =
+      31 - Integer.numberOfLeadingZeros(i)
+
+    /** Returns the number of leading zeros in the given long (lo, hi). */
+    @inline def inlineNumberOfLeadingZeros(lo: Int, hi: Int): Int =
+      if (hi != 0) Integer.numberOfLeadingZeros(hi)
+      else Integer.numberOfLeadingZeros(lo) + 32
+
+    /** Tests whether the unsigned long (alo, ahi) is >= (blo, bhi). */
+    @inline
+    def inlineUnsigned_>=(alo: Int, ahi: Int, blo: Int, bhi: Int): Boolean =
+      if (ahi == bhi) inlineUnsignedInt_>=(alo, blo)
+      else inlineUnsignedInt_>=(ahi, bhi)
+
+    @inline
+    def inlineUnsignedInt_<(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) < (b ^ 0x80000000)
+
+    @inline
+    def inlineUnsignedInt_<=(a: Int, b: Int): Boolean = {
+      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
+       * 0x7fffffff <= 0x80000000, so use >= here instead.
+       * This case is common because it happens when a == -1 and b == 0.
+       */
+      (b ^ 0x80000000) >= (a ^ 0x80000000)
+    }
+
+    @inline
+    def inlineUnsignedInt_>(a: Int, b: Int): Boolean = {
+      /* Work around https://code.google.com/p/v8/issues/detail?id=3304
+       * 0x7fffffff > 0x80000000, so use < here instead.
+       * This case is common because it happens when a == -1 and b == 0.
+       */
+      (b ^ 0x80000000) < (a ^ 0x80000000)
+    }
+
+    @inline
+    def inlineUnsignedInt_>=(a: Int, b: Int): Boolean =
+      (a ^ 0x80000000) >= (b ^ 0x80000000)
+
+    @inline
+    def inlineLongUnary_-(lo: Int, hi: Int): RuntimeLong =
+      new RuntimeLong(-lo, if (lo != 0) ~hi else -hi)
+
+    @inline
+    def inline_unary_-(lo: Int, hi: Int): (Int, Int) =
+      (-lo, if (lo != 0) ~hi else -hi)
   }
 
 }

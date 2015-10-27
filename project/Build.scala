@@ -734,6 +734,7 @@ object Build extends sbt.Build {
           scalacOptions in (Compile, doc) ++= Seq("-implicits", "-groups"),
           exportJars := true,
           previousArtifactSetting,
+          binaryIssueFilters ++= BinaryIncompatibilities.Library,
           libraryDependencies +=
             "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided"
       ) ++ (
@@ -751,9 +752,9 @@ object Build extends sbt.Build {
             val libraryMappings = superMappings.filter(
                 _._2.replace('\\', '/') !=
                   "scala/scalajs/js/typedarray/TypedArrayBufferBridge$.sjsir")
-                  
+
             val filter = ("*.sjsir": NameFilter)
-            
+
             val javalibProducts = (products in javalib).value
             val javalibMappings =
               javalibProducts.flatMap(base => Path.selectSubpaths(base, filter))

@@ -1,7 +1,7 @@
 package org.scalajs.testsuite.javalib.lang
 
 import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.javalib.ExpectExceptions
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 object MathTestOnJDK8 extends JasmineTest with ExpectExceptions {
 
