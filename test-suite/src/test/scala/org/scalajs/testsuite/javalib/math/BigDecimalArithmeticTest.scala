@@ -978,6 +978,27 @@ object  BigDecimalArithmeticTest extends JasmineTest {
       expect(() => BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO)).toThrow()
     }
 
+    it("testDivideToIntegralValue on floating points - #1979") {
+      val one = new BigDecimal(1.0)
+      val oneAndHalf = new BigDecimal(1.5)
+      val a0 = new BigDecimal(3.0)
+      val a1 = new BigDecimal(3.1)
+      val a2 = new BigDecimal(3.21)
+      val a3 = new BigDecimal(3.321)
+      val b0 = new BigDecimal(3.0)
+      val b1 = new BigDecimal(2.0)
+
+      expect(a0.divideToIntegralValue(one) == b0).toBeTruthy
+      expect(a1.divideToIntegralValue(one) == b0).toBeTruthy
+      expect(a2.divideToIntegralValue(one) == b0).toBeTruthy
+      expect(a3.divideToIntegralValue(one) == b0).toBeTruthy
+
+      expect(a0.divideToIntegralValue(oneAndHalf) == b1).toBeTruthy
+      expect(a1.divideToIntegralValue(oneAndHalf) == b1).toBeTruthy
+      expect(a2.divideToIntegralValue(oneAndHalf) == b1).toBeTruthy
+      expect(a3.divideToIntegralValue(oneAndHalf) == b1).toBeTruthy
+    }
+
     it("testMultiplyDiffScaleNegPos") {
       val a = "1231212478987482988429808779810457634781384756794987"
       val aScale = -15
