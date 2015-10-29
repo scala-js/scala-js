@@ -154,6 +154,11 @@ object IntTest extends JasmineTest {
       test(AlmostMaxVal, -123, AlmostMaxVal % -123)
     }
 
+    it("% should never produce a negative 0 - #1984") {
+      @noinline def value: Int = -8
+      expect((value % 8).asInstanceOf[java.lang.Integer].equals(0.0)).toBeTruthy
+    }
+
     it("should support <<") {
       def test(a: Int, b: Int, expected: Int): Unit =
         expect(a << b).toEqual(expected)

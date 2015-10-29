@@ -1655,7 +1655,7 @@ private[javascript] object JSDesugaring {
               }
             case Int_* => genCallHelper("imul", newLhs, newRhs)
             case Int_/ => or0(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
-            case Int_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
+            case Int_% => or0(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
 
             case Int_|   => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
             case Int_&   => js.BinaryOp(JSBinaryOp.&, newLhs, newRhs)
