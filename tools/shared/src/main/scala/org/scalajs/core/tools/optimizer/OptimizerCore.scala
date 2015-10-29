@@ -1587,6 +1587,12 @@ private[optimizer] abstract class OptimizerCore(
       case LongCompare =>
         contTree(Apply(firstArgAsRTLong, "compareTo__sjsr_RuntimeLong__I",
             List(asRTLong(newArgs(1))))(IntType))
+      case LongDivideUnsigned =>
+        contTree(Apply(firstArgAsRTLong, LongImpl.divideUnsigned,
+            List(asRTLong(newArgs(1))))(LongType))
+      case LongRemainderUnsigned =>
+        contTree(Apply(firstArgAsRTLong, LongImpl.remainderUnsigned,
+            List(asRTLong(newArgs(1))))(LongType))
       case LongBitCount =>
         contTree(Apply(firstArgAsRTLong, LongImpl.bitCount, Nil)(IntType))
       case LongSignum =>
@@ -3601,15 +3607,17 @@ private[optimizer] object OptimizerCore {
 
     final val IntegerNLZ = PropertiesOf + 1
 
-    final val LongToString   = IntegerNLZ     + 1
-    final val LongCompare    = LongToString   + 1
-    final val LongBitCount   = LongCompare    + 1
-    final val LongSignum     = LongBitCount   + 1
-    final val LongLeading0s  = LongSignum     + 1
-    final val LongTrailing0s = LongLeading0s  + 1
-    final val LongToBinStr   = LongTrailing0s + 1
-    final val LongToHexStr   = LongToBinStr   + 1
-    final val LongToOctalStr = LongToHexStr   + 1
+    final val LongToString = IntegerNLZ + 1
+    final val LongCompare = LongToString + 1
+    final val LongDivideUnsigned = LongCompare + 1
+    final val LongRemainderUnsigned = LongDivideUnsigned + 1
+    final val LongBitCount = LongRemainderUnsigned + 1
+    final val LongSignum = LongBitCount + 1
+    final val LongLeading0s = LongSignum + 1
+    final val LongTrailing0s = LongLeading0s + 1
+    final val LongToBinStr = LongTrailing0s + 1
+    final val LongToHexStr = LongToBinStr + 1
+    final val LongToOctalStr = LongToHexStr + 1
 
     final val ArrayBuilderZeroOf = LongToOctalStr + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
@@ -3646,6 +3654,8 @@ private[optimizer] object OptimizerCore {
 
       "jl_Long$.toString__J__T"              -> LongToString,
       "jl_Long$.compare__J__J__I"            -> LongCompare,
+      "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
+      "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned,
       "jl_Long$.bitCount__J__I"              -> LongBitCount,
       "jl_Long$.signum__J__J"                -> LongSignum,
       "jl_Long$.numberOfLeadingZeros__J__I"  -> LongLeading0s,

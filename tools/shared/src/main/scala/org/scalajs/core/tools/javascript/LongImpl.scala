@@ -69,6 +69,8 @@ object LongImpl {
 
   // Methods used for intrinsics
 
+  final val divideUnsigned        = "divideUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
+  final val remainderUnsigned     = "remainderUnsigned__sjsr_RuntimeLong__sjsr_RuntimeLong"
   final val bitCount              = "bitCount__I"
   final val signum                = "signum__sjsr_RuntimeLong"
   final val numberOfLeadingZeros  = "numberOfLeadingZeros__I"
@@ -80,6 +82,9 @@ object LongImpl {
   val AllIntrinsicMethods = Set(
       bitCount, signum, numberOfLeadingZeros, numberOfTrailingZeros,
       toBinaryString, toHexString, toOctalString)
+
+  val OptionalIntrinsicMethods = Set(
+      divideUnsigned, remainderUnsigned)
 
   // Constructors
 
