@@ -279,18 +279,21 @@ class NodeJSEnv private (
     protected def fixPercentConsole(): Seq[VirtualJSFile] = Seq(
         new MemVirtualJSFile("nodeConsoleHack.js").withContent(
           """
-          // Hack console log to duplicate double % signs
-          (function() {
-            var oldLog = console.log;
-            var newLog = function() {
-              var args = arguments;
-              if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
-                args[0] = args[0].toString().replace(/%/g, "%%");
-              }
-              oldLog.apply(console, args);
-            };
-            console.log = newLog;
-          })();
+          if (process.version.startsWith("v0.") || process.version.startsWith("v1.") ||
+              process.version.startsWith("v2.0.")) {
+            // Hack console log to duplicate double % signs for Node.js versions older than v2.1.0
+            (function() {
+              var oldLog = console.log;
+              var newLog = function() {
+                var args = arguments;
+                if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
+                  args[0] = args[0].toString().replace(/%/g, "%%");
+                }
+                oldLog.apply(console, args);
+              };
+              console.log = newLog;
+            })();
+          }
           """
         )
     )
