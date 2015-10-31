@@ -281,11 +281,24 @@ class NodeJSEnv private (
           """
           // Hack console log to duplicate double % signs
           (function() {
+            function startsWithAnyOf(s, prefixes) {
+              for (var i = 0; i < prefixes.length; i++) {
+                // ES5 does not have .startsWith() on strings
+                if (s.substring(0, prefixes[i].length) === prefixes[i])
+                  return true;
+              }
+              return false;
+            }
+            var nodeWillDeduplicateEvenForOneArgument = startsWithAnyOf(
+                process.version, ["v0.", "v1.", "v2.0."]);
             var oldLog = console.log;
             var newLog = function() {
               var args = arguments;
               if (args.length >= 1 && args[0] !== void 0 && args[0] !== null) {
-                args[0] = args[0].toString().replace(/%/g, "%%");
+                var argStr = args[0].toString();
+                if (args.length > 1 || nodeWillDeduplicateEvenForOneArgument)
+                  argStr = argStr.replace(/%/g, "%%");
+                args[0] = argStr;
               }
               oldLog.apply(console, args);
             };
