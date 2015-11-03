@@ -131,6 +131,10 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     if (reachOptimizerSymbols) {
       for (method <- LongImpl.AllIntrinsicMethods)
         RTLongClass.callMethod(method)
+
+      // Hack to reach optional intrinsic methods only if they exist
+      for (method <- LongImpl.OptionalIntrinsicMethods)
+        RTLongClass.tryLookupMethod(method).foreach(_.reach(RTLongClass))
     }
 
     val RTLongModuleClass = lookupClass(LongImpl.RuntimeLongModuleClass)

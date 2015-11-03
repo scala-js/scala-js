@@ -386,6 +386,29 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     }
   }
 
+  /** `java.lang.Long.divideUnsigned(a, b)` */
+  def divideUnsigned(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val blo = b.lo
+    val bhi = b.hi
+
+    if (isZero(blo, bhi))
+      throw new ArithmeticException("/ by zero")
+
+    if (isUInt32(ahi)) {
+      if (isUInt32(bhi)) {
+        // Integer.divideUnsigned(alo, blo), inaccessible when compiling on JDK < 8
+        new RuntimeLong(rawToInt(alo.toUint / blo.toUint), 0)
+      } else {
+        // a < b
+        Zero
+      }
+    } else {
+      unsigned_/(alo, ahi, blo, bhi)
+    }
+  }
+
   private def unsigned_/(alo: Int, ahi: Int, blo: Int, bhi: Int): RuntimeLong = {
     // This method is not called if isInt32(alo, ahi) nor if isZero(blo, bhi)
     if (isUnsignedSafeDouble(ahi)) {
@@ -436,6 +459,29 @@ final class RuntimeLong(val lo: Int, val hi: Int)
       val absR = unsigned_%(aAbsLo, aAbsHi, bAbsLo, bAbsHi)
       if (aNeg) inlineLongUnary_-(absR.lo, absR.hi)
       else absR
+    }
+  }
+
+  /** `java.lang.Long.divideUnsigned(a, b)` */
+  def remainderUnsigned(b: RuntimeLong): RuntimeLong = {
+    val alo = a.lo
+    val ahi = a.hi
+    val blo = b.lo
+    val bhi = b.hi
+
+    if (isZero(blo, bhi))
+      throw new ArithmeticException("/ by zero")
+
+    if (isUInt32(ahi)) {
+      if (isUInt32(bhi)) {
+        // Integer.remainderUnsigned(alo, blo), inaccessible when compiling on JDK < 8
+        new RuntimeLong(rawToInt(alo.toUint % blo.toUint), 0)
+      } else {
+        // a < b
+        a
+      }
+    } else {
+      unsigned_%(alo, ahi, blo, bhi)
     }
   }
 
@@ -660,6 +706,10 @@ object RuntimeLong {
     /** Tests whether the long (lo, hi)'s mathematic value fits in a signed Int. */
     @inline def isInt32(lo: Int, hi: Int): Boolean =
       hi == (lo >> 31)
+
+    /** Tests whether the long (_, hi)'s mathematic value fits in an unsigned Int. */
+    @inline def isUInt32(hi: Int): Boolean =
+      hi == 0
 
     /** Tests whether an unsigned long (lo, hi) is a safe Double.
      *  This test is in fact slightly stricter than necessary, as it tests
