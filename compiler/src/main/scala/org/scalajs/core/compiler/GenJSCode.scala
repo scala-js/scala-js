@@ -2205,6 +2205,30 @@ abstract class GenJSCode extends plugins.PluginComponent
             js.If(genExpr(cond), genBody(thenp), genBody(elsep))(
                 resultType)(body.pos)
 
+          /* For #1955. If we receive a tree with the shape
+           *   if (cond) {
+           *     thenp
+           *   } else {
+           *     elsep
+           *   }
+           *   scala.runtime.BoxedUnit.UNIT
+           * we rewrite it as
+           *   if (cond) {
+           *     thenp
+           *     scala.runtime.BoxedUnit.UNIT
+           *   } else {
+           *     elsep
+           *     scala.runtime.BoxedUnit.UNIT
+           *   }
+           * so that it fits the shape of if/elses we can deal with.
+           */
+          case Block(List(If(cond, thenp, elsep)), s: Select)
+              if s.symbol == definitions.BoxedUnit_UNIT =>
+            val newThenp = Block(thenp, s).setType(s.tpe).setPos(thenp.pos)
+            val newElsep = Block(elsep, s).setType(s.tpe).setPos(elsep.pos)
+            js.If(genExpr(cond), genBody(newThenp), genBody(newElsep))(
+                resultType)(body.pos)
+
           case _ =>
             genStatOrExpr(body, isStat)
         }
