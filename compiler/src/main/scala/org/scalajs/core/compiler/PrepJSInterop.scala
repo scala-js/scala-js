@@ -181,6 +181,12 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       // Catch (Scala) ClassDefs to forbid js.Anys
       case cldef: ClassDef =>
         val sym = cldef.symbol
+
+        if (sym.hasAnnotation(JSNativeAnnotation)) {
+          reporter.error(cldef.pos, "Traits and classes not extending js.Any " +
+              "may not have a @js.native annotation")
+        }
+
         if (shouldPrepareExports && sym.isTrait) {
           // Check that interface/trait is not exported
           for {
@@ -193,8 +199,15 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       // Module export sanity check (export generated in JSCode phase)
       case modDef: ModuleDef =>
+        val sym = modDef.symbol
+
+        if (sym.hasAnnotation(JSNativeAnnotation)) {
+          reporter.error(modDef.pos, "Objects not extending js.Any may not " +
+              "have a @js.native annotation")
+        }
+
         if (shouldPrepareExports)
-          registerModuleExports(modDef.symbol.moduleClass)
+          registerModuleExports(sym.moduleClass)
 
         enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
 

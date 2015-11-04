@@ -54,6 +54,41 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noJSNativeAnnotWithoutJSAny: Unit = {
+
+    """
+    @js.native
+    class A
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Traits and classes not extending js.Any may not have a @js.native annotation
+      |    class A
+      |          ^
+    """
+
+    """
+    @js.native
+    trait A
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Traits and classes not extending js.Any may not have a @js.native annotation
+      |    trait A
+      |          ^
+    """
+
+    """
+    @js.native
+    object A
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Objects not extending js.Any may not have a @js.native annotation
+      |    object A
+      |           ^
+    """
+
+  }
+
+  @Test
   def noInnerClassTraitObject: Unit = {
 
     for {
@@ -198,25 +233,22 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def onlyJSRawTraits: Unit = {
 
     """
-    @js.native
     trait A
     @js.native
     class B extends js.Object with A
     """ hasErrors
     """
-      |newSource1.scala:8: error: B extends A which does not extend js.Any.
+      |newSource1.scala:7: error: B extends A which does not extend js.Any.
       |    class B extends js.Object with A
       |          ^
     """
 
     """
     @js.native
-    trait A
-    @js.native
     class B extends js.Object with Serializable
     """ hasErrors
     """
-      |newSource1.scala:8: error: B extends scala.Serializable which does not extend js.Any.
+      |newSource1.scala:6: error: B extends scala.Serializable which does not extend js.Any.
       |    class B extends js.Object with Serializable
       |          ^
     """
