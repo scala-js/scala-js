@@ -198,6 +198,10 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
         enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
 
+      // ValOrDefDef's that are local to a block must not be transformed
+      case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
+        super.transform(tree)
+
       // Catch ValOrDefDef in js.Any
       case vddef: ValOrDefDef if enclosingOwner is OwnerKind.RawJSType =>
         transformValOrDefDefInRawJSType(vddef)
@@ -394,6 +398,7 @@ abstract class PrepJSInterop extends plugins.PluginComponent
         // Expose objects (modules) members of Scala.js-defined JS classes
         if (sym.isModule && (enclosingOwner is OwnerKind.JSNonNative)) {
           def shouldBeExposed: Boolean = {
+            !sym.isLocalToBlock &&
             !sym.isSynthetic &&
             !isPrivateMaybeWithin(sym)
           }
@@ -578,6 +583,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
     /** Verify a ValOrDefDef inside a js.Any */
     private def transformValOrDefDefInRawJSType(tree: ValOrDefDef) = {
       val sym = tree.symbol
+
+      assert(!sym.isLocalToBlock, s"$tree at ${tree.pos}")
 
       if (shouldPrepareExports) {
         // Exports are never valid on members of JS types

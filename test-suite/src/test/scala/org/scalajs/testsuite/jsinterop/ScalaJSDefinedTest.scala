@@ -477,6 +477,45 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(inner2).not.toBe(inner1)
     }
 
+    it("local defs must not be exposed") {
+      @ScalaJSDefined
+      class LocalDefsMustNotBeExposed extends js.Object {
+        def foo(): String = {
+          def bar(): String = "hello"
+          bar()
+        }
+      }
+
+      val obj = new LocalDefsMustNotBeExposed
+      expect(js.Object.properties(obj).exists(_.contains("bar"))).toBeFalsy
+    }
+
+    it("local objects must not be exposed") {
+      @ScalaJSDefined
+      class LocalObjectsMustNotBeExposed extends js.Object {
+        def foo(): String = {
+          object Bar
+          Bar.toString()
+        }
+      }
+
+      val obj = new LocalObjectsMustNotBeExposed
+      expect(js.Object.properties(obj).exists(_.contains("Bar"))).toBeFalsy
+    }
+
+    it("local defs with captures - #1975") {
+      @ScalaJSDefined
+      class LocalDefsWithCaptures extends js.Object {
+        def foo(suffix: String): String = {
+          def bar(): String = "hello " + suffix
+          bar()
+        }
+      }
+
+      val obj = new LocalDefsWithCaptures
+      expect(obj.foo("world")).toEqual("hello world")
+    }
+
     it("methods with explicit name") {
       @ScalaJSDefined
       class MethodsWithExplicitName extends js.Object {
