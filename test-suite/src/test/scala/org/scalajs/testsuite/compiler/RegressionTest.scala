@@ -12,7 +12,9 @@ import scala.annotation.tailrec
 import scala.scalajs.js
 import org.scalajs.jasminetest.JasmineTest
 
-object RegressionTest extends JasmineTest {
+import org.scalajs.testsuite.utils.ExpectExceptions
+
+object RegressionTest extends JasmineTest with ExpectExceptions {
 
   class Bug218Foo[T](val x: T) extends AnyVal
 
@@ -433,6 +435,15 @@ object RegressionTest extends JasmineTest {
       expect(x).toEqual(5)
     }
 
+    it("switch-match with a guard and a result type of BoxedUnit - #1955") {
+      val bug = new Bug1955
+      bug.bug(2, true)
+      expect(bug.result).toEqual(0)
+      bug.bug(1, true)
+      expect(bug.result).toEqual(579)
+      expectThrows[MatchError](bug.bug(2, false))
+    }
+
     it("null.asInstanceOf[Unit] should succeed - #1691") {
       def getNull(): Any = null
       val x = getNull().asInstanceOf[Unit]: Any
@@ -442,6 +453,24 @@ object RegressionTest extends JasmineTest {
     it("lambda parameter with a dash - #1790") {
       val f = (`a-b`: Int) => `a-b` + 1
       expect(f(5)).toEqual(6)
+    }
+  }
+
+  class Bug1955 {
+    var result: Int = 0
+
+    def doSomething[A](a: Int, b: Int, r: A): A = {
+      result = a + b
+      r
+    }
+
+    def bug(x: Int, e: Boolean): Unit = {
+      x match {
+        case 1 => doSomething(123, 456, ())
+        case 2 if e =>
+      }
+
+      if (false) ()
     }
   }
 }
