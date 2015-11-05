@@ -3,16 +3,16 @@ const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv :
 
 // Global scope
 const $g =
-  (typeof $env["global"] === "object" && $env["global"])
+  (typeof $jsSelect($env, "global") === "object" && $env["global"])
     ? $env["global"]
-    : ((typeof __global === "object" && __global && __global["Object"] === Object) ? __global : __this);
-$env["global"] = $g;
+    : ((typeof __global === "object" && __global && $jsSelect(__global, "Object") === Object) ? __global : __this);
+$jsAssign($env, "global", $g);
 
 // Where to send exports
 const $e =
-  (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
+  (typeof $jsSelect($env, "exportsNamespace") === "object" && $env["exportsNamespace"])
     ? $env["exportsNamespace"] : $g;
-$env["exportsNamespace"] = $e;
+$jsAssign($env, "exportsNamespace", $e);
 
 // Freeze the environment info
 $g["Object"]["freeze"]($env);
