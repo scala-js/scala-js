@@ -32,9 +32,11 @@ object TestDetector {
       /* We make sure to use only select exported modules (not classes) by
        * checking .prototype of the exporters.
        */
-      (js.typeOf(item) == "function") &&
-      (js.Object.getPrototypeOf(item.prototype.asInstanceOf[js.Object]) eq
-          js.Object.asInstanceOf[js.Dynamic].prototype)
+      (js.typeOf(item) == "function") && {
+        js.isUndefined(item.prototype) || // happens for static methods
+        (js.Object.getPrototypeOf(item.prototype.asInstanceOf[js.Object]) eq
+            js.Object.asInstanceOf[js.Dynamic].prototype)
+      }
     }
 
     def rec(item: js.Dynamic, fullName: String): List[(js.Dynamic, String)] = {
