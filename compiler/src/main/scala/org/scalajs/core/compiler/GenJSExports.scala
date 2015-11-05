@@ -14,7 +14,6 @@ import scala.reflect.internal.Flags
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe}
 import ir.Trees.OptimizerHints
-import ir.Infos.MethodInfoBuilder
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -69,42 +68,32 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
       if (ctorExports.isEmpty) {
         Nil
       } else {
-        withScopedVars(
-          currentMethodInfoBuilder := new MethodInfoBuilder
-        ) {
-          currentMethodInfoBuilder
-            .setEncodedName(ir.Definitions.ExportedConstructorsName)
-            .setIsExported(true)
+        val exports = for {
+          (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
+        } yield {
+          val (namedExports, normalExports) = specs.partition(_._1.isNamed)
 
-          val exports = for {
-            (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
+          val normalCtors = normalExports.map(s => ExportedSymbol(s._2))
+          val namedCtors = for {
+            (exp, ctor) <- namedExports
           } yield {
-            val (namedExports, normalExports) = specs.partition(_._1.isNamed)
-
-            val normalCtors = normalExports.map(s => ExportedSymbol(s._2))
-            val namedCtors = for {
-              (exp, ctor) <- namedExports
-            } yield {
-              implicit val pos = exp.pos
-              ExportedBody(List(JSAnyTpe),
-                genNamedExporterBody(ctor, genFormalArg(1).ref),
-                nme.CONSTRUCTOR.toString, pos)
-            }
-
-            val ctors = normalCtors ++ namedCtors
-
-            implicit val pos = ctors.head.pos
-
-            val js.MethodDef(_, _, args, _, body) =
-              withNewLocalNameScope(genExportMethod(ctors, jsName))
-
-            js.ConstructorExportDef(jsName, args, body)
+            implicit val pos = exp.pos
+            ExportedBody(List(JSAnyTpe),
+              genNamedExporterBody(ctor, genFormalArg(1).ref),
+              nme.CONSTRUCTOR.toString, pos)
           }
 
-          currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
+          val ctors = normalCtors ++ namedCtors
 
-          exports.toList
+          implicit val pos = ctors.head.pos
+
+          val js.MethodDef(_, _, args, _, body) =
+            withNewLocalNameScope(genExportMethod(ctors, jsName))
+
+          js.ConstructorExportDef(jsName, args, body)
         }
+
+        exports.toList
       }
     }
 
@@ -144,19 +133,10 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
       val methodIdent = encodeMethodSym(sym)
 
-      withScopedVars(
-          currentMethodInfoBuilder := new MethodInfoBuilder
-      ) {
-        currentMethodInfoBuilder.setEncodedName(methodIdent.name)
-
-        val result = js.MethodDef(static = false, methodIdent,
-            List(inArg), toIRType(sym.tpe.resultType),
-            genNamedExporterBody(trgSym, inArg.ref))(
-            OptimizerHints.empty, None)
-
-        currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
-        result
-      }
+      js.MethodDef(static = false, methodIdent,
+          List(inArg), toIRType(sym.tpe.resultType),
+          genNamedExporterBody(trgSym, inArg.ref))(
+          OptimizerHints.empty, None)
     }
 
     private def genNamedExporterBody(trgSym: Symbol, inArg: js.Tree)(
@@ -239,22 +219,11 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
     def genMemberExportOrDispatcher(classSym: Symbol, jsName: String,
         isProp: Boolean, alts: List[Symbol], isDispatcher: Boolean): js.Tree = {
-      withScopedVars(
-        currentMethodInfoBuilder := new MethodInfoBuilder
-      ) {
-        currentMethodInfoBuilder
-          .setEncodedName(jsName)
-          .setIsExported(true)
-
-        val result = withNewLocalNameScope {
-          if (isProp)
-            genExportProperty(alts, jsName)
-          else
-            genExportMethod(alts.map(ExportedSymbol), jsName)
-        }
-
-        currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
-        result
+      withNewLocalNameScope {
+        if (isProp)
+          genExportProperty(alts, jsName)
+        else
+          genExportMethod(alts.map(ExportedSymbol), jsName)
       }
     }
 
@@ -485,9 +454,7 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
 
             val optCond = typeTest match {
               case HijackedTypeTest(boxedClassName, _) =>
-                val tpe = jstpe.ClassType(boxedClassName)
-                currentMethodInfoBuilder.addUsedInstanceTest(tpe)
-                Some(js.IsInstanceOf(paramRef, tpe))
+                Some(js.IsInstanceOf(paramRef, jstpe.ClassType(boxedClassName)))
 
               case InstanceOfTypeTest(tpe) =>
                 Some(genIsInstanceOf(paramRef, tpe))

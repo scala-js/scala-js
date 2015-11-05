@@ -19,7 +19,6 @@ import scala.annotation.tailrec
 import org.scalajs.core.ir
 import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
 import ir.Trees.OptimizerHints
-import ir.Infos._
 
 import util.ScopedVar
 import ScopedVar.withScopedVars
@@ -127,9 +126,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     // Some state --------------------------------------------------------------
 
     val currentClassSym          = new ScopedVar[Symbol]
-    val currentClassInfoBuilder  = new ScopedVar[ClassInfoBuilder]
     val currentMethodSym         = new ScopedVar[Symbol]
-    val currentMethodInfoBuilder = new ScopedVar[MethodInfoBuilder]
     val thisLocalVarIdent        = new ScopedVar[Option[js.Ident]](None)
     val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
     val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
@@ -153,7 +150,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     // scalastyle:off disallow.space.after.token
     private val translatedAnonFunctions =
       mutable.Map.empty[Symbol,
-        (/*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree, MethodInfo)]
+        /*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree]
     private val instantiatedAnonFunctions =
       mutable.Set.empty[Symbol]
     private val undefinedDefaultParams =
@@ -191,7 +188,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     override def apply(cunit: CompilationUnit): Unit = {
       try {
-        val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef, ClassInfo)]
+        val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
 
         def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
@@ -242,7 +239,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
           if (!isPrimitive && !isRawJSImplClass) {
             withScopedVars(
-                currentClassInfoBuilder := new ClassInfoBuilder,
                 currentClassSym         := sym,
                 unexpectedMutatedFields := mutable.Set.empty
             ) {
@@ -261,13 +257,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                 genClass(cd)
               }
 
-              currentClassInfoBuilder
-                .setEncodedName(encodeClassFullName(sym))
-                .setKind(tree.kind)
-                .setSuperClass(tree.superClass.map(_.name))
-                .addInterfaces(tree.interfaces.map(_.name))
-
-              generatedClasses += ((sym, tree, currentClassInfoBuilder.result()))
+              generatedClasses += ((sym, tree))
             }
           }
         }
@@ -275,8 +265,8 @@ abstract class GenJSCode extends plugins.PluginComponent
         val clDefs = generatedClasses.map(_._2).toList
         generatedJSAST(clDefs)
 
-        for ((sym, tree, info) <- generatedClasses) {
-          genIRFile(cunit, sym, tree, info)
+        for ((sym, tree) <- generatedClasses) {
+          genIRFile(cunit, sym, tree)
         }
       } finally {
         translatedAnonFunctions.clear()
@@ -363,7 +353,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (!isHijacked) genClassFields(cd) ++ generatedMethods.toList
         else generatedMethods.toList // No fields needed
 
-      // Create method info builder for exported stuff
+      // Generate the exported members, constructors and accessors
       val exports = {
         // Generate the exported members
         val memberExports = genMemberExports(sym, exportedSymbols.toList)
@@ -372,8 +362,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         val exportedConstructorsOrAccessors =
           if (isStaticModule(sym)) genModuleAccessorExports(sym)
           else genConstructorExports(sym)
-        if (exportedConstructorsOrAccessors.nonEmpty)
-          currentClassInfoBuilder.setIsExported(true)
 
         memberExports ++ exportedConstructorsOrAccessors
       }
@@ -463,8 +451,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val exports =
         if (isStaticModule(sym)) genModuleAccessorExports(sym)
         else genJSClassExports(sym)
-      if (exports.nonEmpty)
-        currentClassInfoBuilder.setIsExported(true)
 
       // Generate fields (and add to methods + ctors)
       val generatedMembers = {
@@ -694,10 +680,9 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Generate a method -------------------------------------------------------
 
-    def genMethod(dd: DefDef): Option[js.MethodDef] = withNewLocalNameScope {
-      genMethodWithInfoBuilder(dd) map { case (methodDef, infoBuilder) =>
-        currentClassInfoBuilder.addMethod(infoBuilder.result())
-        methodDef
+    def genMethod(dd: DefDef): Option[js.MethodDef] = {
+      withNewLocalNameScope {
+        genMethodWithCurrentLocalNameScope(dd)
       }
     }
 
@@ -720,9 +705,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *
      *  Other (normal) methods are emitted with `genMethodBody()`.
      */
-    def genMethodWithInfoBuilder(
-        dd: DefDef): Option[(js.MethodDef, MethodInfoBuilder)] = {
-
+    def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
       implicit val pos = dd.pos
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
@@ -746,12 +729,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           if (isJSClassConstructor) js.StringLiteral("constructor")
           else encodeMethodSym(sym)
 
-        def createInfoBuilder() = {
-          new MethodInfoBuilder()
-            .setEncodedName(methodName.name)
-            .setIsStatic(sym.owner.isImplClass)
-        }
-
         def jsParams = for (param <- params) yield {
           implicit val pos = param.pos
           js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
@@ -761,12 +738,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (scalaPrimitives.isPrimitive(sym)) {
           None
         } else if (sym.isDeferred || sym.owner.isInterface) {
-          val infoBuilder = createInfoBuilder().setIsAbstract(true)
-          Some((
-              js.MethodDef(static = false, methodName,
-                  jsParams, currentClassType, js.EmptyTree)(
-                  OptimizerHints.empty, None)),
-              infoBuilder)
+          Some(js.MethodDef(static = false, methodName,
+              jsParams, currentClassType, js.EmptyTree)(
+              OptimizerHints.empty, None))
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
         } else if (isTrivialConstructor(sym, params, rhs)) {
@@ -775,7 +749,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           None
         } else {
           withScopedVars(
-              currentMethodInfoBuilder := createInfoBuilder(),
               mutableLocalVars := mutable.Set.empty,
               mutatedLocalVars := mutable.Set.empty
           ) {
@@ -803,7 +776,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
             val methodDef = {
               if (isJSClassConstructor) {
-                currentMethodInfoBuilder.setIsExported(true)
                 val body0 = genStat(rhs)
                 val body1 = moveAllStatementsAfterSuperConstructorCall(body0)
                 val (patchedParams, patchedBody) =
@@ -840,7 +812,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               }
             }
 
-            Some((methodDefWithoutUselessVars, currentMethodInfoBuilder.get))
+            Some(methodDefWithoutUselessVars)
           }
         }
       }
@@ -1035,36 +1007,28 @@ abstract class GenJSCode extends plugins.PluginComponent
       val proxyIdent = encodeMethodSym(sym, reflProxy = true)
 
       withNewLocalNameScope {
-        withScopedVars(
-            currentMethodInfoBuilder := new MethodInfoBuilder
-        ) {
-          currentMethodInfoBuilder.setEncodedName(proxyIdent.name)
-
-          val jsParams = for (param <- sym.tpe.params) yield {
-            implicit val pos = param.pos
-            js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-                mutable = false, rest = false)
-          }
-
-          val call = genApplyMethod(genThis(), sym, jsParams.map(_.ref))
-          val resTpeEnteringPosterasure = enteringPhase(currentRun.posterasurePhase) {
-            sym.tpe match {
-              case _: ExistentialType =>
-                /* We should not see an ExistentialType here. This is a
-                 * scalac 2.10 bug. We assume no boxing is required. See #1581.
-                 */
-                ObjectTpe
-              case symTpe =>
-                symTpe.resultType
-            }
-          }
-          val body = ensureBoxed(call, resTpeEnteringPosterasure)
-
-          currentClassInfoBuilder.addMethod(currentMethodInfoBuilder.result())
-
-          js.MethodDef(static = false, proxyIdent, jsParams, jstpe.AnyType,
-              body)(OptimizerHints.empty, None)
+        val jsParams = for (param <- sym.tpe.params) yield {
+          implicit val pos = param.pos
+          js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
+              mutable = false, rest = false)
         }
+
+        val call = genApplyMethod(genThis(), sym, jsParams.map(_.ref))
+        val resTpeEnteringPosterasure = enteringPhase(currentRun.posterasurePhase) {
+          sym.tpe match {
+            case _: ExistentialType =>
+              /* We should not see an ExistentialType here. This is a
+               * scalac 2.10 bug. We assume no boxing is required. See #1581.
+               */
+              ObjectTpe
+            case symTpe =>
+              symTpe.resultType
+          }
+        }
+        val body = ensureBoxed(call, resTpeEnteringPosterasure)
+
+        js.MethodDef(static = false, proxyIdent, jsParams, jstpe.AnyType,
+            body)(OptimizerHints.empty, None)
       }
     }
 
@@ -1142,7 +1106,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             optimizerHints, None)
       } else {
         assert(!static, tree.pos)
-        currentMethodInfoBuilder.setIsStatic(true)
 
         withScopedVars(
           thisLocalVarIdent := Some(freshLocalIdent("this"))
@@ -1770,8 +1733,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else if (isHijackedBoxedClass(tpe.typeSymbol)) {
         genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
       } else if (translatedAnonFunctions contains tpe.typeSymbol) {
-        val (functionMaker, funInfo) = translatedAnonFunctions(tpe.typeSymbol)
-        addAllInfoOfAnonFunction(funInfo)
+        val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
         functionMaker(args map genExpr)
       } else if (isRawJSType(tpe)) {
         genPrimitiveJSNew(tree)
@@ -1785,37 +1747,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             abort(s"Non reference type cannot be instantiated: $generatedType")
         }
       }
-    }
-
-    private def addAllInfoOfAnonFunction(funInfo: MethodInfo): Unit = {
-      val builder = currentMethodInfoBuilder.get
-
-      for {
-        (cls, methods) <- funInfo.methodsCalled
-        method <- methods
-      } builder.addMethodCalled(cls, method)
-
-      for {
-        (cls, methods) <- funInfo.methodsCalledStatically
-        method <- methods
-      } builder.addMethodCalledStatically(cls, method)
-
-      for {
-        (cls, methods) <- funInfo.staticMethodsCalled
-        method <- methods
-      } builder.addStaticMethodCalled(cls, method)
-
-      for (cls <- funInfo.instantiatedClasses)
-        builder.addInstantiatedClass(cls)
-
-      for (cls <- funInfo.accessedModules)
-        builder.addAccessedModule(cls)
-
-      for (cls <- funInfo.usedInstanceTests)
-        builder.addUsedInstanceTest(cls)
-
-      for (cls <- funInfo.accessedClassData)
-        builder.addAccessedClassData(cls)
     }
 
     /** Gen jump to a label.
@@ -1956,8 +1887,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val className = encodeClassFullName(method.owner)
       val methodIdent = encodeMethodSym(method)
-      currentMethodInfoBuilder.addMethodCalledStatically(
-          className, methodIdent.name)
       js.ApplyStatically(receiver, jstpe.ClassType(className),
           methodIdent, arguments)(toIRType(method.tpe.resultType))
     }
@@ -1983,7 +1912,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genApplyStatic(cls: String, methodIdent: js.Ident,
         arguments: List[js.Tree], resultType: jstpe.Type)(
         implicit pos: Position): js.Tree = {
-      currentMethodInfoBuilder.addStaticMethodCalled(cls, methodIdent.name)
       js.ApplyStatic(jstpe.ClassType(cls), methodIdent,
           arguments)(resultType)
     }
@@ -2031,9 +1959,7 @@ abstract class GenJSCode extends plugins.PluginComponent
               js.JSBinaryOp.instanceof, value, genPrimitiveJSClass(sym)), 'Z')
         }
       } else {
-        val refType = toReferenceType(to)
-        currentMethodInfoBuilder.addUsedInstanceTest(refType)
-        js.IsInstanceOf(value, refType)
+        js.IsInstanceOf(value, toReferenceType(to))
       }
     }
 
@@ -2041,11 +1967,8 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genAsInstanceOf(value: js.Tree, to: Type)(
         implicit pos: Position): js.Tree = {
 
-      def default: js.Tree = {
-        val refType = toReferenceType(to)
-        currentMethodInfoBuilder.addUsedInstanceTest(refType)
-        js.AsInstanceOf(value, refType)
-      }
+      def default: js.Tree =
+        js.AsInstanceOf(value, toReferenceType(to))
 
       val sym = to.typeSymbol
 
@@ -2086,7 +2009,6 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genApplyMethod(receiver: js.Tree, methodIdent: js.Ident,
         arguments: List[js.Tree], resultType: jstpe.Type)(
         implicit pos: Position): js.Tree = {
-      currentMethodInfoBuilder.addMethodCalled(receiver.tpe, methodIdent.name)
       js.Apply(receiver, methodIdent, arguments)(resultType)
     }
 
@@ -2104,7 +2026,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           s"Trying to instantiate a raw JS function def $clazz")
       val className = encodeClassFullName(clazz)
       val ctorIdent = encodeMethodSym(ctor)
-      currentMethodInfoBuilder.addInstantiatedClass(className, ctorIdent.name)
       js.New(jstpe.ClassType(className), ctorIdent, arguments)
     }
 
@@ -2140,7 +2061,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           "too many arguments for array constructor: found " + arguments.length +
           " but array has only " + arrayType.dimensions + " dimension(s)")
 
-      currentMethodInfoBuilder.addAccessedClassData(arrayType)
       js.NewArray(arrayType, arguments)
     }
 
@@ -2151,7 +2071,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       val ArrayValue(tpt @ TypeTree(), elems) = tree
 
       val arrType = toReferenceType(tree.tpe).asInstanceOf[jstpe.ArrayType]
-      currentMethodInfoBuilder.addAccessedClassData(arrType)
       js.ArrayValue(arrType, elems map genExpr)
     }
 
@@ -3682,9 +3601,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         implicit pos: Position): js.Tree = {
       assert(!isStaticModule(sym) && !sym.isInterface,
           s"genPrimitiveJSClass called with non-class $sym")
-      val classFullName = encodeClassFullName(sym)
-      currentMethodInfoBuilder.addInstantiatedClass(classFullName)
-      js.LoadJSConstructor(jstpe.ClassType(classFullName))
+      js.LoadJSConstructor(jstpe.ClassType(encodeClassFullName(sym)))
     }
 
     /** Gen JS code representing a JS module (var of the global scope) */
@@ -3950,7 +3867,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       withScopedVars(
           currentClassSym := sym
       ) {
-        val (functionMakerBase, functionInfo, arity) =
+        val (functionMakerBase, arity) =
           tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
             return false
           }
@@ -3958,7 +3875,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           JSFunctionToScala(functionMakerBase(capturedArgs), arity)
         }
 
-        translatedAnonFunctions += sym -> (functionMaker, functionInfo)
+        translatedAnonFunctions += sym -> functionMaker
       }
       true
       // scalastyle:on return
@@ -4036,12 +3953,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       withScopedVars(
           currentClassSym := sym
       ) {
-        val (functionMaker, functionInfo, _) =
+        val (functionMaker, _) =
           tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
             abort(s"Could not generate raw function maker for JS function: $msg")
           }
 
-        translatedAnonFunctions += sym -> (functionMaker, functionInfo)
+        translatedAnonFunctions += sym -> functionMaker
       }
     }
 
@@ -4049,7 +3966,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  genAndRecordRawJSFunctionClass.
      */
     private def tryGenAndRecordAnonFunctionClassGeneric(cd: ClassDef)(
-        fail: (=> String) => Nothing): (List[js.Tree] => js.Tree, MethodInfo, Int) = {
+        fail: (=> String) => Nothing): (List[js.Tree] => js.Tree, Int) = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
@@ -4132,59 +4049,55 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Third step: emit the body of the apply method def
 
-        val (applyMethod, methodInfoBuilder) = withScopedVars(
+        val applyMethod = withScopedVars(
             paramAccessorLocals := (paramAccessors zip ctorParamDefs).toMap,
             tryingToGenMethodAsJSFunction := true
         ) {
           try {
-            genMethodWithInfoBuilder(applyDef).getOrElse(
-              abort(s"Oops, $applyDef did not produce a method"))
+            genMethodWithCurrentLocalNameScope(applyDef).getOrElse(
+                abort(s"Oops, $applyDef did not produce a method"))
           } catch {
             case e: CancelGenMethodAsJSFunction =>
               fail(e.getMessage)
           }
         }
 
-        withScopedVars(
-            currentMethodInfoBuilder := methodInfoBuilder
-        ) {
-          // Fourth step: patch the body to unbox parameters and box result
+        // Fourth step: patch the body to unbox parameters and box result
 
-          val js.MethodDef(_, _, params, _, body) = applyMethod
-          val (patchedParams, patchedBody) =
-            patchFunBodyWithBoxes(applyDef.symbol, params, body)
+        val js.MethodDef(_, _, params, _, body) = applyMethod
+        val (patchedParams, patchedBody) =
+          patchFunBodyWithBoxes(applyDef.symbol, params, body)
 
-          // Fifth step: build the function maker
+        // Fifth step: build the function maker
 
-          val isThisFunction = JSThisFunctionClasses.exists(sym isSubClass _)
-          assert(!isThisFunction || patchedParams.nonEmpty,
-              s"Empty param list in ThisFunction: $cd")
+        val isThisFunction = JSThisFunctionClasses.exists(sym isSubClass _)
+        assert(!isThisFunction || patchedParams.nonEmpty,
+            s"Empty param list in ThisFunction: $cd")
 
-          val functionMaker = { capturedArgs0: List[js.Tree] =>
-            val capturedArgs =
-              if (hasUnusedOuterCtorParam) capturedArgs0.tail
-              else capturedArgs0
-            assert(capturedArgs.size == ctorParamDefs.size)
+        val functionMaker = { capturedArgs0: List[js.Tree] =>
+          val capturedArgs =
+            if (hasUnusedOuterCtorParam) capturedArgs0.tail
+            else capturedArgs0
+          assert(capturedArgs.size == ctorParamDefs.size)
 
-            if (isThisFunction) {
-              val thisParam :: actualParams = patchedParams
-              js.Closure(
-                  ctorParamDefs,
-                  actualParams,
-                  js.Block(
-                      js.VarDef(thisParam.name, thisParam.ptpe, mutable = false,
-                          js.This()(thisParam.ptpe)(thisParam.pos))(thisParam.pos),
-                      patchedBody),
-                  capturedArgs)
-            } else {
-              js.Closure(ctorParamDefs, patchedParams, patchedBody, capturedArgs)
-            }
+          if (isThisFunction) {
+            val thisParam :: actualParams = patchedParams
+            js.Closure(
+                ctorParamDefs,
+                actualParams,
+                js.Block(
+                    js.VarDef(thisParam.name, thisParam.ptpe, mutable = false,
+                        js.This()(thisParam.ptpe)(thisParam.pos))(thisParam.pos),
+                    patchedBody),
+                capturedArgs)
+          } else {
+            js.Closure(ctorParamDefs, patchedParams, patchedBody, capturedArgs)
           }
-
-          val arity = params.size
-
-          (functionMaker, methodInfoBuilder.result(), arity)
         }
+
+        val arity = params.size
+
+        (functionMaker, arity)
       }
     }
 
@@ -4355,8 +4268,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         genPrimitiveJSModule(sym)
       } else {
         val moduleClassName = encodeClassFullName(sym)
-        if (!foreignIsImplClass(sym))
-          currentMethodInfoBuilder.addAccessedModule(moduleClassName)
 
         val cls = jstpe.ClassType(moduleClassName)
         if (isRawJSType(sym.tpe)) js.LoadJSModule(cls)
@@ -4389,17 +4300,13 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else {
         val instance = genLoadModule(sym.owner)
         val method = encodeStaticMemberSym(sym)
-        currentMethodInfoBuilder.addMethodCalled(instance.tpe, method.name)
         js.Apply(instance, method, Nil)(toIRType(sym.tpe))
       }
     }
 
     /** Generate a Class[_] value (e.g. coming from classOf[T]) */
-    private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree = {
-      val refType = toReferenceType(tpe)
-      currentMethodInfoBuilder.addAccessedClassData(refType)
-      js.ClassOf(refType)
-    }
+    private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
+      js.ClassOf(toReferenceType(tpe))
   }
 
   /** Tests whether the given type represents a raw JavaScript type,
