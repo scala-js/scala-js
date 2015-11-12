@@ -82,12 +82,22 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
   def nextInt(): Int = next(32)
 
   def nextInt(n: Int): Int = {
-    if (n <= 0)
-      throw new IllegalArgumentException("n must be positive");
-
-    if ((n & -n) == n)  // i.e., n is a power of 2
-      ((n * next(31).toLong) >> 31).toInt
-    else {
+    if (n <= 0) {
+      throw new IllegalArgumentException("n must be positive")
+    } else if ((n & -n) == n) { // i.e., n is a power of 2
+      /* The specification is
+       *   ((n * next(31).toLong) >> 31).toInt
+       *   == ((2**log2(n) * next(31).toLong) >> 31).toInt
+       *   == ((next(31).toLong << log2(n)) >> 31).toInt
+       *   == (next(31).toLong >> (31 - log2(n))).toInt
+       *   == next(31) >> (31 - log2(n))
+       * For a power of 2,
+       *   log2(n) == numberOfTrailingZeros(n) == 31 - numberOfLeadingZeros(n)
+       * hence, we simply get
+       *   next(31) >> numberOfLeadingZeros(n)
+       */
+      next(31) >> Integer.numberOfLeadingZeros(n)
+    } else {
       @tailrec
       def loop(): Int = {
         val bits = next(31)
