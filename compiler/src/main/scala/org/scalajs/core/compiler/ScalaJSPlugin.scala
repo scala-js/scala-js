@@ -53,6 +53,15 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     var absSourceMap: Option[URI] = None
   }
 
+  /** Checks and registers module exports on the symbol.
+   *  This bridge allows other plugins (such as ScalaJSJUnitPlugin) to register
+   *  new modules for export between jsinterop and jscode phases. It is meant to
+   *  be accessed using reflection. The calling code still must insert the
+   *  `@JSExport` annotation to the module.
+   */
+  def registerModuleExports(sym: Symbol): Unit =
+    PrepInteropComponent.registerModuleExports(sym)
+
   object PrepInteropComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
     val jsAddons: ScalaJSPlugin.this.jsAddons.type = ScalaJSPlugin.this.jsAddons

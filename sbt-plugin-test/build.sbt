@@ -75,17 +75,21 @@ lazy val testFrameworkJS = testFramework.js
 lazy val testFrameworkJVM = testFramework.jvm
 
 lazy val multiTest = crossProject.
+  jsConfigure(_.enablePlugins(ScalaJSJUnitPlugin)).
   settings(
     testFrameworks ++= Seq(
         TestFramework("sbttest.framework.DummyFramework"),
-        TestFramework("inexistent.Foo", "another.strange.Bar")
+        TestFramework("inexistent.Foo", "another.strange.Bar"),
+        TestFramework("org.scalajs.jasminetest.JasmineFramework")
     )
   ).
   jsSettings(baseSettings: _*).
   jsSettings(
     name := "Multi test framework test JS",
     // Make FrameworkDetector resilient to other output - #1572
-    jsDependencies in Test += ProvidedJS / "consoleWriter.js"
+    jsDependencies in Test += ProvidedJS / "consoleWriter.js",
+    testOptions += Tests.Argument(
+      TestFramework("com.novocode.junit.JUnitFramework"), "-v", "-a")
   ).
   jvmSettings(versionSettings: _*).
   jvmSettings(

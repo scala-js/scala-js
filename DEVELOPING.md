@@ -123,6 +123,6 @@ following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
     > ++SCALA_VERSION
-    > ;compiler/publishLocal;library/publishLocal;javalibEx/publishLocal;testInterface/publishLocal;stubs/publishLocal
+    > ;compiler/publishLocal;library/publishLocal;javalibEx/publishLocal;testInterface/publishLocal;stubs/publishLocal;jasmineTestFramework/publishLocal;jUnitRuntime/publishLocal;jUnitPlugin/publishLocal
     > ++2.10.6
     > ;ir/publishLocal;tools/publishLocal;jsEnvs/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
