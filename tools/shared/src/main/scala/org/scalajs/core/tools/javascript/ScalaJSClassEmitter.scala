@@ -245,7 +245,7 @@ final class ScalaJSClassEmitter private (
       js.Block(
           inheritedCtorDef,
           js.Assign(typeVar.prototype, js.New(inheritedCtorRef, Nil)),
-          genAddToPrototype(className, js.Ident("constructor"), typeVar)
+          genAddToPrototype(className, js.StringLiteral("constructor"), typeVar)
       )
     }
 
