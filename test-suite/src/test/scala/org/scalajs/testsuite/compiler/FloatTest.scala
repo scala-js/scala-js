@@ -104,5 +104,24 @@ object FloatTest extends JasmineTest {
       test(1.973497969450596E-21, 1.973498047135062E-21)
     }
 
+    it("Int should be cast to Float when comparing to Float - #1878") {
+      val intMax: Int = Int.MaxValue
+      val float: Float = (Int.MaxValue - 1).toFloat
+
+      expect(intMax == float).toBeTruthy
+      expect(intMax != float).toBeFalsy
+      expect(intMax < float).toBeFalsy
+      expect(intMax <= float).toBeTruthy
+      expect(intMax > float).toBeFalsy
+      expect(intMax >= float).toBeTruthy
+
+      expect(float == intMax).toBeTruthy
+      expect(float != intMax).toBeFalsy
+      expect(float < intMax).toBeFalsy
+      expect(float <= intMax).toBeTruthy
+      expect(float > intMax).toBeFalsy
+      expect(float >= intMax).toBeTruthy
+    }
+
   }
 }

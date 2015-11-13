@@ -2469,44 +2469,57 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         // Binary operation
         case List(lsrc_in, rsrc_in) =>
-          def convertArg(tree: js.Tree, tpe: Type) = {
-            val kind = toTypeKind(tpe)
+          val leftKind = toTypeKind(args(0).tpe)
+          val rightKind = toTypeKind(args(1).tpe)
 
-            // If we end up with a long, target must be float or double
-            val fromLong =
+          val opType = (leftKind, rightKind) match {
+            case (DoubleKind, _) | (_, DoubleKind) => jstpe.DoubleType
+            case (FloatKind, _) | (_, FloatKind)   => jstpe.FloatType
+            case (INT(_), _) | (_, INT(_))         => jstpe.IntType
+            case (BooleanKind, BooleanKind)        => jstpe.BooleanType
+            case _                                 => jstpe.AnyType
+          }
+
+          def convertArg(tree: js.Tree, kind: TypeKind) = {
+            /* If we end up with a long, the op type must be float or double,
+             * so we can first eliminate the Long case by converting to Double.
+             */
+            val notLong =
               if (kind == LongKind) js.UnaryOp(js.UnaryOp.LongToDouble, tree)
               else tree
 
-            if (resultType != jstpe.FloatType) fromLong
-            else if (kind == FloatKind) fromLong
-            else js.UnaryOp(js.UnaryOp.DoubleToFloat, fromLong)
+            if (opType != jstpe.FloatType) notLong
+            else if (kind == FloatKind) notLong
+            else js.UnaryOp(js.UnaryOp.DoubleToFloat, notLong)
           }
 
-          val lsrc = convertArg(lsrc_in, args(0).tpe)
-          val rsrc = convertArg(rsrc_in, args(1).tpe)
+          val lsrc = convertArg(lsrc_in, leftKind)
+          val rsrc = convertArg(rsrc_in, rightKind)
 
           def genEquality(eqeq: Boolean, not: Boolean) = {
-            val typeKind = toTypeKind(args(0).tpe)
-            typeKind match {
-              case INT(_) | LONG | FLOAT(_) =>
-                /* Note that LONG happens when a fromLong() had to do something,
-                 * which means we're effectively in the FLOAT case. */
-                js.BinaryOp(if (not) js.BinaryOp.Num_!= else js.BinaryOp.Num_==, lsrc, rsrc)
-              case BOOL =>
-                js.BinaryOp(if (not) js.BinaryOp.Boolean_!= else js.BinaryOp.Boolean_==, lsrc, rsrc)
-              case REFERENCE(_) =>
+            opType match {
+              case jstpe.IntType | jstpe.DoubleType | jstpe.FloatType =>
+                js.BinaryOp(
+                    if (not) js.BinaryOp.Num_!= else js.BinaryOp.Num_==,
+                    lsrc, rsrc)
+              case jstpe.BooleanType =>
+                js.BinaryOp(
+                    if (not) js.BinaryOp.Boolean_!= else js.BinaryOp.Boolean_==,
+                    lsrc, rsrc)
+              case _ =>
                 if (eqeq &&
                     // don't call equals if we have a literal null at either side
                     !lsrc.isInstanceOf[js.Null] &&
-                    !rsrc.isInstanceOf[js.Null]) {
+                    !rsrc.isInstanceOf[js.Null] &&
+                    // Arrays, Null, Nothing do not have an equals() method
+                    leftKind.isInstanceOf[REFERENCE]) {
                   val body = genEqEqPrimitive(args(0).tpe, args(1).tpe, lsrc, rsrc)
                   if (not) js.UnaryOp(js.UnaryOp.Boolean_!, body) else body
                 } else {
-                  js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
+                  js.BinaryOp(
+                      if (not) js.BinaryOp.!== else js.BinaryOp.===,
+                      lsrc, rsrc)
                 }
-              case _ =>
-                // Arrays, Null, Nothing do not have an equals() method.
-                js.BinaryOp(if (not) js.BinaryOp.!== else js.BinaryOp.===, lsrc, rsrc)
             }
           }
 
