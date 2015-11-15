@@ -29,14 +29,14 @@ object StackTrace {
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
    */
-  def captureState(throwable: Throwable): Unit = {
+  @inline def captureState(throwable: Throwable): Unit =
     captureState(throwable, createException())
-  }
 
   /** Creates a JS Error with the current stack trace state. */
-  private def createException(): Any = {
+  @inline private def createException(): Any = {
     try {
-      this.asInstanceOf[js.Dynamic].undef() // it does not exist, that's the point
+      // Intentionally throw a JavaScript error
+      new js.Object().asInstanceOf[js.Dynamic].undef()
     } catch {
       case js.JavaScriptException(e) => e
     }
@@ -46,9 +46,8 @@ object StackTrace {
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
    */
-  def captureState(throwable: Throwable, e: Any): Unit = {
+  @inline def captureState(throwable: Throwable, e: Any): Unit =
     throwable.asInstanceOf[js.Dynamic].stackdata = e.asInstanceOf[js.Any]
-  }
 
   /** Tests whether we're running under Rhino. */
   private lazy val isRhino: Boolean = {
@@ -218,7 +217,7 @@ object StackTrace {
     base.replace("_", ".").replace("$und", "_")
   }
 
-  private val decompressedClasses: js.Dictionary[String] = {
+  private lazy val decompressedClasses: js.Dictionary[String] = {
     val dict = js.Dynamic.literal(
         O = "java_lang_Object",
         T = "java_lang_String",
@@ -244,7 +243,7 @@ object StackTrace {
     dict
   }
 
-  private val decompressedPrefixes = js.Dynamic.literal(
+  private lazy val decompressedPrefixes = js.Dynamic.literal(
       sjsr_ = "scala_scalajs_runtime_",
       sjs_  = "scala_scalajs_",
       sci_  = "scala_collection_immutable_",
@@ -257,7 +256,7 @@ object StackTrace {
       ju_   = "java_util_"
   ).asInstanceOf[js.Dictionary[String]]
 
-  private val compressedPrefixes =
+  private lazy val compressedPrefixes =
     js.Object.keys(decompressedPrefixes.asInstanceOf[js.Object])
 
   // end of decodeClassName ----------------------------------------------------
