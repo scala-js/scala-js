@@ -75,7 +75,21 @@ private[optimizer] abstract class OptimizerCore(
   private val usedLocalNames = mutable.Map.empty[String, Boolean]
 
   private val usedLabelNames = mutable.Set.empty[String]
-  private var statesInUse: List[State[_]] = Nil
+
+  /** A list of the States that have been allocated so far, and must be saved.
+   *
+   *  This list only ever grows, even though, in theory, it will keep
+   *  references to states that are not used anymore.
+   *  This creates a "temporary memory leak", but the list is discarded when
+   *  `optimize` terminates anyway because the whole OptimizerCore is discarded.
+   *  It also means that RollbackException will save more state than strictly
+   *  necessary, but it is not incorrect to do so.
+   *
+   *  Manual "memory management" of this list has caused issues such as #1515
+   *  and #1843 in the past. So now we just let it grow in a "region-allocated"
+   *  style of memory management.
+   */
+  private var statesInUse: List[State] = Nil
 
   private var disableOptimisticOptimizations: Boolean = false
   private var rollbacksCount: Int = 0
@@ -113,25 +127,10 @@ private[optimizer] abstract class OptimizerCore(
     }
   }
 
-  private def withState[A](state: State[A])(body: => TailRec[Tree]): TailRec[Tree] = {
-    TailCalls.done {
-      statesInUse ::= state
-      try {
-        /* We have to run a trampoline inside the try..finally, otherwise, if
-         * the body opens a new tryOrRollback, and throws a RollbackException
-         * for it, we'll jump through the finally clause in here and go the
-         * enclosing trampoline. But the enclosing trampoline doesn't know
-         * about the state being introduced here.
-         * This trampoline makes sure that a RollbackException never crosses
-         * the finally block.
-         */
-        trampoline {
-          body
-        }
-      } finally {
-        statesInUse = statesInUse.tail
-      }
-    }
+  private def newSimpleState[A](initialValue: A): SimpleState[A] = {
+    val state = new SimpleState[A](initialValue)
+    statesInUse ::= state
+    state
   }
 
   private def freshLocalName(base: String, mutable: Boolean): String = {
@@ -171,11 +170,11 @@ private[optimizer] abstract class OptimizerCore(
       val trampolineId = curTrampolineId
       val savedUsedLocalNames = usedLocalNames.toMap
       val savedUsedLabelNames = usedLabelNames.toSet
-      val savedStates = statesInUse.map(_.makeBackup())
+      val stateBackups = statesInUse.map(_.makeBackup())
 
       body { () =>
         throw new RollbackException(trampolineId, savedUsedLocalNames,
-            savedUsedLabelNames, savedStates, fallbackFun)
+            savedUsedLabelNames, stateBackups, fallbackFun)
       }
     }
   }
@@ -327,7 +326,8 @@ private[optimizer] abstract class OptimizerCore(
 
               case Some(labelIdent @ Ident(label, _)) =>
                 val newLabel = freshLabelName(label)
-                val info = new LabelInfo(newLabel, acceptRecords = false)
+                val info = new LabelInfo(newLabel, acceptRecords = false,
+                    returnedTypes = newSimpleState(Nil))
                 While(newCond, {
                   val bodyScope = scope.withEnv(
                       scope.env.withLabelInfo(label, info))
@@ -355,7 +355,7 @@ private[optimizer] abstract class OptimizerCore(
         val newName = freshLocalName(name, false)
         val newOriginalName = originalName.orElse(Some(name))
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
+            ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
@@ -814,17 +814,14 @@ private[optimizer] abstract class OptimizerCore(
               Binding(name, origName, tpe, mutable, value)
             }
             withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
-              val alreadyUsedState = new SimpleState[Boolean](false)
-              withState(alreadyUsedState) {
-                val replacement = TentativeClosureReplacement(
-                    captureParams, params, body, captureLocalDefs,
-                    alreadyUsedState, cancelFun)
-                val localDef = LocalDef(
-                    RefinedType(AnyType, isExact = false, isNullable = false),
-                    mutable = false,
-                    replacement)
-                cont1(PreTransLocalDef(localDef))
-              }
+              val replacement = TentativeClosureReplacement(
+                  captureParams, params, body, captureLocalDefs,
+                  alreadyUsed = newSimpleState(false), cancelFun)
+              val localDef = LocalDef(
+                  RefinedType(AnyType, isExact = false, isNullable = false),
+                  mutable = false,
+                  replacement)
+              cont1(PreTransLocalDef(localDef))
             } (cont)
           } { () =>
             val newClosure = transformClosureCommon(captureParams, params, body,
@@ -2881,7 +2878,7 @@ private[optimizer] abstract class OptimizerCore(
       val newName = freshLocalName(name, mutable)
       val newOriginalName = originalName.orElse(Some(newName))
       val localDef = LocalDef(RefinedType(ptpe), mutable,
-          ReplaceWithVarRef(newName, newOriginalName, new SimpleState(true), None))
+          ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
       val newParamDef = ParamDef(
           Ident(newName, newOriginalName)(ident.pos), ptpe, mutable, rest)(p.pos)
       ((name -> localDef), newParamDef)
@@ -2925,63 +2922,62 @@ private[optimizer] abstract class OptimizerCore(
       }
     }
 
-    val info = new LabelInfo(newLabel, acceptRecords = usePreTransform)
-    withState(info.returnedTypes) {
-      val bodyScope = scope.withEnv(scope.env.withLabelInfo(oldLabelName, info))
+    val info = new LabelInfo(newLabel, acceptRecords = usePreTransform,
+        returnedTypes = newSimpleState(Nil))
+    val bodyScope = scope.withEnv(scope.env.withLabelInfo(oldLabelName, info))
 
-      if (usePreTransform) {
-        assert(!isStat, "Cannot use pretransform in statement position")
-        tryOrRollback { cancelFun =>
-          pretransformExpr(body) { tbody0 =>
-            val returnedTypes0 = info.returnedTypes.value
-            if (returnedTypes0.isEmpty) {
-              // no return to that label, we can eliminate it
-              cont(tbody0)
-            } else {
-              val tbody = resolveLocalDef(tbody0)
-              val (newBody, returnedTypes) = tbody match {
-                case PreTransRecordTree(bodyTree, origType, _) =>
-                  (bodyTree, (bodyTree.tpe, origType) :: returnedTypes0)
-                case PreTransTree(bodyTree, tpe) =>
-                  (bodyTree, (bodyTree.tpe, tpe) :: returnedTypes0)
-              }
-              val (actualTypes, origTypes) = returnedTypes.unzip
-              val refinedOrigType =
-                origTypes.reduce(constrainedLub(_, _, resultType))
-              actualTypes.collectFirst {
-                case actualType: RecordType => actualType
-              }.fold[TailRec[Tree]] {
-                // None of the returned types are records
-                cont(PreTransTree(
-                    doMakeTree(newBody, actualTypes), refinedOrigType))
-              } { recordType =>
-                if (actualTypes.exists(t => t != recordType && t != NothingType))
-                  cancelFun()
-
-                val resultTree = doMakeTree(newBody, actualTypes)
-
-                if (origTypes.exists(t => t != refinedOrigType && !t.isNothingType))
-                  cancelFun()
-
-                cont(PreTransRecordTree(resultTree, refinedOrigType, cancelFun))
-              }
+    if (usePreTransform) {
+      assert(!isStat, "Cannot use pretransform in statement position")
+      tryOrRollback { cancelFun =>
+        pretransformExpr(body) { tbody0 =>
+          val returnedTypes0 = info.returnedTypes.value
+          if (returnedTypes0.isEmpty) {
+            // no return to that label, we can eliminate it
+            cont(tbody0)
+          } else {
+            val tbody = resolveLocalDef(tbody0)
+            val (newBody, returnedTypes) = tbody match {
+              case PreTransRecordTree(bodyTree, origType, _) =>
+                (bodyTree, (bodyTree.tpe, origType) :: returnedTypes0)
+              case PreTransTree(bodyTree, tpe) =>
+                (bodyTree, (bodyTree.tpe, tpe) :: returnedTypes0)
             }
-          } (bodyScope)
-        } { () =>
-          returnable(oldLabelName, resultType, body, isStat,
-              usePreTransform = false)(cont)
-        }
+            val (actualTypes, origTypes) = returnedTypes.unzip
+            val refinedOrigType =
+              origTypes.reduce(constrainedLub(_, _, resultType))
+            actualTypes.collectFirst {
+              case actualType: RecordType => actualType
+            }.fold[TailRec[Tree]] {
+              // None of the returned types are records
+              cont(PreTransTree(
+                  doMakeTree(newBody, actualTypes), refinedOrigType))
+            } { recordType =>
+              if (actualTypes.exists(t => t != recordType && t != NothingType))
+                cancelFun()
+
+              val resultTree = doMakeTree(newBody, actualTypes)
+
+              if (origTypes.exists(t => t != refinedOrigType && !t.isNothingType))
+                cancelFun()
+
+              cont(PreTransRecordTree(resultTree, refinedOrigType, cancelFun))
+            }
+          }
+        } (bodyScope)
+      } { () =>
+        returnable(oldLabelName, resultType, body, isStat,
+            usePreTransform = false)(cont)
+      }
+    } else {
+      val newBody = transform(body, isStat)(bodyScope)
+      val returnedTypes0 = info.returnedTypes.value.map(_._1)
+      if (returnedTypes0.isEmpty) {
+        // no return to that label, we can eliminate it
+        cont(PreTransTree(newBody, RefinedType(newBody.tpe)))
       } else {
-        val newBody = transform(body, isStat)(bodyScope)
-        val returnedTypes0 = info.returnedTypes.value.map(_._1)
-        if (returnedTypes0.isEmpty) {
-          // no return to that label, we can eliminate it
-          cont(PreTransTree(newBody, RefinedType(newBody.tpe)))
-        } else {
-          val returnedTypes = newBody.tpe :: returnedTypes0
-          val tree = doMakeTree(newBody, returnedTypes)
-          cont(PreTransTree(tree, RefinedType(tree.tpe)))
-        }
+        val returnedTypes = newBody.tpe :: returnedTypes0
+        val tree = doMakeTree(newBody, returnedTypes)
+        cont(PreTransTree(tree, RefinedType(tree.tpe)))
       }
     }
   }
@@ -3098,88 +3094,87 @@ private[optimizer] abstract class OptimizerCore(
       val newName = freshLocalName(name, mutable)
       val newOriginalName = originalName.orElse(Some(name))
 
-      val used = new SimpleState(false)
-      withState(used) {
-        def doBuildInner(localDef: LocalDef)(varDef: => VarDef)(
-            cont: PreTransCont): TailRec[Tree] = {
-          buildInner(localDef, { tinner =>
-            if (used.value) {
-              cont(PreTransBlock(varDef :: Nil, tinner))
-            } else {
-              tinner match {
-                case PreTransLocalDef(`localDef`) =>
-                  cont(value)
-                case _ if tinner.contains(localDef) =>
-                  cont(PreTransBlock(varDef :: Nil, tinner))
-                case _ =>
-                  val rhsSideEffects = finishTransformStat(value)
-                  rhsSideEffects match {
-                    case Skip() =>
-                      cont(tinner)
-                    case _ =>
-                      if (rhsSideEffects.tpe == NothingType)
-                        cont(PreTransTree(rhsSideEffects, RefinedType.Nothing))
-                      else
-                        cont(PreTransBlock(rhsSideEffects :: Nil, tinner))
-                  }
-                }
-            }
-          })
-        }
+      val used = newSimpleState(false)
 
-        resolveLocalDef(value) match {
-          case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
-            val recordType = valueTree.tpe.asInstanceOf[RecordType]
-            if (!isImmutableType(recordType))
-              cancelFun()
-            val localDef = LocalDef(valueTpe, mutable,
-                ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-                    used, cancelFun))
-            doBuildInner(localDef) {
-              VarDef(Ident(newName, newOriginalName), recordType, mutable,
-                  valueTree)
-            } (cont)
-
-          case PreTransTree(valueTree, valueTpe) =>
-            def doDoBuildInner(optValueTree: Option[() => Tree])(
-                cont1: PreTransCont) = {
-              val localDef = LocalDef(tpe, mutable, ReplaceWithVarRef(
-                  newName, newOriginalName, used, optValueTree))
-              doBuildInner(localDef) {
-                VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
-                    optValueTree.fold(valueTree)(_()))
-              } (cont1)
-            }
-            if (mutable) {
-              doDoBuildInner(None)(cont)
-            } else (valueTree match {
-              case LongFromInt(arg) =>
-                withNewLocalDef(
-                    Binding("x", None, IntType, false, PreTransTree(arg))) {
-                  (intLocalDef, cont1) =>
-                    doDoBuildInner(Some(
-                        () => LongFromInt(intLocalDef.newReplacement)))(
-                        cont1)
-                } (cont)
-
-              case BinaryOp(op @ (BinaryOp.Long_+ | BinaryOp.Long_-),
-                  LongFromInt(intLhs), LongFromInt(intRhs)) =>
-                withNewLocalDefs(List(
-                    Binding("x", None, IntType, false, PreTransTree(intLhs)),
-                    Binding("y", None, IntType, false, PreTransTree(intRhs)))) {
-                  (intLocalDefs, cont1) =>
-                    val List(lhsLocalDef, rhsLocalDef) = intLocalDefs
-                    doDoBuildInner(Some(
-                        () => BinaryOp(op,
-                            LongFromInt(lhsLocalDef.newReplacement),
-                            LongFromInt(rhsLocalDef.newReplacement))))(
-                        cont1)
-                } (cont)
-
+      def doBuildInner(localDef: LocalDef)(varDef: => VarDef)(
+          cont: PreTransCont): TailRec[Tree] = {
+        buildInner(localDef, { tinner =>
+          if (used.value) {
+            cont(PreTransBlock(varDef :: Nil, tinner))
+          } else {
+            tinner match {
+              case PreTransLocalDef(`localDef`) =>
+                cont(value)
+              case _ if tinner.contains(localDef) =>
+                cont(PreTransBlock(varDef :: Nil, tinner))
               case _ =>
-                doDoBuildInner(None)(cont)
-            })
-        }
+                val rhsSideEffects = finishTransformStat(value)
+                rhsSideEffects match {
+                  case Skip() =>
+                    cont(tinner)
+                  case _ =>
+                    if (rhsSideEffects.tpe == NothingType)
+                      cont(PreTransTree(rhsSideEffects, RefinedType.Nothing))
+                    else
+                      cont(PreTransBlock(rhsSideEffects :: Nil, tinner))
+                }
+              }
+          }
+        })
+      }
+
+      resolveLocalDef(value) match {
+        case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
+          val recordType = valueTree.tpe.asInstanceOf[RecordType]
+          if (!isImmutableType(recordType))
+            cancelFun()
+          val localDef = LocalDef(valueTpe, mutable,
+              ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
+                  used, cancelFun))
+          doBuildInner(localDef) {
+            VarDef(Ident(newName, newOriginalName), recordType, mutable,
+                valueTree)
+          } (cont)
+
+        case PreTransTree(valueTree, valueTpe) =>
+          def doDoBuildInner(optValueTree: Option[() => Tree])(
+              cont1: PreTransCont) = {
+            val localDef = LocalDef(tpe, mutable, ReplaceWithVarRef(
+                newName, newOriginalName, used, optValueTree))
+            doBuildInner(localDef) {
+              VarDef(Ident(newName, newOriginalName), tpe.base, mutable,
+                  optValueTree.fold(valueTree)(_()))
+            } (cont1)
+          }
+          if (mutable) {
+            doDoBuildInner(None)(cont)
+          } else (valueTree match {
+            case LongFromInt(arg) =>
+              withNewLocalDef(
+                  Binding("x", None, IntType, false, PreTransTree(arg))) {
+                (intLocalDef, cont1) =>
+                  doDoBuildInner(Some(
+                      () => LongFromInt(intLocalDef.newReplacement)))(
+                      cont1)
+              } (cont)
+
+            case BinaryOp(op @ (BinaryOp.Long_+ | BinaryOp.Long_-),
+                LongFromInt(intLhs), LongFromInt(intRhs)) =>
+              withNewLocalDefs(List(
+                  Binding("x", None, IntType, false, PreTransTree(intLhs)),
+                  Binding("y", None, IntType, false, PreTransTree(intRhs)))) {
+                (intLocalDefs, cont1) =>
+                  val List(lhsLocalDef, rhsLocalDef) = intLocalDefs
+                  doDoBuildInner(Some(
+                      () => BinaryOp(op,
+                          LongFromInt(lhsLocalDef.newReplacement),
+                          LongFromInt(rhsLocalDef.newReplacement))))(
+                      cont1)
+              } (cont)
+
+            case _ =>
+              doDoBuildInner(None)(cont)
+          })
       }
     }
 
@@ -3206,7 +3201,7 @@ private[optimizer] abstract class OptimizerCore(
             if !localIsMutable(refName) =>
           buildInner(LocalDef(refinedType, false,
               ReplaceWithVarRef(refName, refOriginalName,
-                  new SimpleState(true), None)), cont)
+                  newSimpleState(true), None)), cont)
 
         case _ =>
           withDedicatedVar(refinedType)
@@ -3265,11 +3260,7 @@ private[optimizer] abstract class OptimizerCore(
             usedLocalNames ++= e.savedUsedLocalNames
             usedLabelNames.clear()
             usedLabelNames ++= e.savedUsedLabelNames
-            assert(statesInUse.size == e.savedStates.size,
-                s"statesInUse.size ${statesInUse.size} != " +
-                s"${e.savedStates.size} savedStates.size")
-            for ((state, backup) <- statesInUse zip e.savedStates)
-              state.asInstanceOf[State[Any]].restore(backup)
+            e.stateBackups.foreach(_.restore())
 
             rec = e.cont
         }
@@ -3416,7 +3407,7 @@ private[optimizer] object OptimizerCore {
       val newName: String,
       val acceptRecords: Boolean,
       /** (actualType, originalType), actualType can be a RecordType. */
-      val returnedTypes: SimpleState[List[(Type, RefinedType)]] = new SimpleState(Nil))
+      val returnedTypes: SimpleState[List[(Type, RefinedType)]])
 
   private class OptEnv(
       val localDefs: Map[String, LocalDef],
@@ -3690,14 +3681,20 @@ private[optimizer] object OptimizerCore {
   private def getIntrinsicCode(target: AbstractMethodID): Int =
     Intrinsics.intrinsics(target.toString)
 
-  private trait State[A] {
-    def makeBackup(): A
-    def restore(backup: A): Unit
+  private trait StateBackup {
+    def restore(): Unit
   }
 
-  private class SimpleState[A](var value: A) extends State[A] {
-    def makeBackup(): A = value
-    def restore(backup: A): Unit = value = backup
+  private trait State {
+    def makeBackup(): StateBackup
+  }
+
+  private class SimpleState[A](var value: A) extends State {
+    private class Backup(savedValue: A) extends StateBackup {
+      override def restore(): Unit = value = savedValue
+    }
+
+    def makeBackup(): StateBackup = new Backup(value)
   }
 
   trait AbstractMethodID {
@@ -3880,7 +3877,7 @@ private[optimizer] object OptimizerCore {
   private class RollbackException(val trampolineId: Int,
       val savedUsedLocalNames: Map[String, Boolean],
       val savedUsedLabelNames: Set[String],
-      val savedStates: List[Any],
+      val stateBackups: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
   class OptimizeException(val myself: AbstractMethodID,
