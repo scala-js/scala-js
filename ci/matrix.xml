@@ -44,6 +44,7 @@
         'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
+    sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
@@ -224,7 +225,7 @@
         compiler/test:scalastyle tools/scalastyle tools/test:scalastyle \
         jsEnvs/scalastyle jsEnvs/test:scalastyle testAdapter/scalastyle \
         sbtPlugin/scalastyle testInterface/scalastyle \
-        jasmineTestFramework/scalastyle testSuite/test:scalastyle \
+        jasmineTestFramework/scalastyle testSuite/test:scalastyle  testSuiteJVM/test:scalastyle \
         javalibExTestSuite/test:scalastyle helloworld/scalastyle \
         reversi/scalastyle testingExample/scalastyle \
         testingExample/test:scalastyle &&
