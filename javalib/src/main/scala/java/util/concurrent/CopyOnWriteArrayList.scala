@@ -9,7 +9,7 @@ import scala.scalajs._
 
 import java.util._
 
-class CopyOnWriteArrayList[E] private (private var inner: js.Array[E])
+class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     extends List[E] with RandomAccess with Cloneable with Serializable {
   self =>
 

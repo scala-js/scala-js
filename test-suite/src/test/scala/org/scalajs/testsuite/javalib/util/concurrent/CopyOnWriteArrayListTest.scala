@@ -89,6 +89,19 @@ abstract class CopyOnWriteArrayListTest[F <: CopyOnWriteArrayListFactory](listFa
       }
       expect(iter2.hasNext).toBeFalsy
     }
+
+    it ("should have accessible array constructor - #2023") {
+      def test[T <: AnyRef](arr: Array[T]): Unit = {
+        val cowal1 = new ju.concurrent.CopyOnWriteArrayList(arr)
+        expect(cowal1.length).toEqual(arr.length)
+        for (i <- arr.indices)
+          expect(cowal1.get(i) == arr(i)).toBeTruthy
+      }
+
+      test(Array("a", "", "da", "23"))
+      test(Array[Integer](1, 7, 2, 5, 3))
+      test(Array[Character]('a', '3', '5', 'g', 'a'))
+    }
   }
 }
 
