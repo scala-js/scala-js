@@ -87,6 +87,10 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
 
           val conversion = matchResult(5).get.charAt(0)
 
+          // Avoid using conversion.isUpper not to depend on the Unicode database
+          @inline def isConversionUpperCase: scala.Boolean =
+            conversion <= 'Z'
+
           def intArg: Int = (arg: Any) match {
             case arg: Int  => arg
             case arg: Char => arg.toInt
@@ -153,7 +157,7 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
             }
 
             val casedStr =
-              if (conversion.isUpper) padStr.toUpperCase()
+              if (isConversionUpperCase) padStr.toUpperCase()
               else padStr
             dest.append(casedStr)
           }
@@ -169,21 +173,21 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
               else Integer.toHexString(arg.hashCode)
             }
             case 's' | 'S' => arg match {
-              case null if !hasFlag("#") => pad("null")
               case formattable: Formattable =>
-                val flags = (
-                  (if (hasFlag("-"))       FormattableFlags.LEFT_JUSTIFY else 0) |
-                  (if (hasFlag("#"))       FormattableFlags.ALTERNATE    else 0) |
-                  (if (conversion.isUpper) FormattableFlags.UPPERCASE    else 0)
-                )
-
+                val flags = {
+                  (if (hasFlag("-")) FormattableFlags.LEFT_JUSTIFY else 0) |
+                  (if (hasFlag("#")) FormattableFlags.ALTERNATE else 0) |
+                  (if (isConversionUpperCase) FormattableFlags.UPPERCASE else 0)
+                }
                 formattable.formatTo(this, flags,
-                                     if (hasWidth)     width.toInt     else -1,
-                                     if (hasPrecision) precision.toInt else -1)
+                    if (hasWidth) width else -1,
+                    if (hasPrecision) precision else -1)
                 None // no further processing
-              case t: AnyRef if !hasFlag("#") => pad(t.toString)
               case _ =>
-                throw new FormatFlagsConversionMismatchException("#", 's')
+                if (!hasFlag("#"))
+                  pad(String.valueOf(arg))
+                else
+                  throw new FormatFlagsConversionMismatchException("#", 's')
             }
             case 'c' | 'C' =>
               pad(intArg.toChar.toString)
