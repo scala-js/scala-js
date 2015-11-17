@@ -24,6 +24,10 @@ To test your changes, run
 
     > testSuite/test
 
+or test your tests on the JVM.
+
+    > testSuiteJVM/test
+
 If you have changed the IR or the compiler, you typically need to
 
     > clean

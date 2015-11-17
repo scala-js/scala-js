@@ -386,7 +386,7 @@ object Build extends sbt.Build {
               clean in jUnitRuntime, clean in jUnitPlugin,
               clean in examples, clean in helloworld,
               clean in reversi, clean in testingExample,
-              clean in testSuite, clean in noIrCheckTest,
+              clean in testSuite, clean in testSuiteJVM, clean in noIrCheckTest,
               clean in javalibExTestSuite,
               clean in partest, clean in partestSuite).value,
 
@@ -1088,84 +1088,95 @@ object Build extends sbt.Build {
       }
   )
 
+  def testSuiteCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Seq(
+    publishArtifact in Compile := false,
+    scalacOptions ~= (_.filter(_ != "-deprecation")),
+
+    // Need reflect for typechecking macros
+    libraryDependencies +=
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+
+    sources in Test ++= {
+      def listScalaFilesIf(testDir: File, condition: Boolean): Seq[File] =
+        if (condition) (testDir ** "*.scala").get
+        else Nil
+
+      val hasSAM = {
+        isJSTest &&
+        scalaBinaryVersion.value != "2.10" &&
+        scalacOptions.value.contains("-Xexperimental")
+      }
+
+      val testDir = (sourceDirectory in Test).value
+      val sharedTestDir =
+        testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
+
+      listScalaFilesIf(testDir / "require-jdk7", javaVersion.value >= 7) ++
+      listScalaFilesIf(testDir / "require-jdk8", javaVersion.value >= 8) ++
+      listScalaFilesIf(testDir / "require-sam", hasSAM) ++
+      listScalaFilesIf(sharedTestDir / "scala", condition = true) ++
+      listScalaFilesIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
+      listScalaFilesIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8)
+    }
+  )
+
   lazy val testSuite: Project = Project(
-      id = "testSuite",
-      base = file("test-suite"),
-      settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++ Seq(
-          name := "Scala.js test suite",
-          publishArtifact in Compile := false,
+    id = "testSuite",
+    base = file("test-suite/js"),
+    settings = commonSettings ++ myScalaJSSettings ++ testTagSettings ++
+      testSuiteCommonSettings(isJSTest = true) ++ Seq(
+        name := "Scala.js test suite",
 
-          scalacOptions ~= (_.filter(_ != "-deprecation")),
+        jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
 
-          // Need reflect for typechecking macros
-          libraryDependencies +=
-            "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+        scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
+          case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
+            "renamed.test.Class"
+          case fullName =>
+            fullName
+        })),
 
-          jsDependencies += ProvidedJS / "ScalaJSDefinedTestNatives.js" % "test",
+        /* Generate a scala source file that throws exceptions in
+         * various places (while attaching the source line to the
+         * exception). When we catch the exception, we can then
+         * compare the attached source line and the source line
+         * calculated via the source maps.
+         *
+         * see test-suite/src/test/resources/SourceMapTestTemplate.scala
+         */
+        sourceGenerators in Test <+= Def.task {
+          val dir = (sourceManaged in Test).value
+          IO.createDirectory(dir)
 
-          scalaJSSemantics ~= (_.withRuntimeClassName(_.fullName match {
-            case "org.scalajs.testsuite.compiler.ReflectionTest$RenamedTestClass" =>
-              "renamed.test.Class"
-            case fullName =>
-              fullName
-          })),
+          val template = IO.read((resourceDirectory in Test).value /
+            "SourceMapTestTemplate.scala")
 
-          sources in Test ++= {
-            def listAllScalaFilesIf(testDir: String, condition: Boolean): Seq[File] =
-              if (condition) (((sourceDirectory in Test).value / testDir) ** "*.scala").get
-              else Nil
+          def lineNo(cs: CharSequence) =
+            (0 until cs.length).count(i => cs.charAt(i) == '\n') + 1
 
-            val hasSAM = {
-              scalaBinaryVersion.value != "2.10" &&
-              scalacOptions.value.contains("-Xexperimental")
-            }
+          var i = 0
+          val pat = "/\\*{2,3}/".r
+          val replaced = pat.replaceAllIn(template, { mat =>
+            val lNo = lineNo(mat.before)
+            val res =
+              if (mat.end - mat.start == 5)
+                // matching a /***/
+                s"if (TC.is($i)) { throw new TestException($lNo) } else "
+              else
+                // matching a /**/
+                s"; if (TC.is($i)) { throw new TestException($lNo) } ;"
 
-            listAllScalaFilesIf("require-jdk7", javaVersion.value >= 7) ++
-            listAllScalaFilesIf("require-jdk8", javaVersion.value >= 8) ++
-            listAllScalaFilesIf("require-sam", hasSAM)
-          },
+            i += 1
 
-          /* Generate a scala source file that throws exceptions in
-             various places (while attaching the source line to the
-             exception). When we catch the exception, we can then
-             compare the attached source line and the source line
-             calculated via the source maps.
+            res
+          })
 
-             see test-suite/src/test/resources/SourceMapTestTemplate.scala
-           */
-          sourceGenerators in Test <+= Def.task {
-            val dir = (sourceManaged in Test).value
-            IO.createDirectory(dir)
-
-            val template = IO.read((resourceDirectory in Test).value /
-              "SourceMapTestTemplate.scala")
-
-            def lineNo(cs: CharSequence) =
-              (0 until cs.length).count(i => cs.charAt(i) == '\n') + 1
-
-            var i = 0
-            val pat = "/\\*{2,3}/".r
-            val replaced = pat.replaceAllIn(template, { mat =>
-              val lNo = lineNo(mat.before)
-              val res =
-                if (mat.end - mat.start == 5)
-                  // matching a /***/
-                  s"if (TC.is($i)) { throw new TestException($lNo) } else "
-                else
-                  // matching a /**/
-                  s"; if (TC.is($i)) { throw new TestException($lNo) } ;"
-
-              i += 1
-
-              res
-            })
-
-            val outFile = dir / "SourceMapTest.scala"
-            IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
-            Seq(outFile)
-          },
-
-        testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
+          val outFile = dir / "SourceMapTest.scala"
+          IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
+          Seq(outFile)
+        },
 
         scalacOptions in Test += {
           val jar = (packageBin in (jUnitPlugin, Compile)).value
@@ -1174,6 +1185,17 @@ object Build extends sbt.Build {
       )
   ).dependsOn(
     compiler % "plugin", library, jUnitRuntime % "test", jasmineTestFramework % "test"
+  )
+
+  lazy val testSuiteJVM = Project(
+    id = "testSuiteJVM",
+    base = file("test-suite/jvm"),
+    settings = commonSettings ++ testSuiteCommonSettings(isJSTest = false) ++ Seq(
+      name := "Scala.js test suite on JVM",
+
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.11" % "test"
+    )
   )
 
   lazy val noIrCheckTest: Project = Project(

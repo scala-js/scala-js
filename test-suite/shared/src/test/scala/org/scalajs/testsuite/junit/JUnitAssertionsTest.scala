@@ -24,16 +24,16 @@ class JUnitAssertionsTest {
 
   @Test
   def testAssertTrueFalse(): Unit = {
-    testIfAsserts(assertTrue("'true' did not assertTrue", condition = true))
+    testIfAsserts(assertTrue("'true' did not assertTrue", true))
     testIfAsserts(assertTrue(true))
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", condition = false))
+    testIfAsserts(assertFalse("'false' did not assertFalse", false))
     testIfAsserts(assertFalse(false))
 
-    testIfAsserts(assertTrue("'true' did not assertTrue", condition = false), ShallNotPass)
+    testIfAsserts(assertTrue("'true' did not assertTrue", false), ShallNotPass)
     testIfAsserts(assertTrue(false), ShallNotPass)
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", condition = true), ShallNotPass)
+    testIfAsserts(assertFalse("'false' did not assertFalse", true), ShallNotPass)
     testIfAsserts(assertFalse(true), ShallNotPass)
   }
 
@@ -313,7 +313,7 @@ class JUnitAssertionsTest {
 
   @Test
   def testAssertThat(): Unit = {
-    testIfAsserts(assertThat("42", instanceOf(classOf[String])))
+    testIfAsserts(assertThat("42", instanceOf[String](classOf[String])))
     testIfAsserts(assertThat("42", instanceOf[String](classOf[Int])), ShallNotPass)
 
     testIfAsserts(assertThat(42, instanceOf(classOf[Int])))
