@@ -912,6 +912,7 @@ run/valueclasses-manifest-basic.scala
 run/t1195-old.scala
 run/t3758-old.scala
 run/t4110-old.scala
+run/t6246.scala
 
 # Using ScalaRunTime.stringOf
 run/value-class-extractor-seq.scala
