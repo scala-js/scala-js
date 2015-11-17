@@ -161,6 +161,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     override def run(): Unit = {
       scalaPrimitives.init()
+      initializeCoreBTypesCompat()
       jsPrimitives.init()
       super.run()
     }
