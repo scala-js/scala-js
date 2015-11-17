@@ -7,41 +7,36 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
-import scala.scalajs.js
+import org.junit.Test
+import org.junit.Assert._
 
-object UnitTest extends JasmineTest {
+class UnitTest{
+  @Test def `should_have_toString()`(): Unit = {
+    assertEquals("undefined", ().toString())
+    assertEquals("undefined", ((): Any).toString())
+  }
 
-  describe("Unit primitive") {
+  @Test def `should_have_hashCode`(): Unit = {
+    assertEquals(0, ().hashCode())
+    assertEquals(0, ((): Any).hashCode())
+    assertEquals(0, ().##)
+  }
 
-    it("should have toString()") {
-      expect(().toString()).toEqual("undefined")
-      expect(((): Any).toString()).toEqual("undefined")
+  @Test def `should_equal_itself`(): Unit = {
+    assertTrue(().equals(()))
+    assertTrue(((): Any).equals((): Any))
+  }
+
+  @Test def `should_not_equal_other_values`(): Unit = {
+    def testAgainst(v: Any): Unit = {
+      assertFalse(().equals(v))
+      assertFalse(((): Any).equals(v))
     }
 
-    it("should have hashCode()") {
-      expect(().hashCode()).toEqual(0)
-      expect(((): Any).hashCode()).toEqual(0)
-      expect(().##).toEqual(0)
-    }
-
-    it("should equal itself") {
-      expect(().equals(())).toBeTruthy
-      expect(((): Any).equals((): Any)).toBeTruthy
-    }
-
-    it("should not equal other values") {
-      def testAgainst(v: Any): Unit = {
-        expect(().equals(v)).toBeFalsy
-        expect(((): Any).equals(v)).toBeFalsy
-      }
-
-      testAgainst(0)
-      testAgainst(1)
-      testAgainst(null)
-      testAgainst(false)
-      testAgainst("")
-    }
-
+    testAgainst(0)
+    testAgainst(1)
+    testAgainst(null)
+    testAgainst(false)
+    testAgainst("")
   }
 }

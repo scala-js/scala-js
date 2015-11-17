@@ -9,149 +9,152 @@ package org.scalajs.testsuite.compiler
 
 import scala.scalajs.js
 
+import org.junit.Test
+import org.junit.Assert._
 import org.scalajs.jasminetest.JasmineTest
 
-/**
- * tests the compiler re-patching of native longs to
- * scala.scalajs.runtime.Long
- * see org.scalajs.testsuite.jsinterop.RuntimeLongTest
- * for a test of the implementation itself
+/** Tests the compiler re-patching of native longs to
+ *  scala.scalajs.runtime.Long
+ *  see org.scalajs.testsuite.jsinterop.RuntimeLongTest
+ *  for a test of the implementation itself
  */
+class LongTest {
+  @Test def `should_correctly_handle_literals`(): Unit = {
+    assertEquals(105L, 5L + 100L)
+    assertEquals(2147483651L, 2147483649L + 2L)
+    assertEquals(-8589934592L, -2147483648L * 4)
+    assertEquals(-18014398509482040L, 4503599627370510L * (-4))
+  }
+
+  @Test def `should_correctly_dispatch_unary_ops_on_Longs`(): Unit = {
+    val x = 10L
+    assertEquals(-10L, -x)
+    val y = 5L
+    assertEquals(-5L, -y)
+    assertEquals(5L, +y)
+    assertEquals(-6L, ~y)
+  }
+
+  @Test def `should_correctly_dispatch_binary_ops_on_Longs`(): Unit = {
+    assertEquals(25F, 5L * 5F, 0F)
+    assertEquals(1F, 5L % 4F, 0F)
+    assertEquals(20F, 5F * 4L, 0F)
+  }
+
+  @Test def `should_support_shifts_with_Longs_#622`(): Unit = {
+    def l(x: Long): Long = x
+    def i(x: Int): Int = x
+
+    assertEquals(268435455L, l(-7L) >>> 100L)
+    assertEquals(-1L, l(-7L) >> 100L)
+    assertEquals(-1L, l(-7L) >> 100)
+    assertEquals(268435455L, l(-7L) >>> 100)
+    assertEquals(-481036337152L, l(-7L) << 100L)
+    assertEquals(-481036337152L, l(-7L) << 100)
+    assertEquals(481036337152L, l(7L) << 100L)
+    assertEquals(549755813888L, l(8L) << 100L)
+    assertEquals(1152921504606846975L, l(-7L) >>> 4)
+
+    assertEquals(112, i(7) << 100)
+    assertEquals(-1, i(-7) >> 100)
+    assertEquals(268435455, i(-7) >>> 100)
+    assertEquals(-5, i(-65) >> 100)
+    assertEquals(-5, i(-65) >> 4)
+  }
+
+  @Test def `primitives_should_convert_to_Long`(): Unit = {
+    // Byte
+    assertEquals(112L, 112.toByte.toLong)
+    // Short
+    assertEquals(-10L, (-10).toShort.toLong)
+    // Char
+    assertEquals(65L, 'A'.toLong)
+    // Int
+    assertEquals(5L, 5.toLong)
+    // Long
+    assertEquals(10L, 10L.toLong)
+    // Float
+    assertEquals(100000L, 100000.6f.toLong)
+    // Double
+    assertEquals(100000L, 100000.6.toLong)
+  }
+
+  @Test def `should_support_hashCode`(): Unit = {
+    assertEquals(0, 0L.hashCode())
+    assertEquals(55, 55L.hashCode())
+    assertEquals(11, (-12L).hashCode())
+    assertEquals(10006548, 10006548L.hashCode())
+    assertEquals(1098747, (-1098748L).hashCode())
+
+    assertEquals(-825638905, 613354684553L.hashCode())
+    assertEquals(1910653900, 9863155567412L.hashCode())
+    assertEquals(1735398658, 3632147899696541255L.hashCode())
+    assertEquals(-1689438124, 7632147899696541255L.hashCode())
+  }
+
+  @Test def `should_support_hash_hash`(): Unit = {
+    assertEquals(0, 0L.##)
+    assertEquals(55, 55L.##)
+    assertEquals(-12, (-12L).##)
+    assertEquals(10006548, 10006548L.##)
+    assertEquals(-1098748, (-1098748L).##)
+
+    assertEquals(1910653900, 9863155567412L.##)
+    assertEquals(1735398658, 3632147899696541255L.##)
+
+    // These two (correctly) give different results on 2.10 and 2.11
+    //assertEquals(-825638905, 613354684553L.##)  // xx06 on 2.10
+    //assertEquals(-1689438124, 7632147899696541255L.##) // xx25 on 2.10
+  }
+
+  @Test def `should_correctly_concat_to_string`(): Unit = {
+    val x = 20L
+    assertEquals("asdf520hello", "asdf" + 5L + x + "hello")
+    assertEquals("20hello", x + "hello")
+  }
+
+  @Test def `string_should_convert_to_Long`(): Unit = {
+    assertEquals(45678901234567890L, "45678901234567890".toLong)
+  }
+
+  @Test def `should_convert_to_js.Any`(): Unit = {
+    val x = 5: js.Any
+    assertEquals(x, 5L: js.Any)
+  }
+
+  @Test def `should_correctly_implement_is/asInstanceOf_Longs`(): Unit = {
+    val dyn:  Any  = 5L
+    val stat: Long = 5L
+
+    assertEquals(5L, stat.asInstanceOf[Long])
+    // models current scala behavior. See SI-1448
+    assertEquals(5, stat.asInstanceOf[Int])
+
+    assertTrue(stat.isInstanceOf[Long])
+    assertFalse(stat.isInstanceOf[Int])
+
+    assertEquals(5L, dyn.asInstanceOf[Long])
+
+    assertTrue(dyn.isInstanceOf[Long])
+    assertFalse(dyn.isInstanceOf[Int])
+  }
+
+  @Test def `should_correctly_compare_to_other_numeric_types`(): Unit = {
+    assertTrue(5L == 5)
+    assertTrue(5 == 5L)
+    assertTrue(4 != 5L)
+    assertTrue('A' == 65L)
+  }
+}
+
 object LongTest extends JasmineTest {
 
   describe("JavaScript 64-bit long compatibility") {
-    it("should correctly handle literals") {
-      expect(5L + 100L == 105L).toBeTruthy
-      expect(2147483649L + 2L == 2147483651L).toBeTruthy
-      expect(-2147483648L * 4 == -8589934592L).toBeTruthy
-      expect(4503599627370510L * (-4) == -18014398509482040L).toBeTruthy
-    }
-
-    it("should correctly dispatch unary ops on Longs") {
-      val x = 10L
-      expect(-x == -10L).toBeTruthy
-      val y = 5L
-      expect(-y == -5L).toBeTruthy
-      expect(+y == 5L).toBeTruthy
-      expect(~y == -6L).toBeTruthy
-    }
-
-    it("should correctly dispatch binary ops on Longs") {
-      expect(5L * 5F == 25F).toBeTruthy
-      expect(5L % 4F == 1F).toBeTruthy
-      expect(5F * 4L == 20F).toBeTruthy
-    }
-
-    it("should support shifts with Longs - #622") {
-      def l(x: Long): Long = x
-      def i(x: Int): Int = x
-
-      expect(l(-7L) >>> 100L == 268435455L).toBeTruthy
-      expect(l(-7L) >> 100L == -1L).toBeTruthy
-      expect(l(-7L) >> 100 == -1L).toBeTruthy
-      expect(l(-7L) >>> 100 == 268435455).toBeTruthy
-      expect(l(-7L) << 100L == -481036337152L).toBeTruthy
-      expect(l(-7L) << 100 == -481036337152L).toBeTruthy
-      expect(l(7L) << 100L == 481036337152L).toBeTruthy
-      expect(l(8L) << 100L == 549755813888L).toBeTruthy
-      expect(l(-7L) >>> 4 == 1152921504606846975L).toBeTruthy
-
-      expect(i(7) << 100).toEqual(112)
-      expect(i(-7) >> 100).toEqual(-1)
-      expect(i(-7) >>> 100).toEqual(268435455)
-      expect(i(-65) >> 100).toEqual(-5)
-      expect(i(-65) >> 4).toEqual(-5)
-    }
-
-    it("primitives should convert to Long") {
-      // Byte
-      expect(112.toByte.toLong == 112L).toBeTruthy
-      // Short
-      expect((-10).toShort.toLong == -10L).toBeTruthy
-      // Char
-      expect('A'.toLong == 65L).toBeTruthy
-      // Int
-      expect(5.toLong == 5L).toBeTruthy
-      // Long
-      expect(10L.toLong == 10L).toBeTruthy
-      // Float
-      expect(100000.6f.toLong == 100000L).toBeTruthy
-      // Double
-      expect(100000.6.toLong == 100000L).toBeTruthy
-    }
-
-    it("should support hashCode()") {
-      expect(0L         .hashCode()).toEqual(0)
-      expect(55L        .hashCode()).toEqual(55)
-      expect((-12L)     .hashCode()).toEqual(11)
-      expect(10006548L  .hashCode()).toEqual(10006548)
-      expect((-1098748L).hashCode()).toEqual(1098747)
-
-      expect(613354684553L       .hashCode()).toEqual(-825638905)
-      expect(9863155567412L      .hashCode()).toEqual(1910653900)
-      expect(3632147899696541255L.hashCode()).toEqual(1735398658)
-      expect(7632147899696541255L.hashCode()).toEqual(-1689438124)
-    }
-
-    it("should support ##") {
-      expect(0L         .##).toEqual(0)
-      expect(55L        .##).toEqual(55)
-      expect((-12L)     .##).toEqual(-12)
-      expect(10006548L  .##).toEqual(10006548)
-      expect((-1098748L).##).toEqual(-1098748)
-
-      expect(9863155567412L      .##).toEqual(1910653900)
-      expect(3632147899696541255L.##).toEqual(1735398658)
-
-      // These two (correctly) give different results on 2.10 and 2.11
-      //expect(613354684553L       .##).toEqual(-825638905)  // xx06 on 2.10
-      //expect(7632147899696541255L.##).toEqual(-1689438124) // xx25 on 2.10
-    }
-
-    it("should correctly concat to string") {
-      val x = 20L
-      expect("asdf" + 5L + x + "hello").toEqual("asdf520hello")
-      expect(x + "hello").toEqual("20hello")
-    }
-
-    it("string should convert to Long") {
-      expect("45678901234567890".toLong == 45678901234567890L).toBeTruthy
-    }
-
-    it("should convert to js.Any") {
-      val x = 5: js.Any
-      expect((5L: js.Any) == x).toBeTruthy
-    }
-
-    it("should correctly implement is/asInstanceOf Longs") {
-      val dyn:  Any  = 5L
-      val stat: Long = 5L
-
-      expect(stat.asInstanceOf[Long]).toEqual(5L)
-      // models current scala behavior. See SI-1448
-      expect(stat.asInstanceOf[Int]).toEqual(5)
-
-      expect(stat.isInstanceOf[Long]).toBeTruthy
-      expect(stat.isInstanceOf[Int]).toBeFalsy
-
-      expect(dyn.asInstanceOf[Long]).toEqual(5L)
-
-      expect(dyn.isInstanceOf[Long]).toBeTruthy
-      expect(dyn.isInstanceOf[Int]).toBeFalsy
-    }
-
     when("compliant-asinstanceofs").
     it("should correctly implement asInstanceOf Longs (negative)") {
       val dyn: Any = 5L
 
       expect(() => dyn.asInstanceOf[Int]).toThrow
-    }
-
-    it("should correctly compare to other numeric types") {
-      expect(5L == 5).toBeTruthy
-      expect(5 == 5L).toBeTruthy
-      expect(4 == 5L).toBeFalsy
-      expect('A' == 65L).toBeTruthy
     }
   }
 

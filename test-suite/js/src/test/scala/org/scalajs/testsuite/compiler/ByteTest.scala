@@ -7,34 +7,31 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
-import scala.scalajs.js
+import org.junit.Test
+import org.junit.Assert._
 
-object ByteTest extends JasmineTest {
+class ByteTest {
 
-  describe("Byte primitives") {
+  @Test
+  def `should_always_be_in_their_range`(): Unit = {
+    def test(x: Int, y: Byte): Unit =
+      assertEquals(y, x.toByte)
 
-    it("should always be in their range") {
-      def test(x: Int, y: Byte): Unit =
-        expect(x.toByte).toEqual(y)
+    test(0, 0)
+    test(127, 127)
+    test(128, -128)
+    test(-128, -128)
+    test(-500, 12)
+    test(-90000, 112)
+    test(123456789, 21)
+    test(-40000, -64)
+    test(65536, 0)
+    test(32768, 0)
 
-      test(0, 0)
-      test(127, 127)
-      test(128, -128)
-      test(-128, -128)
-      test(-500, 12)
-      test(-90000, 112)
-      test(123456789, 21)
-      test(-40000, -64)
-      test(65536, 0)
-      test(32768, 0)
+    def testC(x: Char, y: Byte): Unit =
+      assertEquals(y, x.toByte)
 
-      def testC(x: Char, y: Byte): Unit =
-        expect(x.toByte).toEqual(y)
-
-      testC(-1.toChar, -1)
-      testC(200.toChar, -56)
-    }
-
+    testC(-1.toChar, -1)
+    testC(200.toChar, -56)
   }
 }

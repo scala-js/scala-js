@@ -7,35 +7,37 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
+
 import scala.scalajs.js
 
-object BooleanTest extends JasmineTest {
+class BooleanTest {
+  @Test
+  def `primitive_operations_on_booleans_should_return_boolean`(): Unit = {
+    // FIXME: these tests are completely useless:
+    // they're constant-folded by scalac. We're not at all testing those
+    // operations are the IR level, nor, a fortiori, at the JS level
+    assertEquals("boolean", js.typeOf(true & false))
+    assertEquals("boolean", js.typeOf(true | false))
+    assertEquals("boolean", js.typeOf(true ^ false))
+  }
 
-  describe("Boolean primitives") {
+  @Test
+  def `primitive_operations_on_booleans_should_return_correct_results`(): Unit = {
+    assertFalse(false & false)
+    assertFalse(false & true)
+    assertFalse(true & false)
+    assertTrue(true & true)
 
-    it("&, | and ^ on booleans should return booleans") {
-      expect(js.typeOf(true & false)).toEqual("boolean")
-      expect(js.typeOf(true | false)).toEqual("boolean")
-      expect(js.typeOf(true ^ false)).toEqual("boolean")
-    }
+    assertFalse(false | false)
+    assertTrue(true | false)
+    assertTrue(false | true)
+    assertTrue(true | true)
 
-    it("&, | and ^ on booleans should return correct results") {
-      expect(false & false).toBeFalsy
-      expect(false & true).toBeFalsy
-      expect(true & false).toBeFalsy
-      expect(true & true).toBeTruthy
-
-      expect(false | false).toBeFalsy
-      expect(true | false).toBeTruthy
-      expect(false | true).toBeTruthy
-      expect(true | true).toBeTruthy
-
-      expect(false ^ false).toBeFalsy
-      expect(true ^ false).toBeTruthy
-      expect(false ^ true).toBeTruthy
-      expect(true ^ true).toBeFalsy
-    }
-
+    assertFalse(false ^ false)
+    assertTrue(true ^ false)
+    assertTrue(false ^ true)
+    assertFalse(true ^ true)
   }
 }

@@ -7,34 +7,32 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import org.scalajs.jasminetest.JasmineTest
-import scala.scalajs.js.Any.fromInt
+import org.junit.Test
+import org.junit.Assert._
 
-object CharTest extends JasmineTest {
+class CharTest {
+  @Test
+  def `should_always_be_positive_when_coerced`(): Unit = {
+    assertEquals(-3.toByte.toChar.toInt, 65533)
+    assertEquals(-100.toShort.toChar.toInt, 65436)
+    assertEquals(-66000.toChar.toInt, 65072)
+    assertEquals(-4567L.toChar.toInt, 60969)
+    assertEquals(-5.3f.toChar.toInt, 65531)
+    assertEquals(-7.9.toChar.toInt, 65529)
+  }
 
-  describe("Char primitives") {
+  @Test
+  def `should_overflow_when_coerced`(): Unit = {
+    assertEquals(347876543.toChar.toInt, 11455)
+    assertEquals(34234567876543L.toChar.toInt, 57279)
+  }
 
-    it("should always be positive (when coerced)") {
-      expect(-3.toByte.toChar.toInt).toEqual(65533)
-      expect(-100.toShort.toChar.toInt).toEqual(65436)
-      expect(-66000.toChar.toInt).toEqual(65072)
-      expect(-4567L.toChar.toInt).toEqual(60969)
-      expect(-5.3f.toChar.toInt).toEqual(65531)
-      expect(-7.9.toChar.toInt).toEqual(65529)
-    }
+  @Test
+  def `should_overflow_with_times`(): Unit = {
+    def test(a: Char, b: Char, expected: Int): Unit =
+      assertEquals(a * b, expected)
 
-    it("should overflow (when coerced)") {
-      expect(347876543.toChar.toInt).toEqual(11455)
-      expect(34234567876543L.toChar.toInt).toEqual(57279)
-    }
-
-    it("should overflow with *") {
-      def test(a: Char, b: Char, expected: Int): Unit =
-        expect(a * b).toEqual(expected)
-
-      // note: expected values are constant-folded by the compiler on the JVM
-      test(Char.MaxValue, Char.MaxValue, Char.MaxValue * Char.MaxValue)
-    }
-
+    // note: expected values are constant-folded by the compiler on the JVM
+    test(Char.MaxValue, Char.MaxValue, Char.MaxValue * Char.MaxValue)
   }
 }
