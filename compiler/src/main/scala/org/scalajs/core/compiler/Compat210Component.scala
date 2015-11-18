@@ -58,6 +58,48 @@ trait Compat210Component {
     }
   }
 
+  /* global.genBCode.bTypes.initializeCoreBTypes()
+   *
+   * This one has a very particular history:
+   * - in 2.10.x, no genBCode in global
+   * - in 2.11.{0-1}, there is genBCode but it has no bTypes member
+   * - In 2.11.{2-5}, there is genBCode.bTypes, but it has no
+   *   initializeCoreBTypes (it was actually typo'ed as intializeCoreBTypes!)
+   * - In 2.11.6+, including 2.12, we finally have
+   *   genBCode.bTypes.initializeCoreBTypes
+   * - As of 2.12.0-M4, it is mandatory to call that method from GenJSCode.run()
+   */
+
+  object LowPrioGenBCodeCompat {
+    object genBCode { // scalastyle:ignore
+      object bTypes { // scalastyle:ignore
+        def initializeCoreBTypes(): Unit = ()
+      }
+    }
+  }
+
+  def initializeCoreBTypesCompat(): Unit = {
+    import LowPrioGenBCodeCompat._
+
+    {
+      import global._
+
+      import LowPrioGenBCodeCompat.genBCode._
+
+      {
+        import genBCode._
+
+        import LowPrioGenBCodeCompat.genBCode.bTypes._
+
+        {
+          import bTypes._
+
+          initializeCoreBTypes()
+        }
+      }
+    }
+  }
+
   // ErasedValueType has a different encoding
 
   implicit final class ErasedValueTypeCompat(self: global.ErasedValueType) {
