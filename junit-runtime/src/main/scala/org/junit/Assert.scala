@@ -291,6 +291,10 @@ object Assert {
   def assertThat[T](reason: String, actual: T, matcher: Matcher[T]): Unit =
     MatcherAssert.assertThat(reason, actual, matcher)
 
+  // The following methods will be available on JUnit 4.13, a backport implementation
+  // is being tested in JUnitAssertionTest until 4.13 is released.
+
+  /*
   def assertThrows(expectedThrowable: Class[_ <: Throwable],
       runnable: ThrowingRunnable): Unit = {
     expectThrows(expectedThrowable, runnable)
@@ -299,6 +303,10 @@ object Assert {
   def expectThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T = {
     try {
       runnable.run()
+      val message =
+        s"expected ${expectedThrowable.getSimpleName} to be thrown," +
+        " but nothing was thrown"
+      throw new AssertionError(message)
     } catch {
       case actualThrown: Throwable =>
         if (expectedThrowable.isInstance(actualThrown)) {
@@ -312,13 +320,10 @@ object Assert {
           throw assertionError
         }
     }
-    val message =
-      s"expected ${expectedThrowable.getSimpleName} to be thrown," +
-      " but nothing was thrown"
-    throw new AssertionError(message)
   }
 
   trait ThrowingRunnable {
     def run(): Unit
   }
+  */
 }
