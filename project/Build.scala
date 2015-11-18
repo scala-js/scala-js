@@ -1098,27 +1098,35 @@ object Build extends sbt.Build {
 
     testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
 
-    sources in Test ++= {
-      def listScalaFilesIf(testDir: File, condition: Boolean): Seq[File] =
-        if (condition) (testDir ** "*.scala").get
+    unmanagedSourceDirectories in Test ++= {
+      def includeIf(testDir: File, condition: Boolean): List[File] =
+        if (condition) List(testDir)
         else Nil
-
-      val hasSAM = {
-        isJSTest &&
-        scalaBinaryVersion.value != "2.10" &&
-        scalacOptions.value.contains("-Xexperimental")
-      }
 
       val testDir = (sourceDirectory in Test).value
       val sharedTestDir =
         testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
-      listScalaFilesIf(testDir / "require-jdk7", javaVersion.value >= 7) ++
-      listScalaFilesIf(testDir / "require-jdk8", javaVersion.value >= 8) ++
-      listScalaFilesIf(testDir / "require-sam", hasSAM) ++
-      listScalaFilesIf(sharedTestDir / "scala", condition = true) ++
-      listScalaFilesIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
-      listScalaFilesIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8)
+      includeIf(testDir / "require-jdk7", javaVersion.value >= 7) ++
+      includeIf(testDir / "require-jdk8", javaVersion.value >= 8) ++
+      List(sharedTestDir / "scala") ++
+      includeIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
+      includeIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8)
+    },
+
+    sources in Test ++= {
+      /* Can't add require-sam as unmanagedSourceDirectories because of the use
+       * of scalacOptions. Hence sources are added individually.
+       * Note that a testSuite/test will not trigger a compile when sources are
+       * modified in require-sam
+       */
+      if (isJSTest && scalaBinaryVersion.value != "2.10" &&
+          scalacOptions.value.contains("-Xexperimental")) {
+        val sourceDir = (sourceDirectory in Test).value / "require-sam"
+        (sourceDir ** "*.scala").get
+      } else {
+        Nil
+      }
     }
   )
 
@@ -1187,7 +1195,7 @@ object Build extends sbt.Build {
     compiler % "plugin", library, jUnitRuntime % "test", jasmineTestFramework % "test"
   )
 
-  lazy val testSuiteJVM = Project(
+  lazy val testSuiteJVM: Project = Project(
     id = "testSuiteJVM",
     base = file("test-suite/jvm"),
     settings = commonSettings ++ testSuiteCommonSettings(isJSTest = false) ++ Seq(
