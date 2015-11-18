@@ -7,47 +7,9 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-
-import org.junit.Test
-import org.junit.Assert._
-
 import org.scalajs.jasminetest.JasmineTest
 
-class FloatTest {
-  @Test
-  def `toInt`(): Unit = {
-    @inline
-    def test(x: Float, expected: Int): Unit =
-      assertEquals(expected, x.toInt)
-
-    // Specials
-    test(+0.0f, 0)
-    test(-0.0f, 0)
-    test(Float.PositiveInfinity, Int.MaxValue)
-    test(Float.NegativeInfinity, Int.MinValue)
-    test(Float.NaN, 0)
-
-    // Positive numbers
-    test(0.3f, 0)
-    test(0.7f, 0)
-    test(1.2f, 1)
-    test(5e12f, Int.MaxValue)
-    test(2147483646f, 2147483647)
-    test(2147483500f, 2147483520)
-    test(65.67f, 65)
-
-    // Negative numbers
-    test(-0.3f, 0)
-    test(-0.7f, 0)
-    test(-1.2f, -1)
-    test(-5e12f, Int.MinValue)
-    test(-2147483646f, -2147483648)
-    test(-2147483500f, -2147483520)
-    test(-65.67f, -65)
-  }
-}
-
-object FloatTest extends JasmineTest {
+object FloatJSTest extends JasmineTest {
 
   def froundNotInlined(x: Double): Float = {
     val y = x // so you don't inline me

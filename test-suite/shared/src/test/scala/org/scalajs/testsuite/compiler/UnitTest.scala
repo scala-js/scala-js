@@ -10,12 +10,7 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-class UnitTest{
-  @Test def `should_have_toString()`(): Unit = {
-    assertEquals("undefined", ().toString())
-    assertEquals("undefined", ((): Any).toString())
-  }
-
+class UnitTest {
   @Test def `should_have_hashCode`(): Unit = {
     assertEquals(0, ().hashCode())
     assertEquals(0, ((): Any).hashCode())

@@ -7,11 +7,8 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
-import scala.scalajs.js
-
 import org.junit.Test
 import org.junit.Assert._
-import org.scalajs.jasminetest.JasmineTest
 
 /** Tests the compiler re-patching of native longs to
  *  scala.scalajs.runtime.Long
@@ -117,11 +114,6 @@ class LongTest {
     assertEquals(45678901234567890L, "45678901234567890".toLong)
   }
 
-  @Test def `should_convert_to_js.Any`(): Unit = {
-    val x = 5: js.Any
-    assertEquals(x, 5L: js.Any)
-  }
-
   @Test def `should_correctly_implement_is/asInstanceOf_Longs`(): Unit = {
     val dyn:  Any  = 5L
     val stat: Long = 5L
@@ -145,17 +137,4 @@ class LongTest {
     assertTrue(4 != 5L)
     assertTrue('A' == 65L)
   }
-}
-
-object LongTest extends JasmineTest {
-
-  describe("JavaScript 64-bit long compatibility") {
-    when("compliant-asinstanceofs").
-    it("should correctly implement asInstanceOf Longs (negative)") {
-      val dyn: Any = 5L
-
-      expect(() => dyn.asInstanceOf[Int]).toThrow
-    }
-  }
-
 }

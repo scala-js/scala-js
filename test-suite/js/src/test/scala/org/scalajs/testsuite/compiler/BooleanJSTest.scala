@@ -12,32 +12,14 @@ import org.junit.Assert._
 
 import scala.scalajs.js
 
-class BooleanTest {
+class BooleanJSTest {
   @Test
   def `primitive_operations_on_booleans_should_return_boolean`(): Unit = {
     // FIXME: these tests are completely useless:
     // they're constant-folded by scalac. We're not at all testing those
     // operations are the IR level, nor, a fortiori, at the JS level
-    assertEquals("boolean", js.typeOf(true & false))
-    assertEquals("boolean", js.typeOf(true | false))
-    assertEquals("boolean", js.typeOf(true ^ false))
-  }
-
-  @Test
-  def `primitive_operations_on_booleans_should_return_correct_results`(): Unit = {
-    assertFalse(false & false)
-    assertFalse(false & true)
-    assertFalse(true & false)
-    assertTrue(true & true)
-
-    assertFalse(false | false)
-    assertTrue(true | false)
-    assertTrue(false | true)
-    assertTrue(true | true)
-
-    assertFalse(false ^ false)
-    assertTrue(true ^ false)
-    assertTrue(false ^ true)
-    assertFalse(true ^ true)
+    assertEquals(js.typeOf(true & false), "boolean")
+    assertEquals(js.typeOf(true | false), "boolean")
+    assertEquals(js.typeOf(true ^ false), "boolean")
   }
 }

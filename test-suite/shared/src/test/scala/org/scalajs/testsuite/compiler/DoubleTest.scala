@@ -12,7 +12,7 @@ import org.junit.Assert._
 
 class DoubleTest {
   @Test
-  def `Double_toInt`(): Unit = {
+  def `toInt`(): Unit = {
     @inline
     def test(x: Double, expected: Int): Unit =
       assertEquals(expected, x.toInt)
