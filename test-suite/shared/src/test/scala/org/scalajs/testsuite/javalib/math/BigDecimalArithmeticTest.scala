@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class  BigDecimalArithmeticTest {
 
@@ -991,15 +992,18 @@ class  BigDecimalArithmeticTest {
     val b0 = new BigDecimal(3.0)
     val b1 = new BigDecimal(2.0)
 
-    assertTrue(a0.divideToIntegralValue(one) == b0)
-    assertTrue(a1.divideToIntegralValue(one) == b0)
-    assertTrue(a2.divideToIntegralValue(one) == b0)
-    assertTrue(a3.divideToIntegralValue(one) == b0)
+    if (!executingInJVM) {
+      // issue #2042 - not resolved
+      assertEquals(b0, a0.divideToIntegralValue(one))
+      assertEquals(b0, a1.divideToIntegralValue(one))
+      assertEquals(b0, a2.divideToIntegralValue(one))
+      assertEquals(b0, a3.divideToIntegralValue(one))
 
-    assertTrue(a0.divideToIntegralValue(oneAndHalf) == b1)
-    assertTrue(a1.divideToIntegralValue(oneAndHalf) == b1)
-    assertTrue(a2.divideToIntegralValue(oneAndHalf) == b1)
-    assertTrue(a3.divideToIntegralValue(oneAndHalf) == b1)
+      assertEquals(b1, a0.divideToIntegralValue(oneAndHalf))
+      assertEquals(b1, a1.divideToIntegralValue(oneAndHalf))
+      assertEquals(b1, a2.divideToIntegralValue(oneAndHalf))
+      assertEquals(b1, a3.divideToIntegralValue(oneAndHalf))
+    }
   }
 
   @Test def testMultiplyDiffScaleNegPos(): Unit = {
