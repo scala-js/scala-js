@@ -2,7 +2,7 @@ package org.scalajs.testsuite.javalib.net
 
 import org.junit.Test
 import org.junit.Assert._
-import org.scalajs.testsuite.util.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows._
 
 import java.net.URLDecoder
 import java.io.UnsupportedEncodingException

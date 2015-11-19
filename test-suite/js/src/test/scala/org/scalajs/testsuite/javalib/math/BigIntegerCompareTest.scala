@@ -8,13 +8,15 @@
 package org.scalajs.testsuite.javalib.math
 
 import java.math.BigInteger
-import org.scalajs.jasminetest.JasmineTest
 
-object BigIntegerCompareTest extends JasmineTest {
+import org.junit.Test
+import org.junit.Assert._
 
-  describe("BigIntegerCompareTest") {
+class BigIntegerCompareTest {
 
-    it("testAbsNegative") {
+
+
+    @Test def testAbsNegative(): Unit = {
       val aBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7)
       val aSign = -1
       val rBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7)
@@ -23,12 +25,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testAbsPositive") {
+    @Test def testAbsPositive(): Unit = {
       val aBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7)
       val aSign = 1
       val rBytes = Array[Byte](1, 2, 3, 4, 5, 6, 7)
@@ -37,166 +39,166 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testCompareNegNeg2") {
+    @Test def testCompareNegNeg2(): Unit = {
       val aBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val bSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
+      assertEquals(1, aNumber.compareTo(bNumber))
+      assertEquals(1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToDiffSigns1") {
+    @Test def testCompareToDiffSigns1(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val aSign = 1
       val bSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
+      assertEquals(1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToDiffSigns2") {
+    @Test def testCompareToDiffSigns2(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val aSign = -1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(-1)
+      assertEquals(-1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToEqualNeg") {
+    @Test def testCompareToEqualNeg(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val bSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(0)
+      assertEquals(0, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToEqualPos") {
+    @Test def testCompareToEqualPos(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(0)
+      assertEquals(0, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToNegNeg1") {
+    @Test def testCompareToNegNeg1(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val aSign = -1
       val bSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(-1)
+      assertEquals(-1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToNegZero") {
+    @Test def testCompareToNegZero(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = BigInteger.ZERO
-      expect(aNumber.compareTo(bNumber)).toEqual(-1)
+      assertEquals(-1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToPosPos1") {
+    @Test def testCompareToPosPos1(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val aSign = 1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
+      assertEquals(1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToPosPos2") {
+    @Test def testCompareToPosPos2(): Unit = {
       val aBytes = Array[Byte](10, 20, 30, 40, 50, 60, 70, 10, 20, 30)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(-1)
+      assertEquals(-1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToPosZero") {
+    @Test def testCompareToPosZero(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = BigInteger.ZERO
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
+      assertEquals(1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToZeroNeg") {
+    @Test def testCompareToZeroNeg(): Unit = {
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bSign = -1
       val aNumber = BigInteger.ZERO
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(1)
+      assertEquals(1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToZeroPos") {
+    @Test def testCompareToZeroPos(): Unit = {
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bSign = 1
       val aNumber = BigInteger.ZERO
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber.compareTo(bNumber)).toEqual(-1)
+      assertEquals(-1, aNumber.compareTo(bNumber))
     }
 
-    it("testCompareToZeroZero") {
+    @Test def testCompareToZeroZero(): Unit = {
       val aNumber = BigInteger.ZERO
       val bNumber = BigInteger.ZERO
-      expect(aNumber.compareTo(bNumber)).toEqual(0)
+      assertEquals(0, aNumber.compareTo(bNumber))
     }
 
-    it("testEqualsBigIntegerFalse") {
+    @Test def testEqualsBigIntegerFalse(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber == bNumber).toBeFalsy()
+      assertFalse(aNumber == bNumber)
     }
 
-    it("testEqualsBigIntegerTrue") {
+    @Test def testEqualsBigIntegerTrue(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val bSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val bNumber = new BigInteger(bSign, bBytes)
-      expect(aNumber == bNumber).toBeTruthy()
+      assertTrue(aNumber == bNumber)
     }
 
-    it("testEqualsNull") {
+    @Test def testEqualsNull(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
-      expect(aNumber == null).toBeFalsy()
+      assertFalse(aNumber == null)
     }
 
-    it("testEqualsObject") {
+    @Test def testEqualsObject(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
       val obj = new AnyRef()
-      expect(aNumber == obj).toBeFalsy()
+      assertFalse(aNumber == obj)
     }
 
-    it("testMaxEqual") {
+    @Test def testMaxEqual(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -208,12 +210,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testMaxGreater") {
+    @Test def testMaxGreater(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -225,14 +227,14 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
       result = bNumber.max(aNumber)
-      expect(aNumber == result).toBeTruthy()
+      assertTrue(aNumber == result)
     }
 
-    it("testMaxLess") {
+    @Test def testMaxLess(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -244,12 +246,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testMaxNegZero") {
+    @Test def testMaxNegZero(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val rBytes = Array[Byte](0)
@@ -259,12 +261,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(0)
+      assertEquals(0, result.signum())
     }
 
-    it("testMinEqual") {
+    @Test def testMinEqual(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -276,12 +278,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testMinGreater") {
+    @Test def testMinGreater(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -293,12 +295,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testMinLess") {
+    @Test def testMinLess(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val bBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
@@ -310,12 +312,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testMinPosZero") {
+    @Test def testMinPosZero(): Unit = {
       val aBytes = Array[Byte](45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val rBytes = Array[Byte](0)
@@ -325,12 +327,12 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(0)
+      assertEquals(0, result.signum())
     }
 
-    it("testNegateNegative") {
+    @Test def testNegateNegative(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val rBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
@@ -339,15 +341,15 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(1)
+      assertEquals(1, result.signum())
     }
 
-    it("testNegatePositive") {
+    @Test def testNegatePositive(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val rBytes = Array[Byte](-13, -57, -101, 1, 75, -90, -46, -92, -4, 14, -36, -27, -4, -91)
@@ -356,40 +358,39 @@ object BigIntegerCompareTest extends JasmineTest {
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-      expect(result.signum()).toEqual(-1)
+      assertEquals(-1, result.signum())
     }
 
-    it("testNegateZero") {
+    @Test def testNegateZero(): Unit = {
       val rBytes = Array[Byte](0)
       val aNumber = BigInteger.ZERO
       val result = aNumber.negate()
       var resBytes = Array.ofDim[Byte](rBytes.length)
       resBytes = result.toByteArray()
       for (i <- 0 until resBytes.length) {
-        expect(resBytes(i)).toEqual(rBytes(i))
+        assertEquals(rBytes(i), resBytes(i))
       }
-     expect(result.signum()).toEqual(0)
+     assertEquals(0, result.signum())
     }
 
-    it("tassestSignumNegative") {
+    @Test def tassestSignumNegative(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = -1
       val aNumber = new BigInteger(aSign, aBytes)
-      expect(aNumber.signum()).toEqual(-1)
+      assertEquals(-1, aNumber.signum())
     }
 
-    it("testSignumPositive") {
+    @Test def testSignumPositive(): Unit = {
       val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26, 3, 91)
       val aSign = 1
       val aNumber = new BigInteger(aSign, aBytes)
-      expect(aNumber.signum()).toEqual(1)
+      assertEquals(1, aNumber.signum())
     }
 
-    it("testSignumZero") {
+    @Test def testSignumZero(): Unit = {
       val aNumber = BigInteger.ZERO
-      expect(aNumber.signum()).toEqual(0)
+      assertEquals(0, aNumber.signum())
     }
-  }
 }

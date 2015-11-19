@@ -9,262 +9,270 @@ package org.scalajs.testsuite.javalib.math
 
 import java.math._
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object  BigDecimalScaleOperationsTest extends JasmineTest {
+class  BigDecimalScaleOperationsTest {
 
-  describe("BigDecimalScaleOperationsTest") {
+  @Test def testScaleByPowerOfTen(): Unit = {
+    val bd = BigDecimal.ONE.scaleByPowerOfTen(1)
+    assertEquals(bd.intValue(), 10)
+  }
 
-    it("testScaleByPowerOfTen") {
-      val bd = BigDecimal.ONE.scaleByPowerOfTen(1)
-      expect(10).toEqual(bd.intValue())
-    }
+  @Test def testScaleDefault(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val cScale = 0
+    val aNumber = new BigDecimal(new BigInteger(a))
+    assertTrue(aNumber.scale() == cScale)
+  }
 
-    it("testScaleDefault") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val cScale = 0
-      val aNumber = new BigDecimal(new BigInteger(a))
-      expect(aNumber.scale() == cScale).toBeTruthy
-    }
+  @Test def testScaleNeg(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = -10
+    val cScale = -10
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    assertTrue(aNumber.scale() == cScale)
+  }
 
-    it("testScaleNeg") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = -10
-      val cScale = -10
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      expect(aNumber.scale() == cScale).toBeTruthy
-    }
+  @Test def testScalePos(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 10
+    val cScale = 10
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    assertTrue(aNumber.scale() == cScale)
+  }
 
-    it("testScalePos") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 10
-      val cScale = 10
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      expect(aNumber.scale() == cScale).toBeTruthy
-    }
+  @Test def testScaleZero(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 0
+    val cScale = 0
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    assertTrue(aNumber.scale() == cScale)
+  }
 
-    it("testScaleZero") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 0
-      val cScale = 0
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      expect(aNumber.scale() == cScale).toBeTruthy
-    }
+  @Test def testUnscaledValue(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 100
+    val bNumber = new BigInteger(a)
+    val aNumber = new BigDecimal(bNumber, aScale)
+    val aNumberUnscaledValue:BigInteger = aNumber.unscaledValue()
+    assertTrue(aNumberUnscaledValue == bNumber)
+    assertTrue(aNumber.unscaledValue() == bNumber)
+  }
 
-    it("testUnscaledValue") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 100
-      val bNumber = new BigInteger(a)
-      val aNumber = new BigDecimal(bNumber, aScale)
-      val aNumberUnscaledValue:BigInteger = aNumber.unscaledValue()
-      expect(aNumberUnscaledValue == bNumber).toBeTruthy
-      expect(aNumber.unscaledValue() == bNumber).toBeTruthy
-    }
+  @Test def testUnscaledValue2(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 100
+    val bNumber = new BigInteger(a)
+    val aNumber = new BigDecimal(bNumber, aScale)
+    assertTrue(aNumber.unscaledValue() == bNumber)
+  }
 
-    it("testUnscaledValue") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 100
-      val bNumber = new BigInteger(a)
-      val aNumber = new BigDecimal(bNumber, aScale)
-      expect(aNumber.unscaledValue() == bNumber).toBeTruthy
-    }
+  @Test def testSetScaleGreater(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 18
+    val newScale = 28
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale)
+    assertTrue(bNumber.scale() == newScale)
+    assertEquals(bNumber.compareTo(aNumber), 0)
+  }
 
-    it("testSetScaleGreater") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 18
-      val newScale = 28
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(0).toEqual(bNumber.compareTo(aNumber))
-    }
+  @Test def testSetScaleLess(): Unit = {
+    val a = "2.345726458768760000E+10"
+    val newScale = 5
+    val aNumber = new BigDecimal(a)
+    val bNumber = aNumber.setScale(newScale)
+    assertTrue(bNumber.scale() == newScale)
+    assertEquals(bNumber.compareTo(aNumber), 0)
+  }
 
-    it("testSetScaleLess") {
-      val a = "2.345726458768760000E+10"
-      val newScale = 5
-      val aNumber = new BigDecimal(a)
-      val bNumber = aNumber.setScale(newScale)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(0).toEqual(bNumber.compareTo(aNumber))
-    }
+  @Test def testSetScaleException(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    try {
+    aNumber.setScale(newScale)
+    fail()
+  } catch {
+     case _: Throwable => // As expected
+  }
+  }
 
-    it("testSetScaleException") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      expect(() => aNumber.setScale(newScale)).toThrow()
-    }
+  @Test def testSetScaleSame(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 18
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber == aNumber)
+  }
 
-    it("testSetScaleSame") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 18
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber == aNumber).toBeTruthy
-    }
+  @Test def testSetScaleRoundUp(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478139"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_UP)
+    assertEquals(newScale, bNumber.scale())
+    assertEquals(b, bNumber.unscaledValue().toString)
+  }
 
-    it("testSetScaleRoundUp") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478139"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_UP)
-      expect(bNumber.scale()).toEqual(newScale)
-      expect(bNumber.unscaledValue().toString).toEqual(b)
-    }
+  @Test def testSetScaleRoundDown(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_DOWN)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundDown") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_DOWN)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleRoundCeiling(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478139"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_CEILING)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundCeiling") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478139"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_CEILING)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleRoundFloor(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_FLOOR)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundFloor") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_FLOOR)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleRoundHalfUp(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_UP)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundHalfUp") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_UP)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleRoundHalfDown(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_DOWN)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundHalfDown") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_DOWN)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleRoundHalfEven(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_EVEN)
+    assertTrue(bNumber.scale() == newScale)
+    assertTrue(bNumber.unscaledValue().toString == b)
+  }
 
-    it("testSetScaleRoundHalfEven") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.setScale(newScale, BigDecimal.ROUND_HALF_EVEN)
-      expect(bNumber.scale() == newScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == b).toBeTruthy
-    }
+  @Test def testSetScaleIntRoundingMode(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val newScale = 18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val result = aNumber.setScale(newScale, RoundingMode.HALF_EVEN)
+    val res = "123121247898748298842980.877981045763478138"
+    val resScale = 18
+    assertEquals(result.toString, res)
+    assertEquals(result.scale(), resScale)
+  }
 
-    it("testSetScaleIntRoundingMode") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val newScale = 18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val result = aNumber.setScale(newScale, RoundingMode.HALF_EVEN)
-      val res = "123121247898748298842980.877981045763478138"
-      val resScale = 18
-      expect(res).toEqual(result.toString)
-      expect(resScale).toEqual(result.scale())
-    }
+  @Test def testMovePointLeftPos(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val shift = 18
+    val resScale = 46
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.movePointLeft(shift)
+    assertTrue(bNumber.scale() == resScale)
+    assertTrue(bNumber.unscaledValue().toString == a)
+  }
 
-    it("testMovePointLeftPos") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val shift = 18
-      val resScale = 46
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.movePointLeft(shift)
-      expect(bNumber.scale() == resScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == a).toBeTruthy
-    }
+  @Test def testMovePointLeftNeg(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val shift = -18
+    val resScale = 10
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.movePointLeft(shift)
+    assertTrue(bNumber.scale() == resScale)
+    assertTrue(bNumber.unscaledValue().toString == a)
+  }
 
-    it("testMovePointLeftNeg") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val shift = -18
-      val resScale = 10
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.movePointLeft(shift)
-      expect(bNumber.scale() == resScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == a).toBeTruthy
-    }
+  @Test def testMovePointRightPosGreater(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val shift = 18
+    val resScale = 10
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.movePointRight(shift)
+    assertTrue(bNumber.scale() == resScale)
+    assertTrue(bNumber.unscaledValue().toString == a)
+  }
 
-    it("testMovePointRightPosGreater") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val shift = 18
-      val resScale = 10
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.movePointRight(shift)
-      expect(bNumber.scale() == resScale).toBeTruthy
-      expect(bNumber.unscaledValue().toString == a).toBeTruthy
-    }
+  @Test def testMovePointRightPosLess(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val b = "123121247898748298842980877981045763478138475679498700"
+    val aScale = 28
+    val shift = 30
+    val resScale = 0
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.movePointRight(shift)
+    assertEquals(resScale, bNumber.scale())
+    assertEquals(b, bNumber.unscaledValue().toString)
+  }
 
-    it("testMovePointRightPosLess") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val b = "123121247898748298842980877981045763478138475679498700"
-      val aScale = 28
-      val shift = 30
-      val resScale = 0
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.movePointRight(shift)
-      expect(bNumber.scale()).toEqual(resScale)
-      expect(bNumber.unscaledValue().toString).toEqual(b)
-    }
+  @Test def testMovePointRightNeg(): Unit = {
+    val a = "1231212478987482988429808779810457634781384756794987"
+    val aScale = 28
+    val shift = -18
+    val resScale = 46
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val bNumber = aNumber.movePointRight(shift)
+    assertEquals(resScale, bNumber.scale())
+    assertEquals(a, bNumber.unscaledValue().toString)
+  }
 
-    it("testMovePointRightNeg") {
-      val a = "1231212478987482988429808779810457634781384756794987"
-      val aScale = 28
-      val shift = -18
-      val resScale = 46
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val bNumber = aNumber.movePointRight(shift)
-      expect(bNumber.scale()).toEqual(resScale)
-      expect(bNumber.unscaledValue().toString).toEqual(a)
-    }
+  @Test def testMovePointRightException(): Unit = {
+    val a = "12312124789874829887348723648726347429808779810457634781384756794987"
+    val aScale = Int.MaxValue
+    val shift = -18
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    try {
+    aNumber.movePointRight(shift)
+    fail()
+  } catch {
+     case _: Throwable => // As expected
+  }
+  }
 
-    it("testMovePointRightException") {
-      val a = "12312124789874829887348723648726347429808779810457634781384756794987"
-      val aScale = Int.MaxValue
-      val shift = -18
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      expect(() => aNumber.movePointRight(shift)).toThrow()
-    }
-
-    it("testPrecision") {
-      val a = "12312124789874829887348723648726347429808779810457634781384756794987"
-      val aScale = 14
-      val aNumber = new BigDecimal(new BigInteger(a), aScale)
-      val prec = aNumber.precision()
-      expect(68).toEqual(prec)
-    }
+  @Test def testPrecision(): Unit = {
+    val a = "12312124789874829887348723648726347429808779810457634781384756794987"
+    val aScale = 14
+    val aNumber = new BigDecimal(new BigInteger(a), aScale)
+    val prec = aNumber.precision()
+    assertEquals(prec, 68)
   }
 }
