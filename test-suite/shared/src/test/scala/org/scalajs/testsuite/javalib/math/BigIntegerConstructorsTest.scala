@@ -13,7 +13,7 @@ import java.util.Random
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.util.AssertThrowsUtil._
+import org.scalajs.testsuite.utils.AssertThrowsUtil._
 
 class BigIntegerConstructorsTest {
 
