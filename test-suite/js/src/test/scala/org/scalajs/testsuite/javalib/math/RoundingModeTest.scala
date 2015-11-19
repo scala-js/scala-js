@@ -7,29 +7,28 @@
 
 package org.scalajs.testsuite.javalib.math
 
-import org.scalajs.jasminetest.JasmineTest
 import java.math.RoundingMode
 
-object RoundingModeTest extends JasmineTest {
+import org.junit.Test
+import org.junit.Assert._
 
-  describe("RoundingModeTest") {
+class RoundingModeTest {
 
-    it("testValues") {
+  @Test def testValues(): Unit = {
 
-      val values = RoundingMode.values
-      expect(values.size).toEqual(8)
+    val values = RoundingMode.values
+    assertEquals(8, values.size)
 
-      expect(RoundingMode.UP.ordinal).toEqual(values(0).ordinal)
-      expect(RoundingMode.DOWN.ordinal).toEqual(values(1).ordinal)
-      expect(RoundingMode.CEILING.ordinal).toEqual(values(2).ordinal)
-      expect(RoundingMode.FLOOR.ordinal).toEqual(values(3).ordinal)
-      expect(RoundingMode.HALF_UP.ordinal).toEqual(values(4).ordinal)
-      expect(RoundingMode.HALF_DOWN.ordinal).toEqual(values(5).ordinal)
-      expect(RoundingMode.HALF_EVEN.ordinal).toEqual(values(6).ordinal)
-      expect(RoundingMode.UNNECESSARY.ordinal).toEqual(values(7).ordinal)
+    assertEquals(values(0).ordinal, RoundingMode.UP.ordinal)
+    assertEquals(values(1).ordinal, RoundingMode.DOWN.ordinal)
+    assertEquals(values(2).ordinal, RoundingMode.CEILING.ordinal)
+    assertEquals(values(3).ordinal, RoundingMode.FLOOR.ordinal)
+    assertEquals(values(4).ordinal, RoundingMode.HALF_UP.ordinal)
+    assertEquals(values(5).ordinal, RoundingMode.HALF_DOWN.ordinal)
+    assertEquals(values(6).ordinal, RoundingMode.HALF_EVEN.ordinal)
+    assertEquals(values(7).ordinal, RoundingMode.UNNECESSARY.ordinal)
 
-      val rmUP = RoundingMode.UP
-      expect(rmUP.toString).toEqual("UP")
-    }
+    val rmUP = RoundingMode.UP
+    assertEquals("UP", rmUP.toString)
   }
 }

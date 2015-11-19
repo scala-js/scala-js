@@ -1,6 +1,6 @@
 package org.scalajs.testsuite.util
 
-object AssertThrows {
+object AssertThrowsUtil {
   /** Backport implementation of Assert.assertThrows to be used until JUnit 4.13 is
    *  released. See org.junit.Assert.scala in jUnitRuntime.
    */
@@ -46,4 +46,7 @@ object AssertThrows {
       def run(): Unit = code
     }
   }
+
+  def expectThrows[T <: Throwable, U](expectedThrowable: Class[T], code: => U): T =
+    expectThrows(expectedThrowable, throwingRunnable(code.asInstanceOf[Unit]))
 }
