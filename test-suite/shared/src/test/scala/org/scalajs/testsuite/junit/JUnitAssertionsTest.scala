@@ -5,8 +5,9 @@ import org.junit.Test
 import org.junit.Assert._
 import org.hamcrest.CoreMatchers._
 
-class JUnitAssertionsTest {
+import org.scalajs.testsuite.util.AssertThrows._
 
+class JUnitAssertionsTest {
   private final val NotEquals = false
   private final val ShallNotPass = false
 
@@ -326,4 +327,35 @@ class JUnitAssertionsTest {
     testIfAsserts(assertThat(0, instanceOf[Int](classOf[Double])), ShallNotPass)
   }
 
+  @Test
+  def testExpectThrows(): Unit = {
+    testIfAsserts(expectThrows(classOf[Exception],
+        throwingRunnable { throw new Exception }))
+    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { throw new IndexOutOfBoundsException }))
+
+    testIfAsserts {
+      val ex = expectThrows(classOf[Exception],
+          throwingRunnable { throw new Exception("abc") })
+      assertEquals(ex.getMessage, "abc")
+    }
+
+    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { throw new Exception }), ShallNotPass)
+    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { }), ShallNotPass)
+  }
+
+  @Test
+  def testAssertThrows(): Unit = {
+    testIfAsserts(assertThrows(classOf[Exception],
+        throwingRunnable { throw new Exception }))
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { throw new IndexOutOfBoundsException }))
+
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { throw new Exception }), ShallNotPass)
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
+        throwingRunnable { }), ShallNotPass)
+  }
 }
