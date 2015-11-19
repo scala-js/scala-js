@@ -14,9 +14,6 @@ import scala.util._
 import java.nio._
 import java.nio.charset._
 
-import scala.scalajs.js
-import js.JSConverters._
-
 import org.junit.Assert._
 
 class BaseCharsetTest(val charset: Charset) {

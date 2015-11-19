@@ -7,17 +7,16 @@
 \*                                                                      */
 package org.scalajs.testsuite.niocharset
 
-import java.nio._
 import java.nio.charset._
 
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.scalajs.niocharset.StandardCharsets
-
 import BaseCharsetTest._
 
-class Latin1Test extends BaseCharsetTest(StandardCharsets.ISO_8859_1) {
+import org.scalajs.testsuite.utils.Platform.executingInJVM
+
+class USASCIITest extends BaseCharsetTest(Charset.forName("US-ASCII")) {
   @Test def decode(): Unit = {
     // Simple tests
 
@@ -27,11 +26,14 @@ class Latin1Test extends BaseCharsetTest(StandardCharsets.ISO_8859_1) {
     testDecode(bb"00 01 0a 10 20")(cb"\u0000\u0001\u000a\u0010 ")
     testDecode(bb"7f 7f")(cb"\u007f\u007f")
 
-    testDecode(bb"c8 e5 ec ec ef")(cb"Èåììï")
-    testDecode(bb"c2 ef ee ea ef f5 f2")(cb"Âïîêïõò")
+    if (!executingInJVM) {
+      // Bit 7 is ignored, giving the same results as above
+      testDecode(bb"c8 e5 ec ec ef")(cb"Hello")
+      testDecode(bb"c2 ef ee ea ef f5 f2")(cb"Bonjour")
 
-    testDecode(bb"80 81 8a 90 a0")(cb"\u0080\u0081\u008a\u0090\u00a0")
-    testDecode(bb"ff ff")(cb"ÿÿ")
+      testDecode(bb"80 81 8a 90 a0")(cb"\u0000\u0001\u000a\u0010 ")
+      testDecode(bb"ff ff")(cb"\u007f\u007f")
+    }
   }
 
   @Test def encode(): Unit = {
@@ -43,20 +45,20 @@ class Latin1Test extends BaseCharsetTest(StandardCharsets.ISO_8859_1) {
     testEncode(cb"\u0000\u0001\u000a\u0010 ")(bb"00 01 0a 10 20")
     testEncode(cb"\u007f\u007f")(bb"7f 7f")
 
-    testEncode(cb"Èåììï")(bb"c8 e5 ec ec ef")
-    testEncode(cb"Âïîêïõò")(bb"c2 ef ee ea ef f5 f2")
-
-    testEncode(cb"\u0080\u0081\u008a\u0090\u00a0")(bb"80 81 8a 90 a0")
-    testEncode(cb"ÿÿ")(bb"ff ff")
-
     // Unmappable characters
 
+    testEncode(cb"é")(Unmappable(1))
+    testEncode(cb"\u0080")(Unmappable(1))
+    testEncode(cb"\u00ff")(Unmappable(1))
     testEncode(cb"\u0100")(Unmappable(1))
     testEncode(cb"\u07ff")(Unmappable(1))
     testEncode(cb"\ue000")(Unmappable(1))
     testEncode(cb"\uffff")(Unmappable(1))
     testEncode(cb"\ud835\udcd7")(Unmappable(2))
 
+    testEncode(cb"éA")(Unmappable(1), bb"41")
+    testEncode(cb"\u0080A")(Unmappable(1), bb"41")
+    testEncode(cb"\u00ffA")(Unmappable(1), bb"41")
     testEncode(cb"\u0100A")(Unmappable(1), bb"41")
     testEncode(cb"\u07ffA")(Unmappable(1), bb"41")
     testEncode(cb"\ue000A")(Unmappable(1), bb"41")
@@ -86,8 +88,9 @@ class Latin1Test extends BaseCharsetTest(StandardCharsets.ISO_8859_1) {
     assertTrue(encoder.isLegalReplacement(Array(0x00.toByte)))
     assertTrue(encoder.isLegalReplacement(Array(0x41.toByte)))
     assertTrue(encoder.isLegalReplacement(Array('?'.toByte)))
-    assertTrue(encoder.isLegalReplacement(Array(0x80.toByte)))
-    assertTrue(encoder.isLegalReplacement(Array(0xff.toByte)))
+    if (!executingInJVM) {
+      assertTrue(encoder.isLegalReplacement(Array(0x80.toByte)))
+      assertTrue(encoder.isLegalReplacement(Array(0xff.toByte)))
+    }
   }
-
 }

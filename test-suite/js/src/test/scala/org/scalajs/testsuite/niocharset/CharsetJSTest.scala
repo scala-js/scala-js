@@ -1,29 +1,18 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___      __ ____  Scala.js Test Suite        **
-**    / __/ __// _ | / /  / _ | __ / // __/  (c) 2013, LAMP/EPFL        **
-**  __\ \/ /__/ __ |/ /__/ __ |/_// /_\ \    http://scala-js.org/       **
-** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
-**                          |/____/                                     **
-\*                                                                      */
 package org.scalajs.testsuite.niocharset
 
 import scala.language.implicitConversions
 
-import java.nio._
-import java.nio.charset._
-
-import scala.scalajs.js
 import scala.scalajs.niocharset.StandardCharsets._
+
+import java.nio.charset._
 
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
-
-class CharsetTest {
+object CharsetJSTest {
 
   @Test def defaultCharset(): Unit = {
-    assertSame(Charset.defaultCharset(), UTF_8)
+    assertSame(UTF_8, Charset.defaultCharset())
   }
 
   @Test def forName(): Unit = {
@@ -39,7 +28,6 @@ class CharsetTest {
     assertSame(UTF_8, Charset.forName("UTF-8"))
     assertSame(UTF_8, Charset.forName("utf-8"))
     assertSame(UTF_8, Charset.forName("UtF8"))
-    assertSame(UTF_8, Charset.forName("UTF_8"))
     assertSame(UTF_8, Charset.forName("UTF-8"))
 
     assertSame(UTF_16BE, Charset.forName("UTF-16BE"))
@@ -54,22 +42,5 @@ class CharsetTest {
     assertSame(UTF_16, Charset.forName("Utf_16"))
     assertSame(UTF_16, Charset.forName("unicode"))
     assertSame(UTF_16, Charset.forName("UnicodeBig"))
-
-    expectThrows(classOf[UnsupportedCharsetException],
-        Charset.forName("this-charset-does-not-exist"))
-  }
-
-  @Test def isSupported(): Unit = {
-    assertTrue(Charset.isSupported("ISO-8859-1"))
-    assertTrue(Charset.isSupported("US-ASCII"))
-    assertTrue(Charset.isSupported("Default"))
-    assertTrue(Charset.isSupported("utf-8"))
-    assertTrue(Charset.isSupported("UnicodeBigUnmarked"))
-    assertTrue(Charset.isSupported("Utf_16le"))
-    assertTrue(Charset.isSupported("UTF-16"))
-    assertTrue(Charset.isSupported("unicode"))
-
-    assertFalse(Charset.isSupported("this-charset-does-not-exist"))
-
   }
 }

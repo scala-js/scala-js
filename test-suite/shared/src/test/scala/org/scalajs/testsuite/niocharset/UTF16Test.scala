@@ -10,11 +10,11 @@ package org.scalajs.testsuite.niocharset
 import java.nio._
 import java.nio.charset._
 
-import scala.scalajs.niocharset.StandardCharsets
-
 import BaseCharsetTest._
 
 import org.junit.Test
+
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) {
   @Test def decode(): Unit = {
@@ -47,12 +47,14 @@ abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) 
     testDecode(bb"dfff")(Malformed(2))
 
     // High UTF-16 surrogates not followed by low surrogates
-    testDecode(bb"d800 0041")(Malformed(2), cb"A")
-    testDecode(bb"d800 d800")(Malformed(2), Malformed(2))
-    testDecode(bb"d800 d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
-    testDecode(bb"dbff 0041")(Malformed(2), cb"A")
-    testDecode(bb"dbff db8f")(Malformed(2), Malformed(2))
-    testDecode(bb"dbff d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
+    if (!executingInJVM) {
+      testDecode(bb"d800 0041")(Malformed(2), cb"A")
+      testDecode(bb"d800 d800")(Malformed(2), Malformed(2))
+      testDecode(bb"d800 d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
+      testDecode(bb"dbff 0041")(Malformed(2), cb"A")
+      testDecode(bb"dbff db8f")(Malformed(2), Malformed(2))
+      testDecode(bb"dbff d835 dcd7")(Malformed(2), cb"\ud835\udcd7")
+    }
 
     // Lonely byte at the end
     testDecode(bb"0041 41")(cb"A", Malformed(1))
@@ -97,9 +99,9 @@ abstract class BaseUTF16Test(charset: Charset) extends BaseCharsetTest(charset) 
   }
 }
 
-class UTF16BETest extends BaseUTF16Test(StandardCharsets.UTF_16BE)
+class UTF16BETest extends BaseUTF16Test(Charset.forName("UTF-16BE"))
 
-class UTF16LETest extends BaseUTF16Test(StandardCharsets.UTF_16LE) {
+class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
   import UTF16LETest._
 
   override protected def testDecode(in: ByteBuffer)(
@@ -133,7 +135,7 @@ object UTF16LETest {
   }
 }
 
-class UTF16Test extends BaseUTF16Test(StandardCharsets.UTF_16) {
+class UTF16Test extends BaseUTF16Test(Charset.forName("UTF-16")) {
   def BigEndianBOM: ByteBuffer =
     ByteBuffer.wrap(Array(0xfe.toByte, 0xff.toByte))
 
