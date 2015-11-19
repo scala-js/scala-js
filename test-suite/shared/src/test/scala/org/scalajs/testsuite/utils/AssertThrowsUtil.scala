@@ -1,4 +1,4 @@
-package org.scalajs.testsuite.util
+package org.scalajs.testsuite.utils
 
 object AssertThrowsUtil {
   /** Backport implementation of Assert.assertThrows to be used until JUnit 4.13 is
