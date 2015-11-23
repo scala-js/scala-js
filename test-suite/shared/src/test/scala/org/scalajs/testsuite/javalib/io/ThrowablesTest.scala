@@ -7,18 +7,15 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.io
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
 
-object ThrowablesTest extends JasmineTest {
-  describe("java.io.Throwables") {
-
-    it("should define all java.io Errors/Exceptions") {
-      import java.io._
-      new IOException("", new Exception())
-      new EOFException("")
-      new UTFDataFormatException("")
-      new UnsupportedEncodingException("")
-      new NotSerializableException("")
-    }
+class ThrowablesTest {
+  @Test def should_define_all_java_io_Errors_and_Exceptions(): Unit = {
+    import java.io._
+    new IOException("", new Exception())
+    new EOFException("")
+    new UTFDataFormatException("")
+    new UnsupportedEncodingException("")
+    new NotSerializableException("")
   }
 }
