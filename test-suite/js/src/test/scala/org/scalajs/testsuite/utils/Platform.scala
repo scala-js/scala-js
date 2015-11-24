@@ -5,4 +5,8 @@ object Platform {
    *  Note: Returns `false` when executing on any JS VM.
    */
   final val executingInJVM = false
+
+  final val executingInJVMOnJDK6 = false
+
+  final val executingInJVMOnJDK7OrLower = false
 }

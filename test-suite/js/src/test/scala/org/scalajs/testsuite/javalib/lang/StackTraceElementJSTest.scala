@@ -7,23 +7,16 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
 
-object StackTraceElementTest extends JasmineTest {
+class StackTraceElementJSTest {
 
   import scala.scalajs.runtime.StackTrace.Implicits._
 
-  describe("java.lang.StackTraceElement") {
-    it("should use the additional columnNumber field in its toString") {
-      val st = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
-      st.setColumnNumber(5)
-      expect(st.toString).toEqual("MyClass.myMethod(myFile.scala:1:5)")
-    }
-
-    it("should leave toString unmodified if columnNumber is not specified") {
-      val st = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
-      expect(st.toString).toEqual("MyClass.myMethod(myFile.scala:1)")
-    }
+  @Test def should_use_the_additional_columnNumber_field_in_its_toString(): Unit = {
+    val st = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
+    st.setColumnNumber(5)
+    assertEquals("MyClass.myMethod(myFile.scala:1:5)", st.toString)
   }
-
 }
