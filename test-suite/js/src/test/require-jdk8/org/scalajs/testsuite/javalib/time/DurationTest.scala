@@ -1,7 +1,7 @@
 package org.scalajs.testsuite.javalib.time
 
 import java.time.temporal.{ChronoUnit, UnsupportedTemporalTypeException}
-import java.time.{LocalTime, DateTimeException, Duration}
+import java.time._
 
 import org.scalajs.jasminetest.JasmineTest
 import org.scalajs.testsuite.utils.ExpectExceptions
@@ -124,7 +124,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
 
       for {
         d <- Seq(ZERO, d0, d1, d2, d3)
-        n <- Seq(-100000000000000l, 1l, 0l, 1l, 100000000000000l)
+        n <- Seq(-100000000000000L, 1L, 0L, 1L, 100000000000000L)
       } {
         expect(d.plus(n, NANOS) == d.plusNanos(n)).toBeTruthy
         expect(d.plus(n, MICROS) == d.plusNanos(n * 1000)).toBeTruthy
@@ -294,11 +294,11 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       val d2 = ofSeconds(Long.MaxValue, 999999998)
       val d3 = ofSeconds(Long.MinValue, 1)
 
-      expect(d1.plusNanos(-5000000000l) == ofSeconds(-4, 1)).toBeTruthy
+      expect(d1.plusNanos(-5000000000L) == ofSeconds(-4, 1)).toBeTruthy
       expect(d1.plusNanos(-1000) == ofSeconds(0, 999999001)).toBeTruthy
       expect(d1.plusNanos(0) == d1).toBeTruthy
       expect(d1.plusNanos(1000) == ofSeconds(1, 1001)).toBeTruthy
-      expect(d1.plusNanos(5000000000l) == ofSeconds(6, 1)).toBeTruthy
+      expect(d1.plusNanos(5000000000L) == ofSeconds(6, 1)).toBeTruthy
       expect(d2.plusNanos(1) == dmax).toBeTruthy
       expect(d3.plusNanos(-1) == dmin).toBeTruthy
       expect(dmax.plusNanos(0) == dmax).toBeTruthy
@@ -329,7 +329,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
 
       for {
         d <- Seq(ZERO, d0, d1, d2, d3)
-        n <- Seq(-100000000000000l, 1l, 0l, 1l, 100000000000000l)
+        n <- Seq(-100000000000000L, 1L, 0L, 1L, 100000000000000L)
       } {
         expect(d.minus(n, NANOS) == d.minusNanos(n)).toBeTruthy
         expect(d.minus(n, MICROS) == d.minusNanos(n * 1000)).toBeTruthy
@@ -500,11 +500,11 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       val d3 = ofSeconds(Long.MinValue, 1)
 
 
-      expect(d1.minusNanos(5000000000l) == ofSeconds(-4, 1)).toBeTruthy
+      expect(d1.minusNanos(5000000000L) == ofSeconds(-4, 1)).toBeTruthy
       expect(d1.minusNanos(1000) == ofSeconds(0, 999999001)).toBeTruthy
       expect(d1.minusNanos(0) == d1).toBeTruthy
       expect(d1.minusNanos(-1000) == ofSeconds(1, 1001)).toBeTruthy
-      expect(d1.minusNanos(-5000000000l) == ofSeconds(6, 1)).toBeTruthy
+      expect(d1.minusNanos(-5000000000L) == ofSeconds(6, 1)).toBeTruthy
       expect(d2.minusNanos(-1) == dmax).toBeTruthy
       expect(d3.minusNanos(1) == dmin).toBeTruthy
       expect(dmax.minusNanos(0) == dmax).toBeTruthy
@@ -718,7 +718,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       expect(ofNanos(1).toNanos == 1).toBeTruthy
       expect(ofNanos(1000).toNanos == 1000).toBeTruthy
       expect(ofNanos(Int.MaxValue).toNanos == Int.MaxValue).toBeTruthy
-      expect(ofSeconds(9223372036l, 854775807).toNanos == Long.MaxValue).toBeTruthy
+      expect(ofSeconds(9223372036L, 854775807).toNanos == Long.MaxValue).toBeTruthy
 
       expectThrows[ArithmeticException](dmin.toNanos)
       expectThrows[ArithmeticException](dmax.toNanos)
@@ -777,7 +777,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
     }
 
     it("should respond to `ofDays`") {
-      val maxDays = 106751991167300l
+      val maxDays = 106751991167300L
       val maxSecs = maxDays * 86400
 
       expect(ofDays(-maxDays) == ofSeconds(-maxSecs)).toBeTruthy
@@ -791,7 +791,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
     }
 
     it("should respond to `ofHours`") {
-      val maxHrs = 2562047788015215l
+      val maxHrs = 2562047788015215L
       val maxSecs = maxHrs * 3600
 
       expect(ofHours(-maxHrs) == ofSeconds(-maxSecs)).toBeTruthy
@@ -805,7 +805,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
     }
 
     it("should respond to `ofMinutes`") {
-      val maxMins = 153722867280912930l
+      val maxMins = 153722867280912930L
       val maxSecs = maxMins * 60
 
       expect(ofMinutes(-maxMins) == ofSeconds(-maxSecs)).toBeTruthy
@@ -834,27 +834,27 @@ object DurationTest extends JasmineTest with ExpectExceptions {
 
     it("should respond to `ofMillis`") {
       expect(ofMillis(Long.MinValue) ==
-        ofSeconds(-9223372036854776l, 192000000)).toBeTruthy
+        ofSeconds(-9223372036854776L, 192000000)).toBeTruthy
       expect(ofMillis(-1000) == ofSeconds(-1)).toBeTruthy
       expect(ofMillis(-1) == ofSeconds(0, -1000000)).toBeTruthy
       expect(ofMillis(0) == ZERO).toBeTruthy
       expect(ofMillis(1) == ofSeconds(0, 1000000)).toBeTruthy
       expect(ofMillis(1000) == ofSeconds(1)).toBeTruthy
-      expect(ofMillis(Long.MaxValue) == ofSeconds(9223372036854775l, 807000000)).toBeTruthy
+      expect(ofMillis(Long.MaxValue) == ofSeconds(9223372036854775L, 807000000)).toBeTruthy
     }
 
     it("should respond to `ofNanos`") {
-      expect(ofNanos(Long.MinValue) == ofSeconds(-9223372037l, 145224192)).toBeTruthy
+      expect(ofNanos(Long.MinValue) == ofSeconds(-9223372037L, 145224192)).toBeTruthy
       expect(ofNanos(-1000000000) == ofSeconds(-1)).toBeTruthy
       expect(ofNanos(-1) == ofSeconds(0, -1)).toBeTruthy
       expect(ofNanos(0) == ZERO).toBeTruthy
       expect(ofNanos(1) == ofSeconds(0, 1)).toBeTruthy
       expect(ofNanos(1000000000) == ofSeconds(1)).toBeTruthy
-      expect(ofNanos(Long.MaxValue) == ofSeconds(9223372036l, 854775807)).toBeTruthy
+      expect(ofNanos(Long.MaxValue) == ofSeconds(9223372036L, 854775807)).toBeTruthy
     }
 
     it("should respont to `of`") {
-      for(n <- Seq(-100000000000000l, -1l, 0l, 1l, 100000000000000l)) {
+      for (n <- Seq(-100000000000000L, -1L, 0L, 1L, 100000000000000L)) {
         expect(of(n, NANOS) == ofNanos(n)).toBeTruthy
         expect(of(n, MICROS) == ofNanos(n * 1000)).toBeTruthy
         expect(of(n, MILLIS) == ofMillis(n)).toBeTruthy
@@ -865,14 +865,14 @@ object DurationTest extends JasmineTest with ExpectExceptions {
         expect(of(n, DAYS) == ofDays(n)).toBeTruthy
       }
 
-      for(s <- Seq(-1, 1)) {
-        expectThrows[ArithmeticException](of(106751991167301l * s, DAYS))
-        expectThrows[ArithmeticException](of(213503982334602l * s, HALF_DAYS))
-        expectThrows[ArithmeticException](of(2562047788015216l * s, HOURS))
-        expectThrows[ArithmeticException](of(153722867280912931l * s, MINUTES))
+      for (s <- Seq(-1, 1)) {
+        expectThrows[ArithmeticException](of(106751991167301L * s, DAYS))
+        expectThrows[ArithmeticException](of(213503982334602L * s, HALF_DAYS))
+        expectThrows[ArithmeticException](of(2562047788015216L * s, HOURS))
+        expectThrows[ArithmeticException](of(153722867280912931L * s, MINUTES))
       }
 
-      for(n <- Seq(-10, 0, 10)) {
+      for (n <- Seq(-10, 0, 10)) {
         expectThrows[UnsupportedTemporalTypeException](of(n, WEEKS))
         expectThrows[UnsupportedTemporalTypeException](of(n, MONTHS))
         expectThrows[UnsupportedTemporalTypeException](of(n, YEARS))
@@ -889,7 +889,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       expect(from(ZERO) == ZERO).toBeTruthy
       expect(from(dmax) == dmax).toBeTruthy
 
-      // TODO: Add tests for other classes
+      expectThrows[UnsupportedTemporalTypeException](from(Period.ZERO))
     }
 
     it("should respond to `between`") {
@@ -899,9 +899,9 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       expect(between(MIN, MAX) == ofNanos(86399999999999L)).toBeTruthy
       expect(between(MIN, LocalTime.of(0, 0, 0, 1)) == ofNanos(1)).toBeTruthy
 
-      // TODO: Add tests for other Temporals
+      expectThrows[DateTimeException](between(MIN, LocalDate.of(2012, 2, 29)))
+      expectThrows[DateTimeException](between(LocalDate.of(2012, 2, 29),
+        LocalDate.of(2012, 3, 1)))
     }
-
-
   }
 }

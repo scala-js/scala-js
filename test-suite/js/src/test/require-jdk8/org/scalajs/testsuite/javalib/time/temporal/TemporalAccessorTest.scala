@@ -9,13 +9,18 @@ import org.scalajs.testsuite.utils.ExpectExceptions
 trait TemporalAccessorTest extends JasmineTest with ExpectExceptions {
 
   def testTemporalAccessorApi(samples: TemporalAccessor*): Unit = {
+    it("should respond with false to `isSupported(null: TemporalField)`") {
+      for (accessor <- samples)
+        expect(accessor.isSupported(null)).toBeFalsy
+    }
+
     it("should respond to `range`") {
       for {
         accessor <- samples
         field <- ChronoField.values()
       } {
         if (accessor.isSupported(field))
-          expect(accessor.range(field) == field.range).toBeTruthy()
+          expect(accessor.range(field) == field.range).toBeTruthy
         else
           expectThrows[UnsupportedTemporalTypeException](accessor.range(field))
       }
@@ -32,6 +37,15 @@ trait TemporalAccessorTest extends JasmineTest with ExpectExceptions {
           expectThrows[DateTimeException](accessor.get(field))
         else
           expectThrows[UnsupportedTemporalTypeException](accessor.get(field))
+      }
+    }
+
+    it("should throw at `getLong` for unsupported fields") {
+      for {
+        accessor <- samples
+        field <- ChronoField.values() if !accessor.isSupported(field)
+      } {
+        expectThrows[UnsupportedTemporalTypeException](accessor.getLong(field))
       }
     }
   }
