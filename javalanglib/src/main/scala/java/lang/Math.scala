@@ -102,11 +102,11 @@ object Math {
     if (a != a || a == PositiveInfinity)
       a
     else if (a == NegativeInfinity)
-      -MaxValue
+      MinValue
     else if (a == MaxValue)
       PositiveInfinity
     else if (a == 0)
-      MinValue
+      MinPositiveValue
     else {
       def iter(x: scala.Double, xi: scala.Double, n: scala.Double): scala.Double = {
         if (Math.abs(xi - x) >= 1E-16) {
@@ -122,7 +122,7 @@ object Math {
         }
         else xi
       }
-      val d = Math.max(Math.abs(a) * 2E-16, MinValue)
+      val d = Math.max(Math.abs(a) * 2E-16, MinPositiveValue)
       val ad = a + d
       val xi0 =
         if (ad == PositiveInfinity) MaxValue
