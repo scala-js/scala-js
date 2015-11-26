@@ -25,10 +25,12 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   val name = "scalajs"
   val description = "Compile to JavaScript"
   val components = {
-    if (global.forScaladoc)
+    if (global.forScaladoc) {
       List[NscPluginComponent](PrepInteropComponent)
-    else
-      List[NscPluginComponent](PrepInteropComponent, GenCodeComponent)
+    } else {
+      List[NscPluginComponent](PreTyperComponentComponent, PrepInteropComponent,
+          GenCodeComponent)
+    }
   }
 
   /** Called when the JS ASTs are generated. Override for testing */
@@ -61,6 +63,12 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
    */
   def registerModuleExports(sym: Symbol): Unit =
     PrepInteropComponent.registerModuleExports(sym)
+
+  object PreTyperComponentComponent extends {
+    val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global
+    val runsAfter = List("parser")
+    override val runsBefore = List("namer")
+  } with PreTyperComponent
 
   object PrepInteropComponent extends {
     val global: ScalaJSPlugin.this.global.type = ScalaJSPlugin.this.global

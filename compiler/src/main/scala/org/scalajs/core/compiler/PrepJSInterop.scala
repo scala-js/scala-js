@@ -215,9 +215,13 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
         super.transform(tree)
 
-      // Catch ValOrDefDef in js.Any
-      case vddef: ValOrDefDef if enclosingOwner is OwnerKind.RawJSType =>
-        transformValOrDefDefInRawJSType(vddef)
+      // Catch ValDef in js.Any
+      case vdef: ValDef if enclosingOwner is OwnerKind.RawJSType =>
+        transformValOrDefDefInRawJSType(vdef)
+
+      // Catch DefDef in js.Any
+      case ddef: DefDef if enclosingOwner is OwnerKind.RawJSType =>
+        transformValOrDefDefInRawJSType(fixPublicBeforeTyper(ddef))
 
       // Exporter generation
       case ddef: DefDef =>
@@ -942,6 +946,8 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
+  private lazy val WasPublicBeforeTyperClass =
+    getRequiredClass("scala.scalajs.js.annotation.WasPublicBeforeTyper")
 
   /** checks if the primary constructor of the ClassDef `cldef` does not
    *  take any arguments
@@ -957,6 +963,25 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
     }
 
+  private def wasPublicBeforeTyper(sym: Symbol): Boolean =
+    sym.hasAnnotation(WasPublicBeforeTyperClass)
+
+  private def fixPublicBeforeTyper(ddef: DefDef): DefDef = {
+    // This method assumes that isJSAny(ddef.symbol.owner) is true
+    val sym = ddef.symbol
+    val needsFix = {
+      sym.isPrivate &&
+      (wasPublicBeforeTyper(sym) ||
+          (sym.isAccessor && wasPublicBeforeTyper(sym.accessed)))
+    }
+    if (needsFix) {
+      sym.resetFlag(Flag.PRIVATE)
+      treeCopy.DefDef(ddef, ddef.mods &~ Flag.PRIVATE, ddef.name, ddef.tparams,
+          ddef.vparamss, ddef.tpt, ddef.rhs)
+    } else {
+      ddef
+    }
+  }
 }
 
 object PrepJSInterop {
