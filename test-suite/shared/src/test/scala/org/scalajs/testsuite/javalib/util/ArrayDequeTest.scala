@@ -7,17 +7,21 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.util
 
+import java.util
+
 import org.junit.Test
 import org.junit.Assert._
 
 import scala.collection.JavaConversions._
 
-import java.util.ArrayDeque
+import java.{util => ju}
 
-class ArrayDequeTest {
+class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
+
+  override def factory: ArrayDequeFactory = new ArrayDequeFactory
 
   @Test def should_add_and_remove_head_and_last(): Unit = {
-    val ad = new ArrayDeque[Int]()
+    val ad = factory.empty[Int]
 
     ad.addLast(1)
     ad.removeFirst()
@@ -35,7 +39,7 @@ class ArrayDequeTest {
   @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
     val s = Seq(1, 5, 2, 3, 4)
     val l = asJavaCollection(s)
-    val ad = new ArrayDeque[Int](l)
+    val ad = factory.from[Int](l)
 
     assertEquals(ad.size(), 5)
 
@@ -47,7 +51,7 @@ class ArrayDequeTest {
 
   @Test def should_add_multiple_element_in_one_operation(): Unit = {
     val l = asJavaCollection(Set(1, 5, 2, 3, 4))
-    val ad = new ArrayDeque[Int]()
+    val ad = factory.empty[Int]
 
     assertEquals(ad.size(), 0)
     ad.addAll(l)
@@ -57,19 +61,19 @@ class ArrayDequeTest {
   }
 
   @Test def should_retrieve_last_element(): Unit = {
-    val adInt = new ArrayDeque[Int]()
+    val adInt = factory.empty[Int]
 
     assertTrue(adInt.add(1000))
     assertTrue(adInt.add(10))
     assertEquals(adInt.pollLast(), 10)
 
-    val adString = new ArrayDeque[String]()
+    val adString = factory.empty[String]
 
     assertTrue(adString.add("pluto"))
     assertTrue(adString.add("pippo"))
     assertEquals(adString.pollLast(), "pippo")
 
-    val adDouble = new ArrayDeque[Double]()
+    val adDouble = factory.empty[Double]
 
     assertTrue(adDouble.add(+10000.987))
     assertTrue(adDouble.add(-0.987))
@@ -77,7 +81,7 @@ class ArrayDequeTest {
   }
 
   @Test def should_perform_as_a_stack_with_push_and_pop(): Unit = {
-    val adInt = new ArrayDeque[Int]()
+    val adInt = factory.empty[Int]
 
     adInt.push(1000)
     adInt.push(10)
@@ -85,7 +89,7 @@ class ArrayDequeTest {
     assertEquals(adInt.pop(), 1000)
     assertTrue(adInt.isEmpty())
 
-    val adString = new ArrayDeque[String]()
+    val adString = factory.empty[String]
 
     adString.push("pluto")
     adString.push("pippo")
@@ -93,7 +97,7 @@ class ArrayDequeTest {
     assertEquals(adString.pop(), "pluto")
     assertTrue(adString.isEmpty())
 
-    val adDouble = new ArrayDeque[Double]()
+    val adDouble = factory.empty[Double]
 
     adDouble.push(+10000.987)
     adDouble.push(-0.987)
@@ -103,7 +107,7 @@ class ArrayDequeTest {
   }
 
   @Test def should_poll_and_peek_elements(): Unit = {
-    val pq = new ArrayDeque[String]()
+    val pq = factory.empty[String]
 
     assertTrue(pq.add("one"))
     assertTrue(pq.add("two"))
@@ -127,7 +131,7 @@ class ArrayDequeTest {
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
     val l = asJavaCollection(Seq("one", "two", "three", "two", "one"))
-    val ad = new ArrayDeque[String](l)
+    val ad = factory.from[String](l)
 
     assertTrue(ad.removeFirstOccurrence("one"))
     assertTrue(ad.removeLastOccurrence("two"))
@@ -141,7 +145,7 @@ class ArrayDequeTest {
   @Test def should_iterate_over_elements_in_both_directions(): Unit = {
     val s = Seq("one", "two", "three")
     val l = asJavaCollection(s)
-    val ad = new ArrayDeque[String](l)
+    val ad = factory.from[String](l)
 
     val iter = ad.iterator()
     for (i <- 0 until l.size()) {
@@ -156,5 +160,21 @@ class ArrayDequeTest {
       assertEquals(diter.next(), s(i))
     }
     assertFalse(diter.hasNext())
-  }  
+  }
+}
+
+object ArrayDequeFactory {
+  def allFactories: Iterator[ArrayDequeFactory] =
+    Iterator(new ArrayDequeFactory())
+}
+
+class ArrayDequeFactory extends AbstractCollectionFactory with DequeFactory {
+  override def implementationName: String =
+    "java.util.ArrayDeque"
+
+  override def empty[E]: ju.ArrayDeque[E] =
+    new ju.ArrayDeque[E]
+
+  def from[E](coll: ju.Collection[E]): ju.ArrayDeque[E] =
+    new ju.ArrayDeque[E](coll)
 }
