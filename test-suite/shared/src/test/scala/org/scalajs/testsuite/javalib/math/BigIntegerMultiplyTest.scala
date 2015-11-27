@@ -309,4 +309,28 @@ class BigIntegerMultiplyTest {
     }
     assertEquals(1, result.signum())
   }
+
+  @Test def testPow31_issue_2045(): Unit = {
+    assertEquals(BigInt("2147483648"), BigInt(2).pow(31))
+    assertEquals(BigInt("1326443518324400147398656"), BigInt(6).pow(31))
+    assertEquals(BigInt("10000000000000000000000000000000"), BigInt(10).pow(31))
+    assertEquals(BigInt("338820052976784335907174521413566464"),
+        BigInt(14).pow(31))
+    assertEquals(BigInt("819308872942260126404286866009182175232"),
+        BigInt(18).pow(31))
+    assertEquals(BigInt("412195366437884247746798137865015318806528"),
+        BigInt(22).pow(31))
+    assertEquals(BigInt("73143171433403393900724146770015259539275776"),
+        BigInt(26).pow(31))
+    assertEquals(BigInt("6176733962839470000000000000000000000000000000"),
+        BigInt(30).pow(31))
+    assertEquals(BigInt("299120672332806228664106719451209941853702979584"),
+        BigInt(34).pow(31))
+    assertEquals(BigInt("9403542573537726518107430106299028013391242330112"),
+        BigInt(38).pow(31))
+    assertEquals(BigInt("209280132851277227501988209234026802122409700753408"),
+        BigInt(42).pow(31))
+    assertEquals(BigInt("3511500884366740741319133039278240178576180323024896"),
+        BigInt(46).pow(31))
+  }
 }
