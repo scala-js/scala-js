@@ -396,7 +396,9 @@ class PhantomJSEnv(
     )
 
     protected def writeWebpageLauncher(out: Writer): Unit = {
-      out.write("<html>\n<head>\n<title>Phantom.js Launcher</title>\n")
+      out.write(s"""<html><head>
+          <title>Phantom.js Launcher</title>
+          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />""")
       sendJS(getLibJSFiles(), out)
       writeCodeLauncher(code, out)
       out.write("</head>\n<body></body>\n</html>\n")
@@ -466,7 +468,9 @@ class PhantomJSEnv(
       val webTmpF = File.createTempFile("phantomjs-launcher-webpage", ".html")
       webTmpF.deleteOnExit()
 
-      val out = new BufferedWriter(new FileWriter(webTmpF))
+      val out = new BufferedWriter(
+          new OutputStreamWriter(new FileOutputStream(webTmpF), "UTF-8"))
+
       try {
         writeWebpageLauncher(out)
       } finally {

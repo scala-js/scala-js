@@ -25,4 +25,13 @@ trait BasicJSEnvTests extends JSEnvTest {
 
   }
 
+  @Test // Failed in Phantom - #2053
+  def utf8Test: Unit = {
+
+    """
+    console.log("\u1234");
+    """ hasOutput "\u1234\n";
+
+  }
+
 }
