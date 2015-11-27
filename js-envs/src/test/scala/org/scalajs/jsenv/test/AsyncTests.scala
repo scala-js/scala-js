@@ -13,7 +13,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /** A couple of tests that test async runners for mix-in into a test suite */
-trait AsyncTests {
+trait AsyncTests extends BasicJSEnvTests {
 
   protected final val DefaultTimeout: Duration = 10.seconds
 
