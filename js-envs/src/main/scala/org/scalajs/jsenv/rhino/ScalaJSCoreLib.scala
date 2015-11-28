@@ -28,6 +28,9 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   require(linkingUnit.esLevel == ESLevel.ES5, "RhinoJSEnv only supports ES5")
 
+  private val classEmitter = new IncClassEmitter(linkingUnit.semantics,
+      ECMAScript51Global).beginRun(linkingUnit)
+
   private val (providers, exportedSymbols) = {
     val providers = mutable.Map.empty[String, LinkedClass]
     val exportedSymbols = mutable.ListBuffer.empty[String]
@@ -105,8 +108,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   private def getSourceMapper(fileName: String, untilLine: Int) = {
     val linked = providers(fileName.stripSuffix(PseudoFileSuffix))
     val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
-    val desugared =
-      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linked)
+    val desugared = classEmitter.genClassDef(linked, DummyCache)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -160,8 +162,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     val linkedClass = providers.getOrElse(encodedName,
         throw new RhinoJSEnv.ClassNotFoundException(encodedName))
 
-    val desugared =
-      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linkedClass)
+    val desugared = classEmitter.genClassDef(linkedClass, DummyCache)
 
     // Write tree
     val codeWriter = new java.io.StringWriter
@@ -179,4 +180,8 @@ private[rhino] object ScalaJSCoreLib {
   private case class Info(name: String, isStatics: Boolean = false)
 
   private final val PseudoFileSuffix = ".sjsir"
+
+  private object DummyCache extends IncClassEmitter.InvalidatableCache {
+    def invalidate(): Unit = ()
+  }
 }

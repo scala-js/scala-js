@@ -20,9 +20,14 @@ import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.javascript.{Trees => js, _}
 
+import org.scalajs.core.ir.{ClassKind, Definitions, Position}
+import org.scalajs.core.ir.Definitions._
+
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.OutputMode
+
+import IncClassEmitter.InvalidatableCache
 
 /** Emits a desugared JS tree to a builder */
 final class Emitter private (semantics: Semantics, outputMode: OutputMode,
@@ -34,6 +39,10 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     this(semantics, outputMode, InternalOptions())
 
   private var classEmitter: ScalaJSClassEmitter = _
+
+  private val incClassEmitter: IncClassEmitter =
+    new IncClassEmitter(semantics, outputMode, internalOptions)
+
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
@@ -73,7 +82,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
   }
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
-    classEmitter = new ScalaJSClassEmitter(outputMode, internalOptions, unit)
+    classEmitter = incClassEmitter.beginRun(unit)
     startRun()
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
@@ -136,24 +145,34 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       val methodCache = classCache.getStaticCache(m.info.encodedName)
 
       addTree(methodCache.getOrElseUpdate(m.version,
-        classEmitter.genMethod(className, m.tree)))
+        classEmitter.genMethod(className, m.tree, methodCache)))
     }
 
     if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
-      val ctor = classTreeCache.constructor.getOrElseUpdate(
-          classEmitter.genConstructor(linkedClass))
+      val ctorCache = classTreeCache.constructor
+      val ctor = ctorCache.getOrElseUpdate(
+          classEmitter.genConstructor(linkedClass, ctorCache))
 
       // Normal methods
-      val memberMethods = for (m <- linkedClass.memberMethods) yield {
+      val allMethods = linkedClass.memberMethods
+      val methodsDefs = {
+        if (incClassEmitter.usesJSConstructorOpt(className))
+          allMethods.filterNot(x => isConstructorName(x.info.encodedName))
+        else
+          allMethods
+      }
+
+      val memberMethods = for (m <- methodsDefs) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
 
         methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.tree))
+            classEmitter.genMethod(className, m.tree, methodCache))
       }
 
       // Exported Members
-      val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass))
+      val exportedMembersCache = classTreeCache.exportedMembers
+      val exportedMembers = exportedMembersCache.getOrElseUpdate(
+          classEmitter.genExportedMembers(linkedClass, exportedMembersCache))
 
       outputMode match {
         case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
@@ -176,7 +195,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       for (m <- linkedClass.memberMethods) yield {
         val methodCache = classCache.getMethodCache(m.info.encodedName)
         addTree(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.tree)))
+            classEmitter.genDefaultMethod(className, m.tree, methodCache)))
       }
     }
 
@@ -200,8 +219,9 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       addTree(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(linkedClass)))
 
-    addTree(classTreeCache.classExports.getOrElseUpdate(
-        classEmitter.genClassExports(linkedClass)))
+    val classExportsCache = classTreeCache.classExports
+    addTree(classExportsCache.getOrElseUpdate(
+        classEmitter.genClassExports(linkedClass, classExportsCache)))
   }
 
   // Helpers
@@ -271,7 +291,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     }
   }
 
-  private final class MethodCache {
+  private final class MethodCache extends InvalidatableCache {
     private[this] var _tree: js.Tree = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
@@ -290,6 +310,11 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       _tree
     }
 
+    def invalidate(): Unit = {
+      _tree = null
+      _lastVersion = None
+    }
+
     def cleanAfterRun(): Boolean = _cacheUsed
   }
 }
@@ -306,13 +331,15 @@ private[scalajs] object Emitter {
     val classExports = new OneTimeCache[js.Tree]
   }
 
-  private final class OneTimeCache[A >: Null] {
+  private final class OneTimeCache[A >: Null] extends InvalidatableCache {
     private[this] var value: A = null
     def getOrElseUpdate(v: => A): A = {
       if (value == null)
         value = v
       value
     }
+
+    def invalidate(): Unit = value = null
   }
 
   // The only reason this is not private is that Rhino needs it
