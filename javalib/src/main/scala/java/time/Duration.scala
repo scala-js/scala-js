@@ -130,22 +130,26 @@ final class Duration private (seconds: Long, nanos: Int)
     new Duration(newSeconds, newNanos)
   }
 
-  def dividedBy(divisor: Long): Duration = {
-    val secondsQuot = normalizedSeconds / divisor
-    val secondsRem = normalizedSeconds % divisor
-    val nanos = {
-      try {
-        val total = MathJDK8Bridge.addExact(
-            MathJDK8Bridge.multiplyExact(secondsRem, NANOS_IN_SECOND),
-            normalizedNanos)
-        total / divisor
-      } catch {
-        case _: ArithmeticException =>
-          val total = BigInt(secondsRem) * NANOS_IN_SECOND + normalizedNanos
-          (total / divisor).toLong
+  def dividedBy(divisor: Long): Duration = divisor match {
+    case 1  => this
+    case -1 => negated
+
+    case _ =>
+      val secondsQuot = normalizedSeconds / divisor
+      val secondsRem = normalizedSeconds % divisor
+      val nanos = {
+        try {
+          val total = MathJDK8Bridge.addExact(
+              MathJDK8Bridge.multiplyExact(secondsRem, NANOS_IN_SECOND),
+              normalizedNanos)
+          total / divisor
+        } catch {
+          case _: ArithmeticException =>
+            val total = BigInt(secondsRem) * NANOS_IN_SECOND + normalizedNanos
+            (total / divisor).toLong
+        }
       }
-    }
-    Duration.ofSeconds(secondsQuot).plusNanos(nanos)
+      Duration.ofSeconds(secondsQuot).plusNanos(nanos)
   }
 
   def negated(): Duration = multipliedBy(-1)

@@ -592,6 +592,7 @@ object DurationTest extends JasmineTest with ExpectExceptions {
       expect(dmin.plusNanos(2).dividedBy(Long.MaxValue) == ofSeconds(-1)).toBeTruthy
       expect(dmax.minusNanos(1).dividedBy(Long.MaxValue) == ofSeconds(1)).toBeTruthy
 
+      expectThrows[ArithmeticException](dmin.dividedBy(-1))
       for (d <- Seq(d1, d2, d3, ZERO, dmin, dmax))
         expectThrows[ArithmeticException](d.dividedBy(0))
     }
