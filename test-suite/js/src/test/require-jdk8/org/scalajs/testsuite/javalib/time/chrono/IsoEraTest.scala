@@ -1,67 +1,55 @@
 package org.scalajs.testsuite.javalib.time.chrono
 
+import java.time.DateTimeException
 import java.time.chrono.IsoEra
 import java.time.temporal.ChronoField
-import java.time.DateTimeException
 
-import org.scalajs.testsuite.javalib.time.temporal.TemporalAccessorTest
+import org.junit.Test
+import org.junit.Assert._
+import org.scalajs.testsuite.javalib.time.TemporalAccessorTest
+import org.scalajs.testsuite.utils.AssertThrows._
 
-object IsoEraTest extends TemporalAccessorTest {
+class IsoEraTest extends TemporalAccessorTest {
   import IsoEra._
 
-  describe("java.time.chrono.IsoEra") {
-    testTemporalAccessorApi(BCE, CE)
+  val samples = values.toSeq
 
-    it("should respond to `getValue`") {
-      expect(BCE.getValue).toEqual(0)
-      expect(CE.getValue).toEqual(1)
-    }
+  def isSupported(field: ChronoField): Boolean =
+    field == ChronoField.ERA
 
-    it("should respond to `isSupported`") {
-      for {
-        era <- Seq(BCE, CE)
-        f <- ChronoField.values()
-      } {
-        if (f == ChronoField.ERA)
-          expect(era.isSupported(f)).toBeTruthy
-        else
-          expect(era.isSupported(f)).toBeFalsy
-      }
-    }
+  @Test def test_getValue(): Unit = {
+    assertEquals(0, BCE.getValue)
+    assertEquals(1, CE.getValue)
+  }
 
-    it("should respond to `getLong`") {
-      for (era <- Seq(BCE, CE))
-        expect(era.getLong(ChronoField.ERA)).toEqual(era.getValue)
-    }
+  @Test def test_getLong(): Unit = {
+    for (era <- samples)
+      assertEquals(era.getValue.toLong, era.getLong(ChronoField.ERA))
+  }
 
-    it("should be comparable") {
-      expect(BCE.compareTo(BCE)).toEqual(0)
-      expect(BCE.compareTo(CE)).toBeLessThan(0)
-      expect(CE.compareTo(BCE)).toBeGreaterThan(0)
-      expect(CE.compareTo(CE)).toEqual(0)
-    }
+  @Test def test_compareTo(): Unit = {
+    assertEquals(0, BCE.compareTo(BCE))
+    assertTrue(BCE.compareTo(CE) < 0)
+    assertTrue(CE.compareTo(BCE) > 0)
+    assertEquals(0, CE.compareTo(CE))
+  }
 
-    it("should respond to `values`") {
-      val eras = IsoEra.values()
+  @Test def test_values(): Unit = {
+    val eras = Array[AnyRef](BCE, CE)
+    assertArrayEquals(eras, values.asInstanceOf[Array[AnyRef]])
+  }
 
-      expect(eras.length).toEqual(2)
-      expect(eras(0) == BCE).toBeTruthy
-      expect(eras(1) == CE).toBeTruthy
-    }
+  @Test def test_valueOf(): Unit = {
+    assertEquals(BCE, valueOf("BCE"))
+    assertEquals(CE, valueOf("CE"))
+    expectThrows(classOf[IllegalArgumentException], valueOf(""))
+  }
 
-    it("should respond to `valueOf`") {
-      expect(valueOf("BCE") == BCE).toBeTruthy
-      expect(valueOf("CE") == CE).toBeTruthy
+  @Test def test_of(): Unit = {
+    assertEquals(BCE, of(0))
+    assertEquals(CE, of(1))
 
-      expectThrows[IllegalArgumentException](valueOf(""))
-    }
-
-    it("should respond to `of`") {
-      expect(of(0) == BCE).toBeTruthy
-      expect(of(1) == CE).toBeTruthy
-
-      for (n <- Seq(Int.MinValue, -1, 2, Int.MaxValue))
-        expectThrows[DateTimeException](of(n))
-    }
+    for (n <- Seq(Int.MinValue, -1, 2, Int.MaxValue))
+      expectThrows(classOf[DateTimeException], of(n))
   }
 }

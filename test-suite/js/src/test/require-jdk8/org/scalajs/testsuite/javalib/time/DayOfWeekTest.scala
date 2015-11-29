@@ -1,119 +1,103 @@
 package org.scalajs.testsuite.javalib.time
 
-import java.time.temporal.ChronoField
 import java.time._
+import java.time.temporal.ChronoField
 
-import org.scalajs.testsuite.javalib.time.temporal.TemporalAccessorTest
+import org.junit.Test
+import org.junit.Assert._
+import org.scalajs.testsuite.utils.AssertThrows._
 
-object DayOfWeekTest extends TemporalAccessorTest {
+class DayOfWeekTest extends TemporalAccessorTest {
   import DayOfWeek._
 
-  describe("java.time.DayOfWeek") {
-    testTemporalAccessorApi(values():_*)
+  val samples = values.toSeq
 
-    it("should respond to `getValue`") {
-      expect(MONDAY.getValue).toEqual(1)
-      expect(TUESDAY.getValue).toEqual(2)
-      expect(WEDNESDAY.getValue).toEqual(3)
-      expect(THURSDAY.getValue).toEqual(4)
-      expect(FRIDAY.getValue).toEqual(5)
-      expect(SATURDAY.getValue).toEqual(6)
-      expect(SUNDAY.getValue).toEqual(7)
-    }
+  def isSupported(field: ChronoField): Boolean =
+    field == ChronoField.DAY_OF_WEEK
 
-    it("should respond to `isSupported`") {
-      for {
-        d <- values
-        f <- ChronoField.values
-      } {
-        if (f == ChronoField.DAY_OF_WEEK)
-          expect(d.isSupported(f)).toBeTruthy
-        else
-          expect(d.isSupported(f)).toBeFalsy
-      }
-    }
+  @Test def test_getValue(): Unit = {
+    assertEquals(1, MONDAY.getValue)
+    assertEquals(2, TUESDAY.getValue)
+    assertEquals(3, WEDNESDAY.getValue)
+    assertEquals(4, THURSDAY.getValue)
+    assertEquals(5, FRIDAY.getValue)
+    assertEquals(6, SATURDAY.getValue)
+    assertEquals(7, SUNDAY.getValue)
+  }
 
-    it("should respond to `getLong`") {
-      for (d <- values())
-        expect(d.getLong(ChronoField.DAY_OF_WEEK)).toEqual(d.getValue)
-    }
+  @Test def test_getLong(): Unit = {
+    for (d <- samples)
+      assertEquals(d.getValue.toLong, d.getLong(ChronoField.DAY_OF_WEEK))
+  }
 
-    it("should respond to `plus`") {
-      expect(SATURDAY.plus(Long.MinValue) == FRIDAY).toBeTruthy
-      expect(THURSDAY.plus(-7) == THURSDAY).toBeTruthy
-      expect(WEDNESDAY.plus(-3) == SUNDAY).toBeTruthy
-      expect(TUESDAY.plus(-1) == MONDAY).toBeTruthy
-      expect(MONDAY.plus(0) == MONDAY).toBeTruthy
-      expect(THURSDAY.plus(1) == FRIDAY).toBeTruthy
-      expect(FRIDAY.plus(3) == MONDAY).toBeTruthy
-      expect(SATURDAY.plus(7) == SATURDAY).toBeTruthy
-      expect(SUNDAY.plus(Long.MaxValue) == SUNDAY).toBeTruthy
-    }
+  @Test def test_plus(): Unit = {
+    assertEquals(FRIDAY, SATURDAY.plus(Long.MinValue))
+    assertEquals(THURSDAY, THURSDAY.plus(-7))
+    assertEquals(SUNDAY, WEDNESDAY.plus(-3))
+    assertEquals(MONDAY, TUESDAY.plus(-1))
+    assertEquals(MONDAY, MONDAY.plus(0))
+    assertEquals(FRIDAY, THURSDAY.plus(1))
+    assertEquals(MONDAY, FRIDAY.plus(3))
+    assertEquals(SATURDAY, SATURDAY.plus(7))
+    assertEquals(SUNDAY, SUNDAY.plus(Long.MaxValue))
+  }
 
-    it("should respond to `minus`") {
-      expect(SATURDAY.minus(Long.MinValue) == SUNDAY).toBeTruthy
-      expect(THURSDAY.minus(-7) == THURSDAY).toBeTruthy
-      expect(FRIDAY.minus(-3) == MONDAY).toBeTruthy
-      expect(TUESDAY.minus(-1) == WEDNESDAY).toBeTruthy
-      expect(MONDAY.minus(0) == MONDAY).toBeTruthy
-      expect(THURSDAY.minus(1) == WEDNESDAY).toBeTruthy
-      expect(WEDNESDAY.minus(3) == SUNDAY).toBeTruthy
-      expect(SATURDAY.minus(7) == SATURDAY).toBeTruthy
-      expect(SUNDAY.plus(Long.MaxValue) == SUNDAY).toBeTruthy
-    }
+  @Test def test_minus(): Unit = {
+    assertEquals(SUNDAY, SATURDAY.minus(Long.MinValue))
+    assertEquals(THURSDAY, THURSDAY.minus(-7))
+    assertEquals(MONDAY, FRIDAY.minus(-3))
+    assertEquals(WEDNESDAY, TUESDAY.minus(-1))
+    assertEquals(MONDAY, MONDAY.minus(0))
+    assertEquals(WEDNESDAY, THURSDAY.minus(1))
+    assertEquals(SUNDAY, WEDNESDAY.minus(3))
+    assertEquals(SATURDAY, SATURDAY.minus(7))
+    assertEquals(SUNDAY, SUNDAY.plus(Long.MaxValue))
+  }
 
-    it("should be comparable") {
-      expect(WEDNESDAY.compareTo(WEDNESDAY)).toEqual(0)
-      expect(MONDAY.compareTo(SUNDAY)).toBeLessThan(0)
-      expect(SATURDAY.compareTo(TUESDAY)).toBeGreaterThan(0)
-    }
+  @Test def test_compareTo(): Unit = {
+    assertEquals(0, WEDNESDAY.compareTo(WEDNESDAY))
+    assertTrue(MONDAY.compareTo(SUNDAY) < 0)
+    assertTrue(SATURDAY.compareTo(TUESDAY) > 0)
+  }
 
-    it("should respond to `values`") {
-      val days = values()
+  @Test def test_values(): Unit = {
+    val days: Array[AnyRef] =
+      Array(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY)
+    assertArrayEquals(days, values.asInstanceOf[Array[AnyRef]])
+  }
 
-      expect(days.length).toEqual(7)
-      expect(days(0) == MONDAY).toBeTruthy
-      expect(days(1) == TUESDAY).toBeTruthy
-      expect(days(2) == WEDNESDAY).toBeTruthy
-      expect(days(3) == THURSDAY).toBeTruthy
-      expect(days(4) == FRIDAY).toBeTruthy
-      expect(days(5) == SATURDAY).toBeTruthy
-      expect(days(6) == SUNDAY).toBeTruthy
-    }
+  @Test def test_valueOf(): Unit = {
+    assertEquals(MONDAY, valueOf("MONDAY"))
+    assertEquals(TUESDAY, valueOf("TUESDAY"))
+    assertEquals(WEDNESDAY, valueOf("WEDNESDAY"))
+    assertEquals(THURSDAY, valueOf("THURSDAY"))
+    assertEquals(FRIDAY, valueOf("FRIDAY"))
+    assertEquals(SATURDAY, valueOf("SATURDAY"))
+    assertEquals(SUNDAY, valueOf("SUNDAY"))
 
-    it("should respond to `valueOf`") {
-      expect(valueOf("MONDAY") == MONDAY).toBeTruthy
-      expect(valueOf("TUESDAY") == TUESDAY).toBeTruthy
-      expect(valueOf("WEDNESDAY") == WEDNESDAY).toBeTruthy
-      expect(valueOf("THURSDAY") == THURSDAY).toBeTruthy
-      expect(valueOf("FRIDAY") == FRIDAY).toBeTruthy
-      expect(valueOf("SATURDAY") == SATURDAY).toBeTruthy
-      expect(valueOf("SUNDAY") == SUNDAY).toBeTruthy
+    expectThrows(classOf[IllegalArgumentException], valueOf(""))
+  }
 
-      expectThrows[IllegalArgumentException](valueOf(""))
-    }
+  @Test def test_of(): Unit = {
+    assertEquals(MONDAY, of(1))
+    assertEquals(TUESDAY, of(2))
+    assertEquals(WEDNESDAY, of(3))
+    assertEquals(THURSDAY, of(4))
+    assertEquals(FRIDAY, of(5))
+    assertEquals(SATURDAY, of(6))
+    assertEquals(SUNDAY, of(7))
 
-    it("should respond to `of`") {
-      expect(of(1) == MONDAY).toBeTruthy
-      expect(of(2) == TUESDAY).toBeTruthy
-      expect(of(3) == WEDNESDAY).toBeTruthy
-      expect(of(4) == THURSDAY).toBeTruthy
-      expect(of(5) == FRIDAY).toBeTruthy
-      expect(of(6) == SATURDAY).toBeTruthy
-      expect(of(7) == SUNDAY).toBeTruthy
+    for (n <- Seq(Int.MinValue, 0, 8, Int.MaxValue))
+      expectThrows(classOf[DateTimeException], of(n))
+  }
 
-      for (n <- Seq(Int.MinValue, 0, 8, Int.MaxValue))
-        expectThrows[DateTimeException](of(n))
-    }
+  @Test def test_from(): Unit = {
+    for (d <- samples)
+      assertEquals(d, from(d))
+    for (d <- Seq(LocalDate.MIN, LocalDate.of(2012, 2, 29), LocalDate.MAX))
+      assertEquals(d.getDayOfWeek, from(d))
 
-    it("should respond to `from`") {
-      for (d <- values)
-        expect(from(d) == d).toBeTruthy
-      for (d <- Seq(LocalDate.MIN, LocalDate.of(2012, 2, 29), LocalDate.MAX))
-        expect(from(d) == d.getDayOfWeek).toBeTruthy
-
-      expectThrows[DateTimeException](from(LocalTime.MIN))
-      expectThrows[DateTimeException](from(Month.JANUARY))
-    }
+    expectThrows(classOf[DateTimeException], from(LocalTime.MIN))
+    expectThrows(classOf[DateTimeException], from(Month.JANUARY))
   }
 }

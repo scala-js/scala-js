@@ -2,93 +2,78 @@ package org.scalajs.testsuite.javalib.time.temporal
 
 import java.time.temporal.ChronoUnit
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object ChronoUnitTest extends JasmineTest {
+class ChronoUnitTest {
   import ChronoUnit._
 
-  describe("java.time.temporal.ChronoUnit") {
-    it("should respond to `isDurationEstimated`") {
-      for (u <- ChronoUnit.values())
-        expect(u.isDurationEstimated != u.isTimeBased).toBeTruthy
-    }
+  @Test def test_isDurationEstimated(): Unit = {
+    for (u <- ChronoUnit.values)
+      assertTrue(u.isDurationEstimated != u.isTimeBased)
+  }
 
-    it("should respond to `isDateBased`") {
-      expect(NANOS.isDateBased).toBeFalsy
-      expect(MICROS.isDateBased).toBeFalsy
-      expect(MILLIS.isDateBased).toBeFalsy
-      expect(SECONDS.isDateBased).toBeFalsy
-      expect(MINUTES.isDateBased).toBeFalsy
-      expect(HOURS.isDateBased).toBeFalsy
-      expect(HALF_DAYS.isDateBased).toBeFalsy
-      expect(DAYS.isDateBased).toBeTruthy
-      expect(WEEKS.isDateBased).toBeTruthy
-      expect(MONTHS.isDateBased).toBeTruthy
-      expect(YEARS.isDateBased).toBeTruthy
-      expect(DECADES.isDateBased).toBeTruthy
-      expect(CENTURIES.isDateBased).toBeTruthy
-      expect(MILLENNIA.isDateBased).toBeTruthy
-      expect(ERAS.isDateBased).toBeTruthy
-      expect(FOREVER.isDateBased).toBeFalsy
-    }
+  @Test def test_isDateBased(): Unit = {
+    assertFalse(NANOS.isDateBased)
+    assertFalse(MICROS.isDateBased)
+    assertFalse(MILLIS.isDateBased)
+    assertFalse(SECONDS.isDateBased)
+    assertFalse(MINUTES.isDateBased)
+    assertFalse(HOURS.isDateBased)
+    assertFalse(HALF_DAYS.isDateBased)
+    assertTrue(DAYS.isDateBased)
+    assertTrue(WEEKS.isDateBased)
+    assertTrue(MONTHS.isDateBased)
+    assertTrue(YEARS.isDateBased)
+    assertTrue(DECADES.isDateBased)
+    assertTrue(CENTURIES.isDateBased)
+    assertTrue(MILLENNIA.isDateBased)
+    assertTrue(ERAS.isDateBased)
+    assertFalse(FOREVER.isDateBased)
+  }
 
-    it("should respond to `isTimeBased`") {
-      expect(NANOS.isTimeBased).toBeTruthy
-      expect(MICROS.isTimeBased).toBeTruthy
-      expect(MILLIS.isTimeBased).toBeTruthy
-      expect(SECONDS.isTimeBased).toBeTruthy
-      expect(MINUTES.isTimeBased).toBeTruthy
-      expect(HOURS.isTimeBased).toBeTruthy
-      expect(HALF_DAYS.isTimeBased).toBeTruthy
-      expect(DAYS.isTimeBased).toBeFalsy
-      expect(WEEKS.isTimeBased).toBeFalsy
-      expect(MONTHS.isTimeBased).toBeFalsy
-      expect(YEARS.isTimeBased).toBeFalsy
-      expect(DECADES.isTimeBased).toBeFalsy
-      expect(CENTURIES.isTimeBased).toBeFalsy
-      expect(MILLENNIA.isTimeBased).toBeFalsy
-      expect(ERAS.isTimeBased).toBeFalsy
-      expect(FOREVER.isTimeBased).toBeFalsy
-    }
+  @Test def test_isTimeBased(): Unit = {
+    assertTrue(NANOS.isTimeBased)
+    assertTrue(MICROS.isTimeBased)
+    assertTrue(MILLIS.isTimeBased)
+    assertTrue(SECONDS.isTimeBased)
+    assertTrue(MINUTES.isTimeBased)
+    assertTrue(HOURS.isTimeBased)
+    assertTrue(HALF_DAYS.isTimeBased)
+    assertFalse(DAYS.isTimeBased)
+    assertFalse(WEEKS.isTimeBased)
+    assertFalse(MONTHS.isTimeBased)
+    assertFalse(YEARS.isTimeBased)
+    assertFalse(DECADES.isTimeBased)
+    assertFalse(CENTURIES.isTimeBased)
+    assertFalse(MILLENNIA.isTimeBased)
+    assertFalse(ERAS.isTimeBased)
+    assertFalse(FOREVER.isTimeBased)
+  }
 
-    it("should respond to `values`") {
-      val units = ChronoUnit.values()
+  @Test def test_values(): Unit = {
+    val units = Array[AnyRef](NANOS, MICROS, MILLIS, SECONDS, MINUTES, HOURS,
+        HALF_DAYS, DAYS, WEEKS, MONTHS, YEARS, DECADES, CENTURIES, MILLENNIA,
+        ERAS, FOREVER)
+    assertArrayEquals(units, values.asInstanceOf[Array[AnyRef]])
+  }
 
-      expect(units(0) == NANOS).toBeTruthy
-      expect(units(1) == MICROS).toBeTruthy
-      expect(units(2) == MILLIS).toBeTruthy
-      expect(units(3) == SECONDS).toBeTruthy
-      expect(units(4) == MINUTES).toBeTruthy
-      expect(units(5) == HOURS).toBeTruthy
-      expect(units(6) == HALF_DAYS).toBeTruthy
-      expect(units(7) == DAYS).toBeTruthy
-      expect(units(8) == WEEKS).toBeTruthy
-      expect(units(9) == MONTHS).toBeTruthy
-      expect(units(10) == YEARS).toBeTruthy
-      expect(units(11) == DECADES).toBeTruthy
-      expect(units(12) == CENTURIES).toBeTruthy
-      expect(units(13) == MILLENNIA).toBeTruthy
-      expect(units(14) == ERAS).toBeTruthy
-      expect(units(15) == FOREVER).toBeTruthy
-    }
-
-    it("should respond to `valueOf`") {
-      expect(valueOf("NANOS") == NANOS).toBeTruthy
-      expect(valueOf("MICROS") == MICROS).toBeTruthy
-      expect(valueOf("MILLIS") == MILLIS).toBeTruthy
-      expect(valueOf("SECONDS") == SECONDS).toBeTruthy
-      expect(valueOf("MINUTES") == MINUTES).toBeTruthy
-      expect(valueOf("HOURS") == HOURS).toBeTruthy
-      expect(valueOf("HALF_DAYS") == HALF_DAYS).toBeTruthy
-      expect(valueOf("DAYS") == DAYS).toBeTruthy
-      expect(valueOf("WEEKS") == WEEKS).toBeTruthy
-      expect(valueOf("MONTHS") == MONTHS).toBeTruthy
-      expect(valueOf("YEARS") == YEARS).toBeTruthy
-      expect(valueOf("DECADES") == DECADES).toBeTruthy
-      expect(valueOf("CENTURIES") == CENTURIES).toBeTruthy
-      expect(valueOf("MILLENNIA") == MILLENNIA).toBeTruthy
-      expect(valueOf("ERAS") == ERAS).toBeTruthy
-      expect(valueOf("FOREVER") == FOREVER).toBeTruthy
-    }
+  @Test def test_valueOf(): Unit = {
+    assertEquals(NANOS, valueOf("NANOS"))
+    assertEquals(MICROS, valueOf("MICROS"))
+    assertEquals(MILLIS, valueOf("MILLIS"))
+    assertEquals(SECONDS, valueOf("SECONDS"))
+    assertEquals(MINUTES, valueOf("MINUTES"))
+    assertEquals(HOURS, valueOf("HOURS"))
+    assertEquals(HALF_DAYS, valueOf("HALF_DAYS"))
+    assertEquals(DAYS, valueOf("DAYS"))
+    assertEquals(WEEKS, valueOf("WEEKS"))
+    assertEquals(MONTHS, valueOf("MONTHS"))
+    assertEquals(YEARS, valueOf("YEARS"))
+    assertEquals(DECADES, valueOf("DECADES"))
+    assertEquals(CENTURIES, valueOf("CENTURIES"))
+    assertEquals(MILLENNIA, valueOf("MILLENNIA"))
+    assertEquals(ERAS, valueOf("ERAS"))
+    assertEquals(FOREVER, valueOf("FOREVER"))
   }
 }

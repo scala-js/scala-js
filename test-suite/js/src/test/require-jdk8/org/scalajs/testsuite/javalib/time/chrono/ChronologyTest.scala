@@ -3,22 +3,20 @@ package org.scalajs.testsuite.javalib.time.chrono
 import java.time.DateTimeException
 import java.time.chrono.{IsoChronology, Chronology}
 
-import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.testsuite.utils.ExpectExceptions
+import org.junit.Test
+import org.junit.Assert._
+import org.scalajs.testsuite.utils.AssertThrows._
 
-object ChronologyTest extends JasmineTest with ExpectExceptions {
+class ChronologyTest {
   import Chronology._
 
-  describe("java.time.chrono.Chronology") {
-    it("should respond to `of`") {
-      expect(of("ISO") == IsoChronology.INSTANCE).toBeTruthy
+  @Test def test_of(): Unit = {
+    assertEquals(IsoChronology.INSTANCE, of("ISO"))
+    expectThrows(classOf[DateTimeException], of(""))
+  }
 
-      expectThrows[DateTimeException](of(""))
-    }
-
-    it("should respond to `getAvailableChronologies`") {
-      val chronologies = Chronology.getAvailableChronologies
-      expect(chronologies.contains(IsoChronology.INSTANCE)).toBeTruthy
-    }
+  @Test def test_getAvailableChronologies(): Unit = {
+    val chronologies = Chronology.getAvailableChronologies
+    assertTrue(chronologies.contains(IsoChronology.INSTANCE))
   }
 }
