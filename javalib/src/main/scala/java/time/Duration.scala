@@ -152,11 +152,21 @@ final class Duration private (seconds: Long, nanos: Int)
 
   def abs(): Duration = if (isNegative()) negated() else this
 
-  def addTo(temporal: Temporal): Temporal =
-    temporal.plus(normalizedSeconds, SECONDS).plus(normalizedNanos, NANOS)
+  def addTo(temporal: Temporal): Temporal = {
+    val t1 =
+      if (seconds == 0) temporal
+      else temporal.plus(seconds, SECONDS)
+    if (nanos == 0) t1
+    else t1.plus(nanos, NANOS)
+  }
 
-  def subtractFrom(temporal: Temporal): Temporal =
-    temporal.minus(normalizedSeconds, SECONDS).minus(normalizedNanos, NANOS)
+  def subtractFrom(temporal: Temporal): Temporal = {
+    val t1 =
+      if (seconds == 0) temporal
+      else temporal.minus(seconds, SECONDS)
+    if (nanos == 0) t1
+    else t1.minus(nanos, NANOS)
+  }
 
   def toDays(): Long = seconds / SECONDS_IN_DAY
 
