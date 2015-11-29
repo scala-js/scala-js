@@ -10,6 +10,7 @@
 package scala.scalajs.js
 
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 /** Value of type A or B (union type).
  *
@@ -73,4 +74,10 @@ object | { // scalastyle:ignore
     def merge[B](implicit ev: |.Evidence[A, B]): B =
       self.asInstanceOf[B]
   }
+
+  implicit def UnionEvidence[A: ClassTag, B: ClassTag](ab: A | B)(implicit eva: A => Any, evb: B => Any): Any =
+    ab match {
+      case a: A => eva(a)
+      case b: B => evb(b)
+    }
 }
