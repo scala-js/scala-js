@@ -107,6 +107,8 @@ abstract class ExternalJSEnv(
       for ((name, value) <- vmEnv)
         pBuilder.environment().put(name, value)
 
+      logger.debug("Starting process: " + allArgs.mkString(" "))
+
       pBuilder.start()
     }
 
