@@ -202,7 +202,7 @@ trait CollectionTest extends JasmineTest with ExpectExceptions {
 
 object CollectionFactory {
   def allFactories: Iterator[CollectionFactory] =
-    ListFactory.allFactories ++ SetFactory.allFactories
+    ListFactory.allFactories ++ SetFactory.allFactories ++ DequeFactory.allFactories
 }
 
 trait CollectionFactory {
