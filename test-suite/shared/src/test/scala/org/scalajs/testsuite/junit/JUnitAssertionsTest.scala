@@ -5,7 +5,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.hamcrest.CoreMatchers._
 
-import org.scalajs.testsuite.util.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows._
 
 class JUnitAssertionsTest {
   private final val NotEquals = false
