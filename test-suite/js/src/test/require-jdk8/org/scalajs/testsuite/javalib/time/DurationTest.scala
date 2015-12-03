@@ -623,22 +623,28 @@ object DurationTest extends JasmineTest with ExpectExceptions {
 
     it("should respond to `addTo`") {
       val t = LocalTime.NOON
+      val d = LocalDate.MIN
 
       expect(ZERO.addTo(t) == t).toBeTruthy
       expect(dmin.addTo(t) == LocalTime.of(20, 29, 52)).toBeTruthy
       expect(dmax.addTo(t) == LocalTime.of(3, 30, 7, 999999999)).toBeTruthy
+      expect(ZERO.addTo(d) == d).toBeTruthy
 
-      // TODO: Add tests for other Temporals
+      expectThrows[UnsupportedTemporalTypeException](ofNanos(1).addTo(d))
+      expectThrows[UnsupportedTemporalTypeException](ofSeconds(1).addTo(d))
     }
 
     it("should respond to `subtractFrom`") {
       val t = LocalTime.NOON
+      val d = LocalDate.MIN
 
       expect(ZERO.subtractFrom(t) == t).toBeTruthy
       expect(dmin.subtractFrom(t) == LocalTime.of(3, 30, 8)).toBeTruthy
       expect(dmax.subtractFrom(t) == LocalTime.of(20, 29, 52, 1)).toBeTruthy
+      expect(ZERO.subtractFrom(d) == d).toBeTruthy
 
-      // TODO: Add tests for other Temporals
+      expectThrows[UnsupportedTemporalTypeException](ofNanos(1).subtractFrom(d))
+      expectThrows[UnsupportedTemporalTypeException](ofSeconds(1).subtractFrom(d))
     }
 
     it("should respond to `toDays`") {
