@@ -84,7 +84,7 @@ object Charset {
         "iso-ir-6"))
       m(s) = US_ASCII
 
-    for (s <- Seq("utf-8", "utf_8", "utf8", "unicode-1-1-utf-8"))
+    for (s <- Seq("utf-8", "utf8", "unicode-1-1-utf-8"))
       m(s) = UTF_8
 
     for (s <- Seq("utf-16be", "utf_16be", "x-utf-16be",
