@@ -34,7 +34,6 @@ class CharsetTest {
     assertEquals("UTF-8", Charset.forName("UTF-8").name())
     assertEquals("UTF-8", Charset.forName("utf-8").name())
     assertEquals("UTF-8", Charset.forName("UtF8").name())
-    assertEquals("UTF-8", Charset.forName("UTF-8").name())
 
     assertEquals("UTF-16BE", Charset.forName("UTF-16BE").name())
     assertEquals("UTF-16BE", Charset.forName("Utf_16BE").name())
@@ -49,10 +48,8 @@ class CharsetTest {
     assertEquals("UTF-16", Charset.forName("unicode").name())
     assertEquals("UTF-16", Charset.forName("UnicodeBig").name())
 
-    if (executingInJVM) {
-      // bug #2040 - not resolved
-      expectThrows(classOf[UnsupportedCharsetException], Charset.forName("UTF_8"))
-    }
+    // Issue #2040
+    expectThrows(classOf[UnsupportedCharsetException], Charset.forName("UTF_8"))
 
     expectThrows(classOf[UnsupportedCharsetException],
         Charset.forName("this-charset-does-not-exist"))
