@@ -47,7 +47,10 @@ class StringReader(s: String) extends Reader {
     }
   }
 
-  override def ready(): Boolean = pos < s.length
+  override def ready(): Boolean = {
+    ensureOpen()
+    true
+  }
 
   override def reset(): Unit = {
     ensureOpen()
