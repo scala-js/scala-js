@@ -60,7 +60,7 @@ trait AsyncJSRunner {
    *  `atMost`, or force it to stop.
    *
    *  If any exception is thrown while awaiting completion (including a
-   *  [[scala.concurrent.TimeoutException TimeoutException]], forces the runner
+   *  [[scala.concurrent.TimeoutException TimeoutException]]), forces the runner
    *  to stop by calling `stop()` before rethrowing the exception.
    *
    *  Strictly equivalent to:
