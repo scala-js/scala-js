@@ -26,19 +26,15 @@ class URITest {
       rawQuery: String = query, rawUserInfo: String = userInfo,
       rawSchemeSpecificPart: String = schemeSpecificPart): Unit = {
 
-    if (!executingInJVM)
-      assertEquals(authority, uri.getAuthority())
+    assertEquals(authority, uri.getAuthority())
     assertEquals(fragment, uri.getFragment())
     assertEquals(host, uri.getHost())
-    if (!executingInJVM)
-      assertEquals(path, uri.getPath())
+    assertEquals(path, uri.getPath())
     assertEquals(port, uri.getPort())
     assertEquals(query, uri.getQuery())
-    if (!executingInJVM) {
-      assertEquals(rawAuthority, uri.getRawAuthority())
-      assertEquals(rawFragment, uri.getRawFragment())
-      assertEquals(rawPath, uri.getRawPath())
-    }
+    assertEquals(rawAuthority, uri.getRawAuthority())
+    assertEquals(rawFragment, uri.getRawFragment())
+    assertEquals(rawPath, uri.getRawPath())
     assertEquals(rawQuery, uri.getRawQuery())
     assertEquals(rawSchemeSpecificPart, uri.getRawSchemeSpecificPart())
     assertEquals(rawUserInfo, uri.getRawUserInfo())
@@ -56,6 +52,14 @@ class URITest {
         path = "/j2se/1.3/",
         authority = "java.sun.com",
         schemeSpecificPart = "//java.sun.com/j2se/1.3/")()
+  }
+
+  @Test def should_parse_absolute_URIs_with_empty_path(): Unit = {
+    expectURI(new URI("http://foo:bar"), true, false)(
+        authority = "foo:bar",
+        path = "",
+        scheme = "http",
+        schemeSpecificPart = "//foo:bar")()
   }
 
   @Test def should_parse_absolute_URIs_with_IPv6(): Unit = {
@@ -79,7 +83,6 @@ class URITest {
 
   @Test def should_parse_absolute_URIs_with_empty_authority(): Unit = {
     expectURI(new URI("file:///~/calendar"), true, false)(
-        authority = "",
         scheme = "file",
         path = "/~/calendar",
         schemeSpecificPart = "///~/calendar")()
@@ -121,6 +124,7 @@ class URITest {
   @Test def should_parse_relative_URIs_with_registry_based_authority(): Unit = {
     expectURI(new URI("//foo:bar"), false, false)(
         authority = "foo:bar",
+        path = "",
         schemeSpecificPart = "//foo:bar")()
   }
 
@@ -204,6 +208,9 @@ class URITest {
     expectURI(new URI("bar/..//fo:o//./bar").normalize, false, false)(
         path = "./fo:o/bar",
         schemeSpecificPart = "./fo:o/bar")()
+    expectURI(new URI("").normalize, false, false)(
+        path = "",
+        schemeSpecificPart = "")()
 
     val x = new URI("http://www.example.com/foo/bar")
     assertTrue(x.normalize eq x)
@@ -220,6 +227,8 @@ class URITest {
 
     assertEquals(resolved1, new URI(base).resolve(relative1).toString)
     assertEquals(resolved2, new URI(resolved1).resolve(relative2).toString)
+    assertEquals("/a/", new URI("").resolve("/a/").toString)
+    assertEquals("/a/", new URI("/a/").resolve("").toString)
   }
 
   @Test def should_provide_resolve_RFC2396_examples(): Unit = {
@@ -273,6 +282,16 @@ class URITest {
     resTest("http:g", "http:g")
   }
 
+  @Test def should_provide_resolve_when_authority_is_empty__issue_2048(): Unit = {
+    val base = new URI("http://foo/a")
+    def resTest(ref: String, trg: String): Unit =
+      assertEquals(trg, base.resolve(ref).toString)
+
+    resTest("///a", "http://foo/a")
+    resTest("/b", "http://foo/b")
+    resTest("/b/../d", "http://foo/b/../d")
+  }
+
   @Test def should_provide_normalize__examples_derived_from_RFC_relativize(): Unit = {
     expectURI(new URI("http://a/b/c/..").normalize, true, false)(
         scheme = "http",
@@ -306,6 +325,10 @@ class URITest {
     relTest("/a/b/c/", "/a/b/c/d/e", "d/e")
     relTest("/a/b/c/", "/a/b/c/foo:e/d", "foo:e/d") // see bug JDK-7037120
     relTest("../a/b", "../a/b/c", "c")
+    relTest("../a/b", "", "")
+    relTest("", "../a/b", "../a/b")
+    relTest("file:///a", "file:///a/b/", "b/")
+    relTest("file:/c", "file:///c/d/", "d/")
   }
 
   @Test def should_provide_hashCode(): Unit = {
