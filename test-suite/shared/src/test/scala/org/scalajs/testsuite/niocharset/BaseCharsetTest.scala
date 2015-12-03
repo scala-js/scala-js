@@ -14,12 +14,9 @@ import scala.util._
 import java.nio._
 import java.nio.charset._
 
-import scala.scalajs.js
-import js.JSConverters._
+import org.junit.Assert._
 
-import org.scalajs.jasminetest.JasmineTest
-
-class BaseCharsetTest(val charset: Charset) extends JasmineTest {
+class BaseCharsetTest(val charset: Charset) {
   import BaseCharsetTest._
 
   protected val AllErrorActions = Seq(
@@ -85,20 +82,18 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
       (actualTry, expectedTry) match {
         case (Failure(actualEx: MalformedInputException),
             Failure(expectedEx: MalformedInputException)) =>
-          expect(actualEx.getInputLength()).toEqual(expectedEx.getInputLength())
+          assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Failure(actualEx: UnmappableCharacterException),
             Failure(expectedEx: UnmappableCharacterException)) =>
-          expect(actualEx.getInputLength()).toEqual(expectedEx.getInputLength())
+          assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Success(actualChars), Success(expectedChars)) =>
-          expect(actualChars.map(_.toInt).toJSArray).toEqual(
-              expectedChars.map(_.toInt).toJSArray)
+          assertArrayEquals(expectedChars.map(_.toInt), actualChars.map(_.toInt))
 
         case _ =>
           // For the error message
-          expect(actualTry.asInstanceOf[js.Any]).toBe(
-              expectedTry.asInstanceOf[js.Any])
+          assertSame(expectedTry, actualTry)
       }
     }
 
@@ -127,8 +122,8 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
       val inBuf =
         if (readOnly) in.asReadOnlyBuffer()
         else in.duplicate()
-      assert(inBuf.isReadOnly == readOnly)
-      assert(inBuf.hasArray != readOnly)
+      assertTrue(inBuf.isReadOnly == readOnly)
+      assertTrue(inBuf.hasArray != readOnly)
 
       val actualTry = Try {
         val buf = encoder.encode(inBuf)
@@ -169,19 +164,18 @@ class BaseCharsetTest(val charset: Charset) extends JasmineTest {
       (actualTry, expectedTry) match {
         case (Failure(actualEx: MalformedInputException),
             Failure(expectedEx: MalformedInputException)) =>
-          expect(actualEx.getInputLength()).toEqual(expectedEx.getInputLength())
+          assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Failure(actualEx: UnmappableCharacterException),
             Failure(expectedEx: UnmappableCharacterException)) =>
-          expect(actualEx.getInputLength()).toEqual(expectedEx.getInputLength())
+          assertEquals(expectedEx.getInputLength(), actualEx.getInputLength())
 
         case (Success(actualBytes), Success(expectedBytes)) =>
-          expect(actualBytes.toJSArray).toEqual(expectedBytes.toJSArray)
+          assertArrayEquals(expectedBytes, actualBytes)
 
         case _ =>
           // For the error message
-          expect(actualTry.asInstanceOf[js.Any]).toBe(
-              expectedTry.asInstanceOf[js.Any])
+          assertSame(expectedTry, actualTry)
       }
     }
 
