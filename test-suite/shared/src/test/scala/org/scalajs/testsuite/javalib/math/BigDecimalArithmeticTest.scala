@@ -982,7 +982,7 @@ class  BigDecimalArithmeticTest {
     expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
   }
 
-  @Test def `testDivideToIntegralValue_on_floating_points__issue_1979`(): Unit = {
+  @Test def testDivideToIntegralValue_on_floating_points__issue_1979(): Unit = {
     val one = new BigDecimal(1.0)
     val oneAndHalf = new BigDecimal(1.5)
     val a0 = new BigDecimal(3.0)
@@ -992,18 +992,15 @@ class  BigDecimalArithmeticTest {
     val b0 = new BigDecimal(3.0)
     val b1 = new BigDecimal(2.0)
 
-    if (!executingInJVM) {
-      // issue #2042 - not resolved
-      assertEquals(b0, a0.divideToIntegralValue(one))
-      assertEquals(b0, a1.divideToIntegralValue(one))
-      assertEquals(b0, a2.divideToIntegralValue(one))
-      assertEquals(b0, a3.divideToIntegralValue(one))
+    assertEquals(b0, a0.divideToIntegralValue(one))
+    assertEquals(b0.setScale(51), a1.divideToIntegralValue(one))
+    assertEquals(b0.setScale(50), a2.divideToIntegralValue(one))
+    assertEquals(b0.setScale(51), a3.divideToIntegralValue(one))
 
-      assertEquals(b1, a0.divideToIntegralValue(oneAndHalf))
-      assertEquals(b1, a1.divideToIntegralValue(oneAndHalf))
-      assertEquals(b1, a2.divideToIntegralValue(oneAndHalf))
-      assertEquals(b1, a3.divideToIntegralValue(oneAndHalf))
-    }
+    assertEquals(b1, a0.divideToIntegralValue(oneAndHalf))
+    assertEquals(b1.setScale(50), a1.divideToIntegralValue(oneAndHalf))
+    assertEquals(b1.setScale(49), a2.divideToIntegralValue(oneAndHalf))
+    assertEquals(b1.setScale(50), a3.divideToIntegralValue(oneAndHalf))
   }
 
   @Test def testMultiplyDiffScaleNegPos(): Unit = {
