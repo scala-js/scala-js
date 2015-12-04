@@ -15,7 +15,6 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class InputStreamTest extends CommonStreamsTests {
 
@@ -38,17 +37,10 @@ class InputStreamTest extends CommonStreamsTests {
     assertArrayEquals(((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
 
     // Test some Exception conditions
-    if (executingInJVM) {
-      expectThrows(classOf[NullPointerException], stream.read(null, 0, 10))
-      expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 10))
-      expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
-      expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
-    } else {
-      expectThrows(classOf[Exception], stream.read(null, 0, 10))
-      expectThrows(classOf[Exception], stream.read(buf, -1, 10))
-      expectThrows(classOf[Exception], stream.read(buf, 0, -1))
-      expectThrows(classOf[Exception], stream.read(buf, 10, 100))
-    }
+    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 10))
+    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
+    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
+
     // Buffer should be unmodified
     assertArrayEquals(
         ((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
