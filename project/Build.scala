@@ -35,8 +35,7 @@ import org.scalajs.core.tools.sourcemap._
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem.CheckedBehavior
 
-import sbtassembly.Plugin.{AssemblyKeys, assemblySettings}
-import AssemblyKeys.{assembly, assemblyOption}
+import sbtassembly.AssemblyPlugin.autoImport._
 
 object Build extends sbt.Build {
 
@@ -897,7 +896,7 @@ object Build extends sbt.Build {
       id = "cli",
       base = file("cli"),
       settings = (
-          commonSettings ++ publishSettings ++ assemblySettings ++ fatalWarningsSettings
+          commonSettings ++ publishSettings ++ fatalWarningsSettings
       ) ++ Seq(
           name := "Scala.js CLI",
           libraryDependencies ++= Seq(
@@ -910,7 +909,7 @@ object Build extends sbt.Build {
           // assembly options
           mainClass in assembly := None, // don't want an executable JAR
           assemblyOption in assembly ~= { _.copy(includeScala = false) },
-          AssemblyKeys.jarName in assembly :=
+          assemblyJarName in assembly :=
             s"${normalizedName.value}-assembly_${scalaBinaryVersion.value}-${version.value}.jar"
       )
   ).dependsOn(tools)

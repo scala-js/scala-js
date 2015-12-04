@@ -5,11 +5,11 @@ resolvers += Resolver.url(
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.1.2")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.11.2")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.1")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.7")
 
-addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.7.0")
+addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "0.8.0")
 
 libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
