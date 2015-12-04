@@ -15,7 +15,6 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 /** Tests for our implementation of java.io._ reader classes */
 class StringReaderTest {
@@ -64,9 +63,11 @@ class StringReaderTest {
       assertEquals(c, r.read().toChar)
     }
 
-    if(!executingInJVM)
-      assertFalse(r.ready())
+    assertTrue(r.ready())
     assertEquals(-1, r.read())
+
+    r.close()
+    expectThrows(classOf[IOException], r.ready())
   }
 
   @Test def should_provide_mark_reset(): Unit = {
