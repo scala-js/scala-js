@@ -45,6 +45,21 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testingExample/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
+    sbtretry 'set scalaJSStage in Global := FastOptStage' \
+        ++$scala javalibExTestSuite/test \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala javalibExTestSuite/test &&
+    sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
+    sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
+        testInterface/compile:doc jasmineTestFramework/compile:doc &&
+    sbtretry ++$scala partest/fetchScalaSource &&
+    sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
+    sh ci/checksizes.sh $scala &&
+    sh ci/check-partest-coverage.sh $scala
+  ]]></task>
+
+  <task id="test-suite-ecma-script5"><![CDATA[
+    setJavaVersion $java
     sbtretry ++$scala testSuite/test noIrCheckTest/test \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test noIrCheckTest/test \
@@ -87,7 +102,11 @@
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testSuite/test &&
+        ++$scala testSuite/test
+  ]]></task>
+
+  <task id="test-suite-ecma-script6"><![CDATA[
+    setJavaVersion $java
     sbtretry 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6)' \
         'set Seq(testSuite, noIrCheckTest).map(pr => postLinkJSEnv in pr := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters")).value.withSourceMap(false))' \
         'set scalaJSStage in Global := FastOptStage' \
@@ -132,7 +151,11 @@
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
-        testSuite/clean &&
+        testSuite/clean
+  ]]></task>
+
+  <task id="test-suite-ecma-script6-strong-mode"><![CDATA[
+    setJavaVersion $java
     sbtretry 'set Seq(testSuite, noIrCheckTest).map(pr => scalaJSOutputMode in pr := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode)' \
         'set Seq(testSuite, noIrCheckTest).map(pr => postLinkJSEnv in pr := NodeJSEnv(executable = "/home/jenkins/apps/iojs-2.0/bin/iojs", args = Seq("--harmony-rest-parameters", "--strong-mode")).value.withSourceMap(false))' \
         'set scalaJSStage in Global := FastOptStage' \
@@ -177,18 +200,7 @@
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         'set scalaJSStage in Global := FastOptStage' \
         ++$scala testSuite/test \
-        testSuite/clean &&
-    sbtretry 'set scalaJSStage in Global := FastOptStage' \
-        ++$scala javalibExTestSuite/test \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala javalibExTestSuite/test &&
-    sbtretry ++$scala testSuite/test:doc compiler/test reversi/fastOptJS reversi/fullOptJS &&
-    sbtretry ++$scala compiler/compile:doc library/compile:doc javalibEx/compile:doc \
-        testInterface/compile:doc jasmineTestFramework/compile:doc &&
-    sbtretry ++$scala partest/fetchScalaSource &&
-    sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
-    sh ci/checksizes.sh $scala &&
-    sh ci/check-partest-coverage.sh $scala
+        testSuite/clean
   ]]></task>
 
   <task id="bootstrap"><![CDATA[
@@ -297,6 +309,96 @@
       <v n="java">1.8</v>
     </run>
     <run task="main">
+      <v n="scala">2.12.0-M3</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript5 tasks -->
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.12.0-M3</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript6 tasks -->
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.12.0-M3</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript6 strong mode tasks -->
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.7</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
       <v n="scala">2.12.0-M3</v>
       <v n="java">1.8</v>
     </run>
@@ -453,6 +555,276 @@
       <v n="java">1.7</v>
     </run>
     <run task="main">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript5 tasks (all remaining Scala versions) -->
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script5">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript6 tasks (all remaining Scala versions) -->
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.8</v>
+    </run>
+
+    <!-- Test suite on ECMAScript6 strong mode tasks (all remaining Scala versions) -->
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.3</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.10.6</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.0</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.1</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.2</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.4</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.5</v>
+      <v n="java">1.8</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.6</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
+      <v n="scala">2.11.6</v>
+      <v n="java">1.7</v>
+    </run>
+    <run task="test-suite-ecma-script6-strong-mode">
       <v n="scala">2.11.6</v>
       <v n="java">1.8</v>
     </run>
