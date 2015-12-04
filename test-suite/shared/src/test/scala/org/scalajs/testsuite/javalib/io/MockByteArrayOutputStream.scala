@@ -50,5 +50,4 @@ class MockByteArrayOutputStream extends ByteArrayOutputStream {
 
   override def write(b: Array[Byte], off: Int, len: Int): Unit =
     writeOp(super.write(b, off, len))
-
 }
