@@ -134,6 +134,50 @@ object UnionTypeTest extends JasmineTest {
       expect(y4.toJSArray).toEqual(js.Array(3, 5))
     }
 
+    it("js.UndefOr[A | B] inference") {
+      val a: String = "hello"
+
+      /** typeError checks below are more documentation of how
+        * type inference currently works now than a requirement
+        */
+      expect(a: Int | String).toBe(a)
+      expect(a: js.UndefOr[Int] | String).toBe(a)
+      expect(a: Int | js.UndefOr[String]).toBe(a)
+      expect(a: js.UndefOr[Int] | js.UndefOr[String]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Int]] | js.UndefOr[String]).toBe(a)
+      typeError("a: js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]")
+
+      expect(a: js.UndefOr[Int | String]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Int] | String]).toBe(a)
+      expect(a: js.UndefOr[Int | js.UndefOr[String]]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Int] | js.UndefOr[String]]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[js.UndefOr[Int]] | js.UndefOr[String]]).toBe(a)
+      typeError("a: js.UndefOr[js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]]")
+
+      expect(a: js.UndefOr[String | Int]).toBe(a)
+      expect(a: js.UndefOr[String | Int]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[String] | Int]).toBe(a)
+      expect(a: js.UndefOr[String | js.UndefOr[Int]]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[String] | js.UndefOr[Int]]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[String] | js.UndefOr[js.UndefOr[Int]]]).toBe(a)
+      typeError("a: js.UndefOr[js.UndefOr[js.UndefOr[String]] | js.UndefOr[Int]]")
+
+      //Confirm that we're working with triple unions too
+
+      expect(a: js.UndefOr[String | Object | Int]).toBe(a)
+      expect(a: js.UndefOr[String | Int | Object]).toBe(a)
+      expect(a: js.UndefOr[Int | String | Object]).toBe(a)
+      expect(a: js.UndefOr[Int | Object | String]).toBe(a)
+      expect(a: js.UndefOr[Object | String | Int]).toBe(a)
+      expect(a: js.UndefOr[Object | Object | String]).toBe(a)
+
+      expect(a: js.UndefOr[js.UndefOr[String] | Object | Int]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[String] | Int | Object]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Int] | String | Object]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Int] | Object | String]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Object] | String | Int]).toBe(a)
+      expect(a: js.UndefOr[js.UndefOr[Object] | Object | String]).toBe(a)
+    }
   }
 
   describe("js.| (negative)") {
