@@ -10,6 +10,7 @@
 package scala.scalajs.js
 
 import scala.language.implicitConversions
+import scala.scalajs.js.|.Evidence
 
 /** Value of type A or the JS undefined value.
  *
@@ -26,6 +27,17 @@ sealed trait UndefOr[+A]
 object UndefOr {
   implicit def any2undefOrA[A](value: A): UndefOr[A] =
     value.asInstanceOf[UndefOr[A]]
+
+  /** Upcast `A` to `UndefOr[B1 | B2]`.
+    *
+    * This variant of `any2undefOrA` exists because scala doesn't
+    *  nest implicit conversions, which would otherwise be needed
+    *  to lift an `A` to for example `js.UndefOr[A | T]`
+    *
+    * This needs evidence that `A <: B1 | B2`.
+    */
+  implicit def any2undefOrUnion[A, B1, B2](a: A)(implicit ev: Evidence[A, B1 | B2]): UndefOr[B1 | B2] =
+    a.asInstanceOf[UndefOr[B1 | B2]]
 
   implicit def undefOr2ops[A](value: UndefOr[A]): UndefOrOps[A] =
     new UndefOrOps(value)

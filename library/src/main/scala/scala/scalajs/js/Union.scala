@@ -43,6 +43,10 @@ object | { // scalastyle:ignore
     /** If `A <: B1`, then `A <: B1 | B2`. */
     implicit def left[A, B1, B2](implicit ev: Evidence[A, B1]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
+
+    /** `A <: js.UndefOr[A]`. */
+    implicit def undefOr[A]: Evidence[A, UndefOr[A]] =
+      ReusableEvidence.asInstanceOf[Evidence[A, UndefOr[A]]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {
