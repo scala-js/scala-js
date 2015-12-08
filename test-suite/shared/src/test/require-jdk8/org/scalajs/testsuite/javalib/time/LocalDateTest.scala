@@ -4,7 +4,7 @@ import java.time._
 import java.time.chrono.{IsoEra, IsoChronology}
 import java.time.temporal._
 
-import org.junit.Test
+import org.junit.{Ignore, Test}
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
@@ -635,6 +635,12 @@ class LocalDateTest extends TemporalTest {
     assertEquals(Period.of(1, 0, 1), someDate.until(leapDate))
     assertEquals(Period.of(0, 11, 30), leapDate.until(of(2013, 2, 28)))
     assertEquals(Period.of(1, 0, 1), leapDate.until(of(2013, 3, 1)))
+  }
+
+  @Ignore("Disabled due to #2109")
+  @Test def test_until_disabled(): Unit = {
+    val samples1 = samples ++ Seq(of(2012, 1, 29), of(2012, 1, 30), of(2012, 2, 28),
+        of(2013, 2, 28), of(2013, 3, 1), of(0, 12, 31), of(1, 1, 1))
 
     for {
       d1 <- samples1

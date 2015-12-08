@@ -6,6 +6,7 @@ import java.time.temporal.{ChronoUnit, UnsupportedTemporalTypeException}
 import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class DurationTest extends TemporalAmountTest {
 
@@ -727,7 +728,8 @@ class DurationTest extends TemporalAmountTest {
     assertEquals("PT1M0.000000001S", ofSeconds(60, 1).toString)
     assertEquals("PT-1M-0.999999999S", ofSeconds(-61, 1).toString)
     assertEquals("PT2M0.00000001S", ofSeconds(120, 10).toString)
-    assertEquals("PT-1M-59.99999999S", ofSeconds(-120, 10).toString)
+    if (!executingInJVM) // JDK incorrectly prints "PT-2M0.00000001S"
+      assertEquals("PT-1M-59.99999999S", ofSeconds(-120, 10).toString)
     assertEquals("PT1H", ofSeconds(3600).toString)
     assertEquals("PT-1H", ofSeconds(-3600).toString)
     assertEquals("PT-2562047788015215H-30M-8S", dmin.toString)
