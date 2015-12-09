@@ -62,22 +62,11 @@ class CopyOnWriteArrayListTest extends ListTest {
     for (i <- 0 until 10)
       assertEquals(i, list.get(i))
 
-    if (executingInJVM) {
-      // issue #2063: not resolved
-      assertEquals(1, list.addAllAbsent(Seq(42, 42, 42)))
-      assertEquals(11, list.size)
-      for (i <- 0 until 10)
-        assertEquals(i, list.get(i))
-      assertEquals(42, list.get(10))
-    } else {
-      assertEquals(3, list.addAllAbsent(Seq(42, 42, 42)))
-      assertEquals(13, list.size)
-      for (i <- 0 until 10)
-        assertEquals(i, list.get(i))
-      for (i <- 10 until 13)
-        assertEquals(42, list.get(i))
-    }
-
+    assertEquals(1, list.addAllAbsent(Seq(42, 42, 42)))
+    assertEquals(11, list.size)
+    for (i <- 0 until 10)
+      assertEquals(i, list.get(i))
+    assertEquals(42, list.get(10))
   }
 
   @Test def should_implement_a_snapshot_iterator(): Unit = {

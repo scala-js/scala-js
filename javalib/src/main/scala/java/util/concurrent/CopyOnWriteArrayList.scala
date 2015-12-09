@@ -150,10 +150,12 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def addAllAbsent(c: Collection[_ <: E]): Int = {
-    val elemsToAdd = c.iterator().filter(!contains(_)).toList
-    copyIfNeeded()
-    elemsToAdd.foreach(innerPush(_))
-    elemsToAdd.size
+    var added = 0
+    for (e <- c.iterator()) {
+      if (addIfAbsent(e))
+        added += 1
+    }
+    added
   }
 
   def clear(): Unit = {
