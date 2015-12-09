@@ -417,25 +417,23 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
       assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-      if (!executingInJVM) { // Issue #2079
-        source.addAll(range.map(toElem))
-        assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        target.addAll(range.map(toElem))
-        assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
+      target.addAll(range.map(toElem))
+      assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.addAll(range.map(toElem))
-        assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.addAll(range.map(toElem))
-        assertEquals(2 * range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(2 * range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.remove(source.size - 1)
-        assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.remove(source.size - 1)
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        target.add(0, toElem(-5))
-        assertEquals(-1, ju.Collections.lastIndexOfSubList(source, target))
-      }
+      target.add(0, toElem(-5))
+      assertEquals(-1, ju.Collections.lastIndexOfSubList(source, target))
     }
 
     test[Int](_.toInt)
