@@ -1,7 +1,7 @@
 package org.scalajs.testsuite.javalib.time.temporal
 
-import java.time.DateTimeException
-import java.time.temporal.{UnsupportedTemporalTypeException, ChronoField, TemporalAccessor}
+import java.time.{LocalDate, DateTimeException}
+import java.time.temporal.{ValueRange, UnsupportedTemporalTypeException, ChronoField, TemporalAccessor}
 
 import org.scalajs.jasminetest.JasmineTest
 import org.scalajs.testsuite.utils.ExpectExceptions
@@ -19,7 +19,15 @@ trait TemporalAccessorTest extends JasmineTest with ExpectExceptions {
         accessor <- samples
         field <- ChronoField.values()
       } {
-        if (accessor.isSupported(field))
+        if (accessor.isInstanceOf[LocalDate] && field == ChronoField.DAY_OF_MONTH) {
+          val date = accessor.asInstanceOf[LocalDate]
+          expect(date.range(field) == ValueRange.of(1, date.lengthOfMonth)).toBeTruthy
+        }
+        else if (accessor.isInstanceOf[LocalDate] && field == ChronoField.DAY_OF_YEAR) {
+          val date = accessor.asInstanceOf[LocalDate]
+          expect(date.range(field) == ValueRange.of(1, date.lengthOfYear)).toBeTruthy
+        }
+        else if (accessor.isSupported(field))
           expect(accessor.range(field) == field.range).toBeTruthy
         else
           expectThrows[UnsupportedTemporalTypeException](accessor.range(field))
