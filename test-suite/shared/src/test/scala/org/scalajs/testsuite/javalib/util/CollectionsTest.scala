@@ -14,11 +14,38 @@ import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import scala.collection.JavaConversions._
 
 class CollectionsTest extends CollectionsTestBase {
+
+  private def checkImmutablilityOfCollectionApi[E](coll: ju.Collection[E],
+      elem: E): Unit = {
+    expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
+    expectThrows(classOf[UnsupportedOperationException], coll.addAll(List(elem)))
+    expectThrows(classOf[Exception], coll.remove(elem))
+    expectThrows(classOf[Exception], coll.removeAll(List(elem)))
+    expectThrows(classOf[Exception], coll.retainAll(List(elem)))
+    expectThrows(classOf[Throwable], coll.clear())
+  }
+
+  private def checkImmutabilityOfSetApi[E](set: ju.Set[E], elem: E): Unit =
+    checkImmutablilityOfCollectionApi(set, elem)
+
+  private def checkImmutablilityOfListApi[E](list: ju.List[E], elem: E): Unit = {
+    checkImmutablilityOfCollectionApi(list, elem)
+    expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
+    expectThrows(classOf[UnsupportedOperationException], list.addAll(0, List(elem)))
+    expectThrows(classOf[UnsupportedOperationException], list.remove(0))
+  }
+
+  private def checkImmutablilityOfMapApi[K, V](map: ju.Map[K, V], k: K,
+      v: V): Unit = {
+    expectThrows(classOf[UnsupportedOperationException], map.put(k, v))
+    expectThrows(classOf[UnsupportedOperationException], map.putAll(Map(k ->v)))
+    expectThrows(classOf[Throwable], map.remove(k))
+    expectThrows(classOf[Throwable], map.clear())
+  }
 
   @Test def emptySet(): Unit = {
     def test[E](toElem: Int => E): Unit = {
@@ -26,8 +53,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertTrue(emptySet.isEmpty)
       assertEquals(0, emptySet.size)
       assertEquals(0, emptySet.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testSetImmutability(emptySet, toElem(0))
+      checkImmutabilityOfSetApi(emptySet, toElem(0))
     }
 
     test[Int](_.toInt)
@@ -41,8 +67,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertTrue(emptyList.isEmpty)
       assertEquals(0, emptyList.size)
       assertEquals(0, emptyList.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testListImmutability(emptyList, toElem(0))
+      checkImmutablilityOfListApi(emptyList, toElem(0))
     }
 
     test[Int](_.toInt)
@@ -58,8 +83,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertEquals(0, emptyMap.entrySet.size)
       assertEquals(0, emptyMap.keySet.size)
       assertEquals(0, emptyMap.values.size)
-      if (!executingInJVM)
-        testMapImmutability(emptyMap, toKey(0), toValue(0))
+      checkImmutablilityOfMapApi(emptyMap, toKey(0), toValue(0))
     }
 
     test[Int, Int](_.toInt, _.toInt)
@@ -73,8 +97,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertTrue(singletonSet.contains(toElem(0)))
       assertEquals(1, singletonSet.size)
       assertEquals(1, singletonSet.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testSetImmutability(singletonSet, toElem(0))
+      checkImmutabilityOfSetApi(singletonSet, toElem(0))
     }
 
     test[Int](_.toInt)
@@ -88,8 +111,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertTrue(singletonList.contains(toElem(0)))
       assertEquals(1, singletonList.size)
       assertEquals(1, singletonList.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testListImmutability(singletonList, toElem(0))
+      checkImmutablilityOfListApi(singletonList, toElem(0))
     }
 
     test[Int](_.toInt)
@@ -103,8 +125,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertTrue(singletonMap.get(toKey(0)) == toValue(1))
       assertEquals(1, singletonMap.size)
       assertEquals(1, singletonMap.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testMapImmutability(singletonMap, toKey(0), toValue(0))
+      checkImmutablilityOfMapApi(singletonMap, toKey(0), toValue(0))
     }
 
     test[Int, Int](_.toInt, _.toInt)
@@ -120,16 +141,14 @@ class CollectionsTest extends CollectionsTestBase {
         nCopies.forall(_ == toElem(0))
         assertEquals(n, nCopies.size)
         assertEquals(n, nCopies.iterator.size)
-        if (!executingInJVM) // Issue #2080
-          testListImmutability(nCopies, toElem(0))
+        checkImmutablilityOfListApi(nCopies, toElem(0))
       }
 
       val zeroCopies = ju.Collections.nCopies(0, toElem(0))
       assertFalse(zeroCopies.contains(toElem(0)))
       assertEquals(0, zeroCopies.size)
       assertEquals(0, zeroCopies.iterator.size)
-      if (!executingInJVM) // Issue #2080
-        testListImmutability(zeroCopies, toElem(0))
+      checkImmutablilityOfListApi(zeroCopies, toElem(0))
 
       for (n <- Seq(-1, -4, -543)) {
         expectThrows(classOf[IllegalArgumentException],
