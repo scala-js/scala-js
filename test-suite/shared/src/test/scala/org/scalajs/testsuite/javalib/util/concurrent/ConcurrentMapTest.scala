@@ -18,4 +18,8 @@ object ConcurrentMapFactory {
 
 trait ConcurrentMapFactory extends MapFactory {
   def empty[K, V]: ju.concurrent.ConcurrentMap[K, V]
+
+  override def allowsNullValuesQueries: Boolean = false
+
+  override def allowsNullKeysQueries: Boolean = false
 }
