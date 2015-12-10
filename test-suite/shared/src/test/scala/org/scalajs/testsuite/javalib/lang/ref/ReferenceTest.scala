@@ -7,22 +7,18 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang.ref
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Test
+import org.junit.Assert._
 
-object ReferenceTest extends JasmineTest {
+class ReferenceTest {
 
-  describe("java.land.ref.Reference") {
-
-    it("Should have all the normal operations") {
-      val s = "string"
-      val ref = new java.lang.ref.WeakReference(s)
-      expect(ref.get).toEqual(s)
-      expect(ref.enqueue).toEqual(false)
-      expect(ref.isEnqueued).toEqual(false)
-      ref.clear
-      // can't use `expect` because it tries to be clever and .toString things,
-      // which makes it blow up when you pass in null
-      assert(ref.get == null)
-    }
+  @Test def should_have_all_the_normal_operations(): Unit = {
+    val s = "string"
+    val ref = new java.lang.ref.WeakReference(s)
+    assertEquals(s, ref.get)
+    assertEquals(false, ref.enqueue)
+    assertEquals(false, ref.isEnqueued)
+    ref.clear()
+    assert(ref.get == null)
   }
 }
