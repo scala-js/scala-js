@@ -1,5 +1,6 @@
 package org.scalajs.testsuite.javalib.time.temporal
 
+import java.time.chrono.IsoEra
 import java.time.{LocalDate, DateTimeException}
 import java.time.temporal.{ValueRange, UnsupportedTemporalTypeException, ChronoField, TemporalAccessor}
 
@@ -26,6 +27,16 @@ trait TemporalAccessorTest extends JasmineTest with ExpectExceptions {
         else if (accessor.isInstanceOf[LocalDate] && field == ChronoField.DAY_OF_YEAR) {
           val date = accessor.asInstanceOf[LocalDate]
           expect(date.range(field) == ValueRange.of(1, date.lengthOfYear)).toBeTruthy
+        }
+        else if (accessor.isInstanceOf[LocalDate] && field == ChronoField.ALIGNED_WEEK_OF_MONTH) {
+          val date = accessor.asInstanceOf[LocalDate]
+          val weeks = if (date.lengthOfMonth > 28) 5 else 4
+          expect(date.range(field) == ValueRange.of(1, weeks)).toBeTruthy
+        }
+        else if (accessor.isInstanceOf[LocalDate] && field == ChronoField.YEAR_OF_ERA) {
+          val date = accessor.asInstanceOf[LocalDate]
+          val maxYear = if (date.getEra == IsoEra.CE) 999999999 else 1000000000
+          expect(date.range(field) == ValueRange.of(1, maxYear)).toBeTruthy
         }
         else if (accessor.isSupported(field))
           expect(accessor.range(field) == field.range).toBeTruthy
