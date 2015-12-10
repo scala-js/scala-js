@@ -38,8 +38,13 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
   // def isSupported(field: TemporalField): Boolean
   // def isSupported(unit: TemporalUnit): Boolean
 
+  override def range(field: TemporalField): ValueRange = field match {
+    case DAY_OF_MONTH => ValueRange.of(1, lengthOfMonth)
+    case DAY_OF_YEAR  => ValueRange.of(1, lengthOfYear)
+    case _            => super.range(field)
+  }
+
   // Implemented by TemporalAccessor
-  // def range(field: TemporalField): ValueRange
   // def get(field: TemporalField): Int
 
   def getLong(field: TemporalField): Long = field match {
