@@ -58,20 +58,20 @@ class CollectionsOnSynchronizedMapOnHashMapTest
 
 class CollectionsOnSynchronizedMapOnLinkedHashMapInsertionOrderTest
     extends CollectionsOnSynchronizedMapTest {
-  def originalFactory: MapFactory = new LinkedHashMapFactory(false, false)
+  def originalFactory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
 class CollectionsOnSynchronizedMapOnLinkedHashMapInsertionOrderWithLimitTest
     extends CollectionsOnSynchronizedMapTest {
-  def originalFactory: MapFactory = new LinkedHashMapFactory(false, true)
+  def originalFactory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
 class CollectionsOnSynchronizedMapOnLinkedHashMapAccessOrderTest
     extends CollectionsOnSynchronizedMapTest {
-  def originalFactory: MapFactory = new LinkedHashMapFactory(true, false)
+  def originalFactory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 
 class CollectionsOnOnSynchronizedMapOnLinkedHashMapAccessOrderWithLimitTest
     extends CollectionsOnSynchronizedMapTest {
-  def originalFactory: MapFactory = new LinkedHashMapFactory(true, true)
+  def originalFactory: MapFactory = new LinkedHashMapFactory(true, Some(50))
 }

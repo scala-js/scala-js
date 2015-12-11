@@ -41,7 +41,15 @@ class LinkedHashMap[K, V] private (inner: mutable.LinkedHashMap[Box[K], V],
   }
 
   override def put(key: K, value: V): V = {
-    val oldValue = super.put(key, value)
+    val oldValue = {
+      if (accessOrder) {
+        val old = remove(key)
+        super.put(key, value)
+        old
+      } else {
+        super.put(key, value)
+      }
+    }
     val iter = entrySet().iterator()
     if (iter.hasNext && removeEldestEntry(iter.next()))
       iter.remove()

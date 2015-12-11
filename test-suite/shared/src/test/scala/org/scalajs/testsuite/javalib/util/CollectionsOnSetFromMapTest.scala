@@ -25,17 +25,17 @@ class CollectionsOnSetFromMapOnHashMapTest extends CollectionsOnSetFromMapTest {
 }
 
 class CollectionsOnSetFromMapOnLinkedHashMapInsertionOrderTest extends CollectionsOnSetFromMapTest {
-  def mapFactory: MapFactory = new LinkedHashMapFactory(false, false)
+  def mapFactory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
 class CollectionsOnSetFromMapOnLinkedHashMapInsertionOrderWithLimitTest extends CollectionsOnSetFromMapTest {
-  def mapFactory: MapFactory = new LinkedHashMapFactory(false, true)
+  def mapFactory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
 class CollectionsOnSetFromMapOnLinkedHashMapAccessOrderTest extends CollectionsOnSetFromMapTest {
-  def mapFactory: MapFactory = new LinkedHashMapFactory(true, false)
+  def mapFactory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 
 class CollectionsOnSetFromMapOnLinkedHashMapAccessOrderWithLimitTest extends CollectionsOnSetFromMapTest {
-  def mapFactory: MapFactory = new LinkedHashMapFactory(true, true)
+  def mapFactory: MapFactory = new LinkedHashMapFactory(true, Some(50))
 }
