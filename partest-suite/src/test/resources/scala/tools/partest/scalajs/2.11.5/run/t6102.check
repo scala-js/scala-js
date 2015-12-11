@@ -1,4 +1,5 @@
 [running phase parser on t6102.scala]
+[running phase jspretyper on t6102.scala]
 [running phase namer on t6102.scala]
 [running phase packageobjects on t6102.scala]
 [running phase typer on t6102.scala]

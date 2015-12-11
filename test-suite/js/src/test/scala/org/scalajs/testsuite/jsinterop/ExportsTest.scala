@@ -10,10 +10,12 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import js.annotation._
 import org.scalajs.jasminetest.{JasmineTest, TestSuiteContext}
+import org.scalajs.testsuite.utils.ExpectExceptions
 
 import scala.annotation.meta
+import scala.scalajs.js.TypeError
 
-object ExportsTest extends JasmineTest {
+object ExportsTest extends JasmineTest with ExpectExceptions {
 
   /** This package in the JS (export) namespace */
   val jsPackage = js.Dynamic.global.org.scalajs.testsuite.jsinterop
@@ -966,6 +968,141 @@ object ExportsTest extends JasmineTest {
       expect(jsPackage.ExportObjSetterNamed_=().x).toBe(1)
     }
 
+    it("should expose public members of new js.Object{...} - #1899") {
+
+      // Test that the bug is fixed for js.Any classes.
+
+      def testExposure(obj: js.Object): Unit = {
+        expect(obj).toBeDefined
+        expect(obj.hasOwnProperty("x1")).toBeTruthy
+        expect(obj.hasOwnProperty("y1")).toBeTruthy
+        expect(obj.hasOwnProperty("x2")).toBeFalsy
+        expect(obj.hasOwnProperty("y2")).toBeFalsy
+        expect(obj.hasOwnProperty("x3")).toBeFalsy
+        expect(obj.hasOwnProperty("y3")).toBeFalsy
+
+        val dynObj = obj.asInstanceOf[js.Dynamic]
+        expect(dynObj.x1).toEqual("x1")
+        expect(dynObj.x2).not.toBeDefined
+        expect(dynObj.x3).not.toBeDefined
+
+        expect(dynObj.y1).toEqual("y1")
+        expect(dynObj.y2).not.toBeDefined
+        expect(dynObj.y3).not.toBeDefined
+
+        expect(dynObj.z1()).toEqual("z1")
+        expect(dynObj.z2).not.toBeDefined
+        expect(dynObj.z2).not.toBeDefined
+        expect(dynObj.z3).not.toBeDefined
+
+        dynObj.y1 = "y1+"
+        dynObj.y2 = "y2+"
+        dynObj.y3 = "y3+"
+        expect(dynObj.y1).toEqual("y1+")
+        expect(dynObj.y2).toEqual("y2+")
+        expect(dynObj.y3).toEqual("y3+")
+        expect(dynObj.checkOriginalY1()).toEqual("y1+")
+        expect(dynObj.checkOriginalY2()).toEqual("y2")
+        expect(dynObj.checkOriginalY3()).toEqual("y3")
+      }
+
+      def getJSObj(): js.Object = new js.Object {
+        val x1 = "x1"
+        var y1 = "y1"
+        def z1() = "z1"
+        private val x2 = "x2"
+        private var y2 = "y2"
+        private def z2() = "z2"
+        private[this] val x3 = "x3"
+        private[this] var y3 = "y3"
+        private[this] def z3() = "z3"
+        def checkOriginalY1() = y1
+        def checkOriginalY2() = y2
+        def checkOriginalY3() = y3
+      }
+
+      @ScalaJSDefined
+      class JSClass extends js.Object
+
+      def getJSObj2(): js.Object = new JSClass {
+        val x1 = "x1"
+        var y1 = "y1"
+        def z1() = "z1"
+        private val x2 = "x2"
+        private var y2 = "y2"
+        private def z2() = "z2"
+        private[this] val x3 = "x3"
+        private[this] var y3 = "y3"
+        private[this] def z3() = "z3"
+        def checkOriginalY1() = y1
+        def checkOriginalY2() = y2
+        def checkOriginalY3() = y3
+      }
+
+      @ScalaJSDefined
+      abstract class JSAbstractClass extends js.Object
+
+      def getJSObj3(): js.Object = new JSAbstractClass {
+        val x1 = "x1"
+        var y1 = "y1"
+        def z1() = "z1"
+        private val x2 = "x2"
+        private var y2 = "y2"
+        private def z2() = "z2"
+        private[this] val x3 = "x3"
+        private[this] var y3 = "y3"
+        private[this] def z3() = "z3"
+        def checkOriginalY1() = y1
+        def checkOriginalY2() = y2
+        def checkOriginalY3() = y3
+      }
+
+      @ScalaJSDefined
+      abstract class JSTrait extends js.Object
+
+      def getJSObj4(): js.Object = new JSTrait {
+        val x1 = "x1"
+        var y1 = "y1"
+        def z1() = "z1"
+        private val x2 = "x2"
+        private var y2 = "y2"
+        private def z2() = "z2"
+        private[this] val x3 = "x3"
+        private[this] var y3 = "y3"
+        private[this] def z3() = "z3"
+        def checkOriginalY1() = y1
+        def checkOriginalY2() = y2
+        def checkOriginalY3() = y3
+      }
+
+      testExposure(getJSObj())
+      testExposure(getJSObj2())
+      testExposure(getJSObj3())
+      testExposure(getJSObj4())
+
+      // Test that non js.Any classes were unaffected by the fix.
+
+      def getObj(): AnyRef = new {
+        val x1 = "x1"
+        var y1 = "y1"
+        def z1() = "z1"
+        private val x2 = "x2"
+        private var y2 = "y2"
+        private def z2() = "z2"
+        private[this] val x3 = "x3"
+        private[this] var y3 = "y3"
+        private[this] def z3() = "z3"
+      }
+
+      import scala.language.reflectiveCalls
+
+      val obj2 = getObj().asInstanceOf[{ val x1: String; var y1: String; def z1(): String }]
+
+      expectThrows[Throwable](obj2.x1)
+      expectThrows[Throwable](obj2.y1)
+      expectThrows[Throwable](obj2.y1 = "y1+")
+      expectThrows[Throwable](obj2.z1)
+    }
   } // describe
 
   describe("@JSExportDescendentObjects") {
