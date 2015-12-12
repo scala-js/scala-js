@@ -57,11 +57,11 @@ class WrappedDictionary[A](val dict: Dictionary[A])
     this
   }
 
-  def iterator: Iterator[(String, A)] =
+  def iterator: scala.collection.Iterator[(String, A)] =
     new DictionaryIterator(dict)
 
   @inline
-  override def keys: Iterable[String] =
+  override def keys: scala.collection.Iterable[String] =
     Object.keys(dict.asInstanceOf[Object])
 
   override def empty: WrappedDictionary[A] =
@@ -84,7 +84,7 @@ object WrappedDictionary {
     Cache.safeHasOwnProperty(dict, key)
 
   private final class DictionaryIterator[+A](
-      dict: Dictionary[A]) extends Iterator[(String, A)] {
+      dict: Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
     private[this] val keys = Object.keys(dict.asInstanceOf[Object])
     private[this] var index: Int = 0
     def hasNext(): Boolean = index < keys.length
