@@ -70,6 +70,21 @@ or, more typically,
 
     > partestSuite/testOnly -- --fastOpt
 
+## Eclipse
+
+If you want to develop in Eclipse, use
+[sbteclipse](https://github.com/typesafehub/sbteclipse). Projects as created by
+the build by default are not suited for Eclipse. You can create *somewhat*
+appropriate projects with:
+
+    $ sbt tools/sources
+    $ GENERATING_ECLIPSE=true sbt "eclipse with-source=true"
+
+You will still have to fix a few things:
+
+* Uncheck the "Allow output directories per source directory" in Build path
+* Add transitive project dependencies in Build path
+
 ## Organization of the repository
 
 The repository is organized as follows:
