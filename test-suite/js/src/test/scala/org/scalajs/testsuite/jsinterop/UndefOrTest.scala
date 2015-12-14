@@ -149,6 +149,10 @@ object UndefOrTest extends JasmineTest {
       expect(some("ok") orElse none).toEqual("ok")
       expect(none orElse some("yes")).toEqual("yes")
       expect(none orElse none).toBeUndefined
+
+      // #2095
+      expect(some("ok") orElse "yes").toEqual("ok")
+      expect(none orElse "yes").toEqual("yes")
     }
 
     it("toList") {

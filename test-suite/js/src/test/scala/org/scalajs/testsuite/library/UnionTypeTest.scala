@@ -137,22 +137,19 @@ object UnionTypeTest extends JasmineTest {
     it("js.UndefOr[A | B] inference") {
       val a: String = "hello"
 
-      /** typeError checks below are more documentation of how
-        * type inference currently works now than a requirement
-        */
       expect(a: Int | String).toBe(a)
       expect(a: js.UndefOr[Int] | String).toBe(a)
       expect(a: Int | js.UndefOr[String]).toBe(a)
       expect(a: js.UndefOr[Int] | js.UndefOr[String]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[Int]] | js.UndefOr[String]).toBe(a)
-      typeError("a: js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]")
+      expect(a: js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]).toBe(a)
 
       expect(a: js.UndefOr[Int | String]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[Int] | String]).toBe(a)
       expect(a: js.UndefOr[Int | js.UndefOr[String]]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[Int] | js.UndefOr[String]]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[js.UndefOr[Int]] | js.UndefOr[String]]).toBe(a)
-      typeError("a: js.UndefOr[js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]]")
+      expect(a: js.UndefOr[js.UndefOr[Int] | js.UndefOr[js.UndefOr[String]]]).toBe(a)
 
       expect(a: js.UndefOr[String | Int]).toBe(a)
       expect(a: js.UndefOr[String | Int]).toBe(a)
@@ -160,9 +157,9 @@ object UnionTypeTest extends JasmineTest {
       expect(a: js.UndefOr[String | js.UndefOr[Int]]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[String] | js.UndefOr[Int]]).toBe(a)
       expect(a: js.UndefOr[js.UndefOr[String] | js.UndefOr[js.UndefOr[Int]]]).toBe(a)
-      typeError("a: js.UndefOr[js.UndefOr[js.UndefOr[String]] | js.UndefOr[Int]]")
+      expect(a: js.UndefOr[js.UndefOr[js.UndefOr[String]] | js.UndefOr[Int]]).toBe(a)
 
-      //Confirm that we're working with triple unions too
+      // Confirm that we're working with triple unions too
 
       expect(a: js.UndefOr[String | Object | Int]).toBe(a)
       expect(a: js.UndefOr[String | Int | Object]).toBe(a)
