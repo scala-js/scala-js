@@ -7,21 +7,15 @@
 \*                                                                      */
 package org.scalajs.testsuite.utils
 
-import scala.scalajs.runtime
+import org.scalajs.jasminetest.JasmineTest
 
-object Platform {
-  /** Returns `true` if and only if the code is executing on a JVM.
-   *  Note: Returns `false` when executing on any JS VM.
-   */
-  final val executingInJVM = false
-
-  final val executingInJVMOnJDK6 = false
-
-  final val executingInJVMOnJDK7OrLower = false
-
-  // Members that are only accessible from testSuite/js
-  // (i.e. do no link on the JVM).
-
-  def areTypedArraysSupported: Boolean =
-    runtime.Bits.areTypedArraysSupported
+object PlatformTest extends JasmineTest {
+  when("typedarray").
+  describe("org.scalajs.testsuite.utils.Platform") {
+    it("areTypedArraysSupported should be true") {
+      // Note that if we don't have the tag set we can't say anything
+      // on the typed arrays support.
+      expect(Platform.areTypedArraysSupported).toBeTruthy
+    }
+  }
 }

@@ -1,12 +1,9 @@
 package org.scalajs.testsuite.niobuffer
 
-import scala.language.implicitConversions
-
-import scala.reflect._
-
 import java.nio._
 
-import scala.scalajs.js
+import scala.language.implicitConversions
+import scala.reflect._
 
 sealed abstract class BufferFactory {
   type BufferType <: Buffer with Comparable[BufferType]
@@ -16,10 +13,16 @@ sealed abstract class BufferFactory {
 
   implicit def elemFromInt(value: Int): ElementType
 
-  implicit def elemToJSAny(elem: ElementType): js.Any
+  implicit def elemToAnyRef(elem: ElementType): AnyRef
 
   implicit def bufferAdapter(
       buffer: BufferType): BufferAdapter[BufferType, ElementType]
+
+  def boxed(array: Array[ElementType]): Array[AnyRef] =
+    array.map(elemToAnyRef)
+
+  def boxedElemsFromInt(elems: Int*): Array[AnyRef] =
+    boxed(elems.map(elemFromInt).toArray)
 
   val createsReadOnly: Boolean = false
 
@@ -55,8 +58,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toByte
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromByte(elem)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Byte
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -71,8 +73,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toChar
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromInt(elem.toInt)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Character
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -87,8 +88,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toShort
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromShort(elem)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Short
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -103,8 +103,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toInt
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromInt(elem)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Integer
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -119,8 +118,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toLong
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromDouble(elem.toDouble)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Long
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -135,8 +133,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toFloat
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromFloat(elem)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Float
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
@@ -151,8 +148,7 @@ object BufferFactory {
 
     implicit def elemFromInt(value: Int): ElementType = value.toDouble
 
-    implicit def elemToJSAny(elem: ElementType): js.Any =
-      js.Any.fromDouble(elem)
+    implicit def elemToAnyRef(elem: ElementType): AnyRef = elem: java.lang.Double
 
     implicit def bufferAdapter(
         buffer: BufferType): BufferAdapter[BufferType, ElementType] =
