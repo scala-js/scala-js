@@ -1222,7 +1222,7 @@ object Build extends sbt.Build {
         }
       )
   ).withScalaJSCompiler.dependsOn(
-    library, jUnitRuntime % "test", jasmineTestFramework % "test"
+    library, jUnitRuntime, jasmineTestFramework % "test"
   )
 
   lazy val testSuiteJVM: Project = Project(
