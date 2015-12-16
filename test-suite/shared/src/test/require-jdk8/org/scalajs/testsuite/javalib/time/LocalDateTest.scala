@@ -4,7 +4,7 @@ import java.time._
 import java.time.chrono.{IsoEra, IsoChronology}
 import java.time.temporal._
 
-import org.junit.{Ignore, Test}
+import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
@@ -599,6 +599,8 @@ class LocalDateTest extends TemporalTest {
     }
 
     assertEquals(730484999633L, MIN.until(MAX, DAYS))
+    assertEquals(366L, someDate.until(leapDate, DAYS))
+    assertEquals(28L, leapDate.until(of(2012, 3, 28), DAYS))
     assertEquals(104354999947L, MIN.until(MAX, WEEKS))
     assertEquals(12L, someDate.until(leapDate, MONTHS))
     assertEquals(1L, of(2012, 1, 29).until(leapDate, MONTHS))
@@ -632,22 +634,17 @@ class LocalDateTest extends TemporalTest {
     }
 
     assertEquals(Period.of(1999999998, 11, 30), MIN.until(MAX))
+    assertEquals(Period.of(-1999999998, -11, -30), MAX.until(MIN))
     assertEquals(Period.of(1, 0, 1), someDate.until(leapDate))
+    assertEquals(Period.of(-1, 0, -1), leapDate.until(someDate))
     assertEquals(Period.of(0, 11, 30), leapDate.until(of(2013, 2, 28)))
+    assertEquals(Period.of(0, -11, -28), of(2013, 2, 28).until(leapDate))
     assertEquals(Period.of(1, 0, 1), leapDate.until(of(2013, 3, 1)))
-  }
-
-  @Ignore("Disabled due to #2109")
-  @Test def test_until_disabled(): Unit = {
-    val samples1 = samples ++ Seq(of(2012, 1, 29), of(2012, 1, 30), of(2012, 2, 28),
-        of(2013, 2, 28), of(2013, 3, 1), of(0, 12, 31), of(1, 1, 1))
-
-    for {
-      d1 <- samples1
-      d2 <- samples1 if d2.isAfter(d1)
-    } {
-      assertEquals(d1.until(d2).negated, d2.until(d1))
-    }
+    assertEquals(Period.of(-1, 0, -1), of(2013, 3, 1).until(leapDate))
+    assertEquals(Period.of(0, 1, 1), of(2013, 3, 30).until(of(2013, 5, 1)))
+    assertEquals(Period.of(0, -1, -2), of(2013, 5, 1).until(of(2013, 3, 30)))
+    assertEquals(Period.of(0, 1, 1), of(2013, 3, 31).until(of(2013, 5, 1)))
+    assertEquals(Period.of(0, -1, -1), of(2013, 5, 1).until(of(2013, 3, 31)))
   }
 
   @Test def test_toEpochDay(): Unit = {
