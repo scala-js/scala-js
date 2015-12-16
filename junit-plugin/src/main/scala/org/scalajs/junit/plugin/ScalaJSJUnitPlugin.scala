@@ -241,6 +241,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         scalaJSPlugin.registerModuleExports(bootSym)
         bootClazz.setSymbol(bootSym)
 
+        currentRun.symSource(bootSym) = clazz.symbol.sourceFile
+
         bootClazz
       }
 
