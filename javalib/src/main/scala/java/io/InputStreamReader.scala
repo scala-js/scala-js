@@ -69,13 +69,14 @@ class InputStreamReader(private[this] var in: InputStream,
     if (off < 0 || len < 0 || len > cbuf.length - off)
       throw new IndexOutOfBoundsException
 
-    if (len == 0) 0
-    else if (outBuf.hasRemaining) {
+    if (len == 0) {
+      0
+    } else if (outBuf.hasRemaining) {
       // Reuse chars decoded last time
       val available = Math.min(outBuf.remaining, len)
       outBuf.get(cbuf, off, available)
       available
-    } else {
+    } else if (!endOfInput) {
       // Try and decode directly into the destination array
       val directOut = CharBuffer.wrap(cbuf, off, len)
       val result = readImpl(directOut)
@@ -90,6 +91,8 @@ class InputStreamReader(private[this] var in: InputStream,
          */
         readMoreThroughOutBuf(cbuf, off, len)
       }
+    } else {
+      -1
     }
   }
 
@@ -144,9 +147,9 @@ class InputStreamReader(private[this] var in: InputStream,
             "both endOfInput and inBuf.hasRemaining are true. It should have "+
             "returned a MalformedInput error instead.")
         // Flush
-        if (decoder.flush(out).isOverflow)
+        if (decoder.flush(out).isOverflow) {
           InputStreamReader.Overflow
-        else {
+        } else {
           // Done
           if (out.position == initPos) -1
           else out.position - initPos

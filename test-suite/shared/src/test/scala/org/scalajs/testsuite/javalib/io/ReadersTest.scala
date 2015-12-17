@@ -239,4 +239,18 @@ class InputStreamReaderTest {
     expectRead("日本語を読めますか。")
     assertEquals(-1, r.read())
   }
+
+  @Test def should_comply_with_read_after_eof_behaviour(): Unit = {
+    val data = "Lorem ipsum".getBytes()
+    val streamReader = new InputStreamReader(new ByteArrayInputStream(data))
+    val bytes = new Array[Char](11)
+
+    assertEquals(11, streamReader.read(bytes))
+    // Do it twice to check for a regression where this used to throw
+    assertEquals(-1, streamReader.read(bytes))
+    assertEquals(-1, streamReader.read(bytes))
+    expectThrows(classOf[IndexOutOfBoundsException], streamReader.read(bytes, 10, 3))
+    assertEquals(0, streamReader.read(new Array[Char](0)))
+  }
+
 }
