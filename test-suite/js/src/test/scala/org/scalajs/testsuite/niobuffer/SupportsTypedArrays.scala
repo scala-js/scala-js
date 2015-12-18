@@ -5,23 +5,14 @@
 ** /____/\___/_/ |_/____/_/ | |__/ /____/                               **
 **                          |/____/                                     **
 \*                                                                      */
-package org.scalajs.testsuite.utils
+package org.scalajs.testsuite.niobuffer
 
-import scala.scalajs.runtime
+import org.junit.{Assume, BeforeClass}
 
-object Platform {
-  /** Returns `true` if and only if the code is executing on a JVM.
-   *  Note: Returns `false` when executing on any JS VM.
-   */
-  final val executingInJVM = false
+import org.scalajs.testsuite.utils.Platform
 
-  final val executingInJVMOnJDK6 = false
-
-  final val executingInJVMOnJDK7OrLower = false
-
-  // Members that are only accessible from testSuite/js
-  // (i.e. do no link on the JVM).
-
-  def areTypedArraysSupported: Boolean =
-    runtime.Bits.areTypedArraysSupported
+trait SupportsTypedArrays {
+  @BeforeClass def assumeThatContextSupportsTypedByteArrays(): Unit = {
+    Assume.assumeTrue(Platform.areTypedArraysSupported)
+  }
 }
