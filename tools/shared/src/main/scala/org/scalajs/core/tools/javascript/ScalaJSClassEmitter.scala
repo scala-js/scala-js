@@ -490,6 +490,10 @@ final class ScalaJSClassEmitter private (
             case Definitions.StringClass =>
               js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral("string")
 
+            case Definitions.RuntimeNothingClass =>
+              // Even null is not an instance of Nothing
+              js.BooleanLiteral(false)
+
             case _ =>
               var test = (genIsScalaJSObject(obj) &&
                   (obj DOT "$classData" DOT "ancestors" DOT className))
@@ -517,13 +521,21 @@ final class ScalaJSClassEmitter private (
               obj
 
             case _ =>
-              js.If(js.Apply(envField("is", className), List(obj)) ||
-                  (obj === js.Null()), {
-                obj
-              }, {
+              val throwError = {
                 genCallHelper("throwClassCastException",
                     obj, js.StringLiteral(displayName))
-              })
+              }
+              if (className == RuntimeNothingClass) {
+                // Always throw for .asInstanceOf[Nothing], even for null
+                throwError
+              } else {
+                js.If(js.Apply(envField("is", className), List(obj)) ||
+                    (obj === js.Null()), {
+                  obj
+                }, {
+                  throwError
+                })
+              }
         })))
       }
 

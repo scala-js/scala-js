@@ -19,11 +19,36 @@ object RuntimeTypesTest extends JasmineTest {
 
     when("compliant-asinstanceofs").
     it("casts to scala.Nothing should fail") {
-      val msg = Try("a".asInstanceOf[Nothing]) match {
-        case Failure(thr: ClassCastException) => thr.getMessage
-        case _ => "not failed"
+      def test(x: Any): Unit = {
+        try {
+          x.asInstanceOf[Nothing]
+          fail("casting " + x + " to Nothing did not fail")
+        } catch {
+          case th: Throwable =>
+            expect(th.isInstanceOf[ClassCastException]).toBeTruthy
+            expect(th.getMessage).toEqual(
+                x + " is not an instance of scala.runtime.Nothing$")
+        }
       }
-      expect(msg).toEqual("a is not an instance of scala.runtime.Nothing$")
+      test("a")
+      test(null)
+    }
+
+    when("compliant-asinstanceofs").
+    it("reflected casts to scala.Nothing should fail") {
+      def test(x: Any): Unit = {
+        try {
+          classOf[Nothing].cast(x)
+          fail("casting " + x + " to Nothing did not fail")
+        } catch {
+          case th: Throwable =>
+            expect(th.isInstanceOf[ClassCastException]).toBeTruthy
+            expect(th.getMessage).toEqual(
+                x + " is not an instance of scala.runtime.Nothing$")
+        }
+      }
+      test("a")
+      test(null)
     }
 
     it("Array[Nothing] should be allowed to exists and be castable") {
