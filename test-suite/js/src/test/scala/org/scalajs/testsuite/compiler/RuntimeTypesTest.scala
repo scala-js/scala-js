@@ -7,6 +7,9 @@
 \*                                                                      */
 package org.scalajs.testsuite.compiler
 
+import java.lang.Cloneable
+import java.io.Serializable
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSName
 import org.scalajs.jasminetest.JasmineTest
@@ -14,6 +17,22 @@ import org.scalajs.jasminetest.JasmineTest
 import scala.util.{ Try, Failure }
 
 object RuntimeTypesTest extends JasmineTest {
+
+  describe("Scala Arrays") {
+    it("are instances of Serializable and Cloneable - #2094") {
+      expect((Array(3): Any).isInstanceOf[Serializable]).toBeTruthy
+      expect((Array(3): Any).isInstanceOf[Cloneable]).toBeTruthy
+      expect((Array("hello"): Any).isInstanceOf[Serializable]).toBeTruthy
+      expect((Array("hello"): Any).isInstanceOf[Cloneable]).toBeTruthy
+    }
+
+    it("cast to Serializable and Cloneable - #2094") {
+      expect(() => (Array(3): Any).asInstanceOf[Serializable]).not.toThrow
+      expect(() => (Array(3): Any).asInstanceOf[Cloneable]).not.toThrow
+      expect(() => (Array("hello"): Any).asInstanceOf[Serializable]).not.toThrow
+      expect(() => (Array("hello"): Any).asInstanceOf[Cloneable]).not.toThrow
+    }
+  }
 
   describe("scala.Nothing") {
 
