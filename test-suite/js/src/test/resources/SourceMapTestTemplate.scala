@@ -53,13 +53,23 @@ object SourceMapTest extends JasmineTest {
             val trace2 = trace1.dropWhile(
               normFileName(_).endsWith("/java/lang/Throwables.scala"))
 
-            val exSte :: throwSte :: _ = trace2
+            val topSte = trace2.head
+            expect(normFileName(topSte)).toContain("/SourceMapTest.scala")
 
-            expect(normFileName(exSte)).toContain("/SourceMapTest.scala")
-            // line where `case class TestException is written` above
-            expect(exSte.getLineNumber).toBe(15)
+            val throwSte = if (topSte.getLineNumber == 15) {
+              // line where `case class TestException is written` above
+              val throwSte = trace2.tail.head
+              expect(normFileName(throwSte)).toContain("/SourceMapTest.scala")
+              throwSte
+            } else {
+              /* In fullOpt, it may happen that the constructor of
+               * TestException is inlined, in which case there is no trace of
+               * it anymore. The first stack element in SourceMapTest.scala is
+               * therefore the one we're interested in.
+               */
+              topSte
+            }
 
-            expect(normFileName(throwSte)).toContain("/SourceMapTest.scala")
             expect(throwSte.getLineNumber).toBe(lineNo)
         }
       }

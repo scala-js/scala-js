@@ -16,6 +16,7 @@ import java.net.URI
 
 import scala.collection.mutable
 
+import Definitions.isConstructorName
 import Position._
 import Trees._
 import Types._
@@ -587,6 +588,8 @@ object Serializers {
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
     private[this] val useHacks060 = sourceVersion == "0.6.0"
+    private[this] val useHacks065 = true
+      //Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(sourceVersion)
 
     private[this] val input = new DataInputStream(stream)
 
@@ -638,7 +641,13 @@ object Serializers {
         case TagStoreModule     => StoreModule(readClassType(), readTree())
         case TagSelect          => Select(readTree(), readIdent())(readType())
         case TagApply           => Apply(readTree(), readIdent(), readTrees())(readType())
-        case TagApplyStatically => ApplyStatically(readTree(), readClassType(), readIdent(), readTrees())(readType())
+        case TagApplyStatically =>
+          val result1 =
+            ApplyStatically(readTree(), readClassType(), readIdent(), readTrees())(readType())
+          if (useHacks065 && result1.tpe != NoType && isConstructorName(result1.method.name))
+            result1.copy()(NoType)
+          else
+            result1
         case TagApplyStatic     => ApplyStatic(readClassType(), readIdent(), readTrees())(readType())
         case TagUnaryOp         => UnaryOp(readByte(), readTree())
         case TagBinaryOp        => BinaryOp(readByte(), readTree(), readTree())
@@ -720,14 +729,22 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          val result = MethodDef(readBoolean(), readPropertyName(),
+          val result1 = MethodDef(readBoolean(), readPropertyName(),
               readParamDefs(), readType(), readTree())(
               new OptimizerHints(readInt()), optHash)
-          if (foundArguments) {
+          val result2 = if (foundArguments) {
             foundArguments = false
-            new RewriteArgumentsTransformer().transformMethodDef(result)
+            new RewriteArgumentsTransformer().transformMethodDef(result1)
           } else {
-            result
+            result1
+          }
+          if (useHacks065 && result2.resultType != NoType &&
+              isConstructorName(result2.name.name)) {
+            result2.copy(resultType = NoType, body = result2.body)(
+                result2.optimizerHints, result2.hash)(
+                result2.pos)
+          } else {
+            result2
           }
         case TagPropertyDef =>
           PropertyDef(readPropertyName(), readTree(),

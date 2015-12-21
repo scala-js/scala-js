@@ -569,8 +569,8 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     /** UPDATE PASS ONLY. */
     private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
-        case _:VarRef | _:Literal | _:This => true
-        case _                             => false
+        case _:VarRef | _:Literal | _:This | _:Skip => true
+        case _                                      => false
       }
       def isElidableStat(tree: Tree): Boolean = tree match {
         case Block(stats) =>

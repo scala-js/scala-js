@@ -320,8 +320,20 @@ final class ScalaJSClassEmitter private (
   def genMethod(className: String, method: MethodDef): js.Tree = {
     implicit val pos = method.pos
 
-    val methodFun = desugarToFunction(this, className,
+    val methodFun0 = desugarToFunction(this, className,
         method.args, method.body, method.resultType == NoType)
+
+    val methodFun = if (Definitions.isConstructorName(method.name.name)) {
+      // init methods have to return `this` so that we can chain them to `new`
+      js.Function(methodFun0.args, {
+        implicit val pos = methodFun0.body.pos
+        js.Block(
+            methodFun0.body,
+            js.Return(js.This()))
+      })(methodFun0.pos)
+    } else {
+      methodFun0
+    }
 
     outputMode match {
       case OutputMode.ECMAScript6StrongMode =>
