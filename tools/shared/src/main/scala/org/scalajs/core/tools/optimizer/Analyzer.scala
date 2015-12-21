@@ -23,9 +23,15 @@ import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
 import ScalaJSOptimizer._
 
 final class Analyzer(semantics: Semantics, outputMode: OutputMode,
-    reachOptimizerSymbols: Boolean) extends Analysis {
+    reachOptimizerSymbols: Boolean, initialLink: Boolean) extends Analysis {
   import Analyzer._
   import Analysis._
+
+  @deprecated("Use the overload with an explicit `initialLink` flag", "0.6.6")
+  def this(semantics: Semantics, outputMode: OutputMode,
+      reachOptimizerSymbols: Boolean) = {
+    this(semantics, outputMode, reachOptimizerSymbols, initialLink = true)
+  }
 
   @deprecated("Use the overload with an explicit output mode", "0.6.3")
   def this(semantics: Semantics, reachOptimizerSymbols: Boolean) =
@@ -283,14 +289,48 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
       (mutable.Map(methodInfos: _*), mutable.Map(staticMethodInfos: _*))
     }
 
+    def lookupConstructor(ctorName: String): MethodInfo = {
+      /* As of 0.6.6, constructors are not inherited, and so must be found
+       * directly in this class. However, to be able to read sjsir files from
+       * before 0.6.6, we tolerate finding it in a superclass, in which case
+       * we materialize a new constructor in this class. We only allow this
+       * during the initial link. In a refiner, this must not happen anymore.
+       */
+      methodInfos.get(ctorName).getOrElse {
+        if (!initialLink) {
+          createNonExistentMethod(ctorName)
+        } else {
+          val inherited = lookupMethod(ctorName)
+          if (inherited.owner eq this) {
+            // Can happen only for non-existent constructors, at this point
+            assert(inherited.nonExistent)
+            inherited
+          } else {
+            val syntheticInfo = Infos.MethodInfo(
+                encodedName = ctorName,
+                methodsCalledStatically = Map(
+                    superClass.encodedName -> List(ctorName)))
+            val m = new MethodInfo(this, syntheticInfo)
+            m.syntheticKind = MethodSyntheticKind.InheritedConstructor
+            methodInfos += ctorName -> m
+            m
+          }
+        }
+      }
+    }
+
     def lookupMethod(methodName: String): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
-        val syntheticData = createMissingMethodInfo(methodName)
-        val m = new MethodInfo(this, syntheticData)
-        m.nonExistent = true
-        methodInfos += methodName -> m
-        m
+        createNonExistentMethod(methodName)
       }
+    }
+
+    private def createNonExistentMethod(methodName: String): MethodInfo = {
+      val syntheticData = createMissingMethodInfo(methodName)
+      val m = new MethodInfo(this, syntheticData)
+      m.nonExistent = true
+      methodInfos += methodName -> m
+      m
     }
 
     def tryLookupMethod(methodName: String): Option[MethodInfo] = {
@@ -416,7 +456,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
         // constructors must always be called statically
         assert(statically,
             s"Trying to call dynamically the constructor $this.$methodName from $from")
-        lookupMethod(methodName).reachStatic()
+        lookupConstructor(methodName).reachStatic()
       } else if (statically) {
         assert(!isReflProxyName(methodName),
             s"Trying to call statically refl proxy $this.$methodName")
@@ -459,6 +499,8 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     var instantiatedSubclasses: List[ClassInfo] = Nil
 
     var nonExistent: Boolean = false
+
+    var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
 
     override def toString(): String = s"$owner.$encodedName"
 
