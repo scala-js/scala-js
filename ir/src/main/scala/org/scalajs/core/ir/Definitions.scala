@@ -32,6 +32,7 @@ object Definitions {
 
   val CharSequenceClass = "jl_CharSequence"
   val SerializableClass = "Ljava_io_Serializable"
+  val CloneableClass    = "jl_Cloneable"
   val ComparableClass   = "jl_Comparable"
   val NumberClass       = "jl_Number"
 
@@ -58,6 +59,8 @@ object Definitions {
   val ThrowableClass = "jl_Throwable"
 
   val PseudoArrayClass = "s_Array"
+  val AncestorsOfPseudoArrayClass = Set(
+      ObjectClass, SerializableClass, CloneableClass)
 
   val ExportedConstructorsName = "__exportedInits"
 

@@ -193,6 +193,9 @@ object Types {
             }
           }
 
+        case (ArrayType(_, _), ClassType(cls)) =>
+          AncestorsOfPseudoArrayClass.contains(cls)
+
         case _ =>
           false
       })

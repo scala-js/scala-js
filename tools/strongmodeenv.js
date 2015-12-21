@@ -837,7 +837,7 @@ class $TypeData {
     // Runtime support
     this.constr = ArrayClass;
     this.parentData = $d_O;
-    this.ancestors = {O: 1};
+    this.ancestors = {O: 1, jl_Cloneable: 1, Ljava_io_Serializable: 1};
     this.componentData = componentData;
     this.arrayBase = componentBase;
     this.arrayDepth = arrayDepth;

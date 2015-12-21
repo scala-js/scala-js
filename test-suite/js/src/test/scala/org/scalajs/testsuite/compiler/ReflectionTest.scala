@@ -9,6 +9,9 @@ package org.scalajs.testsuite.compiler
 
 import scala.language.implicitConversions
 
+import java.lang.Cloneable
+import java.io.Serializable
+
 import scala.reflect.{classTag, ClassTag}
 
 import scala.scalajs.js
@@ -44,6 +47,15 @@ object ReflectionTest extends JasmineTest {
       val b = new B
       expect(classOf[A].isInstance(b)).toBeTruthy
       expect(classOf[A].isInstance("hello")).toBeFalsy
+
+      expect(classOf[Array[Seq[_]]].isInstance(Array(List(3)))).toBeTruthy
+
+      expect(classOf[Serializable].isInstance("hello")).toBeTruthy
+
+      expect(classOf[Serializable].isInstance(new Array[Int](1))).toBeTruthy
+      expect(classOf[Cloneable].isInstance(new Array[Int](1))).toBeTruthy
+      expect(classOf[Serializable].isInstance(new Array[String](1))).toBeTruthy
+      expect(classOf[Cloneable].isInstance(new Array[String](1))).toBeTruthy
     }
 
     it("isInstance for raw JS class") {
@@ -122,6 +134,8 @@ object ReflectionTest extends JasmineTest {
       expect(classOf[String].cast(null)).toBeNull
       expect(classOf[String].cast("hello")).toEqual("hello")
       expect(classOf[Seq[_]].cast(List(1, 2)) == List(1, 2)).toBeTruthy
+      expect(() => classOf[Serializable].cast(Array(3))).not.toThrow
+      expect(() => classOf[Cloneable].cast(Array(3))).not.toThrow
       expect(() => classOf[Object].cast(js.Array(3, 4))).not.toThrow
     }
 
