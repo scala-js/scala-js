@@ -18,6 +18,7 @@ object Platform {
 
   def executingInRhino: Boolean = false
   def executingInNodeJS: Boolean = false
+  def executingInNodeJSOnJSDOM: Boolean = false
   def executingInPhantomJS: Boolean = false
   def typedArrays: Boolean = false
   def sourceMaps: Boolean = false

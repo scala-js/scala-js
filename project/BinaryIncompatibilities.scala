@@ -9,6 +9,14 @@ object BinaryIncompatibilities {
   )
 
   val JSEnvs = Seq(
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.jsenv.nodejs.NodeJSEnv$AbstractNodeRunner"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.jsenv.nodejs.NodeJSEnv$NodeRunner"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.jsenv.nodejs.NodeJSEnv$AsyncNodeRunner"),
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.jsenv.nodejs.NodeJSEnv$ComNodeRunner")
   )
 
   val SbtPlugin = Seq(

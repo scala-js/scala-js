@@ -22,6 +22,12 @@
         'set scalaJSUseRhino in Global := false' \
         ++$scala helloworld/run \
         helloworld/clean &&
+    sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := JSDOMNodeJSEnv().value)' \
+        ++$scala helloworld/run &&
+    sbtretry 'set inScope(ThisScope in helloworld)(jsEnv := JSDOMNodeJSEnv().value)' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala helloworld/run \
+        helloworld/clean &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
         ++$scala helloworld/run &&
     sbtretry 'set scalaJSOptimizerOptions in helloworld ~= (_.withDisableOptimizer(true))' \
@@ -37,6 +43,12 @@
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala helloworld/run &&
     sbtretry ++$scala testingExample/test:run testingExample/test &&
+    sbtretry 'set scalaJSUseRhino in Global := false' \
+        ++$scala testingExample/test:run testingExample/test &&
+    sbtretry 'set scalaJSUseRhino in Global := false' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala testingExample/test:run testingExample/test \
+        testingExample/clean &&
     sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
         ++$scala testingExample/test:run testingExample/test &&
     sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
@@ -69,6 +81,12 @@
     sbtretry 'set scalaJSUseRhino in Global := false' \
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSUseRhino in Global := false' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite/test \
+        $testSuite/clean &&
+    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := JSDOMNodeJSEnv().value)' \
+        ++$scala $testSuite/test &&
+    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := JSDOMNodeJSEnv().value)' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
