@@ -23,22 +23,22 @@ import java.net._
 
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
-import scala.io.Source
 
 class NodeJSEnv private (
   nodejsPath: String,
   addArgs: Seq[String],
   addEnv: Map[String, String],
+  withDOM: Boolean,
   val sourceMap: Boolean
 ) extends ExternalJSEnv(addArgs, addEnv) with ComJSEnv {
 
   def this(nodejsPath: String = "node", addArgs: Seq[String] = Seq.empty,
-      addEnv: Map[String, String] = Map.empty) = {
-    this(nodejsPath, addArgs, addEnv, sourceMap = true)
+      addEnv: Map[String, String] = Map.empty, withDOM: Boolean = false) = {
+    this(nodejsPath, addArgs, addEnv, withDOM, sourceMap = true)
   }
 
   def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
+    new NodeJSEnv(nodejsPath, addArgs, addEnv, withDOM, sourceMap)
 
   /** True, if the installed node executable supports source mapping.
    *
@@ -312,17 +312,69 @@ class NodeJSEnv private (
         )
     )
 
-    /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]] and
-     *  [[runtimeEnv]] (in this order).
+    protected def initJSDOM(): Seq[VirtualJSFile] = {
+      if (withDOM) {
+        val jQueryLibOpt = classpath.jsLibs.find(_.lib.name == "jquery.js")
+
+        val initDom = Seq(new MemVirtualJSFile("scalaJSInitJSDOM.js").withContent(
+            """
+            |// Initializes the DOM using `jsdom` node module.
+            |(function () {
+            |  var $g = ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
+            |  try {
+            |    var jsdom = require("jsdom").jsdom;
+            |    $g["document"] = jsdom();
+            |    $g["window"] = document.defaultView;
+            |  } catch (ex) {
+            |    console.log(ex);
+            |    console.log("May need to install JSDOM on node.js using 'npm install jsdom'.");
+            |  }
+            |})();
+            """.stripMargin)
+        )
+
+        jQueryLibOpt match {
+          case Some(jQueryLib) =>
+            logger.info(s"Replacing ${jQueryLib.info.relPath} with Node.js's require('jquery').")
+            initDom :+ new MemVirtualJSFile("scalaJSInitJQuery.js").withContent(
+              """
+                |// Initializes jQuery using `jquery` node module.
+                |(function () {
+                |  var $g = ((typeof global === "object" && global && global["Object"] === Object) ? global : this);
+                |  try {
+                |    var jQuery = require("jquery");
+                |    $g["jQuery"] = window.jQuery = jQuery;
+                |    $g["$"] = window.$ = jQuery;
+                |  } catch (ex) {
+                |    console.log(ex);
+                |    console.log("May need to install jQuery on node.js using 'npm install jquery'.");
+                |  }
+                |})();
+              """.stripMargin)
+
+          case None => initDom
+        }
+      } else {
+        Nil
+      }
+    }
+
+    /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]],
+     *  [[initJSDOM]] and [[runtimeEnv]] (in this order).
      */
     override protected def initFiles(): Seq[VirtualJSFile] =
-      installSourceMap() ++ fixPercentConsole() ++ runtimeEnv()
+      installSourceMap() ++ fixPercentConsole() ++ initJSDOM() ++ runtimeEnv()
 
     /** Libraries are loaded via require in Node.js */
     override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
+      def ignoreLib(lib: VirtualJSFile): Boolean =
+        withDOM && lib.name == "jquery.js"
+
       initFiles() ++
       customInitFiles() ++
-      libs.map(requireLibrary)
+      classpath.jsLibs.collect {
+        case jsLib if !ignoreLib(jsLib.lib) => requireLibrary(jsLib)
+      }
     }
 
     /** Rewrites a library virtual file to a require statement if possible */

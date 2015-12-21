@@ -538,10 +538,8 @@ object ScalaJSPluginInternal {
            */
           val semantics = scalaJSLinker.value.semantics
           new RhinoJSEnv(semantics, withDOM = scalaJSRequestsDOM.value)
-        } else if (scalaJSRequestsDOM.value) {
-          new PhantomJSEnv(jettyClassLoader = scalaJSPhantomJSClassLoader.value)
         } else {
-          new NodeJSEnv
+          new NodeJSEnv(withDOM = scalaJSRequestsDOM.value)
         }
       },
 
