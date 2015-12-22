@@ -744,8 +744,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               OptimizerHints.empty, None))
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
-        } else if (isTrivialConstructor(sym, params, rhs)) {
-          None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
         } else {
@@ -824,33 +822,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         "scala.runtime.ScalaRunTime.arrayClass",
         "scala.runtime.ScalaRunTime.arrayElementClass"
     )
-
-    private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
-        rhs: Tree): Boolean = {
-      if (!sym.isClassConstructor || isScalaJSDefinedJSClass(sym.owner)) {
-        false
-      } else {
-        rhs match {
-          // Shape of a constructor that only calls super
-          case Block(List(Apply(fun @ Select(_: Super, _), args)), Literal(_)) =>
-            val callee = fun.symbol
-            implicit val dummyPos = NoPosition
-
-            // Does the callee have the same signature as sym
-            if (encodeMethodSym(sym) == encodeMethodSym(callee)) {
-              // Test whether args are trivial forwarders
-              assert(args.size == params.size, "Argument count mismatch")
-              params.zip(args) forall { case (param, arg) =>
-                arg.symbol == param
-              }
-            } else {
-              false
-            }
-
-          case _ => false
-        }
-      }
-    }
 
     /** Patches the mutable flags of selected locals in a [[js.MethodDef]].
      *

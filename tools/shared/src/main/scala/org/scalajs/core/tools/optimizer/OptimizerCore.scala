@@ -101,7 +101,7 @@ private[optimizer] abstract class OptimizerCore(
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
       val MethodDef(static, name, params, resultType, body) = originalDef
-      val (newParams, newBody) = try {
+      val (newParams, newBody1) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
         case _: TooManyRollbacksException =>
@@ -111,6 +111,9 @@ private[optimizer] abstract class OptimizerCore(
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
+      val newBody =
+        if (name.name == "init___") tryElimStoreModule(newBody1)
+        else newBody1
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
@@ -124,6 +127,33 @@ private[optimizer] abstract class OptimizerCore(
         Console.err.println(exceptionMsg(
             myself, attemptedInlining.distinct.toList, e))
         throw e
+    }
+  }
+
+  /** Try and eliminate a StoreModule followed only by trivial statements. */
+  private def tryElimStoreModule(body: Tree): Tree = {
+    implicit val pos = body.pos
+    body match {
+      case StoreModule(_, _) =>
+        Skip()
+      case Block(stats) =>
+        val (before, from) = stats.span(!_.isInstanceOf[StoreModule])
+        if (from.isEmpty) {
+          body
+        } else {
+          val after = from.tail
+          val afterIsTrivial = after.forall {
+            case Assign(Select(This(), Ident(_, _)),
+                _:Literal | _:VarRef) =>
+              true
+            case _ =>
+              false
+          }
+          if (afterIsTrivial) Block(before ::: after)
+          else body
+        }
+      case _ =>
+        body
     }
   }
 
