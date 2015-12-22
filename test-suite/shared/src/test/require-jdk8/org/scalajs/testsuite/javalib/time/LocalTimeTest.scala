@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class LocalTimeTest extends TemporalTest {
+class LocalTimeTest extends TemporalTest[LocalTime] {
 
   import DateTimeTestUtil._
   import LocalTime._

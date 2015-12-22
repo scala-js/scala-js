@@ -8,7 +8,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class LocalDateTest extends TemporalTest {
+class LocalDateTest extends TemporalTest[LocalDate] {
 
   import DateTimeTestUtil._
   import LocalDate._
@@ -25,28 +25,20 @@ class LocalDateTest extends TemporalTest {
 
   def isSupported(field: ChronoField): Boolean = field.isDateBased
 
-  @Test override def test_range(): Unit = {
-    for {
-      d <- samples
-      field <- ChronoField.values
-    } {
-      lazy val expected = field match {
-        case DAY_OF_MONTH => ValueRange.of(1, d.lengthOfMonth)
-        case DAY_OF_YEAR  => ValueRange.of(1, d.lengthOfYear)
+  override def expectedRangeFor(accessor: LocalDate, field: TemporalField): ValueRange = {
+    field match {
+      case DAY_OF_MONTH => ValueRange.of(1, accessor.lengthOfMonth)
+      case DAY_OF_YEAR  => ValueRange.of(1, accessor.lengthOfYear)
 
-        case ALIGNED_WEEK_OF_MONTH =>
-          ValueRange.of(1, if (d.lengthOfMonth > 28) 5 else 4)
+      case ALIGNED_WEEK_OF_MONTH =>
+        ValueRange.of(1, if (accessor.lengthOfMonth > 28) 5 else 4)
 
-        case YEAR_OF_ERA =>
-          val maxYear = if (d.getEra == IsoEra.CE) 999999999 else 1000000000
-          ValueRange.of(1, maxYear)
+      case YEAR_OF_ERA =>
+        val maxYear = if (accessor.getEra == IsoEra.CE) 999999999 else 1000000000
+        ValueRange.of(1, maxYear)
 
-        case _ => field.range
-      }
-      if (isSupported(field))
-        assertEquals(expected, d.range(field))
-      else
-        expectThrows(classOf[UnsupportedTemporalTypeException], d.range(field))
+      case _ =>
+        super.expectedRangeFor(accessor, field)
     }
   }
 

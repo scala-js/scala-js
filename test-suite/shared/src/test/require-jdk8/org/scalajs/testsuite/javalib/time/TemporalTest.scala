@@ -6,10 +6,8 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-abstract class TemporalTest extends TemporalAccessorTest {
+abstract class TemporalTest[Temp <: Temporal] extends TemporalAccessorTest[Temp] {
   import DateTimeTestUtil._
-
-  val samples: Seq[Temporal]
 
   def isSupported(unit: ChronoUnit): Boolean
 
@@ -19,7 +17,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
       1L, 7L, 24L, 60L, 365L, 366L, 3600L, 86400L, 1000000000L,
       Int.MaxValue.toLong, Long.MaxValue)
 
-  @Test def test_isSupported_TemporalUnit(): Unit = {
+  @Test def isSupported_TemporalUnit(): Unit = {
     for {
       temporal <- samples
       unit <- ChronoUnit.values
@@ -33,7 +31,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
       assertFalse(temporal.isSupported(null: TemporalUnit))
   }
 
-  @Test def test_with_unsupported_field(): Unit = {
+  @Test def with_unsupported_field(): Unit = {
     for {
       temporal <- samples
       field <- ChronoField.values if !temporal.isSupported(field)
@@ -44,7 +42,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
     }
   }
 
-  @Test def test_plus_unsupported_unit(): Unit = {
+  @Test def plus_unsupported_unit(): Unit = {
     for {
       temporal <- samples
       unit <- ChronoUnit.values if !temporal.isSupported(unit)
@@ -55,7 +53,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
     }
   }
 
-  @Test def test_minus(): Unit = {
+  @Test def minus(): Unit = {
     for {
       temporal <- samples
       unit <- ChronoUnit.values if temporal.isSupported(unit)
@@ -68,7 +66,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
     }
   }
 
-  @Test def test_minus_unsupported_unit(): Unit = {
+  @Test def minus_unsupported_unit(): Unit = {
     for {
       temporal <- samples
       unit <- ChronoUnit.values if !temporal.isSupported(unit)
@@ -79,7 +77,7 @@ abstract class TemporalTest extends TemporalAccessorTest {
     }
   }
 
-  @Test def test_until_unsupported_unit(): Unit = {
+  @Test def until_unsupported_unit(): Unit = {
     for {
       temporal1 <- samples
       temporal2 <- samples

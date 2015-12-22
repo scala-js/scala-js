@@ -7,12 +7,12 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-abstract class TemporalAccessorTest {
-  val samples: Seq[TemporalAccessor]
+abstract class TemporalAccessorTest[TempAcc <: TemporalAccessor] {
+  val samples: Seq[TempAcc]
 
   def isSupported(field: ChronoField): Boolean
 
-  @Test def test_isSupported_TemporalField(): Unit = {
+  @Test def isSupported_TemporalField(): Unit = {
     for {
       accessor <- samples
       field <- ChronoField.values
@@ -26,19 +26,23 @@ abstract class TemporalAccessorTest {
       assertFalse(accessor.isSupported(null))
   }
 
-  @Test def test_range(): Unit = {
+  def expectedRangeFor(accessor: TempAcc, field: TemporalField): ValueRange = field.range()
+
+  @Test final def range(): Unit = {
     for {
       accessor <- samples
       field <- ChronoField.values
     } {
-      if (accessor.isSupported(field))
-        assertEquals(field.range, accessor.range(field))
-      else
+      if (accessor.isSupported(field)) {
+        val expected = expectedRangeFor(accessor, field)
+        assertEquals(expected, accessor.range(field))
+      } else {
         expectThrows(classOf[UnsupportedTemporalTypeException], accessor.range(field))
+      }
     }
   }
 
-  @Test def test_get(): Unit = {
+  @Test def get(): Unit = {
     for {
       accessor <- samples
       field <- ChronoField.values
@@ -52,7 +56,7 @@ abstract class TemporalAccessorTest {
     }
   }
 
-  @Test def test_getLong_unsupported_field(): Unit = {
+  @Test def getLong_unsupported_field(): Unit = {
     for {
       accessor <- samples
       field <- ChronoField.values() if !accessor.isSupported(field)
