@@ -786,8 +786,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                     optimizerHints, None)
               } else if (sym.isClassConstructor) {
                 js.MethodDef(static = false, methodName,
-                    jsParams, currentClassType,
-                    js.Block(genStat(rhs), genThis()))(optimizerHints, None)
+                    jsParams, jstpe.NoType,
+                    genStat(rhs))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 genMethodDef(static = sym.owner.isImplClass, methodName,
@@ -1704,7 +1704,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           isModuleInitialized = true
           val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
           val initModule = js.StoreModule(thisType, js.This()(thisType))
-          js.Block(superCall, initModule, js.This()(thisType))
+          js.Block(superCall, initModule)
         } else {
           superCall
         }
@@ -1888,8 +1888,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val className = encodeClassFullName(method.owner)
       val methodIdent = encodeMethodSym(method)
+      val resultType =
+        if (method.isClassConstructor) jstpe.NoType
+        else toIRType(method.tpe.resultType)
       js.ApplyStatically(receiver, jstpe.ClassType(className),
-          methodIdent, arguments)(toIRType(method.tpe.resultType))
+          methodIdent, arguments)(resultType)
     }
 
     def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(

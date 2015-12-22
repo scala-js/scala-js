@@ -588,8 +588,8 @@ object Serializers {
 
   private final class Deserializer(stream: InputStream, sourceVersion: String) {
     private[this] val useHacks060 = sourceVersion == "0.6.0"
-    private[this] val useHacks065 = true
-      //Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(sourceVersion)
+    private[this] val useHacks065 =
+      Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(sourceVersion)
 
     private[this] val input = new DataInputStream(stream)
 
