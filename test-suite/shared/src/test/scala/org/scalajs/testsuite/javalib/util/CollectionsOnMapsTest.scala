@@ -54,19 +54,19 @@ class CollectionsOnHashMapTest extends CollectionsOnMapsTest {
 
 class CollectionsOnLinkedHashMapInsertionOrderTest
     extends CollectionsOnMapsTest {
-  def factory: MapFactory = new LinkedHashMapFactory(false, false)
+  def factory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
 class CollectionsOnLinkedHashMapInsertionOrderWithLimitTest
     extends CollectionsOnMapsTest {
-  def factory: MapFactory = new LinkedHashMapFactory(false, true)
+  def factory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
 class CollectionsOnLinkedHashMapAccessOrderTest extends CollectionsOnMapsTest {
-  def factory: MapFactory = new LinkedHashMapFactory(true, false)
+  def factory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 
 class CollectionsOnLinkedHashMapAccessOrderWithLimitTest
     extends CollectionsOnMapsTest {
-  def factory: MapFactory = new LinkedHashMapFactory(true, true)
+  def factory: MapFactory = new LinkedHashMapFactory(true, Some(50))
 }

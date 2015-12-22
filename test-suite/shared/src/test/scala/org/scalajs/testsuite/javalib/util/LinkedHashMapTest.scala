@@ -10,27 +10,31 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
-
 import scala.collection.JavaConversions._
 
 import java.{util => ju}
 
-class LinkedHashMapInsertionOrderTest extends LinkedHashMapTest {
-  override def factory: LinkedHashMapFactory = new LinkedHashMapFactory(false, false)
+class LinkedHashMapInsertionOrderTest extends LinkedHashMapTest
+
+class LinkedHashMapInsertionOrderLimitedTest extends LinkedHashMapTest {
+  override def factory: LinkedHashMapFactory =
+    new LinkedHashMapFactory(accessOrder = false, withSizeLimit = Some(50))
 }
 
 class LinkedHashMapAccessOrderTest extends LinkedHashMapTest {
-  override def factory: LinkedHashMapFactory = new LinkedHashMapFactory(true, false)
+  override def factory: LinkedHashMapFactory =
+    new LinkedHashMapFactory(accessOrder = true, withSizeLimit = None)
 }
 
 class LinkedHashMapAccessOrderLimitedTest extends LinkedHashMapTest {
-  override def factory: LinkedHashMapFactory = new LinkedHashMapFactory(false, true)
+  override def factory: LinkedHashMapFactory =
+    new LinkedHashMapFactory(accessOrder = true, withSizeLimit = Some(50))
 }
 
 abstract class LinkedHashMapTest extends HashMapTest {
 
-  override def factory: LinkedHashMapFactory = new LinkedHashMapFactory(true, true)
+  override def factory: LinkedHashMapFactory =
+    new LinkedHashMapFactory(accessOrder = false, withSizeLimit = None)
 
   val accessOrder = factory.accessOrder
   val withSizeLimit = factory.withSizeLimit
@@ -39,17 +43,13 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val lhm = factory.empty[Int, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
-    def expectedKey(index: Int): Int = {
-      if (withSizeLimit)
-        50 + index
-      else
-        index
-    }
+    def expectedKey(index: Int): Int =
+      withSizeLimit.getOrElse(0) + index
 
     def expectedValue(index: Int): String =
       s"elem ${expectedKey(index)}"
 
-    val expectedSize = if (withSizeLimit) 50 else 100
+    val expectedSize = withSizeLimit.getOrElse(100)
 
     assertEquals(expectedSize, lhm.entrySet.size)
     for ((entry, index) <- lhm.entrySet.zipWithIndex) {
@@ -72,21 +72,13 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
     (0 until 100 by 3).foreach(key => lhm.remove(key))
 
-    def expectedKey(index: Int) = {
-      if (!withSizeLimit) {
-        index * 3 / 2 + 1
-      } else if (index == 0) {
-        50 // case that does not work with the 'else' closed formula
-      } else {
-        // compensate for dropped elements
-        (index - 1) * 3 / 2 + 52
-      }
-    }
+    val expectedKey =
+      ((100 - withSizeLimit.getOrElse(100)) to 100).filter(_ % 3 != 0).toArray
 
     def expectedValue(index: Int): String =
       s"elem ${expectedKey(index)}"
 
-    val expectedSize = if (withSizeLimit) 33 else 66
+    val expectedSize = if (withSizeLimit.isDefined) 33 else 66
 
     assertEquals(expectedSize, lhm.entrySet.size)
     for ((entry, index) <- lhm.entrySet.zipWithIndex) {
@@ -103,7 +95,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
       assertEquals(expectedValue(index), value)
   }
 
-  @Test def should_iterate_in_insertion_order_after_adding_elements(): Unit = {
+  @Test def should_iterate_in_order_after_adding_elements(): Unit = {
     val lhm = factory.empty[Int, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
@@ -112,46 +104,43 @@ abstract class LinkedHashMapTest extends HashMapTest {
     lhm(42) = "new 42"
     lhm(52) = "new 52"
     lhm(1) = "new 1"
+    lhm(98) = "new 98"
 
-    def expectedKey(index: Int): Int = {
-      if (withSizeLimit) {
-        if (index < 45)
-          index + 55 // 50 from size limit + 5 from
-        else if (index == 45) 0
-        else if (index == 46) 100
-        else if (index == 47) 42
-        else if (index == 48) 52
-        else 1
+    val expectedKey = {
+      if (factory.accessOrder) {
+        val keys = (2 until 42) ++ (43 until 52) ++ (53 until 98) ++
+            List(99, 0, 100, 42, 52, 1, 98)
+        keys.takeRight(withSizeLimit.getOrElse(keys.length))
       } else {
-        index
+        if (withSizeLimit.isDefined) (55 until 100) ++ List(0, 100, 42, 52, 1)
+        else 0 to 100
       }
-    }
+    }.toArray
 
     def expectedElem(index: Int): String = {
       val key = expectedKey(index)
-      if (key == 0 || key == 1 || key == 42 || key == 52)
+      if (key == 0 || key == 1 || key == 42 || key == 52 || key == 98)
         s"new $key"
       else
         s"elem $key"
     }
 
-    val expectedSize = if (withSizeLimit) 50 else 101
+    val expectedSize = withSizeLimit.getOrElse(101)
 
     assertEquals(expectedSize, lhm.entrySet.size)
-    if (!executingInJVM) { // Issue #2077
-      for ((entry, index) <- lhm.entrySet.zipWithIndex) {
-        assertEquals(expectedKey(index), entry.getKey)
-        assertEquals(expectedElem(index), entry.getValue)
-      }
 
-      assertEquals(expectedSize, lhm.keySet.size)
-      for ((key, index) <- lhm.keySet.zipWithIndex)
-        assertEquals(expectedKey(index), key)
-
-      assertEquals(expectedSize, lhm.entrySet.size)
-      for ((value, index) <- lhm.values.zipWithIndex)
-        assertEquals(expectedElem(index), value)
+    for ((entry, index) <- lhm.entrySet.zipWithIndex) {
+      assertEquals(expectedKey(index), entry.getKey)
+      assertEquals(expectedElem(index), entry.getValue)
     }
+
+    assertEquals(expectedSize, lhm.keySet.size)
+    for ((key, index) <- lhm.keySet.zipWithIndex)
+      assertEquals(expectedKey(index), key)
+
+    assertEquals(expectedSize, lhm.entrySet.size)
+    for ((value, index) <- lhm.values.zipWithIndex)
+      assertEquals(expectedElem(index), value)
   }
 
   @Test def should_iterate_in__after_accessing_elements(): Unit = {
@@ -165,7 +154,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     def expectedKey(index: Int): Int = {
       if (accessOrder) {
         // elements ordered by insertion order except for those accessed
-        if (!withSizeLimit) {
+        if (withSizeLimit.isEmpty) {
           if (index < 5) index // no elements removed in this range
           else if (index + 1 < 42) index + 1 // shifted by 1 removed element
           else if (index + 2 < 52) index + 2 // shifted by 2 removed element
@@ -184,15 +173,14 @@ abstract class LinkedHashMapTest extends HashMapTest {
         }
       } else {
         // accesses shouldn't modify the order
-        if (withSizeLimit) 50 + index
-        else index
+        withSizeLimit.getOrElse(0) + index
       }
     }
 
     def expectedValue(index: Int): String =
       s"elem ${expectedKey(index)}"
 
-    val expectedSize = if (withSizeLimit) 50 else 100
+    val expectedSize = withSizeLimit.getOrElse(100)
 
     assertEquals(expectedSize, lhm.entrySet.size)
     for ((entry, index) <- lhm.entrySet.zipWithIndex) {
@@ -213,29 +201,32 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
 object LinkedHashMapFactory {
   def allFactories: Iterator[MapFactory] = {
-    Iterator(new LinkedHashMapFactory(true, true), new LinkedHashMapFactory(true, false),
-        new LinkedHashMapFactory(false, true), new LinkedHashMapFactory(false, false))
+    Iterator(new LinkedHashMapFactory(true, Some(50)), new LinkedHashMapFactory(true, None),
+        new LinkedHashMapFactory(false, Some(50)), new LinkedHashMapFactory(false, None))
   }
 }
 
-class LinkedHashMapFactory(val accessOrder: Boolean, val withSizeLimit: Boolean) extends HashMapFactory {
+class LinkedHashMapFactory(val accessOrder: Boolean, val withSizeLimit: Option[Int])
+    extends HashMapFactory {
   def orderName: String =
     if (accessOrder) "access-order"
     else "insertion-order"
 
   override def implementationName: String = {
-    val sizeLimitSting = if (withSizeLimit) ", maxSize=50" else ""
+    val sizeLimitSting = withSizeLimit.fold("")(", maxSize=" + _)
     s"java.util.LinkedHashMap{$orderName$sizeLimitSting}"
   }
 
   override def empty[K, V]: ju.LinkedHashMap[K, V] = {
-    if (withSizeLimit) {
-      new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder) {
-        override protected def removeEldestEntry(eldest: ju.Map.Entry[K, V]): Boolean =
-          size > 50
-      }
-    } else {
-      new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder)
+    withSizeLimit match {
+      case Some(limit) =>
+        new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder) {
+          override protected def removeEldestEntry(eldest: ju.Map.Entry[K, V]): Boolean =
+            size > limit
+        }
+
+      case None =>
+        new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder)
     }
   }
 }

@@ -325,7 +325,8 @@ object Collections {
       fromStart: Boolean): Int = {
     val targetSize = target.size
     if (targetSize == 0) {
-      0
+      if (fromStart) 0
+      else source.size
     } else {
       val indices = 0 to source.size - targetSize
       val indicesInOrder = if (fromStart) indices else indices.reverse

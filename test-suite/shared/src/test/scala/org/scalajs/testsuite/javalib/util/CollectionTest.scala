@@ -15,7 +15,6 @@ import org.junit.Assert._
 import scala.collection.JavaConversions._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 trait CollectionTest {
 
@@ -185,8 +184,7 @@ trait CollectionTest {
     assertTrue(coll.contains("one"))
     assertFalse(coll.contains("two"))
     if (factory.allowsNullElementQuery) {
-      if (!executingInJVM) // Issue #2078
-        assertFalse(coll.contains(null))
+      assertFalse(coll.contains(null))
     } else {
       expectThrows(classOf[Exception], coll.contains(null))
     }

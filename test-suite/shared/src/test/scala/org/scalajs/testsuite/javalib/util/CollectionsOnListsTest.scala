@@ -7,99 +7,115 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.collection.JavaConversions._
+
+object CollectionsOnListTest extends CollectionsTestBase {
+
+  // Test: sort[T<:Comparable[T]](List[T])
+  def sort_on_comparables(factory: ListFactory): Unit = {
+    if (factory.sortableUsingCollections) {
+      test_sort_on_comparables[CustomComparable](factory,
+        new CustomComparable(_), false)
+      test_sort_on_comparables[jl.Integer](factory, jl.Integer.valueOf)
+      test_sort_on_comparables[jl.Long](factory, _.toLong)
+      test_sort_on_comparables[jl.Double](factory, _.toDouble)
+    }
+  }
+
+  // Test: sort[T](List[T], Comparator[T])
+  def sort_with_comparator(factory: ListFactory): Unit = {
+    if (factory.sortableUsingCollections) {
+      test_sort_with_comparator[CustomComparable](factory,
+        new CustomComparable(_), (x, y) => x.compareTo(y), false)
+      test_sort_with_comparator[Int](factory, _.toInt, (x, y) => x.compareTo(y))
+      test_sort_with_comparator[Long](factory, _.toLong,
+        (x, y) => x.compareTo(y))
+      test_sort_with_comparator[Double](factory, _.toDouble,
+        (x, y) => x.compareTo(y))
+    }
+  }
+
+  private def test_sort_on_comparables[T <: AnyRef with Comparable[T]](
+      factory: ListFactory, toElem: Int => T,
+      absoluteOrder: Boolean = true): Unit = {
+
+    val list = factory.empty[T]
+
+    def testIfSorted(rangeValues: Boolean): Unit = {
+      for (i <- range.init)
+        assertTrue(list(i).compareTo(list(i + 1)) <= 0)
+      if (absoluteOrder && rangeValues) {
+        for (i <- range)
+          assertEquals(0, list(i).compareTo(toElem(i)))
+      }
+    }
+
+    list.addAll(range.map(toElem))
+    ju.Collections.sort(list)
+    testIfSorted(true)
+
+    list.clear()
+    list.addAll(range.reverse.map(toElem))
+    ju.Collections.sort(list)
+    testIfSorted(true)
+
+    for (seed <- List(0, 1, 42, -5432, 2341242)) {
+      val rnd = new scala.util.Random(seed)
+      list.clear()
+      list.addAll(range.map(_ => toElem(rnd.nextInt())))
+      ju.Collections.sort(list)
+      testIfSorted(false)
+    }
+  }
+
+  private def test_sort_with_comparator[T](factory: ListFactory, toElem: Int => T,
+      cmpFun: (T, T) => Int, absoluteOrder: Boolean = true): Unit = {
+
+    val list = factory.empty[T]
+
+    def testIfSorted(rangeValues: Boolean): Unit = {
+      for (i <- range.init)
+        assertTrue(cmpFun(list(i), list(i + 1)) <= 0)
+      if (absoluteOrder && rangeValues) {
+        for (i <- range)
+          assertEquals(0, cmpFun(list(i), toElem(i)))
+      }
+    }
+
+    val cmp = new ju.Comparator[T] {
+      override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
+    }
+
+    list.addAll(range.map(toElem))
+    ju.Collections.sort(list, cmp)
+    testIfSorted(true)
+
+    list.clear()
+    list.addAll(range.reverse.map(toElem))
+    ju.Collections.sort(list, cmp)
+    testIfSorted(true)
+
+    for (seed <- List(0, 1, 42, -5432, 2341242)) {
+      val rnd = new scala.util.Random(seed)
+      list.clear()
+      list.addAll(range.map(_ => toElem(rnd.nextInt())))
+      ju.Collections.sort(list, cmp)
+      testIfSorted(false)
+    }
+  }
+}
 
 trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   def factory: ListFactory
 
-  @Test def sort_on_comparables(): Unit = {
-    // Test: sort[T<:Comparable[T]](List[T])
-    def test[T <: AnyRef with Comparable[T]](toElem: Int => T,
-        absoluteOrder: Boolean = true): Unit = {
+  @Test def sort_on_comparables(): Unit =
+    CollectionsOnListTest.sort_on_comparables(factory)
 
-      val list = factory.empty[T]
-
-      def testIfSorted(rangeValues: Boolean): Unit = {
-        for (i <- range.init)
-          assertTrue(list(i).compareTo(list(i + 1)) <= 0)
-        if (absoluteOrder && rangeValues) {
-          for (i <- range)
-            assertEquals(0, list(i).compareTo(toElem(i)))
-        }
-      }
-
-      list.addAll(range.map(toElem))
-      ju.Collections.sort(list)
-      testIfSorted(true)
-
-      list.clear()
-      list.addAll(range.reverse.map(toElem))
-      ju.Collections.sort(list)
-      testIfSorted(true)
-
-      for (seed <- List(0, 1, 42, -5432, 2341242)) {
-        val rnd = new scala.util.Random(seed)
-        list.clear()
-        list.addAll(range.map(_ => toElem(rnd.nextInt())))
-        ju.Collections.sort(list)
-        testIfSorted(false)
-      }
-    }
-    if (factory.sortableUsingCollections) { // Issue #2087
-      test[CustomComparable](new CustomComparable(_), false)
-      test[jl.Integer](jl.Integer.valueOf)
-      test[jl.Long](_.toLong)
-      test[jl.Double](_.toDouble)
-    }
-  }
-
-  @Test def sort_with_comparator(): Unit = {
-    // Test: sort[T](List[T], Comparator[T])
-    def test[T](toElem: Int => T, cmpFun: (T, T) => Int,
-        absoluteOrder: Boolean = true): Unit = {
-      val list = factory.empty[T]
-
-      def testIfSorted(rangeValues: Boolean): Unit = {
-        for (i <- range.init)
-          assertTrue(cmpFun(list(i), list(i + 1)) <= 0)
-        if (absoluteOrder && rangeValues) {
-          for (i <- range)
-            assertEquals(0, cmpFun(list(i), toElem(i)))
-        }
-      }
-
-      val cmp = new ju.Comparator[T] {
-        override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
-      }
-
-      list.addAll(range.map(toElem))
-      ju.Collections.sort(list, cmp)
-      testIfSorted(true)
-
-      list.clear()
-      list.addAll(range.reverse.map(toElem))
-      ju.Collections.sort(list, cmp)
-      testIfSorted(true)
-
-      for (seed <- List(0, 1, 42, -5432, 2341242)) {
-        val rnd = new scala.util.Random(seed)
-        list.clear()
-        list.addAll(range.map(_ => toElem(rnd.nextInt())))
-        ju.Collections.sort(list, cmp)
-        testIfSorted(false)
-      }
-    }
-
-    if (factory.sortableUsingCollections) { // Issue #2087
-      test[CustomComparable](new CustomComparable(_), (x, y) => x.compareTo(y), false)
-      test[Int](_.toInt, (x, y) => x.compareTo(y))
-      test[Long](_.toLong, (x, y) => x.compareTo(y))
-      test[Double](_.toDouble, (x, y) => x.compareTo(y))
-    }
-  }
+  @Test def sort_with_comparator(): Unit =
+    CollectionsOnListTest.sort_with_comparator(factory)
 
   @Test def binarySearch_on_comparables(): Unit = {
     // Test: binarySearch[T](list: List[Comparable[T]], T)
@@ -417,25 +433,23 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
       assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-      if (!executingInJVM) { // Issue #2079
-        source.addAll(range.map(toElem))
-        assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        target.addAll(range.map(toElem))
-        assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
+      target.addAll(range.map(toElem))
+      assertEquals(0, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.addAll(range.map(toElem))
-        assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.addAll(range.map(toElem))
-        assertEquals(2 * range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.addAll(range.map(toElem))
+      assertEquals(2 * range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        source.remove(source.size - 1)
-        assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
+      source.remove(source.size - 1)
+      assertEquals(range.size, ju.Collections.lastIndexOfSubList(source, target))
 
-        target.add(0, toElem(-5))
-        assertEquals(-1, ju.Collections.lastIndexOfSubList(source, target))
-      }
+      target.add(0, toElem(-5))
+      assertEquals(-1, ju.Collections.lastIndexOfSubList(source, target))
     }
 
     test[Int](_.toInt)

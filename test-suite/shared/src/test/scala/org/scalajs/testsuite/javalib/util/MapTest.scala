@@ -14,7 +14,6 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import scala.collection.JavaConversions._
 import scala.collection.{mutable => mu}
@@ -183,8 +182,10 @@ trait MapTest {
     mp.put("ONE", "one")
     assertTrue(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
-    if (!executingInJVM) // Issue #2078
+    if (factory.allowsNullKeysQueries)
       assertFalse(mp.containsKey(null))
+    else
+      expectThrows(classOf[Throwable], mp.containsKey(null))
   }
 
   @Test def should_check_contained_value_presence(): Unit = {
@@ -193,8 +194,10 @@ trait MapTest {
     mp.put("ONE", "one")
     assertTrue(mp.containsValue("one"))
     assertFalse(mp.containsValue("two"))
-    if (!executingInJVM) // Issue #2078
+    if (factory.allowsNullValuesQueries)
       assertFalse(mp.containsValue(null))
+    else
+      expectThrows(classOf[Throwable], mp.containsValue(null))
   }
 
   @Test def should_give_proper_Collection_over_values(): Unit = {
@@ -324,8 +327,10 @@ trait MapTest {
     assertTrue(values.contains("one"))
     assertTrue(values.contains("two"))
     assertFalse(values.contains("three"))
-    if (!executingInJVM) // Issue #2078
+    if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
+    else
+      expectThrows(classOf[Throwable], mp.contains(null))
 
     mp.put("THREE", "three")
 
@@ -483,8 +488,10 @@ trait MapTest {
     assertTrue(keySet.contains("ONE"))
     assertTrue(keySet.contains("TWO"))
     assertFalse(keySet.contains("THREE"))
-    if (!executingInJVM) // Issue #2078
+    if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
+    else
+      expectThrows(classOf[Throwable], mp.contains(null))
 
     mp.put("THREE", "three")
 
@@ -607,4 +614,8 @@ trait MapFactory {
   def allowsNullKeys: Boolean
 
   def allowsNullValues: Boolean
+
+  def allowsNullKeysQueries: Boolean = true
+
+  def allowsNullValuesQueries: Boolean = true
 }
