@@ -24,6 +24,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
 
   private lazy val dayOfYear =
     month.firstDayOfYear(_isLeapYear) + dayOfMonth - 1
+
   private lazy val epochDay = {
     val year1 = year - 1970
     val daysBeforeYear = daysBeforeYears(MathJDK8Bridge.floorMod(year1, 400))._2
@@ -31,8 +32,11 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
       MathJDK8Bridge.floorDiv(year1, 400).toLong * daysInFourHundredYears
     offset + daysBeforeYear + dayOfYear - 1
   }
+
   private lazy val dayOfWeek =
     MathJDK8Bridge.floorMod(epochDay + 3, 7).toInt + 1
+
+  private def prolepticMonth = year.toLong * 12 + getMonthValue - 1
 
   // Implemented by ChronoLocalDate
   // def isSupported(field: TemporalField): Boolean
@@ -64,7 +68,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
     case ALIGNED_WEEK_OF_MONTH        => (dayOfMonth - 1) / 7 + 1
     case ALIGNED_WEEK_OF_YEAR         => (dayOfYear - 1) / 7 + 1
     case MONTH_OF_YEAR                => getMonthValue
-    case PROLEPTIC_MONTH              => year.toLong * 12 + getMonthValue - 1
+    case PROLEPTIC_MONTH              => prolepticMonth
     case YEAR_OF_ERA                  => if (year > 0) year else 1 - year
     case YEAR                         => year
     case ERA                          => if (year > 0) 1 else 0
@@ -271,8 +275,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
       case WEEKS => (other.toEpochDay - epochDay) / 7
 
       case MONTHS =>
-        val dmonths =
-          (other.getYear - year).toLong * 12 + other.getMonthValue - getMonthValue
+        val dmonths = other.prolepticMonth - prolepticMonth
         if (other.getDayOfMonth < dayOfMonth && dmonths > 0) dmonths - 1
         else if (other.getDayOfMonth > dayOfMonth && dmonths < 0) dmonths + 1
         else dmonths
@@ -307,17 +310,22 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
 
   def until(end: ChronoLocalDate): Period = {
     val other = LocalDate.from(end)
-    if (equals(other)) Period.ZERO
-    else if (isBefore(other)) {
-      val months = until(other, MONTHS)
-      val date1 = plus(months, MONTHS)
-      val days = date1.until(other, DAYS).toInt
-      val years = (months / 12).toInt
-      val months1 = (months % 12).toInt
-      Period.of(years, months1, days)
-    } else {
-      other.until(this).negated
+    val dmonths = other.prolepticMonth - prolepticMonth
+    val ddays = other.getDayOfMonth - dayOfMonth
+    val corr = {
+      if (dmonths > 0 && ddays < 0) -1
+      else if (dmonths < 0 && ddays > 0) 1
+      else 0
     }
+    val months = dmonths + corr
+    val days = {
+      if (corr < 0) plus(months, MONTHS).until(other, DAYS).toInt
+      else if (corr > 0) ddays - other.lengthOfMonth
+      else ddays
+    }
+    val years = (months / 12).toInt
+    val months1 = (months % 12).toInt
+    Period.of(years, months1, days)
   }
 
   // Not implemented
