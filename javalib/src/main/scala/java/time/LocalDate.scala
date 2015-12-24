@@ -12,7 +12,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
   import ChronoUnit._
   import LocalDate._
 
-  requireDateTime(year >= minYear && year <= maxYear,
+  requireDateTime(year >= Year.MIN_VALUE && year <= Year.MAX_VALUE,
       s"Invalid value for year: $year")
 
   private val _isLeapYear = iso.isLeapYear(year)
@@ -143,12 +143,12 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
         LocalDate.of(year, month, day)
 
       case YEAR_OF_ERA =>
-        requireDateTime(value > 0 && value <= maxYear + 1, msg)
+        requireDateTime(value > 0 && value <= Year.MAX_VALUE + 1, msg)
         if (getEra == IsoEra.CE) withYear(value.toInt)
         else withYear(1 - value.toInt)
 
       case YEAR =>
-        requireDateTime(value >= minYear && value <= maxYear, msg)
+        requireDateTime(value >= Year.MIN_VALUE && value <= Year.MAX_VALUE, msg)
         withYear(value.toInt)
 
       case ERA =>
@@ -215,7 +215,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
 
   def plusYears(years: Long): LocalDate = {
     val year1 = year + years
-    requireDateTime(year1 >= minYear && year1 <= maxYear,
+    requireDateTime(year1 >= Year.MIN_VALUE && year1 <= Year.MAX_VALUE,
         s"Invalid value for year: $year1")
     val leap = iso.isLeapYear(year1)
     val day1 =
@@ -228,7 +228,7 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
     val month1 = getMonthValue + MathJDK8Bridge.floorMod(months, 12).toInt
     val year1 = year + MathJDK8Bridge.floorDiv(months, 12) +
         (if (month1 > 12) 1 else 0)
-    requireDateTime(year1 >= minYear && year1 <= maxYear,
+    requireDateTime(year1 >= Year.MIN_VALUE && year1 <= Year.MAX_VALUE,
         s"Invalid value for year: $year1")
     val month2 = Month.of(if (month1 > 12) month1 - 12 else month1)
     val day = dayOfMonth min month2.length(iso.isLeapYear(year1))
@@ -382,12 +382,9 @@ object LocalDate {
   }.take(400).toVector
 
   private final val daysInFourHundredYears = 146097
-  private final val minYear = -999999999
-  private final val maxYear = 999999999
 
-  final val MIN = new LocalDate(minYear, Month.JANUARY, 1)
-
-  final val MAX = new LocalDate(maxYear, Month.DECEMBER, 31)
+  final val MIN = new LocalDate(Year.MIN_VALUE, Month.JANUARY, 1)
+  final val MAX = new LocalDate(Year.MAX_VALUE, Month.DECEMBER, 31)
 
   def now(): LocalDate = {
     val d = new js.Date()
@@ -420,7 +417,7 @@ object LocalDate {
     val rem = MathJDK8Bridge.floorMod(epochDay, daysInFourHundredYears).toInt
     val (year1, start) = daysBeforeYears.takeWhile(_._2 <= rem).last
     val year2 = year1 + quot * 400
-    requireDateTime(year2 >= minYear && year2 <= maxYear,
+    requireDateTime(year2 >= Year.MIN_VALUE && year2 <= Year.MAX_VALUE,
         s"Invalid value for year: $year2")
     val dayOfYear = rem - start + 1
     LocalDate.ofYearDay(year2.toInt, dayOfYear.toInt)

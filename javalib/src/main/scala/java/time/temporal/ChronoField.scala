@@ -1,5 +1,7 @@
 package java.time.temporal
 
+import java.time.Year
+
 final class ChronoField private (name: String, ordinal: Int,
     _range: ValueRange, baseUnit: ChronoUnit, rangeUnit: ChronoUnit, flags: Int)
     extends Enum[ChronoField](name, ordinal) with TemporalField {
@@ -123,7 +125,7 @@ object ChronoField {
       ValueRange.of(1, 999999999, 1000000000), YEARS, ERAS, isDateBasedFlag)
 
   final val YEAR = new ChronoField("Year", 26,
-      ValueRange.of(-999999999, 999999999), YEARS, FOREVER, isDateBasedFlag)
+      ValueRange.of(Year.MIN_VALUE, Year.MAX_VALUE), YEARS, FOREVER, isDateBasedFlag)
 
   final val ERA = new ChronoField("Era", 27, ValueRange.of(0, 1), ERAS, FOREVER,
       isDateBasedFlag)
