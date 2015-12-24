@@ -32,7 +32,7 @@ abstract class GenJSCode extends plugins.PluginComponent
                             with JSEncoding
                             with GenJSExports
                             with GenJSFiles
-                            with Compat210Component {
+                            with PluginComponent210Compat {
 
   val jsAddons: JSGlobalAddons {
     val global: GenJSCode.this.global.type
@@ -52,7 +52,8 @@ abstract class GenJSCode extends plugins.PluginComponent
 
   import platform.isMaybeBoxed
 
-  val phaseName = "jscode"
+  val phaseName: String = "jscode"
+  override val description: String = "generate JavaScript code from ASTs"
 
   /** testing: this will be called when ASTs are generated */
   def generatedJSAST(clDefs: List[js.Tree]): Unit
@@ -120,7 +121,7 @@ abstract class GenJSCode extends plugins.PluginComponent
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
 
     override def name: String = phaseName
-    override def description: String = "Generate JavaScript code from ASTs"
+    override def description: String = GenJSCode.this.description
     override def erasedTypes: Boolean = true
 
     // Some state --------------------------------------------------------------

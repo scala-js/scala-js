@@ -26,7 +26,7 @@ import scala.collection.mutable
 abstract class PrepJSInterop extends plugins.PluginComponent
                                 with PrepJSExports
                                 with transform.Transform
-                                with Compat210Component {
+                                with PluginComponent210Compat {
   import PrepJSInterop._
 
   val jsAddons: JSGlobalAddons {
@@ -41,13 +41,14 @@ abstract class PrepJSInterop extends plugins.PluginComponent
   import rootMirror._
   import jsDefinitions._
 
-  val phaseName = "jsinterop"
+  val phaseName: String = "jsinterop"
+  override def description: String = "prepare ASTs for JavaScript interop"
 
   override def newPhase(p: nsc.Phase): StdPhase = new JSInteropPhase(p)
 
   class JSInteropPhase(prev: nsc.Phase) extends Phase(prev) {
     override def name: String = phaseName
-    override def description: String = "Prepare ASTs for JavaScript interop"
+    override def description: String = PrepJSInterop.this.description
     override def run(): Unit = {
       jsPrimitives.initPrepJSPrimitives()
       jsInterop.clearRegisteredExports()

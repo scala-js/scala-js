@@ -1,11 +1,11 @@
     phase name  id  description
     ----------  --  -----------
         parser   1  parse source into ASTs, perform simple desugaring
-    jspretyper   2  
+    jspretyper   2  capture pre-typer only tree info (for Scala.js)
          namer   3  resolve names, attach symbols to named trees
 packageobjects   4  load package objects
          typer   5  the meat and potatoes: type the trees
-     jsinterop   6  
+     jsinterop   6  prepare ASTs for JavaScript interop
         patmat   7  translate match expressions
 superaccessors   8  add super accessors in traits and nested classes
     extmethods   9  add extension methods for inline classes
@@ -22,7 +22,7 @@ superaccessors   8  add super accessors in traits and nested classes
   constructors  20  move field definitions into constructors
        flatten  21  eliminate inner classes
          mixin  22  mixin composition
-        jscode  23  
+        jscode  23  generate JavaScript code from ASTs
        cleanup  24  platform-specific cleanups, generate reflective calls
     delambdafy  25  remove lambdas
          icode  26  generate portable intermediate code
