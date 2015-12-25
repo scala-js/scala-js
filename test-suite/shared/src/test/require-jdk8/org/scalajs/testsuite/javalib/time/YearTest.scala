@@ -317,6 +317,18 @@ class YearTest extends TemporalTest[Year] {
     expectThrows(classOf[DateTimeException], nonLeapYear.atDay(366))
   }
 
+  @Test def atMonth(): Unit = {
+    for {
+      t <- samples
+      month <- Month.values()
+    } {
+      assertEquals(YearMonth.of(t.getValue, month.getValue), t.atMonth(month))
+      assertEquals(YearMonth.of(t.getValue, month.getValue), t.atMonth(month.getValue))
+      expectThrows(classOf[DateTimeException], t.atMonth(0))
+      expectThrows(classOf[DateTimeException], t.atMonth(13))
+    }
+  }
+
   @Test def isLeap(): Unit = {
     assertTrue(leapYear.isLeap)
     assertFalse(nonLeapYear.isLeap)

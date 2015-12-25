@@ -154,11 +154,9 @@ final class Year private (year: Int)
   def atDay(dayOfYear: Int): LocalDate =
     LocalDate.ofYearDay(year, dayOfYear)
 
-  // TODO
-  // def atMonth(month: Month): YearMonth = YearMonth.of(year, month)
+  def atMonth(month: Month): YearMonth = YearMonth.of(year, month)
 
-  // TODO
-  // def atMonth(month: Int): YearMonth = YearMonth.of(year, month)
+  def atMonth(month: Int): YearMonth = YearMonth.of(year, month)
 
   def atMonthDay(monthDay: MonthDay): LocalDate = monthDay.atYear(year)
 
