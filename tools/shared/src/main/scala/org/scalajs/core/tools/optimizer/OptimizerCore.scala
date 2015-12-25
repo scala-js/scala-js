@@ -101,7 +101,7 @@ private[optimizer] abstract class OptimizerCore(
   def optimize(thisType: Type, originalDef: MethodDef): LinkedMember[MethodDef] = {
     try {
       val MethodDef(static, name, params, resultType, body) = originalDef
-      val (newParams, newBody) = try {
+      val (newParams, newBody1) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
         case _: TooManyRollbacksException =>
@@ -111,6 +111,9 @@ private[optimizer] abstract class OptimizerCore(
           disableOptimisticOptimizations = true
           transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
+      val newBody =
+        if (name.name == "init___") tryElimStoreModule(newBody1)
+        else newBody1
       val m = MethodDef(static, name, newParams, resultType,
           newBody)(originalDef.optimizerHints, None)(originalDef.pos)
       val info = Infos.generateMethodInfo(m)
@@ -124,6 +127,33 @@ private[optimizer] abstract class OptimizerCore(
         Console.err.println(exceptionMsg(
             myself, attemptedInlining.distinct.toList, e))
         throw e
+    }
+  }
+
+  /** Try and eliminate a StoreModule followed only by trivial statements. */
+  private def tryElimStoreModule(body: Tree): Tree = {
+    implicit val pos = body.pos
+    body match {
+      case StoreModule(_, _) =>
+        Skip()
+      case Block(stats) =>
+        val (before, from) = stats.span(!_.isInstanceOf[StoreModule])
+        if (from.isEmpty) {
+          body
+        } else {
+          val after = from.tail
+          val afterIsTrivial = after.forall {
+            case Assign(Select(This(), Ident(_, _)),
+                _:Literal | _:VarRef) =>
+              true
+            case _ =>
+              false
+          }
+          if (afterIsTrivial) Block(before ::: after)
+          else body
+        }
+      case _ =>
+        body
     }
   }
 
@@ -1759,8 +1789,12 @@ private[optimizer] abstract class OptimizerCore(
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
 
-    val MethodDef(_, _, formals, _, BlockOrAlone(stats, This())) =
-      getMethodBody(target)
+    val targetMethodDef = getMethodBody(target)
+    val formals = targetMethodDef.args
+    val stats = targetMethodDef.body match {
+      case Block(stats) => stats
+      case singleStat   => List(singleStat)
+    }
 
     val argsBindings = for {
       (ParamDef(Ident(name, originalName), tpe, mutable, _), arg) <- formals zip args
@@ -2170,7 +2204,7 @@ private[optimizer] abstract class OptimizerCore(
     case FloatLiteral(value) =>
       foldToStringForString_+(DoubleLiteral(value.toDouble))
 
-    case DoubleLiteral(value) => 
+    case DoubleLiteral(value) =>
       jsNumberToString(value).fold(tree)(StringLiteral(_))
 
     case LongLiteral(value)    => StringLiteral(value.toString)
@@ -2183,9 +2217,9 @@ private[optimizer] abstract class OptimizerCore(
 
   /* Following the ECMAScript 6 specification */
   private def jsNumberToString(value: Double): Option[String] = {
-    if (1.0.toString == "1") { 
+    if (1.0.toString == "1") {
       // We are in a JS environment, so the host .toString() is the correct one.
-      Some(value.toString) 
+      Some(value.toString)
     } else {
       value match {
         case _ if value.isNaN       => Some("NaN")
@@ -2195,7 +2229,7 @@ private[optimizer] abstract class OptimizerCore(
         case _ if value.isValidInt  => Some(value.toInt.toString)
         case _                      => None
       }
-    }  
+    }
   }
 
   private def foldBinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
@@ -2218,13 +2252,13 @@ private[optimizer] abstract class OptimizerCore(
         val rhs1 = foldToStringForString_+(rhs)
         @inline def stringDefault = BinaryOp(String_+, lhs1, rhs1)
         (lhs1, rhs1) match {
-          case (StringLiteral(s1), StringLiteral(s2)) => 
+          case (StringLiteral(s1), StringLiteral(s2)) =>
             StringLiteral(s1 + s2)
           case (_, StringLiteral("")) =>
             foldBinaryOp(op, rhs1, lhs1)
           case (StringLiteral(""), _) if rhs1.tpe == StringType =>
             rhs1
-          case (_, BinaryOp(String_+, rl, rr)) => 
+          case (_, BinaryOp(String_+, rl, rr)) =>
             foldBinaryOp(String_+, BinaryOp(String_+, lhs1, rl), rr)
           case (BinaryOp(String_+, ll, StringLiteral(lr)), StringLiteral(r)) =>
             BinaryOp(String_+, ll, StringLiteral(lr + r))

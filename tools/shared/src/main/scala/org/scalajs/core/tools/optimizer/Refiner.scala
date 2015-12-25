@@ -16,11 +16,17 @@ final class Refiner(semantics: Semantics, outputMode: OutputMode) {
   def refine(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     val analysis = logTime(logger, "Refiner: Compute reachability") {
       val analyzer = new Analyzer(semantics, outputMode,
-          reachOptimizerSymbols = false)
+          reachOptimizerSymbols = false, initialLink = false)
       analyzer.computeReachability(unit.infos.values.toList)
     }
 
-    // Note: We ignore all errors of the analysis
+    /* There really should not be linking errors at this point. If there are,
+     * it is most likely a bug in the optimizer. We should crash here, but we
+     * used to silently ignore any errors before 0.6.6. So currently we only
+     * warn, not to break compatibility.
+     * TODO Issue errors when we can break backward compatibility.
+     */
+    analysis.errors.foreach(Analysis.logError(_, logger, Level.Warn))
 
     logTime(logger, "Refiner: Assemble LinkedClasses") {
       val linkedClassesByName =

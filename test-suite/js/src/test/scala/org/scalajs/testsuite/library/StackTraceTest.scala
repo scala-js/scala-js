@@ -69,26 +69,34 @@ object StackTraceTest extends JasmineTest {
     when("nodejs").
     unlessAny("fullopt-stage", "strong-mode").
     it("decode class name and method name") {
-      verifyClassMethodNames("Foo" -> "f") {
-        new Foo().f(25)
-      }
+      val Error = js.constructorOf[js.Error]
+      val oldStackTraceLimit = Error.stackTraceLimit
+      Error.stackTraceLimit = 20
 
-      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
-        new Bar().g(7)
-      }
+      try {
+        verifyClassMethodNames("Foo" -> "f") {
+          new Foo().f(25)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h") {
-        new Foo().h(78)
-      }
+        verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
+          new Bar().g(7)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h",
-          "Baz" -> "<init>") {
-        new Baz()
-      }
+        verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h") {
+          new Foo().h(78)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
-          "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
-        Foobar.z
+        verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h",
+            "Baz" -> "<init>") {
+          new Baz()
+        }
+
+        verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
+            "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
+          Foobar.z
+        }
+      } finally {
+        Error.stackTraceLimit = oldStackTraceLimit
       }
     }
 

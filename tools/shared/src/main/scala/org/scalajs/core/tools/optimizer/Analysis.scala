@@ -66,6 +66,15 @@ object Analysis {
     def calledFrom: Seq[From]
     def instantiatedSubclasses: Seq[ClassInfo]
     def nonExistent: Boolean
+    def syntheticKind: MethodSyntheticKind
+  }
+
+  sealed trait MethodSyntheticKind
+
+  object MethodSyntheticKind {
+    final case object None extends MethodSyntheticKind
+    // TODO Get rid of InheritedConstructor when we can break binary compat
+    final case object InheritedConstructor extends MethodSyntheticKind
   }
 
   sealed trait Error {

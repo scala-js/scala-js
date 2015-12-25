@@ -36,8 +36,8 @@ object JavaLangObject {
           static = false,
           Ident("init___", Some("<init>")),
           Nil,
-          AnyType,
-          This()(ThisType))(OptimizerHints.empty, None),
+          NoType,
+          Skip())(OptimizerHints.empty, None),
 
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(

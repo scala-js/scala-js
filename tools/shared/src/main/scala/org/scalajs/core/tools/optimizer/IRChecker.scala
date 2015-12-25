@@ -186,11 +186,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val isConstructor = isConstructorName(name)
-    val resultTypeForSig =
-      if (isConstructor) NoType
-      else resultType
 
-    val advertizedSig = (params.map(_.ptpe), resultTypeForSig)
+    val advertizedSig = (params.map(_.ptpe), resultType)
     val sigFromName = inferMethodType(name, static)
     if (advertizedSig != sigFromName) {
       reportError(
@@ -527,7 +524,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     implicit val ctx = ErrorContext(tree)
 
     def checkApplyGeneric(methodName: String, methodFullName: String,
-        args: List[Tree], isStatic: Boolean): Unit = {
+        args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
       if (args.size != methodParams.size)
         reportError(s"Arity mismatch: ${methodParams.size} expected but "+
@@ -535,7 +532,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       for ((actual, formal) <- args zip methodParams) {
         typecheckExpect(actual, env, formal)
       }
-      if (!isConstructorName(methodName) && tree.tpe != resultType)
+      if (tpe != resultType)
         reportError(s"Call to $methodFullName of type $resultType "+
             s"typed as ${tree.tpe}")
     }
@@ -607,7 +604,8 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
         val clazz = lookupClass(cls)
         if (!clazz.kind.isClass)
           reportError(s"new $cls which is not a class")
-        checkApplyGeneric(ctor.name, s"$cls.$ctor", args, isStatic = false)
+        checkApplyGeneric(ctor.name, s"$cls.$ctor", args, NoType,
+            isStatic = false)
 
       case LoadModule(cls) =>
         if (!cls.className.endsWith("$"))
@@ -640,16 +638,18 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Apply(receiver, Ident(method, _), args) =>
         val receiverType = typecheckExpr(receiver, env)
-        checkApplyGeneric(method, s"$receiverType.$method", args,
+        checkApplyGeneric(method, s"$receiverType.$method", args, tree.tpe,
             isStatic = false)
 
       case ApplyStatically(receiver, cls, Ident(method, _), args) =>
         typecheckExpect(receiver, env, cls)
-        checkApplyGeneric(method, s"$cls.$method", args, isStatic = false)
+        checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
+            isStatic = false)
 
       case ApplyStatic(cls, Ident(method, _), args) =>
         val clazz = lookupClass(cls)
-        checkApplyGeneric(method, s"$cls.$method", args, isStatic = true)
+        checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
+            isStatic = true)
 
       case UnaryOp(op, lhs) =>
         import UnaryOp._

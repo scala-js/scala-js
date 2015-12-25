@@ -744,8 +744,6 @@ abstract class GenJSCode extends plugins.PluginComponent
               OptimizerHints.empty, None))
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
-        } else if (isTrivialConstructor(sym, params, rhs)) {
-          None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
         } else {
@@ -786,8 +784,8 @@ abstract class GenJSCode extends plugins.PluginComponent
                     optimizerHints, None)
               } else if (sym.isClassConstructor) {
                 js.MethodDef(static = false, methodName,
-                    jsParams, currentClassType,
-                    js.Block(genStat(rhs), genThis()))(optimizerHints, None)
+                    jsParams, jstpe.NoType,
+                    genStat(rhs))(optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 genMethodDef(static = sym.owner.isImplClass, methodName,
@@ -824,33 +822,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         "scala.runtime.ScalaRunTime.arrayClass",
         "scala.runtime.ScalaRunTime.arrayElementClass"
     )
-
-    private def isTrivialConstructor(sym: Symbol, params: List[Symbol],
-        rhs: Tree): Boolean = {
-      if (!sym.isClassConstructor || isScalaJSDefinedJSClass(sym.owner)) {
-        false
-      } else {
-        rhs match {
-          // Shape of a constructor that only calls super
-          case Block(List(Apply(fun @ Select(_: Super, _), args)), Literal(_)) =>
-            val callee = fun.symbol
-            implicit val dummyPos = NoPosition
-
-            // Does the callee have the same signature as sym
-            if (encodeMethodSym(sym) == encodeMethodSym(callee)) {
-              // Test whether args are trivial forwarders
-              assert(args.size == params.size, "Argument count mismatch")
-              params.zip(args) forall { case (param, arg) =>
-                arg.symbol == param
-              }
-            } else {
-              false
-            }
-
-          case _ => false
-        }
-      }
-    }
 
     /** Patches the mutable flags of selected locals in a [[js.MethodDef]].
      *
@@ -1704,7 +1675,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           isModuleInitialized = true
           val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
           val initModule = js.StoreModule(thisType, js.This()(thisType))
-          js.Block(superCall, initModule, js.This()(thisType))
+          js.Block(superCall, initModule)
         } else {
           superCall
         }
@@ -1888,8 +1859,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
       val className = encodeClassFullName(method.owner)
       val methodIdent = encodeMethodSym(method)
+      val resultType =
+        if (method.isClassConstructor) jstpe.NoType
+        else toIRType(method.tpe.resultType)
       js.ApplyStatically(receiver, jstpe.ClassType(className),
-          methodIdent, arguments)(toIRType(method.tpe.resultType))
+          methodIdent, arguments)(resultType)
     }
 
     def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(

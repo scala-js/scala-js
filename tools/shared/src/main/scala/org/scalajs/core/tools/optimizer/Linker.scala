@@ -9,6 +9,8 @@
 
 package org.scalajs.core.tools.optimizer
 
+import scala.annotation.tailrec
+
 import scala.collection.mutable
 import scala.collection.immutable.{Seq, Traversable}
 
@@ -19,7 +21,8 @@ import org.scalajs.core.tools.io._
 
 import org.scalajs.core.ir
 import ir.Infos
-import ir.Trees.ClassDef
+import ir.Trees._
+import ir.Types._
 import ir.ClassKind
 import ir.Hashers
 import ir.Position
@@ -91,7 +94,8 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     }
 
     val analysis = logTime(logger, "Linker: Compute reachability") {
-      val analyzer = new Analyzer(semantics, outputMode, reachOptimizerSymbols)
+      val analyzer = new Analyzer(semantics, outputMode, reachOptimizerSymbols,
+          initialLink = true)
       analyzer.computeReachability(infoInput)
     }
 
@@ -134,7 +138,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       infoByName.get(encodedName).map { info =>
         val (tree, version) = getTree(encodedName)
         val newVersion = version.map("real" + _) // avoid collision with dummy
-        linkedClassDef(info, tree, analyzerInfo, newVersion)
+        linkedClassDef(info, tree, analyzerInfo, newVersion, getTree, analysis)
       }.orElse(optDummyParent)
     }
 
@@ -150,7 +154,8 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
   /** Takes a Infos, a ClassDef and DCE infos to construct a stripped down
    *  LinkedClassDef */
   private def linkedClassDef(info: Infos.ClassInfo, classDef: ClassDef,
-      analyzerInfo: Analysis.ClassInfo, version: Option[String]) = {
+      analyzerInfo: Analysis.ClassInfo, version: Option[String],
+      getTree: TreeProvider, analysis: Analysis) = {
     import ir.Trees._
 
     val memberInfoByName = Map(info.methods.map(m => m.encodedName -> m): _*)
@@ -171,6 +176,12 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
     def linkedProperty(p: PropertyDef) = {
       val info = memberInfoByName(p.name.name)
       new LinkedMember(info, p, None)
+    }
+
+    def linkedSyntheticMethod(m: MethodDef) = {
+      val info = Infos.generateMethodInfo(m)
+      val version = m.hash.map(Hashers.hashAsVersion(_, considerPositions))
+      new LinkedMember(info, m, version)
     }
 
     classDef.defs.foreach {
@@ -212,6 +223,22 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
         sys.error(s"Illegal tree in ClassDef of class ${tree.getClass}")
     }
 
+    // Synthetic members
+    for {
+      m <- analyzerInfo.methodInfos.valuesIterator
+      if m.isReachable
+    } {
+      m.syntheticKind match {
+        case MethodSyntheticKind.None =>
+          // nothing to do
+
+        case MethodSyntheticKind.InheritedConstructor =>
+          val syntheticMDef = synthesizeInheritedConstructor(
+              analyzerInfo, m, getTree, analysis)(classDef.pos)
+          memberMethods += linkedSyntheticMethod(syntheticMDef)
+      }
+    }
+
     val classExportInfo =
       memberInfoByName.get(Definitions.ExportedConstructorsName)
 
@@ -241,6 +268,43 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         version)
+  }
+
+  private def synthesizeInheritedConstructor(
+      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
+      getTree: TreeProvider, analysis: Analysis)(
+      implicit pos: Position): MethodDef = {
+    val encodedName = methodInfo.encodedName
+
+    @tailrec
+    def findInheritedMethodDef(ancestorInfo: Analysis.ClassInfo): MethodDef = {
+      val inherited = ancestorInfo.methodInfos(methodInfo.encodedName)
+      if (inherited.syntheticKind == MethodSyntheticKind.None) {
+        val (classDef, _) = getTree(ancestorInfo.encodedName)
+        classDef.defs.collectFirst {
+          case mDef: MethodDef if mDef.name.name == encodedName => mDef
+        }.getOrElse {
+          throw new AssertionError(
+              s"Cannot find $encodedName in ${ancestorInfo.encodedName}")
+        }
+      } else {
+        findInheritedMethodDef(ancestorInfo.superClass)
+      }
+    }
+
+    val inheritedMDef = findInheritedMethodDef(classInfo.superClass)
+
+    val origName = inheritedMDef.name.asInstanceOf[Ident].originalName
+    val ctorIdent = Ident(encodedName, origName)
+    val params = inheritedMDef.args.map(_.copy()) // for the new pos
+    val currentClassType = ClassType(classInfo.encodedName)
+    val superClassType = ClassType(classInfo.superClass.encodedName)
+    MethodDef(static = false, ctorIdent,
+        params, NoType,
+        ApplyStatically(This()(currentClassType),
+            superClassType, ctorIdent, params.map(_.ref))(NoType))(
+        OptimizerHints.empty,
+        inheritedMDef.hash) // over-approximation
   }
 
   private def startRun(): Unit = {
