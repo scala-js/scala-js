@@ -321,6 +321,30 @@ object LocalTime {
 
   val NOON = new LocalTime(12, 0, 0, 0)
 
+  val HOURS_PER_DAY: Int = 24
+
+  val MINUTES_PER_HOUR: Int = 60
+
+  val MINUTES_PER_DAY: Int = MINUTES_PER_HOUR * HOURS_PER_DAY
+
+  val SECONDS_PER_MINUTE: Int = 60
+
+  val SECONDS_PER_HOUR: Int = SECONDS_PER_MINUTE * MINUTES_PER_HOUR
+
+  val SECONDS_PER_DAY: Int = SECONDS_PER_HOUR * HOURS_PER_DAY
+
+  val MILLIS_PER_DAY: Long = SECONDS_PER_DAY * 1000L
+
+  val MICROS_PER_DAY: Long = SECONDS_PER_DAY * 1000 * 1000
+
+  val NANOS_PER_SECOND: Long = 1000 * 1000 * 1000L
+
+  val NANOS_PER_MINUTE: Long = NANOS_PER_SECOND * SECONDS_PER_MINUTE
+
+  val NANOS_PER_HOUR: Long = NANOS_PER_MINUTE * MINUTES_PER_HOUR
+
+  val NANOS_PER_DAY: Long = NANOS_PER_HOUR * HOURS_PER_DAY
+
   def now(): LocalTime = {
     val date = new js.Date()
     val nano = date.getMilliseconds * 1000000
