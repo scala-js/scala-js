@@ -320,7 +320,7 @@ object LocalTime {
   val MIDNIGHT = MIN
 
   val NOON = new LocalTime(12, 0, 0, 0)
-  
+
   val HOURS_PER_DAY: Int = 24
 
   val MINUTES_PER_HOUR: Int = 60
