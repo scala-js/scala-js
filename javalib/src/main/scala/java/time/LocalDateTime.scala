@@ -252,8 +252,8 @@ object LocalDateTime {
 
   def from(temporal: Temporal): LocalDateTime = temporal match {
     case localDateTime: LocalDateTime => localDateTime
-    case zonedDateTime: ZonedDateTime => zonedDateTime.toLocalDateTime
-    case offsetDateTime: OffsetDateTime => offsetDateTime.toLocalDateTime
+    // case zonedDateTime: ZonedDateTime => zonedDateTime.toLocalDateTime
+    // case offsetDateTime: OffsetDateTime => offsetDateTime.toLocalDateTime
     case _ => new LocalDateTime(LocalDate.from(temporal), LocalTime.from(temporal))
   }
 
