@@ -1212,6 +1212,26 @@ object Build extends sbt.Build {
           Seq(outFile)
         },
 
+        // #2137: Scala.js-defined JS classes are broken in strong mode
+        sources in Test := {
+          import org.scalajs.core.tools.javascript.OutputMode
+          val original = (sources in Test).value
+          val mode = (scalaJSOutputMode in Test).value
+          if (mode != OutputMode.ECMAScript6StrongMode) {
+            original
+          } else {
+            original.filter { f =>
+              val path = f.getPath.replace('\\', '/')
+              val exclude = {
+                path.endsWith("/org/scalajs/testsuite/jsinterop/ExportsTest.scala") ||
+                path.endsWith("/org/scalajs/testsuite/jsinterop/MiscInteropTest.scala") ||
+                path.endsWith("/org/scalajs/testsuite/jsinterop/ScalaJSDefinedTest.scala")
+              }
+              !exclude
+            }
+          }
+        },
+
         scalacOptions in Test ++= {
           if (isGeneratingEclipse) {
             Seq.empty
