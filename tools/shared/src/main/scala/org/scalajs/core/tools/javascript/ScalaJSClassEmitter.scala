@@ -507,8 +507,11 @@ final class ScalaJSClassEmitter private (
               js.BooleanLiteral(false)
 
             case _ =>
-              var test = (genIsScalaJSObject(obj) &&
-                  (obj DOT "$classData" DOT "ancestors" DOT className))
+              var test = {
+                genIsScalaJSObject(obj) &&
+                genIsClassNameInAncestors(className,
+                    obj DOT "$classData" DOT "ancestors")
+              }
 
               if (isAncestorOfString)
                 test = test || (
@@ -605,9 +608,12 @@ final class ScalaJSClassEmitter private (
               }))
 
           case _ =>
-            js.Return(!(!(genIsScalaJSObject(obj) &&
-                ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
-                (obj DOT "$classData" DOT "arrayBase" DOT "ancestors" DOT className))))
+            js.Return(!(!({
+              genIsScalaJSObject(obj) &&
+              ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
+              genIsClassNameInAncestors(className,
+                  obj DOT "$classData" DOT "arrayBase" DOT "ancestors")
+            })))
         }))
     }
 
@@ -637,6 +643,15 @@ final class ScalaJSClassEmitter private (
       case _ =>
         obj && (obj DOT "$classData")
     }
+  }
+
+  private def genIsClassNameInAncestors(className: String, ancestors: js.Tree)(
+      implicit pos: Position): js.Tree = {
+    import TreeDSL._
+    if (outputMode != OutputMode.ECMAScript6StrongMode)
+      ancestors DOT className
+    else
+      js.BinaryOp(JSBinaryOp.in, js.StringLiteral(className), ancestors)
   }
 
   def genTypeData(tree: LinkedClass): js.Tree = {

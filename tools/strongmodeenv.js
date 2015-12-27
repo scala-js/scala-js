@@ -758,12 +758,12 @@ class $TypeData {
     const internalName = $propertyName(internalNameObj);
 
     isInstance = isInstance || function(obj) {
-      return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
+      return $isScalaJSObject(obj) && (internalName in obj.$classData.ancestors);
     };
 
     isArrayOf = isArrayOf || function(obj, depth) {
-      return !!(obj && obj.$classData && (obj.$classData.arrayDepth === depth)
-        && obj.$classData.arrayBase.ancestors[internalName])
+      return ($isScalaJSObject(obj) && (obj.$classData.arrayDepth === depth)
+        && internalName in obj.$classData.arrayBase.ancestors);
     };
 
     // Runtime support
