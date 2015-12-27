@@ -713,7 +713,7 @@ object Serializers {
           val parents = readIdents()
           val jsName = Some(readString()).filter(_ != "")
           val defs0 = readTrees()
-          val defs = if (true) { // useHacks065
+          val defs = if (useHacks065) {
             defs0.filter {
               case MethodDef(_, Ident(name, _), _, _, _) =>
                 !Definitions.isReflProxyName(name)

@@ -130,7 +130,7 @@ object InfoSerializers {
       }
 
       val methods0 = readList(readMethod())
-      val methods = if (true) { // useHacks065
+      val methods = if (useHacks065) {
         methods0.filter(m => !Definitions.isReflProxyName(m.encodedName))
       } else {
         methods0

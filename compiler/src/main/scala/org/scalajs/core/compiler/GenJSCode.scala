@@ -367,14 +367,9 @@ abstract class GenJSCode extends plugins.PluginComponent
         memberExports ++ exportedConstructorsOrAccessors
       }
 
-      // Generate the reflective call proxies (where required)
-      val reflProxies =
-        if (isHijacked) Nil
-        else genReflCallProxies(sym)
-
       // Hashed definitions of the class
       val hashedDefs =
-        Hashers.hashDefs(generatedMembers ++ exports ++ reflProxies)
+        Hashers.hashDefs(generatedMembers ++ exports)
 
       // The complete class definition
       val kind =
@@ -888,120 +883,6 @@ abstract class GenJSCode extends plugins.PluginComponent
           superCall ::
           beforeSuper :::
           afterSuper)(body.pos)
-    }
-
-    /**
-     * Generates reflective proxy methods for methods in sym
-     *
-     * Reflective calls don't depend on the return type, so it's hard to
-     * generate calls without using runtime reflection to list the methods. We
-     * generate a method to be used for reflective calls (without return
-     * type in the name).
-     *
-     * There are cases where non-trivial overloads cause ambiguous situations:
-     *
-     * {{{
-     * object A {
-     *   def foo(x: Option[Int]): String
-     *   def foo(x: Option[String]): Int
-     * }
-     * }}}
-     *
-     * This is completely legal code, but due to the same erased parameter
-     * type of the {{{foo}}} overloads, they cannot be disambiguated in a
-     * reflective call, as the exact return type is unknown at the call site.
-     *
-     * Cases like the upper currently fail on the JVM backend at runtime. The
-     * Scala.js backend uses the following rules for selection (which will
-     * also cause runtime failures):
-     *
-     * - If a proxy with the same signature (method name and parameters)
-     *   exists in the superclass, no proxy is generated (proxy is inherited)
-     * - If no proxy exists in the superclass, a proxy is generated for the
-     *   first method with matching signatures.
-     */
-    def genReflCallProxies(sym: Symbol): List[js.MethodDef] = {
-      import scala.reflect.internal.Flags
-
-      // Flags of members we do not want to consider for reflective call proxys
-      val excludedFlags = (
-          Flags.BRIDGE  |
-          Flags.PRIVATE |
-          Flags.MACRO
-      )
-
-      /** Check if two method symbols conform in name and parameter types */
-      def weakMatch(s1: Symbol)(s2: Symbol) = {
-        val p1 = s1.tpe.params
-        val p2 = s2.tpe.params
-        s1 == s2 || // Shortcut
-        s1.name == s2.name &&
-        p1.size == p2.size &&
-        (p1 zip p2).forall { case (s1,s2) =>
-          s1.tpe =:= s2.tpe
-        }
-      }
-
-      /** Check if the symbol's owner's superclass has a matching member (and
-       *  therefore an existing proxy).
-       */
-      def superHasProxy(s: Symbol) = {
-        val alts = sym.superClass.tpe.findMember(
-            name = s.name,
-            excludedFlags = excludedFlags,
-            requiredFlags = Flags.METHOD,
-            stableOnly    = false).alternatives
-        alts.exists(weakMatch(s) _)
-      }
-
-      // Query candidate methods
-      val methods = sym.tpe.findMembers(
-          excludedFlags = excludedFlags,
-          requiredFlags = Flags.METHOD)
-
-      val candidates = methods filterNot { s =>
-        s.isConstructor  ||
-        superHasProxy(s) ||
-        jsInterop.isExport(s)
-      }
-
-      val proxies = candidates filter {
-        c => candidates.find(weakMatch(c) _).get == c
-      }
-
-      proxies.map(genReflCallProxy _).toList
-    }
-
-    /** actually generates reflective call proxy for the given method symbol */
-    private def genReflCallProxy(sym: Symbol): js.MethodDef = {
-      implicit val pos = sym.pos
-
-      val proxyIdent = encodeMethodSym(sym, reflProxy = true)
-
-      withNewLocalNameScope {
-        val jsParams = for (param <- sym.tpe.params) yield {
-          implicit val pos = param.pos
-          js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
-              mutable = false, rest = false)
-        }
-
-        val call = genApplyMethod(genThis(), sym, jsParams.map(_.ref))
-        val resTpeEnteringPosterasure = enteringPhase(currentRun.posterasurePhase) {
-          sym.tpe match {
-            case _: ExistentialType =>
-              /* We should not see an ExistentialType here. This is a
-               * scalac 2.10 bug. We assume no boxing is required. See #1581.
-               */
-              ObjectTpe
-            case symTpe =>
-              symTpe.resultType
-          }
-        }
-        val body = ensureBoxed(call, resTpeEnteringPosterasure)
-
-        js.MethodDef(static = false, proxyIdent, jsParams, jstpe.AnyType,
-            body)(OptimizerHints.empty, None)
-      }
     }
 
     /** Generates the MethodDef of a (non-constructor) method
