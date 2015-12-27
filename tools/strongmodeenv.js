@@ -141,6 +141,16 @@ function $toString(x) {
   return `${x}`;
 }
 
+/** Non-short-circuit boolean | */
+function $boolOr(a, b) {
+  return a || b;
+}
+
+/** Non-short-circuit boolean & */
+function $boolAnd(a, b) {
+  return a && b;
+}
+
 // Declaration of type data
 
 let $d_V = null;
