@@ -572,7 +572,7 @@ class $ {
 //!if asInstanceOfs != Unchecked
         $asBoolean(rhs);
 //!endif
-        return instance - rhs; // yes, this gives the right result
+        return (instance === rhs) ? 0 : (instance ? 1 : -1);
       default:
         return instance.compareTo__O__I(rhs);
     }
