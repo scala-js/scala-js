@@ -143,14 +143,12 @@ object ScalaJSPluginInternal {
 
   private def scalajspSettings: Seq[Setting[_]] = {
     case class Options(
-        infos: Boolean = false,
-        showReflProxy: Boolean = false
+        infos: Boolean = false
     )
 
     val optionsParser: Parser[Options] = {
       token(OptSpace ~> (
           (literal("-i") | "--infos") ^^^ ((_: Options).copy(infos = true))
-        | (literal("-p") | "--reflProxies") ^^^ ((_: Options).copy(showReflProxy = true))
       )).* map {
         fns => Function.chain(fns)(Options())
       }
@@ -182,30 +180,13 @@ object ScalaJSPluginInternal {
           val vfile = ScalajspUtils.loadIRFile(cp, relPath)
 
           val stdout = new java.io.PrintWriter(System.out)
-          if (options.infos) {
+          if (options.infos)
             new InfoPrinter(stdout).print(vfile.info)
-          } else {
-            val (info, tree) = vfile.infoAndTree
-            val outTree = {
-              if (options.showReflProxy) tree
-              else filterOutReflProxies(tree)
-            }
-            new IRTreePrinter(stdout).printTopLevelTree(outTree)
-          }
+          else
+            new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
           stdout.flush()
         }
     )
-  }
-
-  // !!! CODE DUPLICATION with Scalajsp.filterOutReflProxies
-  private def filterOutReflProxies(tree: ir.Trees.ClassDef): ir.Trees.ClassDef = {
-    import ir.Trees._
-    import ir.Definitions.isReflProxyName
-    val newDefs = tree.defs.filter {
-      case MethodDef(_, Ident(name, _), _, _, _) => !isReflProxyName(name)
-      case _ => true
-    }
-    tree.copy(defs = newDefs)(tree.optimizerHints)(tree.pos)
   }
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(

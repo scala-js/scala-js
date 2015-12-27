@@ -12,12 +12,44 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.org$scalajs$sbtplugin$ScalaJSPluginInternal$$filterOutReflProxies")
   )
 
   val TestAdapter = Seq(
   )
 
   val CLI = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingTypesProblem](
+          "org.scalajs.cli.Scalajsp$Options$"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.<init>$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.<init>$default$3"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.<init>$default$4"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.apply$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.apply$default$3"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.apply$default$4"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.copy$default$2"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsp#Options.copy$default$3"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.copy$default$4"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsp#Options.showReflProxy")
   )
 
   val Library = Seq(
