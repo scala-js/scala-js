@@ -112,9 +112,9 @@ object BigDecimal {
 
   private def addAndMult10(thisValue: BigDecimal, augend: BigDecimal,
       diffScale: Int): BigDecimal = {
-    val powLen = LongTenPowsBitLength(diffScale)
-    val augPlusPowLength = augend._bitLength + powLen
-    val maxLen = Math.max(thisValue._bitLength, augPlusPowLength) + 1
+    def powLen = LongTenPowsBitLength(diffScale)
+    def augPlusPowLength = augend._bitLength + powLen
+    def maxLen = Math.max(thisValue._bitLength, augPlusPowLength) + 1
 
     if (diffScale < LongTenPows.length && maxLen < 64) {
       val augPlusPowLength = augend._smallValue * LongTenPows(diffScale)
@@ -494,7 +494,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         _intVal = new BigInteger(1, mantissa3).shiftLeft(-_scale)
       _scale = 0
     } else if (_scale > 0) {
-      val mSum = mantissaBits + LongFivePowsBitLength(_scale)
+      def mSum = mantissaBits + LongFivePowsBitLength(_scale)
       if (_scale < LongFivePows.length && mSum < 64) {
         _smallValue = mantissa3 * LongFivePows(_scale)
         _bitLength = bitLength(_smallValue)
@@ -619,8 +619,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       else
         new BigDecimal(getUnscaledValue.subtract(subtrahend.getUnscaledValue), _scale)
     } else if (diffScale > 0) {
-      val powTenLen = LongTenPowsBitLength(diffScale)
-      val maxLen = Math.max(this._bitLength, subtrahend._bitLength + powTenLen) + 1
+      def powTenLen = LongTenPowsBitLength(diffScale)
+      def maxLen = Math.max(this._bitLength, subtrahend._bitLength + powTenLen) + 1
 
       if (diffScale < LongTenPows.length && maxLen < 64) {
         val powTen = LongTenPows(diffScale)
@@ -631,8 +631,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       }
     } else {
       val negDiffScale = -diffScale
-      val powTenLen = LongTenPowsBitLength(negDiffScale)
-      val maxLen = Math.max(this._bitLength + powTenLen, subtrahend._bitLength) + 1
+      def powTenLen = LongTenPowsBitLength(negDiffScale)
+      def maxLen = Math.max(this._bitLength + powTenLen, subtrahend._bitLength) + 1
 
       if (negDiffScale < LongTenPows.length && maxLen < 64) {
         val powTen = LongTenPows(negDiffScale)
@@ -1134,7 +1134,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (diffScale == 0) {
       this
     } else if (diffScale > 0) {
-      val cmp = this._bitLength + LongTenPowsBitLength(diffScale.toInt)
+      def cmp = this._bitLength + LongTenPowsBitLength(diffScale.toInt)
       if (diffScale < LongTenPows.length && cmp < 64) {
         valueOf(this._smallValue * LongTenPows(diffScale.toInt), newScale)
       } else {
@@ -1654,7 +1654,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   private def isZero(): Boolean = _bitLength == 0 && this._smallValue != -1
 
   private def movePoint(newScale: Long): BigDecimal = {
-    val lptbLen = LongTenPowsBitLength(-newScale.toInt)
+    def lptbLen = LongTenPowsBitLength(-newScale.toInt)
 
     if (isZero) {
       zeroScaledBy(Math.max(newScale, 0))
