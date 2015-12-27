@@ -221,6 +221,24 @@ object ReflectiveCallTest extends JasmineTest {
       expect(call(new C)).toEqual(1)
     }
 
+    it("should be bug-compatible with Scala/JVM for inherited overloads") {
+      class Base {
+        def foo(x: Option[Int]): String = "a"
+      }
+
+      class Sub extends Base {
+        def foo(x: Option[String]): Int = 1
+      }
+
+      val sub = new Sub
+
+      val x: { def foo(x: Option[Int]): Any } = sub
+      expect(x.foo(Some(1)).asInstanceOf[js.Any]).toEqual(1) // here is the "bug"
+
+      val y: { def foo(x: Option[String]): Any } = sub
+      expect(y.foo(Some("hello")).asInstanceOf[js.Any]).toEqual(1)
+    }
+
     it("should work on java.lang.Object.{ notify, notifyAll } - #303") {
       type ObjNotifyLike = Any {
         def notify(): Unit

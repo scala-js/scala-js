@@ -75,6 +75,7 @@ object Analysis {
     final case object None extends MethodSyntheticKind
     // TODO Get rid of InheritedConstructor when we can break binary compat
     final case object InheritedConstructor extends MethodSyntheticKind
+    final case class ReflectiveProxy(target: String) extends MethodSyntheticKind
   }
 
   sealed trait Error {

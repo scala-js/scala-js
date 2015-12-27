@@ -95,7 +95,7 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
     val analysis = logTime(logger, "Linker: Compute reachability") {
       val analyzer = new Analyzer(semantics, outputMode, reachOptimizerSymbols,
-          initialLink = true)
+          allowAddingSyntheticMethods = true)
       analyzer.computeReachability(infoInput)
     }
 
@@ -236,6 +236,11 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
           val syntheticMDef = synthesizeInheritedConstructor(
               analyzerInfo, m, getTree, analysis)(classDef.pos)
           memberMethods += linkedSyntheticMethod(syntheticMDef)
+
+        case MethodSyntheticKind.ReflectiveProxy(targetName) =>
+          val syntheticMDef = synthesizeReflectiveProxy(
+              analyzerInfo, m, targetName, getTree, analysis)
+          memberMethods += linkedSyntheticMethod(syntheticMDef)
       }
     }
 
@@ -276,23 +281,8 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
       implicit pos: Position): MethodDef = {
     val encodedName = methodInfo.encodedName
 
-    @tailrec
-    def findInheritedMethodDef(ancestorInfo: Analysis.ClassInfo): MethodDef = {
-      val inherited = ancestorInfo.methodInfos(methodInfo.encodedName)
-      if (inherited.syntheticKind == MethodSyntheticKind.None) {
-        val (classDef, _) = getTree(ancestorInfo.encodedName)
-        classDef.defs.collectFirst {
-          case mDef: MethodDef if mDef.name.name == encodedName => mDef
-        }.getOrElse {
-          throw new AssertionError(
-              s"Cannot find $encodedName in ${ancestorInfo.encodedName}")
-        }
-      } else {
-        findInheritedMethodDef(ancestorInfo.superClass)
-      }
-    }
-
-    val inheritedMDef = findInheritedMethodDef(classInfo.superClass)
+    val inheritedMDef = findInheritedMethodDef(classInfo.superClass,
+        encodedName, getTree, _.syntheticKind == MethodSyntheticKind.None)
 
     val origName = inheritedMDef.name.asInstanceOf[Ident].originalName
     val ctorIdent = Ident(encodedName, origName)
@@ -305,6 +295,64 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
             superClassType, ctorIdent, params.map(_.ref))(NoType))(
         OptimizerHints.empty,
         inheritedMDef.hash) // over-approximation
+  }
+
+  private def synthesizeReflectiveProxy(
+      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
+      targetName: String, getTree: TreeProvider,
+      analysis: Analysis): MethodDef = {
+    val encodedName = methodInfo.encodedName
+
+    val targetMDef = findInheritedMethodDef(classInfo, targetName, getTree)
+
+    implicit val pos = targetMDef.pos
+
+    val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
+    val proxyIdent = Ident(encodedName, None)
+    val params = targetMDef.args.map(_.copy()) // for the new pos
+    val currentClassType = ClassType(classInfo.encodedName)
+
+    val call = Apply(This()(currentClassType),
+        targetIdent, params.map(_.ref))(targetMDef.resultType)
+
+    val body = if (targetName.endsWith("__C")) {
+      // A Char needs to be boxed
+      New(ClassType(Definitions.BoxedCharacterClass),
+          Ident("init___C"), List(call))
+    } else if (targetName.endsWith("__V")) {
+      // Materialize an `undefined` result for void methods
+      Block(call, Undefined())
+    } else {
+      call
+    }
+
+    MethodDef(static = false, proxyIdent, params, AnyType, body)(
+        OptimizerHints.empty, targetMDef.hash)
+  }
+
+  private def findInheritedMethodDef(classInfo: Analysis.ClassInfo,
+      methodName: String, getTree: TreeProvider,
+      p: Analysis.MethodInfo => Boolean = _ => true): MethodDef = {
+    @tailrec
+    def loop(ancestorInfo: Analysis.ClassInfo): MethodDef = {
+      assert(ancestorInfo != null,
+          s"Could not find $methodName anywhere in ${classInfo.encodedName}")
+
+      val inherited = ancestorInfo.methodInfos.get(methodName)
+      if (inherited.exists(p)) {
+        val (classDef, _) = getTree(ancestorInfo.encodedName)
+        classDef.defs.collectFirst {
+          case mDef: MethodDef if mDef.name.name == methodName => mDef
+        }.getOrElse {
+          throw new AssertionError(
+              s"Cannot find $methodName in ${ancestorInfo.encodedName}")
+        }
+      } else {
+        loop(ancestorInfo.superClass)
+      }
+    }
+
+    loop(classInfo)
   }
 
   private def startRun(): Unit = {
