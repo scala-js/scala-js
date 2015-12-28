@@ -404,11 +404,11 @@ class $ {
   static throwClassCastException(instance, classFullName) {
 //!if asInstanceOfs == Compliant
     throw new $c_jl_ClassCastException().init___T(
-      instance + " is not an instance of " + classFullName);
+      `${instance} is not an instance of ${classFullName}`);
 //!else
     throw new $c_sjsr_UndefinedBehaviorError().init___jl_Throwable(
       new $c_jl_ClassCastException().init___T(
-        instance + " is not an instance of " + classFullName));
+        `${instance} is not an instance of ${classFullName}`));
 //!endif
   };
 
