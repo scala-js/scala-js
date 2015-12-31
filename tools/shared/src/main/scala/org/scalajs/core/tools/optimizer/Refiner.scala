@@ -16,7 +16,7 @@ final class Refiner(semantics: Semantics, outputMode: OutputMode) {
   def refine(unit: LinkingUnit, logger: Logger): LinkingUnit = {
     val analysis = logTime(logger, "Refiner: Compute reachability") {
       val analyzer = new Analyzer(semantics, outputMode,
-          reachOptimizerSymbols = false, initialLink = false)
+          reachOptimizerSymbols = false, allowAddingSyntheticMethods = false)
       analyzer.computeReachability(unit.infos.values.toList)
     }
 

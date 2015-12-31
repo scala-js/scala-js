@@ -101,6 +101,9 @@ object InfoSerializers {
 
       import input._
 
+      val useHacks065 =
+        Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(version)
+
       val encodedName = readUTF()
       val isExported = readBoolean()
       val kind = ClassKind.fromByte(readByte())
@@ -126,7 +129,12 @@ object InfoSerializers {
             accessedClassData)
       }
 
-      val methods = readList(readMethod())
+      val methods0 = readList(readMethod())
+      val methods = if (useHacks065) {
+        methods0.filter(m => !Definitions.isReflProxyName(m.encodedName))
+      } else {
+        methods0
+      }
 
       val info = ClassInfo(encodedName, isExported, kind,
           superClass, interfaces, methods)

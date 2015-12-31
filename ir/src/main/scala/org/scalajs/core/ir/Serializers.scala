@@ -712,7 +712,17 @@ object Serializers {
           val superClass = readOptIdent()
           val parents = readIdents()
           val jsName = Some(readString()).filter(_ != "")
-          val defs = readTrees()
+          val defs0 = readTrees()
+          val defs = if (useHacks065) {
+            defs0.filter {
+              case MethodDef(_, Ident(name, _), _, _, _) =>
+                !Definitions.isReflProxyName(name)
+              case _ =>
+                true
+            }
+          } else {
+            defs0
+          }
           val optimizerHints = new OptimizerHints(readInt())
           ClassDef(name, kind, superClass, parents, jsName, defs)(optimizerHints)
 

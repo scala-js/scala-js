@@ -15,7 +15,7 @@ import scala.collection.mutable
 
 import org.scalajs.core.ir
 import ir.{ClassKind, Definitions, Infos}
-import Definitions.{isConstructorName, isReflProxyName}
+import Definitions._
 
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
@@ -23,14 +23,16 @@ import org.scalajs.core.tools.javascript.{LongImpl, OutputMode}
 import ScalaJSOptimizer._
 
 final class Analyzer(semantics: Semantics, outputMode: OutputMode,
-    reachOptimizerSymbols: Boolean, initialLink: Boolean) extends Analysis {
+    reachOptimizerSymbols: Boolean,
+    allowAddingSyntheticMethods: Boolean) extends Analysis {
   import Analyzer._
   import Analysis._
 
-  @deprecated("Use the overload with an explicit `initialLink` flag", "0.6.6")
+  @deprecated("Use the overload with an explicit `allowAddingSyntheticMethods` flag", "0.6.6")
   def this(semantics: Semantics, outputMode: OutputMode,
       reachOptimizerSymbols: Boolean) = {
-    this(semantics, outputMode, reachOptimizerSymbols, initialLink = true)
+    this(semantics, outputMode, reachOptimizerSymbols,
+        allowAddingSyntheticMethods = true)
   }
 
   @deprecated("Use the overload with an explicit output mode", "0.6.3")
@@ -297,7 +299,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
        * during the initial link. In a refiner, this must not happen anymore.
        */
       methodInfos.get(ctorName).getOrElse {
-        if (!initialLink) {
+        if (!allowAddingSyntheticMethods) {
           createNonExistentMethod(ctorName)
         } else {
           val inherited = lookupMethod(ctorName)
@@ -348,6 +350,139 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
         }
       }
       loop(this)
+    }
+
+    def tryLookupReflProxyMethod(proxyName: String): Option[MethodInfo] = {
+      if (!allowAddingSyntheticMethods) {
+        tryLookupMethod(proxyName)
+      } else {
+        /* The lookup for a target method in this code implements the
+         * algorithm defining `java.lang.Class.getMethod`. This mimics how
+         * reflective calls are implemented on the JVM, at link time.
+         *
+         * Caveat: protected methods are not ignored. This can only make an
+         * otherwise invalid reflective call suddenly able to call a protected
+         * method. It never breaks valid reflective calls. This could be fixed
+         * if the IR retained the information that a method is protected.
+         */
+
+        @tailrec
+        def loop(ancestorInfo: ClassInfo): Option[MethodInfo] = {
+          if (ancestorInfo ne null) {
+            ancestorInfo.methodInfos.get(proxyName) match {
+              case Some(m) =>
+                assert(m.isReflProxy && !m.isAbstract)
+                Some(m)
+
+              case _ =>
+                ancestorInfo.findProxyMatch(proxyName) match {
+                  case Some(target) =>
+                    val targetName = target.encodedName
+                    Some(ancestorInfo.createReflProxy(proxyName, targetName))
+
+                  case None =>
+                    loop(ancestorInfo.superClass)
+                }
+            }
+          } else {
+            None
+          }
+        }
+
+        loop(this)
+      }
+    }
+
+    private def findProxyMatch(proxyName: String): Option[MethodInfo] = {
+      val candidates = methodInfos.valuesIterator.filter { m =>
+        // TODO In theory we should filter out protected methods
+        !m.isReflProxy && !m.isExported && !m.isAbstract &&
+        reflProxyMatches(m.encodedName, proxyName)
+      }.toSeq
+
+      /* From the JavaDoc of java.lang.Class.getMethod:
+       *
+       *   If more than one [candidate] method is found in C, and one of these
+       *   methods has a return type that is more specific than any of the
+       *   others, that method is reflected; otherwise one of the methods is
+       *   chosen arbitrarily.
+       */
+
+      val targets = candidates.filterNot { c =>
+        val resultType = methodResultType(c.encodedName)
+        candidates.exists { other =>
+          (other ne c) &&
+          isMoreSpecific(methodResultType(other.encodedName), resultType)
+        }
+      }
+
+      /* This last step (chosen arbitrarily) causes some soundness issues of
+       * the implementation of reflective calls. This is bug-compatible with
+       * Scala/JVM.
+       */
+      targets.headOption
+    }
+
+    private def reflProxyMatches(methodName: String, proxyName: String): Boolean = {
+      val sepPos = methodName.lastIndexOf("__")
+      sepPos >= 0 && methodName.substring(0, sepPos + 2) == proxyName
+    }
+
+    private def methodResultType(methodName: String): ir.Types.ReferenceType = {
+      val typeName = methodName.substring(methodName.lastIndexOf("__") + 2)
+      val arrayDepth = typeName.indexWhere(_ != 'A')
+      if (arrayDepth == 0)
+        ir.Types.ClassType(typeName)
+      else
+        ir.Types.ArrayType(typeName.substring(arrayDepth), arrayDepth)
+    }
+
+    private def isMoreSpecific(left: ir.Types.ReferenceType,
+        right: ir.Types.ReferenceType): Boolean = {
+      import ir.Types._
+
+      def classIsMoreSpecific(leftCls: String, rightCls: String): Boolean = {
+        leftCls != rightCls && {
+          val leftInfo = _classInfos.get(leftCls)
+          val rightInfo = _classInfos.get(rightCls)
+          leftInfo.zip(rightInfo).exists { case (l, r) =>
+            l.ancestors.contains(r)
+          }
+        }
+      }
+
+      (left, right) match {
+        case (ClassType(leftCls), ClassType(rightCls)) =>
+          classIsMoreSpecific(leftCls, rightCls)
+        case (ArrayType(leftBase, leftDepth), ArrayType(rightBase, rightDepth)) =>
+          leftDepth == rightDepth && classIsMoreSpecific(leftBase, rightBase)
+        case (ArrayType(_, _), ClassType(ObjectClass)) =>
+          true
+        case _ =>
+          false
+      }
+    }
+
+    private def createReflProxy(proxyName: String,
+        targetName: String): MethodInfo = {
+      assert(this.isScalaClass,
+          s"Cannot create reflective proxy in non-Scala class $this")
+
+      val returnsChar = targetName.endsWith("__C")
+      val syntheticInfo = Infos.MethodInfo(
+          encodedName = proxyName,
+          methodsCalled = Map(
+              this.encodedName -> List(targetName)),
+          methodsCalledStatically = (
+              if (returnsChar) Map(BoxedCharacterClass -> List("init___C"))
+              else Map.empty),
+          instantiatedClasses = (
+              if (returnsChar) List(BoxedCharacterClass)
+              else Nil))
+      val m = new MethodInfo(this, syntheticInfo)
+      m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
+      methodInfos += proxyName -> m
+      m
     }
 
     def lookupStaticMethod(methodName: String): MethodInfo = {
@@ -473,7 +608,7 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
 
     private def delayedCallMethod(methodName: String)(implicit from: From): Unit = {
       if (isReflProxyName(methodName)) {
-        tryLookupMethod(methodName).foreach(_.reach(this))
+        tryLookupReflProxyMethod(methodName).foreach(_.reach(this))
       } else {
         lookupMethod(methodName).reach(this)
       }

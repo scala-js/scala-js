@@ -31,7 +31,6 @@ object Scalajsp {
 
   private case class Options(
     infos: Boolean = false,
-    showReflProxy: Boolean = false,
     jar: Option[File] = None,
     fileNames: Seq[String] = Seq.empty)
 
@@ -49,9 +48,6 @@ object Scalajsp {
       opt[Unit]('i', "infos")
         .action { (_, c) => c.copy(infos = true) }
         .text("Show DCE infos instead of trees")
-      opt[Unit]('p', "reflProxies")
-        .action { (_, c) => c.copy(showReflProxy = true) }
-        .text("Show reflective call proxies")
       opt[Unit]('s', "supported")
         .action { (_,_) => printSupported(); sys.exit() }
         .text("Show supported Scala.js IR versions")
@@ -90,15 +86,8 @@ object Scalajsp {
       opts: Options): Unit = {
     if (opts.infos)
       new InfoPrinter(stdout).print(vfile.info)
-    else {
-      val (info, tree) = vfile.infoAndTree
-      val outTree = {
-        if (opts.showReflProxy) tree
-        else filterOutReflProxies(tree)
-      }
-
-      new IRTreePrinter(stdout).printTopLevelTree(outTree)
-    }
+    else
+      new IRTreePrinter(stdout).printTopLevelTree(vfile.tree)
 
     stdout.flush()
   }
@@ -140,16 +129,5 @@ object Scalajsp {
 
   private val stdout =
     new BufferedWriter(new OutputStreamWriter(Console.out, "UTF-8"))
-
-  // !!! CODE DUPLICATION with ScalaJSPluginInternal.filterOutReflProxies
-  private def filterOutReflProxies(tree: ClassDef): ClassDef = {
-    import ir.Trees._
-    import ir.Definitions.isReflProxyName
-    val newDefs = tree.defs.filter {
-      case MethodDef(_, Ident(name, _), _, _, _) => !isReflProxyName(name)
-      case _ => true
-    }
-    tree.copy(defs = newDefs)(tree.optimizerHints)(tree.pos)
-  }
 
 }
