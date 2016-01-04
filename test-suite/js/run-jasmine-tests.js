@@ -1,6 +1,6 @@
 window.onload = function() {
   var context = org.scalajs.jasminetest.TestSuiteContext();
-  context.setTags("typedarray");
+  context.setTags("typedarray", isFullOpt ? "fullopt-stage" : "fastopt-stage");
 
   // Load tests
   scalajs.TestDetector().loadDetectedTests();
@@ -13,6 +13,4 @@ window.onload = function() {
     return htmlReporter.specFilter(spec);
   };
   jasmineEnv.execute();
-
-  context.setTags();
 };
