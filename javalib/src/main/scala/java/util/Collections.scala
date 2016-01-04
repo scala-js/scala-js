@@ -336,101 +336,45 @@ object Collections {
     }
   }
 
-  def unmodifiableCollection[T](c: Collection[_ <: T]): Collection[T] = {
-    class BasicImmutableCollection
-        extends ImmutableCollection[T, Collection[T]](c.asInstanceOf[Collection[T]]) {
+  def unmodifiableCollection[T](c: Collection[_ <: T]): Collection[T] =
+    new ImmutableCollection[T, Collection[T]](c.asInstanceOf[Collection[T]])
 
-      override def equals(obj: Any): Boolean =
-        this eq obj.asInstanceOf[AnyRef]
+  def unmodifiableSet[T](a: Set[_ <: T]): Set[T] =
+    new ImmutableSet[T, Set[T]](a.asInstanceOf[Set[T]])
 
-      override def hashCode(): Int =
-        System.identityHashCode(this)
-    }
-    c match {
-      case _: Serializable => new BasicImmutableCollection with Serializable
-      case _               => new BasicImmutableCollection
-    }
-  }
-
-  def unmodifiableSet[T](a: Set[_ <: T]): Set[T] = {
-    class BasicImmutableSet extends ImmutableSet[T, Set[T]](a.asInstanceOf[Set[T]])
-    a match {
-      case _: Serializable => new BasicImmutableSet with Serializable
-      case _               => new BasicImmutableSet
-    }
-  }
-
-  def unmodifiableSortedSet[T](s: SortedSet[T]): SortedSet[T] = {
-    class BasicImmutableSortedSet extends ImmutableSortedSet[T](s)
-    s match {
-      case _: Serializable => new BasicImmutableSortedSet with Serializable
-      case _               => new BasicImmutableSortedSet
-    }
-  }
+  def unmodifiableSortedSet[T](s: SortedSet[T]): SortedSet[T] =
+    new ImmutableSortedSet[T](s)
 
   def unmodifiableList[T](list: List[_ <: T]): List[T] = {
-    class BasicImmutableList extends ImmutableList[T](list.asInstanceOf[List[T]])
     list match {
-      case _: Serializable with RandomAccess =>
-        new BasicImmutableList with Serializable with RandomAccess
-
-      case _: Serializable => new BasicImmutableList with Serializable
-      case _: RandomAccess => new BasicImmutableList with RandomAccess
-      case _               => new BasicImmutableList
+      case _: RandomAccess =>
+        new ImmutableList[T](list.asInstanceOf[List[T]]) with RandomAccess
+      case _ =>
+        new ImmutableList[T](list.asInstanceOf[List[T]])
     }
   }
 
-  def unmodifiableMap[K, V](m: Map[_ <: K, _ <: V]): Map[K, V] = {
-    class BasicImmutableMap
-        extends ImmutableMap[K, V, Map[K, V]](m.asInstanceOf[Map[K, V]])
-    m match {
-      case _: Serializable => new BasicImmutableMap with Serializable
-      case _               => new BasicImmutableMap
-    }
-  }
+  def unmodifiableMap[K, V](m: Map[_ <: K, _ <: V]): Map[K, V] =
+    new ImmutableMap[K, V, Map[K, V]](m.asInstanceOf[Map[K, V]])
 
-  def unmodifiableSortedMap[K, V](m: SortedMap[K, _ <: V]): SortedMap[K, V] = {
-    class BasicImmutableSortedMap
-        extends ImmutableSortedMap[K, V](m.asInstanceOf[SortedMap[K, V]])
-    m match {
-      case _: Serializable => new BasicImmutableSortedMap with Serializable
-      case _               => new BasicImmutableSortedMap
-    }
-  }
+  def unmodifiableSortedMap[K, V](m: SortedMap[K, _ <: V]): SortedMap[K, V] =
+    new ImmutableSortedMap[K, V](m.asInstanceOf[SortedMap[K, V]])
 
   def synchronizedCollection[T](c: Collection[T]): Collection[T] = {
-    class BasicSynchronizedCollection extends WrappedCollection[T, Collection[T]] {
+    new WrappedCollection[T, Collection[T]] {
       override protected val inner: Collection[T] = c
-
-      override def equals(obj: Any): Boolean =
-        this eq obj.asInstanceOf[AnyRef]
-
-      override def hashCode(): Int =
-        System.identityHashCode(this)
-    }
-    c match {
-      case _: Serializable => new BasicSynchronizedCollection with Serializable
-      case _               => new BasicSynchronizedCollection
     }
   }
 
   def synchronizedSet[T](s: Set[T]): Set[T] = {
-    class BasicSynchronizedSet extends WrappedSet[T, Set[T]] {
+    new WrappedSet[T, Set[T]] {
       override protected val inner: Set[T] = s
-    }
-    s match {
-      case _: Serializable => new BasicSynchronizedSet with Serializable
-      case _               => new BasicSynchronizedSet
     }
   }
 
   def synchronizedSortedSet[T](s: SortedSet[T]): SortedSet[T] = {
-    class BasicSynchronizedSortedSet extends WrappedSortedSet[T] {
+    new WrappedSortedSet[T] {
       override protected val inner: SortedSet[T] = s
-    }
-    s match {
-      case _: Serializable => new BasicSynchronizedSortedSet with Serializable
-      case _               => new BasicSynchronizedSortedSet
     }
   }
 
@@ -439,92 +383,44 @@ object Collections {
       override protected val inner: List[T] = list
     }
     list match {
-      case _: Serializable with RandomAccess =>
-        new BasicSynchronizedList with Serializable with RandomAccess
-
-      case _: Serializable => new BasicSynchronizedList with Serializable
       case _: RandomAccess => new BasicSynchronizedList with RandomAccess
       case _               => new BasicSynchronizedList
     }
   }
 
   def synchronizedMap[K, V](m: Map[K, V]): Map[K, V] = {
-    class BasicSynchronizedMap extends WrappedMap[K, V, Map[K, V]] {
+    new WrappedMap[K, V, Map[K, V]] {
       override protected val inner: Map[K, V] = m
-    }
-    m match {
-      case _: Serializable => new BasicSynchronizedMap with Serializable
-      case _               => new BasicSynchronizedMap
     }
   }
 
   def synchronizedSortedMap[K, V](m: SortedMap[K, V]): SortedMap[K, V] = {
-    class BasicSynchronizedSortedMap extends WrappedSortedMap[K, V] {
+    new WrappedSortedMap[K, V] {
       override protected val inner: SortedMap[K, V] = m
     }
-    m match {
-      case _: Serializable => new BasicSynchronizedSortedMap with Serializable
-      case _               => new BasicSynchronizedSortedMap
-    }
   }
 
-  def checkedCollection[E](c: Collection[E], typ: Class[E]): Collection[E] = {
-    class BasicCheckedCollection extends CheckedCollection[E, Collection[E]](c, typ) {
-      override def equals(obj: Any): Boolean =
-        this eq obj.asInstanceOf[AnyRef]
+  def checkedCollection[E](c: Collection[E], typ: Class[E]): Collection[E] =
+    new CheckedCollection[E, Collection[E]](c, typ)
 
-      override def hashCode(): Int =
-        System.identityHashCode(this)
-    }
-    c match {
-      case _: Serializable => new BasicCheckedCollection with Serializable
-      case _               => new BasicCheckedCollection
-    }
-  }
+  def checkedSet[E](s: Set[E], typ: Class[E]): Set[E] =
+    new CheckedSet[E, Set[E]](s, typ)
 
-  def checkedSet[E](s: Set[E], typ: Class[E]): Set[E] = {
-    class BasicCheckedSet extends CheckedSet[E, Set[E]](s, typ)
-    s match {
-      case _: Serializable => new BasicCheckedSet with Serializable
-      case _               => new BasicCheckedSet
-    }
-  }
-
-  def checkedSortedSet[E](s: SortedSet[E], typ: Class[E]): SortedSet[E] = {
-    class BasicCheckedSortedSet extends CheckedSortedSet[E](s, typ)
-    s match {
-      case _: Serializable => new BasicCheckedSortedSet with Serializable
-      case _               => new BasicCheckedSortedSet
-    }
-  }
+  def checkedSortedSet[E](s: SortedSet[E], typ: Class[E]): SortedSet[E] =
+    new CheckedSortedSet[E](s, typ)
 
   def checkedList[E](list: List[E], typ: Class[E]): List[E] = {
-    class BasicCheckedList extends CheckedList[E](list, typ)
     list match {
-      case _: Serializable with RandomAccess =>
-        new BasicCheckedList with Serializable with RandomAccess
-
-      case _: Serializable => new BasicCheckedList with Serializable
-      case _: RandomAccess => new BasicCheckedList with RandomAccess
-      case _               => new BasicCheckedList
+      case _: RandomAccess => new CheckedList[E](list, typ) with RandomAccess
+      case _               => new CheckedList[E](list, typ)
     }
   }
 
-  def checkedMap[K, V](m: Map[K, V], keyType: Class[K], valueType: Class[V]): Map[K, V] = {
-    class BasicCheckedMap extends CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
-    m match {
-      case _: Serializable => new BasicCheckedMap with Serializable
-      case _               => new BasicCheckedMap
-    }
-  }
+  def checkedMap[K, V](m: Map[K, V], keyType: Class[K], valueType: Class[V]): Map[K, V] =
+    new CheckedMap[K, V, Map[K, V]](m, keyType, valueType)
 
-  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[K, V] = {
-    class BasicCheckedSortedMap extends CheckedSortedMap[K, V](m, keyType, valueType)
-    m match {
-      case _: Serializable => new BasicCheckedSortedMap with Serializable
-      case _               => new BasicCheckedSortedMap
-    }
-  }
+  def checkedSortedMap[K, V](m: SortedMap[K, V], keyType: Class[K], valueType: Class[V]): SortedMap[K, V] =
+    new CheckedSortedMap[K, V](m, keyType, valueType)
 
   def emptyIterator[T](): Iterator[T] =
     EMPTY_ITERATOR.asInstanceOf[Iterator[T]]
@@ -601,19 +497,14 @@ object Collections {
   }
 
   def reverseOrder[T](): Comparator[T] = {
-    val cmp = new Comparator[T] {
-      def compare(o1: T, o2: T): Int = o1.asInstanceOf[Comparable[T]].compareTo(o2)
+    new Comparator[T] with Serializable {
+      def compare(o1: T, o2: T): Int = o2.asInstanceOf[Comparable[T]].compareTo(o1)
     }
-    reverseOrder(cmp)
   }
 
   def reverseOrder[T](cmp: Comparator[T]): Comparator[T] = {
-    class ReverseComparator extends Comparator[T] {
+    new Comparator[T] with Serializable {
       override def compare(o1: T, o2: T): Int = cmp.compare(o2, o1)
-    }
-    cmp match {
-      case _: Serializable => new ReverseComparator with Serializable
-      case _               => new ReverseComparator
     }
   }
 
@@ -668,7 +559,7 @@ object Collections {
 
   @inline
   private def naturalComparator[T <: jl.Comparable[T]]: Comparator[T] = {
-    new Comparator[T] {
+    new Comparator[T] with Serializable {
       final def compare(o1: T, o2: T): Int = o1.compareTo(o2)
     }
   }
@@ -680,8 +571,18 @@ object Collections {
     }
   }
 
+  private trait WrappedEquals {
+    protected def inner: AnyRef
+
+    override def equals(obj: Any): Boolean =
+      inner.equals(obj)
+
+    override def hashCode(): Int =
+      inner.hashCode
+  }
+
   private trait WrappedCollection[E, Coll <: Collection[E]]
-      extends Collection[E] {
+      extends Collection[E] with Serializable {
 
     protected def inner: Coll
 
@@ -724,21 +625,16 @@ object Collections {
     def clear(): Unit =
       inner.clear()
 
-    override def equals(obj: Any): Boolean =
-      inner.equals(obj)
-
-    override def hashCode(): Int =
-      inner.hashCode
-
     override def toString: String =
       inner.toString
   }
 
   private trait WrappedSet[E, Coll <: Set[E]]
-      extends WrappedCollection[E, Coll] with Set[E]
+      extends WrappedEquals with WrappedCollection[E, Coll] with Set[E]
 
   private trait WrappedSortedSet[E]
-      extends WrappedCollection[E, SortedSet[E]] with SortedSet[E] {
+      extends WrappedSet[E, SortedSet[E]] with SortedSet[E] {
+
     def comparator(): Comparator[_ >: E] =
       inner.comparator()
 
@@ -759,7 +655,7 @@ object Collections {
   }
 
   private trait WrappedList[E]
-      extends WrappedCollection[E, List[E]] with List[E] {
+      extends WrappedEquals with WrappedCollection[E, List[E]] with List[E] {
 
     def addAll(index: Int, c: Collection[_ <: E]): Boolean =
       inner.addAll(index, c)
@@ -792,7 +688,9 @@ object Collections {
       inner.subList(fromIndex, toIndex)
   }
 
-  private trait WrappedMap[K, V, M <: Map[K, V]] extends Map[K, V] {
+  private trait WrappedMap[K, V, M <: Map[K, V]]
+      extends WrappedEquals with Map[K, V] {
+
     protected def inner: M
 
     def size(): Int =
@@ -830,12 +728,6 @@ object Collections {
 
     def entrySet(): Set[Map.Entry[K, V]] =
       inner.entrySet.asInstanceOf[Set[Map.Entry[K, V]]]
-
-    override def equals(obj: Any): Boolean =
-      inner.equals(obj)
-
-    override def hashCode(): Int =
-      inner.hashCode
 
     override def toString(): String =
       inner.toString
