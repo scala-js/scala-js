@@ -336,20 +336,103 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     }
 
     def tryLookupMethod(methodName: String): Option[MethodInfo] = {
-      assert(isScalaClass,
+      assert(isScalaClass || isInterface,
           s"Cannot call lookupMethod($methodName) on non Scala class $this")
+
       @tailrec
-      def loop(ancestorInfo: ClassInfo): Option[MethodInfo] = {
+      def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
         if (ancestorInfo ne null) {
           ancestorInfo.methodInfos.get(methodName) match {
             case Some(m) if !m.isAbstract => Some(m)
-            case _ => loop(ancestorInfo.superClass)
+            case _ => tryLookupInherited(ancestorInfo.superClass)
           }
         } else {
           None
         }
       }
-      loop(this)
+      val existing =
+        if (isScalaClass) tryLookupInherited(this)
+        else methodInfos.get(methodName).filter(!_.isAbstract)
+
+      if (!allowAddingSyntheticMethods) {
+        existing
+      } else if (existing.exists(m => !m.isDefaultBridge || m.owner == this)) {
+        /* If we found a non-bridge, it must be the right target.
+         * If we found a bridge directly in this class/interface, it must also
+         * be the right target.
+         */
+        existing
+      } else {
+        // Try and find the target of a possible default bridge
+        findDefaultTarget(methodName).fold {
+          assert(existing.isEmpty)
+          existing
+        } { defaultTarget =>
+          if (existing.exists(_.defaultBridgeTarget == defaultTarget.owner.encodedName)) {
+            /* If we found an existing bridge targeting the right method, we
+             * can reuse it.
+             * We also get here with None when there is no target whatsoever.
+             */
+            existing
+          } else {
+            // Otherwise, create a new default bridge
+            Some(createDefaultBridge(defaultTarget))
+          }
+        }
+      }
+    }
+
+    /** Resolves an inherited default method.
+     *
+     *  This lookup is specified by the JVM resolution rules for default
+     *  methods. See the `invokespecial` opcode in the JVM Specification
+     *  version 8, Section 6.5:
+     *  https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-6.html#jvms-6.5.invokespecial
+     */
+    private def findDefaultTarget(methodName: String): Option[MethodInfo] = {
+      val candidates = for {
+        intf <- ancestors if intf.isInterface
+        m <- intf.methodInfos.get(methodName)
+        if !m.isAbstract && !m.isDefaultBridge
+      } yield m
+
+      val notShadowed = candidates filterNot { m =>
+        candidates exists { n =>
+          (n ne m) && n.owner.ancestors.contains(m.owner)
+        }
+      }
+
+      if (notShadowed.size > 1) {
+        /* Deviation from the spec: if there are several targets, the spec
+         * chooses one arbitrarily. However, unless the classpath is
+         * manipulated and/or corrupted, this should not happen. The Java
+         * *language* and compiler do not let this happen on their own.
+         * Besides, the current implementation of the JVM throws an
+         * IncompatibleClassChangeError when trying to resolve such ambiguous
+         * references.
+         * So we emit an error too, so that we can more easily discover bugs.
+         * We use FromCore because we don't have any From here (we shouldn't,
+         * since lookup methods are not supposed to produce errors).
+         */
+        _errors += ConflictingDefaultMethods(notShadowed, FromCore)
+      }
+
+      notShadowed.headOption
+    }
+
+    private def createDefaultBridge(target: MethodInfo): MethodInfo = {
+      val methodName = target.encodedName
+      val targetOwner = target.owner
+
+      val syntheticInfo = Infos.MethodInfo(
+          encodedName = methodName,
+          methodsCalledStatically = Map(
+              targetOwner.encodedName -> List(methodName)))
+      val m = new MethodInfo(this, syntheticInfo)
+      m.syntheticKind = MethodSyntheticKind.DefaultBridge(
+          targetOwner.encodedName)
+      methodInfos += methodName -> m
+      m
     }
 
     def tryLookupReflProxyMethod(proxyName: String): Option[MethodInfo] = {
@@ -636,6 +719,14 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
     var nonExistent: Boolean = false
 
     var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
+
+    def isDefaultBridge =
+      syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
+
+    /** Throws MatchError if `!isDefaultBridge`. */
+    def defaultBridgeTarget: String = (syntheticKind: @unchecked) match {
+      case MethodSyntheticKind.DefaultBridge(target) => target
+    }
 
     override def toString(): String = s"$owner.$encodedName"
 

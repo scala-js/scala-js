@@ -39,31 +39,33 @@ final class ScalaJSClassEmitter private (
     this(semantics, outputMode, linkingUnit, linkingUnit.globalInfo)
   }
 
-  @deprecated(
-      "This constructor creates an emitter that cannot handle JS classes. " +
-      "Use the constructor with a LinkingUnit instead.", "0.6.5")
-  def this(semantics: Semantics, outputMode: OutputMode,
-      globalInfo: LinkingUnit.GlobalInfo) =
-    this(semantics, OutputMode.ECMAScript51Global, null, globalInfo)
-
-  @deprecated(
-      "This constructor creates an emitter that cannot handle JS classes. " +
-      "Use the constructor with a LinkingUnit instead.", "0.6.2")
-  def this(semantics: Semantics, globalInfo: LinkingUnit.GlobalInfo) =
-    this(semantics, OutputMode.ECMAScript51Global, globalInfo)
-
-  @deprecated(
-      "This constructor creates an emitter that cannot handle JS classes. " +
-      "Use the constructor with a LinkingUnit instead.", "0.6.1")
-  def this(semantics: Semantics) =
-    this(semantics, LinkingUnit.GlobalInfo.SafeApproximation)
-
-  private[javascript] lazy val linkedClassByName: Map[String, LinkedClass] = {
-    if (linkingUnit == null) {
-      throw new IllegalArgumentException(
-          "A class emitter created without a LinkingUnit cannot emit JS classes")
-    }
+  private[javascript] lazy val linkedClassByName: Map[String, LinkedClass] =
     linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
+
+  private[javascript] def isInterface(className: String): Boolean = {
+    /* TODO In theory, there is a flaw in the incremental behavior about this.
+     *
+     * This method is used to desugar ApplyStatically nodes. Depending on
+     * whether className is a class or an interface, the desugaring changes.
+     * This means that the result of desugaring an ApplyStatically depends on
+     * some global knowledge from the whole program (and not only of the method
+     * being desugared). If, from one run to the next, className switches from
+     * being a class to an interface or vice versa, there is nothing demanding
+     * that the IR of the call site change, yet the desugaring should change.
+     * In theory, this causes a flaw in the incremental behavior of the
+     * Emitter, which will not invalidate its cache for this.
+     *
+     * In practice, this should not happen, though. A method can only be called
+     * statically by subclasses and subtraits at the Scala *language* level.
+     * We also know that when a class/trait changes, all its subclasses and
+     * subtraits are recompiled by sbt's incremental compilation. This should
+     * mean that the input IR is always changed in that case anyway.
+     *
+     * It would be good to fix thoroughly if the Emitter/ScalaJSClassEmitter
+     * gets something for incremental whole-program updates, but for now, we
+     * live with the theoretical flaw.
+     */
+    linkedClassByName(className).kind == ClassKind.Interface
   }
 
   private implicit def implicitOutputMode: OutputMode = outputMode
@@ -94,6 +96,8 @@ final class ScalaJSClassEmitter private (
     var reverseParts: List[js.Tree] = Nil
 
     reverseParts ::= genStaticMembers(tree)
+    if (kind == ClassKind.Interface)
+      reverseParts ::= genDefaultMethods(tree)
     if (kind.isAnyScalaJSDefinedClass && tree.hasInstances)
       reverseParts ::= genClass(tree)
     if (needInstanceTests(tree)) {
@@ -116,6 +120,13 @@ final class ScalaJSClassEmitter private (
     val staticMemberDefs =
       tree.staticMethods.map(m => genMethod(className, m.tree))
     js.Block(staticMemberDefs)(tree.pos)
+  }
+
+  def genDefaultMethods(tree: LinkedClass): js.Tree = {
+    val className = tree.name.name
+    val defaultMethodDefs =
+      tree.memberMethods.map(m => genDefaultMethod(className, m.tree))
+    js.Block(defaultMethodDefs)(tree.pos)
   }
 
   def genClass(tree: LinkedClass): js.Tree = {
@@ -352,6 +363,37 @@ final class ScalaJSClassEmitter private (
       case OutputMode.ECMAScript6 =>
         js.MethodDef(static = false, genPropertyName(method.name),
             methodFun.args, methodFun.body)
+    }
+  }
+
+  /** Generates a default method. */
+  def genDefaultMethod(className: String, method: MethodDef): js.Tree = {
+    implicit val pos = method.pos
+
+    /* TODO The identifier `$thiz` cannot be produced by 0.6.x compilers due to
+     * their name mangling, which guarantees that it is unique. We should find
+     * a better way to do this in the future, though.
+     */
+    val thisIdent = js.Ident("$thiz", Some("this"))
+
+    val methodFun0 = desugarToFunction(this, className, Some(thisIdent),
+        method.args, method.body, method.resultType == NoType)
+
+    val methodFun = js.Function(
+        js.ParamDef(thisIdent, rest = false) :: methodFun0.args,
+        methodFun0.body)(methodFun0.pos)
+
+    val Ident(methodName, origName) = method.name
+
+    outputMode match {
+      case OutputMode.ECMAScript6StrongMode =>
+        val propName = js.Ident("$f_" + methodName, origName)(method.name.pos)
+        js.MethodDef(static = true, propName, methodFun.args, methodFun.body)
+
+      case _ =>
+        envFieldDef(
+            "f", className + "__" + methodName, origName,
+            methodFun)
     }
   }
 

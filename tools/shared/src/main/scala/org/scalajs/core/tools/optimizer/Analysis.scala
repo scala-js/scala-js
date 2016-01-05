@@ -76,6 +76,7 @@ object Analysis {
     // TODO Get rid of InheritedConstructor when we can break binary compat
     final case object InheritedConstructor extends MethodSyntheticKind
     final case class ReflectiveProxy(target: String) extends MethodSyntheticKind
+    final case class DefaultBridge(targetInterface: String) extends MethodSyntheticKind
   }
 
   sealed trait Error {
@@ -85,6 +86,7 @@ object Analysis {
   final case class MissingClass(info: ClassInfo, from: From) extends Error
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
+  final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
@@ -99,6 +101,8 @@ object Analysis {
         s"Cannot access module for non-module $info"
       case MissingMethod(info, _) =>
         s"Referring to non-existent method $info"
+      case ConflictingDefaultMethods(infos, _) =>
+        s"Conflicting default methods: ${infos.mkString(" ")}"
     }
 
     logger.log(level, headMsg)

@@ -189,6 +189,13 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
           }
           addTree(classEmitter.genES6Class(linkedClass, allMembers))
       }
+    } else if (kind == ClassKind.Interface) {
+      // Default methods
+      for (m <- linkedClass.memberMethods) yield {
+        val methodCache = classCache.getMethodCache(m.info.encodedName)
+        addTree(methodCache.getOrElseUpdate(m.version,
+            classEmitter.genDefaultMethod(className, m.tree)))
+      }
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
@@ -308,8 +315,22 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
           case oneMember         => List(oneMember)
         }
         addTree(classEmitter.genES6Class(linkedClass, allMembers))
-      } else if (staticMethods.nonEmpty) {
-        addTree(classEmitter.genStaticsES6Class(linkedClass, staticMethods))
+      } else {
+        // Default methods
+        val defaultMethods = if (kind == ClassKind.Interface) {
+          for (m <- linkedClass.memberMethods) yield {
+            val methodCache = classCache.getMethodCache(m.info.encodedName)
+            methodCache.getOrElseUpdate(m.version,
+                classEmitter.genDefaultMethod(className, m.tree))
+          }
+        } else {
+          Nil
+        }
+
+        if (staticMethods.nonEmpty || defaultMethods.nonEmpty) {
+          addTree(classEmitter.genStaticsES6Class(linkedClass,
+              defaultMethods ::: staticMethods))
+        }
       }
     }
 

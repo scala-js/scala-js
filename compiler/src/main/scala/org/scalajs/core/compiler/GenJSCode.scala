@@ -691,13 +691,12 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  * Primitives, since they are never actually called
      *  * Abstract methods
      *  * Constructors of hijacked classes
-     *  * Trivial constructors, which only call their super constructor, with
-     *    the same signature, and the same arguments. The JVM needs these
-     *    constructors, but not JavaScript. Since there are lots of them, we
-     *    take the trouble of recognizing and removing them.
+     *  * Methods with the {{{@JavaDefaultMethod}}} annotation mixed in classes.
      *
-     *  Constructors are emitted by generating their body as a statement, then
-     *  return `this`.
+     *  Constructors are emitted by generating their body as a statement.
+     *
+     *  Interface methods with the {{{@JavaDefaultMethod}}} annotation produce
+     *  default methods forwarding to the trait impl class method.
      *
      *  Other (normal) methods are emitted with `genMethodBody()`.
      */
@@ -734,12 +733,35 @@ abstract class GenJSCode extends plugins.PluginComponent
         if (scalaPrimitives.isPrimitive(sym)) {
           None
         } else if (sym.isDeferred || sym.owner.isInterface) {
+          val body = if (sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
+            /* For an interface method with @JavaDefaultMethod, make it a
+             * default method calling the impl class method.
+             */
+            val implClassSym = sym.owner.implClass
+            val implMethodSym = implClassSym.info.member(sym.name).suchThat { s =>
+              s.isMethod &&
+              s.tpe.params.size == sym.tpe.params.size + 1 &&
+              s.tpe.params.head.tpe =:= sym.owner.toTypeConstructor &&
+              s.tpe.params.tail.zip(sym.tpe.params).forall {
+                case (sParam, symParam) =>
+                  sParam.tpe =:= symParam.tpe
+              }
+            }
+            genTraitImplApply(implMethodSym,
+                js.This()(currentClassType) :: jsParams.map(_.ref))
+          } else {
+            js.EmptyTree
+          }
           Some(js.MethodDef(static = false, methodName,
-              jsParams, currentClassType, js.EmptyTree)(
+              jsParams, toIRType(sym.tpe.resultType), body)(
               OptimizerHints.empty, None))
         } else if (isRawJSCtorDefaultParam(sym)) {
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
+          None
+        } else if (!sym.owner.isImplClass &&
+            sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
+          // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
         } else {
           withScopedVars(
