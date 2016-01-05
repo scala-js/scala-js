@@ -59,6 +59,7 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
   private var objectClass: Class = _
   private val classes = CollOps.emptyMap[String, Class]
   private val statics = CollOps.emptyParMap[String, StaticsNamespace]
+  private val defaults = CollOps.emptyParMap[String, Defaults]
 
   protected def getInterface(encodedName: String): InterfaceType
 
@@ -72,11 +73,15 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     statics(encodedName)
   def findClass(encodedName: String): Class =
     classes(encodedName)
+  def findDefaults(encodedName: String): Defaults =
+    defaults(encodedName)
 
   def getStaticsNamespace(encodedName: String): Option[StaticsNamespace] =
     statics.get(encodedName)
   def getClass(encodedName: String): Option[Class] =
     classes.get(encodedName)
+  def getDefaults(encodedName: String): Option[Defaults] =
+    defaults.get(encodedName)
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
     assert(this.logger == null)
@@ -109,9 +114,14 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
             _.optimizedDefs.toList
           }
 
+        val encodedName = linkedClass.encodedName
+        val memberNamespace =
+          if (linkedClass.kind == ClassKind.Interface) getDefaults(encodedName)
+          else getClass(encodedName)
+
         linkedClass.copy(
-            staticMethods = defs(getStaticsNamespace(linkedClass.encodedName)),
-            memberMethods = defs(getClass(linkedClass.encodedName)))
+            staticMethods = defs(getStaticsNamespace(encodedName)),
+            memberMethods = defs(memberNamespace))
       }
 
       unit.updated(classDefs = newLinkedClasses, isComplete = true)
@@ -124,6 +134,7 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
   private def updateAndTagEverything(linkedClasses: List[LinkedClass]): Unit = {
     val neededClasses = CollOps.emptyParMap[String, LinkedClass]
     val neededStatics = CollOps.emptyParMap[String, LinkedClass]
+    val neededDefaults = CollOps.emptyParMap[String, LinkedClass]
     for (linkedClass <- linkedClasses) {
       // Update the list of ancestors for all linked classes
       getInterface(linkedClass.encodedName).ancestors = linkedClass.ancestors
@@ -131,37 +142,55 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
       if (linkedClass.hasInstances &&
           linkedClass.kind != ClassKind.RawJSType &&
           linkedClass.kind != ClassKind.Interface &&
-          linkedClass.kind != ClassKind.JSClass)
+          linkedClass.kind != ClassKind.JSClass) {
         CollOps.put(neededClasses, linkedClass.encodedName, linkedClass)
+      }
+
       if (linkedClass.staticMethods.nonEmpty)
         CollOps.put(neededStatics, linkedClass.encodedName, linkedClass)
+
+      if (linkedClass.kind == ClassKind.Interface &&
+          linkedClass.memberMethods.nonEmpty) {
+        CollOps.put(neededDefaults, linkedClass.encodedName, linkedClass)
+      }
     }
 
-    /* Remove deleted statics, and update existing statics.
+    /* Remove deleted statics/defaults, and update existing statics/defaults.
      * We don't even have to notify callers in case of additions or removals
      * because callers have got to be invalidated by themselves.
      * Only changed methods need to trigger notifications.
      *
      * Non-batch mode only.
      */
-    assert(!batchMode || statics.isEmpty)
+    assert(!batchMode || (statics.isEmpty && defaults.isEmpty))
     if (!batchMode) {
-      CollOps.retain(statics) { (staticsName, staticsNS) =>
-        CollOps.remove(neededStatics, staticsName).fold {
-          /* Deleted static context. Mark all its methods as deleted, and remove
-           * it from known static contexts.
-           */
-          staticsNS.methods.values.foreach(_.delete())
+      for {
+        (containerMap, neededLinkedClasses) <-
+          Seq((statics, neededStatics), (defaults, neededDefaults))
+      } {
+        CollOps.retain(containerMap) { (namespaceName, namespace) =>
+          CollOps.remove(neededLinkedClasses, namespaceName).fold {
+            /* Deleted static/defaults context. Mark all its methods as
+             * deleted, and remove it from known static/default contexts.
+             */
+            namespace.methods.values.foreach(_.delete())
 
-          false
-        } { linkedClass =>
-          /* Existing static context. Update it. */
-          val (added, changed, removed) =
-            staticsNS.updateWith(linkedClass)
-          for (method <- changed)
-            staticsNS.myInterface.tagStaticCallersOf(method)
+            false
+          } { linkedClass =>
+            /* Existing static/default context. Update it. */
+            val (added, changed, removed) =
+              namespace.updateWith(linkedClass)
 
-          true
+            if (containerMap eq statics) {
+              for (method <- changed)
+                namespace.myInterface.tagCallersOfStatic(method)
+            } else {
+              for (method <- changed)
+                namespace.myInterface.tagStaticCallersOf(method)
+            }
+
+            true
+          }
         }
       }
     }
@@ -173,6 +202,15 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
       val staticsNS = new StaticsNamespace(linkedClass.encodedName)
       CollOps.put(statics, staticsNS.encodedName, staticsNS)
       staticsNS.updateWith(linkedClass)
+    }
+
+    /* Add new defaults.
+     * Easy, we don't have to notify anyone.
+     */
+    for (linkedClass <- neededDefaults.values) {
+      val defaultsNS = new Defaults(linkedClass.encodedName)
+      CollOps.put(defaults, defaultsNS.encodedName, defaultsNS)
+      defaultsNS.updateWith(linkedClass)
     }
 
     if (!batchMode) {
@@ -631,6 +669,16 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
       s"static $encodedName"
   }
 
+  /** Default methods of an interface. */
+  class Defaults(_encodedName: String)
+      extends MethodContainer(_encodedName, isStatic = false) {
+
+    def thisType: Type = ClassType(encodedName)
+
+    override def toString(): String =
+      s"defaults $encodedName"
+  }
+
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
   trait Unregisterable {
     /** UPDATE PASS ONLY. */
@@ -672,22 +720,34 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]]. */
     def registerAskAncestors(asker: MethodImpl): Unit
 
-    /** PROCESS PASS ONLY. */
+    /** Register a dynamic-caller of an instance method.
+     *  PROCESS PASS ONLY.
+     */
     def registerDynamicCaller(methodName: String, caller: MethodImpl): Unit
 
-    /** PROCESS PASS ONLY. */
+    /** Register a static-caller of an instance method.
+     *  PROCESS PASS ONLY.
+     */
     def registerStaticCaller(methodName: String, caller: MethodImpl): Unit
 
-    /** PROCESS PASS ONLY. */
+    /** Register a caller of a static method.
+     *  PROCESS PASS ONLY.
+     */
     def registerCallerOfStatic(methodName: String, caller: MethodImpl): Unit
 
-    /** UPDATE PASS ONLY. */
+    /** Tag the dynamic-callers of an instance method.
+     *  UPDATE PASS ONLY.
+     */
     def tagDynamicCallersOf(methodName: String): Unit
 
-    /** UPDATE PASS ONLY. */
+    /** Tag the static-callers of an instance method.
+     *  UPDATE PASS ONLY.
+     */
     def tagStaticCallersOf(methodName: String): Unit
 
-    /** UPDATE PASS ONLY. */
+    /** Tag the callers of a static method.
+     *  UPDATE PASS ONLY.
+     */
     def tagCallersOfStatic(methodName: String): Unit
   }
 
@@ -730,21 +790,27 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
       registeredTo(intf)
     }
 
-    /** PROCESS PASS ONLY. */
+    /** Register that this method is a dynamic-caller of an instance method.
+     *  PROCESS PASS ONLY.
+     */
     private def registerDynamicCall(intf: InterfaceType,
         methodName: String): Unit = {
       intf.registerDynamicCaller(methodName, this)
       registeredTo(intf)
     }
 
-    /** PROCESS PASS ONLY. */
+    /** Register that this method is a static-caller of an instance method.
+     *  PROCESS PASS ONLY.
+     */
     private def registerStaticCall(intf: InterfaceType,
         methodName: String): Unit = {
       intf.registerStaticCaller(methodName, this)
       registeredTo(intf)
     }
 
-    /** PROCESS PASS ONLY. */
+    /** Register that this method is a caller of a static method.
+     *  PROCESS PASS ONLY.
+     */
     private def registerCallStatic(intf: InterfaceType,
         methodName: String): Unit = {
       intf.registerCallerOfStatic(methodName, this)
@@ -855,6 +921,7 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
         method.originalDef
       }
 
+      /** Look up the targets of a dynamic call to an instance method. */
       protected def dynamicCall(intfName: String,
           methodName: String): List[MethodID] = {
         val intf = getInterface(intfName)
@@ -862,13 +929,21 @@ abstract class GenIncOptimizer(semantics: Semantics, outputMode: OutputMode,
         intf.instantiatedSubclasses.flatMap(_.lookupMethod(methodName)).toList
       }
 
+      /** Look up the target of a static call to an instance method. */
       protected def staticCall(className: String,
           methodName: String): Option[MethodID] = {
-        val clazz = classes(className)
-        MethodImpl.this.registerStaticCall(clazz.myInterface, methodName)
-        clazz.lookupMethod(methodName)
+        classes.get(className).fold {
+          // If it's not a class, it must be a call to a default intf method
+          val defaultsNS = defaults(className)
+          MethodImpl.this.registerStaticCall(defaultsNS.myInterface, methodName)
+          defaultsNS.methods.get(methodName)
+        } { clazz =>
+          MethodImpl.this.registerStaticCall(clazz.myInterface, methodName)
+          clazz.lookupMethod(methodName)
+        }
       }
 
+      /** Look up the target of a call to a static method. */
       protected def callStatic(className: String,
           methodName: String): Option[MethodID] = {
         val staticsNS = statics(className)

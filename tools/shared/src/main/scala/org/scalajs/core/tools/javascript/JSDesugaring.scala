@@ -1576,8 +1576,24 @@ private[javascript] object JSDesugaring {
           }
 
         case ApplyStatically(receiver, cls, method, args) =>
-          val fun = encodeClassVar(cls.className).prototype DOT method
-          js.Apply(fun DOT "call", (receiver :: args) map transformExpr)
+          val className = cls.className
+          val transformedArgs = (receiver :: args) map transformExpr
+
+          if (classEmitter.isInterface(className)) {
+            val Ident(methodName, origName) = method
+            if (isStrongMode) {
+              js.Apply(js.DotSelect(envField("c", className),
+                  js.Ident("$f_" + methodName, origName)(method.pos)),
+                  transformedArgs)
+            } else {
+              val fullName = className + "__" + methodName
+              js.Apply(envField("f", fullName, origName),
+                  transformedArgs)
+            }
+          } else {
+            val fun = encodeClassVar(className).prototype DOT method
+            js.Apply(fun DOT "call", transformedArgs)
+          }
 
         case ApplyStatic(cls, method, args) =>
           if (isStrongMode) {

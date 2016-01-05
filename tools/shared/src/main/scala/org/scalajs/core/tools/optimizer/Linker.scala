@@ -241,6 +241,11 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
           val syntheticMDef = synthesizeReflectiveProxy(
               analyzerInfo, m, targetName, getTree, analysis)
           memberMethods += linkedSyntheticMethod(syntheticMDef)
+
+        case MethodSyntheticKind.DefaultBridge(targetInterface) =>
+          val syntheticMDef = synthesizeDefaultBridge(
+              analyzerInfo, m, targetInterface, getTree, analysis)
+          memberMethods += linkedSyntheticMethod(syntheticMDef)
       }
     }
 
@@ -330,6 +335,30 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
         OptimizerHints.empty, targetMDef.hash)
   }
 
+  private def synthesizeDefaultBridge(
+      classInfo: Analysis.ClassInfo, methodInfo: Analysis.MethodInfo,
+      targetInterface: String,
+      getTree: TreeProvider, analysis: Analysis): MethodDef = {
+    val encodedName = methodInfo.encodedName
+
+    val targetInterfaceInfo = analysis.classInfos(targetInterface)
+    val targetMDef = findMethodDef(targetInterfaceInfo, encodedName, getTree)
+
+    implicit val pos = targetMDef.pos
+
+    val targetIdent = targetMDef.name.asInstanceOf[Ident].copy() // for the new pos
+    val bridgeIdent = targetIdent
+    val params = targetMDef.args.map(_.copy()) // for the new pos
+    val currentClassType = ClassType(classInfo.encodedName)
+
+    val body = ApplyStatically(
+        This()(currentClassType), ClassType(targetInterface), targetIdent,
+        params.map(_.ref))(targetMDef.resultType)
+
+    MethodDef(static = false, bridgeIdent, params, targetMDef.resultType, body)(
+        OptimizerHints.empty, targetMDef.hash)
+  }
+
   private def findInheritedMethodDef(classInfo: Analysis.ClassInfo,
       methodName: String, getTree: TreeProvider,
       p: Analysis.MethodInfo => Boolean = _ => true): MethodDef = {
@@ -340,19 +369,25 @@ final class Linker(semantics: Semantics, outputMode: OutputMode,
 
       val inherited = ancestorInfo.methodInfos.get(methodName)
       if (inherited.exists(p)) {
-        val (classDef, _) = getTree(ancestorInfo.encodedName)
-        classDef.defs.collectFirst {
-          case mDef: MethodDef if mDef.name.name == methodName => mDef
-        }.getOrElse {
-          throw new AssertionError(
-              s"Cannot find $methodName in ${ancestorInfo.encodedName}")
-        }
+        findMethodDef(ancestorInfo, methodName, getTree)
       } else {
         loop(ancestorInfo.superClass)
       }
     }
 
     loop(classInfo)
+  }
+
+  private def findMethodDef(classInfo: Analysis.ClassInfo,
+      methodName: String, getTree: TreeProvider): MethodDef = {
+    val (classDef, _) = getTree(classInfo.encodedName)
+    classDef.defs.collectFirst {
+      case mDef: MethodDef
+          if !mDef.static && mDef.name.name == methodName => mDef
+    }.getOrElse {
+      throw new AssertionError(
+          s"Cannot find $methodName in ${classInfo.encodedName}")
+    }
   }
 
   private def startRun(): Unit = {

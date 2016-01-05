@@ -117,6 +117,7 @@ ScalaJS.d = {};         // Data for types
 ScalaJS.c = {};         // Scala.js constructors
 ScalaJS.h = {};         // Inheritable constructors (without initialization code)
 ScalaJS.s = {};         // Static methods
+ScalaJS.f = {};         // Default methods
 ScalaJS.n = {};         // Module instances
 ScalaJS.m = {};         // Module accessors
 ScalaJS.is = {};        // isInstanceOf methods

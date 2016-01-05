@@ -52,14 +52,6 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
             reportError(s"Raw JS type ${classDef.name} cannot "+
                 "have instance members")
           }
-        case ClassKind.Interface =>
-          if (classDef.fields.nonEmpty ||
-              classDef.memberMethods.nonEmpty ||
-              classDef.exportedMembers.nonEmpty ||
-              classDef.classExports.nonEmpty) {
-            reportError(s"Interface ${classDef.name} cannot "+
-                "have concrete instance members")
-          }
         case _ =>
           checkScalaClassDef(classDef)
       }
@@ -82,11 +74,11 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   def checkScalaClassDef(classDef: LinkedClass): Unit = {
-    assert(classDef.kind != ClassKind.RawJSType &&
-        classDef.kind != ClassKind.Interface)
+    assert(classDef.kind != ClassKind.RawJSType)
 
     // Is this a normal class?
-    if (classDef.kind != ClassKind.HijackedClass) {
+    if (classDef.kind != ClassKind.HijackedClass &&
+        classDef.kind != ClassKind.Interface) {
       // Check fields
       for (field <- classDef.fields) {
         implicit val ctx = ErrorContext(field)
@@ -133,11 +125,15 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     } else {
       implicit val ctx = ErrorContext(classDef)
 
+      def kindStr =
+        if (classDef.kind == ClassKind.HijackedClass) "Hijacked classes"
+        else "Interfaces"
+
       if (classDef.fields.nonEmpty)
-        reportError("Hijacked classes may not have fields")
+        reportError(s"$kindStr may not have fields")
 
       if (classDef.exportedMembers.nonEmpty || classDef.classExports.nonEmpty)
-        reportError("Hijacked classes may not have exports")
+        reportError(s"$kindStr may not have exports")
     }
 
     // Check methods
@@ -186,6 +182,9 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val isConstructor = isConstructorName(name)
+
+    if (isConstructor && classDef.kind == ClassKind.Interface)
+      reportError("Interfaces cannot declare constructors")
 
     val advertizedSig = (params.map(_.ptpe), resultType)
     val sigFromName = inferMethodType(name, static)
