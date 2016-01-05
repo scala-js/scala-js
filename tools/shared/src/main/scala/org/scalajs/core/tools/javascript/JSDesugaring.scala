@@ -1721,8 +1721,12 @@ private[javascript] object JSDesugaring {
             case Long_>  => genLongMethodApply(newLhs, LongImpl.>,   newRhs)
             case Long_>= => genLongMethodApply(newLhs, LongImpl.>=,  newRhs)
 
-            case Boolean_| => !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
-            case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
+            case Boolean_| =>
+              if (isStrongMode) genCallHelper("boolOr", newLhs, newRhs)
+              else !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
+            case Boolean_& =>
+              if (isStrongMode) genCallHelper("boolAnd", newLhs, newRhs)
+              else !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
           }
 
         case NewArray(tpe, lengths) =>

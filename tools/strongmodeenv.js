@@ -3,16 +3,16 @@ const $env = (typeof __ScalaJSEnv === "object" && __ScalaJSEnv) ? __ScalaJSEnv :
 
 // Global scope
 const $g =
-  (typeof $env["global"] === "object" && $env["global"])
+  (typeof $jsSelect($env, "global") === "object" && $env["global"])
     ? $env["global"]
-    : ((typeof __global === "object" && __global && __global["Object"] === Object) ? __global : __this);
-$env["global"] = $g;
+    : ((typeof __global === "object" && __global && $jsSelect(__global, "Object") === Object) ? __global : __this);
+$jsAssign($env, "global", $g);
 
 // Where to send exports
 const $e =
-  (typeof $env["exportsNamespace"] === "object" && $env["exportsNamespace"])
+  (typeof $jsSelect($env, "exportsNamespace") === "object" && $env["exportsNamespace"])
     ? $env["exportsNamespace"] : $g;
-$env["exportsNamespace"] = $e;
+$jsAssign($env, "exportsNamespace", $e);
 
 // Freeze the environment info
 $g["Object"]["freeze"]($env);
@@ -139,6 +139,16 @@ function $superSet(initialProto, self, propName, value) {
 /** Converts a value to a string for concatenation. */
 function $toString(x) {
   return `${x}`;
+}
+
+/** Non-short-circuit boolean | */
+function $boolOr(a, b) {
+  return a || b;
+}
+
+/** Non-short-circuit boolean & */
+function $boolAnd(a, b) {
+  return a && b;
 }
 
 // Declaration of type data
@@ -394,11 +404,11 @@ class $ {
   static throwClassCastException(instance, classFullName) {
 //!if asInstanceOfs == Compliant
     throw new $c_jl_ClassCastException().init___T(
-      instance + " is not an instance of " + classFullName);
+      `${instance} is not an instance of ${classFullName}`);
 //!else
     throw new $c_sjsr_UndefinedBehaviorError().init___jl_Throwable(
       new $c_jl_ClassCastException().init___T(
-        instance + " is not an instance of " + classFullName));
+        `${instance} is not an instance of ${classFullName}`));
 //!endif
   };
 
@@ -562,7 +572,7 @@ class $ {
 //!if asInstanceOfs != Unchecked
         $asBoolean(rhs);
 //!endif
-        return instance - rhs; // yes, this gives the right result
+        return (instance === rhs) ? 0 : (instance ? 1 : -1);
       default:
         return instance.compareTo__O__I(rhs);
     }
@@ -758,12 +768,12 @@ class $TypeData {
     const internalName = $propertyName(internalNameObj);
 
     isInstance = isInstance || function(obj) {
-      return !!(obj && obj.$classData && obj.$classData.ancestors[internalName]);
+      return $isScalaJSObject(obj) && (internalName in obj.$classData.ancestors);
     };
 
     isArrayOf = isArrayOf || function(obj, depth) {
-      return !!(obj && obj.$classData && (obj.$classData.arrayDepth === depth)
-        && obj.$classData.arrayBase.ancestors[internalName])
+      return ($isScalaJSObject(obj) && (obj.$classData.arrayDepth === depth)
+        && internalName in obj.$classData.arrayBase.ancestors);
     };
 
     // Runtime support

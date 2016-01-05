@@ -761,8 +761,6 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(dyn.dependent(8)).toEqual(-1)
     }
 
-    /* TODO This is disabled because the ECMAScript 6 output cannot be parsed
-     * by io.js at the moment.
     it("call super constructor with : _*") {
       @ScalaJSDefined
       class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
@@ -776,7 +774,6 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(dyn.x).toEqual(4)
       expect(dyn.args).toEqual(js.Array(8, 23))
     }
-    */
 
     it("override native method") {
       @ScalaJSDefined
