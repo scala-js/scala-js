@@ -1,7 +1,5 @@
 package org.scalajs.testsuite.javalib.util
 
-import java.{lang => jl}
-
 import org.junit.Test
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 import org.scalajs.testsuite.utils.CollectionsTestBase
