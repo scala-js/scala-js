@@ -36,8 +36,7 @@ class URLDecoderTest {
 
     def unsupportedEncoding(encoded: String, enc: String = utf8): Unit = {
       val exception = classOf[UnsupportedEncodingException]
-      val runnable = throwingRunnable { URLDecoder.decode(encoded, enc) }
-      assertThrows(exception, runnable)
+      assertThrows(exception, URLDecoder.decode(encoded, enc))
     }
 
     // empty string
