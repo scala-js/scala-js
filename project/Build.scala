@@ -33,7 +33,7 @@ import Implicits._
 
 import org.scalajs.core.tools.sourcemap._
 import org.scalajs.core.tools.io.MemVirtualJSFile
-import org.scalajs.core.tools.sem.CheckedBehavior
+import org.scalajs.core.tools.sem._
 
 import sbtassembly.AssemblyPlugin.autoImport._
 
@@ -63,6 +63,20 @@ object Build extends sbt.Build {
     "Defaults to what sbt is running with.")
 
   val javaDocBaseURL: String = "http://docs.oracle.com/javase/8/docs/api/"
+
+  // set scalaJSSemantics in someProject ~= makeCompliant
+  val makeCompliant: Semantics => Semantics = { semantics =>
+    semantics
+      .withAsInstanceOfs(CheckedBehavior.Compliant)
+      .withModuleInit(CheckedBehavior.Compliant)
+      .withStrictFloats(true)
+  }
+
+  // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6NodeArgs).value
+  val ES6NodeArgs = Seq("--harmony-rest-parameters", "--harmony-spreadcalls")
+
+  // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6StrongModeNodeArgs).value
+  val ES6StrongModeNodeArgs = ES6NodeArgs :+ "--strong-mode"
 
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
