@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class MonthTest extends TemporalAccessorTest {
+class MonthTest extends TemporalAccessorTest[Month] {
   import Month._
 
   val samples = values.toSeq

@@ -9,7 +9,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.javalib.time.TemporalAccessorTest
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class IsoEraTest extends TemporalAccessorTest {
+class IsoEraTest extends TemporalAccessorTest[IsoEra] {
   import IsoEra._
 
   val samples = values.toSeq

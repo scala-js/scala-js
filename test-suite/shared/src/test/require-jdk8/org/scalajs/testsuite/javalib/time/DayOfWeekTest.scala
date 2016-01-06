@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class DayOfWeekTest extends TemporalAccessorTest {
+class DayOfWeekTest extends TemporalAccessorTest[DayOfWeek] {
   import DayOfWeek._
 
   val samples = values.toSeq
