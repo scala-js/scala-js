@@ -865,37 +865,30 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   def inferMethodType(encodedName: String, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
-    def dropPrivateMarker(params: List[String]): List[String] =
-      if (params.nonEmpty && params.head.startsWith("p")) params.tail
-      else params
 
-    if (isConstructorName(encodedName)) {
-      assert(!isStatic, "Constructor cannot be static")
-      val params = dropPrivateMarker(
-          encodedName.stripPrefix("init___").split("__").toList)
-      if (params == List("")) (Nil, NoType)
-      else (params.map(decodeType), NoType)
-    } else if (isReflProxyName(encodedName)) {
-      assert(!isStatic, "Refl proxy method cannot be static")
-      val params = dropPrivateMarker(encodedName.split("__").toList.tail)
-      (params.map(decodeType), AnyType)
-    } else {
-      val paramsAndResult0 =
-        encodedName.split("__").toList.tail
-      val paramsAndResult =
-        dropPrivateMarker(paramsAndResult0)
-      (paramsAndResult.init.map(decodeType), decodeType(paramsAndResult.last))
+    val (_, paramRefTypes, resultRefType) = decodeMethodName(encodedName)
+    val paramTypes = paramRefTypes.map(refTypeToType)
+
+    val resultType = resultRefType.fold[Type] {
+      if (isConstructorName(encodedName)) NoType
+      else AnyType // reflective proxy
+    } { refType =>
+      refTypeToType(refType)
+    }
+
+    (paramTypes, resultType)
+  }
+
+  def refTypeToType(refType: ReferenceType)(implicit ctx: ErrorContext): Type = {
+    refType match {
+      case _: ArrayType           => refType
+      case ClassType(encodedName) => classNameToType(encodedName)
     }
   }
 
-  def decodeType(encodedName: String)(implicit ctx: ErrorContext): Type = {
-    if (encodedName.isEmpty) NoType
-    else if (encodedName.charAt(0) == 'A') {
-      // array type
-      val dims = encodedName.indexWhere(_ != 'A')
-      val base = encodedName.substring(dims)
-      ArrayType(base, dims)
-    } else if (encodedName.length == 1) {
+  def classNameToType(encodedName: String)(
+      implicit ctx: ErrorContext): Type = {
+    if (encodedName.length == 1) {
       (encodedName.charAt(0): @switch) match {
         case 'V'                   => NoType
         case 'Z'                   => BooleanType
@@ -918,7 +911,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   def arrayElemType(arrayType: ArrayType)(implicit ctx: ErrorContext): Type = {
-    if (arrayType.dimensions == 1) decodeType(arrayType.baseClassName)
+    if (arrayType.dimensions == 1) classNameToType(arrayType.baseClassName)
     else ArrayType(arrayType.baseClassName, arrayType.dimensions-1)
   }
 
@@ -1097,12 +1090,6 @@ object IRChecker {
     def apply(linkedClass: LinkedClass): ErrorContext =
       new ErrorContext(linkedClass)
   }
-
-  private def isConstructorName(name: String): Boolean =
-    name.startsWith("init___")
-
-  private def isReflProxyName(name: String): Boolean =
-    name.endsWith("__") && !isConstructorName(name)
 
   case class LocalDef(name: String, tpe: Type, mutable: Boolean)(val pos: Position)
 }

@@ -9,6 +9,8 @@
 
 package org.scalajs.core.ir
 
+import Types._
+
 object Definitions {
   val ObjectClass = "O"
   val ClassClass  = "jl_Class"
@@ -139,6 +141,53 @@ object Definitions {
 
   private val decompressedPrefixes: Seq[(String, String)] =
     compressedPrefixes map { case (a, b) => (b, a) }
+
+  /** Decodes a method name into its full signature.
+   *
+   *  This discards the information whether the method is private or not, and
+   *  at which class level it is private. If necessary, you can recover that
+   *  information from `encodedName.indexOf("__p") >= 0`.
+   */
+  def decodeMethodName(
+      encodedName: String): (String, List[ReferenceType], Option[ReferenceType]) = {
+    val (simpleName, privateAndSigString) = if (isConstructorName(encodedName)) {
+      val privateAndSigString =
+        if (encodedName == "init___") ""
+        else encodedName.stripPrefix("init___") + "__"
+      ("<init>", privateAndSigString)
+    } else {
+      val pos = encodedName.indexOf("__")
+      val pos2 =
+        if (!encodedName.substring(pos + 2).startsWith("p")) pos
+        else encodedName.indexOf("__", pos + 2)
+      (encodedName.substring(0, pos), encodedName.substring(pos2 + 2))
+    }
+
+    // -1 preserves trailing empty strings
+    val parts = privateAndSigString.split("__", -1).toSeq
+    val paramsAndResultStrings =
+      if (parts.headOption.exists(_.startsWith("p"))) parts.tail
+      else parts
+
+    val paramStrings :+ resultString = paramsAndResultStrings
+
+    val paramTypes = paramStrings.map(decodeReferenceType).toList
+    val resultType =
+      if (resultString == "") None // constructor or reflective proxy
+      else Some(decodeReferenceType(resultString))
+
+    (simpleName, paramTypes, resultType)
+  }
+
+  /** Decodes a [[Types.ReferenceType]], such as in an encoded method signature.
+   */
+  def decodeReferenceType(encodedName: String): ReferenceType = {
+    val arrayDepth = encodedName.indexWhere(_ != 'A')
+    if (arrayDepth == 0)
+      ClassType(encodedName)
+    else
+      ArrayType(encodedName.substring(arrayDepth), arrayDepth)
+  }
 
   /* Common predicates on encoded names */
 

@@ -18,6 +18,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.ir
 import ir.ClassKind
 import ir.Infos
+import ir.Definitions.{decodeClassName, decodeMethodName}
 
 trait Analysis {
   import Analysis._
@@ -53,6 +54,8 @@ object Analysis {
     def isAnyStaticMethodReachable: Boolean
     def methodInfos: scala.collection.Map[String, MethodInfo]
     def staticMethodInfos: scala.collection.Map[String, MethodInfo]
+
+    def displayName: String = decodeClassName(encodedName)
   }
 
   trait MethodInfo {
@@ -67,6 +70,28 @@ object Analysis {
     def instantiatedSubclasses: Seq[ClassInfo]
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
+
+    def displayName: String = {
+      if (isExported) {
+        encodedName
+      } else {
+        import ir.Types._
+
+        def typeDisplayName(tpe: ReferenceType): String = tpe match {
+          case ClassType(encodedName)      => decodeClassName(encodedName)
+          case ArrayType(base, dimensions) => "[" * dimensions + decodeClassName(base)
+        }
+
+        val (simpleName, paramTypes, resultType) =
+          ir.Definitions.decodeMethodName(encodedName)
+
+        simpleName + "(" + paramTypes.map(typeDisplayName).mkString(",") + ")" +
+        resultType.fold("")(typeDisplayName)
+      }
+    }
+
+    def fullDisplayName: String =
+      owner.displayName + "." + displayName
   }
 
   sealed trait MethodSyntheticKind
@@ -143,13 +168,13 @@ object Analysis {
   def logError(error: Error, logger: Logger, level: Level): Unit = {
     val headMsg = error match {
       case MissingClass(info, _) =>
-        s"Referring to non-existent class $info"
+        s"Referring to non-existent class ${info.displayName}"
       case NotAModule(info, _) =>
-        s"Cannot access module for non-module $info"
+        s"Cannot access module for non-module ${info.displayName}"
       case MissingMethod(info, _) =>
-        s"Referring to non-existent method $info"
+        s"Referring to non-existent method ${info.fullDisplayName}"
       case ConflictingDefaultMethods(infos, _) =>
-        s"Conflicting default methods: ${infos.mkString(" ")}"
+        s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
     }
 
     logger.log(level, headMsg)
@@ -179,7 +204,7 @@ object Analysis {
         verb: String = "called"): Unit = {
       val involvedClasses = new mutable.ListBuffer[ClassInfo]
 
-      def onlyOnce(info: AnyRef): Boolean = {
+      def onlyOnce(level: Level, info: AnyRef): Boolean = {
         if (seenInfos.add(info)) {
           true
         } else {
@@ -196,13 +221,13 @@ object Analysis {
           case Some(from) =>
             from match {
               case FromMethod(methodInfo) =>
-                log(level, s"$verb from $methodInfo")
-                if (onlyOnce(methodInfo)) {
+                log(level, s"$verb from ${methodInfo.fullDisplayName}")
+                if (onlyOnce(level, methodInfo)) {
                   involvedClasses ++= methodInfo.instantiatedSubclasses
                   loopTrace(methodInfo.calledFrom.headOption)
                 }
               case FromCore =>
-                log(level, s"$verb from scalajs-corejslib.js")
+                log(level, s"$verb from core")
               case FromExports =>
                 log(level, "exported to JavaScript with @JSExport")
             }
@@ -217,11 +242,13 @@ object Analysis {
         log(level, "involving instantiated classes:")
         indented {
           for (classInfo <- involvedClasses.result().distinct) {
-            log(level, s"$classInfo")
-            if (onlyOnce(classInfo))
+            log(level, classInfo.displayName)
+
+            // recurse with Debug log level not to overwhelm the user
+            if (onlyOnce(Level.Debug, classInfo)) {
               logCallStackImpl(Level.Debug,
                   classInfo.instantiatedFrom.headOption, verb = "instantiated")
-            // recurse with Debug log level not to overwhelm the user
+            }
           }
         }
       }
