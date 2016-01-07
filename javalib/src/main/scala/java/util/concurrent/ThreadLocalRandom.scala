@@ -106,7 +106,13 @@ class ThreadLocalRandom extends Random {
     if (least >= bound)
       throw new IllegalArgumentException()
 
-    nextDouble() * (bound - least) + least
+    /* Based on documentation for Random.doubles to avoid issue #2144 and other
+     * possible rounding up issues:
+     * https://docs.oracle.com/javase/8/docs/api/java/util/Random.html#doubles-double-double-
+     */
+    val next = nextDouble() * (bound - least) + least
+    if (next < bound) next
+    else Math.nextAfter(bound, Double.NegativeInfinity)
   }
 }
 

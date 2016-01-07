@@ -4,15 +4,16 @@ object AssertThrows {
   /** Backport implementation of Assert.assertThrows to be used until JUnit 4.13 is
    *  released. See org.junit.Assert.scala in jUnitRuntime.
    */
-  def assertThrows(expectedThrowable: Class[_ <: Throwable],
+  private def assertThrowsBackport(expectedThrowable: Class[_ <: Throwable],
       runnable: ThrowingRunnable): Unit = {
-    expectThrows(expectedThrowable, runnable)
+    expectThrowsBackport(expectedThrowable, runnable)
   }
 
   /** Backport implementation of Assert.expectThrows to be used until JUnit 4.13 is
    *  released. See org.junit.Assert.scala in jUnitRuntime.
    */
-  def expectThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T = {
+  private def expectThrowsBackport[T <: Throwable](expectedThrowable: Class[T],
+      runnable: ThrowingRunnable): T = {
     try {
       runnable.run()
       val message =
@@ -37,16 +38,19 @@ object AssertThrows {
   /** Backport implementation of Assert.ThrowingRunnable to be used until
    *  JUnit 4.13 is released. See org.junit.Assert.scala in jUnitRuntime.
    */
-  trait ThrowingRunnable {
+  private trait ThrowingRunnable {
     def run(): Unit
   }
 
-  def throwingRunnable(code: => Unit): ThrowingRunnable = {
+  private def throwingRunnable(code: => Unit): ThrowingRunnable = {
     new ThrowingRunnable {
       def run(): Unit = code
     }
   }
 
+  def assertThrows[T <: Throwable, U](expectedThrowable: Class[T], code: => U): Unit =
+    assertThrowsBackport(expectedThrowable, throwingRunnable(code.asInstanceOf[Unit]))
+
   def expectThrows[T <: Throwable, U](expectedThrowable: Class[T], code: => U): T =
-    expectThrows(expectedThrowable, throwingRunnable(code.asInstanceOf[Unit]))
+    expectThrowsBackport(expectedThrowable, throwingRunnable(code.asInstanceOf[Unit]))
 }
