@@ -375,7 +375,7 @@ object Trees {
     val tpe = cls match {
       case ClassType(Definitions.RuntimeNullClass)    => NullType
       case ClassType(Definitions.RuntimeNothingClass) => NothingType
-      case _                                          => cls
+      case _                                          => cls.asInstanceOf[Type]
     }
   }
 

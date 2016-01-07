@@ -881,7 +881,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   def refTypeToType(refType: ReferenceType)(implicit ctx: ErrorContext): Type = {
     refType match {
-      case _: ArrayType           => refType
+      case arrayType: ArrayType   => arrayType
       case ClassType(encodedName) => classNameToType(encodedName)
     }
   }

@@ -482,7 +482,8 @@ private[optimizer] abstract class OptimizerCore(
         trampoline {
           pretransformExpr(expr) { texpr =>
             val result = {
-              if (isSubtype(texpr.tpe.base, tpe)) {
+              // TODO This cast is suspicious
+              if (isSubtype(texpr.tpe.base, tpe.asInstanceOf[Type])) {
                 if (texpr.tpe.isNullable)
                   BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
                 else
@@ -824,7 +825,8 @@ private[optimizer] abstract class OptimizerCore(
             case ClassType(ObjectClass) =>
               cont(texpr)
             case _ =>
-              if (isSubtype(texpr.tpe.base, tpe)) {
+              // TODO This cast is suspicious
+              if (isSubtype(texpr.tpe.base, tpe.asInstanceOf[Type])) {
                 cont(texpr)
               } else {
                 cont(PreTransTree(

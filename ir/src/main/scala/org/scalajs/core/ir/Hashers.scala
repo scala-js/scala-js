@@ -265,12 +265,12 @@ object Hashers {
         case IsInstanceOf(expr, cls) =>
           mixTag(TagIsInstanceOf)
           mixTree(expr)
-          mixType(cls)
+          mixRefType(cls)
 
         case AsInstanceOf(expr, cls) =>
           mixTag(TagAsInstanceOf)
           mixTree(expr)
-          mixType(cls)
+          mixRefType(cls)
 
         case Unbox(expr, charCode) =>
           mixTag(TagUnbox)
@@ -416,7 +416,7 @@ object Hashers {
 
         case ClassOf(cls) =>
           mixTag(TagClassOf)
-          mixType(cls)
+          mixRefType(cls)
 
         case VarRef(ident) =>
           mixTag(TagVarRef)
@@ -442,6 +442,9 @@ object Hashers {
 
     def mixTrees(trees: List[Tree]): Unit =
       trees.foreach(mixTree)
+
+    def mixRefType(tpe: ReferenceType): Unit =
+      mixType(tpe.asInstanceOf[Type])
 
     def mixType(tpe: Type): Unit = tpe match {
       case AnyType     => mixTag(TagAnyType)
