@@ -56,15 +56,19 @@ final class RichLogger private (loggers: Array[Logger], settings: RunSettings) {
 
   private def logStackTrace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
-      p.getFileName.contains("StackTrace.scala") ||
-      p.getFileName.contains("Throwables.scala")
+      p.getFileName != null && {
+        p.getFileName.contains("StackTrace.scala") ||
+        p.getFileName.contains("Throwables.scala")
+      }
     }
     val testClassName = currentTestClassName.head
     val testFileName = {
       if (settings.color) findTestFileName(trace, testClassName)
       else null
     }
-    val i = trace.indexWhere(p => p.getFileName.contains("JUnitExecuteTest.scala")) - 1
+    val i = trace.indexWhere {
+      p => p.getFileName != null && p.getFileName.contains("JUnitExecuteTest.scala")
+    } - 1
     val m = if (i > 0) i else trace.length - 1
     logStackTracePart(trace, m, trace.length - m - 1, t, testClassName, testFileName)
   }
