@@ -35,6 +35,7 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected ( //
   private class Decoder extends CharsetDecoder(
       ISO_8859_1_And_US_ASCII_Common.this, 1.0f, 1.0f) {
     def decodeLoop(in: ByteBuffer, out: CharBuffer): CoderResult = {
+      // scalastyle:off return
       val maxValue = ISO_8859_1_And_US_ASCII_Common.this.maxValue
       val inRemaining = in.remaining
       if (inRemaining == 0) {
@@ -57,8 +58,16 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected ( //
           var inPos = inStart
           var outPos = outStart
           while (inPos != inEnd) {
-            // Apparently ignoring the bit 7 in US_ASCII is the expected behavior
-            outArr(outPos) = (inArr(inPos).toInt & maxValue).toChar
+            val c = inArr(inPos).toInt & 0xff
+
+            if (c > maxValue) {
+              // Can only happen in US_ASCII
+              in.position(inPos - inOffset)
+              out.position(outPos - outOffset)
+              return CoderResult.malformedForLength(1)
+            }
+
+            outArr(outPos) = c.toChar
             inPos += 1
             outPos += 1
           }
@@ -68,8 +77,15 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected ( //
         } else {
           var i = 0
           while (i != rem) {
-            // Apparently ignoring the bit 7 in US_ASCII is the expected behavior
-            out.put((in.get().toInt & maxValue).toChar)
+            val c = in.get().toInt & 0xff
+
+            if (c > maxValue) {
+              // Can only happen in US_ASCII
+              in.position(in.position() - 1)
+              return CoderResult.malformedForLength(1)
+            }
+
+            out.put(c.toChar)
             i += 1
           }
         }
@@ -77,6 +93,7 @@ private[niocharset] abstract class ISO_8859_1_And_US_ASCII_Common protected ( //
         if (overflow) CoderResult.OVERFLOW
         else CoderResult.UNDERFLOW
       }
+      // scalastyle:on return
     }
   }
 
