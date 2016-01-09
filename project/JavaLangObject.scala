@@ -136,32 +136,6 @@ object JavaLangObject {
           NoType,
           Skip())(OptimizerHints.empty, None),
 
-        /* Reflective proxies
-         * Note that we do not need to proxy the following methods, since
-         * they are defined on Any in the Scala hierarchy and therefore a
-         * reflective call is never emitted:
-         * - equals
-         * - getClass
-         * - hashCode
-         * - toString
-         */
-
-        MethodDef(static = false, Ident("clone__"), Nil, AnyType,
-          Apply(This()(ThisType), Ident("clone__O"), Nil)(AnyType))(
-          OptimizerHints.empty, None),
-
-        MethodDef(static = false, Ident("notify__"), Nil, AnyType, Block(
-          Apply(This()(ThisType), Ident("notify__V"), Nil)(NoType),
-          Undefined()))(OptimizerHints.empty, None),
-
-        MethodDef(static = false, Ident("notifyAll__"), Nil, AnyType, Block(
-          Apply(This()(ThisType), Ident("notifyAll__V"), Nil)(NoType),
-          Undefined()))(OptimizerHints.empty, None),
-
-        MethodDef(static = false, Ident("finalize__"), Nil, AnyType, Block(
-          Apply(This()(ThisType), Ident("finalize__V"), Nil)(NoType),
-          Undefined()))(OptimizerHints.empty, None),
-
         // Exports
 
         /* JSExport for toString(). */
