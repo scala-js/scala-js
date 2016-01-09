@@ -511,14 +511,8 @@ final class Analyzer(semantics: Semantics, outputMode: OutputMode,
       sepPos >= 0 && methodName.substring(0, sepPos + 2) == proxyName
     }
 
-    private def methodResultType(methodName: String): ir.Types.ReferenceType = {
-      val typeName = methodName.substring(methodName.lastIndexOf("__") + 2)
-      val arrayDepth = typeName.indexWhere(_ != 'A')
-      if (arrayDepth == 0)
-        ir.Types.ClassType(typeName)
-      else
-        ir.Types.ArrayType(typeName.substring(arrayDepth), arrayDepth)
-    }
+    private def methodResultType(methodName: String): ir.Types.ReferenceType =
+      decodeReferenceType(methodName.substring(methodName.lastIndexOf("__") + 2))
 
     private def isMoreSpecific(left: ir.Types.ReferenceType,
         right: ir.Types.ReferenceType): Boolean = {
