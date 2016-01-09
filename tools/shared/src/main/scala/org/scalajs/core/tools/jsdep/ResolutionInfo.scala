@@ -30,4 +30,18 @@ final class ResolutionInfo(
   @deprecated("Use relPath instead.", "0.6.1")
   val resourceName = relPath
 
+  override def toString(): String = {
+    val b = new StringBuilder
+    b ++= s"ResolutionInfo(relPath=$relPath"
+    if (dependencies.nonEmpty)
+      b ++= s", dependencies=$dependencies"
+    if (origins.nonEmpty)
+      b ++= s", origins=$origins"
+    if (commonJSName.nonEmpty)
+      b ++= s", commonJSName=$commonJSName"
+    if (relPathMinified.nonEmpty)
+      b ++= s", relPathMinified=$relPathMinified"
+    b ++= ")"
+    b.result()
+  }
 }

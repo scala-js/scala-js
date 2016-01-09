@@ -34,4 +34,16 @@ final class FlatJSDependency(
   @deprecated("Use relPath instead.", "0.6.1")
   val resourceName: String = relPath
 
+  override def toString(): String = {
+    val b = new StringBuilder
+    b ++= s"FlatJSDependency(origin=$origin, relPath=$relPath"
+    if (dependencies.nonEmpty)
+      b ++= s", dependencies=$dependencies"
+    if (commonJSName.nonEmpty)
+      b ++= s", commonJSName=$commonJSName"
+    if (relPathMinified.nonEmpty)
+      b ++= s", relPathMinified=$relPathMinified"
+    b ++= ")"
+    b.result()
+  }
 }

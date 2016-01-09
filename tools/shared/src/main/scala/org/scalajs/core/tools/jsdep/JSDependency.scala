@@ -82,9 +82,9 @@ final class JSDependency(
 
   override def toString(): String = {
     val b = new StringBuilder
-    b ++= s"JSDependency($resourceName"
+    b ++= s"JSDependency(resourceName=$resourceName"
     if (commonJSName.nonEmpty)
-      b ++= s", commonJSName=$dependencies"
+      b ++= s", commonJSName=$commonJSName"
     if (minifiedResourceName.nonEmpty)
       b ++= s", minifiedResourceName=$minifiedResourceName"
     if (dependencies.nonEmpty)
