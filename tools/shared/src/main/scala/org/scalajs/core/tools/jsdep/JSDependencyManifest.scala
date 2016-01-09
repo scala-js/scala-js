@@ -38,6 +38,10 @@ final class JSDependencyManifest(
     acc = mixLast(acc, compliantSemantics.##)
     finalizeHash(acc, 4)
   }
+
+  override def toString(): String = s"""JSDependencyManifest($origin, 
+    |libDeps: ${libDeps.mkString(", ")}, requiresDOM: $requiresDOM, 
+    |compliantSemantics: $compliantSemantics)""".stripMargin.replaceAll("\n", "")
 }
 
 object JSDependencyManifest {

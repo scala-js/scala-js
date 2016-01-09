@@ -29,5 +29,9 @@ final class ResolutionInfo(
 
   @deprecated("Use relPath instead.", "0.6.1")
   val resourceName = relPath
+  
+  override def toString(): String = s"""ResolutionInfo($relPath, 
+    |dependencies: ${dependencies.mkString(", ")}, 
+    |origins: ${origins.mkString(", ")})""".stripMargin.replaceAll("\n", "")
 
 }
