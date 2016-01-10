@@ -2150,7 +2150,42 @@ private[optimizer] abstract class OptimizerCore(
                 foldUnaryOp(LongToInt, x),
                 foldUnaryOp(LongToInt, y))
 
-          case _ => default
+          case BinaryOp(BinaryOp.Long_>> | BinaryOp.Long_>>>,
+              x, IntLiteral(32)) =>
+            // x.hi__I()
+            staticCall(LongImpl.RuntimeLongClass, LongImpl.hi).fold[Tree] {
+              default
+            } { target =>
+              trampoline {
+                /* Hack: use an empty scope to inline x.hi__I().
+                 * `inline` requires a scope to keep track of the set methods
+                 * currently being inlined, and prevent infinite inlining of
+                 * recursive methods. In theory we should provide a proper
+                 * scope, but we don't have one here. We give an empty scope
+                 * instead, which is ok-ish because we "know" that x.hi__I()
+                 * will not go into infinite recursion.
+                 */
+                implicit val scope = Scope.Empty
+                inline(Nil, Some(PreTransTree(x)), Nil, target, isStat = false,
+                    usePreTransform = false)(finishTransform(isStat = false))
+              }
+            }
+
+          case _ =>
+            // arg.lo__I()
+            staticCall(LongImpl.RuntimeLongClass, LongImpl.lo).fold[Tree] {
+              default
+            } { target =>
+              trampoline {
+                /* Hack: use an empty scope to inline x.lo__I().
+                 * See the comment on the same hack for x.hi__I() above for the
+                 * rationale.
+                 */
+                implicit val scope = Scope.Empty
+                inline(Nil, Some(PreTransTree(arg)), Nil, target, isStat = false,
+                    usePreTransform = false)(finishTransform(isStat = false))
+              }
+            }
         }
 
       case LongToDouble =>

@@ -13,6 +13,9 @@ object LongImpl {
   final val RuntimeLongClass = "sjsr_RuntimeLong"
   final val RuntimeLongModuleClass = "sjsr_RuntimeLong$"
 
+  final val lo = "lo__I"
+  final val hi = "hi__I"
+
   private final val SigUnary   = "__sjsr_RuntimeLong"
   private final val SigBinary  = "__sjsr_RuntimeLong__sjsr_RuntimeLong"
   private final val SigShift   = "__I__sjsr_RuntimeLong"
