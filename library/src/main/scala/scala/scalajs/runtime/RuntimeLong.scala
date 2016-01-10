@@ -576,8 +576,9 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     else js.Tuple4(quotLo, quotHi, remLo, remHi)
   }
 
-  // Support for intrinsics
+  // TODO Remove these. They were support for intrinsics before 0.6.6.
 
+  @deprecated("Use java.lang.Long.toBinaryString instead.", "0.6.6")
   def toBinaryString: String = {
     val zeros = "00000000000000000000000000000000" // 32 zeros
     @inline def padBinary32(i: Int) = {
@@ -592,6 +593,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     else Integer.toBinaryString(lo)
   }
 
+  @deprecated("Use java.lang.Long.toHexString instead.", "0.6.6")
   def toHexString: String = {
     val zeros = "00000000" // 8 zeros
     @inline def padHex8(i: Int) = {
@@ -606,6 +608,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     else Integer.toHexString(lo)
   }
 
+  @deprecated("Use java.lang.Long.toOctalString instead.", "0.6.6")
   def toOctalString: String = {
     val zeros = "0000000000" // 10 zeros
     @inline def padOctal10(i: Int) = {
@@ -625,9 +628,11 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     else Integer.toOctalString(lp)
   }
 
+  @deprecated("Use java.lang.Long.bitCount instead.", "0.6.6")
   def bitCount: Int =
     Integer.bitCount(lo) + Integer.bitCount(hi)
 
+  @deprecated("Use java.lang.Long.signum instead.", "0.6.6")
   def signum: RuntimeLong = {
     val hi = this.hi
     if (hi < 0) MinusOne
@@ -635,12 +640,14 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     else One
   }
 
+  @deprecated("Use java.lang.Long.numberOfLeadingZeros instead.", "0.6.6")
   def numberOfLeadingZeros: Int = {
     val hi = this.hi
     if (hi != 0) Integer.numberOfLeadingZeros(hi)
     else Integer.numberOfLeadingZeros(lo) + 32
   }
 
+  @deprecated("Use java.lang.Long.numberOfTrailingZeros instead.", "0.6.6")
   def numberOfTrailingZeros: Int = {
     val lo = this.lo
     if (lo != 0) Integer.numberOfTrailingZeros(lo)

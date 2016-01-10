@@ -1620,20 +1620,6 @@ private[optimizer] abstract class OptimizerCore(
       case LongRemainderUnsigned =>
         contTree(Apply(firstArgAsRTLong, LongImpl.remainderUnsigned,
             List(asRTLong(newArgs(1))))(LongType))
-      case LongBitCount =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.bitCount, Nil)(IntType))
-      case LongSignum =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.signum, Nil)(LongType))
-      case LongLeading0s =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.numberOfLeadingZeros, Nil)(IntType))
-      case LongTrailing0s =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.numberOfTrailingZeros, Nil)(IntType))
-      case LongToBinStr =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.toBinaryString, Nil)(StringClassType))
-      case LongToHexStr =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.toHexString, Nil)(StringClassType))
-      case LongToOctalStr =>
-        contTree(Apply(firstArgAsRTLong, LongImpl.toOctalString, Nil)(StringClassType))
 
       // scala.collection.mutable.ArrayBuilder
 
@@ -3725,15 +3711,8 @@ private[optimizer] object OptimizerCore {
     final val LongCompare = LongToString + 1
     final val LongDivideUnsigned = LongCompare + 1
     final val LongRemainderUnsigned = LongDivideUnsigned + 1
-    final val LongBitCount = LongRemainderUnsigned + 1
-    final val LongSignum = LongBitCount + 1
-    final val LongLeading0s = LongSignum + 1
-    final val LongTrailing0s = LongLeading0s + 1
-    final val LongToBinStr = LongTrailing0s + 1
-    final val LongToHexStr = LongToBinStr + 1
-    final val LongToOctalStr = LongToHexStr + 1
 
-    final val ArrayBuilderZeroOf = LongToOctalStr + 1
+    final val ArrayBuilderZeroOf = LongRemainderUnsigned + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
     final val ClassGetComponentType = GenericArrayBuilderResult + 1
@@ -3770,13 +3749,6 @@ private[optimizer] object OptimizerCore {
       "jl_Long$.compare__J__J__I"            -> LongCompare,
       "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
       "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned,
-      "jl_Long$.bitCount__J__I"              -> LongBitCount,
-      "jl_Long$.signum__J__J"                -> LongSignum,
-      "jl_Long$.numberOfLeadingZeros__J__I"  -> LongLeading0s,
-      "jl_Long$.numberOfTrailingZeros__J__I" -> LongTrailing0s,
-      "jl_long$.toBinaryString__J__T"        -> LongToBinStr,
-      "jl_Long$.toHexString__J__T"           -> LongToHexStr,
-      "jl_Long$.toOctalString__J__T"         -> LongToOctalStr,
 
       "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
       "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,

@@ -119,11 +119,13 @@ object Long {
 
   // Must be called only with valid radix
   private def toStringImpl(i: scala.Long, radix: Int): String = {
-    if (i >= Int.MinValue.toLong && i <= Int.MaxValue.toLong) {
+    val lo = i.toInt
+    val hi = (i >>> 32).toInt
+    if (lo >> 31 == hi) {
       // It's a signed int32
       import js.JSNumberOps.enableJSNumberOps
-      i.toInt.toString(radix)
-    } else if (i < 0) {
+      lo.toString(radix)
+    } else if (hi < 0) {
       "-" + toUnsignedStringInternalLarge(-i, radix)
     } else {
       toUnsignedStringInternalLarge(i, radix)
@@ -132,7 +134,7 @@ object Long {
 
   // Must be called only with valid radix
   private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
-    if (i >>> 32 == 0L) {
+    if ((i >>> 32).toInt == 0) {
       // It's an unsigned int32
       import js.JSNumberOps._
       i.toInt.toUint.toString(radix)
@@ -386,8 +388,12 @@ object Long {
   def rotateRight(i: scala.Long, distance: scala.Int): scala.Long =
     (i >>> distance) | (i << -distance)
 
-  def signum(i: scala.Long): Int =
-    if (i < 0L) -1 else if (i == 0L) 0 else 1
+  def signum(i: scala.Long): Int = {
+    val hi = (i >>> 32).toInt
+    if (hi < 0) -1
+    else if (hi == 0 && i.toInt == 0) 0
+    else 1
+  }
 
   def numberOfLeadingZeros(l: scala.Long): Int = {
     val hi = (l >>> 32).toInt
