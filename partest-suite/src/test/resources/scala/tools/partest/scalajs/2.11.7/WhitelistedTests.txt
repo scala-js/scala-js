@@ -1365,7 +1365,6 @@ run/macro-expand-unapply-a
 run/t6677b.scala
 run/t7375a.scala
 run/t7300.scala
-run/t6246.scala
 run/typed-annotated
 run/elidable-noflags.scala
 run/t0042.scala
