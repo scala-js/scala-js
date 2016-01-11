@@ -100,6 +100,45 @@ trait Compat210Component {
     }
   }
 
+  // Compat to support: new overridingPairs.Cursor(sym).iterator
+
+  implicit class OverridingPairsCursor2Iterable(cursor: overridingPairs.Cursor) {
+    def iterator: Iterator[SymbolPair] = new Iterator[SymbolPair] {
+      skipIgnoredEntries()
+
+      def hasNext: Boolean = cursor.hasNext
+
+      def next(): SymbolPair = {
+        val symbolPair = new SymbolPair(cursor.overriding, cursor.overridden)
+        cursor.next()
+        skipIgnoredEntries()
+        symbolPair
+      }
+
+      private def skipIgnoredEntries(): Unit = {
+        while (cursor.hasNext && ignoreNextEntry)
+          cursor.next()
+      }
+
+      /** In 2.10 the overridingPairs.Cursor returns some false positives
+       *  on overriding members. The known false positives are always trying to
+       *  override the `isInstanceOf` method.
+       */
+      private def ignoreNextEntry: Boolean =
+        cursor.overriding.name == nme.isInstanceOf_
+    }
+
+    class SymbolPair(val low: Symbol, val high: Symbol)
+
+    /** To make this compat code compile in 2.11 as the fields `overriding` and
+     *  `overridden` are only present in 2.10.
+     */
+    private implicit class Cursor210toCursor211(cursor: overridingPairs.Cursor) {
+      def overriding: Symbol = sys.error("infinite loop in Compat")
+      def overridden: Symbol = sys.error("infinite loop in Compat")
+    }
+  }
+
   // ErasedValueType has a different encoding
 
   implicit final class ErasedValueTypeCompat(self: global.ErasedValueType) {

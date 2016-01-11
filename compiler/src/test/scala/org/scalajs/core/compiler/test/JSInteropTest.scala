@@ -764,4 +764,365 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def scalaJSDefinedJSNameOverrideWarnings: Unit = {
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      override def bar() = 1
+    }
+    """.hasNoWarns
+
+    """
+    @ScalaJSDefined
+    trait A extends js.Object {
+      @JSName("foo")
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName("foo")
+      override def bar() = 1
+    }
+    """.hasNoWarns
+
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName("foo")
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName("foo")
+      override def bar() = 1
+    }
+    """.hasNoWarns
+
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName("foo")
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      @JSName("baz")
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:13: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'baz'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'foo'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName("foo")
+      def bar(): Int
+    }
+    @ScalaJSDefined
+    class B extends A {
+      override def bar() = 1
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): Int in class B with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Int in class A with JSName 'foo'
+      |
+      |      override def bar() = 1
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      @JSName("foo")
+      def bar(): Object
+    }
+    @ScalaJSDefined
+    abstract class B extends A {
+      override def bar(): String
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def bar() = "1"
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class B with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'foo'
+      |
+      |      override def bar(): String
+      |                   ^
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class C with JSName 'bar'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'foo'
+      |
+      |      override def bar() = "1"
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    abstract class A extends js.Object {
+      def bar(): Object
+    }
+    @ScalaJSDefined
+    abstract class B extends A {
+      @JSName("foo")
+      override def bar(): String
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def bar() = "1"
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class B with JSName 'foo'
+      |    is conflicting with
+      |def bar(): Object in class A with JSName 'bar'
+      |
+      |      override def bar(): String
+      |                   ^
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def bar(): String in class C with JSName 'bar'
+      |    is conflicting with
+      |override def bar(): String in class B with JSName 'foo'
+      |
+      |      override def bar() = "1"
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      def foo: Int = 5
+    }
+    @ScalaJSDefined
+    trait B extends A {
+      @JSName("bar")
+      def foo: Int
+    }
+    @ScalaJSDefined
+    class C extends B
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in class A with JSName 'foo'
+      |    is conflicting with
+      |def foo: Int in trait B with JSName 'bar'
+      |
+      |      def foo: Int
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A extends js.Object {
+      @JSName("bar")
+      def foo: Int = 5
+    }
+    @ScalaJSDefined
+    trait B extends A {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    class C extends B
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in class A with JSName 'bar'
+      |    is conflicting with
+      |def foo: Int in trait B with JSName 'foo'
+      |
+      |      def foo: Int
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      @JSName("bar")
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    class B extends A[Int] {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in class A with JSName 'bar'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    trait A[T] extends js.Object {
+      @JSName("bar")
+      def foo(x: T): T
+    }
+    @ScalaJSDefined
+    class B extends A[Int] {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait A with JSName 'bar'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      @JSName("bar")
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    trait B extends A[Int] {
+      def foo(x: Int): Int
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo(x: Int): Int in class A with JSName 'bar'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'foo'
+      |
+      |      def foo(x: Int): Int
+      |          ^
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in class A with JSName 'bar'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    class A[T] extends js.Object {
+      def foo(x: T): T = x
+    }
+    @ScalaJSDefined
+    trait B extends A[Int] {
+      @JSName("bar")
+      def foo(x: Int): Int
+    }
+    @ScalaJSDefined
+    class C extends B {
+      override def foo(x: Int): Int = x
+    }
+    """ hasWarns
+    """
+      |newSource1.scala:12: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo(x: Int): Int in class A with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'bar'
+      |
+      |      def foo(x: Int): Int
+      |          ^
+      |newSource1.scala:16: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |    is conflicting with
+      |def foo(x: Int): Int in trait B with JSName 'bar'
+      |
+      |      override def foo(x: Int): Int = x
+      |                   ^
+    """
+
+    """
+    @ScalaJSDefined
+    trait A extends js.Object {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait B extends js.Object {
+      @JSName("bar")
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait C extends A with B
+    """ hasWarns
+    """
+      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in trait B with JSName 'bar'
+      |    is conflicting with
+      |def foo: Int in trait A with JSName 'foo'
+      |
+      |    trait C extends A with B
+      |          ^
+    """
+
+    """
+    @ScalaJSDefined
+    trait A extends js.Object {
+      def foo: Int
+    }
+    @ScalaJSDefined
+    trait B extends js.Object {
+      @JSName("bar")
+      def foo: Int
+    }
+    @ScalaJSDefined
+    abstract class C extends A with B
+    """ hasWarns
+    """
+      |newSource1.scala:15: warning: A member of a JS class is overriding another member with a different JS name.
+      |
+      |def foo: Int in trait B with JSName 'bar'
+      |    is conflicting with
+      |def foo: Int in trait A with JSName 'foo'
+      |
+      |    abstract class C extends A with B
+      |                   ^
+    """
+  }
+
 }

@@ -590,6 +590,33 @@ abstract class PrepJSInterop extends plugins.PluginComponent
       if (shouldCheckLiterals)
         checkJSNameLiteral(sym)
 
+      // Check for overrides with different JS names - issue #1983
+      for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
+        val low = overridingPair.low
+        val high = overridingPair.high
+        if (jsInterop.jsNameOf(low) != jsInterop.jsNameOf(high)) {
+          val pos = {
+            if (sym == low.owner) low.pos
+            else if (sym == high.owner) high.pos
+            else sym.pos
+          }
+
+          val msg = {
+            def memberDefString(membSym: Symbol) = {
+              membSym.defStringSeenAs(sym.thisType.memberType(membSym)) +
+              membSym.locationString + " with JSName '" +
+              jsInterop.jsNameOf(membSym) + '\''
+            }
+            "A member of a JS class is overriding another member with a different JS name.\n\n" +
+            memberDefString(low) + "\n" +
+            "    is conflicting with\n" +
+            memberDefString(high) + "\n"
+          }
+
+          reporter.warning(pos, msg)
+        }
+      }
+
       val kind = {
         if (!isJSNative) {
           if (sym.isModuleClass) OwnerKind.JSMod
