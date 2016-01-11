@@ -401,35 +401,14 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noDefaultOrRepeatedParam: Unit = {
+  def noDefault: Unit = {
     """
     @ScalaJSDefined
     class A(x: Int, y: Int = 4) extends js.Object
-
-    @ScalaJSDefined
-    class B(x: Int, args: Int*) extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Implementation restriction: the constructor of a Scala.js-defined JS classes cannot have default parameters nor repeated parameters.
+      |newSource1.scala:6: error: Implementation restriction: the constructor of a Scala.js-defined JS classes cannot have default parameters.
       |    class A(x: Int, y: Int = 4) extends js.Object
-      |          ^
-      |newSource1.scala:9: error: Implementation restriction: the constructor of a Scala.js-defined JS classes cannot have default parameters nor repeated parameters.
-      |    class B(x: Int, args: Int*) extends js.Object
-      |          ^
-    """
-  }
-
-  @Test
-  def noSecondaryCtor: Unit = {
-    """
-    @ScalaJSDefined
-    class A(x: Int, y: Int) extends js.Object {
-      def this(x: Int) = this(x, 5)
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Implementation restriction: Scala.js-defined JS classes cannot have secondary constructors
-      |      def this(x: Int) = this(x, 5)
       |          ^
     """
   }

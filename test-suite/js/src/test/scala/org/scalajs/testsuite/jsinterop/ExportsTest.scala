@@ -322,6 +322,20 @@ object ExportsTest extends JasmineTest with ExpectExceptions {
       expect(result).toEqual(7)
     }
 
+    it("should overload on boxed value classes as parameters") {
+      class Foo {
+        @JSExport
+        def foo(x: String): Int = x.length
+        @JSExport
+        def foo(x: SomeValueClass): Int = x.i
+      }
+
+      val foo = (new Foo).asInstanceOf[js.Dynamic]
+      val valueCls = new SomeValueClass(7)
+      expect(foo.foo(valueCls.asInstanceOf[js.Any])).toEqual(7)
+      expect(foo.foo("hello")).toEqual(5)
+    }
+
     it("should offer exports for overridden methods with refined return type") {
       class A
       class B extends A

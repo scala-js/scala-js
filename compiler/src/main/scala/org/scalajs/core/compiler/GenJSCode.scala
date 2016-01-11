@@ -649,29 +649,341 @@ abstract class GenJSCode extends plugins.PluginComponent
         constructorTrees: List[DefDef]): js.Tree = {
       implicit val pos = classSym.pos
 
-      val (primaryCtorTree :: Nil, secondaryCtorTrees) =
-        constructorTrees.partition(_.symbol.isPrimaryConstructor)
-
       // Implementation restriction
-      val sym = primaryCtorTree.symbol
+      val syms = constructorTrees.map(_.symbol)
       val hasBadParam = enteringPhase(currentRun.uncurryPhase) {
-        sym.paramss.flatten.exists(p => p.hasDefault || isRepeated(p))
+        syms.exists(_.paramss.flatten.exists(p => p.hasDefault))
       }
       if (hasBadParam) {
         reporter.error(pos,
             "Implementation restriction: the constructor of a " +
-            "Scala.js-defined JS classes cannot have default parameters nor " +
-            "repeated parameters.")
+            "Scala.js-defined JS classes cannot have default parameters.")
       }
 
-      // Implementation restriction
-      for (tree <- secondaryCtorTrees) {
-        reporter.error(tree.pos,
-            "Implementation restriction: Scala.js-defined JS classes cannot " +
-            "have secondary constructors")
+      withNewLocalNameScope {
+        val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
+          genMethodWithCurrentLocalNameScope(tree)
+        }
+
+        val dispatch =
+          genJSConstructorExport(constructorTrees.map(_.symbol))
+        val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
+            dispatchResolution) = dispatch
+
+        val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
+
+        val overloadIdent = freshLocalIdent("overload")
+
+        // Section containing the overload resolution and casts of parameters
+        val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
+            overloadIdent, dispatchResolution)
+
+        /* Section containing all the code executed before the call to `this`
+         * for every secondary constructor.
+         */
+        val prePrimaryCtorBody =
+          jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
+
+        val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
+
+        /* Section containing all the code executed after the call to this for
+         * every secondary constructor.
+         */
+        val postPrimaryCtorBody =
+          jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
+
+        val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
+            primaryCtorBody :: postPrimaryCtorBody :: Nil)
+
+        js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
+            newBody)(dispatch.optimizerHints, None)
+      }
+    }
+
+    private class ConstructorTree(val overrideNum: Int, val method: js.MethodDef,
+        val subConstructors: List[ConstructorTree]) {
+
+      lazy val overrideNumBounds: (Int, Int) =
+        if (subConstructors.isEmpty) (overrideNum, overrideNum)
+        else (subConstructors.head.overrideNumBounds._1, overrideNum)
+
+      def get(methodName: String): Option[ConstructorTree] = {
+        if (methodName == this.method.name.name) {
+          Some(this)
+        } else {
+          subConstructors.iterator.map(_.get(methodName)).collectFirst {
+            case Some(node) => node
+          }
+        }
       }
 
-      genMethod(primaryCtorTree).get
+      def getParamRefs(implicit pos: Position): List[js.VarRef] =
+        method.args.map(_.ref)
+
+      def getAllParamDefsAsVars(implicit pos: Position): List[js.VarDef] = {
+        val localDefs = method.args.map { pDef =>
+          js.VarDef(pDef.name, pDef.ptpe, mutable = true, jstpe.zeroOf(pDef.ptpe))
+        }
+        localDefs ++ subConstructors.flatMap(_.getAllParamDefsAsVars)
+      }
+    }
+
+    private class JSConstructorBuilder(root: ConstructorTree) {
+
+      def primaryCtorBody: js.Tree = root.method.body
+
+      def hasSubConstructors: Boolean = root.subConstructors.nonEmpty
+
+      def getOverrideNum(methodName: String): Int =
+        root.get(methodName).fold(-1)(_.overrideNum)
+
+      def getParamRefsFor(methodName: String)(implicit pos: Position): List[js.VarRef] =
+        root.get(methodName).fold(List.empty[js.VarRef])(_.getParamRefs)
+
+      def getAllParamDefsAsVars(implicit pos: Position): List[js.VarDef] =
+        root.getAllParamDefsAsVars
+
+      def mkPrePrimaryCtorBody(overrideNumIdent: js.Ident)(
+          implicit pos: Position): js.Tree = {
+        val overrideNumRef = js.VarRef(overrideNumIdent)(jstpe.IntType)
+        mkSubPreCalls(root, overrideNumRef)
+      }
+
+      def mkPostPrimaryCtorBody(overrideNumIdent: js.Ident)(
+          implicit pos: Position): js.Tree = {
+        val overrideNumRef = js.VarRef(overrideNumIdent)(jstpe.IntType)
+        js.Block(mkSubPostCalls(root, overrideNumRef))
+      }
+
+      private def mkSubPreCalls(constructorTree: ConstructorTree,
+          overrideNumRef: js.VarRef)(implicit pos: Position): js.Tree = {
+        val overrideNumss = constructorTree.subConstructors.map(_.overrideNumBounds)
+        val paramRefs = constructorTree.getParamRefs
+        val bodies = constructorTree.subConstructors.map { constructorTree =>
+          mkPrePrimaryCtorBodyOnSndCtr(constructorTree, overrideNumRef, paramRefs)
+        }
+        overrideNumss.zip(bodies).foldRight[js.Tree](js.Skip()) {
+          case ((numBounds, body), acc) =>
+            val cond = mkOverrideNumsCond(overrideNumRef, numBounds)
+            js.If(cond, body, acc)(jstpe.BooleanType)
+        }
+      }
+
+      private def mkPrePrimaryCtorBodyOnSndCtr(constructorTree: ConstructorTree,
+          overrideNumRef: js.VarRef, outputParams: List[js.VarRef])(
+          implicit pos: Position): js.Tree = {
+        val subCalls =
+          mkSubPreCalls(constructorTree, overrideNumRef)
+
+        val preSuperCall = {
+          constructorTree.method.body match {
+            case js.Block(stats) =>
+              val beforeSuperCall = stats.takeWhile {
+                case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
+                case _                         => true
+              }
+              val superCallParams = stats.collectFirst {
+                case js.ApplyStatic(_, mtd, js.This() :: args)
+                    if ir.Definitions.isConstructorName(mtd.name) =>
+                  zipMap(outputParams, args)(js.Assign(_, _))
+              }.getOrElse(Nil)
+
+              beforeSuperCall ::: superCallParams
+
+            case js.ApplyStatic(_, mtd, js.This() :: args)
+                if ir.Definitions.isConstructorName(mtd.name) =>
+              zipMap(outputParams, args)(js.Assign(_, _))
+
+            case _ => Nil
+          }
+        }
+
+        js.Block(subCalls :: preSuperCall)
+      }
+
+      private def mkSubPostCalls(constructorTree: ConstructorTree,
+          overrideNumRef: js.VarRef)(implicit pos: Position): js.Tree = {
+        val overrideNumss = constructorTree.subConstructors.map(_.overrideNumBounds)
+        val bodies = constructorTree.subConstructors.map { ct =>
+          mkPostPrimaryCtorBodyOnSndCtr(ct, overrideNumRef)
+        }
+        overrideNumss.zip(bodies).foldRight[js.Tree](js.Skip()) {
+          case ((numBounds, js.Skip()), acc) => acc
+
+          case ((numBounds, body), acc) =>
+            val cond = mkOverrideNumsCond(overrideNumRef, numBounds)
+            js.If(cond, body, acc)(jstpe.BooleanType)
+        }
+      }
+
+      private def mkPostPrimaryCtorBodyOnSndCtr(constructorTree: ConstructorTree,
+          overrideNumRef: js.VarRef)(implicit pos: Position): js.Tree = {
+        val postSuperCall = {
+          constructorTree.method.body match {
+            case js.Block(stats) =>
+              stats.dropWhile {
+                case js.ApplyStatic(_, mtd, _) => !ir.Definitions.isConstructorName(mtd.name)
+                case _                         => true
+              }.tail
+
+            case _ => Nil
+          }
+        }
+        js.Block(postSuperCall :+ mkSubPostCalls(constructorTree, overrideNumRef))
+      }
+
+      private def mkOverrideNumsCond(numRef: js.VarRef,
+          numBounds: (Int, Int))(implicit pos: Position) = numBounds match {
+        case (lo, hi) if lo == hi =>
+          js.BinaryOp(js.BinaryOp.===, js.IntLiteral(lo), numRef)
+
+        case (lo, hi) if lo == hi - 1 =>
+          val lhs = js.BinaryOp(js.BinaryOp.===, numRef, js.IntLiteral(lo))
+          val rhs = js.BinaryOp(js.BinaryOp.===, numRef, js.IntLiteral(hi))
+          js.If(lhs, js.BooleanLiteral(true), rhs)(jstpe.BooleanType)
+
+        case (lo, hi) =>
+          val lhs = js.BinaryOp(js.BinaryOp.Num_<=, js.IntLiteral(lo), numRef)
+          val rhs = js.BinaryOp(js.BinaryOp.Num_<=, numRef, js.IntLiteral(hi))
+          js.BinaryOp(js.BinaryOp.Boolean_&, lhs, rhs)
+          js.If(lhs, rhs, js.BooleanLiteral(false))(jstpe.BooleanType)
+      }
+    }
+
+    private def zipMap[T, U, V](xs: List[T], ys: List[U])(
+        f: (T, U) => V): List[V] = {
+      for ((x, y) <- xs zip ys) yield f(x, y)
+    }
+
+    /** mkOverloadSelection return a list of `stats` with that starts with:
+     *  1) The definition for the local variable that will hold the overload
+     *     resolution number.
+     *  2) The definitions of all local variables that are used as parameters
+     *     in all the constructors.
+     *  3) The overload resolution match/if statements. For each overload the
+     *     overload number is assigned and the parameters are cast and assigned
+     *     to their corresponding variables.
+     */
+    private def mkOverloadSelection(jsConstructorBuilder: JSConstructorBuilder,
+        overloadIdent: js.Ident, dispatchResolution: js.Tree)(
+        implicit pos: Position): List[js.Tree]= {
+      if (!jsConstructorBuilder.hasSubConstructors) {
+        dispatchResolution match {
+          /* Dispatch to constructor with no arguments.
+           * Contains trivial parameterless call to the constructor.
+           */
+          case js.ApplyStatic(_, mtd, js.This() :: Nil)
+              if ir.Definitions.isConstructorName(mtd.name) =>
+            Nil
+
+          /* Dispatch to constructor with at least one argument.
+           * Where js.Block's stats.init corresponds to the parameter casts and
+           * js.Block's stats.last contains the call to the constructor.
+           */
+          case js.Block(stats) =>
+            val js.ApplyStatic(_, method, _) = stats.last
+            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
+            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef])
+            zipMap(refs, paramCasts) { (ref, paramCast) =>
+              js.VarDef(ref.ident, ref.tpe, mutable = false, paramCast.rhs)
+            }
+        }
+      } else {
+        val overloadRef = js.VarRef(overloadIdent)(jstpe.IntType)
+
+        /* transformDispatch takes the body of the method generated by
+         * `genJSConstructorExport` and transform it recursively.
+         */
+        def transformDispatch(tree: js.Tree): js.Tree = tree match {
+          /* Dispatch to constructor with no arguments.
+           * Contains trivial parameterless call to the constructor.
+           */
+          case js.ApplyStatic(_, method, js.This() :: Nil)
+              if ir.Definitions.isConstructorName(method.name) =>
+            js.Assign(overloadRef,
+              js.IntLiteral(jsConstructorBuilder.getOverrideNum(method.name)))
+
+          /* Dispatch to constructor with at least one argument.
+           * Where js.Block's stats.init corresponds to the parameter casts and
+           * js.Block's stats.last contains the call to the constructor.
+           */
+          case js.Block(stats) =>
+            val js.ApplyStatic(_, method, _) = stats.last
+
+            val num = jsConstructorBuilder.getOverrideNum(method.name)
+            val overloadAssign = js.Assign(overloadRef, js.IntLiteral(num))
+
+            val refs = jsConstructorBuilder.getParamRefsFor(method.name)
+            val paramCasts = stats.init.map(_.asInstanceOf[js.VarDef].rhs)
+            val parameterAssigns = zipMap(refs, paramCasts)(js.Assign(_, _))
+
+            js.Block(overloadAssign :: parameterAssigns)
+
+          // Parameter count resolution
+          case js.Match(selector, cases, default) =>
+            val newCases = cases.map {
+              case (literals, body) => (literals, transformDispatch(body))
+            }
+            val newDefault = transformDispatch(default)
+            js.Match(selector, newCases, newDefault)(tree.tpe)
+
+          // Parameter type resolution
+          case js.If(cond, thenp, elsep) =>
+            js.If(cond, transformDispatch(thenp),
+                transformDispatch(elsep))(tree.tpe)
+
+          // Throw(StringLiteral(No matching overload))
+          case tree: js.Throw =>
+            tree
+        }
+
+        val newDispatchResolution = transformDispatch(dispatchResolution)
+        val allParamDefsAsVars = jsConstructorBuilder.getAllParamDefsAsVars
+        val overrideNumDef =
+          js.VarDef(overloadIdent, jstpe.IntType, mutable = true, js.IntLiteral(0))
+
+        overrideNumDef :: allParamDefsAsVars ::: newDispatchResolution :: Nil
+      }
+    }
+
+    private def mkJSConstructorBuilder(ctors: List[js.MethodDef])(
+        implicit pos: Position): JSConstructorBuilder = {
+      def findCtorForwarderCall(tree: js.Tree): String = tree match {
+        case js.ApplyStatic(_, method, js.This() :: _)
+            if ir.Definitions.isConstructorName(method.name) =>
+          method.name
+
+        case js.Block(stats) =>
+          stats.collectFirst {
+            case js.ApplyStatic(_, method, js.This() :: _)
+                if ir.Definitions.isConstructorName(method.name) =>
+              method.name
+          }.get
+      }
+
+      val (primaryCtor :: Nil, secondaryCtors) = ctors.partition {
+        _.body match {
+          case js.Block(stats) =>
+            stats.exists(_.isInstanceOf[js.JSSuperConstructorCall])
+
+          case _: js.JSSuperConstructorCall => true
+          case _                            => false
+        }
+      }
+
+      val ctorToChildren = secondaryCtors.map { ctor =>
+        findCtorForwarderCall(ctor.body) -> ctor
+      }.groupBy(_._1).mapValues(_.map(_._2)).withDefaultValue(Nil)
+
+      var overrideNum = -1
+      def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
+        val methodName = method.name.name
+        val subCtrTrees = ctorToChildren(methodName).map(mkConstructorTree)
+        overrideNum += 1
+        new ConstructorTree(overrideNum, method, subCtrTrees)
+      }
+
+      new JSConstructorBuilder(mkConstructorTree(primaryCtor))
     }
 
     // Generate a method -------------------------------------------------------
@@ -720,9 +1032,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         val isJSClassConstructor =
           sym.isClassConstructor && isScalaJSDefinedJSClass(currentClassSym)
 
-        val methodName: js.PropertyName =
-          if (isJSClassConstructor) js.StringLiteral("constructor")
-          else encodeMethodSym(sym)
+        val methodName: js.PropertyName = encodeMethodSym(sym)
 
         def jsParams = for (param <- params) yield {
           implicit val pos = param.pos
@@ -793,12 +1103,11 @@ abstract class GenJSCode extends plugins.PluginComponent
             val methodDef = {
               if (isJSClassConstructor) {
                 val body0 = genStat(rhs)
-                val body1 = moveAllStatementsAfterSuperConstructorCall(body0)
-                val (patchedParams, patchedBody) =
-                  patchFunBodyWithBoxes(sym, jsParams, body1)
+                val body1 =
+                  if (!sym.isPrimaryConstructor) body0
+                  else moveAllStatementsAfterSuperConstructorCall(body0)
                 js.MethodDef(static = false, methodName,
-                    patchedParams, jstpe.NoType, patchedBody)(
-                    optimizerHints, None)
+                    jsParams, jstpe.NoType, body1)(optimizerHints, None)
               } else if (sym.isClassConstructor) {
                 js.MethodDef(static = false, methodName,
                     jsParams, jstpe.NoType,
