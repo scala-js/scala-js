@@ -480,7 +480,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     if (_hashCode != 0) {
       _hashCode
     } else {
-      for (i <- 0 until digits.length) {
+      for (i <- 0 until numberLength) {
         _hashCode = _hashCode * 33 + digits(i)
       }
       _hashCode = _hashCode * sign
