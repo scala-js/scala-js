@@ -14,8 +14,6 @@ import org.junit.Assert._
 
 import BaseCharsetTest._
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
-
 class USASCIITest extends BaseCharsetTest(Charset.forName("US-ASCII")) {
   @Test def decode(): Unit = {
     // Simple tests
@@ -26,14 +24,9 @@ class USASCIITest extends BaseCharsetTest(Charset.forName("US-ASCII")) {
     testDecode(bb"00 01 0a 10 20")(cb"\u0000\u0001\u000a\u0010 ")
     testDecode(bb"7f 7f")(cb"\u007f\u007f")
 
-    if (!executingInJVM) {
-      // Bit 7 is ignored, giving the same results as above
-      testDecode(bb"c8 e5 ec ec ef")(cb"Hello")
-      testDecode(bb"c2 ef ee ea ef f5 f2")(cb"Bonjour")
-
-      testDecode(bb"80 81 8a 90 a0")(cb"\u0000\u0001\u000a\u0010 ")
-      testDecode(bb"ff ff")(cb"\u007f\u007f")
-    }
+    // Bit 7 on is an error - #2156
+    testDecode(bb"48 e5 ec 6c ef")(cb"H", Malformed(1), Malformed(1), cb"l", Malformed(1))
+    testDecode(bb"80 ff")(Malformed(1), Malformed(1))
   }
 
   @Test def encode(): Unit = {
@@ -88,9 +81,9 @@ class USASCIITest extends BaseCharsetTest(Charset.forName("US-ASCII")) {
     assertTrue(encoder.isLegalReplacement(Array(0x00.toByte)))
     assertTrue(encoder.isLegalReplacement(Array(0x41.toByte)))
     assertTrue(encoder.isLegalReplacement(Array('?'.toByte)))
-    if (!executingInJVM) {
-      assertTrue(encoder.isLegalReplacement(Array(0x80.toByte)))
-      assertTrue(encoder.isLegalReplacement(Array(0xff.toByte)))
-    }
+
+    // Bit 7 on is an error - #2156
+    assertFalse(encoder.isLegalReplacement(Array(0x80.toByte)))
+    assertFalse(encoder.isLegalReplacement(Array(0xff.toByte)))
   }
 }
