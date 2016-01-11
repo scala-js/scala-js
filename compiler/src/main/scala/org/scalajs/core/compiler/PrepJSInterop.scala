@@ -458,7 +458,11 @@ abstract class PrepJSInterop extends plugins.PluginComponent
 
       val isJSNative = !sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
-      if (isJSNative && !isJSAnonFun &&
+      if (sym.isPackageObjectClass) {
+        reporter.warning(implDef.pos,
+            "Package objects inheriting from js.Any are deprecated. " +
+            "Use a normal object instead.")
+      } else if (isJSNative && !isJSAnonFun &&
           !sym.hasAnnotation(JSNativeAnnotation)) {
         reporter.warning(implDef.pos,
             "Classes, traits and objects inheriting from js.Any should be " +
