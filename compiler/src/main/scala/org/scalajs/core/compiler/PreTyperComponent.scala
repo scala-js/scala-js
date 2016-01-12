@@ -60,12 +60,14 @@ import nsc._
  *
  *  @author Nicolas Stucki
  */
-abstract class PreTyperComponent
-    extends plugins.PluginComponent with transform.Transform with Compat210Component {
+abstract class PreTyperComponent extends plugins.PluginComponent
+    with transform.Transform with PluginComponent210Compat {
 
   import global._
 
-  val phaseName = "jspretyper"
+  val phaseName: String = "jspretyper"
+  override def description: String =
+    "capture pre-typer only tree info (for Scala.js)"
 
   override protected def newTransformer(unit: CompilationUnit): Transformer =
     new PreTyperTransformer(unit)

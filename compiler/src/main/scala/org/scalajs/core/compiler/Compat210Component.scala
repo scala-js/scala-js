@@ -159,3 +159,8 @@ object Compat210Component {
     }
   }
 }
+
+trait PluginComponent210Compat extends Compat210Component {
+  // Starting 2.11.x, we need to override the default description.
+  def description: String
+}
