@@ -521,7 +521,7 @@ object Serializers {
     }
 
     def writeReferenceType(tpe: ReferenceType): Unit =
-      writeType(tpe)
+      writeType(tpe.asInstanceOf[Type])
 
     def writePropertyName(name: PropertyName): Unit = {
       name match {

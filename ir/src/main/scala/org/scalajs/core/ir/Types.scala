@@ -15,7 +15,19 @@ import Trees._
 
 object Types {
 
-  /** Type of an expression in the IR. */
+  /** Type of an term (expression or statement) in the IR.
+   *
+   *  There is a many-to-one relationship from [[ReferenceType]]s to types,
+   *  because:
+   *
+   *  - `scala.Byte`, `scala.Short` and `scala.Int` collapse to [[IntType]]
+   *  - `java.lang.Object` and raw JS types all collapse to [[AnyType]]
+   *
+   *  In fact, there are two `Type`s that do not have any real equivalent in
+   *  reference types: [[StringType]] and [[UndefType]], as they refer to the
+   *  non-null variants of `java.lang.String` and `scala.runtime.BoxedUnit`,
+   *  respectively.
+   */
   abstract sealed class Type {
     def show(): String = {
       val writer = new java.io.StringWriter
@@ -83,14 +95,29 @@ object Types {
    */
   case object NullType extends Type
 
-  /** Reference types (allowed for classOf[], is/asInstanceOf[]). */
-  sealed abstract class ReferenceType extends Type
+  /** Reference types (allowed for classOf[], is/asInstanceOf[]).
+   *
+   *  A `ReferenceType` has exactly the same level of precision as a JVM type.
+   *  There is a one-to-one relationship between a `ReferenceType` and an
+   *  instance of `java.lang.Class` at run-time. This means that:
+   *
+   *  - All primitive types have their reference type (including `scala.Byte`
+   *    and `scala.Short`), and they are different from their boxed versions.
+   *  - Raw JS types are not erased to `any`
+   *  - Array types are like on the JVM
+   *
+   *  A `ReferenceType` therefore uniquely identifies a `classOf[T]`. It is
+   *  also the reference types that are used in method signatures, and which
+   *  therefore dictate JVM/IR overloading.
+   */
+  sealed trait ReferenceType
 
   /** Class (or interface) type. */
-  final case class ClassType(className: String) extends ReferenceType
+  final case class ClassType(className: String) extends Type with ReferenceType
 
   /** Array type. */
-  final case class ArrayType(baseClassName: String, dimensions: Int) extends ReferenceType
+  final case class ArrayType(baseClassName: String, dimensions: Int)
+      extends Type with ReferenceType
 
   object ArrayType {
     def apply(innerType: ReferenceType): ArrayType = innerType match {

@@ -473,13 +473,13 @@ object Printers {
         case IsInstanceOf(expr, cls) =>
           print(expr)
           print(".isInstanceOf[")
-          print(cls)
+          printRefType(cls)
           print(']')
 
         case AsInstanceOf(expr, cls) =>
           print(expr)
           print(".asInstanceOf[")
-          print(cls)
+          printRefType(cls)
           print(']')
 
         case Unbox(expr, charCode) =>
@@ -727,7 +727,7 @@ object Printers {
 
         case ClassOf(cls) =>
           print("classOf[")
-          print(cls)
+          printRefType(cls)
           print(']')
 
         // Specials
@@ -843,6 +843,9 @@ object Printers {
           print(s"<error, elem of class ${tree.getClass()}>")
       }
     }
+
+    def printRefType(tpe: ReferenceType): Unit =
+      print(tpe.asInstanceOf[Type])
 
     def print(tpe: Type): Unit = tpe match {
       case AnyType              => print("any")
