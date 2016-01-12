@@ -1384,6 +1384,9 @@ object Build extends sbt.Build {
           fork in Test := true,
           javaOptions in Test += "-Xmx1G",
 
+          // Override the dependency of partest - see #1889
+          dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value % "test",
+
           testFrameworks ++= {
             if (shouldPartest.value)
               Seq(new TestFramework("scala.tools.partest.scalajs.Framework"))
