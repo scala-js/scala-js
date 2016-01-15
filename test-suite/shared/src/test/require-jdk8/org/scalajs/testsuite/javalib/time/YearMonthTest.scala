@@ -16,14 +16,14 @@ class YearMonthTest extends TemporalTest[YearMonth] {
   val min = YearMonth.of(-999999999, 1)
   val max = YearMonth.of(999999999, 12)
   val janLastBC = YearMonth.of(0, 1)
-  val lastBC = YearMonth.of(0, 12)
-  val firstAC = YearMonth.of(1, 1)
+  val decLastBC = YearMonth.of(0, 12)
+  val janFirstAC = YearMonth.of(1, 1)
   val decFirstAC = YearMonth.of(1, 12)
   val someYearMonth = YearMonth.of(2015, 6)
   val febLeapYear = YearMonth.of(2016, 2)
   val febNonLeapYear = YearMonth.of(2014, 2)
 
-  val samples = Seq(min, max, janLastBC, lastBC, firstAC, decFirstAC,
+  val samples = Seq(min, max, janLastBC, decLastBC, janFirstAC, decFirstAC,
       someYearMonth, febLeapYear, febNonLeapYear)
 
   override def isSupported(field: ChronoField): Boolean =
@@ -60,14 +60,14 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertEquals(24193L, febLeapYear.getLong(PROLEPTIC_MONTH))
     assertEquals(24185L, someYearMonth.getLong(PROLEPTIC_MONTH))
 
-    assertEquals(1L, lastBC.getLong(YEAR_OF_ERA))
-    assertEquals(1L, firstAC.getLong(YEAR_OF_ERA))
+    assertEquals(1L, decLastBC.getLong(YEAR_OF_ERA))
+    assertEquals(1L, janFirstAC.getLong(YEAR_OF_ERA))
     assertEquals(0L, janLastBC.getLong(PROLEPTIC_MONTH))
-    assertEquals(11L, lastBC.getLong(PROLEPTIC_MONTH))
-    assertEquals(12L, firstAC.getLong(PROLEPTIC_MONTH))
+    assertEquals(11L, decLastBC.getLong(PROLEPTIC_MONTH))
+    assertEquals(12L, janFirstAC.getLong(PROLEPTIC_MONTH))
     assertEquals(23L, decFirstAC.getLong(PROLEPTIC_MONTH))
-    assertEquals(0L, lastBC.getLong(ERA))
-    assertEquals(1L, firstAC.getLong(ERA))
+    assertEquals(0L, decLastBC.getLong(ERA))
+    assertEquals(1L, janFirstAC.getLong(ERA))
   }
 
   @Test def isLeapYear(): Unit = {
@@ -162,7 +162,10 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertSame(max, max.withYear(999999999))
     assertEquals(YearMonth.of(-999999999, 12), max.withYear(-999999999))
 
-    assertEquals(YearMonth.of(1, 12), lastBC.withYear(1))
+    assertEquals(YearMonth.of(1, 1), janLastBC.withYear(1))
+    assertEquals(YearMonth.of(1, 12), decLastBC.withYear(1))
+    assertEquals(YearMonth.of(0, 1), janFirstAC.withYear(0))
+    assertEquals(YearMonth.of(0, 12), decFirstAC.withYear(0))
 
     for (ym <- samples) {
       expectThrows(classOf[DateTimeException], ym.withYear(Int.MinValue))
@@ -176,7 +179,10 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertSame(min, min.withMonth(1))
     assertSame(max, max.withMonth(12))
 
-    assertEquals(YearMonth.of(0, 1), lastBC.withMonth(1))
+    assertEquals(YearMonth.of(0, 12), janLastBC.withMonth(12))
+    assertEquals(YearMonth.of(0, 1), decLastBC.withMonth(1))
+    assertEquals(YearMonth.of(1, 12), janFirstAC.withMonth(12))
+    assertEquals(YearMonth.of(1, 1), decFirstAC.withMonth(1))
 
     for (ym <- samples) {
       expectThrows(classOf[DateTimeException], ym.withMonth(Int.MinValue))
@@ -222,10 +228,10 @@ class YearMonthTest extends TemporalTest[YearMonth] {
       assertSame(ym, ym.plusMonths(0))
     }
 
-    assertEquals(firstAC, lastBC.plusMonths(1))
+    assertEquals(janFirstAC, decLastBC.plusMonths(1))
     assertEquals(someYearMonth, janLastBC.plusMonths(24185))
-    assertEquals(firstAC, min.plusMonths(max.getLong(PROLEPTIC_MONTH) + 1))
-    assertEquals(firstAC, max.plusMonths(min.getLong(PROLEPTIC_MONTH) + 1))
+    assertEquals(janFirstAC, min.plusMonths(max.getLong(PROLEPTIC_MONTH) + 1))
+    assertEquals(janFirstAC, max.plusMonths(min.getLong(PROLEPTIC_MONTH) + 1))
 
     assertEquals(YearMonth.of(999999999, 12), min.plusMonths(23999999987L))
     assertEquals(YearMonth.of(-999999999, 1), max.plusMonths(-23999999987L))
@@ -261,7 +267,7 @@ class YearMonthTest extends TemporalTest[YearMonth] {
       assertSame(ym, ym.minusMonths(0))
     }
 
-    assertEquals(lastBC, firstAC.minusMonths(1))
+    assertEquals(decLastBC, janFirstAC.minusMonths(1))
     assertEquals(janLastBC, someYearMonth.minusMonths(24185))
 
     assertEquals(YearMonth.of(999999999, 12), min.minusMonths(-23999999987L))
@@ -303,12 +309,12 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertEquals(1999999L, min.until(max, MILLENNIA))
     assertEquals(1L, min.until(max, ERAS))
 
-    assertEquals(1L, janLastBC.until(firstAC, YEARS))
-    assertEquals(12L, janLastBC.until(firstAC, MONTHS))
+    assertEquals(1L, janLastBC.until(janFirstAC, YEARS))
+    assertEquals(12L, janLastBC.until(janFirstAC, MONTHS))
     assertEquals(1L, janLastBC.until(decFirstAC, YEARS))
     assertEquals(23L, janLastBC.until(decFirstAC, MONTHS))
-    assertEquals(0L, lastBC.until(firstAC, YEARS))
-    assertEquals(1L, lastBC.until(firstAC, MONTHS))
+    assertEquals(0L, decLastBC.until(janFirstAC, YEARS))
+    assertEquals(1L, decLastBC.until(janFirstAC, MONTHS))
 
     for {
       ym1 <- samples
@@ -368,25 +374,40 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertEquals("999999999-12", max.toString)
     assertEquals("-10000-01", YearMonth.of(-10000, 1).toString)
     assertEquals("10000-12", YearMonth.of(10000, 12).toString)
+    assertEquals("2015-06", someYearMonth.toString)
     assertEquals("0000-01", janLastBC.toString)
-    assertEquals("0000-12", lastBC.toString)
-    assertEquals("0001-01", firstAC.toString)
+    assertEquals("0000-12", decLastBC.toString)
+    assertEquals("0001-01", janFirstAC.toString)
     assertEquals("0001-12", decFirstAC.toString)
   }
 
   @Test def ofMonth(): Unit = {
+    val yearMonth = YearMonth.of(23, Month.JANUARY)
+    assertEquals(23, yearMonth.getYear)
+    assertEquals(1, yearMonth.getMonthValue)
+    assertEquals(Month.JANUARY, yearMonth.getMonth)
+
+    for (ym <- samples) {
+      assertEquals(ym, YearMonth.of(ym.getYear, ym.getMonth))
+    }
+
     expectThrows(classOf[NullPointerException], YearMonth.of(0, null))
     for (m <- Month.values()) {
       expectThrows(classOf[DateTimeException], YearMonth.of(Int.MinValue, m))
       expectThrows(classOf[DateTimeException], YearMonth.of(Int.MaxValue, m))
     }
-
-    for (ym <- samples) {
-      assertEquals(ym, YearMonth.of(ym.getYear, ym.getMonth))
-    }
   }
 
   @Test def of(): Unit = {
+    val yearMonth = YearMonth.of(293, 11)
+    assertEquals(293, yearMonth.getYear)
+    assertEquals(11, yearMonth.getMonthValue)
+    assertEquals(Month.NOVEMBER, yearMonth.getMonth)
+
+    for (ym <- samples) {
+      assertEquals(ym, YearMonth.of(ym.getYear, ym.getMonthValue))
+    }
+
     expectThrows(classOf[DateTimeException], YearMonth.of(Int.MinValue, 0))
     expectThrows(classOf[DateTimeException], YearMonth.of(Int.MaxValue, 0))
     expectThrows(classOf[DateTimeException], YearMonth.of(min.getYear, 0))
