@@ -397,7 +397,14 @@ class YearMonthTest extends TemporalTest[YearMonth] {
 
   @Test def now(): Unit = {
     val now = LocalDate.now()
-    assertEquals(YearMonth.of(now.getYear, now.getMonthValue), YearMonth.now)
+    val yearMonth = YearMonth.now()
+    if (yearMonth.getMonthValue != now.getMonthValue) {
+      println("Month changed in the middle of the test!")
+      val newNow = LocalDate.now()
+      assertEquals(newNow.getMonth, yearMonth.getMonth)
+      assertEquals(newNow.getMonthValue, yearMonth.getMonthValue)
+      assertEquals(newNow.getYear, yearMonth.getYear)
+    }
   }
 
   @Test def from(): Unit = {
