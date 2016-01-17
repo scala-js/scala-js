@@ -9,7 +9,7 @@
 
 package org.scalajs.core.tools.javascript
 
-object LongImpl {
+private[tools] object LongImpl {
   final val RuntimeLongClass = "sjsr_RuntimeLong"
   final val RuntimeLongModuleClass = "sjsr_RuntimeLong$"
 

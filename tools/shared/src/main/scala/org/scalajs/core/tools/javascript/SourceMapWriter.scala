@@ -20,7 +20,7 @@ import ir.Position
 import ir.Position._
 import ir.Utils
 
-object SourceMapWriter {
+private object SourceMapWriter {
   private val Base64Map =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
       "abcdefghijklmnopqrstuvwxyz" +

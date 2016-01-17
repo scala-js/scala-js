@@ -25,7 +25,7 @@ import org.mozilla.javascript.{Scriptable, Context}
  *  It is immensely useful, because it allows to load lazily only the scripts
  *  that are actually needed.
  */
-class LazyScalaJSScope private[rhino] (
+private[rhino] class LazyScalaJSScope(
     coreLib: ScalaJSCoreLib,
     globalScope: Scriptable,
     base: Scriptable,

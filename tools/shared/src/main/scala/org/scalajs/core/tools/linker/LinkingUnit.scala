@@ -49,9 +49,6 @@ object LinkingUnit {
     ): GlobalInfo = {
       new GlobalInfo(isParentDataAccessed)
     }
-
-    val SafeApproximation: GlobalInfo =
-      apply(true)
   }
 
 }

@@ -1023,7 +1023,7 @@ final class ScalaJSClassEmitter(
 
 }
 
-object ScalaJSClassEmitter {
+private object ScalaJSClassEmitter {
   private val ClassesWhoseDataReferToTheirInstanceTests = {
     Definitions.AncestorsOfHijackedClasses +
     Definitions.ObjectClass + Definitions.StringClass

@@ -33,7 +33,7 @@ private[closure] class ClosureAstBuilder(
 
 }
 
-private[closure] object ClosureAstBuilder {
+private object ClosureAstBuilder {
   // Dummy Source AST class
 
   private class ScalaJSSourceAst(root: Node) extends SourceAst {

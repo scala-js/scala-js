@@ -5,13 +5,13 @@ import org.scalajs.core.tools.io.IO
 /** A special [[java.lang.ClassLoader]] to load the Jetty 8 dependency of
  *  [[PhantomJSEnv]] in a private space.
  *
- *  It loads everything that belongs to [[JettyWebsocketManager]] itself (while
+ *  It loads everything that belongs to `JettyWebsocketManager` itself (while
  *  retrieving the requested class file from its parent.
  *  For all other classes, it first tries to load them from `jettyLoader`,
  *  which should only contain the Jetty 8 classpath.
  *  If this fails, it delegates to its parent.
  *
- *  The rationale is, that [[JettyWebsocketManager]] and its dependees can use
+ *  The rationale is, that `JettyWebsocketManager` and its dependees can use
  *  the classes on the Jetty 8 classpath, while they remain hidden from the rest
  *  of the Java world. This allows to load another version of Jetty in the same
  *  JVM for the rest of the project.

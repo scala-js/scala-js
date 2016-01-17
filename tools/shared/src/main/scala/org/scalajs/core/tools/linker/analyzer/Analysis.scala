@@ -20,6 +20,12 @@ import ir.ClassKind
 import ir.Infos
 import ir.Definitions.{decodeClassName, decodeMethodName}
 
+/** Reachability graph produced by the [[Analyzer]].
+ *
+ *  Warning: this trait is not meant to be extended by third-party libraries
+ *  and applications. Methods and/or fields can be added in subsequent
+ *  versions, possibly causing `LinkageError`s if you extend it.
+ */
 trait Analysis {
   import Analysis._
 
@@ -30,6 +36,12 @@ trait Analysis {
 
 object Analysis {
 
+  /** Class node in a reachability graph produced by the [[Analyzer]].
+   *
+   *  Warning: this trait is not meant to be extended by third-party libraries
+   *  and applications. Methods and/or fields can be added in subsequent
+   *  versions, possibly causing `LinkageError`s if you extend it.
+   */
   trait ClassInfo {
     def encodedName: String
     def kind: ClassKind
@@ -58,6 +70,12 @@ object Analysis {
     def displayName: String = decodeClassName(encodedName)
   }
 
+  /** Method node in a reachability graph produced by the [[Analyzer]].
+   *
+   *  Warning: this trait is not meant to be extended by third-party libraries
+   *  and applications. Methods and/or fields can be added in subsequent
+   *  versions, possibly causing `LinkageError`s if you extend it.
+   */
   trait MethodInfo {
     def owner: ClassInfo
     def encodedName: String

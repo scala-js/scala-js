@@ -40,8 +40,9 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
  *  @param considerPositions Should positions be considered when comparing tree
  *                           hashes
  */
-abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
-    considerPositions: Boolean) {
+abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
+    esLevel: ESLevel, considerPositions: Boolean) {
+
   import GenIncOptimizer._
 
   val symbolRequirements: SymbolRequirement = {
@@ -52,7 +53,7 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
     optional(callMethods(LongImpl.RuntimeLongClass, LongImpl.OptionalIntrinsicMethods))
   }
 
-  protected val CollOps: AbsCollOps
+  private[optimizer] val CollOps: AbsCollOps
 
   private var logger: Logger = _
 
@@ -67,26 +68,26 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   private val statics = CollOps.emptyParMap[String, StaticsNamespace]
   private val defaults = CollOps.emptyParMap[String, Defaults]
 
-  protected def getInterface(encodedName: String): InterfaceType
+  private[optimizer] def getInterface(encodedName: String): InterfaceType
 
   /** Schedule a method for processing in the PROCESS PASS */
-  protected def scheduleMethod(method: MethodImpl): Unit
+  private[optimizer] def scheduleMethod(method: MethodImpl): Unit
 
-  protected def newMethodImpl(owner: MethodContainer,
+  private[optimizer] def newMethodImpl(owner: MethodContainer,
       encodedName: String): MethodImpl
 
-  def findStaticsNamespace(encodedName: String): StaticsNamespace =
+  private def findStaticsNamespace(encodedName: String): StaticsNamespace =
     statics(encodedName)
-  def findClass(encodedName: String): Class =
+  private def findClass(encodedName: String): Class =
     classes(encodedName)
-  def findDefaults(encodedName: String): Defaults =
+  private def findDefaults(encodedName: String): Defaults =
     defaults(encodedName)
 
-  def getStaticsNamespace(encodedName: String): Option[StaticsNamespace] =
+  private def getStaticsNamespace(encodedName: String): Option[StaticsNamespace] =
     statics.get(encodedName)
-  def getClass(encodedName: String): Option[Class] =
+  private def getClass(encodedName: String): Option[Class] =
     classes.get(encodedName)
-  def getDefaults(encodedName: String): Option[Defaults] =
+  private def getDefaults(encodedName: String): Option[Defaults] =
     defaults.get(encodedName)
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
@@ -280,15 +281,15 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   /** Optimizer part: process all methods that need reoptimizing.
    *  PROCESS PASS ONLY. (This IS the process pass).
    */
-  protected def processAllTaggedMethods(): Unit
+  private[optimizer] def processAllTaggedMethods(): Unit
 
-  protected def logProcessingMethods(count: Int): Unit =
+  private[optimizer] def logProcessingMethods(count: Int): Unit =
     logger.debug(s"Inc. optimizer: Optimizing $count methods.")
 
   /** Base class for [[GenIncOptimizer.Class]] and
    *  [[GenIncOptimizer.StaticsNamespace]].
    */
-  abstract class MethodContainer(val encodedName: String,
+  private[optimizer] abstract class MethodContainer(val encodedName: String,
       val isStatic: Boolean) {
     def thisType: Type
 
@@ -362,7 +363,7 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
    *  maintains a list of its direct subclasses, so that the instances of
    *  [[Class]] form a tree of the class hierarchy.
    */
-  class Class(val superClass: Option[Class],
+  private[optimizer] class Class(val superClass: Option[Class],
       _encodedName: String) extends MethodContainer(
       _encodedName, isStatic = false) {
     if (encodedName == Definitions.ObjectClass) {
@@ -667,8 +668,10 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   }
 
   /** Namespace for static members of a class. */
-  class StaticsNamespace(_encodedName: String) extends MethodContainer(
+  private[optimizer] class StaticsNamespace(
+      _encodedName: String) extends MethodContainer(
       _encodedName, isStatic = true) {
+
     def thisType: Type = NoType
 
     override def toString(): String =
@@ -676,7 +679,7 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   }
 
   /** Default methods of an interface. */
-  class Defaults(_encodedName: String)
+  private[optimizer] class Defaults(_encodedName: String)
       extends MethodContainer(_encodedName, isStatic = false) {
 
     def thisType: Type = ClassType(encodedName)
@@ -686,7 +689,7 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   }
 
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
-  trait Unregisterable {
+  private[optimizer] trait Unregisterable {
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: MethodImpl): Unit
   }
@@ -697,7 +700,8 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
    *
    *  Fully concurrency safe unless otherwise noted.
    */
-  abstract class InterfaceType(val encodedName: String) extends Unregisterable {
+  private[optimizer] abstract class InterfaceType(
+      val encodedName: String) extends Unregisterable {
 
     override def toString(): String =
       s"intf $encodedName"
@@ -765,10 +769,11 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
    *  a method comment). However, the global state modifications are
    *  concurrency safe.
    */
-  abstract class MethodImpl(val owner: MethodContainer,
-      val encodedName: String) extends OptimizerCore.MethodImpl
-                                  with OptimizerCore.AbstractMethodID
-                                  with Unregisterable {
+  private[optimizer] abstract class MethodImpl(val owner: MethodContainer,
+      val encodedName: String)
+      extends OptimizerCore.MethodImpl with OptimizerCore.AbstractMethodID
+      with Unregisterable {
+
     private[this] var _deleted: Boolean = false
 
     var lastInVersion: Option[String] = None
@@ -911,8 +916,8 @@ abstract class GenIncOptimizer(semantics: Semantics, esLevel: ESLevel,
     def process(): Unit = if (!_deleted) {
       val rawOptimizedDef = new Optimizer().optimize(thisType, originalDef)
       lastOutVersion += 1
-      optimizedMethodDef =
-          rawOptimizedDef.copy(version = Some(lastOutVersion.toString))
+      optimizedMethodDef = new LinkedMember(rawOptimizedDef.info,
+          rawOptimizedDef.tree, Some(lastOutVersion.toString))
       resetTag()
     }
 
