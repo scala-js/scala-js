@@ -2,7 +2,6 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.logging._
@@ -12,7 +11,7 @@ import org.scalajs.jsenv._
 
 import scala.collection.mutable
 
-final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
+private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
 
   import FrameworkDetector._
 
@@ -64,8 +63,8 @@ final class FrameworkDetector(jsEnv: JSEnv, classpath: CompleteClasspath) {
     val vf = new MemVirtualJSFile("frameworkDetector.js").withContent(code)
     val console = new StoreConsole
 
-    val runner = jsEnv.jsRunner(classpath, vf, NullLogger, console)
-    runner.run()
+    val runner = jsEnv.jsRunner(vf)
+    runner.run(NullLogger, console)
 
     // Filter jsDependencies unexpected output
     val results = console.buf collect {

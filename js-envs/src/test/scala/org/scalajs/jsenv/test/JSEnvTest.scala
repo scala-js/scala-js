@@ -2,8 +2,7 @@ package org.scalajs.jsenv.test
 
 import org.scalajs.jsenv._
 
-import org.scalajs.core.tools.io.MemVirtualJSFile
-import org.scalajs.core.tools.classpath.CompleteClasspath
+import org.scalajs.core.tools.io.{VirtualJSFile, MemVirtualJSFile}
 import org.scalajs.core.tools.logging._
 
 import org.junit.Assert._
@@ -16,15 +15,14 @@ abstract class JSEnvTest {
 
   implicit class RunMatcher(codeStr: String) {
 
-    val emptyCP = CompleteClasspath.empty
-    val code    = new MemVirtualJSFile("testScript.js").withContent(codeStr)
+    val code = new MemVirtualJSFile("testScript.js").withContent(codeStr)
 
     def hasOutput(expectedOut: String): Unit = {
 
       val console = new StoreJSConsole()
       val logger  = new StoreLogger()
 
-      newJSEnv.jsRunner(emptyCP, code, logger, console).run()
+      newJSEnv.jsRunner(code).run(logger, console)
 
       val log = logger.getLog
       val hasBadLog = log exists {
@@ -40,7 +38,7 @@ abstract class JSEnvTest {
 
     def fails(): Unit = {
       try {
-        newJSEnv.jsRunner(emptyCP, code, NullLogger, NullJSConsole).run()
+        newJSEnv.jsRunner(code).run(NullLogger, NullJSConsole)
         assertTrue("Code snipped should fail", false)
       } catch {
         case e: Exception =>

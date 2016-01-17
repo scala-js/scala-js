@@ -129,8 +129,8 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
   settings(inConfig(Compile)(Seq(
     packageJSDependencies <<= packageJSDependencies.dependsOn(Def.task {
       // perform verifications on the ordering and deduplications
-      val cp = scalaJSPreLinkClasspath.value
-      val relPaths = cp.jsLibs.map(_.info.relPath)
+      val resolvedDeps = resolvedJSDependencies.value.data
+      val relPaths = resolvedDeps.map(_.info.relPath)
 
       assert(relPaths.toSet == Set(
           "META-INF/resources/webjars/mustachejs/0.8.2/mustache.js",
@@ -143,7 +143,7 @@ lazy val jsDependenciesTest = project.settings(versionSettings: _*).
           "js/customJQuery/jquery.js"),
           s"Bad set of relPathes: ${relPaths.toSet}")
 
-      val minifiedRelPaths = cp.jsLibs.flatMap(_.info.relPathMinified)
+      val minifiedRelPaths = resolvedDeps.flatMap(_.info.relPathMinified)
 
       assert(minifiedRelPaths.toSet == Set(
           "META-INF/resources/webjars/immutable/3.4.0/immutable.min.js"),

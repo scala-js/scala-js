@@ -64,7 +64,7 @@ class NodeJSTest extends TimeoutComTests {
 
     val n = 20
 
-    com.start()
+    start(com)
 
     for (_ <- 1 to n)
       com.send("ping")

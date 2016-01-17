@@ -31,7 +31,9 @@ final class OptimizerOptions private (
     /** Whether to pretty-print in fullOptJS */
     val prettyPrintFullOptJS: Boolean = false,
     /** Perform expensive checks of the sanity of the Scala.js IR */
-    val checkScalaJSIR: Boolean = false
+    val checkScalaJSIR: Boolean = false,
+    /** Use Google Closure Backend */
+    val useClosureCompiler: Boolean = false
 ) {
 
   def withBypassLinkingErrors(bypassLinkingErrors: Boolean): OptimizerOptions =
@@ -52,13 +54,18 @@ final class OptimizerOptions private (
   def withCheckScalaJSIR(checkScalaJSIR: Boolean): OptimizerOptions =
     copy(checkScalaJSIR = checkScalaJSIR)
 
+  def withUseClosureCompiler(useClosureCompiler: Boolean): OptimizerOptions =
+    copy(useClosureCompiler = useClosureCompiler)
+
   private def copy(bypassLinkingErrors: Boolean = bypassLinkingErrors,
       parallel: Boolean = parallel, batchMode: Boolean = batchMode,
       disableOptimizer: Boolean = disableOptimizer,
       prettyPrintFullOptJS: Boolean = prettyPrintFullOptJS,
-      checkScalaJSIR: Boolean = checkScalaJSIR) = {
+      checkScalaJSIR: Boolean = checkScalaJSIR,
+      useClosureCompiler: Boolean = useClosureCompiler) = {
     new OptimizerOptions(bypassLinkingErrors, parallel, batchMode,
-        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR)
+        disableOptimizer, prettyPrintFullOptJS, checkScalaJSIR,
+        useClosureCompiler)
   }
 
   override def toString: String = {
@@ -69,6 +76,7 @@ final class OptimizerOptions private (
        |  disableOptimizer     = $disableOptimizer
        |  prettyPrintFullOptJS = $prettyPrintFullOptJS
        |  checkScalaJSIR       = $checkScalaJSIR
+       |  useClosureCompiler   = $useClosureCompiler
        |)""".stripMargin
   }
 

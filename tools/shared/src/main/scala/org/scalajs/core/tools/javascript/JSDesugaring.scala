@@ -23,7 +23,7 @@ import ir.Types._
 import org.scalajs.core.tools.sem._
 import CheckedBehavior._
 
-import org.scalajs.core.tools.optimizer.LinkedClass
+import org.scalajs.core.tools.linker.LinkedClass
 
 import org.scalajs.core.tools.javascript.{Trees => js}
 

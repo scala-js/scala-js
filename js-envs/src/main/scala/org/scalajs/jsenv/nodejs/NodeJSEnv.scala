@@ -15,8 +15,7 @@ import org.scalajs.jsenv.Utils.OptDeadline
 import org.scalajs.core.ir.Utils.escapeJS
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.jsdep._
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
@@ -48,11 +47,9 @@ class NodeJSEnv private (
   lazy val hasSourceMapSupport: Boolean = {
     val code = new MemVirtualJSFile("source-map-support-probe.js")
       .withContent("""require('source-map-support').install();""")
-    val runner =
-      jsRunner(CompleteClasspath.empty, code, NullLogger, NullJSConsole)
 
     try {
-      runner.run()
+      jsRunner(code).run(NullLogger, NullJSConsole)
       true
     } catch {
       case t: ExternalJSEnv.NonZeroExitException =>
@@ -60,41 +57,35 @@ class NodeJSEnv private (
     }
   }
 
-  protected def vmName: String = "node.js"
+  protected def vmName: String = "Node.js"
   protected def executable: String = nodejsPath
 
   /** Retry-timeout to wait for the JS VM to connect */
   protected val acceptTimeout = 5000
 
-  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner = {
-    new NodeRunner(classpath, code, logger, console)
+  override def jsRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): JSRunner = {
+    new NodeRunner(libs, code)
   }
 
-  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): AsyncJSRunner = {
-    new AsyncNodeRunner(classpath, code, logger, console)
+  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): AsyncJSRunner = {
+    new AsyncNodeRunner(libs, code)
   }
 
-  override def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): ComJSRunner = {
-    new ComNodeRunner(classpath, code, logger, console)
+  override def comRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): ComJSRunner = {
+    new ComNodeRunner(libs, code)
   }
 
-  protected class NodeRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends ExtRunner(classpath, code, logger, console)
-       with AbstractNodeRunner
+  protected class NodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+      extends ExtRunner(libs, code) with AbstractNodeRunner
 
-  protected class AsyncNodeRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends AsyncExtRunner(classpath, code, logger, console)
-       with AbstractNodeRunner
+  protected class AsyncNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+      extends AsyncExtRunner(libs, code) with AbstractNodeRunner
 
-  protected class ComNodeRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends AsyncNodeRunner(classpath, code, logger, console)
-       with ComJSRunner {
+  protected class ComNodeRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+      extends AsyncNodeRunner(libs, code) with ComJSRunner {
 
     private[this] val serverSocket =
       new ServerSocket(0, 0, InetAddress.getByName(null)) // Loopback address
@@ -331,8 +322,7 @@ class NodeJSEnv private (
     override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
       initFiles() ++
       customInitFiles() ++
-      classpath.jsLibs.map(requireLibrary) :+
-      classpath.scalaJSCode
+      libs.map(requireLibrary)
     }
 
     /** Rewrites a library virtual file to a require statement if possible */

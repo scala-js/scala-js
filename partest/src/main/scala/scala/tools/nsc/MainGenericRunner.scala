@@ -3,14 +3,12 @@ package scala.tools.nsc
 /* Super hacky overriding of the MainGenericRunner used by partest */
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.classpath.builder._
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
+import org.scalajs.core.tools.io.IRFileCache.IRContainer
 import org.scalajs.core.tools.javascript.OutputMode
-import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
-import org.scalajs.core.tools.optimizer.ScalaJSClosureOptimizer
-import org.scalajs.core.tools.optimizer.ParIncOptimizer
+import org.scalajs.core.tools.linker.Linker
 
 import org.scalajs.core.ir
 
@@ -21,6 +19,7 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 import scala.tools.partest.scalajs.ScalaJSPartestOptions._
 
 import java.io.File
+import java.net.URL
 import scala.io.Source
 
 import Properties.{ versionString, copyrightString }
@@ -63,73 +62,43 @@ class MainGenericRunner {
     val logger = new ScalaConsoleLogger(Level.Warn)
     val jsConsole = new ScalaConsoleJSConsole
     val semantics = readSemantics()
-    val classpath = createClasspath(command)
+    val ir = (
+        loadIR(command.settings.classpathURLs) :+
+        runnerIR(command.thingToRun, command.arguments)
+    )
 
     val jsRunner = new MemVirtualJSFile("launcher.js")
       .withContent(s"PartestLauncher().launch();")
 
-    val env =
-      if (optMode == NoOpt) new RhinoJSEnv(semantics)
-      else new NodeJSEnv
+    val linker = Linker(semantics, withSourceMap = false,
+        useClosureCompiler = optMode == FullOpt)
 
-    val runClasspath = optMode match {
-      case NoOpt   => classpath
-      case FastOpt => fastOptimize(classpath, logger, semantics)
-      case FullOpt => fullOptimize(classpath, logger, semantics.optimized)
+    val libJSEnv = {
+      /* Historically, we used Rhino in NoOpt and NodeJS in FastOpt and FullOpt.
+       * This is not necessary anymore: Rhino can run in FastOpt.
+       * We keep this for now, mainly to not change too many things at once.
+       */
+      if (optMode == NoOpt) {
+        val env = new RhinoJSEnv(semantics).withSourceMap(false)
+        val unit = linker.linkUnit(ir, env.symbolRequirements, logger)
+        env.loadLinkingUnit(unit)
+      } else {
+        val output = WritableMemVirtualJSFile("partest-fastOpt.js")
+        linker.link(ir, output, logger)
+        new NodeJSEnv().loadLibs(ResolvedJSDependency.minimal(output) :: Nil)
+      }
     }
 
-    env.jsRunner(runClasspath, jsRunner, logger, jsConsole).run()
+    libJSEnv.jsRunner(jsRunner).run(logger, jsConsole)
 
     true
   }
 
-  private def fastOptimize(classpath: IRClasspath,
-      logger: Logger, semantics: Semantics) = {
-    import ScalaJSOptimizer._
-
-    val optimizer = newScalaJSOptimizer(semantics)
-    val output = WritableMemVirtualJSFile("partest-fastOpt.js")
-
-    optimizer.optimizeCP(
-        classpath,
-        Config(output)
-          .withWantSourceMap(false)
-          .withCheckIR(true),
-        logger)
-  }
-
-  private def fullOptimize(classpath: IRClasspath, logger: Logger,
-      semantics: Semantics) = {
-    import ScalaJSClosureOptimizer._
-
-    val fastOptimizer = newScalaJSOptimizer(semantics)
-    val fullOptimizer = new ScalaJSClosureOptimizer()
-    val output = WritableMemVirtualJSFile("partest-fullOpt.js")
-
-    fullOptimizer.optimizeCP(fastOptimizer,
-        classpath,
-        Config(output)
-          .withWantSourceMap(false)
-          .withCheckIR(true),
-        logger)
-  }
-
-  private def createClasspath(command: GenericRunnerCommand) = {
-    // Load basic Scala.js classpath (used for running or further packaging)
-    val usefulClasspathEntries = (for {
-      url <- command.settings.classpathURLs
-      f = urlToFile(url)
-      if (f.isDirectory || f.getName.startsWith("scalajs-library"))
-    } yield f).toList
-
-    val baseClasspath = PartialClasspathBuilder.build(usefulClasspathEntries)
-
-    // Create a classpath with the launcher object
-    val irFile = runnerIR(command.thingToRun, command.arguments)
-    val launcherClasspath =
-      new PartialClasspath(Nil, Map.empty, irFile :: Nil, None)
-
-    (baseClasspath merge launcherClasspath).resolve()
+  private def loadIR(classpathURLs: Seq[URL]) = {
+    val irContainers =
+      IRContainer.fromClasspath(classpathURLs.map(urlToFile))
+    val cache = (new IRFileCache).newCache
+    cache.cached(irContainers)
   }
 
   private def runnerIR(mainObj: String, args: List[String]) = {
@@ -179,11 +148,6 @@ class MainGenericRunner {
       def path: String = "PartestLauncher$.sjsir"
       def infoAndTree: (ClassInfo, ClassDef) = infoAndDefinition
     }
-  }
-
-  private def newScalaJSOptimizer(semantics: Semantics) = {
-    new ScalaJSOptimizer(semantics, OutputMode.ECMAScript51Isolated,
-        ParIncOptimizer.factory)
   }
 
   private def urlToFile(url: java.net.URL) = {

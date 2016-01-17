@@ -10,8 +10,8 @@
 package org.scalajs.jsenv
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.logging.Logger
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 import scala.concurrent.{Future, Promise, ExecutionContext}
 import scala.concurrent.duration.Duration
@@ -36,19 +36,21 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
 
   def this(baseEnv: ComJSEnv) = this(baseEnv, 5)
 
-  def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner = {
-    baseEnv.jsRunner(classpath, code, logger, console)
+  def name: String = s"Retrying ${baseEnv.name}"
+
+  def jsRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): JSRunner = {
+    baseEnv.jsRunner(libs, code)
   }
 
-  def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): AsyncJSRunner = {
-    baseEnv.asyncRunner(classpath, code, logger, console)
+  def asyncRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): AsyncJSRunner = {
+    baseEnv.asyncRunner(libs, code)
   }
 
-  def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): ComJSRunner = {
-    new RetryingComJSRunner(classpath, code, logger, console)
+  def comRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): ComJSRunner = {
+    new RetryingComJSRunner(libs, code)
   }
 
   /** Hack to work around abstract override in ComJSRunner */
@@ -56,24 +58,29 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
     def stop(): Unit = ()
   }
 
-  private class RetryingComJSRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger,
-      console: JSConsole) extends DummyJSRunner with ComJSRunner {
+  private class RetryingComJSRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends DummyJSRunner with ComJSRunner {
 
     private[this] val promise = Promise[Unit]
 
-    private[this] var curRunner =
-      baseEnv.comRunner(classpath, code, logger, console)
+    private[this] var curRunner = baseEnv.comRunner(libs, code)
 
     private[this] var hasReceived = false
     private[this] var retryCount = 0
 
     private[this] val log = mutable.Buffer.empty[LogItem]
 
+    private[this] var _logger: Logger = _
+    private[this] var _console: JSConsole = _
+
     def future: Future[Unit] = promise.future
 
-    def start(): Future[Unit] = {
+    def start(logger: Logger, console: JSConsole): Future[Unit] = {
       require(log.isEmpty, "start() may only be called once")
+
+      _logger = logger
+      _console = console
+
       logAndDo(Start)
       future
     }
@@ -124,16 +131,16 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
         if (hasReceived || retryCount > maxRetries || promise.isCompleted)
           throw cause
 
-        logger.warn("Retrying to launch a " + baseEnv.getClass.getName +
+        _logger.warn("Retrying to launch a " + baseEnv.getClass.getName +
           " after " + cause.toString)
 
         val oldRunner = curRunner
 
         curRunner = try {
-          baseEnv.comRunner(classpath, code, logger, console)
+          baseEnv.comRunner(libs, code)
         } catch {
           case NonFatal(t) =>
-            logger.error("Could not retry: creating an new runner failed: " +
+            _logger.error("Could not retry: creating an new runner failed: " +
               t.toString)
             throw cause
         }
@@ -164,7 +171,7 @@ final class RetryingComJSEnv(val baseEnv: ComJSEnv,
       case Start =>
         import ExecutionContext.Implicits.global
         val runner = curRunner
-        runner.start() onComplete { result =>
+        runner.start(_logger, _console) onComplete { result =>
           // access to curRunner and promise must be synchronized
           synchronized {
             if (curRunner eq runner)

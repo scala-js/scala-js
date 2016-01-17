@@ -14,10 +14,49 @@ object BinaryIncompatibilities {
   val SbtPlugin = Seq(
       // private, not an issue
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.sbtplugin.ScalaJSPluginInternal.org$scalajs$sbtplugin$ScalaJSPluginInternal$$filterOutReflProxies")
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.org$scalajs$sbtplugin$ScalaJSPluginInternal$$filterOutReflProxies"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.org$scalajs$sbtplugin$ScalaJSPluginInternal$$scalajspParser$1"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.org$scalajs$sbtplugin$ScalaJSPluginInternal$$jsRun"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.OptimizerOptions.this"),
+
+      // private[sbtplugin], not an issue
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.sbtplugin.ScalajspUtils$ClasspathIRTraverser"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.sbtplugin.ScalajspUtils#ScalaJSIRFilesOnClasspathExamples.this"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.sbtplugin.ScalajspUtils.relPathsExamples"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalajspUtils.listSjsirFilesOnClasspath"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalajspUtils.loadIRFile"),
+
+      // Breaking (now made private[sbtplugin])
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.FrameworkDetector.this"),
+
+      // Breaking (pseudo-private through ScalaJSPluginInternal)
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.scalaJSLinkingUnitClasspath"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.scalaJSCompleteClasspath"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.scalaJSOptimizer"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSPluginInternal.scalaJSDefaultPostLinkJSEnv")
   )
 
   val TestAdapter = Seq(
+      // Breaking
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.testadapter.ScalaJSFramework.this"),
+
+      // private[testadapter], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.testadapter.ScalaJSFramework.createRunner")
   )
 
   val CLI = Seq(
@@ -49,7 +88,25 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[MissingMethodProblem](
           "org.scalajs.cli.Scalajsp#Options.copy$default$4"),
       ProblemFilters.exclude[MissingMethodProblem](
-          "org.scalajs.cli.Scalajsp#Options.showReflProxy")
+          "org.scalajs.cli.Scalajsp#Options.showReflProxy"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsld.org$scalajs$cli$Scalajsld$$fullOpt"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.cli.Scalajsld.org$scalajs$cli$Scalajsld$$fastOpt"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.jsoutput"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$3"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$3"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$3")
   )
 
   val Library = Seq(

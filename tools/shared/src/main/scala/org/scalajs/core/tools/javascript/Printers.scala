@@ -26,8 +26,6 @@ import ir.Utils.printEscapeJS
 
 import Trees._
 
-import org.scalajs.core.tools.sourcemap.SourceMapWriter
-
 /* Printers code was hand-optimized with raw performance in mind.
  * It was hand optimized using fastOptJS on examples/reversi and testsSuite/test
  * as performance benchmarks. JProfiler was used to measure the performance of

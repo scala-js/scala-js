@@ -14,13 +14,6 @@ import ir.ScalaJSVersions
 import ir.Trees.{Tree, ClassDef}
 import ir.Printers.{InfoPrinter, IRTreePrinter}
 
-import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
-import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
-import org.scalajs.core.tools.javascript
-import javascript.ScalaJSClassEmitter
-import javascript.Printers.JSTreePrinter
-
 import org.scalajs.core.tools.io._
 import scala.collection.immutable.Seq
 

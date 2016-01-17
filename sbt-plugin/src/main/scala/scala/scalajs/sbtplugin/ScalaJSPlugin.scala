@@ -13,9 +13,11 @@ import sbt._
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.OutputMode
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.io.VirtualJSFile
-import org.scalajs.core.tools.optimizer.ScalaJSOptimizer
+import org.scalajs.core.tools.io._
+import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
+import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
+import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter
 
 import org.scalajs.core.ir.ScalaJSVersions
 
@@ -49,7 +51,8 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSBinaryVersion = ScalaJSCrossVersion.currentBinaryVersion
 
     // Stage values
-    val PreLinkStage = Stage.PreLink
+    @deprecated("Use FastOptStage instead", "0.6.6")
+    val PreLinkStage = Stage.FastOpt
     val FastOptStage = Stage.FastOpt
     val FullOptStage = Stage.FullOpt
 
@@ -63,7 +66,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  this to explicitly specify in your build that you would like to run with Node.js:
      *
      *  {{{
-     *  postLinkJSEnv := NodeJSEnv().value
+     *  jsEnv := NodeJSEnv().value
      *  }}}
      *
      *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
@@ -87,7 +90,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  PhantomJS:
      *
      *  {{{
-     *  postLinkJSEnv := PhantomJSEnv().value
+     *  jsEnv := PhantomJSEnv().value
      *  }}}
      *
      *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
@@ -111,8 +114,15 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
         "Quickly link all compiled JavaScript into a single file", APlusTask)
+
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
+
+    val scalaJSIR = TaskKey[Attributed[Seq[VirtualScalaJSIRFile with RelativeVirtualFile]]](
+        "scalaJSIR", "All the *.sjsir files on the classpath", CTask)
+
+    val scalaJSNativeLibraries = TaskKey[Attributed[Seq[VirtualJSFile with RelativeVirtualFile]]](
+        "scalaJSNativeLibraries", "All the *.js files on the classpath", CTask)
 
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)
@@ -130,11 +140,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val jsDependencyManifest = TaskKey[File]("jsDependencyManifest",
         "Writes the JS_DEPENDENCIES file.", DTask)
 
-    val scalaJSPreLinkClasspath = TaskKey[IRClasspath]("scalaJSPreLinkClasspath",
-        "Completely resolved classpath just after compilation", DTask)
+    val jsDependencyManifests = TaskKey[Attributed[Traversable[JSDependencyManifest]]](
+        "jsDependencyManifests", "All the JS_DEPENDENCIES on the classpath", DTask)
 
-    val scalaJSExecClasspath = TaskKey[CompleteClasspath]("scalaJSExecClasspath",
-        "The classpath used for running and testing", DTask)
+    val scalaJSLinkedFile = TaskKey[VirtualJSFile]("scalaJSLinkedFile",
+        "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
+        "depending on the stage.", DTask)
 
     val scalaJSLauncher = TaskKey[Attributed[VirtualJSFile]]("scalaJSLauncher",
         "Code used to run. (Attributed with used class name)", DTask)
@@ -142,13 +153,21 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSConsole = TaskKey[JSConsole]("scalaJSConsole",
         "The JS console used by the Scala.js runner/tester", DTask)
 
-    val preLinkJSEnv = TaskKey[JSEnv]("preLinkJSEnv",
-        "The jsEnv used to execute before linking (packaging / optimizing) Scala.js files", BSetting)
-    val postLinkJSEnv = TaskKey[JSEnv]("postLinkJSEnv",
-        "The jsEnv used to execute after linking (packaging / optimizing) Scala.js files", AMinusSetting)
+    val scalaJSUseRhino = SettingKey[Boolean]("scalaJSUseRhino",
+        "Whether Rhino should be used", APlusSetting)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
-        "A JVM-like environment where Scala.js files can be run and tested", DTask)
+        "A JVM-like environment where Scala.js files can be run and tested.", AMinusTask)
+
+    val resolvedJSEnv = TaskKey[JSEnv]("resolvedJSEnv",
+        "The JSEnv used for execution. This equals the setting of jsEnv or a " +
+        "reasonable default value if jsEnv is not set.", DTask)
+
+    @deprecated("Use jsEnv instead.", "0.6.6")
+    val preLinkJSEnv = jsEnv
+
+    @deprecated("Use jsEnv instead.", "0.6.6")
+    val postLinkJSEnv = jsEnv
 
     val requiresDOM = SettingKey[Boolean]("requiresDOM",
         "Whether this projects needs the DOM. Overrides anything inherited through dependencies.", AMinusSetting)
@@ -159,8 +178,8 @@ object ScalaJSPlugin extends AutoPlugin {
     val emitSourceMaps = SettingKey[Boolean]("emitSourceMaps",
         "Whether package and optimize stages should emit source maps at all", BPlusSetting)
 
-    val scalaJSOutputWrapper = TaskKey[(String, String)]("scalaJSOutputWrapper",
-      "Custom wrapper for the generated .js files. Formatted as tuple (header, footer).", BPlusTask)
+    val scalaJSOutputWrapper = SettingKey[(String, String)]("scalaJSOutputWrapper",
+        "Custom wrapper for the generated .js files. Formatted as tuple (header, footer).", BPlusSetting)
 
     val jsDependencies = SettingKey[Seq[AbstractJSDep]]("jsDependencies",
         "JavaScript libraries this project depends upon. Also used to depend on the DOM.", APlusSetting)
@@ -171,11 +190,14 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSOutputMode = SettingKey[OutputMode]("scalaJSOutputMode",
         "Output mode of Scala.js.", BPlusSetting)
 
-    val jsDependencyFilter = SettingKey[PartialClasspath.DependencyFilter]("jsDependencyFilter",
+    val jsDependencyFilter = SettingKey[DependencyFilter]("jsDependencyFilter",
         "The filter applied to the raw JavaScript dependencies before execution", CSetting)
 
-    val jsManifestFilter = SettingKey[PartialClasspath.ManifestFilter]("jsManifestFilter",
+    val jsManifestFilter = SettingKey[ManifestFilter]("jsManifestFilter",
         "The filter applied to JS dependency manifests before resolution", CSetting)
+
+    val resolvedJSDependencies = TaskKey[Attributed[Seq[ResolvedJSDependency]]]("resolvedJSDependencies",
+        "JS dependencies after resolution.", DTask)
 
     val checkScalaJSSemantics = SettingKey[Boolean]("checkScalaJSSemantics",
         "Whether to check that the current semantics meet compliance " +
@@ -187,6 +209,9 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSOptimizerOptions = SettingKey[OptimizerOptions]("scalaJSOptimizerOptions",
         "All kinds of options for the Scala.js optimizer stages", DSetting)
+
+    val loadedJSEnv = TaskKey[JSEnv]("loadedJSEnv",
+        "A JSEnv already loaded up with library and Scala.js code. Ready to run.", DTask)
 
     /** Class loader for PhantomJSEnv. Used to load jetty8. */
     val scalaJSPhantomJSClassLoader = TaskKey[ClassLoader]("scalaJSPhantomJSClassLoader",
@@ -205,7 +230,9 @@ object ScalaJSPlugin extends AutoPlugin {
 
   override def globalSettings: Seq[Setting[_]] = {
     super.globalSettings ++ Seq(
-        scalaJSStage := Stage.PreLink
+        scalaJSStage := Stage.FastOpt,
+        scalaJSUseRhino := true,
+        scalaJSClearCacheStats := globalIRCache.clearStats()
     )
   }
 

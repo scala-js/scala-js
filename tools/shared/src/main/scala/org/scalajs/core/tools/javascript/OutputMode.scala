@@ -10,7 +10,9 @@
 package org.scalajs.core.tools.javascript
 
 /** JavaScript output mode. */
-sealed abstract class OutputMode
+sealed abstract class OutputMode {
+  def esLevel: ESLevel
+}
 
 object OutputMode {
   /** All the available output modes.
@@ -23,17 +25,24 @@ object OutputMode {
       ECMAScript6StrongMode,
       ECMAScript51Global)
 
+  /** The default output mode. This is always the first element of [[All]] */
+  val Default = All.head
+
   /** Legacy output mode where everything is stored in a global ScalaJS variable.
    *  This is suited to the special Rhino interpreter.
    */
-  case object ECMAScript51Global extends OutputMode
+  case object ECMAScript51Global extends OutputMode {
+    val esLevel: ESLevel = ESLevel.ES5
+  }
 
   /** Modern output mode compliant with ECMAScript 5.1 in a function scope.
    *  This is the default output mode used by fastOpt and fullOpt.
    *  The output must be enclosed in an anonymous function isolating the code
    *  in a dedicated scope.
    */
-  case object ECMAScript51Isolated extends OutputMode
+  case object ECMAScript51Isolated extends OutputMode {
+    val esLevel: ESLevel = ESLevel.ES5
+  }
 
   /** Experimental output mode compliant with ECMAScript 6 in a function scope.
    *
@@ -49,7 +58,9 @@ object OutputMode {
    *  The output must be enclosed in an anonymous function isolating the code
    *  in a dedicated scope.
    */
-  case object ECMAScript6 extends OutputMode
+  case object ECMAScript6 extends OutputMode {
+    val esLevel: ESLevel = ESLevel.ES6
+  }
 
   /** Experimental output mode compliant with ECMAScript 6 Strong Mode in a function scope.
    *
@@ -70,5 +81,7 @@ object OutputMode {
    *  The output must be enclosed in an anonymous function isolating the code
    *  in a dedicated scope.
    */
-  case object ECMAScript6StrongMode extends OutputMode
+  case object ECMAScript6StrongMode extends OutputMode {
+    val esLevel: ESLevel = ESLevel.ES6
+  }
 }
