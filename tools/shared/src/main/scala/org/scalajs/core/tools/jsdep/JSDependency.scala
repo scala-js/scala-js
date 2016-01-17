@@ -27,12 +27,6 @@ final class JSDependency(
     val commonJSName: Option[String] = None,
     val minifiedResourceName: Option[String] = None) {
 
-  // Binary compatibility
-  def this(resourceName: String, dependencies: List[String],
-      commonJSName: Option[String]) = {
-    this(resourceName, dependencies, commonJSName, None)
-  }
-
   import JSDependency._
 
   require(commonJSName.forall(isValidIdentifier),
@@ -44,12 +38,6 @@ final class JSDependency(
     copy(commonJSName = Some(name))
   def minified(name: String): JSDependency =
     copy(minifiedResourceName = Some(name))
-
-  @deprecated("withOrigin doesn't resolve partial paths. Use your own code instead.", "0.6.1")
-  def withOrigin(origin: Origin): FlatJSDependency = {
-    new FlatJSDependency(origin, resourceName, dependencies,
-        commonJSName, minifiedResourceName)
-  }
 
   private def copy(
       resourceName: String = this.resourceName,

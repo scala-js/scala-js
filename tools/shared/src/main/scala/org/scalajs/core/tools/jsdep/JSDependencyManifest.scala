@@ -16,9 +16,6 @@ final class JSDependencyManifest(
 
   import JSDependencyManifest._
 
-  @deprecated("flatten doesn't resolve partial paths, use your own code instead", "0.6.1")
-  def flatten: List[FlatJSDependency] = libDeps.map(_.withOrigin(origin))
-
   override def equals(that: Any): Boolean = that match {
     case that: JSDependencyManifest =>
       this.origin == that.origin &&

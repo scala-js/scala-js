@@ -143,7 +143,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
     val ScalaJS = Context.toObject(scope.get("ScalaJS", scope), scope)
 
     def makeLazyScalaJSScope(base: Scriptable, isStatics: Boolean) =
-      new LazyScalaJSScope(this, scope, base, isStatics, dummy = 0)
+      new LazyScalaJSScope(this, scope, base, isStatics)
 
     for (Info(name, isStatics) <- scalaJSLazyFields) {
       val base = ScalaJS.get(name, ScalaJS)

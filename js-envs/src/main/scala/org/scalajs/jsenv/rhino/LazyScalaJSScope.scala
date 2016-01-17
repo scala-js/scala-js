@@ -29,13 +29,7 @@ class LazyScalaJSScope private[rhino] (
     coreLib: ScalaJSCoreLib,
     globalScope: Scriptable,
     base: Scriptable,
-    isStatics: Boolean,
-    dummy: Int) extends Scriptable {
-
-  @deprecated("LazyScalaJSScope will be made private.", "0.6.4")
-  def this(coreLib: ScalaJSCoreLib, globalScope: Scriptable, base: Scriptable,
-      isStatics: Boolean = false) =
-    this(coreLib, globalScope, base, isStatics, dummy = 0)
+    isStatics: Boolean) extends Scriptable {
 
   private val fields = mutable.HashMap.empty[String, Any]
   private var prototype: Scriptable = _

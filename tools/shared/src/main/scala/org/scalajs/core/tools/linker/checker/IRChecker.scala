@@ -1027,14 +1027,6 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           else classDef.fields.map(CheckedClass.checkedField))
     }
 
-    // TODO In fact everything in IRChecker should be private
-    @deprecated("Use the constructor with jsName", "0.6.5")
-    def this(name: String, kind: ClassKind, superClassName: Option[String],
-        ancestors: Set[String], fields: TraversableOnce[CheckedField] = Nil)(
-        implicit ctx: ErrorContext) = {
-      this(name, kind, superClassName, ancestors, None, fields)
-    }
-
     def isAncestorOfHijackedClass: Boolean =
       AncestorsOfHijackedClasses.contains(name)
 
