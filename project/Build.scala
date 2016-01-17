@@ -31,9 +31,9 @@ import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Implicits._
 
-import org.scalajs.core.tools.sourcemap._
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 import sbtassembly.AssemblyPlugin.autoImport._
 
@@ -381,7 +381,9 @@ object Build extends sbt.Build {
     }
   }
 
-  override lazy val settings = super.settings ++ Seq(
+  override lazy val settings = (
+      super.settings ++ inScope(Global)(ScalaJSPlugin.globalSettings)
+  ) ++ Seq(
       // Most of the projects cross-compile
       crossScalaVersions := Seq(
         "2.10.2",
@@ -398,8 +400,6 @@ object Build extends sbt.Build {
         "2.11.7",
         "2.12.0-M3"
       ),
-      // Default stage
-      scalaJSStage in Global := PreLinkStage,
       // JDK version we are running with
       javaVersion in Global := {
         val v = System.getProperty("java.version")
@@ -525,7 +525,8 @@ object Build extends sbt.Build {
       /* Scala.js 0.6.6 will break binary compatibility of the tools
        */
       // previousArtifactSetting,
-      binaryIssueFilters ++= BinaryIncompatibilities.Tools
+      binaryIssueFilters ++= BinaryIncompatibilities.Tools,
+      exportJars := true // required so ScalaDoc linking works
   )
 
   lazy val tools: Project = Project(
@@ -548,17 +549,29 @@ object Build extends sbt.Build {
       ) ++ inConfig(Test) {
         // Redefine test to run Node.js and link HelloWorld
         test := {
-          if (scalaJSStage.value == Stage.PreLink)
-            error("Can't run toolsJS/test in preLink stage")
+          val jsEnv = resolvedJSEnv.value
+          if (!jsEnv.isInstanceOf[NodeJSEnv])
+            error("toolsJS/test must be run with Node.js")
 
-          val cp = {
-            for (e <- (fullClasspath in Test).value)
-              yield s""""${escapeJS(e.data.getAbsolutePath)}""""
+          /* Collect IR relevant files from the classpath
+           * We assume here that the classpath is valid. This is checked by the
+           * the scalaJSIR task.
+           */
+          val cp = Attributed.data((fullClasspath in Test).value)
+
+          // Files must be Jars, non-files must be dirs
+          val (jars, dirs) = cp.partition(_.isFile)
+          val irFiles = dirs.flatMap(dir => (dir ** "*.sjsir").get)
+
+          val irPaths =  {
+            for (f <- jars ++ irFiles)
+              yield s""""${escapeJS(f.getAbsolutePath)}""""
           }
 
           val code = {
             s"""
-            var lib = scalajs.QuickLinker().linkTestSuiteNode(${cp.mkString(", ")});
+            var linker = scalajs.QuickLinker();
+            var lib = linker.linkTestSuiteNode(${irPaths.mkString(", ")});
 
             var __ScalaJSEnv = null;
 
@@ -572,10 +585,12 @@ object Build extends sbt.Build {
           val launcher = new MemVirtualJSFile("Generated launcher file")
             .withContent(code)
 
-          val runner = jsEnv.value.jsRunner(scalaJSExecClasspath.value,
-              launcher, streams.value.log, scalaJSConsole.value)
+          val linked = scalaJSLinkedFile.value
+          val libs = resolvedJSDependencies.value.data :+
+              ResolvedJSDependency.minimal(linked)
+          val runner = jsEnv.jsRunner(libs, launcher)
 
-          runner.run()
+          runner.run(streams.value.log, scalaJSConsole.value)
         }
       }
   ).withScalaJSCompiler.dependsOn(javalibEx, testSuite % "test->test", irProjectJS)
@@ -592,7 +607,9 @@ object Build extends sbt.Build {
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
-          previousArtifactSetting,
+          /* Scala.js 0.6.6 will break binary compatibility of the jsEnvs
+           */
+          // previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
@@ -1071,7 +1088,7 @@ object Build extends sbt.Build {
                   sys.error("You must install Node.js source map support to " +
                     "run the full Scala.js test suite (npm install " +
                     "source-map-support). To deactivate source map " +
-                    s"tests, do: set postLinkJSEnv in $projectId := " +
+                    s"tests, do: set jsEnv in $projectId := " +
                     "NodeJSEnv().value.withSourceMap(false)")
                 }
                 baseArgs :+ "-tsource-maps"
@@ -1093,7 +1110,7 @@ object Build extends sbt.Build {
                 "don't know what tags to specify for the test suite")
         }
 
-        val envTags = envTagsFor((jsEnv in Test).value)
+        val envTags = envTagsFor((resolvedJSEnv in Test).value)
 
         val sems = (scalaJSSemantics in Test).value
         val semTags = (
@@ -1112,7 +1129,6 @@ object Build extends sbt.Build {
         )
 
         val stageTag = Tests.Argument((scalaJSStage in Test).value match {
-          case PreLinkStage => "-tprelink-stage"
           case FastOptStage => "-tfastopt-stage"
           case FullOptStage => "-tfullopt-stage"
         })

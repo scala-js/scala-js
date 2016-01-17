@@ -16,21 +16,17 @@ import org.mozilla.javascript.{Context, Scriptable}
 import org.scalajs.core.ir
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
+import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.corelib._
 
 import OutputMode.ECMAScript51Global
 
-class ScalaJSCoreLib private[rhino] (semantics: Semantics,
-    linkingUnit: LinkingUnit) {
+private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   import ScalaJSCoreLib._
 
-  @deprecated("ScalaJSCoreLib will be made private.", "0.6.4")
-  def this(semantics: Semantics, classpath: IRClasspath) =
-    this(semantics, RhinoJSEnv.linkIRClasspath(classpath, semantics))
+  require(linkingUnit.esLevel == ESLevel.ES5, "RhinoJSEnv only supports ES5")
 
   private val (providers, exportedSymbols) = {
     val providers = mutable.Map.empty[String, LinkedClass]
@@ -46,6 +42,7 @@ class ScalaJSCoreLib private[rhino] (semantics: Semantics,
   }
 
   def insertInto(context: Context, scope: Scriptable): Unit = {
+    val semantics = linkingUnit.semantics
     context.evaluateFile(scope, CoreJSLibs.lib(semantics, ECMAScript51Global))
     lazifyScalaJSFields(scope)
 
@@ -108,8 +105,8 @@ class ScalaJSCoreLib private[rhino] (semantics: Semantics,
   private def getSourceMapper(fileName: String, untilLine: Int) = {
     val linked = providers(fileName.stripSuffix(PseudoFileSuffix))
     val mapper = new Printers.ReverseSourceMapPrinter(untilLine)
-    val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
-        linkingUnit).genClassDef(linked)
+    val desugared =
+      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linked)
     mapper.reverseSourceMap(desugared)
     mapper
   }
@@ -163,8 +160,8 @@ class ScalaJSCoreLib private[rhino] (semantics: Semantics,
     val linkedClass = providers.getOrElse(encodedName,
         throw new ClassNotFoundException(encodedName))
 
-    val desugared = new ScalaJSClassEmitter(semantics, ECMAScript51Global,
-        linkingUnit).genClassDef(linkedClass)
+    val desugared =
+      new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linkedClass)
 
     // Write tree
     val codeWriter = new java.io.StringWriter

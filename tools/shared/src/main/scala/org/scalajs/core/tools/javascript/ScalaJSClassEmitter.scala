@@ -20,24 +20,17 @@ import CheckedBehavior.Unchecked
 
 import org.scalajs.core.tools.javascript.{Trees => js}
 
-import org.scalajs.core.tools.optimizer.{LinkedClass, LinkingUnit}
+import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
  */
-final class ScalaJSClassEmitter private (
-    private[javascript] val semantics: Semantics,
+final class ScalaJSClassEmitter(
     private[javascript] val outputMode: OutputMode,
-    linkingUnit: LinkingUnit, // null if coming from a deprecated constructor
-    globalInfo: LinkingUnit.GlobalInfo) {
+    linkingUnit: LinkingUnit) {
 
   import ScalaJSClassEmitter._
   import JSDesugaring._
-
-  def this(semantics: Semantics, outputMode: OutputMode,
-      linkingUnit: LinkingUnit) = {
-    this(semantics, outputMode, linkingUnit, linkingUnit.globalInfo)
-  }
 
   private[javascript] lazy val linkedClassByName: Map[String, LinkedClass] =
     linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
@@ -67,6 +60,8 @@ final class ScalaJSClassEmitter private (
      */
     linkedClassByName(className).kind == ClassKind.Interface
   }
+
+  private[javascript] def semantics: Semantics = linkingUnit.semantics
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 
@@ -719,7 +714,7 @@ final class ScalaJSClassEmitter private (
       if (isRawJSType) js.BooleanLiteral(true)
       else js.Undefined()
 
-    val parentData = if (globalInfo.isParentDataAccessed) {
+    val parentData = if (linkingUnit.globalInfo.isParentDataAccessed) {
       tree.superClass.fold[js.Tree] {
         if (isObjectClass) js.Null()
         else js.Undefined()

@@ -48,14 +48,6 @@ object CoreJSLibs {
     }
   }
 
-  @deprecated("Use lib() instead.", "0.6.3")
-  def libs(semantics: Semantics, outputMode: OutputMode): Seq[VirtualJSFile] =
-    Seq(lib(semantics, outputMode))
-
-  @deprecated("Use the overload with an explicit OutputMode", "0.6.2")
-  def libs(semantics: Semantics): Seq[VirtualJSFile] =
-    libs(semantics, OutputMode.ECMAScript51Global)
-
   private def makeLib(semantics: Semantics,
       outputMode: OutputMode): VirtualJSFile = {
     new ScalaJSEnvVirtualJSFile(makeContent(semantics, outputMode))

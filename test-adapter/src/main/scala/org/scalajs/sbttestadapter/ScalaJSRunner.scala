@@ -10,7 +10,6 @@
 package org.scalajs.testadapter
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
 import org.scalajs.core.tools.json._
 
 import org.scalajs.jsenv._
@@ -178,8 +177,8 @@ final class ScalaJSRunner private[testadapter] (
     ensureNotDone()
 
     // Launch the slave
-    val slave = framework.createRunner(slaveLauncher)
-    slave.start()
+    val slave = framework.libEnv.comRunner(slaveLauncher)
+    slave.start(framework.logger, framework.jsConsole)
 
     // Create a runner on the slave
     slave.send("newRunner")
@@ -217,8 +216,8 @@ final class ScalaJSRunner private[testadapter] (
   private def createRemoteRunner(): Unit = {
     assert(master == null)
 
-    master = framework.createRunner(masterLauncher)
-    master.start()
+    master = framework.libEnv.comRunner(masterLauncher)
+    master.start(framework.logger, framework.jsConsole)
 
     val data = {
       val bld = new JSONObjBuilder

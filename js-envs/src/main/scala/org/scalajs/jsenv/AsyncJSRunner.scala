@@ -3,6 +3,8 @@ package org.scalajs.jsenv
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration.Duration
 
+import org.scalajs.core.tools.logging.Logger
+
 trait AsyncJSRunner {
 
   /** A future that completes when the associated run has terminated. */
@@ -13,7 +15,7 @@ trait AsyncJSRunner {
    *  when the run terminates. The returned Future is equivalent to
    *  the one returned by [[future]].
    */
-  def start(): Future[Unit]
+  def start(logger: Logger, console: JSConsole): Future[Unit]
 
   /** Aborts the associated run.
    *

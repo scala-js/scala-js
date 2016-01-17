@@ -11,7 +11,7 @@ package org.scalajs.core.tools.sem
 
 import scala.collection.immutable.Traversable
 
-import org.scalajs.core.tools.optimizer.LinkedClass
+import org.scalajs.core.tools.linker.LinkedClass
 
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,

@@ -1,7 +1,5 @@
 package org.scalajs.core.tools.jsdep
 
-import scala.collection.immutable.Traversable
-
 /** Holds useful JSDependencyManifest filters */
 object ManifestFilters {
 

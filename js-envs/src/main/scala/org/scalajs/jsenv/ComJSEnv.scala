@@ -9,9 +9,8 @@
 
 package org.scalajs.jsenv
 
-import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.io.VirtualJSFile
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 /** An [[AsyncJSEnv]] that provides communication to and from the JS VM.
  *
@@ -29,8 +28,19 @@ import org.scalajs.core.tools.logging._
  *  }}}
  */
 trait ComJSEnv extends AsyncJSEnv {
-  def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): ComJSRunner
+  def comRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile): ComJSRunner
+
+  final def comRunner(code: VirtualJSFile): ComJSRunner = comRunner(Nil, code)
+
+  override def loadLibs(libs: Seq[ResolvedJSDependency]): ComJSEnv =
+    new ComLoadedLibs { val loadedLibs = libs }
+
+  private[jsenv] trait ComLoadedLibs extends AsyncLoadedLibs with ComJSEnv {
+    def comRunner(libs: Seq[ResolvedJSDependency],
+        code: VirtualJSFile): ComJSRunner = {
+      ComJSEnv.this.comRunner(loadedLibs ++ libs, code)
+    }
+  }
 }
 
 object ComJSEnv {

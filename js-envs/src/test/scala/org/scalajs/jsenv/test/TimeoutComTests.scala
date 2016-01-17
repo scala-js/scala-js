@@ -21,7 +21,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
 
     val deadline = 100.millis.fromNow
 
-    com.start()
+    start(com)
 
     com.send("Hello World")
 
@@ -43,7 +43,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       });
     """)
 
-    com.start()
+    start(com)
 
     for (i <- 1 to 10) {
       val deadline = 19.millis.fromNow // give some slack
@@ -66,7 +66,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       });
     """)
 
-    com.start()
+    start(com)
 
     for (i <- 1 to 2) {
       com.send(s"Hello World: $i")
@@ -95,7 +95,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
 
     val deadline = 245.millis.fromNow
 
-    com.start()
+    start(com)
 
     for (i <- 1 to 5)
       assertEquals("Hello", com.receive())
@@ -113,7 +113,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       // Make sure JVM has already closed when we init
       setTimeout(scalajsCom.init, 1000, function(msg) {});
     """)
-    com.start()
+    start(com)
     com.close()
     com.await(DefaultTimeout)
   }
@@ -125,7 +125,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       setInterval(function() {}, 0);
     """)
 
-    async.start()
+    start(async)
     async.stop()
 
     try {
@@ -145,7 +145,7 @@ trait TimeoutComTests extends TimeoutTests with ComTests {
       setInterval(function() {}, 0);
     """)
 
-    async.start()
+    start(async)
     async.stop()
     async.stop() // should do nothing, and not fail
 

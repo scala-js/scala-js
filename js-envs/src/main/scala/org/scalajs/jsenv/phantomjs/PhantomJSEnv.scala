@@ -15,7 +15,7 @@ import org.scalajs.jsenv.Utils.OptDeadline
 import org.scalajs.core.ir.Utils.{escapeJS, fixFileURI}
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
 
 import java.io.{ Console => _, _ }
@@ -25,7 +25,7 @@ import scala.io.Source
 import scala.collection.mutable
 import scala.annotation.tailrec
 
-import scala.concurrent.{ExecutionContext, TimeoutException}
+import scala.concurrent.{ExecutionContext, TimeoutException, Future}
 import scala.concurrent.duration.Duration
 
 class PhantomJSEnv(
@@ -41,35 +41,32 @@ class PhantomJSEnv(
   protected def vmName: String = "PhantomJS"
   protected def executable: String = phantomjsPath
 
-  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner = {
-    new PhantomRunner(classpath, code, logger, console)
+  override def jsRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): JSRunner = {
+    new PhantomRunner(libs, code)
   }
 
-  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): AsyncJSRunner = {
-    new AsyncPhantomRunner(classpath, code, logger, console)
+  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): AsyncJSRunner = {
+    new AsyncPhantomRunner(libs, code)
   }
 
-  override def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): ComJSRunner = {
-    new ComPhantomRunner(classpath, code, logger, console)
+  override def comRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): ComJSRunner = {
+    new ComPhantomRunner(libs, code)
   }
 
-  protected class PhantomRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends ExtRunner(classpath, code, logger, console)
-       with AbstractPhantomRunner
+  protected class PhantomRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends ExtRunner(libs, code)
+      with AbstractPhantomRunner
 
-  protected class AsyncPhantomRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends AsyncExtRunner(classpath, code, logger, console)
-       with AbstractPhantomRunner
+  protected class AsyncPhantomRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends AsyncExtRunner(libs, code)
+      with AbstractPhantomRunner
 
-  protected class ComPhantomRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends AsyncPhantomRunner(classpath, code, logger, console)
-       with ComJSRunner with WebsocketListener {
+  protected class ComPhantomRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends AsyncPhantomRunner(libs, code)
+      with ComJSRunner with WebsocketListener {
 
     private def loadMgr() = {
       val loader =
@@ -110,8 +107,6 @@ class PhantomJSEnv(
 
     private[this] val recvBuf = mutable.Queue.empty[String]
     private[this] val fragmentsBuf = new StringBuilder
-
-    mgr.start()
 
     private def comSetup = {
       def maybeExit(code: Int) =
@@ -228,6 +223,13 @@ class PhantomJSEnv(
         |}).call(this);""".stripMargin
 
       new MemVirtualJSFile("comSetup.js").withContent(code)
+    }
+
+    override def start(logger: Logger, console: JSConsole): Future[Unit] = {
+      setupLoggerAndConsole(logger, console)
+      mgr.start()
+      startExternalJSEnv()
+      future
     }
 
     def send(msg: String): Unit = synchronized {

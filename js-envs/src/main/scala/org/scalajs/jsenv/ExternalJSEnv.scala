@@ -1,8 +1,8 @@
 package org.scalajs.jsenv
 
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
-import org.scalajs.core.tools.logging._
+import org.scalajs.core.tools.logging.Logger
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 
 import java.io.{ Console => _, _ }
 import scala.io.Source
@@ -16,6 +16,8 @@ abstract class ExternalJSEnv(
 
   import ExternalJSEnv._
 
+  def name: String = s"ExternalJSEnv for $vmName"
+
   /** Printable name of this VM */
   protected def vmName: String
 
@@ -25,9 +27,21 @@ abstract class ExternalJSEnv(
   /** Custom initialization scripts. */
   protected def customInitFiles(): Seq[VirtualJSFile] = Nil
 
-  protected class AbstractExtRunner(protected val classpath: CompleteClasspath,
-      protected val code: VirtualJSFile, protected val logger: Logger,
-      protected val console: JSConsole) {
+  protected class AbstractExtRunner(
+      protected val libs: Seq[ResolvedJSDependency],
+      protected val code: VirtualJSFile) {
+
+    private[this] var _logger: Logger = _
+    private[this] var _console: JSConsole = _
+
+    protected def logger: Logger = _logger
+    protected def console: JSConsole = _console
+
+    protected def setupLoggerAndConsole(logger: Logger, console: JSConsole) = {
+      require(_logger == null && _console == null)
+      _logger = logger
+      _console = console
+    }
 
     /** JS files used to setup VM */
     protected def initFiles(): Seq[VirtualJSFile] = Nil
@@ -53,7 +67,7 @@ abstract class ExternalJSEnv(
 
     /** Get files that are a library (i.e. that do not run anything) */
     protected def getLibJSFiles(): Seq[VirtualJSFile] =
-      initFiles() ++ customInitFiles() ++ classpath.allCode
+      initFiles() ++ customInitFiles() ++ libs.map(_.lib)
 
     /** Get all files that are passed to VM (libraries and code) */
     protected def getJSFiles(): Seq[VirtualJSFile] =
@@ -133,12 +147,12 @@ abstract class ExternalJSEnv(
 
   }
 
-  protected class ExtRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole
-  ) extends AbstractExtRunner(classpath, code, logger, console)
-       with JSRunner {
+  protected class ExtRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+      extends AbstractExtRunner(libs, code) with JSRunner {
 
-    def run(): Unit = {
+    def run(logger: Logger, console: JSConsole): Unit = {
+      setupLoggerAndConsole(logger, console)
+
       val vmInst = startVM()
 
       pipeVMData(vmInst)
@@ -146,10 +160,8 @@ abstract class ExternalJSEnv(
     }
   }
 
-  protected class AsyncExtRunner(classpath: CompleteClasspath,
-      code: VirtualJSFile, logger: Logger, console: JSConsole
-  ) extends AbstractExtRunner(classpath, code, logger, console)
-       with AsyncJSRunner {
+  protected class AsyncExtRunner(libs: Seq[ResolvedJSDependency], code: VirtualJSFile)
+      extends AbstractExtRunner(libs, code) with AsyncJSRunner {
 
     private[this] var vmInst: Process = null
     private[this] var ioThreadEx: Throwable = null
@@ -173,11 +185,22 @@ abstract class ExternalJSEnv(
 
     def future: Future[Unit] = promise.future
 
-    def start(): Future[Unit] = {
+    def start(logger: Logger, console: JSConsole): Future[Unit] = {
+      setupLoggerAndConsole(logger, console)
+      startExternalJSEnv()
+      future
+    }
+
+    /** Core functionality of [[start]].
+     *
+     *  Same as [[start]] but without a call to [[setupLoggerAndConsole]] and
+     *  not returning [[future]].
+     *  Useful to be called in overrides of [[start]].
+     */
+    protected def startExternalJSEnv(): Unit = {
       require(vmInst == null, "start() may only be called once")
       vmInst = startVM()
       thread.start()
-      future
     }
 
     def stop(): Unit = {

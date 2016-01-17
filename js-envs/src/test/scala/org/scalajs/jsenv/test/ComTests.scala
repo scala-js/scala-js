@@ -15,12 +15,9 @@ trait ComTests extends AsyncTests {
 
   protected def newJSEnv: ComJSEnv
 
-  protected def logger: Logger =
-    new ScalaConsoleLogger(Level.Warn)
-
   protected def comRunner(code: String): ComJSRunner = {
     val codeVF = new MemVirtualJSFile("testScript.js").withContent(code)
-    newJSEnv.comRunner(emptyCP, codeVF, logger, ConsoleJSConsole)
+    newJSEnv.comRunner(codeVF)
   }
 
   private def assertThrowClosed(msg: String, body: => Unit): Unit = {
@@ -42,7 +39,7 @@ trait ComTests extends AsyncTests {
       scalajsCom.send("Hello World");
     """)
 
-    com.start()
+    start(com)
 
     assertEquals("Hello World", com.receive())
 
@@ -65,7 +62,7 @@ trait ComTests extends AsyncTests {
       scalajsCom.close();
     """)
 
-    com.start()
+    start(com)
 
     Thread.sleep(timeout)
 
@@ -92,7 +89,7 @@ trait ComTests extends AsyncTests {
     val n = 10
     val com = pingPongRunner(n)
 
-    com.start()
+    start(com)
 
     for (i <- 0 until n) {
       com.send("ping")
@@ -108,7 +105,7 @@ trait ComTests extends AsyncTests {
     val n = 10
     val envs = List.fill(5)(pingPongRunner(10))
 
-    envs.foreach(_.start())
+    envs.foreach(start)
 
     val ops = List[ComJSRunner => Unit](
         _.send("ping"),
@@ -151,7 +148,7 @@ trait ComTests extends AsyncTests {
       });
     """)
 
-    com.start()
+    start(com)
 
     com.send(baseMsg)
 
@@ -183,7 +180,7 @@ trait ComTests extends AsyncTests {
       scalajsCom.init(scalajsCom.send);
     """)
 
-    com.start()
+    start(com)
 
     val msg = "\uC421\u8F10\u0112\uFF32"
 
@@ -198,7 +195,7 @@ trait ComTests extends AsyncTests {
   def noInitTest: Unit = {
     val com = comRunner("")
 
-    com.start()
+    start(com)
     com.send("Dummy")
     com.close()
     com.await(DefaultTimeout)
@@ -208,7 +205,7 @@ trait ComTests extends AsyncTests {
   def stopTestCom: Unit = {
     val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
 
-    com.start()
+    start(com)
 
     // Make sure the VM doesn't terminate.
     Thread.sleep(1000)
@@ -230,7 +227,7 @@ trait ComTests extends AsyncTests {
   def futureStopTest: Unit = {
     val com = comRunner(s"""scalajsCom.init(function(msg) {});""")
 
-    val fut = com.start()
+    val fut = start(com)
 
     // Make sure the VM doesn't terminate.
     Thread.sleep(1000)

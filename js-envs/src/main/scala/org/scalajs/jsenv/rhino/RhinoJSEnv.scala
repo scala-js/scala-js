@@ -14,10 +14,11 @@ import org.scalajs.jsenv.Utils.OptDeadline
 
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.classpath._
+import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.optimizer._
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker.backend.Emitter
+import org.scalajs.core.tools.javascript.{OutputMode, ESLevel}
 
 import scala.annotation.tailrec
 
@@ -36,7 +37,7 @@ final class RhinoJSEnv private (
     semantics: Semantics,
     withDOM: Boolean,
     val sourceMap: Boolean
-) extends ComJSEnv {
+) extends LinkingUnitComJSEnv {
 
   import RhinoJSEnv._
 
@@ -46,64 +47,106 @@ final class RhinoJSEnv private (
   def withSourceMap(sourceMap: Boolean): RhinoJSEnv =
     new RhinoJSEnv(semantics, withDOM, sourceMap)
 
+  /* Although RhinoJSEnv does not use the Emitter directly, it uses
+   * ScalaJSCoreLib which uses the same underlying components
+   * (ScalaJSClassEmitter, JSDesugaring and CoreJSLibs).
+   */
+  val symbolRequirements = Emitter.symbolRequirements(semantics, ESLevel.ES5)
+
+  def name: String = "RhinoJSEnv"
+
+  override def loadLinkingUnit(linkingUnit: LinkingUnit): ComJSEnv = {
+    verifyUnit(linkingUnit)
+    super.loadLinkingUnit(linkingUnit)
+  }
+
   /** Executes code in an environment where the Scala.js library is set up to
    *  load its classes lazily.
    *
    *  Other .js scripts in the inputs are executed eagerly before the provided
    *  `code` is called.
    */
-  override def jsRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): JSRunner = {
-    new Runner(classpath, code, logger, console)
+  override def jsRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): JSRunner = {
+    new Runner(libs, None, Nil, code)
   }
 
-  private class Runner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole) extends JSRunner {
-    def run(): Unit = internalRunJS(classpath, code, logger, console, None)
+  override def jsRunner(preLibs: Seq[ResolvedJSDependency],
+      linkingUnit: LinkingUnit, postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): JSRunner = {
+    verifyUnit(linkingUnit)
+    new Runner(preLibs, Some(linkingUnit), postLibs, code)
   }
 
-  override def asyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): AsyncJSRunner = {
-    new AsyncRunner(classpath, code, logger, console)
+  private class Runner(preLibs: Seq[ResolvedJSDependency],
+      optLinkingUnit: Option[LinkingUnit], postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends JSRunner {
+    def run(logger: Logger, console: JSConsole): Unit =
+      internalRunJS(preLibs, optLinkingUnit, postLibs,
+          code, logger, console, None)
   }
 
-  private class AsyncRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole) extends AsyncJSRunner {
+  override def asyncRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): AsyncJSRunner = {
+    new AsyncRunner(libs, None, Nil, code)
+  }
+
+  override def asyncRunner(preLibs: Seq[ResolvedJSDependency],
+      linkingUnit: LinkingUnit, postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): AsyncJSRunner = {
+    verifyUnit(linkingUnit)
+    new AsyncRunner(preLibs, Some(linkingUnit), postLibs, code)
+  }
+
+  private class AsyncRunner(preLibs: Seq[ResolvedJSDependency],
+      optLinkingUnit: Option[LinkingUnit], postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile) extends AsyncJSRunner {
 
     private[this] val promise = Promise[Unit]
-
-    private[this] val thread = new Thread {
-      override def run(): Unit = {
-        try {
-          internalRunJS(classpath, code, logger, console, optChannel)
-          promise.success(())
-        } catch {
-          case t: Throwable =>
-            promise.failure(t)
-        }
-      }
-    }
+    private[this] var _thread: Thread = _
 
     def future: Future[Unit] = promise.future
 
-    def start(): Future[Unit] = {
-      thread.start()
+    def start(logger: Logger, console: JSConsole): Future[Unit] = {
+      _thread = new Thread {
+        override def run(): Unit = {
+          try {
+            internalRunJS(preLibs, optLinkingUnit, postLibs,
+                code, logger, console, optChannel)
+            promise.success(())
+          } catch {
+            case t: Throwable =>
+              promise.failure(t)
+          }
+        }
+      }
+
+      _thread.start()
       future
     }
 
-    def stop(): Unit = thread.interrupt()
+    def stop(): Unit = _thread.interrupt()
 
     protected def optChannel(): Option[Channel] = None
   }
 
-  override def comRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole): ComJSRunner = {
-    new ComRunner(classpath, code, logger, console)
+  override def comRunner(libs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): ComJSRunner = {
+    new ComRunner(libs, None, Nil, code)
   }
 
-  private class ComRunner(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole)
-      extends AsyncRunner(classpath, code, logger, console) with ComJSRunner {
+  override def comRunner(preLibs: Seq[ResolvedJSDependency],
+      linkingUnit: LinkingUnit, postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile): ComJSRunner = {
+    verifyUnit(linkingUnit)
+    new ComRunner(preLibs, Some(linkingUnit), postLibs, code)
+  }
+
+  private class ComRunner(preLibs: Seq[ResolvedJSDependency],
+      optLinkingUnit: Option[LinkingUnit], postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile)
+      extends AsyncRunner(preLibs, optLinkingUnit, postLibs, code)
+      with ComJSRunner {
 
     private[this] val channel = new Channel
 
@@ -124,8 +167,10 @@ final class RhinoJSEnv private (
 
   }
 
-  private def internalRunJS(classpath: CompleteClasspath, code: VirtualJSFile,
-      logger: Logger, console: JSConsole, optChannel: Option[Channel]): Unit = {
+  private def internalRunJS(preLibs: Seq[ResolvedJSDependency],
+      optLinkingUnit: Option[LinkingUnit], postLibs: Seq[ResolvedJSDependency],
+      code: VirtualJSFile, logger: Logger, console: JSConsole,
+      optChannel: Option[Channel]): Unit = {
 
     val context = Context.enter()
     try {
@@ -151,7 +196,14 @@ final class RhinoJSEnv private (
       }
 
       try {
-        loadClasspath(context, scope, classpath)
+        // Evaluate pre JS libs
+        preLibs.foreach(lib => context.evaluateFile(scope, lib.lib))
+
+        // Load LinkingUnit (if present)
+        optLinkingUnit.foreach(loadLinkingUnit(context, scope, _))
+
+        // Evaluate post JS libs
+        postLibs.foreach(lib => context.evaluateFile(scope, lib.lib))
 
         // Actually run the code
         context.evaluateFile(scope, code)
@@ -300,30 +352,11 @@ final class RhinoJSEnv private (
     ScriptableObject.putProperty(scope, "scalajsCom", comObj)
   }
 
-  /** Loads the classpath. Either through lazy loading or by simply inserting */
-  private def loadClasspath(context: Context, scope: Scriptable,
-      classpath: CompleteClasspath): Unit = classpath match {
-    case cp: LinkingUnitClasspath =>
-      loadLinkingUnitClasspath(context, scope, cp)
+  /** Loads a [[LinkingUnit]] with lazy loading of classes and source mapping. */
+  private def loadLinkingUnit(context: Context, scope: Scriptable,
+      linkingUnit: LinkingUnit): Unit = {
 
-    // Deprecated, auto-linking
-    case cp: IRClasspath if cp.scalaJSIR.nonEmpty =>
-      val linkingUnit = linkIRClasspath(cp, semantics)
-      val linkingUnitCP = new LinkingUnitClasspath(cp.jsLibs, linkingUnit,
-          cp.requiresDOM, None)
-      loadLinkingUnitClasspath(context, scope, linkingUnitCP)
-
-    case cp =>
-      cp.allCode.foreach(context.evaluateFile(scope, _))
-  }
-
-  /** Loads a [[LinkingUnitClasspath]] with lazy loading of classes and
-   *  source mapping.
-   */
-  private def loadLinkingUnitClasspath(context: Context, scope: Scriptable,
-      classpath: LinkingUnitClasspath): Unit = {
-
-    val loader = new ScalaJSCoreLib(semantics, classpath.linkingUnit)
+    val loader = new ScalaJSCoreLib(linkingUnit)
 
     // Setup sourceMapper
     if (sourceMap) {
@@ -336,9 +369,6 @@ final class RhinoJSEnv private (
 
       ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
     }
-
-    // Load JS libraries
-    classpath.jsLibs.foreach(dep => context.evaluateFile(scope, dep.lib))
 
     loader.insertInto(context, scope)
   }
@@ -441,19 +471,15 @@ final class RhinoJSEnv private (
     None
   }
 
+  private def verifyUnit(linkingUnit: LinkingUnit) = {
+    require(linkingUnit.semantics == semantics,
+        "RhinoJSEnv and LinkingUnit must agree on semantics")
+    require(linkingUnit.esLevel == ESLevel.ES5, "RhinoJSEnv only supports ES5")
+  }
+
 }
 
 object RhinoJSEnv {
-
-  private[rhino] def linkIRClasspath(cp: IRClasspath,
-      semantics: Semantics): LinkingUnit = {
-    val logger = new ScalaConsoleLogger(Level.Error)
-    val linker = new Linker(semantics, OutputMode.ECMAScript51Global,
-        considerPositions = true)
-    linker.link(cp.scalaJSIR, logger,
-        reachOptimizerSymbols = false,
-        bypassLinkingErrors = true, checkIR = false)
-  }
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {

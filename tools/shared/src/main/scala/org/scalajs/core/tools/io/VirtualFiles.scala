@@ -2,9 +2,12 @@ package org.scalajs.core.tools.io
 
 import java.io._
 import java.net.URI
+import java.util.zip.{ZipInputStream, ZipEntry}
 
 import org.scalajs.core.ir
-import org.scalajs.core.tools.sourcemap._
+
+import org.scalajs.core.tools.jsdep.JSDependencyManifest
+import org.scalajs.core.tools.json._
 
 /** A virtual input file.
  */
@@ -46,6 +49,16 @@ object VirtualFile {
     if (pos == -1) path
     else path.substring(pos + 1)
   }
+}
+
+trait RelativeVirtualFile extends VirtualFile {
+  /** Relative path with respect to some container.
+   *
+   *  The container depends on the context in which this [[RelativeVirtualFile]]
+   *  is retrieved. A good example is the [[VirtualJarFile]] where the relative
+   *  path is the path inside the Jar.
+   */
+  def relativePath: String
 }
 
 /** A virtual input file.
@@ -158,4 +171,56 @@ trait VirtualSerializedScalaJSIRFile extends VirtualBinaryFile with VirtualScala
       stream.close()
     }
   }
+}
+
+trait VirtualJarFile extends VirtualBinaryFile {
+  /** All the `*.sjsir` files in this Jar
+   *
+   *  It is up to the implementation whether these files are read lazily or not.
+   *  The default implementation reads them into memory.
+   */
+  def sjsirFiles: Seq[VirtualScalaJSIRFile with RelativeVirtualFile] = {
+    findEntries(_.endsWith(".sjsir")) { (entry, stream) =>
+      val file = new JarEntryIRFile(path, entry.getName)
+      file.content = IO.readInputStreamToByteArray(stream)
+      file
+    }
+  }
+
+  def jsFiles: Seq[VirtualJSFile with RelativeVirtualFile] = {
+    findEntries(_.endsWith(".js")) { (entry, stream) =>
+      val file = new JarEntryJSFile(path, entry.getName)
+      file.content = IO.readInputStreamToString(stream)
+      file
+    }
+  }
+
+  def jsDependencyManifests: Seq[JSDependencyManifest] = {
+    findEntries(_ == JSDependencyManifest.ManifestFileName) { (_, stream) =>
+      val json = readJSON(new InputStreamReader(stream, "UTF-8"))
+      fromJSON[JSDependencyManifest](json)
+    }
+  }
+
+  private def findEntries[T](cond: String => Boolean)(
+      mkResult: (ZipEntry, InputStream) => T): Seq[T] = {
+    val stream = new ZipInputStream(inputStream)
+    try {
+      Iterator.continually(stream.getNextEntry())
+        .takeWhile(_ != null)
+        .filter(entry => cond(entry.getName))
+        .map(entry => mkResult(entry, stream))
+        .toList
+    } finally {
+      stream.close()
+    }
+  }
+
+  private class JarEntryIRFile(outerPath: String, val relativePath: String)
+      extends MemVirtualSerializedScalaJSIRFile(s"$outerPath:$relativePath")
+      with RelativeVirtualFile
+
+  private class JarEntryJSFile(outerPath: String, val relativePath: String)
+      extends MemVirtualJSFile(s"$outerPath:$relativePath")
+      with RelativeVirtualFile
 }

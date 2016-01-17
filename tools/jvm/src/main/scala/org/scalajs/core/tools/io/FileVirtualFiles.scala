@@ -135,6 +135,13 @@ class FileVirtualJSFile(f: File) extends FileVirtualTextFile(f)
 object FileVirtualJSFile extends (File => FileVirtualJSFile) {
   def apply(f: File): FileVirtualJSFile =
     new FileVirtualJSFile(f)
+
+  def relative(f: File,
+      relPath: String): FileVirtualJSFile with RelativeVirtualFile = {
+    new FileVirtualJSFile(f) with RelativeVirtualFile {
+      def relativePath: String = relPath
+    }
+  }
 }
 
 trait WritableFileVirtualJSFile extends FileVirtualJSFile
@@ -160,6 +167,13 @@ object FileVirtualScalaJSIRFile extends (File => FileVirtualScalaJSIRFile) {
 
   def apply(f: File): FileVirtualScalaJSIRFile =
     new FileVirtualScalaJSIRFile(f)
+
+  def relative(f: File,
+      relPath: String): FileVirtualScalaJSIRFile with RelativeVirtualFile = {
+    new FileVirtualScalaJSIRFile(f) with RelativeVirtualFile {
+      def relativePath: String = relPath
+    }
+  }
 
   def isScalaJSIRFile(file: File): Boolean =
     hasExtension(file, ".sjsir")
