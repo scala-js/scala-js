@@ -1112,7 +1112,11 @@ object Build extends sbt.Build {
 
         val envTags = envTagsFor((resolvedJSEnv in Test).value)
 
-        val sems = (scalaJSSemantics in Test).value
+        val sems = (scalaJSStage in Test).value match {
+          case FastOptStage => (scalaJSSemantics in (Test, fastOptJS)).value
+          case FullOptStage => (scalaJSSemantics in (Test, fullOptJS)).value
+        }
+
         val semTags = (
             if (sems.asInstanceOfs == CheckedBehavior.Compliant)
               Seq(Tests.Argument("-tcompliant-asinstanceofs"))
@@ -1126,6 +1130,10 @@ object Build extends sbt.Build {
         ) ++ (
             if (sems.strictFloats) Seq(Tests.Argument("-tstrict-floats"))
             else Seq()
+        ) ++ (
+            Seq(Tests.Argument(
+                if (sems.productionMode) "-tproduction-mode"
+                else "-tdevelopment-mode"))
         )
 
         val stageTag = Tests.Argument((scalaJSStage in Test).value match {

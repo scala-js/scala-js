@@ -24,6 +24,9 @@ object LinkingInfo {
 
     /** Whether floats have strict semantics. */
     val strictFloats: Boolean = js.native
+
+    /** Whether we are linking in production mode. */
+    val productionMode: Boolean = js.native
   }
 
   object Semantics {

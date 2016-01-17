@@ -110,6 +110,12 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // In theory, breaking, but this is an interface in runtime that no one should extend
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo#Semantics.productionMode"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo#Semantics.scala$scalajs$runtime$LinkingInfo$Semantics$_setter_$productionMode_="),
+
       // private[runtime], not an issue
       ProblemFilters.exclude[MissingMethodProblem](
           "scala.scalajs.runtime.RuntimeLong.TWO_PWR_16_DBL"),
