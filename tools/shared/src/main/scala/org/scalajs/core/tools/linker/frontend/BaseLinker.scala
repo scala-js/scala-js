@@ -41,6 +41,24 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
   type TreeProvider = String => (ClassDef, Option[String])
 
   def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
+      symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
+    linkInternal(irInput, logger, symbolRequirements,
+        bypassLinkingErrors = false, checkIR = checkIR)
+  }
+
+  @deprecated(
+      "Bypassing linking errors will not be possible in the next major version. " +
+      "Use the overload without the bypassLinkingError parameter instead.",
+      "0.6.6")
+  def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
+      symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
+      checkIR: Boolean): LinkingUnit = {
+    linkInternal(irInput, logger, symbolRequirements,
+        bypassLinkingErrors, checkIR)
+  }
+
+  // Non-deprecated version to be called from `LinkerFrontend`
+  private[frontend] def linkInternal(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, bypassLinkingErrors: Boolean,
       checkIR: Boolean): LinkingUnit = {
 
@@ -64,12 +82,31 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       (pf.tree, pf.version)
     }
 
-    link(infos, getTree, logger, symbolRequirements,
+    linkInternal(infos, getTree, logger, symbolRequirements,
         bypassLinkingErrors, checkIR)
   }
 
   def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
       logger: Logger, symbolRequirements: SymbolRequirement,
+      checkIR: Boolean): LinkingUnit = {
+    linkInternal(infoInput, getTree, logger, symbolRequirements,
+        bypassLinkingErrors = false, checkIR = checkIR)
+  }
+
+  @deprecated(
+      "Bypassing linking errors will not be possible in the next major version. " +
+      "Use the overload without the bypassLinkingError parameter instead.",
+      "0.6.6")
+  def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
+      logger: Logger, symbolRequirements: SymbolRequirement,
+      bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
+    linkInternal(infoInput, getTree, logger, symbolRequirements,
+        bypassLinkingErrors, checkIR)
+  }
+
+  private def linkInternal(infoInput: List[Infos.ClassInfo],
+      getTree: TreeProvider, logger: Logger,
+      symbolRequirements: SymbolRequirement,
       bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
 
     if (checkIR) {

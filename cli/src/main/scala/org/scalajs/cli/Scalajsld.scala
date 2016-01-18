@@ -96,7 +96,7 @@ object Scalajsld {
         .text("Output mode " + OutputMode.All.mkString("(", ", ", ")"))
       opt[Unit]('b', "bypassLinkingErrors")
         .action { (_, c) => c.copy(bypassLinkingErrors = true) }
-        .text("Only warn if there are linking errors")
+        .text("Only warn if there are linking errors (deprecated)")
       opt[Unit]('c', "checkIR")
         .action { (_, c) => c.copy(checkIR = true) }
         .text("Check IR before optimizing")
@@ -106,7 +106,7 @@ object Scalajsld {
         .text("Relativize source map with respect to given path (meaningful with -s)")
       opt[Unit]("noStdlib")
         .action { (_, c) => c.copy(stdLib = None) }
-        .text("Don't automatcially include Scala.js standard library")
+        .text("Don't automatically include Scala.js standard library")
       opt[File]("stdlib")
         .valueName("<scala.js stdlib jar>")
         .hidden()
@@ -147,12 +147,19 @@ object Scalajsld {
             "if you rely on this feature.")
       }
 
+      // Warn if bypassing linking errors was requested.
+      if (options.bypassLinkingErrors) {
+        Console.err.println(
+            "Support for bypassing linking errors with -b or " +
+            "--bypassLinkingErrors will be dropped in the next major version.")
+      }
+
       val semantics =
         if (options.fullOpt) options.semantics.optimized
         else options.semantics
 
       val frontendConfig = LinkerFrontend.Config()
-        .withBypassLinkingErrors(options.bypassLinkingErrors)
+        .withBypassLinkingErrorsInternal(options.bypassLinkingErrors)
         .withCheckIR(options.checkIR)
 
       val backendConfig = LinkerBackend.Config()
