@@ -542,7 +542,7 @@ object ScalaJSPluginInternal {
         val libs = resolvedJSDependencies.value.data
         resolvedJSEnv.value match {
           case env: LinkingUnitJSEnv =>
-            log.debug("Generating LinkingUnit for JSEnv ${env.name}")
+            log.debug(s"Generating LinkingUnit for JSEnv ${env.name}")
             Def.task {
               val linker = scalaJSLinker.value
               val ir = scalaJSIR.value.data
@@ -687,6 +687,7 @@ object ScalaJSPluginInternal {
 
   val scalaJSTestSettings = (
       scalaJSTestBuildSettings ++
+      scalaJSRunSettings ++
       scalaJSTestFrameworkSettings
   )
 
