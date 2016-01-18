@@ -650,7 +650,7 @@ object Printers {
     }
   }
 
-  object ReverseSourceMapPrinter {
+  private object ReverseSourceMapPrinter {
     private object NullWriter extends Writer {
       def close(): Unit = ()
       def flush(): Unit = ()

@@ -34,7 +34,7 @@ import org.scalajs.core.tools.linker._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-private[frontend] abstract class OptimizerCore(
+private[optimizer] abstract class OptimizerCore(
     semantics: Semantics, esLevel: ESLevel) {
   import OptimizerCore._
 
@@ -3383,7 +3383,7 @@ private[frontend] abstract class OptimizerCore(
   }
 }
 
-private[frontend] object OptimizerCore {
+private[optimizer] object OptimizerCore {
 
   private final val MaxRollbacksPerMethod = 256
 

@@ -86,6 +86,6 @@ final class VirtualFileMaterializer(singleDir: Boolean = false) {
 
 }
 
-object VirtualFileMaterializer {
+private object VirtualFileMaterializer {
   private final val TempDirAttempts = 10000
 }

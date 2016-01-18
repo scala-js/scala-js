@@ -20,11 +20,11 @@ import org.scalajs.core.tools.javascript.ESLevel
 
 import ConcurrencyUtils._
 
-class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
+final class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
     considerPositions: Boolean)
     extends GenIncOptimizer(semantics, esLevel, considerPositions) {
 
-  protected object CollOps extends GenIncOptimizer.AbsCollOps {
+  private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
     type ParMap[K, V] = ParTrieMap[K, V]
     type AccMap[K, V] = TrieMap[K, AtomicAcc[V]]
@@ -70,17 +70,17 @@ class ParIncOptimizer(semantics: Semantics, esLevel: ESLevel,
   }
 
   private val _interfaces = TrieMap.empty[String, InterfaceType]
-  protected def getInterface(encodedName: String): InterfaceType =
+  private[optimizer] def getInterface(encodedName: String): InterfaceType =
     _interfaces.getOrPut(encodedName, new ParInterfaceType(encodedName))
 
   private val methodsToProcess: AtomicAcc[MethodImpl] = AtomicAcc.empty
-  protected def scheduleMethod(method: MethodImpl): Unit =
+  private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
     methodsToProcess += method
 
-  protected def newMethodImpl(owner: MethodContainer,
+  private[optimizer] def newMethodImpl(owner: MethodContainer,
       encodedName: String): MethodImpl = new ParMethodImpl(owner, encodedName)
 
-  protected def processAllTaggedMethods(): Unit = {
+  private[optimizer] def processAllTaggedMethods(): Unit = {
     val methods = methodsToProcess.removeAll().toParArray
     logProcessingMethods(methods.count(!_.deleted))
     for (method <- methods)

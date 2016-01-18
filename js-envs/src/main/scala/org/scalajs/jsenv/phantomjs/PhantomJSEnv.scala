@@ -66,7 +66,31 @@ class PhantomJSEnv(
 
   protected class ComPhantomRunner(libs: Seq[ResolvedJSDependency],
       code: VirtualJSFile) extends AsyncPhantomRunner(libs, code)
-      with ComJSRunner with WebsocketListener {
+      with ComJSRunner {
+
+    private var mgrIsRunning: Boolean = false
+
+    private object websocketListener extends WebsocketListener { // scalastyle:ignore
+      def onRunning(): Unit = ComPhantomRunner.this.synchronized {
+        mgrIsRunning = true
+        ComPhantomRunner.this.notifyAll()
+      }
+
+      def onOpen(): Unit = ComPhantomRunner.this.synchronized {
+        ComPhantomRunner.this.notifyAll()
+      }
+
+      def onClose(): Unit = ComPhantomRunner.this.synchronized {
+        ComPhantomRunner.this.notifyAll()
+      }
+
+      def onMessage(msg: String): Unit = ComPhantomRunner.this.synchronized {
+        recvBuf.enqueue(msg)
+        ComPhantomRunner.this.notifyAll()
+      }
+
+      def log(msg: String): Unit = logger.debug(s"PhantomJS WS Jetty: $msg")
+    }
 
     private def loadMgr() = {
       val loader =
@@ -79,31 +103,14 @@ class PhantomJSEnv(
       val ctors = clazz.getConstructors()
       assert(ctors.length == 1, "JettyWebsocketManager may only have one ctor")
 
-      val mgr = ctors.head.newInstance(this)
+      val mgr = ctors.head.newInstance(websocketListener)
 
       mgr.asInstanceOf[WebsocketManager]
     }
 
-    val mgr: WebsocketManager = loadMgr()
-
-    protected var mgrIsRunning: Boolean = false
-
-    def onRunning(): Unit = synchronized {
-      mgrIsRunning = true
-      notifyAll()
-    }
-
-    def onOpen(): Unit = synchronized(notifyAll())
-    def onClose(): Unit = synchronized(notifyAll())
+    private val mgr: WebsocketManager = loadMgr()
 
     future.onComplete(_ => synchronized(notifyAll()))(ExecutionContext.global)
-
-    def onMessage(msg: String): Unit = synchronized {
-      recvBuf.enqueue(msg)
-      notifyAll()
-    }
-
-    def log(msg: String): Unit = logger.debug(s"PhantomJS WS Jetty: $msg")
 
     private[this] val recvBuf = mutable.Queue.empty[String]
     private[this] val fragmentsBuf = new StringBuilder
@@ -506,7 +513,7 @@ class PhantomJSEnv(
 
 }
 
-object PhantomJSEnv {
+private object PhantomJSEnv {
   private final val MaxByteMessageSize = 32768 // 32 KB
   private final val MaxCharMessageSize = MaxByteMessageSize / 2 // 2B per char
   private final val MaxCharPayloadSize = MaxCharMessageSize - 1 // frag flag

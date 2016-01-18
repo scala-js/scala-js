@@ -8,7 +8,7 @@ import org.eclipse.jetty.websocket.{WebSocket, WebSocketHandler}
 import org.eclipse.jetty.util.component.{LifeCycle, AbstractLifeCycle}
 import org.eclipse.jetty.util.log
 
-final class JettyWebsocketManager(
+private[phantomjs] final class JettyWebsocketManager(
     wsListener: WebsocketListener) extends WebsocketManager { thisMgr =>
 
   private[this] var webSocketConn: WebSocket.Connection = null

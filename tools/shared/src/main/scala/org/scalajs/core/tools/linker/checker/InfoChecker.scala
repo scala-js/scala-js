@@ -27,7 +27,7 @@ import Printers._
 import org.scalajs.core.tools.logging._
 
 /** Checker for the validity of the IR. */
-class InfoChecker(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
+final class InfoChecker(infoAndTrees: Traversable[(ClassInfo, ClassDef)],
     logger: Logger) {
 
   private var _errorCount: Int = 0

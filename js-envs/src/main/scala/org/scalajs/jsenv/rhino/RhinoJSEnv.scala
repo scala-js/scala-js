@@ -479,7 +479,7 @@ final class RhinoJSEnv private (
 
 }
 
-object RhinoJSEnv {
+private object RhinoJSEnv {
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {

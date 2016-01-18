@@ -15,7 +15,7 @@ class CyclicDependencyException(
 ) extends DependencyException(
   CyclicDependencyException.mkMsg(participants))
 
-object CyclicDependencyException {
+private object CyclicDependencyException {
   private def mkMsg(parts: List[ResolutionInfo]) = {
     val lookup = parts.map(p => (p.relPath, p)).toMap
 
@@ -42,7 +42,7 @@ class ConflictingNameException(
 ) extends DependencyException(
   ConflictingNameException.mkMsg(participants))
 
-object ConflictingNameException {
+private object ConflictingNameException {
   private def mkMsg(parts: List[FlatJSDependency]) = {
     val msg = new StringBuilder()
     msg.append(s"CommonJSName conflicts in:\n")
@@ -61,7 +61,7 @@ class ConflictingMinifiedJSException(
 ) extends DependencyException(
   ConflictingMinifiedJSException.mkMsg(participants))
 
-object ConflictingMinifiedJSException {
+private object ConflictingMinifiedJSException {
   private def mkMsg(parts: List[FlatJSDependency]) = {
     val msg = new StringBuilder()
     msg.append(s"Minified JS conflicts in:\n")
@@ -106,7 +106,7 @@ object JSLibResolveException {
 class BadComplianceException(val unmet: List[ComplianceRequirement])
     extends Exception(BadComplianceException.mkMsg(unmet))
 
-object BadComplianceException {
+private object BadComplianceException {
   private def mkMsg(unmets: List[ComplianceRequirement]): String = {
     val msg = new StringBuilder()
     msg.append("Unmet required semantic compliance(s): \n")

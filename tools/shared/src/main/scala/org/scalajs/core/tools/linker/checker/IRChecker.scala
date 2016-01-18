@@ -24,7 +24,7 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.{LinkingUnit, LinkedClass}
 
 /** Checker for the validity of the IR. */
-class IRChecker(unit: LinkingUnit, logger: Logger) {
+final class IRChecker(unit: LinkingUnit, logger: Logger) {
   import IRChecker._
 
   private var _errorCount: Int = 0
@@ -60,7 +60,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     errorCount == 0
   }
 
-  def checkStaticMembers(classDef: LinkedClass): Unit = {
+  private def checkStaticMembers(classDef: LinkedClass): Unit = {
     for (member <- classDef.staticMethods) {
       val methodDef = member.tree
       implicit val ctx = ErrorContext(methodDef)
@@ -74,7 +74,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkScalaClassDef(classDef: LinkedClass): Unit = {
+  private def checkScalaClassDef(classDef: LinkedClass): Unit = {
     assert(classDef.kind != ClassKind.RawJSType)
 
     // Is this a normal class?
@@ -150,7 +150,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
+  private def checkFieldDef(fieldDef: FieldDef, classDef: LinkedClass): Unit = {
     val FieldDef(name, tpe, mutable) = fieldDef
     implicit val ctx = ErrorContext(fieldDef)
 
@@ -166,7 +166,9 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError(s"FieldDef cannot have type NoType")
   }
 
-  def checkMethodDef(methodDef: MethodDef, classDef: LinkedClass): Unit = {
+  private def checkMethodDef(methodDef: MethodDef,
+      classDef: LinkedClass): Unit = {
+
     val MethodDef(static, Ident(name, _), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -214,7 +216,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkExportedMethodDef(methodDef: MethodDef,
+  private def checkExportedMethodDef(methodDef: MethodDef,
       classDef: LinkedClass): Unit = {
     val MethodDef(static, StringLiteral(name), params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
@@ -262,7 +264,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkJSClassConstructor(methodDef: MethodDef,
+  private def checkJSClassConstructor(methodDef: MethodDef,
       classDef: LinkedClass): Unit = {
     val MethodDef(static, _, params, resultType, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
@@ -304,7 +306,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     typecheckStat(Block(restStats)(methodDef.pos), restEnv)
   }
 
-  def checkExportedPropertyDef(propDef: PropertyDef,
+  private def checkExportedPropertyDef(propDef: PropertyDef,
       classDef: LinkedClass): Unit = {
     val PropertyDef(_, getterBody, setterArg, setterBody) = propDef
     implicit val ctx = ErrorContext(propDef)
@@ -335,7 +337,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def checkConstructorExportDef(ctorDef: ConstructorExportDef,
+  private def checkConstructorExportDef(ctorDef: ConstructorExportDef,
       classDef: LinkedClass): Unit = {
     val ConstructorExportDef(_, params, body) = ctorDef
     implicit val ctx = ErrorContext(ctorDef)
@@ -365,7 +367,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     typecheckStat(body, bodyEnv)
   }
 
-  def checkJSClassExportDef(classExportDef: JSClassExportDef,
+  private def checkJSClassExportDef(classExportDef: JSClassExportDef,
       classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(classExportDef)
 
@@ -373,7 +375,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError(s"Exported JS class def can only appear in a JS class")
   }
 
-  def checkModuleExportDef(moduleDef: ModuleExportDef,
+  private def checkModuleExportDef(moduleDef: ModuleExportDef,
       classDef: LinkedClass): Unit = {
     implicit val ctx = ErrorContext(moduleDef)
 
@@ -381,7 +383,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError(s"Exported module def can only appear in a module class")
   }
 
-  def typecheckStat(tree: Tree, env: Env): Env = {
+  private def typecheckStat(tree: Tree, env: Env): Env = {
     implicit val ctx = ErrorContext(tree)
 
     tree match {
@@ -495,7 +497,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
+  private def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
       implicit ctx: ErrorContext): Unit = {
     val tpe = typecheckExpr(tree, env)
     if (!isSubtype(tpe, expectedType))
@@ -503,7 +505,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           s"for tree of type ${tree.getClass.getName}")
   }
 
-  def typecheckExpr(tree: Tree, env: Env): Type = {
+  private def typecheckExpr(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
     if (tree.tpe == NoType)
       reportError(s"Expression tree has type NoType")
@@ -520,7 +522,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def typecheck(tree: Tree, env: Env): Type = {
+  private def typecheck(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
 
     def checkApplyGeneric(methodName: String, methodFullName: String,
@@ -864,7 +866,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     tree.tpe
   }
 
-  def inferMethodType(encodedName: String, isStatic: Boolean)(
+  private def inferMethodType(encodedName: String, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
     val (_, paramRefTypes, resultRefType) = decodeMethodName(encodedName)
@@ -880,14 +882,15 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     (paramTypes, resultType)
   }
 
-  def refTypeToType(refType: ReferenceType)(implicit ctx: ErrorContext): Type = {
+  private def refTypeToType(refType: ReferenceType)(
+      implicit ctx: ErrorContext): Type = {
     refType match {
       case arrayType: ArrayType   => arrayType
       case ClassType(encodedName) => classNameToType(encodedName)
     }
   }
 
-  def classNameToType(encodedName: String)(
+  private def classNameToType(encodedName: String)(
       implicit ctx: ErrorContext): Type = {
     if (encodedName.length == 1) {
       (encodedName.charAt(0): @switch) match {
@@ -911,30 +914,33 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  def arrayElemType(arrayType: ArrayType)(implicit ctx: ErrorContext): Type = {
+  private def arrayElemType(arrayType: ArrayType)(
+      implicit ctx: ErrorContext): Type = {
     if (arrayType.dimensions == 1) classNameToType(arrayType.baseClassName)
     else ArrayType(arrayType.baseClassName, arrayType.dimensions-1)
   }
 
-  def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
+  private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
     logger.error(s"$ctx: $msg")
     _errorCount += 1
   }
 
-  def lookupInfo(className: String)(implicit ctx: ErrorContext): Infos.ClassInfo = {
+  private def lookupInfo(className: String)(
+      implicit ctx: ErrorContext): Infos.ClassInfo = {
     unit.infos.getOrElse(className, {
       reportError(s"Cannot find info for class $className")
       Infos.ClassInfo(className)
     })
   }
 
-  def tryLookupClass(className: String)(
+  private def tryLookupClass(className: String)(
        implicit ctx: ErrorContext): Either[Infos.ClassInfo, CheckedClass] = {
     classes.get(className).fold[Either[Infos.ClassInfo, CheckedClass]](
         Left(lookupInfo(className)))(Right(_))
   }
 
-  def lookupClass(className: String)(implicit ctx: ErrorContext): CheckedClass = {
+  private def lookupClass(className: String)(
+      implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
       reportError(s"Cannot find class $className")
       new CheckedClass(className, ClassKind.Class,
@@ -942,10 +948,13 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     })
   }
 
-  def lookupClass(classType: ClassType)(implicit ctx: ErrorContext): CheckedClass =
+  private def lookupClass(classType: ClassType)(
+      implicit ctx: ErrorContext): CheckedClass = {
     lookupClass(classType.className)
+  }
 
-  def isSubclass(lhs: String, rhs: String)(implicit ctx: ErrorContext): Boolean = {
+  private def isSubclass(lhs: String, rhs: String)(
+      implicit ctx: ErrorContext): Boolean = {
     tryLookupClass(lhs).fold({ info =>
       val parents = info.superClass ++: info.interfaces
       parents.exists(_ == rhs) || parents.exists(isSubclass(_, rhs))
@@ -954,11 +963,12 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     })
   }
 
-  def isSubtype(lhs: Type, rhs: Type)(implicit ctx: ErrorContext): Boolean = {
+  private def isSubtype(lhs: Type, rhs: Type)(
+      implicit ctx: ErrorContext): Boolean = {
     Types.isSubtype(lhs, rhs)(isSubclass)
   }
 
-  class Env(
+  private class Env(
       /** Type of `this`. Can be NoType. */
       val thisTpe: Type,
       /** Local variables in scope (including through closures). */
@@ -991,7 +1001,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       new Env(this.thisTpe, this.locals, this.returnTypes, inConstructor)
   }
 
-  object Env {
+  private object Env {
     val empty: Env = new Env(NoType, Map.empty, Map.empty, false)
 
     def fromSignature(thisType: Type, params: List[ParamDef],
@@ -1005,7 +1015,7 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  class CheckedClass(
+  private class CheckedClass(
       val name: String,
       val kind: ClassKind,
       val superClassName: Option[String],
@@ -1027,14 +1037,6 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
           else classDef.fields.map(CheckedClass.checkedField))
     }
 
-    // TODO In fact everything in IRChecker should be private
-    @deprecated("Use the constructor with jsName", "0.6.5")
-    def this(name: String, kind: ClassKind, superClassName: Option[String],
-        ancestors: Set[String], fields: TraversableOnce[CheckedField] = Nil)(
-        implicit ctx: ErrorContext) = {
-      this(name, kind, superClassName, ancestors, None, fields)
-    }
-
     def isAncestorOfHijackedClass: Boolean =
       AncestorsOfHijackedClasses.contains(name)
 
@@ -1042,17 +1044,18 @@ class IRChecker(unit: LinkingUnit, logger: Logger) {
       fields.get(name).orElse(superClass.flatMap(_.lookupField(name)))
   }
 
-  object CheckedClass {
+  private object CheckedClass {
     private def checkedField(fieldDef: FieldDef) = {
       val FieldDef(Ident(name, _), tpe, mutable) = fieldDef
       new CheckedField(name, tpe, mutable)
     }
   }
 
-  class CheckedField(val name: String, val tpe: Type, val mutable: Boolean)
+  private class CheckedField(val name: String, val tpe: Type,
+      val mutable: Boolean)
 }
 
-object IRChecker {
+private object IRChecker {
   /** The context in which to report IR check errors.
    *
    *  The way this class is written is optimized for the happy path, where no
@@ -1092,5 +1095,6 @@ object IRChecker {
       new ErrorContext(linkedClass)
   }
 
-  case class LocalDef(name: String, tpe: Type, mutable: Boolean)(val pos: Position)
+  private case class LocalDef(name: String, tpe: Type, mutable: Boolean)(
+      val pos: Position)
 }

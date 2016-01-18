@@ -143,7 +143,7 @@ final class ClosureLinkerBackend(
   }
 }
 
-object ClosureLinkerBackend {
+private object ClosureLinkerBackend {
   /** Minimal set of externs to compile Scala.js-emitted code with Closure. */
   private val ScalaJSExterns = """
     /** @constructor */

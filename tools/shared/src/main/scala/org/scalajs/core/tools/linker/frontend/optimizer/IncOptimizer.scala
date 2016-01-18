@@ -15,11 +15,11 @@ import scala.collection.mutable
 import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.javascript.ESLevel
 
-class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
+final class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
     considerPositions: Boolean)
     extends GenIncOptimizer(semantics, esLevel, considerPositions) {
 
-  protected object CollOps extends GenIncOptimizer.AbsCollOps {
+  private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
     type ParMap[K, V] = mutable.Map[K, V]
     type AccMap[K, V] = mutable.Map[K, mutable.ListBuffer[V]]
@@ -56,17 +56,17 @@ class IncOptimizer(semantics: Semantics, esLevel: ESLevel,
   }
 
   private val _interfaces = mutable.Map.empty[String, InterfaceType]
-  protected def getInterface(encodedName: String): InterfaceType =
+  private[optimizer] def getInterface(encodedName: String): InterfaceType =
     _interfaces.getOrElseUpdate(encodedName, new SeqInterfaceType(encodedName))
 
   private val methodsToProcess = mutable.ListBuffer.empty[MethodImpl]
-  protected def scheduleMethod(method: MethodImpl): Unit =
+  private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
     methodsToProcess += method
 
-  protected def newMethodImpl(owner: MethodContainer,
+  private[optimizer] def newMethodImpl(owner: MethodContainer,
       encodedName: String): MethodImpl = new SeqMethodImpl(owner, encodedName)
 
-  protected def processAllTaggedMethods(): Unit = {
+  private[optimizer] def processAllTaggedMethods(): Unit = {
     logProcessingMethods(methodsToProcess.count(!_.deleted))
     for (method <- methodsToProcess)
       method.process()

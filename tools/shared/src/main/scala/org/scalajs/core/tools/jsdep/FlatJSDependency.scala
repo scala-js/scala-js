@@ -16,23 +16,13 @@ import org.scalajs.core.ir.Trees.isValidIdentifier
  */
 final class FlatJSDependency(
     val origin: Origin,
-    @deprecatedName('resourceName)
     val relPath: String,
     val dependencies: List[String] = Nil,
     val commonJSName: Option[String] = None,
     val relPathMinified: Option[String] = None) {
 
-  // Binary compatibility
-  def this(origin: Origin, @deprecatedName('resourceName) relPath: String,
-      dependencies: List[String], commonJSName: Option[String]) = {
-    this(origin, relPath, dependencies, commonJSName, None)
-  }
-
   require(commonJSName.forall(isValidIdentifier),
     "commonJSName must be a valid JavaScript identifier")
-
-  @deprecated("Use relPath instead.", "0.6.1")
-  val resourceName: String = relPath
 
   override def toString(): String = {
     val b = new StringBuilder
