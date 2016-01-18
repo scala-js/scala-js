@@ -40,4 +40,14 @@
   };
   $g.ScalaJSDefinedTestNativeParentClassWithVarargs =
     ScalaJSDefinedTestNativeParentClassWithVarargs;
+
+  var ConstructorDefaultParam = function(foo) {
+    $g.Object.call(this);
+    if (foo == undefined) {
+      this.foo = -1;
+    } else {
+      this.foo = foo;
+    }
+  };
+  $g.ConstructorDefaultParam = ConstructorDefaultParam;
 }).call(this);

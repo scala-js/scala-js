@@ -1125,4 +1125,29 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test
+  def noDefaultConstructorArgsIfModuleIsJSNative: Unit = {
+    """
+    @ScalaJSDefined
+    class A(x: Int = 1) extends js.Object
+    @js.native
+    object A extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Implementation restriction: constructors of Scala.js-defined JS classes cannot have default parameters if their companion module is JS native.
+      |    class A(x: Int = 1) extends js.Object
+      |          ^
+    """
+
+    """
+    class A(x: Int = 1)
+    @js.native
+    object A extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Implementation restriction: constructors of Scala classes cannot have default parameters if their companion module is JS native.
+      |    class A(x: Int = 1)
+      |          ^
+    """
+  }
 }

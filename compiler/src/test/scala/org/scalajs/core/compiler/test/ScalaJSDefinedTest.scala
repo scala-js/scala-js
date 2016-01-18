@@ -401,19 +401,6 @@ class ScalaJSDefinedTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noDefault: Unit = {
-    """
-    @ScalaJSDefined
-    class A(x: Int, y: Int = 4) extends js.Object
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: Implementation restriction: the constructor of a Scala.js-defined JS classes cannot have default parameters.
-      |    class A(x: Int, y: Int = 4) extends js.Object
-      |          ^
-    """
-  }
-
-  @Test
   def noUseJsNative: Unit = {
     """
     @ScalaJSDefined
