@@ -124,11 +124,20 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
           allowAddingSyntheticMethods = true)
     }
 
-    val linkingErrLevel = if (bypassLinkingErrors) Level.Warn else Level.Error
-    analysis.errors.foreach(logError(_, logger, linkingErrLevel))
+    if (analysis.errors.nonEmpty) {
+      // TODO Make it always fatal when we can get rid of bypassLinkingErrors
+      val fatal = !bypassLinkingErrors || analysis.errors.exists {
+        case _: Analysis.MissingJavaLangObjectClass => true
+        case _: Analysis.CycleInInheritanceChain    => true
+        case _                                      => false
+      }
 
-    if (analysis.errors.nonEmpty && !bypassLinkingErrors)
-      sys.error("There were linking errors")
+      val linkingErrLevel = if (fatal) Level.Error else Level.Warn
+      analysis.errors.foreach(logError(_, logger, linkingErrLevel))
+
+      if (fatal)
+        sys.error("There were linking errors")
+    }
 
     val linkResult = logger.time("Linker: Assemble LinkedClasses") {
       assemble(infoInput, getTree, analysis)
