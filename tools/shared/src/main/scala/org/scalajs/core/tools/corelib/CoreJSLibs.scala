@@ -15,7 +15,7 @@ import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.linker.backend.OutputMode
 
 import scala.collection.immutable.Seq
 import scala.collection.mutable

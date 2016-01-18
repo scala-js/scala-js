@@ -21,7 +21,8 @@ import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.corelib._
 
-import OutputMode.ECMAScript51Global
+import org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript51Global
+import org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter
 
 private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   import ScalaJSCoreLib._

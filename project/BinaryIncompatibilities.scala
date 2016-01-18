@@ -106,7 +106,15 @@ object BinaryIncompatibilities {
       ProblemFilters.exclude[IncompatibleMethTypeProblem](
           "org.scalajs.cli.Scalajsld#Options.apply"),
       ProblemFilters.exclude[IncompatibleResultTypeProblem](
-          "org.scalajs.cli.Scalajsld#Options.<init>$default$3")
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$3"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.copy$default$5"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.outputMode"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.apply$default$5"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.cli.Scalajsld#Options.<init>$default$5")
   )
 
   val Library = Seq(

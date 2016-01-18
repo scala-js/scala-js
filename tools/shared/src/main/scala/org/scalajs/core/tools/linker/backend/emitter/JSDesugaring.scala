@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.language.implicitConversions
 
@@ -24,7 +24,7 @@ import org.scalajs.core.tools.sem._
 import CheckedBehavior._
 
 import org.scalajs.core.tools.linker.LinkedClass
-
+import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.javascript.{Trees => js}
 
 import java.io.StringWriter
@@ -109,13 +109,13 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-private[javascript] object JSDesugaring {
+private[emitter] object JSDesugaring {
 
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
   /** Desugars parameters and body to a JS function.
    */
-  private[javascript] def desugarToFunction(
+  private[emitter] def desugarToFunction(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       params: List[ParamDef], body: Tree, isStat: Boolean)(
       implicit pos: Position): js.Function = {
@@ -125,7 +125,7 @@ private[javascript] object JSDesugaring {
 
   /** Desugars parameters and body to a JS function.
    */
-  private[javascript] def desugarToFunction(
+  private[emitter] def desugarToFunction(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       thisIdent: Option[js.Ident], params: List[ParamDef],
       body: Tree, isStat: Boolean)(
@@ -135,7 +135,7 @@ private[javascript] object JSDesugaring {
   }
 
   /** Desugars a statement or an expression. */
-  private[javascript] def desugarTree(
+  private[emitter] def desugarTree(
       classEmitter: ScalaJSClassEmitter, enclosingClassName: String,
       tree: Tree, isStat: Boolean): js.Tree = {
     val desugar = new JSDesugar(classEmitter, enclosingClassName, None)
@@ -145,10 +145,10 @@ private[javascript] object JSDesugaring {
       desugar.transformExpr(tree)(Env.empty)
   }
 
-  private[javascript] implicit def transformIdent(ident: Ident): js.Ident =
+  private[emitter] implicit def transformIdent(ident: Ident): js.Ident =
     js.Ident(ident.name, ident.originalName)(ident.pos)
 
-  private[javascript] def transformParamDef(paramDef: ParamDef): js.ParamDef =
+  private[emitter] def transformParamDef(paramDef: ParamDef): js.ParamDef =
     js.ParamDef(paramDef.name, paramDef.rest)(paramDef.pos)
 
   private class JSDesugar(
@@ -2125,7 +2125,7 @@ private[javascript] object JSDesugaring {
 
   // Helpers
 
-  private[javascript] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
+  private[emitter] def genLet(name: js.Ident, mutable: Boolean, rhs: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.LocalDef = {
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
@@ -2135,7 +2135,7 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
+  private[emitter] def genIsInstanceOf(expr: js.Tree, cls: ReferenceType)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     genIsAsInstanceOf(expr, cls, test = true)
 
@@ -2189,7 +2189,7 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] def genCallHelper(helperName: String, args: js.Tree*)(
+  private[emitter] def genCallHelper(helperName: String, args: js.Tree*)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val fun = if (outputMode == OutputMode.ECMAScript6StrongMode &&
         HelpersInDollarClass.contains(helperName))
@@ -2243,11 +2243,11 @@ private[javascript] object JSDesugaring {
       "typedArray2DoubleArray"
   )
 
-  private[javascript] def encodeClassVar(className: String)(
+  private[emitter] def encodeClassVar(className: String)(
       implicit outputMode: OutputMode, pos: Position): js.Tree =
     envField("c", className)
 
-  private[javascript] def genRawJSClassConstructor(linkedClass: LinkedClass)(
+  private[emitter] def genRawJSClassConstructor(linkedClass: LinkedClass)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     if (linkedClass.kind == ClassKind.JSClass) {
       encodeClassVar(linkedClass.encodedName)
@@ -2259,7 +2259,7 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] def envField(field: String, subField: String,
+  private[emitter] def envField(field: String, subField: String,
       origName: Option[String] = None)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     import TreeDSL._
@@ -2274,7 +2274,7 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] def envField(field: String)(
+  private[emitter] def envField(field: String)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     import TreeDSL._
 
@@ -2288,25 +2288,25 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] def envFieldDef(field: String, subField: String,
+  private[emitter] def envFieldDef(field: String, subField: String,
       value: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     envFieldDef(field, subField, value, mutable = false)
   }
 
-  private[javascript] def envFieldDef(field: String, subField: String,
+  private[emitter] def envFieldDef(field: String, subField: String,
       value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     envFieldDef(field, subField, origName = None, value, mutable)
   }
 
-  private[javascript] def envFieldDef(field: String, subField: String,
+  private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     envFieldDef(field, subField, origName, value, mutable = false)
   }
 
-  private[javascript] def envFieldDef(field: String, subField: String,
+  private[emitter] def envFieldDef(field: String, subField: String,
       origName: Option[String], value: js.Tree, mutable: Boolean)(
       implicit outputMode: OutputMode, pos: Position): js.Tree = {
     val globalVar = envField(field, subField, origName)
@@ -2330,7 +2330,7 @@ private[javascript] object JSDesugaring {
     }
   }
 
-  private[javascript] implicit class MyTreeOps(val self: js.Tree) {
+  private[emitter] implicit class MyTreeOps(val self: js.Tree) {
     def prototype(implicit pos: Position): js.Tree =
       js.DotSelect(self, js.Ident("prototype"))
   }

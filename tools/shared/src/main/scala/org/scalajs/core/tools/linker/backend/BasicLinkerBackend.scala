@@ -12,12 +12,13 @@ package org.scalajs.core.tools.linker.backend
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io.WritableVirtualJSFile
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
+import org.scalajs.core.tools.linker.backend.emitter.Emitter
+import org.scalajs.core.tools.javascript.{JSFileBuilder, JSFileBuilderWithSourceMap}
 
 /** The basic backend for the Scala.js linker.
- *  
+ *
  *  Simply emits the JavaScript without applying any further optimizations.
  */
 final class BasicLinkerBackend(
@@ -25,14 +26,14 @@ final class BasicLinkerBackend(
     outputMode: OutputMode,
     withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode, withSourceMap, config) {
+) extends LinkerBackend(semantics, outputMode.esLevel, withSourceMap, config) {
 
   private[this] val emitter = new Emitter(semantics, outputMode)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
   /** Emit the given [[LinkingUnit]] to the target output
-   * 
+   *
    *  @param unit [[LinkingUnit]] to emit
    *  @param output File to write to
    */

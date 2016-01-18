@@ -13,7 +13,7 @@ import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
@@ -27,11 +27,11 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
       "Frontend must have source maps enabled if backend has them enabled")
   require(frontend.semantics == backend.semantics,
       "Frontend and backend must agree on semantics")
-  require(frontend.esLevel == backend.outputMode.esLevel,
+  require(frontend.esLevel == backend.esLevel,
       "Frontend and backend must agree on ESLevel")
 
   val semantics: Semantics = frontend.semantics
-  val outputMode: OutputMode = backend.outputMode
+  val esLevel: ESLevel = backend.esLevel
 
   private[this] var _valid = true
 

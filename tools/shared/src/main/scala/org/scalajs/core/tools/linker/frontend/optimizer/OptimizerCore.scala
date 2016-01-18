@@ -24,9 +24,10 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.sem.{CheckedBehavior, Semantics}
-import org.scalajs.core.tools.javascript.{LongImpl, ESLevel}
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker._
+import org.scalajs.core.tools.linker.backend.emitter.LongImpl
 
 /** Optimizer core.
  *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].

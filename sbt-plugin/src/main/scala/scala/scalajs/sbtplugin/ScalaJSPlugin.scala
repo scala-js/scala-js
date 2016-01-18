@@ -12,9 +12,9 @@ package org.scalajs.sbtplugin
 import sbt._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.linker.LinkingUnit
+import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.jsdep.{JSDependencyManifest, ResolvedJSDependency}
 import org.scalajs.core.tools.jsdep.ManifestFilters.ManifestFilter
 import org.scalajs.core.tools.jsdep.DependencyResolver.DependencyFilter

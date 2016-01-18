@@ -10,11 +10,10 @@
 package org.scalajs.core.tools.linker
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
 
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.IncOptimizer
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
+import org.scalajs.core.tools.linker.backend._
 
 trait LinkerPlatformExtensions { this: Linker.type =>
   def apply(

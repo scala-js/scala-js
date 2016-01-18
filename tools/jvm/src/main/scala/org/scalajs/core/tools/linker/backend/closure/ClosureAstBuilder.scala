@@ -4,7 +4,7 @@ import org.scalajs.core.ir
 import ir.Position.NoPosition
 
 import org.scalajs.core.tools.javascript.Trees.Tree
-import org.scalajs.core.tools.linker.backend.JSTreeBuilder
+import org.scalajs.core.tools.javascript.JSTreeBuilder
 
 import com.google.javascript.rhino._
 import com.google.javascript.rhino.jstype.{StaticSourceFile, SimpleSourceFile}

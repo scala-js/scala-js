@@ -22,11 +22,12 @@ import Trees._
 import Types._
 
 import org.scalajs.core.tools.sem._
-import org.scalajs.core.tools.javascript.{ESLevel, LongImpl}
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
+import org.scalajs.core.tools.linker.backend.emitter.LongImpl
 
 /** Incremental optimizer.
  *  An incremental optimizer optimizes a [[LinkingUnit]] in an incremental way.

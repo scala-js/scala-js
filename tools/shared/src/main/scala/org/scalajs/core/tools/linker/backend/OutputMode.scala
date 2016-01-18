@@ -7,7 +7,9 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend
+
+import org.scalajs.core.tools.javascript.ESLevel
 
 /** JavaScript output mode. */
 sealed abstract class OutputMode {

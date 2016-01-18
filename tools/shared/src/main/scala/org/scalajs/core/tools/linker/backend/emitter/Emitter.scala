@@ -7,30 +7,29 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.linker.backend
+package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.annotation.tailrec
 
 import scala.collection.mutable
 
+import org.scalajs.core.ir.{ClassKind, Position}
+
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.logging._
 
 import org.scalajs.core.tools.corelib.CoreJSLibs
-import org.scalajs.core.tools.javascript
-import javascript.{Trees => js, OutputMode, ESLevel, LongImpl}
-
-import org.scalajs.core.ir.{ClassKind, Definitions, Position}
-import org.scalajs.core.ir.{Trees => ir}
+import org.scalajs.core.tools.javascript.{Trees => js, _}
 
 import org.scalajs.core.tools.linker._
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
+import org.scalajs.core.tools.linker.backend.OutputMode
 
 /** Emits a desugared JS tree to a builder */
 final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   import Emitter._
 
-  private var classEmitter: javascript.ScalaJSClassEmitter = _
+  private var classEmitter: ScalaJSClassEmitter = _
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
@@ -71,7 +70,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   }
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
-    classEmitter = new javascript.ScalaJSClassEmitter(outputMode, unit)
+    classEmitter = new ScalaJSClassEmitter(outputMode, unit)
     startRun()
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)

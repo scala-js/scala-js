@@ -124,36 +124,36 @@
 
   <task id="test-suite-ecma-script6"><![CDATA[
     setJavaVersion $java
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in noIrCheckTest := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= makeCompliant' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6NodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
@@ -163,36 +163,36 @@
 
   <task id="test-suite-ecma-script6-strong-mode"><![CDATA[
     setJavaVersion $java
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in noIrCheckTest := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in noIrCheckTest := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         ++$scala noIrCheckTest/test \
         noIrCheckTest/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= makeCompliant' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         ++$scala testSuite/test \
         testSuite/clean &&
-    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode' \
+    sbtretry 'set scalaJSOutputMode in testSuite := org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript6StrongMode' \
         'set jsEnv in testSuite := NodeJSEnv(args = ES6StrongModeNodeArgs).value.withSourceMap(false)' \
         'set scalaJSSemantics in testSuite ~= { _.optimized }' \
         'set scalaJSOptimizerOptions in testSuite ~= (_.withDisableOptimizer(true))' \

@@ -13,7 +13,7 @@ import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 
 /** A box around a [[GenLinker]] to support clearing.
@@ -28,7 +28,7 @@ final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
     extends GenLinker {
 
   private[this] var _semantics: Semantics = _
-  private[this] var _outputMode: OutputMode = _
+  private[this] var _esLevel: ESLevel = _
   private[this] var _linker: GenLinker = _
 
   def semantics: Semantics = {
@@ -36,9 +36,9 @@ final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
     _semantics
   }
 
-  def outputMode: OutputMode = {
+  def esLevel: ESLevel = {
     ensureLinker()
-    _outputMode
+    _esLevel
   }
 
   def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
@@ -82,10 +82,10 @@ final class ClearableLinker(newLinker: () => GenLinker, batchMode: Boolean)
       else
         require(_semantics == candidate.semantics, "Linker changed Semantics")
 
-      if (_outputMode == null)
-        _outputMode = candidate.outputMode
+      if (_esLevel == null)
+        _esLevel = candidate.esLevel
       else
-        require(_outputMode == candidate.outputMode, "Linker changed OutputMode")
+        require(_esLevel == candidate.esLevel, "Linker changed ESLevel")
 
       _linker = candidate
     }
