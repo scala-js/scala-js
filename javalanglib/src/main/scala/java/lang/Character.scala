@@ -282,7 +282,7 @@ object Character {
     if (codePoint < 256) {
       codePoint == '\t' || codePoint == '\n' || codePoint == '\u000B' ||
       codePoint == '\f' || codePoint == '\r' ||
-      (codePoint <= '\u001C' && codePoint <= '\u001F') ||
+      ('\u001C' <= codePoint && codePoint <= '\u001F') ||
       (codePoint != '\u00A0' && isSeparator(getTypeLT256(codePoint)))
     } else {
       (codePoint != '\u2007' && codePoint != '\u202F') &&
