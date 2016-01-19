@@ -65,6 +65,8 @@ object CoreJSLibs {
       case "floats" =>
         if (semantics.strictFloats) "Strict"
         else "Loose"
+      case "productionMode" =>
+        semantics.productionMode.toString()
       case "outputMode" =>
         outputMode.toString()
     }

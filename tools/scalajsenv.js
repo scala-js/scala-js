@@ -52,9 +52,14 @@ ScalaJS.linkingInfo = {
 //!endif
 //!endif
 //!if floats == Strict
-    "strictFloats": true
+    "strictFloats": true,
 //!else
-    "strictFloats": false
+    "strictFloats": false,
+//!endif
+//!if productionMode == true
+    "productionMode": true
+//!else
+    "productionMode": false
 //!endif
   },
 //!if outputMode == ECMAScript6

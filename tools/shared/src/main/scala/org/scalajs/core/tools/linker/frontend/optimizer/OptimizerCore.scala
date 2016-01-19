@@ -2954,6 +2954,8 @@ private[optimizer] abstract class OptimizerCore(
             behavior2IntLiteral(semantics.moduleInit)
           case "strictFloats" =>
             BooleanLiteral(semantics.strictFloats)
+          case "productionMode" =>
+            BooleanLiteral(semantics.productionMode)
           case _ =>
             default
         }

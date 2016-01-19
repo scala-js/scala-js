@@ -17,6 +17,7 @@ final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
+    val productionMode: Boolean,
     val runtimeClassName: Semantics.RuntimeClassNameFunction) {
 
   import Semantics._
@@ -30,17 +31,24 @@ final class Semantics private (
   def withStrictFloats(strictFloats: Boolean): Semantics =
     copy(strictFloats = strictFloats)
 
+  def withProductionMode(productionMode: Boolean): Semantics =
+    copy(productionMode = productionMode)
+
   def withRuntimeClassName(runtimeClassName: RuntimeClassNameFunction): Semantics =
     copy(runtimeClassName = runtimeClassName)
 
-  def optimized: Semantics =
-    copy(asInstanceOfs = this.asInstanceOfs.optimized)
+  def optimized: Semantics = {
+    copy(asInstanceOfs = this.asInstanceOfs.optimized,
+        moduleInit = this.moduleInit.optimized,
+        productionMode = true)
+  }
 
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
-      this.asInstanceOfs == that.asInstanceOfs &&
-      this.moduleInit    == that.moduleInit &&
-      this.strictFloats  == that.strictFloats
+      this.asInstanceOfs  == that.asInstanceOfs &&
+      this.moduleInit     == that.moduleInit &&
+      this.strictFloats   == that.strictFloats &&
+      this.productionMode == that.productionMode
     case _ =>
       false
   }
@@ -50,15 +58,17 @@ final class Semantics private (
     var acc = HashSeed
     acc = mix(acc, asInstanceOfs.hashCode)
     acc = mix(acc, moduleInit.hashCode)
-    acc = mixLast(acc, strictFloats.##)
-    finalizeHash(acc, 3)
+    acc = mix(acc, strictFloats.##)
+    acc = mixLast(acc, productionMode.##)
+    finalizeHash(acc, 4)
   }
 
   override def toString(): String = {
     s"""Semantics(
-       |  asInstanceOfs = $asInstanceOfs,
-       |  moduleInit    = $moduleInit,
-       |  strictFloats  = $strictFloats
+       |  asInstanceOfs  = $asInstanceOfs,
+       |  moduleInit     = $moduleInit,
+       |  strictFloats   = $strictFloats,
+       |  productionMode = $productionMode
        |)""".stripMargin
   }
 
@@ -83,11 +93,13 @@ final class Semantics private (
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
+      productionMode: Boolean = this.productionMode,
       runtimeClassName: RuntimeClassNameFunction = this.runtimeClassName): Semantics = {
     new Semantics(
         asInstanceOfs    = asInstanceOfs,
         moduleInit       = moduleInit,
         strictFloats     = strictFloats,
+        productionMode   = productionMode,
         runtimeClassName = runtimeClassName)
   }
 }
@@ -102,6 +114,7 @@ object Semantics {
       asInstanceOfs    = CheckedBehavior.Fatal,
       moduleInit       = CheckedBehavior.Unchecked,
       strictFloats     = false,
+      productionMode   = false,
       runtimeClassName = _.fullName)
 
   def compliantTo(semantics: Traversable[String]): Semantics = {
@@ -117,6 +130,7 @@ object Semantics {
         asInstanceOfs    = sw("asInstanceOfs", Compliant, asInstanceOfs),
         moduleInit       = sw("moduleInit",    Compliant, moduleInit),
         strictFloats     = sw("strictFloats",  true,      strictFloats),
+        productionMode   = false,
         runtimeClassName = Defaults.runtimeClassName)
   }
 }

@@ -4,7 +4,7 @@ import java.io._
 
 import scala.scalajs.js
 import js.Dynamic.global
-import scala.scalajs.runtime.assumingES6
+import scala.scalajs.LinkingInfo.assumingES6
 
 object System {
   var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)

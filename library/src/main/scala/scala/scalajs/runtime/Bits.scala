@@ -16,6 +16,8 @@ import js.typedarray
 /** Low-level stuff. */
 object Bits {
 
+  import scala.scalajs.LinkingInfo.assumingES6
+
   private[this] val _areTypedArraysSupported = {
     // Here we use `assumingES6` to dce the 4 subsequent tests
     assumingES6 || js.DynamicImplicits.truthValue(
