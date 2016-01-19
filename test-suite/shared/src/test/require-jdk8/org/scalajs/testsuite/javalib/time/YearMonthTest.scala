@@ -26,13 +26,15 @@ class YearMonthTest extends TemporalTest[YearMonth] {
   val samples = Seq(min, max, janLastBC, decLastBC, janFirstAC, decFirstAC,
       someYearMonth, febLeapYear, febNonLeapYear)
 
-  override def isSupported(field: ChronoField): Boolean =
+  override def isSupported(field: ChronoField): Boolean = {
     field == YEAR || field == YEAR_OF_ERA || field == MONTH_OF_YEAR ||
-      field == PROLEPTIC_MONTH || field == ERA
+    field == PROLEPTIC_MONTH || field == ERA
+  }
 
-  override def isSupported(unit: ChronoUnit): Boolean =
+  override def isSupported(unit: ChronoUnit): Boolean = {
     unit == MONTHS || unit == YEARS || unit == DECADES ||
-      unit == CENTURIES || unit == MILLENNIA || unit == ERAS
+    unit == CENTURIES || unit == MILLENNIA || unit == ERAS
+  }
 
   override def expectedRangeFor(accessor: YearMonth, field: TemporalField): ValueRange = {
     field match {

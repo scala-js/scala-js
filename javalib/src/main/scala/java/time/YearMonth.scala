@@ -18,7 +18,7 @@ final class YearMonth private (year: Int, month: Int)
   def isSupported(field: TemporalField): Boolean = field match {
     case _: ChronoField =>
       field == YEAR || field == YEAR_OF_ERA || field == MONTH_OF_YEAR ||
-        field == PROLEPTIC_MONTH || field == ERA
+      field == PROLEPTIC_MONTH || field == ERA
 
     case null => false
     case _    => field.isSupportedBy(this)
@@ -27,7 +27,7 @@ final class YearMonth private (year: Int, month: Int)
   def isSupported(unit: TemporalUnit): Boolean = unit match {
     case _: ChronoUnit =>
       unit == MONTHS || unit == YEARS || unit == DECADES || unit == CENTURIES ||
-        unit == MILLENNIA || unit == ERAS
+      unit == MILLENNIA || unit == ERAS
 
     case null => false
     case _    => unit.isSupportedBy(this)
@@ -54,7 +54,7 @@ final class YearMonth private (year: Int, month: Int)
     case _ => field.getFrom(this)
   }
 
-  private def prolepticMonth: Long = year * 12L + month - 1
+  private def prolepticMonth: Long = (year * 12.0 + month - 1).toLong
 
   def getYear(): Int = year
 
@@ -118,7 +118,7 @@ final class YearMonth private (year: Int, month: Int)
     case CENTURIES => plusYears(MathJDK8Bridge.multiplyExact(amount, 100))
     case MILLENNIA => plusYears(MathJDK8Bridge.multiplyExact(amount, 1000))
 
-    case ERAS      =>
+    case ERAS =>
       val era = getLong(ERA)
       `with`(ERA, MathJDK8Bridge.addExact(era, amount))
 
@@ -129,20 +129,24 @@ final class YearMonth private (year: Int, month: Int)
   }
 
   def plusYears(years: Long): YearMonth = {
-    val newYear = YEAR.checkValidIntValue(year + years)
-    if (newYear == year) this
-    else new YearMonth(newYear, month)
+    if (years == 0) {
+      this
+    } else {
+      val newYear = MathJDK8Bridge.addExact(year, years)
+      new YearMonth(YEAR.checkValidIntValue(newYear), month)
+    }
   }
 
   def plusMonths(months: Long): YearMonth = {
-    if (months == 0) this
-    else {
-      val newProlepticMonth = prolepticMonth + months
+    if (months == 0) {
+      this
+    } else {
+      val newProlepticMonth = MathJDK8Bridge.addExact(prolepticMonth, months)
       val newYear = MathJDK8Bridge.floorDiv(newProlepticMonth, 12)
       val newMonth = MathJDK8Bridge.floorMod(newProlepticMonth, 12) + 1
       new YearMonth(
-        YEAR.checkValidIntValue(newYear),
-        MONTH_OF_YEAR.checkValidIntValue(newMonth)
+          YEAR.checkValidIntValue(newYear),
+          MONTH_OF_YEAR.checkValidIntValue(newMonth)
       )
     }
   }
@@ -161,21 +165,21 @@ final class YearMonth private (year: Int, month: Int)
   def adjustInto(temporal: Temporal): Temporal =
     temporal.`with`(PROLEPTIC_MONTH, prolepticMonth)
 
-  def until(end: Temporal, unit: TemporalUnit): Long = {
-    val other = YearMonth.from(end)
-    val monthsDiff = other.prolepticMonth - prolepticMonth
+  def until(endExclusive: Temporal, unit: TemporalUnit): Long = {
+    def other: YearMonth = YearMonth.from(endExclusive)
+    def monthsDiff: Long = other.prolepticMonth - prolepticMonth
     unit match {
       case MONTHS    => monthsDiff
       case YEARS     => monthsDiff / 12
-      case DECADES   => until(end, YEARS) / 10
-      case CENTURIES => until(end, YEARS) / 100
-      case MILLENNIA => until(end, YEARS) / 1000
+      case DECADES   => until(endExclusive, YEARS) / 10
+      case CENTURIES => until(endExclusive, YEARS) / 100
+      case MILLENNIA => until(endExclusive, YEARS) / 1000
       case ERAS      => other.getLong(ERA) - getLong(ERA)
 
       case _: ChronoUnit =>
         throw new UnsupportedTemporalTypeException("Unsupported unit: " + unit)
 
-      case _ => unit.between(this, end)
+      case _ => unit.between(this, endExclusive)
     }
   }
 
@@ -185,12 +189,9 @@ final class YearMonth private (year: Int, month: Int)
   def atEndOfMonth: LocalDate =
     atDay(getMonth().length(isLeapYear()))
 
-  def compareTo(other: YearMonth): Int = {
-    if (year == other.getYear)
-      month - other.getMonthValue
-    else
-      year - other.getYear
-  }
+  def compareTo(other: YearMonth): Int =
+    if (year == other.getYear) month - other.getMonthValue
+    else year - other.getYear
 
   def isAfter(other: YearMonth): Boolean = compareTo(other) > 0
 
@@ -199,13 +200,11 @@ final class YearMonth private (year: Int, month: Int)
   override def equals(other: Any): Boolean = other match {
     case that: YearMonth =>
       year == that.getYear && month == that.getMonthValue
+
     case _ => false
   }
 
-  override def hashCode(): Int = {
-    val state = Seq(year, month)
-    state.foldLeft(0)((a, b) => (a * 31) + b)
-  }
+  override def hashCode(): Int = year + (month << 27)
 
   override def toString: String = f"$year%04d-$month%02d"
 
