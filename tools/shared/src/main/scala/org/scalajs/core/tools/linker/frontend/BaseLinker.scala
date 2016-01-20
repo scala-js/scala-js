@@ -113,9 +113,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       logger.time("Linker: Check Infos") {
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
-        val checker = new InfoChecker(infoAndTrees, logger)
-        if (!checker.check())
-          sys.error(s"There were ${checker.errorCount} Info checking errors.")
+        val errorCount = InfoChecker.check(infoAndTrees, logger)
+        if (errorCount != 0)
+          sys.error(s"There were $errorCount Info checking errors.")
       }
     }
 
@@ -146,11 +146,11 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     if (checkIR) {
       logger.time("Linker: Check IR") {
         if (linkResult.isComplete) {
-          val checker = new IRChecker(linkResult, logger)
-          if (!checker.check())
-            sys.error(s"There were ${checker.errorCount} IR checking errors.")
+          val errorCount = IRChecker.check(linkResult, logger)
+          if (errorCount != 0)
+            sys.error(s"There were $errorCount IR checking errors.")
         } else {
-          sys.error("Could not check IR because there where linking errors.")
+          sys.error("Could not check IR because there were linking errors.")
         }
       }
     }

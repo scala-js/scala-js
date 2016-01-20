@@ -24,11 +24,10 @@ import org.scalajs.core.tools.logging._
 import org.scalajs.core.tools.linker.{LinkingUnit, LinkedClass}
 
 /** Checker for the validity of the IR. */
-final class IRChecker(unit: LinkingUnit, logger: Logger) {
+private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   import IRChecker._
 
-  private var _errorCount: Int = 0
-  def errorCount: Int = _errorCount
+  private var errorCount: Int = 0
 
   private val classes: mutable.Map[String, CheckedClass] = {
     val tups = for (classDef <- unit.classDefs) yield {
@@ -39,7 +38,7 @@ final class IRChecker(unit: LinkingUnit, logger: Logger) {
     mutable.Map(tups: _*)
   }
 
-  def check(): Boolean = {
+  def check(): Int = {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
       checkStaticMembers(classDef)
@@ -57,7 +56,7 @@ final class IRChecker(unit: LinkingUnit, logger: Logger) {
           checkScalaClassDef(classDef)
       }
     }
-    errorCount == 0
+    errorCount
   }
 
   private def checkStaticMembers(classDef: LinkedClass): Unit = {
@@ -922,7 +921,7 @@ final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
     logger.error(s"$ctx: $msg")
-    _errorCount += 1
+    errorCount += 1
   }
 
   private def lookupInfo(className: String)(
@@ -1055,7 +1054,15 @@ final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val mutable: Boolean)
 }
 
-private object IRChecker {
+object IRChecker {
+  /** Checks that the IR in a [[LinkingUnit]] is correct.
+   *
+   *  @return Count of IR checking errors (0 in case of success)
+   */
+  def check(unit: LinkingUnit, logger: Logger): Int = {
+    new IRChecker(unit, logger).check()
+  }
+
   /** The context in which to report IR check errors.
    *
    *  The way this class is written is optimized for the happy path, where no
