@@ -371,6 +371,24 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertFalse(max.isBefore(max))
   }
 
+  @Test def equalsHashCode(): Unit = {
+    assertEquals(YearMonth.of(Year.MIN_VALUE, 1), min)
+    assertEquals(YearMonth.of(Year.MIN_VALUE, 1).hashCode(), min.hashCode())
+    assertEquals(YearMonth.of(Year.MAX_VALUE, 2), max)
+    assertEquals(YearMonth.of(Year.MAX_VALUE, 12).hashCode(), max.hashCode())
+
+    for {
+      ym1 <- samples
+      ym2 <- samples
+    } {
+      if (ym1.hashCode() == ym2.hashCode()) {
+        assertTrue(ym1.equals(ym2))
+      } else {
+        assertFalse(ym1.equals(ym2))
+      }
+    }
+  }
+
   @Test def toStringOutput(): Unit = {
     assertEquals("-999999999-01", min.toString)
     assertEquals("999999999-12", max.toString)

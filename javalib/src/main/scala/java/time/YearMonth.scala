@@ -127,6 +127,7 @@ final class YearMonth private (year: Int, month: Int)
     if (years == 0) {
       this
     } else {
+      // Allowing the Long to overflow to align with JDK implementation
       val newYear = year + years
       new YearMonth(YEAR.checkValidIntValue(newYear), month)
     }
@@ -136,6 +137,7 @@ final class YearMonth private (year: Int, month: Int)
     if (months == 0) {
       this
     } else {
+      // Allowing the Long to overflow to align with JDK implementation
       val newProlepticMonth = prolepticMonth + months
       val newYear = MathJDK8Bridge.floorDiv(newProlepticMonth, 12)
       val newMonth = MathJDK8Bridge.floorMod(newProlepticMonth, 12) + 1
