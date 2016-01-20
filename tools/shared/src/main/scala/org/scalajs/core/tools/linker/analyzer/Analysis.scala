@@ -173,6 +173,8 @@ object Analysis {
     def from: From
   }
 
+  final case class MissingJavaLangObjectClass(from: From) extends Error
+  final case class CycleInInheritanceChain(cycle: List[ClassInfo], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
@@ -185,6 +187,11 @@ object Analysis {
 
   def logError(error: Error, logger: Logger, level: Level): Unit = {
     val headMsg = error match {
+      case MissingJavaLangObjectClass(_) =>
+        "Fatal error: java.lang.Object is missing"
+      case CycleInInheritanceChain(cycle, _) =>
+        ("Fatal error: cycle in inheritance chain involving " +
+            cycle.map(_.displayName).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case NotAModule(info, _) =>

@@ -56,27 +56,40 @@ private final class Analyzer(semantics: Semantics,
 
     linkClasses()
 
-    /* Hijacked classes are always instantiated, because values of primitive
-     * types are their instances.
-     */
-    for (hijacked <- HijackedClasses)
-      lookupClass(hijacked).instantiated()(fromAnalyzer)
+    if (errors.nonEmpty) {
+      /* If we have errors after linkClasses(), we're in deep trouble, and
+       * we cannot continue.
+       */
+    } else {
+      /* Hijacked classes are always instantiated, because values of primitive
+       * types are their instances.
+       */
+      for (hijacked <- HijackedClasses)
+        lookupClass(hijacked).instantiated()(fromAnalyzer)
 
-    reachSymbolRequirement(symbolRequirements)
+      reachSymbolRequirement(symbolRequirements)
 
-    // Reach all user stuff
-    for (classInfo <- _classInfos.values)
-      classInfo.reachExports()
+      // Reach all user stuff
+      for (classInfo <- _classInfos.values)
+        classInfo.reachExports()
 
-    // Reach additional data, based on reflection methods used
-    reachDataThroughReflection()
+      // Reach additional data, based on reflection methods used
+      reachDataThroughReflection()
+    }
   }
 
   private def linkClasses(): Unit = {
-    if (!_classInfos.contains(ir.Definitions.ObjectClass))
-      sys.error("Fatal error: could not find java.lang.Object on the classpath")
-    for (classInfo <- _classInfos.values.toList)
-      classInfo.linkClasses()
+    if (!_classInfos.contains(ir.Definitions.ObjectClass)) {
+      _errors += MissingJavaLangObjectClass(fromAnalyzer)
+    } else {
+      try {
+        for (classInfo <- _classInfos.values.toList)
+          classInfo.linkClasses()
+      } catch {
+        case CyclicDependencyException(chain) =>
+          _errors += CycleInInheritanceChain(chain, fromAnalyzer)
+      }
+    }
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement,
@@ -188,7 +201,7 @@ private final class Analyzer(semantics: Semantics,
      */
     def linkClasses(): Unit = {
       if (_linking)
-        throw CyclicDependencyException(encodedName :: Nil)
+        throw CyclicDependencyException(this :: Nil)
 
       if (!_linked) {
         _linking = true
@@ -196,7 +209,7 @@ private final class Analyzer(semantics: Semantics,
           linkClassesImpl()
         } catch {
           case CyclicDependencyException(chain) =>
-            throw CyclicDependencyException(encodedName :: chain)
+            throw CyclicDependencyException(this :: chain)
         }
         _linking = false
         _linked = true
@@ -825,14 +838,7 @@ object Analyzer {
     analyzer
   }
 
-  final case class CyclicDependencyException(
-      chain: List[String]) extends Exception(mkMsg(chain))
-
-  private def mkMsg(chain: List[String]) = {
-    val buf = new StringBuffer
-    buf.append("A cyclic dependency has been encountered: \n")
-    for (elem <- chain)
-      buf.append(s"  - $elem\n")
-    buf.toString
-  }
+  private final case class CyclicDependencyException(
+      chain: List[Analysis.ClassInfo])
+      extends Exception(s"Cyclic dependency: $chain")
 }

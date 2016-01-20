@@ -167,7 +167,7 @@ object ScalaJSPluginInternal {
         }
 
         val frontendConfig = LinkerFrontend.Config()
-          .withBypassLinkingErrors(opts.bypassLinkingErrors)
+          .withBypassLinkingErrorsInternal(opts.bypassLinkingErrors)
           .withCheckIR(opts.checkScalaJSIR)
 
         val backendConfig = LinkerBackend.Config()

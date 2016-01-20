@@ -23,7 +23,7 @@ import org.scalajs.core.tools.linker.frontend.optimizer.{GenIncOptimizer, IncOpt
  *
  *  You probably want to use an instance of [[linker.Linker]], rather than this
  *  low-level class.
- * 
+ *
  *  Attention: [[LinkerFrontend]] does not cache the IR input. It is advisable to do
  *  so, unless all IR is already in memory.
  */
@@ -51,7 +51,7 @@ final class LinkerFrontend(
     }
 
     val linkResult = logger.time("Basic Linking") {
-      linker.link(irFiles, logger, preOptimizerRequirements,
+      linker.linkInternal(irFiles, logger, preOptimizerRequirements,
           config.bypassLinkingErrors, config.checkIR)
     }
 
@@ -85,10 +85,19 @@ object LinkerFrontend {
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean = false
   ) {
-    def withBypassLinkingErrors(bypassLinkingErrors: Boolean) =
+    @deprecated(
+        "Bypassing linking errors will not be possible in the next major version.",
+        "0.6.6")
+    def withBypassLinkingErrors(bypassLinkingErrors: Boolean): Config =
       copy(bypassLinkingErrors = bypassLinkingErrors)
 
-    def withCheckIR(checkIR: Boolean) =
+    // Non-deprecated version to call from the sbt plugin
+    private[scalajs] def withBypassLinkingErrorsInternal(
+        bypassLinkingErrors: Boolean): Config = {
+      copy(bypassLinkingErrors = bypassLinkingErrors)
+    }
+
+    def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
 
     private def copy(
