@@ -10,11 +10,10 @@
 package org.scalajs.core.tools.linker
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
 
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.frontend.optimizer.{ParIncOptimizer, IncOptimizer}
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, BasicLinkerBackend}
+import org.scalajs.core.tools.linker.backend._
 import org.scalajs.core.tools.linker.backend.closure.ClosureLinkerBackend
 
 trait LinkerPlatformExtensions { this: Linker.type =>
@@ -39,7 +38,9 @@ trait LinkerPlatformExtensions { this: Linker.type =>
 
     val backend = {
       if (useClosureCompiler) {
-        new ClosureLinkerBackend(semantics, outputMode,
+        require(outputMode == OutputMode.ECMAScript51Isolated,
+            s"Cannot use output mode $outputMode with the Closure Compiler")
+        new ClosureLinkerBackend(semantics,
             withSourceMap, backendConfig)
       } else {
         new BasicLinkerBackend(semantics, outputMode,

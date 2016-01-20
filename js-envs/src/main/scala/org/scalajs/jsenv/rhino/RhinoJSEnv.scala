@@ -16,9 +16,11 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
+
 import org.scalajs.core.tools.linker.LinkingUnit
-import org.scalajs.core.tools.linker.backend.Emitter
-import org.scalajs.core.tools.javascript.{OutputMode, ESLevel}
+import org.scalajs.core.tools.linker.backend.OutputMode
+import org.scalajs.core.tools.linker.backend.emitter.Emitter
+import org.scalajs.core.tools.javascript.ESLevel
 
 import scala.annotation.tailrec
 

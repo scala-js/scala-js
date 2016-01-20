@@ -7,16 +7,16 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend.emitter
 
 import scala.language.implicitConversions
 
 import org.scalajs.core.ir
 import org.scalajs.core.ir.Position
 
-import Trees._
+import org.scalajs.core.tools.javascript.Trees._
 
-private[javascript] object TreeDSL {
+private[emitter] object TreeDSL {
   implicit class TreeOps(val self: Tree) extends AnyVal {
     /** Select a member */
     def DOT(field: Ident)(implicit pos: Position): DotSelect =

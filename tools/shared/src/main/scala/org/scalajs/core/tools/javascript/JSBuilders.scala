@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.linker.backend
+package org.scalajs.core.tools.javascript
 
 import scala.annotation.tailrec
 
@@ -18,7 +18,6 @@ import java.util.regex.Pattern
 import java.net.{ URI, URISyntaxException }
 
 import org.scalajs.core.ir.Position
-import org.scalajs.core.tools.{javascript => js}
 import org.scalajs.core.tools.io._
 
 /** An abstract builder taking IR or JSTrees */
@@ -27,7 +26,7 @@ trait JSTreeBuilder {
    *  The tree must be a valid JavaScript tree (typically obtained by
    *  desugaring a full-fledged IR tree).
    */
-  def addJSTree(tree: js.Trees.Tree): Unit
+  def addJSTree(tree: Trees.Tree): Unit
 
   /** Completes the builder. */
   def complete(): Unit = ()
@@ -55,8 +54,8 @@ class JSFileBuilder(val name: String,
    *  The tree must be a valid JavaScript tree (typically obtained by
    *  desugaring a full-fledged IR tree).
    */
-  def addJSTree(tree: js.Trees.Tree): Unit = {
-    val printer = new js.Printers.JSTreePrinter(outputWriter)
+  def addJSTree(tree: Trees.Tree): Unit = {
+    val printer = new Printers.JSTreePrinter(outputWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
   }
@@ -69,7 +68,7 @@ class JSFileBuilder(val name: String,
 }
 
 class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
-    protected val sourceMapWriter: js.SourceMapWriter)
+    protected val sourceMapWriter: SourceMapWriter)
     extends JSFileBuilder(n, ow) {
 
   override def addLine(line: String): Unit = {
@@ -121,8 +120,8 @@ class JSFileBuilderWithSourceMapWriter(n: String, ow: Writer,
     }
   }
 
-  override def addJSTree(tree: js.Trees.Tree): Unit = {
-    val printer = new js.Printers.JSTreePrinterWithSourceMap(
+  override def addJSTree(tree: Trees.Tree): Unit = {
+    val printer = new Printers.JSTreePrinterWithSourceMap(
         outputWriter, sourceMapWriter)
     printer.printTopLevelTree(tree)
     // Do not close the printer: we do not have ownership of the writers
@@ -140,7 +139,7 @@ class JSFileBuilderWithSourceMap(n: String, ow: Writer,
     relativizeSourceMapBasePath: Option[URI] = None)
     extends JSFileBuilderWithSourceMapWriter(
         n, ow,
-        new js.SourceMapWriter(sourceMapOutputWriter, n,
+        new SourceMapWriter(sourceMapOutputWriter, n,
             relativizeSourceMapBasePath)) {
 
   override def complete(): Unit = {

@@ -20,13 +20,14 @@ import com.google.javascript.jscomp.{
 
 import org.scalajs.core.tools.corelib.CoreJSLibs
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.sem.Semantics
 
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
-import org.scalajs.core.tools.linker.backend.{LinkerBackend, Emitter}
+import org.scalajs.core.tools.linker.backend.{OutputMode, LinkerBackend}
+import org.scalajs.core.tools.linker.backend.emitter.Emitter
 
 /** The Closure backend of the Scala.js linker.
  *
@@ -35,12 +36,12 @@ import org.scalajs.core.tools.linker.backend.{LinkerBackend, Emitter}
  */
 final class ClosureLinkerBackend(
     semantics: Semantics,
-    outputMode: OutputMode,
     withSourceMap: Boolean,
     config: LinkerBackend.Config
-) extends LinkerBackend(semantics, outputMode, withSourceMap, config) {
+) extends LinkerBackend(semantics, ESLevel.ES5, withSourceMap, config) {
 
-  private[this] val emitter = new Emitter(semantics, outputMode)
+  private[this] val emitter =
+    new Emitter(semantics, OutputMode.ECMAScript51Isolated)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
@@ -66,8 +67,8 @@ final class ClosureLinkerBackend(
     // Build a Closure JSModule which includes the core libs
     val module = new JSModule("Scala.js")
 
-    module.add(new CompilerInput(
-        toClosureSource(CoreJSLibs.lib(semantics, outputMode))))
+    module.add(new CompilerInput(toClosureSource(
+        CoreJSLibs.lib(semantics, OutputMode.ECMAScript51Isolated))))
 
     val ast = builder.closureAST
     module.add(new CompilerInput(ast, ast.getInputId(), false))

@@ -13,7 +13,7 @@ import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 
 /** Common supertrait of [[Linker]] and [[ClearableLinker]].
@@ -22,7 +22,7 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
  */
 trait GenLinker {
   def semantics: Semantics
-  def outputMode: OutputMode
+  def esLevel: ESLevel
 
   def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit

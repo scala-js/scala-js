@@ -7,9 +7,9 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend.emitter
 
-private[tools] object LongImpl {
+private[linker] object LongImpl {
   final val RuntimeLongClass = "sjsr_RuntimeLong"
   final val RuntimeLongModuleClass = "sjsr_RuntimeLong$"
 

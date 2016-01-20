@@ -11,14 +11,13 @@ import complete.DefaultParsers._
 import Implicits._
 
 import org.scalajs.core.tools.sem.Semantics
-import org.scalajs.core.tools.javascript.OutputMode
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.corelib.CoreJSLibs
 import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
-import org.scalajs.core.tools.linker.backend.LinkerBackend
+import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.rhino.RhinoJSEnv

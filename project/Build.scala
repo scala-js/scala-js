@@ -34,6 +34,7 @@ import Implicits._
 import org.scalajs.core.tools.io.MemVirtualJSFile
 import org.scalajs.core.tools.sem._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
+import org.scalajs.core.tools.linker.backend.OutputMode
 
 import sbtassembly.AssemblyPlugin.autoImport._
 
@@ -1142,7 +1143,7 @@ object Build extends sbt.Build {
         })
 
         val modeTags = (scalaJSOutputMode in Test).value match {
-          case org.scalajs.core.tools.javascript.OutputMode.ECMAScript6StrongMode =>
+          case OutputMode.ECMAScript6StrongMode =>
             Seq(Tests.Argument("-tstrong-mode"))
           case _ =>
             Seq()

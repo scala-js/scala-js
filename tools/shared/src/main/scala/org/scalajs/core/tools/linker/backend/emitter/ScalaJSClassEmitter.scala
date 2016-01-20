@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.javascript
+package org.scalajs.core.tools.linker.backend.emitter
 
 import org.scalajs.core.ir._
 import Position._
@@ -19,23 +19,26 @@ import org.scalajs.core.tools.sem._
 import CheckedBehavior.Unchecked
 
 import org.scalajs.core.tools.javascript.{Trees => js}
-
+import org.scalajs.core.tools.linker.backend.OutputMode
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 
 /** Defines methods to emit Scala.js classes to JavaScript code.
  *  The results are completely desugared.
+ *
+ *  The only reason this is not `private[emitter]` is because `RhinoJSEnv`
+ *  needs it.
  */
-final class ScalaJSClassEmitter(
-    private[javascript] val outputMode: OutputMode,
+private[scalajs] final class ScalaJSClassEmitter(
+    private[emitter] val outputMode: OutputMode,
     linkingUnit: LinkingUnit) {
 
   import ScalaJSClassEmitter._
   import JSDesugaring._
 
-  private[javascript] lazy val linkedClassByName: Map[String, LinkedClass] =
+  private[emitter] lazy val linkedClassByName: Map[String, LinkedClass] =
     linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
 
-  private[javascript] def isInterface(className: String): Boolean = {
+  private[emitter] def isInterface(className: String): Boolean = {
     /* TODO In theory, there is a flaw in the incremental behavior about this.
      *
      * This method is used to desugar ApplyStatically nodes. Depending on
@@ -61,7 +64,7 @@ final class ScalaJSClassEmitter(
     linkedClassByName(className).kind == ClassKind.Interface
   }
 
-  private[javascript] def semantics: Semantics = linkingUnit.semantics
+  private[emitter] def semantics: Semantics = linkingUnit.semantics
 
   private implicit def implicitOutputMode: OutputMode = outputMode
 

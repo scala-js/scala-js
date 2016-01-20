@@ -12,7 +12,7 @@ package org.scalajs.core.tools.linker.backend
 import java.net.URI
 
 import org.scalajs.core.tools.io.WritableVirtualJSFile
-import org.scalajs.core.tools.javascript.OutputMode
+import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.sem.Semantics
 
@@ -27,7 +27,7 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
  */
 abstract class LinkerBackend(
     val semantics: Semantics,
-    val outputMode: OutputMode,
+    val esLevel: ESLevel,
     val withSourceMap: Boolean,
     protected val config: LinkerBackend.Config) {
 
@@ -35,7 +35,7 @@ abstract class LinkerBackend(
   val symbolRequirements: SymbolRequirement
 
   /** Emit the given [[LinkingUnit]] to the target output
-   * 
+   *
    *  @param unit [[LinkingUnit]] to emit
    *  @param output File to write to
    *  @param logger Logger to use
@@ -52,7 +52,7 @@ abstract class LinkerBackend(
   protected def verifyUnit(unit: LinkingUnit): Unit = {
     require(unit.semantics == semantics,
         "LinkingUnit and LinkerBackend must agree on semantics")
-    require(unit.esLevel == outputMode.esLevel,
+    require(unit.esLevel == esLevel,
         "LinkingUnit and LinkerBackend must agree on esLevel")
   }
 }
