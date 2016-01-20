@@ -374,7 +374,7 @@ class YearMonthTest extends TemporalTest[YearMonth] {
   @Test def equalsHashCode(): Unit = {
     assertEquals(YearMonth.of(Year.MIN_VALUE, 1), min)
     assertEquals(YearMonth.of(Year.MIN_VALUE, 1).hashCode(), min.hashCode())
-    assertEquals(YearMonth.of(Year.MAX_VALUE, 2), max)
+    assertEquals(YearMonth.of(Year.MAX_VALUE, 12), max)
     assertEquals(YearMonth.of(Year.MAX_VALUE, 12).hashCode(), max.hashCode())
 
     for {
