@@ -54,7 +54,7 @@ final class YearMonth private (year: Int, month: Int)
     case _ => field.getFrom(this)
   }
 
-  private def prolepticMonth: Long = (year * 12.0 + month - 1).toLong
+  private def prolepticMonth: Long = (year * 12.0 + (month - 1)).toLong
 
   def getYear(): Int = year
 
@@ -132,7 +132,7 @@ final class YearMonth private (year: Int, month: Int)
     if (years == 0) {
       this
     } else {
-      val newYear = MathJDK8Bridge.addExact(year, years)
+      val newYear = year + years
       new YearMonth(YEAR.checkValidIntValue(newYear), month)
     }
   }
@@ -141,7 +141,7 @@ final class YearMonth private (year: Int, month: Int)
     if (months == 0) {
       this
     } else {
-      val newProlepticMonth = MathJDK8Bridge.addExact(prolepticMonth, months)
+      val newProlepticMonth = prolepticMonth + months
       val newYear = MathJDK8Bridge.floorDiv(newProlepticMonth, 12)
       val newMonth = MathJDK8Bridge.floorMod(newProlepticMonth, 12) + 1
       new YearMonth(
