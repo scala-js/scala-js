@@ -389,6 +389,11 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertEquals(1, yearMonth.getMonthValue)
     assertEquals(Month.JANUARY, yearMonth.getMonth)
 
+    assertEquals(Year.MIN_VALUE, min.getYear)
+    assertEquals(Month.JANUARY, min.getMonth)
+    assertEquals(Year.MAX_VALUE, max.getYear)
+    assertEquals(Month.DECEMBER, max.getMonth)
+
     for (ym <- samples) {
       assertEquals(ym, YearMonth.of(ym.getYear, ym.getMonth))
     }
@@ -405,6 +410,11 @@ class YearMonthTest extends TemporalTest[YearMonth] {
     assertEquals(293, yearMonth.getYear)
     assertEquals(11, yearMonth.getMonthValue)
     assertEquals(Month.NOVEMBER, yearMonth.getMonth)
+
+    assertEquals(Year.MIN_VALUE, min.getYear)
+    assertEquals(1, min.getMonthValue)
+    assertEquals(Year.MAX_VALUE, max.getYear)
+    assertEquals(12, max.getMonthValue)
 
     for (ym <- samples) {
       assertEquals(ym, YearMonth.of(ym.getYear, ym.getMonthValue))
