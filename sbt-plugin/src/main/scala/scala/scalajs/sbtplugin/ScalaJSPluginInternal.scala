@@ -364,7 +364,11 @@ object ScalaJSPluginInternal {
             ((moduleName in fullOptJS).value + "-opt.js")),
 
       scalaJSSemantics in fullOptJS ~= (_.optimized),
-      scalaJSOptimizerOptions in fullOptJS ~= (_.withUseClosureCompiler(true)),
+      scalaJSOptimizerOptions in fullOptJS := {
+        val prev = (scalaJSOptimizerOptions in fullOptJS).value
+        val outputMode = (scalaJSOutputMode in fullOptJS).value
+        prev.withUseClosureCompiler(outputMode == OutputMode.ECMAScript51Isolated)
+      },
 
       fullOptJS <<= fullOptJS.dependsOn(packageMinifiedJSDependencies),
 
