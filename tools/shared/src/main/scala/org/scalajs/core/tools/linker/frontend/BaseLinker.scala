@@ -38,7 +38,7 @@ import Analysis._
  */
 final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) {
 
-  type TreeProvider = String => (ClassDef, Option[String])
+  private type TreeProvider = String => (ClassDef, Option[String])
 
   def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
@@ -83,24 +83,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     }
 
     linkInternal(infos, getTree, logger, symbolRequirements,
-        bypassLinkingErrors, checkIR)
-  }
-
-  def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
-      logger: Logger, symbolRequirements: SymbolRequirement,
-      checkIR: Boolean): LinkingUnit = {
-    linkInternal(infoInput, getTree, logger, symbolRequirements,
-        bypassLinkingErrors = false, checkIR = checkIR)
-  }
-
-  @deprecated(
-      "Bypassing linking errors will not be possible in the next major version. " +
-      "Use the overload without the bypassLinkingError parameter instead.",
-      "0.6.6")
-  def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
-      logger: Logger, symbolRequirements: SymbolRequirement,
-      bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
-    linkInternal(infoInput, getTree, logger, symbolRequirements,
         bypassLinkingErrors, checkIR)
   }
 
