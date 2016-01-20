@@ -33,13 +33,8 @@ final class YearMonth private (year: Int, month: Int)
     case _    => unit.isSupportedBy(this)
   }
 
-  override def range(field: TemporalField): ValueRange = field match {
-    case YEAR_OF_ERA =>
-      if (year < 1) ValueRange.of(1, Year.MAX_VALUE + 1)
-      else ValueRange.of(1, Year.MAX_VALUE)
-
-    case _ => super.range(field)
-  }
+  // Implemented by TemporalAccessor
+  // def range(field: TemporalField): ValueRange
 
   def getLong(field: TemporalField): Long = field match {
     case YEAR            => year

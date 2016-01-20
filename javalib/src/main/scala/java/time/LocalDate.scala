@@ -49,9 +49,6 @@ final class LocalDate private (year: Int, month: Month, dayOfMonth: Int)
     case ALIGNED_WEEK_OF_MONTH =>
       ValueRange.of(1, if (lengthOfMonth > 28) 5 else 4)
 
-    case YEAR_OF_ERA =>
-      ValueRange.of(1, if (year > 0) 999999999 else 1000000000)
-
     case _ => super.range(field)
   }
 

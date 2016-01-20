@@ -1,10 +1,19 @@
 package java.time.temporal
 
+import java.time.Year
+
 trait TemporalAccessor {
   def isSupported(field: TemporalField): Boolean
 
   def range(field: TemporalField): ValueRange = field match {
-    case _: ChronoField if isSupported(field) => field.range
+    case _: ChronoField if isSupported(field) =>
+      if (field == ChronoField.YEAR_OF_ERA) {
+        val era = get(ChronoField.ERA)
+        if (era < 1) ValueRange.of(1, Year.MAX_VALUE + 1)
+        else ValueRange.of(1, Year.MAX_VALUE)
+      } else {
+        field.range
+      }
 
     case _: ChronoField =>
       throw new UnsupportedTemporalTypeException(s"Unsupported field: $field")
