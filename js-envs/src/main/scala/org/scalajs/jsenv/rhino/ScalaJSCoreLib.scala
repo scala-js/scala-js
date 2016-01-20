@@ -158,7 +158,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
     val linkedClass = providers.getOrElse(encodedName,
-        throw new ClassNotFoundException(encodedName))
+        throw new RhinoJSEnv.ClassNotFoundException(encodedName))
 
     val desugared =
       new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linkedClass)
@@ -175,12 +175,8 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   }
 }
 
-object ScalaJSCoreLib {
+private[rhino] object ScalaJSCoreLib {
   private case class Info(name: String, isStatics: Boolean = false)
 
   private final val PseudoFileSuffix = ".sjsir"
-
-  final class ClassNotFoundException(className: String) extends Exception(
-    s"Rhino was unable to load Scala.js class: $className")
-
 }

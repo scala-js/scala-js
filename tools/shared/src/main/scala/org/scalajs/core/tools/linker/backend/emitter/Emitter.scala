@@ -441,7 +441,8 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   }
 }
 
-object Emitter {
+// The only reason this is not private is that Rhino needs it
+private[scalajs] object Emitter {
   private final class DesugaredClassCache {
     val constructor = new OneTimeCache[js.Tree]
     val exportedMembers = new OneTimeCache[js.Tree]
@@ -461,7 +462,9 @@ object Emitter {
     }
   }
 
-  def symbolRequirements(semantics: Semantics, esLevel: ESLevel): SymbolRequirement = {
+  // The only reason this is not private is that Rhino needs it
+  private[scalajs] def symbolRequirements(semantics: Semantics,
+      esLevel: ESLevel): SymbolRequirement = {
     import semantics._
     import CheckedBehavior._
 
