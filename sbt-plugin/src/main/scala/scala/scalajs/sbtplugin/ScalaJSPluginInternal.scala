@@ -14,7 +14,6 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.io.{IO => toolsIO, _}
 import org.scalajs.core.tools.jsdep._
 import org.scalajs.core.tools.json._
-import org.scalajs.core.tools.corelib.CoreJSLibs
 import org.scalajs.core.tools.linker.{ClearableLinker, Linker}
 import org.scalajs.core.tools.linker.frontend.LinkerFrontend
 import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
@@ -86,6 +85,12 @@ object ScalaJSPluginInternal {
     Stage.FastOpt -> fastOptJS,
     Stage.FullOpt -> fullOptJS
   )
+
+  /** A JS expression that detects the global scope just like Scala.js */
+  val jsGlobalExpr: String = {
+    """((typeof global === "object" && global &&
+         global["Object"] === Object) ? global : this)"""
+  }
 
   def logIRCacheStats(logger: Logger): Unit = {
     logger.debug("Global IR cache stats: " + globalIRCache.stats.logLine)
@@ -573,7 +578,7 @@ object ScalaJSPluginInternal {
 
   private def launcherContent(mainCl: String) = {
     val parts = mainCl.split('.').map(s => s"""["${escapeJS(s)}"]""").mkString
-    s"${CoreJSLibs.jsGlobalExpr}$parts().main();\n"
+    s"$jsGlobalExpr$parts().main();\n"
   }
 
   private def memLauncher(mainCl: String) = {

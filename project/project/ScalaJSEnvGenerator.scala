@@ -18,9 +18,9 @@ object ScalaJSEnvGenerator {
 
       val scalaCode =
         s"""
-        package org.scalajs.core.tools.corelib
+        package org.scalajs.core.tools.linker.backend.emitter
 
-        private[corelib] object ScalaJSEnvHolder {
+        private[emitter] object ScalaJSEnvHolder {
           final val scalajsenv = raw\"\"\"$scalajsenv\"\"\"
 
           final val strongmodeenv = raw\"\"\"$strongmodeenv\"\"\"

@@ -18,7 +18,6 @@ import com.google.javascript.jscomp.{
   _
 }
 
-import org.scalajs.core.tools.corelib.CoreJSLibs
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.javascript.ESLevel
 import org.scalajs.core.tools.logging.Logger
@@ -27,7 +26,7 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.linker.LinkingUnit
 import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.{OutputMode, LinkerBackend}
-import org.scalajs.core.tools.linker.backend.emitter.Emitter
+import org.scalajs.core.tools.linker.backend.emitter.{Emitter, CoreJSLibs}
 
 /** The Closure backend of the Scala.js linker.
  *

@@ -19,10 +19,9 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.corelib._
 
 import org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript51Global
-import org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter
+import org.scalajs.core.tools.linker.backend.emitter._
 
 private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   import ScalaJSCoreLib._
