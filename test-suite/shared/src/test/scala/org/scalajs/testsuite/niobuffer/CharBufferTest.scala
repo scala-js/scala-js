@@ -76,7 +76,7 @@ class CharBufferWrappingACharSequenceTest extends CharBufferTest {
     override def allocBuffer(pos: Int, limit: Int, capacity: Int): CharBuffer = {
       if (capacity < 0)
         throw new IllegalArgumentException
-      CharBuffer.wrap(zeros(capacity), pos, limit-pos)
+      CharBuffer.wrap(zeros(capacity), pos, limit)
     }
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
@@ -84,7 +84,7 @@ class CharBufferWrappingACharSequenceTest extends CharBufferTest {
       val after = capacity - (pos + content.size)
       CharBuffer.wrap(
         zeros(pos) + content.mkString + zeros(after),
-        pos, limit-pos)
+        pos, limit)
     }
   }
 }

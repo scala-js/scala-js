@@ -33,11 +33,14 @@ abstract class BaseBufferTest {
     assertEquals(0, allocBuffer(0).capacity)
 
     expectThrows(classOf[Exception], allocBuffer(-1))
+    expectThrows(classOf[Throwable], allocBuffer(0, -1, 1))
+    expectThrows(classOf[Throwable], allocBuffer(1, 0, 1))
+    expectThrows(classOf[Throwable], allocBuffer(0, 1, 0))
+    expectThrows(classOf[Throwable], allocBuffer(1, 0, 0))
 
     val buf2 = allocBuffer(1, 5, 9)
     assertEquals(1, buf2.position())
-    if (!executingInJVM) // issues #2114: CharBufferWrappingACharSequenceTest
-      assertEquals(5, buf2.limit())
+    assertEquals(5, buf2.limit())
     assertEquals(9, buf2.capacity())
   }
 
@@ -65,13 +68,10 @@ abstract class BaseBufferTest {
     val buf2 = allocBuffer(1, 5, 9)
     assertEquals(1, buf2.position())
 
-    if (!executingInJVM) {
-      // issues #2114: CharBufferWrappingACharSequenceTest
-      buf2.position(5)
-      assertEquals(5, buf2.position())
-      expectThrows(classOf[IllegalArgumentException], buf2.position(6))
-      assertEquals(5, buf2.position())
-    }
+    buf2.position(5)
+    assertEquals(5, buf2.position())
+    expectThrows(classOf[IllegalArgumentException], buf2.position(6))
+    assertEquals(5, buf2.position())
   }
 
   @Test def limit(): Unit = {
@@ -118,71 +118,60 @@ abstract class BaseBufferTest {
   @Test def clear(): Unit = {
     val buf = allocBuffer(3, 6, 10)
     buf.mark()
-    if (!executingInJVM) {
-      // issues #2114: CharBufferWrappingACharSequenceTest
-      buf.position(4)
+    buf.position(4)
 
-      buf.clear()
-      assertEquals(0, buf.position())
-      assertEquals(10, buf.limit()) // the capacity
-      assertEquals(10, buf.capacity())
-      expectThrows(classOf[InvalidMarkException], buf.reset())
-    }
+    buf.clear()
+    assertEquals(0, buf.position())
+    assertEquals(10, buf.limit()) // the capacity
+    assertEquals(10, buf.capacity())
+    expectThrows(classOf[InvalidMarkException], buf.reset())
   }
 
   @Test def flip(): Unit = {
     val buf = allocBuffer(3, 6, 10)
     buf.mark()
-    if (!executingInJVM) {
-      buf.position(4)
+    buf.position(4)
 
-      buf.flip()
-      assertEquals(0, buf.position())
-      assertEquals(4, buf.limit()) // old position
-      assertEquals(10, buf.capacity())
-      expectThrows(classOf[InvalidMarkException], buf.reset())
-    }
+    buf.flip()
+    assertEquals(0, buf.position())
+    assertEquals(4, buf.limit()) // old position
+    assertEquals(10, buf.capacity())
+    expectThrows(classOf[InvalidMarkException], buf.reset())
   }
 
   @Test def rewind(): Unit = {
     val buf = allocBuffer(3, 6, 10)
     buf.mark()
-    if (!executingInJVM) {
-      // issues #2114: CharBufferWrappingACharSequenceTest
-      buf.position(4)
+    buf.position(4)
 
-      buf.rewind()
-      assertEquals(0, buf.position())
-      assertEquals(6, buf.limit()) // unchanged
-      assertEquals(10, buf.capacity())
-      expectThrows(classOf[InvalidMarkException], buf.reset())
-    }
+    buf.rewind()
+    assertEquals(0, buf.position())
+    assertEquals(6, buf.limit()) // unchanged
+    assertEquals(10, buf.capacity())
+    expectThrows(classOf[InvalidMarkException], buf.reset())
   }
 
   @Test def remaining_and_hasRemaining(): Unit = {
     val buf = allocBuffer(3, 7, 10)
-    if (!executingInJVM) {
-      // issues #2114: CharBufferWrappingACharSequenceTest
-      assertEquals(7 - 3, buf.remaining())
+    assertEquals(7 - 3, buf.remaining())
 
-      assertTrue(buf.hasRemaining())
+    assertTrue(buf.hasRemaining())
 
-      buf.position(6)
-      assertEquals(7 - 6, buf.remaining())
-      assertTrue(buf.hasRemaining())
+    buf.position(6)
+    assertEquals(7 - 6, buf.remaining())
+    assertTrue(buf.hasRemaining())
 
-      buf.limit(9)
-      assertEquals(9 - 6, buf.remaining())
-      assertTrue(buf.hasRemaining())
+    buf.limit(9)
+    assertEquals(9 - 6, buf.remaining())
+    assertTrue(buf.hasRemaining())
 
-      buf.limit(2)
-      assertEquals(0, buf.remaining())
-      assertFalse(buf.hasRemaining())
+    buf.limit(2)
+    assertEquals(0, buf.remaining())
+    assertFalse(buf.hasRemaining())
 
-      buf.position(0)
-      assertEquals(2, buf.remaining())
-      assertTrue(buf.hasRemaining())
-    }
+    buf.position(0)
+    assertEquals(2, buf.remaining())
+    assertTrue(buf.hasRemaining())
   }
 
   @Test def absolute_get(): Unit = {
@@ -298,7 +287,7 @@ abstract class BaseBufferTest {
       assertEquals(elemFromInt(0), buf.get(0))
 
       buf.position(8)
-      if (!executingInJVM)
+      if (!executingInJVM) // throws BufferOverflowException on JVM
         expectThrows(classOf[ReadOnlyBufferException], buf.put(Array[ElementType](6, 7, 12)))
       assertEquals(8, buf.position())
       assertEquals(elemFromInt(0), buf.get(8))
@@ -312,7 +301,7 @@ abstract class BaseBufferTest {
       buf.mark()
 
       if (!executingInJVM) {
-        // issues #2114: CharBufferWrappingACharSequenceTest
+        // throws IllegalArgumentException on JVM when executing compact()
         buf.compact()
         assertEquals(4, buf.position())
         assertEquals(10, buf.limit())
@@ -338,10 +327,8 @@ abstract class BaseBufferTest {
     assertEquals(4, buf2.capacity())
     expectThrows(classOf[InvalidMarkException], buf2.reset())
 
-    if (!executingInJVMOnJDK6) {
-      // issue #2114: SlicedCharBufferWrappingACharSequenceTest
+    if (!executingInJVMOnJDK6)
       assertEquals(elemFromInt(4), buf2.get(1))
-    }
 
     buf2.position(2)
     assertEquals(3, buf1.position())

@@ -45,7 +45,7 @@ class OutputStreamWriter(private[this] var out: OutputStream,
     writeImpl(CharBuffer.wrap(cbuf, off, len))
 
   override def write(str: String, off: Int, len: Int): Unit =
-    writeImpl(CharBuffer.wrap(str, off, len))
+    writeImpl(CharBuffer.wrap(str, off, off + len))
 
   private def writeImpl(cbuf: CharBuffer): Unit = {
     ensureOpen()
