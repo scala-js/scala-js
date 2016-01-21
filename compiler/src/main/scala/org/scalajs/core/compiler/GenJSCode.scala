@@ -292,6 +292,13 @@ abstract class GenJSCode extends plugins.PluginComponent
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
+      if (hasDefaultCtorArgsAndRawJSModule(sym)) {
+        reporter.error(pos,
+            "Implementation restriction: constructors of " +
+            "Scala classes cannot have default parameters " +
+            "if their companion module is JS native.")
+      }
+
       val classIdent = encodeClassFullNameIdent(sym)
       val isHijacked = isHijackedBoxedClass(sym)
 
@@ -650,54 +657,51 @@ abstract class GenJSCode extends plugins.PluginComponent
         constructorTrees: List[DefDef]): js.Tree = {
       implicit val pos = classSym.pos
 
-      // Implementation restriction
-      val syms = constructorTrees.map(_.symbol)
-      val hasBadParam = enteringPhase(currentRun.uncurryPhase) {
-        syms.exists(_.paramss.flatten.exists(p => p.hasDefault))
-      }
-      if (hasBadParam) {
+      if (hasDefaultCtorArgsAndRawJSModule(classSym)) {
         reporter.error(pos,
-            "Implementation restriction: the constructor of a " +
-            "Scala.js-defined JS classes cannot have default parameters.")
-      }
+            "Implementation restriction: constructors of " +
+            "Scala.js-defined JS classes cannot have default parameters " +
+            "if their companion module is JS native.")
+        js.EmptyTree
+      } else {
+        withNewLocalNameScope {
+          val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
+            genMethodWithCurrentLocalNameScope(tree)
+          }
 
-      withNewLocalNameScope {
-        val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
-          genMethodWithCurrentLocalNameScope(tree)
-        }
+          val dispatch =
+            genJSConstructorExport(constructorTrees.map(_.symbol))
+          val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
+          dispatchResolution) = dispatch
 
-        val dispatch =
-          genJSConstructorExport(constructorTrees.map(_.symbol))
-        val js.MethodDef(_, dispatchName, dispatchArgs, dispatchResultType,
-            dispatchResolution) = dispatch
+          val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
 
-        val jsConstructorBuilder = mkJSConstructorBuilder(ctors)
+          val overloadIdent = freshLocalIdent("overload")
 
-        val overloadIdent = freshLocalIdent("overload")
-
-        // Section containing the overload resolution and casts of parameters
-        val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
+          // Section containing the overload resolution and casts of parameters
+          val overloadSelection = mkOverloadSelection(jsConstructorBuilder,
             overloadIdent, dispatchResolution)
 
-        /* Section containing all the code executed before the call to `this`
-         * for every secondary constructor.
-         */
-        val prePrimaryCtorBody =
-          jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
+          /* Section containing all the code executed before the call to `this`
+           * for every secondary constructor.
+           */
+          val prePrimaryCtorBody =
+            jsConstructorBuilder.mkPrePrimaryCtorBody(overloadIdent)
 
-        val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
+          val primaryCtorBody = jsConstructorBuilder.primaryCtorBody
 
-        /* Section containing all the code executed after the call to this for
-         * every secondary constructor.
-         */
-        val postPrimaryCtorBody =
-          jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
+          /* Section containing all the code executed after the call to this for
+           * every secondary constructor.
+           */
+          val postPrimaryCtorBody =
+            jsConstructorBuilder.mkPostPrimaryCtorBody(overloadIdent)
 
-        val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
-            primaryCtorBody :: postPrimaryCtorBody :: Nil)
+          val newBody = js.Block(overloadSelection ::: prePrimaryCtorBody ::
+              primaryCtorBody :: postPrimaryCtorBody :: Nil)
 
-        js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
-            newBody)(dispatch.optimizerHints, None)
+          js.MethodDef(static = false, dispatchName, dispatchArgs, jstpe.NoType,
+              newBody)(dispatch.optimizerHints, None)
+        }
       }
     }
 
@@ -1066,7 +1070,7 @@ abstract class GenJSCode extends plugins.PluginComponent
           Some(js.MethodDef(static = false, methodName,
               jsParams, toIRType(sym.tpe.resultType), body)(
               OptimizerHints.empty, None))
-        } else if (isRawJSCtorDefaultParam(sym)) {
+        } else if (isJSNativeCtorDefaultParam(sym)) {
           None
         } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
           None
@@ -1776,8 +1780,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = fun.symbol
 
       def isRawJSDefaultParam: Boolean = {
-        sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-        (isRawJSType(sym.owner.tpe) || isRawJSCtorDefaultParam(sym))
+        if (isCtorDefaultParam(sym)) {
+          isRawJSCtorDefaultParam(sym)
+        } else {
+          sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
+          isRawJSType(sym.owner.tpe)
+        }
       }
 
       fun match {
@@ -4465,7 +4473,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (isGlobalScope) {
         genLoadGlobal()
-      } else if (isRawJSType(sym.tpe) && !isScalaJSDefinedJSClass(sym)) {
+      } else if (isJSNativeClass(sym)) {
         genPrimitiveJSModule(sym)
       } else {
         val moduleClassName = encodeClassFullName(sym)
@@ -4520,6 +4528,10 @@ abstract class GenJSCode extends plugins.PluginComponent
   def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
     !sym.isTrait && sym.hasAnnotation(ScalaJSDefinedAnnotation)
 
+  /** Tests whether the given class is a JS native class. */
+  private def isJSNativeClass(sym: Symbol): Boolean =
+    isRawJSType(sym.tpe) && !isScalaJSDefinedJSClass(sym)
+
   /** Tests whether the given member is exposed, i.e., whether it was
    *  originally a public or protected member of a Scala.js-defined JS class.
    */
@@ -4531,10 +4543,38 @@ abstract class GenJSCode extends plugins.PluginComponent
     sym.isAnonymousClass && AllJSFunctionClasses.exists(sym isSubClass _)
 
   private def isRawJSCtorDefaultParam(sym: Symbol) = {
+    isCtorDefaultParam(sym) &&
+    isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe)
+  }
+
+  private def isJSNativeCtorDefaultParam(sym: Symbol) = {
+    isCtorDefaultParam(sym) &&
+    isJSNativeClass(patchedLinkedClassOfClass(sym.owner))
+  }
+
+  private def isCtorDefaultParam(sym: Symbol) = {
     sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
     sym.owner.isModuleClass &&
-    isRawJSType(patchedLinkedClassOfClass(sym.owner).tpe) &&
     nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
+  }
+
+  private def hasDefaultCtorArgsAndRawJSModule(classSym: Symbol): Boolean = {
+    /* Get the companion module class.
+     * For inner classes the sym.owner.companionModule can be broken,
+     * therefore companionModule is fetched at uncurryPhase.
+     */
+    val companionClass = enteringPhase(currentRun.uncurryPhase) {
+      classSym.companionModule
+    }.moduleClass
+
+    def hasDefaultParameters = {
+      val syms = classSym.info.members.filter(_.isClassConstructor)
+      enteringPhase(currentRun.uncurryPhase) {
+        syms.exists(_.paramss.iterator.flatten.exists(_.hasDefault))
+      }
+    }
+
+    isJSNativeClass(companionClass) && hasDefaultParameters
   }
 
   private def patchedLinkedClassOfClass(sym: Symbol): Symbol = {

@@ -116,6 +116,51 @@ object ScalaJSDefinedTest extends JasmineTest {
   }
 
   @ScalaJSDefined
+  class ConstructorDefaultParamJSNonNativeNone(val foo: Int = -1) extends js.Object
+
+  @ScalaJSDefined
+  class ConstructorDefaultParamJSNonNativeJSNonNative(val foo: Int = -1) extends js.Object
+  @ScalaJSDefined
+  object ConstructorDefaultParamJSNonNativeJSNonNative extends js.Object
+
+  @ScalaJSDefined
+  class ConstructorDefaultParamJSNonNativeScala(val foo: Int = -1) extends js.Object
+  object ConstructorDefaultParamJSNonNativeScala
+
+  class ConstructorDefaultParamScalaJSNonNative(val foo: Int = -1)
+  @ScalaJSDefined
+  object ConstructorDefaultParamScalaJSNonNative extends js.Object
+
+  @js.native
+  @JSName("ConstructorDefaultParam")
+  class ConstructorDefaultParamJSNativeNone(val foo: Int = -1) extends js.Object
+
+  @js.native
+  @JSName("ConstructorDefaultParam")
+  class ConstructorDefaultParamJSNativeScala(val foo: Int = -1) extends js.Object
+  object ConstructorDefaultParamJSNativeScala
+
+  @js.native
+  @JSName("ConstructorDefaultParam")
+  class ConstructorDefaultParamJSNativeJSNonNative(val foo: Int = -1) extends js.Object
+  @ScalaJSDefined
+  object ConstructorDefaultParamJSNativeJSNonNative extends js.Object
+
+  @js.native
+  @JSName("ConstructorDefaultParam")
+  class ConstructorDefaultParamJSNativeJSNative(val foo: Int = -1) extends js.Object
+  @js.native
+  @JSName("ConstructorDefaultParam")
+  object ConstructorDefaultParamJSNativeJSNative extends js.Object
+
+  // sanity check
+  object ConstructorDefaultParamScalaScala
+  class ConstructorDefaultParamScalaScala(val foo: Int = -1)
+
+  // sanity check
+  class ConstructorDefaultParamScalaNone(val foo: Int = -1)
+
+  @ScalaJSDefined
   class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {
     def this(x: Int, y: Int) = this(x + y)
     def this(x: Int, y: Int, z: Int) = this(x + y, z)
@@ -142,6 +187,8 @@ object ScalaJSDefinedTest extends JasmineTest {
       this(w + x, y, z)
       bar = y
     }
+    def this(a: String, x: String, b: String = "", y: String = "") =
+      this((a + b).length, (x + y).length)
   }
 
   @ScalaJSDefined
@@ -786,11 +833,31 @@ object ScalaJSDefinedTest extends JasmineTest {
       val baz7 = new OverloadedConstructorComplex(1, 2, 4, 8)
       expect(baz7.foo).toEqual(3)
       expect(baz7.bar).toEqual(4)
+
+      val baz8 = new OverloadedConstructorComplex("abc", "abcd")
+      expect(baz8.foo).toEqual(3)
+      expect(baz8.bar).toEqual(4)
+
+      val baz9 = new OverloadedConstructorComplex("abc", "abcd", "zx")
+      expect(baz9.foo).toEqual(5)
+      expect(baz9.bar).toEqual(4)
+
+      val baz10 = new OverloadedConstructorComplex("abc", "abcd", "zx", "tfd")
+      expect(baz10.foo).toEqual(5)
+      expect(baz10.bar).toEqual(7)
     }
 
     it("default parameters") {
       @ScalaJSDefined
       class DefaultParameters extends js.Object {
+        def bar(x: Int, y: Int = 1): Int = x + y
+        def dependent(x: Int)(y: Int = x + 1): Int = x + y
+
+        def foobar(x: Int): Int = bar(x)
+      }
+
+      @ScalaJSDefined
+      object DefaultParametersMod extends js.Object {
         def bar(x: Int, y: Int = 1): Int = x + y
         def dependent(x: Int)(y: Int = x + 1): Int = x + y
 
@@ -804,12 +871,21 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(foo.dependent(4)(5)).toEqual(9)
       expect(foo.dependent(8)()).toEqual(17)
 
-      val dyn = foo.asInstanceOf[js.Dynamic]
-      expect(dyn.bar(4, 5)).toEqual(9)
-      expect(dyn.bar(4)).toEqual(5)
-      expect(dyn.foobar(3)).toEqual(4)
-      expect(dyn.dependent(4, 5)).toEqual(9)
-      expect(dyn.dependent(8)).toEqual(17)
+      expect(DefaultParametersMod.bar(4, 5)).toEqual(9)
+      expect(DefaultParametersMod.bar(4)).toEqual(5)
+      expect(DefaultParametersMod.foobar(3)).toEqual(4)
+      expect(DefaultParametersMod.dependent(4)(5)).toEqual(9)
+      expect(DefaultParametersMod.dependent(8)()).toEqual(17)
+
+      def testDyn(dyn: js.Dynamic): Unit = {
+        expect(dyn.bar(4, 5)).toEqual(9)
+        expect(dyn.bar(4)).toEqual(5)
+        expect(dyn.foobar(3)).toEqual(4)
+        expect(dyn.dependent(4, 5)).toEqual(9)
+        expect(dyn.dependent(8)).toEqual(17)
+      }
+      testDyn(foo.asInstanceOf[js.Dynamic])
+      testDyn(DefaultParametersMod.asInstanceOf[js.Dynamic])
     }
 
     it("override default parameters") {
@@ -886,6 +962,66 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(dyn.foobar(3)).toEqual(2)
       expect(dyn.dependent(4, 8)).toEqual(-4)
       expect(dyn.dependent(8)).toEqual(-1)
+    }
+
+    it("constructors with default parameters (ScalaJSDefined/-)") {
+      expect(new ConstructorDefaultParamJSNonNativeNone().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNonNativeNone(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNonNativeNone(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (ScalaJSDefined/ScalaJSDefined)") {
+      expect(new ConstructorDefaultParamJSNonNativeJSNonNative().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNonNativeJSNonNative(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNonNativeJSNonNative(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (ScalaJSDefined/Scala)") {
+      expect(new ConstructorDefaultParamJSNonNativeScala().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNonNativeScala(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNonNativeScala(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Scala/ScalaJSDefined)") {
+      expect(new ConstructorDefaultParamScalaJSNonNative().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamScalaJSNonNative(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamScalaJSNonNative(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Native/-)") {
+      expect(new ConstructorDefaultParamJSNativeNone().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNativeNone(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNativeNone(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Native/Scala)") {
+      expect(new ConstructorDefaultParamJSNativeScala().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNativeScala(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNativeScala(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Native/ScalaJSDefined)") {
+      expect(new ConstructorDefaultParamJSNativeJSNonNative().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNativeJSNonNative(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNativeJSNonNative(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Native/Native)") {
+      expect(new ConstructorDefaultParamJSNativeJSNative().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamJSNativeJSNative(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamJSNativeJSNative(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Scala/Scala)") {
+      expect(new ConstructorDefaultParamScalaScala().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamScalaScala(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamScalaScala(5).foo).toEqual(5)
+    }
+
+    it("constructors with default parameters (Scala/-)") {
+      expect(new ConstructorDefaultParamScalaNone().foo).toEqual(-1)
+      expect(new ConstructorDefaultParamScalaNone(1).foo).toEqual(1)
+      expect(new ConstructorDefaultParamScalaNone(5).foo).toEqual(5)
     }
 
     it("call super constructor with : _*") {

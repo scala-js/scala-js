@@ -621,8 +621,18 @@ trait GenJSExports extends SubComponent { self: GenJSCode =>
         val verifiedOrDefault = if (param.hasFlag(Flags.DEFAULTPARAM)) {
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
             val trgSym = {
-              if (sym.isClassConstructor) sym.owner.companionModule.moduleClass
-              else sym.owner
+              if (sym.isClassConstructor) {
+                /* Get the companion module class.
+                 * For inner classes the sym.owner.companionModule can be broken,
+                 * therefore companionModule is fetched at uncurryPhase.
+                 */
+                val companionModule = enteringPhase(currentRun.namerPhase) {
+                  sym.owner.companionModule
+                }
+                companionModule.moduleClass
+              } else {
+                sym.owner
+              }
             }
             val defaultGetter = trgSym.tpe.member(
                 nme.defaultGetterName(sym.name, i+1))
