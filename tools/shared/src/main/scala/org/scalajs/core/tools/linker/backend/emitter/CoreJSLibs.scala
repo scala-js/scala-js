@@ -7,7 +7,7 @@
 \*                                                                      */
 
 
-package org.scalajs.core.tools.corelib
+package org.scalajs.core.tools.linker.backend.emitter
 
 import java.net.URI
 
@@ -20,7 +20,8 @@ import org.scalajs.core.tools.linker.backend.OutputMode
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
-object CoreJSLibs {
+// The only reason this is not private[backend] is that Rhino needs it
+private[scalajs] object CoreJSLibs {
 
   private type Config = (Semantics, OutputMode)
 
@@ -35,11 +36,6 @@ object CoreJSLibs {
 
   private val gitHubBaseURI =
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
-
-  /** A JS expression that detects the global scope just like Scala.js */
-  val jsGlobalExpr: String =
-    """((typeof global === "object" && global &&
-         global["Object"] === Object) ? global : this)"""
 
   def lib(semantics: Semantics, outputMode: OutputMode): VirtualJSFile = {
     synchronized {

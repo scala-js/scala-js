@@ -5,7 +5,6 @@ import sbt._
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.json._
 import org.scalajs.core.tools.logging._
-import org.scalajs.core.tools.corelib.CoreJSLibs
 
 import org.scalajs.jsenv._
 
@@ -35,7 +34,7 @@ private[sbtplugin] final class FrameworkDetector(jsEnv: JSEnv) {
 
       function frameworkExists(name) {
         var parts = name.split(".");
-        var obj = ${CoreJSLibs.jsGlobalExpr};
+        var obj = ${ScalaJSPluginInternal.jsGlobalExpr};
         for (var i = 0; i < parts.length; ++i) {
           obj = obj[parts[i]];
           if (obj === void 0)

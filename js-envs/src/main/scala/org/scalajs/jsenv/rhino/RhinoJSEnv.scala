@@ -481,7 +481,10 @@ final class RhinoJSEnv private (
 
 }
 
-private object RhinoJSEnv {
+object RhinoJSEnv {
+
+  final class ClassNotFoundException(className: String) extends Exception(
+    s"Rhino was unable to load Scala.js class: $className")
 
   /** Communication channel between the Rhino thread and the rest of the JVM */
   private class Channel {

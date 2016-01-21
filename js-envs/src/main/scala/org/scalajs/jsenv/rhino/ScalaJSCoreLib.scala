@@ -19,10 +19,9 @@ import org.scalajs.core.tools.sem.Semantics
 import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
 import org.scalajs.core.tools.javascript._
 import org.scalajs.core.tools.io._
-import org.scalajs.core.tools.corelib._
 
 import org.scalajs.core.tools.linker.backend.OutputMode.ECMAScript51Global
-import org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter
+import org.scalajs.core.tools.linker.backend.emitter._
 
 private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   import ScalaJSCoreLib._
@@ -159,7 +158,7 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
 
   private[rhino] def load(scope: Scriptable, encodedName: String): Unit = {
     val linkedClass = providers.getOrElse(encodedName,
-        throw new ClassNotFoundException(encodedName))
+        throw new RhinoJSEnv.ClassNotFoundException(encodedName))
 
     val desugared =
       new ScalaJSClassEmitter(ECMAScript51Global, linkingUnit).genClassDef(linkedClass)
@@ -176,12 +175,8 @@ private[rhino] class ScalaJSCoreLib(linkingUnit: LinkingUnit) {
   }
 }
 
-object ScalaJSCoreLib {
+private[rhino] object ScalaJSCoreLib {
   private case class Info(name: String, isStatics: Boolean = false)
 
   private final val PseudoFileSuffix = ".sjsir"
-
-  final class ClassNotFoundException(className: String) extends Exception(
-    s"Rhino was unable to load Scala.js class: $className")
-
 }

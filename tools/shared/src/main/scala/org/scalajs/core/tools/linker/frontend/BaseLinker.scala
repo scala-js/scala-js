@@ -38,7 +38,7 @@ import Analysis._
  */
 final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions: Boolean) {
 
-  type TreeProvider = String => (ClassDef, Option[String])
+  private type TreeProvider = String => (ClassDef, Option[String])
 
   def link(irInput: Seq[VirtualScalaJSIRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean): LinkingUnit = {
@@ -86,24 +86,6 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
         bypassLinkingErrors, checkIR)
   }
 
-  def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
-      logger: Logger, symbolRequirements: SymbolRequirement,
-      checkIR: Boolean): LinkingUnit = {
-    linkInternal(infoInput, getTree, logger, symbolRequirements,
-        bypassLinkingErrors = false, checkIR = checkIR)
-  }
-
-  @deprecated(
-      "Bypassing linking errors will not be possible in the next major version. " +
-      "Use the overload without the bypassLinkingError parameter instead.",
-      "0.6.6")
-  def link(infoInput: List[Infos.ClassInfo], getTree: TreeProvider,
-      logger: Logger, symbolRequirements: SymbolRequirement,
-      bypassLinkingErrors: Boolean, checkIR: Boolean): LinkingUnit = {
-    linkInternal(infoInput, getTree, logger, symbolRequirements,
-        bypassLinkingErrors, checkIR)
-  }
-
   private def linkInternal(infoInput: List[Infos.ClassInfo],
       getTree: TreeProvider, logger: Logger,
       symbolRequirements: SymbolRequirement,
@@ -113,9 +95,9 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
       logger.time("Linker: Check Infos") {
         val infoAndTrees =
           infoInput.map(info => (info, getTree(info.encodedName)._1))
-        val checker = new InfoChecker(infoAndTrees, logger)
-        if (!checker.check())
-          sys.error(s"There were ${checker.errorCount} Info checking errors.")
+        val errorCount = InfoChecker.check(infoAndTrees, logger)
+        if (errorCount != 0)
+          sys.error(s"There were $errorCount Info checking errors.")
       }
     }
 
@@ -146,11 +128,11 @@ final class BaseLinker(semantics: Semantics, esLevel: ESLevel, considerPositions
     if (checkIR) {
       logger.time("Linker: Check IR") {
         if (linkResult.isComplete) {
-          val checker = new IRChecker(linkResult, logger)
-          if (!checker.check())
-            sys.error(s"There were ${checker.errorCount} IR checking errors.")
+          val errorCount = IRChecker.check(linkResult, logger)
+          if (errorCount != 0)
+            sys.error(s"There were $errorCount IR checking errors.")
         } else {
-          sys.error("Could not check IR because there where linking errors.")
+          sys.error("Could not check IR because there were linking errors.")
         }
       }
     }
