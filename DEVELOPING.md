@@ -38,12 +38,16 @@ you typically need to
 
     > reload
 
-To test in fastOpt or fullOpt stage, use the usual Scala.js stage setting:
+To test with Node.js instead of Rhino, use the usual Scala.js setting:
 
-    > set scalaJSStage in Global := FastOptStage
+    > set scalaJSUseRhino in Global := false
 
-By default, the test suite runs with Node.js in linked stages, and requires
-the `source-map-support` package to be installed in `npm`. You can bypass the
+and to run in fullOpt stage:
+
+    > set scalaJSStage in Global := FullOptStage
+
+When running with Node.js, by default, the test suite requires the
+`source-map-support` package to be installed in `npm`. You can bypass the
 source map tests locally with this setting:
 
     > set postLinkJSEnv in testSuite := NodeJSEnv().value.withSourceMap(false)
