@@ -20,7 +20,7 @@ import org.scalajs.core.tools.linker.backend.{LinkerBackend, OutputMode}
 
 import org.scalajs.jsenv._
 import org.scalajs.jsenv.rhino.RhinoJSEnv
-import org.scalajs.jsenv.nodejs.NodeJSEnv
+import org.scalajs.jsenv.nodejs.{DOMJSEnv, NodeJSEnv}
 import org.scalajs.jsenv.phantomjs.{PhantomJSEnv, PhantomJettyClassLoader}
 
 import org.scalajs.core.ir
@@ -538,8 +538,10 @@ object ScalaJSPluginInternal {
            */
           val semantics = scalaJSLinker.value.semantics
           new RhinoJSEnv(semantics, withDOM = scalaJSRequestsDOM.value)
+        } else if (scalaJSRequestsDOM.value) {
+          new DOMJSEnv
         } else {
-          new NodeJSEnv(withDOM = scalaJSRequestsDOM.value)
+          new NodeJSEnv
         }
       },
 

@@ -129,9 +129,19 @@ abstract class ExternalJSEnv(
     /** send a bunch of JS files to an output stream */
     final protected def sendJS(files: Seq[VirtualJSFile],
         out: OutputStream): Unit = {
-      val writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8"))
+      val sb = new StringBuilder
+      val writer = new BufferedWriter(new OutputStreamWriter(out, "UTF-8")) {
+        override def write(s: String, off: Int, len: Int): Unit = {
+          sb.append(s)
+          super.write(s, off, len)
+        }
+      }
       try sendJS(files, writer)
-      finally writer.close()
+      finally {
+        println(sb.toString())
+        (1 to 5).foreach(_ => println())
+        writer.close()
+      }
     }
 
     /** send a bunch of JS files to a writer */

@@ -9,23 +9,20 @@
 
 package org.scalajs.jsenv.nodejs
 
-import org.scalajs.jsenv._
-import org.scalajs.jsenv.Utils.OptDeadline
+import java.io.{Console => _, _}
+import java.net._
 
 import org.scalajs.core.ir.Utils.escapeJS
-
 import org.scalajs.core.tools.io._
 import org.scalajs.core.tools.jsdep.ResolvedJSDependency
 import org.scalajs.core.tools.logging._
-
-import java.io.{ Console => _, _ }
-import java.net._
+import org.scalajs.jsenv.Utils.OptDeadline
+import org.scalajs.jsenv._
 
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration._
-import scala.io.Source
 
-class NodeJSEnv private (
+class DOMJSEnv private(
   nodejsPath: String,
   addArgs: Seq[String],
   addEnv: Map[String, String],
@@ -37,8 +34,8 @@ class NodeJSEnv private (
     this(nodejsPath, addArgs, addEnv, sourceMap = true)
   }
 
-  def withSourceMap(sourceMap: Boolean): NodeJSEnv =
-    new NodeJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
+  def withSourceMap(sourceMap: Boolean): DOMJSEnv =
+    new DOMJSEnv(nodejsPath, addArgs, addEnv, sourceMap)
 
   /** True, if the installed node executable supports source mapping.
    *
@@ -57,7 +54,7 @@ class NodeJSEnv private (
     }
   }
 
-  protected def vmName: String = "Node.js"
+  protected def vmName: String = "Node.js with JSDOM"
   protected def executable: String = nodejsPath
 
   /** Retry-timeout to wait for the JS VM to connect */
@@ -220,7 +217,8 @@ class NodeJSEnv private (
     }
 
     /** Waits until the JS VM has established a connection or terminates
-     *  @return true if the connection was established
+      *
+      *  @return true if the connection was established
      */
     private def awaitConnection(): Boolean = {
       serverSocket.setSoTimeout(acceptTimeout)
@@ -305,12 +303,46 @@ class NodeJSEnv private (
     protected def runtimeEnv(): Seq[VirtualJSFile] = Seq(
         new MemVirtualJSFile("scalaJSEnvInfo.js").withContent(
           """
-          __ScalaJSEnv = {
+          global["__ScalaJSEnv"] = {
             exitFunction: function(status) { process.exit(status); }
           };
           """
         )
     )
+
+    protected def openJSDOMContext(): VirtualJSFile = {
+      new MemVirtualJSFile("openJSDOMContext.js").withContent(
+        s"""
+           |(function () {
+           |  var jsdom = require("jsdom");
+           |
+           |  jsdom.env({
+           |    html: "",
+           |    created: function (error, window) {
+           |      console.log("jsdom.created()");
+           |      console.log("this: " + this);
+           |      console.log("this keys: " + Object.keys(this));
+           |      if (error == null) {
+           |        console.log("jsdom.created()");
+           |        global.window = window;
+           |        global.document = window.document;
+           |      } else {
+           |        console.log(error);
+           |      }
+           |    },
+           |    scripts: ${getScriptsJSFiles().map('"' + _.path + '"').mkString("[\n      ", ",\n      ", "\n    ],")}
+           |    onload: function (window) {
+          """.stripMargin)
+    }
+
+    protected def closeJSDOMContext(): VirtualJSFile = {
+      new MemVirtualJSFile("closeJSDOMContext.js").withContent(
+        """
+          |    }
+          |  });
+          |})();
+        """.stripMargin)
+    }
 
     /** Concatenates results from [[installSourceMap]], [[fixPercentConsole]] and
      *  [[runtimeEnv]] (in this order).
@@ -321,7 +353,19 @@ class NodeJSEnv private (
     /** Libraries are loaded via require in Node.js */
     override protected def getLibJSFiles(): Seq[VirtualJSFile] = {
       initFiles() ++
-      customInitFiles() ++
+      customInitFiles()
+    }
+
+    override protected def getJSFiles(): Seq[VirtualJSFile] = {
+      Seq(openJSDOMContext()) ++
+      initFiles() ++
+      getScriptsJSFiles() :+
+      code :+
+      closeJSDOMContext()
+    }
+
+    /** Libraries are loaded via jsdom.env scripts in Node.js */
+    protected def getScriptsJSFiles(): Seq[VirtualJSFile] = {
       libs.map(requireLibrary)
     }
 

@@ -1061,7 +1061,7 @@ object Build extends sbt.Build {
 
           jsDependencies ++= Seq(
             RuntimeDOM % "test",
-            "org.webjars" % "jquery" % "1.10.2" / "jquery.js" % "test"
+            "org.webjars" % "jquery" % "2.1.4" / "jquery.js" % "test"
           )
       )
   ).withScalaJSCompiler.dependsOn(library, jasmineTestFramework % "test")
