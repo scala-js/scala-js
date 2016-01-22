@@ -534,7 +534,7 @@ object Build extends sbt.Build {
       settings = commonToolsSettings ++ Seq(
           libraryDependencies ++= Seq(
               "com.google.javascript" % "closure-compiler" % "v20130603",
-              "com.googlecode.json-simple" % "json-simple" % "1.1.1",
+              "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit"),
               "com.novocode" % "junit-interface" % "0.9" % "test"
           )
       )
@@ -1365,7 +1365,7 @@ object Build extends sbt.Build {
                 "org.scala-lang.modules" %% "scala-partest" % "1.0.9",
                 "com.google.javascript" % "closure-compiler" % "v20130603",
                 "io.apigee" % "rhino" % "1.7R5pre4",
-                "com.googlecode.json-simple" % "json-simple" % "1.1.1"
+                "com.googlecode.json-simple" % "json-simple" % "1.1.1" exclude("junit", "junit")
               )
             else Seq()
           },
