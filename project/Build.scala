@@ -48,7 +48,7 @@ object Build extends sbt.Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "0.6.5"
+  val previousVersion = "0.6.6"
   val previousSJSBinaryVersion =
     ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
   val previousBinaryCrossVersion =
@@ -98,10 +98,15 @@ object Build extends sbt.Build {
           case ScalaJSCrossVersion.binary => previousBinaryCrossVersion
           case crossVersion               => crossVersion
         }
+        /* Filter out e:info.apiURL as it expects 0.6.7-SNAPSHOT, whereas the
+         * artifact we're looking for has 0.6.6 (for example).
+         */
+        val prevExtraAttributes =
+          thisProjectID.extraAttributes.filterKeys(_ != "e:info.apiURL")
         val prevProjectID =
           (thisProjectID.organization % thisProjectID.name % previousVersion)
             .cross(previousCrossVersion)
-            .extra(thisProjectID.extraAttributes.toSeq: _*)
+            .extra(prevExtraAttributes.toSeq: _*)
         Some(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
       }
     }
@@ -448,9 +453,7 @@ object Build extends sbt.Build {
       commonSettings ++ publishSettings ++ fatalWarningsSettings
   ) ++ Seq(
       name := "Scala.js IR",
-      /* Scala.js 0.6.6 will break binary compatibility of the IR
-       */
-      // previousArtifactSetting,
+      previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.IR,
       exportJars := true // required so ScalaDoc linking works
   )
@@ -523,9 +526,7 @@ object Build extends sbt.Build {
           (sourceManaged in Compile).value)
       },
 
-      /* Scala.js 0.6.6 will break binary compatibility of the tools
-       */
-      // previousArtifactSetting,
+      previousArtifactSetting,
       binaryIssueFilters ++= BinaryIncompatibilities.Tools,
       exportJars := true // required so ScalaDoc linking works
   )
@@ -608,9 +609,7 @@ object Build extends sbt.Build {
               "org.webjars" % "envjs" % "1.2",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
-          /* Scala.js 0.6.6 will break binary compatibility of the jsEnvs
-           */
-          // previousArtifactSetting,
+          previousArtifactSetting,
           binaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
       )
   ).dependsOn(tools)
