@@ -89,9 +89,6 @@ object Build extends sbt.Build {
       } else if (newScalaBinaryVersionsInThisRelease.contains(scalaBinaryV)) {
         // New in this release, no binary compatibility to comply to
         None
-      } else if (scalaBinaryV == "2.12.0-M3") {
-        // See #1865: MiMa is much too noisy with 2.12.0-M3 to be useful
-        None
       } else {
         val thisProjectID = projectID.value
         val previousCrossVersion = thisProjectID.crossVersion match {
