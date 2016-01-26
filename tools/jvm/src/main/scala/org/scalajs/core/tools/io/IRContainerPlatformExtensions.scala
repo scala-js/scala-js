@@ -16,7 +16,9 @@ import org.scalajs.core.tools.io.IRFileCache.IRContainer
 trait IRContainerPlatformExtensions { this: IRContainer.type =>
   def fromClasspath(classpath: Seq[JFile]): Seq[IRContainer] = {
     classpath flatMap { entry =>
-      if (entry.isDirectory)
+      if (!entry.exists)
+        Nil
+      else if (entry.isDirectory)
         fromDirectory(entry)
       else if (entry.getName.endsWith(".jar"))
         fromJar(entry) :: Nil

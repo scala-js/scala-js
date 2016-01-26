@@ -11,7 +11,11 @@ val versionSettings = Seq(
 
 val baseSettings = versionSettings ++ Seq(
   libraryDependencies +=
-    "org.scala-js" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test"
+    "org.scala-js" %% "scalajs-jasmine-test-framework" % scalaJSVersion % "test",
+
+  // Test that non-existent classpath entries are allowed - #2198
+  fullClasspath in Compile += (baseDirectory in "root").value /
+    "non-existent-directory-please-dont-ever-create-this"
 )
 
 lazy val referencedCrossProjectJS = ProjectRef(file("referencedCrossProject"), "referencedCrossProjectJS")

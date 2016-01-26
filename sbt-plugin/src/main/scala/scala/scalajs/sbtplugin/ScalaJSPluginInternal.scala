@@ -306,7 +306,7 @@ object ScalaJSPluginInternal {
     val realFiles = Seq.newBuilder[File]
     val results = Seq.newBuilder[T]
 
-    for (cpEntry <- Attributed.data(cp)) {
+    for (cpEntry <- Attributed.data(cp) if cpEntry.exists) {
       if (cpEntry.isFile && cpEntry.getName.endsWith(".jar")) {
         realFiles += cpEntry
         val vf = new FileVirtualBinaryFile(cpEntry) with VirtualJarFile
