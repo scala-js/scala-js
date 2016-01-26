@@ -9,6 +9,8 @@
 
 package org.scalajs.core.tools.linker
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import org.scalajs.core.tools.logging.Logger
 import org.scalajs.core.tools.io._
 
@@ -34,6 +36,7 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
   val esLevel: ESLevel = backend.esLevel
 
   private[this] var _valid = true
+  private[this] val _linking = new AtomicBoolean(false)
 
   def linkUnit(irFiles: Seq[VirtualScalaJSIRFile],
       symbolRequirements: SymbolRequirement, logger: Logger): LinkingUnit =
@@ -49,6 +52,10 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
 
   @inline
   private[this] def guard[T](body: => T): T = {
+    if (!_linking.compareAndSet(false, true)) {
+      throw new IllegalStateException("Linker used concurrently")
+    }
+
     if (!_valid) {
       throw new IllegalStateException(
           "Linker is invalid due to a previous exception in a component")
@@ -60,6 +67,8 @@ final class Linker(frontend: LinkerFrontend, backend: LinkerBackend)
       case t: Throwable =>
         _valid = false
         throw t
+    } finally {
+      _linking.set(false)
     }
   }
 }
