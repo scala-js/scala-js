@@ -27,7 +27,11 @@ lazy val noDOM = project.settings(baseSettings: _*).
     scalaJSOutputWrapper := (
         "// Scala.js - noDOM sbt test\n//\n// Compiled with Scala.js\n",
         "// End of Scala.js generated script")
-  )
+  ).
+  /* This hopefully exposes concurrent uses of the linker. If it fails/gets
+   * flaky, there is a bug somewhere - #2202
+   */
+  settings(inConfig(Compile)(run <<= run.dependsOn(fastOptJS, loadedJSEnv)): _*)
 
 lazy val withDOM = project.settings(baseSettings: _*).
   enablePlugins(ScalaJSPlugin).

@@ -59,6 +59,15 @@ object ScalaJSPluginInternal {
   val scalaJSLinker = SettingKey[ClearableLinker]("scalaJSLinker",
       "Scala.js internal: Setting to persist a linker", KeyRanks.Invisible)
 
+  /** A tag to indicate that a task is using the value of [[scalaJSLinker]]
+   *
+   *  This setting's value should always be retrieved from the same scope than
+   *  [[scalaJSLinker]] was retrieved from.
+   */
+  val usesScalaJSLinkerTag = SettingKey[Tags.Tag]("usesScalaJSLinkerTag",
+      "Scala.js internal: Tag to indicate that a task uses the link or " +
+      "linkUnit method of the value of scalaJSLinker", KeyRanks.Invisible)
+
   val scalaJSIRCacheHolder = SettingKey[globalIRCache.Cache]("scalaJSIRCacheHolder",
       "Scala.js internal: Setting to persist a cache. Do NOT use this directly. " +
       "Use scalaJSIRCache instead.", KeyRanks.Invisible)
@@ -189,7 +198,23 @@ object ScalaJSPluginInternal {
         new ClearableLinker(newLinker, opts.batchMode)
       },
 
-      key := {
+      usesScalaJSLinkerTag in key := {
+        val projectPart = thisProject.value.id
+        val configPart = configuration.value.name
+
+        val stagePart = stage match {
+          case Stage.FastOpt => "fastopt"
+          case Stage.FullOpt => "fullopt"
+        }
+
+        Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
+      },
+
+      // Prevent this linker from being used concurrently
+      concurrentRestrictions in Global +=
+        Tags.limit((usesScalaJSLinkerTag in key).value, 1),
+
+      key <<= Def.taskDyn {
         val s = (streams in key).value
         val log = s.log
         val irInfo = (scalaJSIR in key).value
@@ -197,27 +222,29 @@ object ScalaJSPluginInternal {
         val ir = irInfo.data
         val output = (artifactPath in key).value
 
-        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
-            FilesInfo.exists) { _ => // We don't need the files
+        Def.task {
+          FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+              FilesInfo.exists) { _ => // We don't need the files
 
-          val stageName = stage match {
-            case Stage.FastOpt => "Fast"
-            case Stage.FullOpt => "Full"
-          }
+            val stageName = stage match {
+              case Stage.FastOpt => "Fast"
+              case Stage.FullOpt => "Full"
+            }
 
-          log.info(s"$stageName optimizing $output")
+            log.info(s"$stageName optimizing $output")
 
-          IO.createDirectory(output.getParentFile)
+            IO.createDirectory(output.getParentFile)
 
-          val linker = (scalaJSLinker in key).value
-          linker.link(ir, AtomicWritableFileVirtualJSFile(output), log)
+            val linker = (scalaJSLinker in key).value
+            linker.link(ir, AtomicWritableFileVirtualJSFile(output), log)
 
-          logIRCacheStats(log)
+            logIRCacheStats(log)
 
-          Set(output)
-        } (realFiles.toSet)
+            Set(output)
+          } (realFiles.toSet)
 
-        Attributed.blank(output)
+          Attributed.blank(output)
+        } tag((usesScalaJSLinkerTag in key).value)
       },
 
       key <<= key.dependsOn(packageJSDependencies, packageScalaJSLauncher),
@@ -332,7 +359,8 @@ object ScalaJSPluginInternal {
       scalajspSettings ++
       stageKeys.flatMap((scalaJSStageSettings _).tupled) ++
       dispatchTaskKeySettings(scalaJSLinkedFile) ++
-      dispatchSettingKeySettings(scalaJSLinker)
+      dispatchSettingKeySettings(scalaJSLinker) ++
+      dispatchSettingKeySettings(usesScalaJSLinkerTag)
   ) ++ Seq(
       /* Note: This cache only gets freed by its finalizer. Otherwise we'd need
        * to intercept reloads in sbt (see #2171).
@@ -558,7 +586,7 @@ object ScalaJSPluginInternal {
 
               log.debug("Loading JSEnv with LinkingUnit")
               env.loadLibs(libs).loadLinkingUnit(unit)
-            }
+            } tag(usesScalaJSLinkerTag.value)
           case env =>
             Def.task {
               val file = scalaJSLinkedFile.value
