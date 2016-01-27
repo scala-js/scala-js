@@ -723,7 +723,18 @@ object Build extends sbt.Build {
   lazy val scalalib: Project = Project(
       id = "scalalib",
       base = file("scalalib"),
-      settings = commonSettings ++ myScalaJSSettings ++ Seq(
+      settings = commonSettings ++ Seq(
+          /* Link source maps to the GitHub sources of the original scalalib
+           * #2195 This must come *before* the option added by myScalaJSSettings
+           * because mapSourceURI works on a first-match basis.
+           */
+          scalacOptions += {
+            "-P:scalajs:mapSourceURI:" +
+            (artifactPath in fetchScalaSource).value.toURI +
+            "->https://raw.githubusercontent.com/scala/scala/v" +
+            scalaVersion.value + "/src/library/"
+          }
+      ) ++ myScalaJSSettings ++ Seq(
           name := "Scala library for Scala.js",
           publishArtifact in Compile := false,
           delambdafySetting,
@@ -733,15 +744,8 @@ object Build extends sbt.Build {
           scalacOptions ~= (_.filterNot(
               Set("-deprecation", "-unchecked", "-feature") contains _)),
 
-          scalacOptions ++= List(
-            // Tell plugin to hack fix bad classOf trees
-            "-P:scalajs:fixClassOf",
-            // Link source maps to github sources of original Scalalib
-            "-P:scalajs:mapSourceURI:" +
-            (artifactPath in fetchScalaSource).value.toURI +
-            "->https://raw.githubusercontent.com/scala/scala/v" +
-            scalaVersion.value + "/src/library/"
-            ),
+          // Tell the plugin to hack-fix bad classOf trees
+          scalacOptions += "-P:scalajs:fixClassOf",
 
           artifactPath in fetchScalaSource :=
             target.value / "scalaSources" / scalaVersion.value,
