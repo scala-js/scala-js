@@ -559,7 +559,7 @@ object Build extends sbt.Build {
           val cp = Attributed.data((fullClasspath in Test).value)
 
           // Files must be Jars, non-files must be dirs
-          val (jars, dirs) = cp.partition(_.isFile)
+          val (jars, dirs) = cp.filter(_.exists).partition(_.isFile)
           val irFiles = dirs.flatMap(dir => (dir ** "*.sjsir").get)
 
           val irPaths =  {
