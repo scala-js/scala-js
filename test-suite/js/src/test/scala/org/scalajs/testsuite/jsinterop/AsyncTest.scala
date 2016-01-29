@@ -51,25 +51,31 @@ object AsyncTest extends JasmineTest {
     expect(abuf.toJSArray)
 
   def queueExecOrderTests(implicit executor: ExecutionContext): Unit = {
-    it("should correctly order future calls") {
-      val res = asyncTest
+    if (js.isUndefined(js.Dynamic.global.Promise)) {
+      it("should correctly order future calls") {
+        val res = asyncTest
 
-      expect(res).toEqual(js.Array(
-        "prep-future",
-        "prep-map",
-        "prep-foreach",
-        "done"))
+        expect(res).toEqual(js.Array(
+          "prep-future",
+          "prep-map",
+          "prep-foreach",
+          "done"))
 
-      jasmine.Clock.tick(1)
+        jasmine.Clock.tick(1)
 
-      expect(res).toEqual(js.Array(
-        "prep-future",
-        "prep-map",
-        "prep-foreach",
-        "done",
-        "future",
-        "map",
-        "foreach"))
+        expect(res).toEqual(js.Array(
+          "prep-future",
+          "prep-map",
+          "prep-foreach",
+          "done",
+          "future",
+          "map",
+          "foreach"))
+      }
+    } else {
+      /* Ignore, because we cannot mock Promise after the
+       * QueueExecutionContext has been created.
+       */
     }
   }
 
