@@ -29,8 +29,21 @@ object StackTrace {
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
    */
-  @inline def captureState(throwable: Throwable): Unit =
-    captureState(throwable, createException())
+  @inline def captureState(throwable: Throwable): Unit = {
+    if (js.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
+      captureState(throwable, createException())
+    } else {
+      /* V8-specific.
+       * The Error.captureStackTrace(e) method records the current stack trace
+       * on `e` as would do `new Error()`, thereby turning `e` into a proper
+       * exception. This avoids creating a dummy exception, but is mostly
+       * important so that Node.js will show stack traces if the exception
+       * is never caught and reaches the global event queue.
+       */
+      js.constructorOf[js.Error].captureStackTrace(throwable.asInstanceOf[js.Any])
+      captureState(throwable, throwable)
+    }
+  }
 
   /** Creates a JS Error with the current stack trace state. */
   @inline private def createException(): Any = {
