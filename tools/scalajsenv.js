@@ -231,14 +231,6 @@ ScalaJS.newArrayObjectInternal = function(arrayClassData, lengths, lengthIndex) 
   return result;
 };
 
-ScalaJS.checkNonNull = function(obj) {
-  return obj !== null ? obj : ScalaJS.throwNullPointerException();
-};
-
-ScalaJS.throwNullPointerException = function() {
-  throw new ScalaJS.c.jl_NullPointerException().init___();
-};
-
 ScalaJS.objectToString = function(instance) {
   if (instance === void 0)
     return "undefined";
@@ -272,7 +264,7 @@ ScalaJS.objectGetClass = function(instance) {
       return ScalaJS.d.sr_BoxedUnit.getClassOf();
     default:
       if (instance === null)
-        ScalaJS.throwNullPointerException();
+        return instance.getClass__jl_Class();
       else if (ScalaJS.is.sjsr_RuntimeLong(instance))
         return ScalaJS.d.jl_Long.getClassOf();
       else if (ScalaJS.isScalaJSObject(instance))

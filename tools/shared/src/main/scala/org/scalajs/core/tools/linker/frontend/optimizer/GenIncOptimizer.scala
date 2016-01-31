@@ -53,7 +53,8 @@ abstract class GenIncOptimizer private[optimizer] (semantics: Semantics,
     callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods) ++
     optional(callMethods(LongImpl.RuntimeLongClass, LongImpl.OptionalIntrinsicMethods)) ++
     callMethods(Definitions.BoxedIntegerClass,
-        Seq("compareTo__jl_Byte__I", "compareTo__jl_Short__I")) // #2184
+        Seq("compareTo__jl_Byte__I", "compareTo__jl_Short__I")) ++ // #2184
+    instantiateClass("jl_NullPointerException", "init___")
   }
 
   private[optimizer] val CollOps: AbsCollOps

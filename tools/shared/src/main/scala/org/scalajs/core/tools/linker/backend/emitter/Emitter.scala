@@ -480,7 +480,6 @@ private[scalajs] object Emitter {
         callMethod("O", "toString__T"),
         callMethod("O", "equals__O__Z"),
 
-        instantiateClass("jl_NullPointerException", "init___"),
         instantiateClass("jl_CloneNotSupportedException", "init___"),
 
         cond(asInstanceOfs != Unchecked) {

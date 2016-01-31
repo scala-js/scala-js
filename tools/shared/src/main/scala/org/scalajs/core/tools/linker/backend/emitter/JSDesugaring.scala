@@ -2202,8 +2202,6 @@ private[emitter] object JSDesugaring {
   private val HelpersInDollarClass = Set(
       "makeNativeArrayWrapper",
       "newArrayObject",
-      "checkNonNull",
-      "throwNullPointerException",
       "objectToString",
       "objectGetClass",
       "objectClone",
