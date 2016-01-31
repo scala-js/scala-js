@@ -263,6 +263,10 @@ private[lang] final class JSConsoleBasedPrintStream(isErr: Boolean)
 
   override def println(): Unit = printString("\n")
 
+  // This is the method invoked by Predef.println(x).
+  @inline
+  override def println(obj: AnyRef): Unit = printString("" + obj + "\n")
+
   private def printString(s: String): Unit = {
     var rest: String = s
     while (rest != "") {
