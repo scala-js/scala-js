@@ -448,14 +448,6 @@ class $ {
     return result;
   };
 
-  static checkNonNull(obj) {
-    return obj !== null ? obj : $.throwNullPointerException();
-  };
-
-  static throwNullPointerException() {
-    throw new $c_jl_NullPointerException().init___();
-  };
-
   static objectToString(instance) {
     if (instance === void 0)
       return "undefined";
@@ -489,7 +481,7 @@ class $ {
         return $d_sr_BoxedUnit.getClassOf();
       default:
         if (instance === null)
-          $.throwNullPointerException();
+          return instance.getClass__jl_Class();
         else if ($is_sjsr_RuntimeLong(instance))
           return $d_jl_Long.getClassOf();
         else if ($isScalaJSObject(instance))

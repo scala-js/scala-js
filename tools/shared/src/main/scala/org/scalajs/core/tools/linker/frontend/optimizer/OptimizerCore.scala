@@ -1140,7 +1140,8 @@ private[optimizer] abstract class OptimizerCore(
         case NullType =>
           cont(PreTransTree(Block(
               finishTransformStat(treceiver),
-              CallHelper("throwNullPointerException")(NothingType))))
+              Throw(New(ClassType("jl_NullPointerException"),
+                  Ident("init___", Some("<init>")), Nil)))))
         case _ =>
           if (isReflProxyName(methodName)) {
             // Never inline reflective proxies
@@ -2969,16 +2970,6 @@ private[optimizer] abstract class OptimizerCore(
 
       case _ =>
         default
-    }
-  }
-
-  private def finishTransformCheckNull(preTrans: PreTransform)(
-      implicit pos: Position): Tree = {
-    if (preTrans.tpe.isNullable) {
-      val transformed = finishTransformExpr(preTrans)
-      CallHelper("checkNonNull", transformed)(transformed.tpe)
-    } else {
-      finishTransformExpr(preTrans)
     }
   }
 
