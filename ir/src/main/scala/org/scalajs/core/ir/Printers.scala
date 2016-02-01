@@ -754,10 +754,7 @@ object Printers {
 
         case tree: ClassDef =>
           val ClassDef(name, kind, superClass, interfaces, jsName, defs) = tree
-          if (tree.optimizerHints != OptimizerHints.empty)
-            print("@hints(")
-            print(tree.optimizerHints.bits)
-            print(") ")
+          print(tree.optimizerHints)
           kind match {
             case ClassKind.Class         => print("class ")
             case ClassKind.ModuleClass   => print("module class ")
@@ -801,11 +798,7 @@ object Printers {
 
         case tree: MethodDef =>
           val MethodDef(static, name, args, resultType, body) = tree
-          if (tree.optimizerHints != OptimizerHints.empty) {
-            print("@hints(")
-            print(tree.optimizerHints.bits)
-            print(") ")
-          }
+          print(tree.optimizerHints)
           if (static)
             print("static ")
           print("def ")
@@ -894,6 +887,15 @@ object Printers {
 
     protected def print(c: Int): Unit =
       out.write(c)
+
+    protected def print(optimizerHints: OptimizerHints)(
+        implicit dummy: DummyImplicit): Unit = {
+      if (optimizerHints != OptimizerHints.empty) {
+        print("@hints(")
+        print(optimizerHints.bits.toString)
+        print(") ")
+      }
+    }
 
     // Make it public
     override def println(): Unit = super.println()
