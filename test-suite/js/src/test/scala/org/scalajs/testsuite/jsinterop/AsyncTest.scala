@@ -9,11 +9,12 @@ package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
+import scala.scalajs.js.|
 
 import org.scalajs.jasminetest.JasmineTest
 
 import scala.concurrent.{Future, ExecutionContext}
-import scala.scalajs.concurrent.JSExecutionContext
+import scala.scalajs.concurrent._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -50,33 +51,43 @@ object AsyncTest extends JasmineTest {
   def expect(abuf: ArrayBuffer[String]): JasmineExpectation =
     expect(abuf.toJSArray)
 
-  def queueExecOrderTests(implicit executor: ExecutionContext): Unit = {
+  def establishedQueueExecOrderTests()(
+      implicit executor: ExecutionContext): Unit = {
+
     if (js.isUndefined(js.Dynamic.global.Promise)) {
       it("should correctly order future calls") {
-        val res = asyncTest
-
-        expect(res).toEqual(js.Array(
-          "prep-future",
-          "prep-map",
-          "prep-foreach",
-          "done"))
-
-        jasmine.Clock.tick(1)
-
-        expect(res).toEqual(js.Array(
-          "prep-future",
-          "prep-map",
-          "prep-foreach",
-          "done",
-          "future",
-          "map",
-          "foreach"))
+        queueExecOrderTests { () =>
+          jasmine.Clock.tick(1)
+        }
       }
     } else {
       /* Ignore, because we cannot mock Promise after the
-       * QueueExecutionContext has been created.
+       * established QueueExecutionContext has been created.
        */
     }
+  }
+
+  def queueExecOrderTests(processQueue: () => Unit)(
+      implicit executor: ExecutionContext): Unit = {
+
+    val res = asyncTest
+
+    expect(res).toEqual(js.Array(
+      "prep-future",
+      "prep-map",
+      "prep-foreach",
+      "done"))
+
+    processQueue()
+
+    expect(res).toEqual(js.Array(
+      "prep-future",
+      "prep-map",
+      "prep-foreach",
+      "done",
+      "future",
+      "map",
+      "foreach"))
   }
 
   describe("scala.scalajs.concurrent.JSExecutionContext.queue") {
@@ -85,7 +96,7 @@ object AsyncTest extends JasmineTest {
       jasmine.Clock.useMock()
     }
 
-    queueExecOrderTests(JSExecutionContext.queue)
+    establishedQueueExecOrderTests()(JSExecutionContext.queue)
 
   }
 
@@ -116,7 +127,53 @@ object AsyncTest extends JasmineTest {
       expect(ExecutionContext.global eq JSExecutionContext.queue).toBeTruthy
     }
 
-    queueExecOrderTests(ExecutionContext.global)
+    establishedQueueExecOrderTests()(ExecutionContext.global)
+
+  }
+
+  describe("scala.scalajs.concurrent.QueueExecutionContext()") {
+
+    beforeEach {
+      jasmine.Clock.useMock()
+    }
+
+    it("should correctly order future calls") {
+      PromiseMock.withMockedPromiseIfExists { optProcessQueue =>
+        implicit val executor = QueueExecutionContext()
+        queueExecOrderTests { () =>
+          jasmine.Clock.tick(1)
+          optProcessQueue.foreach(_())
+        }
+      }
+    }
+
+  }
+
+  describe("scala.scalajs.concurrent.QueueExecutionContext.timeouts()") {
+
+    beforeEach {
+      jasmine.Clock.useMock()
+    }
+
+    it("should correctly order future calls") {
+      implicit val executor = QueueExecutionContext.timeouts()
+      queueExecOrderTests { () =>
+        jasmine.Clock.tick(1)
+      }
+    }
+
+  }
+
+  describe("scala.scalajs.concurrent.QueueExecutionContext.promises()") {
+
+    it("should correctly order future calls") {
+      PromiseMock.withMockedPromise { processQueue =>
+        implicit val executor = QueueExecutionContext.promises()
+        queueExecOrderTests { () =>
+          processQueue()
+        }
+      }
+    }
 
   }
 
@@ -138,6 +195,88 @@ object AsyncTest extends JasmineTest {
       implicit val ec = JSExecutionContext.runNow
       val f = Future.sequence(Seq(Future(3), Future(5)))
       expect(f.value.get.get.toJSArray).toEqual(js.Array(3, 5))
+    }
+
+  }
+
+  describe("js.Promise.toFuture") {
+    it("basic case") {
+      PromiseMock.withMockedPromise { processQueue =>
+        implicit val ec = QueueExecutionContext.promises()
+
+        val p = new js.Promise[Int]({
+          (resolve: js.Function1[Int | js.Thenable[Int], _], reject: js.Function1[Any, _]) =>
+            resolve(42)
+        })
+
+        val f = p.toFuture
+        val fAssertType: Future[Int] = f
+
+        var callbackDone = false
+
+        fAssertType.foreach { x =>
+          expect(x).toEqual(42)
+          callbackDone = true
+        }
+
+        processQueue()
+
+        expect(callbackDone).toBeTruthy
+      }
+    }
+
+  }
+
+  describe("scala.concurrent.Future.toJSPromise") {
+    import scala.scalajs.js.JSConverters._
+
+    it("basic case") {
+      PromiseMock.withMockedPromise { processQueue =>
+        implicit val ec = QueueExecutionContext.promises()
+
+        val f = Future { 42 }
+        val p = f.toJSPromise
+        val pAssertType: js.Promise[Int] = p
+
+        var callbackDone = false
+
+        pAssertType.`then`[Unit] { (x: Int) =>
+          expect(x).toEqual(42)
+          callbackDone = true
+          (): Unit | js.Thenable[Unit]
+        }
+
+        processQueue()
+
+        expect(callbackDone).toBeTruthy
+      }
+    }
+
+    it("Thenable case") {
+      PromiseMock.withMockedPromise { processQueue =>
+        implicit val ec = QueueExecutionContext.promises()
+
+        val initialPromise = new js.Promise[Int]({
+          (resolve: js.Function1[Int | js.Thenable[Int], _], reject: js.Function1[Any, _]) =>
+            resolve(42)
+        })
+
+        val f = Future { initialPromise }
+        val p = f.toJSPromise
+        val pAssertType: js.Promise[Int] = p
+
+        var callbackDone = false
+
+        pAssertType.`then`[Unit] { (x: Int) =>
+          expect(x).toEqual(42)
+          callbackDone = true
+          (): Unit | js.Thenable[Unit]
+        }
+
+        processQueue()
+
+        expect(callbackDone).toBeTruthy
+      }
     }
 
   }
