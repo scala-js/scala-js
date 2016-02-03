@@ -21,6 +21,15 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // private[concurrent], not an issue
+      ProblemFilters.exclude[MissingTypesProblem](
+          "scala.scalajs.concurrent.QueueExecutionContext$"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.concurrent.QueueExecutionContext.reportFailure"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.concurrent.QueueExecutionContext.execute"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "scala.scalajs.concurrent.QueueExecutionContext.prepare")
   )
 
   val TestInterface = Seq(

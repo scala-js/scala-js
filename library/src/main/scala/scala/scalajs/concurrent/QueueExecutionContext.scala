@@ -5,37 +5,47 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.scalajs.js
 import scala.scalajs.js.|
 
-private[concurrent] object QueueExecutionContext
-    extends ExecutionContextExecutor {
+object QueueExecutionContext {
+  def timeouts(): ExecutionContextExecutor =
+    new TimeoutsExecutionContext
 
-  private val enqueue: js.Function1[js.Function0[Unit], Unit] = {
-    if (js.isUndefined(js.Dynamic.global.Promise)) {
-      { (f: js.Function0[Unit]) =>
-        js.Dynamic.global.setTimeout(f, 0)
-        ()
-      }
-    } else {
-      val resolvedUnitPromise = js.Promise.resolve[Unit](())
+  def promises(): ExecutionContextExecutor =
+    new PromisesExecutionContext
 
-      { (f: js.Function0[Unit]) =>
-        resolvedUnitPromise.`then`(
-            f.asInstanceOf[js.Function1[Unit, Unit | js.Thenable[Unit]]])
-        ()
-      }
+  def apply(): ExecutionContextExecutor =
+    if (js.isUndefined(js.Dynamic.global.Promise)) timeouts()
+    else promises()
+
+  private final class TimeoutsExecutionContext extends ExecutionContextExecutor {
+    def execute(runnable: Runnable): Unit = {
+      js.Dynamic.global.setTimeout({ () =>
+        try {
+          runnable.run()
+        } catch {
+          case t: Throwable => reportFailure(t)
+        }
+      }, 0)
     }
+
+    def reportFailure(t: Throwable): Unit =
+      t.printStackTrace()
   }
 
-  def execute(runnable: Runnable): Unit = {
-    enqueue { () =>
-      try {
-        runnable.run()
-      } catch {
-        case t: Throwable => reportFailure(t)
+  private final class PromisesExecutionContext extends ExecutionContextExecutor {
+    private val resolvedUnitPromise = js.Promise.resolve[Unit](())
+
+    def execute(runnable: Runnable): Unit = {
+      resolvedUnitPromise.`then` { (_: Unit) =>
+        try {
+          runnable.run()
+        } catch {
+          case t: Throwable => reportFailure(t)
+        }
+        (): Unit | js.Thenable[Unit]
       }
     }
+
+    def reportFailure(t: Throwable): Unit =
+      t.printStackTrace()
   }
-
-  def reportFailure(t: Throwable): Unit =
-    t.printStackTrace()
-
 }
