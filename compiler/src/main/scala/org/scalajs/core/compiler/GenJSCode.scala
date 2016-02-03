@@ -4368,7 +4368,14 @@ abstract class GenJSCode extends plugins.PluginComponent
             freshLocalIdent("this")(receiver.pos),
             thisActualCapture.tpe, mutable = false, rest = false)(receiver.pos)
         val thisCaptureArg = thisFormalCapture.ref
-        val body = genApplyMethod(thisCaptureArg, target, allArgs)
+
+        val body = if (isRawJSType(receiver.tpe) && target.owner != ObjectClass) {
+          assert(isScalaJSDefinedJSClass(target.owner) && !isExposed(target),
+              s"A Function lambda is trying to call an exposed JS method ${target.fullName}")
+          genApplyJSClassMethod(thisCaptureArg, target, allArgs)
+        } else {
+          genApplyMethod(thisCaptureArg, target, allArgs)
+        }
 
         (thisFormalCapture :: formalCaptures,
             body, thisActualCapture :: actualCaptures)
@@ -4435,12 +4442,11 @@ abstract class GenJSCode extends plugins.PluginComponent
         (patchedParam, paramLocal)
       }).unzip
 
-      assert(methodSym.isClassConstructor == isScalaJSDefinedJSClass(methodSym.owner))
-      val patchedResult =
-        if (methodSym.isClassConstructor) body
-        else ensureBoxed(body, methodType.resultType)
+      assert(!methodSym.isClassConstructor,
+          s"Trying to patchFunBodyWithBoxes for constructor ${methodSym.fullName}")
 
-      val patchedBody = js.Block(paramsLocal :+ patchedResult)
+      val patchedBody = js.Block(
+          paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
       (patchedParams, patchedBody)
     }

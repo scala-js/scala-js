@@ -410,6 +410,17 @@ object ScalaJSDefinedTest extends JasmineTest {
       expect(obj.isInstanceOf[NativeParentClass]).toBeTruthy
     }
 
+    it("lambda inside a method - #2220") {
+      @ScalaJSDefined
+      class LambdaInsideMethod extends js.Object {
+        def foo(): Int = {
+          List(1, 2, 3).map(_ * 2).sum
+        }
+      }
+
+      expect(new LambdaInsideMethod().foo()).toEqual(12)
+    }
+
     it("nested inside a Scala class") {
       class OuterScalaClass(val x: Int) {
         @ScalaJSDefined
