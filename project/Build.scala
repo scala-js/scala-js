@@ -1262,8 +1262,10 @@ object Build extends sbt.Build {
             original.filter { f =>
               val path = f.getPath.replace('\\', '/')
               val exclude = {
+                path.endsWith("/org/scalajs/testsuite/jsinterop/AsyncTest.scala") ||
                 path.endsWith("/org/scalajs/testsuite/jsinterop/ExportsTest.scala") ||
                 path.endsWith("/org/scalajs/testsuite/jsinterop/MiscInteropTest.scala") ||
+                path.endsWith("/org/scalajs/testsuite/jsinterop/PromiseMock.scala") ||
                 path.endsWith("/org/scalajs/testsuite/jsinterop/ScalaJSDefinedTest.scala")
               }
               !exclude
