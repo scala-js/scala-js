@@ -885,11 +885,23 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   /** @see BigInteger#BigInteger(String, int). */
   private def setFromString(s: String, radix: Int): Unit = {
+    if (s == "" || s == "+" || s == "-")
+      throw new NumberFormatException("Zero length BigInteger")
+
     val stringLength0 = s.length
     val endChar = stringLength0
-    val (_sign, startChar, stringLength) =
+    val (_sign, startChar, stringLength) = {
       if (s.charAt(0) == '-') (-1, 1, stringLength0 - 1)
+      else if (s.charAt(0) == '+') (1, 1, stringLength0 - 1)
       else (1, 0, stringLength0)
+    }
+
+    // Validate that there are no further sign characters
+    for (i <- startChar until stringLength0) {
+      val c = s.charAt(i)
+      if (c == '+' || c == '-')
+        throw new NumberFormatException("Illegal embedded sign character")
+    }
 
     /*
      * We use the following algorithm: split a string into portions of n
