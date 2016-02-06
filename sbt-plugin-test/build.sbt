@@ -105,6 +105,17 @@ lazy val multiTest = crossProject.
     libraryDependencies +=
       "com.novocode" % "junit-interface" % "0.9" % "test"
   ).
+  settings(
+    // Scala cross-version support for shared source directory - #2005
+    unmanagedSourceDirectories in Compile := {
+      val srcDirs = (unmanagedSourceDirectories in Compile).value
+      val version = scalaBinaryVersion.value
+      val expected =
+        (baseDirectory.value.getParentFile / "shared" / "src" / "main" / s"scala-$version").getPath
+      assert(srcDirs.exists(_.getPath == expected))
+      srcDirs
+    }
+  ).
   dependsOn(testFramework % "test")
 
 lazy val multiTestJS = multiTest.js
