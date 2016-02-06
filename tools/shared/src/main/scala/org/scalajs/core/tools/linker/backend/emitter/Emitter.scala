@@ -25,8 +25,13 @@ import org.scalajs.core.tools.linker.analyzer.SymbolRequirement
 import org.scalajs.core.tools.linker.backend.OutputMode
 
 /** Emits a desugared JS tree to a builder */
-final class Emitter(semantics: Semantics, outputMode: OutputMode) {
+final class Emitter private (semantics: Semantics, outputMode: OutputMode,
+    internalOptions: InternalOptions) {
+
   import Emitter._
+
+  def this(semantics: Semantics, outputMode: OutputMode) =
+    this(semantics, outputMode, InternalOptions())
 
   private var classEmitter: ScalaJSClassEmitter = _
   private val classCaches = mutable.Map.empty[List[String], ClassCache]
@@ -38,6 +43,13 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
 
   val symbolRequirements: SymbolRequirement =
     Emitter.symbolRequirements(semantics, outputMode.esLevel)
+
+  // Private API for the Closure backend (could be opened if necessary)
+  private[backend] def withOptimizeBracketSelects(
+      optimizeBracketSelects: Boolean): Emitter = {
+    new Emitter(semantics, outputMode,
+        internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
+  }
 
   def emitAll(unit: LinkingUnit, builder: JSFileBuilder,
       logger: Logger): Unit = {
@@ -69,7 +81,7 @@ final class Emitter(semantics: Semantics, outputMode: OutputMode) {
   }
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
-    classEmitter = new ScalaJSClassEmitter(outputMode, unit)
+    classEmitter = new ScalaJSClassEmitter(outputMode, internalOptions, unit)
     startRun()
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)

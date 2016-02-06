@@ -311,7 +311,14 @@ object Printers {
           printArgs(args)
 
         case DotSelect(qualifier, item) =>
-          print(qualifier)
+          qualifier match {
+            case _:IntLiteral | _:DoubleLiteral =>
+              print("(")
+              print(qualifier)
+              print(")")
+            case _ =>
+              print(qualifier)
+          }
           print(".")
           print(item)
 
