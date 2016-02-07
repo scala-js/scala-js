@@ -12,7 +12,9 @@ import java.util.Random
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.AssertThrows._
 
 class BigIntegerConstructorsTest {
@@ -425,28 +427,19 @@ class BigIntegerConstructorsTest {
     assertEquals(0, aNumber.signum())
   }
 
-  @Test def testConstructorStringException1(): Unit = {
-    val value = "9234853876401"
-    val radix = 45
-    expectThrows(classOf[NumberFormatException], new BigInteger(value, radix))
-  }
+  @Test def testConstructorStringException(): Unit = {
+    def test(s: String, radix: Int): Unit =
+      expectThrows(classOf[NumberFormatException], new BigInteger(s, radix))
 
-  @Test def testConstructorStringException2(): Unit = {
-    val value = "   9234853876401"
-    val radix = 10
-    expectThrows(classOf[NumberFormatException], new BigInteger(value, radix))
-  }
+    test("9234853876401", 45)
+    test("   9234853876401", 10)
+    test("92348$*#78987", 34)
+    test("98zv765hdsaiy", 20)
 
-  @Test def testConstructorStringException3(): Unit = {
-    val value = "92348$*#78987"
-    val radix = 34
-    expectThrows(classOf[NumberFormatException], new BigInteger(value, radix))
-  }
-
-  @Test def testConstructorStringException4(): Unit = {
-    val value = "98zv765hdsaiy"
-    val radix = 20
-    expectThrows(classOf[NumberFormatException], new BigInteger(value, radix))
+    test("", 10)
+    test("+", 10)
+    test("-", 10)
+    test("100000000+10000000", 10) // embedded sign character
   }
 
   @Test def testConstructorStringRadix10(): Unit = {
@@ -486,6 +479,17 @@ class BigIntegerConstructorsTest {
       assertEquals(rBytes(i), resBytes(i))
     }
     assertEquals(0, aNumber.signum())
+  }
+
+  @Test def testConstructorStringRadix10Issue2228(): Unit = {
+    assumeFalse(Platform.executingInJVMOnJDK6)
+
+    val value = "+100000000"
+    val radix = 10
+    val rBytes = Array[Byte](5, -11, -31, 0)
+    val aNumber = new BigInteger(value, radix)
+    assertArrayEquals(rBytes, aNumber.toByteArray())
+    assertEquals(1, aNumber.signum())
   }
 
   @Test def testConstructorStringRadix16(): Unit = {
