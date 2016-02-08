@@ -202,11 +202,12 @@ private[optimizer] abstract class OptimizerCore(
       val trampolineId = curTrampolineId
       val savedUsedLocalNames = usedLocalNames.toMap
       val savedUsedLabelNames = usedLabelNames.toSet
+      val savedStatesInUse = statesInUse
       val stateBackups = statesInUse.map(_.makeBackup())
 
       body { () =>
         throw new RollbackException(trampolineId, savedUsedLocalNames,
-            savedUsedLabelNames, stateBackups, fallbackFun)
+            savedUsedLabelNames, savedStatesInUse, stateBackups, fallbackFun)
       }
     }
   }
@@ -3364,6 +3365,7 @@ private[optimizer] abstract class OptimizerCore(
             usedLocalNames ++= e.savedUsedLocalNames
             usedLabelNames.clear()
             usedLabelNames ++= e.savedUsedLabelNames
+            statesInUse = e.savedStatesInUse
             e.stateBackups.foreach(_.restore())
 
             rec = e.cont
@@ -3967,6 +3969,7 @@ private[optimizer] object OptimizerCore {
   private class RollbackException(val trampolineId: Int,
       val savedUsedLocalNames: Map[String, Boolean],
       val savedUsedLabelNames: Set[String],
+      val savedStatesInUse: List[State],
       val stateBackups: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 

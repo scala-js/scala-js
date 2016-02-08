@@ -6,6 +6,9 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.frontend.optimizer.OptimizerCore#RollbackException.this")
   )
 
   val JSEnvs = Seq(
