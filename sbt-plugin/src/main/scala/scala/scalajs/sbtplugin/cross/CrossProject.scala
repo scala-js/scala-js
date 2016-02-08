@@ -304,11 +304,28 @@ object CrossProject extends CrossProjectExtra {
   }
 
   private def sharedSrcSettings(crossType: CrossType) = Seq(
-      unmanagedSourceDirectories in Compile ++=
-        crossType.sharedSrcDir(baseDirectory.value, "main").toSeq,
-      unmanagedSourceDirectories in Test ++=
-        crossType.sharedSrcDir(baseDirectory.value, "test").toSeq
+      unmanagedSourceDirectories in Compile ++= {
+        makeCrossSources(crossType.sharedSrcDir(baseDirectory.value, "main"),
+            scalaBinaryVersion.value, crossPaths.value)
+      },
+      unmanagedSourceDirectories in Test ++= {
+        makeCrossSources(crossType.sharedSrcDir(baseDirectory.value, "test"),
+            scalaBinaryVersion.value, crossPaths.value)
+      }
   )
+
+  // Inspired by sbt's Defaults.makeCrossSources
+  private def makeCrossSources(sharedSrcDir: Option[File],
+      scalaBinaryVersion: String, cross: Boolean): Seq[File] = {
+    sharedSrcDir.fold[Seq[File]] {
+      Seq.empty
+    } { srcDir =>
+      if (cross)
+        Seq(srcDir.getParentFile / s"${srcDir.name}-$scalaBinaryVersion", srcDir)
+      else
+        Seq(srcDir)
+    }
+  }
 
   final class Builder(id: String, base: File) {
     def crossType(crossType: CrossType): CrossProject =
