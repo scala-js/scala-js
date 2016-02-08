@@ -39,8 +39,10 @@ final class ClosureLinkerBackend(
     config: LinkerBackend.Config
 ) extends LinkerBackend(semantics, ESLevel.ES5, withSourceMap, config) {
 
-  private[this] val emitter =
+  private[this] val emitter = {
     new Emitter(semantics, OutputMode.ECMAScript51Isolated)
+      .withOptimizeBracketSelects(false)
+  }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 

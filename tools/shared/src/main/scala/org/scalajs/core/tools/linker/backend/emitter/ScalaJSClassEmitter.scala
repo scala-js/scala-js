@@ -30,10 +30,16 @@ import org.scalajs.core.tools.linker.{LinkedClass, LinkingUnit}
  */
 private[scalajs] final class ScalaJSClassEmitter(
     private[emitter] val outputMode: OutputMode,
+    internalOptions: InternalOptions,
     linkingUnit: LinkingUnit) {
 
+  private val jsDesugaring = new JSDesugaring(internalOptions)
+
   import ScalaJSClassEmitter._
-  import JSDesugaring._
+  import jsDesugaring._
+
+  def this(outputMode: OutputMode, linkingUnit: LinkingUnit) =
+    this(outputMode, InternalOptions(), linkingUnit)
 
   private[emitter] lazy val linkedClassByName: Map[String, LinkedClass] =
     linkingUnit.classDefs.map(c => c.encodedName -> c).toMap
@@ -411,8 +417,7 @@ private[scalajs] final class ScalaJSClassEmitter(
 
     // defineProperty method
     val defProp =
-      js.BracketSelect(js.VarRef(js.Ident("Object")),
-          js.StringLiteral("defineProperty"))
+      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
 
     // class prototype
     val proto = encodeClassVar(className).prototype
@@ -489,7 +494,7 @@ private[scalajs] final class ScalaJSClassEmitter(
     val proto = encodeClassVar(className).prototype
     val select = name match {
       case name: js.Ident         => js.DotSelect(proto, name)
-      case name: js.StringLiteral => js.BracketSelect(proto, name)
+      case name: js.StringLiteral => genBracketSelect(proto, name)
     }
     js.Assign(select, value)
   }
@@ -642,7 +647,7 @@ private[scalajs] final class ScalaJSClassEmitter(
                       // Array[Array[A]] <: Array[Object]
                       js.BinaryOp(JSBinaryOp.>, arrayDepth, depth) ||
                       // Array[Int] </: Array[Object]
-                      !js.BracketSelect(data DOT "arrayBase", js.StringLiteral("isPrimitive"))
+                      !genIdentBracketSelect(data DOT "arrayBase", "isPrimitive")
                     )
                   })
               }))
@@ -1009,12 +1014,12 @@ private[scalajs] final class ScalaJSClassEmitter(
     val statements = List.newBuilder[js.Tree]
     var namespace = envField("e")
     for (i <- 0 until parts.length-1) {
-      namespace = js.BracketSelect(namespace, js.StringLiteral(parts(i)))
+      namespace = genBracketSelect(namespace, js.StringLiteral(parts(i)))
       statements +=
         js.Assign(namespace, js.BinaryOp(JSBinaryOp.||,
             namespace, js.ObjectConstr(Nil)))
     }
-    val lhs = js.BracketSelect(namespace, js.StringLiteral(parts.last))
+    val lhs = genBracketSelect(namespace, js.StringLiteral(parts.last))
     (js.Block(statements.result()), lhs)
   }
 

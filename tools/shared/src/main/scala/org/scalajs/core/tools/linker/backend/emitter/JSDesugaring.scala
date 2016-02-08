@@ -109,7 +109,7 @@ import java.io.StringWriter
  *
  *  @author Sébastien Doeraene
  */
-private[emitter] object JSDesugaring {
+private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
   private final val ScalaJSEnvironmentName = "ScalaJS"
 
@@ -269,7 +269,7 @@ private[emitter] object JSDesugaring {
       js.Block(
         // const len = arguments.length | 0
         genLet(lenIdent, mutable = false,
-            or0(js.BracketSelect(arguments, js.StringLiteral("length")))),
+            or0(genIdentBracketSelect(arguments, "length"))),
         // let i = <offset>
         genLet(counterIdent, mutable = true, js.IntLiteral(offset)),
         // const restParam = []
@@ -278,7 +278,7 @@ private[emitter] object JSDesugaring {
         js.While(js.BinaryOp(JSBinaryOp.<, counter, len), js.Block(
           // restParam.push(arguments[i]);
           js.Apply(
-              js.BracketSelect(restParam, js.StringLiteral("push")), List(
+              genIdentBracketSelect(restParam, "push"), List(
               js.BracketSelect(arguments, counter))),
           // i = (i + 1) | 0
           js.Assign(counter, or0(js.BinaryOp(JSBinaryOp.+,
@@ -354,7 +354,7 @@ private[emitter] object JSDesugaring {
                     transformExpr(newRhs)))
               } else {
                 js.Assign(
-                    js.BracketSelect(transformExpr(newQualifier),
+                    genBracketSelect(transformExpr(newQualifier),
                         transformExpr(newItem))(select.pos),
                     transformExpr(newRhs))
               }
@@ -441,11 +441,11 @@ private[emitter] object JSDesugaring {
                   if (containsAnySpread(newArgs)) {
                     val argArray = spreadToArgArray(newArgs)
                     js.Apply(
-                        js.BracketSelect(superCtor, js.StringLiteral("apply")),
+                        genIdentBracketSelect(superCtor, "apply"),
                         List(js.This(), transformExpr(argArray)))
                   } else {
                     js.Apply(
-                        js.BracketSelect(superCtor, js.StringLiteral("call")),
+                        genIdentBracketSelect(superCtor, "call"),
                         js.This() :: newArgs.map(transformExpr))
                   }
 
@@ -481,10 +481,10 @@ private[emitter] object JSDesugaring {
                * it disregards the prototype chain.
                */
               val defineProperties = {
-                js.BracketSelect(js.BracketSelect(
+                genIdentBracketSelect(genIdentBracketSelect(
                     envField("g"),
-                    js.StringLiteral("Object")),
-                    js.StringLiteral("defineProperties"))
+                    "Object"),
+                    "defineProperties")
               }
               val transformedName = name match {
                 case name: Ident      => transformIdent(name)
@@ -522,7 +522,7 @@ private[emitter] object JSDesugaring {
               js.Apply(js.VarRef(js.Ident("$jsDelete")), List(
                   transformExpr(newObj), transformExpr(newProp)))
             } else {
-              js.Delete(js.BracketSelect(
+              js.Delete(genBracketSelect(
                   transformExpr(newObj), transformExpr(newProp)))
             }
           }
@@ -1754,8 +1754,8 @@ private[emitter] object JSDesugaring {
               genClassDataOf(tpe), js.ArrayConstr(elems map transformExpr))
 
         case ArrayLength(array) =>
-          js.BracketSelect(js.DotSelect(transformExpr(array),
-              Ident("u")), js.StringLiteral("length"))
+          genIdentBracketSelect(js.DotSelect(transformExpr(array),
+              Ident("u")), "length")
 
         case ArraySelect(array, index) =>
           js.BracketSelect(js.DotSelect(transformExpr(array),
@@ -1847,7 +1847,7 @@ private[emitter] object JSDesugaring {
             js.Apply(js.VarRef(js.Ident("$jsSelect")), List(
                 transformExpr(qualifier), transformExpr(item)))
           } else {
-            js.BracketSelect(transformExpr(qualifier), transformExpr(item))
+            genBracketSelect(transformExpr(qualifier), transformExpr(item))
           }
 
         case JSFunctionApply(fun, args) =>
@@ -1875,7 +1875,7 @@ private[emitter] object JSDesugaring {
               args map transformExpr)
 
         case JSBracketMethodApply(receiver, method, args) =>
-          js.Apply(js.BracketSelect(transformExpr(receiver),
+          js.Apply(genBracketSelect(transformExpr(receiver),
               transformExpr(method)), args map transformExpr)
 
         case JSSuperBracketSelect(cls, qualifier, item) =>
@@ -2252,7 +2252,7 @@ private[emitter] object JSDesugaring {
     } else {
       require(linkedClass.jsName.isDefined)
       linkedClass.jsName.get.split("\\.").foldLeft(envField("g")) {
-        (prev, part) => js.BracketSelect(prev, js.StringLiteral(part))
+        (prev, part) => genBracketSelect(prev, js.StringLiteral(part))
       }
     }
   }
@@ -2326,6 +2326,29 @@ private[emitter] object JSDesugaring {
       case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
         genLet(globalVarIdent, mutable, value)
     }
+  }
+
+  private[emitter] def genBracketSelect(qual: js.Tree, item: js.Tree)(
+      implicit pos: Position): js.Tree = {
+    item match {
+      case js.StringLiteral(name) if internalOptions.optimizeBracketSelects &&
+          isValidIdentifier(name) && name != "eval" =>
+        /* We exclude "eval" because Rhino does not respect the strict mode
+         * specificities of eval().
+         */
+        js.DotSelect(qual, js.Ident(name))
+      case _ =>
+        js.BracketSelect(qual, item)
+    }
+  }
+
+  private[emitter] def genIdentBracketSelect(qual: js.Tree, item: String)(
+      implicit pos: Position): js.Tree = {
+    require(item != "eval")
+    if (internalOptions.optimizeBracketSelects)
+      js.DotSelect(qual, js.Ident(item))
+    else
+      js.BracketSelect(qual, js.StringLiteral(item))
   }
 
   private[emitter] implicit class MyTreeOps(val self: js.Tree) {
