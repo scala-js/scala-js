@@ -8,7 +8,7 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSName
+import scala.scalajs.js.annotation._
 
 import org.scalajs.jasminetest.JasmineTest
 
@@ -28,6 +28,23 @@ object JSNameTest extends JasmineTest {
 
     it("should work with vars") {
       val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarFacade]
+      expect(obj.internalVar).toEqual(0.1)
+      obj.internalVar = 0.2
+      expect(obj.internalVar).toEqual(0.2)
+    }
+
+    it("should work with defs that are properties in Scala.js-defined trait - #2197") {
+      val obj = js.Dynamic.literal(jsDef = 1).asInstanceOf[PropDefSJSDefined]
+      expect(obj.internalDef).toEqual(1)
+    }
+
+    it("should work with vals in Scala.js-defined trait - #2197") {
+      val obj = js.Dynamic.literal(jsVal = "hi").asInstanceOf[PropValSJSDefined]
+      expect(obj.internalVal).toEqual("hi")
+    }
+
+    it("should work with vars in Scala.js-defined trait - #2197") {
+      val obj = js.Dynamic.literal(jsVar = 0.1).asInstanceOf[PropVarSJSDefined]
       expect(obj.internalVar).toEqual(0.1)
       obj.internalVar = 0.2
       expect(obj.internalVar).toEqual(0.2)
@@ -61,6 +78,24 @@ object JSNameTest extends JasmineTest {
   trait PropVarFacade extends js.Any {
     @JSName("jsVar")
     var internalVar: Double = js.native
+  }
+
+  @ScalaJSDefined
+  trait PropDefSJSDefined extends js.Any {
+    @JSName("jsDef")
+    def internalDef: Int
+  }
+
+  @ScalaJSDefined
+  trait PropValSJSDefined extends js.Any {
+    @JSName("jsVal")
+    val internalVal: String
+  }
+
+  @ScalaJSDefined
+  trait PropVarSJSDefined extends js.Any {
+    @JSName("jsVar")
+    var internalVar: Double
   }
 
   @js.native

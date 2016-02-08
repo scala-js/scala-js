@@ -10,8 +10,11 @@
 
 package scala.scalajs.js.annotation
 
+import scala.annotation.meta._
+
 /** Specifies the JavaScript name of an entity.
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
+@field @getter @setter
 class JSName(name: String) extends scala.annotation.StaticAnnotation
