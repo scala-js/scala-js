@@ -1066,6 +1066,7 @@ object Build extends sbt.Build {
   // Testing
 
   val testTagSettings = Seq(
+      javaOptions in Test += "-Dscalajs.testsuite.testtag=testtag.value",
       testOptions in Test ++= {
         @tailrec
         def envTagsFor(env: JSEnv): Seq[Tests.Argument] = env match {

@@ -7,6 +7,8 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
+import org.scalajs.testsuite.utils.Platform
+
 import language.implicitConversions
 
 import scala.scalajs.js
@@ -56,5 +58,24 @@ class SystemJSTest {
       assertEquals(x1FirstHash, x1.hashCode())
       assertEquals(x1FirstHash, System.identityHashCode(x1))
     }
+  }
+
+  @Test def systemProperties(): Unit = {
+    def get(key: String): String = java.lang.System.getProperty(key)
+
+    // Defined in System.scala
+
+    assertEquals("1.8", get("java.version"))
+    assertEquals("1.8", get("java.vm.specification.version"))
+    assertEquals("Oracle Corporation", get("java.vm.specification.vendor"))
+    assertEquals("Scala.js", get("java.vm.name"))
+    assertEquals("1.8", get("java.specification.version"))
+    assertEquals("/", get("file.separator"))
+    assertEquals(":", get("path.separator"))
+    assertEquals("\n", get("line.separator"))
+
+    // Defined in Build.scala and added via __ScalaJSEnv in ScalaJSPluginInternal
+
+    assertEquals("testtag.value", get("scalajs.testsuite.testtag"))
   }
 }

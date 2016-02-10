@@ -26,6 +26,9 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // In theory, breaking, but this is an interface in runtime that no one should extend
+    ProblemFilters.exclude[MissingMethodProblem](
+        "scala.scalajs.runtime.EnvironmentInfo.javaSystemProperties")
   )
 
   val TestInterface = Seq(
