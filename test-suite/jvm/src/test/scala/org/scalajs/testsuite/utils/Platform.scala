@@ -15,4 +15,18 @@ object Platform {
     if (v.startsWith("1.")) Integer.parseInt(v.drop(2).takeWhile(_.isDigit))
     else throw new Exception("Unknown java.version format")
   }
+
+  def executingInRhino: Boolean = false
+  def executingInNodeJS: Boolean = false
+  def executingInPhantomJS: Boolean = false
+  def hasTypedArrays: Boolean = false
+
+  def isInFastOpt: Boolean = false
+  def isInFullOpt: Boolean = false
+  def isInProductionMode: Boolean = false
+  def isInDevelopmentMode: Boolean = true
+
+  def hasCompliantAsInstanceOfs: Boolean = true
+  def hasCompliantModule: Boolean = true
+  def hasStrictFloats: Boolean = true
 }
