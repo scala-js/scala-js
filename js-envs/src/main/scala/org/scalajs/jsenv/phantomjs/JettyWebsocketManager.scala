@@ -47,6 +47,7 @@ private[phantomjs] final class JettyWebsocketManager(
       thisMgr.synchronized {
         if (isConnected)
           throw new IllegalStateException("Client connected twice")
+        connection.setMaxIdleTime(Int.MaxValue)
         webSocketConn = connection
       }
       wsListener.onOpen()
