@@ -25,6 +25,11 @@ libraryDependencies += "org.eclipse.jetty" % "jetty-websocket" % "8.1.16.v201409
 
 libraryDependencies += "org.eclipse.jetty" % "jetty-server" % "8.1.16.v20140903"
 
+libraryDependencies += ("org.seleniumhq.selenium" % "selenium-java" % "2.49.1").excludeAll(
+    ExclusionRule(organization = "org.eclipse.jetty"))
+
+libraryDependencies += ("org.seleniumhq.selenium" % "selenium-chrome-driver" % "2.49.1").excludeAll(
+    ExclusionRule(organization = "org.eclipse.jetty"))
 
 unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile

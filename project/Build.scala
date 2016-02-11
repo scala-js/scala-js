@@ -27,6 +27,7 @@ import org.scalajs.jsenv.{JSEnv, RetryingComJSEnv}
 import org.scalajs.jsenv.rhino.RhinoJSEnv
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
+import org.scalajs.jsenv.selenium.SeleniumJSEnv
 import ScalaJSPlugin.autoImport._
 import ExternalCompile.scalaJSExternalCompileSettings
 import Implicits._
@@ -601,6 +602,8 @@ object Build extends sbt.Build {
           libraryDependencies ++= Seq(
               "io.apigee" % "rhino" % "1.7R5pre4",
               "org.webjars" % "envjs" % "1.2",
+              "org.seleniumhq.selenium" % "selenium-java" % "2.49.1",
+              "org.seleniumhq.selenium" % "selenium-chrome-driver" % "2.49.1",
               "com.novocode" % "junit-interface" % "0.9" % "test"
           ) ++ ScalaJSPluginInternal.phantomJSJettyModules.map(_ % "provided"),
           previousArtifactSetting,
@@ -1098,6 +1101,10 @@ object Build extends sbt.Build {
 
           case _: PhantomJSEnv =>
             Seq(Tests.Argument("-tphantomjs"))
+
+          case env: SeleniumJSEnv =>
+            Seq("-tselenium", "-tselenium." + env.browserName)
+                .map(arg => Tests.Argument(arg))
 
           case env: RetryingComJSEnv =>
             envTagsFor(env.baseEnv)
