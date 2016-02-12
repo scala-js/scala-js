@@ -10,6 +10,9 @@ trait LinkingInfo extends js.Object {
 
   /** Whether we are assuming ECMAScript 6 support or not. */
   val assumingES6: Boolean = js.native
+
+  /** Version of the linker */
+  val linkerVersion: js.UndefOr[String] = js.native
 }
 
 object LinkingInfo {

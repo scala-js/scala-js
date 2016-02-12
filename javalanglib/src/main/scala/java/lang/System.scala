@@ -5,6 +5,7 @@ import java.io._
 import scala.scalajs.js
 import js.Dynamic.global
 import scala.scalajs.LinkingInfo.assumingES6
+import scala.scalajs.runtime.linkingInfo
 
 import java.{util => ju}
 import scalajs.runtime.environmentInfo
@@ -220,6 +221,7 @@ object System {
       sysProp.setProperty("java.vm.specification.vendor", "Oracle Corporation")
       sysProp.setProperty("java.vm.specification.name", "Java Virtual Machine Specification")
       sysProp.setProperty("java.vm.name", "Scala.js")
+      linkingInfo.linkerVersion.foreach(v => sysProp.setProperty("java.vm.version", v))
       sysProp.setProperty("java.specification.version", "1.8")
       sysProp.setProperty("java.specification.vendor", "Oracle Corporation")
       sysProp.setProperty("java.specification.name", "Java Platform API Specification")

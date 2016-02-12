@@ -12,7 +12,8 @@ import org.scalajs.testsuite.utils.Platform
 import language.implicitConversions
 
 import scala.scalajs.js
-import scala.scalajs.runtime.assumingES6
+import scala.scalajs.LinkingInfo.assumingES6
+import scala.scalajs.runtime.linkingInfo
 
 import org.junit.Test
 import org.junit.Assert._
@@ -73,6 +74,7 @@ class SystemJSTest {
     assertEquals("/", get("file.separator"))
     assertEquals(":", get("path.separator"))
     assertEquals("\n", get("line.separator"))
+    assertEquals(linkingInfo.linkerVersion.getOrElse(null), get("java.vm.version"))
 
     // Defined in Build.scala and added via __ScalaJSEnv in ScalaJSPluginInternal
 

@@ -2969,6 +2969,9 @@ private[optimizer] abstract class OptimizerCore(
           case ESLevel.ES6 => true
         })
 
+      case (JSLinkingInfo(), StringLiteral("version")) =>
+        StringLiteral(ScalaJSVersions.current)
+
       case _ =>
         default
     }
