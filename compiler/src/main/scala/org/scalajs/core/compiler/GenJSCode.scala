@@ -155,13 +155,54 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Rewriting of anonymous function classes ---------------------------------
 
-    // scalastyle:off disallow.space.after.token
-    private val translatedAnonFunctions =
-      mutable.Map.empty[Symbol,
-        /*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree]
-    private val instantiatedAnonFunctions =
-      mutable.Set.empty[Symbol]
-    // scalastyle:on disallow.space.after.token
+    /** Start nested generation of a class.
+     *
+     *  Fully resets the scoped state (including local name scope).
+     *  Allows to generate an anonymous class as needed.
+     */
+    private def nestedGenerateClass[T](clsSym: Symbol)(body: => T): T = {
+      withScopedVars(
+          currentClassSym := clsSym,
+          unexpectedMutatedFields := mutable.Set.empty,
+          currentMethodSym := null,
+          thisLocalVarIdent := null,
+          fakeTailJumpParamRepl := null,
+          enclosingLabelDefParams := null,
+          isModuleInitialized := null,
+          countsOfReturnsToMatchEnd := null,
+          undefinedDefaultParams := null,
+          mutableLocalVars := null,
+          mutatedLocalVars := null,
+          tryingToGenMethodAsJSFunction := false,
+          paramAccessorLocals := Map.empty
+      )(withNewLocalNameScope(body))
+    }
+
+    // Global class generation state -------------------------------------------
+
+    private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
+    private val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
+
+    private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
+      /* If we are trying to generate an method as JSFunction, we cannot
+       * actually consume the symbol, since we might fail trying and retry.
+       * We will then see the same tree again and not find the symbol anymore.
+       *
+       * If we are sure this is the only generation, we remove the symbol to
+       * make sure we don't generate the same class twice.
+       */
+      val optDef = {
+        if (tryingToGenMethodAsJSFunction)
+          lazilyGeneratedAnonClasses.get(sym)
+        else
+          lazilyGeneratedAnonClasses.remove(sym)
+      }
+
+      optDef.getOrElse {
+        sys.error("Couldn't find tree for lazily generated anonymous class " +
+            s"${sym.fullName} at ${sym.pos}")
+      }
+    }
 
     // Top-level apply ---------------------------------------------------------
 
@@ -195,8 +236,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     override def apply(cunit: CompilationUnit): Unit = {
       try {
-        val generatedClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
-
         def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
             case EmptyTree => Nil
@@ -206,29 +245,28 @@ abstract class GenJSCode extends plugins.PluginComponent
         }
         val allClassDefs = collectClassDefs(cunit.body)
 
-        /* First gen and record lambdas for js.FunctionN and js.ThisFunctionN.
-         * Since they are SAMs, there cannot be dependencies within this set,
-         * and hence we are sure we can record them before they are used,
-         * which is critical for these.
+        /* There are three types of anonymous classes we want to generate
+         * only once we need them so we can inline them at construction site:
+         *
+         * - lambdas for js.FunctionN and js.ThisFunctionN (SAMs). (We may not
+         *   generate actual Scala classes for these).
+         * - anonymous Scala.js defined JS classes. These classes may not have
+         *   their own prototype. Therefore, their constructor *must* be
+         *   inlined.
+         * - lambdas for scala.FunctionN. This is only an optimization and may
+         *   fail. In the case of failure, we fall back to generating a
+         *   fully-fledged Scala class.
+         *
+         * Since for all these, we don't know how they inter-depend, we just
+         * store them in a map at this point.
          */
-        val nonRawJSFunctionDefs = allClassDefs filterNot { cd =>
-          if (isRawJSFunctionDef(cd.symbol)) {
-            genAndRecordRawJSFunctionClass(cd)
-            true
-          } else {
-            false
-          }
+        val (lazyAnons, fullClassDefs) = allClassDefs.partition { cd =>
+          val sym = cd.symbol
+          isRawJSFunctionDef(sym) || sym.isAnonymousFunction ||
+          isScalaJSDefinedAnonJSClass(sym)
         }
 
-        /* Then try to gen and record lambdas for scala.FunctionN.
-         * These may fail, and sometimes because of dependencies. Since there
-         * appears to be more forward dependencies than backward dependencies
-         * (at least for non-nested lambdas, which we cannot translate anyway),
-         * we process class defs in reverse order here.
-         */
-        val fullClassDefs = (nonRawJSFunctionDefs.reverse filterNot { cd =>
-          cd.symbol.isAnonymousFunction && tryGenAndRecordAnonFunctionClass(cd)
-        }).reverse
+        lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
 
         /* Finally, we emit true code for the remaining class defs. */
         for (cd <- fullClassDefs) {
@@ -276,8 +314,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           genIRFile(cunit, sym, tree)
         }
       } finally {
-        translatedAnonFunctions.clear()
-        instantiatedAnonFunctions.clear()
+        lazilyGeneratedAnonClasses.clear()
+        generatedClasses.clear()
         pos2irPosCache.clear()
       }
     }
@@ -487,6 +525,163 @@ abstract class GenJSCode extends plugins.PluginComponent
           OptimizerHints.empty)
 
       classDefinition
+    }
+
+    /** Generate an instance of an anonymous Scala.js defined class inline
+     *
+     *  @param sym Class to generate the instance of
+     *  @param args Arguments to the constructor
+     *  @param pos Position of the original New tree
+     */
+    def genAnonSJSDefinedNew(sym: Symbol, args: List[js.Tree],
+        pos: Position): js.Tree = {
+      assert(isScalaJSDefinedAnonJSClass(sym),
+          "Generating AnonSJSDefinedNew of non anonymous SJSDefined JS class")
+
+      // Find the ClassDef for this anonymous class
+      val classDef = consumeLazilyGeneratedAnonClass(sym)
+
+      // Generate a normal SJSDefinedJSClass
+      val origJsClass =
+        nestedGenerateClass(sym)(genScalaJSDefinedJSClass(classDef))
+
+      // Partition class members.
+      val staticMembers = ListBuffer.empty[js.Tree]
+      val classMembers = ListBuffer.empty[js.Tree]
+      var constructor: Option[js.MethodDef] = None
+
+      origJsClass.defs.foreach {
+        case fdef: js.FieldDef =>
+          classMembers += fdef
+
+        case mdef: js.MethodDef =>
+          mdef.name match {
+            case _: js.Ident =>
+              assert(mdef.static, "Non-static method in SJS defined JS class")
+              staticMembers += mdef
+
+            case js.StringLiteral(name) =>
+              assert(!mdef.static, "Exported static method")
+
+              if (name == "constructor") {
+                assert(constructor.isEmpty, "two ctors in class")
+                constructor = Some(mdef)
+              } else {
+                classMembers += mdef
+              }
+          }
+
+        case property: js.PropertyDef =>
+          classMembers += property
+
+        case tree =>
+          sys.error("Unexpected tree: " + tree)
+      }
+
+      // Make new class def with static members only
+      val newClassDef = {
+        implicit val pos = origJsClass.pos
+        val parent = js.Ident(ir.Definitions.ObjectClass)
+        js.ClassDef(origJsClass.name, ClassKind.RawJSType,
+            Some(parent), interfaces = Nil, jsName = None,
+            staticMembers.toList)(origJsClass.optimizerHints)
+      }
+
+      generatedClasses += sym -> newClassDef
+
+      // Construct inline class definition
+      val js.MethodDef(_, _, ctorParams, _, ctorBody) = constructor.getOrElse(
+          throw new AssertionError("No ctor found"));
+
+      val selfName = freshLocalIdent("this")(pos)
+      def selfRef(implicit pos: ir.Position) =
+        js.VarRef(selfName)(jstpe.AnyType)
+
+      def lambda(params: List[js.ParamDef], body: js.Tree)(
+          implicit pos: ir.Position) = {
+        js.Closure(captureParams = Nil, params, body, captureValues = Nil)
+      }
+
+      val memberDefinitions = classMembers.toList.map {
+        case fdef: js.FieldDef =>
+          implicit val pos = fdef.pos
+          val select = fdef.name match {
+            case lit: js.StringLiteral => js.JSBracketSelect(selfRef, lit)
+            case ident: js.Ident       => js.JSDotSelect(selfRef, ident)
+          }
+          js.Assign(select, jstpe.zeroOf(fdef.tpe))
+
+        case mdef: js.MethodDef =>
+          implicit val pos = mdef.pos
+          val name = mdef.name.asInstanceOf[js.StringLiteral]
+          val impl = lambda(mdef.args, mdef.body)
+          js.Assign(js.JSBracketSelect(selfRef, name), impl)
+
+        case pdef: js.PropertyDef =>
+          implicit val pos = pdef.pos
+          val name = pdef.name.asInstanceOf[js.StringLiteral]
+          val jsObject =
+            js.JSBracketSelect(genLoadGlobal(), js.StringLiteral("Object"))
+
+          def field(name: String, value: js.Tree) =
+            List(js.StringLiteral(name) -> value)
+
+          def accessor(tree: js.Tree, name: String)(genBody: js.Tree => js.Tree) =
+            if (tree == js.EmptyTree) Nil
+            else field(name, genBody(tree))
+
+          val descriptor = js.JSObjectConstr(
+              accessor(pdef.getterBody, "get")(lambda(params = Nil, _)) ++
+              accessor(pdef.setterBody, "set")(lambda(pdef.setterArg :: Nil, _)) ++
+              field("configurable", js.BooleanLiteral(true)) ++
+              field("enumerable", js.BooleanLiteral(true))
+          )
+
+          js.JSBracketMethodApply(jsObject, js.StringLiteral("defineProperty"),
+              List(selfRef, name, descriptor))
+
+        case tree =>
+          sys.error("Unexpected tree: " + tree)
+      }
+
+      // Transform the constructor body.
+      val inlinedCtorStats = new ir.Transformers.Transformer {
+        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+          // The super constructor call. Transform this into a simple new call.
+          case js.JSSuperConstructorCall(args) =>
+            implicit val pos = tree.pos
+
+            val ident =
+              origJsClass.superClass.getOrElse(sys.error("No superclass"))
+            val superTpe = jstpe.ClassType(ident.name)
+            val newTree = js.JSNew(js.LoadJSConstructor(superTpe), args)
+
+            js.Block(
+                js.VarDef(selfName, jstpe.AnyType, mutable = false, newTree) ::
+                memberDefinitions)(NoPosition)
+
+          case js.This() => selfRef(tree.pos)
+
+          // Don't traverse closure boundaries
+          case closure: js.Closure =>
+            val newCaptureValues = closure.captureValues.map(transformExpr)
+            closure.copy(captureValues = newCaptureValues)(closure.pos)
+
+          case tree =>
+            super.transform(tree, isStat)
+        }
+      }.transform(ctorBody, isStat = true)
+
+      val invocation = {
+        implicit val invocationPosition = pos
+
+        val closure =
+          js.Closure(Nil, ctorParams, js.Block(inlinedCtorStats, selfRef), Nil)
+
+        js.JSFunctionApply(closure, args)
+      }
+
+      invocation
     }
 
     // Generate the class data of a raw JS class -------------------------------
@@ -1932,17 +2127,26 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
       val ctor = fun.symbol
       val tpe = tpt.tpe
+      val clsSym = tpe.typeSymbol
 
       assert(ctor.isClassConstructor,
           "'new' call to non-constructor: " + ctor.name)
 
       if (isStringType(tpe)) {
         genNewString(tree)
-      } else if (isHijackedBoxedClass(tpe.typeSymbol)) {
-        genNewHijackedBoxedClass(tpe.typeSymbol, ctor, args map genExpr)
-      } else if (translatedAnonFunctions contains tpe.typeSymbol) {
-        val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
-        functionMaker(args map genExpr)
+      } else if (isHijackedBoxedClass(clsSym)) {
+        genNewHijackedBoxedClass(clsSym, ctor, args map genExpr)
+      } else if (isRawJSFunctionDef(clsSym)) {
+        val classDef = consumeLazilyGeneratedAnonClass(clsSym)
+        genRawJSFunction(classDef, args.map(genExpr))
+      } else if (clsSym.isAnonymousFunction) {
+        val classDef = consumeLazilyGeneratedAnonClass(clsSym)
+        tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
+          // Cannot optimize anonymous function class. Generate full class.
+          generatedClasses +=
+            clsSym -> nestedGenerateClass(clsSym)(genClass(classDef))
+          genNew(clsSym, ctor, genActualArgs(ctor, args))
+        }
       } else if (isRawJSType(tpe)) {
         genPrimitiveJSNew(tree)
       } else {
@@ -2231,8 +2435,6 @@ abstract class GenJSCode extends plugins.PluginComponent
      */
     def genNew(clazz: Symbol, ctor: Symbol, arguments: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      if (clazz.isAnonymousFunction)
-        instantiatedAnonFunctions += clazz
       assert(!isRawJSFunctionDef(clazz),
           s"Trying to instantiate a raw JS function def $clazz")
       val className = encodeClassFullName(clazz)
@@ -3812,9 +4014,14 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       val args = genPrimitiveJSArgs(ctor, args0)
 
-      if (cls == JSObjectClass && args.isEmpty) js.JSObjectConstr(Nil)
-      else if (cls == JSArrayClass && args.isEmpty) js.JSArrayConstr(Nil)
-      else js.JSNew(genPrimitiveJSClass(cls), args)
+      if (cls == JSObjectClass && args.isEmpty)
+        js.JSObjectConstr(Nil)
+      else if (cls == JSArrayClass && args.isEmpty)
+        js.JSArrayConstr(Nil)
+      else if (isScalaJSDefinedAnonJSClass(cls))
+        genAnonSJSDefinedNew(cls, args, fun.pos)
+      else
+        js.JSNew(genPrimitiveJSClass(cls), args)
     }
 
     /** Gen JS code representing a JS class (subclass of js.Any) */
@@ -4042,9 +4249,10 @@ abstract class GenJSCode extends plugins.PluginComponent
 
     // Synthesizers for raw JS functions ---------------------------------------
 
-    /** Try and gen and record JS code for an anonymous function class.
+    /** Try and generate JS code for an anonymous function class.
      *
-     *  Returns true if the class could be rewritten that way, false otherwise.
+     *  Returns Some(<js code>) if the class could be rewritten that way, None
+     *  otherwise.
      *
      *  We make the following assumptions on the form of such classes:
      *  - It is an anonymous function
@@ -4065,7 +4273,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *    }
      *    new <anon>(o, c1, ..., cM)
      *
-     *  we generate a function maker that emits:
+     *  we generate a function:
      *
      *    lambda<o, c1, ..., cM>[notype](
      *        outer, capture1, ..., captureM, param1, ..., paramN) {
@@ -4074,31 +4282,26 @@ abstract class GenJSCode extends plugins.PluginComponent
      *
      *  so that, at instantiation point, we can write:
      *
-     *    new AnonFunctionN(functionMaker(this, captured1, ..., capturedM))
+     *    new AnonFunctionN(function)
+     *
+     *  the latter tree is returned in case of success.
      *
      *  Trickier things apply when the function is specialized.
      */
-    private def tryGenAndRecordAnonFunctionClass(cd: ClassDef): Boolean = {
+    private def tryGenAnonFunctionClass(cd: ClassDef,
+        capturedArgs: List[js.Tree]): Option[js.Tree] = {
       // scalastyle:off return
       implicit val pos = cd.pos
       val sym = cd.symbol
       assert(sym.isAnonymousFunction,
           s"tryGenAndRecordAnonFunctionClass called with non-anonymous function $cd")
 
-      withScopedVars(
-          currentClassSym := sym
-      ) {
-        val (functionMakerBase, arity) =
-          tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
-            return false
-          }
-        val functionMaker = { capturedArgs: List[js.Tree] =>
-          JSFunctionToScala(functionMakerBase(capturedArgs), arity)
-        }
+      nestedGenerateClass(sym) {
+        val (functionBase, arity) =
+          tryGenAnonFunctionClassGeneric(cd, capturedArgs)(_ => return None)
 
-        translatedAnonFunctions += sym -> functionMaker
+        Some(JSFunctionToScala(functionBase, arity))
       }
-      true
       // scalastyle:on return
     }
 
@@ -4133,7 +4336,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       }
     }
 
-    /** Gen and record JS code for a raw JS function class.
+    /** Gen JS code for a raw JS function class.
      *
      *  This is called when emitting a ClassDef that represents an anonymous
      *  class extending `js.FunctionN`. These are generated by the SAM
@@ -4141,7 +4344,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  functions are not classes, we deconstruct the ClassDef, then
      *  reconstruct it to be a genuine Closure.
      *
-     *  Compared to `tryGenAndRecordAnonFunctionClass()`, this function must
+     *  Compared to `tryGenAnonFunctionClass()`, this function must
      *  always succeed, because we really cannot afford keeping them as
      *  anonymous classes. The good news is that it can do so, because the
      *  body of SAM lambdas is hoisted in the enclosing class. Hence, the
@@ -4156,38 +4359,32 @@ abstract class GenJSCode extends plugins.PluginComponent
      *    }
      *    new <anon>(o, c1, ..., cM)
      *
-     *  we generate a function maker that emits:
+     *  we generate a function:
      *
      *    lambda<o, c1, ..., cM>[notype](
      *        outer, capture1, ..., captureM, param1, ..., paramN) {
      *      outer.lambdaImpl(param1, ..., paramN, capture1, ..., captureM)
      *    }
-     *
-     *  The function maker is recorded in `translatedAnonFunctions` to be
-     *  fetched later by the translation for New.
      */
-    def genAndRecordRawJSFunctionClass(cd: ClassDef): Unit = {
+    def genRawJSFunction(cd: ClassDef, captures: List[js.Tree]): js.Tree = {
       val sym = cd.symbol
       assert(isRawJSFunctionDef(sym),
           s"genAndRecordRawJSFunctionClass called with non-JS function $cd")
 
-      withScopedVars(
-          currentClassSym := sym
-      ) {
-        val (functionMaker, _) =
-          tryGenAndRecordAnonFunctionClassGeneric(cd) { msg =>
-            abort(s"Could not generate raw function maker for JS function: $msg")
-          }
+      nestedGenerateClass(sym) {
+        val (function, _) = tryGenAnonFunctionClassGeneric(cd, captures)(msg =>
+            abort(s"Could not generate raw function for JS function: $msg"))
 
-        translatedAnonFunctions += sym -> functionMaker
+        function
       }
     }
 
     /** Code common to tryGenAndRecordAnonFunctionClass and
      *  genAndRecordRawJSFunctionClass.
      */
-    private def tryGenAndRecordAnonFunctionClassGeneric(cd: ClassDef)(
-        fail: (=> String) => Nothing): (List[js.Tree] => js.Tree, Int) = {
+    private def tryGenAnonFunctionClassGeneric(cd: ClassDef,
+        initialCapturedArgs: List[js.Tree])(
+        fail: (=> String) => Nothing): (js.Tree, Int) = {
       implicit val pos = cd.pos
       val sym = cd.symbol
 
@@ -4195,10 +4392,6 @@ abstract class GenJSCode extends plugins.PluginComponent
 
       if (sym.isSubClass(PartialFunctionClass))
         fail(s"Cannot rewrite PartialFunction $cd")
-      if (instantiatedAnonFunctions contains sym) {
-        // when the ordering we're given is evil (it happens!)
-        fail(s"Abort function rewrite because it was already instantiated: $cd")
-      }
 
       // First step: find the apply method def, and collect param accessors
 
@@ -4289,18 +4482,18 @@ abstract class GenJSCode extends plugins.PluginComponent
         val (patchedParams, patchedBody) =
           patchFunBodyWithBoxes(applyDef.symbol, params, body)
 
-        // Fifth step: build the function maker
+        // Fifth step: build the js.Closure
 
         val isThisFunction = JSThisFunctionClasses.exists(sym isSubClass _)
         assert(!isThisFunction || patchedParams.nonEmpty,
             s"Empty param list in ThisFunction: $cd")
 
-        val functionMaker = { capturedArgs0: List[js.Tree] =>
-          val capturedArgs =
-            if (hasUnusedOuterCtorParam) capturedArgs0.tail
-            else capturedArgs0
-          assert(capturedArgs.size == ctorParamDefs.size)
+        val capturedArgs =
+          if (hasUnusedOuterCtorParam) initialCapturedArgs.tail
+          else initialCapturedArgs
+        assert(capturedArgs.size == ctorParamDefs.size)
 
+        val closure = {
           if (isThisFunction) {
             val thisParam :: actualParams = patchedParams
             js.Closure(
@@ -4318,7 +4511,7 @@ abstract class GenJSCode extends plugins.PluginComponent
 
         val arity = params.size
 
-        (functionMaker, arity)
+        (closure, arity)
       }
     }
 
@@ -4503,7 +4696,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code to load the global scope. */
-    private def genLoadGlobal()(implicit pos: Position): js.Tree = {
+    private def genLoadGlobal()(implicit pos: ir.Position): js.Tree = {
       js.JSBracketSelect(
           js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
           js.StringLiteral("global"))
@@ -4543,6 +4736,9 @@ abstract class GenJSCode extends plugins.PluginComponent
   /** Tests whether the given class is a Scala.js-defined JS class. */
   def isScalaJSDefinedJSClass(sym: Symbol): Boolean =
     !sym.isTrait && sym.hasAnnotation(ScalaJSDefinedAnnotation)
+
+  def isScalaJSDefinedAnonJSClass(sym: Symbol): Boolean =
+    sym.hasAnnotation(SJSDefinedAnonymousClassAnnotation)
 
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =
