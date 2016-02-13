@@ -66,18 +66,10 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       case OutputMode.ECMAScript51Global =>
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         builder.addLine("(function(){")
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("(function(__this, __ScalaJSEnv, __global, " +
-            "$jsSelect, $jsAssign, $jsDelete, $propertiesOf, $weakFun) {")
     }
 
     builder.addLine("'use strict';")
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("'use strong';")
-      case _ =>
-        builder.addFile(CoreJSLibs.lib(semantics, outputMode))
-    }
+    builder.addFile(CoreJSLibs.lib(semantics, outputMode))
   }
 
   def emit(unit: LinkingUnit, builder: JSTreeBuilder, logger: Logger): Unit = {
@@ -85,19 +77,8 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
     startRun()
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      outputMode match {
-        case OutputMode.ECMAScript6StrongMode =>
-          builder match {
-            case builder: JSFileBuilder =>
-              emitStrongMode(orderedClasses, builder)
-            case _ =>
-              throw new IllegalArgumentException(
-                  "Emitting to Strong Mode requires a JSFileBuilder")
-          }
-        case _ =>
-          for (classInfo <- orderedClasses)
-            emitLinkedClass(classInfo, builder)
-      }
+      for (classInfo <- orderedClasses)
+        emitLinkedClass(classInfo, builder)
     } finally {
       endRun(logger)
       classEmitter = null
@@ -109,15 +90,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
       case OutputMode.ECMAScript51Global =>
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
         builder.addLine("}).call(this);")
-      case OutputMode.ECMAScript6StrongMode =>
-        builder.addLine("})(this,")
-        builder.addLine("  (typeof __ScalaJSEnv !== 'undefined') ? __ScalaJSEnv : void 0,")
-        builder.addLine("  (typeof global !== 'undefined') ? global : void 0,")
-        builder.addLine("  function(x, p) { 'use strict'; return x[p]; },")
-        builder.addLine("  function(x, p, v) { 'use strict'; x[p] = v; },")
-        builder.addLine("  function(x, p) { 'use strict'; delete x[p]; },")
-        builder.addLine("  function(x) { 'use strict'; const r = []; for (const p in x) r['push'](p); return r; },")
-        builder.addLine("  function(f) { 'use strict'; return function(...args) { return f['apply'](void 0, args); } });")
     }
   }
 
@@ -189,7 +161,7 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
           memberMethods.foreach(addTree)
           addTree(exportedMembers)
 
-        case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+        case OutputMode.ECMAScript6 =>
           val allMembersBlock = js.Block(
               ctor :: memberMethods ::: exportedMembers :: Nil)(Position.NoPosition)
           val allMembers = allMembersBlock match {
@@ -230,137 +202,6 @@ final class Emitter private (semantics: Semantics, outputMode: OutputMode,
 
     addTree(classTreeCache.classExports.getOrElseUpdate(
         classEmitter.genClassExports(linkedClass)))
-  }
-
-  private def emitStrongMode(orderedClasses: List[LinkedClass],
-      builder: JSFileBuilder): Unit = {
-
-    assert(outputMode == OutputMode.ECMAScript6StrongMode)
-
-    def addTree(tree: js.Tree): Unit = builder.addJSTree(tree)
-
-    var remainingFromLib =
-      CoreJSLibs.lib(semantics, outputMode).content.split('\n').toList
-
-    @tailrec
-    def emitFromLibUntil(marker: String): Unit = {
-      remainingFromLib match {
-        case `marker` :: rest =>
-          remainingFromLib = rest
-        case head :: rest =>
-          builder.addLine(head)
-          remainingFromLib = rest
-          emitFromLibUntil(marker)
-        case Nil =>
-      }
-    }
-
-    emitFromLibUntil("///INSERT DECLARE TYPE DATA HERE///")
-    for (linkedClass <- orderedClasses) {
-      builder.addJSTree(classEmitter.genDeclareTypeData(linkedClass))
-    }
-
-    emitFromLibUntil("///INSERT DECLARE MODULES HERE///")
-    for (linkedClass <- orderedClasses) {
-      if (linkedClass.kind.hasModuleAccessor)
-        builder.addJSTree(classEmitter.genDeclareModule(linkedClass))
-    }
-
-    emitFromLibUntil("///INSERT IS AND AS FUNCTIONS HERE///")
-    for (linkedClass <- orderedClasses) {
-      if (classEmitter.needInstanceTests(linkedClass)) {
-        val classTreeCache = getClassTreeCache(linkedClass)
-        addTree(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
-            classEmitter.genInstanceTests(linkedClass),
-            classEmitter.genArrayInstanceTests(linkedClass)
-        )(linkedClass.pos)))
-      }
-    }
-
-    emitFromLibUntil("///INSERT CLASSES HERE///")
-    for (linkedClass <- orderedClasses) {
-      val className = linkedClass.encodedName
-      val classCache = getClassCache(linkedClass.ancestors)
-      val classTreeCache = classCache.getCache(linkedClass.version)
-      val kind = linkedClass.kind
-
-      // Statics
-      val staticMethods = for (m <- linkedClass.staticMethods) yield {
-        val methodCache = classCache.getStaticCache(m.info.encodedName)
-        methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.tree))
-      }
-
-      if (linkedClass.hasInstances && kind.isAnyScalaJSDefinedClass) {
-        val ctor = classTreeCache.constructor.getOrElseUpdate(
-            classEmitter.genConstructor(linkedClass))
-
-        // Normal methods
-        val memberMethods = for (m <- linkedClass.memberMethods) yield {
-          val methodCache = classCache.getMethodCache(m.info.encodedName)
-          methodCache.getOrElseUpdate(m.version,
-              classEmitter.genMethod(className, m.tree))
-        }
-
-        // Exported Members
-        val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
-            classEmitter.genExportedMembers(linkedClass))
-
-        // Module accessor
-        val moduleAccessor = {
-          if (linkedClass.kind.hasModuleAccessor) {
-            classTreeCache.moduleAccessor.getOrElseUpdate(
-                classEmitter.genModuleAccessor(linkedClass))
-          } else {
-            js.Skip()(linkedClass.pos)
-          }
-        }
-
-        val allMembersBlock = js.Block(
-            ctor :: memberMethods ::: exportedMembers ::
-            moduleAccessor :: staticMethods)(Position.NoPosition)
-        val allMembers = allMembersBlock match {
-          case js.Block(members) => members
-          case js.Skip()         => Nil
-          case oneMember         => List(oneMember)
-        }
-        addTree(classEmitter.genES6Class(linkedClass, allMembers))
-      } else {
-        // Default methods
-        val defaultMethods = if (kind == ClassKind.Interface) {
-          for (m <- linkedClass.memberMethods) yield {
-            val methodCache = classCache.getMethodCache(m.info.encodedName)
-            methodCache.getOrElseUpdate(m.version,
-                classEmitter.genDefaultMethod(className, m.tree))
-          }
-        } else {
-          Nil
-        }
-
-        if (staticMethods.nonEmpty || defaultMethods.nonEmpty) {
-          addTree(classEmitter.genStaticsES6Class(linkedClass,
-              defaultMethods ::: staticMethods))
-        }
-      }
-    }
-
-    emitFromLibUntil("///INSERT CREATE TYPE DATA HERE///")
-    for (linkedClass <- orderedClasses) {
-      if (linkedClass.hasRuntimeTypeInfo) {
-        val classTreeCache = getClassTreeCache(linkedClass)
-        addTree(classTreeCache.typeData.getOrElseUpdate(
-            classEmitter.genTypeData(linkedClass)))
-      }
-    }
-
-    emitFromLibUntil("///INSERT EXPORTS HERE///")
-    for (linkedClass <- orderedClasses) {
-      val classTreeCache = getClassTreeCache(linkedClass)
-      addTree(classTreeCache.classExports.getOrElseUpdate(
-          classEmitter.genClassExports(linkedClass)))
-    }
-
-    emitFromLibUntil("///THE END///")
   }
 
   // Helpers

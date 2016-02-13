@@ -6,6 +6,11 @@ object BinaryIncompatibilities {
   )
 
   val Tools = Seq(
+      // private[emitter], not an issue
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSEnvHolder.strongmodeenv"),
+      ProblemFilters.exclude[MissingMethodProblem](
+          "org.scalajs.core.tools.linker.backend.emitter.ScalaJSClassEmitter.genStaticsES6Class")
   )
 
   val JSEnvs = Seq(

@@ -67,7 +67,7 @@ object StackTraceTest extends JasmineTest {
   describe("scala.scalajs.runtime.StackTrace") {
 
     when("nodejs").
-    unlessAny("fullopt-stage", "strong-mode").
+    unless("fullopt-stage").
     it("decode class name and method name") {
       val Error = js.constructorOf[js.Error]
       val oldStackTraceLimit = Error.stackTraceLimit
