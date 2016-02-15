@@ -31,9 +31,6 @@ private[scalajs] object CoreJSLibs {
   private val ScalaJSEnvLines =
     ScalaJSEnvHolder.scalajsenv.split("\n|\r\n?")
 
-  private val StrongModeEnvLines =
-    ScalaJSEnvHolder.strongmodeenv.split("\n|\r\n?")
-
   private val gitHubBaseURI =
     new URI("https://raw.githubusercontent.com/scala-js/scala-js/")
 
@@ -67,10 +64,7 @@ private[scalajs] object CoreJSLibs {
         outputMode.toString()
     }
 
-    val originalLines = outputMode match {
-      case OutputMode.ECMAScript6StrongMode => StrongModeEnvLines
-      case _                                => ScalaJSEnvLines
-    }
+    val originalLines = ScalaJSEnvLines
 
     var skipping = false
     var skipDepth = 0
@@ -120,7 +114,7 @@ private[scalajs] object CoreJSLibs {
     val content = lines.mkString("", "\n", "\n")
 
     val content1 = outputMode match {
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript6StrongMode =>
+      case OutputMode.ECMAScript51Global =>
         content
 
       case OutputMode.ECMAScript51Isolated | OutputMode.ECMAScript6 =>
@@ -144,7 +138,7 @@ private[scalajs] object CoreJSLibs {
         content1
           .replaceAll(raw"\b(let|const)\b", "var")
 
-      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+      case OutputMode.ECMAScript6 =>
         content1
     }
   }

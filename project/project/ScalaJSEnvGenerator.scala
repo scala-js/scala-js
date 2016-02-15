@@ -9,12 +9,9 @@ object ScalaJSEnvGenerator {
   def generateEnvHolder(baseDir: File, sourceDir: File): Seq[File] = {
     val trg = sourceDir / "ScalaJSEnvHolder.scala"
     val env = baseDir / "scalajsenv.js"
-    val strongmodeenvFile = baseDir / "strongmodeenv.js"
 
-    if (!trg.exists() || trg.lastModified() < env.lastModified() ||
-        trg.lastModified() < strongmodeenvFile.lastModified()) {
+    if (!trg.exists() || trg.lastModified() < env.lastModified()) {
       val scalajsenv = IO.read(env).replaceAllLiterally("$", "$$")
-      val strongmodeenv = IO.read(strongmodeenvFile).replaceAllLiterally("$", "$$")
 
       val scalaCode =
         s"""
@@ -22,8 +19,6 @@ object ScalaJSEnvGenerator {
 
         private[emitter] object ScalaJSEnvHolder {
           final val scalajsenv = raw\"\"\"$scalajsenv\"\"\"
-
-          final val strongmodeenv = raw\"\"\"$strongmodeenv\"\"\"
         }
         """
 

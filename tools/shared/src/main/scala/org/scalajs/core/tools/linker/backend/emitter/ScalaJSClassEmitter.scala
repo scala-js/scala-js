@@ -148,7 +148,7 @@ private[scalajs] final class ScalaJSClassEmitter(
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         allDefsBlock
 
-      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+      case OutputMode.ECMAScript6 =>
         val allDefs = allDefsBlock match {
           case js.Block(allDefs) => allDefs
           case js.Skip()         => Nil
@@ -160,8 +160,7 @@ private[scalajs] final class ScalaJSClassEmitter(
 
   /** Generates an ECMAScript 6 class for a linked class. */
   def genES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
-    require(outputMode == OutputMode.ECMAScript6 ||
-        outputMode == OutputMode.ECMAScript6StrongMode)
+    require(outputMode == OutputMode.ECMAScript6)
 
     val className = tree.name.name
     val classIdent = encodeClassVar(className)(
@@ -178,27 +177,6 @@ private[scalajs] final class ScalaJSClassEmitter(
     js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
   }
 
-  /** Generates an ECMAScript 6 class for a linked class containing only static
-   *  methods.
-   *
-   *  This is used for classes that do not have instances, as well as
-   *  non-classes, such as interfaces. These linked classes must not have a
-   *  parent nor a constructor.
-   *
-   *  This method can only be used when emitting to Strong Mode. In ES6
-   *  non-strong (as well as ES5 modes), static methods are emitted as
-   *  top-level functions instead.
-   */
-  def genStaticsES6Class(tree: LinkedClass, members: List[js.Tree]): js.Tree = {
-    require(outputMode == OutputMode.ECMAScript6StrongMode)
-
-    val className = tree.name.name
-    val classIdent = encodeClassVar(className)(
-        outputMode, tree.name.pos).asInstanceOf[js.VarRef].ident
-
-    js.ClassDef(Some(classIdent), None, members)(tree.pos)
-  }
-
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: LinkedClass): js.Tree = {
     assert(tree.kind.isAnyScalaJSDefinedClass)
@@ -209,7 +187,7 @@ private[scalajs] final class ScalaJSClassEmitter(
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         genES5Constructor(tree)
 
-      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+      case OutputMode.ECMAScript6 =>
         genES6Constructor(tree)
     }
   }
@@ -288,15 +266,8 @@ private[scalajs] final class ScalaJSClassEmitter(
         } { parentIdent =>
           js.Apply(js.Super(), Nil)
         }
-        val initClassData = outputMode match {
-          case OutputMode.ECMAScript6StrongMode =>
-            js.Assign(js.DotSelect(js.This(), js.Ident("$classData")),
-                envField("d", tree.name.name))
-          case _ =>
-            js.Skip()
-        }
         js.MethodDef(static = false, js.Ident("constructor"), Nil,
-            js.Block(superCtorCall :: initClassData :: fieldDefs))
+            js.Block(superCtorCall :: fieldDefs))
       }
     }
   }
@@ -350,23 +321,20 @@ private[scalajs] final class ScalaJSClassEmitter(
       methodFun0
     }
 
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        js.MethodDef(static = method.static, genPropertyName(method.name),
-            methodFun.args, methodFun.body)
+    if (method.static) {
+      val Ident(methodName, origName) = method.name
+      envFieldDef(
+          "s", className + "__" + methodName, origName,
+          methodFun)
+    } else {
+      outputMode match {
+        case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
+          genAddToPrototype(className, method.name, methodFun)
 
-      case _ if method.static =>
-        val Ident(methodName, origName) = method.name
-        envFieldDef(
-            "s", className + "__" + methodName, origName,
-            methodFun)
-
-      case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
-        genAddToPrototype(className, method.name, methodFun)
-
-      case OutputMode.ECMAScript6 =>
-        js.MethodDef(static = false, genPropertyName(method.name),
-            methodFun.args, methodFun.body)
+        case OutputMode.ECMAScript6 =>
+          js.MethodDef(static = false, genPropertyName(method.name),
+              methodFun.args, methodFun.body)
+      }
     }
   }
 
@@ -389,16 +357,9 @@ private[scalajs] final class ScalaJSClassEmitter(
 
     val Ident(methodName, origName) = method.name
 
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        val propName = js.Ident("$f_" + methodName, origName)(method.name.pos)
-        js.MethodDef(static = true, propName, methodFun.args, methodFun.body)
-
-      case _ =>
-        envFieldDef(
-            "f", className + "__" + methodName, origName,
-            methodFun)
-    }
+    envFieldDef(
+        "f", className + "__" + methodName, origName,
+        methodFun)
   }
 
   /** Generates a property. */
@@ -406,7 +367,7 @@ private[scalajs] final class ScalaJSClassEmitter(
     outputMode match {
       case OutputMode.ECMAScript51Global | OutputMode.ECMAScript51Isolated =>
         genPropertyES5(className, property)
-      case OutputMode.ECMAScript6 | OutputMode.ECMAScript6StrongMode =>
+      case OutputMode.ECMAScript6 =>
         genPropertyES6(className, property)
     }
   }
@@ -624,14 +585,13 @@ private[scalajs] final class ScalaJSClassEmitter(
       envFieldDef("isArrayOf", className,
         js.Function(List(objParam, depthParam), className match {
           case Definitions.ObjectClass =>
-            val isStrongMode = outputMode == OutputMode.ECMAScript6StrongMode
             val dataVarDef = genLet(Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
             val data = dataVarDef.ref
             js.Block(
-              if (isStrongMode) js.Skip() else dataVarDef,
-              js.If(!(if (isStrongMode) genIsScalaJSObject(obj) else data), {
+              dataVarDef,
+              js.If(!data, {
                 js.Return(js.BooleanLiteral(false))
               }, {
                 val arrayDepthVarDef = genLet(Ident("arrayDepth"), mutable = false, {
@@ -639,7 +599,6 @@ private[scalajs] final class ScalaJSClassEmitter(
                 })
                 val arrayDepth = arrayDepthVarDef.ref
                 js.Block(
-                  if (isStrongMode) dataVarDef else js.Skip(),
                   arrayDepthVarDef,
                   js.Return {
                     // Array[A] </: Array[Array[A]]
@@ -682,21 +641,13 @@ private[scalajs] final class ScalaJSClassEmitter(
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
     import TreeDSL._
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        js.Apply(js.VarRef(js.Ident("$isScalaJSObject")), List(obj))
-      case _ =>
-        obj && (obj DOT "$classData")
-    }
+    obj && (obj DOT "$classData")
   }
 
   private def genIsClassNameInAncestors(className: String, ancestors: js.Tree)(
       implicit pos: Position): js.Tree = {
     import TreeDSL._
-    if (outputMode != OutputMode.ECMAScript6StrongMode)
-      ancestors DOT className
-    else
-      js.BinaryOp(JSBinaryOp.in, js.StringLiteral(className), ancestors)
+    ancestors DOT className
   }
 
   def genTypeData(tree: LinkedClass): js.Tree = {
@@ -781,22 +732,13 @@ private[scalajs] final class ScalaJSClassEmitter(
         isArrayOfFun
     )
 
-    val prunedParams = outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        allParams
-      case _ =>
-        allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
-    }
+    val prunedParams =
+      allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
 
     val typeData = js.Apply(js.New(envField("TypeData"), Nil) DOT "initClass",
         prunedParams)
 
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        js.Assign(envField("d", className), typeData)
-      case _ =>
-        envFieldDef("d", className, typeData)
-    }
+    envFieldDef("d", className, typeData)
   }
 
   def genSetTypeData(tree: LinkedClass): js.Tree = {
@@ -822,12 +764,8 @@ private[scalajs] final class ScalaJSClassEmitter(
     require(tree.kind.hasModuleAccessor,
         s"genModuleAccessor called with non-module class: $className")
 
-    val createModuleInstanceField = outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        js.Skip()
-      case _ =>
-        envFieldDef("n", className, js.Undefined(), mutable = true)
-    }
+    val createModuleInstanceField =
+      envFieldDef("n", className, js.Undefined(), mutable = true)
 
     val createAccessor = {
       val moduleInstanceVar = envField("n", className)
@@ -871,12 +809,7 @@ private[scalajs] final class ScalaJSClassEmitter(
 
       val body = js.Block(initBlock, js.Return(moduleInstanceVar))
 
-      outputMode match {
-        case OutputMode.ECMAScript6StrongMode =>
-          js.MethodDef(static = true, js.Ident("__M"), Nil, body)
-        case _ =>
-          envFieldDef("m", className, js.Function(Nil, body))
-      }
+      envFieldDef("m", className, js.Function(Nil, body))
     }
 
     js.Block(createModuleInstanceField, createAccessor)
@@ -936,22 +869,14 @@ private[scalajs] final class ScalaJSClassEmitter(
       js.Return(js.VarRef(thisIdent))
     ))
 
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        val (nsParts, name) = genStrongModeNamespaceInfo(fullName)
-        js.Apply(js.VarRef(js.Ident("$exportCtor")), List(
-            nsParts, name, exportedCtor, baseCtor DOT "prototype"))
-
-      case _ =>
-        val (createNamespace, expCtorVar) =
-          genCreateNamespaceInExports(fullName)
-        js.Block(
-          createNamespace,
-          js.DocComment("@constructor"),
-          expCtorVar := exportedCtor,
-          expCtorVar DOT "prototype" := baseCtor DOT "prototype"
-        )
-    }
+    val (createNamespace, expCtorVar) =
+      genCreateNamespaceInExports(fullName)
+    js.Block(
+      createNamespace,
+      js.DocComment("@constructor"),
+      expCtorVar := exportedCtor,
+      expCtorVar DOT "prototype" := baseCtor DOT "prototype"
+    )
   }
 
   def genJSClassExportDef(cd: LinkedClass, tree: JSClassExportDef): js.Tree = {
@@ -968,13 +893,7 @@ private[scalajs] final class ScalaJSClassEmitter(
 
     implicit val pos = tree.pos
 
-    val baseAccessor = outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        js.DotSelect(envField("c", cd.name.name), js.Ident("__M"))
-      case _ =>
-        envField("m", cd.name.name)
-    }
-
+    val baseAccessor = envField("m", cd.name.name)
     genClassOrModuleExportDef(cd, tree.fullName, baseAccessor)
   }
 
@@ -982,20 +901,12 @@ private[scalajs] final class ScalaJSClassEmitter(
       exportedValue: js.Tree)(implicit pos: Position): js.Tree = {
     import TreeDSL._
 
-    outputMode match {
-      case OutputMode.ECMAScript6StrongMode =>
-        val (nsParts, name) = genStrongModeNamespaceInfo(exportFullName)
-        js.Apply(js.VarRef(js.Ident("$export")), List(
-            nsParts, name, exportedValue))
-
-      case _ =>
-        val (createNamespace, expAccessorVar) =
-          genCreateNamespaceInExports(exportFullName)
-        js.Block(
-          createNamespace,
-          expAccessorVar := exportedValue
-        )
-    }
+    val (createNamespace, expAccessorVar) =
+      genCreateNamespaceInExports(exportFullName)
+    js.Block(
+      createNamespace,
+      expAccessorVar := exportedValue
+    )
   }
 
   // Helpers
@@ -1021,12 +932,6 @@ private[scalajs] final class ScalaJSClassEmitter(
     }
     val lhs = genBracketSelect(namespace, js.StringLiteral(parts.last))
     (js.Block(statements.result()), lhs)
-  }
-
-  private def genStrongModeNamespaceInfo(qualName: String)(
-      implicit pos: Position): (js.Tree, js.Tree) = {
-    val parts = qualName.split("\\.").toList.map(js.StringLiteral(_))
-    (js.ArrayConstr(parts.init), parts.last)
   }
 
 }

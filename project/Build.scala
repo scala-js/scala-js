@@ -76,9 +76,6 @@ object Build extends sbt.Build {
   // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6NodeArgs).value
   val ES6NodeArgs = Seq("--harmony-rest-parameters", "--harmony-spreadcalls")
 
-  // set postLinkJSEnv in someProject := NodeJSEnv(args = ES6StrongModeNodeArgs).value
-  val ES6StrongModeNodeArgs = ES6NodeArgs :+ "--strong-mode"
-
   val previousArtifactSetting: Setting[_] = {
     previousArtifact := {
       val scalaV = scalaVersion.value
@@ -1142,14 +1139,7 @@ object Build extends sbt.Build {
           case FullOptStage => "-tfullopt-stage"
         })
 
-        val modeTags = (scalaJSOutputMode in Test).value match {
-          case OutputMode.ECMAScript6StrongMode =>
-            Seq(Tests.Argument("-tstrong-mode"))
-          case _ =>
-            Seq()
-        }
-
-        envTags ++ semTags ++ (stageTag +: modeTags)
+        envTags ++ (semTags :+ stageTag)
       }
   )
 
@@ -1249,28 +1239,6 @@ object Build extends sbt.Build {
           val outFile = dir / "SourceMapTest.scala"
           IO.write(outFile, replaced.replace("0/*<testCount>*/", i.toString))
           Seq(outFile)
-        },
-
-        // #2137: Scala.js-defined JS classes are broken in strong mode
-        sources in Test := {
-          import org.scalajs.core.tools.javascript.OutputMode
-          val original = (sources in Test).value
-          val mode = (scalaJSOutputMode in Test).value
-          if (mode != OutputMode.ECMAScript6StrongMode) {
-            original
-          } else {
-            original.filter { f =>
-              val path = f.getPath.replace('\\', '/')
-              val exclude = {
-                path.endsWith("/org/scalajs/testsuite/jsinterop/AsyncTest.scala") ||
-                path.endsWith("/org/scalajs/testsuite/jsinterop/ExportsTest.scala") ||
-                path.endsWith("/org/scalajs/testsuite/jsinterop/MiscInteropTest.scala") ||
-                path.endsWith("/org/scalajs/testsuite/jsinterop/PromiseMock.scala") ||
-                path.endsWith("/org/scalajs/testsuite/jsinterop/ScalaJSDefinedTest.scala")
-              }
-              !exclude
-            }
-          }
         },
 
         scalacOptions in Test ++= {
