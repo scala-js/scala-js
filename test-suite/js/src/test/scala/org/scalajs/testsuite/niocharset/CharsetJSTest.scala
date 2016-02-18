@@ -9,7 +9,7 @@ import java.nio.charset._
 import org.junit.Test
 import org.junit.Assert._
 
-object CharsetJSTest {
+class CharsetJSTest {
 
   @Test def defaultCharset(): Unit = {
     assertSame(UTF_8, Charset.defaultCharset())
