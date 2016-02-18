@@ -11,6 +11,9 @@ import java.math.BigInteger
 
 import org.junit.{Test, Ignore}
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform._
 
 class BigIntegerConvertTest {
 
@@ -547,5 +550,17 @@ class BigIntegerConvertTest {
        assertEquals(rBytes(i), resBytes(i))
     }
     assertEquals(0, aNumber.signum())
+  }
+
+  @Test def testFloatValueBug2482(): Unit = {
+    // To test that it works with strict floats, do:
+    //   > set scalaJSSemantics in testSuite ~= { _.withStrictFloats(true) }
+    assumeTrue("Needs strict floats.", hasStrictFloats)
+
+    val a = "2147483649"
+    val result = 2.14748365E9f
+    val aNumber = new BigInteger(a).floatValue()
+    val delta = 0.0f
+    assertEquals(delta, Math.abs(aNumber - result), 0.0f)
   }
 }
