@@ -223,6 +223,15 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalajsp = InputKey[Unit]("scalajsp",
         "Prints the content of a .sjsir file in human readable form.",
         CTask)
+
+    val scalaJSConfigurationLibs = TaskKey[Seq[ResolvedJSDependency]](
+        "scalaJSConfigurationLibs",
+        "List of JS libraries used as project configuration.", CTask)
+
+    val scalaJSJavaSystemProperties = TaskKey[Seq[(String, String)]](
+        "scalaJSJavaSystemProperties",
+        "List of arguments to pass to the Scala.js Java System.properties.",
+        CTask)
   }
 
   import autoImport._

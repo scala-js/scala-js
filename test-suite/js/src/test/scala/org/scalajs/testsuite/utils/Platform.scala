@@ -24,4 +24,21 @@ object Platform {
 
   def areTypedArraysSupported: Boolean =
     runtime.Bits.areTypedArraysSupported
+
+  def executingInRhino: Boolean = sysProp("rhino")
+  def executingInNodeJS: Boolean = sysProp("nodejs")
+  def executingInPhantomJS: Boolean = sysProp("phantomjs")
+  def typedArrays: Boolean = sysProp("typedarray")
+
+  def isInFastOpt: Boolean = sysProp("fastopt-stage")
+  def isInFullOpt: Boolean = sysProp("fullopt-stage")
+  def isInProductionMode: Boolean = sysProp("production-mode")
+  def isInDevelopmentMode: Boolean = sysProp("development-mode")
+
+  def hasCompliantAsInstanceOfs: Boolean = sysProp("compliant-asinstanceofs")
+  def hasCompliantModule: Boolean = sysProp("compliant-moduleinit")
+  def hasStrictFloats: Boolean = sysProp("strict-floats")
+
+  private def sysProp(key: String): Boolean =
+    System.getProperty("scalajs." + key, "false") == "true"
 }

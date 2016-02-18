@@ -1065,39 +1065,37 @@ object Build extends sbt.Build {
 
   // Testing
 
-  val testTagSettings = Seq(
-      testOptions in Test ++= {
-        @tailrec
-        def envTagsFor(env: JSEnv): Seq[Tests.Argument] = env match {
-          case env: RhinoJSEnv =>
-            val baseArgs = Seq("-trhino")
-            val args =
-              if (env.sourceMap) baseArgs :+ "-tsource-maps"
-              else baseArgs
+  val testTagSettings = {
+    val testOptionTags = TaskKey[Seq[String]]("testOptionTags",
+        "Task that lists all test options for javaOptions and testOptions.",
+        KeyRanks.Invisible)
 
-            Seq(Tests.Argument(args: _*))
+    Seq(
+      testOptionTags := {
+        @tailrec
+        def envTagsFor(env: JSEnv): Seq[String] = env match {
+          case env: RhinoJSEnv =>
+            val baseArgs = Seq("rhino")
+            if (env.sourceMap) baseArgs :+ "source-maps"
+            else baseArgs
 
           case env: NodeJSEnv =>
-            val baseArgs = Seq("-tnodejs", "-ttypedarray")
-            val args = {
-              if (env.sourceMap) {
-                if (!env.hasSourceMapSupport) {
-                  val projectId = thisProject.value.id
-                  sys.error("You must install Node.js source map support to " +
+            val baseArgs = Seq("nodejs", "typedarray")
+            if (env.sourceMap) {
+              if (!env.hasSourceMapSupport) {
+                sys.error("You must install Node.js source map support to " +
                     "run the full Scala.js test suite (npm install " +
                     "source-map-support). To deactivate source map " +
-                    s"tests, do: set jsEnv in $projectId := " +
-                    "NodeJSEnv().value.withSourceMap(false)")
-                }
-                baseArgs :+ "-tsource-maps"
-              } else
-                baseArgs
+                    "tests, do: set jsEnv in " + thisProject.value.id +
+                    " := NodeJSEnv().value.withSourceMap(false)")
+              }
+              baseArgs :+ "source-maps"
+            } else {
+              baseArgs
             }
 
-            Seq(Tests.Argument(args: _*))
-
           case _: PhantomJSEnv =>
-            Seq(Tests.Argument("-tphantomjs"))
+            Seq("phantomjs")
 
           case env: RetryingComJSEnv =>
             envTagsFor(env.baseEnv)
@@ -1110,38 +1108,53 @@ object Build extends sbt.Build {
 
         val envTags = envTagsFor((resolvedJSEnv in Test).value)
 
-        val sems = (scalaJSStage in Test).value match {
+        val stage = (scalaJSStage in Test).value
+
+        val sems = stage match {
           case FastOptStage => (scalaJSSemantics in (Test, fastOptJS)).value
           case FullOptStage => (scalaJSSemantics in (Test, fullOptJS)).value
         }
 
         val semTags = (
             if (sems.asInstanceOfs == CheckedBehavior.Compliant)
-              Seq(Tests.Argument("-tcompliant-asinstanceofs"))
+              Seq("compliant-asinstanceofs")
             else
               Seq()
         ) ++ (
             if (sems.moduleInit == CheckedBehavior.Compliant)
-              Seq(Tests.Argument("-tcompliant-moduleinit"))
+              Seq("compliant-moduleinit")
             else
               Seq()
         ) ++ (
-            if (sems.strictFloats) Seq(Tests.Argument("-tstrict-floats"))
+            if (sems.strictFloats) Seq("strict-floats")
             else Seq()
         ) ++ (
-            Seq(Tests.Argument(
-                if (sems.productionMode) "-tproduction-mode"
-                else "-tdevelopment-mode"))
+            if (sems.productionMode) Seq("production-mode")
+            else Seq("development-mode")
         )
 
-        val stageTag = Tests.Argument((scalaJSStage in Test).value match {
-          case FastOptStage => "-tfastopt-stage"
-          case FullOptStage => "-tfullopt-stage"
-        })
+        val stageTag = stage match {
+          case FastOptStage => "fastopt-stage"
+          case FullOptStage => "fullopt-stage"
+        }
 
         envTags ++ (semTags :+ stageTag)
+      },
+      javaOptions in Test ++= {
+        def scalaJSProp(name: String): String =
+          s"-Dscalajs.$name=true"
+
+        testOptionTags.value.map(scalaJSProp) :+
+            "-Dscalajs.testsuite.testtag=testtag.value"
+      },
+      testOptions in Test ++= {
+        def testArgument(arg: String): Tests.Argument =
+          Tests.Argument("-t" + arg)
+
+        testOptionTags.value.map(testArgument)
       }
-  )
+    )
+  }
 
   def testSuiteCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Seq(
     publishArtifact in Compile := false,

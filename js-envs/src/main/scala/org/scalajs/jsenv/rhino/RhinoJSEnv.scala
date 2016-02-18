@@ -362,14 +362,21 @@ final class RhinoJSEnv private (
 
     // Setup sourceMapper
     if (sourceMap) {
-      val scalaJSenv = context.newObject(scope)
+      val oldScalaJSenv = ScriptableObject.getProperty(scope, "__ScalaJSEnv")
+      val scalaJSenv = oldScalaJSenv match {
+        case Scriptable.NOT_FOUND =>
+          val newScalaJSenv = context.newObject(scope)
+          ScriptableObject.putProperty(scope, "__ScalaJSEnv", newScalaJSenv)
+          newScalaJSenv
+
+        case oldScalaJSenv: Scriptable =>
+          oldScalaJSenv
+      }
 
       scalaJSenv.addFunction("sourceMapper", args => {
         val trace = Context.toObject(args(0), scope)
         loader.mapStackTrace(trace, context, scope)
       })
-
-      ScriptableObject.putProperty(scope, "__ScalaJSEnv", scalaJSenv)
     }
 
     loader.insertInto(context, scope)

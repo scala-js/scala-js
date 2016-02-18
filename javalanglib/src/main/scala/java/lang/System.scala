@@ -5,6 +5,10 @@ import java.io._
 import scala.scalajs.js
 import js.Dynamic.global
 import scala.scalajs.LinkingInfo.assumingES6
+import scala.scalajs.runtime.linkingInfo
+
+import java.{util => ju}
+import scalajs.runtime.environmentInfo
 
 object System {
   var out: PrintStream = new JSConsoleBasedPrintStream(isErr = false)
@@ -207,11 +211,54 @@ object System {
     }
   }
 
-  //def getProperties(): java.util.Properties
-  //def getProperty(key: String): String
-  //def getProperty(key: String, default: String): String
-  //def clearProperty(key: String): String
-  //def setProperty(key: String, value: String): String
+  private object SystemProperties {
+    var value = loadSystemProperties()
+
+    private[System] def loadSystemProperties(): ju.Properties = {
+      val sysProp = new ju.Properties()
+      sysProp.setProperty("java.version", "1.8")
+      sysProp.setProperty("java.vm.specification.version", "1.8")
+      sysProp.setProperty("java.vm.specification.vendor", "Oracle Corporation")
+      sysProp.setProperty("java.vm.specification.name", "Java Virtual Machine Specification")
+      sysProp.setProperty("java.vm.name", "Scala.js")
+      linkingInfo.linkerVersion.foreach(v => sysProp.setProperty("java.vm.version", v))
+      sysProp.setProperty("java.specification.version", "1.8")
+      sysProp.setProperty("java.specification.vendor", "Oracle Corporation")
+      sysProp.setProperty("java.specification.name", "Java Platform API Specification")
+      sysProp.setProperty("file.separator", "/")
+      sysProp.setProperty("path.separator", ":")
+      sysProp.setProperty("line.separator", "\n")
+
+      for {
+        jsEnvProperties <- environmentInfo.javaSystemProperties
+        (key, value) <- jsEnvProperties
+      } {
+        sysProp.setProperty(key, value)
+      }
+      sysProp
+    }
+  }
+
+  def getProperties(): ju.Properties =
+    SystemProperties.value
+
+  def setProperties(properties: ju.Properties): Unit = {
+    SystemProperties.value =
+      if (properties != null) properties
+      else SystemProperties.loadSystemProperties()
+  }
+
+  def getProperty(key: String): String =
+    SystemProperties.value.getProperty(key)
+
+  def getProperty(key: String, default: String): String =
+    SystemProperties.value.getProperty(key, default)
+
+  def clearProperty(key: String): String =
+    SystemProperties.value.remove(key).asInstanceOf[String]
+
+  def setProperty(key: String, value: String): String =
+    SystemProperties.value.setProperty(key, value).asInstanceOf[String]
 
   //def getenv(): java.util.Map[String,String]
   //def getenv(name: String): String

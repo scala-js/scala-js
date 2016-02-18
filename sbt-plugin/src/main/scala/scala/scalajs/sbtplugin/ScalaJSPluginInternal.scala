@@ -1,5 +1,7 @@
 package org.scalajs.sbtplugin
 
+import java.util.IllegalFormatException
+
 import sbt._
 import sbt.inc.{IncOptions, ClassfileManager}
 import Keys._
@@ -573,9 +575,38 @@ object ScalaJSPluginInternal {
         }
       },
 
+      scalaJSJavaSystemProperties ++= {
+        val javaSysPropsPattern = "-D([^=]*)=(.*)".r
+        javaOptions.value.map {
+          case javaSysPropsPattern(propName, propValue) => (propName, propValue)
+          case opt =>
+            sys.error("Scala.js javaOptions can only be \"-D<key>=<value>\"," +
+                " but received: " + opt)
+        }
+      },
+
+      scalaJSConfigurationLibs ++= {
+        val javaSystemProperties = scalaJSJavaSystemProperties.value
+        if (javaSystemProperties.isEmpty) {
+          Nil
+        } else {
+          val formattedProps = javaSystemProperties.map {
+            case (propName, propValue) =>
+              "\"" + escapeJS(propName) + "\": \"" + escapeJS(propValue) + "\""
+          }
+          val code = {
+            "var __ScalaJSEnv = (typeof __ScalaJSEnv === \"object\" && __ScalaJSEnv) ? __ScalaJSEnv : {};\n" +
+            "__ScalaJSEnv.javaSystemProperties = {" + formattedProps.mkString(", ") + "};\n"
+          }
+          Seq(ResolvedJSDependency.minimal(
+              new MemVirtualJSFile("setJavaSystemProperties.js").withContent(code)))
+        }
+      },
+
       loadedJSEnv <<= Def.taskDyn {
         val log = streams.value.log
-        val libs = resolvedJSDependencies.value.data
+        val libs =
+          resolvedJSDependencies.value.data ++ scalaJSConfigurationLibs.value
         resolvedJSEnv.value match {
           case env: LinkingUnitJSEnv =>
             log.debug(s"Generating LinkingUnit for JSEnv ${env.name}")
@@ -783,9 +814,9 @@ object ScalaJSPluginInternal {
        * them into the PhantomJS runner if necessary.
        * See scalaJSPhantomJSClassLoader
        */
-     ivyConfigurations += config("phantom-js-jetty").hide,
-     libraryDependencies ++= phantomJSJettyModules.map(_ % "phantom-js-jetty"),
-     scalaJSPhantomJSClassLoader := {
+      ivyConfigurations += config("phantom-js-jetty").hide,
+      libraryDependencies ++= phantomJSJettyModules.map(_ % "phantom-js-jetty"),
+      scalaJSPhantomJSClassLoader := {
         val report = update.value
         val jars = report.select(configurationFilter("phantom-js-jetty"))
 
@@ -793,7 +824,9 @@ object ScalaJSPluginInternal {
           new URLClassLoader(jars.map(_.toURI.toURL).toArray, null)
 
         new PhantomJettyClassLoader(jettyLoader, getClass.getClassLoader)
-      }
+      },
+      scalaJSJavaSystemProperties := Nil,
+      scalaJSConfigurationLibs := Nil
   )
 
   val scalaJSAbstractSettings: Seq[Setting[_]] = (

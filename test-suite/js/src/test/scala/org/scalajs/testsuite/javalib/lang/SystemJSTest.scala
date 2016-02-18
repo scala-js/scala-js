@@ -7,10 +7,13 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.lang
 
+import org.scalajs.testsuite.utils.Platform
+
 import language.implicitConversions
 
 import scala.scalajs.js
-import scala.scalajs.runtime.assumingES6
+import scala.scalajs.LinkingInfo.assumingES6
+import scala.scalajs.runtime.linkingInfo
 
 import org.junit.Test
 import org.junit.Assert._
@@ -56,5 +59,77 @@ class SystemJSTest {
       assertEquals(x1FirstHash, x1.hashCode())
       assertEquals(x1FirstHash, System.identityHashCode(x1))
     }
+  }
+
+  @Test def systemProperties(): Unit = {
+    def get(key: String): String = java.lang.System.getProperty(key)
+
+    // Defined in System.scala
+
+    assertEquals("1.8", get("java.version"))
+    assertEquals("1.8", get("java.vm.specification.version"))
+    assertEquals("Oracle Corporation", get("java.vm.specification.vendor"))
+    assertEquals("Scala.js", get("java.vm.name"))
+    assertEquals("1.8", get("java.specification.version"))
+    assertEquals("/", get("file.separator"))
+    assertEquals(":", get("path.separator"))
+    assertEquals("\n", get("line.separator"))
+    assertEquals(linkingInfo.linkerVersion.getOrElse(null), get("java.vm.version"))
+
+    // Defined in Build.scala and added via __ScalaJSEnv in ScalaJSPluginInternal
+
+    assertEquals("testtag.value", get("scalajs.testsuite.testtag"))
+
+    val compliantAsInstanceOf = get("scalajs.compliant-asinstanceofs") == "true"
+    if (compliantAsInstanceOf) {
+      try {
+        Int.box(5).asInstanceOf[String]
+        fail("Invalid class cast succeeded in presence of " +
+            "\"compliant-asinstanceofs\" flag.")
+      } catch {
+        case _: ClassCastException => // As expected
+      }
+    }
+    assertEquals(compliantAsInstanceOf, Platform.hasCompliantAsInstanceOfs)
+
+    val compliantModule = get("scalajs.compliant-moduleinit") == "true"
+    assertEquals(compliantModule, Platform.hasCompliantModule)
+
+    val strictFloats = get("scalajs.strict-floats") == "true"
+    assertEquals(strictFloats, Platform.hasStrictFloats)
+
+    val productionMode = get("scalajs.production-mode") == "true"
+    val developmentMode = get("scalajs.development-mode") == "true"
+    assertEquals(productionMode, Platform.isInProductionMode)
+    assertEquals(developmentMode, Platform.isInDevelopmentMode)
+
+    val inNode = get("scalajs.nodejs") == "true"
+    val inPhantomJS = get("scalajs.phantomjs") == "true"
+    val inRhino = get("scalajs.rhino") == "true"
+    if (inNode) {
+      val process = js.Dynamic.global.process
+      assertFalse(js.isUndefined(process))
+      assertFalse(inPhantomJS || inRhino)
+    } else if (inPhantomJS) {
+      assertFalse(js.isUndefined(js.Dynamic.global.callPhantom))
+      assertFalse(inNode || inRhino)
+    } else if (inRhino) {
+      assertFalse(js.isUndefined(js.Dynamic.global.Packages))
+      assertFalse(inNode || inPhantomJS)
+    } else {
+      fail("No known platform tag found.")
+    }
+    assertEquals(inNode, Platform.executingInNodeJS)
+    assertEquals(inPhantomJS, Platform.executingInPhantomJS)
+    assertEquals(inRhino, Platform.executingInRhino)
+
+    val typedArrays = get("scalajs.typedarray") == "true"
+    assertEquals(typedArrays, Platform.typedArrays)
+
+    val isInFastOpt = get("scalajs.fastopt-stage") == "true"
+    val isInFullOpt = get("scalajs.fullopt-stage") == "true"
+    assertEquals(isInFastOpt, Platform.isInFastOpt)
+    assertEquals(isInFullOpt, Platform.isInFullOpt)
+
   }
 }

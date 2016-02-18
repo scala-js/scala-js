@@ -63,10 +63,11 @@ ScalaJS.linkingInfo = {
 //!endif
   },
 //!if outputMode == ECMAScript6
-  "assumingES6": true
+  "assumingES6": true,
 //!else
-  "assumingES6": false
+  "assumingES6": false,
 //!endif
+  "linkerVersion": "{{LINKER_VERSION}}"
 };
 ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo);
 ScalaJS.g["Object"]["freeze"](ScalaJS.linkingInfo["semantics"]);
