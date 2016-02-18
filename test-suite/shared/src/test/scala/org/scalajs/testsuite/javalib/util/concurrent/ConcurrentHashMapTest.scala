@@ -16,6 +16,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.collection.JavaConversions._
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 class ConcurrentHashMapTest extends MapTest {
 
@@ -60,7 +61,7 @@ class ConcurrentHashMapFactory extends ConcurrentMapFactory {
   def implementationName: String =
     "java.util.concurrent.ConcurrentHashMap"
 
-  override def empty[K, V]: ju.concurrent.ConcurrentHashMap[K, V] =
+  override def empty[K: ClassTag, V: ClassTag]: ju.concurrent.ConcurrentHashMap[K, V] =
     new ju.concurrent.ConcurrentHashMap[K, V]
 
   def allowsNullKeys: Boolean = false

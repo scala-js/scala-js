@@ -7,29 +7,35 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.util
 
+import org.junit.Assert._
+
 import scala.language.implicitConversions
 
 import scala.collection.JavaConversions._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 import java.{util => ju}
 import ju.TreeSet
 import ju.Comparator
+
+import scala.reflect.ClassTag
 
 class TreeSetWithoutNullTest extends TreeSetTest(new TreeSetFactory) {
 
   @Test def should_check_that_comparator_is_always_null(): Unit = {
     val ts1 = factory.empty[Int]
 
-    assertTrue(ts1.comparator() == null)
+    assertNull(ts1.comparator())
 
     val ts2 = factory.empty[String]
 
-    assertTrue(ts2.comparator() == null)
+    assertNull(ts2.comparator())
   }
 }
 
@@ -266,6 +272,69 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       })
     }
   }
+
+  @Test def should_throw_exception_on_non_comparable_objects(): Unit = {
+    assumeTrue("Needs compliant as instanceOf.", hasCompliantAsInstanceOfs)
+
+    class TestObj(num: Int)
+
+    val ts1 = factory.empty[TestObj]
+    assertEquals(0, ts1.size())
+    expectThrows(classOf[ClassCastException], ts1.add(new TestObj(111)))
+  }
+
+  @Test def should_throw_exceptions_on_access_outside_bound_on_views(): Unit = {
+    assumeTrue("Needs compliant as instanceOf.", hasCompliantAsInstanceOfs)
+
+    val l = asJavaCollection(Set(2, 3, 6))
+    val ts = factory.empty[Int]
+    ts.addAll(l)
+
+    val hs1 = ts.headSet(5, true)
+    assertTrue(hs1.add(4))
+    assertTrue(hs1.add(5))
+    expectThrows(classOf[IllegalArgumentException], hs1.add(6))
+
+    ts.clear()
+    ts.addAll(l)
+
+    val hs2 = ts.headSet(5, false)
+    assertTrue(hs2.add(4))
+    expectThrows(classOf[IllegalArgumentException], hs2.add(5))
+
+    ts.clear()
+    ts.addAll(l)
+
+    val ts1 = ts.tailSet(1, true)
+    assertTrue(ts1.add(7))
+    assertTrue(ts1.add(1))
+    expectThrows(classOf[IllegalArgumentException], ts1.add(0))
+
+    ts.clear()
+    ts.addAll(l)
+
+    val ts2 = ts.tailSet(1, false)
+    assertTrue(ts2.add(7))
+    expectThrows(classOf[IllegalArgumentException], ts2.add(1))
+
+    ts.clear()
+    ts.addAll(l)
+
+    val ss1 = ts.subSet(1, true, 5, true)
+    assertTrue(ss1.add(4))
+    assertTrue(ss1.add(1))
+    expectThrows(classOf[IllegalArgumentException], ss1.add(0))
+    assertTrue(ss1.add(5))
+    expectThrows(classOf[IllegalArgumentException], ss1.add(6))
+
+    ts.clear()
+    ts.addAll(l)
+
+    val ss2 = ts.subSet(1, false, 5, false)
+    assertTrue(ss2.add(4))
+    expectThrows(classOf[IllegalArgumentException], ss2.add(1))
+    expectThrows(classOf[IllegalArgumentException], ss2.add(5))
+  }
 }
 
 object TreeSetFactory extends TreeSetFactory {
@@ -278,7 +347,7 @@ class TreeSetFactory extends AbstractSetFactory with NavigableSetFactory
   def implementationName: String =
     "java.util.TreeSet"
 
-  def empty[E]: ju.TreeSet[E] =
+  def empty[E: ClassTag]: ju.TreeSet[E] =
     new TreeSet[E]
 
   def empty[E](cmp: ju.Comparator[E]): ju.TreeSet[E] =
@@ -307,7 +376,7 @@ class TreeSetWithNullFactory extends TreeSetFactory {
       }
     }
 
-  override def empty[E]: ju.TreeSet[E] =
+  override def empty[E: ClassTag]: ju.TreeSet[E] =
     new TreeSet[E](EvenNullComp[E]())
 
   override def allowsNullElement: Boolean = true

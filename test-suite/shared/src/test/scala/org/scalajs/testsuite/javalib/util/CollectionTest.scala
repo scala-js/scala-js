@@ -16,6 +16,8 @@ import scala.collection.JavaConversions._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
+import scala.reflect.ClassTag
+
 trait CollectionTest {
 
   def factory: CollectionFactory
@@ -212,7 +214,7 @@ trait CollectionTest {
     coll.add("three")
     coll.add("three")
 
-    assertTrue(Set("one", "two", "three") == coll.iterator().toSet)
+    assertEquals(coll.iterator().toSet, Set("one", "two", "three"))
   }
 }
 
@@ -223,7 +225,7 @@ object CollectionFactory {
 
 trait CollectionFactory {
   def implementationName: String
-  def empty[E]: ju.Collection[E]
+  def empty[E: ClassTag]: ju.Collection[E]
   def allowsMutationThroughIterator: Boolean = true
   def allowsNullElementQuery: Boolean = true
 }

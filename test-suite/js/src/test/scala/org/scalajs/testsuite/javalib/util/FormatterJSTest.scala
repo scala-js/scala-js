@@ -7,16 +7,23 @@
 \*                                                                      */
 package org.scalajs.testsuite.javalib.util
 
-import java.{util => ju}
+import scala.scalajs.js
 
-import scala.reflect.ClassTag
+import org.junit.Assert._
+import org.junit.Test
 
-abstract class AbstractMapTest extends MapTest {
-  def factory(): AbstractMapFactory
-}
+import java.util.Formatter
 
-abstract class AbstractMapFactory extends MapFactory {
-  def implementationName: String
+class FormatterJSTest {
 
-  def empty[K: ClassTag, V: ClassTag]: ju.AbstractMap[K, V]
+  @Test def `should_survive_undefined`(): Unit = {
+    val fmt = new Formatter()
+    val res = fmt.format("%s", js.undefined).toString()
+    fmt.close()
+    assertEquals("undefined", res)
+  }
+
+  @Test def `should_allow_f_string_interpolation_to_survive_undefined`(): Unit = {
+    assertEquals("undefined", f"${js.undefined}%s")
+  }
 }

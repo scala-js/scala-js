@@ -17,6 +17,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.collection.JavaConversions._
 import scala.collection.{mutable => mu}
+import scala.reflect.ClassTag
 
 trait MapTest {
 
@@ -159,7 +160,7 @@ trait MapTest {
     if (factory.allowsNullValues) {
       val mp = factory.empty[String, String]
       mp.put("one", null)
-      assertEquals(null, mp.get("one"))
+      assertNull(mp.get("one"))
     } else {
       val mp = factory.empty[String, String]
       expectThrows(classOf[NullPointerException], mp.put("one", null))
@@ -609,7 +610,7 @@ object MapFactory {
 trait MapFactory {
   def implementationName: String
 
-  def empty[K, V]: ju.Map[K, V]
+  def empty[K: ClassTag, V: ClassTag]: ju.Map[K, V]
 
   def allowsNullKeys: Boolean
 

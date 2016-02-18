@@ -9,6 +9,8 @@ package org.scalajs.testsuite.javalib.util
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 class AbstractListTest extends AbstractCollectionTest with ListTest {
   override def factory: AbstractListFactory = new AbstractListFactory
 }
@@ -18,7 +20,7 @@ class AbstractListFactory extends AbstractCollectionFactory with ListFactory {
   override def implementationName: String =
     "java.util.AbstractList"
 
-  override def empty[E]: ju.AbstractList[E] = {
+  override def empty[E: ClassTag]: ju.AbstractList[E] = {
     // inefficient but simple for debugging implementation of AbstractList
     new ju.AbstractList[E] {
 

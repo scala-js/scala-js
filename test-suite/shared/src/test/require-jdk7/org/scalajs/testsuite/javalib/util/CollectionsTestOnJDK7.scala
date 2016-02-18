@@ -13,6 +13,8 @@ import org.junit.Assert._
 import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 
+import scala.reflect.ClassTag
+
 class CollectionsTestOnJDK7 {
 
   @Test def should_implement_emptyIterator(): Unit = {
@@ -24,7 +26,7 @@ class CollectionsTestOnJDK7 {
   }
 
   @Test def should_implement_emptyListIterator(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E : ClassTag](toElem: Int => E): Unit = {
       def freshIter: ju.ListIterator[E] = ju.Collections.emptyListIterator[E]
 
       assertFalse(freshIter.hasNext)

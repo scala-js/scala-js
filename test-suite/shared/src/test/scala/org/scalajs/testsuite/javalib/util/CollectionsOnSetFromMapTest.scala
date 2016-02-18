@@ -2,6 +2,8 @@ package org.scalajs.testsuite.javalib.util
 
 import java.{lang => jl, util => ju}
 
+import scala.reflect.ClassTag
+
 trait CollectionsOnSetFromMapTest extends SetTest {
 
   def mapFactory: MapFactory
@@ -11,7 +13,7 @@ trait CollectionsOnSetFromMapTest extends SetTest {
       def implementationName: String =
         s"newSetFromMap(${mapFactory.implementationName})"
 
-      def empty[E]: ju.Set[E] =
+      def empty[E: ClassTag]: ju.Set[E] =
         ju.Collections.newSetFromMap[E](mapFactory.empty[E, jl.Boolean])
 
       def allowsNullElement: Boolean =

@@ -2,6 +2,8 @@ package org.scalajs.testsuite.javalib.util
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 trait DequeTest extends CollectionTest {
   def factory: DequeFactory
 }
@@ -12,5 +14,5 @@ object DequeFactory {
 }
 
 trait DequeFactory extends CollectionFactory {
-  def empty[E]: ju.Deque[E]
+  def empty[E: ClassTag]: ju.Deque[E]
 }

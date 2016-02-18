@@ -11,6 +11,8 @@ import java.{util => ju}
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
+import scala.reflect.ClassTag
+
 trait CollectionsSynchronizedCollectionTest
     extends CollectionsOnCollectionsTest {
 
@@ -21,7 +23,7 @@ trait CollectionsSynchronizedCollectionTest
       override def implementationName: String =
         s"synchronizedCollection(${originalFactory.implementationName})"
 
-      override def empty[E]: ju.Collection[E] =
+      override def empty[E: ClassTag]: ju.Collection[E] =
         ju.Collections.synchronizedCollection(originalFactory.empty[E])
     }
   }

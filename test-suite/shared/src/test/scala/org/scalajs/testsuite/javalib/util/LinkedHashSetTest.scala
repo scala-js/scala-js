@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 class LinkedHashSetTest extends HashSetTest {
 
@@ -64,6 +65,6 @@ class LinkedHashSetFactory extends HashSetFactory {
   override def implementationName: String =
     "java.util.LinkedHashSet"
 
-  override def empty[E]: ju.LinkedHashSet[E] =
+  override def empty[E: ClassTag]: ju.LinkedHashSet[E] =
     new ju.LinkedHashSet[E]()
 }

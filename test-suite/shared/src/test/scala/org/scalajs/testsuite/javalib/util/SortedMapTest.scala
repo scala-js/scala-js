@@ -12,6 +12,8 @@ import java.{util => ju}
 import org.junit.Test
 import org.junit.Assert._
 
+import scala.reflect.ClassTag
+
 trait SortedMapTest extends MapTest {
 
   def factory: SortedMapFactory
@@ -58,5 +60,5 @@ object SortedMapFactory {
 }
 
 trait SortedMapFactory extends MapFactory {
-  def empty[K, V]: ju.SortedMap[K, V]
+  def empty[K: ClassTag, V: ClassTag]: ju.SortedMap[K, V]
 }

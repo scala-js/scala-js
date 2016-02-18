@@ -70,15 +70,15 @@ class AtomicTest {
 
   @Test def atomicBooleanTest(): Unit = {
     val atomic = new java.util.concurrent.atomic.AtomicBoolean(true)
-    assertEquals(true, atomic.get())
+    assertTrue(atomic.get())
     atomic.set(false)
-    assertEquals(false, atomic.get())
+    assertFalse(atomic.get())
     assertFalse(atomic.compareAndSet(true, true))
-    assertEquals(false, atomic.get())
+    assertFalse(atomic.get())
     assertTrue(atomic.compareAndSet(false, true))
-    assertEquals(true, atomic.get())
+    assertTrue(atomic.get())
     assertTrue(atomic.getAndSet(false))
-    assertEquals(false, atomic.get())
+    assertFalse(atomic.get())
   }
 
   @Test def atomicReferenceTest(): Unit = {
@@ -87,8 +87,8 @@ class AtomicTest {
     val thing2 = Foo(10)
 
     // sanity
-    assertTrue(thing1 == thing1bis)
-    assertFalse(thing1 == thing2)
+    assertEquals(thing1bis, thing1)
+    assertNotEquals(thing1, thing2)
     assertSame(thing1, thing1)
     assertNotSame(thing1bis, thing1)
 

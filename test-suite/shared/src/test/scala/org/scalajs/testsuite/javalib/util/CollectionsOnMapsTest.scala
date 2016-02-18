@@ -5,12 +5,14 @@ import java.{lang => jl, util => ju}
 import org.junit.Test
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
+import scala.reflect.ClassTag
+
 trait CollectionsOnMapsTest extends CollectionsTestBase {
 
   def factory: MapFactory
 
   @Test def unmodifiableMap(): Unit = {
-    def test[K, V](toKey: Int => K, toValue: Int => V): Unit = {
+    def test[K: ClassTag, V: ClassTag](toKey: Int => K, toValue: Int => V): Unit = {
       val map = factory.empty[K, V]
       testMapImmutability(ju.Collections.unmodifiableMap[K, V](map), toKey(0),
           toValue(0))
@@ -20,10 +22,10 @@ trait CollectionsOnMapsTest extends CollectionsTestBase {
           toValue(0))
     }
 
-    test[Int, Int](_.toInt, _.toInt)
-    test[Long, String](_.toLong, _.toString)
+    test[jl.Integer, jl.Integer](_.toInt, _.toInt)
+    test[jl.Long, String](_.toLong, _.toString)
     test[String, String](_.toString, _.toString)
-    test[Double, Double](_.toDouble, _.toDouble)
+    test[jl.Double, jl.Double](_.toDouble, _.toDouble)
   }
 }
 
@@ -31,7 +33,7 @@ trait CollectionsOnSortedMapsTest extends CollectionsOnMapsTest {
   def factory: SortedMapFactory
 
   @Test def unmodifiableSortedMap(): Unit = {
-    def test[K, V](toKey: Int => K, toValue: Int => V): Unit = {
+    def test[K: ClassTag, V: ClassTag](toKey: Int => K, toValue: Int => V): Unit = {
       val sortedMap = factory.empty[K, V]
       testMapImmutability(ju.Collections.unmodifiableSortedMap[K, V](sortedMap),
         toKey(0), toValue(0))
@@ -41,10 +43,10 @@ trait CollectionsOnSortedMapsTest extends CollectionsOnMapsTest {
         toKey(0), toValue(0))
     }
 
-    test[Int, Int](_.toInt, _.toInt)
-    test[Long, String](_.toLong, _.toString)
+    test[jl.Integer, jl.Integer](_.toInt, _.toInt)
+    test[jl.Long, String](_.toLong, _.toString)
     test[String, String](_.toString, _.toString)
-    test[Double, Double](_.toDouble, _.toDouble)
+    test[jl.Double, jl.Double](_.toDouble, _.toDouble)
   }
 }
 

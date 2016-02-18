@@ -15,6 +15,8 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 trait ListTest extends CollectionTest {
 
   def factory: ListFactory
@@ -102,7 +104,7 @@ trait ListTest extends CollectionTest {
 
     lst.add(TestObj(100))
     assertEquals(1, lst.size())
-    assertTrue(lst.get(0) == TestObj(100))
+    assertEquals(TestObj(100), lst.get(0))
 
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
@@ -459,7 +461,7 @@ object ListFactory {
 }
 
 trait ListFactory extends CollectionFactory {
-  def empty[E]: ju.List[E]
+  def empty[E: ClassTag]: ju.List[E]
 
   /** Sortable using java.util.Collections.sort
    */

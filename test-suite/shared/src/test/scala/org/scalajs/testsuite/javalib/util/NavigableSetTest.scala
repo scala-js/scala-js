@@ -15,6 +15,7 @@ import java.{util => ju}
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentSkipListSetFactory
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 trait NavigableSetTest extends SetTest {
 
@@ -40,7 +41,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals("a", nsString.ceiling("0"))
     assertEquals("a", nsString.ceiling("a"))
     assertEquals("d", nsString.ceiling("d"))
-    assertEquals(null, nsString.ceiling("z"))
+    assertNull(nsString.ceiling("z"))
   }
 
   @Test def `should_retrieve_floor(ordered)_elements`(): Unit = {
@@ -63,7 +64,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals("d", nsString.floor("d"))
     assertEquals("b", nsString.floor("b"))
     assertEquals("a", nsString.floor("a"))
-    assertEquals(null, nsString.floor("0"))
+    assertNull(nsString.floor("0"))
   }
 
   @Test def `should_retrieve_higher(ordered)_elements`(): Unit = {
@@ -82,7 +83,7 @@ trait NavigableSetTest extends SetTest {
 
     nsString.addAll(lString)
 
-    assertEquals(null, nsString.higher("zzzzz"))
+    assertNull(nsString.higher("zzzzz"))
     assertEquals("e", nsString.higher("d"))
     assertEquals("c", nsString.higher("b"))
     assertEquals("b", nsString.higher("a"))
@@ -108,8 +109,8 @@ trait NavigableSetTest extends SetTest {
     assertEquals("e", nsString.lower("zzzzz"))
     assertEquals("c", nsString.lower("d"))
     assertEquals("a", nsString.lower("b"))
-    assertEquals(null, nsString.lower("a"))
-    assertEquals(null, nsString.lower("0"))
+    assertNull(nsString.lower("a"))
+    assertNull(nsString.lower("0"))
   }
 
   @Test def should_poll_first_and_last_elements(): Unit = {
@@ -135,5 +136,5 @@ object NavigableSetFactory {
 }
 
 trait NavigableSetFactory extends SetFactory {
-  def empty[E]: ju.NavigableSet[E]
+  def empty[E: ClassTag]: ju.NavigableSet[E]
 }

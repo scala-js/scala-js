@@ -9,6 +9,8 @@ package org.scalajs.testsuite.javalib.util
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 abstract class AbstractSetTest extends SetTest {
   def factory: AbstractSetFactory
 }
@@ -19,5 +21,5 @@ object AbstractSetFactory {
 }
 
 trait AbstractSetFactory extends SetFactory {
-  def empty[E]: ju.AbstractSet[E]
+  def empty[E: ClassTag]: ju.AbstractSet[E]
 }

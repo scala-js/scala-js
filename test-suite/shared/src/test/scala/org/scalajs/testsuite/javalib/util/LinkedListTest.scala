@@ -16,6 +16,8 @@ import scala.collection.JavaConversions._
 
 import java.util.LinkedList
 
+import scala.reflect.ClassTag
+
 class LinkedListTest extends AbstractListTest {
 
   override def factory: LinkedListFactory = new LinkedListFactory
@@ -182,6 +184,6 @@ class LinkedListFactory extends AbstractListFactory {
   override def implementationName: String =
     "java.util.LinkedList"
 
-  override def empty[E]: LinkedList[E] =
+  override def empty[E: ClassTag]: LinkedList[E] =
     new LinkedList[E]()
 }
