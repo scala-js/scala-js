@@ -24,6 +24,8 @@ import org.scalajs.core.ir.ScalaJSVersions
 import org.scalajs.jsenv.{JSEnv, JSConsole}
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 import org.scalajs.jsenv.phantomjs.PhantomJSEnv
+import org.scalajs.jsenv.selenium
+import org.scalajs.jsenv.selenium.{SeleniumBrowser, SeleniumJSEnv}
 
 object ScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
@@ -108,6 +110,50 @@ object ScalaJSPlugin extends AutoPlugin {
     ): Def.Initialize[Task[PhantomJSEnv]] = Def.task {
       val loader = scalaJSPhantomJSClassLoader.value
       new PhantomJSEnv(executable, args, env, autoExit, loader)
+    }
+
+    /**
+     *  Creates a [[sbt.Def.Initialize Def.Initialize]] for a SeleniumJSEnv. Use
+     *  this to explicitly specify in your build that you would like to run with
+     *  Selenium:
+     *
+     *  {{{
+     *  // Using Firefox
+     *  jsEnv := SeleniumJSEnv().value
+     *  jsEnv := SeleniumJSEnv(keepAlive = true).value
+     *
+     *  // Using Google Chrome
+     *  jsEnv := SeleniumJSEnv(SeleniumChrome("/../chromedriver")).value
+     *  jsEnv := SeleniumJSEnv(SeleniumChrome("/../chromedriver"), keepAlive = true).value
+     *  }}}
+     *
+     *  Note that the resulting [[sbt.Def.Setting Setting]] is not scoped at
+     *  all, but must be scoped in a project that has the ScalaJSPlugin enabled
+     *  to work properly.
+     *  Therefore, either put the upper line in your project settings (common
+     *  case) or scope it manually, using
+     *  [[sbt.ProjectExtra.inScope[* Project.inScope]].
+     */
+    def SeleniumJSEnv(
+       browser: SeleniumBrowser = SeleniumFirefox(),
+       keepAlive: Boolean = false
+    ): Def.Initialize[Task[SeleniumJSEnv]] = Def.task {
+      new SeleniumJSEnv(browser, keepAlive)
+    }
+
+    /** Firefox browser configuration for SeleniumJSEnv(browser). */
+    def SeleniumFirefox(): SeleniumBrowser =
+      selenium.Firefox
+
+    /** Google Chrome browser configuration for SeleniumJSEnv(browser). */
+    def SeleniumChrome(): SeleniumBrowser = {
+      if (System.getProperty("webdriver.chrome.driver") == null) {
+        println(
+            "Warning: SeleniumChrome requires the system property \"webdriver.chrome.driver\"" +
+            " to point the location of the Selenium Chrome driver. The driver can" +
+            " be downloaded from: http://chromedriver.storage.googleapis.com/index.html")
+      }
+      selenium.Chrome
     }
 
     // All our public-facing keys

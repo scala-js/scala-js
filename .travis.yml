@@ -1,0 +1,17 @@
+sudo: false
+language: scala
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION 'set inScope(ThisScope in helloworld)(jsEnv := SeleniumJSEnv(SeleniumFirefox).value)' helloworld/run 'set scalaJSStage in Global := FullOptStage' helloworld/run
+  - sbt ++$TRAVIS_SCALA_VERSION 'set inScope(ThisScope in testingExample)(jsEnv := SeleniumJSEnv(SeleniumFirefox).value)' testingExample/test 'set scalaJSStage in Global := FullOptStage' testingExample/test
+scala:
+  - 2.10.6
+  - 2.11.7
+jdk:
+  - oraclejdk7
+  - oraclejdk8
+addons:
+  firefox: latest
