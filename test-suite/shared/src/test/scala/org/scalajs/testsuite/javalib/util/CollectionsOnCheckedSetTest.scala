@@ -11,17 +11,19 @@ import java.{util => ju}
 
 import scala.reflect.ClassTag
 
-trait CollectionsOnSynchronizedSetTest extends CollectionsOnSetsTest {
+trait CollectionsOnCheckedSetTest extends CollectionsOnSetsTest {
 
   def originalFactory: SetFactory
 
   def factory: SetFactory = {
     new SetFactory {
       override def implementationName: String =
-        s"synchronizedSet(${originalFactory.implementationName})"
+        s"checkedSet(${originalFactory.implementationName})"
 
-      override def empty[E: ClassTag]: ju.Set[E] =
-        ju.Collections.synchronizedSet(originalFactory.empty[E])
+      override def empty[E](implicit ct: ClassTag[E]): ju.Set[E] = {
+        ju.Collections.checkedSet(originalFactory.empty[E],
+            ct.runtimeClass.asInstanceOf[Class[E]])
+      }
 
       def allowsNullElement: Boolean =
         originalFactory.allowsNullElement
@@ -29,17 +31,19 @@ trait CollectionsOnSynchronizedSetTest extends CollectionsOnSetsTest {
   }
 }
 
-trait CollectionsOnSynchronizedSortedSetTest extends CollectionsOnSortedSetsTest {
+trait CollectionsOnCheckedSortedSetTest extends CollectionsOnSortedSetsTest {
 
   def originalFactory: SortedSetFactory
 
   def factory: SortedSetFactory = {
     new SortedSetFactory {
       override def implementationName: String =
-        s"synchronizedSortedSet(${originalFactory.implementationName})"
+        s"checkedSortedSet(${originalFactory.implementationName})"
 
-      override def empty[E: ClassTag]: ju.SortedSet[E] =
-        ju.Collections.synchronizedSortedSet(originalFactory.empty[E])
+      override def empty[E](implicit ct: ClassTag[E]): ju.SortedSet[E] = {
+        ju.Collections.checkedSortedSet(originalFactory.empty[E],
+            ct.runtimeClass.asInstanceOf[Class[E]])
+      }
 
       def allowsNullElement: Boolean =
         originalFactory.allowsNullElement
@@ -47,17 +51,17 @@ trait CollectionsOnSynchronizedSortedSetTest extends CollectionsOnSortedSetsTest
   }
 }
 
-class CollectionsOnSynchronizedSetHashSetFactoryTest
-    extends CollectionsOnSynchronizedSetTest {
+class CollectionsOnCheckedSetHashSetFactoryTest
+    extends CollectionsOnCheckedSetTest {
   def originalFactory: SetFactory = new HashSetFactory
 }
 
-class CollectionsOnSynchronizedSetCollectionLinkedHashSetFactoryTest
-    extends CollectionsOnSynchronizedSetTest {
+class CollectionsOnCheckedSetCollectionLinkedHashSetFactoryTest
+    extends CollectionsOnCheckedSetTest {
   def originalFactory: SetFactory = new LinkedHashSetFactory
 }
 
-class CollectionsOnSynchronizedSetCollectionConcurrentSkipListSetFactoryTest
-    extends CollectionsOnSynchronizedSetTest {
+class CollectionsOnCheckedSetCollectionConcurrentSkipListSetFactoryTest
+    extends CollectionsOnCheckedSetTest {
   def originalFactory: SetFactory = new concurrent.ConcurrentSkipListSetFactory
 }

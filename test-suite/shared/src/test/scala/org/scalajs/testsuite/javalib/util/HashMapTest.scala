@@ -9,6 +9,8 @@ package org.scalajs.testsuite.javalib.util
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 class HashMapTest extends MapTest {
   def factory(): HashMapFactory = new HashMapFactory
 }
@@ -22,7 +24,7 @@ class HashMapFactory extends AbstractMapFactory {
   override def implementationName: String =
     "java.util.HashMap"
 
-  override def empty[K, V]: ju.HashMap[K, V] =
+  override def empty[K: ClassTag, V: ClassTag]: ju.HashMap[K, V] =
     new ju.HashMap[K, V]
 
   def allowsNullKeys: Boolean = true

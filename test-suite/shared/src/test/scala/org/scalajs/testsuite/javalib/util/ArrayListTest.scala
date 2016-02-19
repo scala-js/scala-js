@@ -11,6 +11,8 @@ import org.junit.Test
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 class ArrayListTest extends AbstractListTest {
 
   override def factory: AbstractListFactory = new ArrayListFactory
@@ -28,6 +30,6 @@ class ArrayListFactory extends AbstractListFactory {
   override def implementationName: String =
     "java.util.ArrayList"
 
-  override def empty[E]: ju.ArrayList[E] =
+  override def empty[E: ClassTag]: ju.ArrayList[E] =
     new ju.ArrayList[E]
 }

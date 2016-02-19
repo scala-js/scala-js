@@ -16,6 +16,8 @@ import scala.collection.JavaConversions._
 
 import java.{util => ju}
 
+import scala.reflect.ClassTag
+
 class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   override def factory: ArrayDequeFactory = new ArrayDequeFactory
@@ -172,7 +174,7 @@ class ArrayDequeFactory extends AbstractCollectionFactory with DequeFactory {
   override def implementationName: String =
     "java.util.ArrayDeque"
 
-  override def empty[E]: ju.ArrayDeque[E] =
+  override def empty[E: ClassTag]: ju.ArrayDeque[E] =
     new ju.ArrayDeque[E]
 
   def from[E](coll: ju.Collection[E]): ju.ArrayDeque[E] =

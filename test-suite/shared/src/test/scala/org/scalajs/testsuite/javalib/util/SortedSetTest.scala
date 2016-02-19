@@ -12,6 +12,7 @@ import org.junit.Assert._
 
 import java.{util => ju}
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 trait SortedSetTest extends SetTest {
 
@@ -146,5 +147,5 @@ object SortedSetFactory {
 }
 
 trait SortedSetFactory extends SetFactory {
-  def empty[E]: ju.SortedSet[E]
+  def empty[E: ClassTag]: ju.SortedSet[E]
 }

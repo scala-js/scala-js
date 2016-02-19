@@ -9,9 +9,11 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
 import java.lang.Math
 
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform._
 
 class MathTest {
 
@@ -186,5 +188,51 @@ class MathTest {
     assertEquals(0.0, Math.tanh(0.0), 0.01)
     assertEquals(1.0, Math.tanh(Double.PositiveInfinity), 0.01)
     assertEquals(-1.0, Math.tanh(Double.NegativeInfinity), 0.01)
+  }
+
+  @Test def rint_for_Double(): Unit = {
+    // js.Math.round() is buggy on Rhino
+    assumeFalse("Executing in rhino", executingInRhino)
+
+    import Math.rint
+
+    def isPosZero(x: Double): Boolean =
+      x == 0.0 && (1.0 / x) == Double.PositiveInfinity
+
+    def isNegZero(x: Double): Boolean =
+      x == 0.0 && (1.0 / x) == Double.NegativeInfinity
+
+    // Specials
+    assertTrue(isPosZero(rint(+0.0)))
+    assertTrue(isNegZero(rint(-0.0)))
+    assertEquals(Double.PositiveInfinity, rint(Double.PositiveInfinity), 0.0)
+    assertEquals(Double.NegativeInfinity, rint(Double.NegativeInfinity), 0.0)
+    assertTrue(rint(Double.NaN).isNaN)
+
+    // Positive values
+    assertTrue(isPosZero(rint(0.1)))
+    assertTrue(isPosZero(rint(0.5)))
+    assertEquals(1.0, rint(0.5000000000000001), 0.0)
+    assertEquals(1.0, rint(0.999), 0.0)
+    assertEquals(1.0, rint(1.4999999999999998), 0.0)
+    assertEquals(2.0, rint(1.5), 0.0)
+    assertEquals(2.0, rint(2.0), 0.0)
+    assertEquals(2.0, rint(2.1), 0.0)
+    assertEquals(2.0, rint(2.5), 0.0)
+    assertEquals(Double.MaxValue, rint(Double.MaxValue), 0.0)
+    assertEquals(4503599627370496.0, rint(4503599627370495.5), 0.0) // MaxSafeInt / 2
+
+    // Negative values
+    assertTrue(isNegZero(rint(-0.1)))
+    assertTrue(isNegZero(rint(-0.5)))
+    assertEquals(-1.0, rint(-0.5000000000000001), 0.0)
+    assertEquals(-1.0, rint(-0.999), 0.0)
+    assertEquals(-1.0, rint(-1.4999999999999998), 0.0)
+    assertEquals(-2.0, rint(-1.5), 0.0)
+    assertEquals(-2.0, rint(-2.0), 0.0)
+    assertEquals(-2.0, rint(-2.1), 0.0)
+    assertEquals(-2.0, rint(-2.5), 0.0)
+    assertEquals(Double.MinValue, rint(Double.MinValue), 0.0)
+    assertEquals(-4503599627370496.0, rint(-4503599627370495.5), 0.0) // -MaxSafeInt / 2
   }
 }

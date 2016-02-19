@@ -18,6 +18,8 @@ import scala.collection.JavaConversions._
 
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
+import scala.reflect.ClassTag
+
 class CopyOnWriteArrayListTest extends ListTest {
 
   def factory: CopyOnWriteArrayListFactory = new CopyOnWriteArrayListFactory
@@ -91,7 +93,7 @@ class CopyOnWriteArrayListTest extends ListTest {
       val cowal1 = factory.newFrom(arr)
       assertEquals(arr.length, cowal1.length)
       for (i <- arr.indices)
-        assertTrue(cowal1.get(i) == arr(i))
+        assertEquals(arr(i), cowal1.get(i))
     }
 
     test(Array("a", "", "da", "23"))
@@ -107,7 +109,7 @@ class CopyOnWriteArrayListFactory extends ListFactory {
   override def implementationName: String =
     "java.util.concurrent.CopyOnWriteArrayList"
 
-  override def empty[E]: ju.concurrent.CopyOnWriteArrayList[E] =
+  override def empty[E: ClassTag]: ju.concurrent.CopyOnWriteArrayList[E] =
     new ju.concurrent.CopyOnWriteArrayList[E]
 
   def newFrom[E <: AnyRef](arr: Array[E]): ju.concurrent.CopyOnWriteArrayList[E] =

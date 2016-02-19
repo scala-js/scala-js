@@ -1175,8 +1175,6 @@ object Build extends sbt.Build {
       val sharedTestDir =
         testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
 
-      includeIf(testDir / "require-jdk7", javaVersion.value >= 7) ++
-      includeIf(testDir / "require-jdk8", javaVersion.value >= 8) ++
       List(sharedTestDir / "scala") ++
       includeIf(sharedTestDir / "require-jdk7", javaVersion.value >= 7) ++
       includeIf(sharedTestDir / "require-jdk8", javaVersion.value >= 8)

@@ -1,9 +1,11 @@
 package org.scalajs.testsuite.javalib.lang
 
-import org.junit.Test
+import org.junit.Assume._
 import org.junit.Assert._
+import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 class MathTestOnJDK8 {
 
@@ -241,5 +243,46 @@ class MathTestOnJDK8 {
     assertEquals(Long.MinValue, Math.floorDiv(Long.MinValue, -1))
     for (n <- Seq(0L, 1L, -1L, Long.MaxValue, Long.MinValue))
       expectThrows(classOf[ArithmeticException], Math.floorDiv(n, 0))
+  }
+
+  @Test def floorMod() = {
+    assumeFalse("Executing in PhantomJS", executingInPhantomJS) // crashes otherwise, see #593
+
+    assertEquals(0, Math.floorMod(0, 1))
+    assertEquals(0, Math.floorMod(0, -1))
+    assertEquals(0, Math.floorMod(1, 1))
+    assertEquals(0, Math.floorMod(1, -1))
+    assertEquals(1, Math.floorMod(1, 3))
+    assertEquals(-2, Math.floorMod(1, -3))
+    assertEquals(2, Math.floorMod(-1, 3))
+    assertEquals(-1, Math.floorMod(-1, -3))
+    assertEquals(1, Math.floorMod(1, Int.MaxValue))
+    assertEquals(-2147483647, Math.floorMod(1, Int.MinValue))
+    assertEquals(2147483646, Math.floorMod(-1, Int.MaxValue))
+    assertEquals(-1, Math.floorMod(-1, Int.MinValue))
+    assertEquals(0, Math.floorMod(Int.MaxValue, 1))
+    assertEquals(0, Math.floorMod(Int.MaxValue, -1))
+    assertEquals(0, Math.floorMod(Int.MinValue, 1))
+    assertEquals(0, Math.floorMod(Int.MinValue, -1))
+
+    assertEquals(0L, Math.floorMod(0L, 1L))
+    assertEquals(0L, Math.floorMod(0L, -1L))
+    assertEquals(0L, Math.floorMod(1L, 1L))
+    assertEquals(0L, Math.floorMod(1L, -1L))
+    assertEquals(1L, Math.floorMod(1L, 3L))
+    assertEquals(-2L, Math.floorMod(1L, -3L))
+    assertEquals(2L, Math.floorMod(-1L, 3L))
+    assertEquals(-1L, Math.floorMod(-1L, -3L))
+    assertEquals(1L, Math.floorMod(1L, Long.MaxValue))
+    assertEquals(-9223372036854775807L, Math.floorMod(1L, Long.MinValue))
+    assertEquals(9223372036854775806L, Math.floorMod(-1L, Long.MaxValue))
+    assertEquals(-1L, Math.floorMod(-1, Long.MinValue))
+    assertEquals(0L, Math.floorMod(Long.MaxValue, 1L))
+    assertEquals(0L, Math.floorMod(Long.MaxValue, -1L))
+    assertEquals(0L, Math.floorMod(Long.MinValue, 1L))
+    assertEquals(0L, Math.floorMod(Long.MinValue, -1L))
+
+    for (n <- Seq(0L, 1L, -1L, Long.MaxValue, Long.MinValue))
+      assertThrows(classOf[ArithmeticException], Math.floorMod(n, 0))
   }
 }

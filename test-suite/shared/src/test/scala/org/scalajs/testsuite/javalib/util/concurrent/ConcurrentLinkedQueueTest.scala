@@ -16,6 +16,7 @@ import org.scalajs.testsuite.javalib.util.{AbstractCollectionFactory, AbstractCo
 
 import scala.collection.JavaConversions._
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 class ConcurrentLinkedQueueTest extends AbstractCollectionTest {
 
@@ -173,7 +174,7 @@ class ConcurrentLinkedQueueFactory extends AbstractCollectionFactory {
   override def implementationName: String =
     "java.util.concurrent.ConcurrentLinkedQueue"
 
-  override def empty[E]: ConcurrentLinkedQueue[E] =
+  override def empty[E: ClassTag]: ConcurrentLinkedQueue[E] =
     new ConcurrentLinkedQueue[E]()
 
   def newFrom[E](coll: ju.Collection[E]): ConcurrentLinkedQueue[E] =

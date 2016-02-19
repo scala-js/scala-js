@@ -11,13 +11,16 @@ import java.util.concurrent.ConcurrentSkipListSet
 import java.{util => ju}
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.NavigableSetFactory
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 import scala.collection.JavaConversions._
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 // TODO extends AbstractSetTest with NavigableSetTest
 class ConcurrentSkipListSetTest {
@@ -250,7 +253,7 @@ class ConcurrentSkipListSetTest {
     assertEquals("a", cslsString.ceiling("0"))
     assertEquals("a", cslsString.ceiling("a"))
     assertEquals("d", cslsString.ceiling("d"))
-    assertEquals(null, cslsString.ceiling("z"))
+    assertNull(cslsString.ceiling("z"))
   }
 
   @Test def `should_retrieve_floor(ordered)_elements`(): Unit = {
@@ -269,7 +272,7 @@ class ConcurrentSkipListSetTest {
     assertEquals("d", cslsString.floor("d"))
     assertEquals("b", cslsString.floor("b"))
     assertEquals("a", cslsString.floor("a"))
-    assertEquals(null, cslsString.floor("0"))
+    assertNull(cslsString.floor("0"))
   }
 
   @Test def `should_retrieve_higher(ordered)_elements`(): Unit = {
@@ -284,7 +287,7 @@ class ConcurrentSkipListSetTest {
     val lString = asJavaCollection(Set("a", "e", "b", "c", "d"))
     val cslsString = new ConcurrentSkipListSet[String](lString)
 
-    assertEquals(null, cslsString.higher("zzzzz"))
+    assertNull(cslsString.higher("zzzzz"))
     assertEquals("e", cslsString.higher("d"))
     assertEquals("c", cslsString.higher("b"))
     assertEquals("b", cslsString.higher("a"))
@@ -306,8 +309,8 @@ class ConcurrentSkipListSetTest {
     assertEquals("e", cslsString.lower("zzzzz"))
     assertEquals("c", cslsString.lower("d"))
     assertEquals("a", cslsString.lower("b"))
-    assertEquals(null, cslsString.lower("a"))
-    assertEquals(null, cslsString.lower("0"))
+    assertNull(cslsString.lower("a"))
+    assertNull(cslsString.lower("0"))
   }
 
   @Test def should_poll_first_and_last_elements(): Unit = {
@@ -385,6 +388,17 @@ class ConcurrentSkipListSetTest {
     assertEquals(3, csls.size)
     assertTrue(csls.containsAll(asJavaCollection(Set(1,4,5))))
   }
+
+  @Test def should_throw_exception_on_non_comparable_objects(): Unit = {
+    assumeTrue("Needs compliant asInstanceOf", hasCompliantAsInstanceOfs)
+    case class TestObj(num: Int)
+
+    val csls = new ConcurrentSkipListSet[TestObj]()
+
+    assertEquals(0, csls.size())
+    expectThrows(classOf[ClassCastException], csls.add(TestObj(111)))
+    assertSame(null, csls.comparator)
+  }
 }
 
 object ConcurrentSkipListSetFactory extends ConcurrentSkipListSetFactory {
@@ -396,7 +410,7 @@ class ConcurrentSkipListSetFactory extends NavigableSetFactory {
   def implementationName: String =
     "java.util.concurrent.ConcurrentSkipListSet"
 
-  def empty[E]: ju.concurrent.ConcurrentSkipListSet[E] =
+  def empty[E: ClassTag]: ju.concurrent.ConcurrentSkipListSet[E] =
     new ConcurrentSkipListSet[E]
 
   def newFrom[E](coll: ju.Collection[E]): ju.concurrent.ConcurrentSkipListSet[E] =

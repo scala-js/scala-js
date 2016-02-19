@@ -10,6 +10,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 object CollectionsOnListTest extends CollectionsTestBase {
 
@@ -29,15 +30,15 @@ object CollectionsOnListTest extends CollectionsTestBase {
     if (factory.sortableUsingCollections) {
       test_sort_with_comparator[CustomComparable](factory,
         new CustomComparable(_), (x, y) => x.compareTo(y), false)
-      test_sort_with_comparator[Int](factory, _.toInt, (x, y) => x.compareTo(y))
-      test_sort_with_comparator[Long](factory, _.toLong,
+      test_sort_with_comparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
+      test_sort_with_comparator[jl.Long](factory, _.toLong,
         (x, y) => x.compareTo(y))
-      test_sort_with_comparator[Double](factory, _.toDouble,
+      test_sort_with_comparator[jl.Double](factory, _.toDouble,
         (x, y) => x.compareTo(y))
     }
   }
 
-  private def test_sort_on_comparables[T <: AnyRef with Comparable[T]](
+  private def test_sort_on_comparables[T <: AnyRef with Comparable[T]: ClassTag](
       factory: ListFactory, toElem: Int => T,
       absoluteOrder: Boolean = true): Unit = {
 
@@ -70,7 +71,7 @@ object CollectionsOnListTest extends CollectionsTestBase {
     }
   }
 
-  private def test_sort_with_comparator[T](factory: ListFactory, toElem: Int => T,
+  private def test_sort_with_comparator[T: ClassTag](factory: ListFactory, toElem: Int => T,
       cmpFun: (T, T) => Int, absoluteOrder: Boolean = true): Unit = {
 
     val list = factory.empty[T]
@@ -119,7 +120,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   @Test def binarySearch_on_comparables(): Unit = {
     // Test: binarySearch[T](list: List[Comparable[T]], T)
-    def test[T <: AnyRef with Comparable[T]](toElem: Int => T): Unit = {
+    def test[T <: AnyRef with Comparable[T]: ClassTag](toElem: Int => T): Unit = {
       val list = factory.empty[T]
 
       list.addAll(range.map(toElem).sorted)
@@ -148,7 +149,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   @Test def binarySearch_with_comparator(): Unit = {
     // Test: binarySearch[T](List[T], key: T, Comparator[T]))
-    def test[T](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
+    def test[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
       val list = factory.empty[T]
       val cmp = new ju.Comparator[T] {
         override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
@@ -173,14 +174,14 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
           ju.Collections.binarySearch(list, toElem(range.last / 2), cmp))
     }
 
-    test[Int](_.toInt, (x, y) => x.compareTo(y))
-    test[Long](_.toLong, (x, y) => x.compareTo(y))
-    test[Double](_.toDouble, (x, y) => x.compareTo(y))
+    test[jl.Integer](_.toInt, (x, y) => x.compareTo(y))
+    test[jl.Long](_.toLong, (x, y) => x.compareTo(y))
+    test[jl.Double](_.toDouble, (x, y) => x.compareTo(y))
   }
 
   @Test def reverse(): Unit = {
     // Test: reverse(list: List[_])
-    def test[T](toElem: Int => T): Unit = {
+    def test[T: ClassTag](toElem: Int => T): Unit = {
       val list = factory.empty[T]
       list.addAll(range.map(toElem))
 
@@ -189,7 +190,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
           val expected =
             if (reversed) range.last - i
             else i
-          assertTrue(list(i) == toElem(expected))
+          assertEquals(toElem(expected), list(i))
         }
       }
 
@@ -200,15 +201,15 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       testIfInOrder(false)
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def shuffle(): Unit = {
     def testShuffle(shuffle: ju.List[_] => Unit): Unit = {
-      def test[E](toElem: Int => E): Unit = {
+      def test[E: ClassTag](toElem: Int => E): Unit = {
         val list = factory.empty[E]
         ju.Collections.shuffle(list)
         assertEquals(0, list.size)
@@ -217,9 +218,9 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
         assertEquals(range.size, list.size)
         assertTrue(list.containsAll(range.map(toElem)))
       }
-      test[Int](_.toInt)
-      test[Long](_.toLong)
-      test[Double](_.toDouble)
+      test[jl.Integer](_.toInt)
+      test[jl.Long](_.toLong)
+      test[jl.Double](_.toDouble)
       test[String](_.toString)
     }
 
@@ -236,69 +237,69 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   @Test def swap(): Unit = {
     // Test: swap(List[_], Int, Int)
-    def test[T](toElem: Int => T): Unit = {
-      val list = factory.empty[T]
+    def test[E: ClassTag](toElem: Int => E): Unit = {
+      val list = factory.empty[E]
       list.addAll(range.map(toElem(_)))
 
       ju.Collections.swap(list, 0, 1)
-      assertTrue(list.get(0) == toElem(1))
-      assertTrue(list.get(1) == toElem(0))
+      assertEquals(toElem(1), list.get(0))
+      assertEquals(toElem(0), list.get(1))
       for (i <- range.drop(2))
-        assertTrue(list.get(i) == toElem(i))
+        assertEquals(toElem(i), list.get(i))
 
       ju.Collections.swap(list, 0, range.last)
-      assertTrue(list.get(0) == toElem(range.last))
-      assertTrue(list.get(1) == toElem(0))
+      assertEquals(toElem(range.last), list.get(0))
+      assertEquals(toElem(0), list.get(1))
       for (i <- range.drop(2).init)
-        assertTrue(list.get(i) == toElem(i))
-      assertTrue(list.get(range.last) == toElem(1))
+        assertEquals(toElem(i), list.get(i))
+      assertEquals(toElem(1), list.get(range.last))
 
       ju.Collections.swap(list, 0, range.last)
-      assertTrue(list.get(0) == toElem(1))
-      assertTrue(list.get(1) == toElem(0))
+      assertEquals(toElem(1), list.get(0))
+      assertEquals(toElem(0), list.get(1))
       for (i <- range.drop(2))
-        assertTrue(list.get(i) == toElem(i))
+        assertEquals(toElem(i), list.get(i))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def fill(): Unit = {
-    // Test: fill[T](List[T], T)
-    def test[T](toElem: Int => T): Unit = {
-      val list = factory.empty[T]
+    // Test: fill[E](List[E], E)
+    def test[E: ClassTag](toElem: Int => E): Unit = {
+      val list = factory.empty[E]
       list.addAll(range.map(toElem(_)))
 
       ju.Collections.fill(list, toElem(0))
       for (i <- range)
-        assertTrue(list.get(i) == toElem(0))
+        assertEquals(toElem(0), list.get(i))
 
       ju.Collections.fill(list, toElem(42))
       for (i <- range)
-        assertTrue(list.get(i) == toElem(42))
+        assertEquals(toElem(42), list.get(i))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def copy(): Unit = {
-    // Test: copy[T](List[T], List[T])
-    def test[T](toElem: Int => T): Unit = {
-      val source = factory.empty[T]
-      val dest = factory.empty[T]
+    // Test: copy[E](List[E], List[E])
+    def test[E: ClassTag](toElem: Int => E): Unit = {
+      val source = factory.empty[E]
+      val dest = factory.empty[E]
 
       // Lists of same size
       range.foreach(i => source.add(toElem(i)))
       range.foreach(i => dest.add(toElem(-i)))
       ju.Collections.copy(dest, source)
       for (i <- range)
-        assertTrue(dest(i) == toElem(i))
+        assertEquals(toElem(i), dest(i))
 
       // source.size < dest.size
       source.clear()
@@ -307,9 +308,9 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       range.foreach(i => dest.add(toElem(-i)))
       ju.Collections.copy(dest, source)
       for (i <- range.take(range.size / 2))
-        assertTrue(dest(i) == toElem(i))
+        assertEquals(toElem(i), dest(i))
       for (i <- range.drop(range.size / 2))
-        assertTrue(dest(i) == toElem(-i))
+        assertEquals(toElem(-i), dest(i))
 
       // source.size > dest.size
       source.clear()
@@ -319,83 +320,83 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       expectThrows(classOf[IndexOutOfBoundsException], ju.Collections.copy(dest, source))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def rotate(): Unit = {
     def modulo(a: Int, b: Int): Int = ((a % b) + b) % b
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val list = factory.empty[E]
       list.addAll(range.map(toElem))
 
       ju.Collections.rotate(list, 0)
       for (i <- range)
-        assertTrue(list(i) == toElem(i))
+        assertEquals(toElem(i), list(i))
 
       ju.Collections.rotate(list, list.size)
       for (i <- range)
-        assertTrue(list(i) == toElem(i))
+        assertEquals(toElem(i), list(i))
 
       ju.Collections.rotate(list, 1)
       for (i <- range)
-        assertTrue(list(i) == toElem(modulo(i - 1, range.size)))
+        assertEquals(toElem(modulo(i - 1, range.size)), list(i))
 
       ju.Collections.rotate(list, 1)
       for (i <- range)
-        assertTrue(list(i) == toElem(modulo(i - 2, range.size)))
+        assertEquals(toElem(modulo(i - 2, range.size)), list(i))
 
       ju.Collections.rotate(list, -5)
       for (i <- range)
-        assertTrue(list(i) == toElem(modulo(i + 3, range.size)))
+        assertEquals(toElem(modulo(i + 3, range.size)), list(i))
 
       list.clear()
       list.addAll((0 until 6).map(toElem))
       ju.Collections.rotate(list, 2)
       for (i <- 0 until 6)
-        assertTrue(list(i) == toElem(modulo(i - 2, 6)))
+        assertEquals(toElem(modulo(i - 2, 6)), list(i))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def replaceAll(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val list = factory.empty[E]
       list.addAll(range.map(toElem))
 
       ju.Collections.replaceAll(list, toElem(range.last), toElem(0))
       for (i <- range.init)
-        assertTrue(list(i) == toElem(i))
-      assertTrue(list.last == toElem(0))
+        assertEquals(toElem(i), list(i))
+      assertEquals(toElem(0), list.last)
 
       ju.Collections.replaceAll(list, toElem(range(range.size - 2)), toElem(0))
       for (i <- range.dropRight(2))
-        assertTrue(list(i) == toElem(i))
-      assertTrue(list.dropRight(1).last == toElem(0))
-      assertTrue(list.last == toElem(0))
+        assertEquals(toElem(i), list(i))
+      assertEquals(toElem(0), list.dropRight(1).last)
+      assertEquals(toElem(0), list.last)
 
       ju.Collections.replaceAll(list, toElem(0), toElem(-1))
       for (i <- range.tail.dropRight(2))
-        assertTrue(list(i) == toElem(i))
-      assertTrue(list.head == toElem(-1))
-      assertTrue(list.dropRight(1).last == toElem(-1))
-      assertTrue(list.last == toElem(-1))
+        assertEquals(toElem(i), list(i))
+      assertEquals(toElem(-1), list.head)
+      assertEquals(toElem(-1), list.dropRight(1).last)
+      assertEquals(toElem(-1), list.last)
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def indexOfSubList(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val source = factory.empty[E]
       val target = factory.empty[E]
 
@@ -420,14 +421,14 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       assertEquals(-1, ju.Collections.indexOfSubList(source, target))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def lastIndexOfSubList(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val source = factory.empty[E]
       val target = factory.empty[E]
 
@@ -452,21 +453,21 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       assertEquals(-1, ju.Collections.lastIndexOfSubList(source, target))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 
   @Test def unmodifiableList(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val immuList = ju.Collections.unmodifiableList(factory.empty[E])
       testListImmutability(immuList, toElem(0))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 }

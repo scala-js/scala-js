@@ -16,6 +16,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 class CollectionsTest extends CollectionsTestBase {
 
@@ -48,7 +49,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def emptySet(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val emptySet = ju.Collections.emptySet[E]
       assertTrue(emptySet.isEmpty)
       assertEquals(0, emptySet.size)
@@ -62,7 +63,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def emptyList(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val emptyList = ju.Collections.emptyList[E]
       assertTrue(emptyList.isEmpty)
       assertEquals(0, emptyList.size)
@@ -92,7 +93,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def singleton(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val singletonSet = ju.Collections.singleton[E](toElem(0))
       assertTrue(singletonSet.contains(toElem(0)))
       assertEquals(1, singletonSet.size)
@@ -106,7 +107,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def singletonList(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val singletonList = ju.Collections.singletonList[E](toElem(0))
       assertTrue(singletonList.contains(toElem(0)))
       assertEquals(1, singletonList.size)
@@ -122,7 +123,7 @@ class CollectionsTest extends CollectionsTestBase {
   @Test def singletonMap(): Unit = {
     def test[K, V](toKey: Int => K, toValue: Int => V): Unit = {
       val singletonMap = ju.Collections.singletonMap[K, V](toKey(0), toValue(1))
-      assertTrue(singletonMap.get(toKey(0)) == toValue(1))
+      assertEquals(toValue(1), singletonMap.get(toKey(0)))
       assertEquals(1, singletonMap.size)
       assertEquals(1, singletonMap.iterator.size)
       checkImmutablilityOfMapApi(singletonMap, toKey(0), toValue(0))
@@ -134,7 +135,7 @@ class CollectionsTest extends CollectionsTestBase {
   }
 
   @Test def nCopies(): Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       for (n <- Seq(1, 4, 543)) {
         val nCopies = ju.Collections.nCopies(n, toElem(0))
         assertTrue(nCopies.contains(toElem(0)))

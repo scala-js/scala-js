@@ -1,25 +1,26 @@
 package org.scalajs.testsuite.javalib.util
 
-import java.{util => ju}
+import java.{util => ju, lang => jl}
 
 import org.junit.Test
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 trait CollectionsOnSetsTest extends CollectionsOnCollectionsTest {
   def factory: SetFactory
 
   @Test def unmodifiableSet():Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val set = factory.empty[E]
       testSetImmutability(ju.Collections.unmodifiableSet(set), toElem(0))
       set.addAll(range.map(toElem))
       testSetImmutability(ju.Collections.unmodifiableSet(set), toElem(0))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 }
@@ -28,7 +29,7 @@ trait CollectionsOnSortedSetsTest extends CollectionsOnSetsTest {
   def factory: SortedSetFactory
 
   @Test def unmodifiableSortedSet():Unit = {
-    def test[E](toElem: Int => E): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
       val sortedSet = factory.empty[E]
       testSortedSetImmutability(ju.Collections.unmodifiableSortedSet(sortedSet),
         toElem(0))
@@ -37,9 +38,9 @@ trait CollectionsOnSortedSetsTest extends CollectionsOnSetsTest {
         toElem(0))
     }
 
-    test[Int](_.toInt)
-    test[Long](_.toLong)
-    test[Double](_.toDouble)
+    test[jl.Integer](_.toInt)
+    test[jl.Long](_.toLong)
+    test[jl.Double](_.toDouble)
     test[String](_.toString)
   }
 }

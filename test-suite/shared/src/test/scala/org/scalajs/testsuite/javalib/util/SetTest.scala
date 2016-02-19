@@ -17,6 +17,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 import java.{util => ju, lang => jl}
 
 import scala.collection.JavaConversions._
+import scala.reflect.ClassTag
 
 trait SetTest extends CollectionTest {
 
@@ -228,7 +229,7 @@ object SetFactory {
 }
 
 trait SetFactory extends CollectionFactory {
-  def empty[E]: ju.Set[E]
+  def empty[E: ClassTag]: ju.Set[E]
 
   def allowsNullElement: Boolean
 }

@@ -12,7 +12,9 @@ import org.junit.Assert._
 
 import scala.collection.JavaConversions._
 
-import java.{util => ju}
+import java.{util => ju, lang => jl}
+
+import scala.reflect.ClassTag
 
 class LinkedHashMapInsertionOrderTest extends LinkedHashMapTest
 
@@ -40,7 +42,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
   val withSizeLimit = factory.withSizeLimit
 
   @Test def should_iterate_in_insertion_order_after_building(): Unit = {
-    val lhm = factory.empty[Int, String]
+    val lhm = factory.empty[jl.Integer, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
     def expectedKey(index: Int): Int =
@@ -67,7 +69,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in_the_same_order_after_removal_of_elements(): Unit = {
-    val lhm = factory.empty[Int, String]
+    val lhm = factory.empty[jl.Integer, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
     (0 until 100 by 3).foreach(key => lhm.remove(key))
@@ -96,7 +98,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in_order_after_adding_elements(): Unit = {
-    val lhm = factory.empty[Int, String]
+    val lhm = factory.empty[jl.Integer, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
     lhm(0) = "new 0"
@@ -144,7 +146,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
   }
 
   @Test def should_iterate_in__after_accessing_elements(): Unit = {
-    val lhm = factory.empty[Int, String]
+    val lhm = factory.empty[jl.Integer, String]
     (0 until 100).foreach(key => lhm.put(key, s"elem $key"))
 
     lhm.get(42)
@@ -217,7 +219,7 @@ class LinkedHashMapFactory(val accessOrder: Boolean, val withSizeLimit: Option[I
     s"java.util.LinkedHashMap{$orderName$sizeLimitSting}"
   }
 
-  override def empty[K, V]: ju.LinkedHashMap[K, V] = {
+  override def empty[K: ClassTag, V: ClassTag]: ju.LinkedHashMap[K, V] = {
     withSizeLimit match {
       case Some(limit) =>
         new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder) {

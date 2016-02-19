@@ -11,13 +11,15 @@ import java.{util => ju}
 
 import org.scalajs.testsuite.javalib.util.MapFactory
 
+import scala.reflect.ClassTag
+
 object ConcurrentMapFactory {
   def allFactories: Iterator[ConcurrentMapFactory] =
     ConcurrentHashMapFactory.allFactories
 }
 
 trait ConcurrentMapFactory extends MapFactory {
-  def empty[K, V]: ju.concurrent.ConcurrentMap[K, V]
+  def empty[K: ClassTag, V: ClassTag]: ju.concurrent.ConcurrentMap[K, V]
 
   override def allowsNullValuesQueries: Boolean = false
 
