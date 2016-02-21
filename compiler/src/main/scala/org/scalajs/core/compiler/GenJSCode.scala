@@ -138,7 +138,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
     val isModuleInitialized      = new ScopedVar[VarBox[Boolean]]
 
-    val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
+    val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
@@ -274,7 +274,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
         undefinedDefaultParams.clear()
-        countsOfReturnsToMatchEnd.clear()
         pos2irPosCache.clear()
       }
     }
@@ -1023,11 +1022,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       val sym = dd.symbol
 
       withScopedVars(
-          currentMethodSym        := sym,
-          thisLocalVarIdent       := None,
-          fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams := Map.empty,
-          isModuleInitialized     := new VarBox(false)
+          currentMethodSym          := sym,
+          thisLocalVarIdent         := None,
+          fakeTailJumpParamRepl     := (NoSymbol, NoSymbol),
+          enclosingLabelDefParams   := Map.empty,
+          isModuleInitialized       := new VarBox(false),
+          countsOfReturnsToMatchEnd := mutable.Map.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
