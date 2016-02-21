@@ -21,6 +21,7 @@ import ir.{Trees => js, Types => jstpe, ClassKind, Hashers}
 import ir.Trees.OptimizerHints
 
 import util.ScopedVar
+import util.VarBox
 import ScopedVar.withScopedVars
 
 /** Generate JavaScript code and output it to disk
@@ -135,8 +136,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
     val unexpectedMutatedFields  = new ScopedVar[mutable.Set[Symbol]]
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
-
-    var isModuleInitialized: Boolean = false // see genApply for super calls
+    val isModuleInitialized      = new ScopedVar[VarBox[Boolean]]
 
     val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
 
@@ -1022,13 +1022,12 @@ abstract class GenJSCode extends plugins.PluginComponent
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
 
-      isModuleInitialized = false
-
       withScopedVars(
           currentMethodSym        := sym,
           thisLocalVarIdent       := None,
           fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams := Map.empty
+          enclosingLabelDefParams := Map.empty,
+          isModuleInitialized     := new VarBox(false)
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
@@ -1904,7 +1903,7 @@ abstract class GenJSCode extends plugins.PluginComponent
         // Initialize the module instance just after the super constructor call.
         if (isStaticModule(currentClassSym) && !isModuleInitialized &&
             currentMethodSym.isClassConstructor) {
-          isModuleInitialized = true
+          isModuleInitialized.value = true
           val thisType = jstpe.ClassType(encodeClassFullName(currentClassSym))
           val initModule = js.StoreModule(thisType, js.This()(thisType))
           js.Block(superCall, initModule)

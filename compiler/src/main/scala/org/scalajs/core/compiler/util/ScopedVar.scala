@@ -29,6 +29,7 @@ object ScopedVar {
   }
 
   implicit def toValue[T](scVar: ScopedVar[T]): T = scVar.get
+  implicit def toValueFromBox[T](scVar: ScopedVar[VarBox[T]]): T = scVar.get
 
   def withScopedVars[T](ass: Assignment[_]*)(body: => T): T = {
     val stack = ass.map(_.push())
