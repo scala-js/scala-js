@@ -125,26 +125,32 @@ abstract class GenJSCode extends plugins.PluginComponent
     override def description: String = GenJSCode.this.description
     override def erasedTypes: Boolean = true
 
-    // Some state --------------------------------------------------------------
-
-    val currentClassSym          = new ScopedVar[Symbol]
-    val currentMethodSym         = new ScopedVar[Symbol]
-    val thisLocalVarIdent        = new ScopedVar[Option[js.Ident]](None)
-    val fakeTailJumpParamRepl    = new ScopedVar[(Symbol, Symbol)]((NoSymbol, NoSymbol))
-    val enclosingLabelDefParams  = new ScopedVar(Map.empty[Symbol, List[Symbol]])
-    val mutableLocalVars         = new ScopedVar[mutable.Set[Symbol]]
-    val mutatedLocalVars         = new ScopedVar[mutable.Set[Symbol]]
-    val unexpectedMutatedFields  = new ScopedVar[mutable.Set[Symbol]]
-    val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
-    val isModuleInitialized      = new ScopedVar[VarBox[Boolean]]
-
-    val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
-    val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
+    // Scoped state ------------------------------------------------------------
+    // Per class body
+    val currentClassSym = new ScopedVar[Symbol]
+    private val unexpectedMutatedFields = new ScopedVar[mutable.Set[Symbol]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
-    val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
-    class CancelGenMethodAsJSFunction(message: String)
+    // Per method body
+    private val currentMethodSym = new ScopedVar[Symbol]
+    private val thisLocalVarIdent = new ScopedVar[Option[js.Ident]]
+    private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
+    private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
+    private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
+    private val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
+    private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
+
+    // For some method bodies
+    private val mutableLocalVars = new ScopedVar[mutable.Set[Symbol]]
+    private val mutatedLocalVars = new ScopedVar[mutable.Set[Symbol]]
+
+    // For anonymous methods
+    // These have a default, since we always read them.
+    private val tryingToGenMethodAsJSFunction = new ScopedVar[Boolean](false)
+    private val paramAccessorLocals = new ScopedVar(Map.empty[Symbol, js.ParamDef])
+
+    private class CancelGenMethodAsJSFunction(message: String)
         extends Throwable(message) with scala.util.control.ControlThrowable
 
     // Rewriting of anonymous function classes ---------------------------------
