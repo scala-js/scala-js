@@ -139,6 +139,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val isModuleInitialized      = new ScopedVar[VarBox[Boolean]]
 
     val countsOfReturnsToMatchEnd = new ScopedVar[VarBox[Int]]
+    val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
@@ -153,8 +154,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       mutable.Map.empty[Symbol,
         /*ctor args:*/ List[js.Tree] => /*instance:*/ js.Tree]
     private val instantiatedAnonFunctions =
-      mutable.Set.empty[Symbol]
-    private val undefinedDefaultParams =
       mutable.Set.empty[Symbol]
     // scalastyle:on disallow.space.after.token
 
@@ -273,7 +272,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } finally {
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
-        undefinedDefaultParams.clear()
         pos2irPosCache.clear()
       }
     }
@@ -1026,7 +1024,8 @@ abstract class GenJSCode extends plugins.PluginComponent
           thisLocalVarIdent       := None,
           fakeTailJumpParamRepl   := (NoSymbol, NoSymbol),
           enclosingLabelDefParams := Map.empty,
-          isModuleInitialized     := new VarBox(false)
+          isModuleInitialized     := new VarBox(false),
+          undefinedDefaultParams  := mutable.Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
