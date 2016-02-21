@@ -138,7 +138,7 @@ abstract class GenJSCode extends plugins.PluginComponent
     val paramAccessorLocals      = new ScopedVar(Map.empty[Symbol, js.ParamDef])
     val isModuleInitialized      = new ScopedVar[VarBox[Boolean]]
 
-    val countsOfReturnsToMatchEnd = mutable.Map.empty[Symbol, Int]
+    val countsOfReturnsToMatchEnd = new ScopedVar[VarBox[Int]]
 
     private def currentClassType = encodeClassType(currentClassSym)
 
@@ -274,7 +274,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         translatedAnonFunctions.clear()
         instantiatedAnonFunctions.clear()
         undefinedDefaultParams.clear()
-        countsOfReturnsToMatchEnd.clear()
         pos2irPosCache.clear()
       }
     }
@@ -1972,7 +1971,7 @@ abstract class GenJSCode extends plugins.PluginComponent
          * position). We simply `return` the argument as the result of the
          * labeled block surrounding the match.
          */
-        countsOfReturnsToMatchEnd(sym) += 1
+        countsOfReturnsToMatchEnd.value += 1
         js.Return(genExpr(args.head), Some(encodeLabelSym(sym)))
       } else {
         /* No other label apply should ever happen. If it does, then we
@@ -2465,39 +2464,38 @@ abstract class GenJSCode extends plugins.PluginComponent
     def genTranslatedMatch(cases: List[LabelDef],
         matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
 
-      val matchEndSym = matchEnd.symbol
-      countsOfReturnsToMatchEnd(matchEndSym) = 0
+      withScopedVars(
+          countsOfReturnsToMatchEnd := new VarBox(0)
+      ) {
+        val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
 
-      val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
+        val translatedCases = for {
+          (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
+        } yield {
+          def genCaseBody(tree: Tree): js.Tree = {
+            implicit val pos = tree.pos
+            tree match {
+              case If(cond, thenp, elsep) =>
+                js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
+                    jstpe.NoType)
 
-      val translatedCases = for {
-        (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
-      } yield {
-        def genCaseBody(tree: Tree): js.Tree = {
-          implicit val pos = tree.pos
-          tree match {
-            case If(cond, thenp, elsep) =>
-              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
-                  jstpe.NoType)
+              case Block(stats, expr) =>
+                js.Block((stats map genStat) :+ genCaseBody(expr))
 
-            case Block(stats, expr) =>
-              js.Block((stats map genStat) :+ genCaseBody(expr))
+              case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+                js.Skip()
 
-            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
-              js.Skip()
-
-            case _ =>
-              genStat(tree)
+              case _ =>
+                genStat(tree)
+            }
           }
+
+          genCaseBody(rhs)
         }
 
-        genCaseBody(rhs)
+        genOptimizedLabeled(encodeLabelSym(matchEnd.symbol),
+            toIRType(matchEnd.tpe), translatedCases, countsOfReturnsToMatchEnd)
       }
-
-      val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
-
-      genOptimizedLabeled(encodeLabelSym(matchEndSym), toIRType(matchEnd.tpe),
-          translatedCases, returnCount)
     }
 
     /** Gen JS code for a Labeled block from a pattern match, while trying
