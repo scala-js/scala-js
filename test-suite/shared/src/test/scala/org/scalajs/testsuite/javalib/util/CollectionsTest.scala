@@ -14,6 +14,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.CollectionsTestBase
+import org.scalajs.testsuite.utils.Platform._
 
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
@@ -24,10 +25,25 @@ class CollectionsTest extends CollectionsTestBase {
       elem: E): Unit = {
     expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
     expectThrows(classOf[UnsupportedOperationException], coll.addAll(List(elem)))
-    expectThrows(classOf[Exception], coll.remove(elem))
-    expectThrows(classOf[Exception], coll.removeAll(List(elem)))
-    expectThrows(classOf[Exception], coll.retainAll(List(elem)))
-    expectThrows(classOf[Throwable], coll.clear())
+
+    if (coll.count(_ == elem) != coll.size)
+      expectThrows(classOf[Exception], coll.retainAll(List(elem)))
+    else if (executingInJVM) // issue #2256
+      assertFalse(coll.retainAll(List(elem)))
+
+    if (coll.contains(elem)) {
+      expectThrows(classOf[Exception], coll.remove(elem))
+      expectThrows(classOf[Exception], coll.removeAll(List(elem)))
+    } else if (executingInJVM) { // issue #2256
+      assertFalse(coll.remove(elem))
+      assertFalse(coll.removeAll(List(elem)))
+    }
+
+    if (coll.nonEmpty) {
+      expectThrows(classOf[Throwable], coll.clear())
+    } else if (executingInJVM) { // issue #2256
+      coll.clear() // Should not throw
+    }
   }
 
   private def checkImmutabilityOfSetApi[E](set: ju.Set[E], elem: E): Unit =
@@ -44,8 +60,16 @@ class CollectionsTest extends CollectionsTestBase {
       v: V): Unit = {
     expectThrows(classOf[UnsupportedOperationException], map.put(k, v))
     expectThrows(classOf[UnsupportedOperationException], map.putAll(Map(k ->v)))
-    expectThrows(classOf[Throwable], map.remove(k))
-    expectThrows(classOf[Throwable], map.clear())
+
+    if (map.containsKey(k))
+      expectThrows(classOf[Throwable], map.remove(k))
+    else if (executingInJVM) // issue #2256
+      assertNull(map.remove(k).asInstanceOf[AnyRef])
+
+    if (map.nonEmpty)
+      expectThrows(classOf[Throwable], map.clear())
+    else if (executingInJVM) // issue #2256
+      map.clear() // Should not throw
   }
 
   @Test def emptySet(): Unit = {
@@ -99,6 +123,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertEquals(1, singletonSet.size)
       assertEquals(1, singletonSet.iterator.size)
       checkImmutabilityOfSetApi(singletonSet, toElem(0))
+      checkImmutabilityOfSetApi(singletonSet, toElem(1))
     }
 
     test[Int](_.toInt)
@@ -113,6 +138,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertEquals(1, singletonList.size)
       assertEquals(1, singletonList.iterator.size)
       checkImmutablilityOfListApi(singletonList, toElem(0))
+      checkImmutablilityOfListApi(singletonList, toElem(1))
     }
 
     test[Int](_.toInt)
@@ -127,6 +153,7 @@ class CollectionsTest extends CollectionsTestBase {
       assertEquals(1, singletonMap.size)
       assertEquals(1, singletonMap.iterator.size)
       checkImmutablilityOfMapApi(singletonMap, toKey(0), toValue(0))
+      checkImmutablilityOfMapApi(singletonMap, toKey(1), toValue(1))
     }
 
     test[Int, Int](_.toInt, _.toInt)
@@ -143,6 +170,7 @@ class CollectionsTest extends CollectionsTestBase {
         assertEquals(n, nCopies.size)
         assertEquals(n, nCopies.iterator.size)
         checkImmutablilityOfListApi(nCopies, toElem(0))
+        checkImmutablilityOfListApi(nCopies, toElem(1))
       }
 
       val zeroCopies = ju.Collections.nCopies(0, toElem(0))

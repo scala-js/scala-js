@@ -85,10 +85,8 @@ class StringBufferTest {
 
     expectThrows(classOf[StringIndexOutOfBoundsException],
         initBuf("0123").replace(-1,3,"x"))
-    if (executingInJVM) {
-      // It looks like there is a bug in the JDK implementation
-      expectThrows(classOf[ClassCastException],
-          initBuf("0123").replace(4, 5, "x"))
+    if (executingInJVM) { // issue #2253
+      assertEquals("0123x", initBuf("0123").replace(4, 5, "x").toString)
     } else {
       expectThrows(classOf[StringIndexOutOfBoundsException],
           initBuf("0123").replace(4, 5, "x"))
@@ -212,10 +210,8 @@ class StringBuilderTest {
 
     expectThrows(classOf[StringIndexOutOfBoundsException],
         initBuilder("0123").replace(-1,3,"x"))
-    if (executingInJVM) {
-      // It looks like there is a bug in the JDK implementation
-      expectThrows(classOf[ClassCastException],
-          initBuilder("0123").replace(4, 5, "x"))
+    if (executingInJVM) { // issue #2253
+      assertEquals("0123x", initBuilder("0123").replace(4, 5, "x").toString)
     } else {
       expectThrows(classOf[StringIndexOutOfBoundsException],
           initBuilder("0123").replace(4, 5, "x"))
