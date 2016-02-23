@@ -2,7 +2,6 @@ package java.util
 
 import java.{util => ju}
 
-import scala.collection.JavaConversions
 import scala.collection.JavaConversions._
 
 class Properties(protected val defaults: Properties)
@@ -36,22 +35,26 @@ class Properties(protected val defaults: Properties)
   }
 
   def propertyNames(): ju.Enumeration[_] = {
-    val thisSet = keySet()
+    val thisSet: ju.Set[String] = keySet().map(_.asInstanceOf[String])
     val defaultsIterator =
       if (defaults != null) defaults.propertyNames().toIterator
       else scala.collection.Iterator.empty
     val filteredDefaults = defaultsIterator.collect {
-      case k: AnyRef if !thisSet(k) => k
+      case k: String if !thisSet(k) => k
     }
-    JavaConversions.asJavaEnumeration(thisSet.iterator() ++ filteredDefaults)
+    thisSet.iterator ++ filteredDefaults
   }
 
   def stringPropertyNames(): ju.Set[String] = {
     val set = new ju.HashSet[String]
-    propertyNames().foreach {
-      case key: String => set.add(key)
-      case _           => // Ignore key
+    entrySet().foreach { entry =>
+      (entry.getKey, entry.getValue) match {
+        case (key: String, _: String) => set.add(key)
+        case _                        => // Ignore key
+      }
     }
+    if (defaults != null)
+      set ++= defaults.stringPropertyNames()
     set
   }
 
