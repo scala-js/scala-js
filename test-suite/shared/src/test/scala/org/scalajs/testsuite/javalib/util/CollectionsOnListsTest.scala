@@ -462,7 +462,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
   @Test def unmodifiableList(): Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val immuList = ju.Collections.unmodifiableList(factory.empty[E])
-      testListImmutability(immuList, toElem(0))
+      testListUnmodifiability(immuList, toElem(0))
     }
 
     test[jl.Integer](_.toInt)

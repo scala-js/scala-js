@@ -152,10 +152,10 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
   @Test def unmodifiableCollection(): Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val coll = factory.empty[E]
-      testCollectionImmutability(ju.Collections.unmodifiableCollection(coll),
+      testCollectionUnmodifiability(ju.Collections.unmodifiableCollection(coll),
         toElem(0))
       coll.addAll(range.map(toElem))
-      testCollectionImmutability(ju.Collections.unmodifiableCollection(coll),
+      testCollectionUnmodifiability(ju.Collections.unmodifiableCollection(coll),
         toElem(0))
     }
 

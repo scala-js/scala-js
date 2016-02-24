@@ -13,9 +13,9 @@ trait CollectionsOnSetsTest extends CollectionsOnCollectionsTest {
   @Test def unmodifiableSet():Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val set = factory.empty[E]
-      testSetImmutability(ju.Collections.unmodifiableSet(set), toElem(0))
+      testSetUnmodifiability(ju.Collections.unmodifiableSet(set), toElem(0))
       set.addAll(range.map(toElem))
-      testSetImmutability(ju.Collections.unmodifiableSet(set), toElem(0))
+      testSetUnmodifiability(ju.Collections.unmodifiableSet(set), toElem(0))
     }
 
     test[jl.Integer](_.toInt)
@@ -31,10 +31,10 @@ trait CollectionsOnSortedSetsTest extends CollectionsOnSetsTest {
   @Test def unmodifiableSortedSet():Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val sortedSet = factory.empty[E]
-      testSortedSetImmutability(ju.Collections.unmodifiableSortedSet(sortedSet),
+      testSortedSetUnmodifiability(ju.Collections.unmodifiableSortedSet(sortedSet),
         toElem(0))
       sortedSet.addAll(range.map(toElem))
-      testSortedSetImmutability(ju.Collections.unmodifiableSortedSet(sortedSet),
+      testSortedSetUnmodifiability(ju.Collections.unmodifiableSortedSet(sortedSet),
         toElem(0))
     }
 

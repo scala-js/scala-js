@@ -14,11 +14,11 @@ trait CollectionsOnMapsTest extends CollectionsTestBase {
   @Test def unmodifiableMap(): Unit = {
     def test[K: ClassTag, V: ClassTag](toKey: Int => K, toValue: Int => V): Unit = {
       val map = factory.empty[K, V]
-      testMapImmutability(ju.Collections.unmodifiableMap[K, V](map), toKey(0),
+      testMapUnmodifiability(ju.Collections.unmodifiableMap[K, V](map), toKey(0),
           toValue(0))
       for (i <- range)
         map.put(toKey(i), toValue(i))
-      testMapImmutability(ju.Collections.unmodifiableMap[K, V](map), toKey(0),
+      testMapUnmodifiability(ju.Collections.unmodifiableMap[K, V](map), toKey(0),
           toValue(0))
     }
 
@@ -35,11 +35,11 @@ trait CollectionsOnSortedMapsTest extends CollectionsOnMapsTest {
   @Test def unmodifiableSortedMap(): Unit = {
     def test[K: ClassTag, V: ClassTag](toKey: Int => K, toValue: Int => V): Unit = {
       val sortedMap = factory.empty[K, V]
-      testMapImmutability(ju.Collections.unmodifiableSortedMap[K, V](sortedMap),
+      testMapUnmodifiability(ju.Collections.unmodifiableSortedMap[K, V](sortedMap),
         toKey(0), toValue(0))
       for (i <- range)
         sortedMap.put(toKey(i), toValue(i))
-      testMapImmutability(ju.Collections.unmodifiableSortedMap[K, V](sortedMap),
+      testMapUnmodifiability(ju.Collections.unmodifiableSortedMap[K, V](sortedMap),
         toKey(0), toValue(0))
     }
 

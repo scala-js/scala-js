@@ -12,7 +12,7 @@ import scala.collection.JavaConversions._
 object Collections {
 
   final lazy val EMPTY_SET: Set[_] = {
-    unmodifiableSet(
+    new ImmutableSet(
       new AbstractSet[Any] with Serializable {
         override def size(): Int = 0
 
@@ -21,7 +21,7 @@ object Collections {
   }
 
   final lazy val EMPTY_LIST: List[_] = {
-    unmodifiableList(
+    new ImmutableList(
       new AbstractList[Any] with Serializable with RandomAccess {
         override def get(index: Int): Any =
           throw new IndexOutOfBoundsException(index.toString)
@@ -31,7 +31,7 @@ object Collections {
   }
 
   final lazy val EMPTY_MAP: Map[_, _] = {
-    unmodifiableMap[Any, Any](
+    new ImmutableMap(
       new AbstractMap[Any, Any] with Serializable {
         override def entrySet(): Set[Map.Entry[Any, Any]] =
           EMPTY_SET.asInstanceOf[Set[Map.Entry[Any, Any]]]
@@ -337,28 +337,28 @@ object Collections {
   }
 
   def unmodifiableCollection[T](c: Collection[_ <: T]): Collection[T] =
-    new ImmutableCollection[T, Collection[T]](c.asInstanceOf[Collection[T]])
+    new UnmodifiableCollection[T, Collection[T]](c.asInstanceOf[Collection[T]])
 
   def unmodifiableSet[T](a: Set[_ <: T]): Set[T] =
-    new ImmutableSet[T, Set[T]](a.asInstanceOf[Set[T]])
+    new UnmodifiableSet[T, Set[T]](a.asInstanceOf[Set[T]])
 
   def unmodifiableSortedSet[T](s: SortedSet[T]): SortedSet[T] =
-    new ImmutableSortedSet[T](s)
+    new UnmodifiableSortedSet[T](s)
 
   def unmodifiableList[T](list: List[_ <: T]): List[T] = {
     list match {
       case _: RandomAccess =>
-        new ImmutableList[T](list.asInstanceOf[List[T]]) with RandomAccess
+        new UnmodifiableList[T](list.asInstanceOf[List[T]]) with RandomAccess
       case _ =>
-        new ImmutableList[T](list.asInstanceOf[List[T]])
+        new UnmodifiableList[T](list.asInstanceOf[List[T]])
     }
   }
 
   def unmodifiableMap[K, V](m: Map[_ <: K, _ <: V]): Map[K, V] =
-    new ImmutableMap[K, V, Map[K, V]](m.asInstanceOf[Map[K, V]])
+    new UnmodifiableMap[K, V, Map[K, V]](m.asInstanceOf[Map[K, V]])
 
   def unmodifiableSortedMap[K, V](m: SortedMap[K, _ <: V]): SortedMap[K, V] =
-    new ImmutableSortedMap[K, V](m.asInstanceOf[SortedMap[K, V]])
+    new UnmodifiableSortedMap[K, V](m.asInstanceOf[SortedMap[K, V]])
 
   def synchronizedCollection[T](c: Collection[T]): Collection[T] = {
     new WrappedCollection[T, Collection[T]] {
@@ -441,7 +441,7 @@ object Collections {
     EMPTY_MAP.asInstanceOf[Map[K, V]]
 
   def singleton[T](o: T): Set[T] = {
-    unmodifiableSet(new AbstractSet[T] with Serializable {
+    new ImmutableSet(new AbstractSet[T] with Serializable {
       def size(): Int = 1
 
       def iterator(): Iterator[T] = {
@@ -465,7 +465,7 @@ object Collections {
   }
 
   def singletonList[T](o: T): List[T] = {
-    unmodifiableList(new AbstractList[T] with Serializable {
+    new ImmutableList(new AbstractList[T] with Serializable {
       def size(): Int = 1
 
       def get(index: Int): T =
@@ -475,7 +475,7 @@ object Collections {
   }
 
   def singletonMap[K, V](key: K, value: V): Map[K, V] = {
-    unmodifiableMap[K, V](new AbstractMap[K, V] with Serializable {
+    new ImmutableMap(new AbstractMap[K, V] with Serializable {
       def entrySet(): Set[Map.Entry[K, V]] =
         singleton(new AbstractMap.SimpleImmutableEntry(key, value))
     })
@@ -485,7 +485,7 @@ object Collections {
     if (n < 0)
       throw new IllegalArgumentException
 
-    unmodifiableList(new AbstractList[T] with Serializable with RandomAccess {
+    val inner = new AbstractList[T] with Serializable with RandomAccess {
       def size(): Int = n
 
       def get(index: Int): T = {
@@ -493,7 +493,8 @@ object Collections {
           throw new IndexOutOfBoundsException
         o
       }
-    })
+    }
+    new ImmutableList(inner) with RandomAccess
   }
 
   def reverseOrder[T](): Comparator[T] = {
@@ -788,42 +789,74 @@ object Collections {
       inner.add(e)
   }
 
-  private class ImmutableCollection[E, Coll <: Collection[E]](
+  private class UnmodifiableCollection[E, Coll <: Collection[E]](
       protected val inner: Coll) extends WrappedCollection[E, Coll] {
 
-    override def clear(): Unit =
-      throw new UnsupportedOperationException
+    protected val eagerThrow: Boolean = true
+
+    override def clear(): Unit = {
+      if (eagerThrow || !isEmpty)
+        throw new UnsupportedOperationException
+    }
 
     override def iterator(): Iterator[E] =
-      new ImmutableIterator(inner.iterator)
+      new UnmodifiableIterator(inner.iterator)
 
     override def add(e: E): Boolean =
       throw new UnsupportedOperationException
 
     override def remove(o: Any): Boolean =
-      throw new UnsupportedOperationException
+      if (eagerThrow || contains(o)) throw new UnsupportedOperationException
+      else false
 
     override def addAll(c: Collection[_ <: E]): Boolean =
-      throw new UnsupportedOperationException
+      if (eagerThrow || c.nonEmpty) throw new UnsupportedOperationException
+      else false
 
-    override def removeAll(c: Collection[_]): Boolean =
-      throw new UnsupportedOperationException
+    override def removeAll(c: Collection[_]): Boolean = {
+      if (eagerThrow) {
+        throw new UnsupportedOperationException
+      } else {
+        val cSet = c.asInstanceOf[Collection[AnyRef]].toSet
+        if (this.exists(e => cSet(e.asInstanceOf[AnyRef]))) {
+          throw new UnsupportedOperationException
+        } else {
+          false
+        }
+      }
+    }
 
-    override def retainAll(c: Collection[_]): Boolean =
-      throw new UnsupportedOperationException
+    override def retainAll(c: Collection[_]): Boolean = {
+      if (eagerThrow) {
+        throw new UnsupportedOperationException
+      } else {
+        val cSet = c.asInstanceOf[Collection[AnyRef]].toSet
+        if (this.exists(e => !cSet(e.asInstanceOf[AnyRef]))) {
+          throw new UnsupportedOperationException
+        } else {
+          false
+        }
+      }
+    }
   }
 
-  private class ImmutableSet[E, Coll <: Set[E]](inner: Coll)
-      extends ImmutableCollection[E, Coll](inner) with WrappedSet[E, Coll]
+  private class UnmodifiableSet[E, Coll <: Set[E]](inner: Coll)
+      extends UnmodifiableCollection[E, Coll](inner) with WrappedSet[E, Coll]
 
-  private class ImmutableSortedSet[E](inner: SortedSet[E])
-      extends ImmutableSet[E, SortedSet[E]](inner) with WrappedSortedSet[E]
+  private class ImmutableSet[E](inner: Set[E])
+      extends UnmodifiableSet[E, Set[E]](inner) {
+    override protected val eagerThrow: Boolean = false
+  }
 
-  private class ImmutableList[E](inner: List[E])
-      extends ImmutableCollection[E, List[E]](inner) with WrappedList[E] {
+  private class UnmodifiableSortedSet[E](inner: SortedSet[E])
+      extends UnmodifiableSet[E, SortedSet[E]](inner) with WrappedSortedSet[E]
+
+  private class UnmodifiableList[E](inner: List[E])
+      extends UnmodifiableCollection[E, List[E]](inner) with WrappedList[E] {
 
     override def addAll(index: Int, c: Collection[_ <: E]): Boolean =
-      throw new UnsupportedOperationException
+      if (eagerThrow || c.nonEmpty) throw new UnsupportedOperationException
+      else false
 
     override def set(index: Int, element: E): E =
       throw new UnsupportedOperationException
@@ -835,29 +868,42 @@ object Collections {
       throw new UnsupportedOperationException
 
     override def listIterator(): ListIterator[E] =
-      new ImmutableListIterator(this.inner.listIterator())
+      new UnmodifiableListIterator(this.inner.listIterator())
 
     override def listIterator(index: Int): ListIterator[E] =
-      new ImmutableListIterator(this.inner.listIterator(index))
+      new UnmodifiableListIterator(this.inner.listIterator(index))
 
     override def subList(fromIndex: Int, toIndex: Int): List[E] =
       unmodifiableList(super.subList(fromIndex, toIndex))
   }
 
-  private class ImmutableMap[K, V, M <: Map[K, V]](
+  private class ImmutableList[E](inner: List[E])
+      extends UnmodifiableList(inner) {
+    override protected val eagerThrow: Boolean = false
+  }
+
+  private class UnmodifiableMap[K, V, M <: Map[K, V]](
       protected val inner: M) extends WrappedMap[K, V, M] {
+
+    protected val eagerThrow: Boolean = true
 
     override def put(key: K, value: V): V =
       throw new UnsupportedOperationException
 
-    override def remove(key: scala.Any): V =
-      throw new UnsupportedOperationException
+    override def remove(key: scala.Any): V = {
+      if (eagerThrow || containsKey(key)) throw new UnsupportedOperationException
+      else null.asInstanceOf[V]
+    }
 
-    override def putAll(m: Map[_ <: K, _ <: V]): Unit =
-      throw new UnsupportedOperationException
+    override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
+      if (eagerThrow || m.nonEmpty)
+        throw new UnsupportedOperationException
+    }
 
-    override def clear(): Unit =
-      throw new UnsupportedOperationException
+    override def clear(): Unit = {
+      if (eagerThrow || !isEmpty)
+        throw new UnsupportedOperationException
+    }
 
     override def keySet(): Set[K] =
       unmodifiableSet(super.keySet)
@@ -869,8 +915,13 @@ object Collections {
       unmodifiableSet(super.entrySet)
   }
 
-  private class ImmutableSortedMap[K, V](inner: SortedMap[K, V])
-      extends ImmutableMap[K, V, SortedMap[K, V]](inner) with WrappedSortedMap[K, V] {
+  private class ImmutableMap[K, V](
+      inner: Map[K, V]) extends UnmodifiableMap[K, V, Map[K, V]](inner) {
+    override protected val eagerThrow: Boolean = false
+  }
+
+  private class UnmodifiableSortedMap[K, V](inner: SortedMap[K, V])
+      extends UnmodifiableMap[K, V, SortedMap[K, V]](inner) with WrappedSortedMap[K, V] {
 
     override def subMap(fromKey: K, toKey: K): SortedMap[K, V] =
       unmodifiableSortedMap(super.subMap(fromKey, toKey))
@@ -882,13 +933,13 @@ object Collections {
       unmodifiableSortedMap(super.tailMap(fromKey))
   }
 
-  private class ImmutableIterator[E, Iter <: Iterator[E]](protected val inner: Iter)
+  private class UnmodifiableIterator[E, Iter <: Iterator[E]](protected val inner: Iter)
       extends WrappedIterator[E, Iter] {
     override def remove(): Unit = throw new UnsupportedOperationException
   }
 
-  private class ImmutableListIterator[E](innerIterator: ListIterator[E])
-      extends ImmutableIterator[E, ListIterator[E]](innerIterator)
+  private class UnmodifiableListIterator[E](innerIterator: ListIterator[E])
+      extends UnmodifiableIterator[E, ListIterator[E]](innerIterator)
       with WrappedListIterator[E] {
     override def set(e: E): Unit = throw new UnsupportedOperationException
 
