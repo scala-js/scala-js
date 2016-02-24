@@ -34,8 +34,7 @@ abstract class BaseBufferTest {
 
     expectThrows(classOf[Exception], allocBuffer(-1))
     expectThrows(classOf[Throwable], allocBuffer(0, -1, 1))
-    if (executingInJVM) // issue #2257
-      expectThrows(classOf[Throwable], allocBuffer(1, 0, 1))
+    expectThrows(classOf[Throwable], allocBuffer(1, 0, 1))
     expectThrows(classOf[Throwable], allocBuffer(0, 1, 0))
     expectThrows(classOf[Throwable], allocBuffer(1, 0, 0))
 
