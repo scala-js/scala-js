@@ -93,7 +93,7 @@ class StringBuffer(private var content: String) extends CharSequence
    */
   def replace(start: Int, end: Int, str: String): StringBuffer = {
     val length = content.length
-    if (start < 0 || start > end || start >= length) {
+    if (start < 0 || start > end || start > length) {
       throw new StringIndexOutOfBoundsException(
           s"Illegal to replace substring at [$start - $end] in string of length $length")
     }
