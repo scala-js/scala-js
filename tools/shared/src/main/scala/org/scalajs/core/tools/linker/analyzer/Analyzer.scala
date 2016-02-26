@@ -252,10 +252,14 @@ private final class Analyzer(semantics: Semantics,
       areInstanceTestsUsed ||
       isDataAccessed ||
       isAnySubclassInstantiated ||
-      isAnyStaticMethodReachable
+      isAnyStaticMethodReachable ||
+      isAnyDefaultMethodReachable
 
     def isAnyStaticMethodReachable =
       staticMethodInfos.values.exists(_.isReachable)
+
+    private def isAnyDefaultMethodReachable =
+      isInterface && methodInfos.values.exists(_.isReachable)
 
     lazy val (methodInfos, staticMethodInfos) = {
       val allInfos = for (methodData <- data.methods)
