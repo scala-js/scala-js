@@ -396,7 +396,7 @@ class ConcurrentSkipListSetTest {
     val csls = new ConcurrentSkipListSet[TestObj]()
 
     assertEquals(0, csls.size())
-    if (executingInJVM && !executingInJVMOnJDK7OrLower) // issue #2271
+    if (!executingInJVMOnJDK7OrLower)
       csls.add(new TestObj(111))
     expectThrows(classOf[ClassCastException], csls.add(new TestObj(222)))
     assertNull(csls.comparator)
