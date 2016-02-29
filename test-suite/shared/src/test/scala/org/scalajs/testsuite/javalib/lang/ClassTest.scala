@@ -14,6 +14,42 @@ import scala.runtime.BoxedUnit
 
 class ClassTest {
 
+  @Test def getPrimitiveTypeName(): Unit = {
+    assertEquals("void", classOf[Unit].getName)
+    assertEquals("boolean", classOf[Boolean].getName)
+    assertEquals("char", classOf[Char].getName)
+    assertEquals("byte", classOf[Byte].getName)
+    assertEquals("short", classOf[Short].getName)
+    assertEquals("int", classOf[Int].getName)
+    assertEquals("long", classOf[Long].getName)
+    assertEquals("float", classOf[Float].getName)
+    assertEquals("double", classOf[Double].getName)
+  }
+
+  @Test def wellKnownClasses(): Unit = {
+    assertSame(classOf[Unit], scala.runtime.BoxedUnit.TYPE)
+    assertSame(classOf[Unit], java.lang.Void.TYPE)
+    assertSame(classOf[Boolean], java.lang.Boolean.TYPE)
+    assertSame(classOf[Char], java.lang.Character.TYPE)
+    assertSame(classOf[Byte], java.lang.Byte.TYPE)
+    assertSame(classOf[Short], java.lang.Short.TYPE)
+    assertSame(classOf[Int], java.lang.Integer.TYPE)
+    assertSame(classOf[Long], java.lang.Long.TYPE)
+    assertSame(classOf[Float], java.lang.Float.TYPE)
+    assertSame(classOf[Double], java.lang.Double.TYPE)
+
+    assertNotSame(classOf[java.lang.Void], scala.runtime.BoxedUnit.TYPE)
+    assertNotSame(classOf[java.lang.Void], java.lang.Void.TYPE)
+    assertNotSame(classOf[java.lang.Boolean], java.lang.Boolean.TYPE)
+    assertNotSame(classOf[java.lang.Character], java.lang.Character.TYPE)
+    assertNotSame(classOf[java.lang.Byte], java.lang.Byte.TYPE)
+    assertNotSame(classOf[java.lang.Short], java.lang.Short.TYPE)
+    assertNotSame(classOf[java.lang.Integer], java.lang.Integer.TYPE)
+    assertNotSame(classOf[java.lang.Long], java.lang.Long.TYPE)
+    assertNotSame(classOf[java.lang.Float], java.lang.Float.TYPE)
+    assertNotSame(classOf[java.lang.Double], java.lang.Double.TYPE)
+  }
+
   @Test def getSimpleName(): Unit = {
     assertEquals("Integer", classOf[java.lang.Integer].getSimpleName())
     assertEquals("Class", classOf[java.lang.Class[_]].getSimpleName())

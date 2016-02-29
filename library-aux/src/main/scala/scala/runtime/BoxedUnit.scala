@@ -13,6 +13,7 @@ class BoxedUnit private {
 }
 
 object BoxedUnit {
-  val UNIT: BoxedUnit = sys.error("stub")
-  val TYPE: Class[Void] = sys.error("stub")
+  def UNIT: BoxedUnit = sys.error("stub")
+
+  final val TYPE = classOf[Unit]
 }

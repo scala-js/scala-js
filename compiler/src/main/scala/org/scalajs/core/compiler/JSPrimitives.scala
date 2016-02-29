@@ -46,8 +46,7 @@ abstract class JSPrimitives {
   val OBJPROPS = 347  // js.Object.properties(o), equiv to `for (p in o)` in JS
   val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
 
-  val UNITVAL = 349  // () value, which is undefined
-  val UNITTYPE = 350 // BoxedUnit.TYPE (== classOf[Unit])
+  val UNITVAL = 349 // () value, which is undefined
 
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
   val ENV_INFO = 353      // __ScalaJSEnv via helper
@@ -104,7 +103,6 @@ abstract class JSPrimitives {
     addPrimitive(JSObject_properties, OBJPROPS)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
-    addPrimitive(BoxedUnit_TYPE, UNITTYPE)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
     addPrimitive(Runtime_environmentInfo, ENV_INFO)

@@ -1479,7 +1479,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NullTag =>
               js.Null()
             case ClazzTag =>
-              genClassConstant(value.typeValue)
+              js.ClassOf(toReferenceType(value.typeValue))
             case EnumTag =>
               genStaticMember(value.symbolValue)
           }
@@ -3427,7 +3427,6 @@ abstract class GenJSCode extends plugins.PluginComponent
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()
             case UNITVAL      => js.Undefined()
-            case UNITTYPE     => genClassConstant(UnitTpe)
             case JS_NATIVE    =>
               reporter.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()
@@ -4506,8 +4505,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       import jsPrimitives._
       if (isPrimitive(sym)) {
         getPrimitive(sym) match {
-          case UNITVAL  => js.Undefined()
-          case UNITTYPE => genClassConstant(UnitTpe)
+          case UNITVAL => js.Undefined()
         }
       } else {
         val instance = genLoadModule(sym.owner)
@@ -4515,10 +4513,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.Apply(instance, method, Nil)(toIRType(sym.tpe))
       }
     }
-
-    /** Generate a Class[_] value (e.g. coming from classOf[T]) */
-    private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
-      js.ClassOf(toReferenceType(tpe))
   }
 
   /** Tests whether the given type represents a raw JavaScript type,
