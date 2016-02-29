@@ -374,9 +374,6 @@ object Hashers {
             mixTree(value)
           }
 
-        case JSEnvInfo() =>
-          mixTag(TagJSEnvInfo)
-
         case JSLinkingInfo() =>
           mixTag(TagJSLinkingInfo)
 

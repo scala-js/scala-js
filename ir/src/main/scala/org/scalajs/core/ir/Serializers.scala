@@ -333,9 +333,6 @@ object Serializers {
             writePropertyName(field._1); writeTree(field._2)
           }
 
-        case JSEnvInfo() =>
-          writeByte(TagJSEnvInfo)
-
         case JSLinkingInfo() =>
           writeByte(TagJSLinkingInfo)
 
@@ -686,7 +683,7 @@ object Serializers {
         case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagJSEnvInfo =>
-          if (true /*useHacks066*/)
+          if (useHacks066)
             JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo"))
           else
             throw new MatchError(tag)

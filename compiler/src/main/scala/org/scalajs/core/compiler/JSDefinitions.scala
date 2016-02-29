@@ -114,7 +114,6 @@ trait JSDefinitions { self: JSGlobalAddons =>
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))
       lazy val Runtime_newConstructorTag          = getMemberMethod(RuntimePackageModule, newTermName("newConstructorTag"))
       lazy val Runtime_propertiesOf               = getMemberMethod(RuntimePackageModule, newTermName("propertiesOf"))
-      lazy val Runtime_environmentInfo            = getMemberMethod(RuntimePackageModule, newTermName("environmentInfo"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
 
     lazy val WrappedArrayClass = getRequiredClass("scala.scalajs.js.WrappedArray")

@@ -3423,7 +3423,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case ENV_INFO     => js.JSEnvInfo()
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()
             case UNITVAL      => js.Undefined()
@@ -4487,8 +4486,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code to load the global scope. */
-    private def genLoadGlobal()(implicit pos: Position): js.Tree =
-      js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global"))
+    private def genLoadGlobal()(implicit pos: Position): js.Tree = {
+      js.JSBracketSelect(
+          js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
+          js.StringLiteral("global"))
+    }
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {

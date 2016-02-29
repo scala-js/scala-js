@@ -3,6 +3,11 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking! Trees.JSEnvInfo was removed.
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$JSEnvInfo"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$JSEnvInfo$")
   )
 
   val Tools = Seq(

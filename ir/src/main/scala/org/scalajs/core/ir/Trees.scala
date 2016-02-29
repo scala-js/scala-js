@@ -689,10 +689,6 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSEnvInfo()(implicit val pos: Position) extends Tree {
-    val tpe = AnyType
-  }
-
   case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }

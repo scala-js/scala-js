@@ -49,7 +49,6 @@ abstract class JSPrimitives {
   val UNITVAL = 349 // () value, which is undefined
 
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
-  val ENV_INFO = 353      // __ScalaJSEnv via helper
   val LINKING_INFO = 354  // $linkingInfo
 
   /** Initialize the map of primitive methods (for GenJSCode) */
@@ -105,7 +104,6 @@ abstract class JSPrimitives {
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
-    addPrimitive(Runtime_environmentInfo, ENV_INFO)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
   }
 

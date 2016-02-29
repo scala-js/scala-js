@@ -662,9 +662,6 @@ object Printers {
           }
           undent; println(); print('}')
 
-        case JSEnvInfo() =>
-          print("<envinfo>")
-
         case JSLinkingInfo() =>
           print("<linkinginfo>")
 

@@ -101,7 +101,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any reference to the global scope") {
-      case js.JSEnvInfo() =>
+      case js.JSLinkingInfo() =>
     }
 
   }
