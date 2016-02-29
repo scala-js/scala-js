@@ -7,16 +7,18 @@
 \*                                                                      */
 package org.scalajs.testsuite.typedarray
 
+import org.junit.BeforeClass
+import org.junit.Assume._
+
 import scala.scalajs.js.typedarray._
 import scala.scalajs.js.JSConverters._
 
 import scala.reflect._
 
-import org.scalajs.jasminetest.JasmineTest
-
 import org.scalajs.testsuite.javalib
+import org.scalajs.testsuite.utils.Platform._
 
-object ArraysTest extends javalib.util.ArraysTest {
+class ArraysTest extends javalib.util.ArraysTest {
 
   override def Array[T: ClassTag](v: T*): scala.Array[T] = classTag[T] match {
     case ClassTag.Byte =>
@@ -36,10 +38,10 @@ object ArraysTest extends javalib.util.ArraysTest {
       .toArray.asInstanceOf[scala.Array[T]]
     case _ => scala.Array(v: _*)
   }
+}
 
-  override def testBody(suite: => Unit): Unit = {
-    when("typedarray").
-    describe("java.util.Arrays backed with TypedArrays")(suite)
+object ArraysTest {
+  @BeforeClass def needsTypedArrays(): Unit = {
+    assumeTrue(typedArrays)
   }
-
 }
