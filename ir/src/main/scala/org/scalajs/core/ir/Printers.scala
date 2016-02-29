@@ -972,8 +972,7 @@ object Printers {
         while (iter.hasNext) {
           val (cls, callers) = iter.next()
           printEscapeJS(cls, out)
-          print(": [")
-          printRow(callers, ": [", ", ", "}")
+          printRow(callers, ": [", ", ", "]")
           if (iter.hasNext)
             println()
         }
@@ -986,7 +985,7 @@ object Printers {
         while (iter.hasNext) {
           val (cls, callers) = iter.next
           printEscapeJS(cls, out)
-          printRow(callers, ": [", ", ", "}")
+          printRow(callers, ": [", ", ", "]")
           if (iter.hasNext)
             println()
         }
@@ -995,11 +994,11 @@ object Printers {
       if (staticMethodsCalled.nonEmpty) {
         print("staticMethodsCalled:")
         indent(); println()
-        val iter = methodsCalledStatically.iterator
+        val iter = staticMethodsCalled.iterator
         while (iter.hasNext) {
           val (cls, callers) = iter.next()
           printEscapeJS(cls, out)
-          printRow(callers, ": [", ", ", "}")
+          printRow(callers, ": [", ", ", "]")
           if (iter.hasNext)
             println()
         }
