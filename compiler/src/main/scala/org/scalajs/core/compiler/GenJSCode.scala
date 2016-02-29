@@ -1881,10 +1881,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
       val sym = fun.symbol
 
-      if (sym == Object_getClass) {
-        // The only primitive that is also callable as super call
-        js.GetClass(genThis())
-      } else if (isScalaJSDefinedJSClass(currentClassSym)) {
+      if (isScalaJSDefinedJSClass(currentClassSym)) {
         genJSSuperCall(tree, isStat)
       } else {
         val superCall = genApplyMethodStatically(
@@ -3425,7 +3422,6 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case GETCLASS     => js.GetClass(receiver)
             case ENV_INFO     => js.JSEnvInfo()
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()

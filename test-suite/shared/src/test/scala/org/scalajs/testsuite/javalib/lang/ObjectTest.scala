@@ -16,6 +16,16 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 class ObjectTest {
 
+  @Test def testGetClass(): Unit = {
+    class Foo
+    val foo = new Foo
+
+    @noinline def fooAny: Any = foo
+
+    assertSame(classOf[Foo], foo.getClass)
+    assertSame(classOf[Foo], fooAny.getClass)
+  }
+
   @Test def equals(): Unit = {
     case class XY(x: Int, y: Int)
 

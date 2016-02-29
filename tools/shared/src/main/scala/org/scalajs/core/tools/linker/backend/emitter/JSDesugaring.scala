@@ -1908,6 +1908,7 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
     }
 
     val hijackedClassMethodToHelperName: Map[String, String] = Map(
+        "getClass__jl_Class" -> "objectGetClass",
         "toString__T"        -> "objectToString",
         "clone__O"           -> "objectClone",
         "finalize__V"        -> "objectFinalize",
