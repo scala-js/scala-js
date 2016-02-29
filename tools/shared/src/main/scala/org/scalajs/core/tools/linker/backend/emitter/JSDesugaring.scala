@@ -766,7 +766,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         // Atomic expressions
         case _: Literal       => true
         case _: This          => true
-        case _: JSEnvInfo     => true
         case _: JSLinkingInfo => true
 
         // Vars (side-effect free, pure if immutable)
@@ -824,8 +823,14 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
         case Unbox(expr, _) =>
           (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
 
-        // Because the env is a frozen object, env["global"] is pure
-        case JSBracketSelect(JSEnvInfo(), StringLiteral("global")) => true
+        // Because the linking info is a frozen object, linkingInfo["envInfo"] is pure
+        case JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")) => true
+
+        // And because the env is a frozen object too, linkingInfo["envInfo"]["global"] is pure
+        case JSBracketSelect(
+            JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")),
+            StringLiteral("global")) =>
+          true
 
         // JavaScript expressions that can always have side-effects
         case JSNew(fun, args) =>
@@ -1754,9 +1759,17 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
 
         // JavaScript expressions
 
-        case JSBracketSelect(JSEnvInfo(), StringLiteral("global")) =>
+        case JSBracketSelect(
+            JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")),
+            StringLiteral("global")) =>
           // Shortcut for this field which is heavily used
           envField("g")
+
+        case JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo")) =>
+          /* environmentInfo is not used that often, but it makes sense to
+           * short-cut it too anyway.
+           */
+          envField("env")
 
         case JSNew(constr, args) =>
           js.New(transformExpr(constr), args map transformExpr)
@@ -1828,9 +1841,6 @@ private[emitter] class JSDesugaring(internalOptions: InternalOptions) {
             case (StringLiteral(name), value) =>
               (js.StringLiteral(name), transformExpr(value))
           })
-
-        case JSEnvInfo() =>
-          envField("env")
 
         case JSLinkingInfo() =>
           envField("linkingInfo")

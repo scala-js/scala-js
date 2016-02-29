@@ -590,6 +590,8 @@ object Serializers {
     private[this] val useHacks060 = sourceVersion == "0.6.0"
     private[this] val useHacks065 =
       Set("0.6.0", "0.6.3", "0.6.4", "0.6.5").contains(sourceVersion)
+    private[this] val useHacks066 =
+      useHacks065 || sourceVersion == "0.6.6"
 
     private[this] val input = new DataInputStream(stream)
 
@@ -681,8 +683,13 @@ object Serializers {
         case TagJSArrayConstr        => JSArrayConstr(readTrees())
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readPropertyName(), readTree())))
-        case TagJSEnvInfo            => JSEnvInfo()
         case TagJSLinkingInfo        => JSLinkingInfo()
+
+        case TagJSEnvInfo =>
+          if (true /*useHacks066*/)
+            JSBracketSelect(JSLinkingInfo(), StringLiteral("envInfo"))
+          else
+            throw new MatchError(tag)
 
         case TagUndefined      => Undefined()
         case TagNull           => Null()

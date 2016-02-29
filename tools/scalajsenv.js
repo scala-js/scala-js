@@ -32,6 +32,7 @@ ScalaJS.g["Object"]["freeze"](ScalaJS.env);
 
 // Linking info - must be in sync with scala.scalajs.runtime.LinkingInfo
 ScalaJS.linkingInfo = {
+  "envInfo": ScalaJS.env,
   "semantics": {
 //!if asInstanceOfs == Compliant
     "asInstanceOfs": 0,

@@ -806,8 +806,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for ((_, value) <- fields)
           typecheckExpr(value, env)
 
-      case JSEnvInfo() =>
-
       case JSLinkingInfo() =>
 
       // Literals

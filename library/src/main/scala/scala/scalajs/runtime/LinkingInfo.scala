@@ -5,6 +5,9 @@ import scala.scalajs.js
 /** Information about link-time configuration of Scala.js. */
 @js.native
 trait LinkingInfo extends js.Object {
+  /** Environment info. */
+  val envInfo: EnvironmentInfo = js.native
+
   /** Semantics configuration. */
   val semantics: LinkingInfo.Semantics = js.native
 

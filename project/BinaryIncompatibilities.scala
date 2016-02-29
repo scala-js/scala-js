@@ -30,6 +30,10 @@ object BinaryIncompatibilities {
     ProblemFilters.exclude[MissingMethodProblem](
         "scala.scalajs.runtime.EnvironmentInfo.javaSystemProperties"),
     ProblemFilters.exclude[MissingMethodProblem](
+        "scala.scalajs.runtime.LinkingInfo.envInfo"),
+    ProblemFilters.exclude[MissingMethodProblem](
+        "scala.scalajs.runtime.LinkingInfo.scala$scalajs$runtime$LinkingInfo$_setter_$envInfo_="),
+    ProblemFilters.exclude[MissingMethodProblem](
         "scala.scalajs.runtime.LinkingInfo.linkerVersion"),
     ProblemFilters.exclude[MissingMethodProblem](
         "scala.scalajs.runtime.LinkingInfo.scala$scalajs$runtime$LinkingInfo$_setter_$linkerVersion_=")
