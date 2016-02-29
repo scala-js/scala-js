@@ -1005,7 +1005,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  overloading.
      *
      *  Some methods are not emitted at all:
-     *  * Primitives, since they are never actually called
+     *  * Primitives, since they are never actually called (with exceptions)
      *  * Abstract methods
      *  * Constructors of hijacked classes
      *  * Methods with the {{{@JavaDefaultMethod}}} annotation mixed in classes.
@@ -1045,7 +1045,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutable = false, rest = false)
         }
 
-        if (scalaPrimitives.isPrimitive(sym)) {
+        if (scalaPrimitives.isPrimitive(sym) &&
+            !jsPrimitives.shouldEmitPrimitiveBody(sym)) {
           None
         } else if (sym.isDeferred || sym.owner.isInterface) {
           val body = if (sym.hasAnnotation(JavaDefaultMethodAnnotation)) {

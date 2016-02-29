@@ -68,6 +68,17 @@ abstract class JSPrimitives {
   def isJavaScriptPrimitive(sym: Symbol): Boolean =
     scalaJSPrimitives.contains(sym)
 
+  /** For a primitive, is it one for which we should emit its body anyway? */
+  def shouldEmitPrimitiveBody(sym: Symbol): Boolean = {
+    /* No @switch because some Scala 2.11 versions erroneously report a
+     * warning for switch matches with less than 3 non-default cases.
+     */
+    scalaPrimitives.getPrimitive(sym) match {
+      case F2JS | F2JSTHIS => true
+      case _               => false
+    }
+  }
+
   private val scalaJSPrimitives = mutable.Map.empty[Symbol, Int]
 
   private def initWithPrimitives(addPrimitive: (Symbol, Int) => Unit): Unit = {
