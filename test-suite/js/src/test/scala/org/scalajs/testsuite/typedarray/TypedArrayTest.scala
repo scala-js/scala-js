@@ -7,8 +7,9 @@
 \*                                                                      */
 package org.scalajs.testsuite.typedarray
 
-import org.scalajs.jasminetest.JasmineTest
-import org.scalajs.jasmine.JasmineExpectation
+import org.junit.Assert._
+import org.junit.Test
+import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
 
 import scala.scalajs.js
 import js.typedarray._
@@ -17,316 +18,323 @@ import js.typedarray._
  *  return something which could be a right result. It is probably sufficient to
  *  test whether a runtime supports TypedArrays.
  */
-object TypedArrayTest extends JasmineTest {
+trait TypedArrayTest[V, T <: TypedArray[V, T]] {
 
-  /** Generalized tests for all TypedArrays */
-  def tests[V, T <: TypedArray[V, T]](name: String,
-      bytesPerElement: => Int,
-      lenCtor: Int => T,
-      tarrCtor: TypedArray[_, _] => T,
-      arrCtor: js.Array[_] => T,
-      bufCtor1: (ArrayBuffer) => T,
-      bufCtor2: (ArrayBuffer, Int) => T,
-      bufCtor3: (ArrayBuffer, Int, Int) => T,
-      hasType: Any => Boolean,
-      expectV: V => JasmineExpectation,
-      intToV: Int => V
-  ): Unit = {
+  def bytesPerElement: Int
+  def lenCtor(len: Int): T
+  def tarrCtor(tarr: TypedArray[_, _]): T
+  def arrCtor(arr: js.Array[_]): T
+  def bufCtor1(buf: ArrayBuffer): T
+  def bufCtor2(buf: ArrayBuffer, start: Int): T
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): T
+  def hasType(obj: Any): Boolean
+  def intToV(n: Int): V
 
-    when("typedarray").
-    describe(name) {
-
-      it(s"should allow constructing a new $name with length") {
-        val x = lenCtor(10)
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(10)
-      }
-
-      it(s"should allow constructing a new $name from an Int8Array") {
-        val x = tarrCtor(new Float32Array(js.Array(3, 7)))
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(2)
-
-        expectV(x(0)).toEqual(3)
-        expectV(x(1)).toEqual(7)
-      }
-
-      it(s"should allow constructing a new $name from a js.Array") {
-        val x = arrCtor(js.Array(5,6,7))
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(3)
-
-        expectV(x(0)).toEqual(5)
-        expectV(x(1)).toEqual(6)
-        expectV(x(2)).toEqual(7)
-      }
-
-      it(s"should allow constructing a new $name from an ArrayBuffer (1 arg)") {
-        val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
-        val x = bufCtor1(buf)
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(4)
-
-        expectV(x(0)).toEqual(5)
-        expectV(x(1)).toEqual(6)
-        expectV(x(2)).toEqual(7)
-        expectV(x(3)).toEqual(8)
-      }
-
-      it(s"should allow constructing a new $name from an ArrayBuffer (2 arg)") {
-        val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
-        val x = bufCtor2(buf, bytesPerElement)
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(3)
-
-        expectV(x(0)).toEqual(6)
-        expectV(x(1)).toEqual(7)
-        expectV(x(2)).toEqual(8)
-      }
-
-      it(s"should allow constructing a new $name from an ArrayBuffer (3 arg)") {
-        val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
-        val x = bufCtor3(buf, bytesPerElement, 2)
-        expect(hasType(x)).toBeTruthy
-        expect(x.length).toBe(2)
-
-        expectV(x(0)).toEqual(6)
-        expectV(x(1)).toEqual(7)
-      }
-
-      it("should allow retrieving the length") {
-        val x = lenCtor(100)
-        expect(x.length).toBe(100)
-      }
-
-      it("should allow retrieving an element") {
-        val x = arrCtor(js.Array(5))
-        expectV(x(0)).toBe(5)
-      }
-
-      it("should allow setting an element") {
-        val x = lenCtor(2)
-
-        x(0) = intToV(5)
-        x(1) = intToV(10)
-
-        expectV(x(0)).toBe(5)
-        expectV(x(1)).toBe(10)
-      }
-
-      it("should provide `get`") {
-        val x = arrCtor(js.Array(10))
-        expectV(x.get(0)).toBe(10)
-      }
-
-      it("should provide `set` for a single element") {
-        val x = lenCtor(10)
-        x.set(0, intToV(5))
-        x.set(1, intToV(6))
-
-        expectV(x(0)).toBe(5)
-        expectV(x(1)).toBe(6)
-        expectV(x(2)).toBe(0)
-      }
-
-      it("should provide `set` for a js.Array with one arguments") {
-        val x = lenCtor(10)
-        x.set(js.Array(5,6,7))
-        expectV(x(0)).toBe(5)
-        expectV(x(1)).toBe(6)
-        expectV(x(2)).toBe(7)
-        expectV(x(3)).toBe(0)
-        expectV(x(4)).toBe(0)
-        expectV(x(5)).toBe(0)
-      }
-
-      it("should provide `set` for a js.Array with two arguments") {
-        val x = lenCtor(10)
-        x.set(js.Array(5,6,7), 2)
-        expectV(x(0)).toBe(0)
-        expectV(x(1)).toBe(0)
-        expectV(x(2)).toBe(5)
-        expectV(x(3)).toBe(6)
-        expectV(x(4)).toBe(7)
-        expectV(x(5)).toBe(0)
-      }
-
-      it("should provide `set` for a TypedArray with one argument") {
-        val x = lenCtor(10)
-        x.set(new Int8Array(js.Array(5,6,7)))
-        expectV(x(0)).toBe(5)
-        expectV(x(1)).toBe(6)
-        expectV(x(2)).toBe(7)
-        expectV(x(3)).toBe(0)
-        expectV(x(4)).toBe(0)
-        expectV(x(5)).toBe(0)
-      }
-
-      it("should provide `set` for a TypedArray with two arguments") {
-        val x = lenCtor(10)
-        x.set(new Int8Array(js.Array(5,6,7)), 2)
-        expectV(x(0)).toBe(0)
-        expectV(x(1)).toBe(0)
-        expectV(x(2)).toBe(5)
-        expectV(x(3)).toBe(6)
-        expectV(x(4)).toBe(7)
-        expectV(x(5)).toBe(0)
-      }
-
-      it("should provide `subarray` with one argument") {
-        val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
-        val y = x.subarray(2)
-
-        expect(y.length).toBe(7)
-        expectV(y(0)).toBe(3)
-
-        x(2) = intToV(100)
-
-        expectV(y(0)).toBe(100)
-      }
-
-      it("should provide `subarray` with two arguments") {
-        val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
-        val y = x.subarray(2, 4)
-
-        expect(y.length).toBe(2)
-        expectV(y(0)).toBe(3)
-
-        x(2) = intToV(100)
-
-        expectV(y(0)).toBe(100)
-      }
-
-      it("should provide `buffer`") {
-        val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
-        val y = bufCtor3(x.buffer, 0, 2)
-
-        expect(x.buffer eq y.buffer).toBeTruthy
-      }
-
-      it("should provide `byteLength`") {
-        val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
-        val y = bufCtor3(x.buffer, bytesPerElement, 3)
-
-        expect(y.byteLength).toBe(3 * bytesPerElement)
-      }
-
-      it("should provide `byteOffset`") {
-        val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
-        val y = bufCtor3(x.buffer, bytesPerElement, 3)
-
-        expect(y.byteOffset).toBe(bytesPerElement)
-      }
-
-    }
+  @Test def should_allow_constructing_a_new_name_with_length(): Unit = {
+    val x = lenCtor(10)
+    assertTrue(hasType(x))
+    assertEquals(10, x.length)
   }
 
-  tests("Int8Array",
-      Int8Array.BYTES_PER_ELEMENT,
-      len => new Int8Array(len),
-      tarr => new Int8Array(tarr),
-      arr => new Int8Array(arr),
-      buf => new Int8Array(buf),
-      (buf, start) => new Int8Array(buf, start),
-      (buf, start, end) => new Int8Array(buf, start, end),
-      _.isInstanceOf[Int8Array],
-      expect (_: Byte),
-      _.toByte)
+  @Test def should_allow_constructing_a_new_name_from_an_Int8Array(): Unit = {
+    val x = tarrCtor(new Float32Array(js.Array(3, 7)))
+    assertTrue(hasType(x))
+    assertEquals(2, x.length)
 
-  tests("Uint8Array",
-      Uint8Array.BYTES_PER_ELEMENT,
-      len => new Uint8Array(len),
-      tarr => new Uint8Array(tarr),
-      arr => new Uint8Array(arr),
-      buf => new Uint8Array(buf),
-      (buf, start) => new Uint8Array(buf, start),
-      (buf, start, end) => new Uint8Array(buf, start, end),
-      _.isInstanceOf[Uint8Array],
-      expect (_: Short),
-      _.toShort)
+    assertEquals(3, x(0))
+    assertEquals(7, x(1))
+  }
 
-  tests("Uint8ClampedArray",
-      Uint8ClampedArray.BYTES_PER_ELEMENT,
-      len => new Uint8ClampedArray(len),
-      tarr => new Uint8ClampedArray(tarr),
-      arr => new Uint8ClampedArray(arr),
-      buf => new Uint8ClampedArray(buf),
-      (buf, start) => new Uint8ClampedArray(buf, start),
-      (buf, start, end) => new Uint8ClampedArray(buf, start, end),
-      _.isInstanceOf[Uint8ClampedArray],
-      expect (_: Int),
-      _.toInt)
+  @Test def should_allow_constructing_a_new_name_from_a_js_Array(): Unit = {
+    val x = arrCtor(js.Array(5,6,7))
+    assertTrue(hasType(x))
+    assertEquals(3, x.length)
 
-  tests("Int16Array",
-      Int16Array.BYTES_PER_ELEMENT,
-      len => new Int16Array(len),
-      tarr => new Int16Array(tarr),
-      arr => new Int16Array(arr),
-      buf => new Int16Array(buf),
-      (buf, start) => new Int16Array(buf, start),
-      (buf, start, end) => new Int16Array(buf, start, end),
-      _.isInstanceOf[Int16Array],
-      expect (_: Short),
-      _.toShort)
+    assertEquals(5, x(0))
+    assertEquals(6, x(1))
+    assertEquals(7, x(2))
+  }
 
-  tests("Uint16Array",
-      Uint16Array.BYTES_PER_ELEMENT,
-      len => new Uint16Array(len),
-      tarr => new Uint16Array(tarr),
-      arr => new Uint16Array(arr),
-      buf => new Uint16Array(buf),
-      (buf, start) => new Uint16Array(buf, start),
-      (buf, start, end) => new Uint16Array(buf, start, end),
-      _.isInstanceOf[Uint16Array],
-      expect (_: Int),
-      _.toInt)
+  @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_1_arg(): Unit = {
+    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val x = bufCtor1(buf)
+    assertTrue(hasType(x))
+    assertEquals(4, x.length)
 
-  tests("Int32Array",
-      Int32Array.BYTES_PER_ELEMENT,
-      len => new Int32Array(len),
-      tarr => new Int32Array(tarr),
-      arr => new Int32Array(arr),
-      buf => new Int32Array(buf),
-      (buf, start) => new Int32Array(buf, start),
-      (buf, start, end) => new Int32Array(buf, start, end),
-      _.isInstanceOf[Int32Array],
-      expect (_: Int),
-      _.toInt)
+    assertEquals(5, x(0))
+    assertEquals(6, x(1))
+    assertEquals(7, x(2))
+    assertEquals(8, x(3))
+  }
 
-  tests("Uint32Array",
-      Uint32Array.BYTES_PER_ELEMENT,
-      len => new Uint32Array(len),
-      tarr => new Uint32Array(tarr),
-      arr => new Uint32Array(arr),
-      buf => new Uint32Array(buf),
-      (buf, start) => new Uint32Array(buf, start),
-      (buf, start, end) => new Uint32Array(buf, start, end),
-      _.isInstanceOf[Uint32Array],
-      expect (_: Double),
-      _.toDouble)
+  @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_2_args(): Unit = {
+    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val x = bufCtor2(buf, bytesPerElement)
+    assertTrue(hasType(x))
+    assertEquals(3, x.length)
 
-  tests("Float32Array",
-      Float32Array.BYTES_PER_ELEMENT,
-      len => new Float32Array(len),
-      tarr => new Float32Array(tarr),
-      arr => new Float32Array(arr),
-      buf => new Float32Array(buf),
-      (buf, start) => new Float32Array(buf, start),
-      (buf, start, end) => new Float32Array(buf, start, end),
-      _.isInstanceOf[Float32Array],
-      expect (_: Float),
-      _.toFloat)
+    assertEquals(6, x(0))
+    assertEquals(7, x(1))
+    assertEquals(8, x(2))
+  }
 
-  tests("Float64Array",
-      Float64Array.BYTES_PER_ELEMENT,
-      len => new Float64Array(len),
-      tarr => new Float64Array(tarr),
-      arr => new Float64Array(arr),
-      buf => new Float64Array(buf),
-      (buf, start) => new Float64Array(buf, start),
-      (buf, start, end) => new Float64Array(buf, start, end),
-      _.isInstanceOf[Float64Array],
-      expect (_: Double),
-      _.toDouble)
+  @Test def should_allow_constructing_a_new_name_from_an_ArrayBuffer_3_args(): Unit = {
+    val buf = arrCtor(js.Array(5, 6, 7, 8)).buffer
+    val x = bufCtor3(buf, bytesPerElement, 2)
+    assertTrue(hasType(x))
+    assertEquals(2, x.length)
 
+    assertEquals(6, x(0))
+    assertEquals(7, x(1))
+  }
+
+  @Test def should_allow_retrieving_the_should_allow_retrieving_the(): Unit = {
+    val x = lenCtor(100)
+    assertEquals(100, x.length)
+  }
+
+  @Test def should_allow_retrieving_an_should_allow_retrieving_an(): Unit = {
+    val x = arrCtor(js.Array(5))
+    assertEquals(5, x(0))
+  }
+
+  @Test def should_allow_setting_an_should_allow_setting_an(): Unit = {
+    val x = lenCtor(2)
+
+    x(0) = intToV(5)
+    x(1) = intToV(10)
+
+    assertEquals(5, x(0))
+    assertEquals(10, x(1))
+  }
+
+  @Test def should_provide_should_provide(): Unit = {
+    val x = arrCtor(js.Array(10))
+    assertEquals(10, x.get(0))
+  }
+
+  @Test def set_for_a_single_element(): Unit = {
+    val x = lenCtor(10)
+    x.set(0, intToV(5))
+    x.set(1, intToV(6))
+
+    assertEquals(5, x(0))
+    assertEquals(6, x(1))
+    assertEquals(0, x(2))
+  }
+
+  @Test def set_for_a_js_Array_with_one_arguments(): Unit = {
+    val x = lenCtor(10)
+    x.set(js.Array(5,6,7))
+    assertEquals(5, x(0))
+    assertEquals(6, x(1))
+    assertEquals(7, x(2))
+    assertEquals(0, x(3))
+    assertEquals(0, x(4))
+    assertEquals(0, x(5))
+  }
+
+  @Test def should_provide_set_for_a_js_Array_with_two_arguments(): Unit = {
+    val x = lenCtor(10)
+    x.set(js.Array(5,6,7), 2)
+    assertEquals(0, x(0))
+    assertEquals(0, x(1))
+    assertEquals(5, x(2))
+    assertEquals(6, x(3))
+    assertEquals(7, x(4))
+    assertEquals(0, x(5))
+  }
+
+  @Test def should_provide_set_for_a_TypedArray_with_one_argument(): Unit = {
+    val x = lenCtor(10)
+    x.set(new Int8Array(js.Array(5,6,7)))
+    assertEquals(5, x(0))
+    assertEquals(6, x(1))
+    assertEquals(7, x(2))
+    assertEquals(0, x(3))
+    assertEquals(0, x(4))
+    assertEquals(0, x(5))
+  }
+
+  @Test def should_provide_set_for_a_TypedArray_with_two_arguments(): Unit = {
+    val x = lenCtor(10)
+    x.set(new Int8Array(js.Array(5,6,7)), 2)
+    assertEquals(0, x(0))
+    assertEquals(0, x(1))
+    assertEquals(5, x(2))
+    assertEquals(6, x(3))
+    assertEquals(7, x(4))
+    assertEquals(0, x(5))
+  }
+
+  @Test def subarray_with_one_argument(): Unit = {
+    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val y = x.subarray(2)
+
+    assertEquals(7, y.length)
+    assertEquals(3, y(0))
+
+    x(2) = intToV(100)
+
+    assertEquals(100, y(0))
+  }
+
+  @Test def subarray_with_two_arguments(): Unit = {
+    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val y = x.subarray(2, 4)
+
+    assertEquals(2, y.length)
+    assertEquals(3, y(0))
+
+    x(2) = intToV(100)
+
+    assertEquals(100, y(0))
+  }
+
+  @Test def buffer(): Unit = {
+    val x = arrCtor(js.Array(1,2,3,4,5,6,7,8,9))
+    val y = bufCtor3(x.buffer, 0, 2)
+
+    assertSame(x.buffer, y.buffer)
+  }
+
+  @Test def byteLength(): Unit = {
+    val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
+    val y = bufCtor3(x.buffer, bytesPerElement, 3)
+
+    assertEquals(3 * bytesPerElement, y.byteLength)
+  }
+
+  @Test def byteOffset(): Unit = {
+    val x = arrCtor(js.Array(0 until bytesPerElement * 4: _*))
+    val y = bufCtor3(x.buffer, bytesPerElement, 3)
+
+    assertEquals(bytesPerElement, y.byteOffset)
+  }
+}
+
+object Int8ArrayTest extends TestClassRequiresTypedArray
+
+class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
+  def bytesPerElement: Int = Int8Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Int8Array = new Int8Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Int8Array = new Int8Array(tarr)
+  def arrCtor(arr: js.Array[_]): Int8Array = new Int8Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Int8Array = new Int8Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Int8Array = new Int8Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int8Array = new Int8Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Int8Array]
+  def intToV(n: Int): Byte = n.toByte
+}
+
+object Uint8ArrayTest extends TestClassRequiresTypedArray
+
+class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
+  def bytesPerElement: Int = Uint8Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Uint8Array = new Uint8Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Uint8Array = new Uint8Array(tarr)
+  def arrCtor(arr: js.Array[_]): Uint8Array = new Uint8Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Uint8Array = new Uint8Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Uint8Array = new Uint8Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint8Array = new Uint8Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Uint8Array]
+  def intToV(n: Int): Short = n.toShort
+}
+
+object Uint8ClampedArrayTest extends TestClassRequiresTypedArray
+
+class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
+  def bytesPerElement: Int = Uint8ClampedArray.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Uint8ClampedArray = new Uint8ClampedArray(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Uint8ClampedArray = new Uint8ClampedArray(tarr)
+  def arrCtor(arr: js.Array[_]): Uint8ClampedArray = new Uint8ClampedArray(arr)
+  def bufCtor1(buf: ArrayBuffer): Uint8ClampedArray = new Uint8ClampedArray(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Uint8ClampedArray = new Uint8ClampedArray(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint8ClampedArray = new Uint8ClampedArray(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Uint8ClampedArray]
+  def intToV(n: Int): Int = n
+}
+
+object Int16ArrayTest extends TestClassRequiresTypedArray
+
+class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
+  def bytesPerElement: Int = Int16Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Int16Array = new Int16Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Int16Array = new Int16Array(tarr)
+  def arrCtor(arr: js.Array[_]): Int16Array = new Int16Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Int16Array = new Int16Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Int16Array = new Int16Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int16Array = new Int16Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Int16Array]
+  def intToV(n: Int): Short = n.toShort
+}
+
+object Uint16ArrayTest extends TestClassRequiresTypedArray
+
+class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
+  def bytesPerElement: Int = Uint16Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Uint16Array = new Uint16Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Uint16Array = new Uint16Array(tarr)
+  def arrCtor(arr: js.Array[_]): Uint16Array =  new Uint16Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Uint16Array = new Uint16Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Uint16Array = new Uint16Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint16Array = new Uint16Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Uint16Array]
+  def intToV(n: Int): Int = n
+}
+
+object Int32ArrayTest extends TestClassRequiresTypedArray
+
+class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
+  def bytesPerElement: Int = Int32Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Int32Array = new Int32Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Int32Array = new Int32Array(tarr)
+  def arrCtor(arr: js.Array[_]): Int32Array = new Int32Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Int32Array = new Int32Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Int32Array = new Int32Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Int32Array = new Int32Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Int32Array]
+  def intToV(n: Int): Int = n
+}
+
+object Uint32ArrayTest extends TestClassRequiresTypedArray
+
+class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
+  def bytesPerElement: Int = Uint32Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Uint32Array = new Uint32Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Uint32Array = new Uint32Array(tarr)
+  def arrCtor(arr: js.Array[_]): Uint32Array = new Uint32Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Uint32Array = new Uint32Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Uint32Array = new Uint32Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Uint32Array = new Uint32Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Uint32Array]
+  def intToV(n: Int): Double = n.toDouble
+}
+
+object Float32ArrayTest extends TestClassRequiresTypedArray
+
+class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
+  def bytesPerElement: Int = Float32Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Float32Array = new Float32Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Float32Array = new Float32Array(tarr)
+  def arrCtor(arr: js.Array[_]): Float32Array =  new Float32Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Float32Array = new Float32Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Float32Array = new Float32Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Float32Array = new Float32Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Float32Array]
+  def intToV(n: Int): Float = n.toFloat
+}
+
+object Float64ArrayTest extends TestClassRequiresTypedArray
+
+class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
+  def bytesPerElement: Int = Float64Array.BYTES_PER_ELEMENT
+  def lenCtor(len: Int): Float64Array = new Float64Array(len)
+  def tarrCtor(tarr: TypedArray[_, _]): Float64Array = new Float64Array(tarr)
+  def arrCtor(arr: js.Array[_]): Float64Array = new Float64Array(arr)
+  def bufCtor1(buf: ArrayBuffer): Float64Array = new Float64Array(buf)
+  def bufCtor2(buf: ArrayBuffer, start: Int): Float64Array = new Float64Array(buf, start)
+  def bufCtor3(buf: ArrayBuffer, start: Int, end: Int): Float64Array = new Float64Array(buf, start, end)
+  def hasType(obj: Any): Boolean = obj.isInstanceOf[Float64Array]
+  def intToV(n: Int): Double = n.toDouble
 }

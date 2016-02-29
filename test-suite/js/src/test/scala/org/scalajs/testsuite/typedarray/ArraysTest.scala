@@ -7,16 +7,15 @@
 \*                                                                      */
 package org.scalajs.testsuite.typedarray
 
-import org.junit.BeforeClass
-import org.junit.Assume._
-
 import scala.scalajs.js.typedarray._
 import scala.scalajs.js.JSConverters._
 
 import scala.reflect._
 
 import org.scalajs.testsuite.javalib
-import org.scalajs.testsuite.utils.Platform._
+import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+
+object ArraysTest extends TestClassRequiresTypedArray
 
 class ArraysTest extends javalib.util.ArraysTest {
 
@@ -37,11 +36,5 @@ class ArraysTest extends javalib.util.ArraysTest {
       new Float64Array(v.asInstanceOf[Seq[Double]].toJSArray)
       .toArray.asInstanceOf[scala.Array[T]]
     case _ => scala.Array(v: _*)
-  }
-}
-
-object ArraysTest {
-  @BeforeClass def needsTypedArrays(): Unit = {
-    assumeTrue(typedArrays)
   }
 }
