@@ -7,33 +7,33 @@
 \*                                                                      */
 package org.scalajs.testsuite.typedarray
 
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Test
+
+import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
 
 import scala.scalajs.js.typedarray._
 
-object ArrayBufferTest extends JasmineTest {
+object ArrayBufferTest extends TestClassRequiresTypedArray
 
-  when("typedarry").
-  describe("ArrayBuffer") {
+class ArrayBufferTest {
 
-    it("should provide a length constructor") {
-      val x = new ArrayBuffer(100)
-      expect(x.isInstanceOf[ArrayBuffer]).toBeTruthy
-      expect(x.byteLength).toBe(100)
-    }
+  @Test def lengthConstructor(): Unit = {
+    val x = new ArrayBuffer(100)
+    assertTrue(x.isInstanceOf[ArrayBuffer])
+    assertEquals(100, x.byteLength)
+  }
 
-    it("should provide `slice` with one argument") {
-      val x = new ArrayBuffer(100)
-      val y = x.slice(10)
-      expect(y.byteLength).toBe(90)
-    }
-
-    it("should provide `slice` with two arguments") {
-      val x = new ArrayBuffer(100)
-      val y = x.slice(10, 20)
-      expect(y.byteLength).toBe(10)
-    }
+  @Test def slice_with_one_arg(): Unit = {
+    val x = new ArrayBuffer(100)
+    val y = x.slice(10)
+    assertEquals(90, y.byteLength)
 
   }
 
+  @Test def slice_with_two_args(): Unit = {
+    val x = new ArrayBuffer(100)
+    val y = x.slice(10, 20)
+    assertEquals(10, y.byteLength)
+  }
 }

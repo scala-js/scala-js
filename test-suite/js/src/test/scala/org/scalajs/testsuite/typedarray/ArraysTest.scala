@@ -12,11 +12,12 @@ import scala.scalajs.js.JSConverters._
 
 import scala.reflect._
 
-import org.scalajs.jasminetest.JasmineTest
-
 import org.scalajs.testsuite.javalib
+import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
 
-object ArraysTest extends javalib.util.ArraysTest {
+object ArraysTest extends TestClassRequiresTypedArray
+
+class ArraysTest extends javalib.util.ArraysTest {
 
   override def Array[T: ClassTag](v: T*): scala.Array[T] = classTag[T] match {
     case ClassTag.Byte =>
@@ -36,10 +37,4 @@ object ArraysTest extends javalib.util.ArraysTest {
       .toArray.asInstanceOf[scala.Array[T]]
     case _ => scala.Array(v: _*)
   }
-
-  override def testBody(suite: => Unit): Unit = {
-    when("typedarray").
-    describe("java.util.Arrays backed with TypedArrays")(suite)
-  }
-
 }
