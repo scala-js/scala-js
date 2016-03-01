@@ -97,19 +97,20 @@ class FormatterTest {
 
   @Test def `should_provide_s_conversion`(): Unit = {
     assertFC("foobar", "%s", 0, -1, -1)
-    if (!executingInJVM) {
-      // Issue #2246
-      // java.util.MissingFormatWidthException: %-s
-      assertFC("foobar", "%-s", FormattableFlags.LEFT_JUSTIFY, -1, -1)
-    }
     assertFC("foobar", "%-10s", FormattableFlags.LEFT_JUSTIFY, 10, -1)
     assertFC("foobar", "%#-10.2s",
-      FormattableFlags.LEFT_JUSTIFY | FormattableFlags.ALTERNATE, 10, 2)
+        FormattableFlags.LEFT_JUSTIFY | FormattableFlags.ALTERNATE, 10, 2)
     assertFC("foobar", "%#10.2S",
-      FormattableFlags.UPPERCASE | FormattableFlags.ALTERNATE, 10, 2)
+        FormattableFlags.UPPERCASE | FormattableFlags.ALTERNATE, 10, 2)
     assertF("     hello", "%10s", "hello")
     assertF("hello     ", "%-10s", "hello")
-    expectFormatterThrows(classOf[Exception], "%#s", "hello")
+    if (!executingInJVMOnJDK6)
+      expectFormatterThrows(classOf[Exception], "%#s", "hello")
+  }
+
+  @Test def `should_fail_s_conversions_without_width`(): Unit = {
+    // Issue #2246
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%-s", "abc")
   }
 
   @Test def `should_provide_c_conversion`(): Unit = {

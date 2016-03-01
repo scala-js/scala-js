@@ -391,13 +391,15 @@ class ConcurrentSkipListSetTest {
 
   @Test def should_throw_exception_on_non_comparable_objects(): Unit = {
     assumeTrue("Needs compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    case class TestObj(num: Int)
+    class TestObj(num: Int)
 
     val csls = new ConcurrentSkipListSet[TestObj]()
 
     assertEquals(0, csls.size())
-    expectThrows(classOf[ClassCastException], csls.add(TestObj(111)))
-    assertSame(null, csls.comparator)
+    if (!executingInJVMOnJDK7OrLower)
+      csls.add(new TestObj(111))
+    expectThrows(classOf[ClassCastException], csls.add(new TestObj(222)))
+    assertNull(csls.comparator)
   }
 }
 

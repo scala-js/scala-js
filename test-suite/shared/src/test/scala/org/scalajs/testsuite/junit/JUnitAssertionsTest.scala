@@ -7,19 +7,25 @@ import org.hamcrest.CoreMatchers._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
+import scala.util.{Failure, Success, Try}
+
 class JUnitAssertionsTest {
   private final val NotEquals = false
   private final val ShallNotPass = false
 
   private def testIfAsserts(assertion: => Unit, shouldPass: Boolean = true): Unit = {
-    try {
-      assertion
-      if (!shouldPass)
-        fail("Assertion should have failed")
-    } catch {
-      case assErr: AssertionError =>
-        if (shouldPass)
-          throw assErr
+    Try(assertion) match {
+      case Success(_) =>
+        if (!shouldPass)
+          fail("Assertion should have failed.")
+
+      case Failure(assErr: AssertionError) =>
+        if (shouldPass) {
+          val msg = "Assertion should not have failed."
+          throw new AssertionError(msg).initCause(assErr)
+        }
+
+      case Failure(ex) => throw ex // Unexpected exception, let bubble up.
     }
   }
 
@@ -323,8 +329,6 @@ class JUnitAssertionsTest {
 
     testIfAsserts(assertThat(Float.MaxValue, instanceOf(classOf[Float])))
     testIfAsserts(assertThat(Double.MaxValue, instanceOf(classOf[Double])))
-
-    testIfAsserts(assertThat(0, instanceOf[Int](classOf[Double])), ShallNotPass)
   }
 
   @Test
@@ -354,5 +358,68 @@ class JUnitAssertionsTest {
         throw new Exception), ShallNotPass)
     testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], ()),
         ShallNotPass)
+  }
+
+  @Test def testIfAssertsTest_issue_2252(): Unit = {
+    Try(testIfAsserts(())) match {
+      case Success(_) => // As expected
+
+      case Failure(ex) =>
+        val msg = "testIfAsserts should not have thrown."
+        throw new AssertionError(msg).initCause(ex)
+    }
+
+    Try(testIfAsserts((), ShallNotPass)) match {
+      case Success(_) =>
+        fail("testIfAsserts should have failed")
+
+      case Failure(ex: AssertionError)
+          if ex.getMessage == "Assertion should have failed." =>
+        // As expected
+
+      case Failure(ex) =>
+        throw ex
+    }
+
+    Try(testIfAsserts(throw new AssertionError)) match {
+      case Success(_) =>
+        fail("testIfAsserts should not succeed with <throw new AssertionError>")
+
+      case Failure(ex: AssertionError)
+          if ex.getMessage == "Assertion should not have failed." =>
+        // As expected
+
+      case Failure(ex) => throw ex
+    }
+
+    Try(testIfAsserts(throw new AssertionError, ShallNotPass)) match {
+      case Success(_) =>
+        // As expected
+
+      case Failure(ex: AssertionError)
+          if ex.getMessage == "Assertion should have failed." =>
+        fail("testIfAsserts should have succeed with <throw new AssertionError>")
+
+      case Failure(ex) => throw ex
+    }
+
+    val except = new Exception
+    Try(testIfAsserts(throw except)) match {
+      case Success(_) =>
+        fail("testIfAsserts should not succeed with <throw new Exception>")
+
+      case Failure(ex) =>
+        if (ex ne except)
+          throw ex
+    }
+
+    Try(testIfAsserts(throw except, ShallNotPass)) match {
+      case Success(_) =>
+        fail("testIfAsserts should not succeed with <throw new Exception>")
+
+      case Failure(ex) =>
+        if (ex ne except)
+          throw ex
+    }
   }
 }

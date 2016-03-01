@@ -275,6 +275,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
 
   @Test def should_throw_exception_on_non_comparable_objects(): Unit = {
     assumeTrue("Needs compliant as instanceOf.", hasCompliantAsInstanceOfs)
+    assumeTrue("Assumes JDK8 implementation.", !executingInJVMOnJDK6)
 
     class TestObj(num: Int)
 

@@ -36,7 +36,7 @@ class TreeSet[E] (_comparator: Comparator[_ >: E])
 
   }
 
-  private val inner: mutable.TreeSet[Box[E]] = new mutable.TreeSet[Box[E]]()
+  protected val inner: mutable.TreeSet[Box[E]] = new mutable.TreeSet[Box[E]]()
 
   def iterator(): Iterator[E] = {
     new Iterator[E] {

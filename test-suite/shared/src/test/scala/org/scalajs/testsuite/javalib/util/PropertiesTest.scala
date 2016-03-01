@@ -4,8 +4,10 @@ import java.util.Properties
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 import scala.collection.JavaConversions._
 
@@ -61,22 +63,34 @@ class PropertiesTest {
     prop.setProperty("d", "D")
     assertEquals(4, prop2.propertyNames().size)
     assertEquals(Set("a", "b", "c", "d"), prop2.propertyNames().toSet)
+  }
 
-    // Never do this at home if you know whats good for you.
+  @Test def propertyNamesWithBadContents(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+
+    val prop = new Properties()
+    prop.setProperty("a", "A")
+    prop.setProperty("b", "B")
+    prop.setProperty("c", "C")
+
     prop.put(1.asInstanceOf[AnyRef], "2")
     assertThrows(classOf[Throwable], prop.propertyNames())
     prop.remove(1.asInstanceOf[AnyRef])
 
     prop.put("1", 1.asInstanceOf[AnyRef])
-    assertThrows(classOf[Throwable], prop.propertyNames())
+    assertEquals(Set("a", "b", "c", "1"), prop.propertyNames().toSet)
     prop.remove("1")
+
+    val prop2 = new Properties(prop)
+    prop.setProperty("c", "CC")
+    prop.setProperty("d", "D")
 
     prop2.put(1.asInstanceOf[AnyRef], "2")
     assertThrows(classOf[Throwable], prop2.propertyNames())
     prop2.remove(1.asInstanceOf[AnyRef])
 
     prop2.put("1", 1.asInstanceOf[AnyRef])
-    assertThrows(classOf[Throwable], prop2.propertyNames())
+    assertEquals(Set("a", "b", "c", "d", "1"), prop2.propertyNames().toSet)
   }
 
   @Test def stringPropertyNames(): Unit = {
@@ -93,21 +107,33 @@ class PropertiesTest {
     prop.setProperty("d", "D")
     assertEquals(4, prop2.stringPropertyNames().size)
     assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().toSet)
+  }
 
-    // Never do this at home if you know whats good for you.
+  @Test def stringPropertyNamesWithBadContents(): Unit = {
+    assumeTrue(hasCompliantAsInstanceOfs)
+
+    val prop = new Properties()
+    prop.setProperty("a", "A")
+    prop.setProperty("b", "B")
+    prop.setProperty("c", "C")
+
     prop.put(1.asInstanceOf[AnyRef], "2")
-    assertThrows(classOf[Throwable], prop.stringPropertyNames())
+    assertEquals(Set("a", "b", "c"), prop.stringPropertyNames().toSet)
     prop.remove(1.asInstanceOf[AnyRef])
 
     prop.put("1", 1.asInstanceOf[AnyRef])
-    assertThrows(classOf[Throwable], prop.stringPropertyNames())
+    assertEquals(Set("a", "b", "c"), prop.stringPropertyNames().toSet)
     prop.remove("1")
 
+    val prop2 = new Properties(prop)
+    prop.setProperty("c", "CC")
+    prop.setProperty("d", "D")
+
     prop2.put(1.asInstanceOf[AnyRef], "2")
-    assertThrows(classOf[Throwable], prop2.stringPropertyNames())
+    assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().toSet)
     prop2.remove(1.asInstanceOf[AnyRef])
 
     prop2.put("1", 1.asInstanceOf[AnyRef])
-    assertThrows(classOf[Throwable], prop2.stringPropertyNames())
+    assertEquals(Set("a", "b", "c", "d"), prop2.stringPropertyNames().toSet)
   }
 }

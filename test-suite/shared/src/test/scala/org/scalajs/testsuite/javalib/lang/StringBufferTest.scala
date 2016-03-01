@@ -82,17 +82,10 @@ class StringBufferTest {
     assertEquals("012defg", initBuf("0123").replace(3,10,"defg").toString)
     assertEquals("xxxx123", initBuf("0123").replace(0,1,"xxxx").toString)
     assertEquals("0xxxx123", initBuf("0123").replace(1,1,"xxxx").toString)
+    assertEquals("0123x", initBuf("0123").replace(4, 5, "x").toString)
 
     expectThrows(classOf[StringIndexOutOfBoundsException],
         initBuf("0123").replace(-1,3,"x"))
-    if (executingInJVM) {
-      // It looks like there is a bug in the JDK implementation
-      expectThrows(classOf[ClassCastException],
-          initBuf("0123").replace(4, 5, "x"))
-    } else {
-      expectThrows(classOf[StringIndexOutOfBoundsException],
-          initBuf("0123").replace(4, 5, "x"))
-    }
   }
 
   @Test def setCharAt(): Unit = {
@@ -209,17 +202,10 @@ class StringBuilderTest {
     assertEquals("012defg", initBuilder("0123").replace(3,10,"defg").toString)
     assertEquals("xxxx123", initBuilder("0123").replace(0,1,"xxxx").toString)
     assertEquals("0xxxx123", initBuilder("0123").replace(1,1,"xxxx").toString)
+    assertEquals("0123x", initBuilder("0123").replace(4, 5, "x").toString)
 
     expectThrows(classOf[StringIndexOutOfBoundsException],
         initBuilder("0123").replace(-1,3,"x"))
-    if (executingInJVM) {
-      // It looks like there is a bug in the JDK implementation
-      expectThrows(classOf[ClassCastException],
-          initBuilder("0123").replace(4, 5, "x"))
-    } else {
-      expectThrows(classOf[StringIndexOutOfBoundsException],
-          initBuilder("0123").replace(4, 5, "x"))
-    }
   }
 
   @Test def setCharAt(): Unit = {

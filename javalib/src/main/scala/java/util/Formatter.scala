@@ -75,9 +75,11 @@ final class Formatter(private val dest: Appendable) extends Closeable with Flush
 
           val widthStr = matchResult(3).getOrElse("")
           val hasWidth = !widthStr.isEmpty
-          val width =
+          val width = {
             if (hasWidth) Integer.parseInt(widthStr)
+            else if (hasFlag("-")) throw new MissingFormatWidthException(format_in)
             else 0
+          }
 
           val precisionStr = matchResult(4).getOrElse("")
           val hasPrecision = !precisionStr.isEmpty
