@@ -13,9 +13,9 @@ import scala.scalajs.js.JSConverters._
 import scala.reflect._
 
 import org.scalajs.testsuite.javalib
-import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+import org.scalajs.testsuite.utils.Requires
 
-object ArraysTest extends TestClassRequiresTypedArray
+object ArraysTest extends Requires.TypedArray
 
 class ArraysTest extends javalib.util.ArraysTest {
 

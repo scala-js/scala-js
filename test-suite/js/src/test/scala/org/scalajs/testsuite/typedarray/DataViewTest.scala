@@ -10,12 +10,12 @@ package org.scalajs.testsuite.typedarray
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js.typedarray._
 import DataViewExt._
 
-object DataViewTest extends TestClassRequiresTypedArray
+object DataViewTest extends Requires.TypedArray
 
 class DataViewTest {
 

@@ -9,12 +9,12 @@ package org.scalajs.testsuite.typedarray
 
 import org.junit.Assert._
 import org.junit.Test
-import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js
 import js.typedarray._
 
-object TypedArrayConversionTest extends TestClassRequiresTypedArray
+object TypedArrayConversionTest extends Requires.TypedArray
 
 class TypedArrayConversionTest {
 

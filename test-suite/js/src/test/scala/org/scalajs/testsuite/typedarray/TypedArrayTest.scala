@@ -9,7 +9,7 @@ package org.scalajs.testsuite.typedarray
 
 import org.junit.Assert._
 import org.junit.Test
-import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js
 import js.typedarray._
@@ -213,7 +213,7 @@ trait TypedArrayTest[V, T <: TypedArray[V, T]] {
   }
 }
 
-object Int8ArrayTest extends TestClassRequiresTypedArray
+object Int8ArrayTest extends Requires.TypedArray
 
 class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
   def bytesPerElement: Int = Int8Array.BYTES_PER_ELEMENT
@@ -227,7 +227,7 @@ class Int8ArrayTest extends TypedArrayTest[Byte, Int8Array] {
   def intToV(n: Int): Byte = n.toByte
 }
 
-object Uint8ArrayTest extends TestClassRequiresTypedArray
+object Uint8ArrayTest extends Requires.TypedArray
 
 class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
   def bytesPerElement: Int = Uint8Array.BYTES_PER_ELEMENT
@@ -241,7 +241,7 @@ class Uint8ArrayTest extends TypedArrayTest[Short, Uint8Array] {
   def intToV(n: Int): Short = n.toShort
 }
 
-object Uint8ClampedArrayTest extends TestClassRequiresTypedArray
+object Uint8ClampedArrayTest extends Requires.TypedArray
 
 class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
   def bytesPerElement: Int = Uint8ClampedArray.BYTES_PER_ELEMENT
@@ -255,7 +255,7 @@ class Uint8ClampedArrayTest extends TypedArrayTest[Int, Uint8ClampedArray] {
   def intToV(n: Int): Int = n
 }
 
-object Int16ArrayTest extends TestClassRequiresTypedArray
+object Int16ArrayTest extends Requires.TypedArray
 
 class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
   def bytesPerElement: Int = Int16Array.BYTES_PER_ELEMENT
@@ -269,7 +269,7 @@ class Int16ArrayTest extends TypedArrayTest[Short, Int16Array] {
   def intToV(n: Int): Short = n.toShort
 }
 
-object Uint16ArrayTest extends TestClassRequiresTypedArray
+object Uint16ArrayTest extends Requires.TypedArray
 
 class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
   def bytesPerElement: Int = Uint16Array.BYTES_PER_ELEMENT
@@ -283,7 +283,7 @@ class Uint16ArrayTest extends TypedArrayTest[Int, Uint16Array] {
   def intToV(n: Int): Int = n
 }
 
-object Int32ArrayTest extends TestClassRequiresTypedArray
+object Int32ArrayTest extends Requires.TypedArray
 
 class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
   def bytesPerElement: Int = Int32Array.BYTES_PER_ELEMENT
@@ -297,7 +297,7 @@ class Int32ArrayTest extends TypedArrayTest[Int, Int32Array] {
   def intToV(n: Int): Int = n
 }
 
-object Uint32ArrayTest extends TestClassRequiresTypedArray
+object Uint32ArrayTest extends Requires.TypedArray
 
 class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
   def bytesPerElement: Int = Uint32Array.BYTES_PER_ELEMENT
@@ -311,7 +311,7 @@ class Uint32ArrayTest extends TypedArrayTest[Double, Uint32Array] {
   def intToV(n: Int): Double = n.toDouble
 }
 
-object Float32ArrayTest extends TestClassRequiresTypedArray
+object Float32ArrayTest extends Requires.TypedArray
 
 class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
   def bytesPerElement: Int = Float32Array.BYTES_PER_ELEMENT
@@ -325,7 +325,7 @@ class Float32ArrayTest extends TypedArrayTest[Float, Float32Array] {
   def intToV(n: Int): Float = n.toFloat
 }
 
-object Float64ArrayTest extends TestClassRequiresTypedArray
+object Float64ArrayTest extends Requires.TypedArray
 
 class Float64ArrayTest extends TypedArrayTest[Double, Float64Array] {
   def bytesPerElement: Int = Float64Array.BYTES_PER_ELEMENT

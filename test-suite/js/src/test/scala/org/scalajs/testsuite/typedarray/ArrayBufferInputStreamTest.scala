@@ -7,7 +7,7 @@
 \*                                                                      */
 package org.scalajs.testsuite.typedarray
 
-import org.scalajs.testsuite.utils.TestClassRequiresTypedArray
+import org.scalajs.testsuite.utils.Requires
 
 import scala.language.implicitConversions
 
@@ -171,7 +171,7 @@ trait ArrayBufferInputStreamTest {
   }
 }
 
-object ArrayBufferInputStreamWithoutOffsetTest extends TestClassRequiresTypedArray
+object ArrayBufferInputStreamWithoutOffsetTest extends Requires.TypedArray
 
 class ArrayBufferInputStreamWithoutOffsetTest extends ArrayBufferInputStreamTest {
   def mkStream(seq: Seq[Int]): InputStream = {
@@ -180,7 +180,7 @@ class ArrayBufferInputStreamWithoutOffsetTest extends ArrayBufferInputStreamTest
   }
 }
 
-object ArrayBufferInputStreamWithOffsetTest extends TestClassRequiresTypedArray
+object ArrayBufferInputStreamWithOffsetTest extends Requires.TypedArray
 
 class ArrayBufferInputStreamWithOffsetTest extends ArrayBufferInputStreamTest {
   def mkStream(seq: Seq[Int]): InputStream = {
