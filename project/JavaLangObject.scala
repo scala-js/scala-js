@@ -39,6 +39,16 @@ object JavaLangObject {
           NoType,
           Skip())(OptimizerHints.empty, None),
 
+        /* def getClass(): java.lang.Class[_] = <getclass>(this) */
+        MethodDef(
+          static = false,
+          Ident("getClass__jl_Class", Some("getClass__jl_Class")),
+          Nil,
+          ClassType(ClassClass),
+          {
+            GetClass(This()(ThisType))
+          })(OptimizerHints.empty.withInline(true), None),
+
         /* def hashCode(): Int = System.identityHashCode(this) */
         MethodDef(
           static = false,
@@ -96,7 +106,9 @@ object JavaLangObject {
           {
             BinaryOp(BinaryOp.String_+, BinaryOp(BinaryOp.String_+,
               Apply(
-                GetClass(This()(ThisType)),
+                Apply(This()(ThisType),
+                  Ident("getClass__jl_Class", Some("getClass__jl_Class")), Nil)(
+                  ClassType(ClassClass)),
                 Ident("getName__T"), Nil)(ClassType(StringClass)),
               // +
               StringLiteral("@")),

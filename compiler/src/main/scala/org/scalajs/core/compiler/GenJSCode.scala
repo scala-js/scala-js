@@ -1005,7 +1005,7 @@ abstract class GenJSCode extends plugins.PluginComponent
      *  overloading.
      *
      *  Some methods are not emitted at all:
-     *  * Primitives, since they are never actually called
+     *  * Primitives, since they are never actually called (with exceptions)
      *  * Abstract methods
      *  * Constructors of hijacked classes
      *  * Methods with the {{{@JavaDefaultMethod}}} annotation mixed in classes.
@@ -1045,7 +1045,8 @@ abstract class GenJSCode extends plugins.PluginComponent
               mutable = false, rest = false)
         }
 
-        if (scalaPrimitives.isPrimitive(sym)) {
+        if (scalaPrimitives.isPrimitive(sym) &&
+            !jsPrimitives.shouldEmitPrimitiveBody(sym)) {
           None
         } else if (sym.isDeferred || sym.owner.isInterface) {
           val body = if (sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
@@ -1478,7 +1479,7 @@ abstract class GenJSCode extends plugins.PluginComponent
             case NullTag =>
               js.Null()
             case ClazzTag =>
-              genClassConstant(value.typeValue)
+              js.ClassOf(toReferenceType(value.typeValue))
             case EnumTag =>
               genStaticMember(value.symbolValue)
           }
@@ -1881,10 +1882,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       val Apply(fun @ Select(sup @ Super(_, mix), _), args) = tree
       val sym = fun.symbol
 
-      if (sym == Object_getClass) {
-        // The only primitive that is also callable as super call
-        js.GetClass(genThis())
-      } else if (isScalaJSDefinedJSClass(currentClassSym)) {
+      if (isScalaJSDefinedJSClass(currentClassSym)) {
         genJSSuperCall(tree, isStat)
       } else {
         val superCall = genApplyMethodStatically(
@@ -3425,12 +3423,9 @@ abstract class GenJSCode extends plugins.PluginComponent
       } else (genArgs match {
         case Nil =>
           code match {
-            case GETCLASS     => js.GetClass(receiver)
-            case ENV_INFO     => js.JSEnvInfo()
             case LINKING_INFO => js.JSLinkingInfo()
             case DEBUGGER     => js.Debugger()
             case UNITVAL      => js.Undefined()
-            case UNITTYPE     => genClassConstant(UnitTpe)
             case JS_NATIVE    =>
               reporter.error(pos, "js.native may only be used as stub implementation in facade types")
               js.Undefined()
@@ -4491,8 +4486,11 @@ abstract class GenJSCode extends plugins.PluginComponent
     }
 
     /** Gen JS code to load the global scope. */
-    private def genLoadGlobal()(implicit pos: Position): js.Tree =
-      js.JSBracketSelect(js.JSEnvInfo(), js.StringLiteral("global"))
+    private def genLoadGlobal()(implicit pos: Position): js.Tree = {
+      js.JSBracketSelect(
+          js.JSBracketSelect(js.JSLinkingInfo(), js.StringLiteral("envInfo")),
+          js.StringLiteral("global"))
+    }
 
     /** Generate access to a static member */
     private def genStaticMember(sym: Symbol)(implicit pos: Position) = {
@@ -4509,8 +4507,7 @@ abstract class GenJSCode extends plugins.PluginComponent
       import jsPrimitives._
       if (isPrimitive(sym)) {
         getPrimitive(sym) match {
-          case UNITVAL  => js.Undefined()
-          case UNITTYPE => genClassConstant(UnitTpe)
+          case UNITVAL => js.Undefined()
         }
       } else {
         val instance = genLoadModule(sym.owner)
@@ -4518,10 +4515,6 @@ abstract class GenJSCode extends plugins.PluginComponent
         js.Apply(instance, method, Nil)(toIRType(sym.tpe))
       }
     }
-
-    /** Generate a Class[_] value (e.g. coming from classOf[T]) */
-    private def genClassConstant(tpe: Type)(implicit pos: Position): js.Tree =
-      js.ClassOf(toReferenceType(tpe))
   }
 
   /** Tests whether the given type represents a raw JavaScript type,

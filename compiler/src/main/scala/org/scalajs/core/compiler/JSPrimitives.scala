@@ -29,8 +29,6 @@ abstract class JSPrimitives {
   import jsDefinitions._
   import scalaPrimitives._
 
-  val GETCLASS = 301 // Object.getClass()
-
   val F2JS = 305     // FunctionN to js.FunctionN
   val F2JSTHIS = 306 // FunctionN to js.ThisFunction{N-1}
 
@@ -48,11 +46,9 @@ abstract class JSPrimitives {
   val OBJPROPS = 347  // js.Object.properties(o), equiv to `for (p in o)` in JS
   val JS_NATIVE = 348 // js.native. Marker method. Fails if tried to be emitted.
 
-  val UNITVAL = 349  // () value, which is undefined
-  val UNITTYPE = 350 // BoxedUnit.TYPE (== classOf[Unit])
+  val UNITVAL = 349 // () value, which is undefined
 
   val CONSTRUCTOROF = 352 // runtime.constructorOf(clazz)
-  val ENV_INFO = 353      // __ScalaJSEnv via helper
   val LINKING_INFO = 354  // $linkingInfo
 
   /** Initialize the map of primitive methods (for GenJSCode) */
@@ -70,11 +66,20 @@ abstract class JSPrimitives {
   def isJavaScriptPrimitive(sym: Symbol): Boolean =
     scalaJSPrimitives.contains(sym)
 
+  /** For a primitive, is it one for which we should emit its body anyway? */
+  def shouldEmitPrimitiveBody(sym: Symbol): Boolean = {
+    /* No @switch because some Scala 2.11 versions erroneously report a
+     * warning for switch matches with less than 3 non-default cases.
+     */
+    scalaPrimitives.getPrimitive(sym) match {
+      case F2JS | F2JSTHIS => true
+      case _               => false
+    }
+  }
+
   private val scalaJSPrimitives = mutable.Map.empty[Symbol, Int]
 
   private def initWithPrimitives(addPrimitive: (Symbol, Int) => Unit): Unit = {
-    addPrimitive(Object_getClass, GETCLASS)
-
     for (i <- 0 to 22)
       addPrimitive(JSAny_fromFunction(i), F2JS)
     for (i <- 1 to 22)
@@ -97,10 +102,8 @@ abstract class JSPrimitives {
     addPrimitive(JSObject_properties, OBJPROPS)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
-    addPrimitive(BoxedUnit_TYPE, UNITTYPE)
 
     addPrimitive(Runtime_constructorOf, CONSTRUCTOROF)
-    addPrimitive(Runtime_environmentInfo, ENV_INFO)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
   }
 

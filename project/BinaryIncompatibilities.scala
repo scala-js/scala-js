@@ -3,6 +3,11 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking! Trees.JSEnvInfo was removed.
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$JSEnvInfo"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "org.scalajs.core.ir.Trees$JSEnvInfo$")
   )
 
   val Tools = Seq(
@@ -29,6 +34,10 @@ object BinaryIncompatibilities {
     // In theory, breaking, but this is an interface in runtime that no one should extend
     ProblemFilters.exclude[MissingMethodProblem](
         "scala.scalajs.runtime.EnvironmentInfo.javaSystemProperties"),
+    ProblemFilters.exclude[MissingMethodProblem](
+        "scala.scalajs.runtime.LinkingInfo.envInfo"),
+    ProblemFilters.exclude[MissingMethodProblem](
+        "scala.scalajs.runtime.LinkingInfo.scala$scalajs$runtime$LinkingInfo$_setter_$envInfo_="),
     ProblemFilters.exclude[MissingMethodProblem](
         "scala.scalajs.runtime.LinkingInfo.linkerVersion"),
     ProblemFilters.exclude[MissingMethodProblem](

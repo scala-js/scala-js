@@ -133,7 +133,8 @@ package object runtime {
    *
    *  See [[EnvironmentInfo]] for details.
    */
-  def environmentInfo: EnvironmentInfo = sys.error("stub")
+  @inline def environmentInfo: EnvironmentInfo =
+    linkingInfo.envInfo
 
   /** Information known at link-time, given the output configuration.
    *
