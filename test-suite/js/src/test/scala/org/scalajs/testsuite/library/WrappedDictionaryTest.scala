@@ -8,99 +8,97 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+
+import org.junit.Assert._
+import org.junit.Test
 
 import scala.collection.mutable
 
 import scala.reflect.ClassTag
 
-object WrappedDictionaryTest extends JasmineTest {
+class WrappedDictionaryTest {
 
-  describe("scala.scalajs.js.WrappedDictionary") {
+  // Methods we actually implement
 
-    // Methods we actually implement
+  @Test def get(): Unit = {
+    val map: mutable.Map[String, Any] =
+      js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
+    assertTrue(map.get("a") == Some("a"))
+    assertTrue(map.get("b") == Some(6))
+    assertTrue(map.get("e") == Some(()))
+    assertTrue(map.get("f") == None)
+  }
 
-    it("should implement get") {
-      val map: mutable.Map[String, Any] =
-        js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
-      expect(map.get("a") == Some("a")).toBeTruthy
-      expect(map.get("b") == Some(6)).toBeTruthy
-      expect(map.get("e") == Some(())).toBeTruthy
-      expect(map.get("f") == None).toBeTruthy
-    }
+  @Test def `+=_and_-=`(): Unit = {
+    val dict = js.Dictionary[String]()
+    val map: mutable.Map[String, String] = dict
 
-    it("should implement += and -=") {
-      val dict = js.Dictionary[String]()
-      val map: mutable.Map[String, String] = dict
+    assertArrayEquals(Array[AnyRef](), js.Object.properties(dict).toArray[AnyRef])
 
-      expect(js.Object.properties(dict)).toEqual(js.Array())
+    map += "hello" -> "world"
+    assertEquals("world", dict("hello"))
+    map += "foo" -> "bar"
+    assertEquals("bar", dict("foo"))
+    map -= "hello"
+    assertFalse(dict.get("hello").isDefined)
+    assertArrayEquals(Array[AnyRef]("foo"), js.Object.properties(dict).toArray[AnyRef])
+  }
 
-      map += "hello" -> "world"
-      expect(dict("hello")).toEqual("world")
-      map += "foo" -> "bar"
-      expect(dict("foo")).toEqual("bar")
-      map -= "hello"
-      expect(dict.get("hello").isDefined).toBeFalsy
-      expect(js.Object.properties(dict)).toEqual(js.Array("foo"))
-    }
+  @Test def iterator(): Unit = {
+    val elems = ('a' to 'e').map(_.toString).zip(1 to 5)
+    val dict = js.Dictionary[Int]()
+    val map: mutable.Map[String, Int] = dict
 
-    it("should implement iterator") {
-      val elems = ('a' to 'e').map(_.toString).zip(1 to 5)
-      val dict = js.Dictionary[Int]()
-      val map: mutable.Map[String, Int] = dict
+    dict ++= elems
 
-      dict ++= elems
+    assertTrue(map.iterator.toList.sorted.sameElements(elems))
+  }
 
-      expect(map.iterator.toList.sorted.sameElements(elems)).toBeTruthy
-    }
+  // Some arbitrary methods to test the builders
 
-    // Some arbitrary methods to test the builders
+  @Test def map(): Unit = {
+    def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
+    val dict = js.Dictionary[Int]()
+    dict ++= Seq("one" -> 1, "two" -> 2, "three" -> 3)
 
-    it("should implement map") {
-      def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
-      val dict = js.Dictionary[Int]()
-      dict ++= Seq("one" -> 1, "two" -> 2, "three" -> 3)
+    val mapChr = dict.map { case (k,v) => k(0)          -> v * 2 }
+    val mapStr = dict.map { case (k,v) => k(0).toString -> v * 2 }
 
-      val mapChr = dict.map { case (k,v) => k(0)          -> v * 2 }
-      val mapStr = dict.map { case (k,v) => k(0).toString -> v * 2 }
+    assertFalse(ct(mapChr).runtimeClass == classOf[js.WrappedDictionary[_]])
+    assertTrue(ct(mapStr).runtimeClass == classOf[js.WrappedDictionary[_]])
 
-      expect(ct(mapChr).runtimeClass == classOf[js.WrappedDictionary[_]]).toBeFalsy
-      expect(ct(mapStr).runtimeClass == classOf[js.WrappedDictionary[_]]).toBeTruthy
+    assertEquals(2, mapChr.size)
+    assertEquals(2, mapStr.size)
+  }
 
-      expect(mapChr.size).toBe(2)
-      expect(mapStr.size).toBe(2)
-    }
+  @Test def withFilter(): Unit = {
+    val dict = js.Dictionary[Int]()
+    val flt = dict.withFilter { case (k,v) => v > 5 || k == "a" }
+    def size: Int = flt.map(x => x).size
 
-    it("should implement withFilter") {
-      val dict = js.Dictionary[Int]()
-      val flt = dict.withFilter { case (k,v) => v > 5 || k == "a" }
-      def size: Int = flt.map(x => x).size
+    assertEquals(0, size)
+    dict += "a" -> 1
+    assertEquals(1, size)
+    dict += "b" -> 2
+    assertEquals(1, size)
+    dict += "c" -> 6
+    assertEquals(2, size)
+    dict += "b" -> 7
+    assertEquals(3, size)
+    dict -= "a"
+    assertEquals(2, size)
+  }
 
-      expect(size).toBe(0)
-      dict += "a" -> 1
-      expect(size).toBe(1)
-      dict += "b" -> 2
-      expect(size).toBe(1)
-      dict += "c" -> 6
-      expect(size).toBe(2)
-      dict += "b" -> 7
-      expect(size).toBe(3)
-      dict -= "a"
-      expect(size).toBe(2)
-    }
+  @Test def toList(): Unit = {
+    val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
+    val list = dict.toList
+    assertEquals(3, list.size)
+  }
 
-    it("should implement toList") {
-      val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
-      val list = dict.toList
-      expect(list.size).toBe(3)
-    }
-
-    it("should implement to[T]") {
-      val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
-      val list = dict.to[List]
-      expect(list.size).toBe(3)
-    }
-
+  @Test def to_T(): Unit = {
+    val dict = js.Dictionary("a" -> "a", "b" -> 6, "e" -> js.undefined)
+    val list = dict.to[List]
+    assertEquals(3, list.size)
   }
 
 }
