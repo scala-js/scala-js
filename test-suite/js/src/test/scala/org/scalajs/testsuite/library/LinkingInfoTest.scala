@@ -7,35 +7,34 @@
 \*                                                                      */
 package org.scalajs.testsuite.library
 
-import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+import org.junit.Assert._
+import org.junit.Assume._
+import org.junit.Test
 
-object LinkingInfoTest extends JasmineTest {
+import org.scalajs.testsuite.utils.Platform._
+
+class LinkingInfoTest {
 
   import scala.scalajs.LinkingInfo
 
-  describe("scala.scalajs.LinkingInfo") {
+  @Test def productionMode_when_in_production_mode(): Unit = {
+    assumeTrue(isInProductionMode)
+    assertTrue(LinkingInfo.productionMode)
+  }
 
-    when("production-mode").
-    it("productionMode when in production mode") {
-      expect(LinkingInfo.productionMode).toBeTruthy
-    }
+  @Test def productionMode_when_in_development_mode(): Unit = {
+    assumeTrue(isInDevelopmentMode)
+    assertFalse(LinkingInfo.productionMode)
+  }
 
-    when("development-mode").
-    it("productionMode when in development mode") {
-      expect(LinkingInfo.productionMode).toBeFalsy
-    }
+  @Test def developmentMode_when_in_production_mode(): Unit = {
+    assumeTrue(isInProductionMode)
+    assertFalse(LinkingInfo.developmentMode)
+  }
 
-    when("production-mode").
-    it("developmentMode when in production mode") {
-      expect(LinkingInfo.developmentMode).toBeFalsy
-    }
-
-    when("development-mode").
-    it("developmentMode when in development mode") {
-      expect(LinkingInfo.developmentMode).toBeTruthy
-    }
-
+  @Test def developmentMode_when_in_development_mode(): Unit = {
+    assumeTrue(isInDevelopmentMode)
+    assertTrue(LinkingInfo.developmentMode)
   }
 
 }

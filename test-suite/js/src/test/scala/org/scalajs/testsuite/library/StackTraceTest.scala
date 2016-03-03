@@ -8,9 +8,76 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
 
-object StackTraceTest extends JasmineTest {
+import org.junit.Assert._
+import org.junit.Assume._
+import org.junit.Test
+
+import org.scalajs.testsuite.utils.Platform._
+
+class StackTraceTest {
+  import StackTraceTest._
+
+  private def verifyClassMethodNames(
+      places: (String, String)*)(body: => Any): Unit = {
+    try {
+      body
+      throw new AssertionError("body should have thrown an exception")
+    } catch {
+      case e: IllegalArgumentException =>
+        val trace = e.getStackTrace()
+        for ((className, methodName) <- places) {
+          assertTrue(trace exists { elem =>
+            /* We use startsWith for class name because some VMs will add
+             * additional information at the end of the class name, for some
+             * reason.
+             */
+            val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
+            (elem.getClassName.startsWith(prefix + className) &&
+                elem.getMethodName == methodName)
+          })
+        }
+    }
+  }
+
+  @Test def decode_class_name_and_method_name(): Unit = {
+    assumeTrue("Assume node.js", executingInNodeJS)
+    assumeFalse("Assume fullopt-stage", isInFullOpt)
+
+    val Error = js.constructorOf[js.Error]
+    val oldStackTraceLimit = Error.stackTraceLimit
+    Error.stackTraceLimit = 20
+
+    try {
+      verifyClassMethodNames("Foo" -> "f") {
+        new Foo().f(25)
+      }
+
+      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
+        new Bar().g(7)
+      }
+
+      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h") {
+        new Foo().h(78)
+      }
+
+      verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h",
+          "Baz" -> "<init>") {
+        new Baz()
+      }
+
+      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
+          "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
+        Foobar.z
+      }
+    } finally {
+      Error.stackTraceLimit = oldStackTraceLimit
+    }
+  }
+
+}
+
+object StackTraceTest {
 
   trait FooTrait {
     def f(x: Int): Int
@@ -41,65 +108,4 @@ object StackTraceTest extends JasmineTest {
   object Foobar {
     val z = new Bar().g(7)
   }
-
-  private def verifyClassMethodNames(
-      places: (String, String)*)(body: => Any): Unit = {
-    try {
-      body
-      throw new AssertionError("body should have thrown an exception")
-    } catch {
-      case e: IllegalArgumentException =>
-        val trace = e.getStackTrace()
-        for ((className, methodName) <- places) {
-          expect(trace exists { elem =>
-            /* We use startsWith for class name because some VMs will add
-             * additional information at the end of the class name, for some
-             * reason.
-             */
-            val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
-            (elem.getClassName.startsWith(prefix + className) &&
-                elem.getMethodName == methodName)
-          }).toBeTruthy
-        }
-    }
-  }
-
-  describe("scala.scalajs.runtime.StackTrace") {
-
-    when("nodejs").
-    unless("fullopt-stage").
-    it("decode class name and method name") {
-      val Error = js.constructorOf[js.Error]
-      val oldStackTraceLimit = Error.stackTraceLimit
-      Error.stackTraceLimit = 20
-
-      try {
-        verifyClassMethodNames("Foo" -> "f") {
-          new Foo().f(25)
-        }
-
-        verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
-          new Bar().g(7)
-        }
-
-        verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h") {
-          new Foo().h(78)
-        }
-
-        verifyClassMethodNames("Foo" -> "f", "FooTrait$class" -> "h",
-            "Baz" -> "<init>") {
-          new Baz()
-        }
-
-        verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
-            "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
-          Foobar.z
-        }
-      } finally {
-        Error.stackTraceLimit = oldStackTraceLimit
-      }
-    }
-
-  }
-
 }

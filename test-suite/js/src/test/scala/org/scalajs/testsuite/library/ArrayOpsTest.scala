@@ -8,110 +8,114 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.js
-import org.scalajs.jasminetest.JasmineTest
+
+import org.junit.Assert._
+import org.junit.Test
+
+import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.reflect.ClassTag
 
-import js.JSConverters._
+class ArrayOpsTest {
 
-object ArrayOpsTest extends JasmineTest {
+  // Methods we actually implement
 
-  describe("scala.scalajs.js.ArrayOps") {
+  @Test def apply(): Unit = {
+    val array = js.Array(3,4,5,6,3,4)
+    val ops: js.ArrayOps[Int] = array
 
-    // Methods we actually implement
+    assertEquals(3, ops(0))
+    assertEquals(6, ops(3))
 
-    it("should implement apply") {
-      val array = js.Array(3,4,5,6,3,4)
-      val ops: js.ArrayOps[Int] = array
+    array(0) = 4
+    assertEquals(4, ops(0))
+  }
 
-      expect(ops(0)).toEqual(3)
-      expect(ops(3)).toEqual(6)
+  @Test def update(): Unit = {
+    val array = js.Array(3,4,5,6,3,4)
+    val ops: js.ArrayOps[Int] = array
 
-      array(0) = 4
-      expect(ops(0)).toEqual(4)
+    assertEquals(4, array(1))
+    ops(1) = 5
+    assertEquals(5, array(1))
+
+    ops(5) = 10
+    assertEquals(10, array(5))
+  }
+
+  @Test def length(): Unit = {
+    val array = js.Array(3,4,5,6,3,4)
+    val ops: js.ArrayOps[Int] = array
+
+    assertEquals(6, ops.length)
+    array.push(1)
+    assertEquals(7, ops.length)
+  }
+
+  @Test def seq(): Unit = {
+    val array = js.Array(3,4,5,6,3,4)
+    val ops: js.ArrayOps[Int] = array
+    val seq = ops.seq
+
+    assertEquals(List(3,4,5,6,3,4), seq.toList)
+  }
+
+  @Test def reduceLeft(): Unit = {
+    val array = js.Array(100, 6, 2, 56, -1)
+    assertEquals(37, array.reduceLeft(_ - _))
+    assertThrows(classOf[UnsupportedOperationException],
+        js.Array[Int]().reduceLeft(_ + _))
+  }
+
+  @Test def reduceRight(): Unit = {
+    val array = js.Array("hello", "world")
+    assertEquals("hello, world", array.reduceRight(_ + ", " + _))
+    assertThrows(classOf[UnsupportedOperationException],
+        js.Array[Int]().reduceRight(_ + _))
+  }
+
+  @Test def ++(): Unit = {
+    val left = js.Array("hello", "world")
+    val right = js.Array("and", "everyone", "else")
+    assertArrayEquals(Array[AnyRef]("hello", "world", "and", "everyone", "else"),
+        (left ++ right).toArray[AnyRef])
+
+    val ints = js.Array(4, 3)
+    val concat = left ++ ints
+    assertEquals("hello", concat(0))
+    assertEquals("world", concat(1))
+    assertEquals(4, concat(2))
+    assertEquals(3, concat(3))
+  }
+
+  // Some arbitrary methods to test the builders
+
+  @Test def collect(): Unit = {
+    def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
+    val array = js.Array(3,4,5,6,3,4)
+    val res = array.collect {
+      case x if x > 4 => 2*x
     }
 
-    it("should implement update") {
-      val array = js.Array(3,4,5,6,3,4)
-      val ops: js.ArrayOps[Int] = array
+    assertTrue(ct(res).runtimeClass == classOf[js.Array[Int]])
+    assertArrayEquals(Array(10, 12), res.toArray)
+  }
 
-      expect(array(1)).toEqual(4)
-      ops(1) = 5
-      expect(array(1)).toEqual(5)
+  @Test def diff(): Unit = {
+    val array = js.Array(1,2,1,3,1,10,9)
+    val diff = array.diff(Seq(1,3,9))
+    assertArrayEquals(Array(2,1,1,10), diff.toArray)
+  }
 
-      ops(5) = 10
-      expect(array(5)).toEqual(10)
-    }
+  @Test def toList_issue_843(): Unit = {
+    val array = js.Array(1,2,1,3,1,10,9)
+    val list = array.toList
+    assertArrayEquals(array.toArray, list.toArray)
+  }
 
-    it("should implement length") {
-      val array = js.Array(3,4,5,6,3,4)
-      val ops: js.ArrayOps[Int] = array
-
-      expect(ops.length).toEqual(6)
-      array.push(1)
-      expect(ops.length).toEqual(7)
-    }
-
-    it("should implement seq") {
-      val array = js.Array(3,4,5,6,3,4)
-      val ops: js.ArrayOps[Int] = array
-      val seq = ops.seq
-
-      expect(seq.toList == List(3,4,5,6,3,4)).toBeTruthy
-    }
-
-    it("should implement reduceLeft") {
-      val array = js.Array(100, 6, 2, 56, -1)
-      expect(array.reduceLeft(_ - _)).toEqual(37)
-      expect(() => js.Array[Int]().reduceLeft(_ + _)).toThrow
-    }
-
-    it("should implement reduceRight") {
-      val array = js.Array("hello", "world")
-      expect(array.reduceRight(_ + ", " + _)).toEqual("hello, world")
-      expect(() => js.Array[Int]().reduceRight(_ + _)).toThrow
-    }
-
-    it("should implement ++") {
-      val left = js.Array("hello", "world")
-      val right = js.Array("and", "everyone", "else")
-      expect(left ++ right).toEqual(
-          js.Array("hello", "world", "and", "everyone", "else"))
-
-      val ints = js.Array(4, 3)
-      expect(left ++ ints).toEqual(js.Array("hello", "world", 4, 3))
-    }
-
-    // Some arbitrary methods to test the builders
-
-    it("should implement collect") {
-      def ct[A: ClassTag](x: A): ClassTag[A] = implicitly[ClassTag[A]]
-      val array = js.Array(3,4,5,6,3,4)
-      val res = array.collect {
-        case x if x > 4 => 2*x
-      }
-
-      expect(ct(res).runtimeClass == classOf[js.Array[Int]]).toBeTruthy
-      expect(res).toEqual(js.Array(10, 12))
-    }
-
-    it("should implement diff") {
-      val array = js.Array(1,2,1,3,1,10,9)
-      val diff = array.diff(Seq(1,3,9))
-      expect(diff).toEqual(js.Array(2,1,1,10))
-    }
-
-    it("should implement toList - #843") {
-      val array = js.Array(1,2,1,3,1,10,9)
-      val list = array.toList
-      expect(list.toJSArray).toEqual(array)
-    }
-
-    it("should implement to[T] - #843") {
-      val array = js.Array(1,2,1,3,1,10,9)
-      val list = array.to[List]
-      expect(list.toJSArray).toEqual(array)
-    }
-
+  @Test def to_T_issue_843(): Unit = {
+    val array = js.Array(1,2,1,3,1,10,9)
+    val list = array.to[List]
+    assertArrayEquals(array.toArray, list.toArray)
   }
 }
